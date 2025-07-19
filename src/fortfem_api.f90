@@ -2,6 +2,7 @@ module fortfem_api
     ! High-level FEniCS-style API for FortFEM
     use fortfem_kinds
     use fortfem_mesh_2d
+    use fortfem_forms_simple
     implicit none
     
     private
@@ -14,6 +15,7 @@ module fortfem_api
     public :: test_function_t
     public :: dirichlet_bc_t
     public :: simple_expression_t
+    public :: form_expr_t
     
     ! Public constructors
     public :: unit_square_mesh
@@ -27,6 +29,7 @@ module fortfem_api
     ! Public form operations (simplified)
     public :: inner, grad
     public :: dx
+    public :: compile_form
     
     ! Mesh type (wrapper around mesh_2d_t)
     type :: mesh_t
@@ -77,6 +80,16 @@ module fortfem_api
     
     ! Global measure instance
     type(simple_expression_t), parameter :: dx = simple_expression_t("dx")
+    
+    ! Operators for expressions
+    interface operator(*)
+        module procedure expr_times_measure
+        module procedure expr_times_expr
+    end interface
+    
+    interface operator(+)
+        module procedure expr_plus_expr
+    end interface
     
 contains
 
@@ -155,20 +168,82 @@ contains
         bc%on_boundary = .true.
     end function dirichlet_bc
     
-    ! Form operations (simplified)
+    ! Form operations with simple expressions
     function inner(a, b) result(expr)
         class(*), intent(in) :: a, b
-        type(simple_expression_t) :: expr
+        type(form_expr_t) :: expr
+        type(form_expr_t) :: expr_a, expr_b
         
-        expr%description = "inner(grad(u), grad(v))"
+        ! Convert inputs to expressions
+        select type(a)
+        type is (trial_function_t)
+            expr_a = create_grad("u", "trial")
+        type is (test_function_t)
+            expr_a = create_grad("v", "test")
+        type is (form_expr_t)
+            expr_a = a
+        class default
+            expr_a%description = "unknown"
+            expr_a%form_type = "unknown"
+        end select
+        
+        select type(b)
+        type is (trial_function_t)
+            expr_b = create_grad("u", "trial")
+        type is (test_function_t)
+            expr_b = create_grad("v", "test")
+        type is (form_expr_t)
+            expr_b = b
+        class default
+            expr_b%description = "unknown"
+            expr_b%form_type = "unknown"
+        end select
+        
+        expr = create_inner(expr_a, expr_b)
     end function inner
     
     function grad(u) result(gradu)
         class(*), intent(in) :: u
-        type(simple_expression_t) :: gradu
+        type(form_expr_t) :: gradu
         
-        gradu%description = "grad(u)"
+        select type(u)
+        type is (trial_function_t)
+            gradu = create_grad("u", "trial")
+        type is (test_function_t)
+            gradu = create_grad("v", "test")
+        class default
+            gradu = create_grad("unknown", "unknown")
+        end select
     end function grad
+    
+    ! Operator overloading
+    function expr_times_measure(expr, measure) result(form)
+        type(form_expr_t), intent(in) :: expr
+        type(simple_expression_t), intent(in) :: measure
+        type(form_expr_t) :: form
+        
+        ! For now, return the expression as-is
+        ! In a full implementation, this would attach measure metadata
+        form = expr
+    end function expr_times_measure
+    
+    function expr_times_expr(a, b) result(product)
+        type(form_expr_t), intent(in) :: a, b
+        type(form_expr_t) :: product
+        
+        product%description = "(" // trim(a%description) // " * " // trim(b%description) // ")"
+        product%form_type = a%form_type
+        product%tensor_rank = a%tensor_rank + b%tensor_rank
+    end function expr_times_expr
+    
+    function expr_plus_expr(a, b) result(sum_expr)
+        type(form_expr_t), intent(in) :: a, b
+        type(form_expr_t) :: sum_expr
+        
+        sum_expr%description = "(" // trim(a%description) // " + " // trim(b%description) // ")"
+        sum_expr%form_type = a%form_type
+        sum_expr%tensor_rank = max(a%tensor_rank, b%tensor_rank)
+    end function expr_plus_expr
     
     ! Destructor procedures
     subroutine mesh_destroy(this)
