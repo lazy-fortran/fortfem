@@ -30,6 +30,32 @@ fpm test
 fpm run --example plot_basis
 ```
 
+## Examples
+
+Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) directory for complete working examples:
+
+- [Poisson equation solver](https://github.com/itpplasma/fortfem/blob/main/example/poisson_2d.f90)
+- [Nédélec element visualization](https://github.com/itpplasma/fortfem/blob/main/example/plot_basis.f90)
+- [Mesh generation and visualization](https://github.com/itpplasma/fortfem/blob/main/example/mesh_2d_demo.f90)
+
+## Project Structure
+
+- [`src/`](https://github.com/itpplasma/fortfem/tree/main/src) - Core library modules
+- [`test/`](https://github.com/itpplasma/fortfem/tree/main/test) - Comprehensive test suite
+- [`example/`](https://github.com/itpplasma/fortfem/tree/main/example) - Example programs
+- [`doc/`](https://github.com/itpplasma/fortfem/tree/main/doc) - Documentation
+- [`app/`](https://github.com/itpplasma/fortfem/tree/main/app) - Main applications
+
 ## Documentation
 
-See the [doc/](doc/) folder for detailed documentation and [DESIGN.md](DESIGN.md) for architecture overview.
+See the [doc/](https://github.com/itpplasma/fortfem/tree/main/doc) folder for detailed documentation and [DESIGN.md](https://github.com/itpplasma/fortfem/blob/main/DESIGN.md) for architecture overview.
+
+## Contributing
+
+1. Check the [TODO.md](https://github.com/itpplasma/fortfem/blob/main/TODO.md) for current development priorities
+2. Follow strict TDD: write tests first
+3. See [CLAUDE.md](https://github.com/itpplasma/fortfem/blob/main/CLAUDE.md) for development guidelines
+
+## License
+
+See [LICENSE](https://github.com/itpplasma/fortfem/blob/main/LICENSE) for details.
