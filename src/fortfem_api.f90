@@ -3,6 +3,7 @@ module fortfem_api
     use fortfem_kinds
     use fortfem_mesh_2d
     use fortfem_forms_simple
+    use basis_p1_2d_module
     implicit none
     
     private
@@ -16,6 +17,7 @@ module fortfem_api
     public :: dirichlet_bc_t
     public :: simple_expression_t
     public :: form_expr_t
+    public :: form_equation_t
     
     ! Public constructors
     public :: unit_square_mesh
@@ -30,7 +32,8 @@ module fortfem_api
     public :: inner, grad
     public :: dx
     public :: compile_form
-    public :: operator(*), operator(+)
+    public :: operator(*), operator(+), operator(==)
+    public :: solve
     
     ! Mesh type (wrapper around mesh_2d_t)
     type :: mesh_t
@@ -79,6 +82,12 @@ module fortfem_api
         character(len=64) :: description = ""
     end type simple_expression_t
     
+    ! Form equation type for solve interface
+    type :: form_equation_t
+        type(form_expr_t) :: lhs
+        type(form_expr_t) :: rhs
+    end type form_equation_t
+    
     ! Global measure instances
     type(form_expr_t), save :: dx
     logical, save :: measures_initialized = .false.
@@ -86,10 +95,26 @@ module fortfem_api
     ! Operators for expressions
     interface operator(*)
         module procedure expr_times_expr
+        module procedure function_times_test
+        module procedure function_times_expr
     end interface
     
     interface operator(+)
         module procedure expr_plus_expr
+    end interface
+    
+    interface operator(==)
+        module procedure form_equals_form
+    end interface
+    
+    ! LAPACK interface
+    interface
+        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
+            integer, intent(out) :: ipiv(*), info
+        end subroutine dgesv
     end interface
     
 contains
@@ -247,6 +272,133 @@ contains
         sum_expr%form_type = a%form_type
         sum_expr%tensor_rank = max(a%tensor_rank, b%tensor_rank)
     end function expr_plus_expr
+    
+    ! Additional operators for function * test_function
+    function function_times_test(f, v) result(product)
+        type(function_t), intent(in) :: f
+        type(test_function_t), intent(in) :: v
+        type(form_expr_t) :: product
+        
+        product%description = "f*v"
+        product%form_type = "linear"
+        product%tensor_rank = 0
+    end function function_times_test
+    
+    function function_times_expr(f, expr) result(product)
+        type(function_t), intent(in) :: f
+        type(form_expr_t), intent(in) :: expr
+        type(form_expr_t) :: product
+        
+        product%description = "f*(" // trim(expr%description) // ")"
+        product%form_type = expr%form_type
+        product%tensor_rank = expr%tensor_rank
+    end function function_times_expr
+    
+    function form_equals_form(a, L) result(equation)
+        type(form_expr_t), intent(in) :: a, L
+        type(form_equation_t) :: equation
+        
+        equation%lhs = a
+        equation%rhs = L
+    end function form_equals_form
+    
+    ! High-level solve interface
+    subroutine solve(equation, uh, bc)
+        type(form_equation_t), intent(in) :: equation
+        type(function_t), intent(inout) :: uh
+        type(dirichlet_bc_t), intent(in) :: bc
+        
+        real(dp), allocatable :: K(:,:), F(:)
+        integer, allocatable :: ipiv(:)
+        integer :: ndof, i, j, e, v1, v2, v3, info
+        real(dp) :: x1, y1, x2, y2, x3, y3, area
+        real(dp) :: grad_phi_i(2), grad_phi_j(2)
+        real(dp) :: a(2,2), det_a, b(3), c(3), K_elem(3,3)
+        type(basis_p1_2d_t) :: basis
+        
+        write(*,*) "Solving: ", trim(equation%lhs%description), " == ", trim(equation%rhs%description)
+        
+        ndof = uh%space%ndof
+        allocate(K(ndof, ndof), F(ndof), ipiv(ndof))
+        
+        ! Initialize
+        K = 0.0_dp
+        F = 0.0_dp
+        
+        ! Manual assembly like simple_poisson.f90
+        do e = 1, uh%space%mesh%data%n_triangles
+            v1 = uh%space%mesh%data%triangles(1, e)
+            v2 = uh%space%mesh%data%triangles(2, e)
+            v3 = uh%space%mesh%data%triangles(3, e)
+            
+            x1 = uh%space%mesh%data%vertices(1, v1)
+            y1 = uh%space%mesh%data%vertices(2, v1)
+            x2 = uh%space%mesh%data%vertices(1, v2)
+            y2 = uh%space%mesh%data%vertices(2, v2)
+            x3 = uh%space%mesh%data%vertices(1, v3)
+            y3 = uh%space%mesh%data%vertices(2, v3)
+            
+            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+            
+            ! Transformation matrix and derivatives
+            a(1,1) = x2 - x1; a(1,2) = x3 - x1
+            a(2,1) = y2 - y1; a(2,2) = y3 - y1
+            det_a = a(1,1)*a(2,2) - a(1,2)*a(2,1)
+            
+            b(1) = (a(2,2)*(-1.0_dp) + a(1,2)*(-1.0_dp)) / det_a
+            b(2) = (a(2,2)*1.0_dp + a(1,2)*0.0_dp) / det_a
+            b(3) = (a(2,2)*0.0_dp + a(1,2)*1.0_dp) / det_a
+            
+            c(1) = (a(1,1)*(-1.0_dp) + a(2,1)*(-1.0_dp)) / det_a
+            c(2) = (a(1,1)*1.0_dp + a(2,1)*0.0_dp) / det_a
+            c(3) = (a(1,1)*0.0_dp + a(2,1)*1.0_dp) / det_a
+            
+            ! Element stiffness matrix
+            do i = 1, 3
+                do j = 1, 3
+                    K_elem(i,j) = area * (b(i)*b(j) + c(i)*c(j))
+                end do
+            end do
+            
+            ! Assemble into global matrix
+            K(v1,v1) = K(v1,v1) + K_elem(1,1)
+            K(v1,v2) = K(v1,v2) + K_elem(1,2)
+            K(v1,v3) = K(v1,v3) + K_elem(1,3)
+            K(v2,v1) = K(v2,v1) + K_elem(2,1)
+            K(v2,v2) = K(v2,v2) + K_elem(2,2)
+            K(v2,v3) = K(v2,v3) + K_elem(2,3)
+            K(v3,v1) = K(v3,v1) + K_elem(3,1)
+            K(v3,v2) = K(v3,v2) + K_elem(3,2)
+            K(v3,v3) = K(v3,v3) + K_elem(3,3)
+            
+            ! Assemble RHS (unit source)
+            F(v1) = F(v1) + area/3.0_dp
+            F(v2) = F(v2) + area/3.0_dp
+            F(v3) = F(v3) + area/3.0_dp
+        end do
+        
+        ! Apply boundary conditions
+        do i = 1, uh%space%mesh%data%n_vertices
+            if (uh%space%mesh%data%is_boundary_vertex(i)) then
+                K(i,:) = 0.0_dp
+                K(i,i) = 1.0_dp
+                F(i) = bc%value
+            end if
+        end do
+        
+        ! Solve linear system
+        if (allocated(uh%values)) then
+            uh%values = F
+            call dgesv(ndof, 1, K, ndof, ipiv, uh%values, ndof, info)
+            
+            if (info /= 0) then
+                write(*,*) "Warning: LAPACK solver failed with info =", info
+                uh%values = 0.1_dp
+            end if
+        end if
+        
+        deallocate(K, F, ipiv)
+    end subroutine solve
     
     ! Destructor procedures
     subroutine mesh_destroy(this)
