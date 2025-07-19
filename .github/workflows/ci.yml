@@ -32,10 +32,17 @@ jobs:
         brew install gfortran
         pip3 install numpy matplotlib
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup Fortran Package Manager
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.12.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-macos-x86_64-gcc-12
+          chmod +x fpm-0.12.0-macos-x86_64-gcc-12
+          sudo mv fpm-0.12.0-macos-x86_64-gcc-12 /usr/local/bin/fpm
+        fi
 
     - name: Build
       run: fpm build --profile release
