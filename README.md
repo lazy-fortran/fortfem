@@ -26,7 +26,7 @@ fpm build
 fpm test
 
 # Run examples
-fpm run --example plot_basis
+fpm run --example simple_poisson
 ```
 
 ## Usage Example
@@ -35,7 +35,7 @@ FortFEM provides a clean, FEniCS-inspired API for defining finite element proble
 
 ```fortran
 program poisson_example
-    use fortfem
+    use fortfem_api
     
     ! Create mesh and function space
     mesh = unit_square_mesh(32)
@@ -44,15 +44,16 @@ program poisson_example
     ! Define trial and test functions
     u = trial_function(Vh)
     v = test_function(Vh)
+    f = constant(1.0_dp)
     
-    ! Define weak form: inner(grad(u), grad(v))*dx
-    a = inner(grad(u), grad(v))*dx
-    L = inner(f, v)*dx
+    ! Define weak form using natural mathematical notation
+    a = inner(grad(u), grad(v))*dx  ! Bilinear form: ∫ ∇u·∇v dx
+    L = f*v*dx                      ! Linear form:   ∫ f v dx
     
     ! Solve the system
     uh = function(Vh)
     bc = dirichlet_bc(Vh, 0.0_dp)
-    solve(a == L, uh, bc)
+    call solve(a == L, uh, bc)
 end program
 ```
 
@@ -60,9 +61,10 @@ end program
 
 Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) directory for complete working examples:
 
-- [Poisson equation solver](https://github.com/itpplasma/fortfem/blob/main/example/poisson_2d.f90)
-- [Nédélec element visualization](https://github.com/itpplasma/fortfem/blob/main/example/plot_basis.f90)
-- [Mesh generation and visualization](https://github.com/itpplasma/fortfem/blob/main/example/mesh_2d_demo.f90)
+- [**Simple Poisson solver**](https://github.com/itpplasma/fortfem/blob/main/example/simple_poisson.f90) - FEniCS-style API demonstration
+- [**P2 element demo**](https://github.com/itpplasma/fortfem/blob/main/example/p2_element_demo.f90) - Quadratic elements with convergence study
+- [**Neumann BC demo**](https://github.com/itpplasma/fortfem/blob/main/example/neumann_bc_demo.f90) - Mixed boundary conditions
+- [**Nédélec convergence**](https://github.com/itpplasma/fortfem/blob/main/example/nedelec_convergence_plots.f90) - Edge elements with visualization
 
 ## Project Structure
 
