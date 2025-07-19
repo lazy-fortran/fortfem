@@ -25,6 +25,7 @@ program run_all_tests
     call run_test("Forms API Structure", "test_forms_api", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
+    
     ! Core module tests
     call run_test("Kinds", "test_kinds", status)
     call update_counts(status, n_tests, n_passed, n_failed)

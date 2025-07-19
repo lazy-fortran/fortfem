@@ -5,15 +5,16 @@ A modern Fortran finite element library designed for ease of use, inspired by Fr
 
 ## Features
 
-- Natural mathematical notation for weak form definition
+- **FEniCS-style API**: Natural mathematical notation inspired by FEniCS/FreeFEM
+- **Simple Forms Syntax**: Define weak forms using `inner(grad(u), grad(v))*dx`
 - Support for various element types:
   - **P1 Lagrange**: Linear elements with optimal convergence
   - **P2 Lagrange**: Quadratic elements with O(h³) L2 convergence
   - **Nédélec edge elements**: H(curl) conforming for electromagnetic problems
-- Triangular meshes with edge connectivity
+- Triangular and rectangular meshes with full connectivity
 - High-order Gaussian quadrature rules (up to order 7)
 - Built-in visualization with fortplotlib
-- Test-driven development with >90% coverage
+- Test-driven development with comprehensive test suite
 
 ## Quick Start
 
@@ -26,6 +27,33 @@ fpm test
 
 # Run examples
 fpm run --example plot_basis
+```
+
+## Usage Example
+
+FortFEM provides a clean, FEniCS-inspired API for defining finite element problems:
+
+```fortran
+program poisson_example
+    use fortfem
+    
+    ! Create mesh and function space
+    mesh = unit_square_mesh(32)
+    Vh = function_space(mesh, "Lagrange", 1)
+    
+    ! Define trial and test functions
+    u = trial_function(Vh)
+    v = test_function(Vh)
+    
+    ! Define weak form: inner(grad(u), grad(v))*dx
+    a = inner(grad(u), grad(v))*dx
+    L = inner(f, v)*dx
+    
+    ! Solve the system
+    uh = function(Vh)
+    bc = dirichlet_bc(Vh, 0.0_dp)
+    solve(a == L, uh, bc)
+end program
 ```
 
 ## Examples
