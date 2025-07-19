@@ -28,24 +28,57 @@ Welcome to the FortFEM documentation! FortFEM is a modern Fortran finite element
 
 ## Example Code
 
+### Current Simple API
 ```fortran
-program poisson
+program poisson_simple
     use fortfem
     implicit none
     
     type(mesh_2d_t) :: mesh
-    type(p1_space_t) :: V
     type(sparse_matrix_t) :: A
-    real(dp), allocatable :: b(:), u(:)
+    real(dp), allocatable :: u(:), f(:)
     
-    ! Create mesh and function space
-    call create_rectangular_mesh(mesh, nx=20, ny=20)
-    call V%init(mesh)
+    ! Create mesh
+    call create_unit_square_mesh(mesh, n=20)
     
     ! Assemble and solve -∆u = f
-    call assemble_poisson_2d(mesh, V, A, b)
-    call apply_dirichlet_bc(A, b, V%boundary_dofs)
-    call solve_sparse(A, b, u)
+    call assemble_poisson_2d(mesh, A, f)
+    call apply_zero_bc(mesh, A, f)
+    call solve_lapack_dense(A, f, info)
+    
+    call write_vtk("solution.vtk", mesh, f)
+end program
+```
+
+### Target FEniCS-style API
+```fortran
+program poisson_forms
+    use fortfem
+    implicit none
+    
+    type(mesh_t) :: mesh
+    type(function_space_t) :: Vh
+    type(trial_function_t) :: u
+    type(test_function_t) :: v
+    type(function_t) :: uh, f
+    type(dirichlet_bc_t) :: bc
+    type(form_t) :: a, L
+    
+    ! Create mesh and function space
+    mesh = unit_square_mesh(32, 32)
+    Vh = function_space(mesh, "Lagrange", 1)
+    
+    ! Define variational problem
+    u = trial_function(Vh)
+    v = test_function(Vh)
+    f = constant(1.0_dp)
+    
+    a = inner(grad(u), grad(v))*dx
+    L = f*v*dx
+    
+    ! Solve with boundary conditions
+    bc = dirichlet_bc(Vh, 0.0_dp, boundary)
+    call solve(a == L, uh, bc)
 end program
 ```
 
