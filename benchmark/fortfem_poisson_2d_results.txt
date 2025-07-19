@@ -1,0 +1,25 @@
+[  0%]  test_poisson_2d_benchmark.f90
+[ 50%]  test_poisson_2d_benchmark.f90  done.
+[ 50%]      test_poisson_2d_benchmark
+[100%]      test_poisson_2d_benchmark  done.
+[100%] Project compiled successfully.
+ FortFEM Poisson 2D Benchmark
+ ============================
+ Problem: -Δu = 2π²sin(πx)sin(πy), u = 0 on ∂Ω
+ Analytical: u(x,y) = sin(πx)sin(πy)
+ 
+ h        L2_error        H1_error        DOFs
+ --------------------------------------------
+0.250000    0.852209E-01    0.843489E+00    25
+ Debug: max |u_num| =  0.94818704352499361     
+ Debug: max |u_exact| =   1.0000000000000000     
+ Debug: max |u_exact - u_num| =   5.1812956475006389E-002
+ Debug: interior solution (5x5 node) =  0.94818704352499361     
+ Debug: expected at center =   1.0000000000000000     
+ Debug: scaling factor =  0.94818704352499361     
+0.125000    0.225639E-01    0.432476E+00    81
+0.062500    0.572699E-02    0.217623E+00    289
+0.031250    0.143728E-02    0.108986E+00    1089
+0.015625    0.359669E-03    0.545151E-01    4225
+ 
+ Expected convergence: L2 O(h²), H1 O(h)

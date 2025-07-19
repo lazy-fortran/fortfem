@@ -115,7 +115,7 @@ contains
                 grad_j(2) = jac_inv(1,2) * grad_ref(1) + jac_inv(2,2) * grad_ref(2)
                 
                 ! Stiffness entry: integral of grad(phi_i) . grad(phi_j)
-                stiff(i,j) = abs(det_j) * (grad_i(1) * grad_j(1) + grad_i(2) * grad_j(2))
+                stiff(i,j) = det_j * (grad_i(1) * grad_j(1) + grad_i(2) * grad_j(2))
             end do
         end do
         
@@ -209,23 +209,41 @@ contains
         
     end subroutine assemble_global
 
-    ! Standalone assembly routines for backward compatibility
+    ! Proper assembly routines using finite element method
     subroutine assemble_laplacian(space, matrix)
         use function_space_module
         type(function_space_t), intent(in) :: space
         real(dp), intent(out) :: matrix(:,:)
         
-        integer :: i, j, n
+        type(assembly_2d_t) :: assembler
+        real(dp) :: vertices(2,3), elem_stiff(3,3)
+        integer :: elem, i, j, gi, gj
         
-        n = space%n_dofs
+        ! Initialize
         matrix = 0.0_dp
+        call assembler%init(space%n_dofs, 9 * space%n_dofs)
         
-        ! Simple diagonal dominant matrix for now
-        do i = 1, n
-            matrix(i, i) = 4.0_dp
-            if (i > 1) matrix(i, i-1) = -1.0_dp
-            if (i < n) matrix(i, i+1) = -1.0_dp
+        ! Loop over elements
+        do elem = 1, space%mesh%n_triangles
+            ! Get element vertices
+            do i = 1, 3
+                vertices(:,i) = space%mesh%vertices(:, space%mesh%triangles(i,elem))
+            end do
+            
+            ! Compute element stiffness matrix
+            call assembler%element_stiffness_matrix(vertices, elem_stiff)
+            
+            ! Add to global matrix
+            do i = 1, 3
+                gi = space%mesh%triangles(i, elem)
+                do j = 1, 3
+                    gj = space%mesh%triangles(j, elem)
+                    matrix(gi, gj) = matrix(gi, gj) + elem_stiff(i,j)
+                end do
+            end do
         end do
+        
+        call assembler%destroy()
     end subroutine assemble_laplacian
 
     subroutine assemble_mass_matrix(space, matrix)
@@ -233,15 +251,35 @@ contains
         type(function_space_t), intent(in) :: space
         real(dp), intent(out) :: matrix(:,:)
         
-        integer :: i, n
+        type(assembly_2d_t) :: assembler
+        real(dp) :: vertices(2,3), elem_mass(3,3)
+        integer :: elem, i, j, gi, gj
         
-        n = space%n_dofs
+        ! Initialize
         matrix = 0.0_dp
+        call assembler%init(space%n_dofs, 9 * space%n_dofs)
         
-        ! Simple mass matrix (identity for now)
-        do i = 1, n
-            matrix(i, i) = 1.0_dp
+        ! Loop over elements
+        do elem = 1, space%mesh%n_triangles
+            ! Get element vertices
+            do i = 1, 3
+                vertices(:,i) = space%mesh%vertices(:, space%mesh%triangles(i,elem))
+            end do
+            
+            ! Compute element mass matrix
+            call assembler%element_mass_matrix(vertices, elem_mass)
+            
+            ! Add to global matrix
+            do i = 1, 3
+                gi = space%mesh%triangles(i, elem)
+                do j = 1, 3
+                    gj = space%mesh%triangles(j, elem)
+                    matrix(gi, gj) = matrix(gi, gj) + elem_mass(i,j)
+                end do
+            end do
         end do
+        
+        call assembler%destroy()
     end subroutine assemble_mass_matrix
 
     subroutine assemble_mass_rhs(space, rhs, source_func)
@@ -249,22 +287,39 @@ contains
         type(function_space_t), intent(in) :: space
         real(dp), intent(out) :: rhs(:)
         interface
-            function source_func(x, y) result(f)
+            pure function source_func(x, y) result(f)
                 import :: dp
                 real(dp), intent(in) :: x, y
                 real(dp) :: f
             end function source_func
         end interface
         
-        integer :: i, n
+        type(assembly_2d_t) :: assembler
+        real(dp) :: vertices(2,3), elem_load(3)
+        integer :: elem, i, gi
         
-        n = space%n_dofs
+        ! Initialize
         rhs = 0.0_dp
+        call assembler%init(space%n_dofs, 9 * space%n_dofs)
         
-        ! Simple unit RHS vector
-        do i = 1, n
-            rhs(i) = source_func(real(i, dp)/real(n, dp), 0.5_dp)
+        ! Loop over elements
+        do elem = 1, space%mesh%n_triangles
+            ! Get element vertices
+            do i = 1, 3
+                vertices(:,i) = space%mesh%vertices(:, space%mesh%triangles(i,elem))
+            end do
+            
+            ! Compute element load vector
+            call assembler%element_load_vector(vertices, source_func, elem_load)
+            
+            ! Add to global RHS
+            do i = 1, 3
+                gi = space%mesh%triangles(i, elem)
+                rhs(gi) = rhs(gi) + elem_load(i)
+            end do
         end do
+        
+        call assembler%destroy()
     end subroutine assemble_mass_rhs
 
 end module assembly_2d_module

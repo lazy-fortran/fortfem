@@ -150,7 +150,7 @@ contains
     end subroutine solve_linear_system
     
     ! Unit source function
-    function unit_source(x, y) result(f)
+    pure function unit_source(x, y) result(f)
         real(dp), intent(in) :: x, y
         real(dp) :: f
         f = 1.0_dp
