@@ -13,42 +13,29 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        compiler: [gcc]
-        include:
-          - os: ubuntu-latest
-            compiler: gcc
-            version: 11
-          - os: macos-latest
-            compiler: gcc
-            version: 13
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    - name: Setup Fortran
-      uses: fortran-lang/setup-fortran@v1
-      with:
-        compiler: ${{ matrix.compiler }}
-        version: ${{ matrix.version }}
-
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Install dependencies (Ubuntu)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip python3-matplotlib
+        sudo apt-get install -y gfortran python3-pip python3-matplotlib
         pip3 install --user numpy matplotlib
 
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       run: |
+        brew install gfortran
         pip3 install numpy matplotlib
+
+    - name: Setup fpm
+      uses: fortran-lang/setup-fpm@v5
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
       run: fpm build --profile release
@@ -57,13 +44,13 @@ jobs:
       run: fpm test
 
     - name: Run tests with coverage
-      if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+      if: runner.os == 'Linux'
       run: |
         fpm test --flag "--coverage"
         gcov -o build/gfortran*/fortfem/test_* src/*.f90
 
     - name: Upload coverage to Codecov
-      if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+      if: runner.os == 'Linux'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
