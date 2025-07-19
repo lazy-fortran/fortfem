@@ -20,56 +20,65 @@ fpm run --example --list
 
 ## Available Examples
 
-### 1. Poisson 2D (`poisson_2d.f90`)
-Solves the 2D Poisson equation with Dirichlet boundary conditions.
+### 1. Simple Poisson (`poisson_simple.f90`)
+Minimal example solving -∆u = f on unit square.
 
-**Problem**: 
-- Domain: Unit square [0,1]×[0,1]
-- Equation: -∆u = f
-- Boundary: u = 0
+```fortran
+! Create mesh
+call create_unit_square_mesh(mesh, n=20)
 
-**Features demonstrated**:
+! Assemble and solve
+call assemble_poisson_2d(mesh, A, f)
+call apply_zero_bc(mesh, A, f)
+call solve_sparse(A, f, u)
+```
+
+### 2. Mesh Demo (`mesh_simple.f90`, `mesh_2d_demo.f90`)
+Create and analyze triangular meshes.
+
+**Features**:
 - Mesh generation
-- P1 finite element assembly
-- Boundary condition application
-- Sparse linear system solution
+- Quality metrics
+- VTK output
 
-### 2. Basis Function Visualization (`plot_basis.f90`)
-Visualizes finite element basis functions using fortplotlib.
+### 3. Curl-Curl Problem (`curl_curl_simple.f90`)
+Electromagnetic problem using edge elements.
 
-**Features demonstrated**:
-- P1 and P2 basis function evaluation
-- Integration with plotting library
-- Reference element transformations
+**Features**:
+- Nédélec elements
+- Vector fields
+- Essential BC: E×n = 0
 
-### 3. Mesh 2D Demo (`mesh_2d_demo.f90`)
-Demonstrates mesh generation and manipulation capabilities.
+### 4. P2 Elements (`p2_poisson.f90`)
+Higher-order finite elements for improved accuracy.
 
-**Features demonstrated**:
-- Rectangular mesh generation
-- Mesh connectivity queries
-- Boundary edge identification
-- Mesh quality metrics
+**Features**:
+- Quadratic basis functions
+- 6 DOFs per triangle
+- Better convergence rates
 
-### 4. Curl-Curl Solver (`curl_curl_example.f90`)
-Solves the curl-curl equation using edge elements.
+### 5. Mixed Boundary Conditions (`neumann_bc.f90`)
+Combining Dirichlet and Neumann conditions.
 
-**Problem**:
-- Equation: ∇×∇×E + k²E = J
-- Boundary: E×n = 0 (perfect electric conductor)
+**Features**:
+- Multiple BC types
+- Flux conditions
+- Natural boundaries
 
-**Features demonstrated**:
-- Nédélec edge elements
-- H(curl) conforming spaces
-- Vector field assembly
+### 6. Convergence Test (`convergence_test.f90`)
+Verify theoretical convergence rates.
 
-### 5. Heat Equation (`heat_equation.f90`)
-Solves the time-dependent heat equation.
+**Features**:
+- Mesh refinement
+- Error computation
+- Rate calculation
 
-**Features demonstrated**:
-- Time stepping schemes
-- Mass matrix assembly
-- Mixed boundary conditions
+### 7. Basis Functions (`basis_functions.f90`)
+Visualize finite element basis functions.
+
+**Features**:
+- 1D/2D basis plots
+- Shape function evaluation
 
 ## Example Structure
 
