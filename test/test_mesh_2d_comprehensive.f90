@@ -162,9 +162,10 @@ contains
         call mesh%create_rectangular(3, 3, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
         call mesh%build_edge_connectivity()
         
-        ! Expected: 20 edges total (12 interior + 8 boundary)
-        expected_edges = 20
-        interior_edges = 12
+        ! Expected: 16 edges total (8 interior + 8 boundary)
+        ! For 3x3 mesh: 6 horizontal + 6 vertical + 4 diagonal = 16
+        expected_edges = 16
+        interior_edges = 8
         boundary_edges = 8
         
         if (mesh%n_edges /= expected_edges) then

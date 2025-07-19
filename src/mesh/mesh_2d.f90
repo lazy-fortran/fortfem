@@ -47,6 +47,7 @@ module fortfem_mesh_2d
         procedure :: get_first_boundary_dof
         procedure :: get_triangle_edge_dofs
         procedure :: find_boundary
+        procedure :: build_edge_to_triangle_mapping
         procedure :: compute_areas
         procedure :: save_to_file
         procedure :: load_from_file
@@ -439,7 +440,54 @@ contains
         
         deallocate(temp_edges)
         
+        ! Build edge-to-triangle mapping
+        call this%build_edge_to_triangle_mapping()
+        
     end subroutine build_edges_from_triangles
+    
+    subroutine build_edge_to_triangle_mapping(this)
+        class(mesh_2d_t), intent(inout) :: this
+        
+        integer :: t, i, j, v1, v2, e
+        integer, allocatable :: edge_triangle_count(:)
+        
+        if (.not. allocated(this%edges)) then
+            error stop "Edges must be built before edge-to-triangle mapping"
+        end if
+        
+        ! Allocate edge-to-triangle mapping (2 triangles max per edge)
+        allocate(this%edge_to_triangles(2, this%n_edges))
+        allocate(edge_triangle_count(this%n_edges))
+        
+        ! Initialize
+        this%edge_to_triangles = 0
+        edge_triangle_count = 0
+        
+        ! For each triangle, find its edges and record the triangle-edge relationship
+        do t = 1, this%n_triangles
+            do i = 1, 3
+                j = mod(i, 3) + 1
+                v1 = min(this%triangles(i, t), this%triangles(j, t))
+                v2 = max(this%triangles(i, t), this%triangles(j, t))
+                
+                ! Find the edge with these vertices
+                do e = 1, this%n_edges
+                    if (this%edges(1, e) == v1 .and. this%edges(2, e) == v2) then
+                        edge_triangle_count(e) = edge_triangle_count(e) + 1
+                        if (edge_triangle_count(e) <= 2) then
+                            this%edge_to_triangles(edge_triangle_count(e), e) = t
+                        else
+                            error stop "Edge belongs to more than 2 triangles - invalid mesh"
+                        end if
+                        exit
+                    end if
+                end do
+            end do
+        end do
+        
+        deallocate(edge_triangle_count)
+        
+    end subroutine build_edge_to_triangle_mapping
     
     subroutine find_boundary(this)
         class(mesh_2d_t), intent(inout) :: this

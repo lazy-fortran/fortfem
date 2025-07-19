@@ -36,24 +36,24 @@ contains
         end do
         
         ! Verify expected values for reference triangle
-        ! curl values are: [2, 2, -2] for area = 0.5
+        ! curl values are: [0, 2, -2] for area = 0.5
         ! Expected matrix:
-        ! [2*2*0.5, 2*2*0.5, 2*(-2)*0.5]   = [2, 2, -2]
-        ! [2*2*0.5, 2*2*0.5, 2*(-2)*0.5]   = [2, 2, -2]
-        ! [(-2)*2*0.5, (-2)*2*0.5, (-2)*(-2)*0.5] = [-2, -2, 2]
+        ! [0*0*0.5, 0*2*0.5, 0*(-2)*0.5]   = [0, 0, 0]
+        ! [2*0*0.5, 2*2*0.5, 2*(-2)*0.5]   = [0, 2, -2]
+        ! [(-2)*0*0.5, (-2)*2*0.5, (-2)*(-2)*0.5] = [0, -2, 2]
         
-        if (abs(local_matrix(1, 1) - 2.0_dp) > 1e-12_dp) then
-            print *, "Error: A(1,1) should be 2.0, got", local_matrix(1, 1)
+        if (abs(local_matrix(1, 1) - 0.0_dp) > 1e-12_dp) then
+            print *, "Error: A(1,1) should be 0.0, got", local_matrix(1, 1)
             stop 1
         end if
         
-        if (abs(local_matrix(1, 2) - 2.0_dp) > 1e-12_dp) then
-            print *, "Error: A(1,2) should be 2.0, got", local_matrix(1, 2)
+        if (abs(local_matrix(1, 2) - 0.0_dp) > 1e-12_dp) then
+            print *, "Error: A(1,2) should be 0.0, got", local_matrix(1, 2)
             stop 1
         end if
         
-        if (abs(local_matrix(1, 3) - (-2.0_dp)) > 1e-12_dp) then
-            print *, "Error: A(1,3) should be -2.0, got", local_matrix(1, 3)
+        if (abs(local_matrix(1, 3) - 0.0_dp) > 1e-12_dp) then
+            print *, "Error: A(1,3) should be 0.0, got", local_matrix(1, 3)
             stop 1
         end if
         

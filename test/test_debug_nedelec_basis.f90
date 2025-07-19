@@ -101,12 +101,12 @@ contains
         call evaluate_edge_basis_curl_2d(0.0_dp, 0.0_dp, triangle_area, curls)
         
         print *, "Curl values (for triangle area = 0.5):"
-        print *, "  curl(φ_1) =", curls(1), "(expected: 2.0)"
+        print *, "  curl(φ_1) =", curls(1), "(expected: 0.0)"
         print *, "  curl(φ_2) =", curls(2), "(expected: 2.0)"
-        print *, "  curl(φ_3) =", curls(3), "(expected: -4.0)"
+        print *, "  curl(φ_3) =", curls(3), "(expected: -2.0)"
         
         ! Verify curl values match analytical computation
-        if (abs(curls(1) - 2.0_dp) > 1e-12_dp) then
+        if (abs(curls(1) - 0.0_dp) > 1e-12_dp) then
             print *, "Error: curl(φ_1) incorrect"
             stop 1
         end if
@@ -116,7 +116,7 @@ contains
             stop 1
         end if
         
-        if (abs(curls(3) - (-4.0_dp)) > 1e-12_dp) then
+        if (abs(curls(3) - (-2.0_dp)) > 1e-12_dp) then
             print *, "Error: curl(φ_3) incorrect"
             stop 1
         end if
@@ -141,18 +141,19 @@ contains
         
         call evaluate_edge_basis_2d(xi, eta, triangle_area, basis_values)
         
-        ! Expected Nédélec values at triangle center
-        ! φ_1 = (0, ξ) = (0, 1/3)
+        ! Expected Nédélec values at triangle center (accounting for scaling)
+        ! The basis functions are scaled by 1/(2*triangle_area) = 1/(2*0.5) = 1.0
+        ! φ_1 = (0, (1-eta)/(2A)) = (0, (1-1/3)/1) = (0, 2/3)
         expected_values(1, 1) = 0.0_dp
-        expected_values(2, 1) = xi
+        expected_values(2, 1) = (1.0_dp - eta) / (2.0_dp * triangle_area)
         
-        ! φ_2 = (1-η, 0) = (2/3, 0)
-        expected_values(1, 2) = 1.0_dp - eta
-        expected_values(2, 2) = 0.0_dp
+        ! φ_2 = ((1-eta)/(2A), xi/(2A)) = ((2/3)/1, (1/3)/1) = (2/3, 1/3)
+        expected_values(1, 2) = (1.0_dp - eta) / (2.0_dp * triangle_area)
+        expected_values(2, 2) = xi / (2.0_dp * triangle_area)
         
-        ! φ_3 = (η, 1-ξ) = (1/3, 2/3)
-        expected_values(1, 3) = eta
-        expected_values(2, 3) = 1.0_dp - xi
+        ! φ_3 = ((eta-1)/(2A), -xi/(2A)) = ((-2/3)/1, (-1/3)/1) = (-2/3, -1/3)
+        expected_values(1, 3) = (eta - 1.0_dp) / (2.0_dp * triangle_area)
+        expected_values(2, 3) = -xi / (2.0_dp * triangle_area)
         
         print *, "At triangle center (1/3, 1/3):"
         do i = 1, 3

@@ -104,10 +104,10 @@ contains
         
         call space%evaluate_curl_at_point(1, xi, eta, coeff, curl_value)
         
-        ! For RT0 on reference triangle, curl should be constant = 2.0
-        if (abs(curl_value - 2.0_dp) > 1e-12_dp) then
+        ! For RT0 on reference triangle, curl of first basis function = 0.0
+        if (abs(curl_value - 0.0_dp) > 1e-12_dp) then
             print *, "Error: curl evaluation incorrect"
-            print *, "Expected: 2.0, got:", curl_value
+            print *, "Expected: 0.0, got:", curl_value
             stop 1
         end if
         

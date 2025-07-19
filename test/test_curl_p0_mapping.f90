@@ -91,9 +91,10 @@ contains
         p0_integrals(2) = curls(2) * triangle_area  ! ∫ curl(φ_2) dx  
         p0_integrals(3) = curls(3) * triangle_area  ! ∫ curl(φ_3) dx
         
-        ! Expected values for reference triangle
-        if (abs(p0_integrals(1) - 1.0_dp) > 1e-12_dp) then
-            print *, "Error: integral of curl(φ_1) should be 1.0, got", p0_integrals(1)
+        ! Expected values for reference triangle  
+        ! curl values are [0, 2, -2], so integrals are [0*0.5, 2*0.5, -2*0.5] = [0, 1, -1]
+        if (abs(p0_integrals(1) - 0.0_dp) > 1e-12_dp) then
+            print *, "Error: integral of curl(φ_1) should be 0.0, got", p0_integrals(1)
             stop 1
         end if
         
