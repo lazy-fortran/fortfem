@@ -1,7 +1,7 @@
 # FortFEM Makefile
 # Main targets for building, testing, and benchmarking
 
-.PHONY: all build test benchmark clean help
+.PHONY: all build test benchmark clean help doc
 
 # Default target
 all: build
@@ -46,12 +46,20 @@ compare-results:
 	@echo ""
 	@echo "=== END COMPARISON ==="
 
+# Build documentation with FORD
+doc:
+	ford doc.md
+	# Copy example media files to doc build directory for proper linking
+	mkdir -p build/doc/example
+	if [ -d build/example ]; then cp -r build/example/* build/doc/example/ 2>/dev/null || true; fi
+
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	fpm clean
 	@rm -f *.log
 	@rm -f benchmark/freefem/curl-curl/*.dat
+	@rm -rf build/doc
 
 # Show help
 help:
@@ -62,6 +70,7 @@ help:
 	@echo "  build      - Build the FortFEM project"
 	@echo "  test       - Run all tests"
 	@echo "  benchmark  - Run curl-curl benchmark comparison (FortFEM vs FreeFEM)"
+	@echo "  doc        - Build documentation with FORD"
 	@echo "  clean      - Clean build artifacts and logs"
 	@echo "  help       - Show this help message"
 	@echo ""

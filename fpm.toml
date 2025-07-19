@@ -21,6 +21,12 @@ implicit-typing = false
 implicit-external = false
 source-form = "free"
 
+[extra.ford]
+project = "FortFEM"
+src_dir = "src"
+output_dir = "build/doc"
+page_dir = "doc"
+
 [dependencies]
 fortplotlib = { git = "https://github.com/krystophny/fortplotlib.git" }
 
