@@ -24,6 +24,13 @@ FortFEM is a modern Fortran finite element library designed for ease of use, ins
 - **Run all tests**: `fpm test`
 - **Run specific test**: `fpm test test-name`
 - **Run tests with coverage**: `fpm test --flag "--coverage"`
+- **List available tests**: `fpm test --list`
+
+### Important Testing Notes
+- ALWAYS place test files in the `test/` directory
+- ALWAYS use `fpm test` to run tests, not manual compilation
+- Test files should be named `test_*.f90`
+- Use the `check` module for test assertions
 
 ### Development Workflow
 1. Follow strict TDD: Write test first, then implementation

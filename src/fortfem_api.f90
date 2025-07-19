@@ -28,7 +28,7 @@ module fortfem_api
     
     ! Public form operations (simplified)
     public :: inner, grad
-    public :: get_dx
+    public :: dx
     public :: compile_form
     public :: operator(*), operator(+)
     
@@ -79,8 +79,9 @@ module fortfem_api
         character(len=64) :: description = ""
     end type simple_expression_t
     
-    ! Global measure instance
-    type(form_expr_t) :: dx = form_expr_t("dx", "measure", 0)
+    ! Global measure instances
+    type(form_expr_t), save :: dx
+    logical, save :: measures_initialized = .false.
     
     ! Operators for expressions
     interface operator(*)
@@ -93,10 +94,22 @@ module fortfem_api
     
 contains
 
+    ! Initialize module
+    subroutine init_measures()
+        if (.not. measures_initialized) then
+            dx%description = "dx"
+            dx%form_type = "measure"
+            dx%tensor_rank = 0
+            measures_initialized = .true.
+        end if
+    end subroutine init_measures
+
     ! Mesh constructors
     function unit_square_mesh(n) result(mesh)
         integer, intent(in) :: n
         type(mesh_t) :: mesh
+        
+        call init_measures()  ! Ensure measures are initialized
         
         call mesh%data%create_rectangular(nx=n, ny=n, &
                                          x_min=0.0_dp, x_max=1.0_dp, &
@@ -215,12 +228,6 @@ contains
             gradu = create_grad("unknown", "unknown")
         end select
     end function grad
-    
-    ! Get dx measure
-    function get_dx() result(dx_form)
-        type(form_expr_t) :: dx_form
-        dx_form = dx
-    end function get_dx
     
     ! Operator overloading
     function expr_times_expr(a, b) result(product)

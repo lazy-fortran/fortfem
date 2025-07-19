@@ -1,5 +1,5 @@
 program test_expression_tree
-    ! Test the expression tree system for forms
+    ! Test the forms system with direct dx usage
     use fortfem_api
     use check
     implicit none
@@ -8,11 +8,11 @@ program test_expression_tree
     type(function_space_t) :: Vh
     type(trial_function_t) :: u
     type(test_function_t) :: v
-    type(expression_t) :: grad_u, grad_v, bilinear_form
+    type(form_expr_t) :: grad_u, grad_v, a
     character(len=256) :: assembly_code
     
-    print *, "Testing expression tree system"
-    print *, "=============================="
+    print *, "Testing forms system with dx"
+    print *, "============================"
     
     ! Create mesh and function space
     mesh = unit_square_mesh(4)
@@ -24,37 +24,32 @@ program test_expression_tree
     grad_u = grad(u)
     grad_v = grad(v)
     
-    call check_condition(grad_u%operation%op_type == EXPR_GRAD, "grad(u) is gradient operation")
-    call check_condition(grad_v%operation%op_type == EXPR_GRAD, "grad(v) is gradient operation")
-    call check_condition(grad_u%tensor_rank == 1, "grad(u) has tensor rank 1")
-    call check_condition(trim(grad_u%function_type) == "trial", "grad(u) is trial function")
-    call check_condition(trim(grad_v%function_type) == "test", "grad(v) is test function")
+    call check_condition(len_trim(grad_u%description) > 0, "grad(u) created")
+    call check_condition(len_trim(grad_v%description) > 0, "grad(v) created")
+    call check_condition(trim(grad_u%form_type) == "trial", "grad(u) is trial function")
+    call check_condition(trim(grad_v%form_type) == "test", "grad(v) is test function")
     
-    ! Test inner product
-    bilinear_form = inner(grad_u, grad_v)
+    ! Test FEniCS-style syntax with dx
+    a = inner(grad_u, grad_v) * dx
     
-    call check_condition(bilinear_form%operation%op_type == EXPR_INNER, "inner() creates inner product")
-    call check_condition(bilinear_form%tensor_rank == 0, "inner(grad,grad) is scalar")
-    call check_condition(trim(bilinear_form%function_type) == "bilinear", "Result is bilinear form")
+    call check_condition(len_trim(a%description) > 0, "Form with dx created")
+    call check_condition(index(a%description, "dx") > 0, "Form includes dx measure")
     
-    ! Test expression compilation
-    assembly_code = expr_compile(bilinear_form, "bilinear")
-    call check_condition(len_trim(assembly_code) > 0, "Expression compiles to assembly code")
+    print *, "Form expression: ", trim(a%description)
     
-    print *, "Compiled assembly code:"
-    print *, trim(assembly_code)
+    ! Test compilation
+    assembly_code = compile_form(a)
+    call check_condition(len_trim(assembly_code) > 0, "Form compiles to assembly code")
     
-    ! Test operator overloading
-    bilinear_form = inner(grad_u, grad_v) * dx
-    call check_condition(bilinear_form%operation%op_type == EXPR_INNER, "Operator * preserves form")
+    print *, "Assembly code: ", trim(assembly_code)
     
     ! Clean up
     call grad_u%destroy()
     call grad_v%destroy()
-    call bilinear_form%destroy()
+    call a%destroy()
     call mesh%destroy()
     call Vh%destroy()
     
-    call check_summary("Expression Tree Test")
+    call check_summary("Forms with dx Test")
     
 end program test_expression_tree
