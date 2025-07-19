@@ -4,6 +4,10 @@ license = "license"
 author = "Christopher Albert"
 maintainer = "albert@tugraz.at"
 copyright = "Copyright 2025, Christopher Albert"
+description = "A modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS"
+homepage = "https://github.com/itpplasma/fortfem"
+keywords = ["finite-elements", "pde", "scientific-computing", "fortran", "fem"]
+categories = ["science"]
 
 [build]
 auto-executables = true
