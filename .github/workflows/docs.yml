@@ -30,40 +30,10 @@ jobs:
         
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gfortran liblapack-dev libblas-dev libsuitesparse-dev
           pip install ford
-          
-          # Install fpm (Fortran Package Manager) - same version as CI
-          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
-          chmod +x fpm-0.12.0-linux-x86_64-gcc-12
-          sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
-          
-      - name: Build FortFEM
-        run: make build
-        
-      - name: Generate example outputs
-        run: |
-          # Create output directories
-          mkdir -p doc/media/examples
-          
-          # Run convergence examples to generate plots (if any)
-          # Note: Examples that depend on fortplotlib may fail in CI, that's ok
-          fpm run --example || true
-          
-          # Copy any generated outputs to media directory
-          find example -name "*.png" -exec cp {} doc/media/examples/ \; 2>/dev/null || true
-          find example -name "*.txt" -exec cp {} doc/media/examples/ \; 2>/dev/null || true
-          find example -name "*.pdf" -exec cp {} doc/media/examples/ \; 2>/dev/null || true
-          find example -name "*.vtk" -exec cp {} doc/media/examples/ \; 2>/dev/null || true
         
       - name: Build documentation
-        run: |
-          make doc
-          
-          # Copy media files to build directory after FORD runs
-          mkdir -p build/doc/media/examples
-          cp doc/media/examples/* build/doc/media/examples/ 2>/dev/null || true
+        run: make doc
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
