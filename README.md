@@ -8,8 +8,12 @@ A modern Fortran finite element library designed for ease of use, inspired by Fr
 ## Features
 
 - Natural mathematical notation for weak form definition
-- Support for various element types (P1, P2, RT, Nedelec, DG)
-- Triangular and quadrilateral meshes
+- Support for various element types:
+  - **P1 Lagrange**: Linear elements with optimal convergence
+  - **P2 Lagrange**: Quadratic elements with O(h³) L2 convergence
+  - **Nédélec edge elements**: H(curl) conforming for electromagnetic problems
+- Triangular meshes with edge connectivity
+- High-order Gaussian quadrature rules (up to order 7)
 - Built-in visualization with fortplotlib
 - Test-driven development with >90% coverage
 
