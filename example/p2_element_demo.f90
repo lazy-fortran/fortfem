@@ -6,7 +6,7 @@ program p2_element_demo
     use fortfem_mesh_2d
     use basis_p1_2d_module
     use basis_p2_2d_module
-    use fortplotlib, only: plot, figure, subplot, savefig, xlabel, ylabel, title, legend
+    ! use fortplotlib, only: plot, figure, subplot, savefig, xlabel, ylabel, title, legend
     implicit none
     
     type(mesh_2d_t) :: mesh
@@ -54,28 +54,28 @@ program p2_element_demo
         call mesh%destroy()
     end do
     
-    ! Plot convergence comparison
-    call figure()
-    
-    ! Log-log plot of errors
-    call plot(x_plot, log10(p1_errors), label='P1 elements (slope=2)', &
-              linewidth=2.0_dp, marker='o')
-    call plot(x_plot, log10(p2_errors), label='P2 elements (slope=3)', &
-              linewidth=2.0_dp, marker='s')
-    
-    ! Add reference lines
-    call plot(x_plot, 2.0_dp*x_plot - 1.0_dp, '--', label='O(h²)', alpha=0.5_dp)
-    call plot(x_plot, 3.0_dp*x_plot - 2.0_dp, '--', label='O(h³)', alpha=0.5_dp)
-    
-    call xlabel('log₁₀(h)')
-    call ylabel('log₁₀(L² error)')
-    call title('P1 vs P2 Convergence Comparison')
-    call legend()
-    
-    call savefig('p2_convergence_comparison.png')
+    ! Plot convergence comparison (commented out - requires fortplotlib)
+    ! call figure()
+    ! 
+    ! ! Log-log plot of errors
+    ! call plot(x_plot, log10(p1_errors), label='P1 elements (slope=2)', &
+    !           linewidth=2.0_dp, marker='o')
+    ! call plot(x_plot, log10(p2_errors), label='P2 elements (slope=3)', &
+    !           linewidth=2.0_dp, marker='s')
+    ! 
+    ! ! Add reference lines
+    ! call plot(x_plot, 2.0_dp*x_plot - 1.0_dp, '--', label='O(h²)', alpha=0.5_dp)
+    ! call plot(x_plot, 3.0_dp*x_plot - 2.0_dp, '--', label='O(h³)', alpha=0.5_dp)
+    ! 
+    ! call xlabel('log₁₀(h)')
+    ! call ylabel('log₁₀(L² error)')
+    ! call title('P1 vs P2 Convergence Comparison')
+    ! call legend()
+    ! 
+    ! call savefig('p2_convergence_comparison.png')
     
     print *, ""
-    print *, "Convergence plot saved to 'p2_convergence_comparison.png'"
+    print *, "Convergence data computed (plotting disabled)"
     print *, ""
     print *, "Key observations:"
     print *, "- P1 elements: 2nd order convergence (error ~ h²)"
@@ -107,7 +107,7 @@ contains
         
         ! Plot each basis function
         do k = 1, 6
-            call figure()
+            ! call figure()
             
             ! Evaluate basis function on grid
             do i = 1, 41

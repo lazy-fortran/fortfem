@@ -9,6 +9,7 @@ module fortfem
     use fortfem_basis_edge_2d_interface
     use fortfem_assembly_1d
     use fortfem_assembly_2d
+    use fortfem_boundary_assembly_2d
     use fortfem_poisson_1d
     use fortfem_poisson_2d
     use fortfem_sparse_matrix
