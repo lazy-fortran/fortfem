@@ -46,16 +46,16 @@ Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) 
 
 ## Navigation
 
-- [API Documentation](./modules.html) - Detailed module and procedure documentation
-- [Source Files](./sourcefile/index.html) - Browse the source code
-- [Program Structure](./program/index.html) - Main programs and examples
-- [Design Documentation](./page/design/index.html) - Architecture and design decisions
+- [API Documentation](https://itpplasma.github.io/fortfem/modules.html) - Detailed module and procedure documentation
+- [Source Files](https://itpplasma.github.io/fortfem/sourcefile/index.html) - Browse the source code
+- [Program Structure](https://itpplasma.github.io/fortfem/program/index.html) - Main programs and examples
+- [Design Documentation](https://itpplasma.github.io/fortfem/page/design/index.html) - Architecture and design decisions
 
 ## Quick Links
 
-- [Getting Started](./page/quickstart.html) - Build and run your first FE simulation
-- [Examples](./page/examples/index.html) - Complete working examples
-- [Module Reference](./modules.html) - Complete API reference
+- [Getting Started](https://itpplasma.github.io/fortfem/page/quickstart.html) - Build and run your first FE simulation
+- [Examples](https://itpplasma.github.io/fortfem/page/examples/index.html) - Complete working examples
+- [Module Reference](https://itpplasma.github.io/fortfem/modules.html) - Complete API reference
 
 ## Contributing
 
@@ -66,7 +66,3 @@ Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) 
 ## License
 
 See [LICENSE](https://github.com/itpplasma/fortfem/blob/main/LICENSE) for details.
-
----
-
-This documentation was generated using [FORD](https://github.com/Fortran-FOSS-Programmers/ford).
