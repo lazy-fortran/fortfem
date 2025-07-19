@@ -28,8 +28,9 @@ module fortfem_api
     
     ! Public form operations (simplified)
     public :: inner, grad
-    public :: dx
+    public :: get_dx
     public :: compile_form
+    public :: operator(*), operator(+)
     
     ! Mesh type (wrapper around mesh_2d_t)
     type :: mesh_t
@@ -79,11 +80,10 @@ module fortfem_api
     end type simple_expression_t
     
     ! Global measure instance
-    type(simple_expression_t), parameter :: dx = simple_expression_t("dx")
+    type(form_expr_t) :: dx = form_expr_t("dx", "measure", 0)
     
     ! Operators for expressions
     interface operator(*)
-        module procedure expr_times_measure
         module procedure expr_times_expr
     end interface
     
@@ -216,17 +216,13 @@ contains
         end select
     end function grad
     
-    ! Operator overloading
-    function expr_times_measure(expr, measure) result(form)
-        type(form_expr_t), intent(in) :: expr
-        type(simple_expression_t), intent(in) :: measure
-        type(form_expr_t) :: form
-        
-        ! For now, return the expression as-is
-        ! In a full implementation, this would attach measure metadata
-        form = expr
-    end function expr_times_measure
+    ! Get dx measure
+    function get_dx() result(dx_form)
+        type(form_expr_t) :: dx_form
+        dx_form = dx
+    end function get_dx
     
+    ! Operator overloading
     function expr_times_expr(a, b) result(product)
         type(form_expr_t), intent(in) :: a, b
         type(form_expr_t) :: product
