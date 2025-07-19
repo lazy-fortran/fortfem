@@ -27,9 +27,23 @@ source-form = "free"
 
 [extra.ford]
 project = "FortFEM"
+summary = "A modern Fortran finite element library"
+version = "0.1.0"
+email = "albert@tugraz.at"
+github = "https://github.com/itpplasma/fortfem"
+website = "https://github.com/itpplasma/fortfem"
+license = "MIT"
 src_dir = "src"
 output_dir = "build/doc"
 page_dir = "doc"
+graph_maxnodes = 32
+graph_maxdepth = 4
+source = true
+proc_internals = true
+sort = "permission-alpha"
+print_creation_date = true
+creation_date = "%Y-%m-%d %H:%M %z"
+md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty"]
 
 [dependencies]
 fortplotlib = { git = "https://github.com/krystophny/fortplotlib.git" }

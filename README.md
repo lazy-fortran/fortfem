@@ -46,6 +46,16 @@ Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) 
 
 ## Documentation
 
+### API Documentation
+- [Module Reference](./modules.html) - Complete API reference  
+- [Source Files](./sourcefile/index.html) - Browse the source code
+- [Program Structure](./program/index.html) - Main programs and examples
+
+### Getting Started
+- [Build Instructions](#quick-start) - Build and run your first FE simulation
+- [Examples](#examples) - Complete working examples
+- [Design Documentation](./page/design/index.html) - Architecture and design decisions
+
 See the [doc/](https://github.com/itpplasma/fortfem/tree/main/doc) folder for detailed documentation and [DESIGN.md](https://github.com/itpplasma/fortfem/blob/main/DESIGN.md) for architecture overview.
 
 ## Contributing
