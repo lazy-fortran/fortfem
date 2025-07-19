@@ -14,7 +14,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["umfpack", "amd", "cholmod", "suitesparseconfig"]
+link = ["lapack", "umfpack", "amd", "cholmod", "suitesparseconfig"]
 
 [install]
 library = false
