@@ -39,7 +39,9 @@ jobs:
     - name: Run tests with coverage
       run: |
         fpm test --flag "--coverage"
-        gcov -o build/gfortran*/fortfem/test_* src/*.f90
+        find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read dir; do
+          gcov -o "$dir" src/*.f90 || true
+        done
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
