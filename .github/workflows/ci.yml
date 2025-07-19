@@ -12,35 +12,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
 
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install gfortran suite-sparse
-
     - name: Setup Fortran Package Manager
       run: |
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
-          chmod +x fpm-0.12.0-linux-x86_64-gcc-12
-          sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
-        elif [ "$RUNNER_OS" = "macOS" ]; then
-          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-macos-x86_64-gcc-12
-          chmod +x fpm-0.12.0-macos-x86_64-gcc-12
-          sudo mv fpm-0.12.0-macos-x86_64-gcc-12 /usr/local/bin/fpm
-        fi
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+        chmod +x fpm-0.12.0-linux-x86_64-gcc-12
+        sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
     - name: Build
       run: fpm build --profile release
@@ -49,13 +37,11 @@ jobs:
       run: fpm test
 
     - name: Run tests with coverage
-      if: runner.os == 'Linux'
       run: |
         fpm test --flag "--coverage"
         gcov -o build/gfortran*/fortfem/test_* src/*.f90
 
     - name: Upload coverage to Codecov
-      if: runner.os == 'Linux'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
