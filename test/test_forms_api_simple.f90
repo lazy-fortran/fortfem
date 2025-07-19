@@ -1,5 +1,6 @@
 program test_forms_api_simple
     ! Test the simplified forms-based API
+    use fortfem_kinds, only: dp
     use fortfem_api
     use check
     implicit none
@@ -10,7 +11,7 @@ program test_forms_api_simple
     type(test_function_t) :: v
     type(function_t) :: uh, f
     type(dirichlet_bc_t) :: bc
-    type(simple_expression_t) :: grad_u, grad_v, a_expr
+    type(form_expr_t) :: grad_u, grad_v, a_expr
     
     print *, "Testing simplified forms-based API"
     print *, "=================================="
@@ -39,7 +40,7 @@ program test_forms_api_simple
     ! Test boundary condition creation
     bc = dirichlet_bc(Vh, 0.0_dp)
     call check_condition(associated(bc%space), "Boundary condition created")
-    call check_condition(bc%value == 0.0_dp, "Correct BC value")
+    call check_condition(abs(bc%value - 0.0_dp) < 1.0e-14_dp, "Correct BC value")
     
     ! Test simplified form operations
     grad_u = grad(u)

@@ -20,17 +20,21 @@ fpm run --example --list
 
 ## Available Examples
 
-### 1. Simple Poisson (`poisson_simple.f90`)
-Minimal example solving -∆u = f on unit square.
+### 1. Simple Poisson
+Minimal example solving -∆u = f on unit square using FEniCS-style API.
 
 ```fortran
-! Create mesh
-call create_unit_square_mesh(mesh, n=20)
+! Create mesh and function space
+mesh = unit_square_mesh(32)
+Vh = function_space(mesh, "Lagrange", 1)
 
-! Assemble and solve
-call assemble_poisson_2d(mesh, A, f)
-call apply_zero_bc(mesh, A, f)
-call solve_sparse(A, f, u)
+! Define trial and test functions
+u = trial_function(Vh)
+v = test_function(Vh)
+
+! Define weak form
+a = inner(grad(u), grad(v))*dx
+L = inner(f, v)*dx
 ```
 
 ### 2. Mesh Demo (`mesh_simple.f90`, `mesh_2d_demo.f90`)
@@ -97,30 +101,33 @@ To create a new example:
 
 1. Create a new file in `example/` directory
 2. Add the program to `fpm.toml` if needed
-3. Follow the pattern:
+3. Follow the FEniCS-style pattern:
 
 ```fortran
 program my_example
-    use fortfem
+    use fortfem_api
     implicit none
     
     ! Declare variables
-    type(mesh_2d_t) :: mesh
-    type(p1_space_t) :: V
-    ! ... more declarations
+    type(mesh_t) :: mesh
+    type(function_space_t) :: Vh
+    type(trial_function_t) :: u
+    type(test_function_t) :: v
+    type(form_expr_t) :: a, L
     
     ! Setup problem
-    call create_mesh(...)
-    call V%init(mesh)
+    mesh = unit_square_mesh(32)
+    Vh = function_space(mesh, "Lagrange", 1)
     
-    ! Assemble system
-    call assemble_system(...)
+    ! Define variational form
+    u = trial_function(Vh)
+    v = test_function(Vh)
     
-    ! Solve
-    call solve(...)
+    a = inner(grad(u), grad(v))*dx
+    L = inner(f, v)*dx
     
-    ! Post-process
-    call output_results(...)
+    ! Solve (to be implemented)
+    ! uh = solve(a == L, u, bc)
     
 end program
 ```

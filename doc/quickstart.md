@@ -67,10 +67,10 @@ program poisson_simple
 end program
 ```
 
-### Future FEniCS-style API (in development)
+### FEniCS-style API (available now)
 ```fortran
 program poisson_forms
-    use fortfem
+    use fortfem_api
     implicit none
     
     type(mesh_t) :: mesh
@@ -79,9 +79,10 @@ program poisson_forms
     type(test_function_t) :: v
     type(function_t) :: uh, f
     type(dirichlet_bc_t) :: bc
+    type(form_expr_t) :: a, L
     
     ! Define problem
-    mesh = unit_square_mesh(32, 32)
+    mesh = unit_square_mesh(32)
     Vh = function_space(mesh, "Lagrange", 1)
     
     u = trial_function(Vh)
@@ -90,12 +91,14 @@ program poisson_forms
     
     ! Weak form: ∫∇u·∇v dx = ∫fv dx
     a = inner(grad(u), grad(v))*dx
-    L = f*v*dx
+    L = inner(f, v)*dx
     
-    ! Solve with BC: u = 0 on boundary
-    bc = dirichlet_bc(Vh, 0.0_dp, boundary)
+    ! Boundary conditions
+    bc = dirichlet_bc(Vh, 0.0_dp)
     uh = function(Vh)
-    call solve(a == L, uh, bc)
+    
+    ! Assembly and solve (to be fully implemented)
+    ! call solve(a == L, uh, bc)
     
 end program
 ```
@@ -105,8 +108,8 @@ end program
 ### 1. Meshes
 Create meshes with simple factory functions:
 ```fortran
-mesh = unit_square_mesh(n=20)        ! n×n uniform grid on [0,1]²
-mesh = rectangle_mesh([0,0], [2,1], nx=40, ny=20)  ! Custom rectangle
+mesh = unit_square_mesh(20)          ! 20×20 uniform grid on [0,1]²
+! rectangle_mesh coming soon
 ```
 
 ### 2. Function Spaces  
@@ -116,11 +119,10 @@ Currently available through simplified API:
 - Nédélec edge elements (H(curl) conforming)
 - Raviart-Thomas elements (H(div) conforming)
 
-Future clean API:
+Clean API available now:
 ```fortran
 Vh = function_space(mesh, "Lagrange", 1)  ! P1 elements
-Wh = function_space(mesh, "Lagrange", 2)  ! P2 elements
-Eh = function_space(mesh, "Nedelec", 1)   ! Edge elements
+! P2 and Nedelec elements coming soon
 ```
 
 ### 3. Assembly
@@ -130,17 +132,17 @@ call assemble_poisson_2d(mesh, A, f)     ! Current: -∆u = f
 call apply_zero_bc(mesh, A, f)           ! u = 0 on boundary
 ```
 
-Future forms-based assembly:
+Forms-based assembly available now:
 ```fortran
 a = inner(grad(u), grad(v))*dx    ! Bilinear form
-L = f*v*dx                        ! Linear form
+L = inner(f, v)*dx                 ! Linear form
 ```
 
 ### 4. Solvers
 Simple solver interface:
 ```fortran
 call solve_lapack_dense(A, u, info)      ! Current: dense solver
-call solve(a == L, uh, bc)               ! Future: automatic solver
+! Automatic solver from forms coming soon
 ```
 
 ## Next Steps

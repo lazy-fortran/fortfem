@@ -1,5 +1,6 @@
 program test_forms_api
     ! Test the new forms-based API structure
+    use fortfem_kinds, only: dp
     use fortfem_api
     use check
     implicit none
@@ -15,7 +16,7 @@ program test_forms_api
     print *, "================================="
     
     ! Test mesh creation
-    mesh = unit_square_mesh(4, 4)
+    mesh = unit_square_mesh(4)
     call check_condition(mesh%data%n_vertices > 0, "Unit square mesh created")
     
     ! Test function space creation
