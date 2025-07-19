@@ -14,7 +14,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["lapack", "blas", "umfpack", "amd", "cholmod", "suitesparseconfig"]
+link = ["umfpack", "amd", "cholmod", "suitesparseconfig"]
 
 [install]
 library = false
@@ -33,6 +33,7 @@ page_dir = "doc"
 
 [dependencies]
 fortplotlib = { git = "https://github.com/krystophny/fortplotlib.git" }
+blas = "*"
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
