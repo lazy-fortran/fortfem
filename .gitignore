@@ -1,7 +1,18 @@
 # Build directories
 build/
+
+# Object and library files
+*.o
+*.a
+*.so
+*.exe
 *.mod
 *.smod
+
+# Test executables
+test_*
+!test_*.f90
+!test_*.F90
 
 # Coverage files
 *.gcov
