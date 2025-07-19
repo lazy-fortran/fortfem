@@ -1,0 +1,63 @@
+// FreeFEM++ script for 1D Poisson equation (simulated as thin 2D domain)
+// Benchmark reference for FortFEM Poisson 1D implementation
+//
+// Problem: -u'' = f in (0,1)
+//          u(0) = u(1) = 0 (Dirichlet BC)
+//
+// Exact solution: u(x) = sin(π*x)
+// Source term: f(x) = π²*sin(π*x)
+
+load "msh3"
+
+// Exact solution and source term
+func ExactU = sin(pi*x);
+func Source = pi*pi*sin(pi*x);
+
+cout << "\n=== FreeFEM Poisson 1D Convergence Study ===" << endl;
+cout << "h\t\tL2_error\tH1_error\tDOFs" << endl;
+
+ofstream convfile("freefem_convergence_1d.dat");
+convfile << "# h L2_error H1_error DOFs" << endl;
+
+// Convergence study
+for (int level = 1; level <= 6; level++) {
+    int n = 8 * 2^(level-1);  // 8, 16, 32, 64, 128, 256 elements
+    real h = 1.0/n;
+    
+    // Create very thin 2D mesh to simulate 1D problem
+    real eps = 1e-6;  // Very small height
+    mesh Th = square(n, 1, [x, eps*y]);
+    
+    // P1 finite element space
+    fespace Vh(Th, P1);
+    Vh u, v;
+    
+    // Variational form: ∫ ∇u·∇v dx = ∫ f*v dx
+    varf poisson(u, v) = 
+        int2d(Th)( dx(u)*dx(v) + dy(u)*dy(v) )  // stiffness matrix
+        + on(1, 3, u=0);                        // Dirichlet BC at x=0 and x=1
+    
+    varf rhs(u, v) = 
+        int2d(Th)( Source*v )                   // load vector
+        + on(1, 3, u=0);                        // Dirichlet BC
+    
+    // Assemble and solve
+    matrix A = poisson(Vh, Vh);
+    real[int] b = rhs(0, Vh);
+    u[] = A^-1 * b;
+    
+    // Compute errors (average over thin dimension)
+    fespace Ph(Th, P0);
+    Ph errL2sq = (u - ExactU)^2;
+    Ph errH1gradxsq = (dx(u) - pi*cos(pi*x))^2;
+    Ph errH1gradysq = dy(u)^2;  // Should be ~0 for 1D problem
+    
+    real L2norm = sqrt(int2d(Th)(errL2sq) / eps);
+    real H1norm = sqrt(int2d(Th)(errL2sq + errH1gradxsq + errH1gradysq) / eps);
+    
+    cout << h << "\t" << L2norm << "\t" << H1norm << "\t" << Vh.ndof << endl;
+    convfile << h << " " << L2norm << " " << H1norm << " " << Vh.ndof << endl;
+}
+
+cout << "\nFreeFEM Poisson 1D reference computed successfully!" << endl;
+cout << "Results saved to freefem_convergence_1d.dat" << endl;

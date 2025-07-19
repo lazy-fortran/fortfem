@@ -1,0 +1,60 @@
+// FreeFEM++ script for 2D Poisson equation
+// Benchmark reference for FortFEM Poisson 2D implementation
+//
+// Problem: -Δu = f in (0,1)×(0,1)
+//          u = 0 on ∂Ω (Dirichlet BC)
+//
+// Exact solution: u(x,y) = sin(π*x)*sin(π*y)
+// Source term: f(x,y) = 2*π²*sin(π*x)*sin(π*y)
+
+// Exact solution and source term
+func ExactU = sin(pi*x)*sin(pi*y);
+func Source = 2*pi*pi*sin(pi*x)*sin(pi*y);
+
+cout << "\n=== FreeFEM Poisson 2D Convergence Study ===" << endl;
+cout << "h\t\tL2_error\tH1_error\tDOFs" << endl;
+
+ofstream convfile("freefem_convergence_2d.dat");
+convfile << "# h L2_error H1_error DOFs" << endl;
+
+// Convergence study
+for (int level = 1; level <= 5; level++) {
+    int n = 4 * 2^(level-1);  // 4, 8, 16, 32, 64 elements per side
+    real h = 1.0/n;
+    
+    // Create rectangular mesh on unit square [0,1]×[0,1]
+    mesh Th = square(n, n, [x, y]);
+    
+    // P1 finite element space
+    fespace Vh(Th, P1);
+    Vh u, v;
+    
+    // Variational form: ∫ ∇u·∇v dx = ∫ f*v dx
+    varf poisson(u, v) = 
+        int2d(Th)( dx(u)*dx(v) + dy(u)*dy(v) )  // stiffness matrix
+        + on(1, 2, 3, 4, u=0);                  // Dirichlet BC on all boundaries
+    
+    varf rhs(u, v) = 
+        int2d(Th)( Source*v )                   // load vector
+        + on(1, 2, 3, 4, u=0);                  // Dirichlet BC
+    
+    // Assemble and solve
+    matrix A = poisson(Vh, Vh);
+    real[int] b = rhs(0, Vh);
+    u[] = A^-1 * b;
+    
+    // Compute errors
+    fespace Ph(Th, P0);  // Piecewise constant for error computation
+    Ph errL2 = abs(u - ExactU);
+    Ph errH1gradx = abs(dx(u) - pi*cos(pi*x)*sin(pi*y));
+    Ph errH1grady = abs(dy(u) - pi*sin(pi*x)*cos(pi*y));
+    
+    real L2norm = sqrt(int2d(Th)(errL2^2));
+    real H1norm = sqrt(int2d(Th)(errL2^2 + errH1gradx^2 + errH1grady^2));
+    
+    cout << h << "\t" << L2norm << "\t" << H1norm << "\t" << Vh.ndof << endl;
+    convfile << h << " " << L2norm << " " << H1norm << " " << Vh.ndof << endl;
+}
+
+cout << "\nFreeFEM Poisson 2D reference computed successfully!" << endl;
+cout << "Results saved to freefem_convergence_2d.dat" << endl;

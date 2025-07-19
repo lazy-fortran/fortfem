@@ -21,14 +21,14 @@ module assembly_2d_module
         procedure :: assemble_global
     end type assembly_2d_t
     
-    ! Gauss quadrature for triangles
+    ! 3-point edge midpoint rule for triangles (exact for degree 2 polynomials)
     integer, parameter :: n_gauss = 3
     real(dp), parameter :: gauss_points(2,3) = reshape([ &
-        0.5_dp, 0.0_dp, &     ! (1/2, 0)
-        0.5_dp, 0.5_dp, &     ! (1/2, 1/2)
-        0.0_dp, 0.5_dp  &     ! (0, 1/2)
+        0.5_dp, 0.0_dp, &     ! Edge midpoint (1/2, 0)
+        0.5_dp, 0.5_dp, &     ! Edge midpoint (1/2, 1/2)  
+        0.0_dp, 0.5_dp  &     ! Edge midpoint (0, 1/2)
     ], [2, 3])
-    real(dp), parameter :: gauss_weights(3) = 1.0_dp/6.0_dp
+    real(dp), parameter :: gauss_weights(3) = [1.0_dp/6.0_dp, 1.0_dp/6.0_dp, 1.0_dp/6.0_dp]
     
 contains
 
@@ -71,7 +71,7 @@ contains
                 phi_i = this%basis%eval(i, gauss_points(1,q), gauss_points(2,q))
                 do j = 1, 3
                     phi_j = this%basis%eval(j, gauss_points(1,q), gauss_points(2,q))
-                    mass(i,j) = mass(i,j) + gauss_weights(q) * phi_i * phi_j * det_j
+                    mass(i,j) = mass(i,j) + gauss_weights(q) * phi_i * phi_j * abs(det_j)
                 end do
             end do
         end do
@@ -115,7 +115,7 @@ contains
                 grad_j(2) = jac_inv(1,2) * grad_ref(1) + jac_inv(2,2) * grad_ref(2)
                 
                 ! Stiffness entry: integral of grad(phi_i) . grad(phi_j)
-                stiff(i,j) = det_j * (grad_i(1) * grad_j(1) + grad_i(2) * grad_j(2))
+                stiff(i,j) = abs(det_j) * (grad_i(1) * grad_j(1) + grad_i(2) * grad_j(2))
             end do
         end do
         
@@ -155,7 +155,7 @@ contains
             ! Add contribution from each basis function
             do i = 1, 3
                 phi_i = this%basis%eval(i, gauss_points(1,q), gauss_points(2,q))
-                load(i) = load(i) + gauss_weights(q) * f_val * phi_i * det_j
+                load(i) = load(i) + 2.0_dp * gauss_weights(q) * f_val * phi_i * abs(det_j)
             end do
         end do
         
