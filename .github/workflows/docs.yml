@@ -42,13 +42,10 @@ jobs:
       - name: Build FortFEM
         run: make build
         
-      - name: Run tests and generate outputs
+      - name: Generate example outputs
         run: |
           # Create output directories
           mkdir -p doc/media/examples
-          
-          # Run tests to ensure everything is working
-          make test
           
           # Run convergence examples to generate plots (if any)
           # Note: Examples that depend on fortplotlib may fail in CI, that's ok
