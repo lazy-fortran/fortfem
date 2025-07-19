@@ -5,6 +5,7 @@ module fortfem
     use fortfem_mesh_2d
     use fortfem_basis_1d
     use fortfem_basis_p1_2d
+    use fortfem_basis_p2_2d
     use fortfem_basis_edge_2d_interface
     use fortfem_assembly_1d
     use fortfem_assembly_2d
