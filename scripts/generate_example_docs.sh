@@ -130,6 +130,7 @@ EOF
     
     # Find and add related plots
     plot_found=false
+    unset added_plots
     declare -A added_plots  # Track which plots have been added
     
     if [[ -d "$ARTIFACTS_DIR" ]]; then
@@ -163,6 +164,56 @@ EOF
         
         # Also look for generic patterns based on example type
         case "$example_name" in
+            plot_mesh)
+                # For plot_mesh example, include all mesh plots
+                for plot_file in "$ARTIFACTS_DIR"/mesh*.png; do
+                    if [[ -f "$plot_file" ]]; then
+                        plot_name=$(basename "$plot_file")
+                        
+                        # Skip if already added
+                        if [[ -n "${added_plots[$plot_name]}" ]]; then
+                            continue
+                        fi
+                        added_plots[$plot_name]=1
+                        
+                        rel_plot_path="../../../artifacts/plots/$plot_name"
+                        echo "  Found related plot: $plot_name"
+                        
+                        cat >> "$example_doc" << EOF
+### $plot_name
+
+![${plot_name}](${rel_plot_path})
+
+EOF
+                        plot_found=true
+                    fi
+                done
+                ;;
+            *plotting*)
+                # For the plotting example, include all demonstration plots
+                for plot_file in "$ARTIFACTS_DIR"/solution_*.png "$ARTIFACTS_DIR"/test_mesh*.png; do
+                    if [[ -f "$plot_file" ]]; then
+                        plot_name=$(basename "$plot_file")
+                        
+                        # Skip if already added
+                        if [[ -n "${added_plots[$plot_name]}" ]]; then
+                            continue
+                        fi
+                        added_plots[$plot_name]=1
+                        
+                        rel_plot_path="../../../artifacts/plots/$plot_name"
+                        echo "  Found related plot: $plot_name"
+                        
+                        cat >> "$example_doc" << EOF
+### $plot_name
+
+![${plot_name}](${rel_plot_path})
+
+EOF
+                        plot_found=true
+                    fi
+                done
+                ;;
             *poisson*)
                 for plot_file in "$ARTIFACTS_DIR"/poisson*.png "$ARTIFACTS_DIR"/mesh*.png; do
                     if [[ -f "$plot_file" ]]; then

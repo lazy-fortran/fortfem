@@ -100,7 +100,21 @@ end program minimal_mesh_example```
 
 ## Generated Plots
 
-*No plots available for this example.*
+### mesh.png
+
+![mesh.png](../../../artifacts/plots/mesh.png)
+
+### mesh_basic.png
+
+![mesh_basic.png](../../../artifacts/plots/mesh_basic.png)
+
+### mesh_coarse.png
+
+![mesh_coarse.png](../../../artifacts/plots/mesh_coarse.png)
+
+### mesh_fine.png
+
+![mesh_fine.png](../../../artifacts/plots/mesh_fine.png)
 
 
 ---

@@ -169,7 +169,25 @@ end program plotting_demo```
 
 ## Generated Plots
 
-*No plots available for this example.*
+### solution_constant.png
+
+![solution_constant.png](../../../artifacts/plots/solution_constant.png)
+
+### solution_coolwarm.png
+
+![solution_coolwarm.png](../../../artifacts/plots/solution_coolwarm.png)
+
+### solution_point.png
+
+![solution_point.png](../../../artifacts/plots/solution_point.png)
+
+### test_mesh.png
+
+![test_mesh.png](../../../artifacts/plots/test_mesh.png)
+
+### test_mesh_titled.png
+
+![test_mesh_titled.png](../../../artifacts/plots/test_mesh_titled.png)
 
 
 ---

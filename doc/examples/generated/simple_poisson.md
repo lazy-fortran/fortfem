@@ -104,6 +104,22 @@ end program simple_poisson```
 
 ![poisson_solution.png](../../../artifacts/plots/poisson_solution.png)
 
+### mesh.png
+
+![mesh.png](../../../artifacts/plots/mesh.png)
+
+### mesh_basic.png
+
+![mesh_basic.png](../../../artifacts/plots/mesh_basic.png)
+
+### mesh_coarse.png
+
+![mesh_coarse.png](../../../artifacts/plots/mesh_coarse.png)
+
+### mesh_fine.png
+
+![mesh_fine.png](../../../artifacts/plots/mesh_fine.png)
+
 
 ---
 
