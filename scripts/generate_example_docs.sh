@@ -217,7 +217,10 @@ EOF
     
     echo "  ✅ Completed processing $example_name"
     ((example_count++))
+    echo "🔍 Moving to next example..."
 done
+
+echo "🔍 Loop completed. Found $example_count examples total."
 
 echo "📝 Processing complete, finalizing index..."
 
