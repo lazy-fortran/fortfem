@@ -711,7 +711,7 @@ contains
 
     subroutine create_from_boundary(this, boundary, resolution)
         use triangulator, only: triangulate_boundary
-        use fortfem_api, only: boundary_t
+        use fortfem_boundary, only: boundary_t
         class(mesh_2d_t), intent(out) :: this
         class(*), intent(in) :: boundary
         real(dp), intent(in) :: resolution

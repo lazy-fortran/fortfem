@@ -12,7 +12,8 @@ FortFEM is a modern Fortran finite element library designed for ease of use, ins
 - **Build the project**: `fpm build`
 - **Build with specific compiler**: `fpm build --compiler gfortran`
 - **Build with coverage**: `fpm build --flag "--coverage"`
-- **Clean build**: `fpm clean && fpm build`
+- **Clean build**: `fpm clean --skip && fpm build`
+- **Note**: Always use `fpm clean --skip` to avoid interactive prompts
 
 ### Run Commands
 - **Run the main application**: `fpm run`
