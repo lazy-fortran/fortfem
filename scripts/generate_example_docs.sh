@@ -82,7 +82,7 @@ EOF
         echo "" >> "$example_doc"
     else
         # Generate basic description from program comment if available
-        first_comment=$(grep -m 1 "^[[:space:]]*!" "$example_file" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' || echo "")
+        first_comment=$(grep -m 1 "^[[:space:]]*!" "$example_file" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' 2>/dev/null || echo "")
         if [[ -n "$first_comment" ]]; then
             echo "$first_comment" >> "$example_doc"
             echo "" >> "$example_doc"
@@ -210,13 +210,13 @@ EOF
     
     # Add to examples index
     echo "  Adding to index..."
-    example_description=$(head -n 20 "$example_file" | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' || echo "Example program")
+    example_description=$(head -n 20 "$example_file" 2>/dev/null | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' 2>/dev/null || echo "Example program")
     cat >> "$DOC_EXAMPLES_DIR/index.md" << EOF
 - [$example_name](generated/${example_name}.html) - $example_description
 EOF
     
     echo "  ✅ Completed processing $example_name"
-    ((example_count++))
+    example_count=$((example_count + 1))
     echo "🔍 Moving to next example..."
 done
 
