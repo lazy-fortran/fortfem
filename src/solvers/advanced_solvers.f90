@@ -138,6 +138,9 @@ contains
         
         stats%converged = .false.
         
+        stats%iterations = 0
+        residual_norm = sqrt(rr_old)
+        
         do iter = 1, opts%max_iterations
             ! Ap = A * p
             Ap = matmul(A, p)
@@ -145,6 +148,7 @@ contains
             
             if (abs(pAp) < 1.0e-14_dp) then
                 ! Breakdown
+                stats%iterations = iter - 1
                 exit
             end if
             
@@ -167,6 +171,7 @@ contains
             ! Check convergence
             if (residual_norm <= tolerance) then
                 stats%converged = .true.
+                stats%iterations = iter
                 exit
             end if
             
@@ -177,10 +182,11 @@ contains
             p = r + beta * p
             
             rr_old = rr_new
+            stats%iterations = iter
         end do
         
-        stats%iterations = iter
         stats%final_residual = residual_norm
+        stats%method_used = "cg"
         
         deallocate(r, p, Ap)
     end subroutine cg_solve
@@ -252,6 +258,7 @@ contains
         
         stats%iterations = iter
         stats%final_residual = residual_norm
+        stats%method_used = "pcg"
         
         deallocate(r, z, p, Ap)
     end subroutine pcg_solve
@@ -361,6 +368,7 @@ contains
         
         stats%iterations = iter
         stats%final_residual = residual_norm
+        stats%method_used = "bicgstab"
         
         deallocate(r, r0, p, v, s, t, z, y)
     end subroutine bicgstab_solve
@@ -492,6 +500,7 @@ contains
         stats%iterations = total_iter
         stats%restarts = restart_count
         stats%final_residual = residual_norm
+        stats%method_used = "gmres"
         
         deallocate(V, H, r, w, y, c, s, g)
     end subroutine gmres_solve
@@ -524,6 +533,8 @@ contains
         else
             stats%final_residual = huge(1.0_dp)
         end if
+        
+        stats%method_used = "lapack_lu"
         
         deallocate(A_copy, ipiv)
     end subroutine lapack_solve
