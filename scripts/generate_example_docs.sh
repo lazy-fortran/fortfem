@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+# Temporarily disable set -e to see actual errors
+# set -e
 
 echo "🔨 Generating example documentation pages..."
 echo "Current directory: $(pwd)"
