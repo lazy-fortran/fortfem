@@ -1,0 +1,61 @@
+// FreeFEM mesh generation benchmark
+// Compare with FortFEM mesh generation performance
+
+// Mesh parameters for comparison
+int[] mesh_sizes = [5, 10, 15, 20, 25, 30];
+real[] fortfem_times(mesh_sizes.n);
+real[] freefem_times(mesh_sizes.n);
+int[] fortfem_triangles(mesh_sizes.n);
+int[] freefem_triangles(mesh_sizes.n);
+
+cout << "=== FreeFEM Mesh Generation Benchmark ===" << endl;
+cout << "" << endl;
+
+for (int i = 0; i < mesh_sizes.n; i++) {
+    int n = mesh_sizes[i];
+    
+    cout << "Testing " << n << "x" << n << " mesh:" << endl;
+    
+    // FreeFEM mesh generation timing
+    real start_time = clock();
+    mesh Th = square(n-1, n-1);  // FreeFEM: n-1 gives n points per side
+    real end_time = clock();
+    
+    freefem_times[i] = end_time - start_time;
+    freefem_triangles[i] = Th.nt;
+    
+    cout << "  FreeFEM: " << Th.nv << " vertices, " << Th.nt << " triangles, " 
+         << freefem_times[i] << "s" << endl;
+    
+    // Estimate FortFEM performance (to be measured by Fortran)
+    // This is a placeholder - actual comparison done in Fortran
+    fortfem_times[i] = 0.0;  // Will be filled by Fortran benchmark
+    fortfem_triangles[i] = 0; // Will be filled by Fortran benchmark
+}
+
+cout << "" << endl;
+cout << "=== Benchmark Results ===" << endl;
+cout << "Size\tFreeFEM_vertices\tFreeFEM_triangles\tFreeFEM_time(s)" << endl;
+
+for (int i = 0; i < mesh_sizes.n; i++) {
+    int n = mesh_sizes[i];
+    mesh Th = square(n-1, n-1);
+    cout << n << "\t" << Th.nv << "\t\t" << Th.nt << "\t\t" 
+         << freefem_times[i] << endl;
+}
+
+cout << "" << endl;
+cout << "FreeFEM benchmark completed." << endl;
+cout << "Run FortFEM benchmark for comparison." << endl;
+
+// Save results for comparison
+{
+    ofstream file("freefem_benchmark_results.dat");
+    file << "# mesh_size vertices triangles time_seconds" << endl;
+    for (int i = 0; i < mesh_sizes.n; i++) {
+        int n = mesh_sizes[i];
+        mesh Th = square(n-1, n-1);
+        file << n << " " << Th.nv << " " << Th.nt << " " 
+             << freefem_times[i] << endl;
+    }
+}
