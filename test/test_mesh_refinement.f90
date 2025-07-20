@@ -373,45 +373,6 @@ contains
             end if
         end do
         
-    contains
-        function compute_triangle_area(mesh, tri_idx) result(area)
-            type(mesh_t), intent(in) :: mesh
-            integer, intent(in) :: tri_idx
-            real(dp) :: area
-            integer :: v1, v2, v3
-            real(dp) :: x1, y1, x2, y2, x3, y3
-            
-            v1 = mesh%data%triangles(1, tri_idx)
-            v2 = mesh%data%triangles(2, tri_idx)
-            v3 = mesh%data%triangles(3, tri_idx)
-            
-            x1 = mesh%data%vertices(1, v1)
-            y1 = mesh%data%vertices(2, v1)
-            x2 = mesh%data%vertices(1, v2)
-            y2 = mesh%data%vertices(2, v2)
-            x3 = mesh%data%vertices(1, v3)
-            y3 = mesh%data%vertices(2, v3)
-            
-            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-        end function compute_triangle_area
-        
-        function triangle_contains_edge(mesh, tri_idx, v1, v2) result(contains_edge)
-            type(mesh_t), intent(in) :: mesh
-            integer, intent(in) :: tri_idx, v1, v2
-            logical :: contains_edge
-            integer :: tv1, tv2, tv3
-            
-            tv1 = mesh%data%triangles(1, tri_idx)
-            tv2 = mesh%data%triangles(2, tri_idx)
-            tv3 = mesh%data%triangles(3, tri_idx)
-            
-            contains_edge = ((tv1 == v1 .and. tv2 == v2) .or. &
-                           (tv1 == v2 .and. tv2 == v1) .or. &
-                           (tv2 == v1 .and. tv3 == v2) .or. &
-                           (tv2 == v2 .and. tv3 == v1) .or. &
-                           (tv3 == v1 .and. tv1 == v2) .or. &
-                           (tv3 == v2 .and. tv1 == v1))
-        end function triangle_contains_edge
     end function mesh_is_conforming
     
     function count_boundary_vertices(mesh) result(count)
@@ -438,7 +399,7 @@ contains
         type(mesh_t), intent(in) :: mesh
         logical :: is_intact
         
-        integer :: i, e, v1, v2, triangle_count
+        integer :: i, j, e, v1, v2, triangle_count
         
         is_intact = .true.
         
@@ -449,8 +410,8 @@ contains
             v2 = mesh%data%edges(2, e)
             
             triangle_count = 0
-            do triangle_count = 1, mesh%data%n_triangles
-                if (triangle_contains_edge_simple(mesh, triangle_count, v1, v2)) then
+            do j = 1, mesh%data%n_triangles
+                if (triangle_contains_edge_simple(mesh, j, v1, v2)) then
                     triangle_count = triangle_count + 1
                 end if
             end do
@@ -461,21 +422,6 @@ contains
             end if
         end do
         
-    contains
-        function triangle_contains_edge_simple(mesh, tri_idx, v1, v2) result(contains)
-            type(mesh_t), intent(in) :: mesh
-            integer, intent(in) :: tri_idx, v1, v2
-            logical :: contains
-            integer :: tv1, tv2, tv3
-            
-            tv1 = mesh%data%triangles(1, tri_idx)
-            tv2 = mesh%data%triangles(2, tri_idx)
-            tv3 = mesh%data%triangles(3, tri_idx)
-            
-            contains = ((tv1 == v1 .and. tv2 == v2) .or. (tv1 == v2 .and. tv2 == v1) .or. &
-                       (tv2 == v1 .and. tv3 == v2) .or. (tv2 == v2 .and. tv3 == v1) .or. &
-                       (tv3 == v1 .and. tv1 == v2) .or. (tv3 == v2 .and. tv1 == v1))
-        end function triangle_contains_edge_simple
     end function check_boundary_integrity
     
     function verify_boundary_geometry(mesh) result(is_correct)
@@ -577,27 +523,6 @@ contains
         
         quality = max(0.0_dp, min(1.0_dp, quality))  ! Clamp to [0,1]
         
-    contains
-        function compute_triangle_area_simple(mesh, tri_idx) result(area)
-            type(mesh_t), intent(in) :: mesh
-            integer, intent(in) :: tri_idx
-            real(dp) :: area
-            integer :: v1, v2, v3
-            real(dp) :: x1, y1, x2, y2, x3, y3
-            
-            v1 = mesh%data%triangles(1, tri_idx)
-            v2 = mesh%data%triangles(2, tri_idx)
-            v3 = mesh%data%triangles(3, tri_idx)
-            
-            x1 = mesh%data%vertices(1, v1)
-            y1 = mesh%data%vertices(2, v1)
-            x2 = mesh%data%vertices(1, v2)
-            y2 = mesh%data%vertices(2, v2)
-            x3 = mesh%data%vertices(1, v3)
-            y3 = mesh%data%vertices(2, v3)
-            
-            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-        end function compute_triangle_area_simple
     end function compute_mesh_quality
     
     function quadratic_test_function(x, y) result(val)
@@ -638,5 +563,81 @@ contains
         end if
         error = 0.1_dp / real(mesh%data%n_vertices, dp)  ! Placeholder error
     end subroutine solve_on_mesh
+
+    ! Helper functions
+    function compute_triangle_area(mesh, tri_idx) result(area)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: tri_idx
+        real(dp) :: area
+        integer :: v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        
+        v1 = mesh%data%triangles(1, tri_idx)
+        v2 = mesh%data%triangles(2, tri_idx)
+        v3 = mesh%data%triangles(3, tri_idx)
+        
+        x1 = mesh%data%vertices(1, v1)
+        y1 = mesh%data%vertices(2, v1)
+        x2 = mesh%data%vertices(1, v2)
+        y2 = mesh%data%vertices(2, v2)
+        x3 = mesh%data%vertices(1, v3)
+        y3 = mesh%data%vertices(2, v3)
+        
+        area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+    end function compute_triangle_area
+    
+    function triangle_contains_edge(mesh, tri_idx, v1, v2) result(contains_edge)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: tri_idx, v1, v2
+        logical :: contains_edge
+        integer :: tv1, tv2, tv3
+        
+        tv1 = mesh%data%triangles(1, tri_idx)
+        tv2 = mesh%data%triangles(2, tri_idx)
+        tv3 = mesh%data%triangles(3, tri_idx)
+        
+        contains_edge = ((tv1 == v1 .and. tv2 == v2) .or. &
+                       (tv1 == v2 .and. tv2 == v1) .or. &
+                       (tv2 == v1 .and. tv3 == v2) .or. &
+                       (tv2 == v2 .and. tv3 == v1) .or. &
+                       (tv3 == v1 .and. tv1 == v2) .or. &
+                       (tv3 == v2 .and. tv1 == v1))
+    end function triangle_contains_edge
+    
+    function triangle_contains_edge_simple(mesh, tri_idx, v1, v2) result(contains)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: tri_idx, v1, v2
+        logical :: contains
+        integer :: tv1, tv2, tv3
+        
+        tv1 = mesh%data%triangles(1, tri_idx)
+        tv2 = mesh%data%triangles(2, tri_idx)
+        tv3 = mesh%data%triangles(3, tri_idx)
+        
+        contains = ((tv1 == v1 .and. tv2 == v2) .or. (tv1 == v2 .and. tv2 == v1) .or. &
+                   (tv2 == v1 .and. tv3 == v2) .or. (tv2 == v2 .and. tv3 == v1) .or. &
+                   (tv3 == v1 .and. tv1 == v2) .or. (tv3 == v2 .and. tv1 == v1))
+    end function triangle_contains_edge_simple
+    
+    function compute_triangle_area_simple(mesh, tri_idx) result(area)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: tri_idx
+        real(dp) :: area
+        integer :: v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        
+        v1 = mesh%data%triangles(1, tri_idx)
+        v2 = mesh%data%triangles(2, tri_idx)
+        v3 = mesh%data%triangles(3, tri_idx)
+        
+        x1 = mesh%data%vertices(1, v1)
+        y1 = mesh%data%vertices(2, v1)
+        x2 = mesh%data%vertices(1, v2)
+        y2 = mesh%data%vertices(2, v2)
+        x3 = mesh%data%vertices(1, v3)
+        y3 = mesh%data%vertices(2, v3)
+        
+        area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+    end function compute_triangle_area_simple
 
 end program test_mesh_refinement
