@@ -1437,26 +1437,34 @@ contains
         ! Create figure
         call fig%initialize()
         
-        ! Allocate arrays for edge plotting
-        allocate(x_edges(4), y_edges(4))
+        ! Allocate arrays for edge plotting  
+        allocate(x_edges(2), y_edges(2))
         
-        ! Plot each triangle
+        ! Plot each edge separately to avoid connecting triangles
         do e = 1, mesh%data%n_triangles
             v1 = mesh%data%triangles(1, e)
             v2 = mesh%data%triangles(2, e)
             v3 = mesh%data%triangles(3, e)
             
-            ! Create closed triangle path
+            ! Edge 1: v1 to v2
             x_edges(1) = real(mesh%data%vertices(1, v1), 8)
             x_edges(2) = real(mesh%data%vertices(1, v2), 8)
-            x_edges(3) = real(mesh%data%vertices(1, v3), 8)
-            x_edges(4) = real(mesh%data%vertices(1, v1), 8)
             y_edges(1) = real(mesh%data%vertices(2, v1), 8)
             y_edges(2) = real(mesh%data%vertices(2, v2), 8)
-            y_edges(3) = real(mesh%data%vertices(2, v3), 8)
-            y_edges(4) = real(mesh%data%vertices(2, v1), 8)
+            call fig%add_plot(x_edges, y_edges)
             
-            ! Plot triangle edges
+            ! Edge 2: v2 to v3
+            x_edges(1) = real(mesh%data%vertices(1, v2), 8)
+            x_edges(2) = real(mesh%data%vertices(1, v3), 8)
+            y_edges(1) = real(mesh%data%vertices(2, v2), 8)
+            y_edges(2) = real(mesh%data%vertices(2, v3), 8)
+            call fig%add_plot(x_edges, y_edges)
+            
+            ! Edge 3: v3 to v1
+            x_edges(1) = real(mesh%data%vertices(1, v3), 8)
+            x_edges(2) = real(mesh%data%vertices(1, v1), 8)
+            y_edges(1) = real(mesh%data%vertices(2, v3), 8)
+            y_edges(2) = real(mesh%data%vertices(2, v1), 8)
             call fig%add_plot(x_edges, y_edges)
         end do
         
