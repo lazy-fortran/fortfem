@@ -338,8 +338,80 @@ contains
     function mesh_is_conforming(mesh) result(is_conforming)
         type(mesh_t), intent(in) :: mesh
         logical :: is_conforming
-        ! Placeholder - check mesh conformity
+        
+        integer :: i, j, k, e, v1, v2, shared_edges
+        real(dp) :: min_area, area
+        real(dp), parameter :: tolerance = 1.0e-12_dp
+        
         is_conforming = .true.
+        
+        ! Check 1: All triangles have positive area
+        do i = 1, mesh%data%n_triangles
+            area = compute_triangle_area(mesh, i)
+            if (area < tolerance) then
+                is_conforming = .false.
+                return
+            end if
+        end do
+        
+        ! Check 2: Each edge belongs to at most 2 triangles
+        do e = 1, mesh%data%n_edges
+            shared_edges = 0
+            v1 = mesh%data%edges(1, e)
+            v2 = mesh%data%edges(2, e)
+            
+            do i = 1, mesh%data%n_triangles
+                ! Check if triangle i contains edge (v1,v2)
+                if (triangle_contains_edge(mesh, i, v1, v2)) then
+                    shared_edges = shared_edges + 1
+                end if
+            end do
+            
+            if (shared_edges > 2) then
+                is_conforming = .false.
+                return
+            end if
+        end do
+        
+    contains
+        function compute_triangle_area(mesh, tri_idx) result(area)
+            type(mesh_t), intent(in) :: mesh
+            integer, intent(in) :: tri_idx
+            real(dp) :: area
+            integer :: v1, v2, v3
+            real(dp) :: x1, y1, x2, y2, x3, y3
+            
+            v1 = mesh%data%triangles(1, tri_idx)
+            v2 = mesh%data%triangles(2, tri_idx)
+            v3 = mesh%data%triangles(3, tri_idx)
+            
+            x1 = mesh%data%vertices(1, v1)
+            y1 = mesh%data%vertices(2, v1)
+            x2 = mesh%data%vertices(1, v2)
+            y2 = mesh%data%vertices(2, v2)
+            x3 = mesh%data%vertices(1, v3)
+            y3 = mesh%data%vertices(2, v3)
+            
+            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+        end function compute_triangle_area
+        
+        function triangle_contains_edge(mesh, tri_idx, v1, v2) result(contains_edge)
+            type(mesh_t), intent(in) :: mesh
+            integer, intent(in) :: tri_idx, v1, v2
+            logical :: contains_edge
+            integer :: tv1, tv2, tv3
+            
+            tv1 = mesh%data%triangles(1, tri_idx)
+            tv2 = mesh%data%triangles(2, tri_idx)
+            tv3 = mesh%data%triangles(3, tri_idx)
+            
+            contains_edge = ((tv1 == v1 .and. tv2 == v2) .or. &
+                           (tv1 == v2 .and. tv2 == v1) .or. &
+                           (tv2 == v1 .and. tv3 == v2) .or. &
+                           (tv2 == v2 .and. tv3 == v1) .or. &
+                           (tv3 == v1 .and. tv1 == v2) .or. &
+                           (tv3 == v2 .and. tv1 == v1))
+        end function triangle_contains_edge
     end function mesh_is_conforming
     
     function count_boundary_vertices(mesh) result(count)
@@ -365,8 +437,45 @@ contains
     function check_boundary_integrity(mesh) result(is_intact)
         type(mesh_t), intent(in) :: mesh
         logical :: is_intact
-        ! Placeholder - verify boundary is properly maintained
+        
+        integer :: i, e, v1, v2, triangle_count
+        
         is_intact = .true.
+        
+        ! Check that each boundary edge belongs to exactly one triangle
+        do i = 1, mesh%data%n_boundary_edges
+            e = mesh%data%boundary_edges(i)
+            v1 = mesh%data%edges(1, e)
+            v2 = mesh%data%edges(2, e)
+            
+            triangle_count = 0
+            do triangle_count = 1, mesh%data%n_triangles
+                if (triangle_contains_edge_simple(mesh, triangle_count, v1, v2)) then
+                    triangle_count = triangle_count + 1
+                end if
+            end do
+            
+            if (triangle_count /= 1) then
+                is_intact = .false.
+                return
+            end if
+        end do
+        
+    contains
+        function triangle_contains_edge_simple(mesh, tri_idx, v1, v2) result(contains)
+            type(mesh_t), intent(in) :: mesh
+            integer, intent(in) :: tri_idx, v1, v2
+            logical :: contains
+            integer :: tv1, tv2, tv3
+            
+            tv1 = mesh%data%triangles(1, tri_idx)
+            tv2 = mesh%data%triangles(2, tri_idx)
+            tv3 = mesh%data%triangles(3, tri_idx)
+            
+            contains = ((tv1 == v1 .and. tv2 == v2) .or. (tv1 == v2 .and. tv2 == v1) .or. &
+                       (tv2 == v1 .and. tv3 == v2) .or. (tv2 == v2 .and. tv3 == v1) .or. &
+                       (tv3 == v1 .and. tv1 == v2) .or. (tv3 == v2 .and. tv1 == v1))
+        end function triangle_contains_edge_simple
     end function check_boundary_integrity
     
     function verify_boundary_geometry(mesh) result(is_correct)
@@ -379,8 +488,41 @@ contains
     function compute_minimum_angle(mesh) result(min_angle)
         type(mesh_t), intent(in) :: mesh
         real(dp) :: min_angle
-        ! Placeholder - compute minimum angle in mesh
-        min_angle = 30.0_dp * acos(-1.0_dp) / 180.0_dp  ! 30 degrees
+        
+        integer :: i, v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: a, b, c, angle1, angle2, angle3
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        
+        min_angle = pi  ! Start with maximum possible angle
+        
+        do i = 1, mesh%data%n_triangles
+            v1 = mesh%data%triangles(1, i)
+            v2 = mesh%data%triangles(2, i)
+            v3 = mesh%data%triangles(3, i)
+            
+            x1 = mesh%data%vertices(1, v1)
+            y1 = mesh%data%vertices(2, v1)
+            x2 = mesh%data%vertices(1, v2)
+            y2 = mesh%data%vertices(2, v2)
+            x3 = mesh%data%vertices(1, v3)
+            y3 = mesh%data%vertices(2, v3)
+            
+            ! Compute side lengths
+            a = sqrt((x2-x3)**2 + (y2-y3)**2)  ! Side opposite to vertex 1
+            b = sqrt((x1-x3)**2 + (y1-y3)**2)  ! Side opposite to vertex 2
+            c = sqrt((x1-x2)**2 + (y1-y2)**2)  ! Side opposite to vertex 3
+            
+            ! Avoid degenerate triangles
+            if (a < 1.0e-12_dp .or. b < 1.0e-12_dp .or. c < 1.0e-12_dp) cycle
+            
+            ! Compute angles using law of cosines
+            angle1 = acos(min(1.0_dp, max(-1.0_dp, (b**2 + c**2 - a**2) / (2.0_dp * b * c))))
+            angle2 = acos(min(1.0_dp, max(-1.0_dp, (a**2 + c**2 - b**2) / (2.0_dp * a * c))))
+            angle3 = acos(min(1.0_dp, max(-1.0_dp, (a**2 + b**2 - c**2) / (2.0_dp * a * b))))
+            
+            min_angle = min(min_angle, angle1, angle2, angle3)
+        end do
     end function compute_minimum_angle
     
     function compute_maximum_area(mesh) result(max_area)
@@ -411,8 +553,51 @@ contains
     function compute_mesh_quality(mesh) result(quality)
         type(mesh_t), intent(in) :: mesh
         real(dp) :: quality
-        ! Placeholder - compute overall mesh quality metric
-        quality = 0.8_dp
+        
+        real(dp) :: min_angle, max_area, avg_area
+        real(dp) :: total_area, aspect_ratio_sum
+        integer :: i
+        
+        ! Quality based on minimum angle and area distribution
+        min_angle = compute_minimum_angle(mesh)
+        max_area = compute_maximum_area(mesh)
+        
+        ! Compute average area
+        total_area = 0.0_dp
+        do i = 1, mesh%data%n_triangles
+            total_area = total_area + compute_triangle_area_simple(mesh, i)
+        end do
+        avg_area = total_area / real(mesh%data%n_triangles, dp)
+        
+        ! Quality metric: combine angle quality and area uniformity
+        ! Angle quality: min_angle / (pi/3) for equilateral triangle
+        ! Area uniformity: 1 - (max_area - avg_area) / avg_area
+        quality = 0.7_dp * (min_angle / (acos(-1.0_dp) / 3.0_dp)) + &
+                 0.3_dp * (1.0_dp - min(1.0_dp, (max_area - avg_area) / avg_area))
+        
+        quality = max(0.0_dp, min(1.0_dp, quality))  ! Clamp to [0,1]
+        
+    contains
+        function compute_triangle_area_simple(mesh, tri_idx) result(area)
+            type(mesh_t), intent(in) :: mesh
+            integer, intent(in) :: tri_idx
+            real(dp) :: area
+            integer :: v1, v2, v3
+            real(dp) :: x1, y1, x2, y2, x3, y3
+            
+            v1 = mesh%data%triangles(1, tri_idx)
+            v2 = mesh%data%triangles(2, tri_idx)
+            v3 = mesh%data%triangles(3, tri_idx)
+            
+            x1 = mesh%data%vertices(1, v1)
+            y1 = mesh%data%vertices(2, v1)
+            x2 = mesh%data%vertices(1, v2)
+            y2 = mesh%data%vertices(2, v2)
+            x3 = mesh%data%vertices(1, v3)
+            y3 = mesh%data%vertices(2, v3)
+            
+            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+        end function compute_triangle_area_simple
     end function compute_mesh_quality
     
     function quadratic_test_function(x, y) result(val)

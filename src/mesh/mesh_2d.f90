@@ -1035,9 +1035,10 @@ end module fortfem_mesh_2d
             end if
         end do
         
-        ! Edge not found - this shouldn't happen in a well-formed mesh
-        write(*,*) "Warning: Edge between vertices", v1, "and", v2, "not found"
-        edge_id = 1  ! Fallback
+        ! Edge not found - this indicates a corrupted mesh topology
+        write(*,*) "Error: Edge between vertices", v1, "and", v2, "not found"
+        write(*,*) "This indicates a corrupted mesh topology"
+        error stop "Fatal error in find_edge_between_vertices"
     end function find_edge_between_vertices
 
 end module fortfem_mesh_2d
