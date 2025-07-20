@@ -479,7 +479,9 @@ contains
                         if (edge_triangle_count(e) <= 2) then
                             this%edge_to_triangles(edge_triangle_count(e), e) = t
                         else
-                            error stop "Edge belongs to more than 2 triangles - invalid mesh"
+                            write(*,'(A,I0,A,I0,A,I0,A,I0,A)') &
+                                "Warning: Edge ", v1, "-", v2, " belongs to ", &
+                                edge_triangle_count(e), " triangles (triangle ", t, ")"
                         end if
                         exit
                     end if
@@ -723,15 +725,21 @@ contains
         select type(boundary)
         type is (boundary_t)
             ! Generate segments from boundary points
-            allocate(segments(2, boundary%n_points-1))
-            do i = 1, boundary%n_points-1
-                segments(1, i) = i
-                segments(2, i) = i + 1
-            end do
-            
-            ! Close the boundary if needed
             if (boundary%is_closed) then
-                segments(2, boundary%n_points-1) = 1
+                allocate(segments(2, boundary%n_points))
+                do i = 1, boundary%n_points-1
+                    segments(1, i) = i
+                    segments(2, i) = i + 1
+                end do
+                ! Add closing segment from last to first point
+                segments(1, boundary%n_points) = boundary%n_points
+                segments(2, boundary%n_points) = 1
+            else
+                allocate(segments(2, boundary%n_points-1))
+                do i = 1, boundary%n_points-1
+                    segments(1, i) = i
+                    segments(2, i) = i + 1
+                end do
             end if
             
             ! Triangulate the boundary

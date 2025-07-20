@@ -57,7 +57,7 @@ contains
         total_points = sum(densities) - n_segments + 1  ! Account for shared endpoints
         
         mesh%n_points = total_points
-        mesh%n_segments = sum(densities) - n_segments
+        mesh%n_segments = total_points - 1
         
         allocate(mesh%points(total_points))
         allocate(mesh%segments(2, mesh%n_segments))

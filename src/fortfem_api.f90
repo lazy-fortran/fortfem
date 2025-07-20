@@ -273,19 +273,62 @@ contains
         real(dp), intent(in) :: domain(4)  ! [x_min, x_max, y_min, y_max]
         integer, intent(in) :: n  ! Points per side
         type(boundary_t) :: boundary
+        integer :: i, idx
+        real(dp) :: t
         
         boundary%n_points = 4*n
         allocate(boundary%points(2, 4*n))
         allocate(boundary%labels(4*n-1))
         
         ! Generate rectangle boundary points
-        ! STUB: Implementation needed
-        boundary%points(:, 1) = [domain(1), domain(3)]  ! bottom-left
-        boundary%points(:, 2) = [domain(2), domain(3)]  ! bottom-right
-        boundary%points(:, 3) = [domain(2), domain(4)]  ! top-right
-        boundary%points(:, 4) = [domain(1), domain(4)]  ! top-left
+        idx = 0
         
-        boundary%labels = 1
+        ! Bottom edge: from (x_min, y_min) to (x_max, y_min)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(n-1, dp)
+            boundary%points(1, idx) = domain(1) + t * (domain(2) - domain(1))
+            boundary%points(2, idx) = domain(3)
+        end do
+        
+        ! Right edge: from (x_max, y_min) to (x_max, y_max)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(n-1, dp)
+            boundary%points(1, idx) = domain(2)
+            boundary%points(2, idx) = domain(3) + t * (domain(4) - domain(3))
+        end do
+        
+        ! Top edge: from (x_max, y_max) to (x_min, y_max)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(n-1, dp)
+            boundary%points(1, idx) = domain(2) - t * (domain(2) - domain(1))
+            boundary%points(2, idx) = domain(4)
+        end do
+        
+        ! Left edge: from (x_min, y_max) to (x_min, y_min)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(n-1, dp)
+            boundary%points(1, idx) = domain(1)
+            boundary%points(2, idx) = domain(4) - t * (domain(4) - domain(3))
+        end do
+        
+        ! Set segment labels (1 for bottom, 2 for right, 3 for top, 4 for left)
+        do i = 1, n-1
+            boundary%labels(i) = 1  ! Bottom edge
+        end do
+        do i = n, 2*n-2
+            boundary%labels(i) = 2  ! Right edge
+        end do
+        do i = 2*n-1, 3*n-3
+            boundary%labels(i) = 3  ! Top edge
+        end do
+        do i = 3*n-2, 4*n-1
+            boundary%labels(i) = 4  ! Left edge
+        end do
+        
         boundary%is_closed = .true.
     end function rectangle_boundary
     

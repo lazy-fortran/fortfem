@@ -357,9 +357,35 @@ subroutine ensure_constraint_triangle(mesh, v1, v2)
     type(mesh_t), intent(inout) :: mesh
     integer, intent(in) :: v1, v2
     
-    ! This is a placeholder - in a full implementation, this would
-    ! find an appropriate third vertex and create the triangle
-    ! For now, we assume the retriangulation handles this
+    integer :: t, i, j, found_triangles
+    logical :: edge_found
+    
+    ! Verify constraint edge exists in at least one triangle
+    edge_found = .false.
+    found_triangles = 0
+    
+    do t = 1, mesh%ntriangles
+        if (mesh%triangles(t)%valid) then
+            ! Check all edges of triangle t
+            do i = 1, 3
+                j = mod(i, 3) + 1
+                if ((mesh%triangles(t)%vertices(i) == v1 .and. mesh%triangles(t)%vertices(j) == v2) .or. &
+                    (mesh%triangles(t)%vertices(i) == v2 .and. mesh%triangles(t)%vertices(j) == v1)) then
+                    edge_found = .true.
+                    found_triangles = found_triangles + 1
+                end if
+            end do
+        end if
+    end do
+    
+    ! Log warnings if edge validation fails
+    if (.not. edge_found) then
+        write(*,'(A,I0,A,I0,A)') "Warning: Constraint edge ", v1, "-", v2, &
+                                " not found in any triangle"
+    else if (found_triangles > 2) then
+        write(*,'(A,I0,A,I0,A,I0,A)') "Warning: Constraint edge ", v1, "-", v2, &
+                                     " found in ", found_triangles, " triangles (expected ≤2)"
+    end if
     
 end subroutine ensure_constraint_triangle
 
