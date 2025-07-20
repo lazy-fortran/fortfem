@@ -73,6 +73,9 @@ matrix AFinal = poissonFinal(VhFinal, VhFinal);
 real[int] bFinal = rhsFinal(0, VhFinal);
 uFinal[] = AFinal^-1 * bFinal;
 
+// Save mesh plot
+plot(ThFinal, cmm="FreeFEM Mesh (32x32)", ps="freefem_poisson_mesh.eps");
+
 // Save solution plot as PostScript (will be converted to PNG in CI)
 plot(uFinal, value=true, fill=true, cmm="FreeFEM Poisson Solution", ps="freefem_poisson_solution.eps");
 
@@ -82,4 +85,7 @@ plot(exactSol, value=true, fill=true, cmm="Exact Poisson Solution", ps="freefem_
 
 cout << "\nFreeFEM Poisson 2D reference computed successfully!" << endl;
 cout << "Results saved to freefem_convergence_2d.dat" << endl;
-cout << "Solution plots saved to freefem_poisson_solution.eps and freefem_poisson_exact.eps" << endl;
+cout << "Plots saved:" << endl;
+cout << "  - Mesh: freefem_poisson_mesh.eps" << endl;
+cout << "  - Solution: freefem_poisson_solution.eps" << endl;
+cout << "  - Exact: freefem_poisson_exact.eps" << endl;

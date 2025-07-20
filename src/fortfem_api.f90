@@ -169,6 +169,7 @@ module fortfem_api
     interface plot
         module procedure plot_function_scalar
         module procedure plot_vector_function
+        module procedure plot_mesh
     end interface
     
     ! LAPACK interface
@@ -1192,5 +1193,106 @@ contains
         
         val = uh%values(nearest_vertex)
     end function find_nearest_value
+    
+    ! Plot mesh triangulation
+    subroutine plot_mesh(mesh, filename, plot_title, show_labels)
+        use fortplot, only: figure, xlabel, ylabel, &
+                            fortplot_title => title, xlim, ylim, savefig
+        use fortplot_figure, only: figure_t
+        type(mesh_t), intent(in) :: mesh
+        character(len=*), intent(in), optional :: filename
+        character(len=*), intent(in), optional :: plot_title
+        logical, intent(in), optional :: show_labels
+        
+        type(figure_t) :: fig
+        real(8), allocatable :: x_edges(:), y_edges(:)
+        real(8), allocatable :: x_vertices(:), y_vertices(:)
+        integer :: i, j, e, v1, v2, v3
+        character(len=64) :: output_filename
+        character(len=128) :: title_text
+        logical :: labels
+        real(8) :: x_min, x_max, y_min, y_max, margin
+        
+        ! Set defaults
+        if (present(filename)) then
+            output_filename = filename
+        else
+            output_filename = "mesh.png"
+        end if
+        
+        if (present(plot_title)) then
+            title_text = plot_title
+        else
+            title_text = "FEM Mesh"
+        end if
+        
+        if (present(show_labels)) then
+            labels = show_labels
+        else
+            labels = .false.
+        end if
+        
+        ! Find mesh bounds
+        x_min = minval(mesh%data%vertices(1, :))
+        x_max = maxval(mesh%data%vertices(1, :))
+        y_min = minval(mesh%data%vertices(2, :))
+        y_max = maxval(mesh%data%vertices(2, :))
+        margin = 0.1_dp * max(x_max - x_min, y_max - y_min)
+        
+        ! Create figure
+        call fig%initialize()
+        
+        ! Allocate arrays for edge plotting
+        allocate(x_edges(4), y_edges(4))
+        
+        ! Plot each triangle
+        do e = 1, mesh%data%n_triangles
+            v1 = mesh%data%triangles(1, e)
+            v2 = mesh%data%triangles(2, e)
+            v3 = mesh%data%triangles(3, e)
+            
+            ! Create closed triangle path
+            x_edges(1) = real(mesh%data%vertices(1, v1), 8)
+            x_edges(2) = real(mesh%data%vertices(1, v2), 8)
+            x_edges(3) = real(mesh%data%vertices(1, v3), 8)
+            x_edges(4) = real(mesh%data%vertices(1, v1), 8)
+            y_edges(1) = real(mesh%data%vertices(2, v1), 8)
+            y_edges(2) = real(mesh%data%vertices(2, v2), 8)
+            y_edges(3) = real(mesh%data%vertices(2, v3), 8)
+            y_edges(4) = real(mesh%data%vertices(2, v1), 8)
+            
+            ! Plot triangle edges
+            call fig%add_plot(x_edges, y_edges)
+        end do
+        
+        ! Plot vertices as points
+        allocate(x_vertices(mesh%data%n_vertices))
+        allocate(y_vertices(mesh%data%n_vertices))
+        do i = 1, mesh%data%n_vertices
+            x_vertices(i) = real(mesh%data%vertices(1, i), 8)
+            y_vertices(i) = real(mesh%data%vertices(2, i), 8)
+        end do
+        call fig%add_plot(x_vertices, y_vertices)
+        
+        ! Set labels
+        call fig%set_xlabel("x")
+        call fig%set_ylabel("y")
+        call fig%set_title(trim(title_text))
+        
+        ! Set axis limits with margin
+        call fig%set_xlim(x_min - margin, x_max + margin)
+        call fig%set_ylim(y_min - margin, y_max + margin)
+        
+        ! Save figure
+        call fig%savefig(trim(output_filename))
+        
+        write(*,*) "Mesh plot saved to: ", trim(output_filename)
+        write(*,*) "Mesh info:"
+        write(*,*) "  Vertices: ", mesh%data%n_vertices
+        write(*,*) "  Triangles: ", mesh%data%n_triangles
+        write(*,*) "  Edges: ", mesh%data%n_edges
+        
+        deallocate(x_edges, y_edges, x_vertices, y_vertices)
+    end subroutine plot_mesh
 
 end module fortfem_api
