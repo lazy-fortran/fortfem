@@ -12,10 +12,21 @@ module fortfem_mesh_2d
         integer :: n_triangles = 0
         integer, allocatable :: triangles(:,:)  ! (3, n_triangles) - vertex indices
         
+        ! Quadrilaterals
+        integer :: n_quads = 0
+        integer, allocatable :: quads(:,:)      ! (4, n_quads) - vertex indices
+        
+        ! Element type flags
+        logical :: has_triangles = .false.
+        logical :: has_quads = .false.
+        logical :: has_mixed_elements = .false.
+        
         ! Edges
         integer :: n_edges = 0
         integer, allocatable :: edges(:,:)      ! (2, n_edges) - vertex indices
         integer, allocatable :: edge_to_triangles(:,:)  ! (2, n_edges) - triangle indices
+        integer, allocatable :: edge_to_quads(:,:)     ! (2, n_edges) - quad indices
+        integer, allocatable :: edge_element_type(:,:) ! (2, n_edges) - element type (1=tri, 2=quad)
         
         ! Edge DOF numbering for H(curl) elements
         integer :: n_edge_dofs = 0
@@ -31,6 +42,7 @@ module fortfem_mesh_2d
         
         ! Connectivity
         type(sparse_int_list_t), allocatable :: vertex_to_triangles(:)
+        type(sparse_int_list_t), allocatable :: vertex_to_quads(:)
         type(sparse_int_list_t), allocatable :: vertex_to_vertices(:)
         
     contains
@@ -58,6 +70,13 @@ module fortfem_mesh_2d
         ! Mesh refinement procedures
         procedure :: refine_uniform => refine_mesh_uniform
         procedure :: refine_adaptive => refine_mesh_adaptive
+=======
+        ! Quadrilateral-specific procedures
+        procedure :: create_structured_quads
+        procedure :: get_quad_edges
+        procedure :: get_quad_vertices
+        procedure :: build_quad_connectivity
+        procedure :: build_mixed_connectivity
     end type mesh_2d_t
     
     ! Helper type for sparse connectivity
@@ -508,7 +527,9 @@ contains
         end if
         
         allocate(temp_boundary(this%n_edges))
-        allocate(this%is_boundary_vertex(this%n_vertices))
+        if (.not. allocated(this%is_boundary_vertex)) then
+            allocate(this%is_boundary_vertex(this%n_vertices))
+        end if
         this%is_boundary_vertex = .false.
         
         this%n_boundary_edges = 0
@@ -1027,6 +1048,174 @@ contains
         do i = 1, mesh%n_edges
             if ((mesh%edges(1, i) == v1 .and. mesh%edges(2, i) == v2) .or. &
                 (mesh%edges(1, i) == v2 .and. mesh%edges(2, i) == v1)) then
+=======
+    ! Quadrilateral mesh creation and operations
+    
+    ! Create structured quadrilateral mesh
+    subroutine create_structured_quads(this, nx, ny, x0, x1, y0, y1)
+        class(mesh_2d_t), intent(inout) :: this
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: x0, x1, y0, y1
+        integer :: i, j, iv, iq
+        real(dp) :: dx, dy
+        
+        ! Initialize mesh
+        this%n_vertices = (nx + 1) * (ny + 1)
+        this%n_quads = nx * ny
+        this%n_triangles = 0
+        this%has_quads = .true.
+        this%has_triangles = .false.
+        this%has_mixed_elements = .false.
+        
+        ! Allocate arrays
+        allocate(this%vertices(2, this%n_vertices))
+        allocate(this%quads(4, this%n_quads))
+        allocate(this%is_boundary_vertex(this%n_vertices))
+        
+        ! Create vertices
+        dx = (x1 - x0) / real(nx, dp)
+        dy = (y1 - y0) / real(ny, dp)
+        
+        iv = 0
+        do j = 0, ny
+            do i = 0, nx
+                iv = iv + 1
+                this%vertices(1, iv) = x0 + real(i, dp) * dx
+                this%vertices(2, iv) = y0 + real(j, dp) * dy
+                
+                ! Mark boundary vertices
+                this%is_boundary_vertex(iv) = (i == 0 .or. i == nx .or. &
+                                             j == 0 .or. j == ny)
+            end do
+        end do
+        
+        ! Create quadrilaterals
+        iq = 0
+        do j = 0, ny - 1
+            do i = 0, nx - 1
+                iq = iq + 1
+                ! Vertices in counter-clockwise order
+                this%quads(1, iq) = j * (nx + 1) + i + 1
+                this%quads(2, iq) = j * (nx + 1) + i + 2
+                this%quads(3, iq) = (j + 1) * (nx + 1) + i + 2
+                this%quads(4, iq) = (j + 1) * (nx + 1) + i + 1
+            end do
+        end do
+        
+        ! Build connectivity
+        call this%build_connectivity()
+        call this%find_boundary()
+    end subroutine create_structured_quads
+    
+    ! Get edges of a quadrilateral
+    subroutine get_quad_edges(this, quad_id, edge_ids)
+        class(mesh_2d_t), intent(in) :: this
+        integer, intent(in) :: quad_id
+        integer, intent(out) :: edge_ids(4)
+        integer :: i, v1, v2, edge_found
+        
+        do i = 1, 4
+            v1 = this%quads(i, quad_id)
+            v2 = this%quads(mod(i, 4) + 1, quad_id)
+            
+            ! Find edge between v1 and v2
+            call find_edge(this, v1, v2, edge_found)
+            edge_ids(i) = edge_found
+        end do
+    end subroutine get_quad_edges
+    
+    ! Get vertices of a quadrilateral
+    subroutine get_quad_vertices(this, quad_id, vertex_coords)
+        class(mesh_2d_t), intent(in) :: this
+        integer, intent(in) :: quad_id
+        real(dp), intent(out) :: vertex_coords(2, 4)
+        integer :: i, v
+        
+        do i = 1, 4
+            v = this%quads(i, quad_id)
+            vertex_coords(:, i) = this%vertices(:, v)
+        end do
+    end subroutine get_quad_vertices
+    
+    ! Build connectivity for quadrilateral elements
+    subroutine build_quad_connectivity(this)
+        class(mesh_2d_t), intent(inout) :: this
+        integer :: i, j, v1, v2, edge_count
+        integer, allocatable :: edge_list(:, :)
+        logical, allocatable :: edge_exists(:)
+        
+        if (.not. this%has_quads) return
+        
+        ! Count and create edges for quadrilaterals
+        edge_count = 0
+        allocate(edge_list(2, 4 * this%n_quads))
+        
+        ! Collect all edges from quads
+        do i = 1, this%n_quads
+            do j = 1, 4
+                edge_count = edge_count + 1
+                edge_list(1, edge_count) = this%quads(j, i)
+                edge_list(2, edge_count) = this%quads(mod(j, 4) + 1, i)
+                
+                ! Ensure consistent edge orientation (smaller vertex first)
+                if (edge_list(1, edge_count) > edge_list(2, edge_count)) then
+                    v1 = edge_list(1, edge_count)
+                    edge_list(1, edge_count) = edge_list(2, edge_count)
+                    edge_list(2, edge_count) = v1
+                end if
+            end do
+        end do
+        
+        ! Remove duplicate edges
+        call remove_duplicate_edges(edge_list, edge_count, this%edges, this%n_edges)
+        
+        ! Allocate connectivity arrays
+        if (allocated(this%edge_to_quads)) deallocate(this%edge_to_quads)
+        allocate(this%edge_to_quads(2, this%n_edges))
+        this%edge_to_quads = 0
+        
+        ! Build edge-to-quad connectivity
+        call build_edge_quad_mapping(this)
+        
+        deallocate(edge_list)
+    end subroutine build_quad_connectivity
+    
+    ! Build connectivity for mixed triangle-quad meshes
+    subroutine build_mixed_connectivity(this)
+        class(mesh_2d_t), intent(inout) :: this
+        
+        this%has_mixed_elements = (this%has_triangles .and. this%has_quads)
+        
+        if (this%has_triangles) then
+            call this%build_edge_connectivity()
+        end if
+        
+        if (this%has_quads) then
+            call this%build_quad_connectivity()
+        end if
+        
+        if (this%has_mixed_elements) then
+            ! Handle mixed element connectivity
+            call merge_triangle_quad_connectivity(this)
+        end if
+    end subroutine build_mixed_connectivity
+    
+    ! Helper procedures for quadrilateral support
+    
+    subroutine find_edge(mesh, v1, v2, edge_id)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: v1, v2
+        integer, intent(out) :: edge_id
+        integer :: i, va, vb
+        
+        edge_id = 0
+        
+        ! Ensure consistent vertex ordering
+        va = min(v1, v2)
+        vb = max(v1, v2)
+        
+        do i = 1, mesh%n_edges
+            if ((mesh%edges(1, i) == va .and. mesh%edges(2, i) == vb)) then
                 edge_id = i
                 return
             end if
@@ -1037,5 +1226,74 @@ contains
         write(*,*) "This indicates a corrupted mesh topology"
         error stop "Fatal error in find_edge_between_vertices"
     end function find_edge_between_vertices
+
+end module fortfem_mesh_2d
+=======
+    end subroutine find_edge
+    
+    subroutine remove_duplicate_edges(edge_list, edge_count, unique_edges, n_unique)
+        integer, intent(in) :: edge_count
+        integer, intent(in) :: edge_list(2, edge_count)
+        integer, allocatable, intent(out) :: unique_edges(:, :)
+        integer, intent(out) :: n_unique
+        logical, allocatable :: is_duplicate(:)
+        integer :: i, j, edge_counter
+        
+        allocate(is_duplicate(edge_count))
+        is_duplicate = .false.
+        
+        ! Mark duplicates
+        do i = 1, edge_count
+            if (is_duplicate(i)) cycle
+            do j = i + 1, edge_count
+                if (edge_list(1, i) == edge_list(1, j) .and. &
+                    edge_list(2, i) == edge_list(2, j)) then
+                    is_duplicate(j) = .true.
+                end if
+            end do
+        end do
+        
+        ! Count unique edges
+        n_unique = count(.not. is_duplicate)
+        allocate(unique_edges(2, n_unique))
+        
+        edge_counter = 0
+        do i = 1, edge_count
+            if (.not. is_duplicate(i)) then
+                edge_counter = edge_counter + 1
+                unique_edges(:, edge_counter) = edge_list(:, i)
+            end if
+        end do
+        
+        deallocate(is_duplicate)
+    end subroutine remove_duplicate_edges
+    
+    subroutine build_edge_quad_mapping(mesh)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer :: i, j, edge_id
+        
+        ! For each quad, find its edges and update connectivity
+        do i = 1, mesh%n_quads
+            do j = 1, 4
+                call find_edge(mesh, mesh%quads(j, i), &
+                             mesh%quads(mod(j, 4) + 1, i), edge_id)
+                
+                if (edge_id > 0) then
+                    if (mesh%edge_to_quads(1, edge_id) == 0) then
+                        mesh%edge_to_quads(1, edge_id) = i
+                    else
+                        mesh%edge_to_quads(2, edge_id) = i
+                    end if
+                end if
+            end do
+        end do
+    end subroutine build_edge_quad_mapping
+    
+    subroutine merge_triangle_quad_connectivity(mesh)
+        type(mesh_2d_t), intent(inout) :: mesh
+        ! Placeholder for handling mixed connectivity
+        ! Would merge triangle and quad edge connectivity
+        write(*,*) "Mixed connectivity merge not fully implemented"
+    end subroutine merge_triangle_quad_connectivity
 
 end module fortfem_mesh_2d
