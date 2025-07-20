@@ -52,6 +52,11 @@ doc:
 	# Copy example media files to doc build directory for proper linking
 	mkdir -p build/doc/example
 	if [ -d build/example ]; then cp -r build/example/* build/doc/example/ 2>/dev/null || true; fi
+	# Copy artifacts (plots) if they exist
+	if [ -d artifacts/plots ]; then \
+		mkdir -p build/doc/artifacts/plots; \
+		cp -r artifacts/plots/* build/doc/artifacts/plots/ 2>/dev/null || true; \
+	fi
 
 # Clean build artifacts
 clean:

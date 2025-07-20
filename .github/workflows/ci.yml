@@ -56,19 +56,23 @@ jobs:
       run: |
         fpm build --example
 
-    - name: Discover and run all examples
+    - name: Run all examples
       run: |
-        echo "Discovering and running all examples..."
-        for example in example/*.f90; do
-          example_name=$(basename "$example" .f90)
-          echo "Running example: $example_name"
-          fpm run --example "$example_name" || echo "Example $example_name failed but continuing..."
+        echo "Running all examples..."
+        for example_dir in example/*/; do
+          if [[ -d "$example_dir" ]]; then
+            example_name=$(basename "$example_dir")
+            if [[ -f "$example_dir/${example_name}.f90" ]]; then
+              echo "Running example: $example_name"
+              fpm run --example "$example_name" || echo "Example $example_name failed but continuing..."
+            fi
+          fi
         done
 
     - name: Run all benchmarks  
       run: |
         echo "Running FortFEM benchmarks..."
-        fpm run --example plotting_demo || echo "Plotting demo completed"
+        fpm run --example plotting || echo "Plotting demo completed"
         
         echo "Running convergence benchmarks..."
         fpm test run_convergence_tests || echo "Convergence tests completed"

@@ -1195,13 +1195,13 @@ contains
     end function find_nearest_value
     
     ! Plot mesh triangulation
-    subroutine plot_mesh(mesh, filename, plot_title, show_labels)
+    subroutine plot_mesh(mesh, filename, title, show_labels)
         use fortplot, only: figure, xlabel, ylabel, &
                             fortplot_title => title, xlim, ylim, savefig
         use fortplot_figure, only: figure_t
         type(mesh_t), intent(in) :: mesh
         character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: plot_title
+        character(len=*), intent(in), optional :: title
         logical, intent(in), optional :: show_labels
         
         type(figure_t) :: fig
@@ -1220,8 +1220,8 @@ contains
             output_filename = "mesh.png"
         end if
         
-        if (present(plot_title)) then
-            title_text = plot_title
+        if (present(title)) then
+            title_text = title
         else
             title_text = "FEM Mesh"
         end if

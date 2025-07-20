@@ -12,21 +12,21 @@ program plot_mesh_example
     mesh = unit_square_mesh(n_refinements)
     
     ! Plot basic mesh
-    call plot(mesh, filename="mesh_basic.png", plot_title="Unit Square Mesh")
+    call plot(mesh, filename="mesh_basic.png", title="Unit Square Mesh")
     
     ! Create finer mesh
     n_refinements = 10
     mesh = unit_square_mesh(n_refinements)
     
     ! Plot finer mesh
-    call plot(mesh, filename="mesh_fine.png", plot_title="Refined Unit Square Mesh")
+    call plot(mesh, filename="mesh_fine.png", title="Refined Unit Square Mesh")
     
     ! Create coarse mesh for clarity
     n_refinements = 3
     mesh = unit_square_mesh(n_refinements)
     
     ! Plot with custom title
-    call plot(mesh, filename="mesh_coarse.png", plot_title="Coarse Mesh (3x3)")
+    call plot(mesh, filename="mesh_coarse.png", title="Coarse Mesh (3x3)")
     
     ! Clean up
     call mesh%destroy()
