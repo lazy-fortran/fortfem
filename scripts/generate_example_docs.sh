@@ -44,6 +44,7 @@ EOF
 # Process each example directory
 example_count=0
 for example_dir in "$EXAMPLE_DIR"/*/; do
+    echo "🔍 Checking directory: $example_dir"
     if [[ ! -d "$example_dir" ]]; then
         echo "No example directories found in $EXAMPLE_DIR"
         continue
@@ -53,6 +54,7 @@ for example_dir in "$EXAMPLE_DIR"/*/; do
     example_file="$example_dir/${example_name}.f90"
     example_readme="$example_dir/README.md"
     
+    echo "🔍 Looking for: $example_file"
     if [[ ! -f "$example_file" ]]; then
         echo "⚠️  No ${example_name}.f90 found in $example_dir, skipping..."
         continue
@@ -220,6 +222,7 @@ done
 echo "📝 Processing complete, finalizing index..."
 
 # Complete the examples index
+echo "📝 Adding final sections to index file..."
 cat >> "$DOC_EXAMPLES_DIR/index.md" << 'EOF'
 
 ## Creating Your Own Examples
