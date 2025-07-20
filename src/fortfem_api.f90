@@ -957,14 +957,14 @@ contains
             dofs(1) = v1  ! Vertex 1
             dofs(2) = v2  ! Vertex 2  
             dofs(3) = v3  ! Vertex 3
-            ! For edges, use simplified mapping: global vertex count + edge number
-            ! This is a simplified P2 DOF mapping - proper implementation needs edge-to-DOF map
-            edge1 = uh%space%mesh%data%n_vertices + (e-1)*3 + 1  ! Edge 1-2
-            edge2 = uh%space%mesh%data%n_vertices + (e-1)*3 + 2  ! Edge 2-3
-            edge3 = uh%space%mesh%data%n_vertices + (e-1)*3 + 3  ! Edge 3-1
-            if (edge1 <= ndof) dofs(4) = edge1
-            if (edge2 <= ndof) dofs(5) = edge2 
-            if (edge3 <= ndof) dofs(6) = edge3
+            
+            ! Find global edge indices for this triangle
+            call find_triangle_edges(uh%space%mesh%data, e, edge1, edge2, edge3)
+            
+            ! Map edges to global DOF indices: vertices + edges
+            dofs(4) = uh%space%mesh%data%n_vertices + edge1  ! Edge 1-2 midpoint
+            dofs(5) = uh%space%mesh%data%n_vertices + edge2  ! Edge 2-3 midpoint  
+            dofs(6) = uh%space%mesh%data%n_vertices + edge3  ! Edge 3-1 midpoint
             
             ! Compute Jacobian at element center
             call basis_p2%compute_jacobian(vertices, jac, det_j)
@@ -1013,12 +1013,25 @@ contains
             end do
         end do
         
-        ! Apply boundary conditions (simplified: set boundary DOFs to bc value)
-        do i = 1, min(ndof, uh%space%mesh%data%n_vertices)
+        ! Apply boundary conditions to vertex DOFs
+        do i = 1, uh%space%mesh%data%n_vertices
             if (uh%space%mesh%data%is_boundary_vertex(i)) then
                 K(i,:) = 0.0_dp
                 K(i,i) = 1.0_dp
                 F(i) = bc%value
+            end if
+        end do
+        
+        ! Apply boundary conditions to edge DOFs on boundary edges
+        do i = 1, uh%space%mesh%data%n_edges
+            if (uh%space%mesh%data%is_boundary_edge(i)) then
+                ! Edge DOF index = n_vertices + edge_index
+                j = uh%space%mesh%data%n_vertices + i
+                if (j <= ndof) then
+                    K(j,:) = 0.0_dp
+                    K(j,j) = 1.0_dp
+                    F(j) = bc%value
+                end if
             end if
         end do
         
@@ -1745,5 +1758,44 @@ contains
         
         deallocate(x_edges, y_edges)
     end subroutine plot_mesh
+
+    ! Find global edge indices for triangle edges
+    subroutine find_triangle_edges(mesh, triangle_idx, edge1, edge2, edge3)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: triangle_idx
+        integer, intent(out) :: edge1, edge2, edge3
+        
+        integer :: v1, v2, v3, i
+        integer :: e1_v1, e1_v2, e2_v1, e2_v2, e3_v1, e3_v2
+        
+        ! Get triangle vertices
+        v1 = mesh%triangles(1, triangle_idx)
+        v2 = mesh%triangles(2, triangle_idx)  
+        v3 = mesh%triangles(3, triangle_idx)
+        
+        ! Triangle edges (vertex pairs)
+        ! Edge 1: v1-v2, Edge 2: v2-v3, Edge 3: v3-v1
+        e1_v1 = min(v1, v2); e1_v2 = max(v1, v2)
+        e2_v1 = min(v2, v3); e2_v2 = max(v2, v3)
+        e3_v1 = min(v3, v1); e3_v2 = max(v3, v1)
+        
+        ! Find edges in global edge list
+        edge1 = 0; edge2 = 0; edge3 = 0
+        
+        do i = 1, mesh%n_edges
+            if (mesh%edges(1, i) == e1_v1 .and. mesh%edges(2, i) == e1_v2) then
+                edge1 = i
+            else if (mesh%edges(1, i) == e2_v1 .and. mesh%edges(2, i) == e2_v2) then
+                edge2 = i
+            else if (mesh%edges(1, i) == e3_v1 .and. mesh%edges(2, i) == e3_v2) then
+                edge3 = i
+            end if
+        end do
+        
+        ! Ensure all edges were found
+        if (edge1 == 0 .or. edge2 == 0 .or. edge3 == 0) then
+            error stop "find_triangle_edges: Could not find all edges for triangle"
+        end if
+    end subroutine find_triangle_edges
 
 end module fortfem_api
