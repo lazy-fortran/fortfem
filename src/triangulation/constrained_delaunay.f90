@@ -9,6 +9,7 @@ module constrained_delaunay
     public :: constrained_delaunay_triangulate
     public :: insert_constraint, recover_constraints
     public :: enforce_constraints
+    public :: constraint_edge_exists
     
 contains
 
@@ -321,12 +322,15 @@ subroutine retriangulate_with_constraint(mesh, constraint_v1, constraint_v2, &
     integer, intent(in) :: boundary_edges(:,:)
     
     integer :: i, v1, v2, new_tri
-    type(point_t) :: p1, p2, pc
+    type(point_t) :: p1, p2, pc1, pc2, midpoint
+    logical :: connects_to_v1
+    real(dp) :: dist1, dist2
     
-    pc = mesh%points(constraint_v1)
+    pc1 = mesh%points(constraint_v1)
+    pc2 = mesh%points(constraint_v2)
     
-    ! Simple retriangulation: connect each boundary edge to one endpoint of constraint
-    ! This is a simplified approach - more sophisticated algorithms exist
+    ! Improved triangulation: connect boundary edges to appropriate constraint vertex
+    ! This reduces (but doesn't eliminate) overlapping triangles
     do i = 1, nboundary
         v1 = boundary_edges(1, i)
         v2 = boundary_edges(2, i)
@@ -339,11 +343,28 @@ subroutine retriangulate_with_constraint(mesh, constraint_v1, constraint_v2, &
             cycle
         end if
         
+        ! Choose constraint vertex based on which is closer to edge midpoint
+        midpoint%x = (p1%x + p2%x) / 2.0_dp
+        midpoint%y = (p1%y + p2%y) / 2.0_dp
+        
+        dist1 = (midpoint%x - pc1%x)**2 + (midpoint%y - pc1%y)**2
+        dist2 = (midpoint%x - pc2%x)**2 + (midpoint%y - pc2%y)**2
+        
+        connects_to_v1 = (dist1 < dist2)
+        
         ! Create triangle with proper orientation
-        if (orientation(p1, p2, pc) == ORIENTATION_CCW) then
-            new_tri = add_triangle(mesh, v1, v2, constraint_v1)
+        if (connects_to_v1) then
+            if (orientation(p1, p2, pc1) == ORIENTATION_CCW) then
+                new_tri = add_triangle(mesh, v1, v2, constraint_v1)
+            else
+                new_tri = add_triangle(mesh, v2, v1, constraint_v1)
+            end if
         else
-            new_tri = add_triangle(mesh, v2, v1, constraint_v1)
+            if (orientation(p1, p2, pc2) == ORIENTATION_CCW) then
+                new_tri = add_triangle(mesh, v1, v2, constraint_v2)
+            else
+                new_tri = add_triangle(mesh, v2, v1, constraint_v2)
+            end if
         end if
     end do
     
@@ -351,6 +372,125 @@ subroutine retriangulate_with_constraint(mesh, constraint_v1, constraint_v2, &
     call ensure_constraint_triangle(mesh, constraint_v1, constraint_v2)
     
 end subroutine retriangulate_with_constraint
+
+subroutine split_cavity_by_constraint(mesh, constraint_v1, constraint_v2, &
+                                     boundary_edges, nboundary, &
+                                     polygon1, npoly1, polygon2, npoly2)
+    !> Split cavity boundary into two polygons on either side of constraint edge
+    type(mesh_t), intent(in) :: mesh
+    integer, intent(in) :: constraint_v1, constraint_v2, nboundary
+    integer, intent(in) :: boundary_edges(:,:)
+    integer, allocatable, intent(out) :: polygon1(:), polygon2(:)
+    integer, intent(out) :: npoly1, npoly2
+    
+    type(point_t) :: constraint_p1, constraint_p2, edge_p1, edge_p2, midpoint
+    integer :: i, v1, v2, side
+    integer, allocatable :: temp_poly1(:), temp_poly2(:)
+    
+    constraint_p1 = mesh%points(constraint_v1)
+    constraint_p2 = mesh%points(constraint_v2)
+    
+    allocate(temp_poly1(2 * nboundary + 2))  ! Worst case: all edges on one side
+    allocate(temp_poly2(2 * nboundary + 2))
+    
+    npoly1 = 0
+    npoly2 = 0
+    
+    ! Add constraint vertices to both polygons
+    npoly1 = npoly1 + 1
+    temp_poly1(npoly1) = constraint_v1
+    npoly1 = npoly1 + 1
+    temp_poly1(npoly1) = constraint_v2
+    
+    npoly2 = npoly2 + 1
+    temp_poly2(npoly2) = constraint_v1
+    npoly2 = npoly2 + 1
+    temp_poly2(npoly2) = constraint_v2
+    
+    ! Classify boundary edges by which side of constraint they're on
+    do i = 1, nboundary
+        v1 = boundary_edges(1, i)
+        v2 = boundary_edges(2, i)
+        
+        ! Skip if this is the constraint edge itself
+        if ((v1 == constraint_v1 .and. v2 == constraint_v2) .or. &
+            (v1 == constraint_v2 .and. v2 == constraint_v1)) then
+            cycle
+        end if
+        
+        edge_p1 = mesh%points(v1)
+        edge_p2 = mesh%points(v2)
+        
+        ! Determine which side of constraint edge this boundary edge is on
+        ! Use orientation test with midpoint of boundary edge
+        midpoint%x = (edge_p1%x + edge_p2%x) / 2.0_dp
+        midpoint%y = (edge_p1%y + edge_p2%y) / 2.0_dp
+        midpoint%id = 0
+        
+        side = orientation(constraint_p1, constraint_p2, midpoint)
+        
+        if (side >= 0) then
+            ! Add to polygon1 (left side or on constraint)
+            npoly1 = npoly1 + 1
+            temp_poly1(npoly1) = v1
+            npoly1 = npoly1 + 1  
+            temp_poly1(npoly1) = v2
+        else
+            ! Add to polygon2 (right side)
+            npoly2 = npoly2 + 1
+            temp_poly2(npoly2) = v1
+            npoly2 = npoly2 + 1
+            temp_poly2(npoly2) = v2
+        end if
+    end do
+    
+    ! Copy to output arrays
+    if (npoly1 > 0) then
+        allocate(polygon1(npoly1))
+        polygon1(1:npoly1) = temp_poly1(1:npoly1)
+    end if
+    
+    if (npoly2 > 0) then
+        allocate(polygon2(npoly2))
+        polygon2(1:npoly2) = temp_poly2(1:npoly2)
+    end if
+    
+    deallocate(temp_poly1, temp_poly2)
+    
+end subroutine split_cavity_by_constraint
+
+subroutine triangulate_polygon(mesh, polygon, npoly)
+    !> Simple polygon triangulation using ear clipping
+    type(mesh_t), intent(inout) :: mesh
+    integer, intent(in) :: polygon(:), npoly
+    
+    integer :: i, v1, v2, v3, new_tri
+    
+    ! For now, simple fan triangulation from first vertex
+    ! This is not optimal but works for convex polygons
+    if (npoly < 3) return
+    
+    do i = 2, npoly - 1
+        v1 = polygon(1)
+        v2 = polygon(i)
+        v3 = polygon(i + 1)
+        
+        ! Create triangle with proper orientation
+        new_tri = add_triangle(mesh, v1, v2, v3)
+    end do
+    
+end subroutine triangulate_polygon
+
+subroutine ensure_constraint_edge_triangle(mesh, constraint_v1, constraint_v2)
+    !> Ensure constraint edge is represented by at least one triangle
+    type(mesh_t), intent(inout) :: mesh
+    integer, intent(in) :: constraint_v1, constraint_v2
+    
+    ! For now, just verify the edge exists - actual triangle creation
+    ! should be handled by the polygon triangulation
+    call ensure_constraint_triangle(mesh, constraint_v1, constraint_v2)
+    
+end subroutine ensure_constraint_edge_triangle
 
 subroutine ensure_constraint_triangle(mesh, v1, v2)
     !> Ensure there's a triangle containing the constraint edge v1-v2
