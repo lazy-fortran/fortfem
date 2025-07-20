@@ -56,5 +56,30 @@ for (int level = 1; level <= 5; level++) {
     convfile << h << " " << L2norm << " " << H1norm << " " << Vh.ndof << endl;
 }
 
+// Create visualization of final solution
+mesh ThFinal = square(32, 32, [x, y]);
+fespace VhFinal(ThFinal, P1);
+VhFinal uFinal, vFinal;
+
+varf poissonFinal(uFinal, vFinal) = 
+    int2d(ThFinal)( dx(uFinal)*dx(vFinal) + dy(uFinal)*dy(vFinal) )
+    + on(1, 2, 3, 4, uFinal=0);
+
+varf rhsFinal(uFinal, vFinal) = 
+    int2d(ThFinal)( Source*vFinal )
+    + on(1, 2, 3, 4, uFinal=0);
+
+matrix AFinal = poissonFinal(VhFinal, VhFinal);
+real[int] bFinal = rhsFinal(0, VhFinal);
+uFinal[] = AFinal^-1 * bFinal;
+
+// Save solution plot as PostScript (will be converted to PNG in CI)
+plot(uFinal, value=true, fill=true, cmm="FreeFEM Poisson Solution", ps="freefem_poisson_solution.eps");
+
+// Save exact solution plot for comparison
+VhFinal exactSol = ExactU;
+plot(exactSol, value=true, fill=true, cmm="Exact Poisson Solution", ps="freefem_poisson_exact.eps");
+
 cout << "\nFreeFEM Poisson 2D reference computed successfully!" << endl;
 cout << "Results saved to freefem_convergence_2d.dat" << endl;
+cout << "Solution plots saved to freefem_poisson_solution.eps and freefem_poisson_exact.eps" << endl;

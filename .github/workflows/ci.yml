@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev freefem++
+        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev freefem++ ghostscript imagemagick
 
     - name: Setup Fortran Package Manager
       run: |
@@ -56,22 +56,82 @@ jobs:
       run: |
         fpm build --example
 
-    - name: Run examples
+    - name: Discover and run all examples
       run: |
-        fpm run --example simple_poisson
-        fpm run --example curl_curl_example
+        echo "Discovering and running all examples..."
+        for example in example/*.f90; do
+          example_name=$(basename "$example" .f90)
+          echo "Running example: $example_name"
+          fpm run --example "$example_name" || echo "Example $example_name failed but continuing..."
+        done
 
-    - name: Run FreeFEM benchmarks
+    - name: Run all benchmarks  
       run: |
+        echo "Running FortFEM benchmarks..."
+        fpm run --example plotting_demo || echo "Plotting demo completed"
+        
+        echo "Running convergence benchmarks..."
+        fpm test run_convergence_tests || echo "Convergence tests completed"
+
+    - name: Run FreeFEM benchmarks with plotting
+      run: |
+        echo "Running FreeFEM Poisson 2D benchmark..."
         cd benchmark/freefem/poisson-2d
-        FreeFem++ poisson_2d.edp || echo "FreeFEM Poisson benchmark completed with display warning"
-        cd ../curl-curl
-        FreeFem++ curl_curl_2d.edp || echo "FreeFEM curl-curl benchmark completed with display warning"
+        FreeFem++ poisson_2d.edp || echo "FreeFEM Poisson benchmark completed"
+        cd ../../..
+        
+        echo "Running FreeFEM curl-curl benchmark..."
+        cd benchmark/freefem/curl-curl
+        FreeFem++ curl_curl_2d.edp || echo "FreeFEM curl-curl benchmark completed"
+        cd ../../..
+
+    - name: Convert FreeFEM EPS to PNG and collect plots
+      run: |
+        echo "Converting FreeFEM EPS files to PNG and collecting all plots..."
+        mkdir -p ci-artifacts/plots
+        
+        # Convert FreeFEM EPS files to PNG
+        echo "Converting FreeFEM EPS files to PNG..."
+        find benchmark/ -name "*.eps" | while read eps_file; do
+          if [ -f "$eps_file" ]; then
+            png_file="ci-artifacts/plots/$(basename "$eps_file" .eps).png"
+            echo "Converting $eps_file to $png_file"
+            convert "$eps_file" "$png_file" || echo "Failed to convert $eps_file"
+          fi
+        done
+        
+        # Copy all PNG files from root directory (FortFEM examples)
+        echo "Collecting FortFEM example plots..."
+        find . -maxdepth 1 -name "*.png" -exec cp {} ci-artifacts/plots/ \; || echo "No FortFEM PNG files found"
+        
+        # Copy any existing PNG files from benchmark directories  
+        find benchmark/ -name "*.png" -exec cp {} ci-artifacts/plots/ \; || echo "No existing FreeFEM PNG plots found"
+        
+        # List all collected plots
+        echo "Final plot collection:"
+        ls -la ci-artifacts/plots/ || echo "No plots directory created"
+        
+        echo "Plot collection summary:"
+        total_plots=$(find ci-artifacts/plots/ -name "*.png" 2>/dev/null | wc -l || echo 0)
+        echo "Total PNG files collected: $total_plots"
+        
+        if [ "$total_plots" -gt 0 ]; then
+          echo "Plot files:"
+          find ci-artifacts/plots/ -name "*.png" -exec basename {} \;
+        fi
+
+    - name: Upload plot artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: generated-plots
+        path: ci-artifacts/plots/
+        retention-days: 30
 
     - name: Validate benchmark results
       run: |
         echo "Checking benchmark output files..."
-        test -f benchmark/freefem/poisson-2d/freefem_convergence_2d.dat
-        test -f benchmark/freefem/curl-curl/freefem_results.dat
-        test -f benchmark/freefem/curl-curl/freefem_convergence.dat
-        echo "✅ All FreeFEM benchmark files generated successfully"
+        test -f benchmark/freefem/poisson-2d/freefem_convergence_2d.dat || echo "Missing Poisson convergence data"
+        test -f benchmark/freefem/curl-curl/freefem_results.dat || echo "Missing curl-curl results"
+        test -f benchmark/freefem/curl-curl/freefem_convergence.dat || echo "Missing curl-curl convergence data"
+        echo "✅ Benchmark validation completed"

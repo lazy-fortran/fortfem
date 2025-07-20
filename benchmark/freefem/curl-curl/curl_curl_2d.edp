@@ -152,6 +152,21 @@ if (true) {  // Set to true to run convergence study
     }
 }
 
+// Save vector field visualization as PostScript (will be converted to PNG in CI)
+plot([Ex, Ey], value=true, coef=0.1, cmm="FreeFEM Curl-Curl Solution", ps="freefem_curlcurl_solution.eps");
+
+// Save exact solution for comparison
+Vh [ExExact, EyExact];
+ExExact = ExactEx;
+EyExact = ExactEy;
+plot([ExExact, EyExact], value=true, coef=0.1, cmm="Exact Curl-Curl Solution", ps="freefem_curlcurl_exact.eps");
+
+// Save curl field
+fespace Ph(Th, P0);
+Ph curlField = dx(Ey) - dy(Ex);
+plot(curlField, value=true, fill=true, cmm="FreeFEM Curl Field", ps="freefem_curl_field.eps");
+
 cout << "\nFreeFEM reference solution computed successfully!" << endl;
 cout << "Results saved to freefem_results.dat" << endl;
 cout << "Analytical solution saved to freefem_solution.dat" << endl;
+cout << "Solution plots saved to freefem_curlcurl_solution.eps, freefem_curlcurl_exact.eps, freefem_curl_field.eps" << endl;
