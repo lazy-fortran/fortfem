@@ -22,6 +22,7 @@ coverage.info
 
 # Output files
 *.png
+*.eps
 *.vtk
 *.dat
 
