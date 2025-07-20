@@ -15,6 +15,22 @@ OUTPUT_DIR="$DOC_EXAMPLES_DIR/generated"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Create index.md for the generated subdirectory
+cat > "$OUTPUT_DIR/index.md" << 'EOF'
+---
+title: Example Source Code
+---
+
+# Example Source Code and Plots
+
+This section contains detailed documentation for each FortFEM example, including:
+- Complete source code listings
+- Generated plots and visualizations
+- Usage instructions
+
+[← Back to Examples](../index.html)
+EOF
+
 # Initialize the examples index page
 cat > "$DOC_EXAMPLES_DIR/index.md" << 'EOF'
 ---
@@ -205,7 +221,7 @@ EOF
 
 ---
 
-[← Back to Examples](index.html) | [FortFEM Documentation](../index.html)
+[← Back to Examples](../index.html) | [FortFEM Documentation](../../index.html)
 EOF
     
     # Add to examples index
@@ -213,6 +229,11 @@ EOF
     example_description=$(head -n 20 "$example_file" 2>/dev/null | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' 2>/dev/null || echo "Example program")
     cat >> "$DOC_EXAMPLES_DIR/index.md" << EOF
 - [$example_name](generated/${example_name}.html) - $example_description
+EOF
+    
+    # Also add to generated subdirectory index
+    cat >> "$OUTPUT_DIR/index.md" << EOF
+- [$example_name](${example_name}.html) - $example_description
 EOF
     
     echo "  ✅ Completed processing $example_name"
