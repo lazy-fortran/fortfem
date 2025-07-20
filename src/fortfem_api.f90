@@ -42,6 +42,10 @@ module fortfem_api
     public :: mesh_from_boundary
     public :: function_space
     public :: vector_function_space
+    
+    ! Public mesh refinement functions
+    public :: refine_uniform
+    public :: refine_adaptive
     public :: function
     public :: vector_function
     public :: trial_function
@@ -499,6 +503,24 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function mesh_from_boundary
+    
+    ! Mesh refinement functions
+    function refine_uniform(mesh) result(refined_mesh)
+        type(mesh_t), intent(in) :: mesh
+        type(mesh_t) :: refined_mesh
+        
+        ! Implement uniform red refinement
+        call mesh%data%refine_uniform(refined_mesh%data)
+    end function refine_uniform
+    
+    function refine_adaptive(mesh, refine_markers) result(refined_mesh)
+        type(mesh_t), intent(in) :: mesh
+        logical, intent(in) :: refine_markers(:)
+        type(mesh_t) :: refined_mesh
+        
+        ! Implement adaptive red-green refinement
+        call mesh%data%refine_adaptive(refine_markers, refined_mesh%data)
+    end function refine_adaptive
     
     ! Function space constructor
     function function_space(mesh, family, degree) result(space)
