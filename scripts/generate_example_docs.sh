@@ -207,13 +207,17 @@ EOF
 EOF
     
     # Add to examples index
+    echo "  Adding to index..."
     example_description=$(head -n 20 "$example_file" | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' || echo "Example program")
     cat >> "$DOC_EXAMPLES_DIR/index.md" << EOF
 - [$example_name](generated/${example_name}.html) - $example_description
 EOF
     
+    echo "  ✅ Completed processing $example_name"
     ((example_count++))
 done
+
+echo "📝 Processing complete, finalizing index..."
 
 # Complete the examples index
 cat >> "$DOC_EXAMPLES_DIR/index.md" << 'EOF'
@@ -253,9 +257,11 @@ echo "✅ Generated documentation for $example_count examples"
 # Copy plots to documentation directory for FORD
 if [[ -d "$ARTIFACTS_DIR" ]]; then
     echo "📁 Copying plots to documentation directory..."
-    mkdir -p build/doc/artifacts/plots
+    mkdir -p build/doc/artifacts/plots || true
     cp -r "$ARTIFACTS_DIR"/* build/doc/artifacts/plots/ 2>/dev/null || true
     echo "✅ Plots copied to build/doc/artifacts/plots/"
+else
+    echo "📁 No artifacts directory found, skipping plot copy"
 fi
 
 echo "🎉 Example documentation generation complete!"
