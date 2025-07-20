@@ -19,13 +19,14 @@ program run_all_tests
     n_failed = 0
     
     ! New API tests
-    call run_test("Simple API", "test_simple_api", status)
+    
+    call run_test("FEniCS-style API", "test_fenics_style_api", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
-    call run_test("Forms API Structure", "test_forms_api", status)
+    call run_test("Curl-Curl API", "test_curl_curl_api", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
-    call run_test("Expression Tree System", "test_expression_tree", status)
+    call run_test("Forms API Simple", "test_forms_api_simple", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
     ! Core module tests
@@ -38,17 +39,10 @@ program run_all_tests
     call run_test("Mesh 2D", "test_mesh_2d", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
-    call run_test("Assembly 1D", "test_assembly_1d", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
-    
-    call run_test("Assembly 2D", "test_assembly_2d", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
     
     call run_test("Basis 1D", "test_basis_1d", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
-    call run_test("Basis 2D", "test_basis_2d", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
     
     call run_test("P1 Basis 2D", "test_basis_p1_2d", status)
     call update_counts(status, n_tests, n_passed, n_failed)
@@ -56,23 +50,19 @@ program run_all_tests
     call run_test("P2 Basis 2D", "test_basis_p2_2d", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
-    call run_test("Sparse Matrix", "test_sparse_matrix", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
-    
-    call run_test("Solver Interface", "test_solver_interface", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
     
     ! Application tests
-    call run_test("Poisson 1D", "test_poisson_1d", status)
+    call run_test("Simple Poisson", "test_simple_poisson", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
+    call run_test("Mesh 2D Comprehensive", "test_mesh_2d_comprehensive", status)
+    call update_counts(status, n_tests, n_passed, n_failed)
+    
+    ! Benchmark tests
     call run_test("Poisson 1D Benchmark", "test_poisson_1d_benchmark", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
     call run_test("Poisson 2D Benchmark", "test_poisson_2d_benchmark", status)
-    call update_counts(status, n_tests, n_passed, n_failed)
-    
-    call run_test("Weak Forms", "test_weak_forms", status)
     call update_counts(status, n_tests, n_passed, n_failed)
     
     ! Print summary

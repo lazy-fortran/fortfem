@@ -37,7 +37,8 @@ contains
         if ((trim(a%form_type) == "trial" .or. trim(a%form_type) == "bilinear") .and. &
             (trim(b%form_type) == "test" .or. trim(b%form_type) == "bilinear")) then
             expr%form_type = "bilinear"
-        else if (trim(a%form_type) == "test" .or. trim(b%form_type) == "test") then
+        else if (trim(a%form_type) == "test" .or. trim(b%form_type) == "test" .or. &
+                 trim(a%form_type) == "function" .or. trim(b%form_type) == "function") then
             expr%form_type = "linear"
         else
             expr%form_type = "functional"

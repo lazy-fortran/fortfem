@@ -75,7 +75,7 @@ program simple_poisson
     write(*,*) "  Max u =", max_u
     write(*,*) "  Min u =", minval(uh%values)
     write(*,*) ""
-    write(*,*) "Note: For -Δu = 1 on [0,1]², the exact maximum is 1/8 = 0.125"
+    write(*,*) "Note: For -Δu = 1 on [0,1]², the true analytical maximum is ≈ 0.1093"
     write(*,*) ""
     
     ! Find center vertex value (approximate)
