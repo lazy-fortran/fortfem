@@ -13,7 +13,6 @@ This guide will help you get started with FortFEM quickly.
 - Modern Fortran compiler (gfortran 9+ or ifort)
 - LAPACK and BLAS libraries
 - [Fortran Package Manager (fpm)](https://github.com/fortran-lang/fpm)
-- Optional: SuiteSparse for advanced sparse solvers
 
 ### Building FortFEM
 
@@ -36,38 +35,10 @@ fpm run --example
 
 Here's a simple example solving the Poisson equation on a unit square:
 
-### Current Simple API
-```fortran
-program poisson_simple
-    use fortfem
-    implicit none
-    
-    type(mesh_2d_t) :: mesh
-    type(sparse_matrix_t) :: A
-    real(dp), allocatable :: u(:), f(:)
-    integer :: info
-    
-    ! Create mesh
-    call create_unit_square_mesh(mesh, n=20)
-    
-    ! Assemble system -∆u = f
-    call assemble_poisson_2d(mesh, A, f)
-    
-    ! Apply boundary conditions u = 0 on boundary
-    call apply_zero_bc(mesh, A, f)
-    
-    ! Solve
-    allocate(u(size(f)))
-    u = f
-    call solve_lapack_dense(A, u, info)
-    
-    ! Save solution
-    call write_vtk("solution.vtk", mesh, u)
-    
-end program
-```
+### Current FortFEM API
 
-### FEniCS-style API (available now)
+The library provides a clean, FEniCS-inspired API for finite element problems:
+
 ```fortran
 program poisson_forms
     use fortfem_api
@@ -108,7 +79,8 @@ end program
 Create meshes with simple factory functions:
 ```fortran
 mesh = unit_square_mesh(20)          ! 20×20 uniform grid on [0,1]²
-! rectangle_mesh coming soon
+mesh = rectangle_mesh(20, 30, [0.0, 2.0, 0.0, 3.0])  ! Rectangle mesh
+mesh = unit_disk_mesh(5)             ! Unit disk with resolution 5
 ```
 
 ### 2. Function Spaces  

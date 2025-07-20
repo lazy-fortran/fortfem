@@ -185,34 +185,34 @@ type, extends(linear_solver_t) :: lapack_solver_t
     ! Direct solver using LAPACK
 end type
 
-type, extends(linear_solver_t) :: suitesparse_solver_t
-    ! Direct solver using SuiteSparse (future)
+type, extends(linear_solver_t) :: iterative_solver_t
+    ! Iterative solver (GMRES, CG, etc.)
 end type
 ```
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation (Current)
+### Phase 1: Foundation (Completed)
 - [x] Project setup with FPM
-- [ ] Basic mesh data structures
-- [ ] P1 Lagrange elements on triangles
-- [ ] Simple assembly for Poisson equation
-- [ ] LAPACK solver interface
+- [x] Basic mesh data structures
+- [x] P1 Lagrange elements on triangles
+- [x] Simple assembly for Poisson equation
+- [x] LAPACK solver interface
 
-### Phase 2: Core Features
+### Phase 2: Core Features (Partially Complete)
 - [ ] P2 and higher order Lagrange elements
 - [ ] Quadrilateral elements
-- [ ] Boundary condition handling
-- [ ] Mesh I/O (simple formats)
+- [x] Boundary condition handling
+- [x] Mesh generation with boundary curves
 
-### Phase 3: Advanced Elements
+### Phase 3: Advanced Elements (In Progress)
 - [ ] Raviart-Thomas elements
-- [ ] Nedelec elements
+- [x] Nedelec edge elements
 - [ ] Mixed formulations
 - [ ] DG elements
 
 ### Phase 4: Performance & Features
-- [ ] SuiteSparse integration
+- [ ] Advanced sparse solvers
 - [ ] Parallel assembly
 - [ ] Isoparametric elements
 - [ ] Error estimation
@@ -245,8 +245,8 @@ program heat_equation
     ! Solve
     call problem%solve(solution)
     
-    ! Output
-    call write_solution("solution.vtk", mesh, solution)
+    ! Output/Visualization
+    call plot(solution, "solution.png", "Poisson Solution")
 end program
 ```
 

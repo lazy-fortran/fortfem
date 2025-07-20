@@ -8,35 +8,50 @@ FortFEM provides a clean, high-level API that hides implementation details while
 
 ## Current API Structure
 
-### High-Level API Module
-- **fortfem_api**: Clean FEniCS-style types and constructors
-- **fortfem_simple_solvers**: Simplified solver functions
+### Main Module
+- **fortfem_api**: Complete FEniCS-style API with types and functions
 
-### User-Facing Types (with `_t` suffix)
-- **mesh_t**: Mesh wrapper with clean constructors
-- **function_space_t**: Finite element function spaces  
-- **function_t**: Functions that hold values
-- **trial_function_t**: Trial functions for weak forms
-- **test_function_t**: Test functions for weak forms
-- **form_t**: Base type for weak forms
-- **bilinear_form_t**: Forms like `∫∇u·∇v dx`
-- **linear_form_t**: Forms like `∫fv dx`
-- **dirichlet_bc_t**: Dirichlet boundary conditions
+### Core Types
+- **mesh_t**: Mesh container with topology and geometry
+- **function_space_t**: Scalar finite element function spaces  
+- **vector_function_space_t**: Vector finite element function spaces
+- **function_t**: Scalar functions with nodal values
+- **vector_function_t**: Vector functions with edge values
+- **trial_function_t** / **test_function_t**: Symbolic functions for forms
+- **vector_trial_function_t** / **vector_test_function_t**: Vector versions
+- **form_expr_t**: Expression trees for weak forms
+- **form_equation_t**: Equation a == L for solving
+- **dirichlet_bc_t**: Scalar Dirichlet boundary conditions
+- **vector_bc_t**: Vector boundary conditions
 
-### Factory Functions (lowercase_underscore)
-- **unit_square_mesh()**: Create uniform unit square mesh
-- **rectangle_mesh()**: Create rectangular mesh with custom bounds
-- **function_space()**: Create function space on mesh
-- **trial_function()**: Create trial function from space
-- **test_function()**: Create test function from space
-- **dirichlet_bc()**: Create boundary condition
+### Factory Functions
+**Mesh Creation:**
+- **unit_square_mesh(n)**: Create n×n uniform unit square mesh
+- **rectangle_mesh(nx, ny, domain)**: Create rectangular mesh with bounds
+- **unit_disk_mesh(resolution)**: Create unit disk mesh
+- **mesh_from_boundary(boundary, resolution)**: Create mesh from boundary
 
-### High-Level Solvers
-- **create_unit_square_mesh()**: Simplified mesh creation
-- **assemble_poisson_2d()**: Assemble Poisson system
-- **apply_zero_bc()**: Apply homogeneous Dirichlet BC
-- **solve_lapack_dense()**: Simple dense solver
-- **write_vtk()**: Save solution in VTK format
+**Function Spaces:**
+- **function_space(mesh, family, degree)**: Create scalar FE space
+- **vector_function_space(mesh, family, degree)**: Create vector FE space
+- **function(space)**: Create function in space
+- **trial_function(space)** / **test_function(space)**: Create symbolic functions
+
+**Forms and Operators:**
+- **inner(a, b)**: Inner product of expressions
+- **grad(u)**: Gradient operator
+- **curl(u)**: Curl operator for vector fields
+- **dx**: Integration measure (global variable)
+
+**Boundary Conditions:**
+- **dirichlet_bc(space, value)**: Create scalar Dirichlet BC
+- **vector_bc(space, values, bc_type)**: Create vector BC
+
+### Solving and Visualization
+- **solve(equation, uh, bc)**: Solve weak form equation
+- **plot(uh, filename, title, colormap)**: Plot scalar function
+- **plot(Eh, filename, title, plot_type)**: Plot vector field
+- **plot(mesh, filename, title)**: Plot mesh triangulation
 
 ## API Design Principles
 
@@ -48,45 +63,57 @@ FortFEM provides a clean, high-level API that hides implementation details while
 
 ## Using the API
 
-Users interact with FortFEM through the single main module:
+Users interact with FortFEM through the main module:
 
 ```fortran
-use fortfem
+use fortfem_api
 ```
 
-This provides access to the clean high-level API. The old complex module imports are no longer needed.
+This provides access to the complete FEniCS-style API.
 
-### Current Simple API Example
+### Complete Working Example
 ```fortran
-type(mesh_2d_t) :: mesh
-type(sparse_matrix_t) :: A
-real(dp), allocatable :: u(:), f(:)
-
-call create_unit_square_mesh(mesh, n=20)
-call assemble_poisson_2d(mesh, A, f)
-call apply_zero_bc(mesh, A, f)
-call solve_lapack_dense(A, u, info)
-```
-
-### Future Form-based API
-```fortran
-type(mesh_t) :: mesh
-type(function_space_t) :: Vh
-type(trial_function_t) :: u
-type(test_function_t) :: v
-
-mesh = unit_square_mesh(32, 32)
-Vh = function_space(mesh, "Lagrange", 1)
-u = trial_function(Vh)
-v = test_function(Vh)
-
-a = inner(grad(u), grad(v))*dx
-L = f*v*dx
-call solve(a == L, uh, bc)
+program poisson_example
+    use fortfem_api
+    implicit none
+    
+    type(mesh_t) :: mesh
+    type(function_space_t) :: Vh
+    type(trial_function_t) :: u
+    type(test_function_t) :: v
+    type(function_t) :: uh, f
+    type(dirichlet_bc_t) :: bc
+    type(form_expr_t) :: a, L
+    
+    ! Create mesh and function space
+    mesh = unit_square_mesh(20)
+    Vh = function_space(mesh, "Lagrange", 1)
+    
+    ! Define trial and test functions
+    u = trial_function(Vh)
+    v = test_function(Vh)
+    f = constant(1.0_dp)
+    
+    ! Define weak form
+    a = inner(grad(u), grad(v))*dx
+    L = f*v*dx
+    
+    ! Create solution function and boundary conditions
+    uh = function(Vh)
+    bc = dirichlet_bc(Vh, 0.0_dp)
+    
+    ! Solve and visualize
+    call solve(a == L, uh, bc)
+    call plot(uh, "solution.png", "Poisson Solution", "viridis")
+    call plot(mesh, "mesh.png", "FEM Mesh")
+    
+end program
 ```
 
 ## Implementation Status
 
-- ✅ **Current**: Simplified solver functions working with existing codebase
-- 🚧 **In Progress**: Form algebra implementation (`inner()`, `grad()`, operators)
-- 📋 **Planned**: Complete boundary condition system, automatic solver selection
+- ✅ **Implemented**: Complete FEniCS-style API with form algebra
+- ✅ **Working**: Scalar Poisson problems with P1 Lagrange elements
+- ✅ **Working**: Vector curl-curl problems with Nédélec edge elements
+- ✅ **Working**: Mesh generation and visualization with fortplotlib
+- 📋 **Planned**: More element types, advanced boundary conditions, parallel solvers

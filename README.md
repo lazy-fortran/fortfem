@@ -63,9 +63,10 @@ end program
 
 Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) directory for complete working examples:
 
-- [**Simple Poisson solver**](https://github.com/itpplasma/fortfem/blob/main/example/simple_poisson.f90) - FEniCS-style API demonstration with plotting
-- [**Curl-curl electromagnetic**](https://github.com/itpplasma/fortfem/blob/main/example/curl_curl_example.f90) - Vector problems with Nédélec elements and GMRES solver  
-- [**Plotting demonstration**](https://github.com/itpplasma/fortfem/blob/main/example/plotting_demo.f90) - Comprehensive plotting API showcase
+- [**Simple Poisson solver**](https://github.com/itpplasma/fortfem/blob/main/example/simple_poisson/simple_poisson.f90) - FEniCS-style API demonstration with plotting
+- [**Curl-curl electromagnetic**](https://github.com/itpplasma/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Vector problems with Nédélec elements and GMRES solver  
+- [**Plotting demonstration**](https://github.com/itpplasma/fortfem/blob/main/example/plotting/plotting.f90) - Comprehensive plotting API showcase
+- [**Mesh plotting**](https://github.com/itpplasma/fortfem/blob/main/example/plot_mesh/plot_mesh.f90) - Mesh visualization examples
 
 ## Project Structure
 

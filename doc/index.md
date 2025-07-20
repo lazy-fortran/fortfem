@@ -21,39 +21,16 @@ Welcome to the FortFEM documentation! FortFEM is a modern Fortran finite element
 ## Features
 
 - **Natural mathematical notation** for expressing weak forms
-- **Multiple element types**: P1, P2, RT0, Nédélec
-- **Efficient sparse solvers**: Direct and iterative methods
+- **Multiple element types**: P1 Lagrange and Nédélec edge elements
+- **Built-in visualization**: Plotting with fortplotlib integration
 - **Modern Fortran**: Object-oriented design with clear interfaces
-- **Extensible architecture**: Easy to add new elements and problems
+- **Clean API**: FEniCS-inspired interface for ease of use
 
 ## Example Code
 
-### Current Simple API
 ```fortran
-program poisson_simple
-    use fortfem
-    implicit none
-    
-    type(mesh_2d_t) :: mesh
-    type(sparse_matrix_t) :: A
-    real(dp), allocatable :: u(:), f(:)
-    
-    ! Create mesh
-    call create_unit_square_mesh(mesh, n=20)
-    
-    ! Assemble and solve -∆u = f
-    call assemble_poisson_2d(mesh, A, f)
-    call apply_zero_bc(mesh, A, f)
-    call solve_lapack_dense(A, f, info)
-    
-    call write_vtk("solution.vtk", mesh, f)
-end program
-```
-
-### Target FEniCS-style API
-```fortran
-program poisson_forms
-    use fortfem
+program poisson_example
+    use fortfem_api
     implicit none
     
     type(mesh_t) :: mesh
@@ -62,10 +39,10 @@ program poisson_forms
     type(test_function_t) :: v
     type(function_t) :: uh, f
     type(dirichlet_bc_t) :: bc
-    type(form_t) :: a, L
+    type(form_expr_t) :: a, L
     
     ! Create mesh and function space
-    mesh = unit_square_mesh(32, 32)
+    mesh = unit_square_mesh(20)
     Vh = function_space(mesh, "Lagrange", 1)
     
     ! Define variational problem
@@ -77,8 +54,13 @@ program poisson_forms
     L = f*v*dx
     
     ! Solve with boundary conditions
-    bc = dirichlet_bc(Vh, 0.0_dp, boundary)
+    uh = function(Vh)
+    bc = dirichlet_bc(Vh, 0.0_dp)
     call solve(a == L, uh, bc)
+    
+    ! Visualize results
+    call plot(uh, "solution.png", "Poisson Solution", "viridis")
+    call plot(mesh, "mesh.png", "FEM Mesh")
 end program
 ```
 
