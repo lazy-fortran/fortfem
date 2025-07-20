@@ -36,13 +36,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Download CI artifacts (plots)
-        uses: actions/download-artifact@v4
+      - name: Download CI artifacts (plots) 
+        uses: dawidd6/action-download-artifact@v3
         with:
           name: generated-plots
           path: ./artifacts/plots/
-          run-id: ${{ github.event.workflow_run.id }}
+          workflow: ci.yml
+          branch: main
+          if_no_artifact_found: ignore
         continue-on-error: true
+        
+      - name: Create empty plots directory if no artifacts
+        run: |
+          mkdir -p ./artifacts/plots/
+          echo "Plots directory created (may be empty if no artifacts were downloaded)"
+          ls -la ./artifacts/plots/ || echo "Directory is empty"
         
       - name: Install dependencies
         run: |
