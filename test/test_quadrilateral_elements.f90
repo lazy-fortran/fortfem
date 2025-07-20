@@ -194,8 +194,7 @@ contains
         ! Integrate bilinear function f = xy
         integral_computed = integrate_over_quad(bilinear_function, coords, nq)
         integral_exact = 0.25_dp  ! ∫∫xy dxdy over [0,1]²
-        ! Note: This is a placeholder test - actual implementation would compute 0.25
-        call check_condition(abs(integral_computed - 1.0_dp) < tolerance, &
+        call check_condition(abs(integral_computed - integral_exact) < tolerance, &
             "Q1 quadrature: bilinear function")
         
         ! Scaled rectangle
@@ -204,8 +203,7 @@ contains
         
         integral_computed = integrate_over_quad(constant_function, coords, nq)
         integral_exact = 2.0_dp  ! Area = 2×1
-        ! Note: This is a placeholder test - actual implementation would compute 2.0
-        call check_condition(abs(integral_computed - 1.0_dp) < tolerance, &
+        call check_condition(abs(integral_computed - integral_exact) < tolerance, &
             "Q1 quadrature: scaled rectangle")
         
         write(*,*) "   Q1 quadrature integration: all tests passed"
