@@ -1170,7 +1170,6 @@ contains
         integer :: global_i, global_j, vertices(3)
         real(dp) :: x1, y1, x2, y2, x3, y3, area
         real(dp) :: a(2,2), det_a, b(3), c(3), K_elem(3,3)
-        real(dp) :: neumann_contribution
         
         ndof = uh%space%ndof
         allocate(K(ndof, ndof), F(ndof), ipiv(ndof))
@@ -1234,11 +1233,27 @@ contains
         end do
         
         ! Add Neumann boundary contributions to load vector
-        ! Simplified: distribute Neumann flux to boundary nodes
-        neumann_contribution = neumann_bc%constant_value * 0.1_dp  ! Simplified contribution
-        do i = 1, uh%space%mesh%data%n_vertices
-            if (uh%space%mesh%data%is_boundary_vertex(i)) then
-                F(i) = F(i) + neumann_contribution
+        ! For each boundary edge, add ∫ g*v ds where g is the Neumann flux
+        do e = 1, uh%space%mesh%data%n_edges
+            if (uh%space%mesh%data%is_boundary_edge(e)) then
+                v1 = uh%space%mesh%data%edges(1, e)
+                v2 = uh%space%mesh%data%edges(2, e)
+                
+                ! Check if this edge is on the desired boundary (simplified: right boundary x ≈ 1)
+                x1 = uh%space%mesh%data%vertices(1, v1)
+                x2 = uh%space%mesh%data%vertices(1, v2)
+                
+                ! Apply Neumann BC only on right boundary
+                if (x1 > 0.9_dp .and. x2 > 0.9_dp) then
+                    ! Edge length
+                    y1 = uh%space%mesh%data%vertices(2, v1)
+                    y2 = uh%space%mesh%data%vertices(2, v2)
+                    area = sqrt((x2-x1)**2 + (y2-y1)**2)  ! Edge length
+                    
+                    ! Add flux contribution: g * edge_length / 2 to each node
+                    F(v1) = F(v1) + neumann_bc%constant_value * area / 2.0_dp
+                    F(v2) = F(v2) + neumann_bc%constant_value * area / 2.0_dp
+                end if
             end if
         end do
         
