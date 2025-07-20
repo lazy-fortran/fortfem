@@ -652,7 +652,10 @@ contains
         ! ILU factorization
         do k = 1, n-1
             if (abs(precond%U(k, k)) < 1.0e-14_dp) then
-                precond%U(k, k) = 1.0e-14_dp  ! Avoid zero pivot
+                if (opts%verbosity > 0) then
+                    write(*,*) "ILU warning: near-zero pivot at ", k
+                end if
+                precond%U(k, k) = sign(1.0e-12_dp, precond%U(k, k))
             end if
             
             do i = k+1, n
@@ -669,6 +672,14 @@ contains
                 end if
             end do
         end do
+        
+        ! Check last diagonal element
+        if (abs(precond%U(n, n)) < 1.0e-14_dp) then
+            if (opts%verbosity > 0) then
+                write(*,*) "ILU warning: near-zero pivot at ", n
+            end if
+            precond%U(n, n) = sign(1.0e-12_dp, precond%U(n, n))
+        end if
     end subroutine build_ilu_preconditioner
     
     ! Solve ILU system: (L*U) * z = r
