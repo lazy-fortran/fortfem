@@ -35,6 +35,8 @@ module fortfem_mesh_2d
         
     contains
         procedure :: create_rectangular
+        procedure :: create_unit_disk
+        procedure :: create_from_boundary
         procedure :: build_connectivity
         procedure :: build_edge_connectivity
         procedure :: get_edge_vertices
@@ -669,5 +671,23 @@ contains
         this%n_boundary_dofs = 0
         
     end subroutine destroy
+
+    ! Clean mesh generation stubs
+    subroutine create_unit_disk(this, max_element_size)
+        class(mesh_2d_t), intent(out) :: this
+        real(dp), intent(in) :: max_element_size
+        
+        write(*,*) "STUB: create_unit_disk with resolution", max_element_size
+        call this%create_rectangular(10, 10, -1.0_dp, 1.0_dp, -1.0_dp, 1.0_dp)
+    end subroutine create_unit_disk
+
+    subroutine create_from_boundary(this, boundary, resolution)
+        class(mesh_2d_t), intent(out) :: this
+        class(*), intent(in) :: boundary
+        real(dp), intent(in) :: resolution
+        
+        write(*,*) "STUB: create_from_boundary with resolution", resolution
+        call this%create_rectangular(10, 10, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
+    end subroutine create_from_boundary
 
 end module fortfem_mesh_2d

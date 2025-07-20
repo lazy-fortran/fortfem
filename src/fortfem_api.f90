@@ -21,12 +21,21 @@ module fortfem_api
     public :: vector_test_function_t
     public :: dirichlet_bc_t
     public :: vector_bc_t
+    public :: boundary_t
     public :: simple_expression_t
     public :: form_expr_t
     public :: form_equation_t
     
     ! Public constructors
     public :: unit_square_mesh
+    public :: rectangle_mesh
+    public :: unit_disk_mesh
+    public :: circle_boundary
+    public :: rectangle_boundary
+    public :: line_segment
+    public :: arc_segment
+    public :: l_shape_boundary
+    public :: mesh_from_boundary
     public :: function_space
     public :: vector_function_space
     public :: function
@@ -127,6 +136,14 @@ module fortfem_api
         character(len=32) :: bc_type = "tangential"  ! or "normal"
         logical :: on_boundary = .false.
     end type vector_bc_t
+
+    ! Clean boundary definition type
+    type :: boundary_t
+        integer :: n_points = 0
+        real(dp), allocatable :: points(:,:)     ! (2, n_points)
+        integer, allocatable :: labels(:)       ! (n_points-1) segment labels
+        logical :: is_closed = .false.
+    end type boundary_t
     
     ! Simple expression type for forms
     type :: simple_expression_t
@@ -206,6 +223,142 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function unit_square_mesh
+
+    function rectangle_mesh(nx, ny, domain) result(mesh)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: domain(4)  ! [x0, x1, y0, y1]
+        type(mesh_t) :: mesh
+        
+        call init_measures()
+        call mesh%data%create_rectangular(nx=nx, ny=ny, &
+                                         x_min=domain(1), x_max=domain(2), &
+                                         y_min=domain(3), y_max=domain(4))
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function rectangle_mesh
+
+    function unit_disk_mesh(resolution) result(mesh)
+        real(dp), intent(in), optional :: resolution
+        type(mesh_t) :: mesh
+        real(dp) :: h
+        
+        h = 0.1_dp
+        if (present(resolution)) h = resolution
+        
+        call init_measures()
+        call mesh%data%create_unit_disk(max_element_size=h)
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function unit_disk_mesh
+
+    function circle_boundary(center, radius, n) result(boundary)
+        real(dp), intent(in) :: center(2), radius
+        integer, intent(in) :: n
+        type(boundary_t) :: boundary
+        integer :: i
+        real(dp) :: theta
+        
+        boundary%n_points = n
+        allocate(boundary%points(2, n))
+        allocate(boundary%labels(n-1))
+        
+        ! Generate circle points
+        do i = 1, n
+            theta = 2.0_dp * acos(-1.0_dp) * (i-1) / n
+            boundary%points(1, i) = center(1) + radius * cos(theta)
+            boundary%points(2, i) = center(2) + radius * sin(theta)
+        end do
+        
+        boundary%labels = 1
+        boundary%is_closed = .true.
+    end function circle_boundary
+
+    function rectangle_boundary(domain, n) result(boundary)
+        real(dp), intent(in) :: domain(4)  ! [x0, x1, y0, y1]
+        integer, intent(in) :: n
+        type(boundary_t) :: boundary
+        
+        boundary%n_points = 4*n
+        allocate(boundary%points(2, 4*n))
+        allocate(boundary%labels(4*n-1))
+        
+        ! Generate rectangle boundary points
+        ! STUB: Implementation needed
+        boundary%points(:, 1) = [domain(1), domain(3)]  ! bottom-left
+        boundary%points(:, 2) = [domain(2), domain(3)]  ! bottom-right
+        boundary%points(:, 3) = [domain(2), domain(4)]  ! top-right
+        boundary%points(:, 4) = [domain(1), domain(4)]  ! top-left
+        
+        boundary%labels = [1, 2, 3, 4]
+        boundary%is_closed = .true.
+    end function rectangle_boundary
+
+    function line_segment(p1, p2, n) result(boundary)
+        real(dp), intent(in) :: p1(2), p2(2)
+        integer, intent(in) :: n
+        type(boundary_t) :: boundary
+        integer :: i
+        real(dp) :: t
+        
+        boundary%n_points = n
+        allocate(boundary%points(2, n))
+        allocate(boundary%labels(n-1))
+        
+        ! Generate line segment points
+        do i = 1, n
+            t = real(i-1, dp) / real(n-1, dp)
+            boundary%points(:, i) = p1 + t * (p2 - p1)
+        end do
+        
+        boundary%labels = 1
+        boundary%is_closed = .false.
+    end function line_segment
+
+    function arc_segment(p1, p2, center, n) result(boundary)
+        real(dp), intent(in) :: p1(2), p2(2), center(2)
+        integer, intent(in) :: n
+        type(boundary_t) :: boundary
+        
+        boundary%n_points = n
+        allocate(boundary%points(2, n))
+        allocate(boundary%labels(n-1))
+        
+        ! STUB: Generate arc segment points
+        boundary%points(:, 1) = p1
+        boundary%points(:, n) = p2
+        
+        boundary%labels = 1
+        boundary%is_closed = .false.
+    end function arc_segment
+
+    function l_shape_boundary(size, n) result(boundary)
+        real(dp), intent(in) :: size
+        integer, intent(in) :: n
+        type(boundary_t) :: boundary
+        
+        ! STUB: Generate L-shape boundary
+        boundary%n_points = 6*n
+        allocate(boundary%points(2, 6*n))
+        allocate(boundary%labels(6*n-1))
+        
+        boundary%labels = 1
+        boundary%is_closed = .true.
+    end function l_shape_boundary
+
+    function mesh_from_boundary(boundary, resolution) result(mesh)
+        type(boundary_t), intent(in) :: boundary
+        real(dp), intent(in), optional :: resolution
+        type(mesh_t) :: mesh
+        real(dp) :: h
+        
+        h = 0.1_dp
+        if (present(resolution)) h = resolution
+        
+        call init_measures()
+        call mesh%data%create_from_boundary(boundary, h)
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_boundary
     
     ! Function space constructor
     function function_space(mesh, family, degree) result(space)
