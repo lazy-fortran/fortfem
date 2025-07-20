@@ -39,7 +39,7 @@ program plotting_demo
     uh1 = function(Vh)
     call solve(a == L, uh1, bc)
     call plot(uh1, filename="solution_constant.png", &
-              title_str="Constant Source: f = 1", &
+              label="Constant Source: f = 1", &
               colormap="viridis")
     
     ! Solution 2: Point source (approximated by high value in center)
@@ -49,13 +49,13 @@ program plotting_demo
     uh2 = function(Vh)
     call solve(a == L, uh2, bc)
     call plot(uh2, filename="solution_point.png", &
-              title_str="Point Source: f = 10", &
+              label="Point Source: f = 10", &
               colormap="plasma")
     
     ! Solution 3: Different colormap demonstration
     write(*,*) "3. Same solution with different colormap"
     call plot(uh1, filename="solution_coolwarm.png", &
-              title_str="Constant Source with Cool-Warm Colormap", &
+              label="Constant Source with Cool-Warm Colormap", &
               colormap="coolwarm")
     
     write(*,*) ""
@@ -69,7 +69,7 @@ program plotting_demo
     write(*,*) "Usage examples:"
     write(*,*) '  call plot(uh)                                   ! Default options'
     write(*,*) '  call plot(uh, "my_solution.png")               ! Custom filename'
-    write(*,*) '  call plot(uh, "solution.png", "My Title")      ! Custom title'
+    write(*,*) '  call plot(uh, label="My Title")                ! Custom title'
     write(*,*) '  call plot(uh, colormap="plasma")               ! Custom colormap'
     write(*,*) ""
     write(*,*) "Available colormaps: viridis, plasma, coolwarm, jet, etc."

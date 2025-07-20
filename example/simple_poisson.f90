@@ -87,7 +87,7 @@ program simple_poisson
     ! Plot the solution
     write(*,*) "Creating plot..."
     call plot(uh, filename="poisson_solution.png", &
-              title_str="Poisson Solution: -Δu = 1", &
+              label="Poisson Solution: -Δu = 1", &
               colormap="viridis")
     write(*,*) ""
     

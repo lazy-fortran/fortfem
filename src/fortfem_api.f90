@@ -911,12 +911,12 @@ contains
     end subroutine vector_function_destroy
 
     ! Plot scalar function using triangulation with interpolation to regular grid
-    subroutine plot_function_scalar(uh, filename, title_str, colormap)
+    subroutine plot_function_scalar(uh, filename, label, colormap)
         use fortplot, only: figure, contour_filled, xlabel, ylabel, title, &
                            savefig, pcolormesh
         type(function_t), intent(in) :: uh
         character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: title_str
+        character(len=*), intent(in), optional :: label
         character(len=*), intent(in), optional :: colormap
         
         ! Grid parameters for interpolation
@@ -927,7 +927,7 @@ contains
         real(dp) :: x_min, x_max, y_min, y_max, dx_grid, dy_grid
         integer :: i, j
         character(len=64) :: output_filename
-        character(len=128) :: plot_title
+        character(len=128) :: title_text
         character(len=32) :: cmap
         
         ! Set defaults
@@ -937,10 +937,10 @@ contains
             output_filename = "solution.png"
         end if
         
-        if (present(title_str)) then
-            plot_title = title_str
+        if (present(label)) then
+            title_text = label
         else
-            plot_title = "FEM Solution"
+            title_text = "FEM Solution"
         end if
         
         if (present(colormap)) then
@@ -972,7 +972,7 @@ contains
         
         ! Create plot
         call figure(800, 600)
-        call title(trim(plot_title))
+        call title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
@@ -983,11 +983,11 @@ contains
     end subroutine plot_function_scalar
     
     ! Plot vector function using streamplot or quiver
-    subroutine plot_vector_function(Eh, filename, title_str, plot_type)
+    subroutine plot_vector_function(Eh, filename, label, plot_type)
         use fortplot, only: figure, streamplot, xlabel, ylabel, title, savefig
         type(vector_function_t), intent(in) :: Eh
         character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: title_str
+        character(len=*), intent(in), optional :: label
         character(len=*), intent(in), optional :: plot_type
         
         ! Grid parameters for interpolation
@@ -998,7 +998,7 @@ contains
         real(dp) :: x_min, x_max, y_min, y_max, dx_grid, dy_grid
         integer :: i, j
         character(len=64) :: output_filename
-        character(len=128) :: plot_title
+        character(len=128) :: title_text
         character(len=32) :: ptype
         
         ! Set defaults
@@ -1008,10 +1008,10 @@ contains
             output_filename = "vector_solution.png"
         end if
         
-        if (present(title_str)) then
-            plot_title = title_str
+        if (present(label)) then
+            title_text = label
         else
-            plot_title = "Vector FEM Solution"
+            title_text = "Vector FEM Solution"
         end if
         
         if (present(plot_type)) then
@@ -1043,7 +1043,7 @@ contains
         
         ! Create plot
         call figure(800, 600)
-        call title(trim(plot_title))
+        call title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         
