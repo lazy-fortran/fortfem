@@ -37,7 +37,7 @@ FortFEM is designed with the following principles:
    - Supports various bilinear and linear forms
 
 5. **Solver Module** (`fortfem_solver`)
-   - Interfaces to LAPACK, UMFPACK, and custom solvers
+   - Interfaces to LAPACK and includes custom GMRES implementation
    - Provides both direct and iterative methods
    - Includes GMRES implementation
 
@@ -69,12 +69,11 @@ end interface
 ## Element Types
 
 ### Lagrange Elements
-- **P1**: Linear polynomials on triangles
-- **P2**: Quadratic polynomials with 6 DOFs per triangle
+- **P1**: Linear polynomials on triangles (implemented)
+- **P2**: Quadratic polynomials with 6 DOFs per triangle (planned)
 
 ### Vector Elements  
-- **RT0**: Raviart-Thomas elements for H(div) problems
-- **Nédélec**: Edge elements for H(curl) problems
+- **Nédélec**: Edge elements for H(curl) electromagnetic problems
 
 ## Weak Form Framework
 

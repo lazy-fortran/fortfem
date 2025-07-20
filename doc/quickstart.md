@@ -117,4 +117,4 @@ call plot(Eh, plot_type="streamplot")             ! Vector field plots
 
 - Explore the [examples](examples/index.html) for more complex problems
 - Read the [design documentation](design/index.html) to understand the architecture
-- Check the [API reference](../modules.html) for detailed function documentation
+- Check the [API reference](../lists/modules.html) for detailed function documentation

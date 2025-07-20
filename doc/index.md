@@ -15,7 +15,7 @@ Welcome to the FortFEM documentation! FortFEM is a modern Fortran finite element
 ## User Guide
 
 - [Design Documentation](design/index.html) - Architecture and design decisions
-- [API Reference](../modules.html) - Detailed module documentation
+- [API Reference](../lists/modules.html) - Detailed module documentation
 - [Source Files](../lists/files.html) - Browse source code
 
 ## Features

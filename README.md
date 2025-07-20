@@ -78,20 +78,20 @@ Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) 
 
 ## Navigation
 
-- [API Documentation](https://itpplasma.github.io/fortfem/modules.html) - Detailed module and procedure documentation
-- [Source Files](https://itpplasma.github.io/fortfem/sourcefile/index.html) - Browse the source code
-- [Program Structure](https://itpplasma.github.io/fortfem/program/index.html) - Main programs and examples
+- [API Documentation](https://itpplasma.github.io/fortfem/lists/modules.html) - Detailed module and procedure documentation
+- [Source Files](https://itpplasma.github.io/fortfem/lists/files.html) - Browse the source code
+- [Program Structure](https://itpplasma.github.io/fortfem/lists/procedures.html) - Main programs and procedures
 - [Design Documentation](https://itpplasma.github.io/fortfem/page/design/index.html) - Architecture and design decisions
 
 ## Quick Links
 
 - [Getting Started](https://itpplasma.github.io/fortfem/page/quickstart.html) - Build and run your first FE simulation
 - [Examples](https://itpplasma.github.io/fortfem/page/examples/index.html) - Complete working examples
-- [Module Reference](https://itpplasma.github.io/fortfem/modules.html) - Complete API reference
+- [Module Reference](https://itpplasma.github.io/fortfem/lists/modules.html) - Complete API reference
 
 ## Contributing
 
-1. Check the [TODO.md](https://github.com/itpplasma/fortfem/blob/main/TODO.md) for current development priorities
+1. Check the [GitHub Issues](https://github.com/itpplasma/fortfem/issues) for current development priorities
 2. Follow strict TDD: write tests first
 3. See [CLAUDE.md](https://github.com/itpplasma/fortfem/blob/main/CLAUDE.md) for development guidelines
 
