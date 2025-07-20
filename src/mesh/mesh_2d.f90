@@ -674,20 +674,87 @@ contains
 
     ! Clean mesh generation stubs
     subroutine create_unit_disk(this, max_element_size)
+        use triangulator, only: triangulate_points
         class(mesh_2d_t), intent(out) :: this
         real(dp), intent(in) :: max_element_size
         
-        write(*,*) "STUB: create_unit_disk with resolution", max_element_size
-        call this%create_rectangular(10, 10, -1.0_dp, 1.0_dp, -1.0_dp, 1.0_dp)
+        integer, parameter :: n_boundary = 16
+        real(dp) :: boundary_points(2, n_boundary)
+        real(dp), allocatable :: mesh_points(:,:)
+        integer, allocatable :: mesh_triangles(:,:)
+        integer :: n_points, n_triangles, i
+        real(dp) :: theta
+        
+        ! Generate unit circle boundary points
+        do i = 1, n_boundary
+            theta = 2.0_dp * acos(-1.0_dp) * (i-1) / n_boundary
+            boundary_points(1, i) = cos(theta)
+            boundary_points(2, i) = sin(theta)
+        end do
+        
+        ! Triangulate the boundary
+        call triangulate_points(boundary_points, mesh_points, mesh_triangles, &
+                               n_points, n_triangles)
+        
+        ! Convert to mesh_2d_t format
+        this%n_vertices = n_points
+        this%n_triangles = n_triangles
+        
+        allocate(this%vertices(2, n_points))
+        allocate(this%triangles(3, n_triangles))
+        
+        this%vertices = mesh_points
+        this%triangles = mesh_triangles
+        
+        deallocate(mesh_points, mesh_triangles)
     end subroutine create_unit_disk
 
     subroutine create_from_boundary(this, boundary, resolution)
+        use triangulator, only: triangulate_boundary
+        use fortfem_api, only: boundary_t
         class(mesh_2d_t), intent(out) :: this
         class(*), intent(in) :: boundary
         real(dp), intent(in) :: resolution
         
-        write(*,*) "STUB: create_from_boundary with resolution", resolution
-        call this%create_rectangular(10, 10, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
+        real(dp), allocatable :: mesh_points(:,:)
+        integer, allocatable :: mesh_triangles(:,:), segments(:,:)
+        integer :: n_points, n_triangles, i
+        
+        select type(boundary)
+        type is (boundary_t)
+            ! Generate segments from boundary points
+            allocate(segments(2, boundary%n_points-1))
+            do i = 1, boundary%n_points-1
+                segments(1, i) = i
+                segments(2, i) = i + 1
+            end do
+            
+            ! Close the boundary if needed
+            if (boundary%is_closed) then
+                segments(2, boundary%n_points-1) = 1
+            end if
+            
+            ! Triangulate the boundary
+            call triangulate_boundary(boundary%points, segments, mesh_points, &
+                                    mesh_triangles, n_points, n_triangles)
+            
+            ! Convert to mesh_2d_t format
+            this%n_vertices = n_points
+            this%n_triangles = n_triangles
+            
+            allocate(this%vertices(2, n_points))
+            allocate(this%triangles(3, n_triangles))
+            
+            this%vertices = mesh_points
+            this%triangles = mesh_triangles
+            
+            deallocate(mesh_points, mesh_triangles, segments)
+            
+        class default
+            write(*,*) "STUB: create_from_boundary with resolution", resolution
+            call this%create_rectangular(10, 10, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
+        end select
+        
     end subroutine create_from_boundary
 
 end module fortfem_mesh_2d

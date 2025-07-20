@@ -53,7 +53,7 @@ contains
     end function p1_basis_derivative
 
     subroutine init_basis_1d(this, mesh)
-        use fortfem_mesh_1d
+        use mesh_1d, only: mesh_1d_t
         class(basis_1d_t), intent(inout) :: this
         type(mesh_1d_t), intent(in) :: mesh
         
