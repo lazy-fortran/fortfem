@@ -2,6 +2,9 @@
 set -e
 
 echo "🔨 Generating example documentation pages..."
+echo "Current directory: $(pwd)"
+echo "Available directories:"
+ls -la
 
 # Directories
 EXAMPLE_DIR="example"
@@ -77,7 +80,7 @@ EOF
         echo "" >> "$example_doc"
     else
         # Generate basic description from program comment if available
-        first_comment=$(grep -m 1 "^[[:space:]]*!" "$example_file" | sed 's/^[[:space:]]*![[:space:]]*//' || echo "")
+        first_comment=$(grep -m 1 "^[[:space:]]*!" "$example_file" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' || echo "")
         if [[ -n "$first_comment" ]]; then
             echo "$first_comment" >> "$example_doc"
             echo "" >> "$example_doc"
@@ -188,6 +191,7 @@ EOF
     fi
     
     if [[ "$plot_found" == false ]]; then
+        echo "  No plots found for $example_name"
         cat >> "$example_doc" << EOF
 *No plots available for this example.*
 
@@ -203,8 +207,9 @@ EOF
 EOF
     
     # Add to examples index
+    example_description=$(head -n 20 "$example_file" | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' || echo "Example program")
     cat >> "$DOC_EXAMPLES_DIR/index.md" << EOF
-- [$example_name](generated/${example_name}.html) - $(head -n 20 "$example_file" | grep -m 1 "^[[:space:]]*!" | sed 's/^[[:space:]]*![[:space:]]*//' || echo "Example program")
+- [$example_name](generated/${example_name}.html) - $example_description
 EOF
     
     ((example_count++))
