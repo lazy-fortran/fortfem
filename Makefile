@@ -48,7 +48,7 @@ compare-results:
 
 # Build documentation with FORD (using fpm.toml configuration)
 doc:
-	ford fpm.toml
+	ford README.md
 	# Copy example media files to doc build directory for proper linking
 	mkdir -p build/doc/example
 	if [ -d build/example ]; then cp -r build/example/* build/doc/example/ 2>/dev/null || true; fi
