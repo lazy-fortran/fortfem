@@ -911,12 +911,12 @@ contains
     end subroutine vector_function_destroy
 
     ! Plot scalar function using triangulation with interpolation to regular grid
-    subroutine plot_function_scalar(uh, filename, label, colormap)
-        use fortplot, only: figure, contour_filled, xlabel, ylabel, title, &
-                           savefig, pcolormesh
+    subroutine plot_function_scalar(uh, filename, title, colormap)
+        use fortplot, only: figure, contour_filled, xlabel, ylabel, &
+                           plot_title => title, savefig, pcolormesh
         type(function_t), intent(in) :: uh
         character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: label
+        character(len=*), intent(in), optional :: title
         character(len=*), intent(in), optional :: colormap
         
         ! Grid parameters for interpolation
@@ -937,8 +937,8 @@ contains
             output_filename = "solution.png"
         end if
         
-        if (present(label)) then
-            title_text = label
+        if (present(title)) then
+            title_text = title
         else
             title_text = "FEM Solution"
         end if
@@ -972,7 +972,7 @@ contains
         
         ! Create plot
         call figure(800, 600)
-        call title(trim(title_text))
+        call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
@@ -983,11 +983,12 @@ contains
     end subroutine plot_function_scalar
     
     ! Plot vector function using streamplot or quiver
-    subroutine plot_vector_function(Eh, filename, label, plot_type)
-        use fortplot, only: figure, streamplot, xlabel, ylabel, title, savefig
+    subroutine plot_vector_function(Eh, filename, title, plot_type)
+        use fortplot, only: figure, streamplot, xlabel, ylabel, &
+                           plot_title => title, savefig
         type(vector_function_t), intent(in) :: Eh
         character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: label
+        character(len=*), intent(in), optional :: title
         character(len=*), intent(in), optional :: plot_type
         
         ! Grid parameters for interpolation
@@ -1008,8 +1009,8 @@ contains
             output_filename = "vector_solution.png"
         end if
         
-        if (present(label)) then
-            title_text = label
+        if (present(title)) then
+            title_text = title
         else
             title_text = "Vector FEM Solution"
         end if
@@ -1043,7 +1044,7 @@ contains
         
         ! Create plot
         call figure(800, 600)
-        call title(trim(title_text))
+        call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         

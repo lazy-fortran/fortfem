@@ -85,7 +85,7 @@ program curl_curl_example
     ! Plot the vector solution
     write(*,*) "Creating vector field plot..."
     call plot(Eh, filename="curl_curl_solution.png", &
-              label="Curl-Curl Solution: ∇×(∇×E) + E = J", &
+              title="Curl-Curl Solution: ∇×(∇×E) + E = J", &
               plot_type="streamplot")
     write(*,*) ""
     
