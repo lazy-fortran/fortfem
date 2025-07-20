@@ -1,10 +1,6 @@
 name: Deploy Documentation to GitHub Pages
 
 on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ["main"]
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   
@@ -42,9 +38,10 @@ jobs:
           name: generated-plots
           path: ./artifacts/plots/
           workflow: ci.yml
-          branch: main
+          run_id: ${{ github.event.workflow_run.id }}
           if_no_artifact_found: ignore
         continue-on-error: true
+        if: github.event_name == 'workflow_run'
         
       - name: Create empty plots directory if no artifacts
         run: |
