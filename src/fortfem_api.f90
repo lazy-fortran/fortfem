@@ -6,6 +6,7 @@ module fortfem_api
     use fortfem_forms_simple
     use basis_p1_2d_module
     use fortfem_basis_edge_2d
+    use fortfem_advanced_solvers
     implicit none
     
     private
@@ -55,6 +56,12 @@ module fortfem_api
     public :: compile_form
     public :: operator(*), operator(+), operator(==)
     public :: solve
+    
+    ! Advanced solver types and functions
+    public :: solver_options_t, solver_stats_t
+    public :: solver_options
+    public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
+    public :: jacobi_preconditioner, ilu_preconditioner
     
     ! Public plotting interface
     public :: plot
