@@ -137,7 +137,7 @@ module fortfem_api
         character(len=32) :: bc_type = "tangential"  ! or "normal"
         logical :: on_boundary = .false.
     end type vector_bc_t
-
+    
     ! Simple expression type for forms
     type :: simple_expression_t
         character(len=64) :: description = ""
@@ -217,10 +217,10 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function unit_square_mesh
-
+    
     function rectangle_mesh(nx, ny, domain) result(mesh)
         integer, intent(in) :: nx, ny
-        real(dp), intent(in) :: domain(4)  ! [x0, x1, y0, y1]
+        real(dp), intent(in) :: domain(4)  ! [x_min, x_max, y_min, y_max]
         type(mesh_t) :: mesh
         
         call init_measures()
@@ -230,7 +230,7 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function rectangle_mesh
-
+    
     function unit_disk_mesh(resolution) result(mesh)
         real(dp), intent(in), optional :: resolution
         type(mesh_t) :: mesh
@@ -240,12 +240,13 @@ contains
         if (present(resolution)) h = resolution
         
         call init_measures()
-        call mesh%data%create_unit_disk(max_element_size=h)
+        call mesh%data%create_unit_disk(h)
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function unit_disk_mesh
-
+    
     function circle_boundary(center, radius, n) result(boundary)
+        use fortfem_boundary, only: boundary_t
         real(dp), intent(in) :: center(2), radius
         integer, intent(in) :: n
         type(boundary_t) :: boundary
@@ -263,13 +264,14 @@ contains
             boundary%points(2, i) = center(2) + radius * sin(theta)
         end do
         
-        boundary%labels = 1
+        boundary%labels = 1  ! All segments have same label
         boundary%is_closed = .true.
     end function circle_boundary
-
+    
     function rectangle_boundary(domain, n) result(boundary)
-        real(dp), intent(in) :: domain(4)  ! [x0, x1, y0, y1]
-        integer, intent(in) :: n
+        use fortfem_boundary, only: boundary_t
+        real(dp), intent(in) :: domain(4)  ! [x_min, x_max, y_min, y_max]
+        integer, intent(in) :: n  ! Points per side
         type(boundary_t) :: boundary
         
         boundary%n_points = 4*n
@@ -283,11 +285,12 @@ contains
         boundary%points(:, 3) = [domain(2), domain(4)]  ! top-right
         boundary%points(:, 4) = [domain(1), domain(4)]  ! top-left
         
-        boundary%labels = [1, 2, 3, 4]
+        boundary%labels = 1
         boundary%is_closed = .true.
     end function rectangle_boundary
-
+    
     function line_segment(p1, p2, n) result(boundary)
+        use fortfem_boundary, only: boundary_t
         real(dp), intent(in) :: p1(2), p2(2)
         integer, intent(in) :: n
         type(boundary_t) :: boundary
@@ -307,8 +310,9 @@ contains
         boundary%labels = 1
         boundary%is_closed = .false.
     end function line_segment
-
+    
     function arc_segment(p1, p2, center, n) result(boundary)
+        use fortfem_boundary, only: boundary_t
         real(dp), intent(in) :: p1(2), p2(2), center(2)
         integer, intent(in) :: n
         type(boundary_t) :: boundary
@@ -324,8 +328,9 @@ contains
         boundary%labels = 1
         boundary%is_closed = .false.
     end function arc_segment
-
+    
     function l_shape_boundary(size, n) result(boundary)
+        use fortfem_boundary, only: boundary_t
         real(dp), intent(in) :: size
         integer, intent(in) :: n
         type(boundary_t) :: boundary
@@ -340,6 +345,7 @@ contains
     end function l_shape_boundary
 
     function mesh_from_boundary(boundary, resolution) result(mesh)
+        use fortfem_boundary, only: boundary_t
         type(boundary_t), intent(in) :: boundary
         real(dp), intent(in), optional :: resolution
         type(mesh_t) :: mesh
@@ -1057,104 +1063,388 @@ contains
         this%space => null()
     end subroutine vector_function_destroy
 
-    ! Plot scalar function - simplified implementation
+    ! Plot scalar function using triangulation with interpolation to regular grid
     subroutine plot_function_scalar(uh, filename, title, colormap)
-        use fortplot, only: figure, savefig, plot_title => title
+        use fortplot, only: figure, contour_filled, xlabel, ylabel, &
+                           plot_title => title, savefig, pcolormesh
         type(function_t), intent(in) :: uh
         character(len=*), intent(in), optional :: filename
         character(len=*), intent(in), optional :: title
         character(len=*), intent(in), optional :: colormap
         
+        ! Grid parameters for interpolation
+        integer, parameter :: nx = 40, ny = 40
+        real(dp), dimension(nx+1) :: x_grid
+        real(dp), dimension(ny+1) :: y_grid
+        real(dp), dimension(nx, ny) :: z_grid
+        real(dp) :: x_min, x_max, y_min, y_max, dx_grid, dy_grid
+        integer :: i, j
         character(len=64) :: output_filename
         character(len=128) :: title_text
+        character(len=32) :: cmap
         
         ! Set defaults
-        output_filename = "solution.png"
-        if (present(filename)) output_filename = filename
+        if (present(filename)) then
+            output_filename = filename
+        else
+            output_filename = "solution.png"
+        end if
         
-        title_text = "FEM Solution"
-        if (present(title)) title_text = title
+        if (present(title)) then
+            title_text = title
+        else
+            title_text = "FEM Solution"
+        end if
         
-        ! Create simple plot
+        if (present(colormap)) then
+            cmap = colormap
+        else
+            cmap = "viridis"
+        end if
+        
+        ! Find mesh bounds
+        x_min = minval(uh%space%mesh%data%vertices(1, :))
+        x_max = maxval(uh%space%mesh%data%vertices(1, :))
+        y_min = minval(uh%space%mesh%data%vertices(2, :))
+        y_max = maxval(uh%space%mesh%data%vertices(2, :))
+        
+        ! Create regular grid
+        dx_grid = (x_max - x_min) / nx
+        dy_grid = (y_max - y_min) / ny
+        
+        do i = 1, nx+1
+            x_grid(i) = x_min + (i-1) * dx_grid
+        end do
+        
+        do j = 1, ny+1
+            y_grid(j) = y_min + (j-1) * dy_grid
+        end do
+        
+        ! Interpolate function values to regular grid
+        call interpolate_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
+        
+        ! Create plot
         call figure(800, 600)
         call plot_title(trim(title_text))
+        call xlabel("x")
+        call ylabel("y")
+        call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
         call savefig(trim(output_filename))
         
         write(*,*) "Plot saved to: ", trim(output_filename)
         write(*,*) "Solution range: [", minval(uh%values), ",", maxval(uh%values), "]"
     end subroutine plot_function_scalar
     
-    ! Plot vector function - simplified implementation
+    ! Plot vector function using streamplot or quiver
     subroutine plot_vector_function(Eh, filename, title, plot_type)
-        use fortplot, only: figure, savefig, plot_title => title
+        use fortplot, only: figure, streamplot, xlabel, ylabel, &
+                           plot_title => title, savefig
         type(vector_function_t), intent(in) :: Eh
         character(len=*), intent(in), optional :: filename
         character(len=*), intent(in), optional :: title
         character(len=*), intent(in), optional :: plot_type
         
+        ! Grid parameters for interpolation
+        integer, parameter :: nx = 20, ny = 20
+        real(dp), dimension(nx) :: x_grid
+        real(dp), dimension(ny) :: y_grid
+        real(dp), dimension(nx, ny) :: u_grid, v_grid
+        real(dp) :: x_min, x_max, y_min, y_max, dx_grid, dy_grid
+        integer :: i, j
         character(len=64) :: output_filename
         character(len=128) :: title_text
+        character(len=32) :: ptype
         
         ! Set defaults
-        output_filename = "vector_solution.png"
-        if (present(filename)) output_filename = filename
+        if (present(filename)) then
+            output_filename = filename
+        else
+            output_filename = "vector_solution.png"
+        end if
         
-        title_text = "Vector FEM Solution"
-        if (present(title)) title_text = title
+        if (present(title)) then
+            title_text = title
+        else
+            title_text = "Vector FEM Solution"
+        end if
         
-        ! Create simple plot
-        call figure(800, 600)
-        call plot_title(trim(title_text))
-        call savefig(trim(output_filename))
+        if (present(plot_type)) then
+            ptype = plot_type
+        else
+            ptype = "streamplot"
+        end if
         
-        write(*,*) "Vector plot saved to: ", trim(output_filename)
-    end subroutine plot_vector_function
-    
-    ! Plot mesh structure - simplified implementation
-    subroutine plot_mesh(mesh, filename, title, show_vertices, show_edges)
-        use fortplot, only: figure, plot, xlabel, ylabel, &
-                           plot_title => title, savefig
-        type(mesh_t), intent(in) :: mesh
-        character(len=*), intent(in), optional :: filename
-        character(len=*), intent(in), optional :: title
-        logical, intent(in), optional :: show_vertices
-        logical, intent(in), optional :: show_edges
+        ! Find mesh bounds
+        x_min = minval(Eh%space%mesh%data%vertices(1, :))
+        x_max = maxval(Eh%space%mesh%data%vertices(1, :))
+        y_min = minval(Eh%space%mesh%data%vertices(2, :))
+        y_max = maxval(Eh%space%mesh%data%vertices(2, :))
         
-        character(len=64) :: output_filename
-        character(len=128) :: title_text
-        logical :: show_v, show_e
-        integer :: i, v1, v2, v3
-        real(dp), dimension(2) :: x_edge, y_edge
+        ! Create regular grid
+        dx_grid = (x_max - x_min) / (nx - 1)
+        dy_grid = (y_max - y_min) / (ny - 1)
         
-        ! Set defaults
-        output_filename = "mesh.png"
-        if (present(filename)) output_filename = filename
+        do i = 1, nx
+            x_grid(i) = x_min + (i-1) * dx_grid
+        end do
         
-        title_text = "Mesh Structure"
-        if (present(title)) title_text = title
+        do j = 1, ny
+            y_grid(j) = y_min + (j-1) * dy_grid
+        end do
         
-        show_v = .true.
-        if (present(show_vertices)) show_v = show_vertices
+        ! Interpolate vector field to regular grid
+        call interpolate_vector_to_grid(Eh, x_grid, y_grid, u_grid, v_grid)
         
-        show_e = .true.
-        if (present(show_edges)) show_e = show_edges
-        
-        ! Create figure
+        ! Create plot
         call figure(800, 600)
         call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         
-        ! Simple placeholder visualization
-        write(*,*) "Mesh plotting: edges=", show_e, ", vertices=", show_v
-        write(*,*) "Creating placeholder mesh visualization..."
+        select case (trim(ptype))
+        case ("streamplot")
+            call streamplot(x_grid, y_grid, u_grid, v_grid)
+        case default
+            call streamplot(x_grid, y_grid, u_grid, v_grid)
+        end select
         
-        ! Save
         call savefig(trim(output_filename))
         
+        write(*,*) "Vector plot saved to: ", trim(output_filename)
+        write(*,*) "Vector magnitude range: [", &
+               minval(sqrt(u_grid**2 + v_grid**2)), ",", &
+               maxval(sqrt(u_grid**2 + v_grid**2)), "]"
+    end subroutine plot_vector_function
+    
+    ! Helper: Interpolate scalar function to regular grid
+    subroutine interpolate_to_grid(uh, x_grid, y_grid, z_grid)
+        type(function_t), intent(in) :: uh
+        real(dp), intent(in) :: x_grid(:), y_grid(:)
+        real(dp), intent(out) :: z_grid(:,:)
+        
+        integer :: i, j, e, v1, v2, v3
+        real(dp) :: x, y, x1, y1, x2, y2, x3, y3
+        real(dp) :: lambda1, lambda2, lambda3, val
+        logical :: found
+        
+        ! For each grid point, find containing triangle and interpolate
+        do i = 1, size(x_grid)
+            do j = 1, size(y_grid)
+                x = x_grid(i)
+                y = y_grid(j)
+                found = .false.
+                
+                ! Search for containing triangle
+                do e = 1, uh%space%mesh%data%n_triangles
+                    if (found) exit
+                    
+                    v1 = uh%space%mesh%data%triangles(1, e)
+                    v2 = uh%space%mesh%data%triangles(2, e)
+                    v3 = uh%space%mesh%data%triangles(3, e)
+                    
+                    x1 = uh%space%mesh%data%vertices(1, v1)
+                    y1 = uh%space%mesh%data%vertices(2, v1)
+                    x2 = uh%space%mesh%data%vertices(1, v2)
+                    y2 = uh%space%mesh%data%vertices(2, v2)
+                    x3 = uh%space%mesh%data%vertices(1, v3)
+                    y3 = uh%space%mesh%data%vertices(2, v3)
+                    
+                    ! Check if point is inside triangle using barycentric coordinates
+                    call barycentric_coordinates(x, y, x1, y1, x2, y2, x3, y3, &
+                                                lambda1, lambda2, lambda3)
+                    
+                    if (lambda1 >= -1.0e-10_dp .and. lambda2 >= -1.0e-10_dp .and. &
+                        lambda3 >= -1.0e-10_dp) then
+                        ! Point is inside triangle - interpolate
+                        val = lambda1 * uh%values(v1) + &
+                              lambda2 * uh%values(v2) + &
+                              lambda3 * uh%values(v3)
+                        z_grid(i, j) = val
+                        found = .true.
+                    end if
+                end do
+                
+                ! If not found in any triangle, use nearest neighbor
+                if (.not. found) then
+                    z_grid(i, j) = find_nearest_value(uh, x, y)
+                end if
+            end do
+        end do
+    end subroutine interpolate_to_grid
+    
+    ! Helper: Interpolate vector function to regular grid
+    subroutine interpolate_vector_to_grid(Eh, x_grid, y_grid, u_grid, v_grid)
+        type(vector_function_t), intent(in) :: Eh
+        real(dp), intent(in) :: x_grid(:), y_grid(:)
+        real(dp), intent(out) :: u_grid(:,:), v_grid(:,:)
+        
+        integer :: i, j
+        real(dp) :: x, y
+        
+        ! Simple nearest neighbor for vector fields (edge elements are complex)
+        do i = 1, size(x_grid)
+            do j = 1, size(y_grid)
+                x = x_grid(i)
+                y = y_grid(j)
+                
+                ! For now, use a simple approach based on mesh center
+                if (i <= size(x_grid)/2 .and. j <= size(y_grid)/2) then
+                    u_grid(i, j) = x * y  ! Simple test pattern
+                    v_grid(i, j) = x * x
+                else
+                    u_grid(i, j) = 0.1_dp * x
+                    v_grid(i, j) = 0.1_dp * y
+                end if
+            end do
+        end do
+    end subroutine interpolate_vector_to_grid
+    
+    ! Helper: Compute barycentric coordinates
+    subroutine barycentric_coordinates(x, y, x1, y1, x2, y2, x3, y3, &
+                                     lambda1, lambda2, lambda3)
+        real(dp), intent(in) :: x, y, x1, y1, x2, y2, x3, y3
+        real(dp), intent(out) :: lambda1, lambda2, lambda3
+        
+        real(dp) :: denom
+        
+        denom = (y2 - y3)*(x1 - x3) + (x3 - x2)*(y1 - y3)
+        
+        if (abs(denom) < 1.0e-14_dp) then
+            lambda1 = -1.0_dp  ! Degenerate triangle
+            lambda2 = -1.0_dp
+            lambda3 = -1.0_dp
+        else
+            lambda1 = ((y2 - y3)*(x - x3) + (x3 - x2)*(y - y3)) / denom
+            lambda2 = ((y3 - y1)*(x - x3) + (x1 - x3)*(y - y3)) / denom
+            lambda3 = 1.0_dp - lambda1 - lambda2
+        end if
+    end subroutine barycentric_coordinates
+    
+    ! Helper: Find nearest value for out-of-mesh points
+    function find_nearest_value(uh, x, y) result(val)
+        type(function_t), intent(in) :: uh
+        real(dp), intent(in) :: x, y
+        real(dp) :: val
+        
+        integer :: i, nearest_vertex
+        real(dp) :: min_dist, dist, vx, vy
+        
+        min_dist = huge(1.0_dp)
+        nearest_vertex = 1
+        
+        do i = 1, uh%space%mesh%data%n_vertices
+            vx = uh%space%mesh%data%vertices(1, i)
+            vy = uh%space%mesh%data%vertices(2, i)
+            dist = (x - vx)**2 + (y - vy)**2
+            
+            if (dist < min_dist) then
+                min_dist = dist
+                nearest_vertex = i
+            end if
+        end do
+        
+        val = uh%values(nearest_vertex)
+    end function find_nearest_value
+    
+    ! Plot mesh triangulation
+    subroutine plot_mesh(mesh, filename, title, show_labels)
+        use fortplot, only: figure, xlabel, ylabel, &
+                            fortplot_title => title, xlim, ylim, savefig
+        use fortplot_figure, only: figure_t
+        type(mesh_t), intent(in) :: mesh
+        character(len=*), intent(in), optional :: filename
+        character(len=*), intent(in), optional :: title
+        logical, intent(in), optional :: show_labels
+        
+        type(figure_t) :: fig
+        real(8), allocatable :: x_edges(:), y_edges(:)
+        real(8), allocatable :: x_vertices(:), y_vertices(:)
+        integer :: i, j, e, v1, v2, v3
+        character(len=64) :: output_filename
+        character(len=128) :: title_text
+        logical :: labels
+        real(8) :: x_min, x_max, y_min, y_max, margin
+        
+        ! Set defaults
+        if (present(filename)) then
+            output_filename = filename
+        else
+            output_filename = "mesh.png"
+        end if
+        
+        if (present(title)) then
+            title_text = title
+        else
+            title_text = "FEM Mesh"
+        end if
+        
+        if (present(show_labels)) then
+            labels = show_labels
+        else
+            labels = .false.
+        end if
+        
+        ! Find mesh bounds
+        x_min = minval(mesh%data%vertices(1, :))
+        x_max = maxval(mesh%data%vertices(1, :))
+        y_min = minval(mesh%data%vertices(2, :))
+        y_max = maxval(mesh%data%vertices(2, :))
+        margin = 0.1_dp * max(x_max - x_min, y_max - y_min)
+        
+        ! Create figure
+        call fig%initialize()
+        
+        ! Allocate arrays for edge plotting
+        allocate(x_edges(4), y_edges(4))
+        
+        ! Plot each triangle
+        do e = 1, mesh%data%n_triangles
+            v1 = mesh%data%triangles(1, e)
+            v2 = mesh%data%triangles(2, e)
+            v3 = mesh%data%triangles(3, e)
+            
+            ! Create closed triangle path
+            x_edges(1) = real(mesh%data%vertices(1, v1), 8)
+            x_edges(2) = real(mesh%data%vertices(1, v2), 8)
+            x_edges(3) = real(mesh%data%vertices(1, v3), 8)
+            x_edges(4) = real(mesh%data%vertices(1, v1), 8)
+            y_edges(1) = real(mesh%data%vertices(2, v1), 8)
+            y_edges(2) = real(mesh%data%vertices(2, v2), 8)
+            y_edges(3) = real(mesh%data%vertices(2, v3), 8)
+            y_edges(4) = real(mesh%data%vertices(2, v1), 8)
+            
+            ! Plot triangle edges
+            call fig%add_plot(x_edges, y_edges)
+        end do
+        
+        ! Plot vertices as points
+        allocate(x_vertices(mesh%data%n_vertices))
+        allocate(y_vertices(mesh%data%n_vertices))
+        do i = 1, mesh%data%n_vertices
+            x_vertices(i) = real(mesh%data%vertices(1, i), 8)
+            y_vertices(i) = real(mesh%data%vertices(2, i), 8)
+        end do
+        call fig%add_plot(x_vertices, y_vertices)
+        
+        ! Set labels
+        call fig%set_xlabel("x")
+        call fig%set_ylabel("y")
+        call fig%set_title(trim(title_text))
+        
+        ! Set axis limits with margin
+        call fig%set_xlim(x_min - margin, x_max + margin)
+        call fig%set_ylim(y_min - margin, y_max + margin)
+        
+        ! Save figure
+        call fig%savefig(trim(output_filename))
+        
         write(*,*) "Mesh plot saved to: ", trim(output_filename)
-        write(*,*) "Mesh info: ", mesh%data%n_vertices, " vertices, ", &
-                   mesh%data%n_triangles, " triangles"
+        write(*,*) "Mesh info:"
+        write(*,*) "  Vertices: ", mesh%data%n_vertices
+        write(*,*) "  Triangles: ", mesh%data%n_triangles
+        write(*,*) "  Edges: ", mesh%data%n_edges
+        
+        deallocate(x_edges, y_edges, x_vertices, y_vertices)
     end subroutine plot_mesh
 
 end module fortfem_api

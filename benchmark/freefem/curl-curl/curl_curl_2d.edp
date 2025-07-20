@@ -152,6 +152,9 @@ if (true) {  // Set to true to run convergence study
     }
 }
 
+// Save mesh plot
+plot(Th, cmm="FreeFEM Mesh (20x20)", ps="freefem_curlcurl_mesh.eps");
+
 // Save vector field visualization as PostScript (will be converted to PNG in CI)
 plot([Ex, Ey], value=true, coef=0.1, cmm="FreeFEM Curl-Curl Solution", ps="freefem_curlcurl_solution.eps");
 
@@ -169,4 +172,8 @@ plot(curlField, value=true, fill=true, cmm="FreeFEM Curl Field", ps="freefem_cur
 cout << "\nFreeFEM reference solution computed successfully!" << endl;
 cout << "Results saved to freefem_results.dat" << endl;
 cout << "Analytical solution saved to freefem_solution.dat" << endl;
-cout << "Solution plots saved to freefem_curlcurl_solution.eps, freefem_curlcurl_exact.eps, freefem_curl_field.eps" << endl;
+cout << "Plots saved:" << endl;
+cout << "  - Mesh: freefem_curlcurl_mesh.eps" << endl;
+cout << "  - Solution: freefem_curlcurl_solution.eps" << endl;
+cout << "  - Exact: freefem_curlcurl_exact.eps" << endl;
+cout << "  - Curl field: freefem_curl_field.eps" << endl;

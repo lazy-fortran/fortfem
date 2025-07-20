@@ -59,5 +59,37 @@ for (int level = 1; level <= 6; level++) {
     convfile << h << " " << L2norm << " " << H1norm << " " << Vh.ndof << endl;
 }
 
+// Create visualization of final solution (highest resolution)
+real eps = 1e-6;
+mesh ThFinal = square(256, 1, [x, eps*y]);
+fespace VhFinal(ThFinal, P1);
+VhFinal uFinal, vFinal;
+
+varf poissonFinal(uFinal, vFinal) = 
+    int2d(ThFinal)( dx(uFinal)*dx(vFinal) + dy(uFinal)*dy(vFinal) )
+    + on(1, 3, uFinal=0);
+
+varf rhsFinal(uFinal, vFinal) = 
+    int2d(ThFinal)( Source*vFinal )
+    + on(1, 3, uFinal=0);
+
+matrix AFinal = poissonFinal(VhFinal, VhFinal);
+real[int] bFinal = rhsFinal(0, VhFinal);
+uFinal[] = AFinal^-1 * bFinal;
+
+// Save mesh plot (thin 2D representing 1D)
+plot(ThFinal, cmm="FreeFEM 1D Mesh (256 elements)", ps="freefem_poisson1d_mesh.eps");
+
+// Save solution plot
+plot(uFinal, value=true, fill=true, cmm="FreeFEM Poisson 1D Solution", ps="freefem_poisson1d_solution.eps");
+
+// Save exact solution plot for comparison
+VhFinal exactSol = ExactU;
+plot(exactSol, value=true, fill=true, cmm="Exact Poisson 1D Solution", ps="freefem_poisson1d_exact.eps");
+
 cout << "\nFreeFEM Poisson 1D reference computed successfully!" << endl;
 cout << "Results saved to freefem_convergence_1d.dat" << endl;
+cout << "Plots saved:" << endl;
+cout << "  - Mesh: freefem_poisson1d_mesh.eps" << endl;
+cout << "  - Solution: freefem_poisson1d_solution.eps" << endl;
+cout << "  - Exact: freefem_poisson1d_exact.eps" << endl;

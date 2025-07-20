@@ -25,8 +25,18 @@ program simple_poisson
     uh = function(Vh)
 
     call solve(a == L, uh, bc)
+    
+    ! Plot mesh
+    call plot(mesh, filename="poisson_mesh.png", title="Poisson Mesh (20x20)")
+    
+    ! Plot solution
     call plot(uh, filename="poisson_solution.png", &
               title="Poisson Solution: -Δu = 1", &
               colormap="viridis")
+
+    write(*,*) "Simple Poisson example completed!"
+    write(*,*) "Generated files:"
+    write(*,*) "  - Mesh: poisson_mesh.png"
+    write(*,*) "  - Solution: poisson_solution.png"
 
 end program simple_poisson

@@ -69,7 +69,7 @@ contains
         ! Test mesh plotting with various options
         write(*,*) "  Testing plot with title and options..."
         call plot(mesh, filename="test_mesh_titled.png", title="Rectangle Mesh", &
-                  show_vertices=.true., show_edges=.true.)
+                  show_labels=.false.)
         write(*,*) "  ✓ plot(mesh, options) works"
         
         call end_test()
