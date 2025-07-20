@@ -220,42 +220,6 @@ end program curl_curl_example```
 
 ![curl_curl_solution.png](../../../artifacts/plots/curl_curl_solution.png)
 
-### curl_curl_analytical.png
-
-![curl_curl_analytical.png](../../../artifacts/plots/curl_curl_analytical.png)
-
-### curl_curl_numerical.png
-
-![curl_curl_numerical.png](../../../artifacts/plots/curl_curl_numerical.png)
-
-### curl_curl_solution.png
-
-![curl_curl_solution.png](../../../artifacts/plots/curl_curl_solution.png)
-
-### curl_curl_analytical.png
-
-![curl_curl_analytical.png](../../../artifacts/plots/curl_curl_analytical.png)
-
-### curl_curl_numerical.png
-
-![curl_curl_numerical.png](../../../artifacts/plots/curl_curl_numerical.png)
-
-### curl_curl_solution.png
-
-![curl_curl_solution.png](../../../artifacts/plots/curl_curl_solution.png)
-
-### curl_curl_analytical.png
-
-![curl_curl_analytical.png](../../../artifacts/plots/curl_curl_analytical.png)
-
-### curl_curl_numerical.png
-
-![curl_curl_numerical.png](../../../artifacts/plots/curl_curl_numerical.png)
-
-### curl_curl_solution.png
-
-![curl_curl_solution.png](../../../artifacts/plots/curl_curl_solution.png)
-
 
 ---
 

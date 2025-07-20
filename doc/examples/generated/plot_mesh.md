@@ -98,9 +98,7 @@ end program plot_mesh_example```
 
 ## Generated Plots
 
-### mesh.png
-
-![mesh.png](../../../artifacts/plots/mesh.png)
+*No plots available for this example.*
 
 
 ---

@@ -130,6 +130,8 @@ EOF
     
     # Find and add related plots
     plot_found=false
+    declare -A added_plots  # Track which plots have been added
+    
     if [[ -d "$ARTIFACTS_DIR" ]]; then
         echo "🖼️  Looking for plots in $ARTIFACTS_DIR for $example_name"
         
@@ -138,6 +140,13 @@ EOF
             for plot_file in "$ARTIFACTS_DIR"/$plot_pattern; do
                 if [[ -f "$plot_file" ]]; then
                     plot_name=$(basename "$plot_file")
+                    
+                    # Skip if already added
+                    if [[ -n "${added_plots[$plot_name]}" ]]; then
+                        continue
+                    fi
+                    added_plots[$plot_name]=1
+                    
                     rel_plot_path="../../../artifacts/plots/$plot_name"
                     echo "  Found plot: $plot_name"
                     
@@ -158,6 +167,13 @@ EOF
                 for plot_file in "$ARTIFACTS_DIR"/poisson*.png "$ARTIFACTS_DIR"/mesh*.png; do
                     if [[ -f "$plot_file" ]]; then
                         plot_name=$(basename "$plot_file")
+                        
+                        # Skip if already added
+                        if [[ -n "${added_plots[$plot_name]}" ]]; then
+                            continue
+                        fi
+                        added_plots[$plot_name]=1
+                        
                         rel_plot_path="../../../artifacts/plots/$plot_name"
                         echo "  Found related plot: $plot_name"
                         
@@ -175,6 +191,13 @@ EOF
                 for plot_file in "$ARTIFACTS_DIR"/curl*.png "$ARTIFACTS_DIR"/curlcurl*.png; do
                     if [[ -f "$plot_file" ]]; then
                         plot_name=$(basename "$plot_file")
+                        
+                        # Skip if already added
+                        if [[ -n "${added_plots[$plot_name]}" ]]; then
+                            continue
+                        fi
+                        added_plots[$plot_name]=1
+                        
                         rel_plot_path="../../../artifacts/plots/$plot_name"
                         echo "  Found related plot: $plot_name"
                         
@@ -192,6 +215,13 @@ EOF
                 for plot_file in "$ARTIFACTS_DIR"/mesh*.png; do
                     if [[ -f "$plot_file" ]]; then
                         plot_name=$(basename "$plot_file")
+                        
+                        # Skip if already added
+                        if [[ -n "${added_plots[$plot_name]}" ]]; then
+                            continue
+                        fi
+                        added_plots[$plot_name]=1
+                        
                         rel_plot_path="../../../artifacts/plots/$plot_name"
                         echo "  Found related plot: $plot_name"
                         

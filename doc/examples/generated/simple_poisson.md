@@ -104,10 +104,6 @@ end program simple_poisson```
 
 ![poisson_solution.png](../../../artifacts/plots/poisson_solution.png)
 
-### mesh.png
-
-![mesh.png](../../../artifacts/plots/mesh.png)
-
 
 ---
 
