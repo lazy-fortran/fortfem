@@ -84,11 +84,19 @@ program simple_poisson
     write(*,*) "  Value: u =", center_val
     write(*,*) ""
     
+    ! Plot the solution
+    write(*,*) "Creating plot..."
+    call plot(uh, filename="poisson_solution.png", &
+              title_str="Poisson Solution: -Δu = 1", &
+              colormap="viridis")
+    write(*,*) ""
+    
     write(*,*) "Example completed successfully!"
     write(*,*) ""
     write(*,*) "This example demonstrates:"
     write(*,*) "- Natural mathematical notation for weak forms"
     write(*,*) "- Automatic assembly from symbolic expressions" 
     write(*,*) "- Clean FEniCS-style solve interface"
+    write(*,*) "- Easy plotting with single plot() command"
 
 end program simple_poisson

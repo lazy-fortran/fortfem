@@ -82,6 +82,13 @@ program curl_curl_example
     write(*,*) "  Max Ey =", maxval(abs(Eh%values(:,2)))
     write(*,*) ""
     
+    ! Plot the vector solution
+    write(*,*) "Creating vector field plot..."
+    call plot(Eh, filename="curl_curl_solution.png", &
+              title_str="Curl-Curl Solution: ∇×(∇×E) + E = J", &
+              plot_type="streamplot")
+    write(*,*) ""
+    
     write(*,*) "Example completed successfully!"
     write(*,*) ""
     write(*,*) "This example demonstrates:"
@@ -89,5 +96,6 @@ program curl_curl_example
     write(*,*) "- Curl operator with edge elements (Nédélec)"
     write(*,*) "- Tangential boundary conditions"
     write(*,*) "- GMRES iterative solver for large systems"
+    write(*,*) "- Vector field visualization with streamplots"
 
 end program curl_curl_example
