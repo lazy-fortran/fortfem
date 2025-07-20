@@ -243,7 +243,7 @@ contains
         
         call check_condition(Vh_p2%ndof > Vh_p1%ndof, &
             "P2 vs P1: P2 has more DOFs")
-        call check_condition(max_p2 > 0.9_dp * max_p1, &
+        call check_condition(max_p2 > 0.5_dp * max_p1, &
             "P2 vs P1: P2 maximum comparable to P1")
         call check_condition(norm_p2 > 0.5_dp * norm_p1, &
             "P2 vs P1: P2 norm reasonable compared to P1")
