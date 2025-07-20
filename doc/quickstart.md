@@ -81,8 +81,8 @@ program poisson_forms
     type(dirichlet_bc_t) :: bc
     type(form_expr_t) :: a, L
     
-    ! Define problem
-    mesh = unit_square_mesh(32)
+    ! Define problem with minimal code
+    mesh = unit_square_mesh(20)
     Vh = function_space(mesh, "Lagrange", 1)
     
     u = trial_function(Vh)
@@ -91,14 +91,13 @@ program poisson_forms
     
     ! Weak form: ∫∇u·∇v dx = ∫fv dx
     a = inner(grad(u), grad(v))*dx
-    L = inner(f, v)*dx
+    L = f*v*dx
     
-    ! Boundary conditions
-    bc = dirichlet_bc(Vh, 0.0_dp)
+    ! Solve and plot
     uh = function(Vh)
-    
-    ! Assembly and solve (to be fully implemented)
-    ! call solve(a == L, uh, bc)
+    bc = dirichlet_bc(Vh, 0.0_dp)
+    call solve(a == L, uh, bc)
+    call plot(uh, title="Poisson Solution")
     
 end program
 ```
@@ -113,36 +112,33 @@ mesh = unit_square_mesh(20)          ! 20×20 uniform grid on [0,1]²
 ```
 
 ### 2. Function Spaces  
-Currently available through simplified API:
+FortFEM supports multiple element types with clean API:
 - P1 Lagrange elements (linear, continuous)
-- P2 Lagrange elements (quadratic, 6 DOFs per triangle)
-- Nédélec edge elements (H(curl) conforming)
-- Raviart-Thomas elements (H(div) conforming)
+- Nédélec edge elements (H(curl) conforming for electromagnetic problems)
 
-Clean API available now:
 ```fortran
-Vh = function_space(mesh, "Lagrange", 1)  ! P1 elements
-! P2 and Nedelec elements coming soon
+Vh = function_space(mesh, "Lagrange", 1)        ! P1 scalar elements
+Vh = vector_function_space(mesh, "Nedelec", 1)  ! Edge elements for vectors
 ```
 
-### 3. Assembly
-High-level assembly hides matrix details:
+### 3. Forms and Assembly
+Natural mathematical notation for weak forms:
 ```fortran
-call assemble_poisson_2d(mesh, A, f)     ! Current: -∆u = f
-call apply_zero_bc(mesh, A, f)           ! u = 0 on boundary
+! Scalar problems
+a = inner(grad(u), grad(v))*dx    ! Laplacian bilinear form
+L = f*v*dx                        ! Source linear form
+
+! Vector problems  
+a = inner(curl(E), curl(F))*dx + inner(E, F)*dx  ! Curl-curl + mass
+L = inner(J, F)*dx                                 ! Current source
 ```
 
-Forms-based assembly available now:
+### 4. Solvers and Visualization
+Automatic solver selection and one-line plotting:
 ```fortran
-a = inner(grad(u), grad(v))*dx    ! Bilinear form
-L = inner(f, v)*dx                 ! Linear form
-```
-
-### 4. Solvers
-Simple solver interface:
-```fortran
-call solve_lapack_dense(A, u, info)      ! Current: dense solver
-! Automatic solver from forms coming soon
+call solve(a == L, uh, bc)                        ! Auto solver selection
+call plot(uh, title="Solution", colormap="plasma") ! Instant visualization
+call plot(Eh, plot_type="streamplot")             ! Vector field plots
 ```
 
 ## Next Steps
