@@ -1,30 +1,3 @@
----
-project: FortFEM
-version: 1.0.0
-license: gpl3
-summary: A modern Fortran finite element library
-author: FortFEM Team
-email: 
-src_dir: ./src
-output_dir: ./build/doc
-project_github: https://github.com/itpplasma/fortfem
-project_website: https://itpplasma.github.io/fortfem
-summary: A modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS
-author_description: FortFEM provides a FEniCS-style API for solving PDEs with natural mathematical notation
-github: https://github.com/itpplasma/fortfem
-fpp_extensions: fpp
-predocmark: >
-media_dir: ./artifacts
-extra_mods: fortfem_kinds:https://fortfem.example.com/kinds
-           fortfem_api:https://fortfem.example.com/api
-graph: true
-sort: alpha
-print_creation_date: true
-creation_date: %Y-%m-%d %H:%M %z
-md_extensions: markdown.extensions.toc
-               markdown.extensions.smarty
----
-
 [![CI](https://github.com/itpplasma/fortfem/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/fortfem/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/itpplasma/fortfem/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/itpplasma/fortfem)
 
