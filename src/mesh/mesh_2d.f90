@@ -1309,10 +1309,133 @@ end module fortfem_mesh_2d
     
     subroutine merge_triangle_quad_connectivity(mesh)
         type(mesh_2d_t), intent(inout) :: mesh
-        ! Placeholder for handling mixed connectivity
-        ! Would merge triangle and quad edge connectivity
-        write(*,*) "Mixed connectivity merge not fully implemented"
+        
+        integer :: total_edges, triangle_edges, quad_edges
+        integer, allocatable :: all_edges(:,:), edge_counts(:)
+        integer :: i, j, edge_idx, v1, v2
+        logical, allocatable :: is_duplicate(:)
+        
+        ! Count edges from triangles and quads
+        triangle_edges = 3 * mesh%n_triangles
+        quad_edges = 4 * mesh%n_quads
+        total_edges = triangle_edges + quad_edges
+        
+        ! Collect all edges
+        allocate(all_edges(2, total_edges))
+        allocate(edge_counts(total_edges))
+        edge_counts = 1
+        
+        edge_idx = 0
+        
+        ! Add triangle edges
+        do i = 1, mesh%n_triangles
+            do j = 1, 3
+                edge_idx = edge_idx + 1
+                v1 = mesh%triangles(j, i)
+                v2 = mesh%triangles(mod(j, 3) + 1, i)
+                ! Ensure consistent ordering
+                all_edges(1, edge_idx) = min(v1, v2)
+                all_edges(2, edge_idx) = max(v1, v2)
+            end do
+        end do
+        
+        ! Add quad edges
+        do i = 1, mesh%n_quads
+            do j = 1, 4
+                edge_idx = edge_idx + 1
+                v1 = mesh%quads(j, i)
+                v2 = mesh%quads(mod(j, 4) + 1, i)
+                ! Ensure consistent ordering
+                all_edges(1, edge_idx) = min(v1, v2)
+                all_edges(2, edge_idx) = max(v1, v2)
+            end do
+        end do
+        
+        ! Find and count duplicate edges
+        allocate(is_duplicate(total_edges))
+        is_duplicate = .false.
+        
+        do i = 1, total_edges
+            if (is_duplicate(i)) cycle
+            do j = i + 1, total_edges
+                if (all_edges(1, i) == all_edges(1, j) .and. &
+                    all_edges(2, i) == all_edges(2, j)) then
+                    is_duplicate(j) = .true.
+                    edge_counts(i) = edge_counts(i) + 1
+                end if
+            end do
+        end do
+        
+        ! Build unified edge list
+        mesh%n_edges = count(.not. is_duplicate)
+        if (allocated(mesh%edges)) deallocate(mesh%edges)
+        allocate(mesh%edges(2, mesh%n_edges))
+        
+        j = 0
+        do i = 1, total_edges
+            if (.not. is_duplicate(i)) then
+                j = j + 1
+                mesh%edges(:, j) = all_edges(:, i)
+            end if
+        end do
+        
+        ! Initialize connectivity arrays for mixed elements
+        if (allocated(mesh%edge_to_triangles)) deallocate(mesh%edge_to_triangles)
+        if (allocated(mesh%edge_to_quads)) deallocate(mesh%edge_to_quads)
+        allocate(mesh%edge_to_triangles(2, mesh%n_edges))
+        allocate(mesh%edge_to_quads(2, mesh%n_edges))
+        mesh%edge_to_triangles = 0
+        mesh%edge_to_quads = 0
+        
+        ! Build triangle-edge connectivity
+        do i = 1, mesh%n_triangles
+            do j = 1, 3
+                v1 = min(mesh%triangles(j, i), mesh%triangles(mod(j, 3) + 1, i))
+                v2 = max(mesh%triangles(j, i), mesh%triangles(mod(j, 3) + 1, i))
+                call find_edge_index(mesh, v1, v2, edge_idx)
+                if (edge_idx > 0) then
+                    if (mesh%edge_to_triangles(1, edge_idx) == 0) then
+                        mesh%edge_to_triangles(1, edge_idx) = i
+                    else
+                        mesh%edge_to_triangles(2, edge_idx) = i
+                    end if
+                end if
+            end do
+        end do
+        
+        ! Build quad-edge connectivity
+        do i = 1, mesh%n_quads
+            do j = 1, 4
+                v1 = min(mesh%quads(j, i), mesh%quads(mod(j, 4) + 1, i))
+                v2 = max(mesh%quads(j, i), mesh%quads(mod(j, 4) + 1, i))
+                call find_edge_index(mesh, v1, v2, edge_idx)
+                if (edge_idx > 0) then
+                    if (mesh%edge_to_quads(1, edge_idx) == 0) then
+                        mesh%edge_to_quads(1, edge_idx) = i
+                    else
+                        mesh%edge_to_quads(2, edge_idx) = i
+                    end if
+                end if
+            end do
+        end do
+        
+        deallocate(all_edges, edge_counts, is_duplicate)
     end subroutine merge_triangle_quad_connectivity
+    
+    subroutine find_edge_index(mesh, v1, v2, edge_idx)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: v1, v2
+        integer, intent(out) :: edge_idx
+        integer :: i
+        
+        edge_idx = 0
+        do i = 1, mesh%n_edges
+            if (mesh%edges(1, i) == v1 .and. mesh%edges(2, i) == v2) then
+                edge_idx = i
+                return
+            end if
+        end do
+    end subroutine find_edge_index
 
 <<<<<<< HEAD
 end module fortfem_mesh_2d

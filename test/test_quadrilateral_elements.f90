@@ -487,8 +487,35 @@ contains
         real(dp), intent(in) :: coords(2,4)
         integer, intent(in) :: nq
         real(dp) :: integral
-        ! Placeholder - would use actual Gauss quadrature
-        integral = 1.0_dp
+        
+        ! Simple 2x2 Gauss quadrature for quadrilaterals
+        real(dp), parameter :: gauss_2d(2) = [-0.5773502691896257_dp, 0.5773502691896257_dp]
+        real(dp), parameter :: weights_2d(2) = [1.0_dp, 1.0_dp]
+        real(dp) :: xi, eta, x_phys, y_phys, jac(2,2), det_jac, inv_jac(2,2)
+        logical :: success
+        integer :: i, j
+        
+        integral = 0.0_dp
+        
+        ! 2x2 Gauss quadrature (4 points)
+        do i = 1, 2
+            do j = 1, 2
+                xi = gauss_2d(i)
+                eta = gauss_2d(j)
+                
+                ! Map from reference to physical coordinates
+                call q1_reference_to_physical(xi, eta, coords, x_phys, y_phys)
+                
+                ! Compute Jacobian and determinant
+                call q1_jacobian(xi, eta, coords, jac, det_jac, inv_jac, success)
+                
+                if (success) then
+                    ! Add weighted contribution
+                    integral = integral + weights_2d(i) * weights_2d(j) * &
+                              func(x_phys, y_phys) * det_jac
+                end if
+            end do
+        end do
     end function integrate_over_quad
 
     function constant_function(x, y) result(val)
