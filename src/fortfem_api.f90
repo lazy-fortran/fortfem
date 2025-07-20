@@ -1148,12 +1148,34 @@ contains
         type(neumann_bc_t), intent(in) :: neumann_bc
         real(dp), intent(out) :: integral_value
         
-        ! Simplified implementation: estimate boundary integral
-        ! For unit square with constant flux, integral = flux * perimeter
+        integer :: e, v1, v2
+        real(dp) :: x1, y1, x2, y2, edge_length, perimeter
+        
+        integral_value = 0.0_dp
+        
         if (trim(neumann_bc%flux_type) == "constant") then
-            ! Rough estimate for unit square perimeter = 4
-            integral_value = neumann_bc%constant_value * 4.0_dp
+            ! Calculate actual boundary perimeter
+            perimeter = 0.0_dp
+            
+            ! Sum lengths of all boundary edges
+            do e = 1, neumann_bc%space%mesh%data%n_edges
+                if (neumann_bc%space%mesh%data%is_boundary_edge(e)) then
+                    v1 = neumann_bc%space%mesh%data%edges(1, e)
+                    v2 = neumann_bc%space%mesh%data%edges(2, e)
+                    
+                    x1 = neumann_bc%space%mesh%data%vertices(1, v1)
+                    y1 = neumann_bc%space%mesh%data%vertices(2, v1)
+                    x2 = neumann_bc%space%mesh%data%vertices(1, v2)
+                    y2 = neumann_bc%space%mesh%data%vertices(2, v2)
+                    
+                    edge_length = sqrt((x2-x1)**2 + (y2-y1)**2)
+                    perimeter = perimeter + edge_length
+                end if
+            end do
+            
+            integral_value = neumann_bc%constant_value * perimeter
         else
+            ! For non-constant flux, would need proper quadrature
             integral_value = 0.0_dp
         end if
     end subroutine compute_boundary_integral
