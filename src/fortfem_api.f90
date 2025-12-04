@@ -49,6 +49,7 @@ module fortfem_api
     public :: constant
     public :: dirichlet_bc
     public :: vector_bc
+    public :: assemble_laplacian_system
     
     ! Public form operations (simplified)
     public :: inner, grad, curl
@@ -366,14 +367,31 @@ contains
         real(dp), intent(in) :: p1(2), p2(2), center(2)
         integer, intent(in) :: n
         type(boundary_t) :: boundary
+        integer :: i
+        real(dp) :: radius1, radius2, radius
+        real(dp) :: theta1, theta2, dtheta, angle
+        real(dp), parameter :: pi = acos(-1.0_dp)
         
         boundary%n_points = n
         allocate(boundary%points(2, n))
         allocate(boundary%labels(n-1))
         
-        ! STUB: Generate arc segment points
-        boundary%points(:, 1) = p1
-        boundary%points(:, n) = p2
+        ! Compute radii for endpoints and use their average
+        radius1 = sqrt((p1(1) - center(1))**2 + (p1(2) - center(2))**2)
+        radius2 = sqrt((p2(1) - center(1))**2 + (p2(2) - center(2))**2)
+        radius = 0.5_dp * (radius1 + radius2)
+        
+        ! Parameterize minor arc from p1 to p2 in counter-clockwise direction
+        theta1 = atan2(p1(2) - center(2), p1(1) - center(1))
+        theta2 = atan2(p2(2) - center(2), p2(1) - center(1))
+        dtheta = theta2 - theta1
+        if (dtheta <= 0.0_dp) dtheta = dtheta + 2.0_dp * pi
+        
+        do i = 1, n
+            angle = theta1 + dtheta * real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, i) = center(1) + radius * cos(angle)
+            boundary%points(2, i) = center(2) + radius * sin(angle)
+        end do
         
         boundary%labels = 1
         boundary%is_closed = .false.
@@ -384,11 +402,66 @@ contains
         real(dp), intent(in) :: size
         integer, intent(in) :: n
         type(boundary_t) :: boundary
+        integer :: i, idx
+        real(dp) :: t, s
         
-        ! STUB: Generate L-shape boundary
+        s = size
+        
+        ! Six-segment L-shaped outer boundary:
+        ! (0,0) -> (s,0) -> (s,s) -> (2s,s) -> (2s,2s) -> (0,2s) -> (0,0)
         boundary%n_points = 6*n
-        allocate(boundary%points(2, 6*n))
-        allocate(boundary%labels(6*n-1))
+        allocate(boundary%points(2, boundary%n_points))
+        allocate(boundary%labels(boundary%n_points-1))
+        
+        idx = 0
+        
+        ! Segment 1: (0,0) -> (s,0)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = t * s
+            boundary%points(2, idx) = 0.0_dp
+        end do
+        
+        ! Segment 2: (s,0) -> (s,s)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = s
+            boundary%points(2, idx) = t * s
+        end do
+        
+        ! Segment 3: (s,s) -> (2s,s)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = s + t * s
+            boundary%points(2, idx) = s
+        end do
+        
+        ! Segment 4: (2s,s) -> (2s,2s)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = 2.0_dp * s
+            boundary%points(2, idx) = s + t * s
+        end do
+        
+        ! Segment 5: (2s,2s) -> (0,2s)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = 2.0_dp * s - t * 2.0_dp * s
+            boundary%points(2, idx) = 2.0_dp * s
+        end do
+        
+        ! Segment 6: (0,2s) -> (0,0)
+        do i = 1, n
+            idx = idx + 1
+            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            boundary%points(1, idx) = 0.0_dp
+            boundary%points(2, idx) = 2.0_dp * s - t * 2.0_dp * s
+        end do
         
         boundary%labels = 1
         boundary%is_closed = .true.
@@ -704,50 +777,37 @@ contains
         end if
     end subroutine solve_vector
     
-    ! Solve Laplacian-type problems: -Δu = f
-    ! Implementation verified correct: For -Δu = 1 on [0,1]² with u=0 on boundary,
-    ! the true analytical solution (Fourier series) gives u(0.5,0.5) ≈ 0.0513 and 
-    ! maximum ≈ 0.1093. Our implementation gives results consistent with this,
-    ! e.g., 0.0625 for 3x3 mesh, 0.073 for fine meshes. The commonly cited value 
-    ! of 0.125 appears to be for a different problem formulation.
-    subroutine solve_laplacian_problem(uh, bc)
-        type(function_t), intent(inout) :: uh
+    subroutine assemble_laplacian_system(space, bc, K, F)
+        type(function_space_t), intent(in) :: space
         type(dirichlet_bc_t), intent(in) :: bc
+        real(dp), allocatable, intent(out) :: K(:,:), F(:)
         
-        real(dp), allocatable :: K(:,:), F(:)
-        integer, allocatable :: ipiv(:)
-        integer :: ndof, i, j, e, v1, v2, v3, info
+        integer :: ndof, i, j, e, v1, v2, v3
         real(dp) :: x1, y1, x2, y2, x3, y3, area
         real(dp) :: a(2,2), det_a, b(3), c(3), K_elem(3,3)
         
-        ndof = uh%space%ndof
-        allocate(K(ndof, ndof), F(ndof), ipiv(ndof))
+        ndof = space%ndof
+        allocate(K(ndof, ndof), F(ndof))
         
-        ! Initialize system
         K = 0.0_dp
         F = 0.0_dp
         
         ! Assemble stiffness matrix and load vector
-        do e = 1, uh%space%mesh%data%n_triangles
-            v1 = uh%space%mesh%data%triangles(1, e)
-            v2 = uh%space%mesh%data%triangles(2, e)
-            v3 = uh%space%mesh%data%triangles(3, e)
+        do e = 1, space%mesh%data%n_triangles
+            v1 = space%mesh%data%triangles(1, e)
+            v2 = space%mesh%data%triangles(2, e)
+            v3 = space%mesh%data%triangles(3, e)
             
             ! Get vertex coordinates
-            x1 = uh%space%mesh%data%vertices(1, v1)
-            y1 = uh%space%mesh%data%vertices(2, v1)
-            x2 = uh%space%mesh%data%vertices(1, v2)
-            y2 = uh%space%mesh%data%vertices(2, v2)
-            x3 = uh%space%mesh%data%vertices(1, v3)
-            y3 = uh%space%mesh%data%vertices(2, v3)
+            x1 = space%mesh%data%vertices(1, v1)
+            y1 = space%mesh%data%vertices(2, v1)
+            x2 = space%mesh%data%vertices(1, v2)
+            y2 = space%mesh%data%vertices(2, v2)
+            x3 = space%mesh%data%vertices(1, v3)
+            y3 = space%mesh%data%vertices(2, v3)
             
             ! Compute element area
             area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-            
-            ! For P1 elements on reference triangle:
-            ! φ₁(ξ,η) = 1 - ξ - η,  ∇φ₁ = [-1, -1]ᵀ
-            ! φ₂(ξ,η) = ξ,          ∇φ₂ = [ 1,  0]ᵀ  
-            ! φ₃(ξ,η) = η,          ∇φ₃ = [ 0,  1]ᵀ
             
             ! Jacobian matrix J = [∂x/∂ξ, ∂x/∂η; ∂y/∂ξ, ∂y/∂η]
             a(1,1) = x2 - x1; a(1,2) = x3 - x1
@@ -755,9 +815,6 @@ contains
             det_a = a(1,1)*a(2,2) - a(1,2)*a(2,1)
             
             ! Physical gradients: ∇φᵢ = J⁻ᵀ ∇̂φᵢ
-            ! J⁻¹ = (1/det)[a₂₂, -a₁₂; -a₂₁, a₁₁]
-            ! b[i] = ∂φᵢ/∂x, c[i] = ∂φᵢ/∂y
-            
             ! For φ₁: ∇̂φ₁ = [-1, -1]ᵀ
             b(1) = (-a(2,2) + a(2,1)) / det_a
             c(1) = ( a(1,2) - a(1,1)) / det_a
@@ -795,13 +852,34 @@ contains
         end do
         
         ! Apply Dirichlet boundary conditions
-        do i = 1, uh%space%mesh%data%n_vertices
-            if (uh%space%mesh%data%is_boundary_vertex(i)) then
+        do i = 1, space%mesh%data%n_vertices
+            if (space%mesh%data%is_boundary_vertex(i)) then
                 K(i,:) = 0.0_dp
                 K(i,i) = 1.0_dp
                 F(i) = bc%value
             end if
         end do
+        
+    end subroutine assemble_laplacian_system
+    
+    ! Solve Laplacian-type problems: -Δu = f
+    ! Implementation verified correct: For -Δu = 1 on [0,1]² with u=0 on boundary,
+    ! the true analytical solution (Fourier series) gives u(0.5,0.5) ≈ 0.0513 and 
+    ! maximum ≈ 0.1093. Our implementation gives results consistent with this,
+    ! e.g., 0.0625 for 3x3 mesh, 0.073 for fine meshes. The commonly cited value 
+    ! of 0.125 appears to be for a different problem formulation.
+    subroutine solve_laplacian_problem(uh, bc)
+        type(function_t), intent(inout) :: uh
+        type(dirichlet_bc_t), intent(in) :: bc
+        
+        real(dp), allocatable :: K(:,:), F(:)
+        integer, allocatable :: ipiv(:)
+        integer :: ndof, info
+        
+        ndof = uh%space%ndof
+        allocate(ipiv(ndof))
+        
+        call assemble_laplacian_system(uh%space, bc, K, F)
         
         ! Solve linear system using LAPACK
         if (allocated(uh%values)) then
@@ -1116,7 +1194,7 @@ contains
     ! Plot scalar function using triangulation with interpolation to regular grid
     subroutine plot_function_scalar(uh, filename, title, colormap)
         use fortplot, only: figure, contour_filled, xlabel, ylabel, &
-                           plot_title => title, savefig, pcolormesh
+                           plot_title => title, savefig, pcolormesh, add_plot
         type(function_t), intent(in) :: uh
         character(len=*), intent(in), optional :: filename
         character(len=*), intent(in), optional :: title
@@ -1132,6 +1210,9 @@ contains
         character(len=64) :: output_filename
         character(len=128) :: title_text
         character(len=32) :: cmap
+        real(dp) :: x_edges(2), y_edges(2)
+        real(dp), parameter :: black(3) = [0.0_dp, 0.0_dp, 0.0_dp]
+        integer :: v1, v2, v3, e
         
         ! Set defaults
         if (present(filename)) then
@@ -1174,11 +1255,39 @@ contains
         call interpolate_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
         
         ! Create plot
-        call figure(800, 600)
+        call figure()
         call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
+        
+        ! Overlay mesh edges in line mode (hold-on behaviour)
+        do e = 1, uh%space%mesh%data%n_triangles
+            v1 = uh%space%mesh%data%triangles(1, e)
+            v2 = uh%space%mesh%data%triangles(2, e)
+            v3 = uh%space%mesh%data%triangles(3, e)
+            
+            ! Edge v1-v2
+            x_edges(1) = uh%space%mesh%data%vertices(1, v1)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v2)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v1)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v2)
+            call add_plot(x_edges, y_edges, color=black)
+            
+            ! Edge v2-v3
+            x_edges(1) = uh%space%mesh%data%vertices(1, v2)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v3)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v2)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v3)
+            call add_plot(x_edges, y_edges, color=black)
+            
+            ! Edge v3-v1
+            x_edges(1) = uh%space%mesh%data%vertices(1, v3)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v1)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v3)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v1)
+            call add_plot(x_edges, y_edges, color=black)
+        end do
         call savefig(trim(output_filename))
         
         write(*,*) "Plot saved to: ", trim(output_filename)
@@ -1246,7 +1355,7 @@ contains
         call interpolate_vector_to_grid(Eh, x_grid, y_grid, u_grid, v_grid)
         
         ! Create plot
-        call figure(800, 600)
+        call figure()
         call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
@@ -1408,7 +1517,6 @@ contains
         
         type(figure_t) :: fig
         real(8), allocatable :: x_edges(:), y_edges(:)
-        real(8), allocatable :: x_vertices(:), y_vertices(:)
         integer :: i, j, e, v1, v2, v3
         character(len=64) :: output_filename
         character(len=128) :: title_text
@@ -1475,15 +1583,6 @@ contains
             call fig%add_plot(x_edges, y_edges)
         end do
         
-        ! Plot vertices as points
-        allocate(x_vertices(mesh%data%n_vertices))
-        allocate(y_vertices(mesh%data%n_vertices))
-        do i = 1, mesh%data%n_vertices
-            x_vertices(i) = real(mesh%data%vertices(1, i), 8)
-            y_vertices(i) = real(mesh%data%vertices(2, i), 8)
-        end do
-        call fig%add_plot(x_vertices, y_vertices)
-        
         ! Set labels
         call fig%set_xlabel("x")
         call fig%set_ylabel("y")
@@ -1502,7 +1601,7 @@ contains
         write(*,*) "  Triangles: ", mesh%data%n_triangles
         write(*,*) "  Edges: ", mesh%data%n_edges
         
-        deallocate(x_edges, y_edges, x_vertices, y_vertices)
+        deallocate(x_edges, y_edges)
     end subroutine plot_mesh
 
 end module fortfem_api

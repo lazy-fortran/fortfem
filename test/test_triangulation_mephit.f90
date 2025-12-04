@@ -353,13 +353,30 @@ subroutine test_complex_boundary()
 end subroutine
 
 subroutine test_quality_constraints()
-    character(len=*), parameter :: test_name = 'Quality Constraints (placeholder)'
+    character(len=*), parameter :: test_name = 'Quality Constraints'
+    ! Simple quality check on a unit square domain
+    real(dp), parameter :: points(2,4) = reshape([&
+        0.0_dp, 0.0_dp, &
+        1.0_dp, 0.0_dp, &
+        1.0_dp, 1.0_dp, &
+        0.0_dp, 1.0_dp], [2, 4])
+    integer, parameter :: segments(2,4) = reshape([&
+        1, 2, &
+        2, 3, &
+        3, 4, &
+        4, 1], [2, 4])
+    
+    type(triangulation_result_t) :: result
+    integer :: status
     
     call start_test(test_name)
     
-    ! Placeholder test - will be implemented with quality improvement
-    write(*,*) '  TODO: Implement after quality improvement module'
+    call triangulate_with_quality_fortran(points, segments, 10.0_dp, result, status)
     
+    call assert_true(status == 0, 'Quality constraints: acceptable minimum angle')
+    call assert_true(all_triangles_valid(result), 'Quality constraints: valid triangles')
+    
+    call cleanup_triangulation(result)
     call end_test()
 end subroutine
 

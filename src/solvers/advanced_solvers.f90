@@ -396,7 +396,10 @@ contains
         if (trim(opts%tolerance_type) == "absolute") then
             tolerance = opts%tolerance
         else
-            tolerance = opts%tolerance * initial_norm
+            ! For relative tolerances, ensure an absolute floor so that
+            ! small initial residuals still drive the solve to a tight
+            ! final residual.
+            tolerance = min(opts%tolerance, opts%tolerance * initial_norm)
         end if
         
         total_iter = 0
