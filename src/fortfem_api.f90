@@ -989,86 +989,168 @@ contains
         type(function_space_t), intent(in) :: space
         type(dirichlet_bc_t), intent(in) :: bc
         real(dp), allocatable, intent(out) :: K(:,:), F(:)
-        
-        integer :: ndof, i, j, e, v1, v2, v3
-        real(dp) :: x1, y1, x2, y2, x3, y3, area
-        real(dp) :: a(2,2), det_a, b(3), c(3), K_elem(3,3)
-        
+
+        integer :: ndof, i
+
         ndof = space%ndof
         allocate(K(ndof, ndof), F(ndof))
-        
+
         K = 0.0_dp
         F = 0.0_dp
-        
-        ! Assemble stiffness matrix and load vector
+
+        ! Assemble contributions from triangles and quadrilaterals
+        call assemble_laplacian_triangles(space, K, F)
+        call assemble_laplacian_quads(space, K, F)
+
+        ! Apply Dirichlet boundary conditions
+        do i = 1, space%mesh%data%n_vertices
+            if (space%mesh%data%is_boundary_vertex(i)) then
+                K(i, :) = 0.0_dp
+                K(i, i) = 1.0_dp
+                F(i) = bc%value
+            end if
+        end do
+
+    end subroutine assemble_laplacian_system
+
+    ! Assemble Laplacian contributions from P1 triangles with unit forcing
+    subroutine assemble_laplacian_triangles(space, K, F)
+        type(function_space_t), intent(in) :: space
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: e, v1, v2, v3
+        integer :: i, j
+        real(dp) :: x1, y1, x2, y2, x3, y3, area
+        real(dp) :: a(2,2), det_a
+        real(dp) :: bx(3), by(3), K_elem(3,3)
+
         do e = 1, space%mesh%data%n_triangles
             v1 = space%mesh%data%triangles(1, e)
             v2 = space%mesh%data%triangles(2, e)
             v3 = space%mesh%data%triangles(3, e)
-            
-            ! Get vertex coordinates
+
             x1 = space%mesh%data%vertices(1, v1)
             y1 = space%mesh%data%vertices(2, v1)
             x2 = space%mesh%data%vertices(1, v2)
             y2 = space%mesh%data%vertices(2, v2)
             x3 = space%mesh%data%vertices(1, v3)
             y3 = space%mesh%data%vertices(2, v3)
-            
-            ! Compute element area
+
             area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-            
-            ! Jacobian matrix J = [∂x/∂ξ, ∂x/∂η; ∂y/∂ξ, ∂y/∂η]
-            a(1,1) = x2 - x1; a(1,2) = x3 - x1
-            a(2,1) = y2 - y1; a(2,2) = y3 - y1
-            det_a = a(1,1)*a(2,2) - a(1,2)*a(2,1)
-            
-            ! Physical gradients: ∇φᵢ = J⁻ᵀ ∇̂φᵢ
-            ! For φ₁: ∇̂φ₁ = [-1, -1]ᵀ
-            b(1) = (-a(2,2) + a(2,1)) / det_a
-            c(1) = ( a(1,2) - a(1,1)) / det_a
-            
-            ! For φ₂: ∇̂φ₂ = [1, 0]ᵀ
-            b(2) = a(2,2) / det_a
-            c(2) = -a(1,2) / det_a
-            
-            ! For φ₃: ∇̂φ₃ = [0, 1]ᵀ
-            b(3) = -a(2,1) / det_a
-            c(3) = a(1,1) / det_a
-            
-            ! Element stiffness matrix: ∫ ∇φᵢ·∇φⱼ dx
+
+            a(1,1) = x2 - x1
+            a(1,2) = x3 - x1
+            a(2,1) = y2 - y1
+            a(2,2) = y3 - y1
+            det_a = a(1,1) * a(2,2) - a(1,2) * a(2,1)
+
+            bx(1) = (-a(2,2) + a(2,1)) / det_a
+            by(1) = ( a(1,2) - a(1,1)) / det_a
+
+            bx(2) = a(2,2) / det_a
+            by(2) = -a(1,2) / det_a
+
+            bx(3) = -a(2,1) / det_a
+            by(3) = a(1,1) / det_a
+
             do i = 1, 3
                 do j = 1, 3
-                    K_elem(i,j) = area * (b(i)*b(j) + c(i)*c(j))
+                    K_elem(i, j) = area * (bx(i) * bx(j) + by(i) * by(j))
                 end do
             end do
-            
-            ! Assemble element matrix into global matrix
-            K(v1,v1) = K(v1,v1) + K_elem(1,1)
-            K(v1,v2) = K(v1,v2) + K_elem(1,2)
-            K(v1,v3) = K(v1,v3) + K_elem(1,3)
-            K(v2,v1) = K(v2,v1) + K_elem(2,1)
-            K(v2,v2) = K(v2,v2) + K_elem(2,2)
-            K(v2,v3) = K(v2,v3) + K_elem(2,3)
-            K(v3,v1) = K(v3,v1) + K_elem(3,1)
-            K(v3,v2) = K(v3,v2) + K_elem(3,2)
-            K(v3,v3) = K(v3,v3) + K_elem(3,3)
-            
-            ! Element load vector: ∫ f φᵢ dx (f = 1)
-            F(v1) = F(v1) + area/3.0_dp
-            F(v2) = F(v2) + area/3.0_dp
-            F(v3) = F(v3) + area/3.0_dp
+
+            K(v1, v1) = K(v1, v1) + K_elem(1,1)
+            K(v1, v2) = K(v1, v2) + K_elem(1,2)
+            K(v1, v3) = K(v1, v3) + K_elem(1,3)
+            K(v2, v1) = K(v2, v1) + K_elem(2,1)
+            K(v2, v2) = K(v2, v2) + K_elem(2,2)
+            K(v2, v3) = K(v2, v3) + K_elem(2,3)
+            K(v3, v1) = K(v3, v1) + K_elem(3,1)
+            K(v3, v2) = K(v3, v2) + K_elem(3,2)
+            K(v3, v3) = K(v3, v3) + K_elem(3,3)
+
+            F(v1) = F(v1) + area / 3.0_dp
+            F(v2) = F(v2) + area / 3.0_dp
+            F(v3) = F(v3) + area / 3.0_dp
         end do
-        
-        ! Apply Dirichlet boundary conditions
-        do i = 1, space%mesh%data%n_vertices
-            if (space%mesh%data%is_boundary_vertex(i)) then
-                K(i,:) = 0.0_dp
-                K(i,i) = 1.0_dp
-                F(i) = bc%value
-            end if
+    end subroutine assemble_laplacian_triangles
+
+    ! Assemble Laplacian contributions from Q1 quadrilaterals with unit forcing
+    subroutine assemble_laplacian_quads(space, K, F)
+        use basis_q1_quad_2d_module, only: q1_shape_functions, q1_shape_derivatives, &
+                                           q1_jacobian
+        type(function_space_t), intent(in) :: space
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: q, i, j, kx, ky
+        integer :: v_ids(4), vi
+        real(dp) :: coords(2,4)
+        real(dp) :: jac(2,2), det_jac, inv_jac(2,2)
+        real(dp) :: dN_dxi(4), dN_deta(4)
+        real(dp) :: grad_ref(2), grad_phys(2,4)
+        real(dp) :: N(4)
+        real(dp) :: xi, eta, weight
+        real(dp) :: K_elem(4,4), F_elem(4)
+        logical :: success
+
+        real(dp), parameter :: gauss_pts(2) = [-0.5773502691896257_dp, &
+                                               0.5773502691896257_dp]
+        real(dp), parameter :: gauss_w(2) = [1.0_dp, 1.0_dp]
+
+        if (space%mesh%data%n_quads <= 0) return
+
+        do q = 1, space%mesh%data%n_quads
+            v_ids = space%mesh%data%quads(:, q)
+
+            do i = 1, 4
+                vi = v_ids(i)
+                coords(1, i) = space%mesh%data%vertices(1, vi)
+                coords(2, i) = space%mesh%data%vertices(2, vi)
+            end do
+
+            K_elem = 0.0_dp
+            F_elem = 0.0_dp
+
+            do kx = 1, 2
+                do ky = 1, 2
+                    xi = gauss_pts(kx)
+                    eta = gauss_pts(ky)
+
+                    call q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
+                    call q1_jacobian(xi, eta, coords, jac, det_jac, inv_jac, success)
+
+                    if (.not. success) cycle
+
+                    do i = 1, 4
+                        grad_ref(1) = dN_dxi(i)
+                        grad_ref(2) = dN_deta(i)
+                        grad_phys(:, i) = matmul(transpose(inv_jac), grad_ref)
+                    end do
+
+                    call q1_shape_functions(xi, eta, N)
+
+                    weight = det_jac * gauss_w(kx) * gauss_w(ky)
+
+                    do i = 1, 4
+                        do j = 1, 4
+                            K_elem(i, j) = K_elem(i, j) + weight * &
+                                (grad_phys(1, i) * grad_phys(1, j) + &
+                                 grad_phys(2, i) * grad_phys(2, j))
+                        end do
+                        F_elem(i) = F_elem(i) + weight * N(i)
+                    end do
+                end do
+            end do
+
+            do i = 1, 4
+                vi = v_ids(i)
+                do j = 1, 4
+                    K(vi, v_ids(j)) = K(vi, v_ids(j)) + K_elem(i, j)
+                end do
+                F(vi) = F(vi) + F_elem(i)
+            end do
         end do
-        
-    end subroutine assemble_laplacian_system
+    end subroutine assemble_laplacian_quads
     
     ! Solve Laplacian-type problems: -Δu = f
     ! Implementation verified correct: For -Δu = 1 on [0,1]² with u=0 on boundary,
@@ -1830,30 +1912,18 @@ contains
         call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
         
         ! Overlay mesh edges in line mode (hold-on behaviour)
-        do e = 1, uh%space%mesh%data%n_triangles
-            v1 = uh%space%mesh%data%triangles(1, e)
-            v2 = uh%space%mesh%data%triangles(2, e)
-            v3 = uh%space%mesh%data%triangles(3, e)
-            
-            ! Edge v1-v2
+        if (.not. allocated(uh%space%mesh%data%edges)) then
+            call uh%space%mesh%data%build_connectivity()
+        end if
+
+        do e = 1, uh%space%mesh%data%n_edges
+            v1 = uh%space%mesh%data%edges(1, e)
+            v2 = uh%space%mesh%data%edges(2, e)
+
             x_edges(1) = uh%space%mesh%data%vertices(1, v1)
             x_edges(2) = uh%space%mesh%data%vertices(1, v2)
             y_edges(1) = uh%space%mesh%data%vertices(2, v1)
             y_edges(2) = uh%space%mesh%data%vertices(2, v2)
-            call add_plot(x_edges, y_edges, color=black)
-            
-            ! Edge v2-v3
-            x_edges(1) = uh%space%mesh%data%vertices(1, v2)
-            x_edges(2) = uh%space%mesh%data%vertices(1, v3)
-            y_edges(1) = uh%space%mesh%data%vertices(2, v2)
-            y_edges(2) = uh%space%mesh%data%vertices(2, v3)
-            call add_plot(x_edges, y_edges, color=black)
-            
-            ! Edge v3-v1
-            x_edges(1) = uh%space%mesh%data%vertices(1, v3)
-            x_edges(2) = uh%space%mesh%data%vertices(1, v1)
-            y_edges(1) = uh%space%mesh%data%vertices(2, v3)
-            y_edges(2) = uh%space%mesh%data%vertices(2, v1)
             call add_plot(x_edges, y_edges, color=black)
         end do
         call savefig(trim(output_filename))
