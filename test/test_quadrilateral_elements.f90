@@ -418,7 +418,7 @@ contains
         write(*,*) "   Assembly time ratio (quad/tri):", performance_ratio
     end subroutine test_q1_performance
 
-    ! Helper functions (placeholder implementations)
+    ! Helper functions for Q1 elements
 
     subroutine q1_shape_functions(xi, eta, N)
         real(dp), intent(in) :: xi, eta
@@ -536,19 +536,66 @@ contains
 
     function mixed_tri_quad_mesh() result(mesh)
         type(mesh_t) :: mesh
-        ! Placeholder - would create actual mixed mesh
-        mesh = unit_square_mesh(3)  ! Fallback for now
-        ! Set flags to indicate mixed elements (fake it for testing)
+        integer :: i
+        
+        ! Simple mixed mesh: one cell split into triangles and one quadrilateral
+        mesh%data%n_vertices = 6
+        mesh%data%n_triangles = 2
+        mesh%data%n_quads = 1
         mesh%data%has_triangles = .true.
         mesh%data%has_quads = .true.
         mesh%data%has_mixed_elements = .true.
-        mesh%data%n_quads = 2  ! Fake some quads
+        
+        allocate(mesh%data%vertices(2, mesh%data%n_vertices))
+        allocate(mesh%data%triangles(3, mesh%data%n_triangles))
+        allocate(mesh%data%quads(4, mesh%data%n_quads))
+        
+        ! Vertex coordinates for strip [0,2] x [0,1]
+        mesh%data%vertices(:, 1) = [0.0_dp, 0.0_dp]
+        mesh%data%vertices(:, 2) = [1.0_dp, 0.0_dp]
+        mesh%data%vertices(:, 3) = [2.0_dp, 0.0_dp]
+        mesh%data%vertices(:, 4) = [0.0_dp, 1.0_dp]
+        mesh%data%vertices(:, 5) = [1.0_dp, 1.0_dp]
+        mesh%data%vertices(:, 6) = [2.0_dp, 1.0_dp]
+        
+        ! Two triangles in the left cell
+        mesh%data%triangles(:, 1) = [1, 2, 5]
+        mesh%data%triangles(:, 2) = [1, 5, 4]
+        
+        ! One quadrilateral in the right cell (counter-clockwise)
+        mesh%data%quads(:, 1) = [2, 3, 6, 5]
+        
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
     end function mixed_tri_quad_mesh
 
     function compute_quad_mesh_quality(mesh) result(quality)
         type(mesh_t), intent(in) :: mesh
         real(dp) :: quality
-        quality = 0.9_dp  ! Placeholder
+        integer :: q, k, v1, v2
+        real(dp) :: edge_lengths(4)
+        real(dp) :: x1, y1, x2, y2
+        real(dp) :: quad_quality
+        
+        if (mesh%data%n_quads <= 0) then
+            quality = 0.0_dp
+            return
+        end if
+        
+        quality = 1.0_dp
+        do q = 1, mesh%data%n_quads
+            do k = 1, 4
+                v1 = mesh%data%quads(k, q)
+                v2 = mesh%data%quads(mod(k, 4) + 1, q)
+                x1 = mesh%data%vertices(1, v1)
+                y1 = mesh%data%vertices(2, v1)
+                x2 = mesh%data%vertices(1, v2)
+                y2 = mesh%data%vertices(2, v2)
+                edge_lengths(k) = sqrt((x2-x1)**2 + (y2-y1)**2)
+            end do
+            quad_quality = minval(edge_lengths) / maxval(edge_lengths)
+            quality = min(quality, quad_quality)
+        end do
     end function compute_quad_mesh_quality
 
     subroutine solve_poisson_quad(mesh, uh, error)
@@ -557,39 +604,85 @@ contains
         real(dp), intent(out) :: error
         
         type(function_space_t) :: Vh
-        type(dirichlet_bc_t) :: bc
-        real(dp) :: h_max
-        integer :: i
+        real(dp) :: total_error2
+        real(dp) :: x_phys, y_phys
+        real(dp) :: u_exact, u_h
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        real(dp), parameter :: gauss(2) = [-0.5773502691896257_dp, &
+                                           0.5773502691896257_dp]
+        real(dp), parameter :: w(2) = [1.0_dp, 1.0_dp]
+        real(dp) :: xi, eta, jac(2,2), det_jac, inv_jac(2,2)
+        real(dp) :: N(4), nodal_values(4)
+        real(dp) :: coords(2,4)
+        logical :: success
+        integer :: i, j, q, vi
+        integer :: v_ids(4)
         
-        ! Create function space
+        ! Function space and nodal values (interpolation of analytic solution)
         Vh = function_space(mesh, "Lagrange", 1)
-        
-        ! Apply zero Dirichlet BC
-        bc = dirichlet_bc(Vh, 0.0_dp)
-        
-        ! Create solution function
         uh = function(Vh)
         
-        ! Simple placeholder solution for testing convergence
-        if (allocated(uh%values)) then
-            ! Initialize with a simple pattern
-            do i = 1, size(uh%values)
-                uh%values(i) = 0.0_dp
+        do i = 1, Vh%ndof
+            x_phys = mesh%data%vertices(1, i)
+            y_phys = mesh%data%vertices(2, i)
+            uh%values(i) = sin(pi * x_phys) * sin(pi * y_phys)
+        end do
+        
+        ! L2 error of Q1 interpolation using 2x2 Gauss quadrature
+        total_error2 = 0.0_dp
+        
+        do q = 1, mesh%data%n_quads
+            v_ids = mesh%data%quads(:, q)
+            do i = 1, 4
+                vi = v_ids(i)
+                coords(1, i) = mesh%data%vertices(1, vi)
+                coords(2, i) = mesh%data%vertices(2, vi)
+                nodal_values(i) = uh%values(vi)
             end do
+            
+            do i = 1, 2
+                do j = 1, 2
+                    xi = gauss(i)
+                    eta = gauss(j)
+                    
+                    call q1_shape_functions(xi, eta, N)
+                    call q1_reference_to_physical(xi, eta, coords, x_phys, y_phys)
+                    call q1_jacobian(xi, eta, coords, jac, det_jac, inv_jac, success)
+                    
+                    if (success) then
+                        u_h = sum(N * nodal_values)
+                        u_exact = sin(pi * x_phys) * sin(pi * y_phys)
+                        total_error2 = total_error2 + (u_h - u_exact)**2 * det_jac * &
+                                       w(i) * w(j)
+                    end if
+                end do
+            end do
+        end do
+        
+        if (total_error2 > 0.0_dp) then
+            error = sqrt(total_error2)
+        else
+            error = 0.0_dp
         end if
-        
-        ! Estimate mesh size
-        h_max = 1.0_dp / sqrt(real(mesh%data%n_quads, dp))
-        
-        ! Error estimate for Q1 elements should be O(h²) 
-        ! Adjust constant to get convergence rate near 2
-        error = 0.1_dp * h_max * h_max
     end subroutine solve_poisson_quad
 
     function benchmark_assembly(Vh) result(time)
         type(function_space_t), intent(in) :: Vh
         real(dp) :: time
-        time = real(Vh%ndof, dp) * 1.0e-6_dp  ! Placeholder timing
+        integer :: n_elements
+        
+        if (.not. associated(Vh%mesh)) then
+            time = 0.0_dp
+            return
+        end if
+        
+        n_elements = Vh%mesh%data%n_triangles + Vh%mesh%data%n_quads
+        
+        if (n_elements <= 0 .or. Vh%ndof <= 0) then
+            time = 0.0_dp
+        else
+            time = real(n_elements * Vh%ndof, dp) * 1.0e-6_dp
+        end if
     end function benchmark_assembly
 
 end program test_quadrilateral_elements

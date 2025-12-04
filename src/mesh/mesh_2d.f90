@@ -98,6 +98,10 @@ contains
         ! Total vertices and triangles
         this%n_vertices = nx * ny
         this%n_triangles = 2 * (nx-1) * (ny-1)
+        this%n_quads = 0
+        this%has_triangles = .true.
+        this%has_quads = .false.
+        this%has_mixed_elements = .false.
         
         ! Allocate arrays
         allocate(this%vertices(2, this%n_vertices))
@@ -146,7 +150,7 @@ contains
     subroutine build_connectivity(this)
         class(mesh_2d_t), intent(inout) :: this
         
-        integer :: t, v, i, j
+        integer :: t, v, i
         integer, allocatable :: temp_list(:)
         
         ! Allocate connectivity arrays
@@ -155,20 +159,11 @@ contains
         
         allocate(this%vertex_to_triangles(this%n_vertices))
         allocate(this%vertex_to_vertices(this%n_vertices))
-<<<<<<< HEAD
-        allocate(temp_list(this%n_triangles))  ! Temporary list for building connectivity
-=======
->>>>>>> 6dc89e6 (fix: Fix quadrilateral element boundary detection and convergence tests)
         
-        ! Handle different element types
-        if (this%has_triangles .and. this%has_quads) then
-            ! Mixed mesh
-            call this%build_mixed_connectivity()
-        else if (this%has_triangles) then
-            ! Triangle-only mesh
-            allocate(temp_list(20))  ! Temporary list for building connectivity
+        ! Build vertex-to-triangle connectivity when triangles are present
+        if (this%n_triangles > 0) then
+            allocate(temp_list(this%n_triangles))
             
-            ! Build vertex-to-triangle connectivity
             do v = 1, this%n_vertices
                 this%vertex_to_triangles(v)%n = 0
                 
@@ -185,18 +180,30 @@ contains
                 
                 ! Store triangle list
                 if (this%vertex_to_triangles(v)%n > 0) then
-                    allocate(this%vertex_to_triangles(v)%items(this%vertex_to_triangles(v)%n))
-                    this%vertex_to_triangles(v)%items = temp_list(1:this%vertex_to_triangles(v)%n)
+                    allocate(this%vertex_to_triangles(v)%items( &
+                        this%vertex_to_triangles(v)%n))
+                    this%vertex_to_triangles(v)%items = temp_list( &
+                        1:this%vertex_to_triangles(v)%n)
                 end if
             end do
             
-            ! Build edges from triangles
-            call build_edges_from_triangles(this)
-            
             deallocate(temp_list)
+        end if
+        
+        ! Handle different element types for edge connectivity
+        if (this%has_triangles .and. this%has_quads) then
+            ! Mixed mesh: build unified edge connectivity
+            call this%build_mixed_connectivity()
+        else if (this%has_triangles) then
+            ! Triangle-only mesh
+            call build_edges_from_triangles(this)
         else if (this%has_quads) then
             ! Quad-only mesh
             call this%build_quad_connectivity()
+        else
+            ! No elements
+            this%n_edges = 0
+            if (allocated(this%edges)) deallocate(this%edges)
         end if
         
     end subroutine build_connectivity
@@ -534,11 +541,11 @@ contains
     subroutine find_boundary(this)
         class(mesh_2d_t), intent(inout) :: this
         
-        integer :: e, t, i, j, v1, v2, count
+        integer :: e, v1, v2, count
         integer, allocatable :: temp_boundary(:)
         
         if (.not. allocated(this%edges)) then
-            call build_edges_from_triangles(this)
+            error stop "Edges must be built before finding boundary"
         end if
         
         allocate(temp_boundary(this%n_edges))
@@ -549,25 +556,23 @@ contains
         
         this%n_boundary_edges = 0
         
-        ! Find edges that belong to only one triangle
+        ! Boundary edges belong to exactly one element (triangle or quad)
         do e = 1, this%n_edges
             v1 = this%edges(1, e)
             v2 = this%edges(2, e)
+            
             count = 0
             
-            ! Count triangles containing this edge
-            do t = 1, this%n_triangles
-                do i = 1, 3
-                    j = mod(i, 3) + 1
-                    if ((this%triangles(i, t) == v1 .and. this%triangles(j, t) == v2) .or. &
-                        (this%triangles(i, t) == v2 .and. this%triangles(j, t) == v1)) then
-                        count = count + 1
-                        exit
-                    end if
-                end do
-            end do
+            if (allocated(this%edge_to_triangles)) then
+                if (this%edge_to_triangles(1, e) > 0) count = count + 1
+                if (this%edge_to_triangles(2, e) > 0) count = count + 1
+            end if
             
-            ! Boundary edge belongs to exactly one triangle
+            if (allocated(this%edge_to_quads)) then
+                if (this%edge_to_quads(1, e) > 0) count = count + 1
+                if (this%edge_to_quads(2, e) > 0) count = count + 1
+            end if
+            
             if (count == 1) then
                 this%n_boundary_edges = this%n_boundary_edges + 1
                 temp_boundary(this%n_boundary_edges) = e
@@ -680,8 +685,11 @@ contains
         
         if (allocated(this%vertices)) deallocate(this%vertices)
         if (allocated(this%triangles)) deallocate(this%triangles)
+        if (allocated(this%quads)) deallocate(this%quads)
         if (allocated(this%edges)) deallocate(this%edges)
         if (allocated(this%edge_to_triangles)) deallocate(this%edge_to_triangles)
+        if (allocated(this%edge_to_quads)) deallocate(this%edge_to_quads)
+        if (allocated(this%edge_element_type)) deallocate(this%edge_element_type)
         if (allocated(this%boundary_edges)) deallocate(this%boundary_edges)
         if (allocated(this%is_boundary_vertex)) deallocate(this%is_boundary_vertex)
         if (allocated(this%edge_to_dof)) deallocate(this%edge_to_dof)
@@ -696,6 +704,15 @@ contains
             deallocate(this%vertex_to_triangles)
         end if
         
+        if (allocated(this%vertex_to_quads)) then
+            do i = 1, size(this%vertex_to_quads)
+                if (allocated(this%vertex_to_quads(i)%items)) then
+                    deallocate(this%vertex_to_quads(i)%items)
+                end if
+            end do
+            deallocate(this%vertex_to_quads)
+        end if
+        
         if (allocated(this%vertex_to_vertices)) then
             do i = 1, size(this%vertex_to_vertices)
                 if (allocated(this%vertex_to_vertices(i)%items)) then
@@ -707,15 +724,19 @@ contains
         
         this%n_vertices = 0
         this%n_triangles = 0
+        this%n_quads = 0
         this%n_edges = 0
         this%n_boundary_edges = 0
         this%n_edge_dofs = 0
         this%n_interior_dofs = 0
         this%n_boundary_dofs = 0
+        this%has_triangles = .false.
+        this%has_quads = .false.
+        this%has_mixed_elements = .false.
         
     end subroutine destroy
 
-    ! Clean mesh generation stubs
+    ! Clean mesh generation routines
     subroutine create_unit_disk(this, max_element_size)
         use triangulator, only: triangulate_points
         class(mesh_2d_t), intent(out) :: this
@@ -742,6 +763,10 @@ contains
         ! Convert to mesh_2d_t format
         this%n_vertices = n_points
         this%n_triangles = n_triangles
+        this%n_quads = 0
+        this%has_triangles = .true.
+        this%has_quads = .false.
+        this%has_mixed_elements = .false.
         
         allocate(this%vertices(2, n_points))
         allocate(this%triangles(3, n_triangles))
@@ -788,6 +813,10 @@ contains
         ! Convert to mesh_2d_t format
         this%n_vertices = n_points
         this%n_triangles = n_triangles
+        this%n_quads = 0
+        this%has_triangles = .true.
+        this%has_quads = .false.
+        this%has_mixed_elements = .false.
         
         allocate(this%vertices(2, n_points))
         allocate(this%triangles(3, n_triangles))
@@ -827,6 +856,10 @@ contains
         ! Allocate arrays for refined mesh
         refined_mesh%n_vertices = new_nv
         refined_mesh%n_triangles = new_nt
+        refined_mesh%n_quads = 0
+        refined_mesh%has_triangles = .true.
+        refined_mesh%has_quads = .false.
+        refined_mesh%has_mixed_elements = .false.
         allocate(refined_mesh%vertices(2, new_nv))
         allocate(refined_mesh%triangles(3, new_nt))
         allocate(edge_midpoints(old_ne))
@@ -939,6 +972,10 @@ contains
         ! Initialize refined mesh
         refined_mesh%n_vertices = new_vertices
         refined_mesh%n_triangles = new_triangles
+        refined_mesh%n_quads = 0
+        refined_mesh%has_triangles = .true.
+        refined_mesh%has_quads = .false.
+        refined_mesh%has_mixed_elements = .false.
         allocate(refined_mesh%vertices(2, new_vertices))
         allocate(refined_mesh%triangles(3, new_triangles))
         allocate(edge_midpoints(3, old_nt))
@@ -1064,7 +1101,17 @@ contains
         do i = 1, mesh%n_edges
             if ((mesh%edges(1, i) == v1 .and. mesh%edges(2, i) == v2) .or. &
                 (mesh%edges(1, i) == v2 .and. mesh%edges(2, i) == v1)) then
-=======
+                edge_id = i
+                return
+            end if
+        end do
+        
+        ! Edge not found - this indicates a corrupted mesh topology
+        write(*,*) "Error: Edge between vertices", v1, "and", v2, "not found"
+        write(*,*) "This indicates a corrupted mesh topology"
+        error stop "Fatal error in find_edge_between_vertices"
+    end function find_edge_between_vertices
+    
     ! Quadrilateral mesh creation and operations
     
     ! Create structured quadrilateral mesh
@@ -1118,7 +1165,7 @@ contains
             end do
         end do
         
-        ! Build connectivity (this will also find boundaries)
+        ! Build connectivity (edges and adjacency)
         call this%build_connectivity()
     end subroutine create_structured_quads
     
@@ -1152,7 +1199,7 @@ contains
         end do
     end subroutine get_quad_vertices
     
-    ! Build connectivity for quadrilateral elements
+        ! Build connectivity for quadrilateral elements (edges and quad mapping)
     subroutine build_quad_connectivity(this)
         class(mesh_2d_t), intent(inout) :: this
         integer :: i, j, v1, v2, edge_count
@@ -1192,9 +1239,6 @@ contains
         ! Build edge-to-quad connectivity
         call build_edge_quad_mapping(this)
         
-        ! Find boundary edges and vertices for quad meshes
-        call find_boundary_quads(this)
-        
         deallocate(edge_list)
     end subroutine build_quad_connectivity
     
@@ -1203,19 +1247,9 @@ contains
         class(mesh_2d_t), intent(inout) :: this
         
         this%has_mixed_elements = (this%has_triangles .and. this%has_quads)
+        if (.not. this%has_mixed_elements) return
         
-        if (this%has_triangles) then
-            call this%build_edge_connectivity()
-        end if
-        
-        if (this%has_quads) then
-            call this%build_quad_connectivity()
-        end if
-        
-        if (this%has_mixed_elements) then
-            ! Handle mixed element connectivity
-            call merge_triangle_quad_connectivity(this)
-        end if
+        call merge_triangle_quad_connectivity(this)
     end subroutine build_mixed_connectivity
     
     ! Helper procedures for quadrilateral support
@@ -1242,11 +1276,7 @@ contains
         ! Edge not found - this indicates a corrupted mesh topology
         write(*,*) "Error: Edge between vertices", v1, "and", v2, "not found"
         write(*,*) "This indicates a corrupted mesh topology"
-        error stop "Fatal error in find_edge_between_vertices"
-    end function find_edge_between_vertices
-
-end module fortfem_mesh_2d
-=======
+        error stop "Fatal error in find_edge"
     end subroutine find_edge
     
     subroutine remove_duplicate_edges(edge_list, edge_count, unique_edges, n_unique)
@@ -1437,57 +1467,4 @@ end module fortfem_mesh_2d
         end do
     end subroutine find_edge_index
 
-<<<<<<< HEAD
 end module fortfem_mesh_2d
-=======
-    subroutine find_boundary_quads(this)
-        class(mesh_2d_t), intent(inout) :: this
-        
-        integer :: e, q, i, j, v1, v2, count
-        integer, allocatable :: temp_boundary(:)
-        
-        if (.not. allocated(this%edges)) then
-            error stop "Edges must be built before finding boundary"
-        end if
-        
-        
-        allocate(temp_boundary(this%n_edges))
-        if (.not. allocated(this%is_boundary_vertex)) then
-            allocate(this%is_boundary_vertex(this%n_vertices))
-        end if
-        this%is_boundary_vertex = .false.
-        
-        this%n_boundary_edges = 0
-        
-        ! Find edges that belong to only one quadrilateral
-        do e = 1, this%n_edges
-            v1 = this%edges(1, e)
-            v2 = this%edges(2, e)
-            
-            ! Count quads sharing this edge
-            count = 0
-            if (allocated(this%edge_to_quads)) then
-                if (this%edge_to_quads(1, e) > 0) count = count + 1
-                if (this%edge_to_quads(2, e) > 0) count = count + 1
-            end if
-            
-            ! If edge belongs to only one quad, it's on the boundary
-            if (count == 1) then
-                this%n_boundary_edges = this%n_boundary_edges + 1
-                temp_boundary(this%n_boundary_edges) = e
-                this%is_boundary_vertex(v1) = .true.
-                this%is_boundary_vertex(v2) = .true.
-            end if
-        end do
-        
-        ! Store boundary edges
-        if (allocated(this%boundary_edges)) deallocate(this%boundary_edges)
-        allocate(this%boundary_edges(this%n_boundary_edges))
-        this%boundary_edges = temp_boundary(1:this%n_boundary_edges)
-        
-        deallocate(temp_boundary)
-        
-    end subroutine find_boundary_quads
-
-end module fortfem_mesh_2d
->>>>>>> 6dc89e6 (fix: Fix quadrilateral element boundary detection and convergence tests)
