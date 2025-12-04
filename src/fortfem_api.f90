@@ -1814,7 +1814,13 @@ contains
         end do
         
         ! Interpolate function values to regular grid
-        call interpolate_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
+        if (uh%space%mesh%data%n_triangles > 0) then
+            call interpolate_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
+        else if (uh%space%mesh%data%n_quads > 0) then
+            call interpolate_quad_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
+        else
+            z_grid = 0.0_dp
+        end if
         
         ! Create plot
         call figure()
@@ -1937,7 +1943,7 @@ contains
                maxval(sqrt(u_grid**2 + v_grid**2)), "]"
     end subroutine plot_vector_function
     
-    ! Helper: Interpolate scalar function to regular grid
+    ! Helper: Interpolate scalar function to regular grid (triangular meshes)
     subroutine interpolate_to_grid(uh, x_grid, y_grid, z_grid)
         type(function_t), intent(in) :: uh
         real(dp), intent(in) :: x_grid(:), y_grid(:)
@@ -1992,6 +1998,73 @@ contains
             end do
         end do
     end subroutine interpolate_to_grid
+
+    ! Helper: Interpolate scalar function on Q1 quads to regular grid
+    subroutine interpolate_quad_to_grid(uh, x_grid, y_grid, z_grid)
+        type(function_t), intent(in) :: uh
+        real(dp), intent(in) :: x_grid(:), y_grid(:)
+        real(dp), intent(out) :: z_grid(:,:)
+        
+        integer :: i, j, q, k, vi
+        integer :: v_ids(4)
+        real(dp) :: x, y
+        real(dp) :: x1, y1, x2, y2
+        real(dp) :: xc, yc, xi_ref, eta_ref
+        real(dp) :: N(4)
+        logical :: found
+        real(dp) :: val
+        
+        z_grid = 0.0_dp
+        
+        do i = 1, size(x_grid)
+            do j = 1, size(y_grid)
+                x = x_grid(i)
+                y = y_grid(j)
+                found = .false.
+                val = 0.0_dp
+                
+                ! Search for containing axis-aligned quad
+                do q = 1, uh%space%mesh%data%n_quads
+                    v_ids = uh%space%mesh%data%quads(:, q)
+                    
+                    x1 = uh%space%mesh%data%vertices(1, v_ids(1))
+                    y1 = uh%space%mesh%data%vertices(2, v_ids(1))
+                    x2 = uh%space%mesh%data%vertices(1, v_ids(3))
+                    y2 = uh%space%mesh%data%vertices(2, v_ids(3))
+                    
+                    if (x >= x1 .and. x <= x2 .and. y >= y1 .and. y <= y2) then
+                        if (x2 > x1 .and. y2 > y1) then
+                            xc = 0.5_dp * (x1 + x2)
+                            yc = 0.5_dp * (y1 + y2)
+                            
+                            xi_ref = 2.0_dp * (x - xc) / (x2 - x1)
+                            eta_ref = 2.0_dp * (y - yc) / (y2 - y1)
+                            
+                            N(1) = 0.25_dp * (1.0_dp - xi_ref) * (1.0_dp - eta_ref)
+                            N(2) = 0.25_dp * (1.0_dp + xi_ref) * (1.0_dp - eta_ref)
+                            N(3) = 0.25_dp * (1.0_dp + xi_ref) * (1.0_dp + eta_ref)
+                            N(4) = 0.25_dp * (1.0_dp - xi_ref) * (1.0_dp + eta_ref)
+                            
+                            val = 0.0_dp
+                            do k = 1, 4
+                                vi = v_ids(k)
+                                val = val + N(k) * uh%values(vi)
+                            end do
+                            
+                            z_grid(i, j) = val
+                            found = .true.
+                        end if
+                    end if
+                    
+                    if (found) exit
+                end do
+                
+                if (.not. found) then
+                    z_grid(i, j) = find_nearest_value(uh, x, y)
+                end if
+            end do
+        end do
+    end subroutine interpolate_quad_to_grid
     
     ! Helper: Interpolate vector function to regular grid
     subroutine interpolate_vector_to_grid(Eh, x_grid, y_grid, u_grid, v_grid)

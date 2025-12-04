@@ -787,6 +787,41 @@ contains
         real(dp), allocatable :: mesh_points(:,:)
         integer, allocatable :: mesh_triangles(:,:), segments(:,:)
         integer :: n_points, n_triangles, i
+        real(dp) :: x_min, x_max, y_min, y_max, x, y
+        real(dp) :: eps
+        logical :: is_rectangle
+        integer :: n_side
+        
+        eps = 1.0e-10_dp
+        
+        ! Special handling for simple axis-aligned rectangular boundaries:
+        ! detect a closed rectangle and build a structured rectangular mesh
+        if (boundary%is_closed .and. boundary%n_points > 0) then
+            x_min = minval(boundary%points(1, :))
+            x_max = maxval(boundary%points(1, :))
+            y_min = minval(boundary%points(2, :))
+            y_max = maxval(boundary%points(2, :))
+            
+            is_rectangle = .true.
+            do i = 1, boundary%n_points
+                x = boundary%points(1, i)
+                y = boundary%points(2, i)
+                if (.not. ((abs(x - x_min) < eps) .or. (abs(x - x_max) < eps) .or. &
+                           (abs(y - y_min) < eps) .or. (abs(y - y_max) < eps))) then
+                    is_rectangle = .false.
+                    exit
+                end if
+            end do
+            
+            if (is_rectangle .and. mod(boundary%n_points, 4) == 0) then
+                n_side = boundary%n_points / 4
+                if (n_side >= 2) then
+                    call this%create_rectangular(nx=n_side, ny=n_side, &
+                        x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
+                    return
+                end if
+            end if
+        end if
         
         ! Generate segments from boundary points
         if (boundary%is_closed) then
@@ -806,7 +841,7 @@ contains
             end do
         end if
         
-        ! Triangulate the boundary
+        ! Triangulate the boundary for general shapes
         call triangulate_boundary(boundary%points, segments, mesh_points, &
                                   mesh_triangles, n_points, n_triangles)
         

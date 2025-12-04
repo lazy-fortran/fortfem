@@ -24,6 +24,7 @@ program test_quadrilateral_elements
     call test_q1_boundary_conditions()
     call test_q1_convergence_rates()
     call test_q1_performance()
+    call test_q1_solution_plot()
     
     call check_summary("Quadrilateral Elements")
 
@@ -417,6 +418,34 @@ contains
         write(*,*) "   Q1 performance comparison: all tests passed"
         write(*,*) "   Assembly time ratio (quad/tri):", performance_ratio
     end subroutine test_q1_performance
+
+    ! Test plotting of a solution on a quadrilateral mesh
+    subroutine test_q1_solution_plot()
+        type(mesh_t) :: quad_mesh
+        type(function_space_t) :: Vh
+        type(function_t) :: uh
+        integer :: i
+        real(dp) :: x, y
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        
+        quad_mesh = structured_quad_mesh(8, 8, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
+        Vh = function_space(quad_mesh, "Lagrange", 1)
+        uh = function(Vh)
+        
+        do i = 1, Vh%ndof
+            x = quad_mesh%data%vertices(1, i)
+            y = quad_mesh%data%vertices(2, i)
+            uh%values(i) = sin(pi * x) * sin(pi * y)
+        end do
+        
+        call check_condition(allocated(uh%values), &
+            "Q1 solution plot: values allocated")
+        
+        call plot(uh, filename="build/quad_solution.png", &
+                  title="Q1 quadrilateral solution")
+        
+        write(*,*) "   Q1 quad solution plot: generated build/quad_solution.png"
+    end subroutine test_q1_solution_plot
 
     ! Helper functions for Q1 elements
 
