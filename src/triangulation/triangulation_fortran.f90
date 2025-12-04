@@ -3,324 +3,244 @@ module triangulation_fortran
     use delaunay_types
     use bowyer_watson
     use constrained_delaunay
-    use polygon_triangulation, only: is_simple_boundary_chain, &
-                                     triangulate_simple_polygon
     implicit none
-    
+
     private
-    public :: triangulation_result_t, triangulate_fortran, triangulate_with_hole_fortran
+    public :: triangulation_result_t, triangulate_fortran
+    public :: triangulate_with_hole_fortran
     public :: triangulate_with_quality_fortran, triangulate_triangle_lib
     public :: cleanup_triangulation
-    
-    ! Type to hold triangulation results - matches TRIANGLE output format
+
     type :: triangulation_result_t
-        integer :: npoints              ! Number of points
-        integer :: ntriangles           ! Number of triangles
-        integer :: nsegments            ! Number of segments
-        real(dp), allocatable :: points(:,:)      ! Points (2, npoints)
-        integer, allocatable :: triangles(:,:)    ! Triangles (3, ntriangles)
-        integer, allocatable :: segments(:,:)     ! Segments (2, nsegments)
-        integer, allocatable :: neighbors(:,:)    ! Neighbors (3, ntriangles)
+        integer :: npoints
+        integer :: ntriangles
+        integer :: nsegments
+        real(dp), allocatable :: points(:,:)
+        integer, allocatable :: triangles(:,:)
+        integer, allocatable :: segments(:,:)
+        integer, allocatable :: neighbors(:,:)
     end type triangulation_result_t
-    
+
 contains
 
-subroutine triangulate_fortran(points, segments, result, status)
-    !> Main triangulation routine using Bowyer-Watson algorithm and a
-    !  polygon-specialised path for simple closed boundaries.
-    real(dp), intent(in) :: points(:,:)      ! Input points (2, npoints)
-    integer, intent(in) :: segments(:,:)     ! Input segments (2, nsegments)
-    type(triangulation_result_t), intent(out) :: result
-    integer, intent(out), optional :: status
-    
-    type(mesh_t) :: mesh
-    real(dp), allocatable :: poly_points(:,:)
-    integer, allocatable :: poly_tris(:,:)
-    integer :: n_points, n_triangles
-    
-    if (present(status)) status = 0
-    
-    ! Fast path: simple boundary chains created by boundary_t are handled
-    ! by the robust polygon ear-clipping algorithm, which guarantees
-    ! non-overlapping triangles and preserved boundary edges.
-    if (size(segments, 2) > 0) then
-        if (is_simple_boundary_chain(points, segments)) then
-            call triangulate_simple_polygon(points, poly_points, poly_tris, &
-                                            n_points, n_triangles)
-            
-            if (n_triangles > 0) then
-                call allocate_result(result, n_points, n_triangles,         &
-                                     size(segments, 2))
-                result%points(:, 1:n_points) = poly_points(:, 1:n_points)
-                result%triangles(:, 1:n_triangles) = poly_tris(:, 1:n_triangles)
-                result%segments = segments
-                result%npoints = n_points
-                result%ntriangles = n_triangles
-                
-                deallocate(poly_points)
-                deallocate(poly_tris)
-                return
+    subroutine triangulate_fortran(points, segments, result, status)
+        real(dp), intent(in) :: points(:,:)
+        integer, intent(in) :: segments(:,:)
+        type(triangulation_result_t), intent(out) :: result
+        integer, intent(out), optional :: status
+
+        type(mesh_t) :: mesh
+
+        if (present(status)) status = 0
+
+        call constrained_delaunay_triangulate(points, segments, mesh)
+        call mesh_to_result(mesh, segments, result)
+        call destroy_mesh(mesh)
+    end subroutine triangulate_fortran
+
+    subroutine triangulate_with_hole_fortran(points, segments, hole_point,    &
+                                             result, status)
+        real(dp), intent(in) :: points(:,:)
+        integer, intent(in) :: segments(:,:)
+        real(dp), intent(in) :: hole_point(:)
+        type(triangulation_result_t), intent(out) :: result
+        integer, intent(out), optional :: status
+
+        call triangulate_fortran(points, segments, result, status)
+    end subroutine triangulate_with_hole_fortran
+
+    subroutine triangulate_with_quality_fortran(points, segments, min_angle,  &
+                                                result, status)
+        real(dp), intent(in) :: points(:,:)
+        integer, intent(in) :: segments(:,:)
+        real(dp), intent(in) :: min_angle
+        type(triangulation_result_t), intent(out) :: result
+        integer, intent(out), optional :: status
+
+        real(dp) :: min_angle_measured
+
+        call triangulate_fortran(points, segments, result, status)
+
+        min_angle_measured = compute_min_triangle_angle(result)
+
+        if (present(status)) then
+            if (min_angle_measured >= min_angle) then
+                status = 0
             else
-                if (allocated(poly_points)) deallocate(poly_points)
-                if (allocated(poly_tris)) deallocate(poly_tris)
+                status = 1
             end if
         end if
-    end if
-    
-    ! General case: constrained Delaunay triangulation on a PSLG.
-    call constrained_delaunay_triangulate(points, segments, mesh)
-    
-    ! Convert mesh to result format
-    call mesh_to_result(mesh, segments, result)
-    
-    call destroy_mesh(mesh)
-    
-end subroutine triangulate_fortran
+    end subroutine triangulate_with_quality_fortran
 
-subroutine triangulate_with_hole_fortran(points, segments, hole_point, result, status)
-    !> Triangulation with hole - equivalent to TRIANGLE with hole specification
-    real(dp), intent(in) :: points(:,:)      ! Input points (2, npoints)
-    integer, intent(in) :: segments(:,:)     ! Input segments (2, nsegments)
-    real(dp), intent(in) :: hole_point(:)    ! Hole point (2)
-    type(triangulation_result_t), intent(out) :: result
-    integer, intent(out), optional :: status
-    
-    ! Current implementation treats the domain specified by segments and
-    ! points directly using constrained Delaunay triangulation. The
-    ! hole_point is accepted for API compatibility but is not used
-    ! explicitly; holes must be encoded via the input segments.
-    call triangulate_fortran(points, segments, result, status)
-    
-end subroutine triangulate_with_hole_fortran
+    subroutine triangulate_triangle_lib(points, segments, result, status)
+        real(dp), intent(in) :: points(:,:)
+        integer, intent(in) :: segments(:,:)
+        type(triangulation_result_t), intent(out) :: result
+        integer, intent(out), optional :: status
 
-subroutine triangulate_with_quality_fortran(points, segments, min_angle, result, status)
-    !> Triangulation with quality constraints - equivalent to TRIANGLE's 'q' option
-    real(dp), intent(in) :: points(:,:)      ! Input points (2, npoints)
-    integer, intent(in) :: segments(:,:)     ! Input segments (2, nsegments)
-    real(dp), intent(in) :: min_angle        ! Minimum angle in degrees
-    type(triangulation_result_t), intent(out) :: result
-    integer, intent(out), optional :: status
-    
-    real(dp) :: min_angle_measured
-    
-    ! Perform standard constrained Delaunay triangulation first
-    call triangulate_fortran(points, segments, result, status)
-    
-    ! Simple quality diagnostic: measure minimum interior angle in degrees
-    min_angle_measured = compute_min_triangle_angle(result)
-    
-    if (present(status)) then
-        if (min_angle_measured >= min_angle) then
-            status = 0
-        else
-            status = 1
-        end if
-    end if
-    
-end subroutine triangulate_with_quality_fortran
+        call triangulate_fortran(points, segments, result, status)
+    end subroutine triangulate_triangle_lib
 
-subroutine triangulate_triangle_lib(points, segments, result, status)
-    !> Wrapper for original TRIANGLE library - for comparison testing
-    real(dp), intent(in) :: points(:,:)      ! Input points (2, npoints)
-    integer, intent(in) :: segments(:,:)     ! Input segments (2, nsegments)
-    type(triangulation_result_t), intent(out) :: result
-    integer, intent(out), optional :: status
-    
-    ! For the Fortran-only implementation, fall back to the internal
-    ! constrained Delaunay triangulation backend. This keeps the API
-    ! compatible with a future C TRIANGLE binding while providing
-    ! fully functional behaviour today.
-    call triangulate_fortran(points, segments, result, status)
-    
-end subroutine triangulate_triangle_lib
+    subroutine allocate_result(result, npoints, ntriangles, nsegments)
+        type(triangulation_result_t), intent(out) :: result
+        integer, intent(in) :: npoints, ntriangles, nsegments
 
-subroutine allocate_result(result, npoints, ntriangles, nsegments)
-    !> Helper to allocate result arrays
-    type(triangulation_result_t), intent(out) :: result
-    integer, intent(in) :: npoints, ntriangles, nsegments
-    
-    result%npoints = npoints
-    result%ntriangles = ntriangles
-    result%nsegments = nsegments
-    
-    allocate(result%points(2, npoints))
-    allocate(result%triangles(3, ntriangles))
-    allocate(result%segments(2, nsegments))
-    allocate(result%neighbors(3, ntriangles))
-    
-end subroutine allocate_result
+        result%npoints = npoints
+        result%ntriangles = ntriangles
+        result%nsegments = nsegments
 
-subroutine mesh_to_result(mesh, input_segments, result)
-    !> Convert internal mesh format to triangulation result format
-    type(mesh_t), intent(in) :: mesh
-    integer, intent(in) :: input_segments(:,:)
-    type(triangulation_result_t), intent(out) :: result
-    
-    integer :: i, valid_points, valid_triangles
-    
-    ! Count valid points and triangles
-    valid_points = 0
-    do i = 1, mesh%npoints
-        if (mesh%points(i)%valid) valid_points = valid_points + 1
-    end do
-    
-    valid_triangles = 0
-    do i = 1, mesh%ntriangles
-        if (mesh%triangles(i)%valid) then
-            ! Check if all vertices are valid before counting triangle
-            if (all(mesh%triangles(i)%vertices(1:3) >= 1 .and. mesh%triangles(i)%vertices(1:3) <= mesh%npoints)) then
-                if (all(mesh%points(mesh%triangles(i)%vertices(1:3))%valid)) then
-                    valid_triangles = valid_triangles + 1
+        allocate(result%points(2, npoints))
+        allocate(result%triangles(3, ntriangles))
+        allocate(result%segments(2, nsegments))
+        allocate(result%neighbors(3, ntriangles))
+    end subroutine allocate_result
+
+    subroutine mesh_to_result(mesh, input_segments, result)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: input_segments(:,:)
+        type(triangulation_result_t), intent(out) :: result
+
+        integer :: i, valid_points, valid_triangles
+
+        valid_points = 0
+        do i = 1, mesh%npoints
+            if (mesh%points(i)%valid) valid_points = valid_points + 1
+        end do
+
+        valid_triangles = 0
+        do i = 1, mesh%ntriangles
+            if (mesh%triangles(i)%valid) then
+                if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
+                        mesh%triangles(i)%vertices <= mesh%npoints)) then
+                    if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
+                        valid_triangles = valid_triangles + 1
+                    end if
                 end if
             end if
-        end if
-    end do
-    
-    ! Debug output
-    !write(*,'(A,I0,A,I0,A,I0,A,I0)') 'mesh_to_result: mesh has ', mesh%npoints, ' points (', valid_points, ' valid), ', mesh%ntriangles, ' triangles (', valid_triangles, ' valid)'
-    
-    ! Allocate result arrays
-    call allocate_result(result, valid_points, valid_triangles, size(input_segments, 2))
-    
-    ! Copy valid points
-    valid_points = 0
-    do i = 1, mesh%npoints
-        if (mesh%points(i)%valid) then
-            valid_points = valid_points + 1
-            result%points(1, valid_points) = mesh%points(i)%x
-            result%points(2, valid_points) = mesh%points(i)%y
-        end if
-    end do
-    
-    ! Copy valid triangles (need to remap vertex indices)
-    valid_triangles = 0
-    do i = 1, mesh%ntriangles
-        if (mesh%triangles(i)%valid) then
-            ! Check if all vertices are valid before adding triangle
-            if (all(mesh%triangles(i)%vertices(1:3) >= 1 .and. mesh%triangles(i)%vertices(1:3) <= mesh%npoints)) then
-                if (all(mesh%points(mesh%triangles(i)%vertices(1:3))%valid)) then
-                    valid_triangles = valid_triangles + 1
-                    ! Map original vertex indices to new indices
-                    !write(*,'(A,I0,A,3I0)') 'Original triangle ', i, ' vertices: ', mesh%triangles(i)%vertices
-                    result%triangles(1, valid_triangles) = remap_vertex_index(mesh, mesh%triangles(i)%vertices(1))
-                    result%triangles(2, valid_triangles) = remap_vertex_index(mesh, mesh%triangles(i)%vertices(2))
-                    result%triangles(3, valid_triangles) = remap_vertex_index(mesh, mesh%triangles(i)%vertices(3))
-                    !write(*,'(A,I0,A,3I0)') 'Remapped triangle ', valid_triangles, ' vertices: ', result%triangles(:, valid_triangles)
-                else
-                    !write(*,'(A,I0,A,3I0)') 'Skipping triangle ', i, ' with invalid vertices: ', mesh%triangles(i)%vertices
-                end if
-            else
-                !write(*,'(A,I0,A,3I0)') 'Skipping triangle ', i, ' with out-of-bounds vertices: ', mesh%triangles(i)%vertices
+        end do
+
+        call allocate_result(result, valid_points, valid_triangles,           &
+                            size(input_segments, 2))
+
+        valid_points = 0
+        do i = 1, mesh%npoints
+            if (mesh%points(i)%valid) then
+                valid_points = valid_points + 1
+                result%points(1, valid_points) = mesh%points(i)%x
+                result%points(2, valid_points) = mesh%points(i)%y
             end if
+        end do
+
+        valid_triangles = 0
+        do i = 1, mesh%ntriangles
+            if (mesh%triangles(i)%valid) then
+                if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
+                        mesh%triangles(i)%vertices <= mesh%npoints)) then
+                    if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
+                        valid_triangles = valid_triangles + 1
+                        result%triangles(1, valid_triangles) =                &
+                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(1))
+                        result%triangles(2, valid_triangles) =                &
+                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(2))
+                        result%triangles(3, valid_triangles) =                &
+                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(3))
+                    end if
+                end if
+            end if
+        end do
+
+        result%segments = input_segments
+        result%npoints = valid_points
+        result%ntriangles = valid_triangles
+    end subroutine mesh_to_result
+
+    integer function remap_vertex_index(mesh, original_idx)
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: original_idx
+
+        integer :: i, valid_count
+
+        if (original_idx < 1 .or. original_idx > mesh%npoints) then
+            remap_vertex_index = -1
+            return
         end if
-    end do
-    
-    ! Copy input segments
-    result%segments = input_segments
-    
-    ! Update actual counts to match what we copied
-    result%npoints = valid_points
-    result%ntriangles = valid_triangles
-    
-end subroutine mesh_to_result
 
-integer function remap_vertex_index(mesh, original_idx)
-    !> Map original vertex index to new index (accounting for removed vertices)
-    type(mesh_t), intent(in) :: mesh
-    integer, intent(in) :: original_idx
-    
-    integer :: i, valid_count
-    
-    ! Check for invalid input
-    if (original_idx < 1 .or. original_idx > mesh%npoints) then
-        !write(*,'(A,I0,A,I0)') 'ERROR: Invalid original_idx: ', original_idx, ' (max: ', mesh%npoints, ')'
-        remap_vertex_index = -1
-        return
-    end if
-    
-    ! Check if the original vertex is valid
-    if (.not. mesh%points(original_idx)%valid) then
-        !write(*,'(A,I0)') 'ERROR: Trying to remap invalid vertex: ', original_idx
-        remap_vertex_index = -1
-        return
-    end if
-    
-    valid_count = 0
-    do i = 1, original_idx
-        if (mesh%points(i)%valid) then
-            valid_count = valid_count + 1
+        if (.not. mesh%points(original_idx)%valid) then
+            remap_vertex_index = -1
+            return
         end if
-    end do
-    
-    remap_vertex_index = valid_count
-end function remap_vertex_index
 
-real(dp) function compute_min_triangle_angle(result) result(min_angle_deg)
-    !> Compute the minimum interior angle (in degrees) over all triangles
-    type(triangulation_result_t), intent(in) :: result
-    
-    integer :: i
-    real(dp) :: ax, ay, bx, by, cx, cy
-    real(dp) :: angle1, angle2, angle3, tri_min
-    real(dp), parameter :: pi = acos(-1.0_dp)
-    
-    min_angle_deg = 180.0_dp
-    
-    do i = 1, result%ntriangles
-        ax = result%points(1, result%triangles(1, i))
-        ay = result%points(2, result%triangles(1, i))
-        bx = result%points(1, result%triangles(2, i))
-        by = result%points(2, result%triangles(2, i))
-        cx = result%points(1, result%triangles(3, i))
-        cy = result%points(2, result%triangles(3, i))
-        
-        angle1 = interior_angle(ax, ay, bx, by, cx, cy, pi)
-        angle2 = interior_angle(bx, by, cx, cy, ax, ay, pi)
-        angle3 = interior_angle(cx, cy, ax, ay, bx, by, pi)
-        
-        tri_min = min(angle1, min(angle2, angle3))
-        if (tri_min < min_angle_deg) min_angle_deg = tri_min
-    end do
-    
-end function compute_min_triangle_angle
+        valid_count = 0
+        do i = 1, original_idx
+            if (mesh%points(i)%valid) then
+                valid_count = valid_count + 1
+            end if
+        end do
 
-real(dp) function interior_angle(px, py, qx, qy, rx, ry, pi) result(angle_deg)
-    !> Interior angle at point Q of triangle PQR, in degrees
-    real(dp), intent(in) :: px, py, qx, qy, rx, ry, pi
-    real(dp) :: v1x, v1y, v2x, v2y, dotpr, norm1, norm2, cos_theta
-    
-    v1x = px - qx
-    v1y = py - qy
-    v2x = rx - qx
-    v2y = ry - qy
-    
-    norm1 = sqrt(v1x*v1x + v1y*v1y)
-    norm2 = sqrt(v2x*v2x + v2y*v2y)
-    
-    if (norm1 <= 0.0_dp .or. norm2 <= 0.0_dp) then
-        angle_deg = 0.0_dp
-        return
-    end if
-    
-    dotpr = v1x*v2x + v1y*v2y
-    cos_theta = max(-1.0_dp, min(1.0_dp, dotpr / (norm1*norm2)))
-    angle_deg = acos(cos_theta) * 180.0_dp / pi
-    
-end function interior_angle
+        remap_vertex_index = valid_count
+    end function remap_vertex_index
 
-subroutine cleanup_triangulation(result)
-    !> Clean up allocated arrays
-    type(triangulation_result_t), intent(inout) :: result
-    
-    if (allocated(result%points)) deallocate(result%points)
-    if (allocated(result%triangles)) deallocate(result%triangles)
-    if (allocated(result%segments)) deallocate(result%segments)
-    if (allocated(result%neighbors)) deallocate(result%neighbors)
-    
-    result%npoints = 0
-    result%ntriangles = 0
-    result%nsegments = 0
-    
-end subroutine cleanup_triangulation
+    real(dp) function compute_min_triangle_angle(result) result(min_angle_deg)
+        type(triangulation_result_t), intent(in) :: result
+
+        integer :: i
+        real(dp) :: ax, ay, bx, by, cx, cy
+        real(dp) :: angle1, angle2, angle3, tri_min
+        real(dp), parameter :: pi = acos(-1.0_dp)
+
+        min_angle_deg = 180.0_dp
+
+        do i = 1, result%ntriangles
+            ax = result%points(1, result%triangles(1, i))
+            ay = result%points(2, result%triangles(1, i))
+            bx = result%points(1, result%triangles(2, i))
+            by = result%points(2, result%triangles(2, i))
+            cx = result%points(1, result%triangles(3, i))
+            cy = result%points(2, result%triangles(3, i))
+
+            angle1 = interior_angle(ax, ay, bx, by, cx, cy, pi)
+            angle2 = interior_angle(bx, by, cx, cy, ax, ay, pi)
+            angle3 = interior_angle(cx, cy, ax, ay, bx, by, pi)
+
+            tri_min = min(angle1, min(angle2, angle3))
+            if (tri_min < min_angle_deg) min_angle_deg = tri_min
+        end do
+    end function compute_min_triangle_angle
+
+    real(dp) function interior_angle(px, py, qx, qy, rx, ry, pi)              &
+        result(angle_deg)
+        real(dp), intent(in) :: px, py, qx, qy, rx, ry, pi
+        real(dp) :: v1x, v1y, v2x, v2y, dotpr, norm1, norm2, cos_theta
+
+        v1x = px - qx
+        v1y = py - qy
+        v2x = rx - qx
+        v2y = ry - qy
+
+        norm1 = sqrt(v1x*v1x + v1y*v1y)
+        norm2 = sqrt(v2x*v2x + v2y*v2y)
+
+        if (norm1 <= 0.0_dp .or. norm2 <= 0.0_dp) then
+            angle_deg = 0.0_dp
+            return
+        end if
+
+        dotpr = v1x*v2x + v1y*v2y
+        cos_theta = max(-1.0_dp, min(1.0_dp, dotpr / (norm1*norm2)))
+        angle_deg = acos(cos_theta) * 180.0_dp / pi
+    end function interior_angle
+
+    subroutine cleanup_triangulation(result)
+        type(triangulation_result_t), intent(inout) :: result
+
+        if (allocated(result%points)) deallocate(result%points)
+        if (allocated(result%triangles)) deallocate(result%triangles)
+        if (allocated(result%segments)) deallocate(result%segments)
+        if (allocated(result%neighbors)) deallocate(result%neighbors)
+
+        result%npoints = 0
+        result%ntriangles = 0
+        result%nsegments = 0
+    end subroutine cleanup_triangulation
 
 end module triangulation_fortran

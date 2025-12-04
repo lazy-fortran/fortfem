@@ -12,10 +12,8 @@ contains
 
     subroutine triangulate_boundary(boundary_points, segments, mesh_points, &
                                    mesh_triangles, n_points, n_triangles)
-        !> Triangulate a boundary defined by points and segments using the
-        !  shared triangulation backend. Simple polygon boundaries are
-        !  handled by the polygon ear-clipping path inside
-        !  triangulate_fortran; general PSLGs use constrained Delaunay.
+        !> Triangulate a boundary defined by points and segments using
+        !  constrained Delaunay triangulation (Triangle algorithm).
         real(dp), intent(in) :: boundary_points(:,:)    ! (2, n_boundary_points)
         integer, intent(in) :: segments(:,:)            ! (2, n_segments)
         real(dp), allocatable, intent(out) :: mesh_points(:,:)     ! (2, n_points)
