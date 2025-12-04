@@ -40,6 +40,7 @@ module fortfem_api
     public :: arc_segment
     public :: l_shape_boundary
     public :: mesh_from_boundary
+    public :: structured_quad_mesh
     public :: function_space
     public :: vector_function_space
     
@@ -504,12 +505,23 @@ contains
         call mesh%data%find_boundary()
     end function mesh_from_boundary
     
+    ! Structured quadrilateral mesh constructor
+    function structured_quad_mesh(nx, ny, x0, x1, y0, y1) result(mesh)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: x0, x1, y0, y1
+        type(mesh_t) :: mesh
+        
+        call init_measures()
+        call mesh%data%create_structured_quads(nx, ny, x0, x1, y0, y1)
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function structured_quad_mesh
+    
     ! Mesh refinement functions
     function refine_uniform(mesh) result(refined_mesh)
         type(mesh_t), intent(in) :: mesh
         type(mesh_t) :: refined_mesh
         
-        ! Implement uniform red refinement
         call mesh%data%refine_uniform(refined_mesh%data)
     end function refine_uniform
     
@@ -518,7 +530,6 @@ contains
         logical, intent(in) :: refine_markers(:)
         type(mesh_t) :: refined_mesh
         
-        ! Implement adaptive red-green refinement
         call mesh%data%refine_adaptive(refine_markers, refined_mesh%data)
     end function refine_adaptive
     
