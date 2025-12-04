@@ -1194,7 +1194,7 @@ contains
     ! Plot scalar function using triangulation with interpolation to regular grid
     subroutine plot_function_scalar(uh, filename, title, colormap)
         use fortplot, only: figure, contour_filled, xlabel, ylabel, &
-                           plot_title => title, savefig, pcolormesh
+                           plot_title => title, savefig, pcolormesh, add_plot
         type(function_t), intent(in) :: uh
         character(len=*), intent(in), optional :: filename
         character(len=*), intent(in), optional :: title
@@ -1210,6 +1210,9 @@ contains
         character(len=64) :: output_filename
         character(len=128) :: title_text
         character(len=32) :: cmap
+        real(dp) :: x_edges(2), y_edges(2)
+        real(dp), parameter :: black(3) = [0.0_dp, 0.0_dp, 0.0_dp]
+        integer :: v1, v2, v3, e
         
         ! Set defaults
         if (present(filename)) then
@@ -1252,11 +1255,39 @@ contains
         call interpolate_to_grid(uh, x_grid(1:nx), y_grid(1:ny), z_grid)
         
         ! Create plot
-        call figure(800, 600)
+        call figure()
         call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
         call pcolormesh(x_grid, y_grid, z_grid, colormap=trim(cmap))
+        
+        ! Overlay mesh edges in line mode (hold-on behaviour)
+        do e = 1, uh%space%mesh%data%n_triangles
+            v1 = uh%space%mesh%data%triangles(1, e)
+            v2 = uh%space%mesh%data%triangles(2, e)
+            v3 = uh%space%mesh%data%triangles(3, e)
+            
+            ! Edge v1-v2
+            x_edges(1) = uh%space%mesh%data%vertices(1, v1)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v2)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v1)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v2)
+            call add_plot(x_edges, y_edges, color=black)
+            
+            ! Edge v2-v3
+            x_edges(1) = uh%space%mesh%data%vertices(1, v2)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v3)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v2)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v3)
+            call add_plot(x_edges, y_edges, color=black)
+            
+            ! Edge v3-v1
+            x_edges(1) = uh%space%mesh%data%vertices(1, v3)
+            x_edges(2) = uh%space%mesh%data%vertices(1, v1)
+            y_edges(1) = uh%space%mesh%data%vertices(2, v3)
+            y_edges(2) = uh%space%mesh%data%vertices(2, v1)
+            call add_plot(x_edges, y_edges, color=black)
+        end do
         call savefig(trim(output_filename))
         
         write(*,*) "Plot saved to: ", trim(output_filename)
@@ -1324,7 +1355,7 @@ contains
         call interpolate_vector_to_grid(Eh, x_grid, y_grid, u_grid, v_grid)
         
         ! Create plot
-        call figure(800, 600)
+        call figure()
         call plot_title(trim(title_text))
         call xlabel("x")
         call ylabel("y")
@@ -1486,7 +1517,6 @@ contains
         
         type(figure_t) :: fig
         real(8), allocatable :: x_edges(:), y_edges(:)
-        real(8), allocatable :: x_vertices(:), y_vertices(:)
         integer :: i, j, e, v1, v2, v3
         character(len=64) :: output_filename
         character(len=128) :: title_text
@@ -1553,15 +1583,6 @@ contains
             call fig%add_plot(x_edges, y_edges)
         end do
         
-        ! Plot vertices as points
-        allocate(x_vertices(mesh%data%n_vertices))
-        allocate(y_vertices(mesh%data%n_vertices))
-        do i = 1, mesh%data%n_vertices
-            x_vertices(i) = real(mesh%data%vertices(1, i), 8)
-            y_vertices(i) = real(mesh%data%vertices(2, i), 8)
-        end do
-        call fig%add_plot(x_vertices, y_vertices)
-        
         ! Set labels
         call fig%set_xlabel("x")
         call fig%set_ylabel("y")
@@ -1580,7 +1601,7 @@ contains
         write(*,*) "  Triangles: ", mesh%data%n_triangles
         write(*,*) "  Edges: ", mesh%data%n_edges
         
-        deallocate(x_edges, y_edges, x_vertices, y_vertices)
+        deallocate(x_edges, y_edges)
     end subroutine plot_mesh
 
 end module fortfem_api
