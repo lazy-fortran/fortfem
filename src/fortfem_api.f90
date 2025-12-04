@@ -198,7 +198,12 @@ module fortfem_api
     interface operator(==)
         module procedure form_equals_form
     end interface
-    
+
+    interface refine_adaptive
+        module procedure refine_adaptive_markers
+        module procedure refine_adaptive_solution
+    end interface
+
     ! High-level solve interface with automatic solver selection
     interface solve
         module procedure solve_scalar
@@ -233,6 +238,62 @@ contains
             measures_initialized = .true.
         end if
     end subroutine init_measures
+
+    subroutine compute_gradient_indicators(mesh, solution, indicators)
+        type(mesh_t), intent(in) :: mesh
+        type(function_t), intent(in) :: solution
+        real(dp), intent(out) :: indicators(:)
+        
+        integer :: e, v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: a(2,2), det_a
+        real(dp) :: b(3), c(3)
+        real(dp) :: u1, u2, u3
+        real(dp) :: gradx, grady
+        
+        if (size(indicators) /= mesh%data%n_triangles) then
+            error stop "compute_gradient_indicators: size mismatch"
+        end if
+        
+        do e = 1, mesh%data%n_triangles
+            v1 = mesh%data%triangles(1, e)
+            v2 = mesh%data%triangles(2, e)
+            v3 = mesh%data%triangles(3, e)
+            
+            x1 = mesh%data%vertices(1, v1)
+            y1 = mesh%data%vertices(2, v1)
+            x2 = mesh%data%vertices(1, v2)
+            y2 = mesh%data%vertices(2, v2)
+            x3 = mesh%data%vertices(1, v3)
+            y3 = mesh%data%vertices(2, v3)
+            
+            a(1,1) = x2 - x1
+            a(1,2) = x3 - x1
+            a(2,1) = y2 - y1
+            a(2,2) = y3 - y1
+            
+            det_a = a(1,1) * a(2,2) - a(1,2) * a(2,1)
+            if (abs(det_a) < 1.0e-14_dp) then
+                indicators(e) = 0.0_dp
+            else
+                b(1) = (-a(2,2) + a(2,1)) / det_a
+                c(1) = ( a(1,2) - a(1,1)) / det_a
+                b(2) = a(2,2) / det_a
+                c(2) = -a(1,2) / det_a
+                b(3) = -a(2,1) / det_a
+                c(3) = a(1,1) / det_a
+                
+                u1 = solution%values(v1)
+                u2 = solution%values(v2)
+                u3 = solution%values(v3)
+                
+                gradx = b(1) * u1 + b(2) * u2 + b(3) * u3
+                grady = c(1) * u1 + c(2) * u2 + c(3) * u3
+                
+                indicators(e) = sqrt(gradx * gradx + grady * grady)
+            end if
+        end do
+    end subroutine compute_gradient_indicators
 
     ! Mesh constructors
     function unit_square_mesh(n) result(mesh)
@@ -518,20 +579,71 @@ contains
     end function structured_quad_mesh
     
     ! Mesh refinement functions
-    function refine_uniform(mesh) result(refined_mesh)
+    function refine_uniform(mesh, levels) result(refined_mesh)
         type(mesh_t), intent(in) :: mesh
+        integer, intent(in), optional :: levels
         type(mesh_t) :: refined_mesh
+        type(mesh_t) :: current_mesh, next_mesh
+        integer :: l, nlevels
         
-        call mesh%data%refine_uniform(refined_mesh%data)
+        nlevels = 1
+        if (present(levels)) then
+            if (levels > 1) nlevels = levels
+        end if
+        
+        current_mesh = mesh
+        do l = 1, nlevels
+            call current_mesh%data%refine_uniform(next_mesh%data)
+            if (l < nlevels) then
+                call current_mesh%destroy()
+                current_mesh = next_mesh
+            else
+                refined_mesh = next_mesh
+            end if
+        end do
     end function refine_uniform
     
-    function refine_adaptive(mesh, refine_markers) result(refined_mesh)
+    function refine_adaptive_markers(mesh, refine_markers) result(refined_mesh)
         type(mesh_t), intent(in) :: mesh
         logical, intent(in) :: refine_markers(:)
         type(mesh_t) :: refined_mesh
         
         call mesh%data%refine_adaptive(refine_markers, refined_mesh%data)
-    end function refine_adaptive
+    end function refine_adaptive_markers
+    
+    function refine_adaptive_solution(mesh, solution, tolerance) result(refined_mesh)
+        type(mesh_t), intent(in) :: mesh
+        type(function_t), intent(in) :: solution
+        real(dp), intent(in) :: tolerance
+        type(mesh_t) :: refined_mesh
+        real(dp), allocatable :: indicators(:)
+        logical, allocatable :: refine_markers(:)
+        real(dp) :: max_eta, threshold
+        integer :: n
+        
+        n = mesh%data%n_triangles
+        if (n <= 0) then
+            refined_mesh = mesh
+            return
+        end if
+        
+        allocate(indicators(n))
+        allocate(refine_markers(n))
+        
+        call compute_gradient_indicators(mesh, solution, indicators)
+        
+        max_eta = maxval(indicators)
+        if (max_eta <= 0.0_dp) then
+            refine_markers = .false.
+        else
+            threshold = tolerance * max_eta
+            refine_markers = indicators >= threshold
+        end if
+        
+        call mesh%data%refine_adaptive(refine_markers, refined_mesh%data)
+        
+        deallocate(indicators, refine_markers)
+    end function refine_adaptive_solution
     
     ! Function space constructor
     function function_space(mesh, family, degree) result(space)
