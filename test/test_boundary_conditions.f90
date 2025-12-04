@@ -74,6 +74,8 @@ contains
         
         write(*,*) "   Max interior value:", max_interior_value
         write(*,*) "   Max boundary error:", max_boundary_value
+        call plot(uh, filename="build/bc_zero_dirichlet_solution.png", &
+                  title="Zero Dirichlet BC solution")
     end subroutine test_dirichlet_zero_bc
 
     ! Test non-zero Dirichlet BC
@@ -135,6 +137,8 @@ contains
         write(*,*) "   BC value:", bc_value
         write(*,*) "   Max boundary error:", max_error
         write(*,*) "   Solution range:", minval(uh%values), "to", maxval(uh%values)
+        call plot(uh, filename="build/bc_nonzero_dirichlet_solution.png", &
+                  title="Non-zero Dirichlet BC solution")
     end subroutine test_dirichlet_nonzero_bc
 
     ! Test boundary condition identification on different segments
@@ -352,6 +356,8 @@ contains
         write(*,*) "   Max solution value:", max_error
         write(*,*) "   Max boundary error:", l2_error
         write(*,*) "   Mesh resolution: 8x8"
+        call plot(uh, filename="build/bc_manufactured_solution.png", &
+                  title="Manufactured Poisson solution")
     end subroutine test_manufactured_solution
 
 end program test_boundary_conditions

@@ -115,6 +115,8 @@ contains
         write(*,*) "   Coarse mesh (4x4) max:", max_coarse
         write(*,*) "   Fine mesh (8x8) max:", max_fine
         write(*,*) "   Relative difference:", abs(max_fine - max_coarse) / max_coarse
+        call plot(uh_fine, filename="build/bc_refined_mesh_solution.png", &
+                  title="Refined mesh BC solution (8x8)")
     end subroutine test_bc_on_refined_mesh
 
     ! Test that BC modification properly zeroes matrix rows and sets diagonal
