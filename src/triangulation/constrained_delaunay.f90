@@ -16,6 +16,8 @@ module constrained_delaunay
     use fortfem_kinds, only: dp
     use delaunay_types
     use geometric_predicates
+    use point_location, only: locate_point, build_adjacency, LOCATION_INSIDE, &
+        LOCATION_ON_EDGE, LOCATION_NOT_FOUND
     use bowyer_watson
     implicit none
 
@@ -43,6 +45,7 @@ contains
         integer :: i, npoints
         integer, allocatable :: adjusted_segments(:,:)
         integer :: offset
+        integer :: valid_triangles
 
         npoints = size(input_points, 2)
 
@@ -69,6 +72,12 @@ contains
             adjusted_segments(2, i) = constraint_segments(2, i) + offset
         end do
 
+        ! Preprocess intersecting constraint segments:
+        !  - Detect proper crossings in the PSLG
+        !  - Insert Steiner vertices at intersection points via Bowyer-Watson
+        !  - Split crossing segments so the constraint graph is planar
+        call preprocess_segment_intersections(mesh, adjusted_segments)
+
         ! Store segments for use during Delaunay fixup
         if (allocated(current_segments)) deallocate(current_segments)
         allocate(current_segments, source=adjusted_segments)
@@ -93,6 +102,98 @@ contains
         ! Disable robust predicates after CDT completes
         call disable_robust_predicates()
     end subroutine constrained_delaunay_triangulate
+
+    subroutine preprocess_segment_intersections(mesh, segments)
+        !> Make the constraint segment set planar by splitting crossings.
+        !
+        !  For each proper intersection AB ∩ CD, we:
+        !    1. Compute intersection point P.
+        !    2. Insert P into the Delaunay mesh via add_point + insert_point.
+        !    3. Replace segments (A,B) and (C,D) with
+        !       (A,P), (P,B), (C,P), (P,D).
+        !  The process repeats until no segment pairs intersect.
+        type(mesh_t), intent(inout) :: mesh
+        integer, allocatable, intent(inout) :: segments(:,:)
+
+        integer :: nseg, i, j
+        integer :: va, vb, vc, vd
+        type(point_t) :: pa, pb, pc, pd, pint
+        integer :: new_vertex
+        integer, allocatable :: new_segments(:,:)
+        integer :: k, k_old
+        logical :: found_intersection
+
+        if (.not. allocated(segments)) return
+        if (size(segments, 2) <= 1) return
+
+        do
+            found_intersection = .false.
+            nseg = size(segments, 2)
+
+            do i = 1, nseg - 1
+                va = segments(1, i)
+                vb = segments(2, i)
+                if (.not. mesh%points(va)%valid) cycle
+                if (.not. mesh%points(vb)%valid) cycle
+
+                pa = mesh%points(va)
+                pb = mesh%points(vb)
+
+                do j = i + 1, nseg
+                    vc = segments(1, j)
+                    vd = segments(2, j)
+
+                    ! Ignore segments sharing endpoints
+                    if (va == vc .or. va == vd .or. vb == vc .or. vb == vd) cycle
+                    if (.not. mesh%points(vc)%valid) cycle
+                    if (.not. mesh%points(vd)%valid) cycle
+
+                    pc = mesh%points(vc)
+                    pd = mesh%points(vd)
+
+                    if (.not. segments_properly_intersect(pa, pb, pc, pd)) cycle
+
+                    ! Compute intersection point and insert as Steiner vertex
+                    pint = compute_segment_intersection(pa, pb, pc, pd)
+                    new_vertex = add_point(mesh, pint%x, pint%y)
+                    call insert_point(mesh, new_vertex)
+
+                    ! Build updated segment list: remove i and j, add four splits
+                    allocate(new_segments(2, nseg + 2))
+                    k = 0
+                    do k_old = 1, nseg
+                        if (k_old == i .or. k_old == j) cycle
+                        k = k + 1
+                        new_segments(1, k) = segments(1, k_old)
+                        new_segments(2, k) = segments(2, k_old)
+                    end do
+
+                    k = k + 1
+                    new_segments(1, k) = va
+                    new_segments(2, k) = new_vertex
+                    k = k + 1
+                    new_segments(1, k) = new_vertex
+                    new_segments(2, k) = vb
+                    k = k + 1
+                    new_segments(1, k) = vc
+                    new_segments(2, k) = new_vertex
+                    k = k + 1
+                    new_segments(1, k) = new_vertex
+                    new_segments(2, k) = vd
+
+                    if (allocated(segments)) deallocate(segments)
+                    call move_alloc(new_segments, segments)
+
+                    found_intersection = .true.
+                    exit
+                end do
+
+                if (found_intersection) exit
+            end do
+
+            if (.not. found_intersection) exit
+        end do
+    end subroutine preprocess_segment_intersections
 
     subroutine insert_segment(mesh, v1, v2)
         !> Insert a constraint segment by flipping edges that cross it.
@@ -455,22 +556,66 @@ contains
 
     logical function segments_properly_intersect(p1, p2, q1, q2)              &
         result(intersect)
+        !> Test if two segments properly intersect (cross in interiors).
+        !
+        !  Uses the robust orientation predicate when enabled, so that
+        !  topological decisions are exact even for near-degenerate cases.
         type(point_t), intent(in) :: p1, p2, q1, q2
 
-        real(dp) :: d1, d2, d3, d4
+        integer :: o1, o2, o3, o4
 
         intersect = .false.
 
-        d1 = signed_area(p1, p2, q1)
-        d2 = signed_area(p1, p2, q2)
-        d3 = signed_area(q1, q2, p1)
-        d4 = signed_area(q1, q2, p2)
+        o1 = orientation(p1, p2, q1)
+        o2 = orientation(p1, p2, q2)
+        o3 = orientation(q1, q2, p1)
+        o4 = orientation(q1, q2, p2)
 
-        if (d1 * d2 >= 0.0_dp) return
-        if (d3 * d4 >= 0.0_dp) return
-
-        intersect = .true.
+        ! Proper intersection requires opposite orientations on both pairs,
+        ! and no collinear cases (handled separately if needed).
+        if (o1 == 0 .or. o2 == 0 .or. o3 == 0 .or. o4 == 0) return
+        if (o1 * o2 < 0 .and. o3 * o4 < 0) intersect = .true.
     end function segments_properly_intersect
+
+    function compute_segment_intersection(p1, p2, q1, q2) result(p)
+        !> Compute intersection point of two (assumed) proper-intersecting segments.
+        !
+        !  Uses a standard line-line intersection formula in double precision.
+        !  For nearly parallel segments, falls back to a midpoint of the
+        !  overlapping region to remain inside the segment bounding boxes.
+        type(point_t), intent(in) :: p1, p2, q1, q2
+        type(point_t) :: p
+
+        real(dp) :: x1, y1, x2, y2
+        real(dp) :: x3, y3, x4, y4
+        real(dp) :: denom, t, num_t
+        real(dp) :: minx, maxx, miny, maxy
+
+        x1 = p1%x; y1 = p1%y
+        x2 = p2%x; y2 = p2%y
+        x3 = q1%x; y3 = q1%y
+        x4 = q2%x; y4 = q2%y
+
+        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+
+        if (abs(denom) <= geometric_tolerance) then
+            ! Nearly parallel or degenerate: use midpoint of overlapping bbox.
+            minx = max(min(x1, x2), min(x3, x4))
+            maxx = min(max(x1, x2), max(x3, x4))
+            miny = max(min(y1, y2), min(y3, y4))
+            maxy = min(max(y1, y2), max(y3, y4))
+
+            p%x = 0.5_dp * (minx + maxx)
+            p%y = 0.5_dp * (miny + maxy)
+        else
+            num_t = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)
+            t = num_t / denom
+            p%x = x1 + t * (x2 - x1)
+            p%y = y1 + t * (y2 - y1)
+        end if
+
+        p%id = 0
+    end function compute_segment_intersection
 
     real(dp) function signed_area(pa, pb, pc)
         type(point_t), intent(in) :: pa, pb, pc
@@ -530,12 +675,16 @@ contains
         integer :: v1, v2, neighbor
         integer :: head, tail
         real(dp) :: px, py
+        integer :: loc_type
 
         if (mesh%ntriangles == 0) return
         if (size(hole_points, 1) /= 2) return
 
         nholes = size(hole_points, 2)
         if (nholes <= 0) return
+
+        ! Ensure adjacency is available for walking search and BFS expansion.
+        call build_adjacency(mesh)
 
         allocate(in_hole(mesh%ntriangles))
         allocate(queue(mesh%ntriangles))
@@ -546,8 +695,11 @@ contains
         do h = 1, nholes
             px = hole_points(1, h)
             py = hole_points(2, h)
-            call find_triangle_containing_point(mesh, px, py, t0)
-            if (t0 <= 0) cycle
+            call locate_point(mesh, px, py, t0, loc_type)
+            if (t0 <= 0 .or. loc_type == LOCATION_NOT_FOUND) then
+                call find_triangle_containing_point(mesh, px, py, t0)
+                if (t0 <= 0) cycle
+            end if
             if (.not. in_hole(t0)) then
                 tail = tail + 1
                 queue(tail) = t0
@@ -567,7 +719,7 @@ contains
 
                 if (is_constraint_edge(v1, v2, segments)) cycle
 
-                neighbor = find_adjacent_triangle(mesh, t, v1, v2)
+                neighbor = mesh%triangles(t)%neighbors(e)
                 if (neighbor == 0) cycle
                 if (.not. mesh%triangles(neighbor)%valid) cycle
                 if (in_hole(neighbor)) cycle
@@ -637,9 +789,14 @@ contains
         integer, allocatable :: virus_pool(:)
         integer :: pool_size, pool_head, pool_tail
         integer :: t, i, v1, v2, neighbor
+        logical :: any_infected_valid, all_infected_valid
 
         if (mesh%ntriangles == 0) return
         if (size(segments, 2) == 0) return
+
+        ! Build adjacency once for the final CDT; plague expansion then
+        ! uses O(1) neighbor lookups instead of repeated global scans.
+        call build_adjacency(mesh)
 
         allocate(infected(mesh%ntriangles))
         infected = .false.
@@ -663,8 +820,8 @@ contains
 
                 if (is_constraint_edge(v1, v2, segments)) cycle
 
-                neighbor = find_adjacent_triangle(mesh, t, v1, v2)
-                if (neighbor == 0) cycle
+                neighbor = mesh%triangles(t)%neighbors(i)
+                if (neighbor <= 0) cycle
                 if (infected(neighbor)) cycle
                 if (.not. mesh%triangles(neighbor)%valid) cycle
 
@@ -673,6 +830,31 @@ contains
                 virus_pool(pool_tail) = neighbor
             end do
         end do
+
+        ! If no valid triangles were infected, there is nothing to remove.
+        ! If all valid triangles are infected, treat this as a degenerate
+        ! configuration (e.g. mis-detected exterior) and keep the mesh.
+        any_infected_valid = .false.
+        all_infected_valid = .true.
+        do t = 1, mesh%ntriangles
+            if (.not. mesh%triangles(t)%valid) cycle
+            if (infected(t)) then
+                any_infected_valid = .true.
+            else
+                all_infected_valid = .false.
+            end if
+        end do
+
+        if (.not. any_infected_valid) then
+            deallocate(infected)
+            deallocate(virus_pool)
+            return
+        end if
+        if (all_infected_valid) then
+            deallocate(infected)
+            deallocate(virus_pool)
+            return
+        end if
 
         do t = 1, mesh%ntriangles
             if (infected(t)) mesh%triangles(t)%valid = .false.
@@ -701,8 +883,8 @@ contains
                 v1 = mesh%triangles(t)%vertices(i)
                 v2 = mesh%triangles(t)%vertices(mod(i, 3) + 1)
 
-                neighbor = find_adjacent_triangle(mesh, t, v1, v2)
-                is_hull_edge = (neighbor == 0)
+                neighbor = mesh%triangles(t)%neighbors(i)
+                is_hull_edge = (neighbor <= 0)
 
                 if (is_hull_edge) then
                     if (.not. is_constraint_edge(v1, v2, segments)) then
