@@ -7,12 +7,14 @@ program test_mesh_refinement
     write(*,*) "Testing mesh refinement implementation..."
     
     call test_uniform_refinement()
+    call test_uniform_refinement_levels()
     call test_adaptive_refinement()
     call test_boundary_preservation()
     call test_mesh_quality_after_refinement()
     call test_refinement_with_function_spaces()
     call test_solution_transfer()
     call test_refinement_convergence()
+    call test_adaptive_refinement_api()
     
     call check_summary("Mesh Refinement")
 
@@ -51,6 +53,27 @@ contains
         write(*,*) "   Refined:  ", refined_vertices, "vertices,", refined_triangles, "triangles"
         write(*,*) "   Area preservation:", abs(refined_area - original_area)
     end subroutine test_uniform_refinement
+
+    ! Test multi-level uniform refinement API
+    subroutine test_uniform_refinement_levels()
+        type(mesh_t) :: mesh, mesh_l1, mesh_l2
+        integer :: original_triangles
+        
+        mesh = unit_square_mesh(3)
+        original_triangles = mesh%data%n_triangles
+        
+        mesh_l1 = refine_uniform(mesh)
+        mesh_l2 = refine_uniform(mesh, 2)
+        
+        call check_condition(mesh_l1%data%n_triangles == 4 * original_triangles, &
+            "Uniform refinement levels: 1 level quadruples triangles")
+        call check_condition(mesh_l2%data%n_triangles == 16 * original_triangles, &
+            "Uniform refinement levels: 2 levels give 16x triangles")
+        
+        write(*,*) "   Uniform levels: nT0=", original_triangles, &
+                   " nT1=", mesh_l1%data%n_triangles, &
+                   " nT2=", mesh_l2%data%n_triangles
+    end subroutine test_uniform_refinement_levels
 
     ! Test adaptive mesh refinement
     subroutine test_adaptive_refinement()
@@ -285,7 +308,7 @@ contains
         write(*,*) "   Convergence rate:", convergence_rate
     end subroutine test_refinement_convergence
 
-    ! Helper functions (these would need actual implementation)
+    ! Helper functions
     
     function compute_total_area(mesh) result(total_area)
         type(mesh_t), intent(in) :: mesh
@@ -554,15 +577,100 @@ contains
         type(function_t), intent(out) :: uh
         real(dp), intent(out) :: error
         type(function_space_t) :: Vh
+        integer :: i
+        real(dp) :: x, y
+        real(dp), parameter :: pi = acos(-1.0_dp)
         
-        ! Simplified solve for testing
         Vh = function_space(mesh, "Lagrange", 1)
         uh = function(Vh)
         if (allocated(uh%values)) then
-            uh%values = 0.1_dp  ! Placeholder solution
+            do i = 1, Vh%ndof
+                x = mesh%data%vertices(1, i)
+                y = mesh%data%vertices(2, i)
+                uh%values(i) = sin(pi * x) * sin(pi * y)
+            end do
         end if
-        error = 0.1_dp / real(mesh%data%n_vertices, dp)  ! Placeholder error
+        
+        error = compute_L2_interpolation_error(mesh, uh)
     end subroutine solve_on_mesh
+
+    function compute_L2_interpolation_error(mesh, uh) result(err)
+        type(mesh_t), intent(in) :: mesh
+        type(function_t), intent(in) :: uh
+        real(dp) :: err
+        integer :: e, v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: xc, yc, u_h_bar, u_exact, area
+        real(dp) :: sum_sq
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        
+        sum_sq = 0.0_dp
+        do e = 1, mesh%data%n_triangles
+            v1 = mesh%data%triangles(1, e)
+            v2 = mesh%data%triangles(2, e)
+            v3 = mesh%data%triangles(3, e)
+            
+            x1 = mesh%data%vertices(1, v1)
+            y1 = mesh%data%vertices(2, v1)
+            x2 = mesh%data%vertices(1, v2)
+            y2 = mesh%data%vertices(2, v2)
+            x3 = mesh%data%vertices(1, v3)
+            y3 = mesh%data%vertices(2, v3)
+            
+            xc = (x1 + x2 + x3) / 3.0_dp
+            yc = (y1 + y2 + y3) / 3.0_dp
+            u_h_bar = (uh%values(v1) + uh%values(v2) + uh%values(v3)) / 3.0_dp
+            u_exact = sin(pi * xc) * sin(pi * yc)
+            
+            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
+            sum_sq = sum_sq + (u_h_bar - u_exact)**2 * area
+        end do
+        
+        err = sqrt(sum_sq)
+    end function compute_L2_interpolation_error
+
+    subroutine test_adaptive_refinement_api()
+        type(mesh_t) :: mesh_coarse, mesh_adapt
+        type(function_space_t) :: Vh_coarse, Vh_adapt
+        type(function_t) :: uh_coarse, uh_adapt
+        real(dp) :: error_coarse, error_adapt
+        integer :: i
+        real(dp) :: x, y
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        
+        mesh_coarse = unit_square_mesh(4)
+        Vh_coarse = function_space(mesh_coarse, "Lagrange", 1)
+        uh_coarse = function(Vh_coarse)
+        
+        do i = 1, Vh_coarse%ndof
+            x = mesh_coarse%data%vertices(1, i)
+            y = mesh_coarse%data%vertices(2, i)
+            uh_coarse%values(i) = sin(pi * x) * sin(pi * y)
+        end do
+        
+        error_coarse = compute_L2_interpolation_error(mesh_coarse, uh_coarse)
+        
+        mesh_adapt = refine_adaptive(mesh_coarse, uh_coarse, 0.5_dp)
+        Vh_adapt = function_space(mesh_adapt, "Lagrange", 1)
+        uh_adapt = function(Vh_adapt)
+        
+        do i = 1, Vh_adapt%ndof
+            x = mesh_adapt%data%vertices(1, i)
+            y = mesh_adapt%data%vertices(2, i)
+            uh_adapt%values(i) = sin(pi * x) * sin(pi * y)
+        end do
+        
+        error_adapt = compute_L2_interpolation_error(mesh_adapt, uh_adapt)
+        
+        call check_condition(error_adapt < error_coarse, &
+            "Adaptive refinement API: error decreases after refinement")
+        
+        call plot(uh_adapt, filename="build/adaptive_refinement_solution.png", &
+                  title="Adaptive refinement solution")
+        
+        write(*,*) "   Adaptive refinement API errors: coarse=", error_coarse, &
+                   " adapted=", error_adapt
+    end subroutine test_adaptive_refinement_api
 
     ! Helper functions
     function compute_triangle_area(mesh, tri_idx) result(area)
