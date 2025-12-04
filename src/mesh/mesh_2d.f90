@@ -54,6 +54,10 @@ module fortfem_mesh_2d
         procedure :: save_to_file
         procedure :: load_from_file
         procedure :: destroy
+        
+        ! Mesh refinement procedures
+        procedure :: refine_uniform => refine_mesh_uniform
+        procedure :: refine_adaptive => refine_mesh_adaptive
     end type mesh_2d_t
     
     ! Helper type for sparse connectivity
@@ -757,5 +761,281 @@ contains
         deallocate(mesh_points, mesh_triangles, segments)
         
     end subroutine create_from_boundary
+
+    ! Mesh refinement implementations
+    
+    ! Uniform red refinement: each triangle is divided into 4 subtriangles
+    subroutine refine_mesh_uniform(this, refined_mesh)
+        class(mesh_2d_t), intent(in) :: this
+        class(mesh_2d_t), intent(out) :: refined_mesh
+        
+        integer :: old_nv, old_nt, old_ne
+        integer :: new_nv, new_nt, new_ne
+        integer :: i, j, t, v1, v2, v3, e1, e2, e3
+        integer :: mid1, mid2, mid3  ! Midpoint vertex indices
+        integer, allocatable :: edge_midpoints(:)  ! Maps edge to midpoint vertex
+        real(dp) :: x1, y1, x2, y2
+        
+        old_nv = this%n_vertices
+        old_nt = this%n_triangles
+        old_ne = this%n_edges
+        
+        ! Calculate new mesh sizes
+        ! Each triangle splits into 4, so 4 * old_nt triangles
+        ! New vertices: old vertices + midpoint of each edge
+        new_nv = old_nv + old_ne
+        new_nt = 4 * old_nt
+        new_ne = 2 * old_ne + 3 * old_nt  ! Approximate new edge count
+        
+        ! Allocate arrays for refined mesh
+        refined_mesh%n_vertices = new_nv
+        refined_mesh%n_triangles = new_nt
+        allocate(refined_mesh%vertices(2, new_nv))
+        allocate(refined_mesh%triangles(3, new_nt))
+        allocate(edge_midpoints(old_ne))
+        
+        ! Copy original vertices
+        refined_mesh%vertices(:, 1:old_nv) = this%vertices(:, 1:old_nv)
+        
+        ! Create midpoint vertices for each edge
+        do i = 1, old_ne
+            v1 = this%edges(1, i)
+            v2 = this%edges(2, i)
+            
+            ! Midpoint coordinates
+            x1 = this%vertices(1, v1)
+            y1 = this%vertices(2, v1)
+            x2 = this%vertices(1, v2)
+            y2 = this%vertices(2, v2)
+            
+            ! New vertex index
+            edge_midpoints(i) = old_nv + i
+            
+            ! Midpoint coordinates
+            refined_mesh%vertices(1, edge_midpoints(i)) = 0.5_dp * (x1 + x2)
+            refined_mesh%vertices(2, edge_midpoints(i)) = 0.5_dp * (y1 + y2)
+        end do
+        
+        ! Create 4 new triangles for each original triangle
+        do t = 1, old_nt
+            v1 = this%triangles(1, t)
+            v2 = this%triangles(2, t)
+            v3 = this%triangles(3, t)
+            
+            ! Find edges of this triangle
+            e1 = find_edge_between_vertices(this, v1, v2)
+            e2 = find_edge_between_vertices(this, v2, v3)
+            e3 = find_edge_between_vertices(this, v3, v1)
+            
+            ! Get midpoint vertices
+            mid1 = edge_midpoints(e1)  ! Midpoint of edge v1-v2
+            mid2 = edge_midpoints(e2)  ! Midpoint of edge v2-v3
+            mid3 = edge_midpoints(e3)  ! Midpoint of edge v3-v1
+            
+            ! Create 4 new triangles
+            ! Triangle 1: corner at v1
+            refined_mesh%triangles(1, 4*(t-1)+1) = v1
+            refined_mesh%triangles(2, 4*(t-1)+1) = mid1
+            refined_mesh%triangles(3, 4*(t-1)+1) = mid3
+            
+            ! Triangle 2: corner at v2
+            refined_mesh%triangles(1, 4*(t-1)+2) = v2
+            refined_mesh%triangles(2, 4*(t-1)+2) = mid2
+            refined_mesh%triangles(3, 4*(t-1)+2) = mid1
+            
+            ! Triangle 3: corner at v3
+            refined_mesh%triangles(1, 4*(t-1)+3) = v3
+            refined_mesh%triangles(2, 4*(t-1)+3) = mid3
+            refined_mesh%triangles(3, 4*(t-1)+3) = mid2
+            
+            ! Triangle 4: center triangle
+            refined_mesh%triangles(1, 4*(t-1)+4) = mid1
+            refined_mesh%triangles(2, 4*(t-1)+4) = mid2
+            refined_mesh%triangles(3, 4*(t-1)+4) = mid3
+        end do
+        
+        ! Build connectivity for refined mesh
+        call refined_mesh%build_connectivity()
+        call refined_mesh%find_boundary()
+        
+        deallocate(edge_midpoints)
+    end subroutine refine_mesh_uniform
+    
+    ! Adaptive red-green refinement
+    subroutine refine_mesh_adaptive(this, refine_markers, refined_mesh)
+        class(mesh_2d_t), intent(in) :: this
+        logical, intent(in) :: refine_markers(:)
+        class(mesh_2d_t), intent(out) :: refined_mesh
+        integer :: marked_count, total_count
+        
+        ! Count marked triangles
+        marked_count = count(refine_markers)
+        total_count = size(refine_markers)
+        
+        ! If most triangles are marked, use uniform refinement
+        if (marked_count > total_count / 2) then
+            call refine_mesh_uniform(this, refined_mesh)
+        else
+            ! Selective refinement: only refine marked triangles
+            call refine_mesh_selective(this, refine_markers, refined_mesh)
+        end if
+    end subroutine refine_mesh_adaptive
+    
+    ! Selective refinement (simplified version)
+    subroutine refine_mesh_selective(this, refine_markers, refined_mesh)
+        class(mesh_2d_t), intent(in) :: this
+        logical, intent(in) :: refine_markers(:)
+        class(mesh_2d_t), intent(out) :: refined_mesh
+        integer :: marked_count, new_triangles, new_vertices
+        integer :: old_nv, old_nt, t, i
+        integer, allocatable :: edge_midpoints(:, :)
+        logical, allocatable :: vertex_added(:, :)
+        
+        old_nv = this%n_vertices
+        old_nt = this%n_triangles
+        marked_count = count(refine_markers)
+        
+        ! Simplified: each marked triangle becomes 4, unmarked stay as 1
+        new_triangles = old_nt + 3 * marked_count
+        new_vertices = old_nv + 3 * marked_count  ! Approximate
+        
+        ! Initialize refined mesh
+        refined_mesh%n_vertices = new_vertices
+        refined_mesh%n_triangles = new_triangles
+        allocate(refined_mesh%vertices(2, new_vertices))
+        allocate(refined_mesh%triangles(3, new_triangles))
+        allocate(edge_midpoints(3, old_nt))
+        allocate(vertex_added(3, old_nt))
+        
+        ! Copy original vertices
+        refined_mesh%vertices(:, 1:old_nv) = this%vertices(:, 1:old_nv)
+        
+        ! Track edge midpoints and new triangles
+        edge_midpoints = 0
+        vertex_added = .false.
+        new_vertices = old_nv
+        new_triangles = 0
+        
+        do t = 1, old_nt
+            if (refine_markers(t)) then
+                ! Refine this triangle (create edge midpoints and 4 triangles)
+                call add_refined_triangle_selective(this, refined_mesh, t, &
+                    edge_midpoints, vertex_added, new_vertices, new_triangles)
+            else
+                ! Keep original triangle
+                new_triangles = new_triangles + 1
+                refined_mesh%triangles(:, new_triangles) = this%triangles(:, t)
+            end if
+        end do
+        
+        ! Update final counts
+        refined_mesh%n_vertices = new_vertices
+        refined_mesh%n_triangles = new_triangles
+        
+        ! Build connectivity
+        call refined_mesh%build_connectivity()
+        call refined_mesh%find_boundary()
+        
+        deallocate(edge_midpoints, vertex_added)
+    end subroutine refine_mesh_selective
+    
+    ! Helper to add refined triangle in selective refinement
+    subroutine add_refined_triangle_selective(original_mesh, refined_mesh, tri_idx, &
+        edge_midpoints, vertex_added, new_vertices, new_triangles)
+        class(mesh_2d_t), intent(in) :: original_mesh
+        class(mesh_2d_t), intent(inout) :: refined_mesh
+        integer, intent(in) :: tri_idx
+        integer, intent(inout) :: edge_midpoints(:, :)
+        logical, intent(inout) :: vertex_added(:, :)
+        integer, intent(inout) :: new_vertices, new_triangles
+        integer :: v1, v2, v3, mid1, mid2, mid3
+        
+        v1 = original_mesh%triangles(1, tri_idx)
+        v2 = original_mesh%triangles(2, tri_idx)
+        v3 = original_mesh%triangles(3, tri_idx)
+        
+        ! Add edge midpoints if not already added
+        if (.not. vertex_added(1, tri_idx)) then
+            new_vertices = new_vertices + 1
+            mid1 = new_vertices
+            edge_midpoints(1, tri_idx) = mid1
+            vertex_added(1, tri_idx) = .true.
+            refined_mesh%vertices(1, mid1) = 0.5_dp * (original_mesh%vertices(1, v1) + &
+                                                      original_mesh%vertices(1, v2))
+            refined_mesh%vertices(2, mid1) = 0.5_dp * (original_mesh%vertices(2, v1) + &
+                                                      original_mesh%vertices(2, v2))
+        else
+            mid1 = edge_midpoints(1, tri_idx)
+        end if
+        
+        if (.not. vertex_added(2, tri_idx)) then
+            new_vertices = new_vertices + 1
+            mid2 = new_vertices
+            edge_midpoints(2, tri_idx) = mid2
+            vertex_added(2, tri_idx) = .true.
+            refined_mesh%vertices(1, mid2) = 0.5_dp * (original_mesh%vertices(1, v2) + &
+                                                      original_mesh%vertices(1, v3))
+            refined_mesh%vertices(2, mid2) = 0.5_dp * (original_mesh%vertices(2, v2) + &
+                                                      original_mesh%vertices(2, v3))
+        else
+            mid2 = edge_midpoints(2, tri_idx)
+        end if
+        
+        if (.not. vertex_added(3, tri_idx)) then
+            new_vertices = new_vertices + 1
+            mid3 = new_vertices
+            edge_midpoints(3, tri_idx) = mid3
+            vertex_added(3, tri_idx) = .true.
+            refined_mesh%vertices(1, mid3) = 0.5_dp * (original_mesh%vertices(1, v3) + &
+                                                      original_mesh%vertices(1, v1))
+            refined_mesh%vertices(2, mid3) = 0.5_dp * (original_mesh%vertices(2, v3) + &
+                                                      original_mesh%vertices(2, v1))
+        else
+            mid3 = edge_midpoints(3, tri_idx)
+        end if
+        
+        ! Create 4 new triangles
+        new_triangles = new_triangles + 1
+        refined_mesh%triangles(1, new_triangles) = v1
+        refined_mesh%triangles(2, new_triangles) = mid1
+        refined_mesh%triangles(3, new_triangles) = mid3
+        
+        new_triangles = new_triangles + 1
+        refined_mesh%triangles(1, new_triangles) = mid1
+        refined_mesh%triangles(2, new_triangles) = v2
+        refined_mesh%triangles(3, new_triangles) = mid2
+        
+        new_triangles = new_triangles + 1
+        refined_mesh%triangles(1, new_triangles) = mid3
+        refined_mesh%triangles(2, new_triangles) = mid2
+        refined_mesh%triangles(3, new_triangles) = v3
+        
+        new_triangles = new_triangles + 1
+        refined_mesh%triangles(1, new_triangles) = mid1
+        refined_mesh%triangles(2, new_triangles) = mid2
+        refined_mesh%triangles(3, new_triangles) = mid3
+    end subroutine add_refined_triangle_selective
+    
+    ! Helper function to find edge between two vertices
+    function find_edge_between_vertices(mesh, v1, v2) result(edge_id)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: v1, v2
+        integer :: edge_id
+        integer :: i
+        
+        edge_id = 0
+        do i = 1, mesh%n_edges
+            if ((mesh%edges(1, i) == v1 .and. mesh%edges(2, i) == v2) .or. &
+                (mesh%edges(1, i) == v2 .and. mesh%edges(2, i) == v1)) then
+                edge_id = i
+                return
+            end if
+        end do
+        
+        ! Edge not found - this indicates a corrupted mesh topology
+        write(*,*) "Error: Edge between vertices", v1, "and", v2, "not found"
+        write(*,*) "This indicates a corrupted mesh topology"
+        error stop "Fatal error in find_edge_between_vertices"
+    end function find_edge_between_vertices
 
 end module fortfem_mesh_2d
