@@ -29,17 +29,33 @@ contains
 
     subroutine constrained_delaunay_triangulate(input_points,                 &
                                                constraint_segments, mesh)
+        !> Constrained Delaunay triangulation with robust predicates.
+        !
+        !  Uses robust integer coordinate arithmetic throughout to ensure
+        !  topologically correct results even for near-degenerate cases.
+        !
         real(dp), intent(in) :: input_points(:,:)
         integer, intent(in) :: constraint_segments(:,:)
         type(mesh_t), intent(out) :: mesh
 
-        integer :: i
+        integer :: i, npoints
         integer, allocatable :: adjusted_segments(:,:)
         integer :: offset
 
+        npoints = size(input_points, 2)
+
+        ! Initialize robust predicates BEFORE triangulation and keep them
+        ! enabled throughout the entire CDT process (including constraint
+        ! insertion and exterior removal).
+        call init_robust_predicates(input_points, npoints)
+
+        ! Use non-robust mode in delaunay_triangulate since we already init
         call delaunay_triangulate(input_points, mesh)
 
-        if (size(constraint_segments, 2) == 0) return
+        if (size(constraint_segments, 2) == 0) then
+            call disable_robust_predicates()
+            return
+        end if
 
         ! Bowyer-Watson adds 3 super-triangle vertices at indices 1-3.
         ! The input points start at index 4. We need to offset the
@@ -64,6 +80,9 @@ contains
 
         deallocate(adjusted_segments)
         if (allocated(current_segments)) deallocate(current_segments)
+
+        ! Disable robust predicates after CDT completes
+        call disable_robust_predicates()
     end subroutine constrained_delaunay_triangulate
 
     subroutine insert_segment(mesh, v1, v2)
