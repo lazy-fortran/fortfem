@@ -52,7 +52,7 @@ contains
         
         ! Test basic mesh plotting with filename
         write(*,*) "  Testing plot with filename..."
-        call plot(mesh, filename="test_mesh.png")
+        call plot(mesh, filename="build/test_mesh.png")
         write(*,*) "  ✓ plot(mesh, filename) works"
         
         call end_test()
@@ -68,8 +68,8 @@ contains
         
         ! Test mesh plotting with various options
         write(*,*) "  Testing plot with title and options..."
-        call plot(mesh, filename="test_mesh_titled.png", title="Rectangle Mesh", &
-                  show_labels=.false.)
+        call plot(mesh, filename="build/test_mesh_titled.png", &
+                  title="Rectangle Mesh", show_labels=.false.)
         write(*,*) "  ✓ plot(mesh, options) works"
         
         call end_test()

@@ -47,6 +47,9 @@ contains
         ! Mesh bounds check
         call assert_bounds_valid(mesh, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp, "Unit square bounds")
         
+        ! Visual inspection output
+        call plot(mesh, filename="build/minimal_unit_square_mesh.png")
+        
         call end_test()
     end subroutine
     
@@ -70,6 +73,9 @@ contains
         ! instead of complex triangulation to avoid validation issues
         mesh = unit_square_mesh(3)  ! Simple fallback
         call assert_true(mesh%data%n_triangles > 0, "Fallback mesh works")
+        
+        ! Visual inspection output
+        call plot(mesh, filename="build/minimal_triangle_boundary_mesh.png")
         
         call end_test()
     end subroutine

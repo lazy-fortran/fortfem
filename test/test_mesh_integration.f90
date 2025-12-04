@@ -43,6 +43,9 @@ contains
         call assert_true(allocated(mesh%data%vertices), "Vertices allocated")
         call assert_true(allocated(mesh%data%triangles), "Triangles allocated")
         
+        ! Visual inspection output
+        call plot(mesh, filename="build/test_unit_disk_mesh.png")
+        
         call end_test()
     end subroutine
     
@@ -68,6 +71,9 @@ contains
         call assert_true(mesh%data%n_triangles >= 1, "At least 1 triangle")
         call assert_true(boundary%is_closed, "Boundary is closed")
         
+        ! Visual inspection output
+        call plot(mesh, filename="build/test_circle_boundary_mesh.png")
+        
         call end_test()
     end subroutine
     
@@ -92,6 +98,9 @@ contains
         call assert_true(mesh%data%n_vertices >= 4, "At least 4 vertices for square")
         call assert_true(mesh%data%n_triangles >= 2, "At least 2 triangles for square")
         call assert_true(boundary%is_closed, "Boundary is closed")
+        
+        ! Visual inspection output
+        call plot(mesh, filename="build/test_square_boundary_mesh.png")
         
         call end_test()
     end subroutine

@@ -125,6 +125,9 @@ contains
         type(function_space_t) :: Vh
         integer :: i, j, boundary_node, ndof
         logical :: row_zeroed, diagonal_is_one, found_boundary_node
+        type(dirichlet_bc_t) :: bc
+        real(dp), allocatable :: K(:,:), F(:)
+        real(dp) :: max_offdiag, tol, bc_value
         
         ! Create small mesh for testing
         mesh = unit_square_mesh(3)
@@ -147,12 +150,30 @@ contains
         if (found_boundary_node) then
             write(*,*) "   Testing with boundary node:", boundary_node
             write(*,*) "   Total DOFs:", ndof
+            
+            ! Assemble Laplacian system and inspect modified matrix row
+            bc_value = 2.0_dp
+            bc = dirichlet_bc(Vh, bc_value)
+            call assemble_laplacian_system(Vh, bc, K, F)
+            
+            tol = 1.0e-10_dp
+            max_offdiag = 0.0_dp
+            do j = 1, ndof
+                if (j == boundary_node) cycle
+                max_offdiag = max(max_offdiag, abs(K(boundary_node, j)))
+            end do
+            row_zeroed = max_offdiag < tol
+            diagonal_is_one = abs(K(boundary_node, boundary_node) - 1.0_dp) < tol
+            
+            call check_condition(row_zeroed, &
+                "Matrix modification: boundary row off-diagonals zeroed")
+            call check_condition(diagonal_is_one, &
+                "Matrix modification: boundary diagonal set to one")
+            call check_condition(abs(F(boundary_node) - bc_value) < tol, &
+                "Matrix modification: RHS matches BC value")
+            
+            deallocate(K, F)
         end if
-        
-        ! Note: We can't directly access the matrix after BC application
-        ! since it's local to the solve routine, but we can test the effect
-        call check_condition(.true., &
-            "Matrix modification: BC application algorithm is correct")
         
     end subroutine test_bc_matrix_modification
 

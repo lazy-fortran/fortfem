@@ -132,7 +132,7 @@ contains
         
         allocate(this%vertex_to_triangles(this%n_vertices))
         allocate(this%vertex_to_vertices(this%n_vertices))
-        allocate(temp_list(20))  ! Temporary list for building connectivity
+        allocate(temp_list(this%n_triangles))  ! Temporary list for building connectivity
         
         ! Build vertex-to-triangle connectivity
         do v = 1, this%n_vertices
@@ -715,53 +715,46 @@ contains
         use triangulator, only: triangulate_boundary
         use fortfem_boundary, only: boundary_t
         class(mesh_2d_t), intent(out) :: this
-        class(*), intent(in) :: boundary
+        type(boundary_t), intent(in) :: boundary
         real(dp), intent(in) :: resolution
         
         real(dp), allocatable :: mesh_points(:,:)
         integer, allocatable :: mesh_triangles(:,:), segments(:,:)
         integer :: n_points, n_triangles, i
         
-        select type(boundary)
-        type is (boundary_t)
-            ! Generate segments from boundary points
-            if (boundary%is_closed) then
-                allocate(segments(2, boundary%n_points))
-                do i = 1, boundary%n_points-1
-                    segments(1, i) = i
-                    segments(2, i) = i + 1
-                end do
-                ! Add closing segment from last to first point
-                segments(1, boundary%n_points) = boundary%n_points
-                segments(2, boundary%n_points) = 1
-            else
-                allocate(segments(2, boundary%n_points-1))
-                do i = 1, boundary%n_points-1
-                    segments(1, i) = i
-                    segments(2, i) = i + 1
-                end do
-            end if
-            
-            ! Triangulate the boundary
-            call triangulate_boundary(boundary%points, segments, mesh_points, &
-                                    mesh_triangles, n_points, n_triangles)
-            
-            ! Convert to mesh_2d_t format
-            this%n_vertices = n_points
-            this%n_triangles = n_triangles
-            
-            allocate(this%vertices(2, n_points))
-            allocate(this%triangles(3, n_triangles))
-            
-            this%vertices = mesh_points
-            this%triangles = mesh_triangles
-            
-            deallocate(mesh_points, mesh_triangles, segments)
-            
-        class default
-            write(*,*) "STUB: create_from_boundary with resolution", resolution
-            call this%create_rectangular(10, 10, 0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp)
-        end select
+        ! Generate segments from boundary points
+        if (boundary%is_closed) then
+            allocate(segments(2, boundary%n_points))
+            do i = 1, boundary%n_points-1
+                segments(1, i) = i
+                segments(2, i) = i + 1
+            end do
+            ! Add closing segment from last to first point
+            segments(1, boundary%n_points) = boundary%n_points
+            segments(2, boundary%n_points) = 1
+        else
+            allocate(segments(2, boundary%n_points-1))
+            do i = 1, boundary%n_points-1
+                segments(1, i) = i
+                segments(2, i) = i + 1
+            end do
+        end if
+        
+        ! Triangulate the boundary
+        call triangulate_boundary(boundary%points, segments, mesh_points, &
+                                  mesh_triangles, n_points, n_triangles)
+        
+        ! Convert to mesh_2d_t format
+        this%n_vertices = n_points
+        this%n_triangles = n_triangles
+        
+        allocate(this%vertices(2, n_points))
+        allocate(this%triangles(3, n_triangles))
+        
+        this%vertices = mesh_points
+        this%triangles = mesh_triangles
+        
+        deallocate(mesh_points, mesh_triangles, segments)
         
     end subroutine create_from_boundary
 
