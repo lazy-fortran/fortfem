@@ -20,75 +20,28 @@ module geometric_predicates
 contains
 
 integer function orientation(pa, pb, pc)
-    !> Robust orientation test: returns CCW, CW, or COLLINEAR
-    !> Based on Shewchuk's robust predicates
+    !> Orientation test: returns CCW, CW, or COLLINEAR based on the
+    !  signed area of the triangle (pa, pb, pc).
     type(point_t), intent(in) :: pa, pb, pc
     
-    real(dp) :: detleft, detright, det
-    real(dp) :: detsum, errbound
-    
-    ! Calculate the determinant
-    detleft = (pa%x - pc%x) * (pb%y - pc%y)
-    detright = (pa%y - pc%y) * (pb%x - pc%x)
-    det = detleft - detright
-    
-    ! Fast path for clearly non-zero results
-    if (detleft > 0.0_dp) then
-        if (detright <= 0.0_dp) then
-            orientation = ORIENTATION_CCW
-            return
-        else
-            detsum = detleft + detright
-        end if
-    else if (detleft < 0.0_dp) then
-        if (detright >= 0.0_dp) then
-            orientation = ORIENTATION_CW
-            return
-        else
-            detsum = -detleft - detright
-        end if
-    else
-        orientation = ORIENTATION_COLLINEAR
-        return
-    end if
-    
-    ! Error bound for robust computation
-    errbound = 3.0_dp * geometric_tolerance * detsum
-    
-    if (abs(det) >= errbound) then
-        if (det > 0.0_dp) then
-            orientation = ORIENTATION_CCW
-        else
-            orientation = ORIENTATION_CW
-        end if
-    else
-        ! Use exact arithmetic for near-zero cases
-        orientation = orientation_exact(pa, pb, pc)
-    end if
-end function orientation
-
-integer function orientation_exact(pa, pb, pc)
-    !> Exact orientation test using higher precision
-    type(point_t), intent(in) :: pa, pb, pc
-    
-    real(dp) :: acx, acy, bcx, bcy
+    real(dp) :: dx1, dy1, dx2, dy2
     real(dp) :: det
     
-    acx = pa%x - pc%x
-    acy = pa%y - pc%y
-    bcx = pb%x - pc%x
-    bcy = pb%y - pc%y
+    dx1 = pb%x - pa%x
+    dy1 = pb%y - pa%y
+    dx2 = pc%x - pa%x
+    dy2 = pc%y - pa%y
     
-    det = acx * bcy - acy * bcx
+    det = dx1 * dy2 - dy1 * dx2
     
-    if (abs(det) <= geometric_tolerance) then
-        orientation_exact = ORIENTATION_COLLINEAR
-    else if (det > 0.0_dp) then
-        orientation_exact = ORIENTATION_CCW
+    if (det > geometric_tolerance) then
+        orientation = ORIENTATION_CCW
+    else if (det < -geometric_tolerance) then
+        orientation = ORIENTATION_CW
     else
-        orientation_exact = ORIENTATION_CW
+        orientation = ORIENTATION_COLLINEAR
     end if
-end function orientation_exact
+end function orientation
 
 logical function in_circle(pa, pb, pc, pd)
     !> Test if point pd is inside circumcircle of triangle abc

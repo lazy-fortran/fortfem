@@ -3,6 +3,8 @@ module triangulation_fortran
     use delaunay_types
     use bowyer_watson
     use constrained_delaunay
+    use polygon_triangulation, only: is_simple_boundary_chain, &
+                                     triangulate_simple_polygon
     implicit none
     
     private
@@ -24,18 +26,48 @@ module triangulation_fortran
 contains
 
 subroutine triangulate_fortran(points, segments, result, status)
-    !> Main triangulation routine using Bowyer-Watson algorithm
+    !> Main triangulation routine using Bowyer-Watson algorithm and a
+    !  polygon-specialised path for simple closed boundaries.
     real(dp), intent(in) :: points(:,:)      ! Input points (2, npoints)
     integer, intent(in) :: segments(:,:)     ! Input segments (2, nsegments)
     type(triangulation_result_t), intent(out) :: result
     integer, intent(out), optional :: status
     
     type(mesh_t) :: mesh
-    integer :: i, valid_triangles, valid_points
+    real(dp), allocatable :: poly_points(:,:)
+    integer, allocatable :: poly_tris(:,:)
+    integer :: n_points, n_triangles
     
     if (present(status)) status = 0
     
-    ! Perform constrained Delaunay triangulation
+    ! Fast path: simple boundary chains created by boundary_t are handled
+    ! by the robust polygon ear-clipping algorithm, which guarantees
+    ! non-overlapping triangles and preserved boundary edges.
+    if (size(segments, 2) > 0) then
+        if (is_simple_boundary_chain(points, segments)) then
+            call triangulate_simple_polygon(points, poly_points, poly_tris, &
+                                            n_points, n_triangles)
+            
+            if (n_triangles > 0) then
+                call allocate_result(result, n_points, n_triangles,         &
+                                     size(segments, 2))
+                result%points(:, 1:n_points) = poly_points(:, 1:n_points)
+                result%triangles(:, 1:n_triangles) = poly_tris(:, 1:n_triangles)
+                result%segments = segments
+                result%npoints = n_points
+                result%ntriangles = n_triangles
+                
+                deallocate(poly_points)
+                deallocate(poly_tris)
+                return
+            else
+                if (allocated(poly_points)) deallocate(poly_points)
+                if (allocated(poly_tris)) deallocate(poly_tris)
+            end if
+        end if
+    end if
+    
+    ! General case: constrained Delaunay triangulation on a PSLG.
     call constrained_delaunay_triangulate(points, segments, mesh)
     
     ! Convert mesh to result format
