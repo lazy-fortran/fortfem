@@ -46,7 +46,22 @@ contains
         type(triangulation_result_t), intent(out) :: result
         integer, intent(out), optional :: status
 
-        call triangulate_fortran(points, segments, result, status)
+        type(mesh_t) :: mesh
+        real(dp) :: hole_points(2,1)
+
+        if (size(hole_point) /= 2) then
+            if (present(status)) status = 1
+            return
+        end if
+
+        hole_points(:,1) = hole_point(:)
+
+        if (present(status)) status = 0
+
+        call constrained_delaunay_triangulate(points, segments, mesh,         &
+                                             hole_points)
+        call mesh_to_result(mesh, segments, result)
+        call destroy_mesh(mesh)
     end subroutine triangulate_with_hole_fortran
 
     subroutine triangulate_with_quality_fortran(points, segments, min_angle,  &

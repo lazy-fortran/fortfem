@@ -336,7 +336,8 @@ contains
     end subroutine read_triangle_poly_file
 
     subroutine write_triangle_poly_file(filename, vertices, segments,         &
-                                        n_vertices, n_segments, stat)
+                                        n_vertices, n_segments, stat,        &
+                                        hole_points)
         !> Write PSLG to Triangle .poly file format.
         !
         !  Arguments:
@@ -353,8 +354,9 @@ contains
         integer, intent(in) :: n_vertices
         integer, intent(in) :: n_segments
         integer, intent(out) :: stat
+        real(dp), intent(in), optional :: hole_points(:,:)
 
-        integer :: unit_num, i
+        integer :: unit_num, i, nholes
 
         open(newunit=unit_num, file=filename, status="replace", action="write",&
              iostat=stat)
@@ -378,8 +380,25 @@ contains
                 i, " ", segments(1, i), " ", segments(2, i)
         end do
 
-        ! Write holes header (no holes)
-        write(unit_num, '(A)') "0"
+        ! Write holes header and optional hole points
+        nholes = 0
+        if (present(hole_points)) then
+            if (size(hole_points, 1) /= 2) then
+                stat = 3
+                close(unit_num)
+                return
+            end if
+            nholes = size(hole_points, 2)
+        end if
+
+        write(unit_num, '(I0)') nholes
+
+        if (nholes > 0) then
+            do i = 1, nholes
+                write(unit_num, '(I0,A,ES23.15,A,ES23.15)')                    &
+                    i, " ", hole_points(1, i), " ", hole_points(2, i)
+            end do
+        end if
 
         close(unit_num)
         stat = 0

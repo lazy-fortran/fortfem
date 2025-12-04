@@ -28,7 +28,8 @@ module constrained_delaunay
 contains
 
     subroutine constrained_delaunay_triangulate(input_points,                 &
-                                               constraint_segments, mesh)
+                                               constraint_segments, mesh,     &
+                                               hole_points)
         !> Constrained Delaunay triangulation with robust predicates.
         !
         !  Uses robust integer coordinate arithmetic throughout to ensure
@@ -37,6 +38,7 @@ contains
         real(dp), intent(in) :: input_points(:,:)
         integer, intent(in) :: constraint_segments(:,:)
         type(mesh_t), intent(out) :: mesh
+        real(dp), intent(in), optional :: hole_points(:,:)
 
         integer :: i, npoints
         integer, allocatable :: adjusted_segments(:,:)
@@ -44,13 +46,13 @@ contains
 
         npoints = size(input_points, 2)
 
-        ! Initialize robust predicates BEFORE triangulation and keep them
-        ! enabled throughout the entire CDT process (including constraint
-        ! insertion and exterior removal).
-        call init_robust_predicates(input_points, npoints)
-
-        ! Use non-robust mode in delaunay_triangulate since we already init
+        ! First build unconstrained Delaunay triangulation (Bowyer-Watson).
+        ! Robust predicates are managed internally by Bowyer-Watson here.
         call delaunay_triangulate(input_points, mesh)
+
+        ! Enable robust predicates for the CDT phase (segments, exterior
+        ! removal, and hole carving).
+        call init_robust_predicates(input_points, npoints)
 
         if (size(constraint_segments, 2) == 0) then
             call disable_robust_predicates()
@@ -72,11 +74,18 @@ contains
         allocate(current_segments, source=adjusted_segments)
 
         do i = 1, size(adjusted_segments, 2)
-            call insert_segment(mesh, adjusted_segments(1, i),                &
+            call insert_segment(mesh, adjusted_segments(1, i),               &
                                adjusted_segments(2, i))
         end do
 
         call remove_exterior_triangles(mesh, adjusted_segments)
+
+        ! Carve internal holes, if any hole seed points are provided.
+        if (present(hole_points)) then
+            if (size(hole_points, 1) == 2 .and. size(hole_points, 2) > 0) then
+                call carve_holes(mesh, hole_points, adjusted_segments)
+            end if
+        end if
 
         deallocate(adjusted_segments)
         if (allocated(current_segments)) deallocate(current_segments)
@@ -504,6 +513,115 @@ contains
         if (b /= v1 .and. b /= v2) opp = b
         if (c /= v1 .and. c /= v2) opp = c
     end function get_opposite_vertex
+
+    subroutine carve_holes(mesh, hole_points, segments)
+        !> Remove triangles inside holes defined by seed points.
+        !
+        !  For each hole seed, we locate a containing triangle and perform
+        !  a BFS over neighboring triangles, crossing only non-constrained
+        !  edges. All reached triangles are marked invalid.
+        type(mesh_t), intent(inout) :: mesh
+        real(dp), intent(in) :: hole_points(:,:)
+        integer, intent(in) :: segments(:,:)
+
+        logical, allocatable :: in_hole(:)
+        integer, allocatable :: queue(:)
+        integer :: nholes, t0, h, t, e
+        integer :: v1, v2, neighbor
+        integer :: head, tail
+        real(dp) :: px, py
+
+        if (mesh%ntriangles == 0) return
+        if (size(hole_points, 1) /= 2) return
+
+        nholes = size(hole_points, 2)
+        if (nholes <= 0) return
+
+        allocate(in_hole(mesh%ntriangles))
+        allocate(queue(mesh%ntriangles))
+        in_hole = .false.
+        head = 1
+        tail = 0
+
+        do h = 1, nholes
+            px = hole_points(1, h)
+            py = hole_points(2, h)
+            call find_triangle_containing_point(mesh, px, py, t0)
+            if (t0 <= 0) cycle
+            if (.not. in_hole(t0)) then
+                tail = tail + 1
+                queue(tail) = t0
+                in_hole(t0) = .true.
+            end if
+        end do
+
+        do while (head <= tail)
+            t = queue(head)
+            head = head + 1
+
+            if (.not. mesh%triangles(t)%valid) cycle
+
+            do e = 1, 3
+                v1 = mesh%triangles(t)%vertices(e)
+                v2 = mesh%triangles(t)%vertices(mod(e, 3) + 1)
+
+                if (is_constraint_edge(v1, v2, segments)) cycle
+
+                neighbor = find_adjacent_triangle(mesh, t, v1, v2)
+                if (neighbor == 0) cycle
+                if (.not. mesh%triangles(neighbor)%valid) cycle
+                if (in_hole(neighbor)) cycle
+
+                in_hole(neighbor) = .true.
+                tail = tail + 1
+                queue(tail) = neighbor
+            end do
+        end do
+
+        do t = 1, mesh%ntriangles
+            if (in_hole(t)) mesh%triangles(t)%valid = .false.
+        end do
+
+        deallocate(in_hole)
+        deallocate(queue)
+    end subroutine carve_holes
+
+    subroutine find_triangle_containing_point(mesh, px, py, tri_idx)
+        !> Linear search for a triangle that contains point (px, py).
+        type(mesh_t), intent(in) :: mesh
+        real(dp), intent(in) :: px, py
+        integer, intent(out) :: tri_idx
+
+        type(point_t) :: p, pa, pb, pc
+        integer :: t, va, vb, vc
+        integer :: oab, obc, oca
+
+        tri_idx = 0
+
+        p%x = px
+        p%y = py
+
+        do t = 1, mesh%ntriangles
+            if (.not. mesh%triangles(t)%valid) cycle
+
+            va = mesh%triangles(t)%vertices(1)
+            vb = mesh%triangles(t)%vertices(2)
+            vc = mesh%triangles(t)%vertices(3)
+
+            pa = mesh%points(va)
+            pb = mesh%points(vb)
+            pc = mesh%points(vc)
+
+            oab = orientation(pa, pb, p)
+            obc = orientation(pb, pc, p)
+            oca = orientation(pc, pa, p)
+
+            if (oab >= 0 .and. obc >= 0 .and. oca >= 0) then
+                tri_idx = t
+                return
+            end if
+        end do
+    end subroutine find_triangle_containing_point
 
     subroutine remove_exterior_triangles(mesh, segments)
         !> Remove triangles outside the constrained boundary using
