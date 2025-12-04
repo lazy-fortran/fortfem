@@ -762,9 +762,6 @@ contains
         
     end subroutine create_from_boundary
 
-<<<<<<< HEAD
-end module fortfem_mesh_2d
-=======
     ! Mesh refinement implementations
     
     ! Uniform red refinement: each triangle is divided into 4 subtriangles
