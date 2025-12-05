@@ -12,10 +12,11 @@ module robust_predicates
     !
     !  Integer coordinate strategy:
     !    1. Compute bounding box of all points
-    !    2. Scale coordinates to fit in 30-bit integers (max ~10^9)
-    !    3. Use 64-bit integers for determinant products (30+30=60 bits, fits in 63)
-    !    4. Orientation test: 2x2 determinant (exact in 64-bit)
-    !    5. Incircle test: 4x4 determinant - needs care to avoid overflow
+    !    2. Scale coordinates to fit in a large integer grid
+    !    3. Use 64-bit integers for determinant products (exact for orientation)
+    !    4. Orientation test: 2x2 determinant in int64 (exact sign)
+    !    5. Incircle test: 4x4 determinant evaluated in real(dp), following
+    !       the same integer scaling strategy as FreeFEM/BAMG
     !
     !  Reference: FreeFEM/BAMG uses MaxICoor = 2^30 - 1 = 1073741823
     !
@@ -37,11 +38,15 @@ module robust_predicates
     integer, parameter :: ORIENT_CW = -1        ! Clockwise (negative area)
     integer, parameter :: ORIENT_COLLINEAR = 0  ! Collinear (zero area)
 
-    ! Maximum integer coordinate value
-    ! Reduced to 8000 (approx 2^13) to ensure incircle determinant (coord^4)
-    ! fits within the 53-bit significand of real(dp) for exact calculation.
-    ! 8000^4 = 4e15 < 2^53 (9e15).
-    integer(int64), parameter :: MAX_ICOOR = 8000_int64
+    ! Maximum integer coordinate value.
+    !
+    ! We follow the FreeFEM/BAMG choice of a large 30-bit grid so that
+    ! small geometric features remain distinguishable after scaling.  The
+    ! orientation predicate is evaluated entirely in int64, so the 2x2
+    ! determinant remains exact (products stay well within the int64 range).
+    ! The incircle predicate uses real(dp) arithmetic on the scaled integers;
+    ! this is numerically robust for the geometric scales used in FortFEM.
+    integer(int64), parameter :: MAX_ICOOR = 1073741823_int64  ! 2^30 - 1
 
     !> Robust coordinate system parameters
     type :: robust_coords_t
