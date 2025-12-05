@@ -30,7 +30,7 @@ contains
         type(dirichlet_bc_t), intent(in) :: dirichlet_bc
         type(neumann_bc_t), intent(in) :: neumann_bc
 
-        write(*,*) "Solving mixed BC problem: ", &
+        write (*, *) "Solving mixed BC problem: ", &
             trim(equation%lhs%description), " == ", &
             trim(equation%rhs%description)
 
@@ -42,7 +42,7 @@ contains
         type(function_t), intent(inout) :: uh
         type(neumann_bc_t), intent(in) :: neumann_bc
 
-        write(*,*) "Solving pure Neumann problem: ", &
+        write (*, *) "Solving pure Neumann problem: ", &
             trim(equation%lhs%description), " == ", &
             trim(equation%rhs%description)
 
@@ -92,26 +92,26 @@ contains
         integer :: ndof, info
 
         ndof = uh%space%ndof
-        allocate(K(ndof, ndof), F(ndof), ipiv(ndof))
+        allocate (K(ndof, ndof), F(ndof), ipiv(ndof))
 
         call assemble_laplacian_neumann_system(uh, dirichlet_bc, neumann_bc, &
-            K, F)
+                                               K, F)
 
         call dgesv(ndof, 1, K, ndof, ipiv, F, ndof, info)
 
         if (info == 0) then
             uh%values = F
         else
-            write(*,*) "Warning: Mixed BC LAPACK solver failed with info =", &
+            write (*, *) "Warning: Mixed BC LAPACK solver failed with info =", &
                 info
             if (allocated(uh%values)) uh%values = 0.0_dp
         end if
 
-        deallocate(K, F, ipiv)
+        deallocate (K, F, ipiv)
     end subroutine solve_laplacian_with_neumann
 
     subroutine assemble_laplacian_neumann_system(uh, dirichlet_bc, &
-        neumann_bc, K, F)
+                                                 neumann_bc, K, F)
         type(function_t), intent(in) :: uh
         type(dirichlet_bc_t), intent(in) :: dirichlet_bc
         type(neumann_bc_t), intent(in) :: neumann_bc
