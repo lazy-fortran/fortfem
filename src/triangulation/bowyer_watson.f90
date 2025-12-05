@@ -67,6 +67,7 @@ contains
         ! Insert each point using Bowyer-Watson algorithm
         ! Adjacency is maintained incrementally in fill_cavity (O(1) overhead)
         do i = 4, mesh%npoints  ! Start after super-triangle vertices
+            ! write(*,*) "Inserting point ", i
             call insert_point(mesh, i)
         end do
 
@@ -291,6 +292,8 @@ contains
         ! Find triangles whose circumcircles contain the new point
         call find_cavity(mesh, point_idx, cavity_triangles, ncavity_triangles)
 
+        if (ncavity_triangles == -1) return  ! Handled via edge splitting
+
         if (ncavity_triangles == 0) return
 
         ! Find the boundary of the cavity and external neighbors
@@ -348,8 +351,8 @@ contains
         ! creating degenerate triangles with collinear points.
         if (loc_type == LOCATION_ON_EDGE) then
             call split_edge_triangles(mesh, seed_tri, point_idx)
-            ! Return empty cavity - triangles already created
-            ncavity_triangles = 0
+            ! Return -1 to indicate handled via edge splitting
+            ncavity_triangles = -1
             return
         end if
 
@@ -392,6 +395,14 @@ contains
                 end do
             end if
         end do
+
+        ! Failsafe: If point is strictly inside a triangle, that triangle MUST be
+        ! in the cavity (geometry guarantee). If robust predicates failed to
+        ! identify it (e.g. point very close to edge), force it in.
+        if (ncavity_triangles == 0 .and. loc_type == LOCATION_INSIDE) then
+            ncavity_triangles = 1
+            cavity_triangles(1) = seed_tri
+        end if
     end subroutine find_cavity
 
     subroutine split_edge_triangles(mesh, seed_tri, point_idx)

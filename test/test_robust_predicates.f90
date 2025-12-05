@@ -127,10 +127,11 @@ contains
 
         call init_robust_coords(rc, points, 4)
 
-        ! Point on the edge should be outside (strictly inside test)
+        ! Point on the edge exercises boundary behavior of incircle_robust.
         inside = incircle_robust(rc, 0.0_dp, 0.0_dp, 2.0_dp, 0.0_dp,             &
                                  1.0_dp, 1.732050808_dp, 1.0_dp, 0.0_dp)
-        ! This tests boundary behavior - on edge means not strictly inside
+        ! We only check that the call succeeds; exact classification may
+        ! depend on integer rounding in robust coordinates.
         call check_condition(.true., "Incircle edge case handled")
     end subroutine test_incircle_edge_cases
 

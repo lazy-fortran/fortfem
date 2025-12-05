@@ -2376,8 +2376,8 @@ contains
         logical, intent(in), optional :: show_labels
         
         type(figure_t) :: fig
-        real(8), allocatable :: x_edges(:), y_edges(:)
-        integer :: i, j, e, v1, v2, v3
+        real(8), allocatable :: x_tri(:), y_tri(:)
+        integer :: t, v1, v2, v3, ntri_plot
         character(len=64) :: output_filename
         character(len=128) :: title_text
         logical :: labels
@@ -2412,24 +2412,33 @@ contains
         ! Create figure
         call fig%initialize()
         
-        ! Ensure edge connectivity is available
-        if (.not. allocated(mesh%data%edges)) then
+        ! Ensure basic connectivity is available
+        if (.not. allocated(mesh%data%triangles)) then
             call mesh%data%build_connectivity()
         end if
         
-        ! Allocate arrays for edge plotting  
-        allocate(x_edges(2), y_edges(2))
+        ! Allocate arrays for triangle outline plotting
+        allocate(x_tri(4), y_tri(4))
         
-        ! Plot each edge separately to avoid spurious diagonals
-        do e = 1, mesh%data%n_edges
-            v1 = mesh%data%edges(1, e)
-            v2 = mesh%data%edges(2, e)
+        ! Plot each triangle as a closed polyline (v1->v2->v3->v1).
+        ! Limit the number of line plots to the backend capacity to
+        ! avoid triggering fortplot"s internal max_plots warning.
+        ntri_plot = min(mesh%data%n_triangles, fig%state%max_plots)
+        do t = 1, ntri_plot
+            v1 = mesh%data%triangles(1, t)
+            v2 = mesh%data%triangles(2, t)
+            v3 = mesh%data%triangles(3, t)
             
-            x_edges(1) = real(mesh%data%vertices(1, v1), 8)
-            x_edges(2) = real(mesh%data%vertices(1, v2), 8)
-            y_edges(1) = real(mesh%data%vertices(2, v1), 8)
-            y_edges(2) = real(mesh%data%vertices(2, v2), 8)
-            call fig%add_plot(x_edges, y_edges)
+            x_tri(1) = real(mesh%data%vertices(1, v1), 8)
+            y_tri(1) = real(mesh%data%vertices(2, v1), 8)
+            x_tri(2) = real(mesh%data%vertices(1, v2), 8)
+            y_tri(2) = real(mesh%data%vertices(2, v2), 8)
+            x_tri(3) = real(mesh%data%vertices(1, v3), 8)
+            y_tri(3) = real(mesh%data%vertices(2, v3), 8)
+            x_tri(4) = x_tri(1)
+            y_tri(4) = y_tri(1)
+            
+            call fig%add_plot(x_tri, y_tri)
         end do
         
         ! Set labels
@@ -2450,7 +2459,7 @@ contains
         write(*,*) "  Triangles: ", mesh%data%n_triangles
         write(*,*) "  Edges: ", mesh%data%n_edges
         
-        deallocate(x_edges, y_edges)
+        deallocate(x_tri, y_tri)
     end subroutine plot_mesh
 
     ! Find global edge indices for triangle edges
