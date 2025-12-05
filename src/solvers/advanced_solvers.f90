@@ -260,28 +260,52 @@ contains
         type(solver_stats_t), intent(out) :: stats
 
         real(dp), allocatable :: r(:), p(:), Ap(:), Ax(:)
-        real(dp) :: alpha, beta, rr_old, rr_new, pAp
-        real(dp) :: residual_norm, initial_norm, tolerance
-        integer :: n, iter
+        real(dp) :: rr_old, residual_norm, initial_norm, tolerance
+        integer :: n
 
         n = size(x)
         allocate (r(n), p(n), Ap(n), Ax(n))
+
+        call initialize_cg_state(matvec, b, x, r, p, Ap, Ax, rr_old, &
+                                 initial_norm, residual_norm)
+        tolerance = compute_solver_tolerance(initial_norm, opts)
+        stats%converged = .false.
+        stats%iterations = 0
+        call cg_iteration_loop(matvec, opts, tolerance, r, p, Ap, x, rr_old, &
+                               residual_norm, stats)
+        call finalize_solver_status(stats, residual_norm, tolerance)
+        stats%method_used = "cg"
+
+        deallocate (r, p, Ap, Ax)
+    end subroutine cg_solve_operator
+
+    subroutine initialize_cg_state(matvec, b, x, r, p, Ap, Ax, rr_old, &
+                                   initial_norm, residual_norm)
+        procedure(matvec_proc) :: matvec
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        real(dp), intent(out) :: r(:), p(:), Ap(:), Ax(:)
+        real(dp), intent(out) :: rr_old, initial_norm, residual_norm
 
         call matvec(x, Ax)
         r = b - Ax
         p = r
         rr_old = dot_product(r, r)
         initial_norm = sqrt(rr_old)
+        residual_norm = initial_norm
+    end subroutine initialize_cg_state
 
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
-        else
-            tolerance = opts%tolerance*initial_norm
-        end if
+    subroutine cg_iteration_loop(matvec, opts, tolerance, r, p, Ap, x, &
+                                 rr_old, residual_norm, stats)
+        procedure(matvec_proc) :: matvec
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(in) :: tolerance
+        real(dp), intent(inout) :: r(:), p(:), Ap(:), x(:)
+        real(dp), intent(inout) :: rr_old, residual_norm
+        type(solver_stats_t), intent(inout) :: stats
 
-        stats%converged = .false.
-        stats%iterations = 0
-        residual_norm = sqrt(rr_old)
+        real(dp) :: alpha, beta, rr_new, pAp
+        integer :: iter
 
         do iter = 1, opts%max_iterations
             call matvec(p, Ap)
@@ -316,18 +340,7 @@ contains
             rr_old = rr_new
             stats%iterations = iter
         end do
-
-        if (.not. stats%converged) then
-            if (residual_norm <= tolerance) then
-                stats%converged = .true.
-            end if
-        end if
-
-        stats%final_residual = residual_norm
-        stats%method_used = "cg"
-
-        deallocate (r, p, Ap, Ax)
-    end subroutine cg_solve_operator
+    end subroutine cg_iteration_loop
 
     ! Preconditioned Conjugate Gradient solver (dense interface)
     subroutine pcg_solve(A, b, x, opts, stats)
@@ -370,30 +383,58 @@ contains
         type(solver_stats_t), intent(out) :: stats
 
         real(dp), allocatable :: r(:), z(:), p(:), Ap(:), Ax(:)
-        real(dp) :: alpha, beta, rz_old, rz_new, pAp
-        real(dp) :: residual_norm, initial_norm, tolerance
-        integer :: n, iter
+        real(dp) :: rz_old, residual_norm, initial_norm, tolerance
+        integer :: n
 
         n = size(x)
         allocate (r(n), z(n), p(n), Ap(n), Ax(n))
 
+        call initialize_pcg_state(matvec, apply_precond, b, x, r, z, p, Ap, &
+                                  Ax, rz_old, initial_norm, residual_norm)
+        tolerance = compute_solver_tolerance(initial_norm, opts)
+        stats%converged = .false.
+        stats%iterations = 0
+        call pcg_iteration_loop(matvec, apply_precond, opts, tolerance, r, z, &
+                                p, Ap, x, rz_old, residual_norm, stats)
+        call finalize_solver_status(stats, residual_norm, tolerance)
+        stats%method_used = "pcg"
+
+        deallocate (r, z, p, Ap, Ax)
+    end subroutine pcg_solve_operator
+
+    subroutine initialize_pcg_state(matvec, apply_precond, b, x, r, z, p, Ap, &
+                                    Ax, rz_old, initial_norm, residual_norm)
+        procedure(matvec_proc) :: matvec
+        procedure(precond_proc) :: apply_precond
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        real(dp), intent(out) :: r(:), z(:), p(:), Ap(:), Ax(:)
+        real(dp), intent(out) :: rz_old, initial_norm, residual_norm
+        real(dp) :: rr
+
         call matvec(x, Ax)
         r = b - Ax
-        initial_norm = sqrt(dot_product(r, r))
-
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
-        else
-            tolerance = opts%tolerance*initial_norm
-        end if
+        rr = dot_product(r, r)
+        initial_norm = sqrt(rr)
+        residual_norm = initial_norm
 
         call apply_precond(r, z)
         p = z
         rz_old = dot_product(r, z)
+    end subroutine initialize_pcg_state
 
-        stats%converged = .false.
-        residual_norm = initial_norm
-        stats%iterations = 0
+    subroutine pcg_iteration_loop(matvec, apply_precond, opts, tolerance, r, &
+                                  z, p, Ap, x, rz_old, residual_norm, stats)
+        procedure(matvec_proc) :: matvec
+        procedure(precond_proc) :: apply_precond
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(in) :: tolerance
+        real(dp), intent(inout) :: r(:), z(:), p(:), Ap(:), x(:)
+        real(dp), intent(inout) :: rz_old, residual_norm
+        type(solver_stats_t), intent(inout) :: stats
+
+        real(dp) :: alpha, beta, rz_new, pAp
+        integer :: iter
 
         do iter = 1, opts%max_iterations
             call matvec(p, Ap)
@@ -427,18 +468,7 @@ contains
             rz_old = rz_new
             stats%iterations = iter
         end do
-
-        if (.not. stats%converged) then
-            if (residual_norm <= tolerance) then
-                stats%converged = .true.
-            end if
-        end if
-
-        stats%final_residual = residual_norm
-        stats%method_used = "pcg"
-
-        deallocate (r, z, p, Ap, Ax)
-    end subroutine pcg_solve_operator
+    end subroutine pcg_iteration_loop
 
     ! BiCGSTAB solver for non-symmetric systems
     subroutine bicgstab_solve(A, b, x, opts, stats)
@@ -461,10 +491,10 @@ contains
         else
             call bicgstab_impl(A, b, x, use_precond=.false., tol=opts%tolerance, &
                                max_iter=opts%max_iterations, &
-                                   tol_type=opts%tolerance_type, &
+                               tol_type=opts%tolerance_type, &
                                verbosity=opts%verbosity, converged=stats%converged, &
                                iterations=stats%iterations, &
-                                   final_resid=stats%final_residual)
+                               final_resid=stats%final_residual)
         end if
 
         stats%method_used = "bicgstab"
@@ -577,6 +607,31 @@ contains
 
         deallocate (col_ptr, row_ind, values_csc)
     end subroutine umfpack_solve
+
+    pure function compute_solver_tolerance(initial_norm, opts) result(tolerance)
+        real(dp), intent(in) :: initial_norm
+        type(solver_options_t), intent(in) :: opts
+        real(dp) :: tolerance
+
+        if (trim(opts%tolerance_type) == "absolute") then
+            tolerance = opts%tolerance
+        else
+            tolerance = opts%tolerance*initial_norm
+        end if
+    end function compute_solver_tolerance
+
+    subroutine finalize_solver_status(stats, residual_norm, tolerance)
+        type(solver_stats_t), intent(inout) :: stats
+        real(dp), intent(in) :: residual_norm, tolerance
+
+        if (.not. stats%converged) then
+            if (residual_norm <= tolerance) then
+                stats%converged = .true.
+            end if
+        end if
+
+        stats%final_residual = residual_norm
+    end subroutine finalize_solver_status
 
     ! Preconditioner construction
     subroutine build_preconditioner(A, precond, precond_type, opts)
@@ -697,17 +752,25 @@ contains
         type(preconditioner_t), intent(out) :: precond
         type(solver_options_t), intent(in) :: opts
 
-        integer :: n, i, j, k
-        real(dp) :: factor
+        integer :: n
 
         n = size(A, 1)
+        call initialize_ilu_structure(A, precond, n)
+        call factorize_ilu(precond, n, opts)
+    end subroutine build_ilu_preconditioner
+
+    subroutine initialize_ilu_structure(A, precond, n)
+        real(dp), intent(in) :: A(:, :)
+        type(preconditioner_t), intent(inout) :: precond
+        integer, intent(in) :: n
+
+        integer :: i, j
+
         allocate (precond%L(n, n), precond%U(n, n))
 
-        ! Simple ILU(0) factorization
         precond%L = 0.0_dp
         precond%U = 0.0_dp
 
-        ! Copy matrix structure
         do i = 1, n
             do j = 1, n
                 if (abs(A(i, j)) > 1.0e-14_dp) then
@@ -720,8 +783,16 @@ contains
             end do
             precond%L(i, i) = 1.0_dp
         end do
+    end subroutine initialize_ilu_structure
 
-        ! ILU factorization
+    subroutine factorize_ilu(precond, n, opts)
+        type(preconditioner_t), intent(inout) :: precond
+        integer, intent(in) :: n
+        type(solver_options_t), intent(in) :: opts
+
+        integer :: i, j, k
+        real(dp) :: factor
+
         do k = 1, n - 1
             if (abs(precond%U(k, k)) < 1.0e-14_dp) then
                 if (opts%verbosity > 0) then
@@ -738,21 +809,21 @@ contains
                     do j = k + 1, n
                         if (abs(precond%U(i, j)) > 1.0e-14_dp .or. &
                             abs(precond%U(k, j)) > 1.0e-14_dp) then
-                            precond%U(i, j) = precond%U(i, j) - factor*precond%U(k, j)
+                            precond%U(i, j) = precond%U(i, j) - &
+                                              factor*precond%U(k, j)
                         end if
                     end do
                 end if
             end do
         end do
 
-        ! Check last diagonal element
         if (abs(precond%U(n, n)) < 1.0e-14_dp) then
             if (opts%verbosity > 0) then
                 write (*, *) "ILU warning: near-zero pivot at ", n
             end if
             precond%U(n, n) = sign(1.0e-12_dp, precond%U(n, n))
         end if
-    end subroutine build_ilu_preconditioner
+    end subroutine factorize_ilu
 
     ! Solve ILU system: (L*U) * z = r
     subroutine solve_ilu(precond, r, z)
