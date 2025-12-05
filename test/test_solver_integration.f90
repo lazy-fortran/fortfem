@@ -14,6 +14,7 @@ program test_solver_integration
     call test_solver_robustness()
     call test_boundary_condition_integration()
     call test_solver_scaling()
+    call test_high_level_advanced_solvers()
     
     call check_summary("Solver Integration")
 
@@ -470,5 +471,79 @@ contains
         write(*,*) "   Solution maxima:", solutions
         write(*,*) "   Improvement ratios:", ratios
     end subroutine test_solver_scaling
+
+    ! Test high-level API integration with advanced solvers
+    subroutine test_high_level_advanced_solvers()
+        type(mesh_t) :: mesh
+        type(function_space_t) :: Vh
+        type(trial_function_t) :: u
+        type(test_function_t) :: v
+        type(function_t) :: f, uh_direct, uh_pcg
+        type(dirichlet_bc_t) :: bc
+        type(form_expr_t) :: a, L
+        type(solver_options_t) :: opts_direct, opts_pcg
+        type(solver_stats_t) :: stats_direct, stats_pcg
+        real(dp), allocatable :: K_mat(:, :), rhs(:)
+        real(dp) :: res_direct, res_pcg, diff_norm, norm_direct
+        integer :: ndof
+
+        ! Assemble Poisson system via high-level form API
+        mesh = unit_square_mesh(10)
+        Vh = function_space(mesh, "Lagrange", 1)
+
+        u = trial_function(Vh)
+        v = test_function(Vh)
+        f = constant(1.0_dp)
+
+        a = inner(grad(u), grad(v))*dx
+        L = f*v*dx
+
+        bc = dirichlet_bc(Vh, 0.0_dp)
+        uh_direct = function(Vh)
+        uh_pcg = function(Vh)
+
+        call assemble_laplacian_system(Vh, bc, K_mat, rhs)
+        ndof = size(rhs)
+
+        ! Direct LAPACK solve through high-level API
+        opts_direct = solver_options(method="lapack_lu", &
+                                     tolerance=1.0e-12_dp, &
+                                     max_iterations=ndof)
+        call solve(a == L, uh_direct, bc, opts_direct, stats_direct)
+
+        ! Iterative PCG+ILU solve through high-level API
+        opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
+                                  tolerance=1.0e-6_dp, &
+                                  tolerance_type="absolute", &
+                                  max_iterations=5*ndof)
+        call solve(a == L, uh_pcg, bc, opts_pcg, stats_pcg)
+
+        res_direct = sqrt(sum((matmul(K_mat, uh_direct%values) - rhs)**2))/ &
+                     real(ndof, dp)
+        res_pcg = sqrt(sum((matmul(K_mat, uh_pcg%values) - rhs)**2))/ &
+                  real(ndof, dp)
+
+        norm_direct = sqrt(sum(uh_direct%values**2))
+        diff_norm = sqrt(sum((uh_direct%values - uh_pcg%values)**2))/ &
+                    max(norm_direct, 1.0e-12_dp)
+
+        call check_condition(stats_direct%converged, &
+            "High-level solvers: direct converged")
+        call check_condition(stats_pcg%converged, &
+            "High-level solvers: PCG converged")
+        call check_condition(res_direct < 1.0e-8_dp .and. res_pcg < 1.0e-4_dp, &
+            "High-level solvers: residuals small")
+        call check_condition(diff_norm < 1.0e-3_dp, &
+            "High-level solvers: PCG solution matches direct")
+        call check_condition(stats_pcg%iterations > 1 .and. &
+                             stats_pcg%iterations < 5*ndof, &
+            "High-level solvers: PCG iteration count reasonable")
+
+        write(*,*) "   High-level direct residual:", res_direct
+        write(*,*) "   High-level PCG residual:", res_pcg
+        write(*,*) "   High-level PCG iterations:", stats_pcg%iterations
+
+        deallocate(K_mat, rhs)
+    end subroutine test_high_level_advanced_solvers
 
 end program test_solver_integration
