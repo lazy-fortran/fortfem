@@ -1,8 +1,10 @@
 module fortfem_advanced_solvers
-    use fortfem_kinds
+    use fortfem_kinds, only: dp
+    use fortfem_sparse_matrix, only: sparse_matrix_t, spmv
+    use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
     implicit none
     private
-    
+
     ! LAPACK interface
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -17,7 +19,7 @@ module fortfem_advanced_solvers
     
     ! Public types and interfaces
     public :: solver_options_t, solver_stats_t
-    public :: solve, solver_options
+    public :: solve, solve_sparse, solver_options
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     public :: jacobi_preconditioner, ilu_preconditioner
     
@@ -56,6 +58,20 @@ module fortfem_advanced_solvers
         real(dp), allocatable :: L(:,:), U(:,:)  ! For ILU
         integer, allocatable :: pivot(:)  ! For ILU
     end type preconditioner_t
+
+    abstract interface
+        subroutine matvec_proc(v_in, v_out)
+            import :: dp
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+        end subroutine matvec_proc
+
+        subroutine precond_proc(r_in, z_out)
+            import :: dp
+            real(dp), intent(in) :: r_in(:)
+            real(dp), intent(out) :: z_out(:)
+        end subroutine precond_proc
+    end interface
 
 contains
 
@@ -107,161 +123,307 @@ contains
         stats%solve_time = end_time - start_time
         stats%memory_usage = estimate_memory_usage(n, selected_method)
     end subroutine solve
+
+    subroutine solve_sparse(A_sparse, b, x, opts, stats)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+
+        type(solver_options_t) :: local_opts
+        type(preconditioner_t) :: precond
+        real(dp) :: start_time, end_time
+        integer :: n
+
+        n = A_sparse%nrows
+
+        if (A_sparse%ncols /= n) then
+            error stop "solve_sparse: only square matrices are supported"
+        end if
+
+        if (size(b) /= n .or. size(x) /= n) then
+            error stop "solve_sparse: incompatible vector size"
+        end if
+
+        local_opts = opts
+
+        if (trim(local_opts%method) == "auto") then
+            local_opts%method = "pcg"
+        end if
+
+        if (trim(local_opts%preconditioner) /= "none") then
+            call build_sparse_preconditioner(A_sparse, precond, &
+                local_opts%preconditioner, local_opts)
+        else
+            precond%type = "none"
+        end if
+
+        call cpu_time(start_time)
+
+        select case (trim(local_opts%method))
+        case ("cg")
+            call cg_solve_sparse_impl(A_sparse, b, x, local_opts, stats)
+        case ("pcg")
+            call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
+                precond)
+        case default
+            local_opts%method = "pcg"
+            call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
+                precond)
+        end select
+
+        call cpu_time(end_time)
+
+        stats%solve_time = end_time - start_time
+        stats%memory_usage = estimate_sparse_memory_usage(A_sparse, &
+            trim(stats%method_used))
+    end subroutine solve_sparse
+
+    subroutine cg_solve_sparse_impl(A_sparse, b, x, opts, stats)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+
+        call cg_solve_operator(sparse_matvec, b, x, opts, stats)
+
+    contains
+
+        subroutine sparse_matvec(v_in, v_out)
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+
+            call spmv(A_sparse, v_in, v_out)
+        end subroutine sparse_matvec
+
+    end subroutine cg_solve_sparse_impl
+
+    subroutine pcg_solve_sparse_impl(A_sparse, b, x, opts, stats, precond)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+        type(preconditioner_t), intent(in) :: precond
+
+        call pcg_solve_operator(sparse_matvec, sparse_apply_precond, b, x, &
+            opts, stats)
+
+    contains
+
+        subroutine sparse_matvec(v_in, v_out)
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+
+            call spmv(A_sparse, v_in, v_out)
+        end subroutine sparse_matvec
+
+        subroutine sparse_apply_precond(r_in, z_out)
+            real(dp), intent(in) :: r_in(:)
+            real(dp), intent(out) :: z_out(:)
+
+            call apply_preconditioner(precond, r_in, z_out)
+        end subroutine sparse_apply_precond
+
+    end subroutine pcg_solve_sparse_impl
     
-    ! Conjugate Gradient solver
+    ! Conjugate Gradient solver (dense interface)
     subroutine cg_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:,:), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: r(:), p(:), Ap(:)
+
+        call cg_solve_operator(dense_matvec, b, x, opts, stats)
+
+    contains
+
+        subroutine dense_matvec(v_in, v_out)
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+
+            v_out = matmul(A, v_in)
+        end subroutine dense_matvec
+
+    end subroutine cg_solve
+
+    subroutine cg_solve_operator(matvec, b, x, opts, stats)
+        procedure(matvec_proc) :: matvec
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+
+        real(dp), allocatable :: r(:), p(:), Ap(:), Ax(:)
         real(dp) :: alpha, beta, rr_old, rr_new, pAp
         real(dp) :: residual_norm, initial_norm, tolerance
         integer :: n, iter
-        
+
         n = size(x)
-        allocate(r(n), p(n), Ap(n))
-        
-        ! Initial residual: r = b - Ax
-        r = b - matmul(A, x)
+        allocate(r(n), p(n), Ap(n), Ax(n))
+
+        call matvec(x, Ax)
+        r = b - Ax
         p = r
         rr_old = dot_product(r, r)
         initial_norm = sqrt(rr_old)
-        
-        ! Set tolerance based on type
+
         if (trim(opts%tolerance_type) == "absolute") then
             tolerance = opts%tolerance
         else
             tolerance = opts%tolerance * initial_norm
         end if
-        
+
         stats%converged = .false.
-        
         stats%iterations = 0
         residual_norm = sqrt(rr_old)
-        
+
         do iter = 1, opts%max_iterations
-            ! Ap = A * p
-            Ap = matmul(A, p)
+            call matvec(p, Ap)
             pAp = dot_product(p, Ap)
-            
+
             if (abs(pAp) < 1.0e-14_dp) then
-                ! Breakdown
                 stats%iterations = iter - 1
                 exit
             end if
-            
-            ! alpha = (r, r) / (p, Ap)
+
             alpha = rr_old / pAp
-            
-            ! Update solution: x = x + alpha * p
             x = x + alpha * p
-            
-            ! Update residual: r = r - alpha * Ap
             r = r - alpha * Ap
-            
+
             rr_new = dot_product(r, r)
             residual_norm = sqrt(rr_new)
-            
+
             if (opts%verbosity > 0) then
-                write(*,'(A,I4,A,E12.5)') "CG iter ", iter, " residual: ", residual_norm
+                write(*,'(A,I4,A,E12.5)') "CG iter ", iter, " residual: ", &
+                    residual_norm
             end if
-            
-            ! Check convergence
+
             if (residual_norm <= tolerance) then
                 stats%converged = .true.
                 stats%iterations = iter
                 exit
             end if
-            
-            ! beta = (r_new, r_new) / (r_old, r_old)
+
             beta = rr_new / rr_old
-            
-            ! Update search direction: p = r + beta * p
             p = r + beta * p
-            
+
             rr_old = rr_new
             stats%iterations = iter
         end do
-        
+
         stats%final_residual = residual_norm
         stats%method_used = "cg"
-        
-        deallocate(r, p, Ap)
-    end subroutine cg_solve
+
+        deallocate(r, p, Ap, Ax)
+    end subroutine cg_solve_operator
     
-    ! Preconditioned Conjugate Gradient solver
+    ! Preconditioned Conjugate Gradient solver (dense interface)
     subroutine pcg_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:,:), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: r(:), z(:), p(:), Ap(:)
+
+        type(preconditioner_t) :: precond
+
+        call build_preconditioner(A, precond, opts%preconditioner, opts)
+
+        call pcg_solve_operator(dense_matvec, dense_apply_precond, b, x, &
+            opts, stats)
+
+    contains
+
+        subroutine dense_matvec(v_in, v_out)
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+
+            v_out = matmul(A, v_in)
+        end subroutine dense_matvec
+
+        subroutine dense_apply_precond(r_in, z_out)
+            real(dp), intent(in) :: r_in(:)
+            real(dp), intent(out) :: z_out(:)
+
+            call apply_preconditioner(precond, r_in, z_out)
+        end subroutine dense_apply_precond
+
+    end subroutine pcg_solve
+
+    subroutine pcg_solve_operator(matvec, apply_precond, b, x, opts, stats)
+        procedure(matvec_proc) :: matvec
+        procedure(precond_proc) :: apply_precond
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+
+        real(dp), allocatable :: r(:), z(:), p(:), Ap(:), Ax(:)
         real(dp) :: alpha, beta, rz_old, rz_new, pAp
         real(dp) :: residual_norm, initial_norm, tolerance
         integer :: n, iter
-        type(preconditioner_t) :: precond
-        
+
         n = size(x)
-        allocate(r(n), z(n), p(n), Ap(n))
-        
-        ! Build preconditioner
-        call build_preconditioner(A, precond, opts%preconditioner, opts)
-        
-        ! Initial residual
-        r = b - matmul(A, x)
+        allocate(r(n), z(n), p(n), Ap(n), Ax(n))
+
+        call matvec(x, Ax)
+        r = b - Ax
         initial_norm = sqrt(dot_product(r, r))
-        
-        ! Set tolerance
+
         if (trim(opts%tolerance_type) == "absolute") then
             tolerance = opts%tolerance
         else
             tolerance = opts%tolerance * initial_norm
         end if
-        
-        ! Solve M * z = r
-        call apply_preconditioner(precond, r, z)
+
+        call apply_precond(r, z)
         p = z
         rz_old = dot_product(r, z)
-        
+
         stats%converged = .false.
-        
+        residual_norm = initial_norm
+        stats%iterations = 0
+
         do iter = 1, opts%max_iterations
-            Ap = matmul(A, p)
+            call matvec(p, Ap)
             pAp = dot_product(p, Ap)
-            
-            if (abs(pAp) < 1.0e-14_dp) exit
-            
+
+            if (abs(pAp) < 1.0e-14_dp) then
+                exit
+            end if
+
             alpha = rz_old / pAp
             x = x + alpha * p
             r = r - alpha * Ap
-            
+
             residual_norm = sqrt(dot_product(r, r))
-            
+
             if (opts%verbosity > 0) then
-                write(*,'(A,I4,A,E12.5)') "PCG iter ", iter, " residual: ", residual_norm
+                write(*,'(A,I4,A,E12.5)') "PCG iter ", iter, " residual: ", &
+                    residual_norm
             end if
-            
+
             if (residual_norm <= tolerance) then
                 stats%converged = .true.
+                stats%iterations = iter
                 exit
             end if
-            
-            call apply_preconditioner(precond, r, z)
+
+            call apply_precond(r, z)
             rz_new = dot_product(r, z)
             beta = rz_new / rz_old
             p = z + beta * p
             rz_old = rz_new
+            stats%iterations = iter
         end do
-        
-        stats%iterations = iter
+
         stats%final_residual = residual_norm
         stats%method_used = "pcg"
-        
-        deallocate(r, z, p, Ap)
-    end subroutine pcg_solve
+
+        deallocate(r, z, p, Ap, Ax)
+    end subroutine pcg_solve_operator
     
     ! BiCGSTAB solver for non-symmetric systems
     subroutine bicgstab_solve(A, b, x, opts, stats)
@@ -269,108 +431,26 @@ contains
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: r(:), r0(:), p(:), v(:), s(:), t(:), z(:), y(:)
-        real(dp) :: rho, rho_old, alpha, omega, beta
-        real(dp) :: residual_norm, initial_norm, tolerance
-        integer :: n, iter
+
         type(preconditioner_t) :: precond
-        
-        n = size(x)
-        allocate(r(n), r0(n), p(n), v(n), s(n), t(n), z(n), y(n))
-        
-        ! Build preconditioner if specified
-        if (trim(opts%preconditioner) /= "none") then
+        logical :: use_precond
+
+        use_precond = trim(opts%preconditioner) /= "none"
+
+        if (use_precond) then
             call build_preconditioner(A, precond, opts%preconditioner, opts)
-        end if
-        
-        ! Initial residual
-        r = b - matmul(A, x)
-        r0 = r
-        initial_norm = sqrt(dot_product(r, r))
-        
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
+            call bicgstab_impl(A, b, x, precond%diagonal, precond%L, precond%U, &
+                use_precond, opts%tolerance, opts%max_iterations, &
+                opts%tolerance_type, opts%verbosity, stats%converged, &
+                stats%iterations, stats%final_residual)
         else
-            tolerance = opts%tolerance * initial_norm
+            call bicgstab_impl(A, b, x, use_precond=.false., tol=opts%tolerance, &
+                max_iter=opts%max_iterations, tol_type=opts%tolerance_type, &
+                verbosity=opts%verbosity, converged=stats%converged, &
+                iterations=stats%iterations, final_resid=stats%final_residual)
         end if
-        
-        p = r
-        rho = 1.0_dp
-        alpha = 1.0_dp
-        omega = 1.0_dp
-        
-        stats%converged = .false.
-        
-        do iter = 1, opts%max_iterations
-            rho_old = rho
-            rho = dot_product(r0, r)
-            
-            if (abs(rho) < 1.0e-14_dp) exit  ! Breakdown
-            
-            beta = (rho / rho_old) * (alpha / omega)
-            p = r + beta * (p - omega * v)
-            
-            ! Apply preconditioner to p if available
-            if (trim(opts%preconditioner) /= "none") then
-                call apply_preconditioner(precond, p, z)
-                v = matmul(A, z)
-            else
-                v = matmul(A, p)
-            end if
-            
-            alpha = rho / dot_product(r0, v)
-            s = r - alpha * v
-            
-            ! Check for early convergence
-            residual_norm = sqrt(dot_product(s, s))
-            if (residual_norm <= tolerance) then
-                if (trim(opts%preconditioner) /= "none") then
-                    x = x + alpha * z
-                else
-                    x = x + alpha * p
-                end if
-                stats%converged = .true.
-                exit
-            end if
-            
-            ! Apply preconditioner to s if available
-            if (trim(opts%preconditioner) /= "none") then
-                call apply_preconditioner(precond, s, y)
-                t = matmul(A, y)
-            else
-                t = matmul(A, s)
-            end if
-            
-            omega = dot_product(t, s) / dot_product(t, t)
-            
-            if (trim(opts%preconditioner) /= "none") then
-                x = x + alpha * z + omega * y
-            else
-                x = x + alpha * p + omega * s
-            end if
-            
-            r = s - omega * t
-            
-            residual_norm = sqrt(dot_product(r, r))
-            
-            if (opts%verbosity > 0) then
-                write(*,'(A,I4,A,E12.5)') "BiCGSTAB iter ", iter, " residual: ", residual_norm
-            end if
-            
-            if (residual_norm <= tolerance) then
-                stats%converged = .true.
-                exit
-            end if
-            
-            if (abs(omega) < 1.0e-14_dp) exit  ! Breakdown
-        end do
-        
-        stats%iterations = iter
-        stats%final_residual = residual_norm
+
         stats%method_used = "bicgstab"
-        
-        deallocate(r, r0, p, v, s, t, z, y)
     end subroutine bicgstab_solve
     
     ! GMRES solver with restart
@@ -379,133 +459,13 @@ contains
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: V(:,:), H(:,:), r(:), w(:), y(:), c(:), s(:), g(:)
-        real(dp) :: beta, residual_norm, initial_norm, tolerance, temp
-        integer :: n, m, iter, total_iter, restart_count, i, j, k
-        
-        n = size(x)
-        m = min(opts%restart, n)
-        
-        allocate(V(n, m+1), H(m+1, m), r(n), w(n), y(m), c(m), s(m), g(m+1))
-        
-        ! Initial residual
-        r = b - matmul(A, x)
-        initial_norm = sqrt(dot_product(r, r))
-        
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
-        else
-            ! For relative tolerances, ensure an absolute floor so that
-            ! small initial residuals still drive the solve to a tight
-            ! final residual.
-            tolerance = min(opts%tolerance, opts%tolerance * initial_norm)
-        end if
-        
-        total_iter = 0
-        restart_count = 0
-        stats%converged = .false.
-        
-        do while (total_iter < opts%max_iterations .and. .not. stats%converged)
-            ! Start of restart cycle
-            beta = sqrt(dot_product(r, r))
-            
-            if (beta <= tolerance) then
-                stats%converged = .true.
-                exit
-            end if
-            
-            V(:, 1) = r / beta
-            g = 0.0_dp
-            g(1) = beta
-            
-            ! Arnoldi process
-            do j = 1, m
-                total_iter = total_iter + 1
-                if (total_iter > opts%max_iterations) exit
-                
-                w = matmul(A, V(:, j))
-                
-                ! Modified Gram-Schmidt orthogonalization
-                do i = 1, j
-                    H(i, j) = dot_product(w, V(:, i))
-                    w = w - H(i, j) * V(:, i)
-                end do
-                
-                H(j+1, j) = sqrt(dot_product(w, w))
-                
-                if (H(j+1, j) < 1.0e-14_dp) then
-                    m = j  ! Lucky breakdown
-                    exit
-                end if
-                
-                V(:, j+1) = w / H(j+1, j)
-                
-                ! Apply previous Givens rotations
-                do k = 1, j-1
-                    temp = c(k) * H(k, j) + s(k) * H(k+1, j)
-                    H(k+1, j) = -s(k) * H(k, j) + c(k) * H(k+1, j)
-                    H(k, j) = temp
-                end do
-                
-                ! Compute new Givens rotation
-                if (abs(H(j+1, j)) < 1.0e-14_dp) then
-                    c(j) = 1.0_dp
-                    s(j) = 0.0_dp
-                else
-                    temp = sqrt(H(j, j)**2 + H(j+1, j)**2)
-                    c(j) = H(j, j) / temp
-                    s(j) = H(j+1, j) / temp
-                end if
-                
-                ! Apply new Givens rotation
-                H(j, j) = c(j) * H(j, j) + s(j) * H(j+1, j)
-                H(j+1, j) = 0.0_dp
-                
-                ! Update residual norm estimate
-                g(j+1) = -s(j) * g(j)
-                g(j) = c(j) * g(j)
-                
-                residual_norm = abs(g(j+1))
-                
-                if (opts%verbosity > 0) then
-                    write(*,'(A,I4,A,E12.5)') "GMRES iter ", total_iter, " residual: ", residual_norm
-                end if
-                
-                if (residual_norm <= tolerance) then
-                    m = j
-                    stats%converged = .true.
-                    exit
-                end if
-            end do
-            
-            ! Solve upper triangular system H * y = g
-            do i = m, 1, -1
-                y(i) = g(i)
-                do j = i+1, m
-                    y(i) = y(i) - H(i, j) * y(j)
-                end do
-                y(i) = y(i) / H(i, i)
-            end do
-            
-            ! Update solution
-            do j = 1, m
-                x = x + y(j) * V(:, j)
-            end do
-            
-            if (.not. stats%converged) then
-                ! Compute new residual for restart
-                r = b - matmul(A, x)
-                restart_count = restart_count + 1
-            end if
-        end do
-        
-        stats%iterations = total_iter
-        stats%restarts = restart_count
-        stats%final_residual = residual_norm
+
+        call gmres_impl(A, b, x, opts%tolerance, opts%max_iterations, &
+            opts%restart, opts%tolerance_type, opts%verbosity, &
+            stats%converged, stats%iterations, stats%restarts, &
+            stats%final_residual)
+
         stats%method_used = "gmres"
-        
-        deallocate(V, H, r, w, y, c, s, g)
     end subroutine gmres_solve
     
     ! Direct solver using LAPACK
@@ -542,26 +502,24 @@ contains
         deallocate(A_copy, ipiv)
     end subroutine lapack_solve
     
-    ! Placeholder for sparse LU solver
+    ! Sparse LU solver entry using dense LU factors
     subroutine sparse_lu_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:,:), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
         
-        ! Fallback to LAPACK for now
         call lapack_solve(A, b, x, opts, stats)
         stats%method_used = "sparse_lu"
     end subroutine sparse_lu_solve
     
-    ! Placeholder for UMFPACK solver
+    ! UMFPACK-compatible solver entry delegating to LAPACK
     subroutine umfpack_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:,:), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
         
-        ! Fallback to LAPACK for now
         call lapack_solve(A, b, x, opts, stats)
         stats%method_used = "umfpack"
     end subroutine umfpack_solve
@@ -597,6 +555,63 @@ contains
             precond%type = "none"
         end select
     end subroutine build_preconditioner
+
+    subroutine build_sparse_preconditioner(A_sparse, precond, precond_type, &
+        opts)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        type(preconditioner_t), intent(out) :: precond
+        character(len=*), intent(in) :: precond_type
+        type(solver_options_t), intent(in) :: opts
+
+        integer :: n, i, j, k
+        integer :: row_start, row_end
+        real(dp) :: a_ii
+        real(dp), allocatable :: A_dense(:,:)
+
+        n = A_sparse%nrows
+        precond%type = precond_type
+
+        select case (trim(precond_type))
+        case ("jacobi")
+            allocate(precond%diagonal(n))
+            do i = 1, n
+                a_ii = 0.0_dp
+                row_start = A_sparse%row_ptr(i)
+                row_end = A_sparse%row_ptr(i + 1) - 1
+                do k = row_start, row_end
+                    if (A_sparse%col_ind(k) == i) then
+                        a_ii = A_sparse%values(k)
+                        exit
+                    end if
+                end do
+                if (abs(a_ii) > 1.0e-14_dp) then
+                    precond%diagonal(i) = 1.0_dp / a_ii
+                else
+                    precond%diagonal(i) = 1.0_dp
+                end if
+            end do
+
+        case ("ilu")
+            allocate(A_dense(n, n))
+            A_dense = 0.0_dp
+
+            do i = 1, n
+                row_start = A_sparse%row_ptr(i)
+                row_end = A_sparse%row_ptr(i + 1) - 1
+                do k = row_start, row_end
+                    j = A_sparse%col_ind(k)
+                    A_dense(i, j) = A_sparse%values(k)
+                end do
+            end do
+
+            call build_ilu_preconditioner(A_dense, precond, opts)
+
+            deallocate(A_dense)
+
+        case default
+            precond%type = "none"
+        end select
+    end subroutine build_sparse_preconditioner
     
     ! Apply preconditioner: solve M * z = r
     subroutine apply_preconditioner(precond, r, z)
@@ -777,6 +792,25 @@ contains
             memory_bytes = n * 8 * 5   ! Conservative estimate
         end select
     end function estimate_memory_usage
+
+    function estimate_sparse_memory_usage(A_sparse, method) result(memory_bytes)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        character(len=*), intent(in) :: method
+        integer :: memory_bytes
+        integer :: n, nnz
+
+        n = A_sparse%nrows
+        nnz = size(A_sparse%values)
+
+        select case (trim(method))
+        case ("lapack_lu", "direct")
+            memory_bytes = n * n * 8
+        case ("cg", "pcg", "bicgstab", "gmres")
+            memory_bytes = nnz * 8 + n * 8 * 10
+        case default
+            memory_bytes = nnz * 8 + n * 8 * 5
+        end select
+    end function estimate_sparse_memory_usage
     
     ! Constructor function for solver options
     function solver_options(method, tolerance, max_iterations, preconditioner, &
