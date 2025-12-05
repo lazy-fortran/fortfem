@@ -1,9 +1,10 @@
 module fortfem_advanced_solvers
     use fortfem_kinds, only: dp
     use fortfem_sparse_matrix, only: sparse_matrix_t, spmv
+    use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
     implicit none
     private
-    
+
     ! LAPACK interface
     interface
         subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -430,108 +431,26 @@ contains
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: r(:), r0(:), p(:), v(:), s(:), t(:), z(:), y(:)
-        real(dp) :: rho, rho_old, alpha, omega, beta
-        real(dp) :: residual_norm, initial_norm, tolerance
-        integer :: n, iter
+
         type(preconditioner_t) :: precond
-        
-        n = size(x)
-        allocate(r(n), r0(n), p(n), v(n), s(n), t(n), z(n), y(n))
-        
-        ! Build preconditioner if specified
-        if (trim(opts%preconditioner) /= "none") then
+        logical :: use_precond
+
+        use_precond = trim(opts%preconditioner) /= "none"
+
+        if (use_precond) then
             call build_preconditioner(A, precond, opts%preconditioner, opts)
-        end if
-        
-        ! Initial residual
-        r = b - matmul(A, x)
-        r0 = r
-        initial_norm = sqrt(dot_product(r, r))
-        
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
+            call bicgstab_impl(A, b, x, precond%diagonal, precond%L, precond%U, &
+                use_precond, opts%tolerance, opts%max_iterations, &
+                opts%tolerance_type, opts%verbosity, stats%converged, &
+                stats%iterations, stats%final_residual)
         else
-            tolerance = opts%tolerance * initial_norm
+            call bicgstab_impl(A, b, x, use_precond=.false., tol=opts%tolerance, &
+                max_iter=opts%max_iterations, tol_type=opts%tolerance_type, &
+                verbosity=opts%verbosity, converged=stats%converged, &
+                iterations=stats%iterations, final_resid=stats%final_residual)
         end if
-        
-        p = r
-        rho = 1.0_dp
-        alpha = 1.0_dp
-        omega = 1.0_dp
-        
-        stats%converged = .false.
-        
-        do iter = 1, opts%max_iterations
-            rho_old = rho
-            rho = dot_product(r0, r)
-            
-            if (abs(rho) < 1.0e-14_dp) exit  ! Breakdown
-            
-            beta = (rho / rho_old) * (alpha / omega)
-            p = r + beta * (p - omega * v)
-            
-            ! Apply preconditioner to p if available
-            if (trim(opts%preconditioner) /= "none") then
-                call apply_preconditioner(precond, p, z)
-                v = matmul(A, z)
-            else
-                v = matmul(A, p)
-            end if
-            
-            alpha = rho / dot_product(r0, v)
-            s = r - alpha * v
-            
-            ! Check for early convergence
-            residual_norm = sqrt(dot_product(s, s))
-            if (residual_norm <= tolerance) then
-                if (trim(opts%preconditioner) /= "none") then
-                    x = x + alpha * z
-                else
-                    x = x + alpha * p
-                end if
-                stats%converged = .true.
-                exit
-            end if
-            
-            ! Apply preconditioner to s if available
-            if (trim(opts%preconditioner) /= "none") then
-                call apply_preconditioner(precond, s, y)
-                t = matmul(A, y)
-            else
-                t = matmul(A, s)
-            end if
-            
-            omega = dot_product(t, s) / dot_product(t, t)
-            
-            if (trim(opts%preconditioner) /= "none") then
-                x = x + alpha * z + omega * y
-            else
-                x = x + alpha * p + omega * s
-            end if
-            
-            r = s - omega * t
-            
-            residual_norm = sqrt(dot_product(r, r))
-            
-            if (opts%verbosity > 0) then
-                write(*,'(A,I4,A,E12.5)') "BiCGSTAB iter ", iter, " residual: ", residual_norm
-            end if
-            
-            if (residual_norm <= tolerance) then
-                stats%converged = .true.
-                exit
-            end if
-            
-            if (abs(omega) < 1.0e-14_dp) exit  ! Breakdown
-        end do
-        
-        stats%iterations = iter
-        stats%final_residual = residual_norm
+
         stats%method_used = "bicgstab"
-        
-        deallocate(r, r0, p, v, s, t, z, y)
     end subroutine bicgstab_solve
     
     ! GMRES solver with restart
@@ -540,133 +459,13 @@ contains
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
-        
-        real(dp), allocatable :: V(:,:), H(:,:), r(:), w(:), y(:), c(:), s(:), g(:)
-        real(dp) :: beta, residual_norm, initial_norm, tolerance, temp
-        integer :: n, m, iter, total_iter, restart_count, i, j, k
-        
-        n = size(x)
-        m = min(opts%restart, n)
-        
-        allocate(V(n, m+1), H(m+1, m), r(n), w(n), y(m), c(m), s(m), g(m+1))
-        
-        ! Initial residual
-        r = b - matmul(A, x)
-        initial_norm = sqrt(dot_product(r, r))
-        
-        if (trim(opts%tolerance_type) == "absolute") then
-            tolerance = opts%tolerance
-        else
-            ! For relative tolerances, ensure an absolute floor so that
-            ! small initial residuals still drive the solve to a tight
-            ! final residual.
-            tolerance = min(opts%tolerance, opts%tolerance * initial_norm)
-        end if
-        
-        total_iter = 0
-        restart_count = 0
-        stats%converged = .false.
-        
-        do while (total_iter < opts%max_iterations .and. .not. stats%converged)
-            ! Start of restart cycle
-            beta = sqrt(dot_product(r, r))
-            
-            if (beta <= tolerance) then
-                stats%converged = .true.
-                exit
-            end if
-            
-            V(:, 1) = r / beta
-            g = 0.0_dp
-            g(1) = beta
-            
-            ! Arnoldi process
-            do j = 1, m
-                total_iter = total_iter + 1
-                if (total_iter > opts%max_iterations) exit
-                
-                w = matmul(A, V(:, j))
-                
-                ! Modified Gram-Schmidt orthogonalization
-                do i = 1, j
-                    H(i, j) = dot_product(w, V(:, i))
-                    w = w - H(i, j) * V(:, i)
-                end do
-                
-                H(j+1, j) = sqrt(dot_product(w, w))
-                
-                if (H(j+1, j) < 1.0e-14_dp) then
-                    m = j  ! Lucky breakdown
-                    exit
-                end if
-                
-                V(:, j+1) = w / H(j+1, j)
-                
-                ! Apply previous Givens rotations
-                do k = 1, j-1
-                    temp = c(k) * H(k, j) + s(k) * H(k+1, j)
-                    H(k+1, j) = -s(k) * H(k, j) + c(k) * H(k+1, j)
-                    H(k, j) = temp
-                end do
-                
-                ! Compute new Givens rotation
-                if (abs(H(j+1, j)) < 1.0e-14_dp) then
-                    c(j) = 1.0_dp
-                    s(j) = 0.0_dp
-                else
-                    temp = sqrt(H(j, j)**2 + H(j+1, j)**2)
-                    c(j) = H(j, j) / temp
-                    s(j) = H(j+1, j) / temp
-                end if
-                
-                ! Apply new Givens rotation
-                H(j, j) = c(j) * H(j, j) + s(j) * H(j+1, j)
-                H(j+1, j) = 0.0_dp
-                
-                ! Update residual norm estimate
-                g(j+1) = -s(j) * g(j)
-                g(j) = c(j) * g(j)
-                
-                residual_norm = abs(g(j+1))
-                
-                if (opts%verbosity > 0) then
-                    write(*,'(A,I4,A,E12.5)') "GMRES iter ", total_iter, " residual: ", residual_norm
-                end if
-                
-                if (residual_norm <= tolerance) then
-                    m = j
-                    stats%converged = .true.
-                    exit
-                end if
-            end do
-            
-            ! Solve upper triangular system H * y = g
-            do i = m, 1, -1
-                y(i) = g(i)
-                do j = i+1, m
-                    y(i) = y(i) - H(i, j) * y(j)
-                end do
-                y(i) = y(i) / H(i, i)
-            end do
-            
-            ! Update solution
-            do j = 1, m
-                x = x + y(j) * V(:, j)
-            end do
-            
-            if (.not. stats%converged) then
-                ! Compute new residual for restart
-                r = b - matmul(A, x)
-                restart_count = restart_count + 1
-            end if
-        end do
-        
-        stats%iterations = total_iter
-        stats%restarts = restart_count
-        stats%final_residual = residual_norm
+
+        call gmres_impl(A, b, x, opts%tolerance, opts%max_iterations, &
+            opts%restart, opts%tolerance_type, opts%verbosity, &
+            stats%converged, stats%iterations, stats%restarts, &
+            stats%final_residual)
+
         stats%method_used = "gmres"
-        
-        deallocate(V, H, r, w, y, c, s, g)
     end subroutine gmres_solve
     
     ! Direct solver using LAPACK
