@@ -7,7 +7,9 @@ module fortfem_api
     use basis_p1_2d_module
     use basis_p2_2d_module
     use fortfem_basis_edge_2d
-    use fortfem_advanced_solvers
+    use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,    &
+        solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,    &
+        jacobi_preconditioner, ilu_preconditioner, advanced_solve => solve
     use triangle_io, only: read_triangle_mesh, write_triangle_poly_file,      &
                            ensure_triangle_available
     implicit none
@@ -1099,44 +1101,78 @@ contains
         equation%rhs = L
     end function form_equals_form
     
-    subroutine solve_scalar(equation, uh, bc)
+    subroutine solve_scalar(equation, uh, bc, options, stats)
         type(form_equation_t), intent(in) :: equation
         type(function_t), intent(inout) :: uh
         type(dirichlet_bc_t), intent(in) :: bc
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out), optional :: stats
         
-        write(*,*) "Solving: ", trim(equation%lhs%description), " == ", trim(equation%rhs%description)
+        type(solver_stats_t) :: local_stats
+        logical :: have_stats
+        
+        write(*,*) "Solving: ", trim(equation%lhs%description), " == ",      &
+            trim(equation%rhs%description)
+        
+        have_stats = .false.
         
         ! Dispatch to appropriate solver based on form type and element degree
         if (index(equation%lhs%description, "grad") > 0) then
             if (uh%space%degree == 2) then
-                call solve_laplacian_problem_p2(uh, bc)
+                call solve_laplacian_problem_p2(uh, bc, options, local_stats)
             else
-                call solve_laplacian_problem(uh, bc)
+                call solve_laplacian_problem(uh, bc, options, local_stats)
             end if
+            have_stats = .true.
         else
             call solve_generic_problem(uh, bc)
         end if
+        
+        if (present(stats) .and. have_stats) then
+            stats = local_stats
+        end if
     end subroutine solve_scalar
     
-    subroutine solve_vector(equation, Eh, bc, solver_type)
+    subroutine solve_vector(equation, Eh, bc, solver_type, options, stats)
         type(form_equation_t), intent(in) :: equation
         type(vector_function_t), intent(inout) :: Eh
         type(vector_bc_t), intent(in) :: bc
         character(len=*), intent(in), optional :: solver_type
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out), optional :: stats
         
         character(len=32) :: solver
+        type(solver_options_t) :: local_opts
+        type(solver_stats_t) :: local_stats
         
         solver = "gmres"  ! Default to GMRES for vector problems
         if (present(solver_type)) solver = solver_type
         
-        write(*,*) "Solving vector problem: ", trim(equation%lhs%description), " == ", trim(equation%rhs%description)
+        ! Reasonable defaults for curl-curl GMRES solve
+        local_opts = solver_options(method="gmres", tolerance=1.0e-6_dp,     &
+                                    max_iterations=100, restart=20)
+        if (present(options)) local_opts = options
+        local_stats%converged = .false.
+        local_stats%iterations = 0
+        local_stats%final_residual = 0.0_dp
+        local_stats%restarts = 0
+        local_stats%method_used = ""
+        
+        write(*,*) "Solving vector problem: ",                                &
+            trim(equation%lhs%description), " == ",                           &
+            trim(equation%rhs%description)
         write(*,*) "Using solver: ", trim(solver)
         
         ! Dispatch to appropriate vector solver
         if (index(equation%lhs%description, "curl") > 0) then
-            call solve_curl_curl_problem(Eh, bc, solver)
+            call solve_curl_curl_problem(Eh, bc, solver, local_opts,         &
+                                         local_stats)
         else
             call solve_generic_vector_problem(Eh, bc)
+        end if
+        
+        if (present(stats)) then
+            stats = local_stats
         end if
     end subroutine solve_vector
     
@@ -1313,41 +1349,50 @@ contains
     ! maximum ≈ 0.1093. Our implementation gives results consistent with this,
     ! e.g., 0.0625 for 3x3 mesh, 0.073 for fine meshes. The commonly cited value 
     ! of 0.125 appears to be for a different problem formulation.
-    subroutine solve_laplacian_problem(uh, bc)
+    subroutine solve_laplacian_problem(uh, bc, options, stats)
         type(function_t), intent(inout) :: uh
         type(dirichlet_bc_t), intent(in) :: bc
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out) :: stats
         
         real(dp), allocatable :: K(:,:), F(:)
-        integer, allocatable :: ipiv(:)
-        integer :: ndof, info
+        integer :: ndof
+        type(solver_options_t) :: local_opts
         
         ndof = uh%space%ndof
-        allocate(ipiv(ndof))
         
         call assemble_laplacian_system(uh%space, bc, K, F)
         
-        ! Solve linear system using LAPACK
-        if (allocated(uh%values)) then
-            uh%values = F
-            call dgesv(ndof, 1, K, ndof, ipiv, uh%values, ndof, info)
-            
-            if (info /= 0) then
-                write(*,*) "Warning: LAPACK solver failed with info =", info
-                uh%values = 0.0_dp
-            end if
+        if (.not. allocated(uh%values)) then
+            allocate(uh%values(ndof))
+        end if
+        uh%values = 0.0_dp
+        
+        if (present(options)) then
+            local_opts = options
+        else
+            local_opts = solver_options(method="auto")
         end if
         
-        deallocate(K, F, ipiv)
+        call advanced_solve(K, F, uh%values, local_opts, stats)
+        
+        if (.not. stats%converged) then
+            write(*,*) "Warning: Laplacian solver did not report convergence. ", &
+                "Final residual =", stats%final_residual
+        end if
+        
+        deallocate(K, F)
     end subroutine solve_laplacian_problem
     
     ! Solve Laplacian problems for P2 elements: -Δu = f
-    subroutine solve_laplacian_problem_p2(uh, bc)
+    subroutine solve_laplacian_problem_p2(uh, bc, options, stats)
         type(function_t), intent(inout) :: uh
         type(dirichlet_bc_t), intent(in) :: bc
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out) :: stats
         
         real(dp), allocatable :: K(:,:), F(:)
-        integer, allocatable :: ipiv(:)
-        integer :: ndof, i, j, kq, e, v1, v2, v3, info
+        integer :: ndof, i, j, kq, e, v1, v2, v3
         real(dp) :: x1, y1, x2, y2, x3, y3, area
         real(dp) :: K_elem(6,6), F_elem(6)
         integer :: dofs(6), edge1, edge2, edge3
@@ -1355,9 +1400,10 @@ contains
         real(dp) :: xi_quad(3), eta_quad(3), w_quad(3)
         real(dp) :: grad_i(2), grad_j(2), jac(2,2), det_j, inv_jac(2,2)
         real(dp) :: vertices(2,3)
+        type(solver_options_t) :: local_opts
         
         ndof = uh%space%ndof
-        allocate(K(ndof, ndof), F(ndof), ipiv(ndof))
+        allocate(K(ndof, ndof), F(ndof))
         
         ! Initialize system
         K = 0.0_dp
@@ -1472,19 +1518,25 @@ contains
             end if
         end do
         
-        ! Solve system
-        call dgesv(ndof, 1, K, ndof, ipiv, F, ndof, info)
+        if (.not. allocated(uh%values)) then
+            allocate(uh%values(ndof))
+        end if
+        uh%values = 0.0_dp
         
-        if (info == 0) then
-            uh%values = F
+        if (present(options)) then
+            local_opts = options
         else
-            write(*,*) "Warning: P2 LAPACK solver failed with info =", info
-            if (allocated(uh%values)) then
-                uh%values = 0.0_dp
-            end if
+            local_opts = solver_options(method="auto")
         end if
         
-        deallocate(K, F, ipiv)
+        call advanced_solve(K, F, uh%values, local_opts, stats)
+        
+        if (.not. stats%converged) then
+            write(*,*) "Warning: P2 Laplacian solver did not report convergence. ", &
+                "Final residual =", stats%final_residual
+        end if
+        
+        deallocate(K, F)
     end subroutine solve_laplacian_problem_p2
     
     ! Solve generic problems (fallback)
@@ -1705,19 +1757,19 @@ contains
         end if
     end subroutine solve_pure_neumann_problem
     
-    ! Solve curl-curl problems: curl curl E + E = j with GMRES
-    subroutine solve_curl_curl_problem(Eh, bc, solver_type)
+    ! Solve curl-curl problems: curl curl E + E = j with advanced GMRES
+    subroutine solve_curl_curl_problem(Eh, bc, solver_type, options, stats)
         type(vector_function_t), intent(inout) :: Eh
         type(vector_bc_t), intent(in) :: bc
         character(len=*), intent(in) :: solver_type
+        type(solver_options_t), intent(in) :: options
+        type(solver_stats_t), intent(out) :: stats
         
         real(dp), allocatable :: A(:,:), b(:), x(:)
         integer :: ndof, i, j, e, v1, v2, v3, edge1, edge2, edge3
         real(dp) :: x1, y1, x2, y2, x3, y3, area
         real(dp) :: curl_basis_i, curl_basis_j
         type(edge_basis_2d_t) :: edge_basis
-        integer :: max_iter
-        real(dp) :: tolerance
         
         ndof = Eh%space%ndof
         allocate(A(ndof, ndof), b(ndof), x(ndof))
@@ -1802,14 +1854,21 @@ contains
         ! Solve using specified method
         select case (trim(solver_type))
         case ("gmres")
-            max_iter = 100
-            tolerance = 1.0e-6_dp
-            call gmres_solver(A, b, x, max_iter, tolerance)
+            call gmres_solve(A, b, x, options, stats)
         case ("direct")
             ! Fallback to direct solver for small problems
             call solve_direct_vector(A, b, x)
+            stats%converged = .true.
+            stats%iterations = 1
+            stats%final_residual = sqrt(sum((matmul(A, x) - b)**2))
+            stats%solve_time = 0.0_dp
+            stats%memory_usage = 0
+            stats%method_used = "lapack_lu"
+            stats%restarts = 0
+            stats%parallel_efficiency = 0.0_dp
+            stats%condition_estimate = 0.0_dp
         case default
-            call gmres_solver(A, b, x, 100, 1.0e-6_dp)
+            call gmres_solve(A, b, x, options, stats)
         end select
         
         ! Copy solution back to vector function
@@ -1822,107 +1881,6 @@ contains
         
         deallocate(A, b, x)
     end subroutine solve_curl_curl_problem
-    
-    ! Simple GMRES solver implementation
-    subroutine gmres_solver(A, b, x, max_iter, tolerance)
-        real(dp), intent(in) :: A(:,:), b(:)
-        real(dp), intent(inout) :: x(:)
-        integer, intent(in) :: max_iter
-        real(dp), intent(in) :: tolerance
-        
-        real(dp), allocatable :: r(:), v(:,:), h(:,:), c(:), s(:), y(:), g(:)
-        real(dp) :: beta, norm_r, alpha
-        integer :: n, m, i, j, k
-        logical :: converged
-        
-        n = size(A, 1)
-        m = min(20, n)  ! Restart every 20 iterations
-        
-        allocate(r(n), v(n, m+1), h(m+1, m), c(m), s(m), y(m), g(m+1))
-        
-        ! Initial residual
-        r = b - matmul(A, x)
-        beta = sqrt(sum(r**2))
-        
-        if (beta < tolerance) return  ! Already converged
-        
-        ! GMRES iterations with restart
-        converged = .false.
-        do k = 1, max_iter
-            ! Initialize
-            g = 0.0_dp
-            g(1) = beta
-            v(:, 1) = r / beta
-            
-            ! Arnoldi process
-            do j = 1, m
-                v(:, j+1) = matmul(A, v(:, j))
-                
-                ! Gram-Schmidt orthogonalization
-                do i = 1, j
-                    h(i, j) = sum(v(:, i) * v(:, j+1))
-                    v(:, j+1) = v(:, j+1) - h(i, j) * v(:, i)
-                end do
-                
-                h(j+1, j) = sqrt(sum(v(:, j+1)**2))
-                if (h(j+1, j) > 1.0e-12_dp) then
-                    v(:, j+1) = v(:, j+1) / h(j+1, j)
-                else
-                    exit  ! Breakdown
-                end if
-                
-                ! Apply previous Givens rotations
-                do i = 1, j-1
-                    alpha = c(i) * h(i, j) + s(i) * h(i+1, j)
-                    h(i+1, j) = -s(i) * h(i, j) + c(i) * h(i+1, j)
-                    h(i, j) = alpha
-                end do
-                
-                ! Compute new Givens rotation
-                if (abs(h(j+1, j)) > 1.0e-12_dp) then
-                    alpha = sqrt(h(j, j)**2 + h(j+1, j)**2)
-                    c(j) = h(j, j) / alpha
-                    s(j) = h(j+1, j) / alpha
-                    h(j, j) = alpha
-                    h(j+1, j) = 0.0_dp
-                    
-                    ! Update g
-                    alpha = c(j) * g(j) + s(j) * g(j+1)
-                    g(j+1) = -s(j) * g(j) + c(j) * g(j+1)
-                    g(j) = alpha
-                end if
-                
-                ! Check convergence
-                if (abs(g(j+1)) < tolerance) then
-                    converged = .true.
-                    exit
-                end if
-            end do
-            
-            ! Solve upper triangular system
-            do i = min(j, m), 1, -1
-                y(i) = g(i)
-                do j = i+1, min(j, m)
-                    y(i) = y(i) - h(i, j) * y(j)
-                end do
-                y(i) = y(i) / h(i, i)
-            end do
-            
-            ! Update solution
-            do i = 1, min(j, m)
-                x = x + y(i) * v(:, i)
-            end do
-            
-            if (converged) exit
-            
-            ! Compute new residual for restart
-            r = b - matmul(A, x)
-            beta = sqrt(sum(r**2))
-            if (beta < tolerance) exit
-        end do
-        
-        deallocate(r, v, h, c, s, y, g)
-    end subroutine gmres_solver
     
     ! Direct solver for vector problems (fallback)
     subroutine solve_direct_vector(A, b, x)
