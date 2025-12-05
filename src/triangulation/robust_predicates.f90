@@ -20,7 +20,7 @@ module robust_predicates
     !  Reference: FreeFEM/BAMG uses MaxICoor = 2^30 - 1 = 1073741823
     !
     use, intrinsic :: iso_fortran_env, only: int32, int64
-    use fortfem_kinds, only: dp
+    use fortfem_kinds, only: dp, qp
     implicit none
 
     private
@@ -38,10 +38,10 @@ module robust_predicates
     integer, parameter :: ORIENT_COLLINEAR = 0  ! Collinear (zero area)
 
     ! Maximum integer coordinate value
-    ! Reduced to 8000 (approx 2^13) to ensure incircle determinant (coord^4)
-    ! fits within the 53-bit significand of real(dp) for exact calculation.
-    ! 8000^4 = 4e15 < 2^53 (9e15).
-    integer(int64), parameter :: MAX_ICOOR = 8000_int64
+    ! Increased to 10^8 to provide sufficient resolution even with large margins.
+    ! Incircle determinant involves terms of order coord^4 (~10^32).
+    ! This requires Quad Precision (qp, ~33 decimal digits) for exact calculation.
+    integer(int64), parameter :: MAX_ICOOR = 100000000_int64
 
     !> Robust coordinate system parameters
     type :: robust_coords_t
@@ -171,15 +171,15 @@ contains
     logical function incircle_robust(rc, ax, ay, bx, by, cx, cy, dx, dy)                &
         result(inside)
         !> Robust incircle test using integer coordinates.
-        !  Uses real(dp) for final determinant to avoid int64 overflow.
+        !  Uses real(qp) for final determinant to avoid int64 overflow.
         type(robust_coords_t), intent(in) :: rc
         real(dp), intent(in) :: ax, ay, bx, by, cx, cy, dx, dy
 
         integer(int64) :: iax, iay, ibx, iby, icx, icy, idx, idy
         integer(int64) :: adx, ady, bdx, bdy, cdx, cdy
-        real(dp) :: alift, blift, clift
-        real(dp) :: bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady
-        real(dp) :: det
+        real(qp) :: alift, blift, clift
+        real(qp) :: bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady
+        real(qp) :: det
 
         call to_integer_coords(rc, ax, ay, iax, iay)
         call to_integer_coords(rc, bx, by, ibx, iby)
@@ -193,24 +193,24 @@ contains
         cdx = icx - idx
         cdy = icy - idy
 
-        ! Use real(dp) for lift calculation to avoid overflow
-        alift = real(adx, dp)**2 + real(ady, dp)**2
-        blift = real(bdx, dp)**2 + real(bdy, dp)**2
-        clift = real(cdx, dp)**2 + real(cdy, dp)**2
+        ! Use real(qp) for lift calculation to avoid overflow
+        alift = real(adx, qp)**2 + real(ady, qp)**2
+        blift = real(bdx, qp)**2 + real(bdy, qp)**2
+        clift = real(cdx, qp)**2 + real(cdy, qp)**2
 
-        ! Compute minors using real(dp)
-        bdxcdy = real(bdx, dp) * real(cdy, dp)
-        cdxbdy = real(cdx, dp) * real(bdy, dp)
-        cdxady = real(cdx, dp) * real(ady, dp)
-        adxcdy = real(adx, dp) * real(cdy, dp)
-        adxbdy = real(adx, dp) * real(bdy, dp)
-        bdxady = real(bdx, dp) * real(ady, dp)
+        ! Compute minors using real(qp)
+        bdxcdy = real(bdx, qp) * real(cdy, qp)
+        cdxbdy = real(cdx, qp) * real(bdy, qp)
+        cdxady = real(cdx, qp) * real(ady, qp)
+        adxcdy = real(adx, qp) * real(cdy, qp)
+        adxbdy = real(adx, qp) * real(bdy, qp)
+        bdxady = real(bdx, qp) * real(ady, qp)
 
         det = alift * (bdxcdy - cdxbdy)                                       &
             + blift * (cdxady - adxcdy)                                       &
             + clift * (adxbdy - bdxady)
 
-        inside = det > 0.0_dp
+        inside = det > 0.0_qp
     end function incircle_robust
 
 end module robust_predicates

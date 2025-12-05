@@ -1104,8 +1104,6 @@ contains
         type(function_t), intent(inout) :: uh
         type(dirichlet_bc_t), intent(in) :: bc
         
-        write(*,*) "Solving: ", trim(equation%lhs%description), " == ", trim(equation%rhs%description)
-        
         ! Dispatch to appropriate solver based on form type and element degree
         if (index(equation%lhs%description, "grad") > 0) then
             if (uh%space%degree == 2) then
@@ -1128,9 +1126,6 @@ contains
         
         solver = "gmres"  ! Default to GMRES for vector problems
         if (present(solver_type)) solver = solver_type
-        
-        write(*,*) "Solving vector problem: ", trim(equation%lhs%description), " == ", trim(equation%rhs%description)
-        write(*,*) "Using solver: ", trim(solver)
         
         ! Dispatch to appropriate vector solver
         if (index(equation%lhs%description, "curl") > 0) then
@@ -1505,9 +1500,6 @@ contains
         type(dirichlet_bc_t), intent(in) :: dirichlet_bc
         type(neumann_bc_t), intent(in) :: neumann_bc
         
-        write(*,*) "Solving mixed BC problem: ", &
-            trim(equation%lhs%description), " == ", trim(equation%rhs%description)
-        
         ! For now, use simplified approach: solve Laplacian with additional boundary terms
         call solve_laplacian_with_neumann(uh, dirichlet_bc, neumann_bc)
     end subroutine solve_mixed_bc
@@ -1517,9 +1509,6 @@ contains
         type(form_equation_t), intent(in) :: equation
         type(function_t), intent(inout) :: uh
         type(neumann_bc_t), intent(in) :: neumann_bc
-        
-        write(*,*) "Solving pure Neumann problem: ", &
-            trim(equation%lhs%description), " == ", trim(equation%rhs%description)
         
         ! Pure Neumann problems need special handling for uniqueness
         call solve_pure_neumann_problem(uh, neumann_bc)

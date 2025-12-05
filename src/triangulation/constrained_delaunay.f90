@@ -24,9 +24,6 @@ module constrained_delaunay
     private
     public :: constrained_delaunay_triangulate
 
-    ! Module-level storage for constraint segments (needed during fixup)
-    integer, allocatable :: current_segments(:,:)
-
 contains
 
     subroutine constrained_delaunay_triangulate(input_points,                 &
@@ -78,13 +75,9 @@ contains
         !  - Split crossing segments so the constraint graph is planar
         call preprocess_segment_intersections(mesh, adjusted_segments)
 
-        ! Store segments for use during Delaunay fixup
-        if (allocated(current_segments)) deallocate(current_segments)
-        allocate(current_segments, source=adjusted_segments)
-
         do i = 1, size(adjusted_segments, 2)
             call insert_segment(mesh, adjusted_segments(1, i),               &
-                               adjusted_segments(2, i))
+                               adjusted_segments(2, i), adjusted_segments)
         end do
 
         call remove_exterior_triangles(mesh, adjusted_segments)
@@ -102,7 +95,6 @@ contains
         end if
 
         deallocate(adjusted_segments)
-        if (allocated(current_segments)) deallocate(current_segments)
     end subroutine constrained_delaunay_triangulate
 
     subroutine preprocess_segment_intersections(mesh, segments)
@@ -197,11 +189,12 @@ contains
         end do
     end subroutine preprocess_segment_intersections
 
-    subroutine insert_segment(mesh, v1, v2)
+    subroutine insert_segment(mesh, v1, v2, segments)
         !> Insert a constraint segment by flipping edges that cross it.
         !  After each flip, restore Delaunay property on affected triangles.
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: v1, v2
+        integer, intent(in) :: segments(:,:)
 
         integer :: max_iter, iter
         logical :: segment_exists
@@ -216,7 +209,7 @@ contains
         do iter = 1, max_iter
             segment_exists = edge_exists_in_mesh(mesh, v1, v2)
             if (segment_exists) exit
-            if (.not. flip_one_crossing_edge(mesh, v1, v2)) exit
+            if (.not. flip_one_crossing_edge(mesh, v1, v2, segments)) exit
         end do
     end subroutine insert_segment
 
@@ -252,11 +245,12 @@ contains
         match = (a == v1 .and. b == v2) .or. (a == v2 .and. b == v1)
     end function edges_match
 
-    logical function flip_one_crossing_edge(mesh, va, vb) result(flipped)
+    logical function flip_one_crossing_edge(mesh, va, vb, segments) result(flipped)
         !> Find and flip one edge that crosses segment va-vb.
         !  After the flip, restore Delaunay property on both sides.
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: va, vb
+        integer, intent(in) :: segments(:,:)
 
         integer :: t, i, e1, e2, t2, v_opp1, v_opp2
         integer :: new_t1, new_t2
@@ -303,7 +297,7 @@ contains
                 if (det1 * det2 >= 0.0_dp) cycle
 
                 call do_edge_flip_with_fixup(mesh, t, t2, e1, e2, v_opp1,     &
-                                             v_opp2, va, vb, new_t1, new_t2)
+                                             v_opp2, va, vb, segments, new_t1, new_t2)
                 flipped = .true.
                 return
             end do
@@ -311,7 +305,7 @@ contains
     end function flip_one_crossing_edge
 
     subroutine do_edge_flip_with_fixup(mesh, t1, t2, e1, e2, v1, v2, seg_a,   &
-                                       seg_b, new_t1, new_t2)
+                                       seg_b, segments, new_t1, new_t2)
         !> Flip edge (e1,e2) to edge (v1,v2) and restore Delaunay property.
         !
         !  The edge (e1,e2) is shared by triangles t1 and t2.
@@ -321,6 +315,7 @@ contains
         !
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: t1, t2, e1, e2, v1, v2, seg_a, seg_b
+        integer, intent(in) :: segments(:,:)
         integer, intent(out) :: new_t1, new_t2
 
         type(point_t) :: p1, p2, pv1, pv2
@@ -350,12 +345,12 @@ contains
         ! Restore Delaunay property on edges that dont cross the segment
         ! The constraint segment is (seg_a, seg_b).
         ! We need to fix edges on both sides of the new edge (v1, v2).
-        call delaunay_fixup(mesh, new_t1, v1, e1, seg_a, seg_b, 0)
-        call delaunay_fixup(mesh, new_t2, v2, e2, seg_a, seg_b, 0)
+        call delaunay_fixup(mesh, new_t1, v1, e1, seg_a, seg_b, segments, 0)
+        call delaunay_fixup(mesh, new_t2, v2, e2, seg_a, seg_b, segments, 0)
     end subroutine do_edge_flip_with_fixup
 
     recursive subroutine delaunay_fixup(mesh, tri, v_base, v_edge, seg_a,     &
-                                        seg_b, depth)
+                                        seg_b, segments, depth)
         !> Restore Delaunay property for edges not crossing the constraint.
         !
         !  This is the key routine that makes CDT produce good triangles.
@@ -368,10 +363,12 @@ contains
         !    v_base - Vertex at the base of the edge we came from
         !    v_edge - Other vertex of the edge we came from
         !    seg_a, seg_b - The constraint segment endpoints
+        !    segments - The full list of constraint segments
         !    depth  - Recursion depth (for safety limit)
         !
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: tri, v_base, v_edge, seg_a, seg_b, depth
+        integer, intent(in) :: segments(:,:)
 
         integer :: v_apex, adj_tri, v_far
         integer :: new_t1, new_t2
@@ -397,7 +394,7 @@ contains
         if (v_far == v_edge) return  ! Degenerate case
 
         ! Dont flip constraint edges
-        if (is_constraint_edge_static(v_base, v_apex)) return
+        if (is_constraint_edge(v_base, v_apex, segments)) return
 
         ! Get point coordinates
         p_base = mesh%points(v_base)
@@ -420,9 +417,9 @@ contains
 
             ! Recursively fix the two new edges
             call delaunay_fixup(mesh, new_t1, v_base, v_edge, seg_a, seg_b,   &
-                                depth + 1)
+                                segments, depth + 1)
             call delaunay_fixup(mesh, new_t2, v_apex, v_edge, seg_a, seg_b,   &
-                                depth + 1)
+                                segments, depth + 1)
         end if
     end subroutine delaunay_fixup
 
@@ -536,25 +533,6 @@ contains
             new_t2 = add_triangle(mesh, v2, v1, e2)
         end if
     end subroutine flip_edge_simple
-
-    logical function is_constraint_edge_static(v1, v2) result(is_constraint)
-        !> Check if edge (v1, v2) is a constraint edge using module storage.
-        integer, intent(in) :: v1, v2
-
-        integer :: i, a, b
-
-        is_constraint = .false.
-        if (.not. allocated(current_segments)) return
-
-        do i = 1, size(current_segments, 2)
-            a = current_segments(1, i)
-            b = current_segments(2, i)
-            if (edges_match(a, b, v1, v2)) then
-                is_constraint = .true.
-                return
-            end if
-        end do
-    end function is_constraint_edge_static
 
     logical function segments_properly_intersect(p1, p2, q1, q2)              &
         result(intersect)

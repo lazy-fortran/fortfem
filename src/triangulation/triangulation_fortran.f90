@@ -148,18 +148,32 @@ contains
         type(triangulation_result_t), intent(out) :: result
 
         integer :: i, valid_points, valid_triangles
+        integer, allocatable :: vertex_map(:)
+        integer :: v1, v2, v3
 
+        allocate(vertex_map(mesh%npoints))
+        vertex_map = 0
+        
         valid_points = 0
         do i = 1, mesh%npoints
-            if (mesh%points(i)%valid) valid_points = valid_points + 1
+            if (mesh%points(i)%valid) then
+                valid_points = valid_points + 1
+                vertex_map(i) = valid_points
+            end if
         end do
 
         valid_triangles = 0
         do i = 1, mesh%ntriangles
             if (mesh%triangles(i)%valid) then
-                if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
-                        mesh%triangles(i)%vertices <= mesh%npoints)) then
-                    if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
+                v1 = mesh%triangles(i)%vertices(1)
+                v2 = mesh%triangles(i)%vertices(2)
+                v3 = mesh%triangles(i)%vertices(3)
+                
+                if (v1 >= 1 .and. v1 <= mesh%npoints .and. &
+                    v2 >= 1 .and. v2 <= mesh%npoints .and. &
+                    v3 >= 1 .and. v3 <= mesh%npoints) then
+                    
+                    if (vertex_map(v1) > 0 .and. vertex_map(v2) > 0 .and. vertex_map(v3) > 0) then
                         valid_triangles = valid_triangles + 1
                     end if
                 end if
@@ -181,51 +195,30 @@ contains
         valid_triangles = 0
         do i = 1, mesh%ntriangles
             if (mesh%triangles(i)%valid) then
-                if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
-                        mesh%triangles(i)%vertices <= mesh%npoints)) then
-                    if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
+                v1 = mesh%triangles(i)%vertices(1)
+                v2 = mesh%triangles(i)%vertices(2)
+                v3 = mesh%triangles(i)%vertices(3)
+                
+                if (v1 >= 1 .and. v1 <= mesh%npoints .and. &
+                    v2 >= 1 .and. v2 <= mesh%npoints .and. &
+                    v3 >= 1 .and. v3 <= mesh%npoints) then
+                    
+                    if (vertex_map(v1) > 0 .and. vertex_map(v2) > 0 .and. vertex_map(v3) > 0) then
                         valid_triangles = valid_triangles + 1
-                        result%triangles(1, valid_triangles) =                &
-                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(1))
-                        result%triangles(2, valid_triangles) =                &
-                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(2))
-                        result%triangles(3, valid_triangles) =                &
-                            remap_vertex_index(mesh, mesh%triangles(i)%vertices(3))
+                        result%triangles(1, valid_triangles) = vertex_map(v1)
+                        result%triangles(2, valid_triangles) = vertex_map(v2)
+                        result%triangles(3, valid_triangles) = vertex_map(v3)
                     end if
                 end if
             end if
         end do
+        
+        deallocate(vertex_map)
 
         result%segments = input_segments
         result%npoints = valid_points
         result%ntriangles = valid_triangles
     end subroutine mesh_to_result
-
-    integer function remap_vertex_index(mesh, original_idx)
-        type(mesh_t), intent(in) :: mesh
-        integer, intent(in) :: original_idx
-
-        integer :: i, valid_count
-
-        if (original_idx < 1 .or. original_idx > mesh%npoints) then
-            remap_vertex_index = -1
-            return
-        end if
-
-        if (.not. mesh%points(original_idx)%valid) then
-            remap_vertex_index = -1
-            return
-        end if
-
-        valid_count = 0
-        do i = 1, original_idx
-            if (mesh%points(i)%valid) then
-                valid_count = valid_count + 1
-            end if
-        end do
-
-        remap_vertex_index = valid_count
-    end function remap_vertex_index
 
     real(dp) function compute_min_triangle_angle(result) result(min_angle_deg)
         type(triangulation_result_t), intent(in) :: result
