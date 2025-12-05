@@ -18,7 +18,7 @@ contains
       character(len=*), intent(in) :: title_text
 
       real(dp), allocatable :: x_tri(:), y_tri(:)
-      integer :: t, v1, v2, v3, ntri_plot
+      integer :: ntri_plot
       real(dp) :: x_min, x_max, y_min, y_max, margin
 
       x_min = minval(mesh%data%vertices(1, :))
@@ -36,6 +36,26 @@ contains
       allocate (x_tri(4), y_tri(4))
 
       ntri_plot = min(mesh%data%n_triangles, fig%state%max_plots)
+      call add_mesh_triangles_to_figure(mesh, fig, ntri_plot, x_tri, y_tri)
+
+      call fig%set_xlabel("x")
+      call fig%set_ylabel("y")
+      call fig%set_title(trim(title_text))
+
+      call fig%set_xlim(x_min - margin, x_max + margin)
+      call fig%set_ylim(y_min - margin, y_max + margin)
+
+      deallocate (x_tri, y_tri)
+   end subroutine prepare_mesh_plot
+
+   subroutine add_mesh_triangles_to_figure(mesh, fig, ntri_plot, x_tri, y_tri)
+      type(mesh_t), intent(in) :: mesh
+      type(figure_t), intent(inout) :: fig
+      integer, intent(in) :: ntri_plot
+      real(dp), intent(inout) :: x_tri(:), y_tri(:)
+
+      integer :: t, v1, v2, v3
+
       do t = 1, ntri_plot
          v1 = mesh%data%triangles(1, t)
          v2 = mesh%data%triangles(2, t)
@@ -52,16 +72,7 @@ contains
 
          call fig%add_plot(x_tri, y_tri)
       end do
-
-      call fig%set_xlabel("x")
-      call fig%set_ylabel("y")
-      call fig%set_title(trim(title_text))
-
-      call fig%set_xlim(x_min - margin, x_max + margin)
-      call fig%set_ylim(y_min - margin, y_max + margin)
-
-      deallocate (x_tri, y_tri)
-   end subroutine prepare_mesh_plot
+   end subroutine add_mesh_triangles_to_figure
 
    subroutine save_mesh_figure(fig, mesh, output_filename)
       type(figure_t), intent(inout) :: fig
@@ -78,4 +89,3 @@ contains
    end subroutine save_mesh_figure
 
 end module fortfem_api_plot_mesh
-
