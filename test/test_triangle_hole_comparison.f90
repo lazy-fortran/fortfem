@@ -89,8 +89,10 @@ contains
         type(mesh_t), intent(out) :: mesh
 
         integer :: status
+        real(dp) :: hole_pts(2,1)
 
-        call triangulate_with_hole_fortran(pts, segs, hpt, result, status)
+        hole_pts(:,1) = hpt(:)
+        call triangulate_with_hole_fortran(pts, segs, hole_pts, result, status)
 
         if (status /= 0) then
             write(*,*) "Warning: triangulate_with_hole_fortran returned ",    &

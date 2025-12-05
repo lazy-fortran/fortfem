@@ -44,6 +44,7 @@ module fortfem_api
     public :: mesh_from_boundary
     public :: mesh_from_arrays
     public :: mesh_from_triangle_files
+    public :: mesh_from_domain
     public :: structured_quad_mesh
     public :: function_space
     public :: vector_function_space
@@ -649,6 +650,76 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function mesh_from_triangle_files
+
+    function mesh_from_domain(vertices, segments, hole_points, min_angle)     &
+        result(mesh)
+        !> Create a quality mesh from a PSLG (Planar Straight Line Graph).
+        !
+        !  This is the high-level builder for complex geometries. It combines
+        !  constrained Delaunay triangulation with quality refinement.
+        !
+        !  Arguments:
+        !    vertices    - Array (2, n_vertices) of boundary vertex coordinates
+        !    segments    - Array (2, n_segments) of boundary segment indices
+        !    hole_points - Optional array (2, n_holes) of hole seed points
+        !    min_angle   - Optional minimum angle constraint (default 20 degrees)
+        !
+        !  Returns:
+        !    mesh - Quality triangular mesh
+        !
+        use triangulation_fortran, only: triangulation_result_t,              &
+            triangulate_fortran, triangulate_with_hole_fortran,               &
+            triangulate_with_quality_fortran, cleanup_triangulation
+        real(dp), intent(in) :: vertices(:,:)
+        integer, intent(in) :: segments(:,:)
+        real(dp), intent(in), optional :: hole_points(:,:)
+        real(dp), intent(in), optional :: min_angle
+        type(mesh_t) :: mesh
+
+        type(triangulation_result_t) :: result
+        real(dp) :: angle
+        integer :: stat
+
+        call init_measures()
+
+        angle = 20.0_dp
+        if (present(min_angle)) angle = min_angle
+
+        if (present(hole_points)) then
+            ! Triangulate with holes first, then we would need quality refinement
+            ! For now, use basic CDT with holes (quality + holes not yet combined)
+            call triangulate_with_hole_fortran(vertices, segments, hole_points,&
+                                               result, stat)
+        else
+            ! Use quality refinement
+            call triangulate_with_quality_fortran(vertices, segments, angle,  &
+                                                  result, stat)
+        end if
+
+        if (result%ntriangles == 0) then
+            mesh%data%n_vertices = 0
+            mesh%data%n_triangles = 0
+            return
+        end if
+
+        mesh%data%n_vertices = result%npoints
+        mesh%data%n_triangles = result%ntriangles
+        mesh%data%n_quads = 0
+        mesh%data%has_triangles = .true.
+        mesh%data%has_quads = .false.
+        mesh%data%has_mixed_elements = .false.
+
+        allocate(mesh%data%vertices(2, result%npoints))
+        allocate(mesh%data%triangles(3, result%ntriangles))
+
+        mesh%data%vertices = result%points
+        mesh%data%triangles = result%triangles
+
+        call cleanup_triangulation(result)
+
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_domain
 
     ! Structured quadrilateral mesh constructor
     function structured_quad_mesh(nx, ny, x0, x1, y0, y1) result(mesh)

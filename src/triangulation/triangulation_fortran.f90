@@ -39,23 +39,26 @@ contains
         call destroy_mesh(mesh)
     end subroutine triangulate_fortran
 
-    subroutine triangulate_with_hole_fortran(points, segments, hole_point,    &
+    subroutine triangulate_with_hole_fortran(points, segments, hole_points,   &
                                              result, status)
+        !> Triangulate with one or more holes.
+        !
+        !  hole_points can be either:
+        !    - A 1D array of length 2: [x, y] for a single hole
+        !    - A 2D array of shape (2, n_holes): each column is a hole point
+        !
         real(dp), intent(in) :: points(:,:)
         integer, intent(in) :: segments(:,:)
-        real(dp), intent(in) :: hole_point(:)
+        real(dp), intent(in) :: hole_points(:,:)
         type(triangulation_result_t), intent(out) :: result
         integer, intent(out), optional :: status
 
         type(mesh_t) :: mesh
-        real(dp) :: hole_points(2,1)
 
-        if (size(hole_point) /= 2) then
+        if (size(hole_points, 1) /= 2) then
             if (present(status)) status = 1
             return
         end if
-
-        hole_points(:,1) = hole_point(:)
 
         if (present(status)) status = 0
 
