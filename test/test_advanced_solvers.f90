@@ -6,6 +6,7 @@ program test_advanced_solvers
                                         ilu_preconditioner
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
                                      spmv
+    use fortfem_umfpack_interface, only: umfpack_available
     use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
                            unit_square_mesh, function_space, dirichlet_bc, &
                            assemble_laplacian_system
@@ -741,12 +742,6 @@ contains
         real(dp) :: norm_val
         norm_val = sqrt(sum(x**2))
     end function norm
-
-    function umfpack_available() result(available)
-        logical :: available
-        ! UMFPACK is not linked in this configuration
-        available = .false.
-    end function umfpack_available
 
     subroutine test_sparse_matrix_type()
         type(sparse_matrix_t) :: As
