@@ -8,6 +8,8 @@ module fortfem_api
     use basis_p2_2d_module
     use fortfem_basis_edge_2d
     use fortfem_advanced_solvers
+    use triangle_io, only: read_triangle_mesh, write_triangle_poly_file,      &
+                           ensure_triangle_available
     implicit none
     
     private
@@ -40,6 +42,9 @@ module fortfem_api
     public :: arc_segment
     public :: l_shape_boundary
     public :: mesh_from_boundary
+    public :: mesh_from_arrays
+    public :: mesh_from_triangle_files
+    public :: mesh_from_domain
     public :: structured_quad_mesh
     public :: function_space
     public :: vector_function_space
@@ -485,67 +490,70 @@ contains
         real(dp), intent(in) :: size
         integer, intent(in) :: n
         type(boundary_t) :: boundary
-        integer :: i, idx
+        integer :: i, idx, n_per_segment
         real(dp) :: t, s
-        
+
         s = size
-        
-        ! Six-segment L-shaped outer boundary:
-        ! (0,0) -> (s,0) -> (s,s) -> (2s,s) -> (2s,2s) -> (0,2s) -> (0,0)
-        boundary%n_points = 6*n
+
+        ! Six-segment L-shaped outer boundary without duplicate corner points:
+        ! (0,0) -> (s,0) -> (s,s) -> (2s,s) -> (2s,2s) -> (0,2s) -> back to (0,0)
+        ! Each segment has n points including start but excluding end (shared)
+        ! For n=4: total is 6*(n-1) = 18 unique vertices (corners not duplicated)
+        n_per_segment = max(n - 1, 1)
+        boundary%n_points = 6 * n_per_segment
         allocate(boundary%points(2, boundary%n_points))
-        allocate(boundary%labels(boundary%n_points-1))
-        
+        allocate(boundary%labels(boundary%n_points))
+
         idx = 0
-        
-        ! Segment 1: (0,0) -> (s,0)
-        do i = 1, n
+
+        ! Segment 1: (0,0) -> (s,0), excluding endpoint
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = t * s
             boundary%points(2, idx) = 0.0_dp
         end do
-        
-        ! Segment 2: (s,0) -> (s,s)
-        do i = 1, n
+
+        ! Segment 2: (s,0) -> (s,s), excluding endpoint
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = s
             boundary%points(2, idx) = t * s
         end do
-        
-        ! Segment 3: (s,s) -> (2s,s)
-        do i = 1, n
+
+        ! Segment 3: (s,s) -> (2s,s), excluding endpoint
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = s + t * s
             boundary%points(2, idx) = s
         end do
-        
-        ! Segment 4: (2s,s) -> (2s,2s)
-        do i = 1, n
+
+        ! Segment 4: (2s,s) -> (2s,2s), excluding endpoint
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = 2.0_dp * s
             boundary%points(2, idx) = s + t * s
         end do
-        
-        ! Segment 5: (2s,2s) -> (0,2s)
-        do i = 1, n
+
+        ! Segment 5: (2s,2s) -> (0,2s), excluding endpoint
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = 2.0_dp * s - t * 2.0_dp * s
             boundary%points(2, idx) = 2.0_dp * s
         end do
-        
-        ! Segment 6: (0,2s) -> (0,0)
-        do i = 1, n
+
+        ! Segment 6: (0,2s) -> (0,0), excluding endpoint (closes to point 1)
+        do i = 0, n_per_segment - 1
             idx = idx + 1
-            t = real(i-1, dp) / real(max(n-1, 1), dp)
+            t = real(i, dp) / real(n_per_segment, dp)
             boundary%points(1, idx) = 0.0_dp
             boundary%points(2, idx) = 2.0_dp * s - t * 2.0_dp * s
         end do
-        
+
         boundary%labels = 1
         boundary%is_closed = .true.
     end function l_shape_boundary
@@ -565,7 +573,154 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function mesh_from_boundary
-    
+
+    function mesh_from_arrays(vertices, triangles) result(mesh)
+        !> Create a mesh from raw vertex and triangle arrays.
+        !
+        !  Arguments:
+        !    vertices  - Array (2, n_vertices) of x,y coordinates
+        !    triangles - Array (3, n_triangles) of vertex indices (1-based)
+        !
+        !  Returns:
+        !    mesh - Fully initialized mesh_t with connectivity
+        !
+        real(dp), intent(in) :: vertices(:,:)
+        integer, intent(in) :: triangles(:,:)
+        type(mesh_t) :: mesh
+
+        call init_measures()
+
+        mesh%data%n_vertices = size(vertices, 2)
+        mesh%data%n_triangles = size(triangles, 2)
+        mesh%data%n_quads = 0
+        mesh%data%has_triangles = .true.
+        mesh%data%has_quads = .false.
+        mesh%data%has_mixed_elements = .false.
+
+        allocate(mesh%data%vertices(2, mesh%data%n_vertices))
+        allocate(mesh%data%triangles(3, mesh%data%n_triangles))
+
+        mesh%data%vertices = vertices
+        mesh%data%triangles = triangles
+
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_arrays
+
+    function mesh_from_triangle_files(basename) result(mesh)
+        !> Load a mesh from Triangle output files (.node and .ele).
+        !
+        !  Triangle outputs meshes with numeric suffix (e.g., mesh.1.node).
+        !  This function reads both files and creates a fully initialized mesh.
+        !
+        !  Arguments:
+        !    basename - Base filename without suffix (e.g., "/tmp/mesh")
+        !
+        !  Returns:
+        !    mesh - Fully initialized mesh_t, or empty mesh if files not found
+        !
+        character(len=*), intent(in) :: basename
+        type(mesh_t) :: mesh
+
+        real(dp), allocatable :: vertices(:,:)
+        integer, allocatable :: triangles(:,:)
+        integer :: n_vertices, n_triangles, stat
+
+        call init_measures()
+
+        call read_triangle_mesh(basename, vertices, triangles,                &
+                                n_vertices, n_triangles, stat)
+
+        if (stat /= 0) then
+            mesh%data%n_vertices = 0
+            mesh%data%n_triangles = 0
+            return
+        end if
+
+        mesh%data%n_vertices = n_vertices
+        mesh%data%n_triangles = n_triangles
+        mesh%data%n_quads = 0
+        mesh%data%has_triangles = .true.
+        mesh%data%has_quads = .false.
+        mesh%data%has_mixed_elements = .false.
+
+        call move_alloc(vertices, mesh%data%vertices)
+        call move_alloc(triangles, mesh%data%triangles)
+
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_triangle_files
+
+    function mesh_from_domain(vertices, segments, hole_points, min_angle)     &
+        result(mesh)
+        !> Create a quality mesh from a PSLG (Planar Straight Line Graph).
+        !
+        !  This is the high-level builder for complex geometries. It combines
+        !  constrained Delaunay triangulation with quality refinement.
+        !
+        !  Arguments:
+        !    vertices    - Array (2, n_vertices) of boundary vertex coordinates
+        !    segments    - Array (2, n_segments) of boundary segment indices
+        !    hole_points - Optional array (2, n_holes) of hole seed points
+        !    min_angle   - Optional minimum angle constraint (default 20 degrees)
+        !
+        !  Returns:
+        !    mesh - Quality triangular mesh
+        !
+        use triangulation_fortran, only: triangulation_result_t,              &
+            triangulate_fortran, triangulate_with_hole_fortran,               &
+            triangulate_with_quality_fortran, cleanup_triangulation
+        real(dp), intent(in) :: vertices(:,:)
+        integer, intent(in) :: segments(:,:)
+        real(dp), intent(in), optional :: hole_points(:,:)
+        real(dp), intent(in), optional :: min_angle
+        type(mesh_t) :: mesh
+
+        type(triangulation_result_t) :: result
+        real(dp) :: angle
+        integer :: stat
+
+        call init_measures()
+
+        angle = 20.0_dp
+        if (present(min_angle)) angle = min_angle
+
+        if (present(hole_points)) then
+            ! Triangulate with holes first, then we would need quality refinement
+            ! For now, use basic CDT with holes (quality + holes not yet combined)
+            call triangulate_with_hole_fortran(vertices, segments, hole_points,&
+                                               result, stat)
+        else
+            ! Use quality refinement
+            call triangulate_with_quality_fortran(vertices, segments, angle,  &
+                                                  result, stat)
+        end if
+
+        if (result%ntriangles == 0) then
+            mesh%data%n_vertices = 0
+            mesh%data%n_triangles = 0
+            return
+        end if
+
+        mesh%data%n_vertices = result%npoints
+        mesh%data%n_triangles = result%ntriangles
+        mesh%data%n_quads = 0
+        mesh%data%has_triangles = .true.
+        mesh%data%has_quads = .false.
+        mesh%data%has_mixed_elements = .false.
+
+        allocate(mesh%data%vertices(2, result%npoints))
+        allocate(mesh%data%triangles(3, result%ntriangles))
+
+        mesh%data%vertices = result%points
+        mesh%data%triangles = result%triangles
+
+        call cleanup_triangulation(result)
+
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_domain
+
     ! Structured quadrilateral mesh constructor
     function structured_quad_mesh(nx, ny, x0, x1, y0, y1) result(mesh)
         integer, intent(in) :: nx, ny

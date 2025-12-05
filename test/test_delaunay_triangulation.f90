@@ -3,6 +3,8 @@ program test_delaunay_triangulation
     use triangulator, only: triangulate_points
     use triangulation_fortran, only: triangulation_result_t, triangulate_fortran, &
                                      cleanup_triangulation
+    use delaunay_types, only: point_t
+    use geometric_predicates, only: orientation, ORIENTATION_CCW, ORIENTATION_CW
     implicit none
     
     integer :: test_count = 0, passed_tests = 0
@@ -96,6 +98,8 @@ contains
         call assert_true(result%ntriangles >= 1, "Unit square: at least one triangle")
         call assert_true(all_triangles_positive(result), &
             "Unit square: triangles have positive area")
+        call assert_true(no_edge_self_intersections(result), &
+            "Unit square: triangulation edges do not intersect")
         
         call cleanup_triangulation(result)
         call end_test()
@@ -159,6 +163,8 @@ contains
         
         call assert_true(constraint_edges_preserved(result, edges), &
             "Boundary constraints: all boundary edges preserved")
+        call assert_true(no_edge_self_intersections(result), &
+            "Boundary constraints: triangulation edges do not intersect")
         
         call cleanup_triangulation(result)
         
@@ -217,6 +223,97 @@ contains
             end if
         end do
     end function all_triangles_positive
+    
+    logical function no_edge_self_intersections(result)
+        type(triangulation_result_t), intent(in) :: result
+        integer :: ntri, max_edges, ecount
+        integer, allocatable :: edges(:,:)
+        integer :: t, k, i, j
+        integer :: v1, v2, w1, w2, tmp
+        logical :: duplicate
+        
+        ntri = result%ntriangles
+        max_edges = 3 * ntri
+        allocate(edges(2, max_edges))
+        ecount = 0
+        
+        ! Collect unique undirected edges from triangles
+        do t = 1, ntri
+            do k = 1, 3
+                v1 = result%triangles(k, t)
+                v2 = result%triangles(mod(k, 3) + 1, t)
+                if (v1 == v2) cycle
+                if (v1 > v2) then
+                    tmp = v1
+                    v1 = v2
+                    v2 = tmp
+                end if
+                
+                duplicate = .false.
+                do i = 1, ecount
+                    if (edges(1, i) == v1 .and. edges(2, i) == v2) then
+                        duplicate = .true.
+                        exit
+                    end if
+                end do
+                
+                if (.not. duplicate) then
+                    ecount = ecount + 1
+                    edges(1, ecount) = v1
+                    edges(2, ecount) = v2
+                end if
+            end do
+        end do
+        
+        no_edge_self_intersections = .true.
+        
+        ! Check pairwise edge intersections, ignoring shared endpoints
+        do i = 1, ecount - 1
+            do j = i + 1, ecount
+                v1 = edges(1, i)
+                v2 = edges(2, i)
+                w1 = edges(1, j)
+                w2 = edges(2, j)
+                
+                if (v1 == w1 .or. v1 == w2 .or. v2 == w1 .or. v2 == w2) cycle
+                
+                if (segments_intersect_strict(result, v1, v2, w1, w2)) then
+                    no_edge_self_intersections = .false.
+                    exit
+                end if
+            end do
+            if (.not. no_edge_self_intersections) exit
+        end do
+        
+        deallocate(edges)
+    end function no_edge_self_intersections
+    
+    logical function segments_intersect_strict(result, a1, a2, b1, b2)
+        type(triangulation_result_t), intent(in) :: result
+        integer, intent(in) :: a1, a2, b1, b2
+        type(point_t) :: p1, p2, q1, q2
+        integer :: o1, o2, o3, o4
+        
+        p1%x = result%points(1, a1)
+        p1%y = result%points(2, a1)
+        p2%x = result%points(1, a2)
+        p2%y = result%points(2, a2)
+        q1%x = result%points(1, b1)
+        q1%y = result%points(2, b1)
+        q2%x = result%points(1, b2)
+        q2%y = result%points(2, b2)
+        
+        o1 = orientation(p1, p2, q1)
+        o2 = orientation(p1, p2, q2)
+        o3 = orientation(q1, q2, p1)
+        o4 = orientation(q1, q2, p2)
+        
+        if (o1 /= o2 .and. o3 /= o4) then
+            segments_intersect_strict = .true.
+        else
+            segments_intersect_strict = .false.
+        end if
+    end function segments_intersect_strict
     
     logical function constraint_edges_preserved(result, edges)
         type(triangulation_result_t), intent(in) :: result
