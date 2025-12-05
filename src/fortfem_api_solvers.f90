@@ -1,5 +1,5 @@
 module fortfem_api_solvers
-    use fortfem_kinds
+    use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_api_types, only: function_space_t, function_t,              &
         vector_function_t, vector_function_space_t, dirichlet_bc_t,        &
@@ -151,142 +151,179 @@ contains
         end do
     end subroutine assemble_laplacian_system
 
+    pure subroutine compute_p1_triangle_gradients(x1, y1, x2, y2, x3, y3,  &
+                                                  area, grad_x, grad_y)
+        real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
+        real(dp), intent(out) :: area
+        real(dp), intent(out) :: grad_x(3), grad_y(3)
+
+        real(dp) :: a11, a12, a21, a22, det_a
+
+        a11 = x2 - x1
+        a12 = x3 - x1
+        a21 = y2 - y1
+        a22 = y3 - y1
+
+        det_a = a11 * a22 - a12 * a21
+
+        area = 0.5_dp * abs((x2-x1) * (y3-y1) - (x3-x1) * (y2-y1))
+
+        grad_x(1) = (-a22 + a21) / det_a
+        grad_y(1) = ( a12 - a11) / det_a
+
+        grad_x(2) = a22 / det_a
+        grad_y(2) = -a12 / det_a
+
+        grad_x(3) = -a21 / det_a
+        grad_y(3) = a11 / det_a
+    end subroutine compute_p1_triangle_gradients
+
+    subroutine add_p1_triangle_contribution(space, triangle_id, K, F)
+        type(function_space_t), intent(in) :: space
+        integer, intent(in) :: triangle_id
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: v1, v2, v3
+        integer :: i, j
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: area
+        real(dp) :: bx(3), by(3), K_elem(3,3)
+
+        v1 = space%mesh%data%triangles(1, triangle_id)
+        v2 = space%mesh%data%triangles(2, triangle_id)
+        v3 = space%mesh%data%triangles(3, triangle_id)
+
+        x1 = space%mesh%data%vertices(1, v1)
+        y1 = space%mesh%data%vertices(2, v1)
+        x2 = space%mesh%data%vertices(1, v2)
+        y2 = space%mesh%data%vertices(2, v2)
+        x3 = space%mesh%data%vertices(1, v3)
+        y3 = space%mesh%data%vertices(2, v3)
+
+        call compute_p1_triangle_gradients(x1, y1, x2, y2, x3, y3, area,   &
+                                           bx, by)
+
+        do i = 1, 3
+            do j = 1, 3
+                K_elem(i, j) = area * (bx(i) * bx(j) + by(i) * by(j))
+            end do
+        end do
+
+        K(v1, v1) = K(v1, v1) + K_elem(1,1)
+        K(v1, v2) = K(v1, v2) + K_elem(1,2)
+        K(v1, v3) = K(v1, v3) + K_elem(1,3)
+        K(v2, v1) = K(v2, v1) + K_elem(2,1)
+        K(v2, v2) = K(v2, v2) + K_elem(2,2)
+        K(v2, v3) = K(v2, v3) + K_elem(2,3)
+        K(v3, v1) = K(v3, v1) + K_elem(3,1)
+        K(v3, v2) = K(v3, v2) + K_elem(3,2)
+        K(v3, v3) = K(v3, v3) + K_elem(3,3)
+
+        F(v1) = F(v1) + area / 3.0_dp
+        F(v2) = F(v2) + area / 3.0_dp
+        F(v3) = F(v3) + area / 3.0_dp
+    end subroutine add_p1_triangle_contribution
+
     subroutine assemble_laplacian_triangles(space, K, F)
         type(function_space_t), intent(in) :: space
         real(dp), intent(inout) :: K(:,:), F(:)
 
-        integer :: e, v1, v2, v3
-        integer :: i, j
-        real(dp) :: x1, y1, x2, y2, x3, y3, area
-        real(dp) :: a(2,2), det_a
-        real(dp) :: bx(3), by(3), K_elem(3,3)
+        integer :: e
 
         do e = 1, space%mesh%data%n_triangles
-            v1 = space%mesh%data%triangles(1, e)
-            v2 = space%mesh%data%triangles(2, e)
-            v3 = space%mesh%data%triangles(3, e)
-
-            x1 = space%mesh%data%vertices(1, v1)
-            y1 = space%mesh%data%vertices(2, v1)
-            x2 = space%mesh%data%vertices(1, v2)
-            y2 = space%mesh%data%vertices(2, v2)
-            x3 = space%mesh%data%vertices(1, v3)
-            y3 = space%mesh%data%vertices(2, v3)
-
-            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-
-            a(1,1) = x2 - x1
-            a(1,2) = x3 - x1
-            a(2,1) = y2 - y1
-            a(2,2) = y3 - y1
-            det_a = a(1,1) * a(2,2) - a(1,2) * a(2,1)
-
-            bx(1) = (-a(2,2) + a(2,1)) / det_a
-            by(1) = ( a(1,2) - a(1,1)) / det_a
-
-            bx(2) = a(2,2) / det_a
-            by(2) = -a(1,2) / det_a
-
-            bx(3) = -a(2,1) / det_a
-            by(3) = a(1,1) / det_a
-
-            do i = 1, 3
-                do j = 1, 3
-                    K_elem(i, j) = area * (bx(i) * bx(j) + by(i) * by(j))
-                end do
-            end do
-
-            K(v1, v1) = K(v1, v1) + K_elem(1,1)
-            K(v1, v2) = K(v1, v2) + K_elem(1,2)
-            K(v1, v3) = K(v1, v3) + K_elem(1,3)
-            K(v2, v1) = K(v2, v1) + K_elem(2,1)
-            K(v2, v2) = K(v2, v2) + K_elem(2,2)
-            K(v2, v3) = K(v2, v3) + K_elem(2,3)
-            K(v3, v1) = K(v3, v1) + K_elem(3,1)
-            K(v3, v2) = K(v3, v2) + K_elem(3,2)
-            K(v3, v3) = K(v3, v3) + K_elem(3,3)
-
-            F(v1) = F(v1) + area / 3.0_dp
-            F(v2) = F(v2) + area / 3.0_dp
-            F(v3) = F(v3) + area / 3.0_dp
+            call add_p1_triangle_contribution(space, e, K, F)
         end do
     end subroutine assemble_laplacian_triangles
 
-    subroutine assemble_laplacian_quads(space, K, F)
-        use basis_q1_quad_2d_module, only: q1_shape_functions,             &
-            q1_shape_derivatives, q1_jacobian
+    subroutine add_q1_quad_contribution(space, quad_id, K, F)
         type(function_space_t), intent(in) :: space
+        integer, intent(in) :: quad_id
         real(dp), intent(inout) :: K(:,:), F(:)
 
-        integer :: q, i, j, kx, ky
-        integer :: v_ids(4), vi
+        integer :: i, j, vi
+        integer :: v_ids(4)
         real(dp) :: coords(2,4)
+        real(dp) :: K_elem(4,4), F_elem(4)
+
+        v_ids = space%mesh%data%quads(:, quad_id)
+
+        do i = 1, 4
+            vi = v_ids(i)
+            coords(1, i) = space%mesh%data%vertices(1, vi)
+            coords(2, i) = space%mesh%data%vertices(2, vi)
+        end do
+
+        call compute_q1_quad_element(coords, K_elem, F_elem)
+
+        do i = 1, 4
+            vi = v_ids(i)
+            do j = 1, 4
+                K(vi, v_ids(j)) = K(vi, v_ids(j)) + K_elem(i, j)
+            end do
+            F(vi) = F(vi) + F_elem(i)
+        end do
+    end subroutine add_q1_quad_contribution
+
+    subroutine compute_q1_quad_element(coords, K_elem, F_elem)
+        real(dp), intent(in) :: coords(2,4)
+        real(dp), intent(out) :: K_elem(4,4), F_elem(4)
+
+        integer :: i, j, kx, ky
         real(dp) :: jac(2,2), det_jac, inv_jac(2,2)
         real(dp) :: dN_dxi(4), dN_deta(4)
         real(dp) :: grad_ref(2), grad_phys(2,4)
         real(dp) :: N(4)
         real(dp) :: xi, eta, weight
-        real(dp) :: K_elem(4,4), F_elem(4)
         logical :: success
-
         real(dp), parameter :: gauss_pts(2) = [-0.5773502691896257_dp,      &
                                                0.5773502691896257_dp]
         real(dp), parameter :: gauss_w(2) = [1.0_dp, 1.0_dp]
 
+        K_elem = 0.0_dp
+        F_elem = 0.0_dp
+        do kx = 1, 2
+            do ky = 1, 2
+                xi = gauss_pts(kx)
+                eta = gauss_pts(ky)
+
+                call q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
+                call q1_jacobian(xi, eta, coords, jac, det_jac,            &
+                                 inv_jac, success)
+
+                if (.not. success) cycle
+
+                do i = 1, 4
+                    grad_ref(1) = dN_dxi(i)
+                    grad_ref(2) = dN_deta(i)
+                    grad_phys(:, i) = matmul(transpose(inv_jac), grad_ref)
+                end do
+
+                call q1_shape_functions(xi, eta, N)
+
+                weight = det_jac * gauss_w(kx) * gauss_w(ky)
+
+                do i = 1, 4
+                    do j = 1, 4
+                        K_elem(i, j) = K_elem(i, j) + weight *             &
+                            (grad_phys(1, i) * grad_phys(1, j) +           &
+                             grad_phys(2, i) * grad_phys(2, j))
+                    end do
+                    F_elem(i) = F_elem(i) + weight * N(i)
+                end do
+            end do
+        end do
+    end subroutine compute_q1_quad_element
+
+    subroutine assemble_laplacian_quads(space, K, F)
+        type(function_space_t), intent(in) :: space
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: q
+
         if (space%mesh%data%n_quads <= 0) return
 
         do q = 1, space%mesh%data%n_quads
-            v_ids = space%mesh%data%quads(:, q)
-
-            do i = 1, 4
-                vi = v_ids(i)
-                coords(1, i) = space%mesh%data%vertices(1, vi)
-                coords(2, i) = space%mesh%data%vertices(2, vi)
-            end do
-
-            K_elem = 0.0_dp
-            F_elem = 0.0_dp
-
-            do kx = 1, 2
-                do ky = 1, 2
-                    xi = gauss_pts(kx)
-                    eta = gauss_pts(ky)
-
-                    call q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
-                    call q1_jacobian(xi, eta, coords, jac, det_jac,        &
-                                     inv_jac, success)
-
-                    if (.not. success) cycle
-
-                    do i = 1, 4
-                        grad_ref(1) = dN_dxi(i)
-                        grad_ref(2) = dN_deta(i)
-                        grad_phys(:, i) = matmul(transpose(inv_jac),       &
-                                                 grad_ref)
-                    end do
-
-                    call q1_shape_functions(xi, eta, N)
-
-                    weight = det_jac * gauss_w(kx) * gauss_w(ky)
-
-                    do i = 1, 4
-                        do j = 1, 4
-                            K_elem(i, j) = K_elem(i, j) + weight *         &
-                                (grad_phys(1, i) * grad_phys(1, j) +      &
-                                 grad_phys(2, i) * grad_phys(2, j))
-                        end do
-                        F_elem(i) = F_elem(i) + weight * N(i)
-                    end do
-                end do
-            end do
-
-            do i = 1, 4
-                vi = v_ids(i)
-                do j = 1, 4
-                    K(vi, v_ids(j)) = K(vi, v_ids(j)) + K_elem(i, j)
-                end do
-                F(vi) = F(vi) + F_elem(i)
-            end do
+            call add_q1_quad_contribution(space, q, K, F)
         end do
     end subroutine assemble_laplacian_quads
 
@@ -588,61 +625,32 @@ contains
         type(neumann_bc_t), intent(in) :: neumann_bc
         real(dp), intent(inout) :: K(:,:), F(:)
 
-        integer :: ndof, i, j, e, v1, v2, v3, vertices(3)
-        real(dp) :: x1, y1, x2, y2, x3, y3, area
-        real(dp) :: a(2,2), det_a, b(3), c(3), K_elem(3,3)
-
-        ndof = uh%space%ndof
-
         K = 0.0_dp
         F = 0.0_dp
 
+        call assemble_neumann_interior_laplacian(uh, K, F)
+        call assemble_neumann_boundary_flux(uh, neumann_bc, F)
+        call apply_mixed_dirichlet_bc(uh, dirichlet_bc, K, F)
+    end subroutine assemble_laplacian_neumann_system
+
+    subroutine assemble_neumann_interior_laplacian(uh, K, F)
+        type(function_t), intent(in) :: uh
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: e
+
         do e = 1, uh%space%mesh%data%n_triangles
-            v1 = uh%space%mesh%data%triangles(1, e)
-            v2 = uh%space%mesh%data%triangles(2, e)
-            v3 = uh%space%mesh%data%triangles(3, e)
-
-            x1 = uh%space%mesh%data%vertices(1, v1)
-            y1 = uh%space%mesh%data%vertices(2, v1)
-            x2 = uh%space%mesh%data%vertices(1, v2)
-            y2 = uh%space%mesh%data%vertices(2, v2)
-            x3 = uh%space%mesh%data%vertices(1, v3)
-            y3 = uh%space%mesh%data%vertices(2, v3)
-
-            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-
-            a(1,1) = x2 - x1
-            a(1,2) = x3 - x1
-            a(2,1) = y2 - y1
-            a(2,2) = y3 - y1
-            det_a = a(1,1)*a(2,2) - a(1,2)*a(2,1)
-
-            b(1) = (-a(2,2) + a(2,1)) / det_a
-            c(1) = ( a(1,2) - a(1,1)) / det_a
-            b(2) = a(2,2) / det_a
-            c(2) = -a(1,2) / det_a
-            b(3) = -a(2,1) / det_a
-            c(3) = a(1,1) / det_a
-
-            do i = 1, 3
-                do j = 1, 3
-                    K_elem(i,j) = (b(i)*b(j) + c(i)*c(j)) * area
-                end do
-            end do
-
-            vertices = [v1, v2, v3]
-
-            do i = 1, 3
-                do j = 1, 3
-                    K(vertices(i), vertices(j)) = K(vertices(i),            &
-                        vertices(j)) + K_elem(i,j)
-                end do
-            end do
-
-            F(v1) = F(v1) + area / 3.0_dp
-            F(v2) = F(v2) + area / 3.0_dp
-            F(v3) = F(v3) + area / 3.0_dp
+            call add_p1_triangle_contribution(uh%space, e, K, F)
         end do
+    end subroutine assemble_neumann_interior_laplacian
+
+    subroutine assemble_neumann_boundary_flux(uh, neumann_bc, F)
+        type(function_t), intent(in) :: uh
+        type(neumann_bc_t), intent(in) :: neumann_bc
+        real(dp), intent(inout) :: F(:)
+
+        integer :: e, v1, v2
+        real(dp) :: x1, x2, y1, y2, edge_length
 
         do e = 1, uh%space%mesh%data%n_edges
             if (uh%space%mesh%data%is_boundary_edge(e)) then
@@ -655,13 +663,23 @@ contains
                 if (x1 > 0.9_dp .and. x2 > 0.9_dp) then
                     y1 = uh%space%mesh%data%vertices(2, v1)
                     y2 = uh%space%mesh%data%vertices(2, v2)
-                    area = sqrt((x2-x1)**2 + (y2-y1)**2)
+                    edge_length = sqrt((x2-x1)**2 + (y2-y1)**2)
 
-                    F(v1) = F(v1) + neumann_bc%constant_value * area / 2.0_dp
-                    F(v2) = F(v2) + neumann_bc%constant_value * area / 2.0_dp
+                    F(v1) = F(v1) + neumann_bc%constant_value * edge_length &
+                        / 2.0_dp
+                    F(v2) = F(v2) + neumann_bc%constant_value * edge_length &
+                        / 2.0_dp
                 end if
             end if
         end do
+    end subroutine assemble_neumann_boundary_flux
+
+    subroutine apply_mixed_dirichlet_bc(uh, dirichlet_bc, K, F)
+        type(function_t), intent(in) :: uh
+        type(dirichlet_bc_t), intent(in) :: dirichlet_bc
+        real(dp), intent(inout) :: K(:,:), F(:)
+
+        integer :: i
 
         do i = 1, uh%space%mesh%data%n_vertices
             if (uh%space%mesh%data%is_boundary_vertex(i)) then
@@ -672,7 +690,7 @@ contains
                 end if
             end if
         end do
-    end subroutine assemble_laplacian_neumann_system
+    end subroutine apply_mixed_dirichlet_bc
 
     subroutine solve_pure_neumann_problem(uh, neumann_bc)
         type(function_t), intent(inout) :: uh
@@ -735,9 +753,7 @@ contains
         type(vector_function_t), intent(in) :: Eh
         real(dp), intent(inout) :: A(:,:), b(:)
 
-        integer :: ndof, i, j, e, v1, v2, v3, edge1, edge2, edge3
-        real(dp) :: x1, y1, x2, y2, x3, y3, area
-        real(dp) :: curl_basis_i, curl_basis_j
+        integer :: ndof, e, i
         type(edge_basis_2d_t) :: edge_basis
 
         ndof = Eh%space%ndof
@@ -748,58 +764,7 @@ contains
         call edge_basis%init(Eh%space%mesh%data)
 
         do e = 1, Eh%space%mesh%data%n_triangles
-            v1 = Eh%space%mesh%data%triangles(1, e)
-            v2 = Eh%space%mesh%data%triangles(2, e)
-            v3 = Eh%space%mesh%data%triangles(3, e)
-
-            edge1 = 3*(e-1) + 1
-            edge2 = 3*(e-1) + 2
-            edge3 = 3*(e-1) + 3
-
-            x1 = Eh%space%mesh%data%vertices(1, v1)
-            y1 = Eh%space%mesh%data%vertices(2, v1)
-            x2 = Eh%space%mesh%data%vertices(1, v2)
-            y2 = Eh%space%mesh%data%vertices(2, v2)
-            x3 = Eh%space%mesh%data%vertices(1, v3)
-            y3 = Eh%space%mesh%data%vertices(2, v3)
-
-            area = 0.5_dp * abs((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1))
-
-            do i = 1, 3
-                do j = 1, 3
-                    curl_basis_i = 1.0_dp / area
-                    curl_basis_j = 1.0_dp / area
-
-                    if (i == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
-                        if (j == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
-                            A(edge1, edge1) = A(edge1, edge1) + area       &
-                                * curl_basis_i * curl_basis_j
-                        end if
-                        if (j == 2 .and. edge2 > 0 .and. edge2 <= ndof) then
-                            A(edge1, edge2) = A(edge1, edge2) + area       &
-                                * curl_basis_i * curl_basis_j
-                        end if
-                        if (j == 3 .and. edge3 > 0 .and. edge3 <= ndof) then
-                            A(edge1, edge3) = A(edge1, edge3) + area       &
-                                * curl_basis_i * curl_basis_j
-                        end if
-                    end if
-                end do
-
-                if (i == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
-                    A(edge1, edge1) = A(edge1, edge1) + area / 3.0_dp
-                end if
-            end do
-
-            if (edge1 > 0 .and. edge1 <= ndof) then
-                b(edge1) = b(edge1) + area / 3.0_dp
-            end if
-            if (edge2 > 0 .and. edge2 <= ndof) then
-                b(edge2) = b(edge2) + area / 3.0_dp
-            end if
-            if (edge3 > 0 .and. edge3 <= ndof) then
-                b(edge3) = b(edge3) + area / 3.0_dp
-            end if
+            call add_curl_curl_triangle(Eh, ndof, e, A, b)
         end do
 
         do i = 1, ndof
@@ -810,6 +775,83 @@ contains
             end if
         end do
     end subroutine assemble_curl_curl_system
+
+    subroutine add_curl_curl_triangle(Eh, ndof, triangle_id, A, b)
+        type(vector_function_t), intent(in) :: Eh
+        integer, intent(in) :: ndof, triangle_id
+        real(dp), intent(inout) :: A(:,:), b(:)
+
+        integer :: v1, v2, v3
+        integer :: edge1, edge2, edge3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: area
+
+        v1 = Eh%space%mesh%data%triangles(1, triangle_id)
+        v2 = Eh%space%mesh%data%triangles(2, triangle_id)
+        v3 = Eh%space%mesh%data%triangles(3, triangle_id)
+
+        edge1 = 3 * (triangle_id-1) + 1
+        edge2 = 3 * (triangle_id-1) + 2
+        edge3 = 3 * (triangle_id-1) + 3
+
+        x1 = Eh%space%mesh%data%vertices(1, v1)
+        y1 = Eh%space%mesh%data%vertices(2, v1)
+        x2 = Eh%space%mesh%data%vertices(1, v2)
+        y2 = Eh%space%mesh%data%vertices(2, v2)
+        x3 = Eh%space%mesh%data%vertices(1, v3)
+        y3 = Eh%space%mesh%data%vertices(2, v3)
+
+        area = 0.5_dp * abs((x2-x1) * (y3-y1) - (x3-x1) * (y2-y1))
+
+        call accumulate_curl_curl_for_edges(edge1, edge2, edge3, ndof,      &
+                                            area, A, b)
+    end subroutine add_curl_curl_triangle
+
+    subroutine accumulate_curl_curl_for_edges(edge1, edge2, edge3, ndof,    &
+                                              area, A, b)
+        integer, intent(in) :: edge1, edge2, edge3, ndof
+        real(dp), intent(in) :: area
+        real(dp), intent(inout) :: A(:,:), b(:)
+
+        integer :: i, j
+        real(dp) :: curl_basis_i, curl_basis_j
+
+        do i = 1, 3
+            do j = 1, 3
+                curl_basis_i = 1.0_dp / area
+                curl_basis_j = 1.0_dp / area
+
+                if (i == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
+                    if (j == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
+                        A(edge1, edge1) = A(edge1, edge1) + area           &
+                            * curl_basis_i * curl_basis_j
+                    end if
+                    if (j == 2 .and. edge2 > 0 .and. edge2 <= ndof) then
+                        A(edge1, edge2) = A(edge1, edge2) + area           &
+                            * curl_basis_i * curl_basis_j
+                    end if
+                    if (j == 3 .and. edge3 > 0 .and. edge3 <= ndof) then
+                        A(edge1, edge3) = A(edge1, edge3) + area           &
+                            * curl_basis_i * curl_basis_j
+                    end if
+                end if
+            end do
+
+            if (i == 1 .and. edge1 > 0 .and. edge1 <= ndof) then
+                A(edge1, edge1) = A(edge1, edge1) + area / 3.0_dp
+            end if
+        end do
+
+        if (edge1 > 0 .and. edge1 <= ndof) then
+            b(edge1) = b(edge1) + area / 3.0_dp
+        end if
+        if (edge2 > 0 .and. edge2 <= ndof) then
+            b(edge2) = b(edge2) + area / 3.0_dp
+        end if
+        if (edge3 > 0 .and. edge3 <= ndof) then
+            b(edge3) = b(edge3) + area / 3.0_dp
+        end if
+    end subroutine accumulate_curl_curl_for_edges
 
     subroutine solve_direct_vector(A, b, x)
         real(dp), intent(in) :: A(:,:), b(:)
@@ -848,4 +890,3 @@ contains
     end subroutine solve_generic_vector_problem
 
 end module fortfem_api_solvers
-
