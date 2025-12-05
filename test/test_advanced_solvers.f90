@@ -28,6 +28,7 @@ program test_advanced_solvers
     call test_laplacian_large_system_solvers()
     call test_sparse_matrix_type()
     call test_pcg_sparse_preconditioners()
+    call test_pcg_sparse_ilu_preconditioner()
 
     call check_summary("Advanced Linear Solvers")
 
@@ -794,5 +795,40 @@ contains
 
         deallocate (Ad, b, x_dense, x_sparse)
     end subroutine test_pcg_sparse_preconditioners
+
+    subroutine test_pcg_sparse_ilu_preconditioner()
+        type(sparse_matrix_t) :: As
+        real(dp), allocatable :: Ad(:, :), b(:), x_dense(:), x_sparse(:)
+        type(solver_options_t) :: opts
+        type(solver_stats_t) :: stats_dense, stats_sparse
+        integer :: n
+        real(dp) :: error_norm
+
+        n = 200
+        call create_spd_matrix(n, Ad)
+        call sparse_from_dense(Ad, As)
+
+        allocate (b(n), x_dense(n), x_sparse(n))
+        b = 1.0_dp
+        x_dense = 0.0_dp
+        x_sparse = 0.0_dp
+
+        opts = solver_options(method="pcg", preconditioner="ilu", &
+                              tolerance=1.0e-8_dp, max_iterations=n)
+
+        call solve(Ad, b, x_dense, opts, stats_dense)
+        call solve_sparse(As, b, x_sparse, opts, stats_sparse)
+
+        call check_condition(stats_dense%converged, &
+                             "Dense PCG ILU: converged")
+        call check_condition(stats_sparse%converged, &
+                             "Sparse PCG ILU: converged")
+
+        error_norm = norm(x_dense - x_sparse)
+        call check_condition(error_norm < 1.0e-6_dp, &
+                             "Sparse PCG ILU: solution close to dense path")
+
+        deallocate (Ad, b, x_dense, x_sparse)
+    end subroutine test_pcg_sparse_ilu_preconditioner
 
 end program test_advanced_solvers
