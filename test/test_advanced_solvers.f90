@@ -1,6 +1,7 @@
 program test_advanced_solvers
     use fortfem_kinds
     use fortfem_advanced_solvers
+    use fortfem_sparse_matrix
     use check
     implicit none
 
@@ -16,6 +17,8 @@ program test_advanced_solvers
     call test_performance_comparison()
     call test_ill_conditioned_systems()
     call test_parallel_efficiency()
+    call test_sparse_matrix_type()
+    call test_pcg_sparse_preconditioners()
     
     call check_summary("Advanced Linear Solvers")
 
@@ -549,8 +552,60 @@ contains
 
     function umfpack_available() result(available)
         logical :: available
-        ! Placeholder - would check if UMFPACK is linked
+        ! UMFPACK is not linked in this configuration
         available = .false.
     end function umfpack_available
+
+    subroutine test_sparse_matrix_type()
+        type(sparse_matrix_t) :: As
+        real(dp), allocatable :: Ad(:,:), x(:), y_dense(:), y_sparse(:)
+        integer :: n, i
+
+        n = 10
+        call create_spd_matrix(n, Ad)
+        call sparse_from_dense(Ad, As)
+
+        allocate(x(n), y_dense(n), y_sparse(n))
+        x = [(real(i, dp), i=1,n)]
+
+        y_dense = matmul(Ad, x)
+        call spmv(As, x, y_sparse)
+
+        call check_condition(all(abs(y_dense - y_sparse) < 1.0e-12_dp), &
+            "Sparse matrix: spmv matches dense matmul")
+
+        deallocate(Ad, x, y_dense, y_sparse)
+    end subroutine test_sparse_matrix_type
+
+    subroutine test_pcg_sparse_preconditioners()
+        type(sparse_matrix_t) :: As
+        real(dp), allocatable :: Ad(:,:), b(:), x_dense(:), x_sparse(:)
+        type(solver_options_t) :: opts
+        type(solver_stats_t) :: stats_dense, stats_sparse
+        integer :: n
+        real(dp) :: error_norm
+
+        n = 200
+        call create_spd_matrix(n, Ad)
+        call sparse_from_dense(Ad, As)
+
+        allocate(b(n), x_dense(n), x_sparse(n))
+        b = 1.0_dp
+        x_dense = 0.0_dp
+        x_sparse = 0.0_dp
+
+        opts = solver_options(method="pcg", preconditioner="jacobi", &
+                              tolerance=1.0e-8_dp, max_iterations=n)
+        call solve(Ad, b, x_dense, opts, stats_dense)
+        call solve_sparse(As, b, x_sparse, opts, stats_sparse)
+
+        call check_condition(stats_sparse%converged, &
+            "Sparse PCG: converged with Jacobi")
+        error_norm = norm(x_dense - x_sparse)
+        call check_condition(error_norm < 1.0e-6_dp, &
+            "Sparse PCG: solution close to dense path")
+
+        deallocate(Ad, b, x_dense, x_sparse)
+    end subroutine test_pcg_sparse_preconditioners
 
 end program test_advanced_solvers
