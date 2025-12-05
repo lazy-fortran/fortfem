@@ -1,12 +1,19 @@
 program test_advanced_solvers
-    use fortfem_kinds
-    use fortfem_advanced_solvers
-    use fortfem_sparse_matrix
+    use fortfem_kinds, only: dp
+    use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
+                                        solver_options, solve, solve_sparse, &
+                                        jacobi_preconditioner, &
+                                        ilu_preconditioner
+    use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
+                                     spmv
+    use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
+                           unit_square_mesh, function_space, dirichlet_bc, &
+                           assemble_laplacian_system
     use check
     implicit none
 
-    write(*,*) "Testing advanced linear solver implementations..."
-    
+    write (*, *) "Testing advanced linear solver implementations..."
+
     call test_cg_solver()
     call test_cg_with_preconditioners()
     call test_bicgstab_solver()
@@ -17,347 +24,348 @@ program test_advanced_solvers
     call test_performance_comparison()
     call test_ill_conditioned_systems()
     call test_parallel_efficiency()
+    call test_laplacian_large_system_solvers()
     call test_sparse_matrix_type()
     call test_pcg_sparse_preconditioners()
-    
+
     call check_summary("Advanced Linear Solvers")
 
 contains
 
     ! Test Conjugate Gradient solver
     subroutine test_cg_solver()
-        real(dp), allocatable :: A(:,:), b(:), x(:), x_exact(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:), x_exact(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 100, i
         real(dp) :: residual_norm, error_norm
-        
+
         ! Create SPD test system: A = D + sparse perturbation
         call create_spd_matrix(n, A)
-        allocate(b(n), x(n), x_exact(n))
-        
+        allocate (b(n), x(n), x_exact(n))
+
         ! Set up exact solution and RHS
-        x_exact = [(real(i, dp), i=1,n)]
+        x_exact = [(real(i, dp), i=1, n)]
         b = matmul(A, x_exact)
         x = 0.0_dp  ! Initial guess
-        
+
         ! Configure CG solver
         opts = solver_options(method="cg", tolerance=1.0e-10_dp, &
-                            max_iterations=n, verbosity=0)
-        
+                              max_iterations=n, verbosity=0)
+
         ! Solve system
         call solve(A, b, x, opts, stats)
-        
+
         ! Check convergence
         call check_condition(stats%converged, &
-            "CG solver: converged")
+                             "CG solver: converged")
         call check_condition(stats%iterations < n/2, &
-            "CG solver: reasonable iteration count")
-        
+                             "CG solver: reasonable iteration count")
+
         residual_norm = norm(matmul(A, x) - b)
         error_norm = norm(x - x_exact)
-        
+
         call check_condition(residual_norm < 1.0e-7_dp, &
-            "CG solver: small residual")
+                             "CG solver: small residual")
         call check_condition(error_norm < 1.0e-6_dp, &
-            "CG solver: accurate solution")
+                             "CG solver: accurate solution")
         call check_condition(stats%final_residual < 1.0e-7_dp, &
-            "CG solver: tolerance achieved")
-        
-        write(*,*) "   CG iterations:", stats%iterations
-        write(*,*) "   CG residual:", stats%final_residual
-        write(*,*) "   Error norm:", error_norm
-        
-        deallocate(A, b, x, x_exact)
-        write(*,*) "   CG solver: all tests passed"
+                             "CG solver: tolerance achieved")
+
+        write (*, *) "   CG iterations:", stats%iterations
+        write (*, *) "   CG residual:", stats%final_residual
+        write (*, *) "   Error norm:", error_norm
+
+        deallocate (A, b, x, x_exact)
+        write (*, *) "   CG solver: all tests passed"
     end subroutine test_cg_solver
 
     ! Test CG with different preconditioners
     subroutine test_cg_with_preconditioners()
-        real(dp), allocatable :: A(:,:), b(:), x_jacobi(:), x_ilu(:)
+        real(dp), allocatable :: A(:, :), b(:), x_jacobi(:), x_ilu(:)
         type(solver_options_t) :: opts_jacobi, opts_ilu
         type(solver_stats_t) :: stats_jacobi, stats_ilu
         integer :: n = 200
-        
+
         call create_spd_matrix(n, A)
-        allocate(b(n), x_jacobi(n), x_ilu(n))
+        allocate (b(n), x_jacobi(n), x_ilu(n))
         b = 1.0_dp  ! Simple RHS
-        
+
         ! Test Jacobi preconditioned CG
         x_jacobi = 0.0_dp
         opts_jacobi = solver_options(method="pcg", preconditioner="jacobi", &
-                                   tolerance=1.0e-8_dp, max_iterations=n)
+                                     tolerance=1.0e-8_dp, max_iterations=n)
         call solve(A, b, x_jacobi, opts_jacobi, stats_jacobi)
-        
+
         call check_condition(stats_jacobi%converged, &
-            "PCG Jacobi: converged")
+                             "PCG Jacobi: converged")
         call check_condition(stats_jacobi%iterations < n, &
-            "PCG Jacobi: reasonable iterations")
-        
-        ! Test ILU preconditioned CG  
+                             "PCG Jacobi: reasonable iterations")
+
+        ! Test ILU preconditioned CG
         x_ilu = 0.0_dp
         opts_ilu = solver_options(method="pcg", preconditioner="ilu", &
-                                tolerance=1.0e-8_dp, max_iterations=n)
+                                  tolerance=1.0e-8_dp, max_iterations=n)
         call solve(A, b, x_ilu, opts_ilu, stats_ilu)
-        
+
         call check_condition(stats_ilu%converged, &
-            "PCG ILU: converged")
+                             "PCG ILU: converged")
         call check_condition(stats_ilu%iterations <= stats_jacobi%iterations, &
-            "PCG ILU: better than Jacobi")
-        
+                             "PCG ILU: better than Jacobi")
+
         ! Check both solutions are similar
         call check_condition(norm(x_jacobi - x_ilu) < 1.0e-6_dp, &
-            "PCG: consistent solutions")
-        
-        write(*,*) "   Jacobi iterations:", stats_jacobi%iterations
-        write(*,*) "   ILU iterations:", stats_ilu%iterations
-        write(*,*) "   ILU improvement factor:", &
-            real(stats_jacobi%iterations) / real(stats_ilu%iterations)
-        
-        deallocate(A, b, x_jacobi, x_ilu)
-        write(*,*) "   Preconditioned CG: all tests passed"
+                             "PCG: consistent solutions")
+
+        write (*, *) "   Jacobi iterations:", stats_jacobi%iterations
+        write (*, *) "   ILU iterations:", stats_ilu%iterations
+        write (*, *) "   ILU improvement factor:", &
+            real(stats_jacobi%iterations)/real(stats_ilu%iterations)
+
+        deallocate (A, b, x_jacobi, x_ilu)
+        write (*, *) "   Preconditioned CG: all tests passed"
     end subroutine test_cg_with_preconditioners
 
     ! Test BiCGSTAB for non-symmetric systems
     subroutine test_bicgstab_solver()
-        real(dp), allocatable :: A(:,:), b(:), x(:), x_exact(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:), x_exact(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 100, i
         real(dp) :: error_norm
-        
+
         ! Create non-symmetric test matrix
         call create_nonsymmetric_matrix(n, A)
-        allocate(b(n), x(n), x_exact(n))
-        
-        x_exact = [(1.0_dp, i=1,n)]
+        allocate (b(n), x(n), x_exact(n))
+
+        x_exact = [(1.0_dp, i=1, n)]
         b = matmul(A, x_exact)
         x = 0.0_dp
-        
+
         opts = solver_options(method="bicgstab", tolerance=1.0e-10_dp, &
-                            max_iterations=2*n)
+                              max_iterations=2*n)
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "BiCGSTAB: converged")
+                             "BiCGSTAB: converged")
         call check_condition(stats%iterations < n, &
-            "BiCGSTAB: reasonable iterations")
-        
+                             "BiCGSTAB: reasonable iterations")
+
         error_norm = norm(x - x_exact)
         call check_condition(error_norm < 1.0e-8_dp, &
-            "BiCGSTAB: accurate solution")
-        
+                             "BiCGSTAB: accurate solution")
+
         ! Test with preconditioning
         x = 0.0_dp
         opts%preconditioner = "ilu"
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "BiCGSTAB+ILU: converged")
-        
-        write(*,*) "   BiCGSTAB iterations:", stats%iterations
-        write(*,*) "   Error norm:", error_norm
-        
-        deallocate(A, b, x, x_exact)
-        write(*,*) "   BiCGSTAB solver: all tests passed"
+                             "BiCGSTAB+ILU: converged")
+
+        write (*, *) "   BiCGSTAB iterations:", stats%iterations
+        write (*, *) "   Error norm:", error_norm
+
+        deallocate (A, b, x, x_exact)
+        write (*, *) "   BiCGSTAB solver: all tests passed"
     end subroutine test_bicgstab_solver
 
     ! Test GMRES solver with restart
     subroutine test_gmres_solver()
-        real(dp), allocatable :: A(:,:), b(:), x(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 150
         real(dp) :: residual_norm
-        
+
         call create_nonsymmetric_matrix(n, A)
-        allocate(b(n), x(n))
+        allocate (b(n), x(n))
         b = 1.0_dp
         x = 0.0_dp
-        
+
         ! Test GMRES with restart
         opts = solver_options(method="gmres", tolerance=1.0e-8_dp, &
-                            max_iterations=n, restart=30)
+                              max_iterations=n, restart=30)
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "GMRES: converged")
+                             "GMRES: converged")
         call check_condition(stats%restarts >= 0, &
-            "GMRES: restart count tracked")
-        
+                             "GMRES: restart count tracked")
+
         residual_norm = norm(matmul(A, x) - b)
         call check_condition(residual_norm < 1.0e-7_dp, &
-            "GMRES: small residual")
-        
+                             "GMRES: small residual")
+
         ! Test flexible GMRES with preconditioning
         x = 0.0_dp
         opts%method = "fgmres"
         opts%preconditioner = "ilu"
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "FGMRES: converged")
-        
-        write(*,*) "   GMRES iterations:", stats%iterations
-        write(*,*) "   GMRES restarts:", stats%restarts
-        write(*,*) "   Residual norm:", residual_norm
-        
-        deallocate(A, b, x)
-        write(*,*) "   GMRES solver: all tests passed"
+                             "FGMRES: converged")
+
+        write (*, *) "   GMRES iterations:", stats%iterations
+        write (*, *) "   GMRES restarts:", stats%restarts
+        write (*, *) "   Residual norm:", residual_norm
+
+        deallocate (A, b, x)
+        write (*, *) "   GMRES solver: all tests passed"
     end subroutine test_gmres_solver
 
     ! Test direct sparse solvers
     subroutine test_direct_sparse_solvers()
-        real(dp), allocatable :: A(:,:), b(:), x_lu(:), x_umf(:)
+        real(dp), allocatable :: A(:, :), b(:), x_lu(:), x_umf(:)
         type(solver_options_t) :: opts_lu, opts_umf
         type(solver_stats_t) :: stats_lu, stats_umf
         integer :: n = 100
         real(dp) :: error_norm
-        
+
         call create_spd_matrix(n, A)
-        allocate(b(n), x_lu(n), x_umf(n))
+        allocate (b(n), x_lu(n), x_umf(n))
         b = 1.0_dp
-        
+
         ! Test sparse LU factorization
         x_lu = 0.0_dp
         opts_lu = solver_options(method="sparse_lu")
         call solve(A, b, x_lu, opts_lu, stats_lu)
-        
+
         call check_condition(stats_lu%converged, &
-            "Sparse LU: solved")
+                             "Sparse LU: solved")
         call check_condition(stats_lu%iterations == 1, &
-            "Sparse LU: direct method")
-        
+                             "Sparse LU: direct method")
+
         error_norm = norm(matmul(A, x_lu) - b)
         call check_condition(error_norm < 1.0e-12_dp, &
-            "Sparse LU: machine precision accuracy")
-        
+                             "Sparse LU: machine precision accuracy")
+
         ! Test UMFPACK if available
         if (umfpack_available()) then
             x_umf = 0.0_dp
             opts_umf = solver_options(method="umfpack")
             call solve(A, b, x_umf, opts_umf, stats_umf)
-            
+
             call check_condition(stats_umf%converged, &
-                "UMFPACK: solved")
+                                 "UMFPACK: solved")
             call check_condition(norm(x_lu - x_umf) < 1.0e-10_dp, &
-                "UMFPACK: consistent with LU")
-            
-            write(*,*) "   UMFPACK available and tested"
+                                 "UMFPACK: consistent with LU")
+
+            write (*, *) "   UMFPACK available and tested"
         else
-            write(*,*) "   UMFPACK not available, skipped"
+            write (*, *) "   UMFPACK not available, skipped"
         end if
-        
-        write(*,*) "   LU residual:", error_norm
-        
-        deallocate(A, b, x_lu, x_umf)
-        write(*,*) "   Direct sparse solvers: all tests passed"
+
+        write (*, *) "   LU residual:", error_norm
+
+        deallocate (A, b, x_lu, x_umf)
+        write (*, *) "   Direct sparse solvers: all tests passed"
     end subroutine test_direct_sparse_solvers
 
     ! Test automatic solver selection
     subroutine test_solver_selection()
-        real(dp), allocatable :: A_small(:,:), A_large(:,:), b_small(:), b_large(:)
+        real(dp), allocatable :: A_small(:, :), A_large(:, :), b_small(:), b_large(:)
         real(dp), allocatable :: x_small(:), x_large(:)
         type(solver_options_t) :: opts_auto
         type(solver_stats_t) :: stats_small, stats_large
-        
+
         ! Small system should use direct solver
         call create_spd_matrix(50, A_small)
-        allocate(b_small(50), x_small(50))
+        allocate (b_small(50), x_small(50))
         b_small = 1.0_dp
         x_small = 0.0_dp
-        
+
         opts_auto = solver_options(method="auto")
         call solve(A_small, b_small, x_small, opts_auto, stats_small)
-        
+
         call check_condition(stats_small%converged, &
-            "Auto selection: small system solved")
+                             "Auto selection: small system solved")
         call check_condition(index(stats_small%method_used, "lapack") > 0 .or. &
-                           index(stats_small%method_used, "direct") > 0, &
-            "Auto selection: direct for small system")
-        
+                             index(stats_small%method_used, "direct") > 0, &
+                             "Auto selection: direct for small system")
+
         ! Large system should use iterative solver
         call create_spd_matrix(1000, A_large)
-        allocate(b_large(1000), x_large(1000))
+        allocate (b_large(1000), x_large(1000))
         b_large = 1.0_dp
         x_large = 0.0_dp
-        
+
         call solve(A_large, b_large, x_large, opts_auto, stats_large)
-        
+
         call check_condition(stats_large%converged, &
-            "Auto selection: large system solved")
+                             "Auto selection: large system solved")
         call check_condition(index(stats_large%method_used, "cg") > 0 .or. &
-                           index(stats_large%method_used, "pcg") > 0, &
-            "Auto selection: iterative for large system")
-        
-        write(*,*) "   Small system method:", trim(stats_small%method_used)
-        write(*,*) "   Large system method:", trim(stats_large%method_used)
-        
-        deallocate(A_small, A_large, b_small, b_large, x_small, x_large)
-        write(*,*) "   Automatic solver selection: all tests passed"
+                             index(stats_large%method_used, "pcg") > 0, &
+                             "Auto selection: iterative for large system")
+
+        write (*, *) "   Small system method:", trim(stats_small%method_used)
+        write (*, *) "   Large system method:", trim(stats_large%method_used)
+
+        deallocate (A_small, A_large, b_small, b_large, x_small, x_large)
+        write (*, *) "   Automatic solver selection: all tests passed"
     end subroutine test_solver_selection
 
     ! Test convergence criteria and monitoring
     subroutine test_convergence_criteria()
-        real(dp), allocatable :: A(:,:), b(:), x(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 100
-        
+
         call create_spd_matrix(n, A)
-        allocate(b(n), x(n))
+        allocate (b(n), x(n))
         b = 1.0_dp
         x = 0.0_dp
-        
+
         ! Test absolute tolerance
         opts = solver_options(method="cg", tolerance=1.0e-6_dp, &
-                            tolerance_type="absolute")
+                              tolerance_type="absolute")
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "Convergence: absolute tolerance")
+                             "Convergence: absolute tolerance")
         call check_condition(stats%final_residual <= opts%tolerance, &
-            "Convergence: tolerance satisfied")
-        
+                             "Convergence: tolerance satisfied")
+
         ! Test relative tolerance
         x = 0.0_dp
         opts%tolerance_type = "relative"
         opts%tolerance = 1.0e-8_dp
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "Convergence: relative tolerance")
-        
+                             "Convergence: relative tolerance")
+
         ! Test maximum iterations limit
         x = 0.0_dp
         opts%max_iterations = 5
         opts%tolerance = 1.0e-12_dp
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(.not. stats%converged, &
-            "Convergence: max iterations reached")
+                             "Convergence: max iterations reached")
         call check_condition(stats%iterations == opts%max_iterations, &
-            "Convergence: iteration limit enforced")
-        
-        write(*,*) "   Final residual (abs):", stats%final_residual
-        write(*,*) "   Iterations with limit:", stats%iterations
-        
-        deallocate(A, b, x)
-        write(*,*) "   Convergence criteria: all tests passed"
+                             "Convergence: iteration limit enforced")
+
+        write (*, *) "   Final residual (abs):", stats%final_residual
+        write (*, *) "   Iterations with limit:", stats%iterations
+
+        deallocate (A, b, x)
+        write (*, *) "   Convergence criteria: all tests passed"
     end subroutine test_convergence_criteria
 
     ! Test performance comparison
     subroutine test_performance_comparison()
-        real(dp), allocatable :: A(:,:), b(:), x_direct(:), x_iter(:)
+        real(dp), allocatable :: A(:, :), b(:), x_direct(:), x_iter(:)
         type(solver_options_t) :: opts_direct, opts_iter
         type(solver_stats_t) :: stats_direct, stats_iter
         real(dp) :: time_direct, time_iter, speedup
         integer :: n = 500
-        
+
         call create_spd_matrix(n, A)
-        allocate(b(n), x_direct(n), x_iter(n))
+        allocate (b(n), x_direct(n), x_iter(n))
         b = 1.0_dp
-        
+
         ! Benchmark direct solver
         x_direct = 0.0_dp
         opts_direct = solver_options(method="lapack_lu")
@@ -365,132 +373,267 @@ contains
         call solve(A, b, x_direct, opts_direct, stats_direct)
         call cpu_time(time_direct)
         time_direct = stats_direct%solve_time
-        
+
         ! Benchmark iterative solver
         x_iter = 0.0_dp
         opts_iter = solver_options(method="pcg", preconditioner="ilu")
         call solve(A, b, x_iter, opts_iter, stats_iter)
         time_iter = stats_iter%solve_time
-        
+
         call check_condition(stats_direct%converged, &
-            "Performance: direct solver works")
+                             "Performance: direct solver works")
         call check_condition(stats_iter%converged, &
-            "Performance: iterative solver works")
-        
-        speedup = time_direct / time_iter
+                             "Performance: iterative solver works")
+
+        speedup = time_direct/time_iter
         call check_condition(norm(x_direct - x_iter) < 1.0e-5_dp, &
-            "Performance: consistent solutions")
-        
+                             "Performance: consistent solutions")
+
         ! Memory usage comparison
         call check_condition(stats_iter%memory_usage < stats_direct%memory_usage, &
-            "Performance: iterative uses less memory")
-        
-        write(*,*) "   Direct solve time:", time_direct
-        write(*,*) "   Iterative solve time:", time_iter
-        write(*,*) "   Speedup factor:", speedup
-        write(*,*) "   Memory ratio (iter/direct):", &
-            real(stats_iter%memory_usage) / real(stats_direct%memory_usage)
-        
-        deallocate(A, b, x_direct, x_iter)
-        write(*,*) "   Performance comparison: all tests passed"
+                             "Performance: iterative uses less memory")
+
+        write (*, *) "   Direct solve time:", time_direct
+        write (*, *) "   Iterative solve time:", time_iter
+        write (*, *) "   Speedup factor:", speedup
+        write (*, *) "   Memory ratio (iter/direct):", &
+            real(stats_iter%memory_usage)/real(stats_direct%memory_usage)
+
+        deallocate (A, b, x_direct, x_iter)
+        write (*, *) "   Performance comparison: all tests passed"
     end subroutine test_performance_comparison
 
     ! Test behavior on ill-conditioned systems
     subroutine test_ill_conditioned_systems()
-        real(dp), allocatable :: A(:,:), b(:), x(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 100
         real(dp) :: condition_number, residual_norm
-        
+
         ! Create ill-conditioned matrix
         call create_ill_conditioned_matrix(n, A, condition_number)
-        allocate(b(n), x(n))
+        allocate (b(n), x(n))
         b = 1.0_dp
         x = 0.0_dp
-        
+
         call check_condition(condition_number > 1.0e8_dp, &
-            "Ill-conditioned: high condition number")
-        
+                             "Ill-conditioned: high condition number")
+
         ! Test CG with preconditioning
         opts = solver_options(method="pcg", preconditioner="ilu", &
-                            tolerance=1.0e-6_dp, max_iterations=n*2)
+                              tolerance=1.0e-6_dp, max_iterations=n*2)
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged .or. stats%iterations < n*2, &
-            "Ill-conditioned: reasonable behavior")
-        
+                             "Ill-conditioned: reasonable behavior")
+
         residual_norm = norm(matmul(A, x) - b)
-        
+
         ! Even if not fully converged, should make progress
         call check_condition(residual_norm < norm(b), &
-            "Ill-conditioned: residual reduction")
-        
-        write(*,*) "   Condition number:", condition_number
-        write(*,*) "   Final residual:", residual_norm
-        write(*,*) "   Iterations used:", stats%iterations
-        
-        deallocate(A, b, x)
-        write(*,*) "   Ill-conditioned systems: all tests passed"
+                             "Ill-conditioned: residual reduction")
+
+        write (*, *) "   Condition number:", condition_number
+        write (*, *) "   Final residual:", residual_norm
+        write (*, *) "   Iterations used:", stats%iterations
+
+        deallocate (A, b, x)
+        write (*, *) "   Ill-conditioned systems: all tests passed"
     end subroutine test_ill_conditioned_systems
 
     ! Test parallel efficiency (basic)
     subroutine test_parallel_efficiency()
-        real(dp), allocatable :: A(:,:), b(:), x(:)
+        real(dp), allocatable :: A(:, :), b(:), x(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats
         integer :: n = 300
-        
+
         call create_spd_matrix(n, A)
-        allocate(b(n), x(n))
+        allocate (b(n), x(n))
         b = 1.0_dp
         x = 0.0_dp
-        
+
         ! Test parallel CG if available
         opts = solver_options(method="pcg", preconditioner="jacobi", &
-                            parallel=.true., num_threads=2)
+                              parallel=.true., num_threads=2)
         call solve(A, b, x, opts, stats)
-        
+
         call check_condition(stats%converged, &
-            "Parallel: solver converged")
-        
+                             "Parallel: solver converged")
+
         if (stats%parallel_efficiency > 0.0_dp) then
             call check_condition(stats%parallel_efficiency > 0.5_dp, &
-                "Parallel: reasonable efficiency")
-            write(*,*) "   Parallel efficiency:", stats%parallel_efficiency
+                                 "Parallel: reasonable efficiency")
+            write (*, *) "   Parallel efficiency:", stats%parallel_efficiency
         else
-            write(*,*) "   Parallel efficiency not measured"
+            write (*, *) "   Parallel efficiency not measured"
         end if
-        
-        deallocate(A, b, x)
-        write(*,*) "   Parallel efficiency: all tests passed"
+
+        deallocate (A, b, x)
+        write (*, *) "   Parallel efficiency: all tests passed"
     end subroutine test_parallel_efficiency
+
+    subroutine test_laplacian_large_system_solvers()
+        type(mesh_t) :: mesh
+        type(function_space_t) :: Vh
+        type(dirichlet_bc_t) :: bc
+        real(dp), allocatable :: K(:, :), F(:)
+        real(dp), allocatable :: x_direct(:), x_pcg(:), x_bicg(:), x_gmres(:)
+        real(dp), allocatable :: x_sparse(:)
+        type(solver_options_t) :: opts_direct, opts_pcg, opts_bicg, opts_gmres
+        type(solver_options_t) :: opts_sparse
+        type(solver_stats_t) :: stats_direct, stats_pcg, stats_bicg
+        type(solver_stats_t) :: stats_gmres, stats_sparse
+        type(sparse_matrix_t) :: K_sparse
+        real(dp) :: residual_direct, residual_pcg, residual_bicg
+        real(dp) :: residual_gmres, residual_sparse
+        real(dp) :: error_pcg, error_bicg, error_gmres, error_sparse
+        real(dp) :: target_tolerance
+        integer :: ndof, n_mesh
+
+        n_mesh = 32
+        mesh = unit_square_mesh(n_mesh)
+        Vh = function_space(mesh, "Lagrange", 1)
+        bc = dirichlet_bc(Vh, 0.0_dp)
+
+        call assemble_laplacian_system(Vh, bc, K, F)
+
+        ndof = size(F)
+        target_tolerance = 1.0e-6_dp
+
+        allocate (x_direct(ndof), x_pcg(ndof), x_bicg(ndof), x_gmres(ndof))
+        allocate (x_sparse(ndof))
+
+        x_direct = 0.0_dp
+        x_pcg = 0.0_dp
+        x_bicg = 0.0_dp
+        x_gmres = 0.0_dp
+        x_sparse = 0.0_dp
+
+        opts_direct = solver_options(method="lapack_lu", &
+                                     tolerance=1.0e-10_dp, max_iterations=ndof)
+        call solve(K, F, x_direct, opts_direct, stats_direct)
+
+        call check_condition(stats_direct%converged, &
+                             "Laplacian: direct solver converged")
+
+        residual_direct = norm(matmul(K, x_direct) - F)
+        call check_condition(residual_direct < 1.0e-8_dp, &
+                             "Laplacian: direct residual small")
+
+        opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
+                                  tolerance=target_tolerance, &
+                                  tolerance_type="absolute", &
+                                  max_iterations=5*ndof)
+        call solve(K, F, x_pcg, opts_pcg, stats_pcg)
+
+        residual_pcg = norm(matmul(K, x_pcg) - F)
+
+        call check_condition(stats_pcg%converged .or. residual_pcg <= &
+                             target_tolerance, &
+                             "Laplacian: PCG+ILU converged")
+
+        call check_condition(residual_pcg < target_tolerance, &
+                             "Laplacian: PCG residual small")
+
+        error_pcg = norm(x_pcg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_pcg < 1.0e-4_dp, &
+                             "Laplacian: PCG matches direct")
+
+        opts_bicg = solver_options(method="bicgstab", preconditioner="ilu", &
+                                   tolerance=target_tolerance, &
+                                   tolerance_type="absolute", &
+                                   max_iterations=5*ndof)
+        call solve(K, F, x_bicg, opts_bicg, stats_bicg)
+
+        residual_bicg = norm(matmul(K, x_bicg) - F)
+
+        call check_condition(stats_bicg%converged .or. residual_bicg <= &
+                             target_tolerance, &
+                             "Laplacian: BiCGSTAB+ILU converged")
+
+        call check_condition(residual_bicg < target_tolerance, &
+                             "Laplacian: BiCGSTAB residual small")
+
+        error_bicg = norm(x_bicg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_bicg < 1.0e-4_dp, &
+                             "Laplacian: BiCGSTAB matches direct")
+
+        opts_gmres = solver_options(method="gmres", tolerance=1.0e-8_dp, &
+                                    max_iterations=5*ndof, restart=50)
+        call solve(K, F, x_gmres, opts_gmres, stats_gmres)
+
+        call check_condition(stats_gmres%converged, &
+                             "Laplacian: GMRES converged")
+
+        residual_gmres = norm(matmul(K, x_gmres) - F)
+        call check_condition(residual_gmres < 1.0e-7_dp, &
+                             "Laplacian: GMRES residual small")
+
+        error_gmres = norm(x_gmres - x_direct)/max(norm(x_direct), &
+                                                   1.0e-12_dp)
+        call check_condition(error_gmres < 1.0e-4_dp, &
+                             "Laplacian: GMRES matches direct")
+
+        call sparse_from_dense(K, K_sparse)
+
+        opts_sparse = solver_options(method="pcg", preconditioner="jacobi", &
+                                     tolerance=target_tolerance, &
+                                     tolerance_type="absolute", &
+                                     max_iterations=5*ndof)
+        call solve_sparse(K_sparse, F, x_sparse, opts_sparse, stats_sparse)
+
+        residual_sparse = norm(matmul(K, x_sparse) - F)
+
+        call check_condition(stats_sparse%converged .or. residual_sparse <= &
+                             target_tolerance, &
+                             "Laplacian: sparse PCG converged")
+
+        error_sparse = norm(x_sparse - x_direct)/max(norm(x_direct), &
+                                                     1.0e-12_dp)
+        call check_condition(error_sparse < 1.0e-4_dp, &
+                             "Laplacian: sparse PCG matches direct")
+
+        call check_condition(ndof >= 400, &
+                             "Laplacian: large system DOF count")
+
+        write (*, *) "   Laplacian mesh size:", n_mesh
+        write (*, *) "   Laplacian DOFs:", ndof
+        write (*, *) "   Direct residual:", residual_direct
+        write (*, *) "   PCG iterations:", stats_pcg%iterations
+        write (*, *) "   BiCGSTAB iterations:", stats_bicg%iterations
+        write (*, *) "   GMRES iterations:", stats_gmres%iterations
+        write (*, *) "   Sparse PCG iterations:", stats_sparse%iterations
+
+        write (*, *) "   Laplacian large-system solvers: all tests passed"
+    end subroutine test_laplacian_large_system_solvers
 
     ! Helper functions for test matrix creation
 
     subroutine create_spd_matrix(n, A)
         integer, intent(in) :: n
-        real(dp), allocatable, intent(out) :: A(:,:)
+        real(dp), allocatable, intent(out) :: A(:, :)
         integer :: i, j
-        
-        allocate(A(n, n))
+
+        allocate (A(n, n))
         A = 0.0_dp
-        
+
         ! Create diagonally dominant SPD matrix - tridiagonal
         do i = 1, n
             A(i, i) = 4.0_dp
-            
+
             ! Add fixed off-diagonal terms
             if (i > 1) then
-                A(i, i-1) = -1.0_dp
-                A(i-1, i) = -1.0_dp
+                A(i, i - 1) = -1.0_dp
+                A(i - 1, i) = -1.0_dp
             end if
             if (i < n) then
-                A(i, i+1) = -1.0_dp
-                A(i+1, i) = -1.0_dp
+                A(i, i + 1) = -1.0_dp
+                A(i + 1, i) = -1.0_dp
             end if
         end do
-        
+
         ! Make sure it's well-conditioned
         do i = 1, n
             A(i, i) = A(i, i) + 0.1_dp
@@ -499,49 +642,49 @@ contains
 
     subroutine create_nonsymmetric_matrix(n, A)
         integer, intent(in) :: n
-        real(dp), allocatable, intent(out) :: A(:,:)
+        real(dp), allocatable, intent(out) :: A(:, :)
         integer :: i, j
         real(dp) :: random_val
-        
-        allocate(A(n, n))
+
+        allocate (A(n, n))
         A = 0.0_dp
-        
+
         ! Create diagonally dominant non-symmetric matrix
         do i = 1, n
             A(i, i) = real(n, dp) + 1.0_dp
-            
+
             if (i > 1) then
                 call random_number(random_val)
-                A(i, i-1) = -0.3_dp * random_val
+                A(i, i - 1) = -0.3_dp*random_val
             end if
             if (i < n) then
                 call random_number(random_val)
-                A(i, i+1) = -0.7_dp * random_val  ! Different from lower
+                A(i, i + 1) = -0.7_dp*random_val  ! Different from lower
             end if
         end do
     end subroutine create_nonsymmetric_matrix
 
     subroutine create_ill_conditioned_matrix(n, A, condition_number)
         integer, intent(in) :: n
-        real(dp), allocatable, intent(out) :: A(:,:)
+        real(dp), allocatable, intent(out) :: A(:, :)
         real(dp), intent(out) :: condition_number
         integer :: i
         real(dp) :: smallest_eigenvalue, largest_eigenvalue
-        
-        allocate(A(n, n))
+
+        allocate (A(n, n))
         A = 0.0_dp
-        
+
         ! Create matrix with wide range of eigenvalues
         smallest_eigenvalue = 1.0e-10_dp
         largest_eigenvalue = 1.0_dp
-        
+
         do i = 1, n
             A(i, i) = smallest_eigenvalue + &
-                (largest_eigenvalue - smallest_eigenvalue) * &
-                real(i-1, dp) / real(n-1, dp)
+                      (largest_eigenvalue - smallest_eigenvalue)* &
+                      real(i - 1, dp)/real(n - 1, dp)
         end do
-        
-        condition_number = largest_eigenvalue / smallest_eigenvalue
+
+        condition_number = largest_eigenvalue/smallest_eigenvalue
     end subroutine create_ill_conditioned_matrix
 
     function norm(x) result(norm_val)
@@ -558,28 +701,28 @@ contains
 
     subroutine test_sparse_matrix_type()
         type(sparse_matrix_t) :: As
-        real(dp), allocatable :: Ad(:,:), x(:), y_dense(:), y_sparse(:)
+        real(dp), allocatable :: Ad(:, :), x(:), y_dense(:), y_sparse(:)
         integer :: n, i
 
         n = 10
         call create_spd_matrix(n, Ad)
         call sparse_from_dense(Ad, As)
 
-        allocate(x(n), y_dense(n), y_sparse(n))
-        x = [(real(i, dp), i=1,n)]
+        allocate (x(n), y_dense(n), y_sparse(n))
+        x = [(real(i, dp), i=1, n)]
 
         y_dense = matmul(Ad, x)
         call spmv(As, x, y_sparse)
 
         call check_condition(all(abs(y_dense - y_sparse) < 1.0e-12_dp), &
-            "Sparse matrix: spmv matches dense matmul")
+                             "Sparse matrix: spmv matches dense matmul")
 
-        deallocate(Ad, x, y_dense, y_sparse)
+        deallocate (Ad, x, y_dense, y_sparse)
     end subroutine test_sparse_matrix_type
 
     subroutine test_pcg_sparse_preconditioners()
         type(sparse_matrix_t) :: As
-        real(dp), allocatable :: Ad(:,:), b(:), x_dense(:), x_sparse(:)
+        real(dp), allocatable :: Ad(:, :), b(:), x_dense(:), x_sparse(:)
         type(solver_options_t) :: opts
         type(solver_stats_t) :: stats_dense, stats_sparse
         integer :: n
@@ -589,7 +732,7 @@ contains
         call create_spd_matrix(n, Ad)
         call sparse_from_dense(Ad, As)
 
-        allocate(b(n), x_dense(n), x_sparse(n))
+        allocate (b(n), x_dense(n), x_sparse(n))
         b = 1.0_dp
         x_dense = 0.0_dp
         x_sparse = 0.0_dp
@@ -600,12 +743,12 @@ contains
         call solve_sparse(As, b, x_sparse, opts, stats_sparse)
 
         call check_condition(stats_sparse%converged, &
-            "Sparse PCG: converged with Jacobi")
+                             "Sparse PCG: converged with Jacobi")
         error_norm = norm(x_dense - x_sparse)
         call check_condition(error_norm < 1.0e-6_dp, &
-            "Sparse PCG: solution close to dense path")
+                             "Sparse PCG: solution close to dense path")
 
-        deallocate(Ad, b, x_dense, x_sparse)
+        deallocate (Ad, b, x_dense, x_sparse)
     end subroutine test_pcg_sparse_preconditioners
 
 end program test_advanced_solvers
