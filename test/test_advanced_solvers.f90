@@ -475,128 +475,21 @@ contains
     end subroutine test_parallel_efficiency
 
     subroutine test_laplacian_large_system_solvers()
-        type(mesh_t) :: mesh
-        type(function_space_t) :: Vh
-        type(dirichlet_bc_t) :: bc
-        real(dp), allocatable :: K(:, :), F(:)
-        real(dp), allocatable :: x_direct(:), x_pcg(:), x_bicg(:), x_gmres(:)
-        real(dp), allocatable :: x_sparse(:)
-        type(solver_options_t) :: opts_direct, opts_pcg, opts_bicg, opts_gmres
-        type(solver_options_t) :: opts_sparse
-        type(solver_stats_t) :: stats_direct, stats_pcg, stats_bicg
-        type(solver_stats_t) :: stats_gmres, stats_sparse
-        type(sparse_matrix_t) :: K_sparse
-        real(dp) :: residual_direct, residual_pcg, residual_bicg
-        real(dp) :: residual_gmres, residual_sparse
-        real(dp) :: error_pcg, error_bicg, error_gmres, error_sparse
-        real(dp) :: target_tolerance
+        real(dp), allocatable :: K(:, :), F(:), x_direct(:)
+        type(solver_stats_t) :: stats_pcg, stats_bicg, stats_gmres, stats_sparse
+        real(dp) :: residual_direct
         integer :: ndof, n_mesh
 
         n_mesh = 32
-        mesh = unit_square_mesh(n_mesh)
-        Vh = function_space(mesh, "Lagrange", 1)
-        bc = dirichlet_bc(Vh, 0.0_dp)
+        call setup_laplacian_test_system(n_mesh, K, F, x_direct, ndof, &
+                                         residual_direct)
 
-        call assemble_laplacian_system(Vh, bc, K, F)
+        call test_laplacian_pcg_ilu(K, F, x_direct, ndof, stats_pcg)
+        call test_laplacian_bicgstab_ilu(K, F, x_direct, ndof, stats_bicg)
+        call test_laplacian_gmres(K, F, x_direct, ndof, stats_gmres)
+        call test_laplacian_sparse_pcg(K, F, x_direct, ndof, stats_sparse)
 
-        ndof = size(F)
-        target_tolerance = 1.0e-6_dp
-
-        allocate (x_direct(ndof), x_pcg(ndof), x_bicg(ndof), x_gmres(ndof))
-        allocate (x_sparse(ndof))
-
-        x_direct = 0.0_dp
-        x_pcg = 0.0_dp
-        x_bicg = 0.0_dp
-        x_gmres = 0.0_dp
-        x_sparse = 0.0_dp
-
-        opts_direct = solver_options(method="lapack_lu", &
-                                     tolerance=1.0e-10_dp, max_iterations=ndof)
-        call solve(K, F, x_direct, opts_direct, stats_direct)
-
-        call check_condition(stats_direct%converged, &
-                             "Laplacian: direct solver converged")
-
-        residual_direct = norm(matmul(K, x_direct) - F)
-        call check_condition(residual_direct < 1.0e-8_dp, &
-                             "Laplacian: direct residual small")
-
-        opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
-                                  tolerance=target_tolerance, &
-                                  tolerance_type="absolute", &
-                                  max_iterations=5*ndof)
-        call solve(K, F, x_pcg, opts_pcg, stats_pcg)
-
-        residual_pcg = norm(matmul(K, x_pcg) - F)
-
-        call check_condition(stats_pcg%converged .or. residual_pcg <= &
-                             target_tolerance, &
-                             "Laplacian: PCG+ILU converged")
-
-        call check_condition(residual_pcg < target_tolerance, &
-                             "Laplacian: PCG residual small")
-
-        error_pcg = norm(x_pcg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
-        call check_condition(error_pcg < 1.0e-4_dp, &
-                             "Laplacian: PCG matches direct")
-
-        opts_bicg = solver_options(method="bicgstab", preconditioner="ilu", &
-                                   tolerance=target_tolerance, &
-                                   tolerance_type="absolute", &
-                                   max_iterations=5*ndof)
-        call solve(K, F, x_bicg, opts_bicg, stats_bicg)
-
-        residual_bicg = norm(matmul(K, x_bicg) - F)
-
-        call check_condition(stats_bicg%converged .or. residual_bicg <= &
-                             target_tolerance, &
-                             "Laplacian: BiCGSTAB+ILU converged")
-
-        call check_condition(residual_bicg < target_tolerance, &
-                             "Laplacian: BiCGSTAB residual small")
-
-        error_bicg = norm(x_bicg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
-        call check_condition(error_bicg < 1.0e-4_dp, &
-                             "Laplacian: BiCGSTAB matches direct")
-
-        opts_gmres = solver_options(method="gmres", tolerance=1.0e-8_dp, &
-                                    max_iterations=5*ndof, restart=50)
-        call solve(K, F, x_gmres, opts_gmres, stats_gmres)
-
-        call check_condition(stats_gmres%converged, &
-                             "Laplacian: GMRES converged")
-
-        residual_gmres = norm(matmul(K, x_gmres) - F)
-        call check_condition(residual_gmres < 1.0e-7_dp, &
-                             "Laplacian: GMRES residual small")
-
-        error_gmres = norm(x_gmres - x_direct)/max(norm(x_direct), &
-                                                   1.0e-12_dp)
-        call check_condition(error_gmres < 1.0e-4_dp, &
-                             "Laplacian: GMRES matches direct")
-
-        call sparse_from_dense(K, K_sparse)
-
-        opts_sparse = solver_options(method="pcg", preconditioner="jacobi", &
-                                     tolerance=target_tolerance, &
-                                     tolerance_type="absolute", &
-                                     max_iterations=5*ndof)
-        call solve_sparse(K_sparse, F, x_sparse, opts_sparse, stats_sparse)
-
-        residual_sparse = norm(matmul(K, x_sparse) - F)
-
-        call check_condition(stats_sparse%converged .or. residual_sparse <= &
-                             target_tolerance, &
-                             "Laplacian: sparse PCG converged")
-
-        error_sparse = norm(x_sparse - x_direct)/max(norm(x_direct), &
-                                                     1.0e-12_dp)
-        call check_condition(error_sparse < 1.0e-4_dp, &
-                             "Laplacian: sparse PCG matches direct")
-
-        call check_condition(ndof >= 400, &
-                             "Laplacian: large system DOF count")
+        call check_condition(ndof >= 400, "Laplacian: large system DOF count")
 
         write (*, *) "   Laplacian mesh size:", n_mesh
         write (*, *) "   Laplacian DOFs:", ndof
@@ -608,6 +501,162 @@ contains
 
         write (*, *) "   Laplacian large-system solvers: all tests passed"
     end subroutine test_laplacian_large_system_solvers
+
+    subroutine setup_laplacian_test_system(n_mesh, K, F, x_direct, ndof, &
+                                           residual_direct)
+        integer, intent(in) :: n_mesh
+        real(dp), allocatable, intent(out) :: K(:, :), F(:), x_direct(:)
+        integer, intent(out) :: ndof
+        real(dp), intent(out) :: residual_direct
+
+        type(mesh_t) :: mesh
+        type(function_space_t) :: Vh
+        type(dirichlet_bc_t) :: bc
+        type(solver_options_t) :: opts_direct
+        type(solver_stats_t) :: stats_direct
+
+        mesh = unit_square_mesh(n_mesh)
+        Vh = function_space(mesh, "Lagrange", 1)
+        bc = dirichlet_bc(Vh, 0.0_dp)
+
+        call assemble_laplacian_system(Vh, bc, K, F)
+        ndof = size(F)
+
+        allocate (x_direct(ndof))
+        x_direct = 0.0_dp
+
+        opts_direct = solver_options(method="lapack_lu", &
+                                     tolerance=1.0e-10_dp, max_iterations=ndof)
+        call solve(K, F, x_direct, opts_direct, stats_direct)
+
+        call check_condition(stats_direct%converged, &
+                             "Laplacian: direct solver converged")
+
+        residual_direct = norm(matmul(K, x_direct) - F)
+        call check_condition(residual_direct < 1.0e-8_dp, &
+                             "Laplacian: direct residual small")
+    end subroutine setup_laplacian_test_system
+
+    subroutine test_laplacian_pcg_ilu(K, F, x_direct, ndof, stats_pcg)
+        real(dp), intent(in) :: K(:, :), F(:), x_direct(:)
+        integer, intent(in) :: ndof
+        type(solver_stats_t), intent(out) :: stats_pcg
+
+        real(dp), allocatable :: x_pcg(:)
+        type(solver_options_t) :: opts_pcg
+        real(dp) :: residual_pcg, error_pcg, target_tolerance
+
+        target_tolerance = 1.0e-6_dp
+        allocate (x_pcg(ndof))
+        x_pcg = 0.0_dp
+
+        opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
+                                  tolerance=target_tolerance, &
+                                  tolerance_type="absolute", &
+                                  max_iterations=5*ndof)
+        call solve(K, F, x_pcg, opts_pcg, stats_pcg)
+
+        residual_pcg = norm(matmul(K, x_pcg) - F)
+        call check_condition(stats_pcg%converged .or. &
+                             residual_pcg <= target_tolerance, &
+                             "Laplacian: PCG+ILU converged")
+        call check_condition(residual_pcg < target_tolerance, &
+                             "Laplacian: PCG residual small")
+
+        error_pcg = norm(x_pcg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_pcg < 1.0e-4_dp, &
+                             "Laplacian: PCG matches direct")
+    end subroutine test_laplacian_pcg_ilu
+
+    subroutine test_laplacian_bicgstab_ilu(K, F, x_direct, ndof, stats_bicg)
+        real(dp), intent(in) :: K(:, :), F(:), x_direct(:)
+        integer, intent(in) :: ndof
+        type(solver_stats_t), intent(out) :: stats_bicg
+
+        real(dp), allocatable :: x_bicg(:)
+        type(solver_options_t) :: opts_bicg
+        real(dp) :: residual_bicg, error_bicg, target_tolerance
+
+        target_tolerance = 1.0e-6_dp
+        allocate (x_bicg(ndof))
+        x_bicg = 0.0_dp
+
+        opts_bicg = solver_options(method="bicgstab", preconditioner="ilu", &
+                                   tolerance=target_tolerance, &
+                                   tolerance_type="absolute", &
+                                   max_iterations=5*ndof)
+        call solve(K, F, x_bicg, opts_bicg, stats_bicg)
+
+        residual_bicg = norm(matmul(K, x_bicg) - F)
+        call check_condition(stats_bicg%converged .or. &
+                             residual_bicg <= target_tolerance, &
+                             "Laplacian: BiCGSTAB+ILU converged")
+        call check_condition(residual_bicg < target_tolerance, &
+                             "Laplacian: BiCGSTAB residual small")
+
+        error_bicg = norm(x_bicg - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_bicg < 1.0e-4_dp, &
+                             "Laplacian: BiCGSTAB matches direct")
+    end subroutine test_laplacian_bicgstab_ilu
+
+    subroutine test_laplacian_gmres(K, F, x_direct, ndof, stats_gmres)
+        real(dp), intent(in) :: K(:, :), F(:), x_direct(:)
+        integer, intent(in) :: ndof
+        type(solver_stats_t), intent(out) :: stats_gmres
+
+        real(dp), allocatable :: x_gmres(:)
+        type(solver_options_t) :: opts_gmres
+        real(dp) :: residual_gmres, error_gmres
+
+        allocate (x_gmres(ndof))
+        x_gmres = 0.0_dp
+
+        opts_gmres = solver_options(method="gmres", tolerance=1.0e-8_dp, &
+                                    max_iterations=5*ndof, restart=50)
+        call solve(K, F, x_gmres, opts_gmres, stats_gmres)
+
+        call check_condition(stats_gmres%converged, "Laplacian: GMRES converged")
+
+        residual_gmres = norm(matmul(K, x_gmres) - F)
+        call check_condition(residual_gmres < 1.0e-7_dp, &
+                             "Laplacian: GMRES residual small")
+
+        error_gmres = norm(x_gmres - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_gmres < 1.0e-4_dp, &
+                             "Laplacian: GMRES matches direct")
+    end subroutine test_laplacian_gmres
+
+    subroutine test_laplacian_sparse_pcg(K, F, x_direct, ndof, stats_sparse)
+        real(dp), intent(in) :: K(:, :), F(:), x_direct(:)
+        integer, intent(in) :: ndof
+        type(solver_stats_t), intent(out) :: stats_sparse
+
+        real(dp), allocatable :: x_sparse(:)
+        type(solver_options_t) :: opts_sparse
+        type(sparse_matrix_t) :: K_sparse
+        real(dp) :: residual_sparse, error_sparse, target_tolerance
+
+        target_tolerance = 1.0e-6_dp
+        allocate (x_sparse(ndof))
+        x_sparse = 0.0_dp
+
+        call sparse_from_dense(K, K_sparse)
+
+        opts_sparse = solver_options(method="pcg", preconditioner="jacobi", &
+                                     tolerance=target_tolerance, &
+                                     tolerance_type="absolute", &
+                                     max_iterations=5*ndof)
+        call solve_sparse(K_sparse, F, x_sparse, opts_sparse, stats_sparse)
+
+        residual_sparse = norm(matmul(K, x_sparse) - F)
+        call check_condition(stats_sparse%converged .or. &
+                             residual_sparse <= target_tolerance, &
+                             "Laplacian: sparse PCG converged")
+
+        error_sparse = norm(x_sparse - x_direct)/max(norm(x_direct), 1.0e-12_dp)
+        call check_condition(error_sparse < 1.0e-4_dp, &
+                             "Laplacian: sparse PCG matches direct")
+    end subroutine test_laplacian_sparse_pcg
 
     ! Helper functions for test matrix creation
 
