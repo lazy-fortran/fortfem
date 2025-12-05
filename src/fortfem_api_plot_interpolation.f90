@@ -215,6 +215,16 @@ contains
       val = uh%values(nearest_vertex)
    end function find_nearest_value
 
+   pure subroutine quad_shape_functions(xi_ref, eta_ref, N)
+      real(dp), intent(in) :: xi_ref, eta_ref
+      real(dp), intent(out) :: N(4)
+
+      N(1) = 0.25_dp*(1.0_dp - xi_ref)*(1.0_dp - eta_ref)
+      N(2) = 0.25_dp*(1.0_dp + xi_ref)*(1.0_dp - eta_ref)
+      N(3) = 0.25_dp*(1.0_dp + xi_ref)*(1.0_dp + eta_ref)
+      N(4) = 0.25_dp*(1.0_dp - xi_ref)*(1.0_dp + eta_ref)
+   end subroutine quad_shape_functions
+
    pure function interpolate_quad_value(uh, x, y) result(val)
       type(function_t), intent(in) :: uh
       real(dp), intent(in) :: x, y
@@ -246,10 +256,7 @@ contains
                xi_ref = 2.0_dp*(x - xc)/(x2 - x1)
                eta_ref = 2.0_dp*(y - yc)/(y2 - y1)
 
-               N(1) = 0.25_dp*(1.0_dp - xi_ref)*(1.0_dp - eta_ref)
-               N(2) = 0.25_dp*(1.0_dp + xi_ref)*(1.0_dp - eta_ref)
-               N(3) = 0.25_dp*(1.0_dp + xi_ref)*(1.0_dp + eta_ref)
-               N(4) = 0.25_dp*(1.0_dp - xi_ref)*(1.0_dp + eta_ref)
+               call quad_shape_functions(xi_ref, eta_ref, N)
 
                val = 0.0_dp
                do k = 1, 4
@@ -270,4 +277,3 @@ contains
    end function interpolate_quad_value
 
 end module fortfem_api_plot_interpolation
-
