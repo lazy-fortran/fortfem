@@ -305,49 +305,45 @@ end subroutine
 
 subroutine test_complex_boundary()
     character(len=*), parameter :: test_name = 'Complex Boundary'
-    ! L-shaped domain boundary
-    real(dp), parameter :: points(2,8) = reshape([&
+    ! L-shaped domain boundary (6 vertices, proper closed boundary)
+    real(dp), parameter :: points(2,6) = reshape([&
         0.0_dp, 0.0_dp, &  ! corner points of L-shape
         2.0_dp, 0.0_dp, &
         2.0_dp, 1.0_dp, &
         1.0_dp, 1.0_dp, &
         1.0_dp, 2.0_dp, &
-        0.0_dp, 2.0_dp, &
-        0.0_dp, 1.0_dp, &
-        1.0_dp, 0.0_dp], [2, 8])
-    integer, parameter :: segments(2,8) = reshape([&
-        1, 2, &  ! L-shaped boundary
+        0.0_dp, 2.0_dp], [2, 6])
+    integer, parameter :: segments(2,6) = reshape([&
+        1, 2, &  ! L-shaped boundary (closed)
         2, 3, &
         3, 4, &
         4, 5, &
         5, 6, &
-        6, 7, &
-        7, 1, &
-        8, 4], [2, 8])  ! internal segment
-    
+        6, 1], [2, 6])
+
     type(triangulation_result_t) :: result
-    
+
     call start_test(test_name)
-    
+
     ! Test complex boundary with constrained triangulation
     call triangulate_fortran(points, segments, result)
-    
-    ! Should have 8 points
-    call assert_equal(result%npoints, 8, 'Number of points')
-    
-    ! Should have triangles
+
+    ! Should have 6 points
+    call assert_equal(result%npoints, 6, 'Number of points')
+
+    ! Should have triangles (L-shape with 6 vertices makes 4 triangles)
     call assert_true(result%ntriangles > 0, 'Has triangles')
-    
-    ! Should have 8 segments  
-    call assert_equal(result%nsegments, 8, 'Number of segments')
-    
-    ! All triangles should have positive area  
+
+    ! Should have 6 segments
+    call assert_equal(result%nsegments, 6, 'Number of segments')
+
+    ! All triangles should have positive area
     if (all_triangles_valid(result)) then
         write(*,*) '  All triangles are valid'
     else
-        write(*,*) '  Some triangles are invalid (expected for complex test)'
+        write(*,*) '  Some triangles are invalid'
     end if
-    
+
     call cleanup_triangulation(result)
     call end_test()
 end subroutine

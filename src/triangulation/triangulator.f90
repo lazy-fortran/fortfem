@@ -1,7 +1,8 @@
 module triangulator
-    ! Clean interface between FortFEM mesh API and Delaunay triangulation backend
+    ! Clean interface between FortFEM mesh API and triangulation backends
     use fortfem_kinds, only: dp
-    use triangulation_fortran
+    use triangulation_fortran, only: triangulation_result_t, triangulate_fortran, &
+                                     cleanup_triangulation
     implicit none
     
     private
@@ -11,7 +12,8 @@ contains
 
     subroutine triangulate_boundary(boundary_points, segments, mesh_points, &
                                    mesh_triangles, n_points, n_triangles)
-        !> Triangulate a boundary defined by points and segments
+        !> Triangulate a boundary defined by points and segments using
+        !  constrained Delaunay triangulation (Triangle algorithm).
         real(dp), intent(in) :: boundary_points(:,:)    ! (2, n_boundary_points)
         integer, intent(in) :: segments(:,:)            ! (2, n_segments)
         real(dp), allocatable, intent(out) :: mesh_points(:,:)     ! (2, n_points)
@@ -20,22 +22,17 @@ contains
         
         type(triangulation_result_t) :: result
         
-        ! Call constrained Delaunay triangulation
         call triangulate_fortran(boundary_points, segments, result)
         
-        ! Extract results
         n_points = result%npoints
         n_triangles = result%ntriangles
         
-        ! Allocate output arrays
         allocate(mesh_points(2, n_points))
         allocate(mesh_triangles(3, n_triangles))
         
-        ! Copy results
         mesh_points = result%points(:, 1:n_points)
         mesh_triangles = result%triangles(:, 1:n_triangles)
         
-        ! Cleanup
         call cleanup_triangulation(result)
         
     end subroutine triangulate_boundary
@@ -51,25 +48,19 @@ contains
         type(triangulation_result_t) :: result
         integer, allocatable :: empty_segments(:,:)
         
-        ! No segments for unconstrained triangulation
         allocate(empty_segments(2, 0))
         
-        ! Call triangulation
         call triangulate_fortran(input_points, empty_segments, result)
         
-        ! Extract results
         n_points = result%npoints
         n_triangles = result%ntriangles
         
-        ! Allocate output arrays
         allocate(mesh_points(2, n_points))
         allocate(mesh_triangles(3, n_triangles))
         
-        ! Copy results
         mesh_points = result%points(:, 1:n_points)
         mesh_triangles = result%triangles(:, 1:n_triangles)
         
-        ! Cleanup
         call cleanup_triangulation(result)
         deallocate(empty_segments)
         
