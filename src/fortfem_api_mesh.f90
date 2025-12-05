@@ -1,5 +1,5 @@
 module fortfem_api_mesh
-    use fortfem_kinds
+    use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_boundary, only: boundary_t
     use triangle_io, only: read_triangle_mesh
@@ -42,56 +42,71 @@ contains
         type(function_t), intent(in) :: solution
         real(dp), intent(out) :: indicators(:)
 
-        integer :: e, v1, v2, v3
-        real(dp) :: x1, y1, x2, y2, x3, y3
-        real(dp) :: a(2,2), det_a
-        real(dp) :: b(3), c(3)
-        real(dp) :: u1, u2, u3
-        real(dp) :: gradx, grady
+        integer :: e
 
         if (size(indicators) /= mesh%data%n_triangles) then
             error stop "compute_gradient_indicators: size mismatch"
         end if
 
         do e = 1, mesh%data%n_triangles
-            v1 = mesh%data%triangles(1, e)
-            v2 = mesh%data%triangles(2, e)
-            v3 = mesh%data%triangles(3, e)
-
-            x1 = mesh%data%vertices(1, v1)
-            y1 = mesh%data%vertices(2, v1)
-            x2 = mesh%data%vertices(1, v2)
-            y2 = mesh%data%vertices(2, v2)
-            x3 = mesh%data%vertices(1, v3)
-            y3 = mesh%data%vertices(2, v3)
-
-            a(1,1) = x2 - x1
-            a(1,2) = x3 - x1
-            a(2,1) = y2 - y1
-            a(2,2) = y3 - y1
-
-            det_a = a(1,1) * a(2,2) - a(1,2) * a(2,1)
-            if (abs(det_a) < 1.0e-14_dp) then
-                indicators(e) = 0.0_dp
-            else
-                b(1) = (-a(2,2) + a(2,1)) / det_a
-                c(1) = ( a(1,2) - a(1,1)) / det_a
-                b(2) = a(2,2) / det_a
-                c(2) = -a(1,2) / det_a
-                b(3) = -a(2,1) / det_a
-                c(3) = a(1,1) / det_a
-
-                u1 = solution%values(v1)
-                u2 = solution%values(v2)
-                u3 = solution%values(v3)
-
-                gradx = b(1) * u1 + b(2) * u2 + b(3) * u3
-                grady = c(1) * u1 + c(2) * u2 + c(3) * u3
-
-                indicators(e) = sqrt(gradx * gradx + grady * grady)
-            end if
+            call compute_element_gradient_indicator(mesh, solution, e,      &
+                indicators(e))
         end do
     end subroutine compute_gradient_indicators
+
+    pure subroutine compute_element_gradient_indicator(mesh, solution,      &
+        element_index, indicator)
+        type(mesh_t), intent(in) :: mesh
+        type(function_t), intent(in) :: solution
+        integer, intent(in) :: element_index
+        real(dp), intent(out) :: indicator
+
+        integer :: v1, v2, v3
+        real(dp) :: x1, y1, x2, y2, x3, y3
+        real(dp) :: a(2,2), det_a
+        real(dp) :: b(3), c(3)
+        real(dp) :: u1, u2, u3
+        real(dp) :: gradx, grady
+
+        v1 = mesh%data%triangles(1, element_index)
+        v2 = mesh%data%triangles(2, element_index)
+        v3 = mesh%data%triangles(3, element_index)
+
+        x1 = mesh%data%vertices(1, v1)
+        y1 = mesh%data%vertices(2, v1)
+        x2 = mesh%data%vertices(1, v2)
+        y2 = mesh%data%vertices(2, v2)
+        x3 = mesh%data%vertices(1, v3)
+        y3 = mesh%data%vertices(2, v3)
+
+        a(1,1) = x2 - x1
+        a(1,2) = x3 - x1
+        a(2,1) = y2 - y1
+        a(2,2) = y3 - y1
+
+        det_a = a(1,1) * a(2,2) - a(1,2) * a(2,1)
+
+        if (abs(det_a) < 1.0e-14_dp) then
+            indicator = 0.0_dp
+            return
+        end if
+
+        b(1) = (-a(2,2) + a(2,1)) / det_a
+        c(1) = ( a(1,2) - a(1,1)) / det_a
+        b(2) = a(2,2) / det_a
+        c(2) = -a(1,2) / det_a
+        b(3) = -a(2,1) / det_a
+        c(3) = a(1,1) / det_a
+
+        u1 = solution%values(v1)
+        u2 = solution%values(v2)
+        u3 = solution%values(v3)
+
+        gradx = b(1) * u1 + b(2) * u2 + b(3) * u3
+        grady = c(1) * u1 + c(2) * u2 + c(3) * u3
+
+        indicator = sqrt(gradx * gradx + grady * grady)
+    end subroutine compute_element_gradient_indicator
 
     function unit_square_mesh(n) result(mesh)
         integer, intent(in) :: n
@@ -195,21 +210,29 @@ contains
             boundary%points(2, idx) = domain(4) - t * (domain(4) - domain(3))
         end do
 
-        do i = 1, n-1
-            boundary%labels(i) = 1
-        end do
-        do i = n, 2*n-2
-            boundary%labels(i) = 2
-        end do
-        do i = 2*n-1, 3*n-3
-            boundary%labels(i) = 3
-        end do
-        do i = 3*n-2, 4*n-1
-            boundary%labels(i) = 4
-        end do
+        call set_rectangle_boundary_labels(boundary, n)
 
         boundary%is_closed = .true.
     end function rectangle_boundary
+
+    pure subroutine set_rectangle_boundary_labels(boundary, n)
+        type(boundary_t), intent(inout) :: boundary
+        integer, intent(in) :: n
+        integer :: i
+
+        do i = 1, n - 1
+            boundary%labels(i) = 1
+        end do
+        do i = n, 2*n - 2
+            boundary%labels(i) = 2
+        end do
+        do i = 2*n - 1, 3*n - 3
+            boundary%labels(i) = 3
+        end do
+        do i = 3*n - 2, 4*n - 1
+            boundary%labels(i) = 4
+        end do
+    end subroutine set_rectangle_boundary_labels
 
     function line_segment(p1, p2, n) result(boundary)
         real(dp), intent(in) :: p1(2), p2(2)
@@ -268,8 +291,8 @@ contains
         real(dp), intent(in) :: size
         integer, intent(in) :: n
         type(boundary_t) :: boundary
-        integer :: i, idx, n_per_segment
-        real(dp) :: t, s
+        integer :: idx, n_per_segment
+        real(dp) :: s
 
         s = size
 
@@ -280,51 +303,39 @@ contains
 
         idx = 0
 
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = t * s
-            boundary%points(2, idx) = 0.0_dp
-        end do
-
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = s
-            boundary%points(2, idx) = t * s
-        end do
-
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = s + t * s
-            boundary%points(2, idx) = s
-        end do
-
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = 2.0_dp * s
-            boundary%points(2, idx) = s + t * s
-        end do
-
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = 2.0_dp * s - t * 2.0_dp * s
-            boundary%points(2, idx) = 2.0_dp * s
-        end do
-
-        do i = 0, n_per_segment - 1
-            idx = idx + 1
-            t = real(i, dp) / real(n_per_segment, dp)
-            boundary%points(1, idx) = 0.0_dp
-            boundary%points(2, idx) = 2.0_dp * s - t * 2.0_dp * s
-        end do
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 0.0_dp, 0.0_dp, s, 0.0_dp)
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 s, 0.0_dp, 0.0_dp, s)
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 s, s, s, 0.0_dp)
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 2.0_dp * s, s, 0.0_dp, s)
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 2.0_dp * s, 2.0_dp * s, -2.0_dp * s, 0.0_dp)
+        call add_l_shape_segment(boundary%points, idx, n_per_segment,       &
+                                 0.0_dp, 2.0_dp * s, 0.0_dp, -2.0_dp * s)
 
         boundary%labels = 1
         boundary%is_closed = .true.
     end function l_shape_boundary
+
+    pure subroutine add_l_shape_segment(points, idx, n_per_segment,        &
+        start_x, start_y, dx, dy)
+        real(dp), intent(inout) :: points(:,:)
+        integer, intent(inout) :: idx
+        integer, intent(in) :: n_per_segment
+        real(dp), intent(in) :: start_x, start_y, dx, dy
+        integer :: i
+        real(dp) :: t
+
+        do i = 0, n_per_segment - 1
+            idx = idx + 1
+            t = real(i, dp) / real(n_per_segment, dp)
+            points(1, idx) = start_x + dx * t
+            points(2, idx) = start_y + dy * t
+        end do
+    end subroutine add_l_shape_segment
 
     function mesh_from_boundary(boundary, resolution) result(mesh)
         type(boundary_t), intent(in) :: boundary
@@ -348,12 +359,8 @@ contains
 
         call init_measures()
 
-        mesh%data%n_vertices = size(vertices, 2)
-        mesh%data%n_triangles = size(triangles, 2)
-        mesh%data%n_quads = 0
-        mesh%data%has_triangles = .true.
-        mesh%data%has_quads = .false.
-        mesh%data%has_mixed_elements = .false.
+        call set_triangle_mesh_metadata(mesh, size(vertices, 2),            &
+                                        size(triangles, 2))
 
         allocate(mesh%data%vertices(2, mesh%data%n_vertices))
         allocate(mesh%data%triangles(3, mesh%data%n_triangles))
@@ -398,6 +405,19 @@ contains
         call mesh%data%find_boundary()
     end function mesh_from_triangle_files
 
+    pure subroutine set_triangle_mesh_metadata(mesh, n_vertices,           &
+        n_triangles)
+        type(mesh_t), intent(inout) :: mesh
+        integer, intent(in) :: n_vertices, n_triangles
+
+        mesh%data%n_vertices = n_vertices
+        mesh%data%n_triangles = n_triangles
+        mesh%data%n_quads = 0
+        mesh%data%has_triangles = .true.
+        mesh%data%has_quads = .false.
+        mesh%data%has_mixed_elements = .false.
+    end subroutine set_triangle_mesh_metadata
+
     function mesh_from_domain(vertices, segments, hole_points, min_angle)   &
         result(mesh)
         use triangulation_fortran, only: triangulation_result_t,            &
@@ -432,15 +452,11 @@ contains
             return
         end if
 
-        mesh%data%n_vertices = result%npoints
-        mesh%data%n_triangles = result%ntriangles
-        mesh%data%n_quads = 0
-        mesh%data%has_triangles = .true.
-        mesh%data%has_quads = .false.
-        mesh%data%has_mixed_elements = .false.
+        call set_triangle_mesh_metadata(mesh, result%npoints,               &
+                                        result%ntriangles)
 
-        allocate(mesh%data%vertices(2, result%npoints))
-        allocate(mesh%data%triangles(3, result%ntriangles))
+        allocate(mesh%data%vertices(2, mesh%data%n_vertices))
+        allocate(mesh%data%triangles(3, mesh%data%n_triangles))
 
         mesh%data%vertices = result%points
         mesh%data%triangles = result%triangles
@@ -571,4 +587,3 @@ contains
     end subroutine find_triangle_edges
 
 end module fortfem_api_mesh
-
