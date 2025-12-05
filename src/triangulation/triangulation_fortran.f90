@@ -3,6 +3,7 @@ module triangulation_fortran
     use delaunay_types
     use bowyer_watson
     use constrained_delaunay
+    use mesh_refinement, only: refine_delaunay
     implicit none
 
     private
@@ -72,9 +73,37 @@ contains
         type(triangulation_result_t), intent(out) :: result
         integer, intent(out), optional :: status
 
+        type(mesh_t) :: mesh
+        integer, allocatable :: cdt_segments(:,:)
+        integer, allocatable :: empty_segments(:,:)
         real(dp) :: min_angle_measured
+        real(dp) :: max_area
 
-        call triangulate_fortran(points, segments, result, status)
+        if (present(status)) status = 0
+
+        ! Build constrained Delaunay triangulation and capture the final
+        ! constraint segment set (including any Steiner splits).
+        call constrained_delaunay_triangulate(points, segments, mesh,         &
+                                             final_segments=cdt_segments)
+
+        ! Use angle-based refinement only for now; disable area constraint
+        ! by setting max_area to a very large value.
+        max_area = huge(1.0_dp)
+
+        if (allocated(cdt_segments)) then
+            call refine_delaunay(mesh, cdt_segments, min_angle, max_area)
+        else
+            ! Unconstrained case: refine using an empty segment set so that
+            ! only angle/area criteria drive refinement.
+            allocate(empty_segments(2, 0))
+            call refine_delaunay(mesh, empty_segments, min_angle, max_area)
+            deallocate(empty_segments)
+        end if
+
+        call mesh_to_result(mesh, segments, result)
+        call destroy_mesh(mesh)
+
+        if (allocated(cdt_segments)) deallocate(cdt_segments)
 
         min_angle_measured = compute_min_triangle_angle(result)
 

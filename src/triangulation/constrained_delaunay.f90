@@ -31,7 +31,7 @@ contains
 
     subroutine constrained_delaunay_triangulate(input_points,                 &
                                                constraint_segments, mesh,     &
-                                               hole_points)
+                                               hole_points, final_segments)
         !> Constrained Delaunay triangulation with robust predicates.
         !
         !  Uses robust integer coordinate arithmetic throughout to ensure
@@ -41,6 +41,7 @@ contains
         integer, intent(in) :: constraint_segments(:,:)
         type(mesh_t), intent(out) :: mesh
         real(dp), intent(in), optional :: hole_points(:,:)
+        integer, allocatable, intent(out), optional :: final_segments(:,:)
 
         integer :: i, npoints
         integer, allocatable :: adjusted_segments(:,:)
@@ -58,7 +59,6 @@ contains
         call init_robust_predicates(input_points, npoints)
 
         if (size(constraint_segments, 2) == 0) then
-            call disable_robust_predicates()
             return
         end if
 
@@ -96,11 +96,13 @@ contains
             end if
         end if
 
+        if (present(final_segments)) then
+            allocate(final_segments(2, size(adjusted_segments, 2)))
+            final_segments = adjusted_segments
+        end if
+
         deallocate(adjusted_segments)
         if (allocated(current_segments)) deallocate(current_segments)
-
-        ! Disable robust predicates after CDT completes
-        call disable_robust_predicates()
     end subroutine constrained_delaunay_triangulate
 
     subroutine preprocess_segment_intersections(mesh, segments)

@@ -72,9 +72,6 @@ contains
 
         ! Remove super-triangle and its associated triangles
         call remove_super_triangle(mesh)
-
-        ! Disable robust predicates after triangulation
-        call disable_robust_predicates()
     end subroutine delaunay_triangulate
 
     subroutine create_super_triangle(input_points, mesh, super_tri_idx)
@@ -146,13 +143,11 @@ contains
             end if
         end do
 
-        ! If no valid triangles remain, re-triangulate real vertices
+        ! If no valid triangles remain, re-triangulate real vertices.
         ! This should only happen for degenerate cases (all points collinear, etc.)
         if (valid_triangle_count == 0) then
             call create_triangles_from_real_vertices(mesh)
         end if
-        ! Debug: print valid count
-        print *, "DEBUG remove_super_triangle: valid_triangle_count=", valid_triangle_count
 
         ! Mark super-triangle vertices as invalid
         do i = 1, 3
@@ -317,7 +312,11 @@ contains
         !  This achieves O(sqrt N) for point location + O(k) for cavity
         !  where k is cavity size (typically constant).
         !
-        type(mesh_t), intent(in) :: mesh
+        !  When the point lies on an edge (LOCATION_ON_EDGE), we directly split
+        !  the edge instead of using cavity-based insertion. This avoids creating
+        !  degenerate triangles with collinear points.
+        !
+        type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: point_idx
         integer, intent(out) :: cavity_triangles(MAX_CAVITY_SIZE)
         integer, intent(out) :: ncavity_triangles
@@ -328,6 +327,7 @@ contains
         logical :: visited(mesh%ntriangles)
         integer :: queue_head, queue_tail
         integer :: t, neighbor, e
+        integer :: edge_neighbor
 
         point = mesh%points(point_idx)
         ncavity_triangles = 0
@@ -343,7 +343,17 @@ contains
         ! Update last_triangle for next search warm start
         last_triangle = seed_tri
 
-        ! Step 2: BFS expansion from seed triangle
+        ! Special handling for points on edges (segment midpoints)
+        ! Use direct edge splitting instead of cavity-based insertion to avoid
+        ! creating degenerate triangles with collinear points.
+        if (loc_type == LOCATION_ON_EDGE) then
+            call split_edge_triangles(mesh, seed_tri, point_idx)
+            ! Return empty cavity - triangles already created
+            ncavity_triangles = 0
+            return
+        end if
+
+        ! Step 2: BFS expansion from seed triangle (standard Bowyer-Watson)
         queue_head = 1
         queue_tail = 1
         queue(queue_tail) = seed_tri
@@ -383,6 +393,212 @@ contains
             end if
         end do
     end subroutine find_cavity
+
+    subroutine split_edge_triangles(mesh, seed_tri, point_idx)
+        !> Split the edge containing a point by directly modifying triangles.
+        !
+        !  When a point lies exactly on an edge, we can't use the standard
+        !  Bowyer-Watson cavity approach because it may create degenerate
+        !  triangles. Instead, we directly split the edge:
+        !
+        !  Before:
+        !       v3                v3
+        !      /  \              /||\
+        !     / t1 \            / || \
+        !    /      \   =>     /  ||  \
+        !   v1------v2        v1--p--v2
+        !    \      /          \  ||  /
+        !     \ t2 /            \ || /
+        !      \  /              \||/
+        !       v4                v4
+        !
+        !  After splitting, we have 4 triangles instead of 2.
+        !
+        type(mesh_t), intent(inout) :: mesh
+        integer, intent(in) :: seed_tri
+        integer, intent(in) :: point_idx
+
+        type(point_t) :: point, p1, p2
+        integer :: e, v1, v2, v3, v4, neighbor
+        integer :: t1, t2, t3, t4
+        integer :: edge_idx, neighbor_edge_idx
+        real(dp) :: dx, dy, len2, px, py
+        logical :: found_edge, has_neighbor
+
+        point = mesh%points(point_idx)
+        found_edge = .false.
+
+        ! Find which edge the point lies on
+        do e = 1, 3
+            v1 = mesh%triangles(seed_tri)%vertices(e)
+            v2 = mesh%triangles(seed_tri)%vertices(mod(e, 3) + 1)
+            v3 = mesh%triangles(seed_tri)%vertices(mod(e + 1, 3) + 1)
+
+            p1 = mesh%points(v1)
+            p2 = mesh%points(v2)
+
+            dx = p2%x - p1%x
+            dy = p2%y - p1%y
+            len2 = dx*dx + dy*dy
+
+            if (len2 < 1.0e-20_dp) cycle
+
+            px = point%x - p1%x
+            py = point%y - p1%y
+
+            ! Check perpendicular distance to edge
+            if (abs(px*dy - py*dx) / sqrt(len2) < 1.0e-10_dp) then
+                ! Point is on this edge
+                edge_idx = e
+                found_edge = .true.
+                exit
+            end if
+        end do
+
+        if (.not. found_edge) return
+
+        ! Get the neighbor triangle across this edge
+        neighbor = mesh%triangles(seed_tri)%neighbors(edge_idx)
+        has_neighbor = (neighbor > 0 .and. neighbor <= mesh%ntriangles)
+        if (has_neighbor) has_neighbor = mesh%triangles(neighbor)%valid
+
+        ! Find v4 (the opposite vertex in the neighbor triangle)
+        v4 = 0
+        if (has_neighbor) then
+            do e = 1, 3
+                if (mesh%triangles(neighbor)%vertices(e) /= v1 .and.             &
+                    mesh%triangles(neighbor)%vertices(e) /= v2) then
+                    v4 = mesh%triangles(neighbor)%vertices(e)
+                    neighbor_edge_idx = e
+                    exit
+                end if
+            end do
+        end if
+
+        ! Mark original triangles as invalid
+        mesh%triangles(seed_tri)%valid = .false.
+        if (has_neighbor) mesh%triangles(neighbor)%valid = .false.
+
+        ! Create new triangles
+        ! Triangle 1: (v1, point, v3) - part of original seed_tri
+        t1 = add_triangle(mesh, v1, point_idx, v3)
+
+        ! Triangle 2: (point, v2, v3) - part of original seed_tri
+        t2 = add_triangle(mesh, point_idx, v2, v3)
+
+        if (has_neighbor .and. v4 > 0) then
+            ! Triangle 3: (v2, point, v4) - part of original neighbor
+            t3 = add_triangle(mesh, v2, point_idx, v4)
+
+            ! Triangle 4: (point, v1, v4) - part of original neighbor
+            t4 = add_triangle(mesh, point_idx, v1, v4)
+        else
+            t3 = 0
+            t4 = 0
+        end if
+
+        ! Set up adjacencies for the new triangles
+        ! t1: (v1, point, v3)
+        !   Edge 1 (v1-point): adjacent to t4 if exists, else boundary
+        !   Edge 2 (point-v3): adjacent to t2
+        !   Edge 3 (v3-v1): adjacent to old neighbor of seed_tri edge (v3-v1)
+        mesh%triangles(t1)%neighbors(1) = t4
+        mesh%triangles(t1)%neighbors(2) = t2
+        mesh%triangles(t1)%neighbors(3) = find_old_neighbor(mesh, seed_tri,      &
+                                                            v3, v1, edge_idx)
+
+        ! t2: (point, v2, v3)
+        !   Edge 1 (point-v2): adjacent to t3 if exists, else boundary
+        !   Edge 2 (v2-v3): adjacent to old neighbor of seed_tri edge (v2-v3)
+        !   Edge 3 (v3-point): adjacent to t1
+        mesh%triangles(t2)%neighbors(1) = t3
+        mesh%triangles(t2)%neighbors(2) = find_old_neighbor(mesh, seed_tri,      &
+                                                            v2, v3, edge_idx)
+        mesh%triangles(t2)%neighbors(3) = t1
+
+        if (has_neighbor .and. v4 > 0) then
+            ! t3: (v2, point, v4)
+            !   Edge 1 (v2-point): adjacent to t2
+            !   Edge 2 (point-v4): adjacent to t4
+            !   Edge 3 (v4-v2): adjacent to old neighbor of neighbor edge
+            mesh%triangles(t3)%neighbors(1) = t2
+            mesh%triangles(t3)%neighbors(2) = t4
+            mesh%triangles(t3)%neighbors(3) = find_old_neighbor(mesh, neighbor,  &
+                                                    v4, v2, neighbor_edge_idx)
+
+            ! t4: (point, v1, v4)
+            !   Edge 1 (point-v1): adjacent to t1
+            !   Edge 2 (v1-v4): adjacent to old neighbor of neighbor edge
+            !   Edge 3 (v4-point): adjacent to t3
+            mesh%triangles(t4)%neighbors(1) = t1
+            mesh%triangles(t4)%neighbors(2) = find_old_neighbor(mesh, neighbor,  &
+                                                    v1, v4, neighbor_edge_idx)
+            mesh%triangles(t4)%neighbors(3) = t3
+        end if
+
+        ! Update external neighbors to point to new triangles
+        call update_external_neighbors_after_split(mesh, seed_tri, t1, t2,       &
+                                                   v1, v2, v3, edge_idx)
+        if (has_neighbor .and. v4 > 0) then
+            call update_external_neighbors_after_split(mesh, neighbor, t3, t4,   &
+                                                       v2, v1, v4,               &
+                                                       neighbor_edge_idx)
+        end if
+
+        ! Update last_triangle for warm start
+        last_triangle = t1
+    end subroutine split_edge_triangles
+
+    integer function find_old_neighbor(mesh, tri_idx, va, vb, skip_edge)
+        !> Find the neighbor of tri_idx across edge (va, vb), skipping skip_edge.
+        type(mesh_t), intent(in) :: mesh
+        integer, intent(in) :: tri_idx, va, vb, skip_edge
+
+        integer :: e, ev1, ev2
+
+        find_old_neighbor = 0
+
+        do e = 1, 3
+            if (e == skip_edge) cycle
+            ev1 = mesh%triangles(tri_idx)%vertices(e)
+            ev2 = mesh%triangles(tri_idx)%vertices(mod(e, 3) + 1)
+
+            if ((ev1 == va .and. ev2 == vb) .or.                                 &
+                (ev1 == vb .and. ev2 == va)) then
+                find_old_neighbor = mesh%triangles(tri_idx)%neighbors(e)
+                return
+            end if
+        end do
+    end function find_old_neighbor
+
+    subroutine update_external_neighbors_after_split(mesh, old_tri, new_t1,      &
+                                                     new_t2, v1, v2, v3,         &
+                                                     split_edge)
+        !> Update external triangles to point to new triangles after edge split.
+        type(mesh_t), intent(inout) :: mesh
+        integer, intent(in) :: old_tri, new_t1, new_t2, v1, v2, v3, split_edge
+
+        integer :: e, neighbor, ev1, ev2
+
+        do e = 1, 3
+            if (e == split_edge) cycle
+
+            neighbor = mesh%triangles(old_tri)%neighbors(e)
+            if (neighbor <= 0 .or. neighbor > mesh%ntriangles) cycle
+            if (.not. mesh%triangles(neighbor)%valid) cycle
+
+            ev1 = mesh%triangles(old_tri)%vertices(e)
+            ev2 = mesh%triangles(old_tri)%vertices(mod(e, 3) + 1)
+
+            ! Determine which new triangle inherits this edge
+            if ((ev1 == v3 .and. ev2 == v1) .or. (ev1 == v1 .and. ev2 == v3)) then
+                call update_neighbor_link(mesh, neighbor, ev1, ev2, new_t1)
+            else if ((ev1 == v2 .and. ev2 == v3) .or.                            &
+                     (ev1 == v3 .and. ev2 == v2)) then
+                call update_neighbor_link(mesh, neighbor, ev1, ev2, new_t2)
+            end if
+        end do
+    end subroutine update_external_neighbors_after_split
 
     subroutine find_cavity_boundary(mesh, cavity_triangles, ncavity_triangles,   &
                                     cavity_edges, external_neighbors,            &
