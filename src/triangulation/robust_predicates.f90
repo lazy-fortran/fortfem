@@ -37,10 +37,11 @@ module robust_predicates
     integer, parameter :: ORIENT_CW = -1        ! Clockwise (negative area)
     integer, parameter :: ORIENT_COLLINEAR = 0  ! Collinear (zero area)
 
-    ! Maximum integer coordinate value (2^30 - 1)
-    ! High resolution to distinguishing close points.
-    ! Determinant calculation uses real(dp) to avoid int64 overflow.
-    integer(int64), parameter :: MAX_ICOOR = 1073741823_int64
+    ! Maximum integer coordinate value
+    ! Reduced to 8000 (approx 2^13) to ensure incircle determinant (coord^4)
+    ! fits within the 53-bit significand of real(dp) for exact calculation.
+    ! 8000^4 = 4e15 < 2^53 (9e15).
+    integer(int64), parameter :: MAX_ICOOR = 8000_int64
 
     !> Robust coordinate system parameters
     type :: robust_coords_t

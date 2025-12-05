@@ -294,12 +294,12 @@ contains
                 p4 = mesh%points(v_opp2)
 
                 ! Check if quadrilateral is convex (required for flip)
-                det1 = signed_area(p3, p1, p4)
-                det2 = signed_area(p3, p2, p4)
+                det1 = real(orientation(p3, p1, p4), dp)
+                det2 = real(orientation(p3, p2, p4), dp)
                 if (det1 * det2 >= 0.0_dp) cycle
 
-                det1 = signed_area(p4, p1, p3)
-                det2 = signed_area(p4, p2, p3)
+                det1 = real(orientation(p4, p1, p3), dp)
+                det2 = real(orientation(p4, p2, p3), dp)
                 if (det1 * det2 >= 0.0_dp) cycle
 
                 call do_edge_flip_with_fixup(mesh, t, t2, e1, e2, v_opp1,     &
