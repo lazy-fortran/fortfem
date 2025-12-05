@@ -5,7 +5,7 @@ program test_fortfem_api_solvers_modules
         unit_square_mesh, function_space, vector_function_space, function, &
         vector_function, dirichlet_bc, vector_bc, neumann_bc_constant
     use fortfem_api_solvers_laplacian, only: compute_boundary_integral, &
-        solve_laplacian_problem
+        solve_laplacian_problem, solve_laplacian_problem_p2
     use fortfem_api_solvers_vector, only: solve_curl_curl_problem
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options
@@ -15,6 +15,7 @@ program test_fortfem_api_solvers_modules
     write(*,*) "Testing fortfem_api_solvers module split..."
 
     call test_laplacian_module_boundary_integral()
+    call test_laplacian_module_p2_solver()
     call test_vector_module_direct_solver()
 
     call check_summary("fortfem_api_solvers module split")
@@ -55,6 +56,34 @@ contains
         call check_condition(allocated(u%values), &
             "Laplacian module: solution values allocated")
     end subroutine test_laplacian_module_boundary_integral
+
+    subroutine test_laplacian_module_p2_solver()
+        type(mesh_t) :: mesh
+        type(function_space_t) :: Vh
+        type(function_t) :: u
+        type(dirichlet_bc_t) :: bc
+        type(solver_stats_t) :: stats
+        real(dp) :: max_value
+
+        mesh = unit_square_mesh(3)
+        Vh = function_space(mesh, "Lagrange", 2)
+
+        u = function(Vh)
+        bc = dirichlet_bc(Vh, 0.0_dp)
+
+        call solve_laplacian_problem_p2(u, bc, solver_options(method="auto"), &
+                                        stats)
+
+        max_value = maxval(abs(u%values))
+        call check_condition(allocated(u%values), &
+            "Laplacian module P2: solution values allocated")
+        call check_condition(max_value > 0.0_dp, &
+            "Laplacian module P2: non trivial solution")
+        call check_condition(max_value < 10.0_dp, &
+            "Laplacian module P2: bounded solution magnitude")
+        call check_condition(stats%converged, &
+            "Laplacian module P2: solver reports convergence")
+    end subroutine test_laplacian_module_p2_solver
 
     subroutine test_vector_module_direct_solver()
         type(mesh_t) :: mesh
