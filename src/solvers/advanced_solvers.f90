@@ -1,7 +1,10 @@
 module fortfem_advanced_solvers
     use fortfem_kinds, only: dp
-    use fortfem_sparse_matrix, only: sparse_matrix_t, spmv
+    use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
+                                     sparse_to_csc, spmv
     use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
+    use fortfem_umfpack_interface, only: umfpack_solve_csc, &
+                                         umfpack_available
     implicit none
     private
 
@@ -527,15 +530,52 @@ contains
         stats%method_used = "sparse_lu"
     end subroutine sparse_lu_solve
 
-    ! UMFPACK-compatible solver entry delegating to LAPACK
     subroutine umfpack_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:, :), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
 
-        call lapack_solve(A, b, x, opts, stats)
+        type(sparse_matrix_t) :: A_sparse
+        integer, allocatable :: col_ptr(:)
+        integer, allocatable :: row_ind(:)
+        real(dp), allocatable :: values_csc(:)
+        real(dp) :: residual_norm
+        integer :: n, status
+        integer, parameter :: small_threshold = 64
+
+        n = size(A, 1)
+
+        if (.not. umfpack_available()) then
+            call lapack_solve(A, b, x, opts, stats)
+            stats%method_used = "umfpack_fallback"
+            return
+        end if
+
+        if (n <= small_threshold) then
+            call lapack_solve(A, b, x, opts, stats)
+            stats%method_used = "umfpack_lapack_small"
+            return
+        end if
+
+        call sparse_from_dense(A, A_sparse)
+        call sparse_to_csc(A_sparse, col_ptr, row_ind, values_csc)
+
+        call umfpack_solve_csc(n, col_ptr, row_ind, values_csc, b, x, status)
+
+        stats%converged = (status == 0)
+        stats%iterations = 1
+
+        if (stats%converged) then
+            residual_norm = sqrt(sum((matmul(A, x) - b)**2))
+        else
+            residual_norm = huge(1.0_dp)
+        end if
+
+        stats%final_residual = residual_norm
         stats%method_used = "umfpack"
+
+        deallocate (col_ptr, row_ind, values_csc)
     end subroutine umfpack_solve
 
     ! Preconditioner construction

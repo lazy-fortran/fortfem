@@ -13,6 +13,7 @@ module fortfem_sparse_matrix
 
     public :: sparse_matrix_t
     public :: sparse_from_dense
+    public :: sparse_to_csc
     public :: spmv
 
 contains
@@ -61,6 +62,58 @@ contains
         end do
     end subroutine sparse_from_dense
 
+    subroutine sparse_to_csc(A_sparse, col_ptr, row_ind, values_csc)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        integer, allocatable, intent(out) :: col_ptr(:)
+        integer, allocatable, intent(out) :: row_ind(:)
+        real(dp), allocatable, intent(out) :: values_csc(:)
+
+        integer :: nrows, ncols, nnz
+        integer :: i, j, k, row_start, row_end, idx
+        integer, allocatable :: col_counts(:), next(:)
+
+        nrows = A_sparse%nrows
+        ncols = A_sparse%ncols
+        nnz = size(A_sparse%values)
+
+        allocate (col_ptr(ncols + 1))
+        allocate (row_ind(nnz))
+        allocate (values_csc(nnz))
+        allocate (col_counts(ncols))
+        allocate (next(ncols))
+
+        col_counts = 0
+        do i = 1, nrows
+            row_start = A_sparse%row_ptr(i)
+            row_end = A_sparse%row_ptr(i + 1) - 1
+            do k = row_start, row_end
+                j = A_sparse%col_ind(k)
+                col_counts(j) = col_counts(j) + 1
+            end do
+        end do
+
+        col_ptr(1) = 1
+        do j = 1, ncols
+            col_ptr(j + 1) = col_ptr(j) + col_counts(j)
+        end do
+
+        next(1:ncols) = col_ptr(1:ncols)
+
+        do i = 1, nrows
+            row_start = A_sparse%row_ptr(i)
+            row_end = A_sparse%row_ptr(i + 1) - 1
+            do k = row_start, row_end
+                j = A_sparse%col_ind(k)
+                idx = next(j)
+                row_ind(idx) = i
+                values_csc(idx) = A_sparse%values(k)
+                next(j) = next(j) + 1
+            end do
+        end do
+
+        deallocate (col_counts, next)
+    end subroutine sparse_to_csc
+
     subroutine spmv(A, x, y)
         type(sparse_matrix_t), intent(in) :: A
         real(dp), intent(in) :: x(:)
@@ -88,4 +141,3 @@ contains
     end subroutine spmv
 
 end module fortfem_sparse_matrix
-
