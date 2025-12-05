@@ -1,6 +1,7 @@
 program test_mesh_refinement
     use fortfem_kinds
     use fortfem_api
+    use fortfem_api_mesh, only: compute_gradient_indicators
     use check
     implicit none
 
@@ -9,6 +10,7 @@ program test_mesh_refinement
     call test_uniform_refinement()
     call test_uniform_refinement_levels()
     call test_adaptive_refinement()
+    call test_gradient_indicators_affine_function()
     call test_boundary_preservation()
     call test_mesh_quality_after_refinement()
     call test_refinement_with_function_spaces()
@@ -118,6 +120,43 @@ contains
         
         deallocate(refine_markers)
     end subroutine test_adaptive_refinement
+
+    subroutine test_gradient_indicators_affine_function()
+        type(mesh_t) :: mesh
+        type(function_space_t) :: Vh
+        type(function_t) :: uh
+        real(dp), allocatable :: indicators(:)
+        integer :: i, ntri
+        real(dp) :: x, y
+        real(dp) :: min_eta, max_eta
+
+        mesh = unit_square_mesh(4)
+        Vh = function_space(mesh, "Lagrange", 1)
+        uh = function(Vh)
+
+        do i = 1, Vh%ndof
+            x = mesh%data%vertices(1, i)
+            y = mesh%data%vertices(2, i)
+            uh%values(i) = x + 2.0_dp * y
+        end do
+
+        ntri = mesh%data%n_triangles
+        allocate(indicators(ntri))
+
+        call compute_gradient_indicators(mesh, uh, indicators)
+
+        min_eta = minval(indicators)
+        max_eta = maxval(indicators)
+
+        call check_condition(ntri > 0, &
+            "Gradient indicators: positive triangle count")
+        call check_condition(min_eta > 0.0_dp, &
+            "Gradient indicators: positive indicator values")
+        call check_condition(abs(max_eta - min_eta) < 1.0e-10_dp, &
+            "Gradient indicators: constant for affine function")
+
+        deallocate(indicators)
+    end subroutine test_gradient_indicators_affine_function
 
     ! Test boundary preservation during refinement
     subroutine test_boundary_preservation()
