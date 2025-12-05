@@ -1,0 +1,5 @@
+# FortFEM Poisson solver benchmark
+# mesh_size  dofs  t_direct  t_pcg  it_pcg  residual_direct  residual_pcg
+    24      576  4.87400000E-03  5.69200000E-03     31  6.12164516E-16  4.09879364E-07
+    40     1600  4.83320000E-02  5.31790000E-02     52  1.07746462E-15  9.28563452E-07
+    64     4096  8.01819000E-01  7.45395000E-01     84  1.89754514E-15  9.59943454E-07
