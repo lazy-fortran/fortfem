@@ -37,8 +37,9 @@ contains
       character(len=128) :: title_text
       character(len=32) :: cmap
 
-      call resolve_plot_filename_and_title(filename, title, &
-                                           "solution.png", "FEM Solution", output_filename, title_text)
+      call resolve_plot_filename_and_title(filename, title, "solution.png", &
+                                           "FEM Solution", output_filename, &
+                                           title_text)
 
       if (present(colormap)) then
          cmap = colormap
@@ -70,8 +71,9 @@ contains
       character(len=32) :: ptype
 
       call resolve_plot_filename_and_title(filename, title, &
-                                           "vector_solution.png", "Vector FEM Solution", output_filename, &
-                                           title_text)
+                                           "vector_solution.png", &
+                                           "Vector FEM Solution", &
+                                           output_filename, title_text)
 
       if (present(plot_type)) then
          ptype = plot_type
@@ -112,8 +114,9 @@ contains
       call save_mesh_figure(fig, mesh, output_filename)
    end subroutine plot_mesh
 
-   subroutine resolve_plot_filename_and_title(filename, title, &
-                                              default_filename, default_title, output_filename, title_text)
+   subroutine resolve_plot_filename_and_title(filename, title, default_filename, &
+                                              default_title, output_filename, &
+                                              title_text)
       character(len=*), intent(in), optional :: filename
       character(len=*), intent(in), optional :: title
       character(len=*), intent(in) :: default_filename
