@@ -218,6 +218,9 @@ contains
             if (segment_exists) exit
             if (.not. flip_one_crossing_edge(mesh, v1, v2)) exit
         end do
+        if (.not. segment_exists) then
+            write(*,*) "Failed to insert constraint segment:", v1, v2
+        end if
     end subroutine insert_segment
 
     logical function edge_exists_in_mesh(mesh, v1, v2) result(exists)
@@ -430,20 +433,35 @@ contains
         !> Incircle test: returns positive if pd is inside circumcircle of
         !  triangle (pa, pb, pc), negative if outside, zero if on circle.
         !
-        !  The vertices pa, pb, pc must be in counterclockwise order.
+        !  The vertices pa, pb, pc are internally reordered to enforce a
+        !  counterclockwise orientation so both input windings work.
         !
         type(point_t), intent(in) :: pa, pb, pc, pd
 
         real(dp) :: adx, ady, bdx, bdy, cdx, cdy
         real(dp) :: alift, blift, clift
         real(dp) :: bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady
+        type(point_t) :: pb_ccw, pc_ccw
+        integer :: orient
+
+        orient = orientation(pa, pb, pc)
+        if (orient == ORIENTATION_COLLINEAR) then
+            det = 0.0_dp
+            return
+        else if (orient == ORIENTATION_CCW) then
+            pb_ccw = pb
+            pc_ccw = pc
+        else
+            pb_ccw = pc
+            pc_ccw = pb
+        end if
 
         adx = pa%x - pd%x
         ady = pa%y - pd%y
-        bdx = pb%x - pd%x
-        bdy = pb%y - pd%y
-        cdx = pc%x - pd%x
-        cdy = pc%y - pd%y
+        bdx = pb_ccw%x - pd%x
+        bdy = pb_ccw%y - pd%y
+        cdx = pc_ccw%x - pd%x
+        cdy = pc_ccw%y - pd%y
 
         alift = adx * adx + ady * ady
         blift = bdx * bdx + bdy * bdy
@@ -832,6 +850,8 @@ contains
                 virus_pool(pool_tail) = neighbor
             end do
         end do
+        
+        ! write(*,*) "Total infected triangles:", count(infected)
 
         ! If no valid triangles were infected, there is nothing to remove.
         ! If all valid triangles are infected, treat this as a degenerate
@@ -889,11 +909,15 @@ contains
                 is_hull_edge = (neighbor <= 0)
 
                 if (is_hull_edge) then
+                    ! write(*,*) "Hull edge found: tri", t, "v", v1, v2
                     if (.not. is_constraint_edge(v1, v2, segments)) then
+                        ! write(*,*) "  Not constraint -> Infecting tri", t
                         infected(t) = .true.
                         pool_tail = pool_tail + 1
                         virus_pool(pool_tail) = t
                         exit
+                    else
+                        ! write(*,*) "  Is constraint -> Protected"
                     end if
                 end if
             end do

@@ -201,6 +201,7 @@ contains
         type(point_t) :: p, pa, pb, pc
         integer :: current, next, edge_to_cross
         integer :: orient_ab, orient_bc, orient_ca
+        integer :: tri_orient
         integer :: max_iter, iter
         integer :: va, vb, vc
 
@@ -246,28 +247,53 @@ contains
             orient_ab = orientation(pa, pb, p)
             orient_bc = orientation(pb, pc, p)
             orient_ca = orientation(pc, pa, p)
+            tri_orient = orientation(pa, pb, pc)
 
-            ! Check if point is inside (all same orientation) or on edge
-            if (orient_ab >= 0 .and. orient_bc >= 0 .and. orient_ca >= 0) then
-                ! Point is inside or on edge of CCW triangle
-                tri_idx = current
-                if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
-                    location_type = LOCATION_ON_EDGE
-                else
-                    location_type = LOCATION_INSIDE
-                end if
-                return
-            end if
-
-            ! Point is outside - walk toward it
             edge_to_cross = 0
-            if (orient_ab < 0) then
-                edge_to_cross = 1  ! Cross edge AB (edge 1)
-            else if (orient_bc < 0) then
-                edge_to_cross = 2  ! Cross edge BC (edge 2)
-            else if (orient_ca < 0) then
-                edge_to_cross = 3  ! Cross edge CA (edge 3)
-            end if
+
+            select case (tri_orient)
+            case (ORIENTATION_CCW)
+                if (orient_ab >= 0 .and. orient_bc >= 0 .and. orient_ca >= 0) then
+                    tri_idx = current
+                    if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
+                        location_type = LOCATION_ON_EDGE
+                    else
+                        location_type = LOCATION_INSIDE
+                    end if
+                    return
+                end if
+
+                if (orient_ab < 0) then
+                    edge_to_cross = 1
+                else if (orient_bc < 0) then
+                    edge_to_cross = 2
+                else if (orient_ca < 0) then
+                    edge_to_cross = 3
+                end if
+
+            case (ORIENTATION_CW)
+                if (orient_ab <= 0 .and. orient_bc <= 0 .and. orient_ca <= 0) then
+                    tri_idx = current
+                    if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
+                        location_type = LOCATION_ON_EDGE
+                    else
+                        location_type = LOCATION_INSIDE
+                    end if
+                    return
+                end if
+
+                if (orient_ab > 0) then
+                    edge_to_cross = 1
+                else if (orient_bc > 0) then
+                    edge_to_cross = 2
+                else if (orient_ca > 0) then
+                    edge_to_cross = 3
+                end if
+
+            case default
+                current = find_valid_triangle(mesh)
+                cycle
+            end select
 
             if (edge_to_cross == 0) exit  ! Should not happen
 
@@ -295,6 +321,7 @@ contains
         type(point_t) :: p, pa, pb, pc
         integer :: t, va, vb, vc
         integer :: orient_ab, orient_bc, orient_ca
+        integer :: tri_orient
 
         tri_idx = 0
         location_type = LOCATION_NOT_FOUND
@@ -313,18 +340,32 @@ contains
             pb = mesh%points(vb)
             pc = mesh%points(vc)
 
+            tri_orient = orientation(pa, pb, pc)
+
             orient_ab = orientation(pa, pb, p)
             orient_bc = orientation(pb, pc, p)
             orient_ca = orientation(pc, pa, p)
 
-            if (orient_ab >= 0 .and. orient_bc >= 0 .and. orient_ca >= 0) then
-                tri_idx = t
-                if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
-                    location_type = LOCATION_ON_EDGE
-                else
-                    location_type = LOCATION_INSIDE
+            if (tri_orient == ORIENTATION_CCW) then
+                if (orient_ab >= 0 .and. orient_bc >= 0 .and. orient_ca >= 0) then
+                    tri_idx = t
+                    if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
+                        location_type = LOCATION_ON_EDGE
+                    else
+                        location_type = LOCATION_INSIDE
+                    end if
+                    return
                 end if
-                return
+            else if (tri_orient == ORIENTATION_CW) then
+                if (orient_ab <= 0 .and. orient_bc <= 0 .and. orient_ca <= 0) then
+                    tri_idx = t
+                    if (orient_ab == 0 .or. orient_bc == 0 .or. orient_ca == 0) then
+                        location_type = LOCATION_ON_EDGE
+                    else
+                        location_type = LOCATION_INSIDE
+                    end if
+                    return
+                end if
             end if
         end do
     end subroutine locate_point_linear

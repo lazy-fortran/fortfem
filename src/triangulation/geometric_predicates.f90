@@ -103,8 +103,9 @@ contains
     logical function in_circle(pa, pb, pc, pd)
         !> Test if point pd is inside circumcircle of triangle abc.
         !
-        !  Returns true if pd is strictly inside the circumcircle.
-        !  Assumes triangle ABC is counter-clockwise oriented.
+        !  Returns true if pd is strictly inside the circumcircle.  The
+        !  orientation of triangle ABC is normalized internally so both
+        !  clockwise and counter-clockwise input orderings are handled.
         !
         !  Uses robust integer arithmetic if enabled, otherwise floating-point.
         !
@@ -113,20 +114,35 @@ contains
         real(dp) :: adx, ady, bdx, bdy, cdx, cdy
         real(dp) :: abdet, bcdet, cadet, alift, blift, clift
         real(dp) :: det
+        integer :: orient
+        type(point_t) :: pb_ccw, pc_ccw
+
+        orient = orientation(pa, pb, pc)
+        if (orient == ORIENTATION_COLLINEAR) then
+            in_circle = .false.
+            return
+        else if (orient == ORIENTATION_CCW) then
+            pb_ccw = pb
+            pc_ccw = pc
+        else
+            pb_ccw = pc
+            pc_ccw = pb
+        end if
 
         if (use_robust_predicates) then
             in_circle = incircle_robust(robust_coords,                           &
-                pa%x, pa%y, pb%x, pb%y, pc%x, pc%y, pd%x, pd%y)
+                pa%x, pa%y, pb_ccw%x, pb_ccw%y, pc_ccw%x, pc_ccw%y,             &
+                pd%x, pd%y)
             return
         end if
 
         ! Standard floating-point computation
         adx = pa%x - pd%x
         ady = pa%y - pd%y
-        bdx = pb%x - pd%x
-        bdy = pb%y - pd%y
-        cdx = pc%x - pd%x
-        cdy = pc%y - pd%y
+        bdx = pb_ccw%x - pd%x
+        bdy = pb_ccw%y - pd%y
+        cdx = pc_ccw%x - pd%x
+        cdy = pc_ccw%y - pd%y
 
         abdet = adx * bdy - bdx * ady
         bcdet = bdx * cdy - cdx * bdy
