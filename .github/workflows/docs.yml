@@ -4,9 +4,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   
-  # Run after CI workflow completes successfully
+  # Run after test workflow completes successfully
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["test"]
     types:
       - completed
     branches: [main]
@@ -37,7 +37,7 @@ jobs:
         with:
           name: generated-plots
           path: ./artifacts/plots/
-          workflow: ci.yml
+          workflow: test.yml
           run_id: ${{ github.event.workflow_run.id }}
           if_no_artifact_found: ignore
         continue-on-error: true
