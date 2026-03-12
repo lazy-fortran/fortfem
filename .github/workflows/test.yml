@@ -1,4 +1,4 @@
-name: CI
+name: test
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  build-test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -139,3 +139,19 @@ jobs:
         test -f benchmark/freefem/curl-curl/freefem_results.dat || echo "Missing curl-curl results"
         test -f benchmark/freefem/curl-curl/freefem_convergence.dat || echo "Missing curl-curl convergence data"
         echo "✅ Benchmark validation completed"
+
+  # Summary job for branch protection - must be named 'test' for PR checks
+  test:
+    name: test
+    needs: [build-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test results
+        run: |
+          echo "Build-test result: ${{ needs.build-test.result }}"
+          if [ "${{ needs.build-test.result }}" != "success" ]; then
+            echo "::error::Tests failed"
+            exit 1
+          fi
+          echo "All tests passed"

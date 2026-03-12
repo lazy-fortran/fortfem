@@ -2,6 +2,8 @@
 [![codecov](https://codecov.io/gh/itpplasma/fortfem/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/itpplasma/fortfem)
 [![Documentation](https://github.com/itpplasma/fortfem/actions/workflows/docs.yml/badge.svg)](https://itpplasma.github.io/fortfem/)
 
+> **Note**: This project is experimental and subject to major changes. APIs may change without notice.
+
 A modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS.
 
 ## Features
