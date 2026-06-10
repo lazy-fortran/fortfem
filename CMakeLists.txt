@@ -5,13 +5,32 @@ project(fortfem VERSION 0.1.0 LANGUAGES Fortran)
 # build tool and both build the same source tree.
 
 option(FORTFEM_EXAMPLES "Build example programs" OFF)
+option(FORTFEM_TRIANGLE_COMPAT_ONLY
+    "Build only the dependency-free triangle_compat mesher library" OFF)
 include(CTest)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(FORTFEM_MODULE_DIR ${CMAKE_BINARY_DIR}/include)
+set(FORTFEM_MODULE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+# The Triangle-compatible mesher has no external dependencies, so embedding
+# projects can fetch fortfem and build just this target.
+file(GLOB FORTFEM_TRIANGLE_COMPAT_SOURCES CONFIGURE_DEPENDS
+    src/triangle_compat/*.f90)
+add_library(fortfem_triangle_compat ${FORTFEM_TRIANGLE_COMPAT_SOURCES})
+set_target_properties(fortfem_triangle_compat PROPERTIES
+    Fortran_MODULE_DIRECTORY ${FORTFEM_MODULE_DIR}
+)
+target_include_directories(fortfem_triangle_compat PUBLIC
+    $<BUILD_INTERFACE:${FORTFEM_MODULE_DIR}>
+    $<INSTALL_INTERFACE:include/fortfem>
+)
+
+if(FORTFEM_TRIANGLE_COMPAT_ONLY)
+    return()
+endif()
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
@@ -45,6 +64,7 @@ FetchContent_Declare(fortplot
 FetchContent_MakeAvailable(fortplot)
 
 file(GLOB_RECURSE FORTFEM_SOURCES CONFIGURE_DEPENDS src/*.f90)
+list(REMOVE_ITEM FORTFEM_SOURCES ${FORTFEM_TRIANGLE_COMPAT_SOURCES})
 add_library(fortfem ${FORTFEM_SOURCES})
 set_target_properties(fortfem PROPERTIES
     Fortran_MODULE_DIRECTORY ${FORTFEM_MODULE_DIR}
@@ -54,6 +74,7 @@ target_include_directories(fortfem PUBLIC
     $<INSTALL_INTERFACE:include/fortfem>
 )
 target_link_libraries(fortfem PUBLIC
+    fortfem_triangle_compat
     fortplot::fortplot
     ${FORTFEM_SUITESPARSE_LIBRARIES}
     LAPACK::LAPACK
@@ -68,7 +89,7 @@ add_executable(triangle_compat_cli app/triangle_compat_cli.f90)
 target_link_libraries(triangle_compat_cli PRIVATE fortfem)
 
 include(GNUInstallDirs)
-install(TARGETS fortfem
+install(TARGETS fortfem fortfem_triangle_compat
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
