@@ -10,6 +10,7 @@ module fortfem_api
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
+    use triangle_compat, only: tc_result_t, triangulate_compat
     implicit none
 
     private
@@ -45,6 +46,8 @@ module fortfem_api
     public :: mesh_from_arrays
     public :: mesh_from_triangle_files
     public :: mesh_from_domain
+    public :: tc_result_t
+    public :: triangulate_compat
     public :: structured_quad_mesh
     public :: refine_uniform
     public :: refine_adaptive
