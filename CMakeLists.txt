@@ -64,6 +64,9 @@ add_executable(fortfem_app app/main.f90)
 set_target_properties(fortfem_app PROPERTIES OUTPUT_NAME fortfem)
 target_link_libraries(fortfem_app PRIVATE fortfem)
 
+add_executable(triangle_compat_cli app/triangle_compat_cli.f90)
+target_link_libraries(triangle_compat_cli PRIVATE fortfem)
+
 include(GNUInstallDirs)
 install(TARGETS fortfem
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -75,14 +78,16 @@ install(DIRECTORY ${FORTFEM_MODULE_DIR}/
 )
 
 if(BUILD_TESTING)
-    # test/check.f90 is a support module shared by the test programs.
-    add_library(fortfem_check STATIC test/check.f90)
+    # test/check.f90 and test/tc_compat_check.f90 are support modules
+    # shared by the test programs.
+    add_library(fortfem_check STATIC test/check.f90 test/tc_compat_check.f90)
     set_target_properties(fortfem_check PROPERTIES
         Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/test_modules
     )
     target_include_directories(fortfem_check INTERFACE
         ${CMAKE_BINARY_DIR}/test_modules
     )
+    target_link_libraries(fortfem_check PRIVATE fortfem)
 
     # Tests write plot output to the relative path build/, as under fpm.
     set(FORTFEM_TEST_WORKDIR ${CMAKE_BINARY_DIR}/test_run)
@@ -91,6 +96,7 @@ if(BUILD_TESTING)
     file(GLOB FORTFEM_TEST_SOURCES CONFIGURE_DEPENDS test/*.f90)
     list(REMOVE_ITEM FORTFEM_TEST_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/test/check.f90
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/tc_compat_check.f90
         # run_all_tests shells out to fpm; it is not a ctest case.
         ${CMAKE_CURRENT_SOURCE_DIR}/test/run_all_tests.f90
     )
@@ -103,6 +109,14 @@ if(BUILD_TESTING)
             WORKING_DIRECTORY ${FORTFEM_TEST_WORKDIR}
         )
     endforeach()
+
+    # The Triangle-compat tests read test/data/ via paths relative to the
+    # project root, as under fpm.
+    set_tests_properties(
+        test_triangle_compat_golden
+        test_triangle_compat_oracle
+        PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 
     # These compare against the external Triangle binary and download it from
     # netlib when /tmp/triangle_bin is missing; without network or a working
