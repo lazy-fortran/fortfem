@@ -246,8 +246,8 @@ contains
         mesh%data%has_mixed_elements = .false.
     end subroutine set_triangle_mesh_metadata
 
-    function mesh_from_domain(vertices, segments, hole_points, min_angle) &
-        result(mesh)
+    function mesh_from_domain(vertices, segments, hole_points, min_angle, &
+                              mode) result(mesh)
         use triangulation_fortran, only: triangulation_result_t, &
                                          triangulate_with_hole_fortran, &
                                          triangulate_with_quality_fortran, &
@@ -256,6 +256,7 @@ contains
         integer, intent(in) :: segments(:, :)
         real(dp), intent(in), optional :: hole_points(:, :)
         real(dp), intent(in), optional :: min_angle
+        character(len=*), intent(in), optional :: mode
         type(mesh_t) :: mesh
 
         type(triangulation_result_t) :: result
@@ -266,6 +267,14 @@ contains
 
         angle = 20.0_dp
         if (present(min_angle)) angle = min_angle
+
+        if (present(mode)) then
+            if (mode == 'triangle') then
+                mesh = mesh_from_domain_triangle(vertices, segments, &
+                                                 hole_points, angle)
+                return
+            end if
+        end if
 
         if (present(hole_points)) then
             call triangulate_with_hole_fortran(vertices, segments, &
@@ -295,6 +304,51 @@ contains
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function mesh_from_domain
+
+    function mesh_from_domain_triangle(vertices, segments, hole_points, &
+                                       min_angle) result(mesh)
+        !! Triangle-compatible meshing (flags pqY): constrained Delaunay
+        !! triangulation, hole carving, and Ruppert refinement without
+        !! Steiner points on boundary segments, bit-compatible with the
+        !! Triangle mesh generator.
+        use triangle_compat, only: tc_result_t, triangulate_compat
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: segments(:, :)
+        real(dp), intent(in), optional :: hole_points(:, :)
+        real(dp), intent(in) :: min_angle
+        type(mesh_t) :: mesh
+
+        type(tc_result_t) :: res
+        real(dp), allocatable :: holes(:, :)
+        integer :: stat
+
+        call init_measures()
+
+        if (present(hole_points)) then
+            holes = hole_points
+        else
+            allocate (holes(2, 0))
+        end if
+
+        call triangulate_compat(vertices, segments, holes, res, stat, &
+                                min_angle=min_angle, &
+                                quality=min_angle > 0.0_dp, nobisect=1)
+
+        if (stat /= 0 .or. res%ntriangles == 0) then
+            mesh%data%n_vertices = 0
+            mesh%data%n_triangles = 0
+            return
+        end if
+
+        call set_triangle_mesh_metadata(mesh, res%npoints, res%ntriangles)
+        allocate (mesh%data%vertices(2, res%npoints))
+        allocate (mesh%data%triangles(3, res%ntriangles))
+        mesh%data%vertices = res%points
+        mesh%data%triangles = res%triangles
+
+        call mesh%data%build_connectivity()
+        call mesh%data%find_boundary()
+    end function mesh_from_domain_triangle
 
     function structured_quad_mesh(nx, ny, x0, x1, y0, y1) result(mesh)
         integer, intent(in) :: nx, ny
