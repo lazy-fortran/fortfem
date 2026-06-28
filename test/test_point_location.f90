@@ -77,7 +77,7 @@ contains
         call locate_point(mesh, 0.25_dp, 0.25_dp, tri_idx, loc_type)
         call check_condition(tri_idx > 0, "Inside: lower-left point found")
         call check_condition(loc_type == LOCATION_INSIDE .or.                    &
-                            loc_type == LOCATION_ON_EDGE,                        &
+            loc_type == LOCATION_ON_EDGE,                        &
             "Inside: lower-left location type correct")
 
         ! Point in upper-right region
@@ -166,7 +166,7 @@ contains
             call locate_point(mesh, px, py, tri_idx_walk, loc_type_walk)
 
             call locate_point_linear_test(mesh, px, py, tri_idx_linear,          &
-                                         loc_type_linear)
+                loc_type_linear)
 
             n_tests = n_tests + 1
             ! Both should find some triangle (walking may find different one

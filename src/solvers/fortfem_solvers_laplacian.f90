@@ -3,9 +3,9 @@ module fortfem_solvers_laplacian
     use fortfem_api_types, only: function_space_t, function_t, dirichlet_bc_t
     use fortfem_api_forms, only: form_equation_t
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
-                                        solver_options, advanced_solve => solve
+        solver_options, advanced_solve => solve
     use basis_q1_quad_2d_module, only: q1_shape_functions, &
-                                       q1_shape_derivatives, q1_jacobian
+        q1_shape_derivatives, q1_jacobian
     use fortfem_solvers_p2, only: solve_laplacian_problem_p2
     implicit none
 
@@ -76,7 +76,7 @@ contains
     end subroutine assemble_laplacian_system
 
     pure subroutine compute_p1_triangle_gradients(x1, y1, x2, y2, x3, y3, &
-                                                  area, grad_x, grad_y)
+            area, grad_x, grad_y)
         real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
         real(dp), intent(out) :: area
         real(dp), intent(out) :: grad_x(3), grad_y(3)
@@ -125,7 +125,7 @@ contains
         y3 = space%mesh%data%vertices(2, v3)
 
         call compute_p1_triangle_gradients(x1, y1, x2, y2, x3, y3, area, bx, &
-                                           by)
+            by)
 
         do i = 1, 3
             do j = 1, 3
@@ -200,7 +200,7 @@ contains
         real(dp) :: xi, eta, weight
         logical :: success
         real(dp), parameter :: gauss_pts(2) = [-0.5773502691896257_dp, &
-                                               0.5773502691896257_dp]
+            0.5773502691896257_dp]
         real(dp), parameter :: gauss_w(2) = [1.0_dp, 1.0_dp]
 
         K_elem = 0.0_dp
@@ -212,7 +212,7 @@ contains
 
                 call q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
                 call q1_jacobian(xi, eta, coords, jac, det_jac, inv_jac, &
-                                 success)
+                    success)
 
                 if (.not. success) cycle
 
@@ -229,8 +229,8 @@ contains
                 do i = 1, 4
                     do j = 1, 4
                         K_elem(i, j) = K_elem(i, j) + weight* &
-                                       (grad_phys(1, i)*grad_phys(1, j) + &
-                                        grad_phys(2, i)*grad_phys(2, j))
+                            (grad_phys(1, i)*grad_phys(1, j) + &
+                            grad_phys(2, i)*grad_phys(2, j))
                     end do
                     F_elem(i) = F_elem(i) + weight*N(i)
                 end do

@@ -42,17 +42,17 @@ contains
 
         ! CCW triangle: (0,0) -> (1,0) -> (1,1)
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 1.0_dp, 1.0_dp)
+            1.0_dp, 1.0_dp)
         call check_condition(orient == ORIENT_CCW, "CCW triangle detected")
 
         ! CW triangle: (0,0) -> (1,1) -> (1,0)
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp,             &
-                                 1.0_dp, 0.0_dp)
+            1.0_dp, 0.0_dp)
         call check_condition(orient == ORIENT_CW, "CW triangle detected")
 
         ! CCW triangle: (0,0) -> (1,0) -> (0,1)
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 0.0_dp, 1.0_dp)
+            0.0_dp, 1.0_dp)
         call check_condition(orient == ORIENT_CCW, "CCW right triangle detected")
     end subroutine test_orientation_basic
 
@@ -70,7 +70,7 @@ contains
         call init_robust_coords(rc, points, 3)
 
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 2.0_dp, 0.0_dp)
+            2.0_dp, 0.0_dp)
         call check_condition(orient == ORIENT_COLLINEAR,                         &
             "Collinear points on x-axis")
 
@@ -82,7 +82,7 @@ contains
         call init_robust_coords(rc, points, 3)
 
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp,             &
-                                 2.0_dp, 2.0_dp)
+            2.0_dp, 2.0_dp)
         call check_condition(orient == ORIENT_COLLINEAR,                         &
             "Collinear points on diagonal")
     end subroutine test_orientation_collinear
@@ -97,19 +97,19 @@ contains
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [1.0_dp, 0.0_dp]
         points(:, 3) = [0.0_dp, 1.0_dp]
-        points(:, 4) = [0.25_dp, 0.25_dp]  ! Inside
+        points(:, 4) = [0.25_dp, 0.25_dp] ! Inside
 
         call init_robust_coords(rc, points, 4)
 
         ! Point (0.25, 0.25) should be inside circumcircle of (0,0)-(1,0)-(0,1)
         ! Circumcircle center is at (0.5, 0.5), radius = sqrt(0.5)
         inside = incircle_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 0.0_dp, 1.0_dp, 0.25_dp, 0.25_dp)
+            0.0_dp, 1.0_dp, 0.25_dp, 0.25_dp)
         call check_condition(inside, "Point inside circumcircle")
 
         ! Point (2.0, 2.0) should be outside
         inside = incircle_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 0.0_dp, 1.0_dp, 2.0_dp, 2.0_dp)
+            0.0_dp, 1.0_dp, 2.0_dp, 2.0_dp)
         call check_condition(.not. inside, "Point outside circumcircle")
     end subroutine test_incircle_basic
 
@@ -122,14 +122,14 @@ contains
         ! Equilateral-ish triangle
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [2.0_dp, 0.0_dp]
-        points(:, 3) = [1.0_dp, 1.732050808_dp]  ! sqrt(3)
+        points(:, 3) = [1.0_dp, 1.732050808_dp] ! sqrt(3)
         points(:, 4) = [1.0_dp, 0.0_dp]
 
         call init_robust_coords(rc, points, 4)
 
         ! Point on the edge exercises boundary behavior of incircle_robust.
         inside = incircle_robust(rc, 0.0_dp, 0.0_dp, 2.0_dp, 0.0_dp,             &
-                                 1.0_dp, 1.732050808_dp, 1.0_dp, 0.0_dp)
+            1.0_dp, 1.732050808_dp, 1.0_dp, 0.0_dp)
         ! We only check that the call succeeds; exact classification may
         ! depend on integer rounding in robust coordinates.
         call check_condition(.true., "Incircle edge case handled")
@@ -156,7 +156,7 @@ contains
 
         ! Should detect as collinear (within integer precision)
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, tiny_offset,        &
-                                 2.0_dp, 2.0_dp * tiny_offset)
+            2.0_dp, 2.0_dp * tiny_offset)
         ! Due to integer rounding, very nearly collinear points become collinear
         call check_condition(orient == ORIENT_COLLINEAR,                         &
             "Nearly collinear points handled robustly")
@@ -164,12 +164,12 @@ contains
         ! Slightly off collinear - should detect correctly
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [1.0_dp, 0.0_dp]
-        points(:, 3) = [2.0_dp, 0.001_dp]  ! Clearly above the line
+        points(:, 3) = [2.0_dp, 0.001_dp] ! Clearly above the line
 
         call init_robust_coords(rc, points, 3)
 
         orient = orient2d_robust(rc, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,             &
-                                 2.0_dp, 0.001_dp)
+            2.0_dp, 0.001_dp)
         call check_condition(orient == ORIENT_CCW,                               &
             "Slightly non-collinear detected as CCW")
     end subroutine test_near_degenerate
@@ -188,8 +188,8 @@ contains
         call init_robust_coords(rc, points, 3)
 
         orient = orient2d_robust(rc, 1000000.0_dp, 1000000.0_dp,                  &
-                                 1000001.0_dp, 1000000.0_dp,                      &
-                                 1000001.0_dp, 1000001.0_dp)
+            1000001.0_dp, 1000000.0_dp,                      &
+            1000001.0_dp, 1000001.0_dp)
         call check_condition(orient == ORIENT_CCW,                               &
             "Large coordinates: CCW detected")
 
@@ -201,8 +201,8 @@ contains
         call init_robust_coords(rc, points, 3)
 
         orient = orient2d_robust(rc, 1.0e8_dp, 1.0e8_dp,                          &
-                                 1.0e8_dp + 0.001_dp, 1.0e8_dp,                   &
-                                 1.0e8_dp, 1.0e8_dp + 0.001_dp)
+            1.0e8_dp + 0.001_dp, 1.0e8_dp,                   &
+            1.0e8_dp, 1.0e8_dp + 0.001_dp)
         call check_condition(orient == ORIENT_CCW,                               &
             "Small triangle in large coords: CCW detected")
     end subroutine test_large_coordinates

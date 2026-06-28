@@ -5,9 +5,9 @@ program test_solver_integration
     implicit none
 
     write(*,*) "Testing solver integration and validation..."
-    
+
     call test_direct_solver_accuracy()
-    call test_gmres_solver_convergence() 
+    call test_gmres_solver_convergence()
     call test_solver_consistency()
     call test_manufactured_solutions()
     call test_convergence_rates()
@@ -15,7 +15,7 @@ program test_solver_integration
     call test_boundary_condition_integration()
     call test_solver_scaling()
     call test_high_level_advanced_solvers()
-    
+
     call check_summary("Solver Integration")
 
 contains
@@ -32,23 +32,23 @@ contains
         real(dp) :: max_val, center_val, expected_max
         integer :: i, center_node
         real(dp) :: x, y, min_dist, dist
-        
+
         ! Test Poisson problem with known solution properties
         mesh = unit_square_mesh(6)
         Vh = function_space(mesh, "Lagrange", 1)
-        
+
         u = trial_function(Vh)
         v = test_function(Vh)
         f = constant(1.0_dp)
-        
+
         a = inner(grad(u), grad(v))*dx
         L = f*v*dx
-        
+
         bc = dirichlet_bc(Vh, 0.0_dp)
         uh = function(Vh)
-        
+
         call solve(a == L, uh, bc)
-        
+
         ! Find center node
         min_dist = huge(1.0_dp)
         center_node = 1
@@ -61,11 +61,11 @@ contains
                 center_node = i
             end if
         end do
-        
+
         max_val = maxval(uh%values)
         center_val = uh%values(center_node)
-        expected_max = 0.125_dp  ! Theoretical maximum for -Δu = 1
-        
+        expected_max = 0.125_dp ! Theoretical maximum for -Δu = 1
+
         call check_condition(max_val > 0.01_dp, &
             "Direct solver: positive solution values")
         call check_condition(max_val < 0.15_dp, &
@@ -74,7 +74,7 @@ contains
             "Direct solver: maximum near center")
         call check_condition(abs(max_val - expected_max) / expected_max < 0.5_dp, &
             "Direct solver: reasonable accuracy")
-        
+
         write(*,*) "   Maximum value:", max_val
         write(*,*) "   Center value:", center_val
         write(*,*) "   Expected maximum:", expected_max
@@ -91,44 +91,44 @@ contains
         type(vector_bc_t) :: bc
         type(form_expr_t) :: a, L
         real(dp) :: solution_norm, max_component
-        
+
         ! Test curl-curl problem with GMRES
-        mesh = unit_square_mesh(4)  ! Small mesh for GMRES test
+        mesh = unit_square_mesh(4) ! Small mesh for GMRES test
         Vh = vector_function_space(mesh, "Nedelec", 1)
-        
+
         E = vector_trial_function(Vh)
         F = vector_test_function(Vh)
         j = vector_function(Vh)
-        
+
         ! Set up simple current source
         if (allocated(j%values)) then
-            j%values = 0.1_dp  ! Simple constant current
+            j%values = 0.1_dp ! Simple constant current
         end if
-        
+
         a = inner(curl(E), curl(F))*dx + inner(E, F)*dx
         L = inner(j, F)*dx
-        
+
         bc = vector_bc(Vh, [0.0_dp, 0.0_dp])
         Eh = vector_function(Vh)
-        
+
         call solve(a == L, Eh, bc, "gmres")
-        
+
         ! Check GMRES solution properties
         solution_norm = 0.0_dp
         max_component = 0.0_dp
-        
+
         if (allocated(Eh%values)) then
             solution_norm = sqrt(sum(Eh%values**2))
             max_component = maxval(abs(Eh%values))
         end if
-        
+
         call check_condition(solution_norm >= 0.0_dp, &
             "GMRES solver: non-negative solution norm")
         call check_condition(solution_norm < 10.0_dp, &
             "GMRES solver: bounded solution")
         call check_condition(max_component < 5.0_dp, &
             "GMRES solver: reasonable component values")
-        
+
         write(*,*) "   GMRES solution norm:", solution_norm
         write(*,*) "   Max component:", max_component
         write(*,*) "   Vector DOFs:", Vh%ndof
@@ -145,42 +145,42 @@ contains
         type(form_expr_t) :: a, L
         real(dp) :: diff_norm, max_diff
         integer :: i
-        
+
         ! Test that same problem gives same solution
         mesh = unit_square_mesh(4)
         Vh = function_space(mesh, "Lagrange", 1)
-        
+
         u = trial_function(Vh)
         v = test_function(Vh)
         f = constant(1.0_dp)
-        
+
         a = inner(grad(u), grad(v))*dx
         L = f*v*dx
-        
+
         ! Solve same problem twice with same BC
         bc1 = dirichlet_bc(Vh, 0.0_dp)
         uh1 = function(Vh)
         call solve(a == L, uh1, bc1)
-        
+
         bc2 = dirichlet_bc(Vh, 0.0_dp)
         uh2 = function(Vh)
         call solve(a == L, uh2, bc2)
-        
+
         ! Check solutions are identical
         max_diff = 0.0_dp
         diff_norm = 0.0_dp
-        
+
         do i = 1, Vh%ndof
             max_diff = max(max_diff, abs(uh1%values(i) - uh2%values(i)))
             diff_norm = diff_norm + (uh1%values(i) - uh2%values(i))**2
         end do
         diff_norm = sqrt(diff_norm)
-        
+
         call check_condition(max_diff < 1.0e-12_dp, &
             "Solver consistency: identical problems give identical solutions")
         call check_condition(diff_norm < 1.0e-10_dp, &
             "Solver consistency: L2 difference is zero")
-        
+
         write(*,*) "   Max difference:", max_diff
         write(*,*) "   L2 difference:", diff_norm
     end subroutine test_solver_consistency
@@ -196,53 +196,53 @@ contains
         type(form_expr_t) :: a, L
         real(dp) :: max_error, l2_error, u_exact, x, y, dist_to_boundary
         integer :: i
-        
+
         ! Test quadratic manufactured solution u(x,y) = x(1-x)y(1-y)
         ! Then -Δu = 2y(1-y) + 2x(1-x), but solver uses f=1
         mesh = unit_square_mesh(6)
         Vh = function_space(mesh, "Lagrange", 1)
-        
+
         u = trial_function(Vh)
         v = test_function(Vh)
-        f = constant(1.0_dp)  ! Note: solver hardcodes f=1
-        
+        f = constant(1.0_dp) ! Note: solver hardcodes f=1
+
         a = inner(grad(u), grad(v))*dx
         L = f*v*dx
-        
+
         bc = dirichlet_bc(Vh, 0.0_dp)
         uh = function(Vh)
-        
+
         call solve(a == L, uh, bc)
-        
+
         ! Compare with expected solution shape
         max_error = 0.0_dp
         l2_error = 0.0_dp
-        
+
         ! Simple check: solution should be smooth and bowl-shaped
         ! Avoid complex manufactured solution comparison that can cause NaN
-        
+
         ! Check that solution varies smoothly from boundary to interior
         do i = 1, Vh%ndof
             x = Vh%mesh%data%vertices(1, i)
             y = Vh%mesh%data%vertices(2, i)
-            
+
             ! Distance from boundary (minimum distance to any edge)
             dist_to_boundary = min(x, 1.0_dp - x, y, 1.0_dp - y)
-            
+
             ! Interior points should have higher values
             if (dist_to_boundary > 0.1_dp .and. uh%values(i) < 0.001_dp) then
-                max_error = max_error + 1.0_dp  ! Flag as error
+                max_error = max_error + 1.0_dp ! Flag as error
             end if
         end do
-        
-        l2_error = maxval(uh%values) - minval(uh%values)  ! Solution range
-        
+
+        l2_error = maxval(uh%values) - minval(uh%values) ! Solution range
+
         ! Test qualitative properties rather than exact match
         call check_condition(maxval(uh%values) > 0.01_dp, &
             "Manufactured solution: positive interior values")
         call check_condition(l2_error > 0.001_dp, &
             "Manufactured solution: reasonable solution range")
-        
+
         write(*,*) "   Max error:", max_error
         write(*,*) "   L2 error:", l2_error
         write(*,*) "   Relative L2 error:", l2_error / maxval(uh%values)
@@ -260,49 +260,49 @@ contains
         type(form_expr_t) :: a, L
         real(dp) :: max_vals(3), h_vals(3), rates(2)
         integer :: n_vals(3), i
-        
+
         ! Test convergence on sequence of meshes
         n_vals = [4, 6, 8]
         h_vals = 1.0_dp / real(n_vals, dp)
-        
+
         do i = 1, 3
             mesh = unit_square_mesh(n_vals(i))
             Vh = function_space(mesh, "Lagrange", 1)
-            
+
             u = trial_function(Vh)
             v = test_function(Vh)
             f = constant(1.0_dp)
-            
+
             a = inner(grad(u), grad(v))*dx
             L = f*v*dx
-            
+
             bc = dirichlet_bc(Vh, 0.0_dp)
             uh = function(Vh)
-            
+
             call solve(a == L, uh, bc)
             max_vals(i) = maxval(uh%values)
         end do
-        
+
         ! Compute convergence rates with bounds checking
         if (abs(max_vals(1)) > 1.0e-12_dp .and. abs(max_vals(2) - max_vals(1)) > 1.0e-12_dp) then
             rates(1) = log(abs(max_vals(2) - max_vals(1)) / abs(max_vals(1))) / log(h_vals(2) / h_vals(1))
         else
             rates(1) = 0.0_dp
         end if
-        
+
         if (abs(max_vals(2)) > 1.0e-12_dp .and. abs(max_vals(3) - max_vals(2)) > 1.0e-12_dp) then
             rates(2) = log(abs(max_vals(3) - max_vals(2)) / abs(max_vals(2))) / log(h_vals(3) / h_vals(2))
         else
             rates(2) = 0.0_dp
         end if
-        
+
         call check_condition(max_vals(2) > max_vals(1), &
             "Convergence rates: refinement improves accuracy 1")
         call check_condition(max_vals(3) > max_vals(2), &
             "Convergence rates: refinement improves accuracy 2")
         call check_condition(maxval(abs(rates)) < 20.0_dp, &
             "Convergence rates: reasonable rate values")
-        
+
         write(*,*) "   Mesh sizes:", n_vals
         write(*,*) "   Max values:", max_vals
         write(*,*) "   h values:", h_vals
@@ -321,44 +321,44 @@ contains
         logical :: small_solved, medium_solved, large_solved
         integer :: sizes(3), i
         real(dp) :: max_vals(3)
-        
+
         sizes = [3, 6, 10]
         small_solved = .false.
         medium_solved = .false.
         large_solved = .false.
-        
+
         ! Test solver on different problem sizes
         do i = 1, 3
             mesh = unit_square_mesh(sizes(i))
             Vh = function_space(mesh, "Lagrange", 1)
-            
+
             u = trial_function(Vh)
             v = test_function(Vh)
             f = constant(1.0_dp)
-            
+
             a = inner(grad(u), grad(v))*dx
             L = f*v*dx
-            
+
             bc = dirichlet_bc(Vh, 0.0_dp)
             uh = function(Vh)
-            
+
             call solve(a == L, uh, bc)
             max_vals(i) = maxval(uh%values)
-            
+
             if (max_vals(i) > 1.0e-6_dp .and. max_vals(i) < 1.0_dp) then
                 if (i == 1) small_solved = .true.
                 if (i == 2) medium_solved = .true.
                 if (i == 3) large_solved = .true.
             end if
         end do
-        
+
         call check_condition(small_solved, &
             "Solver robustness: small problem solved")
         call check_condition(medium_solved, &
             "Solver robustness: medium problem solved")
         call check_condition(large_solved, &
             "Solver robustness: large problem solved")
-        
+
         write(*,*) "   Problem sizes (DOFs):"
         do i = 1, 3
             mesh = unit_square_mesh(sizes(i))
@@ -378,27 +378,27 @@ contains
         type(form_expr_t) :: a, L
         real(dp) :: bc_vals(3), max_vals(3), expected_offset
         integer :: i, j, boundary_count
-        
+
         bc_vals = [0.0_dp, 0.5_dp, 1.0_dp]
-        
+
         mesh = unit_square_mesh(5)
         Vh = function_space(mesh, "Lagrange", 1)
-        
+
         ! Test solver with different boundary values
         do i = 1, 3
             u = trial_function(Vh)
             v = test_function(Vh)
             f = constant(1.0_dp)
-            
+
             a = inner(grad(u), grad(v))*dx
             L = f*v*dx
-            
+
             bc = dirichlet_bc(Vh, bc_vals(i))
             uh = function(Vh)
-            
+
             call solve(a == L, uh, bc)
             max_vals(i) = maxval(uh%values)
-            
+
             ! Check boundary values are correctly applied
             boundary_count = 0
             do j = 1, Vh%ndof
@@ -411,14 +411,14 @@ contains
                 end if
             end do
         end do
-        
+
         call check_condition(boundary_count > 0, &
             "BC integration: found boundary vertices")
         call check_condition(max_vals(2) > max_vals(1), &
             "BC integration: higher BC gives higher maximum 1")
         call check_condition(max_vals(3) > max_vals(2), &
             "BC integration: higher BC gives higher maximum 2")
-        
+
         write(*,*) "   BC values:", bc_vals
         write(*,*) "   Max solution values:", max_vals
         write(*,*) "   Boundary vertices:", boundary_count
@@ -435,38 +435,38 @@ contains
         type(form_expr_t) :: a, L
         integer :: dofs(3), i
         real(dp) :: solutions(3), ratios(2)
-        
+
         ! Test scaling of solution accuracy with DOF count
         do i = 1, 3
-            mesh = unit_square_mesh(3 + i)  ! 4, 5, 6
+            mesh = unit_square_mesh(3 + i) ! 4, 5, 6
             Vh = function_space(mesh, "Lagrange", 1)
             dofs(i) = Vh%ndof
-            
+
             u = trial_function(Vh)
             v = test_function(Vh)
             f = constant(1.0_dp)
-            
+
             a = inner(grad(u), grad(v))*dx
             L = f*v*dx
-            
+
             bc = dirichlet_bc(Vh, 0.0_dp)
             uh = function(Vh)
-            
+
             call solve(a == L, uh, bc)
             solutions(i) = maxval(uh%values)
         end do
-        
+
         ! Compute improvement ratios
         ratios(1) = solutions(2) / solutions(1)
         ratios(2) = solutions(3) / solutions(2)
-        
+
         call check_condition(solutions(2) >= solutions(1) * 0.9_dp, &
             "Solver scaling: more DOFs give better accuracy 1")
         call check_condition(solutions(3) >= solutions(1) * 0.9_dp, &
             "Solver scaling: more DOFs maintain accuracy 2")
         call check_condition(all(ratios > 0.5_dp) .and. all(ratios < 3.0_dp), &
             "Solver scaling: reasonable improvement ratios")
-        
+
         write(*,*) "   DOF counts:", dofs
         write(*,*) "   Solution maxima:", solutions
         write(*,*) "   Improvement ratios:", ratios
@@ -507,25 +507,25 @@ contains
 
         ! Direct LAPACK solve through high-level API
         opts_direct = solver_options(method="lapack_lu", &
-                                     tolerance=1.0e-12_dp, &
-                                     max_iterations=ndof)
+            tolerance=1.0e-12_dp, &
+            max_iterations=ndof)
         call solve(a == L, uh_direct, bc, opts_direct, stats_direct)
 
         ! Iterative PCG+ILU solve through high-level API
         opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
-                                  tolerance=1.0e-6_dp, &
-                                  tolerance_type="absolute", &
-                                  max_iterations=5*ndof)
+            tolerance=1.0e-6_dp, &
+            tolerance_type="absolute", &
+            max_iterations=5*ndof)
         call solve(a == L, uh_pcg, bc, opts_pcg, stats_pcg)
 
         res_direct = sqrt(sum((matmul(K_mat, uh_direct%values) - rhs)**2))/ &
-                     real(ndof, dp)
+            real(ndof, dp)
         res_pcg = sqrt(sum((matmul(K_mat, uh_pcg%values) - rhs)**2))/ &
-                  real(ndof, dp)
+            real(ndof, dp)
 
         norm_direct = sqrt(sum(uh_direct%values**2))
         diff_norm = sqrt(sum((uh_direct%values - uh_pcg%values)**2))/ &
-                    max(norm_direct, 1.0e-12_dp)
+            max(norm_direct, 1.0e-12_dp)
 
         call check_condition(stats_direct%converged, &
             "High-level solvers: direct converged")
@@ -536,7 +536,7 @@ contains
         call check_condition(diff_norm < 1.0e-3_dp, &
             "High-level solvers: PCG solution matches direct")
         call check_condition(stats_pcg%iterations > 1 .and. &
-                             stats_pcg%iterations < 5*ndof, &
+            stats_pcg%iterations < 5*ndof, &
             "High-level solvers: PCG iteration count reasonable")
 
         write(*,*) "   High-level direct residual:", res_direct

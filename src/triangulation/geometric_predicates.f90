@@ -49,7 +49,7 @@ contains
         !  The bounding box of the points is used to compute the integer
         !  coordinate mapping.
         !
-        real(dp), intent(in) :: points(:,:)  ! (2, npoints)
+        real(dp), intent(in) :: points(:,:) ! (2, npoints)
         integer, intent(in) :: npoints
 
         call init_robust_coords(robust_coords, points, npoints)
@@ -243,15 +243,15 @@ contains
         type(point_t), intent(in) :: pa, pb, pc
         real(dp) :: angles(3)
 
-        real(dp) :: a, b, c  ! Side lengths
+        real(dp) :: a, b, c ! Side lengths
         real(dp) :: cos_a, cos_b, cos_c
         real(dp), parameter :: pi = 3.141592653589793_dp
         real(dp), parameter :: rad_to_deg = 180.0_dp / pi
 
         ! Calculate side lengths
-        a = edge_length(pb, pc)  ! Side opposite to angle A
-        b = edge_length(pa, pc)  ! Side opposite to angle B
-        c = edge_length(pa, pb)  ! Side opposite to angle C
+        a = edge_length(pb, pc) ! Side opposite to angle A
+        b = edge_length(pa, pc) ! Side opposite to angle B
+        c = edge_length(pa, pb) ! Side opposite to angle C
 
         ! Handle degenerate triangles
         if (a <= geometric_tolerance .or. b <= geometric_tolerance              &

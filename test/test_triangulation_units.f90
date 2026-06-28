@@ -7,15 +7,15 @@ program test_triangulation_units
     implicit none
 
     integer :: test_count = 0, passed_tests = 0
-    
+
     write(*,*) "=== Triangulation Unit Tests ==="
     write(*,*) ""
-    
+
     call test_simple_triangle_mesh()
     call test_edge_existence_check()
     call test_constraint_edge_insertion()
     call test_cavity_boundary_identification()
-    
+
     ! Summary
     write(*,*) ""
     write(*,'(A,I0,A,I0)') "Tests passed: ", passed_tests, "/", test_count
@@ -25,7 +25,7 @@ program test_triangulation_units
         write(*,*) "✗ Some tests failed!"
         stop 1
     end if
-    
+
 contains
 
     subroutine test_simple_triangle_mesh()
@@ -33,42 +33,42 @@ contains
         type(mesh_t) :: mesh
         real(dp) :: points(2, 3)
         integer, allocatable :: constraint_segments(:,:)
-        
+
         call start_test(test_name)
-        
+
         ! Create simple triangle: (0,0), (1,0), (0.5,1)
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [1.0_dp, 0.0_dp]
         points(:, 3) = [0.5_dp, 1.0_dp]
-        
+
         ! Should create exactly one triangle
         allocate(constraint_segments(2, 0))
         call constrained_delaunay_triangulate(points, constraint_segments, mesh)
-        
+
         call assert_true(mesh%npoints == 6, "Expected 6 vertices (3 real + 3 super-triangle)")
         call assert_true(mesh%ntriangles >= 1, "Expected at least 1 triangle")
         call assert_true(count_valid_triangles(mesh) == 1, "Expected exactly 1 valid triangle")
-        
+
         call end_test()
     end subroutine
-    
+
     subroutine test_edge_existence_check()
         character(len=*), parameter :: test_name = "Edge Existence Check"
         type(mesh_t) :: mesh
         real(dp) :: points(2, 4)
         integer, allocatable :: constraint_segments(:,:)
-        
+
         call start_test(test_name)
-        
+
         ! Create square vertices
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [1.0_dp, 0.0_dp]
         points(:, 3) = [1.0_dp, 1.0_dp]
         points(:, 4) = [0.0_dp, 1.0_dp]
-        
+
         allocate(constraint_segments(2, 0))
         call constrained_delaunay_triangulate(points, constraint_segments, mesh)
-        
+
         ! Test edge existence functions (for 4-point square, vertices 4,5,6,7 are real points)
         ! We need to check what triangles actually exist
         write(*,*) "Debug: Valid triangles =", count_valid_triangles(mesh)
@@ -78,10 +78,10 @@ contains
         else
             call assert_true(.false., "No valid triangulation created")
         end if
-        
+
         call end_test()
     end subroutine
-    
+
     subroutine test_constraint_edge_insertion()
         character(len=*), parameter :: test_name = "Constraint Edge Insertion"
         type(mesh_t) :: mesh
@@ -120,7 +120,7 @@ contains
 
         call end_test()
     end subroutine
-    
+
     subroutine test_cavity_boundary_identification()
         character(len=*), parameter :: test_name = "Cavity Boundary Identification"
         type(mesh_t) :: mesh
@@ -128,31 +128,31 @@ contains
         integer, allocatable :: constraint_segments(:,:)
         integer, allocatable :: boundary_edges(:,:)
         integer :: nboundary
-        
+
         call start_test(test_name)
-        
+
         ! Create pentagon
         points(:, 1) = [0.0_dp, 0.0_dp]
         points(:, 2) = [1.0_dp, 0.0_dp]
         points(:, 3) = [1.5_dp, 1.0_dp]
         points(:, 4) = [0.5_dp, 1.5_dp]
         points(:, 5) = [-0.5_dp, 1.0_dp]
-        
+
         allocate(constraint_segments(2, 0))
         call constrained_delaunay_triangulate(points, constraint_segments, mesh)
-        
+
         ! Test that we can identify boundary edges
         ! (This tests internal boundary identification logic)
         call assert_true(mesh%ntriangles >= 3, "Pentagon should have at least 3 triangles")
-        
+
         call end_test()
     end subroutine
-    
+
     ! Helper functions
     function count_valid_triangles(mesh) result(count)
         type(mesh_t), intent(in) :: mesh
         integer :: count, i
-        
+
         count = 0
         do i = 1, mesh%ntriangles
             if (mesh%triangles(i)%valid) then
@@ -160,19 +160,19 @@ contains
             end if
         end do
     end function
-    
+
     ! Test framework helpers
     subroutine start_test(test_name)
         character(len=*), intent(in) :: test_name
         test_count = test_count + 1
         write(*,'(A,I0,A,A)') "Test ", test_count, ": ", test_name
     end subroutine
-    
+
     subroutine end_test()
         passed_tests = passed_tests + 1
         write(*,*) "  ✓ PASSED"
     end subroutine
-    
+
     subroutine assert_true(condition, description)
         logical, intent(in) :: condition
         character(len=*), intent(in) :: description
@@ -181,7 +181,7 @@ contains
             stop 1
         end if
     end subroutine
-    
+
     subroutine assert_false(condition, description)
         logical, intent(in) :: condition
         character(len=*), intent(in) :: description

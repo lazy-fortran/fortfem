@@ -1,7 +1,7 @@
 module fortfem_umfpack_interface
     use fortfem_kinds, only: dp
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_ptr, &
-                                           c_null_ptr, c_associated
+        c_null_ptr, c_associated
     implicit none
     private
 
@@ -12,8 +12,8 @@ module fortfem_umfpack_interface
 
     interface
         function umfpack_di_symbolic(n_row, n_col, Ap, Ai, Ax, symbolic, &
-                                     control, info) bind(C, &
-                                                         name="umfpack_di_symbolic")
+                control, info) bind(C, &
+                name="umfpack_di_symbolic")
             import :: c_int, c_double, c_ptr
             integer(c_int), value :: n_row, n_col
             integer(c_int), intent(in) :: Ap(*)
@@ -26,8 +26,8 @@ module fortfem_umfpack_interface
         end function umfpack_di_symbolic
 
         function umfpack_di_numeric(Ap, Ai, Ax, symbolic, numeric, control, &
-                                    info) bind(C, &
-                                               name="umfpack_di_numeric")
+                info) bind(C, &
+                name="umfpack_di_numeric")
             import :: c_int, c_double, c_ptr
             integer(c_int), intent(in) :: Ap(*)
             integer(c_int), intent(in) :: Ai(*)
@@ -40,7 +40,7 @@ module fortfem_umfpack_interface
         end function umfpack_di_numeric
 
         function umfpack_di_solve(sys, Ap, Ai, Ax, x, b, numeric, control, &
-                                  info) bind(C, name="umfpack_di_solve")
+                info) bind(C, name="umfpack_di_solve")
             import :: c_int, c_double, c_ptr
             integer(c_int), value :: sys
             integer(c_int), intent(in) :: Ap(*)
@@ -55,13 +55,13 @@ module fortfem_umfpack_interface
         end function umfpack_di_solve
 
         subroutine umfpack_di_free_symbolic(symbolic) bind(C, &
-                                                           name="umfpack_di_free_symbolic")
+                name="umfpack_di_free_symbolic")
             import :: c_ptr
             type(c_ptr), intent(inout) :: symbolic
         end subroutine umfpack_di_free_symbolic
 
         subroutine umfpack_di_free_numeric(numeric) bind(C, &
-                                                         name="umfpack_di_free_numeric")
+                name="umfpack_di_free_numeric")
             import :: c_ptr
             type(c_ptr), intent(inout) :: numeric
         end subroutine umfpack_di_free_numeric
@@ -84,7 +84,7 @@ contains
     end subroutine check_umfpack_kinds
 
     subroutine build_umfpack_arrays(n, col_ptr, row_ind, values_csc, b, &
-                                    Ap_c, Ai_c, Ax_c, b_c, x_c, n_c)
+            Ap_c, Ai_c, Ax_c, b_c, x_c, n_c)
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:)
         integer, intent(in) :: row_ind(:)
@@ -122,7 +122,7 @@ contains
     end subroutine build_umfpack_arrays
 
     subroutine umfpack_factor_and_solve(n_c, Ap_c, Ai_c, Ax_c, b_c, x_c, &
-                                        status)
+            status)
         integer(c_int), intent(in) :: n_c
         integer(c_int), intent(in) :: Ap_c(:)
         integer(c_int), intent(in) :: Ai_c(:)
@@ -138,7 +138,7 @@ contains
         numeric = c_null_ptr
 
         stat_sym = umfpack_di_symbolic(n_c, n_c, Ap_c, Ai_c, Ax_c, symbolic, &
-                                       c_null_ptr, c_null_ptr)
+            c_null_ptr, c_null_ptr)
 
         if (stat_sym /= 0_c_int) then
             status = stat_sym
@@ -149,7 +149,7 @@ contains
         end if
 
         stat_num = umfpack_di_numeric(Ap_c, Ai_c, Ax_c, symbolic, numeric, &
-                                      c_null_ptr, c_null_ptr)
+            c_null_ptr, c_null_ptr)
 
         call umfpack_di_free_symbolic(symbolic)
 
@@ -162,7 +162,7 @@ contains
         end if
 
         stat_solve = umfpack_di_solve(umfpack_sys_A, Ap_c, Ai_c, Ax_c, x_c, &
-                                      b_c, numeric, c_null_ptr, c_null_ptr)
+            b_c, numeric, c_null_ptr, c_null_ptr)
 
         call umfpack_di_free_numeric(numeric)
 
@@ -170,7 +170,7 @@ contains
     end subroutine umfpack_factor_and_solve
 
     subroutine umfpack_solve_csc(n, col_ptr, row_ind, values_csc, b, x, &
-                                 status)
+            status)
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:)
         integer, intent(in) :: row_ind(:)
@@ -188,10 +188,10 @@ contains
         call check_umfpack_kinds()
 
         call build_umfpack_arrays(n, col_ptr, row_ind, values_csc, b, Ap_c, &
-                                  Ai_c, Ax_c, b_c, x_c, n_c)
+            Ai_c, Ax_c, b_c, x_c, n_c)
 
         call umfpack_factor_and_solve(n_c, Ap_c, Ai_c, Ax_c, b_c, x_c, &
-                                      status_local)
+            status_local)
 
         do j = 1, n
             x(j) = real(x_c(j), kind=dp)

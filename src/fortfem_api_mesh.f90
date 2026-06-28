@@ -3,8 +3,8 @@ module fortfem_api_mesh
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_boundary, only: boundary_t
     use fortfem_api_mesh_boundaries, only: circle_boundary, &
-                                           rectangle_boundary, line_segment, &
-                                               arc_segment, l_shape_boundary
+        rectangle_boundary, line_segment, &
+        arc_segment, l_shape_boundary
     use triangle_io, only: read_triangle_mesh
     use fortfem_api_types, only: mesh_t, function_t
     use fortfem_api_forms, only: init_measures
@@ -53,12 +53,12 @@ contains
 
         do e = 1, mesh%data%n_triangles
             call compute_element_gradient_indicator(mesh, solution, e, &
-                                                    indicators(e))
+                indicators(e))
         end do
     end subroutine compute_gradient_indicators
 
     pure subroutine compute_element_gradient_indicator(mesh, solution, &
-                                                       element_index, indicator)
+            element_index, indicator)
         type(mesh_t), intent(in) :: mesh
         type(function_t), intent(in) :: solution
         integer, intent(in) :: element_index
@@ -82,7 +82,7 @@ contains
         y3 = mesh%data%vertices(2, v3)
 
         call compute_p1_gradient_shape_functions(x1, y1, x2, y2, x3, y3, &
-                                                 b, c, is_degenerate)
+            b, c, is_degenerate)
 
         if (is_degenerate) then
             indicator = 0.0_dp
@@ -100,7 +100,7 @@ contains
     end subroutine compute_element_gradient_indicator
 
     pure subroutine compute_p1_gradient_shape_functions(x1, y1, x2, y2, &
-                                                        x3, y3, b, c, is_degenerate)
+            x3, y3, b, c, is_degenerate)
         real(dp), intent(in) :: x1, y1, x2, y2, x3, y3
         real(dp), intent(out) :: b(3), c(3)
         logical, intent(out) :: is_degenerate
@@ -132,8 +132,8 @@ contains
         call init_measures()
 
         call mesh%data%create_rectangular(nx=n, ny=n, &
-                                          x_min=0.0_dp, x_max=1.0_dp, &
-                                          y_min=0.0_dp, y_max=1.0_dp)
+            x_min=0.0_dp, x_max=1.0_dp, &
+            y_min=0.0_dp, y_max=1.0_dp)
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function unit_square_mesh
@@ -145,8 +145,8 @@ contains
 
         call init_measures()
         call mesh%data%create_rectangular(nx=nx, ny=ny, &
-                                          x_min=domain(1), x_max=domain(2), &
-                                          y_min=domain(3), y_max=domain(4))
+            x_min=domain(1), x_max=domain(2), &
+            y_min=domain(3), y_max=domain(4))
         call mesh%data%build_connectivity()
         call mesh%data%find_boundary()
     end function rectangle_mesh
@@ -188,7 +188,7 @@ contains
         call init_measures()
 
         call set_triangle_mesh_metadata(mesh, size(vertices, 2), &
-                                        size(triangles, 2))
+            size(triangles, 2))
 
         allocate (mesh%data%vertices(2, mesh%data%n_vertices))
         allocate (mesh%data%triangles(3, mesh%data%n_triangles))
@@ -211,7 +211,7 @@ contains
         call init_measures()
 
         call read_triangle_mesh(basename, vertices, triangles, &
-                                n_vertices, n_triangles, stat)
+            n_vertices, n_triangles, stat)
 
         if (stat /= 0) then
             mesh%data%n_vertices = 0
@@ -234,7 +234,7 @@ contains
     end function mesh_from_triangle_files
 
     pure subroutine set_triangle_mesh_metadata(mesh, n_vertices, &
-                                               n_triangles)
+            n_triangles)
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: n_vertices, n_triangles
 
@@ -247,11 +247,11 @@ contains
     end subroutine set_triangle_mesh_metadata
 
     function mesh_from_domain(vertices, segments, hole_points, min_angle) &
-        result(mesh)
+            result(mesh)
         use triangulation_fortran, only: triangulation_result_t, &
-                                         triangulate_with_hole_fortran, &
-                                         triangulate_with_quality_fortran, &
-                                         cleanup_triangulation
+            triangulate_with_hole_fortran, &
+            triangulate_with_quality_fortran, &
+            cleanup_triangulation
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: segments(:, :)
         real(dp), intent(in), optional :: hole_points(:, :)
@@ -269,10 +269,10 @@ contains
 
         if (present(hole_points)) then
             call triangulate_with_hole_fortran(vertices, segments, &
-                                               hole_points, result, stat)
+                hole_points, result, stat)
         else
             call triangulate_with_quality_fortran(vertices, segments, &
-                                                  angle, result, stat)
+                angle, result, stat)
         end if
 
         if (result%ntriangles == 0) then
@@ -282,7 +282,7 @@ contains
         end if
 
         call set_triangle_mesh_metadata(mesh, result%npoints, &
-                                        result%ntriangles)
+            result%ntriangles)
 
         allocate (mesh%data%vertices(2, mesh%data%n_vertices))
         allocate (mesh%data%triangles(3, mesh%data%n_triangles))
@@ -340,7 +340,7 @@ contains
     end function refine_adaptive_markers
 
     function refine_adaptive_solution(mesh, solution, tolerance) &
-        result(refined_mesh)
+            result(refined_mesh)
         type(mesh_t), intent(in) :: mesh
         type(function_t), intent(in) :: solution
         real(dp), intent(in) :: tolerance
@@ -402,10 +402,10 @@ contains
                 mesh%edges(2, i) == e1_v2) then
                 edge1 = i
             else if (mesh%edges(1, i) == e2_v1 .and. &
-                     mesh%edges(2, i) == e2_v2) then
+                    mesh%edges(2, i) == e2_v2) then
                 edge2 = i
             else if (mesh%edges(1, i) == e3_v1 .and. &
-                     mesh%edges(2, i) == e3_v2) then
+                    mesh%edges(2, i) == e3_v2) then
                 edge3 = i
             end if
         end do

@@ -1,10 +1,10 @@
 module fortfem_advanced_solvers
     use fortfem_kinds, only: dp
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
-                                     sparse_to_csc, spmv
+        sparse_to_csc, spmv
     use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
     use fortfem_umfpack_interface, only: umfpack_solve_csc, &
-                                         umfpack_available
+        umfpack_available
     implicit none
     private
 
@@ -37,8 +37,8 @@ module fortfem_advanced_solvers
         logical :: parallel = .false.
         integer :: num_threads = 1
         integer :: verbosity = 0
-        real(dp) :: drop_tolerance = 1.0e-4_dp  ! For ILU
-        integer :: fill_level = 0  ! For ILU
+        real(dp) :: drop_tolerance = 1.0e-4_dp ! For ILU
+        integer :: fill_level = 0 ! For ILU
     end type solver_options_t
 
     ! Solver statistics type
@@ -47,7 +47,7 @@ module fortfem_advanced_solvers
         integer :: iterations = 0
         real(dp) :: final_residual = 0.0_dp
         real(dp) :: solve_time = 0.0_dp
-        integer :: memory_usage = 0  ! In bytes
+        integer :: memory_usage = 0 ! In bytes
         character(len=32) :: method_used = ""
         integer :: restarts = 0
         real(dp) :: parallel_efficiency = 0.0_dp
@@ -57,9 +57,9 @@ module fortfem_advanced_solvers
     ! Preconditioner type
     type :: preconditioner_t
         character(len=32) :: type = "none"
-        real(dp), allocatable :: diagonal(:)  ! For Jacobi
-        real(dp), allocatable :: L(:, :), U(:, :)  ! For ILU
-        integer, allocatable :: pivot(:)  ! For ILU
+        real(dp), allocatable :: diagonal(:) ! For Jacobi
+        real(dp), allocatable :: L(:, :), U(:, :) ! For ILU
+        integer, allocatable :: pivot(:) ! For ILU
     end type preconditioner_t
 
     abstract interface
@@ -157,7 +157,7 @@ contains
 
         if (trim(local_opts%preconditioner) /= "none") then
             call build_sparse_preconditioner(A_sparse, precond, &
-                                             local_opts%preconditioner, local_opts)
+                local_opts%preconditioner, local_opts)
         else
             precond%type = "none"
         end if
@@ -169,18 +169,18 @@ contains
             call cg_solve_sparse_impl(A_sparse, b, x, local_opts, stats)
         case ("pcg")
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
-                                       precond)
+                precond)
         case default
             local_opts%method = "pcg"
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
-                                       precond)
+                precond)
         end select
 
         call cpu_time(end_time)
 
         stats%solve_time = end_time - start_time
         stats%memory_usage = estimate_sparse_memory_usage(A_sparse, &
-                                                          trim(stats%method_used))
+            trim(stats%method_used))
     end subroutine solve_sparse
 
     subroutine cg_solve_sparse_impl(A_sparse, b, x, opts, stats)
@@ -212,7 +212,7 @@ contains
         type(preconditioner_t), intent(in) :: precond
 
         call pcg_solve_operator(sparse_matvec, sparse_apply_precond, b, x, &
-                                opts, stats)
+            opts, stats)
 
     contains
 
@@ -267,12 +267,12 @@ contains
         allocate (r(n), p(n), Ap(n), Ax(n))
 
         call initialize_cg_state(matvec, b, x, r, p, Ap, Ax, rr_old, &
-                                 initial_norm, residual_norm)
+            initial_norm, residual_norm)
         tolerance = compute_solver_tolerance(initial_norm, opts)
         stats%converged = .false.
         stats%iterations = 0
         call cg_iteration_loop(matvec, opts, tolerance, r, p, Ap, x, rr_old, &
-                               residual_norm, stats)
+            residual_norm, stats)
         call finalize_solver_status(stats, residual_norm, tolerance)
         stats%method_used = "cg"
 
@@ -280,7 +280,7 @@ contains
     end subroutine cg_solve_operator
 
     subroutine initialize_cg_state(matvec, b, x, r, p, Ap, Ax, rr_old, &
-                                   initial_norm, residual_norm)
+            initial_norm, residual_norm)
         procedure(matvec_proc) :: matvec
         real(dp), intent(in) :: b(:)
         real(dp), intent(inout) :: x(:)
@@ -296,7 +296,7 @@ contains
     end subroutine initialize_cg_state
 
     subroutine cg_iteration_loop(matvec, opts, tolerance, r, p, Ap, x, &
-                                 rr_old, residual_norm, stats)
+            rr_old, residual_norm, stats)
         procedure(matvec_proc) :: matvec
         type(solver_options_t), intent(in) :: opts
         real(dp), intent(in) :: tolerance
@@ -354,7 +354,7 @@ contains
         call build_preconditioner(A, precond, opts%preconditioner, opts)
 
         call pcg_solve_operator(dense_matvec, dense_apply_precond, b, x, &
-                                opts, stats)
+            opts, stats)
 
     contains
 
@@ -390,12 +390,12 @@ contains
         allocate (r(n), z(n), p(n), Ap(n), Ax(n))
 
         call initialize_pcg_state(matvec, apply_precond, b, x, r, z, p, Ap, &
-                                  Ax, rz_old, initial_norm, residual_norm)
+            Ax, rz_old, initial_norm, residual_norm)
         tolerance = compute_solver_tolerance(initial_norm, opts)
         stats%converged = .false.
         stats%iterations = 0
         call pcg_iteration_loop(matvec, apply_precond, opts, tolerance, r, z, &
-                                p, Ap, x, rz_old, residual_norm, stats)
+            p, Ap, x, rz_old, residual_norm, stats)
         call finalize_solver_status(stats, residual_norm, tolerance)
         stats%method_used = "pcg"
 
@@ -403,7 +403,7 @@ contains
     end subroutine pcg_solve_operator
 
     subroutine initialize_pcg_state(matvec, apply_precond, b, x, r, z, p, Ap, &
-                                    Ax, rz_old, initial_norm, residual_norm)
+            Ax, rz_old, initial_norm, residual_norm)
         procedure(matvec_proc) :: matvec
         procedure(precond_proc) :: apply_precond
         real(dp), intent(in) :: b(:)
@@ -424,7 +424,7 @@ contains
     end subroutine initialize_pcg_state
 
     subroutine pcg_iteration_loop(matvec, apply_precond, opts, tolerance, r, &
-                                  z, p, Ap, x, rz_old, residual_norm, stats)
+            z, p, Ap, x, rz_old, residual_norm, stats)
         procedure(matvec_proc) :: matvec
         procedure(precond_proc) :: apply_precond
         type(solver_options_t), intent(in) :: opts
@@ -485,16 +485,16 @@ contains
         if (use_precond) then
             call build_preconditioner(A, precond, opts%preconditioner, opts)
             call bicgstab_impl(A, b, x, precond%diagonal, precond%L, precond%U, &
-                               use_precond, opts%tolerance, opts%max_iterations, &
-                               opts%tolerance_type, opts%verbosity, stats%converged, &
-                               stats%iterations, stats%final_residual)
+                use_precond, opts%tolerance, opts%max_iterations, &
+                opts%tolerance_type, opts%verbosity, stats%converged, &
+                stats%iterations, stats%final_residual)
         else
             call bicgstab_impl(A, b, x, use_precond=.false., tol=opts%tolerance, &
-                               max_iter=opts%max_iterations, &
-                               tol_type=opts%tolerance_type, &
-                               verbosity=opts%verbosity, converged=stats%converged, &
-                               iterations=stats%iterations, &
-                               final_resid=stats%final_residual)
+                max_iter=opts%max_iterations, &
+                tol_type=opts%tolerance_type, &
+                verbosity=opts%verbosity, converged=stats%converged, &
+                iterations=stats%iterations, &
+                final_resid=stats%final_residual)
         end if
 
         stats%method_used = "bicgstab"
@@ -508,9 +508,9 @@ contains
         type(solver_stats_t), intent(out) :: stats
 
         call gmres_impl(A, b, x, opts%tolerance, opts%max_iterations, &
-                        opts%restart, opts%tolerance_type, opts%verbosity, &
-                        stats%converged, stats%iterations, stats%restarts, &
-                        stats%final_residual)
+            opts%restart, opts%tolerance_type, opts%verbosity, &
+            stats%converged, stats%iterations, stats%restarts, &
+            stats%final_residual)
 
         stats%method_used = "gmres"
     end subroutine gmres_solve
@@ -666,7 +666,7 @@ contains
     end subroutine build_preconditioner
 
     subroutine build_sparse_preconditioner(A_sparse, precond, precond_type, &
-                                           opts)
+            opts)
         type(sparse_matrix_t), intent(in) :: A_sparse
         type(preconditioner_t), intent(out) :: precond
         character(len=*), intent(in) :: precond_type
@@ -742,7 +742,7 @@ contains
             call solve_ilu(precond, r, z)
 
         case default
-            z = r  ! Identity preconditioner
+            z = r ! Identity preconditioner
         end select
     end subroutine apply_preconditioner
 
@@ -810,7 +810,7 @@ contains
                         if (abs(precond%U(i, j)) > 1.0e-14_dp .or. &
                             abs(precond%U(k, j)) > 1.0e-14_dp) then
                             precond%U(i, j) = precond%U(i, j) - &
-                                              factor*precond%U(k, j)
+                                factor*precond%U(k, j)
                         end if
                     end do
                 end if
@@ -910,11 +910,11 @@ contains
 
         select case (trim(method))
         case ("lapack_lu", "direct")
-            memory_bytes = n*n*8  ! Dense storage
+            memory_bytes = n*n*8 ! Dense storage
         case ("cg", "pcg", "bicgstab", "gmres")
-            memory_bytes = n*8*10  ! Several vectors
+            memory_bytes = n*8*10 ! Several vectors
         case default
-            memory_bytes = n*8*5   ! Conservative estimate
+            memory_bytes = n*8*5 ! Conservative estimate
         end select
     end function estimate_memory_usage
 
@@ -939,12 +939,12 @@ contains
 
     ! Constructor function for solver options
     function solver_options(method, tolerance, max_iterations, preconditioner, &
-                            tolerance_type, restart, parallel, num_threads, &
-                            verbosity, drop_tolerance, fill_level) result(opts)
+            tolerance_type, restart, parallel, num_threads, &
+            verbosity, drop_tolerance, fill_level) result(opts)
         character(len=*), intent(in), optional :: method, preconditioner, tolerance_type
         real(dp), intent(in), optional :: tolerance, drop_tolerance
         integer, intent(in), optional :: max_iterations, restart, num_threads, &
-                                         verbosity, fill_level
+            verbosity, fill_level
         logical, intent(in), optional :: parallel
         type(solver_options_t) :: opts
 
