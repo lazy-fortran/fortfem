@@ -37,7 +37,7 @@ program test_debug_refinement
     write(*,*) "--- Investigating incircle issue ---"
 
     call constrained_delaunay_triangulate(points, segments, mesh,             &
-                                          final_segments=cdt_segments)
+        final_segments=cdt_segments)
     write(*,'(A,I5)') " After CDT: npoints =", mesh%npoints
     write(*,'(A,I5)') " After CDT: ntriangles =", mesh%ntriangles
     write(*,'(A,L5)') " Robust mode after CDT:", is_robust_mode()

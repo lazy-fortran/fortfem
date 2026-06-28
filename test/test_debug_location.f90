@@ -31,7 +31,7 @@ program test_debug_location
     do t = 1, mesh%ntriangles
         if (mesh%triangles(t)%valid) then
             print *, "Triangle", t, "vertices:", mesh%triangles(t)%vertices,     &
-                     "neighbors:", mesh%triangles(t)%neighbors
+                "neighbors:", mesh%triangles(t)%neighbors
             do e = 1, 3
                 if (mesh%triangles(t)%neighbors(e) /= 0) then
                     total_neighbors = total_neighbors + 1

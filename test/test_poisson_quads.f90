@@ -163,7 +163,7 @@ contains
         call solve(a_q == L_q, uh_q, bc_q)
 
         call plot(uh_q, filename="build/poisson_quads_solution.png", &
-                  title="Poisson solution on Q1 quadrilateral mesh")
+            title="Poisson solution on Q1 quadrilateral mesh")
 
         call check_condition(any(uh_q%values /= 0.0_dp), &
             "Quad Poisson plot: non-trivial solution plotted")

@@ -170,7 +170,7 @@ contains
     end subroutine add_curl_curl_triangle
 
     subroutine accumulate_curl_curl_for_edges(edge1, edge2, edge3, ndof, &
-        area, A, b)
+            area, A, b)
         integer, intent(in) :: edge1, edge2, edge3, ndof
         real(dp), intent(in) :: area
         real(dp), intent(inout) :: A(:, :), b(:)

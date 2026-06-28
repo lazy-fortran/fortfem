@@ -95,7 +95,7 @@ contains
         allocate (K(ndof, ndof), F(ndof), ipiv(ndof))
 
         call assemble_laplacian_neumann_system(uh, dirichlet_bc, neumann_bc, &
-                                               K, F)
+            K, F)
 
         call dgesv(ndof, 1, K, ndof, ipiv, F, ndof, info)
 
@@ -111,7 +111,7 @@ contains
     end subroutine solve_laplacian_with_neumann
 
     subroutine assemble_laplacian_neumann_system(uh, dirichlet_bc, &
-                                                 neumann_bc, K, F)
+            neumann_bc, K, F)
         type(function_t), intent(in) :: uh
         type(dirichlet_bc_t), intent(in) :: dirichlet_bc
         type(neumann_bc_t), intent(in) :: neumann_bc

@@ -21,7 +21,7 @@ contains
     subroutine init(this, order)
         class(gauss_quadrature_triangle_t), intent(out) :: this
         integer, intent(in) :: order
-        
+
         select case(order)
         case(1)
             call init_order_1(this)
@@ -46,7 +46,7 @@ contains
 
     subroutine destroy(this)
         class(gauss_quadrature_triangle_t), intent(inout) :: this
-        
+
         if (allocated(this%xi)) deallocate(this%xi)
         if (allocated(this%eta)) deallocate(this%eta)
         if (allocated(this%weights)) deallocate(this%weights)
@@ -58,7 +58,7 @@ contains
         integer, intent(in) :: degree
         type(gauss_quadrature_triangle_t) :: quad
         integer :: order
-        
+
         ! Map polynomial degree to quadrature order
         ! order p integrates polynomials of degree 2p-1 exactly
         if (degree <= 1) then
@@ -76,29 +76,29 @@ contains
         else
             order = 7
         end if
-        
+
         call quad%init(order)
     end function
 
     ! Order 1: degree 1 exact, 1 point (centroid)
     subroutine init_order_1(this)
         type(gauss_quadrature_triangle_t), intent(out) :: this
-        
+
         this%n_points = 1
         allocate(this%xi(1), this%eta(1), this%weights(1))
-        
+
         this%xi(1) = 1.0_dp/3.0_dp
         this%eta(1) = 1.0_dp/3.0_dp
-        this%weights(1) = 0.5_dp  ! Area of reference triangle
+        this%weights(1) = 0.5_dp ! Area of reference triangle
     end subroutine
 
     ! Order 2: degree 2 exact, 3 points (edge midpoints)
     subroutine init_order_2(this)
         type(gauss_quadrature_triangle_t), intent(out) :: this
-        
+
         this%n_points = 3
         allocate(this%xi(3), this%eta(3), this%weights(3))
-        
+
         this%xi = [0.5_dp, 0.0_dp, 0.5_dp]
         this%eta = [0.0_dp, 0.5_dp, 0.5_dp]
         this%weights = [1.0_dp/6.0_dp, 1.0_dp/6.0_dp, 1.0_dp/6.0_dp]
@@ -107,24 +107,24 @@ contains
     ! Order 3: degree 3 exact, 4 points
     subroutine init_order_3(this)
         type(gauss_quadrature_triangle_t), intent(out) :: this
-        
+
         this%n_points = 4
         allocate(this%xi(4), this%eta(4), this%weights(4))
-        
+
         ! Centroid point
         this%xi(1) = 1.0_dp/3.0_dp
         this%eta(1) = 1.0_dp/3.0_dp
         this%weights(1) = -27.0_dp/96.0_dp
-        
+
         ! Three points on edges
         this%xi(2) = 0.6_dp
         this%eta(2) = 0.2_dp
         this%weights(2) = 25.0_dp/96.0_dp
-        
+
         this%xi(3) = 0.2_dp
         this%eta(3) = 0.6_dp
         this%weights(3) = 25.0_dp/96.0_dp
-        
+
         this%xi(4) = 0.2_dp
         this%eta(4) = 0.2_dp
         this%weights(4) = 25.0_dp/96.0_dp
@@ -137,32 +137,32 @@ contains
         real(dp), parameter :: b = 0.091576213509771_dp
         real(dp), parameter :: w1 = 0.111690794839005_dp
         real(dp), parameter :: w2 = 0.054975871827661_dp
-        
+
         this%n_points = 6
         allocate(this%xi(6), this%eta(6), this%weights(6))
-        
+
         ! Three points near vertices
         this%xi(1) = a
         this%eta(1) = 1.0_dp - 2.0_dp*a
         this%weights(1) = w1
-        
+
         this%xi(2) = a
         this%eta(2) = a
         this%weights(2) = w1
-        
+
         this%xi(3) = 1.0_dp - 2.0_dp*a
         this%eta(3) = a
         this%weights(3) = w1
-        
+
         ! Three points near edge midpoints
         this%xi(4) = b
         this%eta(4) = 1.0_dp - 2.0_dp*b
         this%weights(4) = w2
-        
+
         this%xi(5) = b
         this%eta(5) = b
         this%weights(5) = w2
-        
+
         this%xi(6) = 1.0_dp - 2.0_dp*b
         this%eta(6) = b
         this%weights(6) = w2
@@ -178,37 +178,37 @@ contains
         real(dp), parameter :: w0 = 0.225000000000000_dp
         real(dp), parameter :: w1 = 0.125939180544827_dp
         real(dp), parameter :: w2 = 0.132394152788506_dp
-        
+
         this%n_points = 7
         allocate(this%xi(7), this%eta(7), this%weights(7))
-        
+
         ! Centroid
         this%xi(1) = 1.0_dp/3.0_dp
         this%eta(1) = 1.0_dp/3.0_dp
         this%weights(1) = w0 * 0.5_dp
-        
+
         ! First group: three points
         this%xi(2) = a2
         this%eta(2) = a1
         this%weights(2) = w1 * 0.5_dp
-        
+
         this%xi(3) = a1
         this%eta(3) = a2
         this%weights(3) = w1 * 0.5_dp
-        
+
         this%xi(4) = a1
         this%eta(4) = a1
         this%weights(4) = w1 * 0.5_dp
-        
+
         ! Second group: three points
         this%xi(5) = b2
         this%eta(5) = b1
         this%weights(5) = w2 * 0.5_dp
-        
+
         this%xi(6) = b1
         this%eta(6) = b2
         this%weights(6) = w2 * 0.5_dp
-        
+
         this%xi(7) = b1
         this%eta(7) = b1
         this%weights(7) = w2 * 0.5_dp
@@ -224,57 +224,57 @@ contains
         real(dp), parameter :: w1 = 0.050844906370207_dp
         real(dp), parameter :: w2 = 0.116786275726379_dp
         real(dp), parameter :: w3 = 0.082851075618374_dp
-        
+
         this%n_points = 12
         allocate(this%xi(12), this%eta(12), this%weights(12))
-        
+
         ! First group: 3 points
         this%xi(1) = a
         this%eta(1) = a
         this%weights(1) = w1 * 0.5_dp
-        
+
         this%xi(2) = 1.0_dp - 2.0_dp*a
         this%eta(2) = a
         this%weights(2) = w1 * 0.5_dp
-        
+
         this%xi(3) = a
         this%eta(3) = 1.0_dp - 2.0_dp*a
         this%weights(3) = w1 * 0.5_dp
-        
+
         ! Second group: 3 points
         this%xi(4) = b
         this%eta(4) = b
         this%weights(4) = w2 * 0.5_dp
-        
+
         this%xi(5) = 1.0_dp - 2.0_dp*b
         this%eta(5) = b
         this%weights(5) = w2 * 0.5_dp
-        
+
         this%xi(6) = b
         this%eta(6) = 1.0_dp - 2.0_dp*b
         this%weights(6) = w2 * 0.5_dp
-        
+
         ! Third group: 6 points
         this%xi(7) = c
         this%eta(7) = d
         this%weights(7) = w3 * 0.5_dp
-        
+
         this%xi(8) = d
         this%eta(8) = c
         this%weights(8) = w3 * 0.5_dp
-        
+
         this%xi(9) = 1.0_dp - c - d
         this%eta(9) = c
         this%weights(9) = w3 * 0.5_dp
-        
+
         this%xi(10) = 1.0_dp - c - d
         this%eta(10) = d
         this%weights(10) = w3 * 0.5_dp
-        
+
         this%xi(11) = c
         this%eta(11) = 1.0_dp - c - d
         this%weights(11) = w3 * 0.5_dp
-        
+
         this%xi(12) = d
         this%eta(12) = 1.0_dp - c - d
         this%weights(12) = w3 * 0.5_dp
@@ -292,62 +292,62 @@ contains
         real(dp), parameter :: w1 = 0.0533472356089_dp
         real(dp), parameter :: w2 = 0.0771137608903_dp
         real(dp), parameter :: w3 = 0.1756152574332_dp
-        
+
         this%n_points = 13
         allocate(this%xi(13), this%eta(13), this%weights(13))
-        
+
         ! Centroid
         this%xi(1) = 1.0_dp/3.0_dp
         this%eta(1) = 1.0_dp/3.0_dp
         this%weights(1) = w0 * 0.5_dp
-        
+
         ! First group: 3 points
         this%xi(2) = a
         this%eta(2) = a
         this%weights(2) = w1 * 0.5_dp
-        
+
         this%xi(3) = 1.0_dp - 2.0_dp*a
         this%eta(3) = a
         this%weights(3) = w1 * 0.5_dp
-        
+
         this%xi(4) = a
         this%eta(4) = 1.0_dp - 2.0_dp*a
         this%weights(4) = w1 * 0.5_dp
-        
+
         ! Second group: 3 points
         this%xi(5) = b
         this%eta(5) = b
         this%weights(5) = w2 * 0.5_dp
-        
+
         this%xi(6) = 1.0_dp - 2.0_dp*b
         this%eta(6) = b
         this%weights(6) = w2 * 0.5_dp
-        
+
         this%xi(7) = b
         this%eta(7) = 1.0_dp - 2.0_dp*b
         this%weights(7) = w2 * 0.5_dp
-        
+
         ! Third group: 6 points
         this%xi(8) = c
         this%eta(8) = d
         this%weights(8) = w3 * 0.5_dp
-        
+
         this%xi(9) = d
         this%eta(9) = c
         this%weights(9) = w3 * 0.5_dp
-        
+
         this%xi(10) = 1.0_dp - c - d
         this%eta(10) = c
         this%weights(10) = w3 * 0.5_dp
-        
+
         this%xi(11) = 1.0_dp - c - d
         this%eta(11) = d
         this%weights(11) = w3 * 0.5_dp
-        
+
         this%xi(12) = c
         this%eta(12) = 1.0_dp - c - d
         this%weights(12) = w3 * 0.5_dp
-        
+
         this%xi(13) = d
         this%eta(13) = 1.0_dp - c - d
         this%weights(13) = w3 * 0.5_dp

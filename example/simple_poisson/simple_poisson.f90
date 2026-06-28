@@ -13,7 +13,7 @@ program simple_poisson
 
     mesh = unit_square_mesh(20)
     Vh = function_space(mesh, "Lagrange", 1)
-    
+
     u = trial_function(Vh)
     v = test_function(Vh)
     f = constant(1.0_dp)
@@ -25,14 +25,14 @@ program simple_poisson
     uh = function(Vh)
 
     call solve(a == L, uh, bc)
-    
+
     ! Plot mesh
     call plot(mesh, filename="poisson_mesh.png", title="Poisson Mesh (20x20)")
-    
+
     ! Plot solution
     call plot(uh, filename="poisson_solution.png", &
-              title="Poisson Solution: -Δu = 1", &
-              colormap="viridis")
+        title="Poisson Solution: -Δu = 1", &
+        colormap="viridis")
 
     write(*,*) "Simple Poisson example completed!"
     write(*,*) "Generated files:"

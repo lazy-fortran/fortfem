@@ -11,27 +11,27 @@ program test_triangle_hole_comparison
     use fortfem_kinds, only : dp
     use fortfem_api,  only : mesh_t, mesh_from_arrays, mesh_from_triangle_files, plot
     use triangulation_fortran, only : triangulation_result_t,                 &
-                                      triangulate_with_hole_fortran
+        triangulate_with_hole_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available
     use check, only : check_condition, check_summary
     implicit none
 
     real(dp), parameter :: points(2,8) = reshape([ &
-        0.0_dp, 0.0_dp, &  ! outer square
+        0.0_dp, 0.0_dp, & ! outer square
         2.0_dp, 0.0_dp, &
         2.0_dp, 2.0_dp, &
         0.0_dp, 2.0_dp, &
-        0.5_dp, 0.5_dp, &  ! inner square (hole)
+        0.5_dp, 0.5_dp, & ! inner square (hole)
         1.5_dp, 0.5_dp, &
         1.5_dp, 1.5_dp, &
         0.5_dp, 1.5_dp ], [2, 8])
 
     integer, parameter :: segments(2,8) = reshape([ &
-        1, 2, &  ! outer segments
+        1, 2, & ! outer segments
         2, 3, &
         3, 4, &
         4, 1, &
-        5, 6, &  ! inner segments
+        5, 6, & ! inner segments
         6, 7, &
         7, 8, &
         8, 5 ], [2, 8])
@@ -68,12 +68,12 @@ program test_triangle_hole_comparison
     write(*,*) ""
     write(*,*) "=== Writing comparison plots ==="
     call plot(fortfem_mesh, filename="build/hole_fortfem.png",                &
-              title="FortFEM CDT with Hole")
+        title="FortFEM CDT with Hole")
     write(*,*) "   Saved: build/hole_fortfem.png"
 
     if (triangle_ok) then
         call plot(triangle_mesh, filename="build/hole_triangle.png",          &
-                  title="Triangle CDT with Hole")
+            title="Triangle CDT with Hole")
         write(*,*) "   Saved: build/hole_triangle.png"
     end if
 
@@ -123,7 +123,7 @@ contains
         hole_points(:,1) = hpt(:)
 
         call write_triangle_poly_file(POLY_FILE // ".poly", pts, segs,        &
-                                      n, size(segs,2), stat, hole_points)
+            n, size(segs,2), stat, hole_points)
         if (stat /= 0) then
             write(*,*) "   Warning: Failed to write .poly file with hole"
             return

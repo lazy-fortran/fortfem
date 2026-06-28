@@ -45,12 +45,12 @@ program test_triangle_comparison
     write(*,*) "3. Generating comparison plots..."
 
     call plot(fortfem_mesh, filename="build/comparison_fortfem.png",          &
-              title="FortFEM CDT")
+        title="FortFEM CDT")
     write(*,*) "   Saved: build/comparison_fortfem.png"
 
     if (triangle_ok) then
         call plot(triangle_mesh, filename="build/comparison_triangle.png",    &
-                  title="Triangle Library")
+            title="Triangle Library")
         write(*,*) "   Saved: build/comparison_triangle.png"
     end if
 
@@ -98,7 +98,7 @@ contains
 
         ! Write .poly file for Triangle
         call write_triangle_poly_file(POLY_FILE // ".poly", boundary%points,  &
-                                      segments, n, n, stat)
+            segments, n, n, stat)
         if (stat /= 0) then
             write(*,*) "   Warning: Failed to write .poly file"
             return

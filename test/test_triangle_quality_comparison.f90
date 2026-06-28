@@ -15,23 +15,23 @@ program test_triangle_quality_comparison
     !
     use fortfem_kinds, only : dp
     use fortfem_api,  only : mesh_t, mesh_from_arrays, mesh_from_triangle_files, &
-                             plot
+        plot
     use triangulation_fortran, only : triangulation_result_t,                   &
-                                      triangulate_fortran,                      &
-                                      triangulate_with_quality_fortran
+        triangulate_fortran,                      &
+        triangulate_with_quality_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available
     use check, only : check_condition, check_summary
     implicit none
 
     real(dp), parameter :: points(2,5) = reshape([ &
-        0.0_dp, 0.0_dp, &  ! 1: outer square
-        2.0_dp, 0.0_dp, &  ! 2
-        2.0_dp, 2.0_dp, &  ! 3
-        0.0_dp, 2.0_dp, &  ! 4
-        0.5_dp, 0.15_dp ], [2, 5])  ! 5: interior point near lower edge
+        0.0_dp, 0.0_dp, & ! 1: outer square
+        2.0_dp, 0.0_dp, & ! 2
+        2.0_dp, 2.0_dp, & ! 3
+        0.0_dp, 2.0_dp, & ! 4
+        0.5_dp, 0.15_dp ], [2, 5]) ! 5: interior point near lower edge
 
     integer, parameter :: segments(2,4) = reshape([ &
-        1, 2, &  ! outer boundary
+        1, 2, & ! outer boundary
         2, 3, &
         3, 4, &
         4, 1 ], [2, 4])
@@ -85,16 +85,16 @@ program test_triangle_quality_comparison
     write(*,*) ""
     write(*,*) "=== Writing quality comparison plots ==="
     call plot(base_mesh, filename="build/quality_base_fortfem.png",          &
-              title="FortFEM Base CDT")
+        title="FortFEM Base CDT")
     write(*,*) "   Saved: build/quality_base_fortfem.png"
 
     call plot(quality_mesh, filename="build/quality_refined_fortfem.png",    &
-              title="FortFEM Quality CDT")
+        title="FortFEM Quality CDT")
     write(*,*) "   Saved: build/quality_refined_fortfem.png"
 
     if (triangle_ok) then
         call plot(triangle_mesh, filename="build/quality_triangle.png",      &
-                  title="Triangle Quality CDT")
+            title="Triangle Quality CDT")
         write(*,*) "   Saved: build/quality_triangle.png"
     end if
 
@@ -117,7 +117,7 @@ contains
     end subroutine run_fortfem_base
 
     subroutine run_fortfem_quality(pts, segs, min_angle_target, result,      &
-                                   mesh, min_angle_deg, status)
+            mesh, min_angle_deg, status)
         real(dp), intent(in) :: pts(:,:)
         integer, intent(in) :: segs(:,:)
         real(dp), intent(in) :: min_angle_target
@@ -127,13 +127,13 @@ contains
         integer, intent(out) :: status
 
         call triangulate_with_quality_fortran(pts, segs, min_angle_target,   &
-                                             result, status)
+            result, status)
         mesh = mesh_from_arrays(result%points, result%triangles)
         min_angle_deg = compute_min_result_angle(result)
     end subroutine run_fortfem_quality
 
     subroutine run_triangle_quality(pts, segs, min_angle_target, mesh,       &
-                                    min_angle_deg, success)
+            min_angle_deg, success)
         real(dp), intent(in) :: pts(:,:)
         integer, intent(in) :: segs(:,:)
         real(dp), intent(in) :: min_angle_target
@@ -156,14 +156,14 @@ contains
         nsegs  = size(segs, 2)
 
         call write_triangle_poly_file(POLY_FILE // ".poly", pts, segs,       &
-                                      nverts, nsegs, stat)
+            nverts, nsegs, stat)
         if (stat /= 0) then
             write(*,*) "   Warning: failed to write .poly for quality test"
             return
         end if
 
         call run_triangle_binary_quality(TRIANGLE_PATH, POLY_FILE,           &
-                                         min_angle_target, stat)
+            min_angle_target, stat)
         if (stat /= 0) then
             write(*,*) "   Warning: Triangle execution failed for quality test"
             return
@@ -182,7 +182,7 @@ contains
     end subroutine run_triangle_quality
 
     subroutine run_triangle_binary_quality(bin_path, poly_basename,          &
-                                           min_angle_deg, exit_stat)
+            min_angle_deg, exit_stat)
         character(len=*), intent(in) :: bin_path
         character(len=*), intent(in) :: poly_basename
         real(dp), intent(in) :: min_angle_deg
@@ -215,7 +215,7 @@ contains
             cy = result%points(2, result%triangles(3, i))
 
             call triangle_angles_from_coords(ax, ay, bx, by, cx, cy,         &
-                                            angle1, angle2, angle3, pi)
+                angle1, angle2, angle3, pi)
 
             tri_min = min(angle1, min(angle2, angle3))
             if (tri_min < min_angle_deg) min_angle_deg = tri_min
@@ -245,7 +245,7 @@ contains
             cy = mesh%data%vertices(2, v3)
 
             call triangle_angles_from_coords(ax, ay, bx, by, cx, cy,         &
-                                            angle1, angle2, angle3, pi)
+                angle1, angle2, angle3, pi)
 
             tri_min = min(angle1, min(angle2, angle3))
             if (tri_min < min_angle_deg) min_angle_deg = tri_min
@@ -253,7 +253,7 @@ contains
     end function compute_min_mesh_angle
 
     subroutine triangle_angles_from_coords(ax, ay, bx, by, cx, cy,           &
-                                           angle1, angle2, angle3, pi)
+            angle1, angle2, angle3, pi)
         real(dp), intent(in) :: ax, ay, bx, by, cx, cy, pi
         real(dp), intent(out) :: angle1, angle2, angle3
 

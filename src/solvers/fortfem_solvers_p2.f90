@@ -4,7 +4,7 @@ module fortfem_solvers_p2
     use fortfem_api_types, only: function_t, dirichlet_bc_t
     use fortfem_api_mesh, only: find_triangle_edges
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
-                                        solver_options, advanced_solve => solve
+        solver_options, advanced_solve => solve
     use basis_p2_2d_module, only: basis_p2_2d_t
     implicit none
 
@@ -80,7 +80,7 @@ contains
 
             dofs(1:3) = [v1, v2, v3]
             call find_triangle_edges(uh%space%mesh%data, e, edge1, edge2, &
-                                     edge3)
+                edge3)
             dofs(4) = uh%space%mesh%data%n_vertices + edge1
             dofs(5) = uh%space%mesh%data%n_vertices + edge2
             dofs(6) = uh%space%mesh%data%n_vertices + edge3
@@ -92,7 +92,7 @@ contains
                     do j = 1, 6
                         if (dofs(j) > 0 .and. dofs(j) <= ndof) then
                             K(dofs(i), dofs(j)) = K(dofs(i), dofs(j)) + &
-                                                  K_elem(i, j)
+                                K_elem(i, j)
                         end if
                     end do
                     F(dofs(i)) = F(dofs(i)) + F_elem(i)
@@ -118,9 +118,9 @@ contains
         w_q = [1.0_dp/3.0_dp, 1.0_dp/3.0_dp, 1.0_dp/3.0_dp]
 
         area = 0.5_dp*abs((vertices(1, 2) - vertices(1, 1))* &
-                          (vertices(2, 3) - vertices(2, 1)) - &
-                          (vertices(1, 3) - vertices(1, 1))* &
-                          (vertices(2, 2) - vertices(2, 1)))
+            (vertices(2, 3) - vertices(2, 1)) - &
+            (vertices(1, 3) - vertices(1, 1))* &
+            (vertices(2, 2) - vertices(2, 1)))
 
         call basis_p2%compute_jacobian(vertices, jac, det_j)
         inv_jac(1, 1) = jac(2, 2)/det_j
@@ -135,16 +135,16 @@ contains
             do j = 1, 6
                 do kq = 1, 3
                     grad_i = matmul(inv_jac, basis_p2%grad(i, xi_q(kq), &
-                                                           eta_q(kq)))
+                        eta_q(kq)))
                     grad_j = matmul(inv_jac, basis_p2%grad(j, xi_q(kq), &
-                                                           eta_q(kq)))
+                        eta_q(kq)))
                     K_elem(i, j) = K_elem(i, j) + w_q(kq)*area* &
-                                   (grad_i(1)*grad_j(1) + grad_i(2)*grad_j(2))
+                        (grad_i(1)*grad_j(1) + grad_i(2)*grad_j(2))
                 end do
             end do
             do kq = 1, 3
                 F_elem(i) = F_elem(i) + w_q(kq)*area* &
-                            basis_p2%eval(i, xi_q(kq), eta_q(kq))
+                    basis_p2%eval(i, xi_q(kq), eta_q(kq))
             end do
         end do
     end subroutine compute_p2_element_matrices

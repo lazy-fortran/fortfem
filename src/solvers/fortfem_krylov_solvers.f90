@@ -8,7 +8,7 @@ module fortfem_krylov_solvers
 contains
 
     subroutine gmres_impl(A, b, x, tol, max_iter, restart, tol_type, verbosity, &
-                          converged, iterations, restarts_count, final_resid)
+            converged, iterations, restarts_count, final_resid)
         real(dp), intent(in) :: A(:, :), b(:)
         real(dp), intent(inout) :: x(:)
         real(dp), intent(in) :: tol
@@ -56,8 +56,8 @@ contains
             H = 0.0_dp
 
             call gmres_arnoldi_cycle(A, V, H, c, s, g, m, total_iter, max_iter, &
-                                     tolerance, verbosity, converged, &
-                                         residual_norm, m_used)
+                tolerance, verbosity, converged, &
+                residual_norm, m_used)
 
             call gmres_solve_update(H, V, g, y, x, m_used)
 
@@ -75,8 +75,8 @@ contains
     end subroutine gmres_impl
 
     subroutine gmres_arnoldi_cycle(A, V, H, c, s, g, m, total_iter, max_iter, &
-                                   tolerance, verbosity, converged, &
-                                       residual_norm, m_used)
+            tolerance, verbosity, converged, &
+            residual_norm, m_used)
         real(dp), intent(in) :: A(:, :)
         real(dp), intent(inout) :: V(:, :), H(:, :), c(:), s(:), g(:)
         integer, intent(in) :: m, max_iter, verbosity
@@ -181,12 +181,12 @@ contains
     end subroutine gmres_solve_update
 
     subroutine bicgstab_impl(A, b, x, precond_diag, precond_L, precond_U, &
-                             use_precond, tol, max_iter, tol_type, verbosity, &
-                             converged, iterations, final_resid)
+            use_precond, tol, max_iter, tol_type, verbosity, &
+            converged, iterations, final_resid)
         real(dp), intent(in) :: A(:, :), b(:)
         real(dp), intent(inout) :: x(:)
         real(dp), intent(in), optional :: precond_diag(:), precond_L(:, :), &
-                                          precond_U(:, :)
+            precond_U(:, :)
         logical, intent(in) :: use_precond
         real(dp), intent(in) :: tol
         integer, intent(in) :: max_iter, verbosity
@@ -230,7 +230,7 @@ contains
             p = r + beta*(p - omega*v)
 
             call bicgstab_matvec_step(A, p, v, z, use_precond, precond_diag, &
-                                      precond_L, precond_U)
+                precond_L, precond_U)
 
             alpha = rho/dot_product(r0, v)
             s = r - alpha*v
@@ -243,7 +243,7 @@ contains
             end if
 
             call bicgstab_matvec_step(A, s, t, y, use_precond, precond_diag, &
-                                      precond_L, precond_U)
+                precond_L, precond_U)
 
             omega = dot_product(t, s)/dot_product(t, t)
 
@@ -278,12 +278,12 @@ contains
     end subroutine bicgstab_impl
 
     subroutine bicgstab_matvec_step(A, input, output, precond_out, use_precond, &
-                                    precond_diag, precond_L, precond_U)
+            precond_diag, precond_L, precond_U)
         real(dp), intent(in) :: A(:, :), input(:)
         real(dp), intent(out) :: output(:), precond_out(:)
         logical, intent(in) :: use_precond
         real(dp), intent(in), optional :: precond_diag(:), precond_L(:, :), &
-                                          precond_U(:, :)
+            precond_U(:, :)
 
         if (use_precond .and. present(precond_L) .and. present(precond_U)) then
             call apply_ilu(precond_L, precond_U, input, precond_out)

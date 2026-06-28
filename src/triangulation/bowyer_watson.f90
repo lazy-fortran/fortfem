@@ -36,7 +36,7 @@ contains
     subroutine delaunay_triangulate(input_points, mesh)
         !> Main Delaunay triangulation routine using Bowyer-Watson algorithm.
         !  Robust predicates are always used.
-        real(dp), intent(in) :: input_points(:,:)  ! (2, npoints)
+        real(dp), intent(in) :: input_points(:,:) ! (2, npoints)
         type(mesh_t), intent(out) :: mesh
 
         integer :: i, npoints
@@ -66,7 +66,7 @@ contains
 
         ! Insert each point using Bowyer-Watson algorithm
         ! Adjacency is maintained incrementally in fill_cavity (O(1) overhead)
-        do i = 4, mesh%npoints  ! Start after super-triangle vertices
+        do i = 4, mesh%npoints ! Start after super-triangle vertices
             ! write(*,*) "Inserting point ", i
             call insert_point(mesh, i)
         end do
@@ -240,7 +240,7 @@ contains
             if (mesh%points(verts(i))%x < mesh%points(verts(start_idx))%x) then
                 start_idx = i
             else if (mesh%points(verts(i))%x == mesh%points(verts(start_idx))%x   &
-                .and. mesh%points(verts(i))%y < mesh%points(verts(start_idx))%y) then
+                    .and. mesh%points(verts(i))%y < mesh%points(verts(start_idx))%y) then
                 start_idx = i
             end if
         end do
@@ -292,20 +292,20 @@ contains
         ! Find triangles whose circumcircles contain the new point
         call find_cavity(mesh, point_idx, cavity_triangles, ncavity_triangles)
 
-        if (ncavity_triangles == -1) return  ! Handled via edge splitting
+        if (ncavity_triangles == -1) return ! Handled via edge splitting
 
         if (ncavity_triangles == 0) return
 
         ! Find the boundary of the cavity and external neighbors
         call find_cavity_boundary(mesh, cavity_triangles, ncavity_triangles,     &
-                                  cavity_edges, external_neighbors, ncavity_edges)
+            cavity_edges, external_neighbors, ncavity_edges)
 
         ! Remove triangles in the cavity
         call remove_cavity_triangles(mesh, cavity_triangles, ncavity_triangles)
 
         ! Create new triangles with incremental adjacency updates
         call fill_cavity(mesh, point_idx, cavity_edges, external_neighbors,      &
-                        ncavity_edges)
+            ncavity_edges)
     end subroutine insert_point
 
     subroutine find_cavity(mesh, point_idx, cavity_triangles, ncavity_triangles)
@@ -339,7 +339,7 @@ contains
         ! Step 1: Find seed triangle using walking search
         ! locate_point automatically handles linear fallback if walk fails.
         call locate_point(mesh, point%x, point%y, seed_tri, loc_type,            &
-                         last_triangle)
+            last_triangle)
 
         if (seed_tri == 0) return
 
@@ -516,7 +516,7 @@ contains
         mesh%triangles(t1)%neighbors(1) = t4
         mesh%triangles(t1)%neighbors(2) = t2
         mesh%triangles(t1)%neighbors(3) = find_old_neighbor(mesh, seed_tri,      &
-                                                            v3, v1, edge_idx)
+            v3, v1, edge_idx)
 
         ! t2: (point, v2, v3)
         !   Edge 1 (point-v2): adjacent to t3 if exists, else boundary
@@ -524,7 +524,7 @@ contains
         !   Edge 3 (v3-point): adjacent to t1
         mesh%triangles(t2)%neighbors(1) = t3
         mesh%triangles(t2)%neighbors(2) = find_old_neighbor(mesh, seed_tri,      &
-                                                            v2, v3, edge_idx)
+            v2, v3, edge_idx)
         mesh%triangles(t2)%neighbors(3) = t1
 
         if (has_neighbor .and. v4 > 0) then
@@ -535,7 +535,7 @@ contains
             mesh%triangles(t3)%neighbors(1) = t2
             mesh%triangles(t3)%neighbors(2) = t4
             mesh%triangles(t3)%neighbors(3) = find_old_neighbor(mesh, neighbor,  &
-                                                    v4, v2, neighbor_edge_idx)
+                v4, v2, neighbor_edge_idx)
 
             ! t4: (point, v1, v4)
             !   Edge 1 (point-v1): adjacent to t1
@@ -543,17 +543,17 @@ contains
             !   Edge 3 (v4-point): adjacent to t3
             mesh%triangles(t4)%neighbors(1) = t1
             mesh%triangles(t4)%neighbors(2) = find_old_neighbor(mesh, neighbor,  &
-                                                    v1, v4, neighbor_edge_idx)
+                v1, v4, neighbor_edge_idx)
             mesh%triangles(t4)%neighbors(3) = t3
         end if
 
         ! Update external neighbors to point to new triangles
         call update_external_neighbors_after_split(mesh, seed_tri, t1, t2,       &
-                                                   v1, v2, v3, edge_idx)
+            v1, v2, v3, edge_idx)
         if (has_neighbor .and. v4 > 0) then
             call update_external_neighbors_after_split(mesh, neighbor, t3, t4,   &
-                                                       v2, v1, v4,               &
-                                                       neighbor_edge_idx)
+                v2, v1, v4,               &
+                neighbor_edge_idx)
         end if
 
         ! Update last_triangle for warm start
@@ -583,8 +583,8 @@ contains
     end function find_old_neighbor
 
     subroutine update_external_neighbors_after_split(mesh, old_tri, new_t1,      &
-                                                     new_t2, v1, v2, v3,         &
-                                                     split_edge)
+            new_t2, v1, v2, v3,         &
+            split_edge)
         !> Update external triangles to point to new triangles after edge split.
         type(mesh_t), intent(inout) :: mesh
         integer, intent(in) :: old_tri, new_t1, new_t2, v1, v2, v3, split_edge
@@ -605,15 +605,15 @@ contains
             if ((ev1 == v3 .and. ev2 == v1) .or. (ev1 == v1 .and. ev2 == v3)) then
                 call update_neighbor_link(mesh, neighbor, ev1, ev2, new_t1)
             else if ((ev1 == v2 .and. ev2 == v3) .or.                            &
-                     (ev1 == v3 .and. ev2 == v2)) then
+                    (ev1 == v3 .and. ev2 == v2)) then
                 call update_neighbor_link(mesh, neighbor, ev1, ev2, new_t2)
             end if
         end do
     end subroutine update_external_neighbors_after_split
 
     subroutine find_cavity_boundary(mesh, cavity_triangles, ncavity_triangles,   &
-                                    cavity_edges, external_neighbors,            &
-                                    ncavity_edges)
+            cavity_edges, external_neighbors,            &
+            ncavity_edges)
         !> Find boundary edges of the cavity and their external neighbors.
         !
         !  For each boundary edge, we also store which triangle is on the
@@ -627,8 +627,8 @@ contains
         integer, intent(out) :: ncavity_edges
 
         integer :: all_edges(2, MAX_CAVITY_SIZE * 3)
-        integer :: edge_tri(MAX_CAVITY_SIZE * 3)      ! Which triangle owns edge
-        integer :: edge_idx_in_tri(MAX_CAVITY_SIZE * 3)  ! Edge index in triangle
+        integer :: edge_tri(MAX_CAVITY_SIZE * 3) ! Which triangle owns edge
+        integer :: edge_idx_in_tri(MAX_CAVITY_SIZE * 3) ! Edge index in triangle
         integer :: edge_count(MAX_CAVITY_SIZE * 3)
         integer :: nedges_total, i, j, t, v1, v2
         integer :: edge_idx, tmp, neighbor
@@ -716,7 +716,7 @@ contains
     end subroutine remove_cavity_triangles
 
     subroutine fill_cavity(mesh, point_idx, cavity_edges, external_neighbors,    &
-                           ncavity_edges)
+            ncavity_edges)
         !> Create new triangles with incremental adjacency updates.
         !
         !  Each new triangle has 3 edges:

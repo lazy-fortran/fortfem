@@ -28,8 +28,8 @@ module point_location
     public :: LOCATION_INSIDE, LOCATION_ON_EDGE, LOCATION_NOT_FOUND
 
     ! Location result types
-    integer, parameter :: LOCATION_INSIDE = 1     ! Point strictly inside triangle
-    integer, parameter :: LOCATION_ON_EDGE = 2    ! Point on triangle edge
+    integer, parameter :: LOCATION_INSIDE = 1 ! Point strictly inside triangle
+    integer, parameter :: LOCATION_ON_EDGE = 2 ! Point on triangle edge
     integer, parameter :: LOCATION_NOT_FOUND = -1 ! Point not in triangulation
 
 contains
@@ -47,7 +47,7 @@ contains
         !
         type(mesh_t), intent(inout) :: mesh
 
-        integer, allocatable :: edge_data(:,:)  ! (4, 3*ntriangles)
+        integer, allocatable :: edge_data(:,:) ! (4, 3*ntriangles)
         integer, allocatable :: sorted_idx(:)
         integer :: n_edges, t, e, va, vb, min_v, max_v
         integer :: i, j
@@ -108,8 +108,8 @@ contains
                 if (edges_match(edge_data, sorted_idx(i), sorted_idx(i + 1))) then
                     ! Link the two triangles
                     call link_triangles(mesh, edge_data, sorted_idx(i),          &
-                                       sorted_idx(i + 1))
-                    i = i + 2  ! Skip both edges
+                        sorted_idx(i + 1))
+                    i = i + 2 ! Skip both edges
                     cycle
                 end if
             end if
@@ -162,7 +162,7 @@ contains
         integer, intent(in) :: idx1, idx2
 
         match = (edge_data(1, idx1) == edge_data(1, idx2)) .and.                 &
-                (edge_data(2, idx1) == edge_data(2, idx2))
+            (edge_data(2, idx1) == edge_data(2, idx2))
     end function edges_match
 
     subroutine link_triangles(mesh, edge_data, idx1, idx2)
@@ -295,7 +295,7 @@ contains
                 cycle
             end select
 
-            if (edge_to_cross == 0) exit  ! Should not happen
+            if (edge_to_cross == 0) exit ! Should not happen
 
             ! Move to neighbor across the edge
             next = mesh%triangles(current)%neighbors(edge_to_cross)

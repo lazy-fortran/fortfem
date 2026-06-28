@@ -30,8 +30,8 @@ module constrained_delaunay
 contains
 
     subroutine constrained_delaunay_triangulate(input_points,                 &
-                                               constraint_segments, mesh,     &
-                                               hole_points, final_segments)
+            constraint_segments, mesh,     &
+            hole_points, final_segments)
         !> Constrained Delaunay triangulation with robust predicates.
         !
         !  Uses robust integer coordinate arithmetic throughout to ensure
@@ -84,7 +84,7 @@ contains
 
         do i = 1, size(adjusted_segments, 2)
             call insert_segment(mesh, adjusted_segments(1, i),               &
-                               adjusted_segments(2, i))
+                adjusted_segments(2, i))
         end do
 
         call remove_exterior_triangles(mesh, adjusted_segments)
@@ -306,7 +306,7 @@ contains
                 if (det1 * det2 >= 0.0_dp) cycle
 
                 call do_edge_flip_with_fixup(mesh, t, t2, e1, e2, v_opp1,     &
-                                             v_opp2, va, vb, new_t1, new_t2)
+                    v_opp2, va, vb, new_t1, new_t2)
                 flipped = .true.
                 return
             end do
@@ -314,7 +314,7 @@ contains
     end function flip_one_crossing_edge
 
     subroutine do_edge_flip_with_fixup(mesh, t1, t2, e1, e2, v1, v2, seg_a,   &
-                                       seg_b, new_t1, new_t2)
+            seg_b, new_t1, new_t2)
         !> Flip edge (e1,e2) to edge (v1,v2) and restore Delaunay property.
         !
         !  The edge (e1,e2) is shared by triangles t1 and t2.
@@ -358,7 +358,7 @@ contains
     end subroutine do_edge_flip_with_fixup
 
     recursive subroutine delaunay_fixup(mesh, tri, v_base, v_edge, seg_a,     &
-                                        seg_b, depth)
+            seg_b, depth)
         !> Restore Delaunay property for edges not crossing the constraint.
         !
         !  This is the key routine that makes CDT produce good triangles.
@@ -397,7 +397,7 @@ contains
         ! Find the far vertex in the adjacent triangle
         v_far = get_opposite_vertex(mesh, adj_tri, v_base, v_apex)
         if (v_far == 0) return
-        if (v_far == v_edge) return  ! Degenerate case
+        if (v_far == v_edge) return ! Degenerate case
 
         ! Dont flip constraint edges
         if (is_constraint_edge_static(v_base, v_apex)) return
@@ -419,13 +419,13 @@ contains
         if (incircle_result > 0.0_dp) then
             ! Edge (v_base, v_apex) is not locally Delaunay - flip it
             call flip_edge_simple(mesh, tri, adj_tri, v_base, v_apex, v_edge, &
-                                  v_far, new_t1, new_t2)
+                v_far, new_t1, new_t2)
 
             ! Recursively fix the two new edges
             call delaunay_fixup(mesh, new_t1, v_base, v_edge, seg_a, seg_b,   &
-                                depth + 1)
+                depth + 1)
             call delaunay_fixup(mesh, new_t2, v_apex, v_edge, seg_a, seg_b,   &
-                                depth + 1)
+                depth + 1)
         end if
     end subroutine delaunay_fixup
 
@@ -575,7 +575,7 @@ contains
     end function is_constraint_edge_static
 
     logical function segments_properly_intersect(p1, p2, q1, q2)              &
-        result(intersect)
+            result(intersect)
         !> Test if two segments properly intersect (cross in interiors).
         !
         !  Uses the robust orientation predicate when enabled, so that
@@ -640,7 +640,7 @@ contains
     real(dp) function signed_area(pa, pb, pc)
         type(point_t), intent(in) :: pa, pb, pc
         signed_area = (pb%x - pa%x) * (pc%y - pa%y) -                         &
-                      (pc%x - pa%x) * (pb%y - pa%y)
+            (pc%x - pa%x) * (pb%y - pa%y)
     end function signed_area
 
     integer function find_adjacent_triangle(mesh, tri, v1, v2) result(adj)
@@ -850,7 +850,7 @@ contains
                 virus_pool(pool_tail) = neighbor
             end do
         end do
-        
+
         ! write(*,*) "Total infected triangles:", count(infected)
 
         ! If no valid triangles were infected, there is nothing to remove.

@@ -48,10 +48,10 @@ contains
         call q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
 
         ! Jacobian of mapping x(xi,eta) = sum_i N_i(xi,eta) * x_i
-        jac(1,1) = sum(dN_dxi  * coords(1,:))   ! dx/dxi
-        jac(1,2) = sum(dN_deta * coords(1,:))   ! dx/deta
-        jac(2,1) = sum(dN_dxi  * coords(2,:))   ! dy/dxi
-        jac(2,2) = sum(dN_deta * coords(2,:))   ! dy/deta
+        jac(1,1) = sum(dN_dxi  * coords(1,:)) ! dx/dxi
+        jac(1,2) = sum(dN_deta * coords(1,:)) ! dx/deta
+        jac(2,1) = sum(dN_dxi  * coords(2,:)) ! dy/dxi
+        jac(2,2) = sum(dN_deta * coords(2,:)) ! dy/deta
 
         det_jac = jac(1,1) * jac(2,2) - jac(1,2) * jac(2,1)
 

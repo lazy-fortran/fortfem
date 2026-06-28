@@ -34,9 +34,9 @@ module robust_predicates
     public :: ORIENT_CCW, ORIENT_CW, ORIENT_COLLINEAR
 
     ! Orientation results
-    integer, parameter :: ORIENT_CCW = 1        ! Counter-clockwise (positive area)
-    integer, parameter :: ORIENT_CW = -1        ! Clockwise (negative area)
-    integer, parameter :: ORIENT_COLLINEAR = 0  ! Collinear (zero area)
+    integer, parameter :: ORIENT_CCW = 1 ! Counter-clockwise (positive area)
+    integer, parameter :: ORIENT_CW = -1 ! Clockwise (negative area)
+    integer, parameter :: ORIENT_COLLINEAR = 0 ! Collinear (zero area)
 
     ! Maximum integer coordinate value.
     !
@@ -46,13 +46,13 @@ module robust_predicates
     ! determinant remains exact (products stay well within the int64 range).
     ! The incircle predicate uses real(dp) arithmetic on the scaled integers;
     ! this is numerically robust for the geometric scales used in FortFEM.
-    integer(int64), parameter :: MAX_ICOOR = 1073741823_int64  ! 2^30 - 1
+    integer(int64), parameter :: MAX_ICOOR = 1073741823_int64 ! 2^30 - 1
 
     !> Robust coordinate system parameters
     type :: robust_coords_t
-        real(dp) :: xmin, ymin       ! Bounding box minimum
-        real(dp) :: xmax, ymax       ! Bounding box maximum
-        real(dp) :: scale            ! Scale factor: integer = scale * (real - min)
+        real(dp) :: xmin, ymin ! Bounding box minimum
+        real(dp) :: xmax, ymax ! Bounding box maximum
+        real(dp) :: scale ! Scale factor: integer = scale * (real - min)
         logical :: initialized = .false.
     end type robust_coords_t
 
@@ -65,7 +65,7 @@ contains
         !  to integers in range [0, MAX_ICOOR].
         !
         type(robust_coords_t), intent(out) :: rc
-        real(dp), intent(in) :: points(:,:)  ! (2, npoints)
+        real(dp), intent(in) :: points(:,:) ! (2, npoints)
         integer, intent(in) :: npoints
 
         real(dp) :: dx, dy, max_extent
@@ -174,7 +174,7 @@ contains
     end function orient2d_robust
 
     logical function incircle_robust(rc, ax, ay, bx, by, cx, cy, dx, dy)                &
-        result(inside)
+            result(inside)
         !> Robust incircle test using integer coordinates.
         !  Uses real(dp) for final determinant to avoid int64 overflow.
         type(robust_coords_t), intent(in) :: rc
