@@ -51,7 +51,7 @@ contains
         u = function(Vh)
         bc = dirichlet_bc(Vh, 0.0_dp)
         call solve_laplacian_problem(u, bc, solver_options(method="auto"), &
-                                     stats)
+            stats)
 
         call check_condition(allocated(u%values), &
             "Laplacian module: solution values allocated")
@@ -72,7 +72,7 @@ contains
         bc = dirichlet_bc(Vh, 0.0_dp)
 
         call solve_laplacian_problem_p2(u, bc, solver_options(method="auto"), &
-                                        stats)
+            stats)
 
         max_value = maxval(abs(u%values))
         call check_condition(allocated(u%values), &
@@ -101,7 +101,7 @@ contains
         bc_vec = vector_bc(Vh_vec, [0.0_dp, 0.0_dp])
 
         opts = solver_options(method="gmres", tolerance=1.0e-6_dp, &
-                              max_iterations=50, restart=10)
+            max_iterations=50, restart=10)
 
         call solve_curl_curl_problem(Eh, bc_vec, "direct", opts, stats)
 

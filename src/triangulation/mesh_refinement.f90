@@ -73,7 +73,7 @@ contains
 
             ! Phase 2: Process bad triangles. Continue until no progress.
             call split_all_bad_triangles(mesh, segments, min_angle_deg,       &
-                                         max_area, changed)
+                max_area, changed)
 
             if (.not. changed) exit
         end do
@@ -130,16 +130,16 @@ contains
 
                     if (d2 < r2) then
                         call split_segment_midpoint(mesh, segments, i,        &
-                                                    seg_changed)
+                            seg_changed)
                         if (seg_changed) then
                             changed = .true.
                             found_encroached = .true.
                         end if
-                        exit  ! Segment array changed, restart scan
+                        exit ! Segment array changed, restart scan
                     end if
                 end do
 
-                if (found_encroached) exit  ! Restart from beginning
+                if (found_encroached) exit ! Restart from beginning
             end do
 
             if (.not. found_encroached) exit
@@ -147,7 +147,7 @@ contains
     end subroutine split_all_encroached_segments
 
     subroutine split_all_bad_triangles(mesh, segments, min_angle_deg,         &
-                                       max_area, changed)
+            max_area, changed)
         !> Process ALL bad triangles, not just one.
         !
         !  Uses Triangle-style off-center placement: when the circumcenter
@@ -222,7 +222,7 @@ contains
             if (enc_seg > 0) then
                 ! Split the encroached segment instead of inserting Steiner point
                 call split_segment_midpoint(mesh, segments, enc_seg,          &
-                                            seg_changed)
+                    seg_changed)
                 if (seg_changed) changed = .true.
                 cycle
             end if
@@ -281,9 +281,9 @@ contains
         yao = pc%y - pa%y
 
         ! Compute squared edge lengths
-        dodist = xdo * xdo + ydo * ydo  ! |pa-pb|^2
-        aodist = xao * xao + yao * yao  ! |pa-pc|^2
-        dadist = (pb%x - pc%x)**2 + (pb%y - pc%y)**2  ! |pb-pc|^2
+        dodist = xdo * xdo + ydo * ydo ! |pa-pb|^2
+        aodist = xao * xao + yao * yao ! |pa-pc|^2
+        dadist = (pb%x - pc%x)**2 + (pb%y - pc%y)**2 ! |pb-pc|^2
 
         ! Compute circumcenter relative to pa
         denominator = 2.0_dp * (xdo * yao - xao * ydo)
@@ -410,7 +410,7 @@ contains
     end function vertex_has_triangles
 
     integer function find_encroached_segment_by_point(mesh, segments, p)     &
-        result(seg_idx)
+            result(seg_idx)
         !> Find first segment whose diametral circle contains point p.
         type(mesh_t), intent(in) :: mesh
         integer, allocatable, intent(in) :: segments(:,:)

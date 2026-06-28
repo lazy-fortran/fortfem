@@ -75,7 +75,7 @@ contains
         end if
 
         open(newunit=unit_num, file=filename, status="old", action="read",    &
-             iostat=stat)
+            iostat=stat)
         if (stat /= 0) return
 
         ! Skip comment lines starting with #
@@ -97,7 +97,7 @@ contains
         end if
 
         if (dim /= 2) then
-            stat = 2  ! Only 2D supported
+            stat = 2 ! Only 2D supported
             close(unit_num)
             return
         end if
@@ -158,7 +158,7 @@ contains
         end if
 
         open(newunit=unit_num, file=filename, status="old", action="read",    &
-             iostat=stat)
+            iostat=stat)
         if (stat /= 0) return
 
         ! Skip comment lines
@@ -180,7 +180,7 @@ contains
         end if
 
         if (nodes_per_tri /= 3) then
-            stat = 2  ! Only linear triangles supported
+            stat = 2 ! Only linear triangles supported
             close(unit_num)
             return
         end if
@@ -214,7 +214,7 @@ contains
     end subroutine read_triangle_ele_file
 
     subroutine read_triangle_poly_file(filename, vertices, segments,          &
-                                       n_vertices, n_segments, stat)
+            n_vertices, n_segments, stat)
         !> Read PSLG from Triangle .poly file format.
         !
         !  Arguments:
@@ -249,7 +249,7 @@ contains
         end if
 
         open(newunit=unit_num, file=filename, status="old", action="read",    &
-             iostat=stat)
+            iostat=stat)
         if (stat /= 0) return
 
         ! Skip comment lines and read vertex header
@@ -336,8 +336,8 @@ contains
     end subroutine read_triangle_poly_file
 
     subroutine write_triangle_poly_file(filename, vertices, segments,         &
-                                        n_vertices, n_segments, stat,        &
-                                        hole_points)
+            n_vertices, n_segments, stat,        &
+            hole_points)
         !> Write PSLG to Triangle .poly file format.
         !
         !  Arguments:
@@ -359,7 +359,7 @@ contains
         integer :: unit_num, i, nholes
 
         open(newunit=unit_num, file=filename, status="replace", action="write",&
-             iostat=stat)
+            iostat=stat)
         if (stat /= 0) return
 
         ! Write vertex header: n_vertices dimension n_attributes n_bm
@@ -405,7 +405,7 @@ contains
     end subroutine write_triangle_poly_file
 
     subroutine read_triangle_mesh(basename, vertices, triangles,              &
-                                  n_vertices, n_triangles, stat)
+            n_vertices, n_triangles, stat)
         !> Read complete mesh from Triangle output files (.node and .ele).
         !
         !  Triangle outputs meshes with a numeric suffix (e.g., .1.node, .1.ele).
@@ -464,7 +464,7 @@ contains
         ! Download Triangle source from netlib
         write(*, '(A)') "   Downloading Triangle from netlib.org..."
         cmd = "wget -q http://www.netlib.org/voronoi/triangle.zip "           &
-              // "-O /tmp/triangle_download.zip 2>/dev/null"
+            // "-O /tmp/triangle_download.zip 2>/dev/null"
         call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
         if (stat /= 0) then
             write(*, '(A)') "   Warning: Failed to download Triangle"
@@ -482,7 +482,7 @@ contains
         ! Compile (using gnu89 for K&R C compatibility)
         write(*, '(A)') "   Compiling Triangle..."
         cmd = "cd /tmp && gcc -std=gnu89 -O2 -DLINUX -o " // trim(triangle_path) &
-              // " triangle.c -lm 2>/dev/null"
+            // " triangle.c -lm 2>/dev/null"
         call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
         if (stat /= 0) then
             write(*, '(A)') "   Warning: Failed to compile Triangle"

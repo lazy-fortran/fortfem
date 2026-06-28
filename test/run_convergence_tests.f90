@@ -2,25 +2,25 @@ program run_convergence_tests
     ! Main test runner for convergence tests
     use fortfem_kinds
     implicit none
-    
+
     logical :: all_passed
     integer :: exit_code
-    
+
     print *, "FortFEM Convergence Test Suite"
     print *, "=============================="
     print *, ""
-    
+
     all_passed = .true.
-    
+
     ! Run tests
     print *, "Running convergence tests against analytical solutions..."
     print *, ""
-    
+
     ! Note: Individual tests would be run as separate executables
     ! This is a framework for organizing the test suite
-    
+
     call run_test_suite(all_passed)
-    
+
     print *, ""
     print *, "Test Summary"
     print *, "============"
@@ -43,14 +43,14 @@ program run_convergence_tests
         print *, "- Solver algorithms"
         exit_code = 1
     end if
-    
+
     call exit(exit_code)
-    
+
 contains
 
     subroutine run_test_suite(all_passed)
         logical, intent(inout) :: all_passed
-        
+
         print *, "Individual test executables:"
         print *, "  test_poisson_1d_convergence  - 1D Poisson O(h²) convergence"
         print *, "  test_poisson_2d_convergence  - 2D Poisson O(h²) convergence"
@@ -58,13 +58,13 @@ contains
         print *, ""
         print *, "Run each test individually to see detailed convergence analysis."
         print *, ""
-        
+
         ! In a full implementation, this would:
         ! 1. Execute each test program
         ! 2. Capture their return codes
         ! 3. Aggregate results
         ! 4. Report overall success/failure
-        
+
         print *, "Framework ready for automated testing."
     end subroutine run_test_suite
 

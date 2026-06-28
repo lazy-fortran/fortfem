@@ -19,22 +19,22 @@ program test_triangle_intersection_comparison
     implicit none
 
     real(dp), parameter :: pts(2,8) = reshape([ &
-        0.0_dp, 0.0_dp, &  ! 1: outer square
-        2.0_dp, 0.0_dp, &  ! 2
-        2.0_dp, 2.0_dp, &  ! 3
-        0.0_dp, 2.0_dp, &  ! 4
-        0.0_dp, 1.0_dp, &  ! 5: mid left
-        2.0_dp, 1.0_dp, &  ! 6: mid right
-        1.0_dp, 0.0_dp, &  ! 7: mid bottom
-        1.0_dp, 2.0_dp ], [2, 8])  ! 8: mid top
+        0.0_dp, 0.0_dp, & ! 1: outer square
+        2.0_dp, 0.0_dp, & ! 2
+        2.0_dp, 2.0_dp, & ! 3
+        0.0_dp, 2.0_dp, & ! 4
+        0.0_dp, 1.0_dp, & ! 5: mid left
+        2.0_dp, 1.0_dp, & ! 6: mid right
+        1.0_dp, 0.0_dp, & ! 7: mid bottom
+        1.0_dp, 2.0_dp ], [2, 8]) ! 8: mid top
 
     integer, parameter :: segs(2,6) = reshape([ &
-        1, 2, &  ! outer square
+        1, 2, & ! outer square
         2, 3, &
         3, 4, &
         4, 1, &
-        5, 6, &  ! horizontal
-        7, 8 ], [2, 6])   ! vertical
+        5, 6, & ! horizontal
+        7, 8 ], [2, 6]) ! vertical
 
     type(triangulation_result_t) :: fortfem_result
     type(mesh_t) :: fortfem_mesh, triangle_mesh
@@ -64,12 +64,12 @@ program test_triangle_intersection_comparison
     write(*,*) ""
     write(*,*) "=== Writing intersection comparison plots ==="
     call plot(fortfem_mesh, filename="build/intersection_fortfem.png",        &
-              title="FortFEM CDT with Segment Intersection")
+        title="FortFEM CDT with Segment Intersection")
     write(*,*) "   Saved: build/intersection_fortfem.png"
 
     if (triangle_ok) then
         call plot(triangle_mesh, filename="build/intersection_triangle.png",  &
-                  title="Triangle CDT with Segment Intersection")
+            title="Triangle CDT with Segment Intersection")
         write(*,*) "   Saved: build/intersection_triangle.png"
     end if
 
@@ -113,7 +113,7 @@ contains
         nsegs  = size(segments, 2)
 
         call write_triangle_poly_file(POLY_FILE // ".poly", points, segments, &
-                                      nverts, nsegs, stat)
+            nverts, nsegs, stat)
         if (stat /= 0) then
             write(*,*) "   Warning: failed to write .poly for intersection test"
             return

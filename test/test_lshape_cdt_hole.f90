@@ -30,9 +30,9 @@ program test_lshape_cdt_hole
         v3 = mesh%data%triangles(3, t)
 
         cx = (mesh%data%vertices(1, v1) + mesh%data%vertices(1, v2) +          &
-              mesh%data%vertices(1, v3)) / 3.0_dp
+            mesh%data%vertices(1, v3)) / 3.0_dp
         cy = (mesh%data%vertices(2, v1) + mesh%data%vertices(2, v2) +          &
-              mesh%data%vertices(2, v3)) / 3.0_dp
+            mesh%data%vertices(2, v3)) / 3.0_dp
 
         if (cx > size + eps .and. cy < size - eps) then
             n_bad = n_bad + 1
