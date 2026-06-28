@@ -40,7 +40,7 @@ contains
     end subroutine triangulate_fortran
 
     subroutine triangulate_with_hole_fortran(points, segments, hole_points,   &
-                                             result, status)
+            result, status)
         !> Triangulate with one or more holes.
         !
         !  hole_points can be either:
@@ -63,13 +63,13 @@ contains
         if (present(status)) status = 0
 
         call constrained_delaunay_triangulate(points, segments, mesh,         &
-                                             hole_points)
+            hole_points)
         call mesh_to_result(mesh, segments, result)
         call destroy_mesh(mesh)
     end subroutine triangulate_with_hole_fortran
 
     subroutine triangulate_with_quality_fortran(points, segments, min_angle,  &
-                                                result, status)
+            result, status)
         real(dp), intent(in) :: points(:,:)
         integer, intent(in) :: segments(:,:)
         real(dp), intent(in) :: min_angle
@@ -87,7 +87,7 @@ contains
         ! Build constrained Delaunay triangulation and capture the final
         ! constraint segment set (including any Steiner splits).
         call constrained_delaunay_triangulate(points, segments, mesh,         &
-                                             final_segments=cdt_segments)
+            final_segments=cdt_segments)
 
         ! Use angle-based refinement only for now; disable area constraint
         ! by setting max_area to a very large value.
@@ -158,7 +158,7 @@ contains
         do i = 1, mesh%ntriangles
             if (mesh%triangles(i)%valid) then
                 if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
-                        mesh%triangles(i)%vertices <= mesh%npoints)) then
+                    mesh%triangles(i)%vertices <= mesh%npoints)) then
                     if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
                         valid_triangles = valid_triangles + 1
                     end if
@@ -167,7 +167,7 @@ contains
         end do
 
         call allocate_result(result, valid_points, valid_triangles,           &
-                            size(input_segments, 2))
+            size(input_segments, 2))
 
         valid_points = 0
         do i = 1, mesh%npoints
@@ -182,7 +182,7 @@ contains
         do i = 1, mesh%ntriangles
             if (mesh%triangles(i)%valid) then
                 if (all(mesh%triangles(i)%vertices >= 1 .and.                 &
-                        mesh%triangles(i)%vertices <= mesh%npoints)) then
+                    mesh%triangles(i)%vertices <= mesh%npoints)) then
                     if (all(mesh%points(mesh%triangles(i)%vertices)%valid)) then
                         valid_triangles = valid_triangles + 1
                         result%triangles(1, valid_triangles) =                &
@@ -255,7 +255,7 @@ contains
     end function compute_min_triangle_angle
 
     real(dp) function interior_angle(px, py, qx, qy, rx, ry, pi)              &
-        result(angle_deg)
+            result(angle_deg)
         real(dp), intent(in) :: px, py, qx, qy, rx, ry, pi
         real(dp) :: v1x, v1y, v2x, v2y, dotpr, norm1, norm2, cos_theta
 

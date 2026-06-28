@@ -169,7 +169,7 @@ contains
     end function neumann_bc_constant
 
     function neumann_bc_on_boundary(space, flux_value, boundary_part)       &
-        result(bc)
+            result(bc)
         type(function_space_t), target, intent(in) :: space
         real(dp), intent(in) :: flux_value
         character(len=*), intent(in) :: boundary_part
@@ -183,7 +183,7 @@ contains
     end function neumann_bc_on_boundary
 
     function dirichlet_bc_on_boundary(space, value, boundary_part)          &
-        result(bc)
+            result(bc)
         type(function_space_t), target, intent(in) :: space
         real(dp), intent(in) :: value
         character(len=*), intent(in) :: boundary_part

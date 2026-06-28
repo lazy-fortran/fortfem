@@ -26,7 +26,7 @@ program test_lshape_mesh_plot
         "L-shape mesh: boundary vertices identified")
 
     call plot(mesh, filename="build/test_lshape_boundary_mesh.png", &
-              title="L-shape Delaunay mesh")
+        title="L-shape Delaunay mesh")
 
     write(*,*) "   L-shape Delaunay plot: generated build/test_lshape_boundary_mesh.png"
 

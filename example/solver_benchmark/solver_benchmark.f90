@@ -1,10 +1,10 @@
 program solver_benchmark
     use fortfem_kinds, only: dp
     use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
-                           unit_square_mesh, function_space, dirichlet_bc, &
-                           assemble_laplacian_system
+        unit_square_mesh, function_space, dirichlet_bc, &
+        assemble_laplacian_system
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
-                                        solver_options, solve
+        solver_options, solve
     implicit none
 
     call run_solver_benchmark()
@@ -32,13 +32,13 @@ contains
 
         do i = 1, n_cases
             call build_laplacian_system(mesh_sizes(i), mesh, Vh, bc, K, F, &
-                                        dofs(i))
+                dofs(i))
             call benchmark_solvers(K, F, direct_times(i), pcg_times(i), &
-                                   pcg_iters(i), direct_residuals(i), &
-                                   pcg_residuals(i))
+                pcg_iters(i), direct_residuals(i), &
+                pcg_residuals(i))
 
             speedup = max(direct_times(i), 1.0e-12_dp)/ &
-                      max(pcg_times(i), 1.0e-12_dp)
+                max(pcg_times(i), 1.0e-12_dp)
 
             write (*, '(A,I4,A,I8,A,ES12.4,A,ES12.4,A,I6)') &
                 " case ", i, ": DOFs=", dofs(i), "  t_direct=", &
@@ -48,8 +48,8 @@ contains
         end do
 
         call write_benchmark_report(mesh_sizes, dofs, direct_times, &
-                                    pcg_times, pcg_iters, direct_residuals, &
-                                    pcg_residuals)
+            pcg_times, pcg_iters, direct_residuals, &
+            pcg_residuals)
     end subroutine run_solver_benchmark
 
     subroutine build_laplacian_system(n_mesh, mesh, Vh, bc, K, F, ndof)
@@ -69,7 +69,7 @@ contains
     end subroutine build_laplacian_system
 
     subroutine benchmark_solvers(K, F, direct_time, pcg_time, pcg_iters, &
-                                 direct_residual, pcg_residual)
+            direct_residual, pcg_residual)
         real(dp), intent(in) :: K(:, :), F(:)
         real(dp), intent(out) :: direct_time, pcg_time
         integer, intent(out) :: pcg_iters
@@ -90,14 +90,14 @@ contains
         target_tolerance = 1.0e-6_dp
 
         opts_direct = solver_options(method="lapack_lu", &
-                                     tolerance=1.0e-10_dp, &
-                                     max_iterations=ndof)
+            tolerance=1.0e-10_dp, &
+            max_iterations=ndof)
         call solve(K, F, x_direct, opts_direct, stats_direct)
 
         opts_pcg = solver_options(method="pcg", preconditioner="ilu", &
-                                  tolerance=target_tolerance, &
-                                  tolerance_type="absolute", &
-                                  max_iterations=5*ndof)
+            tolerance=target_tolerance, &
+            tolerance_type="absolute", &
+            max_iterations=5*ndof)
         call solve(K, F, x_pcg, opts_pcg, stats_pcg)
 
         direct_residual = norm2(K, F, x_direct)
@@ -119,23 +119,23 @@ contains
     end function norm2
 
     subroutine write_benchmark_report(mesh_sizes, dofs, direct_times, &
-                                      pcg_times, pcg_iters, &
-                                      direct_residuals, pcg_residuals)
+            pcg_times, pcg_iters, &
+            direct_residuals, pcg_residuals)
         integer, intent(in) :: mesh_sizes(:), dofs(:), pcg_iters(:)
         real(dp), intent(in) :: direct_times(:), pcg_times(:)
         real(dp), intent(in) :: direct_residuals(:), pcg_residuals(:)
 
         integer :: unit_num, ios, i, n_cases
         character(len=*), parameter :: filename = &
-                                       "artifacts/solver_benchmarks/"// &
-                                       "poisson_solver_benchmark.txt"
+            "artifacts/solver_benchmarks/"// &
+            "poisson_solver_benchmark.txt"
 
         n_cases = size(mesh_sizes)
 
         call ensure_benchmark_directory()
 
         open (newunit=unit_num, file=filename, status="replace", &
-              action="write", iostat=ios)
+            action="write", iostat=ios)
 
         if (ios /= 0) then
             write (*, *) "Warning: Could not write solver benchmark file"
@@ -148,7 +148,7 @@ contains
 
         do i = 1, n_cases
             write (unit_num, &
-                   '(I6,1X,I8,1X,ES15.8,1X,ES15.8,1X,I6,1X,ES15.8,1X,ES15.8)') &
+                '(I6,1X,I8,1X,ES15.8,1X,ES15.8,1X,I6,1X,ES15.8,1X,ES15.8)') &
                 mesh_sizes(i), dofs(i), direct_times(i), pcg_times(i), &
                 pcg_iters(i), direct_residuals(i), pcg_residuals(i)
         end do

@@ -3,11 +3,11 @@ program test_lshape_hole_refinement_comparison
     !> including one level of uniform mesh refinement, and write plots.
     use fortfem_kinds, only : dp
     use fortfem_api,  only : mesh_t, boundary_t, l_shape_boundary,          &
-                             mesh_from_boundary, mesh_from_arrays,          &
-                             mesh_from_triangle_files, refine_uniform,      &
-                             plot
+        mesh_from_boundary, mesh_from_arrays,          &
+        mesh_from_triangle_files, refine_uniform,      &
+        plot
     use triangulation_fortran, only : triangulation_result_t,               &
-                                      triangulate_with_hole_fortran
+        triangulate_with_hole_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available
     use check, only : check_condition, check_summary
     implicit none
@@ -45,38 +45,38 @@ program test_lshape_hole_refinement_comparison
     write(*,*) ""
     write(*,*) "=== Writing comparison plots (base meshes) ==="
     call plot(fortfem_mesh,                                                  &
-              filename="build/lshape_hole_fortfem.png",                      &
-              title="FortFEM L-shape with Hole")
+        filename="build/lshape_hole_fortfem.png",                      &
+        title="FortFEM L-shape with Hole")
     write(*,*) "   Saved: build/lshape_hole_fortfem.png"
 
     if (triangle_ok) then
         call plot(triangle_mesh,                                             &
-                  filename="build/lshape_hole_triangle.png",                 &
-                  title="Triangle L-shape with Hole")
+            filename="build/lshape_hole_triangle.png",                 &
+            title="Triangle L-shape with Hole")
         write(*,*) "   Saved: build/lshape_hole_triangle.png"
     end if
 
     write(*,*) ""
     write(*,*) "=== Writing comparison plots (refined meshes) ==="
     call plot(fortfem_refined,                                               &
-              filename="build/lshape_hole_fortfem_refined.png",              &
-              title="FortFEM L-shape with Hole (refined)")
+        filename="build/lshape_hole_fortfem_refined.png",              &
+        title="FortFEM L-shape with Hole (refined)")
     write(*,*) "   Saved: build/lshape_hole_fortfem_refined.png"
 
     if (triangle_ok) then
         call plot(triangle_refined,                                          &
-                  filename="build/lshape_hole_triangle_refined.png",         &
-                  title="Triangle L-shape with Hole (refined)")
+            filename="build/lshape_hole_triangle_refined.png",         &
+            title="Triangle L-shape with Hole (refined)")
         write(*,*) "   Saved: build/lshape_hole_triangle_refined.png"
     end if
 
     call check_condition(fortfem_refined%data%n_triangles >                  &
-                         fortfem_mesh%data%n_triangles,                      &
+        fortfem_mesh%data%n_triangles,                      &
         "FortFEM refined mesh has more triangles")
 
     if (triangle_ok) then
         call check_condition(triangle_refined%data%n_triangles >             &
-                             triangle_mesh%data%n_triangles,                 &
+            triangle_mesh%data%n_triangles,                 &
             "Triangle refined mesh has more triangles")
     end if
 
@@ -126,7 +126,7 @@ contains
 
         hole_pts(:,1) = hpt(:)
         call triangulate_with_hole_fortran(pts, segs, hole_pts,              &
-                                           result, status)
+            result, status)
 
         if (status /= 0) then
             write(*,*) "Warning: triangulate_with_hole_fortran returned ",   &
@@ -158,7 +158,7 @@ contains
         hole_points(:,1) = hpt(:)
 
         call write_triangle_poly_file(POLY_FILE // ".poly", pts, segs,       &
-                                      n, size(segs,2), stat, hole_points)
+            n, size(segs,2), stat, hole_points)
         if (stat /= 0) then
             write(*,*) "   Warning: Failed to write .poly file for L-shape hole"
             return

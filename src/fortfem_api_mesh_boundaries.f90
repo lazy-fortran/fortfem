@@ -142,7 +142,7 @@ contains
 
         do i = 1, n
             angle = theta1 + dtheta*real(i - 1, dp)/ &
-                    real(max(n - 1, 1), dp)
+                real(max(n - 1, 1), dp)
             boundary%points(1, i) = center(1) + radius*cos(angle)
             boundary%points(2, i) = center(2) + radius*sin(angle)
         end do
@@ -168,24 +168,24 @@ contains
         idx = 0
 
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 0.0_dp, 0.0_dp, s, 0.0_dp)
+            0.0_dp, 0.0_dp, s, 0.0_dp)
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 s, 0.0_dp, 0.0_dp, s)
+            s, 0.0_dp, 0.0_dp, s)
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 s, s, s, 0.0_dp)
+            s, s, s, 0.0_dp)
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 2.0_dp*s, s, 0.0_dp, s)
+            2.0_dp*s, s, 0.0_dp, s)
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 2.0_dp*s, 2.0_dp*s, -2.0_dp*s, 0.0_dp)
+            2.0_dp*s, 2.0_dp*s, -2.0_dp*s, 0.0_dp)
         call add_l_shape_segment(boundary%points, idx, n_per_segment, &
-                                 0.0_dp, 2.0_dp*s, 0.0_dp, -2.0_dp*s)
+            0.0_dp, 2.0_dp*s, 0.0_dp, -2.0_dp*s)
 
         boundary%labels = 1
         boundary%is_closed = .true.
     end function l_shape_boundary
 
     pure subroutine add_l_shape_segment(points, idx, n_per_segment, &
-                                        start_x, start_y, dx, dy)
+            start_x, start_y, dx, dy)
         real(dp), intent(inout) :: points(:, :)
         integer, intent(inout) :: idx
         integer, intent(in) :: n_per_segment

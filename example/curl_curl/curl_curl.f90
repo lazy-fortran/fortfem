@@ -2,7 +2,7 @@ program curl_curl_example
     ! Clean FEniCS-style example solving the curl-curl equation
     ! ∇ × (∇ × E) + E = J in Ω = [0,1]²
     ! E × n = 0 on ∂Ω (tangential boundary condition)
-    ! 
+    !
     ! This demonstrates FEniCS-style syntax for electromagnetic problems
     ! using edge elements (Nédélec) and iterative GMRES solver
 
@@ -27,14 +27,14 @@ program curl_curl_example
     write(*,*) ""
 
     ! Create mesh and vector function space using FEniCS-style API
-    mesh = unit_square_mesh(8)  ! 8x8 grid for efficiency
+    mesh = unit_square_mesh(8) ! 8x8 grid for efficiency
     Vh = vector_function_space(mesh, "Nedelec", 1)
-    
+
     n_vertices = mesh%data%n_vertices
     n_elements = mesh%data%n_triangles
     n_dofs = Vh%ndof
-    h = 1.0_dp / 7.0_dp  ! mesh spacing
-    
+    h = 1.0_dp / 7.0_dp ! mesh spacing
+
     write(*,*) "Mesh statistics:"
     write(*,*) "  Vertices:", n_vertices
     write(*,*) "  Elements:", n_elements
@@ -48,12 +48,12 @@ program curl_curl_example
 
     ! Define source current J = [1, 0] (x-directed current)
     J = vector_function(Vh)
-    J%values(:, 1) = 1.0_dp  ! Jx = 1
-    J%values(:, 2) = 0.0_dp  ! Jy = 0
+    J%values(:, 1) = 1.0_dp ! Jx = 1
+    J%values(:, 2) = 0.0_dp ! Jy = 0
 
     ! Define weak form using mathematical notation
-    a = inner(curl(E), curl(F))*dx + inner(E, F)*dx  ! Bilinear form
-    L = inner(J, F)*dx                                ! Linear form
+    a = inner(curl(E), curl(F))*dx + inner(E, F)*dx ! Bilinear form
+    L = inner(J, F)*dx ! Linear form
 
     write(*,*) "Weak form:"
     write(*,*) "  a(E,F) = ", trim(a%description)
@@ -75,43 +75,43 @@ program curl_curl_example
 
     ! Analyze solution
     max_E = maxval(sqrt(Eh%values(:,1)**2 + Eh%values(:,2)**2))
-    
+
     write(*,*) "Solution statistics:"
     write(*,*) "  Max |E| =", max_E
     write(*,*) "  Max Ex =", maxval(abs(Eh%values(:,1)))
     write(*,*) "  Max Ey =", maxval(abs(Eh%values(:,2)))
     write(*,*) ""
-    
+
     ! Plot the numerical solution
     write(*,*) "Creating numerical solution plot..."
     call plot(Eh, filename="curl_curl_numerical.png", &
-              title="Curl-Curl Numerical Solution", &
-              plot_type="streamplot")
-    
+        title="Curl-Curl Numerical Solution", &
+        plot_type="streamplot")
+
     ! Create and plot analytical reference solution E = [x*y, x²]
     write(*,*) "Creating analytical reference solution plot..."
     Eh_ref = vector_function(Vh)
-    
+
     ! Simple approach: set analytical values at mesh centers
     ! For proper implementation, this would need edge element interpolation
     do i = 1, Vh%ndof
         ! Use simple coordinate mapping for demonstration
         if (i <= Vh%ndof/2) then
-            x_coord = 0.3_dp  ! Approximate coordinates
+            x_coord = 0.3_dp ! Approximate coordinates
             y_coord = 0.3_dp
         else
             x_coord = 0.7_dp
-            y_coord = 0.7_dp  
+            y_coord = 0.7_dp
         end if
-        Eh_ref%values(i, 1) = x_coord * y_coord  ! Ex = x*y
-        Eh_ref%values(i, 2) = x_coord * x_coord  ! Ey = x²
+        Eh_ref%values(i, 1) = x_coord * y_coord ! Ex = x*y
+        Eh_ref%values(i, 2) = x_coord * x_coord ! Ey = x²
     end do
-    
+
     call plot(Eh_ref, filename="curl_curl_analytical.png", &
-              title="Curl-Curl Analytical Solution: E=[xy, x²]", &
-              plot_type="streamplot")
+        title="Curl-Curl Analytical Solution: E=[xy, x²]", &
+        plot_type="streamplot")
     write(*,*) ""
-    
+
     write(*,*) "Example completed successfully!"
     write(*,*) ""
     write(*,*) "This example demonstrates:"

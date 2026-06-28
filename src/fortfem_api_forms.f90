@@ -62,17 +62,17 @@ contains
         type(form_expr_t) :: expr_a, expr_b
 
         select type(a)
-        type is (trial_function_t)
+            type is (trial_function_t)
             expr_a = create_grad("u", "trial")
-        type is (test_function_t)
+            type is (test_function_t)
             expr_a = create_grad("v", "test")
-        type is (vector_trial_function_t)
+            type is (vector_trial_function_t)
             expr_a = create_grad("E", "trial")
-        type is (vector_test_function_t)
+            type is (vector_test_function_t)
             expr_a = create_grad("F", "test")
-        type is (vector_function_t)
+            type is (vector_function_t)
             expr_a = create_grad("j", "function")
-        type is (form_expr_t)
+            type is (form_expr_t)
             expr_a = a
         class default
             expr_a%description = "unknown"
@@ -80,17 +80,17 @@ contains
         end select
 
         select type(b)
-        type is (trial_function_t)
+            type is (trial_function_t)
             expr_b = create_grad("u", "trial")
-        type is (test_function_t)
+            type is (test_function_t)
             expr_b = create_grad("v", "test")
-        type is (vector_trial_function_t)
+            type is (vector_trial_function_t)
             expr_b = create_grad("E", "trial")
-        type is (vector_test_function_t)
+            type is (vector_test_function_t)
             expr_b = create_grad("F", "test")
-        type is (vector_function_t)
+            type is (vector_function_t)
             expr_b = create_grad("j", "function")
-        type is (form_expr_t)
+            type is (form_expr_t)
             expr_b = b
         class default
             expr_b%description = "unknown"
@@ -105,9 +105,9 @@ contains
         type(form_expr_t) :: gradu
 
         select type(u)
-        type is (trial_function_t)
+            type is (trial_function_t)
             gradu = create_grad("u", "trial")
-        type is (test_function_t)
+            type is (test_function_t)
             gradu = create_grad("v", "test")
         class default
             gradu = create_grad("unknown", "unknown")
@@ -119,10 +119,10 @@ contains
         type(form_expr_t) :: curlu
 
         select type(u)
-        type is (vector_trial_function_t)
+            type is (vector_trial_function_t)
             curlu = create_grad("curl(u)", "trial")
             curlu%description = "curl(u)"
-        type is (vector_test_function_t)
+            type is (vector_test_function_t)
             curlu = create_grad("curl(v)", "test")
             curlu%description = "curl(v)"
         class default
