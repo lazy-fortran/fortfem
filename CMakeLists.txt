@@ -36,6 +36,7 @@ set(FORTFEM_CAPI_SOURCES
     src/bindings/fortfem_capi_mesh.f90
     src/bindings/fortfem_capi_solver.f90
     src/fortfem_boundary.f90
+    src/interpolation/nedelec_field_2d.f90
     src/interpolation/rt_field_2d.f90
     src/mesh/mesh_2d.f90
     src/mesh/mesh_extension_2d.f90
