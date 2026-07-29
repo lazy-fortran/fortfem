@@ -1,5 +1,7 @@
 module fortfem_toroidal_coordinates
     use fortfem_kinds, only: dp
+    use fortfem_generated_toroidal_coordinates, only: &
+        generated_toroidal_point_to_cartesian
     implicit none
     private
 
@@ -28,13 +30,8 @@ contains
             scale, eta, theta, phi, point)
         real(dp), intent(in) :: scale, eta, theta, phi
         real(dp), intent(out) :: point(3)
-        real(dp) :: denominator
-
-        denominator = cosh(eta) - cos(theta)
-        point = [ &
-            scale*sinh(eta)*cos(phi)/denominator, &
-            scale*sinh(eta)*sin(phi)/denominator, &
-            scale*sin(theta)/denominator]
+        call generated_toroidal_point_to_cartesian( &
+            scale, eta, theta, phi, point)
     end subroutine toroidal_point_to_cartesian
 
     pure subroutine toroidal_vector_to_cartesian( &

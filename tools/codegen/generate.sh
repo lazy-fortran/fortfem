@@ -11,7 +11,9 @@ fo build
 fo exec --no-build gen_tetra_nedelec_candidates
 fo exec --no-build gen_tetra_face_moment_transforms
 fo exec --no-build gen_tetra_nedelec_coefficients
+fo exec --no-build gen_toroidal_coordinates
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
 fo fmt "$generated_dir/fortfem_tetra_nedelec_coefficients.f90"
+fo fmt "$generated_dir/fortfem_toroidal_coordinates.f90"
