@@ -32,7 +32,8 @@ module fortfem_api
         evaluate_laplace_representation_triangles_3d
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d
-    use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
+    use fortfem_planar_helmholtz_dtn, only: &
+        apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_spherical_helmholtz_dtn, only: &
@@ -223,6 +224,7 @@ module fortfem_api
     public :: solve_neumann
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
+    public :: assemble_planar_helmholtz_dtn_form
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
     public :: apply_spherical_helmholtz_dtn
