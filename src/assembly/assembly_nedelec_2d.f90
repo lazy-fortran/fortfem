@@ -9,6 +9,7 @@ module fortfem_assembly_nedelec_2d
     private
 
     public :: assemble_nedelec_curl_mass_element
+    public :: assemble_nedelec_curl_mass
 
 contains
 
@@ -56,5 +57,41 @@ contains
         end do
         call quadrature%destroy()
     end subroutine assemble_nedelec_curl_mass_element
+
+    subroutine assemble_nedelec_curl_mass(mesh, matrix)
+        type(mesh_2d_t), intent(inout) :: mesh
+        real(dp), intent(out) :: matrix(:, :)
+
+        real(dp) :: element_matrix(3, 3)
+        integer :: edge_dofs(3), edge_orientations(3)
+        integer :: triangle_idx, i, j, global_i, global_j
+
+        if (size(matrix, 1) /= mesh%n_edges .or. &
+            size(matrix, 2) /= mesh%n_edges) then
+            error stop "Nedelec matrix shape must equal the edge DOF count"
+        end if
+        if (.not. allocated(mesh%edge_to_dof)) then
+            call mesh%build_edge_dof_numbering()
+        end if
+
+        matrix = 0.0_dp
+        do triangle_idx = 1, mesh%n_triangles
+            call assemble_nedelec_curl_mass_element( &
+                mesh, triangle_idx, element_matrix)
+            call mesh%get_triangle_edge_dofs( &
+                triangle_idx, edge_dofs, edge_orientations)
+
+            do j = 1, 3
+                global_j = edge_dofs(j) + 1
+                do i = 1, 3
+                    global_i = edge_dofs(i) + 1
+                    matrix(global_i, global_j) = &
+                        matrix(global_i, global_j) + &
+                        real(edge_orientations(i) * edge_orientations(j), &
+                        dp) * element_matrix(i, j)
+                end do
+            end do
+        end do
+    end subroutine assemble_nedelec_curl_mass
 
 end module fortfem_assembly_nedelec_2d
