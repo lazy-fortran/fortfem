@@ -153,6 +153,7 @@ module fortfem_api
     public :: dx
     public :: compile_form
     public :: compile_form_matrix
+    public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
     public :: init_measures

@@ -1,9 +1,9 @@
 module fortfem_api_forms
     use fortfem_kinds
     use fortfem_forms_simple, only: assignment(=), compile_form, &
-        compile_form_matrix, compile_vector_form_csc, &
+        compile_form_matrix, compile_form_vector, compile_vector_form_csc, &
         compile_vector_form_element, create_curl, &
-        create_divergence, create_grad, create_inner, &
+        create_constant_load, create_divergence, create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
         create_symbol, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
@@ -24,6 +24,7 @@ module fortfem_api_forms
     public :: div
     public :: compile_form
     public :: compile_form_matrix
+    public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
     public :: assignment(=)
@@ -186,7 +187,13 @@ contains
         type(test_function_t), intent(in) :: v
         type(form_expr_t) :: product
 
-        product%description = "f*v"
+        if (allocated(f%values)) then
+            if (size(f%values) == 1) then
+                product = create_constant_load(f%values(1))
+                return
+            end if
+        end if
+        product%description = "unsupported_function*v"
         product%form_type = "linear"
         product%tensor_rank = 0
     end function function_times_test
