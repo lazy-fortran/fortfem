@@ -6,14 +6,92 @@ module fortfem_laplace_symmetric_coupling_2d
         assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
+    use fortfem_helmholtz_boundary_operators_2d, only: &
+        assemble_helmholtz_double_layer_mixed_linear, &
+        assemble_helmholtz_hypersingular_linear, &
+        assemble_helmholtz_single_layer_constant
     implicit none
 
     private
 
     public :: assemble_laplace_symmetric_coupling_p1_p0
+    public :: assemble_helmholtz_symmetric_coupling_p1_p0
     public :: solve_laplace_symmetric_coupling_p1_p0
 
 contains
+
+    subroutine assemble_helmholtz_symmetric_coupling_p1_p0( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            wavenumber, quadrature_order, matrix, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        real(dp), intent(in) :: wavenumber
+        integer, intent(in) :: quadrature_order
+        complex(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: double_layer(:, :)
+        complex(dp), allocatable :: hypersingular(:, :)
+        complex(dp), allocatable :: single_layer(:, :)
+        real(dp), allocatable :: mass(:, :), volume_mass(:, :)
+        real(dp), allocatable :: stiffness(:, :)
+        integer :: operator_status, panel_count, total_dofs, vertex_count
+
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        vertex_count = size(vertices, 2)
+        panel_count = size(panel_start, 2)
+        total_dofs = vertex_count + panel_count
+        if (.not. valid_discretization_shapes( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            quadrature_order)) return
+        if (size(matrix, 1) /= total_dofs .or. &
+            size(matrix, 2) /= total_dofs) return
+        if (wavenumber <= 0.0_dp) return
+        if (any(triangles < 1) .or. any(triangles > vertex_count)) return
+        if (any(panel_nodes < 1) .or. any(panel_nodes > vertex_count)) return
+        if (.not. panels_match_trace_nodes( &
+            vertices, panel_start, panel_end, panel_nodes)) return
+
+        allocate(stiffness(vertex_count, vertex_count))
+        allocate(volume_mass(vertex_count, vertex_count))
+        call assemble_p1_stiffness( &
+            vertices, triangles, stiffness, operator_status)
+        if (operator_status /= 0) return
+        call assemble_p1_mass(vertices, triangles, volume_mass, operator_status)
+        if (operator_status /= 0) return
+
+        allocate(mass(panel_count, vertex_count))
+        call assemble_boundary_mass( &
+            panel_start, panel_end, panel_nodes, mass, operator_status)
+        if (operator_status /= 0) return
+        allocate(double_layer(panel_count, vertex_count))
+        call assemble_helmholtz_double_layer_mixed_linear( &
+            panel_start, panel_end, panel_nodes, vertex_count, wavenumber, &
+            quadrature_order, double_layer, operator_status)
+        if (operator_status /= 0) return
+        allocate(hypersingular(vertex_count, vertex_count))
+        call assemble_helmholtz_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, vertex_count, wavenumber, &
+            quadrature_order, hypersingular, operator_status)
+        if (operator_status /= 0) return
+        allocate(single_layer(panel_count, panel_count))
+        call assemble_helmholtz_single_layer_constant( &
+            panel_start, panel_end, wavenumber, quadrature_order, &
+            single_layer, operator_status)
+        if (operator_status /= 0) return
+
+        matrix(1:vertex_count, 1:vertex_count) = &
+            stiffness - wavenumber**2*volume_mass + hypersingular
+        matrix(vertex_count + 1:, vertex_count + 1:) = single_layer
+        matrix(vertex_count + 1:, 1:vertex_count) = &
+            0.5_dp*mass - double_layer
+        matrix(1:vertex_count, vertex_count + 1:) = &
+            -transpose(matrix(vertex_count + 1:, 1:vertex_count))
+        status = 0
+    end subroutine assemble_helmholtz_symmetric_coupling_p1_p0
 
     subroutine assemble_laplace_symmetric_coupling_p1_p0( &
             vertices, triangles, panel_start, panel_end, panel_nodes, &
@@ -37,7 +115,9 @@ contains
         panel_count = size(panel_start, 2)
         if (.not. valid_discretization_shapes( &
             vertices, triangles, panel_start, panel_end, panel_nodes, &
-            quadrature_order, matrix)) return
+            quadrature_order)) return
+        if (size(matrix, 1) /= vertex_count + panel_count .or. &
+            size(matrix, 2) /= vertex_count + panel_count) return
         if (any(triangles < 1) .or. any(triangles > vertex_count)) return
         if (any(panel_nodes < 1) .or. any(panel_nodes > vertex_count)) return
         if (.not. panels_match_trace_nodes( &
@@ -146,20 +226,18 @@ contains
 
     pure logical function valid_discretization_shapes( &
             vertices, triangles, panel_start, panel_end, panel_nodes, &
-            quadrature_order, matrix) result(valid)
+            quadrature_order) result(valid)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
         integer, intent(in) :: panel_nodes(:, :)
         integer, intent(in) :: quadrature_order
-        real(dp), intent(in) :: matrix(:, :)
 
-        integer :: panel_count, total_dofs, vertex_count
+        integer :: panel_count, vertex_count
 
         valid = .false.
         vertex_count = size(vertices, 2)
         panel_count = size(panel_start, 2)
-        total_dofs = vertex_count + panel_count
         if (size(vertices, 1) /= 2 .or. vertex_count < 3) return
         if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
         if (size(panel_start, 1) /= 2 .or. panel_count < 1) return
@@ -167,8 +245,6 @@ contains
             size(panel_end, 2) /= panel_count) return
         if (size(panel_nodes, 1) /= 2 .or. &
             size(panel_nodes, 2) /= panel_count) return
-        if (size(matrix, 1) /= total_dofs .or. &
-            size(matrix, 2) /= total_dofs) return
         if (quadrature_order < 1) return
         valid = .true.
     end function valid_discretization_shapes
@@ -233,6 +309,41 @@ contains
         end do
         status = 0
     end subroutine assemble_p1_stiffness
+
+    pure subroutine assemble_p1_mass(vertices, triangles, mass, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(out) :: mass(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: area, determinant, local_matrix(3, 3), x(3), y(3)
+        integer :: first_basis, first_node, second_basis, second_node, triangle
+
+        mass = 0.0_dp
+        status = 2
+        do triangle = 1, size(triangles, 2)
+            x = vertices(1, triangles(:, triangle))
+            y = vertices(2, triangles(:, triangle))
+            determinant = (x(2) - x(1))*(y(3) - y(1)) - &
+                (x(3) - x(1))*(y(2) - y(1))
+            if (abs(determinant) <= 64.0_dp*epsilon(1.0_dp)) return
+            area = 0.5_dp*abs(determinant)
+            local_matrix = area/12.0_dp
+            do first_basis = 1, 3
+                local_matrix(first_basis, first_basis) = area/6.0_dp
+            end do
+            do second_basis = 1, 3
+                second_node = triangles(second_basis, triangle)
+                do first_basis = 1, 3
+                    first_node = triangles(first_basis, triangle)
+                    mass(first_node, second_node) = &
+                        mass(first_node, second_node) + &
+                        local_matrix(first_basis, second_basis)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_p1_mass
 
     pure subroutine assemble_boundary_mass( &
             panel_start, panel_end, panel_nodes, mass, status)
