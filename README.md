@@ -19,7 +19,8 @@ Verified numerical paths:
 - The first-order tetrahedral Nédélec basis has exact oriented edge moments,
   independently differentiated curls, and an affine covariant map that
   preserves physical tangential moments. Neighboring tetrahedra share global
-  edge degrees of freedom with explicit local orientation signs.
+  edge degrees of freedom with explicit local orientation signs, and their
+  curl-mass operator assembles directly to `fortsparse` CSC.
 - Iterative dense solvers and real or complex sparse direct solves through
   `fortsparse`.
 - A C/C++ API for oriented triangle meshes, retained complex sparse factors,
