@@ -86,12 +86,13 @@ mesh = unit_disk_mesh(5)             ! Unit disk with resolution 5
 ### 2. Function Spaces
 
 FortFEM's scalar solver supports P1 and P2 Lagrange spaces. Verified
-lowest-order Nédélec and Raviart--Thomas kernels are also available, but the
-high-level vector form solver is still experimental.
+triangular Nédélec, Raviart--Thomas, BDM, and discontinuous scalar kernels are
+available through order four. The high-level vector solve currently targets
+order-one first-kind Nédélec spaces.
 
 - P1 Lagrange elements (linear, continuous)
 - P2 Lagrange elements (quadratic, continuous)
-- Lowest-order Nédélec and Raviart--Thomas element kernels
+- Triangular finite-element exterior calculus kernels through order four
 
 ```fortran
 Vh = function_space(mesh, "Lagrange", 1)        ! P1 scalar elements
@@ -105,10 +106,17 @@ Natural mathematical notation for weak forms:
 a = inner(grad(u), grad(v))*dx    ! Laplacian bilinear form
 L = f*v*dx                        ! Source linear form
 
-! Experimental vector form description
+! Executable order-one Nédélec form
 a = inner(curl(E), curl(F))*dx + inner(E, F)*dx  ! Curl-curl + mass
 L = inner(J, F)*dx                                 ! Current source
 ```
+
+The order-one Nédélec form compiler accepts cellwise scalar coefficients on
+the curl and mass terms, constant physical vector sources, and constant
+physical or explicitly supplied tangential edge moments. The `"direct"`
+solver uses a sparse `fortsparse` interior system. Mixed forms, nonconstant
+vector sources, tensor coefficients, and higher-order high-level solves
+remain experimental.
 
 ### 4. Solvers and Visualization
 Automatic solver selection and one-line plotting:

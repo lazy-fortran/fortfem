@@ -21,8 +21,9 @@ FortFEM provides a clean, high-level API that hides implementation details while
 - **vector_trial_function_t** / **vector_test_function_t**: Vector versions
 - **form_expr_t**: Symbolic descriptions used for limited solver dispatch
 - **form_equation_t**: Equation a == L for solving
+- **cell_coefficient_t**: Cellwise real scalar coefficients for vector forms
 - **dirichlet_bc_t**: Scalar Dirichlet boundary conditions
-- **vector_bc_t**: Vector boundary conditions
+- **vector_bc_t**: Vector boundary conditions with owned edge moments
 
 ### Factory Functions
 **Mesh Creation:**
@@ -46,6 +47,11 @@ FortFEM provides a clean, high-level API that hides implementation details while
 **Boundary Conditions:**
 - **dirichlet_bc(space, value)**: Create scalar Dirichlet BC
 - **vector_bc(space, values, bc_type)**: Create vector BC
+- **vector_bc_edge_moments(space, values, bc_type)**: Supply global edge
+  moments for a vector BC
+
+**Coefficients:**
+- **cell_coefficient(values)**: Create a cellwise real scalar coefficient
 
 ### Solving and Visualization
 - **solve(equation, uh, bc)**: Solve weak form equation
@@ -117,9 +123,12 @@ end program
 - **Verified kernels**: Arbitrary-order triangular Nédélec,
   Raviart--Thomas, BDM, and discontinuous scalar elements
 - **Working**: Weighted vector form compilation to local and CSC operators
-- **Working**: Order-one Nédélec solves with constant vector sources and
-  tangential data
+- **Working**: Order-one Nédélec solves with cellwise scalar curl and mass
+  coefficients, constant vector sources, and constant or owned nonconstant
+  tangential edge moments
+- **Verified**: Sparse public-API solve converges to the analytical
+  three-material Fourier-mode magnetic field
 - **Working**: Mesh generation and visualization with fortplotlib
 - **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
-- **Planned**: Mixed-form compilation, nonconstant vector sources, and 3D
-  elements
+- **Planned**: Mixed-form compilation, nonconstant vector sources, tensor and
+  complex coefficients, higher-order high-level solves, and 3D elements
