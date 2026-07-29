@@ -27,7 +27,8 @@ Verified numerical paths:
   Weighted H(curl) and H(div) forms compile to element matrices or
   `fortsparse` CSC matrices for all four triangular vector families.
 - A sparse RT0-DG0 mixed Poisson solve with homogeneous Dirichlet pressure
-  data preserves the source balance independently on every cell.
+  data preserves the source balance independently on every cell and attains
+  first-order flux and pressure convergence.
 - Mesh generation, refinement, and plotting through `fortplot`.
 
 Experimental interfaces:

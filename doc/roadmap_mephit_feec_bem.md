@@ -417,7 +417,8 @@ its cross-code and production-case validation gate remains open:
   exact polynomial pairings.
 - a sparse RT0-DG0 mixed Poisson solve forms the saddle-point system from the
   same mass and divergence operators. Oriented edge-flux balances reproduce
-  each cell source integral to solver precision.
+  each cell source integral to solver precision. The flux and discontinuous
+  pressure attain first-order convergence for an analytical sine solution.
 - symbolic scalar P1 mass, stiffness, and constant-load forms compile to
   executable operators. Weighted curl-mass and divergence-mass forms compile
   to local or oriented CSC operators for every implemented triangular vector
@@ -519,9 +520,10 @@ families through order four. This includes affine Piola maps, full
 orientation-aware global topology, sparse mass and differential forms,
 commuting projections, manufactured interpolation convergence, and executable
 weighted form compilation. The two-dimensional magnetic paper case also
-passes through the public order-one Nedelec solver. Mixed-form PDE solves,
-tetrahedral families, and the three-dimensional box in item 5 remain. The
-Phase 2 exit gate is therefore not yet met.
+passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
+helper is conservative and convergent; symbolic and higher-order mixed PDE
+solves, tetrahedral families, and the three-dimensional box in item 5 remain.
+The Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
