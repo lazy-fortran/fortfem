@@ -323,8 +323,9 @@ The Phase 0 foundations are implemented:
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
-- oriented Nedelec tangential and RT0 normal edge moments use `fortnum`
-  Gauss-Legendre rules and pass exact polynomial line-integral tests.
+- oriented real and complex Nedelec tangential and RT0 normal edge moments use
+  `fortnum` Gauss-Legendre rules and pass exact polynomial line-integral
+  tests.
 - complex RT0 coefficients reconstruct physical fields and element
   divergences, provide an L2 norm, and recover the toroidal Fourier component
   required by the zero-divergence constraint.
