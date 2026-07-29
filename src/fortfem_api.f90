@@ -21,6 +21,9 @@ module fortfem_api
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant, &
         assemble_helmholtz_single_layer_linear
+    use fortfem_helmholtz_exterior_2d, only: &
+        evaluate_helmholtz_combined_potential_constant, &
+        solve_helmholtz_cfie_constant
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -106,6 +109,8 @@ module fortfem_api
     public :: apply_planar_helmholtz_dtn
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: evaluate_helmholtz_combined_potential_constant
+    public :: solve_helmholtz_cfie_constant
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
