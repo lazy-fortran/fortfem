@@ -63,8 +63,9 @@ FortFEM provides a clean, high-level API that hides implementation details while
 - **solve_mixed_poisson_rt(mesh, degree, quadrature, source, ...)**: Solve a
   homogeneous-Dirichlet matching-degree RT-DG system from a physical source
   callback
-- **solve_magnetic_box_3d(n_xy, n_z, az_centre, n_dofs, status)**: Solve the
-  anisotropic magnetic-paper tetrahedral box benchmark
+- **solve_magnetic_box_3d(n_xy, n_z, az_centre, n_dofs, status, ...)**: Solve
+  the anisotropic magnetic-paper tetrahedral box benchmark, optionally
+  reconstructing its magnetic field at an interior point
 - **plot(uh, filename, title, colormap)**: Plot scalar function
 - **plot(Eh, filename, title, plot_type)**: Plot vector field
 - **plot(mesh, filename, title)**: Plot mesh triangulation
@@ -147,7 +148,9 @@ end program
 - **Verified**: RT1-DG1 mixed Poisson flux and pressure have second-order
   convergence
 - **Verified**: The 12×12×8 tetrahedral magnetic box matches the analytical
-  membrane-series centre value within the paper test's tolerance
+  membrane-series centre value within the paper test's tolerance, and its
+  off-grid magnetic-field reconstruction converges toward independently
+  differentiated series values
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and 3D
   elements

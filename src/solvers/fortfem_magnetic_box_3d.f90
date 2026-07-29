@@ -23,11 +23,14 @@ module fortfem_magnetic_box_3d
 contains
 
     subroutine solve_magnetic_box_3d( &
-            n_xy, n_z, az_centre, n_dofs, status)
+            n_xy, n_z, az_centre, n_dofs, status, magnetic_point, &
+            magnetic_field)
         integer, intent(in) :: n_xy, n_z
         real(dp), intent(out) :: az_centre
         integer, intent(out) :: n_dofs
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: magnetic_point(3)
+        real(dp), intent(out), optional :: magnetic_field(3)
 
         type(csc_t) :: matrix
         integer, allocatable :: edges(:, :), global_dofs(:, :)
@@ -41,6 +44,12 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Magnetic box solve failed")
+        if (present(magnetic_point)) then
+            if (.not. present(magnetic_field)) return
+        end if
+        if (present(magnetic_field)) then
+            if (.not. present(magnetic_point)) return
+        end if
         call build_box_tetra_mesh( &
             n_xy, n_z, vertices, tetrahedra, local_status)
         if (local_status /= 0) return
@@ -65,6 +74,17 @@ contains
                 status, FORTSPARSE_INTERNAL_ERROR, &
                 "Magnetic box centre probe failed")
             return
+        end if
+        if (present(magnetic_point)) then
+            call probe_box_curl( &
+                vertices, tetrahedra, global_dofs, orientations, solution, &
+                magnetic_point, magnetic_field, local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INTERNAL_ERROR, &
+                    "Magnetic box curl probe failed")
+                return
+            end if
         end if
         call status_set(status, 0, "")
     end subroutine solve_magnetic_box_3d
@@ -306,6 +326,53 @@ contains
             return
         end do
     end subroutine probe_box_az
+
+    subroutine probe_box_curl( &
+            vertices, tetrahedra, global_dofs, orientations, solution, point, &
+            curl_value, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:), point(3)
+        integer, intent(in) :: tetrahedra(:, :)
+        integer, intent(in) :: global_dofs(:, :), orientations(:, :)
+        real(dp), intent(out) :: curl_value(3)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, inverse_jacobian(3, 3), jacobian(3, 3)
+        real(dp) :: local_dofs(6), physical_curls(3, 6)
+        real(dp) :: physical_values(3, 6), reference_curls(3, 6)
+        real(dp) :: reference_point(3), reference_values(3, 6), vertex_a(3)
+        integer :: dof, inverse_status, tetrahedron
+
+        curl_value = 0.0_dp
+        status = 1
+        do tetrahedron = 1, size(tetrahedra, 2)
+            vertex_a = vertices(:, tetrahedra(1, tetrahedron))
+            jacobian(:, 1) = vertices(:, tetrahedra(2, tetrahedron)) - vertex_a
+            jacobian(:, 2) = vertices(:, tetrahedra(3, tetrahedron)) - vertex_a
+            jacobian(:, 3) = vertices(:, tetrahedra(4, tetrahedron)) - vertex_a
+            determinant = det3(jacobian)
+            if (determinant <= 0.0_dp) cycle
+            call inv3(jacobian, inverse_jacobian, inverse_status)
+            if (inverse_status /= 0) cycle
+            reference_point = matmul(inverse_jacobian, point - vertex_a)
+            if (any(reference_point < -1.0e-12_dp)) cycle
+            if (sum(reference_point) > 1.0_dp + 1.0e-12_dp) cycle
+            call evaluate_tetra_nedelec_first_order( &
+                reference_point, reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            do dof = 1, 6
+                local_dofs(dof) = real( &
+                    orientations(dof, tetrahedron), dp) * &
+                    solution(global_dofs(dof, tetrahedron))
+            end do
+            curl_value = matmul(physical_curls, local_dofs)
+            status = 0
+            return
+        end do
+    end subroutine probe_box_curl
 
     pure subroutine box_reluctivity(x, y, z, value)
         real(dp), intent(in) :: x, y, z
