@@ -332,11 +332,13 @@ The Phase 0 foundations are implemented:
   required by the zero-divergence constraint.
 - the first C ABI entry accepts zero-based interleaved triangle meshes and
   returns globally oriented edge degrees of freedom and local signs.
+- the C ABI also accepts zero-based complex CSC matrices, retains
+  `fortsparse` factors behind opaque process-local handles, reuses them across
+  right-hand sides, and rejects released handles.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms, C factor/solve and field-transfer entries, and consumer validation
-remain.
+forms, C field-transfer entries, and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 

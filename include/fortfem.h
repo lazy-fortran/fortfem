@@ -1,8 +1,13 @@
 #ifndef FORTFEM_H
 #define FORTFEM_H
 
+#include <complex.h>
+
 #ifdef __cplusplus
+typedef __complex__ double fortfem_complex;
 extern "C" {
+#else
+typedef double complex fortfem_complex;
 #endif
 
 /*
@@ -28,6 +33,29 @@ void fortfem_triangle_edge_map(
     int *triangle_edge_dofs,
     int *triangle_edge_signs,
     int *status);
+
+/*
+ * Factor a zero-based complex CSC matrix and return a positive opaque handle.
+ * Handles retain the factorization across solves and must be released with
+ * fortfem_factor_free. The handle registry is process-local.
+ */
+void fortfem_complex_factor_csc(
+    int n,
+    int nnz,
+    const int *col_ptr,
+    const int *row_ind,
+    const fortfem_complex *values,
+    int *handle,
+    int *status);
+
+void fortfem_complex_solve(
+    int handle,
+    int n,
+    const fortfem_complex *rhs,
+    fortfem_complex *solution,
+    int *status);
+
+void fortfem_factor_free(int handle, int *status);
 
 #ifdef __cplusplus
 }
