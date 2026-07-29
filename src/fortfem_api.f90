@@ -18,7 +18,8 @@ module fortfem_api
     use fortfem_helmholtz_boundary_operators_2d, only: &
         assemble_helmholtz_adjoint_double_layer_constant, &
         assemble_helmholtz_double_layer_constant, &
-        assemble_helmholtz_single_layer_constant
+        assemble_helmholtz_single_layer_constant, &
+        assemble_helmholtz_single_layer_linear
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -107,6 +108,7 @@ module fortfem_api
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_single_layer_constant
+    public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
     public :: assemble_laplace_hypersingular_linear
