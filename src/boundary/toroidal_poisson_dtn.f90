@@ -11,6 +11,7 @@ module fortfem_toroidal_poisson_dtn
     private
 
     public :: evaluate_toroidal_harmonic_p
+    public :: evaluate_toroidal_ampere_field_p
     public :: toroidal_poisson_exterior_dtn_p
 
 contains
@@ -35,6 +36,48 @@ contains
             cos(real(order, dp)*phi)
         status = 0
     end subroutine evaluate_toroidal_harmonic_p
+
+    pure subroutine evaluate_toroidal_ampere_field_p( &
+            degree_index, order, scale, eta, theta, phi, field, status)
+        integer, intent(in) :: degree_index, order
+        real(dp), intent(in) :: scale, eta, theta, phi
+        real(dp), intent(out) :: field(3)
+        integer, intent(out) :: status
+        real(dp) :: denominator, radial, radial_derivative
+        real(dp) :: angular_theta, angular_phi
+        real(dp) :: derivative_eta, derivative_theta, derivative_phi
+
+        if (degree_index < 0 .or. order < 0 .or. &
+            scale <= 0.0_dp .or. eta <= 0.0_dp) then
+            field = 0.0_dp
+            status = 1
+            return
+        end if
+
+        denominator = cosh(eta) - cos(theta)
+        radial = toroidal_p(degree_index, order, cosh(eta))
+        radial_derivative = &
+            toroidal_p_derivative(degree_index, order, cosh(eta))
+        angular_theta = real(degree_index, dp)*theta
+        angular_phi = real(order, dp)*phi
+
+        derivative_eta = ( &
+            sinh(eta)*radial/(2.0_dp*sqrt(denominator)) + &
+            sqrt(denominator)*radial_derivative*sinh(eta))* &
+            cos(angular_theta)*cos(angular_phi)
+        derivative_theta = ( &
+            sin(theta)*radial*cos(angular_theta)/ &
+            (2.0_dp*sqrt(denominator)) - &
+            sqrt(denominator)*radial*real(degree_index, dp)* &
+            sin(angular_theta))*cos(angular_phi)
+        derivative_phi = -sqrt(denominator)*radial* &
+            real(order, dp)*cos(angular_theta)*sin(angular_phi)
+
+        field(1) = -denominator*derivative_eta/scale
+        field(2) = -denominator*derivative_theta/scale
+        field(3) = -denominator*derivative_phi/(scale*sinh(eta))
+        status = 0
+    end subroutine evaluate_toroidal_ampere_field_p
 
     pure subroutine toroidal_poisson_exterior_dtn_p( &
             degree_index, order, scale, eta, theta, phi, &

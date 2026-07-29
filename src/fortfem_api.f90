@@ -29,7 +29,8 @@ module fortfem_api
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_toroidal_poisson_dtn, only: &
-        evaluate_toroidal_harmonic_p, toroidal_poisson_exterior_dtn_p
+        evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
+        toroidal_poisson_exterior_dtn_p
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_adjoint_double_layer_constant, &
         assemble_laplace_double_layer_constant, &
@@ -203,6 +204,7 @@ module fortfem_api
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
     public :: evaluate_toroidal_harmonic_p
+    public :: evaluate_toroidal_ampere_field_p
     public :: toroidal_poisson_exterior_dtn_p
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: evaluate_helmholtz_combined_potential_constant
