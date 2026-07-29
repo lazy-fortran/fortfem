@@ -110,6 +110,7 @@ module fortfem_api
     public :: boundary_t
     public :: simple_expression_t
     public :: cell_coefficient_t
+    public :: cell_vector_source_t
     public :: form_expr_t
     public :: form_equation_t
 
@@ -141,6 +142,7 @@ module fortfem_api
     public :: vector_test_function
     public :: constant
     public :: cell_coefficient
+    public :: cell_vector_source
     public :: dirichlet_bc
     public :: dirichlet_bc_on_boundary
     public :: vector_bc

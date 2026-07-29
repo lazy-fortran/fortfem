@@ -112,11 +112,11 @@ L = inner(J, F)*dx                                 ! Current source
 ```
 
 The order-one Nédélec form compiler accepts cellwise scalar coefficients on
-the curl and mass terms, constant physical vector sources, and constant
-physical or explicitly supplied tangential edge moments. The `"direct"`
-solver uses a sparse `fortsparse` interior system. Mixed forms, nonconstant
-vector sources, tensor coefficients, and higher-order high-level solves
-remain experimental.
+the curl and mass terms, constant or cellwise physical vector sources, and
+constant physical or explicitly supplied tangential edge moments. The
+`"direct"` solver uses a sparse `fortsparse` interior system. Mixed forms,
+general pointwise vector sources, tensor coefficients, and higher-order
+high-level solves remain experimental.
 
 ### 4. Solvers and Visualization
 Automatic solver selection and one-line plotting:

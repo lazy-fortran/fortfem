@@ -4,7 +4,7 @@ module fortfem_api_spaces
         vector_function_space_t, function_t, vector_function_t,             &
         trial_function_t, test_function_t, vector_trial_function_t,         &
         vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
-        cell_coefficient_t
+        cell_coefficient_t, cell_vector_source_t
     implicit none
 
     private
@@ -38,6 +38,8 @@ module fortfem_api_spaces
     public :: neumann_bc_on_boundary
     public :: cell_coefficient_t
     public :: cell_coefficient
+    public :: cell_vector_source_t
+    public :: cell_vector_source
 
 contains
 
@@ -149,6 +151,16 @@ contains
         end if
         allocate(coefficient%values, source=values)
     end function cell_coefficient
+
+    function cell_vector_source(values) result(source)
+        real(dp), intent(in) :: values(:, :)
+        type(cell_vector_source_t) :: source
+
+        if (size(values, 1) /= 2 .or. size(values, 2) < 1) then
+            error stop "cell_vector_source: expected a 2-by-cell array"
+        end if
+        allocate(source%values, source=values)
+    end function cell_vector_source
 
     function dirichlet_bc(space, value) result(bc)
         type(function_space_t), target, intent(in) :: space

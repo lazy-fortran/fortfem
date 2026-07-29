@@ -1,5 +1,6 @@
 module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
+        assemble_triangle_nedelec_cell_vector_load, &
         assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_element
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
@@ -29,6 +30,7 @@ module fortfem_forms_simple
     integer, parameter :: token_divergence = 9
     integer, parameter :: token_constant_load = 10
     integer, parameter :: token_cell_coefficient = 11
+    integer, parameter :: token_cell_vector_source = 12
 
     integer, parameter :: role_trial = 1
     integer, parameter :: role_test = 2
@@ -52,6 +54,7 @@ module fortfem_forms_simple
         real(dp) :: scalar = 0.0_dp
         real(dp) :: vector_value(2) = 0.0_dp
         real(dp), allocatable :: cell_values(:)
+        real(dp), allocatable :: cell_vector_values(:, :)
     contains
         procedure, private :: assign_form_token
         generic :: assignment(=) => assign_form_token
@@ -82,6 +85,8 @@ module fortfem_forms_simple
         real(dp) :: vector_load(2) = 0.0_dp
         real(dp) :: vector_value(2) = 0.0_dp
         logical :: has_vector_load = .false.
+        integer :: vector_load_token = 0
+        real(dp) :: vector_load_scale = 1.0_dp
         integer :: coefficient_token = 0
         integer :: mass_field_token = 0
         integer :: curl_field_token = 0
@@ -96,6 +101,7 @@ module fortfem_forms_simple
     public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
     public :: create_cell_coefficient, create_constant_load
+    public :: create_cell_vector_source
     public :: create_curl, create_divergence
     public :: create_grad, create_inner
     public :: create_measure
@@ -119,6 +125,10 @@ contains
         lhs%vector_value = rhs%vector_value
         if (allocated(rhs%cell_values)) then
             allocate(lhs%cell_values, source=rhs%cell_values)
+        end if
+        if (allocated(rhs%cell_vector_values)) then
+            allocate( &
+                lhs%cell_vector_values, source=rhs%cell_vector_values)
         end if
     end subroutine assign_form_token
 
@@ -302,6 +312,20 @@ contains
         expr%tokens(1)%tensor_rank = 1
         expr%tokens(1)%vector_value = value
     end function create_vector_constant_function
+
+    function create_cell_vector_source(values) result(expr)
+        real(dp), intent(in) :: values(:, :)
+        type(form_expr_t) :: expr
+
+        allocate(expr%tokens(1))
+        expr%description = "cell_vector_source"
+        expr%form_type = "function"
+        expr%tensor_rank = 1
+        expr%tokens(1)%token_type = token_cell_vector_source
+        expr%tokens(1)%role = role_function
+        expr%tokens(1)%tensor_rank = 1
+        allocate(expr%tokens(1)%cell_vector_values, source=values)
+    end function create_cell_vector_source
 
     function compile_form(expr) result(assembly_code)
         type(form_expr_t), intent(in) :: expr
@@ -550,15 +574,16 @@ contains
 
         type(csc_t) :: mass_matrix
         real(dp), allocatable :: source_dofs(:)
-        real(dp) :: edge_vector(2), source_value(2)
-        integer :: compiler_status, dof, edge
+        real(dp) :: edge_vector(2), source_scale, source_value(2)
+        integer :: compiler_status, dof, edge, source_token
 
         vector = 0.0_dp
-        call analyze_vector_linear_form(expr, source_value, compiler_status)
+        call analyze_vector_linear_form( &
+            expr, source_value, source_token, source_scale, compiler_status)
         if (compiler_status /= 0) then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
-                "Sparse vector load compiler requires a constant source")
+                "Sparse vector load compiler received an unsupported source")
             return
         end if
         if (trim(family) /= "Nedelec" .and. &
@@ -572,6 +597,20 @@ contains
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
                 "Sparse vector load compiler supports Nedelec order one")
+            return
+        end if
+        if (source_token /= 0) then
+            if (.not. allocated( &
+                expr%tokens(source_token)%cell_vector_values)) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Sparse vector load compiler lost its cell source")
+                return
+            end if
+            call assemble_triangle_nedelec_cell_vector_load( &
+                mesh, degree, quadrature_degree, &
+                expr%tokens(source_token)%cell_vector_values, vector, status)
+            if (status%code == 0) vector = source_scale * vector
             return
         end if
         if (.not. allocated(mesh%edges)) call mesh%build_edge_connectivity()
@@ -885,15 +924,19 @@ contains
         status = 0
     end subroutine analyze_vector_bilinear_form
 
-    subroutine analyze_vector_linear_form(expr, source_value, status)
+    subroutine analyze_vector_linear_form( &
+            expr, source_value, source_token, source_scale, status)
         type(form_expr_t), intent(in) :: expr
         real(dp), intent(out) :: source_value(2)
-        integer, intent(out) :: status
+        integer, intent(out) :: source_token, status
+        real(dp), intent(out) :: source_scale
 
         type(compiler_item_t), allocatable :: stack(:)
         integer :: stack_size, token_index
 
         source_value = 0.0_dp
+        source_token = 0
+        source_scale = 1.0_dp
         status = 2
         if (.not. allocated(expr%tokens)) return
         if (size(expr%tokens) < 1) return
@@ -933,6 +976,9 @@ contains
             return
         end if
         source_value = stack(1)%vector_load
+        source_token = stack(1)%vector_load_token
+        source_scale = stack(1)%vector_load_scale
+        if (source_token /= 0 .and. any(source_value /= 0.0_dp)) return
         status = 0
     end subroutine analyze_vector_linear_form
 
@@ -954,6 +1000,14 @@ contains
             stack(stack_size)%field_rank = token%tensor_rank
             stack(stack_size)%derivative = derivative_identity
             stack(stack_size)%vector_value = token%vector_value
+        case (token_cell_vector_source)
+            stack_size = stack_size + 1
+            stack(stack_size)%item_type = item_argument
+            stack(stack_size)%role = role_function
+            stack(stack_size)%tensor_rank = 1
+            stack(stack_size)%field_rank = 1
+            stack(stack_size)%derivative = derivative_identity
+            stack(stack_size)%vector_load_token = token_index
         case (token_gradient)
             if (stack_size < 1) return
             if (stack(stack_size)%item_type /= item_argument) return
@@ -1027,8 +1081,10 @@ contains
             stack(stack_size)%has_vector_load = .true.
             if (first%role == role_function) then
                 stack(stack_size)%vector_load = first%vector_value
+                stack(stack_size)%vector_load_token = first%vector_load_token
             else
                 stack(stack_size)%vector_load = second%vector_value
+                stack(stack_size)%vector_load_token = second%vector_load_token
             end if
             status = 0
             return
@@ -1131,6 +1187,8 @@ contains
             stack(stack_size - 1)%load_coefficient
         stack(stack_size - 1)%vector_load = factor * &
             stack(stack_size - 1)%vector_load
+        stack(stack_size - 1)%vector_load_scale = factor * &
+            stack(stack_size - 1)%vector_load_scale
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
@@ -1211,6 +1269,12 @@ contains
             first%load_coefficient + second%load_coefficient
         stack(stack_size - 1)%vector_load = &
             first%vector_load + second%vector_load
+        call combine_field_terms( &
+            first%vector_load_token, first%vector_load_scale, &
+            second%vector_load_token, second%vector_load_scale, &
+            stack(stack_size - 1)%vector_load_token, &
+            stack(stack_size - 1)%vector_load_scale, status)
+        if (status /= 0) return
         stack(stack_size - 1)%has_vector_load = &
             first%has_vector_load .or. second%has_vector_load
         stack_size = stack_size - 1
