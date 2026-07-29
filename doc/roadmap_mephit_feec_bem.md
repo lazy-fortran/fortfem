@@ -316,7 +316,8 @@ The Phase 0 foundations are implemented:
 - RT0 div-div plus mass assembly reproduces its exact reference matrix and
   the continuum energy of globally conforming constant fluxes;
 - `fortsparse` replaces FortFEM's direct UMFPACK binding and is tested with
-  exact real and complex systems.
+  exact real and complex systems; a retained-factor interface solves multiple
+  right-hand sides without refactorization.
 - a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
   propagating and evanescent Fourier-mode tests.
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
@@ -330,8 +331,7 @@ The Phase 0 foundations are implemented:
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms, weighted RT0 projections, factor reuse, and consumer validation
-remain.
+forms, weighted RT0 projections, and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 

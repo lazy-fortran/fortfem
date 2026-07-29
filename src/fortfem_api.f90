@@ -12,6 +12,9 @@ module fortfem_api
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
+    use fortfem_sparse_direct, only: sparse_direct_factor_t, &
+        sparse_direct_factor_csc, sparse_direct_free, &
+        sparse_direct_solve_factored
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -90,6 +93,8 @@ module fortfem_api
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     public :: evaluate_rt_field_2d
     public :: reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
+    public :: sparse_direct_factor_t, sparse_direct_factor_csc
+    public :: sparse_direct_solve_factored, sparse_direct_free
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t
