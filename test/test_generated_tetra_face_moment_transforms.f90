@@ -1,7 +1,7 @@
 program test_generated_tetra_face_moment_transforms
     use check, only: check_condition, check_summary
     use fortfem_generated_tetra_face_moment_transforms, only: &
-        transform_tetra_face_moments
+        map_tetra_face_basis_to_local, transform_tetra_face_moments
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
@@ -31,6 +31,12 @@ program test_generated_tetra_face_moment_transforms
             call record_condition(status == 0 .and. &
                 maxval(abs(transformed - canonical)) < 3.0e-13_dp, &
                 "Generated face transform matches direct moment integration")
+            call map_tetra_face_basis_to_local( &
+                order, permutations(:, permutation), canonical, transformed, &
+                status)
+            call record_condition(status == 0 .and. &
+                maxval(abs(transformed - local)) < 3.0e-13_dp, &
+                "Generated inverse maps canonical basis data to local data")
         end do
         deallocate(canonical, local, transformed)
     end do

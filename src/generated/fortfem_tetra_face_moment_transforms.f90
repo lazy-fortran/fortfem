@@ -9,6 +9,7 @@ module fortfem_generated_tetra_face_moment_transforms
     private
 
     public :: transform_tetra_face_moments
+    public :: map_tetra_face_basis_to_local
 
 contains
 
@@ -58,17 +59,43 @@ contains
         end select
     end function face_permutation_index
 
-    pure subroutine transform_order_2(permutation, local, canonical, status)
+    pure subroutine map_tetra_face_basis_to_local( &
+            order, permutation, canonical, local, status)
+        integer, intent(in) :: order, permutation(3)
+        real(real64), intent(in) :: canonical(:)
+        real(real64), intent(out) :: local(:)
+        integer, intent(out) :: status
+
+        integer :: permutation_index
+
+        local = 0.0_real64
+        status = 1
+        permutation_index = face_permutation_index(permutation)
+        if (permutation_index == 0) return
+        select case (order)
+        case (2)
+            call basis_to_local_order_2( &
+                permutation_index, canonical, local, status)
+        case (3)
+            call basis_to_local_order_3( &
+                permutation_index, canonical, local, status)
+        case (4)
+            call basis_to_local_order_4( &
+                permutation_index, canonical, local, status)
+        end select
+    end subroutine map_tetra_face_basis_to_local
+
+    pure subroutine transform_order_2(permutation, input, output, status)
         integer, intent(in) :: permutation
-        real(real64), intent(in) :: local(:)
-        real(real64), intent(out) :: canonical(:)
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
         integer, intent(out) :: status
         real(real64) :: transform(2,2)
 
-        canonical = 0.0_real64
+        output = 0.0_real64
         status = 1
-        if (size(local) /= 2) return
-        if (size(canonical) /= 2) return
+        if (size(input) /= 2) return
+        if (size(output) /= 2) return
         select case (permutation)
         case (1)
             transform = reshape([ &
@@ -113,21 +140,80 @@ contains
                 -1.0_real64 &
                 ], shape(transform))
         end select
-        canonical = matmul(transform, local)
+        output = matmul(transform, input)
         status = 0
     end subroutine transform_order_2
 
-    pure subroutine transform_order_3(permutation, local, canonical, status)
+    pure subroutine basis_to_local_order_2(permutation, input, output, status)
         integer, intent(in) :: permutation
-        real(real64), intent(in) :: local(:)
-        real(real64), intent(out) :: canonical(:)
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
+        integer, intent(out) :: status
+        real(real64) :: transform(2,2)
+
+        output = 0.0_real64
+        status = 1
+        if (size(input) /= 2) return
+        if (size(output) /= 2) return
+        select case (permutation)
+        case (1)
+            transform = reshape([ &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (2)
+            transform = reshape([ &
+                0.0_real64, &
+                1.0_real64, &
+                1.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (3)
+            transform = reshape([ &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (4)
+            transform = reshape([ &
+                -1.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (5)
+            transform = reshape([ &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        case (6)
+            transform = reshape([ &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        end select
+        output = matmul(transform, input)
+        status = 0
+    end subroutine basis_to_local_order_2
+
+    pure subroutine transform_order_3(permutation, input, output, status)
+        integer, intent(in) :: permutation
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
         integer, intent(out) :: status
         real(real64) :: transform(6,6)
 
-        canonical = 0.0_real64
+        output = 0.0_real64
         status = 1
-        if (size(local) /= 6) return
-        if (size(canonical) /= 6) return
+        if (size(input) /= 6) return
+        if (size(output) /= 6) return
         select case (permutation)
         case (1)
             transform = reshape([ &
@@ -364,21 +450,272 @@ contains
                 -1.0_real64 &
                 ], shape(transform))
         end select
-        canonical = matmul(transform, local)
+        output = matmul(transform, input)
         status = 0
     end subroutine transform_order_3
 
-    pure subroutine transform_order_4(permutation, local, canonical, status)
+    pure subroutine basis_to_local_order_3(permutation, input, output, status)
         integer, intent(in) :: permutation
-        real(real64), intent(in) :: local(:)
-        real(real64), intent(out) :: canonical(:)
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
+        integer, intent(out) :: status
+        real(real64) :: transform(6,6)
+
+        output = 0.0_real64
+        status = 1
+        if (size(input) /= 6) return
+        if (size(output) /= 6) return
+        select case (permutation)
+        case (1)
+            transform = reshape([ &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (2)
+            transform = reshape([ &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (3)
+            transform = reshape([ &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        case (4)
+            transform = reshape([ &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (5)
+            transform = reshape([ &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (6)
+            transform = reshape([ &
+                1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        end select
+        output = matmul(transform, input)
+        status = 0
+    end subroutine basis_to_local_order_3
+
+    pure subroutine transform_order_4(permutation, input, output, status)
+        integer, intent(in) :: permutation
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
         integer, intent(out) :: status
         real(real64) :: transform(12,12)
 
-        canonical = 0.0_real64
+        output = 0.0_real64
         status = 1
-        if (size(local) /= 12) return
-        if (size(canonical) /= 12) return
+        if (size(input) /= 12) return
+        if (size(output) /= 12) return
         select case (permutation)
         case (1)
             transform = reshape([ &
@@ -1263,8 +1600,907 @@ contains
                 -1.0_real64 &
                 ], shape(transform))
         end select
-        canonical = matmul(transform, local)
+        output = matmul(transform, input)
         status = 0
     end subroutine transform_order_4
+
+    pure subroutine basis_to_local_order_4(permutation, input, output, status)
+        integer, intent(in) :: permutation
+        real(real64), intent(in) :: input(:)
+        real(real64), intent(out) :: output(:)
+        integer, intent(out) :: status
+        real(real64) :: transform(12,12)
+
+        output = 0.0_real64
+        status = 1
+        if (size(input) /= 12) return
+        if (size(output) /= 12) return
+        select case (permutation)
+        case (1)
+            transform = reshape([ &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (2)
+            transform = reshape([ &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (3)
+            transform = reshape([ &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64 &
+                ], shape(transform))
+        case (4)
+            transform = reshape([ &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64 &
+                ], shape(transform))
+        case (5)
+            transform = reshape([ &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        case (6)
+            transform = reshape([ &
+                1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                2.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                2.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -2.0_real64, &
+                1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                0.0_real64, &
+                -1.0_real64, &
+                1.0_real64, &
+                -1.0_real64 &
+                ], shape(transform))
+        end select
+        output = matmul(transform, input)
+        status = 0
+    end subroutine basis_to_local_order_4
 
 end module fortfem_generated_tetra_face_moment_transforms

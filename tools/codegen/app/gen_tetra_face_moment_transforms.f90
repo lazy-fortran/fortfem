@@ -39,7 +39,8 @@ contains
             left(dof_count, dof_count), right(dof_count, dof_count))
         call build_moment_matrix( &
             order, permutations(:, 1), canonical)
-        call write_order_header(order, dof_count)
+        call write_order_header( &
+            "transform_order_"//integer_text(order), dof_count)
         do permutation = 1, size(permutations, 2)
             call build_moment_matrix( &
                 order, permutations(:, permutation), local)
@@ -52,7 +53,25 @@ contains
             call write_transform_case( &
                 permutation, transpose(solution%values))
         end do
-        call write_order_footer(order)
+        call write_order_footer( &
+            "transform_order_"//integer_text(order))
+
+        call write_order_header( &
+            "basis_to_local_order_"//integer_text(order), dof_count)
+        do permutation = 1, size(permutations, 2)
+            call build_moment_matrix( &
+                order, permutations(:, permutation), local)
+            left = transpose(canonical)
+            right = transpose(local)
+            solution = solve_exact_linear_system(engine, left, right)
+            if (.not. solution%ok) then
+                error stop "exact face basis transform solve failed"
+            end if
+            call write_transform_case( &
+                permutation, transpose(solution%values))
+        end do
+        call write_order_footer( &
+            "basis_to_local_order_"//integer_text(order))
     end subroutine generate_order
 
     subroutine build_moment_matrix(order, permutation, matrix)
@@ -212,10 +231,13 @@ contains
         write(output_unit, "(a)") ""
         write(output_unit, "(a)") &
             "    public :: transform_tetra_face_moments"
+        write(output_unit, "(a)") &
+            "    public :: map_tetra_face_basis_to_local"
         write(output_unit, "(a)") ""
         write(output_unit, "(a)") "contains"
         write(output_unit, "(a)") ""
         call write_dispatch_procedure()
+        call write_basis_dispatch_procedure()
     end subroutine write_module_header
 
     subroutine write_dispatch_procedure()
@@ -290,25 +312,69 @@ contains
         write(output_unit, "(a)") ""
     end subroutine write_dispatch_procedure
 
-    subroutine write_order_header(order, dof_count)
-        integer, intent(in) :: order, dof_count
+    subroutine write_basis_dispatch_procedure()
+        write(output_unit, "(a)") &
+            "    pure subroutine map_tetra_face_basis_to_local( &"
+        write(output_unit, "(a)") &
+            "            order, permutation, canonical, local, status)"
+        write(output_unit, "(a)") &
+            "        integer, intent(in) :: order, permutation(3)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(in) :: canonical(:)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(out) :: local(:)"
+        write(output_unit, "(a)") "        integer, intent(out) :: status"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        integer :: permutation_index"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        local = 0.0_real64"
+        write(output_unit, "(a)") "        status = 1"
+        write(output_unit, "(a)") &
+            "        permutation_index = face_permutation_index(permutation)"
+        write(output_unit, "(a)") &
+            "        if (permutation_index == 0) return"
+        write(output_unit, "(a)") "        select case (order)"
+        write(output_unit, "(a)") "        case (2)"
+        write(output_unit, "(a)") &
+            "            call basis_to_local_order_2( &"
+        write(output_unit, "(a)") &
+            "                permutation_index, canonical, local, status)"
+        write(output_unit, "(a)") "        case (3)"
+        write(output_unit, "(a)") &
+            "            call basis_to_local_order_3( &"
+        write(output_unit, "(a)") &
+            "                permutation_index, canonical, local, status)"
+        write(output_unit, "(a)") "        case (4)"
+        write(output_unit, "(a)") &
+            "            call basis_to_local_order_4( &"
+        write(output_unit, "(a)") &
+            "                permutation_index, canonical, local, status)"
+        write(output_unit, "(a)") "        end select"
+        write(output_unit, "(a)") &
+            "    end subroutine map_tetra_face_basis_to_local"
+        write(output_unit, "(a)") ""
+    end subroutine write_basis_dispatch_procedure
 
-        write(output_unit, "(a)") "    pure subroutine transform_order_"// &
-            integer_text(order)//"(permutation, local, canonical, status)"
+    subroutine write_order_header(procedure_name, dof_count)
+        character(*), intent(in) :: procedure_name
+        integer, intent(in) :: dof_count
+
+        write(output_unit, "(a)") "    pure subroutine "// &
+            procedure_name//"(permutation, input, output, status)"
         write(output_unit, "(a)") &
             "        integer, intent(in) :: permutation"
-        write(output_unit, "(a)") "        real(real64), intent(in) :: local(:)"
+        write(output_unit, "(a)") "        real(real64), intent(in) :: input(:)"
         write(output_unit, "(a)") &
-            "        real(real64), intent(out) :: canonical(:)"
+            "        real(real64), intent(out) :: output(:)"
         write(output_unit, "(a)") "        integer, intent(out) :: status"
         write(output_unit, "(a)") "        real(real64) :: transform("// &
             integer_text(dof_count)//","//integer_text(dof_count)//")"
         write(output_unit, "(a)") ""
-        write(output_unit, "(a)") "        canonical = 0.0_real64"
+        write(output_unit, "(a)") "        output = 0.0_real64"
         write(output_unit, "(a)") "        status = 1"
-        write(output_unit, "(a)") "        if (size(local) /= "// &
+        write(output_unit, "(a)") "        if (size(input) /= "// &
             integer_text(dof_count)//") return"
-        write(output_unit, "(a)") "        if (size(canonical) /= "// &
+        write(output_unit, "(a)") "        if (size(output) /= "// &
             integer_text(dof_count)//") return"
         write(output_unit, "(a)") "        select case (permutation)"
     end subroutine write_order_header
@@ -338,15 +404,14 @@ contains
         write(output_unit, "(a)") "            ], shape(transform))"
     end subroutine write_transform_case
 
-    subroutine write_order_footer(order)
-        integer, intent(in) :: order
+    subroutine write_order_footer(procedure_name)
+        character(*), intent(in) :: procedure_name
 
         write(output_unit, "(a)") "        end select"
         write(output_unit, "(a)") &
-            "        canonical = matmul(transform, local)"
+            "        output = matmul(transform, input)"
         write(output_unit, "(a)") "        status = 0"
-        write(output_unit, "(a)") "    end subroutine transform_order_"// &
-            integer_text(order)
+        write(output_unit, "(a)") "    end subroutine "//procedure_name
         write(output_unit, "(a)") ""
     end subroutine write_order_footer
 
