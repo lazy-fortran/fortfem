@@ -34,6 +34,10 @@ module fortfem_api
         assignment(=), evaluate_triangle_nedelec_first_kind, &
         initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
         triangle_nedelec_first_kind_t
+    use fortfem_triangle_rt_arbitrary_order, only: &
+        assignment(=), evaluate_triangle_raviart_thomas, &
+        initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
+        triangle_rt_dof_count
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -132,6 +136,10 @@ module fortfem_api
     public :: initialize_triangle_nedelec_first_kind
     public :: triangle_nedelec_dof_count
     public :: triangle_nedelec_first_kind_t
+    public :: evaluate_triangle_raviart_thomas
+    public :: initialize_triangle_raviart_thomas
+    public :: triangle_rt_basis_t
+    public :: triangle_rt_dof_count
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
