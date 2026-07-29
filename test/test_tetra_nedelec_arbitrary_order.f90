@@ -2,7 +2,8 @@ program test_tetra_nedelec_arbitrary_order
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_order, &
-        initialize_tetra_nedelec_first_kind, tetra_duffy_quadrature, &
+        initialize_tetra_nedelec_first_kind, &
+        interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t, &
         triangle_duffy_quadrature
     use fortfem_generated_tetra_nedelec_coefficients, only: &
@@ -14,7 +15,7 @@ program test_tetra_nedelec_arbitrary_order
     type(tetra_nedelec_first_kind_t) :: basis, copied_basis
     real(dp), allocatable :: curls(:, :), dofs(:), moment_matrix(:, :)
     real(dp), allocatable :: generated_coefficients(:, :), values(:, :)
-    real(dp) :: expected(3), point(3), reconstructed(3)
+    real(dp) :: expected(3), p_errors(4), point(3), reconstructed(3)
     integer :: dof_count, order, status
     logical :: all_passed
 
@@ -41,7 +42,7 @@ program test_tetra_nedelec_arbitrary_order
             dof_count))) < 2.0e-8_dp, &
             "Tetrahedral edge, face, and cell moments form a Kronecker basis")
 
-        call polynomial_gradient_dofs(order, dofs)
+        call polynomial_gradient_dofs(order, order, dofs)
         call evaluate_tetra_nedelec_first_kind( &
             basis, point, values, curls, status)
         reconstructed = matmul(values, dofs)
@@ -52,6 +53,8 @@ program test_tetra_nedelec_arbitrary_order
         call record_condition(maxval(abs(matmul(curls, dofs))) < 2.0e-8_dp, &
             "Tetrahedral Nedelec interpolation preserves zero gradient curl")
         call check_curls_by_finite_difference(basis, dof_count, point)
+        call polynomial_gradient_interpolation_error( &
+            basis, 4, p_errors(order))
         if (order == 1) call check_lowest_order_compatibility( &
             basis, values, curls)
 
@@ -65,6 +68,10 @@ program test_tetra_nedelec_arbitrary_order
         deallocate( &
             values, curls, dofs, moment_matrix, generated_coefficients)
     end do
+    call record_condition(all(p_errors(2:4) < p_errors(1:3)), &
+        "Tetrahedral Nedelec interpolation improves at every higher order")
+    call record_condition(p_errors(4) < 2.0e-11_dp, &
+        "Order-four tetrahedral Nedelec interpolation reproduces a cubic field")
 
     call initialize_tetra_nedelec_first_kind(0, basis, status)
     call record_condition(status /= 0, &
@@ -168,8 +175,8 @@ contains
         end do
     end subroutine build_moment_matrix
 
-    subroutine polynomial_gradient_dofs(order, dofs)
-        integer, intent(in) :: order
+    subroutine polynomial_gradient_dofs(order, field_degree, dofs)
+        integer, intent(in) :: order, field_degree
         real(dp), intent(out) :: dofs(:)
 
         real(dp), allocatable :: edge_nodes(:), edge_weights(:)
@@ -190,7 +197,7 @@ contains
                 do node = 1, size(edge_nodes)
                     call reference_edge( &
                         edge, edge_nodes(node), point, tangent)
-                    field = gradient_field(order, point)
+                    field = gradient_field(field_degree, point)
                     dofs(moment) = dofs(moment) + edge_weights(node) * &
                         shifted_legendre(exponent, edge_nodes(node)) * &
                         dot_product(field, tangent)
@@ -209,7 +216,7 @@ contains
                         do node = 1, size(x)
                             call reference_face( &
                                 face, x(node), y(node), point, tangents)
-                            field = gradient_field(order, point)
+                            field = gradient_field(field_degree, point)
                             dofs(moment) = dofs(moment) + &
                                 triangle_weights(node) * &
                                 x(node)**x_degree * y(node)**y_degree * &
@@ -230,7 +237,7 @@ contains
                         moment = moment + 1
                         do node = 1, size(x)
                             point = [x(node), y(node), z(node)]
-                            field = gradient_field(order, point)
+                            field = gradient_field(field_degree, point)
                             dofs(moment) = dofs(moment) + &
                                 tetra_weights(node) * x(node)**x_degree * &
                                 y(node)**y_degree * z(node)**z_degree * &
@@ -241,6 +248,43 @@ contains
             end do
         end do
     end subroutine polynomial_gradient_dofs
+
+    subroutine polynomial_gradient_interpolation_error( &
+            basis, field_degree, error)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        integer, intent(in) :: field_degree
+        real(dp), intent(out) :: error
+
+        real(dp), allocatable :: curls(:, :), dofs(:), values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: difference(3), location(3)
+        integer :: node, status
+
+        allocate( &
+            dofs(tetra_nedelec_dof_count(basis)), &
+            values(3, tetra_nedelec_dof_count(basis)), &
+            curls(3, tetra_nedelec_dof_count(basis)))
+        call interpolate_reference_tetra_nedelec( &
+            basis, cubic_gradient, dofs, status)
+        call tetra_duffy_quadrature(12, x, y, z, weights, status)
+        error = 0.0_dp
+        do node = 1, size(weights)
+            location = [x(node), y(node), z(node)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, location, values, curls, status)
+            difference = matmul(values, dofs) - &
+                gradient_field(field_degree, location)
+            error = error + weights(node) * dot_product(difference, difference)
+        end do
+        error = sqrt(error)
+    end subroutine polynomial_gradient_interpolation_error
+
+    pure subroutine cubic_gradient(location, field)
+        real(dp), intent(in) :: location(3)
+        real(dp), intent(out) :: field(3)
+
+        field = gradient_field(4, location)
+    end subroutine cubic_gradient
 
     subroutine check_curls_by_finite_difference( &
             basis, dof_count, point)
