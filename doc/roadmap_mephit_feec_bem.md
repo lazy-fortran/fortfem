@@ -325,6 +325,16 @@ its cross-code and production-case validation gate remains open:
   right-hand sides without refactorization.
 - a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
   propagating and evanescent Fourier-mode tests.
+- a circular outgoing Helmholtz DtN map uses `fortnum` Hankel values, applies
+  an explicit Fourier truncation, and reports the discarded trace norm.
+- dense two-dimensional Laplace single-layer, double-layer, adjoint
+  double-layer, and hypersingular Galerkin operators act on oriented line
+  panels. Analytical self terms and Duffy-reduced endpoint interactions pass
+  exact logarithmic and jump-relation tests.
+- the Laplace hypersingular operator uses a weakly singular regularization on
+  connected continuous linear traces. Three regular-polygon refinements
+  converge to the first two exact single-layer and hypersingular circle
+  spectra; the accompanying example reports the mode-one convergence.
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
@@ -441,6 +451,10 @@ its analytical vector potential and curl.
 Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
+
+Item 2 and the Laplace part of item 3 are implemented. Helmholtz kernels,
+Calderon identities beyond the jump and spectral checks, adaptive
+near-singular quadrature, and items 1 and 4--6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
