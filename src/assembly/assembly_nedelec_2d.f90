@@ -45,6 +45,21 @@ contains
         procedure(scalar_coefficient_2d) :: mass_coefficient
         real(dp), intent(out) :: element_matrix(3, 3)
 
+        call assemble_nedelec_scaled_weighted_element( &
+            mesh, triangle_idx, curl_coefficient, mass_coefficient, &
+            1.0_dp, 1.0_dp, quadrature_degree, element_matrix)
+    end subroutine assemble_nedelec_weighted_element
+
+    subroutine assemble_nedelec_scaled_weighted_element( &
+            mesh, triangle_idx, curl_coefficient, mass_coefficient, &
+            curl_scale, mass_scale, quadrature_degree, element_matrix)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: triangle_idx, quadrature_degree
+        procedure(scalar_coefficient_2d) :: curl_coefficient
+        procedure(scalar_coefficient_2d) :: mass_coefficient
+        real(dp), intent(in) :: curl_scale, mass_scale
+        real(dp), intent(out) :: element_matrix(3, 3)
+
         type(gauss_quadrature_triangle_t) :: quadrature
         real(dp) :: basis_values(2, 3), basis_curls(3)
         real(dp) :: area, det_jacobian, physical_weight
@@ -72,8 +87,8 @@ contains
             eta = quadrature%eta(q)
             x = x1 + (x2 - x1) * xi + (x3 - x1) * eta
             y = y1 + (y2 - y1) * xi + (y3 - y1) * eta
-            curl_weight = curl_coefficient(x, y)
-            mass_weight = mass_coefficient(x, y)
+            curl_weight = curl_scale * curl_coefficient(x, y)
+            mass_weight = mass_scale * mass_coefficient(x, y)
             call evaluate_edge_basis_2d_piola(mesh, triangle_idx, &
                 xi, eta, basis_values)
             call evaluate_edge_basis_curl_2d( &
@@ -91,7 +106,7 @@ contains
             end do
         end do
         call quadrature%destroy()
-    end subroutine assemble_nedelec_weighted_element
+    end subroutine assemble_nedelec_scaled_weighted_element
 
     subroutine assemble_nedelec_curl_mass(mesh, matrix)
         type(mesh_2d_t), intent(inout) :: mesh
@@ -109,6 +124,21 @@ contains
         integer, intent(in) :: quadrature_degree
         real(dp), intent(out) :: matrix(:, :)
 
+        call assemble_nedelec_scaled_weighted( &
+            mesh, curl_coefficient, mass_coefficient, 1.0_dp, 1.0_dp, &
+            quadrature_degree, matrix)
+    end subroutine assemble_nedelec_weighted
+
+    subroutine assemble_nedelec_scaled_weighted( &
+            mesh, curl_coefficient, mass_coefficient, &
+            curl_scale, mass_scale, quadrature_degree, matrix)
+        type(mesh_2d_t), intent(inout) :: mesh
+        procedure(scalar_coefficient_2d) :: curl_coefficient
+        procedure(scalar_coefficient_2d) :: mass_coefficient
+        real(dp), intent(in) :: curl_scale, mass_scale
+        integer, intent(in) :: quadrature_degree
+        real(dp), intent(out) :: matrix(:, :)
+
         real(dp) :: element_matrix(3, 3)
         integer :: edge_dofs(3), edge_orientations(3)
         integer :: triangle_idx, i, j, global_i, global_j
@@ -123,9 +153,9 @@ contains
 
         matrix = 0.0_dp
         do triangle_idx = 1, mesh%n_triangles
-            call assemble_nedelec_weighted_element(mesh, triangle_idx, &
-                curl_coefficient, mass_coefficient, quadrature_degree, &
-                element_matrix)
+            call assemble_nedelec_scaled_weighted_element( &
+                mesh, triangle_idx, curl_coefficient, mass_coefficient, &
+                curl_scale, mass_scale, quadrature_degree, element_matrix)
             call mesh%get_triangle_edge_dofs( &
                 triangle_idx, edge_dofs, edge_orientations)
 
@@ -140,7 +170,7 @@ contains
                 end do
             end do
         end do
-    end subroutine assemble_nedelec_weighted
+    end subroutine assemble_nedelec_scaled_weighted
 
     subroutine assemble_nedelec_axisymmetric_fourier( &
             mesh, fourier_mode, quadrature_degree, matrix)
@@ -148,39 +178,9 @@ contains
         integer, intent(in) :: fourier_mode, quadrature_degree
         real(dp), intent(out) :: matrix(:, :)
 
-        call assemble_nedelec_weighted(mesh, radial_curl_weight, &
-            fourier_mass_weight, quadrature_degree, matrix)
-
-    contains
-
-        pure real(dp) function radial_curl_weight(x, y) result(value)
-            real(dp), intent(in) :: x, y
-
-            if (x <= 0.0_dp) then
-                error stop "Axisymmetric assembly requires positive R"
-            end if
-            value = x
-            associate (unused_y => [y])
-                if (size(unused_y) /= 1) error stop
-            end associate
-        end function radial_curl_weight
-
-        pure real(dp) function fourier_mass_weight(x, y) result(value)
-            real(dp), intent(in) :: x, y
-
-            if (fourier_mode == 0) then
-                value = 0.0_dp
-            else
-                if (x <= 0.0_dp) then
-                    error stop "Axisymmetric assembly requires positive R"
-                end if
-                value = real(fourier_mode, dp)**2 / x
-            end if
-            associate (unused_y => [y])
-                if (size(unused_y) /= 1) error stop
-            end associate
-        end function fourier_mass_weight
-
+        call assemble_nedelec_scaled_weighted( &
+            mesh, radial_coordinate, reciprocal_radial_coordinate, &
+            1.0_dp, real(fourier_mode, dp)**2, quadrature_degree, matrix)
     end subroutine assemble_nedelec_axisymmetric_fourier
 
     subroutine assemble_nedelec_axisymmetric_fourier_csc( &
@@ -205,9 +205,10 @@ contains
 
         entry = 0
         do triangle_idx = 1, mesh%n_triangles
-            call assemble_nedelec_weighted_element(mesh, triangle_idx, &
-                radial_curl_weight, fourier_mass_weight, quadrature_degree, &
-                element_matrix)
+            call assemble_nedelec_scaled_weighted_element( &
+                mesh, triangle_idx, radial_coordinate, &
+                reciprocal_radial_coordinate, 1.0_dp, &
+                real(fourier_mode, dp)**2, quadrature_degree, element_matrix)
             call mesh%get_triangle_edge_dofs( &
                 triangle_idx, edge_dofs, edge_orientations)
             do j = 1, 3
@@ -223,38 +224,31 @@ contains
         end do
         call csc_from_triplet(mesh%n_edges, mesh%n_edges, &
             rows, columns, values, matrix, status)
-
-    contains
-
-        pure real(dp) function radial_curl_weight(x, y) result(value)
-            real(dp), intent(in) :: x, y
-
-            if (x <= 0.0_dp) then
-                error stop "Axisymmetric assembly requires positive R"
-            end if
-            value = x
-            associate (unused_y => [y])
-                if (size(unused_y) /= 1) error stop
-            end associate
-        end function radial_curl_weight
-
-        pure real(dp) function fourier_mass_weight(x, y) result(value)
-            real(dp), intent(in) :: x, y
-
-            if (fourier_mode == 0) then
-                value = 0.0_dp
-            else
-                if (x <= 0.0_dp) then
-                    error stop "Axisymmetric assembly requires positive R"
-                end if
-                value = real(fourier_mode, dp)**2 / x
-            end if
-            associate (unused_y => [y])
-                if (size(unused_y) /= 1) error stop
-            end associate
-        end function fourier_mass_weight
-
     end subroutine assemble_nedelec_axisymmetric_fourier_csc
+
+    pure real(dp) function radial_coordinate(x, y) result(value)
+        real(dp), intent(in) :: x, y
+
+        if (x <= 0.0_dp) then
+            error stop "Axisymmetric assembly requires positive R"
+        end if
+        value = x
+        associate (unused_y => [y])
+            if (size(unused_y) /= 1) error stop
+        end associate
+    end function radial_coordinate
+
+    pure real(dp) function reciprocal_radial_coordinate(x, y) result(value)
+        real(dp), intent(in) :: x, y
+
+        if (x <= 0.0_dp) then
+            error stop "Axisymmetric assembly requires positive R"
+        end if
+        value = 1.0_dp / x
+        associate (unused_y => [y])
+            if (size(unused_y) /= 1) error stop
+        end associate
+    end function reciprocal_radial_coordinate
 
     pure real(dp) function unit_coefficient(x, y) result(value)
         real(dp), intent(in) :: x, y

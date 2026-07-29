@@ -89,6 +89,27 @@ void fortfem_rt0_toroidal(
     int *status);
 
 /*
+ * Assemble the real axisymmetric Nedelec operator
+ *
+ *   integral R curl(w) curl(A) + mode^2 / R w dot A
+ *
+ * on a retained counter-clockwise triangle mesh with positive radial
+ * coordinates. The returned CSC arrays are zero-based. n_dofs and nnz are
+ * always set for valid input; status is -2 when nnz_capacity is too small.
+ */
+void fortfem_nedelec_axisymmetric_fourier_csc(
+    int handle,
+    int mode,
+    int quadrature_degree,
+    int nnz_capacity,
+    int *n_dofs,
+    int *nnz,
+    int *col_ptr,
+    int *row_ind,
+    double *values,
+    int *status);
+
+/*
  * Factor a zero-based complex CSC matrix and return a positive opaque handle.
  * Handles retain the factorization across solves and must be released with
  * fortfem_factor_free. The handle registry is process-local.
