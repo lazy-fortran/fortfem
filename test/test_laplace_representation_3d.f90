@@ -1,8 +1,9 @@
 program test_laplace_representation_3d
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_laplace_representation_triangles_3d, &
-        evaluate_toroidal_ampere_field_p, evaluate_toroidal_harmonic_p, &
-        generate_torus_surface_mesh
+        cartesian_to_toroidal, evaluate_toroidal_ampere_field_p, &
+        evaluate_toroidal_harmonic_p, generate_torus_surface_mesh, &
+        toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_kinds, only: dp
     implicit none
 
@@ -56,7 +57,7 @@ contains
         allocate(torus_trace(size(torus_vertices, 2)))
         allocate(torus_flux(size(torus_triangles, 2)))
         do point = 1, size(torus_vertices, 2)
-            call inverse_toroidal_angles( &
+            call cartesian_to_toroidal( &
                 torus_vertices(:, point), scale, eta_at_point, theta, phi)
             call evaluate_toroidal_harmonic_p( &
                 2, 1, boundary_eta, theta, phi, &
@@ -79,11 +80,8 @@ contains
         target_eta = 0.35_dp
         target_theta = 0.8_dp
         target_phi = 0.3_dp
-        denominator = cosh(target_eta) - cos(target_theta)
-        target = [ &
-            scale*sinh(target_eta)*cos(target_phi)/denominator, &
-            scale*sinh(target_eta)*sin(target_phi)/denominator, &
-            scale*sin(target_theta)/denominator]
+        call toroidal_point_to_cartesian( &
+            scale, target_eta, target_theta, target_phi, target)
         call evaluate_toroidal_harmonic_p( &
             2, 1, target_eta, target_theta, target_phi, exact, torus_status)
         call evaluate_laplace_representation_triangles_3d( &
@@ -111,13 +109,13 @@ contains
         real(dp) :: eta_local, minus_value, phi_local, plus_value, theta_local
         integer :: local_status
 
-        call inverse_toroidal_angles( &
+        call cartesian_to_toroidal( &
             point + step*normal, toroidal_scale, &
             eta_local, theta_local, phi_local)
         call evaluate_toroidal_harmonic_p( &
             2, 1, eta_local, theta_local, phi_local, plus_value, local_status)
         if (local_status /= 0) error stop "positive toroidal difference failed"
-        call inverse_toroidal_angles( &
+        call cartesian_to_toroidal( &
             point - step*normal, toroidal_scale, &
             eta_local, theta_local, phi_local)
         call evaluate_toroidal_harmonic_p( &
@@ -125,44 +123,6 @@ contains
         if (local_status /= 0) error stop "negative toroidal difference failed"
         derivative = (plus_value - minus_value)/(2.0_dp*step)
     end function toroidal_normal_difference
-
-    pure subroutine toroidal_vector_to_cartesian( &
-            eta, theta, phi, components, cartesian)
-        real(dp), intent(in) :: eta, theta, phi, components(3)
-        real(dp), intent(out) :: cartesian(3)
-
-        real(dp) :: denominator, eta_radial, eta_vertical, radial(3)
-        real(dp) :: azimuthal(3), theta_radial, theta_vertical
-
-        denominator = cosh(eta) - cos(theta)
-        eta_radial = (1.0_dp - cosh(eta)*cos(theta))/denominator
-        eta_vertical = -sinh(eta)*sin(theta)/denominator
-        theta_radial = eta_vertical
-        theta_vertical = -eta_radial
-        radial = [cos(phi), sin(phi), 0.0_dp]
-        azimuthal = [-sin(phi), cos(phi), 0.0_dp]
-        cartesian = components(1)*( &
-            eta_radial*radial + [0.0_dp, 0.0_dp, eta_vertical]) + &
-            components(2)*( &
-            theta_radial*radial + [0.0_dp, 0.0_dp, theta_vertical]) + &
-            components(3)*azimuthal
-    end subroutine toroidal_vector_to_cartesian
-
-    pure subroutine inverse_toroidal_angles(point, scale, eta, theta, phi)
-        real(dp), intent(in) :: point(3), scale
-        real(dp), intent(out) :: eta, theta, phi
-
-        real(dp) :: cylindrical_radius
-
-        cylindrical_radius = norm2(point(1:2))
-        eta = 0.5_dp*log( &
-            ((cylindrical_radius + scale)**2 + point(3)**2)/ &
-            ((cylindrical_radius - scale)**2 + point(3)**2))
-        theta = atan2( &
-            2.0_dp*scale*point(3), &
-            cylindrical_radius**2 + point(3)**2 - scale**2)
-        phi = atan2(point(2), point(1))
-    end subroutine inverse_toroidal_angles
 
     subroutine build_cube_surface( &
             points, elements, boundary_value, boundary_flux)
