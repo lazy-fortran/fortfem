@@ -58,6 +58,7 @@ module fortfem_api
         triangle_nedelec_second_kind_t
     use fortfem_tetra_nedelec_first_order, only: &
         evaluate_tetra_nedelec_first_order
+    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
@@ -200,6 +201,7 @@ module fortfem_api
     public :: triangle_nedelec_second_kind_dof_count
     public :: triangle_nedelec_second_kind_t
     public :: evaluate_tetra_nedelec_first_order
+    public :: map_tetra_nedelec_covariant
     public :: evaluate_triangle_bdm
     public :: initialize_triangle_bdm
     public :: triangle_bdm_basis_t

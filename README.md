@@ -16,8 +16,9 @@ Verified numerical paths:
   Raviart--Thomas, BDM, and discontinuous scalar families through order four.
   Their affine Piola maps, global moment orientations, commuting projections,
   and sparse differential or mass forms have analytical tests.
-- The reference first-order tetrahedral Nédélec basis has exact oriented edge
-  moments and independently differentiated curls.
+- The first-order tetrahedral Nédélec basis has exact oriented edge moments,
+  independently differentiated curls, and an affine covariant map that
+  preserves physical tangential moments.
 - Iterative dense solvers and real or complex sparse direct solves through
   `fortsparse`.
 - A C/C++ API for oriented triangle meshes, retained complex sparse factors,
