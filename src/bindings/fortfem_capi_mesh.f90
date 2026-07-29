@@ -3,6 +3,7 @@ module fortfem_capi_mesh
     use fortfem_kinds, only: dp
     use fortfem_assembly_nedelec_2d, only: &
         assemble_nedelec_axisymmetric_fourier_csc
+    use fortfem_assembly_mixed_2d, only: assemble_nedelec_rt_mass_csc
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
@@ -22,6 +23,7 @@ module fortfem_capi_mesh
     public :: fortfem_rt0_l2_norm
     public :: fortfem_rt0_toroidal
     public :: fortfem_nedelec_axisymmetric_fourier_csc
+    public :: fortfem_nedelec_rt0_mass_csc
 
 contains
 
@@ -187,7 +189,7 @@ contains
 
         type(csc_t) :: matrix
         type(fortsparse_status_t) :: sparse_status
-        integer :: entry, slot
+        integer :: slot
 
         n_dofs = 0_c_int
         nnz = 0_c_int
@@ -208,20 +210,44 @@ contains
             return
         end if
 
-        nnz = int(matrix%nnz, c_int)
-        if (nnz_capacity < nnz) then
-            status = -2_c_int
+        call export_real_csc(matrix, nnz_capacity, n_dofs, nnz, &
+            col_ptr, row_ind, values, status)
+    end subroutine fortfem_nedelec_axisymmetric_fourier_csc
+
+    subroutine fortfem_nedelec_rt0_mass_csc( &
+            handle, quadrature_degree, nnz_capacity, &
+            n_dofs, nnz, col_ptr, row_ind, values, status) &
+            bind(c, name="fortfem_nedelec_rt0_mass_csc")
+        integer(c_int), value :: handle, quadrature_degree, nnz_capacity
+        integer(c_int), intent(out) :: n_dofs, nnz
+        integer(c_int), intent(out) :: col_ptr(*), row_ind(*)
+        real(c_double), intent(out) :: values(*)
+        integer(c_int), intent(out) :: status
+
+        type(csc_t) :: matrix
+        type(fortsparse_status_t) :: sparse_status
+        integer :: slot
+
+        n_dofs = 0_c_int
+        nnz = 0_c_int
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+
+        n_dofs = int(meshes(slot)%n_edges, c_int)
+        status = -1_c_int
+        if (quadrature_degree < 1_c_int) return
+        if (.not. counterclockwise_mesh(meshes(slot))) return
+
+        call assemble_nedelec_rt_mass_csc( &
+            meshes(slot), int(quadrature_degree), matrix, sparse_status)
+        if (sparse_status%code /= 0) then
+            status = int(sparse_status%code, c_int)
             return
         end if
-        do entry = 1, matrix%ncol + 1
-            col_ptr(entry) = int(matrix%col_ptr(entry) - 1, c_int)
-        end do
-        do entry = 1, matrix%nnz
-            row_ind(entry) = int(matrix%row_idx(entry) - 1, c_int)
-            values(entry) = real(matrix%val(entry), c_double)
-        end do
-        status = 0_c_int
-    end subroutine fortfem_nedelec_axisymmetric_fourier_csc
+        call export_real_csc(matrix, nnz_capacity, n_dofs, nnz, &
+            col_ptr, row_ind, values, status)
+    end subroutine fortfem_nedelec_rt0_mass_csc
 
     subroutine fortfem_triangle_edge_map( &
             n_vertices, vertices, n_triangles, triangles, &
@@ -355,11 +381,17 @@ contains
     logical function valid_axisymmetric_mesh(mesh) result(valid)
         type(mesh_2d_t), intent(in) :: mesh
 
+        valid = all(mesh%vertices(1, :) > 0.0_dp) .and. &
+            counterclockwise_mesh(mesh)
+    end function valid_axisymmetric_mesh
+
+    logical function counterclockwise_mesh(mesh) result(valid)
+        type(mesh_2d_t), intent(in) :: mesh
+
         real(dp) :: determinant
         integer :: triangle
 
-        valid = all(mesh%vertices(1, :) > 0.0_dp)
-        if (.not. valid) return
+        valid = .true.
         do triangle = 1, mesh%n_triangles
             determinant = &
                 (mesh%vertices(1, mesh%triangles(2, triangle)) - &
@@ -375,7 +407,35 @@ contains
                 return
             end if
         end do
-    end function valid_axisymmetric_mesh
+    end function counterclockwise_mesh
+
+    subroutine export_real_csc( &
+            matrix, nnz_capacity, n_dofs, nnz, &
+            col_ptr, row_ind, values, status)
+        type(csc_t), intent(in) :: matrix
+        integer(c_int), intent(in) :: nnz_capacity
+        integer(c_int), intent(out) :: n_dofs, nnz
+        integer(c_int), intent(out) :: col_ptr(*), row_ind(*)
+        real(c_double), intent(out) :: values(*)
+        integer(c_int), intent(out) :: status
+
+        integer :: entry
+
+        n_dofs = int(matrix%ncol, c_int)
+        nnz = int(matrix%nnz, c_int)
+        if (nnz_capacity < nnz) then
+            status = -2_c_int
+            return
+        end if
+        do entry = 1, matrix%ncol + 1
+            col_ptr(entry) = int(matrix%col_ptr(entry) - 1, c_int)
+        end do
+        do entry = 1, matrix%nnz
+            row_ind(entry) = int(matrix%row_idx(entry) - 1, c_int)
+            values(entry) = real(matrix%val(entry), c_double)
+        end do
+        status = 0_c_int
+    end subroutine export_real_csc
 
     subroutine copy_complex_dofs(n_dofs, c_dofs, fortran_dofs)
         integer(c_int), intent(in) :: n_dofs
