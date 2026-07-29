@@ -17,14 +17,16 @@ module fortfem_mixed_poisson_2d
 contains
 
     !> Solve q + grad(u) = 0 and div(q) = f with RT0 fluxes, DG0 pressure,
-    !> and homogeneous Dirichlet pressure data.
+    !> and optional edge-average Dirichlet pressure data.
     subroutine solve_mixed_poisson_rt0( &
-            mesh, cell_source, flux_dofs, cell_pressure, status)
+            mesh, cell_source, flux_dofs, cell_pressure, status, &
+            boundary_pressure)
         type(mesh_2d_t), intent(inout) :: mesh
         real(dp), intent(in) :: cell_source(:)
         real(dp), allocatable, intent(out) :: flux_dofs(:)
         real(dp), allocatable, intent(out) :: cell_pressure(:)
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: boundary_pressure(:)
 
         type(csc_t) :: divergence, flux_mass, system
         integer, allocatable :: columns(:), rows(:)
@@ -42,6 +44,9 @@ contains
         call assemble_triangle_rt_div_mass_csc( &
             mesh, 0, 2, flux_mass, status, 0.0_dp, 1.0_dp)
         if (status%code /= 0) return
+        if (present(boundary_pressure)) then
+            if (size(boundary_pressure) /= mesh%n_edges) return
+        end if
         call assemble_triangle_rt_divergence_csc( &
             mesh, 0, 2, divergence, status)
         if (status%code /= 0) return
@@ -100,6 +105,12 @@ contains
             right_hand_side(flux_count + triangle) = &
                 0.5_dp * determinant * cell_source(triangle)
         end do
+        if (present(boundary_pressure)) then
+            call add_rt0_boundary_pressure( &
+                mesh, boundary_pressure, right_hand_side(:flux_count), &
+                status)
+            if (status%code /= 0) return
+        end if
 
         call sparse_direct_solve_csc( &
             system_size, system%col_ptr, system%row_idx, system%val, &
@@ -115,5 +126,44 @@ contains
         cell_pressure = solution(flux_count + 1:)
         call status_set(status, 0, "")
     end subroutine solve_mixed_poisson_rt0
+
+    subroutine add_rt0_boundary_pressure( &
+            mesh, boundary_pressure, flux_right_hand_side, status)
+        type(mesh_2d_t), intent(in) :: mesh
+        real(dp), intent(in) :: boundary_pressure(:)
+        real(dp), intent(inout) :: flux_right_hand_side(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: boundary_index, degree_of_freedom, edge
+        integer :: edge_dofs(3), edge_orientations(3)
+        integer :: local_edge, triangle
+        logical :: found
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "RT0 boundary pressure assembly failed")
+        if (.not. allocated(mesh%boundary_edges)) return
+        if (.not. allocated(mesh%edge_to_triangles)) return
+        do boundary_index = 1, size(mesh%boundary_edges)
+            edge = mesh%boundary_edges(boundary_index)
+            triangle = mesh%edge_to_triangles(1, edge)
+            if (triangle < 1) return
+            call mesh%get_triangle_edge_dofs( &
+                triangle, edge_dofs, edge_orientations)
+            degree_of_freedom = mesh%edge_to_dof(edge)
+            found = .false.
+            do local_edge = 1, 3
+                if (edge_dofs(local_edge) == degree_of_freedom) then
+                    flux_right_hand_side(degree_of_freedom + 1) = &
+                        flux_right_hand_side(degree_of_freedom + 1) - &
+                        real(edge_orientations(local_edge), dp) * &
+                        boundary_pressure(edge)
+                    found = .true.
+                end if
+            end do
+            if (.not. found) return
+        end do
+        call status_set(status, 0, "")
+    end subroutine add_rt0_boundary_pressure
 
 end module fortfem_mixed_poisson_2d

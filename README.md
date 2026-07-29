@@ -26,9 +26,9 @@ Verified numerical paths:
 - Executable symbolic P1 scalar mass, stiffness, and constant-load forms.
   Weighted H(curl) and H(div) forms compile to element matrices or
   `fortsparse` CSC matrices for all four triangular vector families.
-- A sparse RT0-DG0 mixed Poisson solve with homogeneous Dirichlet pressure
-  data preserves the source balance independently on every cell and attains
-  first-order flux and pressure convergence.
+- A sparse RT0-DG0 mixed Poisson solve with homogeneous or edge-average
+  Dirichlet pressure data preserves the source balance independently on every
+  cell and attains first-order flux and pressure convergence.
 - Mesh generation, refinement, and plotting through `fortplot`.
 
 Experimental interfaces:
