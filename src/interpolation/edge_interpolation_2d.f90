@@ -7,6 +7,7 @@ module fortfem_edge_interpolation_2d
 
     public :: interpolate_nedelec_edge_dofs
     public :: interpolate_rt_edge_dofs
+    public :: interpolate_axisymmetric_rt_edge_dofs
 
     interface interpolate_nedelec_edge_dofs
         module procedure interpolate_nedelec_edge_dofs_real
@@ -17,6 +18,11 @@ module fortfem_edge_interpolation_2d
         module procedure interpolate_rt_edge_dofs_real
         module procedure interpolate_rt_edge_dofs_complex
     end interface interpolate_rt_edge_dofs
+
+    interface interpolate_axisymmetric_rt_edge_dofs
+        module procedure interpolate_axisymmetric_rt_edge_dofs_real
+        module procedure interpolate_axisymmetric_rt_edge_dofs_complex
+    end interface interpolate_axisymmetric_rt_edge_dofs
 
     abstract interface
         pure subroutine vector_field_2d(x, y, value)
@@ -42,7 +48,7 @@ contains
         real(dp), intent(out) :: dofs(:)
 
         call interpolate_edge_dofs( &
-            mesh, field, quadrature_points, .false., dofs)
+            mesh, field, quadrature_points, .false., .false., dofs)
     end subroutine interpolate_nedelec_edge_dofs_real
 
     subroutine interpolate_rt_edge_dofs_real( &
@@ -53,7 +59,7 @@ contains
         real(dp), intent(out) :: dofs(:)
 
         call interpolate_edge_dofs( &
-            mesh, field, quadrature_points, .true., dofs)
+            mesh, field, quadrature_points, .true., .false., dofs)
     end subroutine interpolate_rt_edge_dofs_real
 
     subroutine interpolate_nedelec_edge_dofs_complex( &
@@ -64,7 +70,7 @@ contains
         complex(dp), intent(out) :: dofs(:)
 
         call interpolate_edge_dofs_complex( &
-            mesh, field, quadrature_points, .false., dofs)
+            mesh, field, quadrature_points, .false., .false., dofs)
     end subroutine interpolate_nedelec_edge_dofs_complex
 
     subroutine interpolate_rt_edge_dofs_complex( &
@@ -75,20 +81,42 @@ contains
         complex(dp), intent(out) :: dofs(:)
 
         call interpolate_edge_dofs_complex( &
-            mesh, field, quadrature_points, .true., dofs)
+            mesh, field, quadrature_points, .true., .false., dofs)
     end subroutine interpolate_rt_edge_dofs_complex
 
-    subroutine interpolate_edge_dofs( &
-            mesh, field, quadrature_points, use_normal, dofs)
+    subroutine interpolate_axisymmetric_rt_edge_dofs_real( &
+            mesh, field, quadrature_points, dofs)
         type(mesh_2d_t), intent(inout) :: mesh
         procedure(vector_field_2d) :: field
         integer, intent(in) :: quadrature_points
-        logical, intent(in) :: use_normal
+        real(dp), intent(out) :: dofs(:)
+
+        call interpolate_edge_dofs( &
+            mesh, field, quadrature_points, .true., .true., dofs)
+    end subroutine interpolate_axisymmetric_rt_edge_dofs_real
+
+    subroutine interpolate_axisymmetric_rt_edge_dofs_complex( &
+            mesh, field, quadrature_points, dofs)
+        type(mesh_2d_t), intent(inout) :: mesh
+        procedure(complex_vector_field_2d) :: field
+        integer, intent(in) :: quadrature_points
+        complex(dp), intent(out) :: dofs(:)
+
+        call interpolate_edge_dofs_complex( &
+            mesh, field, quadrature_points, .true., .true., dofs)
+    end subroutine interpolate_axisymmetric_rt_edge_dofs_complex
+
+    subroutine interpolate_edge_dofs( &
+            mesh, field, quadrature_points, use_normal, radial_weight, dofs)
+        type(mesh_2d_t), intent(inout) :: mesh
+        procedure(vector_field_2d) :: field
+        integer, intent(in) :: quadrature_points
+        logical, intent(in) :: use_normal, radial_weight
         real(dp), intent(out) :: dofs(:)
 
         real(dp), allocatable :: nodes(:), weights(:)
         real(dp) :: point_a(2), edge_vector(2), direction(2)
-        real(dp) :: point(2), value(2), moment
+        real(dp) :: point(2), value(2), moment, coefficient
         integer :: edge_id, quadrature_id, dof_id
 
         if (.not. allocated(mesh%edges)) then
@@ -121,7 +149,9 @@ contains
             do quadrature_id = 1, quadrature_points
                 point = point_a + nodes(quadrature_id) * edge_vector
                 call field(point(1), point(2), value)
-                moment = moment + weights(quadrature_id) * &
+                coefficient = 1.0_dp
+                if (radial_weight) coefficient = point(1)
+                moment = moment + weights(quadrature_id) * coefficient * &
                     sum(value * direction)
             end do
 
@@ -131,15 +161,16 @@ contains
     end subroutine interpolate_edge_dofs
 
     subroutine interpolate_edge_dofs_complex( &
-            mesh, field, quadrature_points, use_normal, dofs)
+            mesh, field, quadrature_points, use_normal, radial_weight, dofs)
         type(mesh_2d_t), intent(inout) :: mesh
         procedure(complex_vector_field_2d) :: field
         integer, intent(in) :: quadrature_points
-        logical, intent(in) :: use_normal
+        logical, intent(in) :: use_normal, radial_weight
         complex(dp), intent(out) :: dofs(:)
 
         real(dp), allocatable :: nodes(:), weights(:)
         real(dp) :: point_a(2), edge_vector(2), direction(2), point(2)
+        real(dp) :: coefficient
         complex(dp) :: value(2), moment
         integer :: edge_id, quadrature_id, dof_id
 
@@ -173,7 +204,9 @@ contains
             do quadrature_id = 1, quadrature_points
                 point = point_a + nodes(quadrature_id) * edge_vector
                 call field(point(1), point(2), value)
-                moment = moment + weights(quadrature_id) * &
+                coefficient = 1.0_dp
+                if (radial_weight) coefficient = point(1)
+                moment = moment + weights(quadrature_id) * coefficient * &
                     sum(value * direction)
             end do
 

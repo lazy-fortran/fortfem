@@ -2,6 +2,7 @@ program test_edge_interpolation
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_edge_interpolation_2d, only: &
+        interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     use check, only: check_condition, check_summary
     implicit none
@@ -9,6 +10,7 @@ program test_edge_interpolation
     type(mesh_2d_t) :: mesh
     real(dp), allocatable :: nedelec_dofs(:), rt_dofs(:)
     complex(dp), allocatable :: complex_nedelec_dofs(:), complex_rt_dofs(:)
+    complex(dp), allocatable :: weighted_rt_dofs(:)
     complex(dp), parameter :: scale = (2.0_dp, -3.0_dp)
     real(dp) :: expected, point_a(2), point_b(2), edge_vector(2)
     integer :: edge_id, dof_id
@@ -19,10 +21,10 @@ program test_edge_interpolation
     mesh%n_triangles = 2
     mesh%has_triangles = .true.
     allocate(mesh%vertices(2, 4), mesh%triangles(3, 2))
-    mesh%vertices(:, 1) = [0.0_dp, 0.0_dp]
-    mesh%vertices(:, 2) = [1.0_dp, 0.0_dp]
-    mesh%vertices(:, 3) = [1.0_dp, 1.0_dp]
-    mesh%vertices(:, 4) = [0.0_dp, 1.0_dp]
+    mesh%vertices(:, 1) = [1.0_dp, 0.0_dp]
+    mesh%vertices(:, 2) = [2.0_dp, 0.0_dp]
+    mesh%vertices(:, 3) = [2.0_dp, 1.0_dp]
+    mesh%vertices(:, 4) = [1.0_dp, 1.0_dp]
     mesh%triangles(:, 1) = [1, 2, 3]
     mesh%triangles(:, 2) = [1, 3, 4]
     call mesh%build_edge_connectivity()
@@ -30,12 +32,15 @@ program test_edge_interpolation
     allocate(nedelec_dofs(mesh%n_edges), rt_dofs(mesh%n_edges))
     allocate(complex_nedelec_dofs(mesh%n_edges))
     allocate(complex_rt_dofs(mesh%n_edges))
+    allocate(weighted_rt_dofs(mesh%n_edges))
     call interpolate_nedelec_edge_dofs(mesh, gradient_field, 2, nedelec_dofs)
     call interpolate_rt_edge_dofs(mesh, flux_field, 2, rt_dofs)
     call interpolate_nedelec_edge_dofs( &
         mesh, complex_gradient_field, 2, complex_nedelec_dofs)
     call interpolate_rt_edge_dofs( &
         mesh, complex_flux_field, 2, complex_rt_dofs)
+    call interpolate_axisymmetric_rt_edge_dofs( &
+        mesh, constant_complex_field, 1, weighted_rt_dofs)
 
     do edge_id = 1, mesh%n_edges
         point_a = mesh%vertices(:, mesh%edges(1, edge_id))
@@ -58,6 +63,10 @@ program test_edge_interpolation
             1.0e-13_dp, "Complex Nedelec moments preserve Fourier coefficients")
         call record_condition(abs(complex_rt_dofs(dof_id) - scale * expected) < &
             1.0e-13_dp, "Complex RT moments preserve Fourier coefficients")
+        expected = 0.5_dp * (point_a(1) + point_b(1)) * &
+            (2.0_dp * edge_vector(2) - 3.0_dp * edge_vector(1))
+        call record_condition(abs(weighted_rt_dofs(dof_id) - scale * expected) < &
+            1.0e-13_dp, "Axisymmetric RT moments include the exact radial weight")
     end do
 
     call check_summary("Oriented edge interpolation")
@@ -92,6 +101,16 @@ contains
 
         value = scale * [x**2, y**2]
     end subroutine complex_flux_field
+
+    pure subroutine constant_complex_field(x, y, value)
+        real(dp), intent(in) :: x, y
+        complex(dp), intent(out) :: value(2)
+
+        value = scale * [2.0_dp, 3.0_dp]
+        associate (unused_coordinates => [x, y])
+            if (size(unused_coordinates) /= 2) error stop
+        end associate
+    end subroutine constant_complex_field
 
     pure real(dp) function potential(point) result(value)
         real(dp), intent(in) :: point(2)
