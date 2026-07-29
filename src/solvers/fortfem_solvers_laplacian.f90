@@ -1,7 +1,8 @@
 module fortfem_solvers_laplacian
     use fortfem_kinds, only: dp
     use fortfem_api_types, only: function_space_t, function_t, dirichlet_bc_t
-    use fortfem_api_forms, only: form_equation_t
+    use fortfem_api_forms, only: compile_form_matrix, compile_form_vector, &
+        form_equation_t
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, advanced_solve => solve
     use basis_q1_quad_2d_module, only: q1_shape_functions, &
@@ -34,7 +35,12 @@ contains
 
         have_stats = .false.
 
-        if (index(equation%lhs%description, "grad") > 0) then
+        if (uh%space%degree == 1 .and. &
+            uh%space%mesh%data%n_quads == 0) then
+            call solve_compiled_p1_problem( &
+                equation, uh, bc, options, local_stats)
+            have_stats = .true.
+        else if (index(equation%lhs%description, "grad") > 0) then
             if (uh%space%degree == 2) then
                 call solve_laplacian_problem_p2(uh, bc, options, local_stats)
             else
@@ -49,6 +55,61 @@ contains
             stats = local_stats
         end if
     end subroutine solve_scalar
+
+    subroutine solve_compiled_p1_problem( &
+            equation, uh, bc, options, stats)
+        type(form_equation_t), intent(in) :: equation
+        type(function_t), intent(inout) :: uh
+        type(dirichlet_bc_t), intent(in) :: bc
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out) :: stats
+
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:)
+        type(solver_options_t) :: local_options
+        integer :: compiler_status, degree_of_freedom
+        integer :: vertex_count
+
+        vertex_count = uh%space%mesh%data%n_vertices
+        allocate(matrix(vertex_count, vertex_count))
+        allocate(right_hand_side(vertex_count))
+        call compile_form_matrix( &
+            equation%lhs, uh%space%mesh%data%vertices, &
+            uh%space%mesh%data%triangles, matrix, compiler_status)
+        if (compiler_status /= 0) then
+            error stop "solve: unsupported scalar bilinear form"
+        end if
+        call compile_form_vector( &
+            equation%rhs, uh%space%mesh%data%vertices, &
+            uh%space%mesh%data%triangles, right_hand_side, compiler_status)
+        if (compiler_status /= 0) then
+            error stop "solve: unsupported scalar linear form"
+        end if
+
+        do degree_of_freedom = 1, vertex_count
+            if (uh%space%mesh%data%is_boundary_vertex(degree_of_freedom)) then
+                right_hand_side = right_hand_side - &
+                    matrix(:, degree_of_freedom) * bc%value
+                matrix(:, degree_of_freedom) = 0.0_dp
+                matrix(degree_of_freedom, :) = 0.0_dp
+                matrix(degree_of_freedom, degree_of_freedom) = 1.0_dp
+                right_hand_side(degree_of_freedom) = bc%value
+            end if
+        end do
+
+        if (.not. allocated(uh%values)) allocate(uh%values(vertex_count))
+        uh%values = 0.0_dp
+        if (present(options)) then
+            local_options = options
+        else
+            local_options = solver_options(method="auto")
+        end if
+        call advanced_solve( &
+            matrix, right_hand_side, uh%values, local_options, stats)
+        if (.not. stats%converged) then
+            write (*, *) "Warning: compiled scalar solver did not converge.", &
+                " Final residual =", stats%final_residual
+        end if
+    end subroutine solve_compiled_p1_problem
 
     subroutine assemble_laplacian_system(space, bc, K, F)
         type(function_space_t), intent(in) :: space
@@ -296,4 +357,3 @@ contains
     end subroutine solve_generic_problem
 
 end module fortfem_solvers_laplacian
-
