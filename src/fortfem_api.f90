@@ -63,6 +63,10 @@ module fortfem_api
         triangle_nedelec_second_kind_t
     use fortfem_tetra_nedelec_first_order, only: &
         evaluate_tetra_nedelec_first_order
+    use fortfem_tetra_nedelec_arbitrary_order, only: &
+        assignment(=), evaluate_tetra_nedelec_first_kind, &
+        initialize_tetra_nedelec_first_kind, tetra_nedelec_dof_count, &
+        tetra_nedelec_first_kind_t
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_triangle_rt_arbitrary_order, only: &
@@ -210,6 +214,10 @@ module fortfem_api
     public :: triangle_nedelec_second_kind_dof_count
     public :: triangle_nedelec_second_kind_t
     public :: evaluate_tetra_nedelec_first_order
+    public :: evaluate_tetra_nedelec_first_kind
+    public :: initialize_tetra_nedelec_first_kind
+    public :: tetra_nedelec_dof_count
+    public :: tetra_nedelec_first_kind_t
     public :: map_tetra_nedelec_covariant
     public :: build_tetra_edge_dof_map
     public :: evaluate_triangle_bdm

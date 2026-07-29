@@ -415,6 +415,10 @@ its cross-code and production-case validation gate remains open:
   moments, and its constant curls agree with independent finite differences.
   Its affine covariant map preserves all six tangential edge moments on a
   skew tetrahedron, and mapped curls agree with physical finite differences.
+- first-kind tetrahedral reference bases through order four have the exact
+  dimensions 6, 20, 45, and 84. Their complete edge, face, and cell moments
+  are Kronecker, they reproduce polynomial gradients with zero curl, and
+  their analytical curls agree with independent finite differences.
 - two tetrahedra with opposite shared-face ordering reuse all three common
   global edge degrees of freedom and expose the required local orientation
   reversal.
@@ -545,9 +549,10 @@ passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
 through degree-four mixed PDE validation, tetrahedral assembly beyond the
-verified first-order curl-mass operator, higher-order tetrahedral families,
-and optimal higher-order tetrahedral convergence remain. The Phase 2 exit
-gate is therefore not yet met.
+verified first-order curl-mass operator, higher-order tetrahedral topology and
+assembly, other tetrahedral FEEC families, and optimal higher-order
+tetrahedral convergence remain. The Phase 2 exit gate is therefore not yet
+met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
