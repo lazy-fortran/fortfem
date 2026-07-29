@@ -17,4 +17,8 @@ for order in 1 2 3 4; do
         "$temporary_dir/$filename"
 done
 
+filename="fortfem_tetra_face_moment_transforms.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 echo "generated FortFEM kernels match committed sources"
