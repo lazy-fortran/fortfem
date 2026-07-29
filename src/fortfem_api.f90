@@ -30,6 +30,8 @@ module fortfem_api
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d
+    use fortfem_helmholtz_representation_3d, only: &
+        evaluate_helmholtz_representation_triangles_3d
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
@@ -160,6 +162,7 @@ module fortfem_api
     public :: toroidal_point_to_cartesian
     public :: toroidal_vector_to_cartesian
     public :: evaluate_laplace_representation_triangles_3d
+    public :: evaluate_helmholtz_representation_triangles_3d
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
