@@ -420,7 +420,9 @@ its cross-code and production-case validation gate remains open:
   are Kronecker, they reproduce polynomial gradients with zero curl, and
   their analytical curls agree with independent finite differences. Local
   curl-mass matrices reproduce exact covariantly mapped polynomial energies
-  at every implemented order.
+  at every implemented order. Their candidate polynomials and curls now come
+  from revision-pinned `fortsym` generators with a byte-for-byte regeneration
+  gate; the normal FortFEM build remains CAS-free.
 - two tetrahedra with opposite shared-face ordering reuse all three common
   global edge degrees of freedom and expose the required local orientation
   reversal.

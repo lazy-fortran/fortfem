@@ -154,7 +154,8 @@ end program
 - **Verified**: First-kind tetrahedral Nédélec reference bases through order
   four have exact edge, face, and cell moments, polynomial-gradient
   reproduction, independently differentiated curls, and exact local
-  curl-mass energies on affine cells
+  curl-mass energies on affine cells. Pinned `fortsym` generators own the
+  candidate polynomials and their analytical curls
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and
   higher-order tetrahedral topology and global assembly

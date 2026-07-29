@@ -60,6 +60,9 @@ program test_tetra_nedelec_arbitrary_order
     call initialize_tetra_nedelec_first_kind(0, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral first-kind Nedelec basis rejects order zero")
+    call initialize_tetra_nedelec_first_kind(5, basis, status)
+    call record_condition(status /= 0, &
+        "Tetrahedral first-kind Nedelec basis rejects unsupported order five")
 
     call check_summary("Arbitrary-order tetrahedral first-kind Nedelec basis")
     if (.not. all_passed) error stop 1
