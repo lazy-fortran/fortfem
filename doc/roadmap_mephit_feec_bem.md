@@ -343,10 +343,16 @@ The Phase 0 foundations and the first Phase 1 interfaces are implemented:
 - an installable `fortfem::capi` shared CMake target builds the focused
   MEPHIT-facing surface with pinned `fortsparse`; a standalone C consumer
   finds the installed package, links, and exercises a retained mesh.
+- MEPHIT `main` optionally finds `fortfem::capi`, retains its production
+  triangle mesh through the C ABI, maps MEPHIT edge order and direction to
+  FortFEM's global RT0 degrees of freedom, and uses FortFEM for the RT0 L2
+  norm. An independent affine-field test covers a clockwise cell and
+  reordered, reversed edges. The default build and the remaining FreeFem++
+  operations are unchanged.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms and consumer validation remain.
+forms, full MEPHIT operator replacement, and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
