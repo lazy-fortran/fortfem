@@ -304,7 +304,7 @@ test, not a convergence test.
 
 ### Implementation status on 2026-07-29
 
-The first four Phase 0 foundations are now partly or fully implemented:
+The Phase 0 foundations are implemented:
 
 - the triangular lowest-order Nedelec basis, curl, and covariant Piola map
   pass exact edge-moment and affine-map tests;
@@ -322,10 +322,13 @@ The first four Phase 0 foundations are now partly or fully implemented:
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
+- oriented Nedelec tangential and RT0 normal edge moments use `fortnum`
+  Gauss-Legendre rules and pass exact polynomial line-integral tests.
 
-This does not complete Phase 0. Connection to executable weak forms, DtN
-integration into scalar and elastic boundary forms, coefficient
-interpolation, factor reuse, and consumer validation remain.
+The Phase 0 exit gate is met at the numerical-kernel level. Connection to
+executable weak forms, DtN integration into scalar and elastic boundary
+forms, RT0 reconstruction and integration, factor reuse, and consumer
+validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 

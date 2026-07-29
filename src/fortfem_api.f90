@@ -8,6 +8,8 @@ module fortfem_api
     use fortfem_api_solvers
     use fortfem_api_plot
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
+    use fortfem_edge_interpolation_2d, only: &
+        interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -83,6 +85,7 @@ module fortfem_api
     public :: solve_neumann
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
+    public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t
