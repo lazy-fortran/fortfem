@@ -1,0 +1,66 @@
+// Generate the independent values used by test_freefem_maxwell_reference.
+verbosity = 0;
+cout.precision(17);
+
+mesh Th = square(2, 2, [2.0 + x, y]);
+fespace Hrot(Th, RT0Ortho);
+fespace Hdiv(Th, RT0);
+fespace P1h(Th, P1);
+Hrot [ux, uy];
+Hrot [ax, ay], [wx, wy];
+Hdiv [jx, jy];
+P1h p1x, p1y;
+
+[ux, uy] = [1.0 + x + 2.0 * y, 3.0 + 4.0 * x + 5.0 * y];
+[jx, jy] = [1.0 + x + 2.0 * y, 3.0 + 4.0 * x + 5.0 * y];
+
+varf Ampere([ax, ay], [wx, wy]) =
+  int2d(Th)(x * (dx(wy) - dy(wx)) * (dx(ay) - dy(ax)))
+  + int2d(Th)(4.0 / x * (wx * ax + wy * ay));
+varf AmpereBC([ax, ay], [wx, wy]) =
+  int2d(Th)(x * (dx(wy) - dy(wx)) * (dx(ay) - dy(ax)))
+  + int2d(Th)(4.0 / x * (wx * ax + wy * ay))
+  + on(1, 2, 3, 4, ax = 0.0, ay = 0.0);
+varf Mixed([jx, jy], [wx, wy]) =
+  int2d(Th)(wx * jx + wy * jy);
+varf Load([dumx, dumy], [wx, wy]) =
+  int2d(Th)(wx * jx + wy * jy)
+  + on(1, 2, 3, 4, dumx = 0.0, dumy = 0.0);
+matrix A = Ampere(Hrot, Hrot);
+matrix ABC = AmpereBC(Hrot, Hrot);
+matrix M = Mixed(Hdiv, Hrot);
+real[int] rhs = Load(0, Hrot);
+real[int] sol = ABC^-1 * rhs;
+ax[] = sol;
+p1x = ax;
+p1y = ay;
+
+cout << "mesh " << Th.nv << " " << Th.nt << " " << Th.nbe << endl;
+for (int k = 0; k < Th.nv; ++k) {
+  cout << "v " << k << " " << Th(k).x << " " << Th(k).y << endl;
+}
+for (int k = 0; k < Th.nt; ++k) {
+  cout << "t " << k << " "
+       << Th[k][0] << " " << Th[k][1] << " " << Th[k][2] << " "
+       << Hrot(k, 0) << " " << Hrot(k, 1) << " " << Hrot(k, 2) << " "
+       << Hdiv(k, 0) << " " << Hdiv(k, 1) << " " << Hdiv(k, 2)
+       << endl;
+}
+cout << "dofs " << ux[].n << endl;
+for (int k = 0; k < ux[].n; ++k) {
+  cout << "u " << k << " " << ux[][k] << " " << jx[][k] << endl;
+}
+int[int] fortfemInterior = [6, 9, 12, 2, 4, 11, 13, 7];
+for (int j = 0; j < fortfemInterior.n; ++j) {
+  for (int i = 0; i < fortfemInterior.n; ++i) {
+    cout << "a " << i << " " << j << " "
+         << A(fortfemInterior[i], fortfemInterior[j]) << endl;
+  }
+}
+for (int k = 0; k < fortfemInterior.n; ++k) {
+  int dof = fortfemInterior[k];
+  cout << "s " << k << " " << rhs[dof] << " " << sol[dof] << endl;
+}
+for (int k = 0; k < Th.nv; ++k) {
+  cout << "p " << k << " " << p1x[][k] << " " << p1y[][k] << endl;
+}

@@ -105,6 +105,19 @@ void fortfem_nedelec_evaluate(
     fortfem_complex *curl,
     int *status);
 
+/*
+ * Evaluate at a retained mesh vertex using its last incident triangle. This
+ * reproduces the RT0Ortho-to-P1 interpolation convention used by FreeFem.
+ */
+void fortfem_nedelec_evaluate_vertex(
+    int handle,
+    int vertex,
+    int n_dofs,
+    const fortfem_complex *dofs,
+    fortfem_complex *value,
+    fortfem_complex *curl,
+    int *status);
+
 void fortfem_rt0_l2_norm(
     int handle,
     int n_dofs,
