@@ -11,6 +11,7 @@ module fortfem_api
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_laplace_boundary_operators_2d, only: &
+        assemble_laplace_double_layer_constant, &
         assemble_laplace_single_layer_constant
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
@@ -97,6 +98,7 @@ module fortfem_api
     public :: apply_planar_helmholtz_dtn
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: assemble_laplace_double_layer_constant
     public :: assemble_laplace_single_layer_constant
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     public :: interpolate_axisymmetric_rt_edge_dofs

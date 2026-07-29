@@ -5,9 +5,64 @@ module fortfem_laplace_boundary_operators_2d
 
     private
 
+    public :: assemble_laplace_double_layer_constant
     public :: assemble_laplace_single_layer_constant
 
 contains
+
+    subroutine assemble_laplace_double_layer_constant( &
+            panel_start, panel_end, quadrature_order, matrix, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: quadrature_order
+        real(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: lengths(:), nodes(:), weights(:)
+        real(dp) :: first_end(2), first_start(2), integral
+        real(dp) :: second_end(2), second_start(2), source_normal(2)
+        integer :: first_panel, panel_count, second_panel
+
+        matrix = 0.0_dp
+        status = 1
+        panel_count = size(panel_start, 2)
+        if (size(panel_start, 1) /= 2 .or. size(panel_end, 1) /= 2) return
+        if (size(panel_end, 2) /= panel_count .or. panel_count < 1) return
+        if (size(matrix, 1) /= panel_count .or. &
+            size(matrix, 2) /= panel_count) return
+        if (quadrature_order < 1) return
+
+        allocate(lengths(panel_count))
+        do first_panel = 1, panel_count
+            lengths(first_panel) = norm2( &
+                panel_end(:, first_panel) - panel_start(:, first_panel))
+        end do
+        if (any(lengths <= 0.0_dp)) return
+
+        allocate(nodes(quadrature_order), weights(quadrature_order))
+        call gauss_legendre_ab( &
+            quadrature_order, 0.0_dp, 1.0_dp, nodes, weights)
+
+        do first_panel = 1, panel_count
+            first_start = panel_start(:, first_panel)
+            first_end = panel_end(:, first_panel)
+            do second_panel = 1, panel_count
+                if (first_panel == second_panel) cycle
+                second_start = panel_start(:, second_panel)
+                second_end = panel_end(:, second_panel)
+                source_normal(1) = (second_end(2) - second_start(2)) / &
+                    lengths(second_panel)
+                source_normal(2) = (second_start(1) - second_end(1)) / &
+                    lengths(second_panel)
+                call double_layer_pair_integral( &
+                    first_start, first_end, second_start, second_end, &
+                    source_normal, lengths(first_panel), lengths(second_panel), &
+                    nodes, weights, integral, status)
+                if (status /= 0) return
+                matrix(first_panel, second_panel) = integral
+            end do
+        end do
+        status = 0
+    end subroutine assemble_laplace_double_layer_constant
 
     subroutine assemble_laplace_single_layer_constant( &
             panel_start, panel_end, quadrature_order, matrix, status)
@@ -66,6 +121,40 @@ contains
         end do
         status = 0
     end subroutine assemble_laplace_single_layer_constant
+
+    subroutine double_layer_pair_integral( &
+            first_start, first_end, second_start, second_end, source_normal, &
+            first_length, second_length, nodes, weights, integral, status)
+        real(dp), intent(in) :: first_start(2), first_end(2)
+        real(dp), intent(in) :: second_start(2), second_end(2)
+        real(dp), intent(in) :: source_normal(2)
+        real(dp), intent(in) :: first_length, second_length
+        real(dp), intent(in) :: nodes(:), weights(:)
+        real(dp), intent(out) :: integral
+        integer, intent(out) :: status
+
+        real(dp) :: first_away(2), second_away(2)
+        integer :: shared_endpoint_count
+
+        call shared_endpoint_vectors( &
+            first_start, first_end, second_start, second_end, &
+            first_length, second_length, first_away, second_away, &
+            shared_endpoint_count)
+        select case (shared_endpoint_count)
+        case (0)
+            call regular_double_layer_pair_integral( &
+                first_start, first_end, second_start, second_end, &
+                source_normal, first_length, second_length, nodes, weights, &
+                integral, status)
+        case (1)
+            call endpoint_singular_double_layer_pair_integral( &
+                first_away, second_away, source_normal, first_length, &
+                second_length, nodes, weights, integral, status)
+        case default
+            integral = 0.0_dp
+            status = 2
+        end select
+    end subroutine double_layer_pair_integral
 
     subroutine panel_pair_logarithmic_integral( &
             first_start, first_end, second_start, second_end, &
@@ -165,6 +254,39 @@ contains
         status = 0
     end subroutine endpoint_singular_pair_integral
 
+    subroutine endpoint_singular_double_layer_pair_integral( &
+            first_away, second_away, source_normal, first_length, &
+            second_length, nodes, weights, integral, status)
+        real(dp), intent(in) :: first_away(2), second_away(2)
+        real(dp), intent(in) :: source_normal(2)
+        real(dp), intent(in) :: first_length, second_length
+        real(dp), intent(in) :: nodes(:), weights(:)
+        real(dp), intent(out) :: integral
+        integer, intent(out) :: status
+
+        real(dp) :: first_distance_squared, normal_projection
+        real(dp) :: second_distance_squared
+        integer :: node
+
+        integral = 0.0_dp
+        status = 2
+        normal_projection = dot_product(first_away, source_normal)
+        do node = 1, size(nodes)
+            first_distance_squared = sum( &
+                (first_away - nodes(node) * second_away)**2)
+            second_distance_squared = sum( &
+                (nodes(node) * first_away - second_away)**2)
+            if (first_distance_squared <= 0.0_dp .or. &
+                second_distance_squared <= 0.0_dp) return
+            integral = integral + weights(node) * normal_projection * ( &
+                1.0_dp / first_distance_squared + &
+                nodes(node) / second_distance_squared)
+        end do
+        integral = first_length * second_length * integral / &
+            (2.0_dp * acos(-1.0_dp))
+        status = 0
+    end subroutine endpoint_singular_double_layer_pair_integral
+
     subroutine regular_pair_integral( &
             first_start, first_end, second_start, second_end, &
             first_length, second_length, nodes, weights, integral)
@@ -190,5 +312,41 @@ contains
         end do
         integral = first_length * second_length * integral
     end subroutine regular_pair_integral
+
+    subroutine regular_double_layer_pair_integral( &
+            first_start, first_end, second_start, second_end, source_normal, &
+            first_length, second_length, nodes, weights, integral, status)
+        real(dp), intent(in) :: first_start(2), first_end(2)
+        real(dp), intent(in) :: second_start(2), second_end(2)
+        real(dp), intent(in) :: source_normal(2)
+        real(dp), intent(in) :: first_length, second_length
+        real(dp), intent(in) :: nodes(:), weights(:)
+        real(dp), intent(out) :: integral
+        integer, intent(out) :: status
+
+        real(dp) :: displacement(2), distance_squared
+        real(dp) :: first_point(2), second_point(2)
+        integer :: first_node, second_node
+
+        integral = 0.0_dp
+        status = 2
+        do first_node = 1, size(nodes)
+            first_point = first_start + &
+                nodes(first_node) * (first_end - first_start)
+            do second_node = 1, size(nodes)
+                second_point = second_start + &
+                    nodes(second_node) * (second_end - second_start)
+                displacement = first_point - second_point
+                distance_squared = sum(displacement**2)
+                if (distance_squared <= 0.0_dp) return
+                integral = integral + weights(first_node) * &
+                    weights(second_node) * &
+                    dot_product(displacement, source_normal) / distance_squared
+            end do
+        end do
+        integral = first_length * second_length * integral / &
+            (2.0_dp * acos(-1.0_dp))
+        status = 0
+    end subroutine regular_double_layer_pair_integral
 
 end module fortfem_laplace_boundary_operators_2d
