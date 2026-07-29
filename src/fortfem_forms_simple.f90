@@ -1,12 +1,19 @@
 module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
+        assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_element
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
+        assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_bdm_div_mass_element, &
+        assemble_triangle_nedelec_second_curl_mass_csc, &
         assemble_triangle_nedelec_second_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
+        assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
+    use fortfem_mesh_2d, only: mesh_2d_t
+    use fortsparse, only: csc_t, FORTSPARSE_INVALID_MATRIX, &
+        fortsparse_status_t, status_set
     implicit none
 
     private
@@ -66,7 +73,8 @@ module fortfem_forms_simple
     end type compiler_item_t
 
     public :: assignment(=)
-    public :: compile_form, compile_form_matrix, compile_vector_form_element
+    public :: compile_form, compile_form_matrix, compile_vector_form_csc
+    public :: compile_vector_form_element
     public :: create_curl, create_divergence, create_grad, create_inner
     public :: create_measure
     public :: create_product, create_scale, create_sum, create_symbol
@@ -316,6 +324,76 @@ contains
             status = 3
         end select
     end subroutine compile_vector_form_element
+
+    subroutine compile_vector_form_csc( &
+            expr, mesh, family, degree, quadrature_degree, matrix, status)
+        type(form_expr_t), intent(in) :: expr
+        type(mesh_2d_t), intent(inout) :: mesh
+        character(len=*), intent(in) :: family
+        integer, intent(in) :: degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: curl_coefficient, divergence_coefficient
+        real(dp) :: mass_coefficient
+        integer :: compiler_status
+
+        call analyze_vector_bilinear_form( &
+            expr, mass_coefficient, curl_coefficient, &
+            divergence_coefficient, compiler_status)
+        if (compiler_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse form compiler requires an integrated vector form")
+            return
+        end if
+        select case (trim(family))
+        case ("Nedelec", "Nedelec1", "Edge")
+            if (divergence_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_nedelec_curl_mass_csc( &
+                mesh, degree, quadrature_degree, matrix, status, &
+                curl_coefficient, mass_coefficient)
+        case ("RT", "Raviart-Thomas")
+            if (curl_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_rt_div_mass_csc( &
+                mesh, degree, quadrature_degree, matrix, status, &
+                divergence_coefficient, mass_coefficient)
+        case ("Nedelec2", "Nedelec-second")
+            if (divergence_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_nedelec_second_curl_mass_csc( &
+                mesh, degree, quadrature_degree, matrix, status, &
+                curl_coefficient, mass_coefficient)
+        case ("BDM")
+            if (curl_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_bdm_div_mass_csc( &
+                mesh, degree, quadrature_degree, matrix, status, &
+                divergence_coefficient, mass_coefficient)
+        case default
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse form compiler received an unknown vector family")
+        end select
+    end subroutine compile_vector_form_csc
+
+    subroutine set_incompatible_family_status(status)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Vector differential operator is incompatible with the family")
+    end subroutine set_incompatible_family_status
 
     subroutine analyze_scalar_bilinear_form( &
             expr, mass_coefficient, stiffness_coefficient, status)

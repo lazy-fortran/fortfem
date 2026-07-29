@@ -95,19 +95,25 @@ contains
     end subroutine assemble_triangle_nedelec_curl_mass_element
 
     subroutine assemble_triangle_nedelec_curl_mass_csc( &
-            mesh, order, quadrature_degree, matrix, status)
+            mesh, order, quadrature_degree, matrix, status, &
+            curl_coefficient, mass_coefficient)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: order, quadrature_degree
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
 
         integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
         integer, allocatable :: transforms(:, :)
         real(dp), allocatable :: element_matrix(:, :), values(:)
-        real(dp) :: vertices(2, 3)
+        real(dp) :: curl_weight, mass_weight, vertices(2, 3)
         integer :: column, entry, global_dof_count, local_dof_count
         integer :: local_status, row, triangle
 
+        curl_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
         if (order < 1 .or. quadrature_degree < 0) then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
@@ -133,7 +139,7 @@ contains
             vertices = mesh%vertices(:, mesh%triangles(:, triangle))
             call assemble_triangle_nedelec_curl_mass_element( &
                 vertices, order, quadrature_degree, element_matrix, &
-                local_status)
+                local_status, curl_weight, mass_weight)
             if (local_status /= 0) then
                 call status_set( &
                     status, FORTSPARSE_INVALID_MATRIX, &
