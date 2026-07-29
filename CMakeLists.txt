@@ -38,6 +38,7 @@ set(FORTFEM_CAPI_SOURCES
     src/fortfem_boundary.f90
     src/interpolation/rt_field_2d.f90
     src/mesh/mesh_2d.f90
+    src/mesh/mesh_extension_2d.f90
     src/mesh/triangle_io.f90
     src/quadrature/gauss_quadrature_2d.f90
     src/solvers/fortfem_sparse_direct.f90

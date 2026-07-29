@@ -5,6 +5,7 @@ module fortfem_capi_mesh
         assemble_nedelec_axisymmetric_fourier_csc
     use fortfem_assembly_mixed_2d, only: assemble_nedelec_rt_mass_csc
     use fortfem_mesh_2d, only: mesh_2d_t
+    use fortfem_mesh_extension_2d, only: extend_triangle_mesh
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     use fortsparse, only: csc_t, fortsparse_status_t
@@ -17,6 +18,7 @@ module fortfem_capi_mesh
 
     public :: fortfem_triangle_edge_map
     public :: fortfem_triangle_mesh_create
+    public :: fortfem_triangle_mesh_extend
     public :: fortfem_triangle_mesh_edges
     public :: fortfem_triangle_mesh_free
     public :: fortfem_rt0_evaluate
@@ -76,6 +78,60 @@ contains
         call export_edge_map(meshes(slot), edge_capacity, n_edges, edges, &
             triangle_edge_dofs, triangle_edge_signs, status)
     end subroutine fortfem_triangle_mesh_edges
+
+    subroutine fortfem_triangle_mesh_extend( &
+            core_handle, n_outer_vertices, outer_vertices, &
+            handle, n_vertices, n_triangles, n_edges, &
+            first_boundary_dof, status) &
+            bind(c, name="fortfem_triangle_mesh_extend")
+        integer(c_int), value :: core_handle, n_outer_vertices
+        real(c_double), intent(in) :: outer_vertices(*)
+        integer(c_int), intent(out) :: handle, n_vertices, n_triangles
+        integer(c_int), intent(out) :: n_edges, first_boundary_dof, status
+
+        real(dp), allocatable :: fortran_outer_vertices(:, :)
+        integer :: component, core_slot, extension_status, slot, vertex
+
+        handle = 0_c_int
+        n_vertices = 0_c_int
+        n_triangles = 0_c_int
+        n_edges = 0_c_int
+        first_boundary_dof = 0_c_int
+        status = -3_c_int
+        core_slot = int(core_handle)
+        if (.not. valid_mesh_handle(core_slot)) return
+
+        status = -1_c_int
+        if (n_outer_vertices < 3_c_int) return
+        slot = find_free_mesh_slot()
+        if (slot == 0) then
+            status = -3_c_int
+            return
+        end if
+        allocate(fortran_outer_vertices(2, int(n_outer_vertices)))
+        do vertex = 1, int(n_outer_vertices)
+            do component = 1, 2
+                fortran_outer_vertices(component, vertex) = real( &
+                    outer_vertices(2 * (vertex - 1) + component), dp)
+            end do
+        end do
+
+        call extend_triangle_mesh(meshes(core_slot), fortran_outer_vertices, &
+            meshes(slot), extension_status)
+        if (extension_status /= 0) then
+            call meshes(slot)%destroy()
+            status = int(extension_status, c_int)
+            return
+        end if
+
+        mesh_occupied(slot) = .true.
+        handle = int(slot, c_int)
+        n_vertices = int(meshes(slot)%n_vertices, c_int)
+        n_triangles = int(meshes(slot)%n_triangles, c_int)
+        n_edges = int(meshes(slot)%n_edges, c_int)
+        first_boundary_dof = int(meshes(slot)%n_interior_dofs, c_int)
+        status = 0_c_int
+    end subroutine fortfem_triangle_mesh_extend
 
     subroutine fortfem_triangle_mesh_free(handle, status) &
             bind(c, name="fortfem_triangle_mesh_free")

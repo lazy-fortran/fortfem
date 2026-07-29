@@ -47,6 +47,23 @@ void fortfem_triangle_mesh_create(
     int *n_edges,
     int *status);
 
+/*
+ * Retain a conforming mesh formed from an existing core plus the annulus up
+ * to an ordered outer polygon. Core vertices and triangles retain their
+ * indices. Interior edge DOFs precede the outer-boundary DOFs, whose
+ * zero-based start is returned in first_boundary_dof.
+ */
+void fortfem_triangle_mesh_extend(
+    int core_handle,
+    int n_outer_vertices,
+    const double *outer_vertices,
+    int *handle,
+    int *n_vertices,
+    int *n_triangles,
+    int *n_edges,
+    int *first_boundary_dof,
+    int *status);
+
 void fortfem_triangle_mesh_edges(
     int handle,
     int edge_capacity,
