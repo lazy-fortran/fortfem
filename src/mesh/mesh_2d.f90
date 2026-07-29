@@ -407,12 +407,15 @@ contains
         first_dof = this%n_interior_dofs
     end function get_first_boundary_dof
 
-    subroutine get_triangle_edge_dofs(this, triangle_index, edge_dofs)
+    subroutine get_triangle_edge_dofs( &
+            this, triangle_index, edge_dofs, edge_orientations)
         class(mesh_2d_t), intent(in) :: this
         integer, intent(in) :: triangle_index
         integer, intent(out) :: edge_dofs(3)
+        integer, intent(out), optional :: edge_orientations(3)
 
         integer :: i, j, v1, v2, edge_index
+        integer :: local_start, local_end
 
         if (triangle_index < 1 .or. triangle_index > this%n_triangles) then
             error stop "Triangle index out of bounds"
@@ -425,8 +428,10 @@ contains
         ! Find the 3 edges of this triangle
         do i = 1, 3
             j = mod(i, 3) + 1
-            v1 = min(this%triangles(i, triangle_index), this%triangles(j, triangle_index))
-            v2 = max(this%triangles(i, triangle_index), this%triangles(j, triangle_index))
+            local_start = this%triangles(i, triangle_index)
+            local_end = this%triangles(j, triangle_index)
+            v1 = min(local_start, local_end)
+            v2 = max(local_start, local_end)
 
             ! Find this edge in the edge list
             edge_index = 0
@@ -441,6 +446,13 @@ contains
             end if
 
             edge_dofs(i) = this%edge_to_dof(edge_index)
+            if (present(edge_orientations)) then
+                if (local_start == this%edges(1, edge_index)) then
+                    edge_orientations(i) = 1
+                else
+                    edge_orientations(i) = -1
+                end if
+            end if
         end do
     end subroutine get_triangle_edge_dofs
 
