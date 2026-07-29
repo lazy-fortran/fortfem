@@ -64,9 +64,12 @@ module fortfem_api
     use fortfem_triangle_discontinuous_dof_map, only: &
         build_triangle_discontinuous_dof_map
     use fortfem_triangle_vector_interpolation, only: &
+        evaluate_triangle_bdm_interpolant, &
         evaluate_triangle_nedelec_interpolant, &
-        evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec, &
-        interpolate_triangle_rt
+        evaluate_triangle_nedelec_second_kind_interpolant, &
+        evaluate_triangle_rt_interpolant, interpolate_triangle_bdm, &
+        interpolate_triangle_nedelec, &
+        interpolate_triangle_nedelec_second_kind, interpolate_triangle_rt
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -188,6 +191,10 @@ module fortfem_api
     public :: evaluate_triangle_nedelec_interpolant
     public :: evaluate_triangle_rt_interpolant
     public :: interpolate_triangle_rt
+    public :: evaluate_triangle_bdm_interpolant
+    public :: evaluate_triangle_nedelec_second_kind_interpolant
+    public :: interpolate_triangle_bdm
+    public :: interpolate_triangle_nedelec_second_kind
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
