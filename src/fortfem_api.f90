@@ -41,6 +41,8 @@ module fortfem_api
     use fortfem_edge_moment_orientation, only: apply_edge_moment_orientation
     use fortfem_triangle_piola_maps, only: &
         map_triangle_nedelec_covariant, map_triangle_rt_contravariant
+    use fortfem_triangle_feec_operators, only: &
+        build_triangle_discrete_gradient
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -146,6 +148,7 @@ module fortfem_api
     public :: apply_edge_moment_orientation
     public :: map_triangle_nedelec_covariant
     public :: map_triangle_rt_contravariant
+    public :: build_triangle_discrete_gradient
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
