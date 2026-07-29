@@ -12,7 +12,7 @@ module fortfem_forms_simple
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
-    use fortsparse, only: csc_t, FORTSPARSE_INVALID_MATRIX, &
+    use fortsparse, only: csc_matvec, csc_t, FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
     implicit none
 
@@ -48,6 +48,7 @@ module fortfem_forms_simple
         integer :: role = 0
         integer :: tensor_rank = 0
         real(dp) :: scalar = 0.0_dp
+        real(dp) :: vector_value(2) = 0.0_dp
     end type form_token_t
 
     type, public :: form_expr_t
@@ -72,16 +73,20 @@ module fortfem_forms_simple
         real(dp) :: curl_coefficient = 0.0_dp
         real(dp) :: divergence_coefficient = 0.0_dp
         real(dp) :: load_coefficient = 0.0_dp
+        real(dp) :: vector_load(2) = 0.0_dp
+        real(dp) :: vector_value(2) = 0.0_dp
+        logical :: has_vector_load = .false.
     end type compiler_item_t
 
     public :: assignment(=)
     public :: compile_form, compile_form_matrix, compile_form_vector
-    public :: compile_vector_form_csc
+    public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
     public :: create_constant_load, create_curl, create_divergence
     public :: create_grad, create_inner
     public :: create_measure
     public :: create_product, create_scale, create_sum, create_symbol
+    public :: create_vector_constant_function
 
     interface assignment(=)
         module procedure assign_form_expr
@@ -243,6 +248,20 @@ contains
         expr%tokens(1)%token_type = token_constant_load
         expr%tokens(1)%scalar = value
     end function create_constant_load
+
+    function create_vector_constant_function(value) result(expr)
+        real(dp), intent(in) :: value(2)
+        type(form_expr_t) :: expr
+
+        allocate(expr%tokens(1))
+        expr%description = "constant_vector"
+        expr%form_type = "function"
+        expr%tensor_rank = 1
+        expr%tokens(1)%token_type = token_symbol
+        expr%tokens(1)%role = role_function
+        expr%tokens(1)%tensor_rank = 1
+        expr%tokens(1)%vector_value = value
+    end function create_vector_constant_function
 
     function compile_form(expr) result(assembly_code)
         type(form_expr_t), intent(in) :: expr
@@ -426,6 +445,66 @@ contains
         end select
     end subroutine compile_vector_form_csc
 
+    subroutine compile_vector_form_rhs( &
+            expr, mesh, family, degree, quadrature_degree, vector, status)
+        type(form_expr_t), intent(in) :: expr
+        type(mesh_2d_t), intent(inout) :: mesh
+        character(len=*), intent(in) :: family
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: mass_matrix
+        real(dp), allocatable :: source_dofs(:)
+        real(dp) :: edge_vector(2), source_value(2)
+        integer :: compiler_status, dof, edge
+
+        vector = 0.0_dp
+        call analyze_vector_linear_form(expr, source_value, compiler_status)
+        if (compiler_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse vector load compiler requires a constant source")
+            return
+        end if
+        if (trim(family) /= "Nedelec" .and. &
+            trim(family) /= "Nedelec1" .and. trim(family) /= "Edge") then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse vector load compiler supports first-kind Nedelec")
+            return
+        end if
+        if (degree /= 1) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse vector load compiler supports Nedelec order one")
+            return
+        end if
+        if (.not. allocated(mesh%edges)) call mesh%build_edge_connectivity()
+        if (.not. allocated(mesh%edge_to_dof)) then
+            call mesh%build_edge_dof_numbering()
+        end if
+        allocate(source_dofs(mesh%n_edges))
+        source_dofs = 0.0_dp
+        do edge = 1, mesh%n_edges
+            edge_vector = mesh%vertices(:, mesh%edges(2, edge)) - &
+                mesh%vertices(:, mesh%edges(1, edge))
+            dof = mesh%edge_to_dof(edge) + 1
+            source_dofs(dof) = dot_product(source_value, edge_vector)
+        end do
+        call assemble_triangle_nedelec_curl_mass_csc( &
+            mesh, degree, quadrature_degree, mass_matrix, status, &
+            0.0_dp, 1.0_dp)
+        if (status%code /= 0) return
+        if (size(vector) /= mass_matrix%nrow) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Sparse vector load output has the wrong dimension")
+            return
+        end if
+        vector = csc_matvec(mass_matrix, source_dofs)
+    end subroutine compile_vector_form_rhs
+
     subroutine set_incompatible_family_status(status)
         type(fortsparse_status_t), intent(out) :: status
 
@@ -581,11 +660,65 @@ contains
             status = 2
             return
         end if
+        if (stack(1)%has_vector_load) then
+            status = 2
+            return
+        end if
         mass_coefficient = stack(1)%mass_coefficient
         curl_coefficient = stack(1)%curl_coefficient
         divergence_coefficient = stack(1)%divergence_coefficient
         status = 0
     end subroutine analyze_vector_bilinear_form
+
+    subroutine analyze_vector_linear_form(expr, source_value, status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(out) :: source_value(2)
+        integer, intent(out) :: status
+
+        type(compiler_item_t), allocatable :: stack(:)
+        integer :: stack_size, token_index
+
+        source_value = 0.0_dp
+        status = 2
+        if (.not. allocated(expr%tokens)) return
+        if (size(expr%tokens) < 1) return
+        allocate(stack(size(expr%tokens)))
+        stack_size = 0
+        do token_index = 1, size(expr%tokens)
+            call apply_compiler_token( &
+                expr%tokens(token_index), stack, stack_size, status)
+            if (status /= 0) return
+        end do
+        if (stack_size /= 1) then
+            status = 2
+            return
+        end if
+        if (stack(1)%item_type /= item_form) then
+            status = 2
+            return
+        end if
+        if (.not. stack(1)%integrated .or. &
+            .not. stack(1)%has_vector_load) then
+            status = 2
+            return
+        end if
+        if (stack(1)%field_rank /= 1) then
+            status = 2
+            return
+        end if
+        if (stack(1)%mass_coefficient /= 0.0_dp .or. &
+            stack(1)%stiffness_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
+        if (stack(1)%curl_coefficient /= 0.0_dp .or. &
+            stack(1)%divergence_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
+        source_value = stack(1)%vector_load
+        status = 0
+    end subroutine analyze_vector_linear_form
 
     subroutine apply_compiler_token(token, stack, stack_size, status)
         type(form_token_t), intent(in) :: token
@@ -602,6 +735,7 @@ contains
             stack(stack_size)%tensor_rank = token%tensor_rank
             stack(stack_size)%field_rank = token%tensor_rank
             stack(stack_size)%derivative = derivative_identity
+            stack(stack_size)%vector_value = token%vector_value
         case (token_gradient)
             if (stack_size < 1) return
             if (stack(stack_size)%item_type /= item_argument) return
@@ -660,6 +794,23 @@ contains
         second = stack(stack_size)
         if (first%item_type /= item_argument .or. &
             second%item_type /= item_argument) return
+        if (function_test_roles(first%role, second%role)) then
+            if (first%derivative /= derivative_identity .or. &
+                second%derivative /= derivative_identity) return
+            if (first%field_rank /= 1 .or. second%field_rank /= 1) return
+            stack_size = stack_size - 1
+            stack(stack_size) = compiler_item_t()
+            stack(stack_size)%item_type = item_form
+            stack(stack_size)%field_rank = 1
+            stack(stack_size)%has_vector_load = .true.
+            if (first%role == role_function) then
+                stack(stack_size)%vector_load = first%vector_value
+            else
+                stack(stack_size)%vector_load = second%vector_value
+            end if
+            status = 0
+            return
+        end if
         if (.not. complementary_roles(first%role, second%role)) return
         if (first%derivative /= second%derivative) return
         if (first%tensor_rank /= second%tensor_rank) return
@@ -734,6 +885,8 @@ contains
             stack(stack_size - 1)%divergence_coefficient
         stack(stack_size - 1)%load_coefficient = factor * &
             stack(stack_size - 1)%load_coefficient
+        stack(stack_size - 1)%vector_load = factor * &
+            stack(stack_size - 1)%vector_load
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
@@ -764,6 +917,10 @@ contains
             first%divergence_coefficient + second%divergence_coefficient
         stack(stack_size - 1)%load_coefficient = &
             first%load_coefficient + second%load_coefficient
+        stack(stack_size - 1)%vector_load = &
+            first%vector_load + second%vector_load
+        stack(stack_size - 1)%has_vector_load = &
+            first%has_vector_load .or. second%has_vector_load
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_add_token
@@ -925,6 +1082,13 @@ contains
         valid = (first == role_trial .and. second == role_test) .or. &
             (first == role_test .and. second == role_trial)
     end function complementary_roles
+
+    pure logical function function_test_roles(first, second) result(valid)
+        integer, intent(in) :: first, second
+
+        valid = (first == role_function .and. second == role_test) .or. &
+            (first == role_test .and. second == role_function)
+    end function function_test_roles
 
     pure function product_form_type(a, b) result(form_type)
         type(form_expr_t), intent(in) :: a, b

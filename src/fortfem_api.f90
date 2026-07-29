@@ -156,6 +156,7 @@ module fortfem_api
     public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
+    public :: compile_vector_form_rhs
     public :: init_measures
     public :: operator(*)
     public :: operator(+)

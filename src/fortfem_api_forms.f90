@@ -2,10 +2,10 @@ module fortfem_api_forms
     use fortfem_kinds
     use fortfem_forms_simple, only: assignment(=), compile_form, &
         compile_form_matrix, compile_form_vector, compile_vector_form_csc, &
-        compile_vector_form_element, create_curl, &
+        compile_vector_form_element, compile_vector_form_rhs, create_curl, &
         create_constant_load, create_divergence, create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
-        create_symbol, form_expr_t
+        create_symbol, create_vector_constant_function, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
         vector_trial_function_t, vector_test_function_t,                    &
         vector_function_t, function_t, simple_expression_t
@@ -27,6 +27,7 @@ module fortfem_api_forms
     public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
+    public :: compile_vector_form_rhs
     public :: assignment(=)
     public :: operator(*)
     public :: operator(+)
@@ -81,7 +82,7 @@ contains
             type is (vector_test_function_t)
             expr_a = create_symbol("F", "test", 1)
             type is (vector_function_t)
-            expr_a = create_symbol("j", "function", 1)
+            call vector_function_expression(a, expr_a)
             type is (form_expr_t)
             expr_a = a
         class default
@@ -99,7 +100,7 @@ contains
             type is (vector_test_function_t)
             expr_b = create_symbol("F", "test", 1)
             type is (vector_function_t)
-            expr_b = create_symbol("j", "function", 1)
+            call vector_function_expression(b, expr_b)
             type is (form_expr_t)
             expr_b = b
         class default
@@ -213,10 +214,34 @@ contains
         type(vector_test_function_t), intent(in) :: v
         type(form_expr_t) :: product
 
-        product%description = "f*v"
-        product%form_type = "linear"
-        product%tensor_rank = 0
+        type(form_expr_t) :: function_expr, test_expr
+
+        call vector_function_expression(f, function_expr)
+        test_expr = create_symbol("F", "test", 1)
+        product = create_inner(function_expr, test_expr)
     end function vector_function_times_vector_test
+
+    subroutine vector_function_expression(f, expr)
+        type(vector_function_t), intent(in) :: f
+        type(form_expr_t), intent(out) :: expr
+
+        real(dp) :: scale, tolerance, value(2)
+
+        if (allocated(f%values)) then
+            if (size(f%values, 1) >= 1 .and. size(f%values, 2) == 2) then
+                value = f%values(1, :)
+                scale = max(1.0_dp, maxval(abs(value)))
+                tolerance = 64.0_dp * epsilon(1.0_dp) * scale
+                if (maxval(abs( &
+                    f%values - spread(value, 1, size(f%values, 1)))) <= &
+                    tolerance) then
+                    expr = create_vector_constant_function(value)
+                    return
+                end if
+            end if
+        end if
+        expr = create_symbol("unsupported_vector", "function", 1)
+    end subroutine vector_function_expression
 
     function form_equals_form(a, L) result(equation)
         type(form_expr_t), intent(in) :: a, L

@@ -1,11 +1,12 @@
 module fortfem_api_solvers_vector
     use fortfem_kinds, only: dp
-    use fortfem_api_types, only: vector_function_t, vector_function_space_t, &
-        vector_bc_t
-    use fortfem_api_forms, only: form_equation_t
+    use fortfem_api_types, only: vector_bc_t, vector_function_t
+    use fortfem_api_forms, only: compile_vector_form_csc, &
+        compile_vector_form_rhs, form_equation_t
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     use fortfem_basis_edge_2d, only: edge_basis_2d_t
+    use fortsparse, only: csc_t, fortsparse_status_t
     implicit none
 
     private
@@ -55,7 +56,11 @@ contains
             trim(equation%rhs%description)
         write(*,*) "Using solver: ", trim(solver)
 
-        if (index(equation%lhs%description, "curl") > 0) then
+        if (trim(Eh%space%element_family) == "Nedelec" .and. &
+            Eh%space%degree == 1) then
+            call solve_compiled_nedelec_problem( &
+                equation, Eh, bc, solver, local_opts, local_stats)
+        else if (index(equation%lhs%description, "curl") > 0) then
             call solve_curl_curl_problem(Eh, bc, solver, local_opts, &
                 local_stats)
         else
@@ -66,6 +71,107 @@ contains
             stats = local_stats
         end if
     end subroutine solve_vector
+
+    subroutine solve_compiled_nedelec_problem( &
+            equation, field, boundary_condition, solver_type, options, stats)
+        type(form_equation_t), intent(in) :: equation
+        type(vector_function_t), intent(inout) :: field
+        type(vector_bc_t), intent(in) :: boundary_condition
+        character(len=*), intent(in) :: solver_type
+        type(solver_options_t), intent(in) :: options
+        type(solver_stats_t), intent(out) :: stats
+
+        type(csc_t) :: sparse_matrix
+        type(fortsparse_status_t) :: sparse_status
+        real(dp), allocatable :: dense_matrix(:, :), right_hand_side(:)
+        real(dp), allocatable :: solution(:)
+        real(dp) :: edge_vector(2), prescribed_value
+        integer :: boundary_index, degree_of_freedom, edge, dof_count
+
+        dof_count = field%space%ndof
+        allocate(right_hand_side(dof_count), solution(dof_count))
+        call compile_vector_form_csc( &
+            equation%lhs, field%space%mesh%data, "Nedelec", 1, 4, &
+            sparse_matrix, sparse_status)
+        if (sparse_status%code /= 0) then
+            error stop "solve: unsupported Nedelec bilinear form"
+        end if
+        call compile_vector_form_rhs( &
+            equation%rhs, field%space%mesh%data, "Nedelec", 1, 4, &
+            right_hand_side, sparse_status)
+        if (sparse_status%code /= 0) then
+            error stop "solve: unsupported Nedelec linear form"
+        end if
+        if (sparse_matrix%nrow /= dof_count .or. &
+            sparse_matrix%ncol /= dof_count) then
+            error stop "solve: Nedelec function-space dimension mismatch"
+        end if
+        allocate(dense_matrix(dof_count, dof_count))
+        call copy_csc_to_dense(sparse_matrix, dense_matrix)
+
+        do boundary_index = 1, &
+                size(field%space%mesh%data%boundary_edges)
+            edge = field%space%mesh%data%boundary_edges(boundary_index)
+            degree_of_freedom = &
+                field%space%mesh%data%edge_to_dof(edge) + 1
+            edge_vector = field%space%mesh%data%vertices(:, &
+                field%space%mesh%data%edges(2, edge)) - &
+                field%space%mesh%data%vertices(:, &
+                field%space%mesh%data%edges(1, edge))
+            prescribed_value = &
+                dot_product(boundary_condition%values, edge_vector)
+            right_hand_side = right_hand_side - &
+                dense_matrix(:, degree_of_freedom) * prescribed_value
+            dense_matrix(:, degree_of_freedom) = 0.0_dp
+            dense_matrix(degree_of_freedom, :) = 0.0_dp
+            dense_matrix(degree_of_freedom, degree_of_freedom) = 1.0_dp
+            right_hand_side(degree_of_freedom) = prescribed_value
+        end do
+
+        solution = 0.0_dp
+        select case (trim(solver_type))
+        case ("direct")
+            call solve_direct_vector( &
+                dense_matrix, right_hand_side, solution)
+            stats%converged = maxval(abs( &
+                matmul(dense_matrix, solution) - right_hand_side)) < 1.0e-10_dp
+            stats%iterations = 1
+            stats%final_residual = sqrt(sum( &
+                (matmul(dense_matrix, solution) - right_hand_side)**2))
+            stats%solve_time = 0.0_dp
+            stats%memory_usage = 0
+            stats%method_used = "lapack_lu"
+            stats%restarts = 0
+            stats%parallel_efficiency = 0.0_dp
+            stats%condition_estimate = 0.0_dp
+        case default
+            call gmres_solve( &
+                dense_matrix, right_hand_side, solution, options, stats)
+        end select
+
+        if (.not. allocated(field%values)) then
+            allocate(field%values(dof_count, 2))
+        end if
+        field%values(:, 1) = solution
+        field%values(:, 2) = 0.0_dp
+    end subroutine solve_compiled_nedelec_problem
+
+    pure subroutine copy_csc_to_dense(sparse_matrix, dense_matrix)
+        type(csc_t), intent(in) :: sparse_matrix
+        real(dp), intent(out) :: dense_matrix(:, :)
+
+        integer :: column, entry
+
+        dense_matrix = 0.0_dp
+        do column = 1, sparse_matrix%ncol
+            do entry = sparse_matrix%col_ptr(column), &
+                    sparse_matrix%col_ptr(column + 1) - 1
+                dense_matrix(sparse_matrix%row_idx(entry), column) = &
+                    dense_matrix(sparse_matrix%row_idx(entry), column) + &
+                    sparse_matrix%val(entry)
+            end do
+        end do
+    end subroutine copy_csc_to_dense
 
     subroutine solve_curl_curl_problem(Eh, bc, solver_type, options, stats)
         type(vector_function_t), intent(inout) :: Eh
@@ -251,4 +357,3 @@ contains
     end subroutine solve_generic_vector_problem
 
 end module fortfem_api_solvers_vector
-
