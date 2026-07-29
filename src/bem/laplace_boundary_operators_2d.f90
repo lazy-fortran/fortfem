@@ -5,10 +5,34 @@ module fortfem_laplace_boundary_operators_2d
 
     private
 
+    public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
     public :: assemble_laplace_single_layer_constant
 
 contains
+
+    subroutine assemble_laplace_adjoint_double_layer_constant( &
+            panel_start, panel_end, quadrature_order, matrix, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: quadrature_order
+        real(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: double_layer(:, :)
+        integer :: panel_count
+
+        matrix = 0.0_dp
+        status = 1
+        panel_count = size(panel_start, 2)
+        if (size(matrix, 1) /= panel_count .or. &
+            size(matrix, 2) /= panel_count) return
+
+        allocate(double_layer(panel_count, panel_count))
+        call assemble_laplace_double_layer_constant( &
+            panel_start, panel_end, quadrature_order, double_layer, status)
+        if (status /= 0) return
+        matrix = transpose(double_layer)
+    end subroutine assemble_laplace_adjoint_double_layer_constant
 
     subroutine assemble_laplace_double_layer_constant( &
             panel_start, panel_end, quadrature_order, matrix, status)
