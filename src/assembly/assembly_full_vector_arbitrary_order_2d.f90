@@ -70,32 +70,55 @@ contains
     end subroutine assemble_triangle_bdm_div_mass_element
 
     subroutine assemble_triangle_nedelec_second_curl_mass_csc( &
-            mesh, degree, quadrature_degree, matrix, status)
+            mesh, degree, quadrature_degree, matrix, status, &
+            curl_coefficient, mass_coefficient)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: degree, quadrature_degree
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
 
+        real(dp) :: curl_weight, mass_weight
+
+        curl_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
         call assemble_triangle_full_vector_csc( &
-            mesh, degree, quadrature_degree, .false., matrix, status)
+            mesh, degree, quadrature_degree, .false., curl_weight, &
+            mass_weight, matrix, status)
     end subroutine assemble_triangle_nedelec_second_curl_mass_csc
 
     subroutine assemble_triangle_bdm_div_mass_csc( &
-            mesh, degree, quadrature_degree, matrix, status)
+            mesh, degree, quadrature_degree, matrix, status, &
+            divergence_coefficient, mass_coefficient)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: degree, quadrature_degree
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: divergence_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
 
+        real(dp) :: divergence_weight, mass_weight
+
+        divergence_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(divergence_coefficient)) then
+            divergence_weight = divergence_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
         call assemble_triangle_full_vector_csc( &
-            mesh, degree, quadrature_degree, .true., matrix, status)
+            mesh, degree, quadrature_degree, .true., divergence_weight, &
+            mass_weight, matrix, status)
     end subroutine assemble_triangle_bdm_div_mass_csc
 
     subroutine assemble_triangle_full_vector_csc( &
-            mesh, degree, quadrature_degree, normal_family, matrix, status)
+            mesh, degree, quadrature_degree, normal_family, &
+            derivative_coefficient, mass_coefficient, matrix, status)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: degree, quadrature_degree
         logical, intent(in) :: normal_family
+        real(dp), intent(in) :: derivative_coefficient, mass_coefficient
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
 
@@ -131,7 +154,8 @@ contains
             vertices = mesh%vertices(:, mesh%triangles(:, triangle))
             call assemble_triangle_full_vector_element( &
                 vertices, degree, quadrature_degree, normal_family, &
-                1.0_dp, 1.0_dp, element_matrix, local_status)
+                derivative_coefficient, mass_coefficient, element_matrix, &
+                local_status)
             if (local_status /= 0) then
                 call status_set( &
                     status, FORTSPARSE_INVALID_MATRIX, &

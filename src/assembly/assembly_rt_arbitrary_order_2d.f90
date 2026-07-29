@@ -99,19 +99,28 @@ contains
     end subroutine assemble_triangle_rt_div_mass_element
 
     subroutine assemble_triangle_rt_div_mass_csc( &
-            mesh, degree, quadrature_degree, matrix, status)
+            mesh, degree, quadrature_degree, matrix, status, &
+            divergence_coefficient, mass_coefficient)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: degree, quadrature_degree
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: divergence_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
 
         integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
         integer, allocatable :: transforms(:, :)
         real(dp), allocatable :: element_matrix(:, :), values(:)
-        real(dp) :: vertices(2, 3)
+        real(dp) :: divergence_weight, mass_weight, vertices(2, 3)
         integer :: column, entry, global_dof_count, local_dof_count
         integer :: local_status, row, triangle
 
+        divergence_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(divergence_coefficient)) then
+            divergence_weight = divergence_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
         if (degree < 0 .or. quadrature_degree < 0) then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
@@ -137,7 +146,7 @@ contains
             vertices = mesh%vertices(:, mesh%triangles(:, triangle))
             call assemble_triangle_rt_div_mass_element( &
                 vertices, degree, quadrature_degree, element_matrix, &
-                local_status)
+                local_status, divergence_weight, mass_weight)
             if (local_status /= 0) then
                 call status_set( &
                     status, FORTSPARSE_INVALID_MATRIX, &
