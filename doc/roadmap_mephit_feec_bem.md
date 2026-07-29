@@ -426,6 +426,9 @@ its cross-code and production-case validation gate remains open:
 - the public order-one Nedelec path converges under refinement to the
   analytical three-material \(n=1\) transverse magnetic field from the
   magnetic paper.
+- a smooth polynomial manufactured field, with independently derived
+  curl-mass source and homogeneous tangential data, attains first-order
+  physical-field convergence through the public symbolic solver.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and

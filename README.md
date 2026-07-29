@@ -36,7 +36,8 @@ Experimental interfaces:
   coefficients, constant or cellwise physical vector sources, and constant
   physical or explicitly supplied tangential edge moments. Its direct solve
   uses a `fortsparse` interior block and converges to the analytical
-  three-material, Fourier-mode magnetic solution.
+  three-material, Fourier-mode magnetic solution. A smooth manufactured
+  curl-mass problem attains first-order field convergence.
 
 Tensor and complex coefficients, higher-order high-level solves,
 three-dimensional elements, electromagnetic BEM coupling, and validation

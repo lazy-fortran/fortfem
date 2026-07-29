@@ -83,8 +83,9 @@ end interface
   coefficients, constant or cellwise vector sources, constant physical
   tangential data, owned nonconstant edge moments, and a sparse direct
   interior solve. Its three-material Fourier-mode magnetic convergence has an
-  analytical oracle. General pointwise sources, tensor coefficients, and
-  higher-order high-level solves remain experimental.
+  analytical oracle, and a smooth manufactured curl-mass problem attains
+  first-order field convergence. General pointwise sources, tensor
+  coefficients, and higher-order high-level solves remain experimental.
 
 ## Weak Form Framework
 
