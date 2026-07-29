@@ -17,8 +17,12 @@ module-naming = false
 link = ["lapack", "blas", "superlu"]
 
 [install]
-library = false
+library = true
 test = false
+
+[library]
+source-dir = "src"
+include-dir = "include"
 
 [fortran]
 implicit-typing = false
