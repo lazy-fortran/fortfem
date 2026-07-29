@@ -27,3 +27,8 @@ main = "gen_tetra_face_moment_transforms.f90"
 name = "gen_tetra_nedelec_coefficients"
 source-dir = "app"
 main = "gen_tetra_nedelec_coefficients.f90"
+
+[[executable]]
+name = "gen_toroidal_coordinates"
+source-dir = "app"
+main = "gen_toroidal_coordinates.f90"
