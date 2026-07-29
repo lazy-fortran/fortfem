@@ -1,4 +1,6 @@
 module fortfem_api
+    use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
+        assemble_triangle_nedelec_curl_mass_element
     use fortfem_kinds
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
@@ -156,6 +158,7 @@ module fortfem_api
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
+    public :: assemble_triangle_nedelec_curl_mass_element
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
