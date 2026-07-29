@@ -26,6 +26,10 @@ module fortfem_api
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_triangle_lagrange_arbitrary_order, only: &
+        assignment(=), evaluate_triangle_lagrange_basis, &
+        initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
+        triangle_lagrange_nodes
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -115,6 +119,11 @@ module fortfem_api
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
     public :: triangle_duffy_quadrature
+    public :: assignment(=)
+    public :: evaluate_triangle_lagrange_basis
+    public :: initialize_triangle_lagrange_basis
+    public :: triangle_lagrange_basis_t
+    public :: triangle_lagrange_nodes
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
