@@ -421,6 +421,9 @@ its cross-code and production-case validation gate remains open:
   pressure attain first-order convergence for an analytical sine solution,
   while edge-average Dirichlet data reproduce an affine pressure and constant
   Darcy flux exactly.
+- a matching-degree RT-DG mixed solver integrates physical source callbacks
+  in the discontinuous basis and uses the same sparse saddle construction.
+  RT1-DG1 flux and pressure attain second-order convergence on three meshes.
 - symbolic scalar P1 mass, stiffness, and constant-load forms compile to
   executable operators. Weighted curl-mass and divergence-mass forms compile
   to local or oriented CSC operators for every implemented triangular vector
@@ -523,9 +526,11 @@ orientation-aware global topology, sparse mass and differential forms,
 commuting projections, manufactured interpolation convergence, and executable
 weighted form compilation. The two-dimensional magnetic paper case also
 passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
-helper is conservative and convergent; symbolic and higher-order mixed PDE
-solves, tetrahedral families, and the three-dimensional box in item 5 remain.
-The Phase 2 exit gate is therefore not yet met.
+helper is conservative and convergent, and the matching-degree solver is
+verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
+through degree-four mixed PDE validation, tetrahedral families, and the
+three-dimensional box in item 5 remain. The Phase 2 exit gate is therefore
+not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 

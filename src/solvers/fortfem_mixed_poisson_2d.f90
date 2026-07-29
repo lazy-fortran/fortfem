@@ -5,6 +5,12 @@ module fortfem_mixed_poisson_2d
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortfem_triangle_discontinuous_dof_map, only: &
+        build_triangle_discontinuous_dof_map
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_triangle_lagrange_arbitrary_order, only: &
+        evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
+        triangle_lagrange_basis_t
     use fortsparse, only: csc_from_triplet, csc_t, &
         FORTSPARSE_INTERNAL_ERROR, FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
@@ -13,8 +19,166 @@ module fortfem_mixed_poisson_2d
     private
 
     public :: solve_mixed_poisson_rt0
+    public :: solve_mixed_poisson_rt
+
+    abstract interface
+        pure function scalar_source_2d(x, y) result(value)
+            import :: dp
+            real(dp), intent(in) :: x, y
+            real(dp) :: value
+        end function scalar_source_2d
+    end interface
 
 contains
+
+    !> Solve the homogeneous-Dirichlet mixed Poisson problem in matching
+    !> RT(degree)-DG(degree) spaces.
+    subroutine solve_mixed_poisson_rt( &
+            mesh, degree, quadrature_degree, source, flux_dofs, &
+            pressure_dofs, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        procedure(scalar_source_2d) :: source
+        real(dp), allocatable, intent(out) :: flux_dofs(:)
+        real(dp), allocatable, intent(out) :: pressure_dofs(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: divergence, flux_mass, system
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: load(:), right_hand_side(:), solution(:)
+        real(dp), allocatable :: values(:)
+        integer :: column, entry, flux_count, matrix_entry
+        integer :: pressure_count, solve_status, system_size
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "RT-DG mixed Poisson solve failed")
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call assemble_dg_source_load( &
+            mesh, degree, quadrature_degree, source, load, status)
+        if (status%code /= 0) return
+        call assemble_triangle_rt_div_mass_csc( &
+            mesh, degree, quadrature_degree, flux_mass, status, &
+            0.0_dp, 1.0_dp)
+        if (status%code /= 0) return
+        call assemble_triangle_rt_divergence_csc( &
+            mesh, degree, quadrature_degree, divergence, status)
+        if (status%code /= 0) return
+
+        flux_count = flux_mass%nrow
+        pressure_count = divergence%nrow
+        if (flux_mass%ncol /= flux_count) return
+        if (divergence%ncol /= flux_count) return
+        if (size(load) /= pressure_count) return
+        system_size = flux_count + pressure_count
+        allocate(rows(flux_mass%nnz + 2 * divergence%nnz))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        do column = 1, flux_mass%ncol
+            do matrix_entry = flux_mass%col_ptr(column), &
+                    flux_mass%col_ptr(column + 1) - 1
+                entry = entry + 1
+                rows(entry) = flux_mass%row_idx(matrix_entry)
+                columns(entry) = column
+                values(entry) = flux_mass%val(matrix_entry)
+            end do
+        end do
+        do column = 1, divergence%ncol
+            do matrix_entry = divergence%col_ptr(column), &
+                    divergence%col_ptr(column + 1) - 1
+                entry = entry + 1
+                rows(entry) = column
+                columns(entry) = &
+                    flux_count + divergence%row_idx(matrix_entry)
+                values(entry) = -divergence%val(matrix_entry)
+                entry = entry + 1
+                rows(entry) = &
+                    flux_count + divergence%row_idx(matrix_entry)
+                columns(entry) = column
+                values(entry) = divergence%val(matrix_entry)
+            end do
+        end do
+        call csc_from_triplet( &
+            system_size, system_size, rows, columns, values, system, status)
+        if (status%code /= 0) return
+
+        allocate(right_hand_side(system_size), solution(system_size))
+        right_hand_side = 0.0_dp
+        right_hand_side(flux_count + 1:) = load
+        call sparse_direct_solve_csc( &
+            system_size, system%col_ptr, system%row_idx, system%val, &
+            right_hand_side, solution, solve_status)
+        if (solve_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INTERNAL_ERROR, &
+                "RT-DG mixed Poisson sparse solve failed")
+            return
+        end if
+        allocate(flux_dofs(flux_count), pressure_dofs(pressure_count))
+        flux_dofs = solution(:flux_count)
+        pressure_dofs = solution(flux_count + 1:)
+        call status_set(status, 0, "")
+    end subroutine solve_mixed_poisson_rt
+
+    subroutine assemble_dg_source_load( &
+            mesh, degree, quadrature_degree, source, load, status)
+        type(mesh_2d_t), intent(in) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        procedure(scalar_source_2d) :: source
+        real(dp), allocatable, intent(out) :: load(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(triangle_lagrange_basis_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: eta(:), gradients(:, :), values(:)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: determinant, point(2), vertices(2, 3)
+        integer :: dof, global_count, local_status, node, triangle
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "DG source load assembly failed")
+        call build_triangle_discontinuous_dof_map( &
+            mesh, degree, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        call initialize_triangle_lagrange_basis(degree, basis, local_status)
+        if (local_status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, local_status)
+        if (local_status /= 0) return
+        allocate(load(global_count))
+        allocate(values(size(global_dofs, 1)))
+        allocate(gradients(2, size(global_dofs, 1)))
+        load = 0.0_dp
+        do triangle = 1, mesh%n_triangles
+            do node = 1, 3
+                vertices(:, node) = &
+                    mesh%vertices(:, mesh%triangles(node, triangle))
+            end do
+            determinant = &
+                (vertices(1, 2) - vertices(1, 1)) * &
+                (vertices(2, 3) - vertices(2, 1)) - &
+                (vertices(2, 2) - vertices(2, 1)) * &
+                (vertices(1, 3) - vertices(1, 1))
+            if (determinant <= 0.0_dp) return
+            do node = 1, size(weights)
+                point = vertices(:, 1) + &
+                    xi(node) * (vertices(:, 2) - vertices(:, 1)) + &
+                    eta(node) * (vertices(:, 3) - vertices(:, 1))
+                call evaluate_triangle_lagrange_basis( &
+                    basis, xi(node), eta(node), values, gradients, &
+                    local_status)
+                if (local_status /= 0) return
+                do dof = 1, size(global_dofs, 1)
+                    load(global_dofs(dof, triangle)) = &
+                        load(global_dofs(dof, triangle)) + &
+                        determinant * weights(node) * values(dof) * &
+                        source(point(1), point(2))
+                end do
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_dg_source_load
 
     !> Solve q + grad(u) = 0 and div(q) = f with RT0 fluxes, DG0 pressure,
     !> and optional edge-average Dirichlet pressure data.

@@ -29,6 +29,9 @@ Verified numerical paths:
 - A sparse RT0-DG0 mixed Poisson solve with homogeneous or edge-average
   Dirichlet pressure data preserves the source balance independently on every
   cell and attains first-order flux and pressure convergence.
+- A matching-degree RT-DG mixed Poisson solve integrates physical source
+  callbacks at arbitrary implemented degree; RT1-DG1 attains second-order
+  flux and pressure convergence.
 - Mesh generation, refinement, and plotting through `fortplot`.
 
 Experimental interfaces:

@@ -60,6 +60,9 @@ FortFEM provides a clean, high-level API that hides implementation details while
 - **solve_mixed_poisson_rt0(mesh, source, flux, pressure, status)**: Solve
   the sparse RT0-DG0 mixed system with optional edge-average Dirichlet
   pressure data
+- **solve_mixed_poisson_rt(mesh, degree, quadrature, source, ...)**: Solve a
+  homogeneous-Dirichlet matching-degree RT-DG system from a physical source
+  callback
 - **plot(uh, filename, title, colormap)**: Plot scalar function
 - **plot(Eh, filename, title, plot_type)**: Plot vector field
 - **plot(mesh, filename, title)**: Plot mesh triangulation
@@ -139,6 +142,8 @@ end program
 - **Verified**: Sparse RT0-DG0 mixed Poisson flux is exactly conservative on
   every cell, reproduces affine nonzero pressure data exactly, and has
   first-order flux and pressure convergence
+- **Verified**: RT1-DG1 mixed Poisson flux and pressure have second-order
+  convergence
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and 3D
   elements
