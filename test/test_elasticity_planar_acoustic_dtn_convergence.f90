@@ -31,18 +31,19 @@ contains
         real(dp), intent(out) :: rms_error
 
         real(dp), parameter :: angular_frequency = 2.3_dp
-        real(dp), parameter :: young_modulus = 10.0_dp
+        complex(dp), parameter :: young_modulus = &
+            cmplx(10.0_dp, 0.1_dp, dp)
         real(dp), parameter :: poisson_ratio = 0.25_dp
         real(dp), parameter :: solid_density = 1.0_dp
         real(dp), parameter :: fluid_density = 1.0_dp
-        real(dp), parameter :: sound_speed = 1.0_dp
+        complex(dp), parameter :: sound_speed = cmplx(1.0_dp, 0.01_dp, dp)
         complex(dp), allocatable :: dirichlet_values(:)
         complex(dp), allocatable :: incident_pressure(:), load(:), solution(:)
         real(dp), allocatable :: interface_normals(:, :), vertices(:, :)
         integer, allocatable :: dirichlet_dofs(:), interface_nodes(:)
         integer, allocatable :: triangles(:, :)
-        complex(dp) :: incident
-        real(dp) :: compressional_modulus, lambda, mu, solid_wavenumber
+        complex(dp) :: compressional_modulus, incident
+        complex(dp) :: lambda, mu, solid_wavenumber
         real(dp) :: spacing
         integer :: dof, node, status
 
@@ -61,11 +62,10 @@ contains
         interface_normals = 0.0_dp
         interface_normals(1, :) = 1.0_dp
         allocate(incident_pressure(n))
-        incident = cmplx( &
-            -compressional_modulus*solid_wavenumber* &
-            cos(solid_wavenumber), &
+        incident = -compressional_modulus*solid_wavenumber* &
+            cos(solid_wavenumber) + cmplx(0.0_dp, 1.0_dp, dp)* &
             fluid_density*angular_frequency*sound_speed* &
-            sin(solid_wavenumber), dp)
+            sin(solid_wavenumber)
         incident_pressure = incident
 
         call build_dirichlet_dofs(n, dirichlet_dofs)
@@ -73,8 +73,8 @@ contains
         do dof = 1, size(dirichlet_dofs)
             node = (dirichlet_dofs(dof) + 1)/2
             if (mod(dirichlet_dofs(dof), 2) == 1) then
-                dirichlet_values(dof) = cmplx( &
-                    sin(solid_wavenumber*vertices(1, node)), 0.0_dp, dp)
+                dirichlet_values(dof) = &
+                    sin(solid_wavenumber*vertices(1, node))
             else
                 dirichlet_values(dof) = cmplx(0.0_dp, 0.0_dp, dp)
             end if
