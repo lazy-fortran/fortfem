@@ -117,7 +117,9 @@ end program
 - **Verified kernels**: Arbitrary-order triangular Nédélec,
   Raviart--Thomas, BDM, and discontinuous scalar elements
 - **Working**: Weighted vector form compilation to local and CSC operators
-- **Experimental**: High-level vector curl-curl solve
+- **Working**: Order-one Nédélec solves with constant vector sources and
+  tangential data
 - **Working**: Mesh generation and visualization with fortplotlib
 - **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
-- **Planned**: Mixed-form compilation, vector source forms, and 3D elements
+- **Planned**: Mixed-form compilation, nonconstant vector sources, and 3D
+  elements

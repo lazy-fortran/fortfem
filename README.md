@@ -30,11 +30,10 @@ Verified numerical paths:
 
 Experimental interfaces:
 
-- The high-level curl-curl solver and example predate the verified Nédélec
-  assembly and do not yet transport coefficients or source fields from the
-  symbolic form. Treat them as API and visualization prototypes.
 - Symbolic mixed forms, nonconstant scalar loads, boundary measures, and
-  high-level vector solves are not compiled yet.
+  nonconstant vector sources are not compiled yet. The high-level
+  order-one Nédélec solver supports weighted curl-mass forms, constant physical
+  vector sources, and constant tangential boundary data.
 
 Three-dimensional elements, electromagnetic BEM coupling, and production
 paper validation remain. See the

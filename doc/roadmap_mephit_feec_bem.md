@@ -406,6 +406,8 @@ its cross-code and production-case validation gate remains open:
   executable operators. Weighted curl-mass and divergence-mass forms compile
   to local or oriented CSC operators for every implemented triangular vector
   family. The high-level scalar P1 solver uses the compiled matrix and load.
+  The order-one Nedelec solver compiles constant vector sources and constant
+  tangential boundary data.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and
