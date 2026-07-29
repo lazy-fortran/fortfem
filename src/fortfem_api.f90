@@ -44,6 +44,7 @@ module fortfem_api
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_laplace_symmetric_coupling_2d, only: &
+        assemble_helmholtz_symmetric_coupling_p1_p0, &
         assemble_laplace_symmetric_coupling_p1_p0, &
         solve_laplace_symmetric_coupling_p1_p0
     use fortfem_helmholtz_boundary_operators_2d, only: &
@@ -294,6 +295,7 @@ module fortfem_api
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_laplace_single_layer_constant
     public :: assemble_laplace_symmetric_coupling_p1_p0
+    public :: assemble_helmholtz_symmetric_coupling_p1_p0
     public :: solve_laplace_symmetric_coupling_p1_p0
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     public :: interpolate_axisymmetric_rt_edge_dofs
