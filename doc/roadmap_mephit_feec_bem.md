@@ -319,10 +319,13 @@ The first four Phase 0 foundations are now partly or fully implemented:
   exact real and complex systems.
 - a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
   propagating and evanescent Fourier-mode tests.
+- coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
+  the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
+  logarithmic energy on a shifted annular strip.
 
-This does not complete Phase 0. Executable weak-form coefficients, DtN
-integration into scalar and elastic boundary forms, feature-claim cleanup,
-and consumer validation remain.
+This does not complete Phase 0. Connection to executable weak forms, DtN
+integration into scalar and elastic boundary forms, coefficient
+interpolation, factor reuse, and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
