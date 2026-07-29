@@ -1,7 +1,8 @@
 program test_laplace_representation_3d
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_laplace_representation_triangles_3d, &
-        evaluate_toroidal_harmonic_p, generate_torus_surface_mesh
+        evaluate_toroidal_ampere_field_p, evaluate_toroidal_harmonic_p, &
+        generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
@@ -9,7 +10,7 @@ program test_laplace_representation_3d
     integer, parameter :: triangle_count = 12*cells*cells
     integer, parameter :: vertex_count = 3*triangle_count
     real(dp) :: dirichlet(vertex_count), neumann(triangle_count)
-    real(dp) :: target(3), value, vertices(3, vertex_count)
+    real(dp) :: gradient(3), target(3), value, vertices(3, vertex_count)
     integer :: triangles(3, triangle_count), status
     logical :: all_passed
 
@@ -17,11 +18,14 @@ program test_laplace_representation_3d
     call build_cube_surface(vertices, triangles, dirichlet, neumann)
     target = [3.0_dp, 0.2_dp, -0.1_dp]
     call evaluate_laplace_representation_triangles_3d( &
-        vertices, triangles, dirichlet, neumann, target, 12, value, status)
+        vertices, triangles, dirichlet, neumann, target, 12, value, status, &
+        gradient)
     call record_condition(status == 0, &
         "Three-dimensional Laplace representation evaluates")
     call record_condition(abs(value - 1.0_dp/norm2(target)) < 7.0e-5_dp, &
         "Cube Cauchy data reproduce the exact exterior monopole")
+    call record_condition(norm2(gradient + target/norm2(target)**3) < &
+        8.0e-5_dp, "BEM gradient reproduces the exact monopole field")
     call test_toroidal_harmonic_representation()
 
     call check_summary("Three-dimensional Laplace representation")
@@ -39,7 +43,8 @@ contains
         real(dp), allocatable :: torus_vertices(:, :)
         integer, allocatable :: torus_triangles(:, :)
         real(dp), allocatable :: torus_trace(:), torus_flux(:)
-        real(dp) :: centroid(3), exact, numerical, phi, theta
+        real(dp) :: centroid(3), exact, field(3), numerical, phi, theta
+        real(dp) :: bem_gradient(3), exact_cartesian(3)
         real(dp) :: target_eta, target_phi, target_theta
         real(dp) :: denominator, eta_at_point, first_edge(3), normal(3)
         real(dp) :: second_edge(3)
@@ -83,10 +88,18 @@ contains
             2, 1, target_eta, target_theta, target_phi, exact, torus_status)
         call evaluate_laplace_representation_triangles_3d( &
             torus_vertices, torus_triangles, torus_trace, torus_flux, &
-            target, 10, numerical, torus_status)
+            target, 10, numerical, torus_status, bem_gradient)
         call record_condition(torus_status == 0 .and. &
             abs(numerical - exact) < 2.0e-2_dp*abs(exact), &
             "Toroidal BEM representation matches the half-integer harmonic")
+        call evaluate_toroidal_ampere_field_p( &
+            2, 1, scale, target_eta, target_theta, target_phi, &
+            field, torus_status)
+        call toroidal_vector_to_cartesian( &
+            target_eta, target_theta, target_phi, field, exact_cartesian)
+        call record_condition(norm2(-bem_gradient - exact_cartesian) < &
+            4.0e-2_dp*max(norm2(exact_cartesian), tiny(1.0_dp)), &
+            "Toroidal BEM gradient matches the analytical Ampere field")
     end subroutine test_toroidal_harmonic_representation
 
     function toroidal_normal_difference( &
@@ -112,6 +125,28 @@ contains
         if (local_status /= 0) error stop "negative toroidal difference failed"
         derivative = (plus_value - minus_value)/(2.0_dp*step)
     end function toroidal_normal_difference
+
+    pure subroutine toroidal_vector_to_cartesian( &
+            eta, theta, phi, components, cartesian)
+        real(dp), intent(in) :: eta, theta, phi, components(3)
+        real(dp), intent(out) :: cartesian(3)
+
+        real(dp) :: denominator, eta_radial, eta_vertical, radial(3)
+        real(dp) :: azimuthal(3), theta_radial, theta_vertical
+
+        denominator = cosh(eta) - cos(theta)
+        eta_radial = (1.0_dp - cosh(eta)*cos(theta))/denominator
+        eta_vertical = -sinh(eta)*sin(theta)/denominator
+        theta_radial = eta_vertical
+        theta_vertical = -eta_radial
+        radial = [cos(phi), sin(phi), 0.0_dp]
+        azimuthal = [-sin(phi), cos(phi), 0.0_dp]
+        cartesian = components(1)*( &
+            eta_radial*radial + [0.0_dp, 0.0_dp, eta_vertical]) + &
+            components(2)*( &
+            theta_radial*radial + [0.0_dp, 0.0_dp, theta_vertical]) + &
+            components(3)*azimuthal
+    end subroutine toroidal_vector_to_cartesian
 
     pure subroutine inverse_toroidal_angles(point, scale, eta, theta, phi)
         real(dp), intent(in) :: point(3), scale
