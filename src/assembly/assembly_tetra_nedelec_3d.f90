@@ -7,6 +7,8 @@ module fortfem_assembly_tetra_nedelec_3d
         evaluate_tetra_nedelec_first_kind, &
         initialize_tetra_nedelec_first_kind, tetra_nedelec_dof_count, &
         tetra_nedelec_first_kind_t
+    use fortfem_tetra_nedelec_global_dof_map, only: &
+        build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortnum_linalg, only: det3
@@ -192,19 +194,21 @@ contains
 
     subroutine assemble_tetra_nedelec_curl_mass_csc( &
             mesh_vertices, tetrahedra, matrix, status, curl_coefficient, &
-            mass_coefficient)
+            mass_coefficient, order)
         real(dp), intent(in) :: mesh_vertices(:, :)
         integer, intent(in) :: tetrahedra(:, :)
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+        integer, intent(in), optional :: order
 
         integer, allocatable :: columns(:), edges(:, :), global_dofs(:, :)
         integer, allocatable :: orientations(:, :), rows(:)
         real(dp), allocatable :: values(:)
         real(dp) :: curl_weight, element_matrix(6, 6), mass_weight
         real(dp) :: vertices(3, 4)
-        integer :: column, entry, local_status, node, row, tetrahedron
+        integer :: column, entry, local_status, node, polynomial_order
+        integer :: row, tetrahedron
 
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
@@ -214,10 +218,19 @@ contains
         if (size(tetrahedra, 2) < 1) return
         if (any(tetrahedra < 1)) return
         if (any(tetrahedra > size(mesh_vertices, 2))) return
+        polynomial_order = 1
+        if (present(order)) polynomial_order = order
+        if (polynomial_order < 1 .or. polynomial_order > 4) return
         curl_weight = 1.0_dp
         mass_weight = 1.0_dp
         if (present(curl_coefficient)) curl_weight = curl_coefficient
         if (present(mass_coefficient)) mass_weight = mass_coefficient
+        if (polynomial_order /= 1) then
+            call assemble_arbitrary_order_curl_mass_csc( &
+                mesh_vertices, tetrahedra, polynomial_order, curl_weight, &
+                mass_weight, matrix, status)
+            return
+        end if
         call build_tetra_edge_dof_map( &
             tetrahedra, edges, global_dofs, orientations, local_status)
         if (local_status /= 0) return
@@ -250,6 +263,74 @@ contains
             size(edges, 2), size(edges, 2), rows, columns, values, &
             matrix, status)
     end subroutine assemble_tetra_nedelec_curl_mass_csc
+
+    subroutine assemble_arbitrary_order_curl_mass_csc( &
+            mesh_vertices, tetrahedra, order, curl_coefficient, &
+            mass_coefficient, matrix, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        real(dp), intent(in) :: curl_coefficient, mass_coefficient
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edge_orientations(:, :)
+        integer, allocatable :: edges(:, :), face_permutations(:, :, :)
+        integer, allocatable :: faces(:, :), global_dofs(:, :), rows(:)
+        real(dp), allocatable :: basis_transform(:, :), element_matrix(:, :)
+        real(dp), allocatable :: oriented_matrix(:, :), values(:)
+        real(dp) :: vertices(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Higher-order tetrahedral Nedelec assembly failed")
+        if (order < 2 .or. order > 4) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate( &
+            rows(dof_count * dof_count * size(tetrahedra, 2)), &
+            columns(dof_count * dof_count * size(tetrahedra, 2)), &
+            values(dof_count * dof_count * size(tetrahedra, 2)))
+        allocate( &
+            basis_transform(dof_count, dof_count), &
+            oriented_matrix(dof_count, dof_count))
+
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_curl_mass_element( &
+                vertices, order, 2 * order, element_matrix, local_status, &
+                curl_coefficient, mass_coefficient)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_matrix = matmul( &
+                transpose(basis_transform), &
+                matmul(element_matrix, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_arbitrary_order_curl_mass_csc
 
     subroutine assemble_tetra_nedelec_element( &
             vertices, curl_coefficient, mass_coefficient, matrix, status)
