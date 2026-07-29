@@ -27,6 +27,7 @@ module fortfem_capi_mesh
     public :: fortfem_rt0_toroidal
     public :: fortfem_nedelec_axisymmetric_fourier_csc
     public :: fortfem_nedelec_evaluate
+    public :: fortfem_nedelec_evaluate_vertex
     public :: fortfem_nedelec_rt0_mass_csc
 
 contains
@@ -214,6 +215,48 @@ contains
         curl = to_c_complex(fortran_curl)
         status = 0_c_int
     end subroutine fortfem_nedelec_evaluate
+
+    subroutine fortfem_nedelec_evaluate_vertex( &
+            handle, vertex, n_dofs, dofs, value, curl, status) &
+            bind(c, name="fortfem_nedelec_evaluate_vertex")
+        integer(c_int), value :: handle, vertex, n_dofs
+        complex(c_double_complex), intent(in) :: dofs(*)
+        complex(c_double_complex), intent(out) :: value(*), curl
+        integer(c_int), intent(out) :: status
+
+        complex(dp), allocatable :: fortran_dofs(:)
+        complex(dp) :: fortran_curl, fortran_value(2)
+        integer :: candidate, component, slot, triangle, vertex_index
+
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+        status = -1_c_int
+        if (n_dofs /= int(meshes(slot)%n_edges, c_int)) return
+        if (vertex < 0_c_int .or. &
+            vertex >= int(meshes(slot)%n_vertices, c_int)) return
+
+        vertex_index = int(vertex) + 1
+        triangle = 0
+        do candidate = meshes(slot)%n_triangles, 1, -1
+            if (any(meshes(slot)%triangles(:, candidate) == vertex_index)) then
+                triangle = candidate
+                exit
+            end if
+        end do
+        if (triangle == 0) return
+
+        call copy_complex_dofs(n_dofs, dofs, fortran_dofs)
+        call evaluate_nedelec_field_2d(meshes(slot), triangle, &
+            meshes(slot)%vertices(1, vertex_index), &
+            meshes(slot)%vertices(2, vertex_index), fortran_dofs, &
+            fortran_value, fortran_curl)
+        do component = 1, 2
+            value(component) = to_c_complex(fortran_value(component))
+        end do
+        curl = to_c_complex(fortran_curl)
+        status = 0_c_int
+    end subroutine fortfem_nedelec_evaluate_vertex
 
     subroutine fortfem_rt0_l2_norm( &
             handle, n_dofs, dofs, norm, status) &
