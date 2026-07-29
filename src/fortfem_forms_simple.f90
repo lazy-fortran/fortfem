@@ -1,4 +1,6 @@
 module fortfem_forms_simple
+    use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
+        assemble_triangle_nedelec_curl_mass_element
     use fortfem_kinds, only: dp
     implicit none
 
@@ -47,14 +49,16 @@ module fortfem_forms_simple
         integer :: role = 0
         integer :: derivative = derivative_identity
         integer :: tensor_rank = 0
+        integer :: field_rank = 0
         logical :: integrated = .false.
         real(dp) :: scalar = 0.0_dp
         real(dp) :: mass_coefficient = 0.0_dp
         real(dp) :: stiffness_coefficient = 0.0_dp
+        real(dp) :: curl_coefficient = 0.0_dp
     end type compiler_item_t
 
     public :: assignment(=)
-    public :: compile_form, compile_form_matrix
+    public :: compile_form, compile_form_matrix, compile_vector_form_element
     public :: create_curl, create_grad, create_inner, create_measure
     public :: create_product, create_scale, create_sum, create_symbol
 
@@ -231,6 +235,34 @@ contains
         status = 0
     end subroutine compile_form_matrix
 
+    subroutine compile_vector_form_element( &
+            expr, family, degree, vertices, quadrature_degree, matrix, status)
+        type(form_expr_t), intent(in) :: expr
+        character(len=*), intent(in) :: family
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: vertices(2, 3)
+        integer, intent(in) :: quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: curl_coefficient, mass_coefficient
+        integer :: compiler_status
+
+        status = 1
+        call analyze_vector_bilinear_form( &
+            expr, mass_coefficient, curl_coefficient, compiler_status)
+        if (compiler_status /= 0) return
+        select case (trim(family))
+        case ("Nedelec", "Nedelec1", "Edge")
+            call assemble_triangle_nedelec_curl_mass_element( &
+                vertices, degree, quadrature_degree, matrix, status, &
+                curl_coefficient=curl_coefficient, &
+                mass_coefficient=mass_coefficient)
+        case default
+            status = 3
+        end select
+    end subroutine compile_vector_form_element
+
     subroutine analyze_scalar_bilinear_form( &
             expr, mass_coefficient, stiffness_coefficient, status)
         type(form_expr_t), intent(in) :: expr
@@ -264,10 +296,64 @@ contains
             status = 2
             return
         end if
+        if (stack(1)%field_rank /= 0) then
+            status = 2
+            return
+        end if
+        if (stack(1)%curl_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
         mass_coefficient = stack(1)%mass_coefficient
         stiffness_coefficient = stack(1)%stiffness_coefficient
         status = 0
     end subroutine analyze_scalar_bilinear_form
+
+    subroutine analyze_vector_bilinear_form( &
+            expr, mass_coefficient, curl_coefficient, status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(out) :: mass_coefficient, curl_coefficient
+        integer, intent(out) :: status
+
+        type(compiler_item_t), allocatable :: stack(:)
+        integer :: stack_size, token_index
+
+        mass_coefficient = 0.0_dp
+        curl_coefficient = 0.0_dp
+        status = 2
+        if (.not. allocated(expr%tokens)) return
+        if (size(expr%tokens) < 1) return
+        allocate(stack(size(expr%tokens)))
+        stack_size = 0
+        do token_index = 1, size(expr%tokens)
+            call apply_compiler_token( &
+                expr%tokens(token_index), stack, stack_size, status)
+            if (status /= 0) return
+        end do
+        if (stack_size /= 1) then
+            status = 2
+            return
+        end if
+        if (stack(1)%item_type /= item_form) then
+            status = 2
+            return
+        end if
+        if (.not. stack(1)%integrated) then
+            status = 2
+            return
+        end if
+        if (stack(1)%field_rank /= 1) then
+            status = 2
+            return
+        end if
+        if (stack(1)%stiffness_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
+        mass_coefficient = stack(1)%mass_coefficient
+        curl_coefficient = stack(1)%curl_coefficient
+        status = 0
+    end subroutine analyze_vector_bilinear_form
 
     subroutine apply_compiler_token(token, stack, stack_size, status)
         type(form_token_t), intent(in) :: token
@@ -282,6 +368,7 @@ contains
             stack(stack_size)%item_type = item_argument
             stack(stack_size)%role = token%role
             stack(stack_size)%tensor_rank = token%tensor_rank
+            stack(stack_size)%field_rank = token%tensor_rank
             stack(stack_size)%derivative = derivative_identity
         case (token_gradient)
             if (stack_size < 1) return
@@ -336,13 +423,16 @@ contains
         stack_size = stack_size - 1
         stack(stack_size) = compiler_item_t()
         stack(stack_size)%item_type = item_form
+        stack(stack_size)%field_rank = first%field_rank
         select case (first%derivative)
         case (derivative_identity)
-            if (first%tensor_rank /= 0) return
             stack(stack_size)%mass_coefficient = 1.0_dp
         case (derivative_gradient)
             if (first%tensor_rank /= 1) return
             stack(stack_size)%stiffness_coefficient = 1.0_dp
+        case (derivative_curl)
+            if (first%tensor_rank /= 0) return
+            stack(stack_size)%curl_coefficient = 1.0_dp
         case default
             return
         end select
@@ -392,6 +482,8 @@ contains
             stack(stack_size - 1)%mass_coefficient
         stack(stack_size - 1)%stiffness_coefficient = factor * &
             stack(stack_size - 1)%stiffness_coefficient
+        stack(stack_size - 1)%curl_coefficient = factor * &
+            stack(stack_size - 1)%curl_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
@@ -415,6 +507,8 @@ contains
             first%mass_coefficient + second%mass_coefficient
         stack(stack_size - 1)%stiffness_coefficient = &
             first%stiffness_coefficient + second%stiffness_coefficient
+        stack(stack_size - 1)%curl_coefficient = &
+            first%curl_coefficient + second%curl_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_add_token
