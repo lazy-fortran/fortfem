@@ -74,11 +74,12 @@ end interface
 
 ### Vector Elements
 
-- **Nédélec**: Verified lowest-order basis, covariant Piola map, orientation,
-  and curl-mass assembly.
-- **Raviart--Thomas**: Verified RT0 basis, contravariant Piola map,
-  orientation, and div-mass assembly.
-- High-level executable vector forms remain experimental.
+- **Nédélec**: First- and second-kind triangular families through order four,
+  with covariant Piola maps and oriented sparse curl-mass forms.
+- **Raviart--Thomas and BDM**: Triangular families through order four, with
+  contravariant Piola maps and oriented sparse divergence-mass forms.
+- Weighted vector forms compile to local matrices and `fortsparse` CSC
+  matrices. High-level vector source assembly and solves remain experimental.
 
 ## Weak Form Framework
 
