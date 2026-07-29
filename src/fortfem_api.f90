@@ -24,6 +24,7 @@ module fortfem_api
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_adjoint_double_layer_constant, &
         assemble_laplace_double_layer_constant, &
+        assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_helmholtz_boundary_operators_2d, only: &
@@ -213,6 +214,7 @@ module fortfem_api
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
+    public :: assemble_laplace_double_layer_mixed_linear
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_laplace_single_layer_constant
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
