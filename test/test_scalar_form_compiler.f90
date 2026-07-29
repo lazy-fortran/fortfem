@@ -1,14 +1,16 @@
 program test_scalar_form_compiler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compile_form_matrix, dx, form_expr_t, grad, &
-        init_measures, inner, operator(*), operator(+), test_function_t, &
-        trial_function_t
+    use fortfem_api, only: compile_form_matrix, compile_form_vector, &
+        constant, dx, form_expr_t, function_t, grad, init_measures, inner, &
+        operator(*), operator(+), test_function_t, trial_function_t
     use fortfem_kinds, only: dp
     implicit none
 
     type(form_expr_t) :: form
     type(test_function_t) :: v
     type(trial_function_t) :: u
+    type(function_t) :: source
+    real(dp) :: load(3)
     real(dp) :: expected(3, 3), mass(3, 3), matrix(3, 3)
     real(dp) :: stiffness(3, 3), vertices(2, 3)
     integer :: status, triangles(3, 1)
@@ -47,6 +49,13 @@ program test_scalar_form_compiler
     call compile_form_matrix(form, vertices, triangles, matrix, status)
     call record_condition(status /= 0, &
         "Compiler rejects an unsupported mixed-rank integrand")
+
+    source = constant(4.0_dp)
+    form = source * v * dx
+    call compile_form_vector(form, vertices, triangles, load, status)
+    call record_condition(status == 0 .and. &
+        maxval(abs(load - 4.0_dp / 3.0_dp)) < 2.0e-14_dp, &
+        "Compiled constant load matches the exact P1 element integral")
 
     call check_summary("Scalar form compiler")
     if (.not. all_passed) error stop 1

@@ -27,6 +27,7 @@ module fortfem_forms_simple
     integer, parameter :: token_scalar = 7
     integer, parameter :: token_measure = 8
     integer, parameter :: token_divergence = 9
+    integer, parameter :: token_constant_load = 10
 
     integer, parameter :: role_trial = 1
     integer, parameter :: role_test = 2
@@ -70,12 +71,15 @@ module fortfem_forms_simple
         real(dp) :: stiffness_coefficient = 0.0_dp
         real(dp) :: curl_coefficient = 0.0_dp
         real(dp) :: divergence_coefficient = 0.0_dp
+        real(dp) :: load_coefficient = 0.0_dp
     end type compiler_item_t
 
     public :: assignment(=)
-    public :: compile_form, compile_form_matrix, compile_vector_form_csc
+    public :: compile_form, compile_form_matrix, compile_form_vector
+    public :: compile_vector_form_csc
     public :: compile_vector_form_element
-    public :: create_curl, create_divergence, create_grad, create_inner
+    public :: create_constant_load, create_curl, create_divergence
+    public :: create_grad, create_inner
     public :: create_measure
     public :: create_product, create_scale, create_sum, create_symbol
 
@@ -227,6 +231,19 @@ contains
         expr%tokens(1)%token_type = token_measure
     end function create_measure
 
+    function create_constant_load(value) result(expr)
+        real(dp), intent(in) :: value
+        type(form_expr_t) :: expr
+
+        allocate(expr%tokens(1))
+        write(expr%description, '("constant(",es16.8,")*v")') value
+        expr%description = adjustl(expr%description)
+        expr%form_type = "linear"
+        expr%tensor_rank = 0
+        expr%tokens(1)%token_type = token_constant_load
+        expr%tokens(1)%scalar = value
+    end function create_constant_load
+
     function compile_form(expr) result(assembly_code)
         type(form_expr_t), intent(in) :: expr
         character(len=256) :: assembly_code
@@ -263,6 +280,28 @@ contains
         if (compiler_status /= 0) return
         status = 0
     end subroutine compile_form_matrix
+
+    subroutine compile_form_vector( &
+            expr, vertices, triangles, vector, status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(out) :: vector(:)
+        integer, intent(out) :: status
+
+        real(dp) :: load_coefficient
+        integer :: compiler_status
+
+        vector = 0.0_dp
+        status = 1
+        call analyze_scalar_linear_form( &
+            expr, load_coefficient, compiler_status)
+        if (compiler_status /= 0) return
+        call assemble_scalar_p1_load( &
+            vertices, triangles, load_coefficient, vector, compiler_status)
+        if (compiler_status /= 0) return
+        status = 0
+    end subroutine compile_form_vector
 
     subroutine compile_vector_form_element( &
             expr, family, degree, vertices, quadrature_degree, matrix, status)
@@ -440,10 +479,63 @@ contains
             status = 2
             return
         end if
+        if (stack(1)%load_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
         mass_coefficient = stack(1)%mass_coefficient
         stiffness_coefficient = stack(1)%stiffness_coefficient
         status = 0
     end subroutine analyze_scalar_bilinear_form
+
+    subroutine analyze_scalar_linear_form(expr, load_coefficient, status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(out) :: load_coefficient
+        integer, intent(out) :: status
+
+        type(compiler_item_t), allocatable :: stack(:)
+        integer :: stack_size, token_index
+
+        load_coefficient = 0.0_dp
+        status = 2
+        if (.not. allocated(expr%tokens)) return
+        if (size(expr%tokens) < 1) return
+        allocate(stack(size(expr%tokens)))
+        stack_size = 0
+        do token_index = 1, size(expr%tokens)
+            call apply_compiler_token( &
+                expr%tokens(token_index), stack, stack_size, status)
+            if (status /= 0) return
+        end do
+        if (stack_size /= 1) then
+            status = 2
+            return
+        end if
+        if (stack(1)%item_type /= item_form) then
+            status = 2
+            return
+        end if
+        if (.not. stack(1)%integrated) then
+            status = 2
+            return
+        end if
+        if (stack(1)%field_rank /= 0) then
+            status = 2
+            return
+        end if
+        if (stack(1)%mass_coefficient /= 0.0_dp .or. &
+            stack(1)%stiffness_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
+        if (stack(1)%curl_coefficient /= 0.0_dp .or. &
+            stack(1)%divergence_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
+        load_coefficient = stack(1)%load_coefficient
+        status = 0
+    end subroutine analyze_scalar_linear_form
 
     subroutine analyze_vector_bilinear_form( &
             expr, mass_coefficient, curl_coefficient, divergence_coefficient, &
@@ -538,6 +630,11 @@ contains
         case (token_measure)
             stack_size = stack_size + 1
             stack(stack_size)%item_type = item_measure
+        case (token_constant_load)
+            stack_size = stack_size + 1
+            stack(stack_size)%item_type = item_form
+            stack(stack_size)%field_rank = 0
+            stack(stack_size)%load_coefficient = token%scalar
         case (token_multiply)
             call apply_multiply_token(stack, stack_size, status)
             return
@@ -635,6 +732,8 @@ contains
             stack(stack_size - 1)%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = factor * &
             stack(stack_size - 1)%divergence_coefficient
+        stack(stack_size - 1)%load_coefficient = factor * &
+            stack(stack_size - 1)%load_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
@@ -663,6 +762,8 @@ contains
             first%curl_coefficient + second%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = &
             first%divergence_coefficient + second%divergence_coefficient
+        stack(stack_size - 1)%load_coefficient = &
+            first%load_coefficient + second%load_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_add_token
@@ -718,6 +819,39 @@ contains
         end do
         status = 0
     end subroutine assemble_scalar_p1_matrix
+
+    subroutine assemble_scalar_p1_load( &
+            vertices, triangles, load_coefficient, vector, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: load_coefficient
+        real(dp), intent(out) :: vector(:)
+        integer, intent(out) :: status
+
+        real(dp) :: area, determinant, x(3), y(3)
+        integer :: basis, node, triangle
+
+        vector = 0.0_dp
+        status = 3
+        if (size(vertices, 1) /= 2 .or. size(vertices, 2) < 3) return
+        if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
+        if (size(vector) /= size(vertices, 2)) return
+        if (any(triangles < 1) .or. &
+            any(triangles > size(vertices, 2))) return
+        do triangle = 1, size(triangles, 2)
+            x = vertices(1, triangles(:, triangle))
+            y = vertices(2, triangles(:, triangle))
+            determinant = (x(2) - x(1)) * (y(3) - y(1)) - &
+                (x(3) - x(1)) * (y(2) - y(1))
+            if (abs(determinant) <= 64.0_dp * epsilon(1.0_dp)) return
+            area = 0.5_dp * abs(determinant)
+            do basis = 1, 3
+                node = triangles(basis, triangle)
+                vector(node) = vector(node) + load_coefficient * area / 3.0_dp
+            end do
+        end do
+        status = 0
+    end subroutine assemble_scalar_p1_load
 
     function append_unary_token(a, token_type) result(expr)
         type(form_expr_t), intent(in) :: a
