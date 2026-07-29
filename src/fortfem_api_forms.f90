@@ -3,12 +3,13 @@ module fortfem_api_forms
     use fortfem_forms_simple, only: assignment(=), compile_form, &
         compile_form_matrix, compile_form_vector, compile_vector_form_csc, &
         compile_vector_form_element, compile_vector_form_rhs, create_curl, &
-        create_constant_load, create_divergence, create_grad, create_inner, &
+        create_cell_coefficient, create_constant_load, create_divergence, &
+        create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
         create_symbol, create_vector_constant_function, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
         vector_trial_function_t, vector_test_function_t,                    &
-        vector_function_t, function_t, simple_expression_t
+        vector_function_t, function_t, simple_expression_t, cell_coefficient_t
     implicit none
 
     private
@@ -45,6 +46,7 @@ module fortfem_api_forms
         module procedure expr_times_expr
         module procedure function_times_test
         module procedure function_times_expr
+        module procedure cell_coefficient_times_expr
         module procedure vector_function_times_vector_test
         module procedure real_times_expr
         module procedure expr_times_real
@@ -208,6 +210,16 @@ contains
         product%form_type = expr%form_type
         product%tensor_rank = expr%tensor_rank
     end function function_times_expr
+
+    function cell_coefficient_times_expr(coefficient, expr) result(product)
+        type(cell_coefficient_t), intent(in) :: coefficient
+        type(form_expr_t), intent(in) :: expr
+        type(form_expr_t) :: product
+        type(form_expr_t) :: coefficient_expr
+
+        coefficient_expr = create_cell_coefficient(coefficient%values)
+        product = create_product(coefficient_expr, expr)
+    end function cell_coefficient_times_expr
 
     function vector_function_times_vector_test(f, v) result(product)
         type(vector_function_t), intent(in) :: f
