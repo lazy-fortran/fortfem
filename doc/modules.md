@@ -57,6 +57,8 @@ FortFEM provides a clean, high-level API that hides implementation details while
 
 ### Solving and Visualization
 - **solve(equation, uh, bc)**: Solve weak form equation
+- **solve_mixed_poisson_rt0(mesh, source, flux, pressure, status)**: Solve
+  the sparse RT0-DG0 mixed system with homogeneous Dirichlet pressure data
 - **plot(uh, filename, title, colormap)**: Plot scalar function
 - **plot(Eh, filename, title, plot_type)**: Plot vector field
 - **plot(mesh, filename, title)**: Plot mesh triangulation
@@ -133,6 +135,8 @@ end program
   convergence for a smooth manufactured curl-mass problem
 - **Working**: Mesh generation and visualization with fortplotlib
 - **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
+- **Verified**: Sparse RT0-DG0 mixed Poisson flux is exactly conservative on
+  every cell
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and 3D
   elements
