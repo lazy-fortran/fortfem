@@ -110,12 +110,15 @@ uses Triangle-compatible mesh numbering, evaluates RT0 fields and their
 derivatives, computes weighted edge projections and L2 norms, and reconstructs
 the toroidal component from the Fourier divergence constraint.
 
-FortFEM cannot replace this daemon yet. The minimum replacement gate is a
-verified lowest-order H(curl)/H(div) pair, global orientations matching the
-MEPHIT mesh, the weighted Fourier form, factor reuse, coefficient
-interpolation, and a compatibility test against MEPHIT's six mesh fixtures and
-FreeFem++ matrices. Current MEPHIT inputs use only lowest order. The broader
-library goal requires arbitrary order.
+FortFEM now supplies the lowest-order H(curl)/H(div) pair, global
+orientations, weighted Fourier form, mixed RT0 load, retained factorization,
+coefficient reconstruction, and vacuum-mesh extension needed by this daemon.
+MEPHIT can dispatch the Maxwell solve and RT0 norm to FortFEM without
+launching FreeFem++ when built with `WITH_FORTFEM`. The compatibility gate is
+not met: matrices and solutions still need comparison against the FreeFem++
+reference, followed by the six mesh fixtures and full 33353 case. Current
+MEPHIT inputs use only lowest order. The broader library goal requires
+arbitrary order.
 
 ### Magnetic paper
 
@@ -304,7 +307,8 @@ test, not a convergence test.
 
 ### Implementation status on 2026-07-29
 
-The Phase 0 foundations and the first Phase 1 interfaces are implemented:
+Phase 0 is complete. The Phase 1 implementation is connected to MEPHIT, but
+its cross-code and production-case validation gate remains open:
 
 - the triangular lowest-order Nedelec basis, curl, and covariant Piola map
   pass exact edge-moment and affine-map tests;
@@ -323,6 +327,9 @@ The Phase 0 foundations and the first Phase 1 interfaces are implemented:
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
+- the weighted Fourier operator and mixed Nedelec--RT0 load assemble directly
+  into duplicate-compressed `fortsparse` CSC matrices; exact continuum
+  energy and pairing integrals provide independent assembly oracles.
 - oriented real and complex Nedelec tangential and RT0 normal edge moments use
   `fortnum` Gauss-Legendre rules and pass exact polynomial line-integral
   tests; the RT path also exposes MEPHIT's \(R\,v\cdot n\) cylindrical
@@ -343,16 +350,26 @@ The Phase 0 foundations and the first Phase 1 interfaces are implemented:
 - an installable `fortfem::capi` shared CMake target builds the focused
   MEPHIT-facing surface with pinned `fortsparse`; a standalone C consumer
   finds the installed package, links, and exercises a retained mesh.
+- the C ABI extends a retained core mesh through an outer polygon, numbers
+  outer-boundary edge degrees of freedom last, exposes both sparse
+  assemblies, and evaluates complex Nedelec fields in a selected triangle.
 - MEPHIT `main` optionally finds `fortfem::capi`, retains its production
-  triangle mesh through the C ABI, maps MEPHIT edge order and direction to
-  FortFEM's global RT0 degrees of freedom, and uses FortFEM for the RT0 L2
-  norm. An independent affine-field test covers a clockwise cell and
-  reordered, reversed edges. The default build and the remaining FreeFem++
-  operations are unchanged.
+  triangle mesh, constructs the vacuum annulus, eliminates homogeneous outer
+  boundary degrees of freedom, factors the weighted operator once, and
+  reuses it for Maxwell solves. It maps MEPHIT edge order and direction to
+  FortFEM's global Nedelec and RT0 degrees of freedom, reconstructs
+  \(B=i n A\) on core edges, evaluates nodal potential components, and uses
+  FortFEM for the RT0 L2 norm.
+- the MEPHIT adapter has independent affine RT0 norm, zero-source, nonzero
+  response, and complex-phase oracles. Its public `FEM_*` dispatch is tested
+  through the MEPHIT shared library, and a process-level test verifies that a
+  FortFEM build does not launch the supplied external FEM backend. The
+  default build retains the FreeFem++ path.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
-executable weak forms, DtN integration into scalar and elastic boundary
-forms, full MEPHIT operator replacement, and consumer validation remain.
+general executable weak forms, DtN integration into scalar and elastic
+boundary forms, FreeFem++ fixture parity, and production MEPHIT validation
+remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
@@ -383,6 +400,11 @@ tests. No direct UMFPACK binding remains in FortFEM.
 
 Exit gate: MEPHIT can run without FreeFem++ or Triangle for the validated case,
 with field and residual tolerances recorded from independent reference data.
+
+Items 1--4 are implemented. MEPHIT `main` at `4f578b3` runs the native
+backend without a FreeFem++ process. Items 5 and 6 remain the blocking
+validation work; no claim of numerical equivalence is made before those
+comparisons pass.
 
 ### Phase 2: arbitrary-order FEEC
 
