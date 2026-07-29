@@ -24,8 +24,121 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
     public :: assemble_triangle_nedelec_curl_mass_element
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_nedelec_curl_csc
+    public :: assemble_triangle_nedelec_cell_vector_load
 
 contains
+
+    subroutine assemble_triangle_nedelec_cell_vector_load( &
+            mesh, order, quadrature_degree, cell_values, vector, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: cell_values(:, :)
+        real(dp), intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(triangle_nedelec_first_kind_t) :: basis
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: eta(:), local_vector(:), physical_curls(:)
+        real(dp), allocatable :: physical_values(:, :), reference_curls(:)
+        real(dp), allocatable :: reference_values(:, :), weights(:), xi(:)
+        real(dp) :: determinant, jacobian(2, 2), physical_weight
+        real(dp) :: vertices(2, 3)
+        integer :: global_dof_count, local_dof, local_dof_count
+        integer :: local_status, point, triangle
+
+        vector = 0.0_dp
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Nedelec cell load assembly failed")
+        if (order < 1 .or. quadrature_degree < 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec cell load requires positive order")
+            return
+        end if
+        if (size(cell_values, 1) /= 2 .or. &
+            size(cell_values, 2) /= mesh%n_triangles) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec cell load requires one vector per triangle")
+            return
+        end if
+        call build_triangle_trimmed_dof_map( &
+            mesh, order, global_dofs, transforms, global_dof_count, &
+            local_status)
+        if (local_status /= 0 .or. size(vector) /= global_dof_count) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec cell load requires a valid output space")
+            return
+        end if
+        call initialize_triangle_nedelec_first_kind(order, basis, local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec cell load could not initialize its basis")
+            return
+        end if
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec cell load could not build its quadrature")
+            return
+        end if
+
+        local_dof_count = size(global_dofs, 1)
+        allocate(local_vector(local_dof_count))
+        allocate(reference_values(2, local_dof_count))
+        allocate(reference_curls(local_dof_count))
+        allocate(physical_values(2, local_dof_count))
+        allocate(physical_curls(local_dof_count))
+        do triangle = 1, mesh%n_triangles
+            vertices(:, 1) = &
+                mesh%vertices(:, mesh%triangles(1, triangle))
+            vertices(:, 2) = &
+                mesh%vertices(:, mesh%triangles(2, triangle))
+            vertices(:, 3) = &
+                mesh%vertices(:, mesh%triangles(3, triangle))
+            jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+            jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+            determinant = jacobian(1, 1) * jacobian(2, 2) - &
+                jacobian(1, 2) * jacobian(2, 1)
+            if (determinant <= 64.0_dp * epsilon(1.0_dp) * &
+                max(1.0_dp, maxval(abs(jacobian))**2)) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Nedelec cell load requires valid CCW triangles")
+                return
+            end if
+            local_vector = 0.0_dp
+            do point = 1, size(weights)
+                call evaluate_triangle_nedelec_first_kind( &
+                    basis, xi(point), eta(point), reference_values, &
+                    reference_curls, local_status)
+                if (local_status /= 0) return
+                call map_triangle_nedelec_covariant( &
+                    jacobian, reference_values, reference_curls, &
+                    physical_values, physical_curls, local_status)
+                if (local_status /= 0) return
+                physical_weight = determinant * weights(point)
+                do local_dof = 1, local_dof_count
+                    local_vector(local_dof) = local_vector(local_dof) + &
+                        physical_weight * dot_product( &
+                        cell_values(:, triangle), &
+                        physical_values(:, local_dof))
+                end do
+            end do
+            do local_dof = 1, local_dof_count
+                vector(global_dofs(local_dof, triangle)) = &
+                    vector(global_dofs(local_dof, triangle)) + real( &
+                    transforms(local_dof, triangle), dp) * &
+                    local_vector(local_dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_nedelec_cell_vector_load
 
     subroutine assemble_triangle_nedelec_curl_mass_element( &
             vertices, order, quadrature_degree, matrix, status, &

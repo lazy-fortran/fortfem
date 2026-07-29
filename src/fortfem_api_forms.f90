@@ -4,12 +4,13 @@ module fortfem_api_forms
         compile_form_matrix, compile_form_vector, compile_vector_form_csc, &
         compile_vector_form_element, compile_vector_form_rhs, create_curl, &
         create_cell_coefficient, create_constant_load, create_divergence, &
-        create_grad, create_inner, &
+        create_cell_vector_source, create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
         create_symbol, create_vector_constant_function, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
         vector_trial_function_t, vector_test_function_t,                    &
-        vector_function_t, function_t, simple_expression_t, cell_coefficient_t
+        vector_function_t, function_t, simple_expression_t, &
+        cell_coefficient_t, cell_vector_source_t
     implicit none
 
     private
@@ -85,6 +86,8 @@ contains
             expr_a = create_symbol("F", "test", 1)
             type is (vector_function_t)
             call vector_function_expression(a, expr_a)
+            type is (cell_vector_source_t)
+            expr_a = create_cell_vector_source(a%values)
             type is (form_expr_t)
             expr_a = a
         class default
@@ -103,6 +106,8 @@ contains
             expr_b = create_symbol("F", "test", 1)
             type is (vector_function_t)
             call vector_function_expression(b, expr_b)
+            type is (cell_vector_source_t)
+            expr_b = create_cell_vector_source(b%values)
             type is (form_expr_t)
             expr_b = b
         class default

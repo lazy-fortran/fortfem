@@ -420,9 +420,9 @@ its cross-code and production-case validation gate remains open:
   to local or oriented CSC operators for every implemented triangular vector
   family. The high-level scalar P1 solver uses the compiled matrix and load.
   The order-one Nedelec solver compiles cellwise scalar curl and mass
-  coefficients, constant vector sources, constant physical tangential data,
-  and owned nonconstant tangential edge moments. Its direct path solves the
-  sparse interior block with `fortsparse`.
+  coefficients, constant or cellwise vector sources, constant physical
+  tangential data, and owned nonconstant tangential edge moments. Its direct
+  path solves the sparse interior block with `fortsparse`.
 - the public order-one Nedelec path converges under refinement to the
   analytical three-material \(n=1\) transverse magnetic field from the
   magnetic paper.
@@ -453,9 +453,9 @@ its cross-code and production-case validation gate remains open:
   norm and zero-source oracles and verifies nonzero complex-phase response.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Mixed and boundary
-form compilation, nonconstant vector-source compilation, DtN integration
-into scalar and elastic boundary forms, production-mesh FreeFem++ parity, and
-production MEPHIT validation remain.
+form compilation, general pointwise vector-source compilation, DtN
+integration into scalar and elastic boundary forms, production-mesh
+FreeFem++ parity, and production MEPHIT validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
