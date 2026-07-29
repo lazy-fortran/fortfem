@@ -29,6 +29,7 @@ if(NOT TARGET fortsparse)
 endif()
 
 set(FORTFEM_CAPI_SOURCES
+    src/assembly/assembly_mixed_2d.f90
     src/assembly/assembly_nedelec_2d.f90
     src/basis/basis_edge_2d.f90
     src/basis/basis_rt_2d.f90

@@ -110,6 +110,21 @@ void fortfem_nedelec_axisymmetric_fourier_csc(
     int *status);
 
 /*
+ * Assemble the mixed integral of a Nedelec test field with an RT0 trial
+ * field. Storage and capacity conventions match the Fourier operator above.
+ */
+void fortfem_nedelec_rt0_mass_csc(
+    int handle,
+    int quadrature_degree,
+    int nnz_capacity,
+    int *n_dofs,
+    int *nnz,
+    int *col_ptr,
+    int *row_ind,
+    double *values,
+    int *status);
+
+/*
  * Factor a zero-based complex CSC matrix and return a positive opaque handle.
  * Handles retain the factorization across solves and must be released with
  * fortfem_factor_free. The handle registry is process-local.
