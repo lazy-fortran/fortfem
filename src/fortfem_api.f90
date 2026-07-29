@@ -70,6 +70,8 @@ module fortfem_api
         tetra_nedelec_first_kind_t
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortfem_tetra_nedelec_global_dof_map, only: &
+        build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
@@ -221,6 +223,8 @@ module fortfem_api
     public :: tetra_nedelec_first_kind_t
     public :: map_tetra_nedelec_covariant
     public :: build_tetra_edge_dof_map
+    public :: build_tetra_nedelec_basis_transform
+    public :: build_tetra_nedelec_dof_map
     public :: evaluate_triangle_bdm
     public :: initialize_triangle_bdm
     public :: triangle_bdm_basis_t
