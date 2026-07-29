@@ -1,6 +1,7 @@
 program test_planar_acoustic_displacement_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_planar_acoustic_displacement_dtn
+    use fortfem_api, only: apply_planar_acoustic_displacement_dtn, &
+        assemble_planar_acoustic_displacement_dtn_form
     use fortfem_kinds, only: dp
     implicit none
 
@@ -16,6 +17,7 @@ program test_planar_acoustic_displacement_dtn
         "Evanescent displacement produces a real decaying pressure")
     call check_truncation()
     call check_grazing_rejection()
+    call check_weak_form()
 
     call check_summary("Planar acoustic displacement DtN")
     if (.not. all_passed) error stop 1
@@ -82,6 +84,44 @@ contains
         call record_condition(status /= 0, &
             "Acoustic DtN reports a singular grazing mode")
     end subroutine check_grazing_rejection
+
+    subroutine check_weak_form()
+        integer, parameter :: sample_count = 11
+        complex(dp) :: form(sample_count, sample_count)
+        complex(dp) :: mode_values(sample_count), result(sample_count)
+        complex(dp) :: pressure_eigenvalue
+        real(dp) :: coordinate, mass_eigenvalue
+        integer :: mode, point, status
+
+        do mode = 0, 4, 2
+            do point = 1, sample_count
+                coordinate = 2.0_dp*pi*real(point - 1, dp)/ &
+                    real(sample_count, dp)
+                mode_values(point) = exp(cmplx( &
+                    0.0_dp, real(mode, dp)*coordinate, dp))
+            end do
+            call assemble_planar_acoustic_displacement_dtn_form( &
+                sample_count, 3.5_dp, 1.0_dp, 2.0_dp, 2.0_dp*pi, 5, &
+                form, status)
+            if (mode == 0) then
+                pressure_eigenvalue = cmplx(0.0_dp, -7.0_dp, dp)
+            else if (mode == 2) then
+                pressure_eigenvalue = &
+                    cmplx(0.0_dp, -24.5_dp/sqrt(8.25_dp), dp)
+            else
+                pressure_eigenvalue = &
+                    cmplx(-24.5_dp/sqrt(3.75_dp), 0.0_dp, dp)
+            end if
+            mass_eigenvalue = 2.0_dp*pi/real(sample_count, dp)/3.0_dp*( &
+                2.0_dp + cos(2.0_dp*pi*real(mode, dp)/ &
+                real(sample_count, dp)))
+            result = matmul(form, mode_values)
+            call record_condition(status == 0 .and. maxval(abs(result - &
+                mass_eigenvalue*pressure_eigenvalue*mode_values)) < &
+                2.0e-12_dp, &
+                "Acoustic displacement DtN form preserves Fourier spectrum")
+        end do
+    end subroutine check_weak_form
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
