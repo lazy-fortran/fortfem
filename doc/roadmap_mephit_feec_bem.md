@@ -330,10 +330,13 @@ The Phase 0 foundations are implemented:
 - complex RT0 coefficients reconstruct physical fields and element
   divergences, provide an L2 norm, and recover the toroidal Fourier component
   required by the zero-divergence constraint.
+- the first C ABI entry accepts zero-based interleaved triangle meshes and
+  returns globally oriented edge degrees of freedom and local signs.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms and consumer validation remain.
+forms, C factor/solve and field-transfer entries, and consumer validation
+remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
