@@ -1,0 +1,333 @@
+module fortfem_magnetic_box_3d
+    use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_vector_load, &
+        assemble_tetra_nedelec_weighted_csc
+    use fortfem_kinds, only: dp
+    use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortfem_tetra_nedelec_first_order, only: &
+        evaluate_tetra_nedelec_first_order
+    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
+    use fortnum_linalg, only: det3, inv3
+    use fortsparse, only: csc_from_triplet, csc_t, &
+        FORTSPARSE_INTERNAL_ERROR, FORTSPARSE_INVALID_MATRIX, &
+        fortsparse_status_t, status_set
+    implicit none
+
+    private
+
+    real(dp), parameter :: gauge_mass = 1.0e-10_dp
+
+    public :: solve_magnetic_box_3d
+
+contains
+
+    subroutine solve_magnetic_box_3d( &
+            n_xy, n_z, az_centre, n_dofs, status)
+        integer, intent(in) :: n_xy, n_z
+        real(dp), intent(out) :: az_centre
+        integer, intent(out) :: n_dofs
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: matrix
+        integer, allocatable :: edges(:, :), global_dofs(:, :)
+        integer, allocatable :: orientations(:, :), tetrahedra(:, :)
+        real(dp), allocatable :: right_hand_side(:), solution(:)
+        real(dp), allocatable :: vertices(:, :)
+        integer :: local_status
+
+        az_centre = 0.0_dp
+        n_dofs = 0
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Magnetic box solve failed")
+        call build_box_tetra_mesh( &
+            n_xy, n_z, vertices, tetrahedra, local_status)
+        if (local_status /= 0) return
+        call build_tetra_edge_dof_map( &
+            tetrahedra, edges, global_dofs, orientations, local_status)
+        if (local_status /= 0) return
+        n_dofs = size(edges, 2)
+        call assemble_tetra_nedelec_weighted_csc( &
+            vertices, tetrahedra, box_reluctivity, gauge_mass, matrix, status)
+        if (status%code /= 0) return
+        call assemble_tetra_nedelec_vector_load( &
+            vertices, tetrahedra, axial_source, right_hand_side, status)
+        if (status%code /= 0) return
+        call solve_box_interior( &
+            vertices, edges, matrix, right_hand_side, solution, status)
+        if (status%code /= 0) return
+        call probe_box_az( &
+            vertices, tetrahedra, global_dofs, orientations, solution, &
+            az_centre, local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INTERNAL_ERROR, &
+                "Magnetic box centre probe failed")
+            return
+        end if
+        call status_set(status, 0, "")
+    end subroutine solve_magnetic_box_3d
+
+    subroutine build_box_tetra_mesh( &
+            n_xy, n_z, vertices, tetrahedra, status)
+        integer, intent(in) :: n_xy, n_z
+        real(dp), allocatable, intent(out) :: vertices(:, :)
+        integer, allocatable, intent(out) :: tetrahedra(:, :)
+        integer, intent(out) :: status
+
+        integer :: cube_vertices(8), i, j, k, tetrahedron, vertex
+        real(dp) :: jacobian(3, 3)
+
+        status = 1
+        if (n_xy < 1 .or. n_z < 1) return
+        allocate(vertices(3, (n_xy + 1)**2 * (n_z + 1)))
+        do k = 0, n_z
+            do j = 0, n_xy
+                do i = 0, n_xy
+                    vertex = box_vertex_index(i, j, k, n_xy)
+                    vertices(:, vertex) = [ &
+                        real(i, dp) / real(n_xy, dp), &
+                        real(j, dp) / real(n_xy, dp), &
+                        1.0_dp + real(k, dp) / real(n_z, dp)]
+                end do
+            end do
+        end do
+
+        allocate(tetrahedra(4, 6 * n_xy * n_xy * n_z))
+        tetrahedron = 0
+        do k = 0, n_z - 1
+            do j = 0, n_xy - 1
+                do i = 0, n_xy - 1
+                    cube_vertices = [ &
+                        box_vertex_index(i, j, k, n_xy), &
+                        box_vertex_index(i + 1, j, k, n_xy), &
+                        box_vertex_index(i, j + 1, k, n_xy), &
+                        box_vertex_index(i + 1, j + 1, k, n_xy), &
+                        box_vertex_index(i, j, k + 1, n_xy), &
+                        box_vertex_index(i + 1, j, k + 1, n_xy), &
+                        box_vertex_index(i, j + 1, k + 1, n_xy), &
+                        box_vertex_index(i + 1, j + 1, k + 1, n_xy)]
+                    call add_cube_tetrahedra( &
+                        cube_vertices, tetrahedra, tetrahedron)
+                end do
+            end do
+        end do
+        do tetrahedron = 1, size(tetrahedra, 2)
+            jacobian(:, 1) = vertices(:, tetrahedra(2, tetrahedron)) - &
+                vertices(:, tetrahedra(1, tetrahedron))
+            jacobian(:, 2) = vertices(:, tetrahedra(3, tetrahedron)) - &
+                vertices(:, tetrahedra(1, tetrahedron))
+            jacobian(:, 3) = vertices(:, tetrahedra(4, tetrahedron)) - &
+                vertices(:, tetrahedra(1, tetrahedron))
+            if (det3(jacobian) < 0.0_dp) then
+                vertex = tetrahedra(3, tetrahedron)
+                tetrahedra(3, tetrahedron) = tetrahedra(4, tetrahedron)
+                tetrahedra(4, tetrahedron) = vertex
+            end if
+        end do
+        status = 0
+    end subroutine build_box_tetra_mesh
+
+    pure integer function box_vertex_index(i, j, k, n_xy) result(index)
+        integer, intent(in) :: i, j, k, n_xy
+
+        index = 1 + i + (n_xy + 1) * (j + (n_xy + 1) * k)
+    end function box_vertex_index
+
+    subroutine add_cube_tetrahedra( &
+            cube, tetrahedra, tetrahedron_count)
+        integer, intent(in) :: cube(8)
+        integer, intent(inout) :: tetrahedra(:, :)
+        integer, intent(inout) :: tetrahedron_count
+
+        integer :: local_tetrahedra(4, 6), tetrahedron
+
+        local_tetrahedra(:, 1) = cube([1, 2, 4, 8])
+        local_tetrahedra(:, 2) = cube([1, 2, 6, 8])
+        local_tetrahedra(:, 3) = cube([1, 3, 4, 8])
+        local_tetrahedra(:, 4) = cube([1, 3, 7, 8])
+        local_tetrahedra(:, 5) = cube([1, 5, 6, 8])
+        local_tetrahedra(:, 6) = cube([1, 5, 7, 8])
+        do tetrahedron = 1, 6
+            tetrahedron_count = tetrahedron_count + 1
+            tetrahedra(:, tetrahedron_count) = &
+                local_tetrahedra(:, tetrahedron)
+        end do
+    end subroutine add_cube_tetrahedra
+
+    subroutine solve_box_interior( &
+            vertices, edges, matrix, rhs, solution, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: edges(:, :)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:)
+        real(dp), allocatable, intent(out) :: solution(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: interior_matrix
+        integer, allocatable :: columns(:), interior_index(:), rows(:)
+        real(dp), allocatable :: interior_rhs(:), interior_solution(:)
+        real(dp), allocatable :: values(:)
+        integer :: column, edge, entry, interior_count, interior_entry
+        integer :: row, solve_status
+
+        allocate(interior_index(size(edges, 2)))
+        interior_index = 0
+        interior_count = 0
+        do edge = 1, size(edges, 2)
+            if (.not. box_boundary_edge(vertices, edges(:, edge))) then
+                interior_count = interior_count + 1
+                interior_index(edge) = interior_count
+            end if
+        end do
+        if (interior_count < 1) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Magnetic box has no interior edge degrees of freedom")
+            return
+        end if
+        allocate(rows(matrix%nnz), columns(matrix%nnz), values(matrix%nnz))
+        interior_entry = 0
+        do column = 1, matrix%ncol
+            if (interior_index(column) == 0) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (interior_index(row) == 0) cycle
+                interior_entry = interior_entry + 1
+                rows(interior_entry) = interior_index(row)
+                columns(interior_entry) = interior_index(column)
+                values(interior_entry) = matrix%val(entry)
+            end do
+        end do
+        call csc_from_triplet( &
+            interior_count, interior_count, rows(:interior_entry), &
+            columns(:interior_entry), values(:interior_entry), &
+            interior_matrix, status)
+        if (status%code /= 0) return
+        allocate(interior_rhs(interior_count))
+        allocate(interior_solution(interior_count))
+        do edge = 1, size(edges, 2)
+            if (interior_index(edge) > 0) then
+                interior_rhs(interior_index(edge)) = rhs(edge)
+            end if
+        end do
+        call sparse_direct_solve_csc( &
+            interior_count, interior_matrix%col_ptr, interior_matrix%row_idx, &
+            interior_matrix%val, interior_rhs, interior_solution, solve_status)
+        if (solve_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INTERNAL_ERROR, &
+                "Magnetic box sparse solve failed")
+            return
+        end if
+        allocate(solution(size(edges, 2)))
+        solution = 0.0_dp
+        do edge = 1, size(edges, 2)
+            if (interior_index(edge) > 0) then
+                solution(edge) = interior_solution(interior_index(edge))
+            end if
+        end do
+        call status_set(status, 0, "")
+    end subroutine solve_box_interior
+
+    pure logical function box_boundary_edge(vertices, edge_vertices)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: edge_vertices(2)
+
+        real(dp), parameter :: tolerance = 64.0_dp * epsilon(1.0_dp)
+        real(dp) :: first(3), second(3)
+
+        first = vertices(:, edge_vertices(1))
+        second = vertices(:, edge_vertices(2))
+        box_boundary_edge = &
+            same_plane(first(1), second(1), 0.0_dp, tolerance) .or. &
+            same_plane(first(1), second(1), 1.0_dp, tolerance) .or. &
+            same_plane(first(2), second(2), 0.0_dp, tolerance) .or. &
+            same_plane(first(2), second(2), 1.0_dp, tolerance) .or. &
+            same_plane(first(3), second(3), 1.0_dp, tolerance) .or. &
+            same_plane(first(3), second(3), 2.0_dp, tolerance)
+    end function box_boundary_edge
+
+    pure logical function same_plane(first, second, plane, tolerance)
+        real(dp), intent(in) :: first, second, plane, tolerance
+
+        same_plane = abs(first - plane) <= tolerance .and. &
+            abs(second - plane) <= tolerance
+    end function same_plane
+
+    subroutine probe_box_az( &
+            vertices, tetrahedra, global_dofs, orientations, solution, &
+            az_centre, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:)
+        integer, intent(in) :: tetrahedra(:, :)
+        integer, intent(in) :: global_dofs(:, :), orientations(:, :)
+        real(dp), intent(out) :: az_centre
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, inverse_jacobian(3, 3), jacobian(3, 3)
+        real(dp) :: local_dofs(6), physical_curls(3, 6)
+        real(dp) :: physical_values(3, 6), point(3), reference_curls(3, 6)
+        real(dp) :: reference_point(3), reference_values(3, 6), value(3)
+        real(dp) :: vertex_a(3)
+        integer :: dof, inverse_status, tetrahedron
+
+        az_centre = 0.0_dp
+        status = 1
+        point = [0.5_dp, 0.5_dp, 1.5_dp]
+        do tetrahedron = 1, size(tetrahedra, 2)
+            vertex_a = vertices(:, tetrahedra(1, tetrahedron))
+            jacobian(:, 1) = vertices(:, tetrahedra(2, tetrahedron)) - vertex_a
+            jacobian(:, 2) = vertices(:, tetrahedra(3, tetrahedron)) - vertex_a
+            jacobian(:, 3) = vertices(:, tetrahedra(4, tetrahedron)) - vertex_a
+            determinant = det3(jacobian)
+            if (determinant <= 0.0_dp) cycle
+            call inv3(jacobian, inverse_jacobian, inverse_status)
+            if (inverse_status /= 0) cycle
+            reference_point = matmul(inverse_jacobian, point - vertex_a)
+            if (any(reference_point < -1.0e-12_dp)) cycle
+            if (sum(reference_point) > 1.0_dp + 1.0e-12_dp) cycle
+            reference_point = [0.25_dp, 0.25_dp, 0.25_dp]
+            call evaluate_tetra_nedelec_first_order( &
+                reference_point, reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            do dof = 1, 6
+                local_dofs(dof) = real( &
+                    orientations(dof, tetrahedron), dp) * &
+                    solution(global_dofs(dof, tetrahedron))
+            end do
+            value = matmul(physical_values, local_dofs)
+            az_centre = value(3)
+            status = 0
+            return
+        end do
+    end subroutine probe_box_az
+
+    pure subroutine box_reluctivity(x, y, z, value)
+        real(dp), intent(in) :: x, y, z
+        real(dp), intent(out) :: value(3, 3)
+
+        value = 0.0_dp
+        value(1, 1) = 1.0_dp
+        value(2, 2) = 1.0_dp
+        value(3, 3) = z
+        associate (unused => [x, y])
+            if (size(unused) /= 2) error stop
+        end associate
+    end subroutine box_reluctivity
+
+    pure subroutine axial_source(x, y, z, value)
+        real(dp), intent(in) :: x, y, z
+        real(dp), intent(out) :: value(3)
+
+        value = [0.0_dp, 0.0_dp, 1.0_dp]
+        associate (unused => [x, y, z])
+            if (size(unused) /= 3) error stop
+        end associate
+    end subroutine axial_source
+
+end module fortfem_magnetic_box_3d

@@ -12,8 +12,116 @@ module fortfem_assembly_tetra_nedelec_3d
     private
 
     public :: assemble_tetra_nedelec_curl_mass_csc
+    public :: assemble_tetra_nedelec_weighted_csc
+    public :: assemble_tetra_nedelec_vector_load
+
+    abstract interface
+        pure subroutine tensor_coefficient_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value(3, 3)
+        end subroutine tensor_coefficient_3d
+
+        pure subroutine vector_source_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value(3)
+        end subroutine vector_source_3d
+    end interface
 
 contains
+
+    subroutine assemble_tetra_nedelec_weighted_csc( &
+            mesh_vertices, tetrahedra, coefficient, mass_coefficient, &
+            matrix, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :)
+        procedure(tensor_coefficient_3d) :: coefficient
+        real(dp), intent(in) :: mass_coefficient
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edges(:, :), global_dofs(:, :)
+        integer, allocatable :: orientations(:, :), rows(:)
+        real(dp), allocatable :: triplet_values(:)
+        real(dp) :: element_matrix(6, 6), vertices(3, 4)
+        integer :: column, entry, local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Weighted tetrahedral Nedelec assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        call build_tetra_edge_dof_map( &
+            tetrahedra, edges, global_dofs, orientations, local_status)
+        if (local_status /= 0) return
+        allocate(rows(36 * size(tetrahedra, 2)))
+        allocate(columns(size(rows)), triplet_values(size(rows)))
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_weighted_element( &
+                vertices, coefficient, mass_coefficient, element_matrix, &
+                local_status)
+            if (local_status /= 0) return
+            do column = 1, 6
+                do row = 1, 6
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    triplet_values(entry) = real( &
+                        orientations(row, tetrahedron) * &
+                        orientations(column, tetrahedron), dp) * &
+                        element_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            size(edges, 2), size(edges, 2), rows, columns, triplet_values, &
+            matrix, status)
+    end subroutine assemble_tetra_nedelec_weighted_csc
+
+    subroutine assemble_tetra_nedelec_vector_load( &
+            mesh_vertices, tetrahedra, source, vector, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :)
+        procedure(vector_source_3d) :: source
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: edges(:, :), global_dofs(:, :)
+        integer, allocatable :: orientations(:, :)
+        real(dp) :: element_vector(6), vertices(3, 4)
+        integer :: dof, local_status, node, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Tetrahedral Nedelec vector load assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        call build_tetra_edge_dof_map( &
+            tetrahedra, edges, global_dofs, orientations, local_status)
+        if (local_status /= 0) return
+        allocate(vector(size(edges, 2)))
+        vector = 0.0_dp
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_load_element( &
+                vertices, source, element_vector, local_status)
+            if (local_status /= 0) return
+            do dof = 1, 6
+                vector(global_dofs(dof, tetrahedron)) = &
+                    vector(global_dofs(dof, tetrahedron)) + &
+                    real(orientations(dof, tetrahedron), dp) * &
+                    element_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_vector_load
 
     subroutine assemble_tetra_nedelec_curl_mass_csc( &
             mesh_vertices, tetrahedra, matrix, status, curl_coefficient, &
@@ -124,5 +232,131 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_nedelec_element
+
+    subroutine assemble_tetra_nedelec_weighted_element( &
+            vertices, coefficient, mass_coefficient, matrix, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        procedure(tensor_coefficient_3d) :: coefficient
+        real(dp), intent(in) :: mass_coefficient
+        real(dp), intent(out) :: matrix(6, 6)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: physical_curls(3, 6), physical_values(3, 6)
+        real(dp) :: points(3, 4), reference_curls(3, 6)
+        real(dp) :: reference_values(3, 6), tensor(3, 3), weights(4)
+        integer :: column, point, row
+
+        status = 1
+        matrix = 0.0_dp
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_degree_two_quadrature(points, weights)
+        do point = 1, 4
+            call evaluate_tetra_nedelec_first_order( &
+                points(:, point), reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, points(:, point))
+            call coefficient( &
+                physical_point(1), physical_point(2), physical_point(3), &
+                tensor)
+            do column = 1, 6
+                do row = 1, 6
+                    matrix(row, column) = matrix(row, column) + &
+                        determinant * weights(point) * (dot_product( &
+                        physical_curls(:, row), &
+                        matmul(tensor, physical_curls(:, column))) + &
+                        mass_coefficient * dot_product( &
+                        physical_values(:, row), physical_values(:, column)))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_weighted_element
+
+    subroutine assemble_tetra_nedelec_load_element( &
+            vertices, source, vector, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        procedure(vector_source_3d) :: source
+        real(dp), intent(out) :: vector(6)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: physical_curls(3, 6), physical_values(3, 6)
+        real(dp) :: points(3, 4), reference_curls(3, 6)
+        real(dp) :: reference_values(3, 6), source_value(3), weights(4)
+        integer :: dof, point
+
+        status = 1
+        vector = 0.0_dp
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_degree_two_quadrature(points, weights)
+        do point = 1, 4
+            call evaluate_tetra_nedelec_first_order( &
+                points(:, point), reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, points(:, point))
+            call source( &
+                physical_point(1), physical_point(2), physical_point(3), &
+                source_value)
+            do dof = 1, 6
+                vector(dof) = vector(dof) + determinant * weights(point) * &
+                    dot_product(source_value, physical_values(:, dof))
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_load_element
+
+    pure subroutine tetra_geometry(vertices, jacobian, determinant, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        real(dp), intent(out) :: jacobian(3, 3), determinant
+        integer, intent(out) :: status
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+        determinant = det3(jacobian)
+        status = 1
+        if (determinant <= 64.0_dp * epsilon(1.0_dp) * &
+            max(1.0_dp, maxval(abs(jacobian))**3)) return
+        status = 0
+    end subroutine tetra_geometry
+
+    pure subroutine tetra_degree_two_quadrature(points, weights)
+        real(dp), intent(out) :: points(3, 4), weights(4)
+
+        real(dp), parameter :: a = (5.0_dp + 3.0_dp * sqrt(5.0_dp)) / 20.0_dp
+        real(dp), parameter :: b = (5.0_dp - sqrt(5.0_dp)) / 20.0_dp
+
+        points(:, 1) = [b, b, b]
+        points(:, 2) = [a, b, b]
+        points(:, 3) = [b, a, b]
+        points(:, 4) = [b, b, a]
+        weights = 1.0_dp / 24.0_dp
+    end subroutine tetra_degree_two_quadrature
+
+    pure logical function valid_tetra_mesh(mesh_vertices, tetrahedra)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :)
+
+        valid_tetra_mesh = .false.
+        if (size(mesh_vertices, 1) /= 3) return
+        if (size(tetrahedra, 1) /= 4) return
+        if (size(tetrahedra, 2) < 1) return
+        if (any(tetrahedra < 1)) return
+        if (any(tetrahedra > size(mesh_vertices, 2))) return
+        valid_tetra_mesh = .true.
+    end function valid_tetra_mesh
 
 end module fortfem_assembly_tetra_nedelec_3d
