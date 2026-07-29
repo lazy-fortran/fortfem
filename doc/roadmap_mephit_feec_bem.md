@@ -337,10 +337,13 @@ The Phase 0 foundations are implemented:
 - the C ABI also accepts zero-based complex CSC matrices, retains
   `fortsparse` factors behind opaque process-local handles, reuses them across
   right-hand sides, and rejects released handles.
+- complex RT0 coefficients cross the C boundary in global edge-DOF order for
+  point evaluation, divergence, L2 integration, and toroidal Fourier
+  reconstruction.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms, C field-transfer entries, and consumer validation remain.
+forms and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
