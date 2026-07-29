@@ -10,6 +10,7 @@ module fortfem_helmholtz_exterior_2d
 
     private
 
+    public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
 
@@ -25,6 +26,79 @@ module fortfem_helmholtz_exterior_2d
     end interface
 
 contains
+
+    subroutine evaluate_helmholtz_combined_potential_adaptive_constant( &
+            panel_start, panel_end, wavenumber, coupling, density, points, &
+            quadrature_order, relative_tolerance, max_depth, field, &
+            error_estimate, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        real(dp), intent(in) :: wavenumber, coupling
+        complex(dp), intent(in) :: density(:)
+        real(dp), intent(in) :: points(:, :)
+        integer, intent(in) :: quadrature_order
+        real(dp), intent(in) :: relative_tolerance
+        integer, intent(in) :: max_depth
+        complex(dp), intent(out) :: field(:)
+        real(dp), intent(out) :: error_estimate(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: nodes(:), weights(:)
+        complex(dp) :: contribution
+        real(dp) :: contribution_error, length, normal(2), tolerance
+        real(dp) :: panel_end_local(2), panel_start_local(2), target(2)
+        integer :: local_status, panel, panel_count, point
+
+        field = (0.0_dp, 0.0_dp)
+        error_estimate = 0.0_dp
+        status = 1
+        panel_count = size(panel_start, 2)
+        if (size(panel_start, 1) /= 2 .or. size(panel_end, 1) /= 2) return
+        if (size(panel_end, 2) /= panel_count .or. panel_count < 1) return
+        if (size(density) /= panel_count .or. size(points, 1) /= 2) return
+        if (size(field) /= size(points, 2) .or. &
+            size(error_estimate) /= size(points, 2)) return
+        if (wavenumber <= 0.0_dp .or. coupling <= 0.0_dp) return
+        if (quadrature_order < 1 .or. relative_tolerance <= 0.0_dp) return
+        if (max_depth < 1) return
+
+        allocate(nodes(quadrature_order), weights(quadrature_order))
+        call gauss_legendre_ab( &
+            quadrature_order, 0.0_dp, 1.0_dp, nodes, weights)
+        tolerance = relative_tolerance / real(panel_count, dp)
+        do panel = 1, panel_count
+            panel_start_local = panel_start(:, panel)
+            panel_end_local = panel_end(:, panel)
+            length = norm2(panel_end_local - panel_start_local)
+            if (length <= 0.0_dp) then
+                status = 2
+                return
+            end if
+            normal(1) = (panel_end_local(2) - panel_start_local(2)) / length
+            normal(2) = (panel_start_local(1) - panel_end_local(1)) / length
+            do point = 1, size(points, 2)
+                target = points(:, point)
+                if (point_segment_distance( &
+                    target, panel_start_local, panel_end_local) <= &
+                    64.0_dp * epsilon(1.0_dp) * max(1.0_dp, length)) then
+                    status = 2
+                    return
+                end if
+                call adaptive_panel_potential( &
+                    panel_start_local, panel_end_local, normal, length, &
+                    target, wavenumber, coupling, nodes, weights, &
+                    0.0_dp, 1.0_dp, tolerance, 0, max_depth, contribution, &
+                    contribution_error, local_status)
+                if (local_status /= 0) then
+                    status = local_status
+                    return
+                end if
+                field(point) = field(point) + density(panel) * contribution
+                error_estimate(point) = error_estimate(point) + &
+                    abs(density(panel)) * contribution_error
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_helmholtz_combined_potential_adaptive_constant
 
     subroutine solve_helmholtz_cfie_constant( &
             panel_start, panel_end, wavenumber, coupling, dirichlet_trace, &
@@ -177,6 +251,128 @@ contains
         end do
         status = 0
     end subroutine evaluate_helmholtz_combined_potential_constant
+
+    recursive subroutine adaptive_panel_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, interval_start, interval_end, tolerance, &
+            depth, max_depth, value, error_estimate, status)
+        real(dp), intent(in) :: panel_start(2), panel_end(2), normal(2)
+        real(dp), intent(in) :: panel_length, target(2), wavenumber, coupling
+        real(dp), intent(in) :: nodes(:), weights(:)
+        real(dp), intent(in) :: interval_start, interval_end, tolerance
+        integer, intent(in) :: depth, max_depth
+        complex(dp), intent(out) :: value
+        real(dp), intent(out) :: error_estimate
+        integer, intent(out) :: status
+
+        complex(dp) :: left_value, parent_value, right_value
+        real(dp) :: left_error, midpoint, right_error
+        integer :: local_status
+
+        midpoint = 0.5_dp * (interval_start + interval_end)
+        call panel_interval_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, interval_start, interval_end, &
+            parent_value, status)
+        if (status /= 0) return
+        call panel_interval_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, interval_start, midpoint, &
+            left_value, status)
+        if (status /= 0) return
+        call panel_interval_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, midpoint, interval_end, &
+            right_value, status)
+        if (status /= 0) return
+
+        value = left_value + right_value
+        error_estimate = abs(value - parent_value)
+        if (error_estimate <= tolerance * max(1.0_dp, abs(value))) then
+            status = 0
+            return
+        end if
+        if (depth >= max_depth) then
+            status = 3
+            return
+        end if
+
+        call adaptive_panel_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, interval_start, midpoint, &
+            0.5_dp * tolerance, depth + 1, max_depth, left_value, left_error, &
+            local_status)
+        if (local_status /= 0) then
+            status = local_status
+            return
+        end if
+        call adaptive_panel_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, midpoint, interval_end, &
+            0.5_dp * tolerance, depth + 1, max_depth, right_value, right_error, &
+            local_status)
+        if (local_status /= 0) then
+            status = local_status
+            return
+        end if
+        value = left_value + right_value
+        error_estimate = left_error + right_error
+        status = 0
+    end subroutine adaptive_panel_potential
+
+    subroutine panel_interval_potential( &
+            panel_start, panel_end, normal, panel_length, target, wavenumber, &
+            coupling, nodes, weights, interval_start, interval_end, &
+            value, status)
+        real(dp), intent(in) :: panel_start(2), panel_end(2), normal(2)
+        real(dp), intent(in) :: panel_length, target(2), wavenumber, coupling
+        real(dp), intent(in) :: nodes(:), weights(:)
+        real(dp), intent(in) :: interval_start, interval_end
+        complex(dp), intent(out) :: value
+        integer, intent(out) :: status
+
+        complex(dp) :: double_kernel, hankel0, hankel1, single_kernel
+        real(dp) :: displacement(2), distance, parameter, source(2)
+        type(fortnum_status_t) :: special_status
+        integer :: node
+
+        value = (0.0_dp, 0.0_dp)
+        status = 2
+        do node = 1, size(nodes)
+            parameter = interval_start + &
+                (interval_end - interval_start) * nodes(node)
+            source = panel_start + parameter * (panel_end - panel_start)
+            displacement = target - source
+            distance = norm2(displacement)
+            if (distance <= 0.0_dp) return
+            call hankel_h1_real( &
+                0, wavenumber * distance, hankel0, special_status)
+            if (special_status%code /= 0) return
+            call hankel_h1_real( &
+                1, wavenumber * distance, hankel1, special_status)
+            if (special_status%code /= 0) return
+            single_kernel = cmplx(0.0_dp, 0.25_dp, dp) * hankel0
+            double_kernel = cmplx(0.0_dp, 0.25_dp, dp) * &
+                wavenumber * hankel1 * dot_product(displacement, normal) / &
+                distance
+            value = value + weights(node) * (double_kernel - &
+                cmplx(0.0_dp, coupling, dp) * single_kernel)
+        end do
+        value = panel_length * (interval_end - interval_start) * value
+        status = 0
+    end subroutine panel_interval_potential
+
+    pure function point_segment_distance(point, start, finish) result(distance)
+        real(dp), intent(in) :: point(2), start(2), finish(2)
+        real(dp) :: distance
+
+        real(dp) :: direction(2), parameter
+
+        direction = finish - start
+        parameter = dot_product(point - start, direction) / sum(direction**2)
+        parameter = max(0.0_dp, min(1.0_dp, parameter))
+        distance = norm2(point - (start + parameter * direction))
+    end function point_segment_distance
 
     pure function dense_relative_residual(matrix, solution, rhs) result(residual)
         complex(dp), intent(in) :: matrix(:, :), solution(:), rhs(:)
