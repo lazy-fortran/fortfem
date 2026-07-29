@@ -13,6 +13,7 @@ module fortfem_api
         assemble_triangle_rt_div_mass_element, &
         assemble_triangle_rt_divergence_csc
     use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_vector_load, &
         assemble_tetra_nedelec_weighted_csc
@@ -258,6 +259,7 @@ module fortfem_api
     public :: assemble_triangle_rt_div_mass_csc
     public :: assemble_triangle_rt_divergence_csc
     public :: assemble_tetra_nedelec_curl_mass_csc
+    public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
     public :: assemble_helmholtz_single_layer_linear

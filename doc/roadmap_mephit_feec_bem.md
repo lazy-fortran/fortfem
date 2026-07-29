@@ -418,7 +418,9 @@ its cross-code and production-case validation gate remains open:
 - first-kind tetrahedral reference bases through order four have the exact
   dimensions 6, 20, 45, and 84. Their complete edge, face, and cell moments
   are Kronecker, they reproduce polynomial gradients with zero curl, and
-  their analytical curls agree with independent finite differences.
+  their analytical curls agree with independent finite differences. Local
+  curl-mass matrices reproduce exact covariantly mapped polynomial energies
+  at every implemented order.
 - two tetrahedra with opposite shared-face ordering reuse all three common
   global edge degrees of freedom and expose the required local orientation
   reversal.
@@ -550,7 +552,7 @@ helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
 through degree-four mixed PDE validation, tetrahedral assembly beyond the
 verified first-order curl-mass operator, higher-order tetrahedral topology and
-assembly, other tetrahedral FEEC families, and optimal higher-order
+global assembly, other tetrahedral FEEC families, and optimal higher-order
 tetrahedral convergence remain. The Phase 2 exit gate is therefore not yet
 met.
 
