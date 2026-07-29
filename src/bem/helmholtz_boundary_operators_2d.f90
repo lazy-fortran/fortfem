@@ -2,6 +2,7 @@ module fortfem_helmholtz_boundary_operators_2d
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_double_layer_constant, &
+        assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_single_layer_constant
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortnum_special_complex_bessel, only: hankel_h1_real
@@ -12,11 +13,82 @@ module fortfem_helmholtz_boundary_operators_2d
 
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_double_layer_mixed_linear
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: assemble_helmholtz_single_layer_linear
 
 contains
+
+    subroutine assemble_helmholtz_double_layer_mixed_linear( &
+            panel_start, panel_end, panel_nodes, node_count, wavenumber, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        integer, intent(in) :: node_count
+        real(dp), intent(in) :: wavenumber
+        integer, intent(in) :: quadrature_order
+        complex(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp) :: correction(2)
+        real(dp), allocatable :: laplace(:, :), lengths(:), nodes(:), weights(:)
+        real(dp) :: source_normal(2)
+        integer :: endpoint, source_panel, target_panel
+
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (node_count < 1 .or. size(panel_start, 1) /= 2 .or. &
+            size(panel_end, 1) /= 2) return
+        if (size(panel_end, 2) /= size(panel_start, 2) .or. &
+            size(panel_start, 2) < 1) return
+        if (size(panel_nodes, 1) /= 2 .or. &
+            size(panel_nodes, 2) /= size(panel_start, 2)) return
+        if (any(panel_nodes < 1) .or. any(panel_nodes > node_count)) return
+        if (size(matrix, 1) /= size(panel_start, 2) .or. &
+            size(matrix, 2) /= node_count) return
+        if (wavenumber <= 0.0_dp .or. quadrature_order < 1) return
+
+        allocate(laplace(size(matrix, 1), size(matrix, 2)))
+        call assemble_laplace_double_layer_mixed_linear( &
+            panel_start, panel_end, panel_nodes, node_count, quadrature_order, &
+            laplace, status)
+        if (status /= 0) return
+        matrix = cmplx(laplace, 0.0_dp, dp)
+
+        allocate(lengths(size(panel_start, 2)))
+        allocate(nodes(quadrature_order), weights(quadrature_order))
+        do source_panel = 1, size(panel_start, 2)
+            lengths(source_panel) = norm2( &
+                panel_end(:, source_panel) - panel_start(:, source_panel))
+            if (lengths(source_panel) <= 0.0_dp) return
+        end do
+        call gauss_legendre_ab( &
+            quadrature_order, 0.0_dp, 1.0_dp, nodes, weights)
+
+        do target_panel = 1, size(panel_start, 2)
+            do source_panel = 1, size(panel_start, 2)
+                if (target_panel == source_panel) cycle
+                source_normal = [ &
+                    panel_end(2, source_panel) - panel_start(2, source_panel), &
+                    panel_start(1, source_panel) - panel_end(1, source_panel)] / &
+                    lengths(source_panel)
+                call regular_double_layer_remainder_mixed_moment( &
+                    panel_start(:, target_panel), panel_end(:, target_panel), &
+                    panel_start(:, source_panel), panel_end(:, source_panel), &
+                    source_normal, lengths(target_panel), lengths(source_panel), &
+                    wavenumber, nodes, weights, correction, status)
+                if (status /= 0) return
+                do endpoint = 1, 2
+                    matrix(target_panel, panel_nodes(endpoint, source_panel)) = &
+                        matrix(target_panel, &
+                        panel_nodes(endpoint, source_panel)) + &
+                        correction(endpoint)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_helmholtz_double_layer_mixed_linear
 
     subroutine assemble_helmholtz_hypersingular_linear( &
             panel_start, panel_end, panel_nodes, node_count, wavenumber, &
@@ -748,6 +820,55 @@ contains
         integral = first_length * second_length * integral
         status = 0
     end subroutine regular_double_layer_remainder_integral
+
+    subroutine regular_double_layer_remainder_mixed_moment( &
+            first_start, first_end, second_start, second_end, source_normal, &
+            first_length, second_length, wavenumber, nodes, weights, &
+            integral, status)
+        real(dp), intent(in) :: first_start(2), first_end(2)
+        real(dp), intent(in) :: second_start(2), second_end(2)
+        real(dp), intent(in) :: source_normal(2)
+        real(dp), intent(in) :: first_length, second_length, wavenumber
+        real(dp), intent(in) :: nodes(:), weights(:)
+        complex(dp), intent(out) :: integral(2)
+        integer, intent(out) :: status
+
+        complex(dp) :: hankel, kernel
+        real(dp) :: basis(2), displacement(2), distance, projection
+        real(dp) :: first_point(2), laplace_kernel, second_point(2)
+        type(fortnum_status_t) :: special_status
+        integer :: endpoint, first_node, second_node
+
+        integral = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 2
+        do first_node = 1, size(nodes)
+            first_point = first_start + &
+                nodes(first_node)*(first_end - first_start)
+            do second_node = 1, size(nodes)
+                second_point = second_start + &
+                    nodes(second_node)*(second_end - second_start)
+                basis = [1.0_dp - nodes(second_node), nodes(second_node)]
+                displacement = first_point - second_point
+                distance = norm2(displacement)
+                if (distance <= 0.0_dp) return
+                projection = dot_product(displacement, source_normal)
+                call hankel_h1_real( &
+                    1, wavenumber*distance, hankel, special_status)
+                if (special_status%code /= 0) return
+                kernel = cmplx(0.0_dp, 0.25_dp, dp)*wavenumber*hankel* &
+                    projection/distance
+                laplace_kernel = projection/( &
+                    2.0_dp*acos(-1.0_dp)*distance**2)
+                do endpoint = 1, 2
+                    integral(endpoint) = integral(endpoint) + &
+                        weights(first_node)*weights(second_node)* &
+                        basis(endpoint)*(kernel - laplace_kernel)
+                end do
+            end do
+        end do
+        integral = first_length*second_length*integral
+        status = 0
+    end subroutine regular_double_layer_remainder_mixed_moment
 
     subroutine helmholtz_laplace_remainder( &
             distance, wavenumber, remainder, status)
