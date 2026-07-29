@@ -179,12 +179,13 @@ duplicate-compressing triplet construction, factor reuse, and real or complex
 solves. SuperLU is the permissive in-process default. UMFPACK is available
 through a separate helper process.
 
-FortFEM should use it for all direct sparse solves and delete its own UMFPACK C
-bindings. The first migration retains the internal CSR type only for existing
-iterative preconditioners. Assembly should then emit triplets directly into
-`fortsparse` CSC storage. The final solver layer should accept an abstract
-matrix-vector operator so sparse FEM blocks and dense or fast BEM blocks can
-share Krylov methods without forming a monolithic dense matrix.
+FortFEM now uses it for direct real and complex sparse solves, with SuperLU as
+the in-process backend. The old UMFPACK C binding and direct SuiteSparse link
+set have been deleted. The migration retains the internal CSR type only for
+existing iterative preconditioners. Assembly should next emit triplets
+directly into `fortsparse` CSC storage. The final solver layer should accept an
+abstract matrix-vector operator so sparse FEM blocks and dense or fast BEM
+blocks can share Krylov methods without forming a monolithic dense matrix.
 
 ## Target architecture
 
@@ -296,6 +297,24 @@ slope to the theoretical order. A single coarse-grid tolerance is a smoke
 test, not a convergence test.
 
 ## Execution sequence
+
+### Implementation status on 2026-07-29
+
+The first four Phase 0 foundations are now partly or fully implemented:
+
+- the triangular lowest-order Nedelec basis, curl, and covariant Piola map
+  pass exact edge-moment and affine-map tests;
+- a distinct RT0 basis, divergence, and contravariant Piola map pass exact
+  normal-flux tests;
+- the mesh exposes local-to-global edge signs, and the global Nedelec
+  curl-curl plus mass operator reproduces the exact continuum energy of
+  constant fields;
+- `fortsparse` replaces FortFEM's direct UMFPACK binding and is tested with
+  exact real and complex systems.
+
+This does not complete Phase 0. RT0 global assembly, executable weak-form
+coefficients, the planar FFT DtN map, feature-claim cleanup, and consumer
+validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 

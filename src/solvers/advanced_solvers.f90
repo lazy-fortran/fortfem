@@ -3,8 +3,7 @@ module fortfem_advanced_solvers
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
         sparse_to_csc, spmv
     use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
-    use fortfem_umfpack_interface, only: umfpack_solve_csc, &
-        umfpack_available
+    use fortfem_sparse_direct, only: sparse_direct_solve_csc
     implicit none
     private
 
@@ -115,8 +114,8 @@ contains
             call lapack_solve(A, b, x, opts, stats)
         case ("sparse_lu")
             call sparse_lu_solve(A, b, x, opts, stats)
-        case ("umfpack")
-            call umfpack_solve(A, b, x, opts, stats)
+        case ("fortsparse", "umfpack")
+            call sparse_direct_solve(A, b, x, opts, stats)
         case default
             write (*, *) "Warning: Unknown solver method, using CG"
             call cg_solve(A, b, x, opts, stats)
@@ -560,7 +559,7 @@ contains
         stats%method_used = "sparse_lu"
     end subroutine sparse_lu_solve
 
-    subroutine umfpack_solve(A, b, x, opts, stats)
+    subroutine sparse_direct_solve(A, b, x, opts, stats)
         real(dp), intent(in) :: A(:, :), b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
@@ -572,26 +571,14 @@ contains
         real(dp), allocatable :: values_csc(:)
         real(dp) :: residual_norm
         integer :: n, status
-        integer, parameter :: small_threshold = 64
 
         n = size(A, 1)
-
-        if (.not. umfpack_available()) then
-            call lapack_solve(A, b, x, opts, stats)
-            stats%method_used = "umfpack_fallback"
-            return
-        end if
-
-        if (n <= small_threshold) then
-            call lapack_solve(A, b, x, opts, stats)
-            stats%method_used = "umfpack_lapack_small"
-            return
-        end if
 
         call sparse_from_dense(A, A_sparse)
         call sparse_to_csc(A_sparse, col_ptr, row_ind, values_csc)
 
-        call umfpack_solve_csc(n, col_ptr, row_ind, values_csc, b, x, status)
+        call sparse_direct_solve_csc( &
+            n, col_ptr, row_ind, values_csc, b, x, status)
 
         stats%converged = (status == 0)
         stats%iterations = 1
@@ -603,10 +590,10 @@ contains
         end if
 
         stats%final_residual = residual_norm
-        stats%method_used = "umfpack"
+        stats%method_used = "fortsparse"
 
         deallocate (col_ptr, row_ind, values_csc)
-    end subroutine umfpack_solve
+    end subroutine sparse_direct_solve
 
     pure function compute_solver_tolerance(initial_norm, opts) result(tolerance)
         real(dp), intent(in) :: initial_norm

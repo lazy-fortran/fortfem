@@ -14,7 +14,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["lapack", "umfpack", "amd", "cholmod", "suitesparseconfig"]
+link = ["lapack", "superlu"]
 
 [install]
 library = false
@@ -47,9 +47,7 @@ md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markd
 
 [dependencies]
 fortplot = { git = "https://github.com/lazy-fortran/fortplot.git" }
-blas = "*"
+fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "34b96ed84367726189d3e757d083d26e52ce696e" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
-
-
