@@ -415,6 +415,9 @@ its cross-code and production-case validation gate remains open:
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
   exact polynomial pairings.
+- a sparse RT0-DG0 mixed Poisson solve forms the saddle-point system from the
+  same mass and divergence operators. Oriented edge-flux balances reproduce
+  each cell source integral to solver precision.
 - symbolic scalar P1 mass, stiffness, and constant-load forms compile to
   executable operators. Weighted curl-mass and divergence-mass forms compile
   to local or oriented CSC operators for every implemented triangular vector
