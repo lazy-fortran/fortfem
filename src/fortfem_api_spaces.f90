@@ -32,6 +32,7 @@ module fortfem_api_spaces
     public :: dirichlet_bc
     public :: dirichlet_bc_on_boundary
     public :: vector_bc
+    public :: vector_bc_edge_moments
     public :: neumann_bc_constant
     public :: neumann_bc_on_boundary
 
@@ -156,6 +157,25 @@ contains
         end if
     end function vector_bc
 
+    function vector_bc_edge_moments(space, edge_values, bc_type) result(bc)
+        type(vector_function_space_t), target, intent(in) :: space
+        real(dp), intent(in) :: edge_values(:)
+        character(len=*), intent(in), optional :: bc_type
+        type(vector_bc_t) :: bc
+
+        if (size(edge_values) /= space%ndof) then
+            error stop "vector_bc_edge_moments: wrong edge-moment count"
+        end if
+        bc%space => space
+        allocate(bc%edge_values, source=edge_values)
+        bc%on_boundary = .true.
+        if (present(bc_type)) then
+            bc%bc_type = bc_type
+        else
+            bc%bc_type = "tangential"
+        end if
+    end function vector_bc_edge_moments
+
     function neumann_bc_constant(space, flux_value) result(bc)
         type(function_space_t), target, intent(in) :: space
         real(dp), intent(in) :: flux_value
@@ -195,4 +215,3 @@ contains
     end function dirichlet_bc_on_boundary
 
 end module fortfem_api_spaces
-

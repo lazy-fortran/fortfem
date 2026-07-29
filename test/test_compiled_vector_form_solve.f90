@@ -9,10 +9,11 @@ program test_compiled_vector_form_solve
     type(vector_bc_t) :: boundary_condition
     type(vector_function_space_t) :: space
     type(vector_function_t) :: source, solution_one, solution_four
-    type(vector_function_t) :: solution_boundary, solution_scaled
+    type(vector_function_t) :: solution_boundary, solution_moments
+    type(vector_function_t) :: solution_scaled
     type(vector_test_function_t) :: test_field
     type(vector_trial_function_t) :: trial_field
-    real(dp), allocatable :: reference(:)
+    real(dp), allocatable :: prescribed_moments(:), reference(:)
     real(dp) :: boundary_error, edge_vector(2), expected_value
     integer :: boundary_index, degree_of_freedom, edge
     logical :: all_passed
@@ -82,6 +83,38 @@ program test_compiled_vector_form_solve
     end do
     call record_condition(boundary_error < 2.0e-14_dp, &
         "Constant tangential data has the exact boundary edge moments")
+
+    allocate(prescribed_moments(space%ndof))
+    prescribed_moments = 0.0_dp
+    do boundary_index = 1, size(mesh%data%boundary_edges)
+        edge = mesh%data%boundary_edges(boundary_index)
+        degree_of_freedom = mesh%data%edge_to_dof(edge) + 1
+        edge_vector = mesh%data%vertices(:, mesh%data%edges(2, edge)) - &
+            mesh%data%vertices(:, mesh%data%edges(1, edge))
+        prescribed_moments(degree_of_freedom) = &
+            0.5_dp * sum(mesh%data%vertices(1, &
+            mesh%data%edges(:, edge))) * edge_vector(2)
+    end do
+    boundary_condition = vector_bc_edge_moments( &
+        space, prescribed_moments, "tangential")
+    prescribed_moments = -100.0_dp
+    solution_moments = vector_function(space)
+    call solve( &
+        bilinear_form == linear_form, solution_moments, boundary_condition, &
+        "direct")
+    boundary_error = 0.0_dp
+    do boundary_index = 1, size(mesh%data%boundary_edges)
+        edge = mesh%data%boundary_edges(boundary_index)
+        degree_of_freedom = mesh%data%edge_to_dof(edge) + 1
+        edge_vector = mesh%data%vertices(:, mesh%data%edges(2, edge)) - &
+            mesh%data%vertices(:, mesh%data%edges(1, edge))
+        expected_value = 0.5_dp * sum(mesh%data%vertices(1, &
+            mesh%data%edges(:, edge))) * edge_vector(2)
+        boundary_error = max(boundary_error, abs( &
+            solution_moments%values(degree_of_freedom, 1) - expected_value))
+    end do
+    call record_condition(boundary_error < 2.0e-14_dp, &
+        "Owned nonconstant boundary moments are imposed exactly")
 
     call check_summary("Compiled vector form solve")
     if (.not. all_passed) error stop 1

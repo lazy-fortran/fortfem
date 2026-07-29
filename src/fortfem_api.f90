@@ -142,6 +142,7 @@ module fortfem_api
     public :: dirichlet_bc
     public :: dirichlet_bc_on_boundary
     public :: vector_bc
+    public :: vector_bc_edge_moments
     public :: neumann_bc_constant
     public :: neumann_bc_on_boundary
 
