@@ -411,6 +411,8 @@ its cross-code and production-case validation gate remains open:
   Raviart-Thomas divergence projections through order four. Manufactured
   \(h\)-refinement studies attain the expected field and differential
   convergence rates for both H(curl) and H(div).
+- the reference first-order tetrahedral Nedelec basis has exact oriented edge
+  moments, and its constant curls agree with independent finite differences.
 - arbitrary-order first- and second-kind Nedelec, Raviart-Thomas, and BDM
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
@@ -528,7 +530,8 @@ weighted form compilation. The two-dimensional magnetic paper case also
 passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
-through degree-four mixed PDE validation, tetrahedral families, and the
+through degree-four mixed PDE validation, tetrahedral mappings and global
+assembly beyond the verified first-order reference kernel, and the
 three-dimensional box in item 5 remain. The Phase 2 exit gate is therefore
 not yet met.
 

@@ -76,6 +76,8 @@ end interface
 
 - **Nédélec**: First- and second-kind triangular families through order four,
   with covariant Piola maps and oriented sparse curl-mass forms.
+- **Tetrahedral Nédélec**: The reference first-order edge basis and curls are
+  verified; physical mappings, topology, and assembly remain.
 - **Raviart--Thomas and BDM**: Triangular families through order four, with
   contravariant Piola maps and oriented sparse divergence-mass forms.
 - Weighted vector forms compile to local matrices and `fortsparse` CSC
