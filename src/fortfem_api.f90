@@ -25,6 +25,7 @@ module fortfem_api
         evaluate_helmholtz_combined_potential_adaptive_constant, &
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -113,6 +114,7 @@ module fortfem_api
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
+    public :: triangle_duffy_quadrature
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
     public :: assemble_helmholtz_hypersingular_linear
