@@ -5,13 +5,15 @@ program test_tetra_nedelec_arbitrary_order
         initialize_tetra_nedelec_first_kind, tetra_duffy_quadrature, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t, &
         triangle_duffy_quadrature
+    use fortfem_generated_tetra_nedelec_coefficients, only: &
+        load_tetra_nedelec_coefficients
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
     type(tetra_nedelec_first_kind_t) :: basis, copied_basis
     real(dp), allocatable :: curls(:, :), dofs(:), moment_matrix(:, :)
-    real(dp), allocatable :: values(:, :)
+    real(dp), allocatable :: generated_coefficients(:, :), values(:, :)
     real(dp) :: expected(3), point(3), reconstructed(3)
     integer :: dof_count, order, status
     logical :: all_passed
@@ -27,6 +29,12 @@ program test_tetra_nedelec_arbitrary_order
         allocate( &
             values(3, dof_count), curls(3, dof_count), dofs(dof_count), &
             moment_matrix(dof_count, dof_count))
+        call load_tetra_nedelec_coefficients( &
+            order, generated_coefficients, status)
+        call record_condition(status == 0 .and. &
+            size(generated_coefficients, 1) == dof_count .and. &
+            size(generated_coefficients, 2) == dof_count, &
+            "Generated tetrahedral basis coefficients have the exact shape")
 
         call build_moment_matrix(basis, order, moment_matrix)
         call record_condition(maxval(abs(moment_matrix - identity( &
@@ -54,7 +62,8 @@ program test_tetra_nedelec_arbitrary_order
         call record_condition(status == 0, &
             "Assigned tetrahedral Nedelec basis retains an independent copy")
 
-        deallocate(values, curls, dofs, moment_matrix)
+        deallocate( &
+            values, curls, dofs, moment_matrix, generated_coefficients)
     end do
 
     call initialize_tetra_nedelec_first_kind(0, basis, status)
