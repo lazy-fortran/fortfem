@@ -83,10 +83,15 @@ mesh = rectangle_mesh(20, 30, [0.0, 2.0, 0.0, 3.0])  ! Rectangle mesh
 mesh = unit_disk_mesh(5)             ! Unit disk with resolution 5
 ```
 
-### 2. Function Spaces  
-FortFEM supports multiple element types with clean API:
+### 2. Function Spaces
+
+FortFEM's scalar solver supports P1 and P2 Lagrange spaces. Verified
+lowest-order Nédélec and Raviart--Thomas kernels are also available, but the
+high-level vector form solver is still experimental.
+
 - P1 Lagrange elements (linear, continuous)
-- Nédélec edge elements (H(curl) conforming for electromagnetic problems)
+- P2 Lagrange elements (quadratic, continuous)
+- Lowest-order Nédélec and Raviart--Thomas element kernels
 
 ```fortran
 Vh = function_space(mesh, "Lagrange", 1)        ! P1 scalar elements
@@ -100,7 +105,7 @@ Natural mathematical notation for weak forms:
 a = inner(grad(u), grad(v))*dx    ! Laplacian bilinear form
 L = f*v*dx                        ! Source linear form
 
-! Vector problems  
+! Experimental vector form description
 a = inner(curl(E), curl(F))*dx + inner(E, F)*dx  ! Curl-curl + mass
 L = inner(J, F)*dx                                 ! Current source
 ```

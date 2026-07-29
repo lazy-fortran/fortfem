@@ -37,10 +37,10 @@ The findings use the following evidence:
 
 ## Repository state
 
-FortFEM contains 22,622 lines of Fortran across `src`, `test`, and `example`.
-The tests account for 10,442 lines. The current full build, test, and lint
-pipeline passes. The compiler reports array-temporary warnings, including in
-the basis, Krylov, UMFPACK, triangulation, and plotting code.
+At the initial audit, FortFEM contained 22,622 lines of Fortran across `src`,
+`test`, and `example`, of which tests accounted for 10,442 lines. The full
+build, test, and lint pipeline passed. The compiler reported array-temporary
+warnings in several numerical and plotting paths.
 
 The implemented scalar path covers P1 and P2 triangles, Q1 quadrilaterals,
 Poisson assembly, Dirichlet and Neumann conditions, dense LAPACK solves,
@@ -55,15 +55,15 @@ assemblers.
 
 ### Vector finite elements
 
-The README's H(curl) claim is not supported by the implementation.
+The initial audit found a linearly dependent edge basis, the wrong Piola map,
+incorrect curls, no distinct Raviart--Thomas basis, and no global orientation
+map. Those reference-element and assembly defects are now repaired for
+lowest-order triangles and covered by analytical tests.
 
-- `basis_edge_2d.f90` contains three hard-coded vectors for one triangle.
-  Two are negatives of one another, so the basis is linearly dependent.
-- The routine labeled as a Piola transform applies a contravariant transform.
-  H(curl) requires the covariant Piola transform.
-- The curl values do not agree with the stated basis functions.
-- `vector_function_space(..., "RT", 1)` aliases the Nedelec space. There is
-  no Raviart-Thomas implementation or normal-flux degree of freedom.
+The remaining high-level vector path is not a verified PDE solver:
+
+- `vector_function_space(..., "RT", 1)` still shares the generic edge-space
+  container and is not connected to RT-specific interpolation or mixed forms.
 - The curl-curl assembler does not evaluate the basis module. It assigns
   element-local indices `3*(triangle_id-1)+i` to a space whose dimension is
   the number of unique mesh edges.
@@ -73,17 +73,17 @@ The README's H(curl) claim is not supported by the implementation.
   edge moments, assembled matrices, fields, or convergence against an
   independent solution.
 
-FortFEM therefore has no verified H(curl) or H(div) element at present.
-Arbitrary polynomial order, tetrahedra, mixed spaces, orientation transforms
-for higher moments, and a discrete de Rham complex are absent.
+FortFEM now has verified lowest-order H(curl) and H(div) kernels and global
+operators. Arbitrary polynomial order, tetrahedra, mixed spaces, orientation
+transforms for higher moments, a discrete de Rham complex, and integration
+with the expression API are absent.
 
 ### Sparse algebra
 
 FortFEM owns a real CSR matrix, CSR-to-CSC conversion, matrix-vector product,
-preconditioners, and direct C bindings to UMFPACK. Assembly still starts from
-dense global matrices in the main PDE solvers. Complex matrices are absent.
-The direct UMFPACK link also makes the library depend on the GPL SuiteSparse
-component at link time.
+and preconditioners. Direct real and complex solves now use `fortsparse` with
+the permissive in-process SuperLU backend. Assembly still starts from dense
+global matrices in the main PDE solvers.
 
 ## Consumer requirements
 

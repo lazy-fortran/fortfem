@@ -28,7 +28,7 @@ FortFEM is designed with the following principles:
 
 3. **Basis Functions** (`fortfem_basis_*`)
    - Implements shape functions and their derivatives
-   - Supports various polynomial orders
+   - Supports P1/P2/Q1 and verified lowest-order Nédélec/RT0 kernels
    - Handles reference-to-physical element transformations
 
 4. **Assembly Module** (`fortfem_assembly_*`)
@@ -70,10 +70,15 @@ end interface
 
 ### Lagrange Elements
 - **P1**: Linear polynomials on triangles (implemented)
-- **P2**: Quadratic polynomials with 6 DOFs per triangle (planned)
+- **P2**: Quadratic polynomials with 6 DOFs per triangle (implemented)
 
-### Vector Elements  
-- **Nédélec**: Edge elements for H(curl) electromagnetic problems
+### Vector Elements
+
+- **Nédélec**: Verified lowest-order basis, covariant Piola map, orientation,
+  and curl-mass assembly.
+- **Raviart--Thomas**: Verified RT0 basis, contravariant Piola map,
+  orientation, and div-mass assembly.
+- High-level executable vector forms remain experimental.
 
 ## Weak Form Framework
 

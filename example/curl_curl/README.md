@@ -1,6 +1,12 @@
 # Curl-Curl Electromagnetic Example
 
-This example demonstrates solving electromagnetic problems using Nédélec edge elements for H(curl) conforming finite element spaces.
+This is an experimental API and visualization prototype for a future
+Nédélec curl-curl solver. It demonstrates the intended form syntax, solver
+dispatch, and vector plotting.
+
+It is not currently a numerical validation example. The high-level vector
+solver does not yet use the verified global Nédélec assembly or carry the
+coefficient and source objects from the symbolic form into assembly.
 
 ## Problem Description
 
@@ -17,7 +23,7 @@ Where:
 - `curl(E) = ∂E_y/∂x - ∂E_x/∂y` for 2D vector fields
 - Tangential boundary conditions enforce `E × n = 0`
 
-## Analytical Solution
+## Intended Analytical Solution
 
 The example uses the analytical solution:
 ```
@@ -29,14 +35,15 @@ This gives:
 - `curl(curl(E)) = ∂x/∂y - ∂(0)/∂x = 0`
 - Therefore: `J = curl(curl(E)) + E = [x*y, x²]`
 
+The program plots this field as a reference, but it does not compute an error
+against it.
+
 ## Features Demonstrated
 
-- **Nédélec edge elements**: H(curl) conforming finite element space
-- **Vector problems**: Two-component electromagnetic fields
-- **GMRES solver**: Iterative solver for large sparse systems
-- **Tangential boundary conditions**: Natural boundary conditions for electromagnetic problems
-- **Vector field visualization**: Streamplot representation of electric fields
-- **Error analysis**: Comparison with analytical solution
+- Intended FEniCS-style vector form syntax.
+- GMRES dispatch through the experimental vector solver.
+- Tangential boundary-condition API.
+- Vector-field streamplot output.
 
 ## Mathematical Formulation
 
@@ -52,11 +59,8 @@ The weak formulation seeks `E ∈ H(curl, Ω)` such that:
 - `curlcurl_exact.png`: Vector field plot of analytical solution
 - `curl_field.png`: Scalar plot of the curl field
 
-## Convergence Analysis
-
-The example performs convergence studies showing optimal convergence rates for:
-- L² error in the electric field
-- H(curl) error including curl components
+For verified lowest-order edge moments, covariant Piola mapping, orientations,
+and operator assembly, see the Nédélec tests under `test/`.
 
 ## Applications
 
