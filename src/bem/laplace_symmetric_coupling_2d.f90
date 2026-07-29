@@ -10,6 +10,8 @@ module fortfem_laplace_symmetric_coupling_2d
         assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
+    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
+        sparse_solve_once
     implicit none
 
     private
@@ -17,6 +19,7 @@ module fortfem_laplace_symmetric_coupling_2d
     public :: assemble_laplace_symmetric_coupling_p1_p0
     public :: assemble_helmholtz_symmetric_coupling_p1_p0
     public :: solve_laplace_symmetric_coupling_p1_p0
+    public :: solve_helmholtz_symmetric_coupling_p1_p0
 
 contains
 
@@ -223,6 +226,90 @@ contains
         exterior_flux = solution(vertex_count + 1:)
         status = 0
     end subroutine solve_laplace_symmetric_coupling_p1_p0
+
+    subroutine solve_helmholtz_symmetric_coupling_p1_p0( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            wavenumber, quadrature_order, volume_load, dirichlet_jump, &
+            neumann_jump, interior_solution, exterior_flux, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        real(dp), intent(in) :: wavenumber
+        integer, intent(in) :: quadrature_order
+        complex(dp), intent(in) :: volume_load(:), dirichlet_jump(:)
+        complex(dp), intent(in) :: neumann_jump(:)
+        complex(dp), intent(out) :: interior_solution(:), exterior_flux(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: sparse_matrix
+        type(fortsparse_status_t) :: sparse_status
+        complex(dp), allocatable :: hypersingular(:, :), matrix(:, :)
+        complex(dp), allocatable :: right_hand_side(:), solution(:)
+        complex(dp), allocatable :: triplet_values(:)
+        real(dp), allocatable :: mass(:, :)
+        integer, allocatable :: columns(:), rows(:)
+        integer :: column, entry, operator_status, panel_count, row
+        integer :: total_dofs, vertex_count
+
+        interior_solution = cmplx(0.0_dp, 0.0_dp, dp)
+        exterior_flux = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        vertex_count = size(vertices, 2)
+        panel_count = size(panel_start, 2)
+        total_dofs = vertex_count + panel_count
+        if (size(volume_load) /= vertex_count .or. &
+            size(dirichlet_jump) /= vertex_count) return
+        if (size(neumann_jump) /= panel_count) return
+        if (size(interior_solution) /= vertex_count .or. &
+            size(exterior_flux) /= panel_count) return
+
+        allocate(matrix(total_dofs, total_dofs))
+        call assemble_helmholtz_symmetric_coupling_p1_p0( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            wavenumber, quadrature_order, matrix, operator_status)
+        if (operator_status /= 0) return
+
+        allocate(mass(panel_count, vertex_count))
+        call assemble_boundary_mass( &
+            panel_start, panel_end, panel_nodes, mass, operator_status)
+        if (operator_status /= 0) return
+        allocate(hypersingular(vertex_count, vertex_count))
+        call assemble_helmholtz_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, vertex_count, wavenumber, &
+            quadrature_order, hypersingular, operator_status)
+        if (operator_status /= 0) return
+
+        allocate(right_hand_side(total_dofs), solution(total_dofs))
+        right_hand_side(1:vertex_count) = volume_load + &
+            matmul(transpose(mass), neumann_jump) + &
+            matmul(hypersingular, dirichlet_jump)
+        right_hand_side(vertex_count + 1:) = matmul( &
+            matrix(vertex_count + 1:, 1:vertex_count), dirichlet_jump)
+
+        allocate(rows(total_dofs**2), columns(total_dofs**2))
+        allocate(triplet_values(total_dofs**2))
+        entry = 0
+        do column = 1, total_dofs
+            do row = 1, total_dofs
+                entry = entry + 1
+                rows(entry) = row
+                columns(entry) = column
+                triplet_values(entry) = matrix(row, column)
+            end do
+        end do
+        call csc_from_triplet( &
+            total_dofs, total_dofs, rows, columns, triplet_values, &
+            sparse_matrix, sparse_status)
+        if (sparse_status%code /= 0) return
+        call sparse_solve_once( &
+            sparse_matrix, right_hand_side, solution, sparse_status)
+        if (sparse_status%code /= 0) return
+
+        interior_solution = solution(1:vertex_count)
+        exterior_flux = solution(vertex_count + 1:)
+        status = 0
+    end subroutine solve_helmholtz_symmetric_coupling_p1_p0
 
     pure logical function valid_discretization_shapes( &
             vertices, triangles, panel_start, panel_end, panel_nodes, &
