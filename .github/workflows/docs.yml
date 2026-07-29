@@ -46,8 +46,7 @@ jobs:
       - name: Create empty plots directory if no artifacts
         run: |
           mkdir -p ./artifacts/plots/
-          echo "Plots directory created (may be empty if no artifacts were downloaded)"
-          ls -la ./artifacts/plots/ || echo "Directory is empty"
+          find ./artifacts/plots/ -maxdepth 4 -type f -print
         
       - name: Install dependencies
         run: |
@@ -60,6 +59,21 @@ jobs:
         
       - name: Build documentation
         run: make doc
+
+      - name: Stage and validate generated gallery media
+        run: |
+          set -euo pipefail
+          source_dir=artifacts/plots/examples
+          test -d "$source_dir"
+          test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
+          mkdir -p build/doc/page/media/examples build/doc/media/examples
+          cp -r "$source_dir"/. build/doc/page/media/examples/
+          cp -r "$source_dir"/. build/doc/media/examples/
+          while IFS= read -r source; do
+            relative=${source#"$source_dir"/}
+            test -s "build/doc/page/media/examples/$relative"
+            test -s "build/doc/media/examples/$relative"
+          done < <(find "$source_dir" -type f)
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
