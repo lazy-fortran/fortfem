@@ -51,6 +51,9 @@ module fortfem_api
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
         triangle_rt_dof_count
+    use fortfem_triangle_bdm_arbitrary_order, only: &
+        assignment(=), evaluate_triangle_bdm, initialize_triangle_bdm, &
+        triangle_bdm_basis_t, triangle_bdm_dof_count
     use fortfem_edge_moment_orientation, only: apply_edge_moment_orientation
     use fortfem_triangle_piola_maps, only: &
         map_triangle_nedelec_covariant, map_triangle_rt_contravariant
@@ -166,6 +169,10 @@ module fortfem_api
     public :: initialize_triangle_nedelec_second_kind
     public :: triangle_nedelec_second_kind_dof_count
     public :: triangle_nedelec_second_kind_t
+    public :: evaluate_triangle_bdm
+    public :: initialize_triangle_bdm
+    public :: triangle_bdm_basis_t
+    public :: triangle_bdm_dof_count
     public :: evaluate_triangle_raviart_thomas
     public :: initialize_triangle_raviart_thomas
     public :: triangle_rt_basis_t
