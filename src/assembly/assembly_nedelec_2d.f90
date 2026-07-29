@@ -5,6 +5,7 @@ module fortfem_assembly_nedelec_2d
         evaluate_edge_basis_2d_piola
     use fortfem_gauss_quadrature_2d, only: &
         gauss_quadrature_triangle_t, get_gauss_quadrature_triangle
+    use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
     implicit none
     private
 
@@ -13,6 +14,7 @@ module fortfem_assembly_nedelec_2d
     public :: assemble_nedelec_weighted_element
     public :: assemble_nedelec_weighted
     public :: assemble_nedelec_axisymmetric_fourier
+    public :: assemble_nedelec_axisymmetric_fourier_csc
 
     abstract interface
         pure function scalar_coefficient_2d(x, y) result(value)
@@ -180,6 +182,79 @@ contains
         end function fourier_mass_weight
 
     end subroutine assemble_nedelec_axisymmetric_fourier
+
+    subroutine assemble_nedelec_axisymmetric_fourier_csc( &
+            mesh, fourier_mode, quadrature_degree, matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: fourier_mode, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: values(:)
+        real(dp) :: element_matrix(3, 3)
+        integer :: edge_dofs(3), edge_orientations(3)
+        integer :: triangle_idx, i, j, entry
+
+        if (.not. allocated(mesh%edge_to_dof)) then
+            call mesh%build_edge_dof_numbering()
+        end if
+        allocate(rows(9 * mesh%n_triangles))
+        allocate(columns(9 * mesh%n_triangles))
+        allocate(values(9 * mesh%n_triangles))
+
+        entry = 0
+        do triangle_idx = 1, mesh%n_triangles
+            call assemble_nedelec_weighted_element(mesh, triangle_idx, &
+                radial_curl_weight, fourier_mass_weight, quadrature_degree, &
+                element_matrix)
+            call mesh%get_triangle_edge_dofs( &
+                triangle_idx, edge_dofs, edge_orientations)
+            do j = 1, 3
+                do i = 1, 3
+                    entry = entry + 1
+                    rows(entry) = edge_dofs(i) + 1
+                    columns(entry) = edge_dofs(j) + 1
+                    values(entry) = &
+                        real(edge_orientations(i) * edge_orientations(j), &
+                        dp) * element_matrix(i, j)
+                end do
+            end do
+        end do
+        call csc_from_triplet(mesh%n_edges, mesh%n_edges, &
+            rows, columns, values, matrix, status)
+
+    contains
+
+        pure real(dp) function radial_curl_weight(x, y) result(value)
+            real(dp), intent(in) :: x, y
+
+            if (x <= 0.0_dp) then
+                error stop "Axisymmetric assembly requires positive R"
+            end if
+            value = x
+            associate (unused_y => [y])
+                if (size(unused_y) /= 1) error stop
+            end associate
+        end function radial_curl_weight
+
+        pure real(dp) function fourier_mass_weight(x, y) result(value)
+            real(dp), intent(in) :: x, y
+
+            if (fourier_mode == 0) then
+                value = 0.0_dp
+            else
+                if (x <= 0.0_dp) then
+                    error stop "Axisymmetric assembly requires positive R"
+                end if
+                value = real(fourier_mode, dp)**2 / x
+            end if
+            associate (unused_y => [y])
+                if (size(unused_y) /= 1) error stop
+            end associate
+        end function fourier_mass_weight
+
+    end subroutine assemble_nedelec_axisymmetric_fourier_csc
 
     pure real(dp) function unit_coefficient(x, y) result(value)
         real(dp), intent(in) :: x, y
