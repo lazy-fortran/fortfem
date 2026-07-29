@@ -19,7 +19,7 @@ FortFEM provides a clean, high-level API that hides implementation details while
 - **vector_function_t**: Vector functions with edge values
 - **trial_function_t** / **test_function_t**: Symbolic functions for forms
 - **vector_trial_function_t** / **vector_test_function_t**: Vector versions
-- **form_expr_t**: Expression trees for weak forms
+- **form_expr_t**: Symbolic descriptions used for limited solver dispatch
 - **form_equation_t**: Equation a == L for solving
 - **dirichlet_bc_t**: Scalar Dirichlet boundary conditions
 - **vector_bc_t**: Vector boundary conditions
@@ -112,8 +112,9 @@ end program
 
 ## Implementation Status
 
-- ✅ **Implemented**: Complete FEniCS-style API with form algebra
-- ✅ **Working**: Scalar Poisson problems with P1 Lagrange elements
-- ✅ **Working**: Vector curl-curl problems with Nédélec edge elements
-- ✅ **Working**: Mesh generation and visualization with fortplotlib
-- 📋 **Planned**: More element types, advanced boundary conditions, parallel solvers
+- **Experimental**: FEniCS-style descriptions with problem-specific dispatch
+- **Working**: Scalar Poisson problems with P1 Lagrange elements
+- **Verified kernels**: Lowest-order Nédélec and Raviart--Thomas elements
+- **Experimental**: High-level vector curl-curl solve
+- **Working**: Mesh generation and visualization with fortplotlib
+- **Planned**: Executable general forms, arbitrary order, BEM, and FEM--BEM

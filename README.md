@@ -6,18 +6,31 @@
 
 A modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS.
 
-## Features
+## Implementation Status
 
-- **FEniCS-style API**: Natural mathematical notation inspired by FEniCS/FreeFEM
-- **Simple Forms Syntax**: Define weak forms using `inner(grad(u), grad(v))*dx`
-- **One-line plotting**: `call plot(uh, title="Solution", colormap="viridis")`
-- Support for various element types:
-  - **P1 Lagrange**: Linear elements with optimal convergence
-  - **Nédélec edge elements**: H(curl) conforming for electromagnetic problems
-- **Vector problems**: Curl-curl equations with GMRES iterative solver
-- **Built-in visualization**: Automatic plotting with fortplotlib integration
-- **Minimal code**: Solve PDEs in ~10 lines of meaningful code
-- Test-driven development with comprehensive test suite
+Verified numerical paths:
+
+- P1 and P2 triangular Lagrange elements, Q1 quadrilaterals, and scalar
+  Poisson solvers.
+- Lowest-order triangular Nédélec and Raviart--Thomas reference elements,
+  affine Piola maps, global edge orientations, and curl-mass or div-mass
+  assembly.
+- Iterative dense solvers and real or complex sparse direct solves through
+  `fortsparse`.
+- A periodic planar Helmholtz DtN operator using `fortnum` FFTs.
+- Mesh generation, refinement, and plotting through `fortplot`.
+
+Experimental interfaces:
+
+- The FEniCS-style form syntax records symbolic descriptions and dispatches
+  selected scalar problems. It is not yet a general executable form compiler.
+- The high-level curl-curl solver and example predate the verified Nédélec
+  assembly and do not yet transport coefficients or source fields from the
+  symbolic form. Treat them as API and visualization prototypes.
+
+Arbitrary-order H(curl)/H(div), three-dimensional elements, general BEM, and
+FEM--BEM coupling are planned. See the
+[FEEC, MEPHIT, and open-boundary roadmap](doc/roadmap_mephit_feec_bem.md).
 
 ## Quick Start
 
@@ -66,8 +79,8 @@ end program
 Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) directory for complete working examples:
 
 - [**Simple Poisson solver**](https://github.com/itpplasma/fortfem/blob/main/example/simple_poisson/simple_poisson.f90) - FEniCS-style API demonstration with plotting
-- [**Curl-curl electromagnetic**](https://github.com/itpplasma/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Vector problems with Nédélec elements and GMRES solver  
-- [**Plotting demonstration**](https://github.com/itpplasma/fortfem/blob/main/example/plotting/plotting.f90) - Comprehensive plotting API showcase
+- [**Curl-curl electromagnetic prototype**](https://github.com/itpplasma/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Experimental vector API and plotting path
+- [**Plotting demonstration**](https://github.com/itpplasma/fortfem/blob/main/example/plotting/plotting.f90) - Plotting API examples
 - [**Mesh plotting**](https://github.com/itpplasma/fortfem/blob/main/example/plot_mesh/plot_mesh.f90) - Mesh visualization examples
 
 ## Project Structure
