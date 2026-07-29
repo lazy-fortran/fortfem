@@ -1,6 +1,9 @@
 module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_mass_element
+    use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
+        assemble_triangle_bdm_div_mass_element, &
+        assemble_triangle_nedelec_second_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
@@ -288,6 +291,24 @@ contains
                 return
             end if
             call assemble_triangle_rt_div_mass_element( &
+                vertices, degree, quadrature_degree, matrix, status, &
+                divergence_coefficient=divergence_coefficient, &
+                mass_coefficient=mass_coefficient)
+        case ("Nedelec2", "Nedelec-second")
+            if (divergence_coefficient /= 0.0_dp) then
+                status = 3
+                return
+            end if
+            call assemble_triangle_nedelec_second_curl_mass_element( &
+                vertices, degree, quadrature_degree, matrix, status, &
+                curl_coefficient=curl_coefficient, &
+                mass_coefficient=mass_coefficient)
+        case ("BDM")
+            if (curl_coefficient /= 0.0_dp) then
+                status = 3
+                return
+            end if
+            call assemble_triangle_bdm_div_mass_element( &
                 vertices, degree, quadrature_degree, matrix, status, &
                 divergence_coefficient=divergence_coefficient, &
                 mass_coefficient=mass_coefficient)
