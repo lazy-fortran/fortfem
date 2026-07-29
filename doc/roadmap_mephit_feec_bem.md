@@ -341,6 +341,10 @@ its cross-code and production-case validation gate remains open:
 - three regular-polygon refinements also converge at second order to the first
   two exact complex Helmholtz circle spectra for \(V\), \(K\), and \(W\). A
   runnable example reports the mode-one errors.
+- a dense constant-panel combined-field solver uses
+  \(D\phi-i\eta S\phi\) for exterior Dirichlet scattering and evaluates the
+  layer potential off the boundary. Three polygon refinements converge near
+  second order to the outgoing Mie series for a sound-soft circle.
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
@@ -458,9 +462,10 @@ Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
 
-Item 2 and the Laplace and Helmholtz kernel portions of item 3 are
-implemented. Calderon identities beyond the jump and spectral checks,
-adaptive near-singular quadrature, and items 1 and 4--6 remain.
+Item 2, the Laplace and Helmholtz kernel portions of item 3, and the dense
+constant-panel reference path in item 4 are implemented. Calderon identities
+beyond the jump and spectral checks, adaptive near-singular quadrature,
+higher-order exterior traces, and items 1, 5, and 6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
