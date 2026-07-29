@@ -136,7 +136,7 @@ end program
 - **Working**: Mesh generation and visualization with fortplotlib
 - **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
 - **Verified**: Sparse RT0-DG0 mixed Poisson flux is exactly conservative on
-  every cell
+  every cell, with first-order flux and pressure convergence
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and 3D
   elements
