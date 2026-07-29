@@ -1,6 +1,6 @@
 program test_vector_form_compiler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compile_vector_form_element, curl, dx, &
+    use fortfem_api, only: compile_vector_form_element, curl, div, dx, &
         form_expr_t, init_measures, inner, operator(*), operator(+), &
         vector_test_function_t, vector_trial_function_t
     use fortfem_kinds, only: dp
@@ -27,6 +27,14 @@ program test_vector_form_compiler
     call record_condition(status == 0 .and. size(matrix, 1) == 3 .and. &
         abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp, &
         "Compiled Nedelec form reproduces exact curl and mass energy")
+
+    form = (2.0_dp * inner(div(trial_field), div(test_field)) + &
+        3.0_dp * inner(trial_field, test_field)) * dx
+    call compile_vector_form_element( &
+        form, "RT", 0, vertices, 4, matrix, status)
+    call record_condition(status == 0 .and. size(matrix, 1) == 3 .and. &
+        abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp, &
+        "Compiled RT form reproduces exact divergence and mass energy")
 
     call compile_vector_form_element( &
         form, "unknown", 1, vertices, 4, matrix, status)

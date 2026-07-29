@@ -147,6 +147,7 @@ module fortfem_api
     public :: inner
     public :: grad
     public :: curl
+    public :: div
     public :: dx
     public :: compile_form
     public :: compile_form_matrix

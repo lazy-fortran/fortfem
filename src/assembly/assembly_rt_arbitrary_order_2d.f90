@@ -27,22 +27,32 @@ module fortfem_assembly_rt_arbitrary_order_2d
 contains
 
     subroutine assemble_triangle_rt_div_mass_element( &
-            vertices, degree, quadrature_degree, matrix, status)
+            vertices, degree, quadrature_degree, matrix, status, &
+            divergence_coefficient, mass_coefficient)
         real(dp), intent(in) :: vertices(2, 3)
         integer, intent(in) :: degree, quadrature_degree
         real(dp), allocatable, intent(out) :: matrix(:, :)
         integer, intent(out) :: status
+        real(dp), intent(in), optional :: divergence_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
 
         type(triangle_rt_basis_t) :: basis
         real(dp), allocatable :: eta(:), physical_divergences(:)
         real(dp), allocatable :: physical_values(:, :)
         real(dp), allocatable :: reference_divergences(:)
         real(dp), allocatable :: reference_values(:, :), weights(:), xi(:)
-        real(dp) :: determinant, jacobian(2, 2), physical_weight
+        real(dp) :: determinant, divergence_weight, jacobian(2, 2)
+        real(dp) :: mass_weight, physical_weight
         integer :: basis_dof_count, column, point, row
 
         status = 1
         if (degree < 0 .or. quadrature_degree < 0) return
+        divergence_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(divergence_coefficient)) then
+            divergence_weight = divergence_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
 
         jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
         jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
@@ -78,8 +88,8 @@ contains
                 do row = 1, basis_dof_count
                     matrix(row, column) = matrix(row, column) + &
                         physical_weight * ( &
-                        physical_divergences(row) * &
-                        physical_divergences(column) + &
+                        divergence_weight * physical_divergences(row) * &
+                        physical_divergences(column) + mass_weight * &
                         dot_product( &
                         physical_values(:, row), physical_values(:, column)))
                 end do
