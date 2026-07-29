@@ -381,12 +381,27 @@ its cross-code and production-case validation gate remains open:
   first-kind Nedelec bases for orders one through four, and Raviart-Thomas
   bases for degrees zero through three pass complete edge, cell, value,
   gradient, curl, and divergence reproduction tests.
+- second-kind Nedelec and Brezzi-Douglas-Marini bases span
+  \([P_k]^2\) for degrees one through four. Their edge and interior moments,
+  deep-copy semantics, polynomial reproduction, curls, and divergences pass
+  independent analytical tests.
 - covariant and contravariant affine Piola maps preserve arbitrary tangential
   and normal moments on a skew triangle. Shifted-Legendre edge moments use
   the exact alternating reversal parity for higher-order orientations.
+- trimmed and full polynomial vector families have global edge/cell maps,
+  including higher-moment orientation transforms. Discontinuous scalar
+  spaces use cell-local \(P_k\) blocks.
 - generated local discrete gradients have the constant nullspace and full
   remaining rank through order four. Their interpolated Nedelec curls vanish
   pointwise, establishing the first local exact-sequence map.
+- canonical physical interpolation commutes with the Nedelec gradient and
+  Raviart-Thomas divergence projections through order four. Manufactured
+  \(h\)-refinement studies attain the expected field and differential
+  convergence rates for both H(curl) and H(div).
+- arbitrary-order first- and second-kind Nedelec, Raviart-Thomas, and BDM
+  curl/div-plus-mass operators assemble directly into `fortsparse` CSC
+  matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
+  exact polynomial pairings.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and
@@ -464,12 +479,13 @@ Exit gate: optimal convergence holds for H1, H(curl), H(div), and L2 members
 of the discrete sequence for degrees 0 through 4. The 3D box test reproduces
 its analytical vector potential and curl.
 
-The reference-element portions of items 1--3 now include Lagrange,
-first-kind Nedelec, Raviart-Thomas, arbitrary-degree quadrature, affine Piola
-maps, edge orientation parity, and the local discrete gradient through the
-orders listed above. Second-kind Nedelec, BDM, discontinuous scalar bases,
-global entity maps, sparse assembly, commuting projections beyond the local
-gradient, convergence solves, and item 5 remain.
+Items 1--4 are implemented for the two-dimensional triangular H1, first- and
+second-kind H(curl), Raviart-Thomas and BDM H(div), and discontinuous L2
+families through order four. This includes affine Piola maps, full
+orientation-aware global topology, sparse mass and differential forms,
+commuting projections, and manufactured interpolation convergence. A
+high-level general form compiler, PDE-level convergence solves, tetrahedral
+families, and item 5 remain; the Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
@@ -485,10 +501,13 @@ Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
 
-Item 2, the Laplace and Helmholtz kernel portions of item 3, and the dense
-constant-panel reference path in item 4 are implemented. Calderon identities
-beyond the jump and spectral checks, adaptive near-singular panel-pair
-assembly, higher-order exterior traces, and items 1, 5, and 6 remain.
+Item 2 is implemented. Item 3 includes dense Laplace and Helmholtz
+single-layer, double-layer, adjoint double-layer, and hypersingular
+operators with circle-spectrum checks. Item 4 includes a constant-panel CFIE
+solve, Mie-series convergence, and adaptively verified off-surface field
+evaluation. Calderon identities beyond the jump and spectral checks,
+adaptive near-singular panel-pair assembly, higher-order exterior traces, and
+items 1, 5, and 6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
