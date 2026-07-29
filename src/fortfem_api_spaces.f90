@@ -62,7 +62,7 @@ contains
     end function function_space
 
     function vector_function_space(mesh, family, degree) result(space)
-        type(mesh_t), target, intent(in) :: mesh
+        type(mesh_t), target, intent(inout) :: mesh
         character(len=*), intent(in) :: family
         integer, intent(in) :: degree
         type(vector_function_space_t) :: space
@@ -75,6 +75,12 @@ contains
         select case (trim(family))
         case ("Nedelec", "Edge", "RT")
             if (degree == 1) then
+                if (.not. allocated(mesh%data%edges)) then
+                    call mesh%data%build_edge_connectivity()
+                end if
+                if (.not. allocated(mesh%data%edge_to_dof)) then
+                    call mesh%data%build_edge_dof_numbering()
+                end if
                 space%ndof = mesh%data%n_edges
             end if
         end select
