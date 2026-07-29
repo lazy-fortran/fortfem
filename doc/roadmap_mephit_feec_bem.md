@@ -415,6 +415,9 @@ its cross-code and production-case validation gate remains open:
   moments, and its constant curls agree with independent finite differences.
   Its affine covariant map preserves all six tangential edge moments on a
   skew tetrahedron, and mapped curls agree with physical finite differences.
+- two tetrahedra with opposite shared-face ordering reuse all three common
+  global edge degrees of freedom and expose the required local orientation
+  reversal.
 - arbitrary-order first- and second-kind Nedelec, Raviart-Thomas, and BDM
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
@@ -532,10 +535,9 @@ weighted form compilation. The two-dimensional magnetic paper case also
 passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
-through degree-four mixed PDE validation, tetrahedral mappings and global
-assembly beyond the verified first-order affine kernel, and the
-three-dimensional box in item 5 remain. The Phase 2 exit gate is therefore
-not yet met.
+through degree-four mixed PDE validation, tetrahedral assembly beyond the
+verified first-order affine kernel and edge topology, and the three-dimensional
+box in item 5 remain. The Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
