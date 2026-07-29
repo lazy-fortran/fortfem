@@ -12,10 +12,100 @@ module fortfem_helmholtz_boundary_operators_2d
 
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: assemble_helmholtz_single_layer_linear
 
 contains
+
+    subroutine assemble_helmholtz_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, node_count, wavenumber, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        integer, intent(in) :: node_count
+        real(dp), intent(in) :: wavenumber
+        integer, intent(in) :: quadrature_order
+        complex(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), parameter :: endpoint_sign(2) = [-1.0_dp, 1.0_dp]
+        complex(dp), allocatable :: constant_kernel(:, :), linear_kernel(:, :)
+        integer, allocatable :: discontinuous_nodes(:, :)
+        real(dp), allocatable :: lengths(:), normals(:, :)
+        real(dp) :: first_derivative, normal_product, second_derivative
+        integer :: first_endpoint, first_local_node, first_node, first_panel
+        integer :: panel_count, second_endpoint, second_local_node
+        integer :: second_node, second_panel
+
+        matrix = (0.0_dp, 0.0_dp)
+        status = 1
+        panel_count = size(panel_start, 2)
+        if (node_count < 1 .or. size(panel_nodes, 1) /= 2) return
+        if (size(panel_start, 1) /= 2 .or. size(panel_end, 1) /= 2) return
+        if (size(panel_end, 2) /= panel_count .or. panel_count < 1) return
+        if (size(panel_nodes, 2) /= panel_count) return
+        if (size(matrix, 1) /= node_count .or. &
+            size(matrix, 2) /= node_count) return
+        if (any(panel_nodes < 1) .or. any(panel_nodes > node_count)) return
+        if (wavenumber <= 0.0_dp .or. quadrature_order < 1) return
+
+        allocate(constant_kernel(panel_count, panel_count))
+        allocate(discontinuous_nodes(2, panel_count))
+        allocate(lengths(panel_count), normals(2, panel_count))
+        allocate(linear_kernel(2 * panel_count, 2 * panel_count))
+        do first_panel = 1, panel_count
+            lengths(first_panel) = norm2( &
+                panel_end(:, first_panel) - panel_start(:, first_panel))
+            if (lengths(first_panel) <= 0.0_dp) return
+            normals(1, first_panel) = ( &
+                panel_end(2, first_panel) - panel_start(2, first_panel)) / &
+                lengths(first_panel)
+            normals(2, first_panel) = ( &
+                panel_start(1, first_panel) - panel_end(1, first_panel)) / &
+                lengths(first_panel)
+            discontinuous_nodes(1, first_panel) = 2 * first_panel - 1
+            discontinuous_nodes(2, first_panel) = 2 * first_panel
+        end do
+
+        call assemble_helmholtz_single_layer_constant( &
+            panel_start, panel_end, wavenumber, quadrature_order, &
+            constant_kernel, status)
+        if (status /= 0) return
+        call assemble_helmholtz_single_layer_linear( &
+            panel_start, panel_end, discontinuous_nodes, 2 * panel_count, &
+            wavenumber, quadrature_order, linear_kernel, status)
+        if (status /= 0) return
+
+        do first_panel = 1, panel_count
+            do second_panel = 1, panel_count
+                normal_product = dot_product( &
+                    normals(:, first_panel), normals(:, second_panel))
+                do first_endpoint = 1, 2
+                    first_node = panel_nodes(first_endpoint, first_panel)
+                    first_local_node = 2 * (first_panel - 1) + first_endpoint
+                    first_derivative = endpoint_sign(first_endpoint) / &
+                        lengths(first_panel)
+                    do second_endpoint = 1, 2
+                        second_node = panel_nodes( &
+                            second_endpoint, second_panel)
+                        second_local_node = &
+                            2 * (second_panel - 1) + second_endpoint
+                        second_derivative = endpoint_sign(second_endpoint) / &
+                            lengths(second_panel)
+                        matrix(first_node, second_node) = &
+                            matrix(first_node, second_node) + &
+                            first_derivative * &
+                            constant_kernel(first_panel, second_panel) * &
+                            second_derivative - wavenumber**2 * &
+                            normal_product * &
+                            linear_kernel(first_local_node, second_local_node)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_helmholtz_hypersingular_linear
 
     subroutine assemble_helmholtz_single_layer_linear( &
             panel_start, panel_end, panel_nodes, node_count, wavenumber, &
