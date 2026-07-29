@@ -79,7 +79,9 @@ end interface
 - **Raviart--Thomas and BDM**: Triangular families through order four, with
   contravariant Piola maps and oriented sparse divergence-mass forms.
 - Weighted vector forms compile to local matrices and `fortsparse` CSC
-  matrices. High-level vector source assembly and solves remain experimental.
+  matrices. The order-one Nédélec solve supports constant vector sources and
+  constant tangential data. Nonconstant sources and higher-order high-level
+  solves remain experimental.
 
 ## Weak Form Framework
 
