@@ -1,9 +1,12 @@
 module fortfem_capi_mesh
     use iso_c_binding, only: c_double, c_double_complex, c_int
     use fortfem_kinds, only: dp
+    use fortfem_assembly_nedelec_2d, only: &
+        assemble_nedelec_axisymmetric_fourier_csc
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
+    use fortsparse, only: csc_t, fortsparse_status_t
     implicit none
     private
 
@@ -18,6 +21,7 @@ module fortfem_capi_mesh
     public :: fortfem_rt0_evaluate
     public :: fortfem_rt0_l2_norm
     public :: fortfem_rt0_toroidal
+    public :: fortfem_nedelec_axisymmetric_fourier_csc
 
 contains
 
@@ -170,6 +174,55 @@ contains
         status = 0_c_int
     end subroutine fortfem_rt0_toroidal
 
+    subroutine fortfem_nedelec_axisymmetric_fourier_csc( &
+            handle, mode, quadrature_degree, nnz_capacity, &
+            n_dofs, nnz, col_ptr, row_ind, values, status) &
+            bind(c, name="fortfem_nedelec_axisymmetric_fourier_csc")
+        integer(c_int), value :: handle, mode, quadrature_degree
+        integer(c_int), value :: nnz_capacity
+        integer(c_int), intent(out) :: n_dofs, nnz
+        integer(c_int), intent(out) :: col_ptr(*), row_ind(*)
+        real(c_double), intent(out) :: values(*)
+        integer(c_int), intent(out) :: status
+
+        type(csc_t) :: matrix
+        type(fortsparse_status_t) :: sparse_status
+        integer :: entry, slot
+
+        n_dofs = 0_c_int
+        nnz = 0_c_int
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+
+        n_dofs = int(meshes(slot)%n_edges, c_int)
+        status = -1_c_int
+        if (quadrature_degree < 1_c_int) return
+        if (.not. valid_axisymmetric_mesh(meshes(slot))) return
+
+        call assemble_nedelec_axisymmetric_fourier_csc( &
+            meshes(slot), int(mode), int(quadrature_degree), &
+            matrix, sparse_status)
+        if (sparse_status%code /= 0) then
+            status = int(sparse_status%code, c_int)
+            return
+        end if
+
+        nnz = int(matrix%nnz, c_int)
+        if (nnz_capacity < nnz) then
+            status = -2_c_int
+            return
+        end if
+        do entry = 1, matrix%ncol + 1
+            col_ptr(entry) = int(matrix%col_ptr(entry) - 1, c_int)
+        end do
+        do entry = 1, matrix%nnz
+            row_ind(entry) = int(matrix%row_idx(entry) - 1, c_int)
+            values(entry) = real(matrix%val(entry), c_double)
+        end do
+        status = 0_c_int
+    end subroutine fortfem_nedelec_axisymmetric_fourier_csc
+
     subroutine fortfem_triangle_edge_map( &
             n_vertices, vertices, n_triangles, triangles, &
             edge_capacity, n_edges, edges, triangle_edge_dofs, &
@@ -298,6 +351,31 @@ contains
         valid = slot >= 1 .and. slot <= max_meshes
         if (valid) valid = mesh_occupied(slot)
     end function valid_mesh_handle
+
+    logical function valid_axisymmetric_mesh(mesh) result(valid)
+        type(mesh_2d_t), intent(in) :: mesh
+
+        real(dp) :: determinant
+        integer :: triangle
+
+        valid = all(mesh%vertices(1, :) > 0.0_dp)
+        if (.not. valid) return
+        do triangle = 1, mesh%n_triangles
+            determinant = &
+                (mesh%vertices(1, mesh%triangles(2, triangle)) - &
+                mesh%vertices(1, mesh%triangles(1, triangle))) * &
+                (mesh%vertices(2, mesh%triangles(3, triangle)) - &
+                mesh%vertices(2, mesh%triangles(1, triangle))) - &
+                (mesh%vertices(1, mesh%triangles(3, triangle)) - &
+                mesh%vertices(1, mesh%triangles(1, triangle))) * &
+                (mesh%vertices(2, mesh%triangles(2, triangle)) - &
+                mesh%vertices(2, mesh%triangles(1, triangle)))
+            if (determinant <= 0.0_dp) then
+                valid = .false.
+                return
+            end if
+        end do
+    end function valid_axisymmetric_mesh
 
     subroutine copy_complex_dofs(n_dofs, c_dofs, fortran_dofs)
         integer(c_int), intent(in) :: n_dofs
