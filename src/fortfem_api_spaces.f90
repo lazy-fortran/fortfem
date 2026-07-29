@@ -3,7 +3,8 @@ module fortfem_api_spaces
     use fortfem_api_types, only: mesh_t, function_space_t,                 &
         vector_function_space_t, function_t, vector_function_t,             &
         trial_function_t, test_function_t, vector_trial_function_t,         &
-        vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t
+        vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
+        cell_coefficient_t
     implicit none
 
     private
@@ -35,6 +36,8 @@ module fortfem_api_spaces
     public :: vector_bc_edge_moments
     public :: neumann_bc_constant
     public :: neumann_bc_on_boundary
+    public :: cell_coefficient_t
+    public :: cell_coefficient
 
 contains
 
@@ -130,6 +133,16 @@ contains
         allocate(f%values(1))
         f%values(1) = val
     end function constant
+
+    function cell_coefficient(values) result(coefficient)
+        real(dp), intent(in) :: values(:)
+        type(cell_coefficient_t) :: coefficient
+
+        if (size(values) < 1) then
+            error stop "cell_coefficient: at least one value is required"
+        end if
+        allocate(coefficient%values, source=values)
+    end function cell_coefficient
 
     function dirichlet_bc(space, value) result(bc)
         type(function_space_t), target, intent(in) :: space

@@ -12,8 +12,8 @@ module fortfem_forms_simple
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
-    use fortsparse, only: csc_matvec, csc_t, FORTSPARSE_INVALID_MATRIX, &
-        fortsparse_status_t, status_set
+    use fortsparse, only: csc_from_triplet, csc_matvec, csc_t, &
+        FORTSPARSE_INVALID_MATRIX, fortsparse_status_t, status_set
     implicit none
 
     private
@@ -28,6 +28,7 @@ module fortfem_forms_simple
     integer, parameter :: token_measure = 8
     integer, parameter :: token_divergence = 9
     integer, parameter :: token_constant_load = 10
+    integer, parameter :: token_cell_coefficient = 11
 
     integer, parameter :: role_trial = 1
     integer, parameter :: role_test = 2
@@ -42,6 +43,7 @@ module fortfem_forms_simple
     integer, parameter :: item_form = 2
     integer, parameter :: item_scalar = 3
     integer, parameter :: item_measure = 4
+    integer, parameter :: item_coefficient = 5
 
     type :: form_token_t
         integer :: token_type = 0
@@ -49,6 +51,10 @@ module fortfem_forms_simple
         integer :: tensor_rank = 0
         real(dp) :: scalar = 0.0_dp
         real(dp) :: vector_value(2) = 0.0_dp
+        real(dp), allocatable :: cell_values(:)
+    contains
+        procedure, private :: assign_form_token
+        generic :: assignment(=) => assign_form_token
     end type form_token_t
 
     type, public :: form_expr_t
@@ -76,13 +82,21 @@ module fortfem_forms_simple
         real(dp) :: vector_load(2) = 0.0_dp
         real(dp) :: vector_value(2) = 0.0_dp
         logical :: has_vector_load = .false.
+        integer :: coefficient_token = 0
+        integer :: mass_field_token = 0
+        integer :: curl_field_token = 0
+        integer :: divergence_field_token = 0
+        real(dp) :: mass_field_scale = 0.0_dp
+        real(dp) :: curl_field_scale = 0.0_dp
+        real(dp) :: divergence_field_scale = 0.0_dp
     end type compiler_item_t
 
     public :: assignment(=)
     public :: compile_form, compile_form_matrix, compile_form_vector
     public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
-    public :: create_constant_load, create_curl, create_divergence
+    public :: create_cell_coefficient, create_constant_load
+    public :: create_curl, create_divergence
     public :: create_grad, create_inner
     public :: create_measure
     public :: create_product, create_scale, create_sum, create_symbol
@@ -93,6 +107,20 @@ module fortfem_forms_simple
     end interface assignment(=)
 
 contains
+
+    impure elemental subroutine assign_form_token(lhs, rhs)
+        class(form_token_t), intent(out) :: lhs
+        type(form_token_t), intent(in) :: rhs
+
+        lhs%token_type = rhs%token_type
+        lhs%role = rhs%role
+        lhs%tensor_rank = rhs%tensor_rank
+        lhs%scalar = rhs%scalar
+        lhs%vector_value = rhs%vector_value
+        if (allocated(rhs%cell_values)) then
+            allocate(lhs%cell_values, source=rhs%cell_values)
+        end if
+    end subroutine assign_form_token
 
     subroutine assign_form_expr(lhs, rhs)
         type(form_expr_t), intent(inout) :: lhs
@@ -249,6 +277,18 @@ contains
         expr%tokens(1)%scalar = value
     end function create_constant_load
 
+    function create_cell_coefficient(values) result(expr)
+        real(dp), intent(in) :: values(:)
+        type(form_expr_t) :: expr
+
+        allocate(expr%tokens(1))
+        expr%description = "cell_coefficient"
+        expr%form_type = "coefficient"
+        expr%tensor_rank = 0
+        expr%tokens(1)%token_type = token_cell_coefficient
+        allocate(expr%tokens(1)%cell_values, source=values)
+    end function create_cell_coefficient
+
     function create_vector_constant_function(value) result(expr)
         real(dp), intent(in) :: value(2)
         type(form_expr_t) :: expr
@@ -334,13 +374,20 @@ contains
 
         real(dp) :: curl_coefficient, divergence_coefficient
         real(dp) :: mass_coefficient
-        integer :: compiler_status
+        real(dp) :: curl_field_scale, divergence_field_scale
+        real(dp) :: mass_field_scale
+        integer :: compiler_status, curl_field_token
+        integer :: divergence_field_token, mass_field_token
 
         status = 1
         call analyze_vector_bilinear_form( &
             expr, mass_coefficient, curl_coefficient, &
-            divergence_coefficient, compiler_status)
+            divergence_coefficient, mass_field_token, curl_field_token, &
+            divergence_field_token, mass_field_scale, curl_field_scale, &
+            divergence_field_scale, compiler_status)
         if (compiler_status /= 0) return
+        if (mass_field_token /= 0 .or. curl_field_token /= 0 .or. &
+            divergence_field_token /= 0) return
         select case (trim(family))
         case ("Nedelec", "Nedelec1", "Edge")
             if (divergence_coefficient /= 0.0_dp) then
@@ -394,11 +441,17 @@ contains
 
         real(dp) :: curl_coefficient, divergence_coefficient
         real(dp) :: mass_coefficient
-        integer :: compiler_status
+        real(dp), allocatable :: cell_curl(:), cell_mass(:)
+        real(dp) :: curl_field_scale, divergence_field_scale
+        real(dp) :: mass_field_scale
+        integer :: compiler_status, curl_field_token
+        integer :: divergence_field_token, mass_field_token
 
         call analyze_vector_bilinear_form( &
             expr, mass_coefficient, curl_coefficient, &
-            divergence_coefficient, compiler_status)
+            divergence_coefficient, mass_field_token, curl_field_token, &
+            divergence_field_token, mass_field_scale, curl_field_scale, &
+            divergence_field_scale, compiler_status)
         if (compiler_status /= 0) then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
@@ -411,11 +464,42 @@ contains
                 call set_incompatible_family_status(status)
                 return
             end if
-            call assemble_triangle_nedelec_curl_mass_csc( &
-                mesh, degree, quadrature_degree, matrix, status, &
-                curl_coefficient, mass_coefficient)
+            if (divergence_field_token /= 0) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            if (mass_field_token /= 0 .or. curl_field_token /= 0) then
+                call build_cell_values( &
+                    expr, mesh%n_triangles, curl_coefficient, &
+                    curl_field_token, curl_field_scale, cell_curl, &
+                    compiler_status)
+                if (compiler_status /= 0) then
+                    call set_invalid_cell_coefficient_status(status)
+                    return
+                end if
+                call build_cell_values( &
+                    expr, mesh%n_triangles, mass_coefficient, &
+                    mass_field_token, mass_field_scale, cell_mass, &
+                    compiler_status)
+                if (compiler_status /= 0) then
+                    call set_invalid_cell_coefficient_status(status)
+                    return
+                end if
+                call assemble_cell_weighted_nedelec_csc( &
+                    mesh, degree, quadrature_degree, cell_curl, cell_mass, &
+                    matrix, status)
+            else
+                call assemble_triangle_nedelec_curl_mass_csc( &
+                    mesh, degree, quadrature_degree, matrix, status, &
+                    curl_coefficient, mass_coefficient)
+            end if
         case ("RT", "Raviart-Thomas")
             if (curl_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            if (mass_field_token /= 0 .or. curl_field_token /= 0 .or. &
+                divergence_field_token /= 0) then
                 call set_incompatible_family_status(status)
                 return
             end if
@@ -427,11 +511,21 @@ contains
                 call set_incompatible_family_status(status)
                 return
             end if
+            if (mass_field_token /= 0 .or. curl_field_token /= 0 .or. &
+                divergence_field_token /= 0) then
+                call set_incompatible_family_status(status)
+                return
+            end if
             call assemble_triangle_nedelec_second_curl_mass_csc( &
                 mesh, degree, quadrature_degree, matrix, status, &
                 curl_coefficient, mass_coefficient)
         case ("BDM")
             if (curl_coefficient /= 0.0_dp) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            if (mass_field_token /= 0 .or. curl_field_token /= 0 .or. &
+                divergence_field_token /= 0) then
                 call set_incompatible_family_status(status)
                 return
             end if
@@ -513,6 +607,107 @@ contains
             "Vector differential operator is incompatible with the family")
     end subroutine set_incompatible_family_status
 
+    subroutine set_invalid_cell_coefficient_status(status)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Cell coefficient count must equal the triangle count")
+    end subroutine set_invalid_cell_coefficient_status
+
+    subroutine build_cell_values( &
+            expr, triangle_count, constant_value, field_token, field_scale, &
+            values, status)
+        type(form_expr_t), intent(in) :: expr
+        integer, intent(in) :: triangle_count, field_token
+        real(dp), intent(in) :: constant_value, field_scale
+        real(dp), allocatable, intent(out) :: values(:)
+        integer, intent(out) :: status
+
+        allocate(values(triangle_count))
+        values = constant_value
+        status = 2
+        if (field_token == 0) then
+            status = 0
+            return
+        end if
+        if (.not. allocated(expr%tokens)) return
+        if (field_token < 1 .or. field_token > size(expr%tokens)) return
+        if (.not. allocated(expr%tokens(field_token)%cell_values)) return
+        if (size(expr%tokens(field_token)%cell_values) /= triangle_count) return
+        values = values + &
+            field_scale * expr%tokens(field_token)%cell_values
+        status = 0
+    end subroutine build_cell_values
+
+    subroutine assemble_cell_weighted_nedelec_csc( &
+            mesh, degree, quadrature_degree, curl_values, mass_values, &
+            matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: curl_values(:), mass_values(:)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: values(:)
+        real(dp), allocatable :: element_matrix(:, :)
+        real(dp) :: triangle_vertices(2, 3)
+        integer :: edge_dofs(3), edge_orientations(3)
+        integer :: entry, first_basis, second_basis
+        integer :: assembly_status, triangle
+
+        if (degree /= 1) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Cell-weighted Nedelec assembly supports order one")
+            return
+        end if
+        if (size(curl_values) /= mesh%n_triangles .or. &
+            size(mass_values) /= mesh%n_triangles) then
+            call set_invalid_cell_coefficient_status(status)
+            return
+        end if
+        if (.not. allocated(mesh%edges)) call mesh%build_edge_connectivity()
+        if (.not. allocated(mesh%edge_to_dof)) then
+            call mesh%build_edge_dof_numbering()
+        end if
+        allocate(rows(9 * mesh%n_triangles))
+        allocate(columns(9 * mesh%n_triangles))
+        allocate(values(9 * mesh%n_triangles))
+
+        entry = 0
+        do triangle = 1, mesh%n_triangles
+            triangle_vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            call assemble_triangle_nedelec_curl_mass_element( &
+                triangle_vertices, degree, quadrature_degree, &
+                element_matrix, assembly_status, &
+                curl_coefficient=curl_values(triangle), &
+                mass_coefficient=mass_values(triangle))
+            if (assembly_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Cell-weighted Nedelec element assembly failed")
+                return
+            end if
+            call mesh%get_triangle_edge_dofs( &
+                triangle, edge_dofs, edge_orientations)
+            do second_basis = 1, 3
+                do first_basis = 1, 3
+                    entry = entry + 1
+                    rows(entry) = edge_dofs(first_basis) + 1
+                    columns(entry) = edge_dofs(second_basis) + 1
+                    values(entry) = real( &
+                        edge_orientations(first_basis) * &
+                        edge_orientations(second_basis), dp) * &
+                        element_matrix(first_basis, second_basis)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            mesh%n_edges, mesh%n_edges, rows, columns, values, matrix, status)
+    end subroutine assemble_cell_weighted_nedelec_csc
+
     subroutine analyze_scalar_bilinear_form( &
             expr, mass_coefficient, stiffness_coefficient, status)
         type(form_expr_t), intent(in) :: expr
@@ -531,7 +726,8 @@ contains
         stack_size = 0
         do token_index = 1, size(expr%tokens)
             call apply_compiler_token( &
-                expr%tokens(token_index), stack, stack_size, status)
+                expr%tokens(token_index), token_index, &
+                stack, stack_size, status)
             if (status /= 0) return
         end do
         if (stack_size /= 1) then
@@ -583,7 +779,8 @@ contains
         stack_size = 0
         do token_index = 1, size(expr%tokens)
             call apply_compiler_token( &
-                expr%tokens(token_index), stack, stack_size, status)
+                expr%tokens(token_index), token_index, &
+                stack, stack_size, status)
             if (status /= 0) return
         end do
         if (stack_size /= 1) then
@@ -618,10 +815,15 @@ contains
 
     subroutine analyze_vector_bilinear_form( &
             expr, mass_coefficient, curl_coefficient, divergence_coefficient, &
-            status)
+            mass_field_token, curl_field_token, divergence_field_token, &
+            mass_field_scale, curl_field_scale, divergence_field_scale, status)
         type(form_expr_t), intent(in) :: expr
         real(dp), intent(out) :: mass_coefficient, curl_coefficient
         real(dp), intent(out) :: divergence_coefficient
+        integer, intent(out) :: mass_field_token, curl_field_token
+        integer, intent(out) :: divergence_field_token
+        real(dp), intent(out) :: mass_field_scale, curl_field_scale
+        real(dp), intent(out) :: divergence_field_scale
         integer, intent(out) :: status
 
         type(compiler_item_t), allocatable :: stack(:)
@@ -630,6 +832,12 @@ contains
         mass_coefficient = 0.0_dp
         curl_coefficient = 0.0_dp
         divergence_coefficient = 0.0_dp
+        mass_field_token = 0
+        curl_field_token = 0
+        divergence_field_token = 0
+        mass_field_scale = 0.0_dp
+        curl_field_scale = 0.0_dp
+        divergence_field_scale = 0.0_dp
         status = 2
         if (.not. allocated(expr%tokens)) return
         if (size(expr%tokens) < 1) return
@@ -637,7 +845,8 @@ contains
         stack_size = 0
         do token_index = 1, size(expr%tokens)
             call apply_compiler_token( &
-                expr%tokens(token_index), stack, stack_size, status)
+                expr%tokens(token_index), token_index, &
+                stack, stack_size, status)
             if (status /= 0) return
         end do
         if (stack_size /= 1) then
@@ -667,6 +876,12 @@ contains
         mass_coefficient = stack(1)%mass_coefficient
         curl_coefficient = stack(1)%curl_coefficient
         divergence_coefficient = stack(1)%divergence_coefficient
+        mass_field_token = stack(1)%mass_field_token
+        curl_field_token = stack(1)%curl_field_token
+        divergence_field_token = stack(1)%divergence_field_token
+        mass_field_scale = stack(1)%mass_field_scale
+        curl_field_scale = stack(1)%curl_field_scale
+        divergence_field_scale = stack(1)%divergence_field_scale
         status = 0
     end subroutine analyze_vector_bilinear_form
 
@@ -686,7 +901,8 @@ contains
         stack_size = 0
         do token_index = 1, size(expr%tokens)
             call apply_compiler_token( &
-                expr%tokens(token_index), stack, stack_size, status)
+                expr%tokens(token_index), token_index, &
+                stack, stack_size, status)
             if (status /= 0) return
         end do
         if (stack_size /= 1) then
@@ -720,8 +936,10 @@ contains
         status = 0
     end subroutine analyze_vector_linear_form
 
-    subroutine apply_compiler_token(token, stack, stack_size, status)
+    subroutine apply_compiler_token( &
+            token, token_index, stack, stack_size, status)
         type(form_token_t), intent(in) :: token
+        integer, intent(in) :: token_index
         type(compiler_item_t), intent(inout) :: stack(:)
         integer, intent(inout) :: stack_size
         integer, intent(out) :: status
@@ -769,6 +987,10 @@ contains
             stack(stack_size)%item_type = item_form
             stack(stack_size)%field_rank = 0
             stack(stack_size)%load_coefficient = token%scalar
+        case (token_cell_coefficient)
+            stack_size = stack_size + 1
+            stack(stack_size)%item_type = item_coefficient
+            stack(stack_size)%coefficient_token = token_index
         case (token_multiply)
             call apply_multiply_token(stack, stack_size, status)
             return
@@ -856,6 +1078,22 @@ contains
                 second%item_type == item_scalar) then
             factor = second%scalar
             stack(stack_size - 1) = first
+        else if (first%item_type == item_coefficient .and. &
+                second%item_type == item_form) then
+            stack(stack_size - 1) = second
+            call apply_cell_coefficient( &
+                stack(stack_size - 1), first%coefficient_token, status)
+            if (status /= 0) return
+            stack_size = stack_size - 1
+            return
+        else if (first%item_type == item_form .and. &
+                second%item_type == item_coefficient) then
+            stack(stack_size - 1) = first
+            call apply_cell_coefficient( &
+                stack(stack_size - 1), second%coefficient_token, status)
+            if (status /= 0) return
+            stack_size = stack_size - 1
+            return
         else if (first%item_type == item_measure .and. &
                 second%item_type == item_form) then
             if (second%integrated) return
@@ -883,6 +1121,12 @@ contains
             stack(stack_size - 1)%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = factor * &
             stack(stack_size - 1)%divergence_coefficient
+        stack(stack_size - 1)%mass_field_scale = factor * &
+            stack(stack_size - 1)%mass_field_scale
+        stack(stack_size - 1)%curl_field_scale = factor * &
+            stack(stack_size - 1)%curl_field_scale
+        stack(stack_size - 1)%divergence_field_scale = factor * &
+            stack(stack_size - 1)%divergence_field_scale
         stack(stack_size - 1)%load_coefficient = factor * &
             stack(stack_size - 1)%load_coefficient
         stack(stack_size - 1)%vector_load = factor * &
@@ -890,6 +1134,36 @@ contains
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
+
+    subroutine apply_cell_coefficient(item, coefficient_token, status)
+        type(compiler_item_t), intent(inout) :: item
+        integer, intent(in) :: coefficient_token
+        integer, intent(out) :: status
+
+        status = 2
+        if (item%mass_coefficient /= 0.0_dp) then
+            if (item%mass_field_token /= 0) return
+            item%mass_field_token = coefficient_token
+            item%mass_field_scale = item%mass_coefficient
+            item%mass_coefficient = 0.0_dp
+        end if
+        if (item%curl_coefficient /= 0.0_dp) then
+            if (item%curl_field_token /= 0) return
+            item%curl_field_token = coefficient_token
+            item%curl_field_scale = item%curl_coefficient
+            item%curl_coefficient = 0.0_dp
+        end if
+        if (item%divergence_coefficient /= 0.0_dp) then
+            if (item%divergence_field_token /= 0) return
+            item%divergence_field_token = coefficient_token
+            item%divergence_field_scale = item%divergence_coefficient
+            item%divergence_coefficient = 0.0_dp
+        end if
+        if (item%mass_field_token == 0 .and. &
+            item%curl_field_token == 0 .and. &
+            item%divergence_field_token == 0) return
+        status = 0
+    end subroutine apply_cell_coefficient
 
     subroutine apply_add_token(stack, stack_size, status)
         type(compiler_item_t), intent(inout) :: stack(:)
@@ -915,6 +1189,24 @@ contains
             first%curl_coefficient + second%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = &
             first%divergence_coefficient + second%divergence_coefficient
+        call combine_field_terms( &
+            first%mass_field_token, first%mass_field_scale, &
+            second%mass_field_token, second%mass_field_scale, &
+            stack(stack_size - 1)%mass_field_token, &
+            stack(stack_size - 1)%mass_field_scale, status)
+        if (status /= 0) return
+        call combine_field_terms( &
+            first%curl_field_token, first%curl_field_scale, &
+            second%curl_field_token, second%curl_field_scale, &
+            stack(stack_size - 1)%curl_field_token, &
+            stack(stack_size - 1)%curl_field_scale, status)
+        if (status /= 0) return
+        call combine_field_terms( &
+            first%divergence_field_token, first%divergence_field_scale, &
+            second%divergence_field_token, second%divergence_field_scale, &
+            stack(stack_size - 1)%divergence_field_token, &
+            stack(stack_size - 1)%divergence_field_scale, status)
+        if (status /= 0) return
         stack(stack_size - 1)%load_coefficient = &
             first%load_coefficient + second%load_coefficient
         stack(stack_size - 1)%vector_load = &
@@ -924,6 +1216,32 @@ contains
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_add_token
+
+    pure subroutine combine_field_terms( &
+            first_token, first_scale, second_token, second_scale, &
+            combined_token, combined_scale, status)
+        integer, intent(in) :: first_token, second_token
+        real(dp), intent(in) :: first_scale, second_scale
+        integer, intent(out) :: combined_token, status
+        real(dp), intent(out) :: combined_scale
+
+        status = 2
+        combined_token = 0
+        combined_scale = 0.0_dp
+        if (first_token == 0) then
+            combined_token = second_token
+            combined_scale = second_scale
+        else if (second_token == 0) then
+            combined_token = first_token
+            combined_scale = first_scale
+        else if (first_token == second_token) then
+            combined_token = first_token
+            combined_scale = first_scale + second_scale
+        else
+            return
+        end if
+        status = 0
+    end subroutine combine_field_terms
 
     subroutine assemble_scalar_p1_matrix( &
             vertices, triangles, mass_coefficient, stiffness_coefficient, &
@@ -1101,6 +1419,10 @@ contains
         else if (trim(a%form_type) == "scalar") then
             form_type = b%form_type
         else if (trim(b%form_type) == "scalar") then
+            form_type = a%form_type
+        else if (trim(a%form_type) == "coefficient") then
+            form_type = b%form_type
+        else if (trim(b%form_type) == "coefficient") then
             form_type = a%form_type
         else
             form_type = a%form_type

@@ -1,15 +1,17 @@
 program test_vector_form_compiler_sparse
     use check, only: check_condition, check_summary
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
-    use fortfem_api, only: compile_vector_form_csc, curl, div, dx, &
-        form_expr_t, init_measures, inner, interpolate_nedelec_edge_dofs, &
-        interpolate_rt_edge_dofs, operator(*), operator(+), &
+    use fortfem_api, only: cell_coefficient, cell_coefficient_t, &
+        compile_vector_form_csc, curl, div, dx, form_expr_t, init_measures, &
+        inner, interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs, &
+        operator(*), operator(+), &
         vector_test_function_t, vector_trial_function_t
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     implicit none
 
     type(form_expr_t) :: form
+    type(cell_coefficient_t) :: coefficient, second_coefficient
     type(csc_t) :: matrix
     type(fortsparse_status_t) :: sparse_status
     type(mesh_2d_t) :: mesh
@@ -45,6 +47,45 @@ program test_vector_form_compiler_sparse
         matrix%nrow == mesh%n_edges .and. abs(energy - 3.0_dp) < 2.0e-12_dp, &
         "Sparse Nedelec compiler preserves exact shared-edge mass energy")
 
+    coefficient = cell_coefficient([2.0_dp, 4.0_dp])
+    form = coefficient * inner(trial_field, test_field) * dx
+    call compile_vector_form_csc( &
+        form, mesh, "Nedelec", 1, 4, matrix, sparse_status)
+    call interpolate_nedelec_edge_dofs(mesh, constant_field, 2, dofs)
+    matrix_times_dofs = csc_matvec(matrix, dofs)
+    energy = dot_product(dofs, matrix_times_dofs)
+    call record_condition(sparse_status%code == 0 .and. &
+        abs(energy - 3.0_dp) < 2.0e-12_dp, &
+        "Cellwise mass coefficients reproduce exact element energies")
+
+    coefficient = cell_coefficient([3.0_dp, 5.0_dp])
+    form = coefficient * inner(curl(trial_field), curl(test_field)) * dx
+    call compile_vector_form_csc( &
+        form, mesh, "Nedelec", 1, 4, matrix, sparse_status)
+    call interpolate_nedelec_edge_dofs(mesh, unit_curl_field, 2, dofs)
+    matrix_times_dofs = csc_matvec(matrix, dofs)
+    energy = dot_product(dofs, matrix_times_dofs)
+    call record_condition(sparse_status%code == 0 .and. &
+        abs(energy - 4.0_dp) < 2.0e-12_dp, &
+        "Cellwise curl coefficients reproduce exact element energies")
+
+    coefficient = cell_coefficient([2.0_dp, 4.0_dp])
+    second_coefficient = cell_coefficient([3.0_dp, 5.0_dp])
+    form = ( &
+        coefficient * inner(trial_field, test_field) + &
+        second_coefficient * &
+        inner(curl(trial_field), curl(test_field))) * dx
+    coefficient%values = -100.0_dp
+    second_coefficient%values = -100.0_dp
+    call compile_vector_form_csc( &
+        form, mesh, "Nedelec", 1, 4, matrix, sparse_status)
+    call interpolate_nedelec_edge_dofs(mesh, unit_curl_field, 2, dofs)
+    matrix_times_dofs = csc_matvec(matrix, dofs)
+    energy = dot_product(dofs, matrix_times_dofs)
+    call record_condition(sparse_status%code == 0 .and. &
+        abs(energy - 4.5_dp) < 2.0e-12_dp, &
+        "Independent cellwise mass and curl fields compose exactly")
+
     form = (2.0_dp * inner(div(trial_field), div(test_field)) + &
         3.0_dp * inner(trial_field, test_field)) * dx
     call compile_vector_form_csc( &
@@ -75,6 +116,13 @@ contains
             if (size(unused_coordinates) /= 2) error stop
         end associate
     end subroutine constant_field
+
+    pure subroutine unit_curl_field(x, y, value)
+        real(dp), intent(in) :: x, y
+        real(dp), intent(out) :: value(2)
+
+        value = [-0.5_dp * y, 0.5_dp * x]
+    end subroutine unit_curl_field
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
