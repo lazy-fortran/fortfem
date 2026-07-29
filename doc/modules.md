@@ -129,7 +129,8 @@ end program
   coefficients, constant or cellwise vector sources, and constant or owned
   nonconstant tangential edge moments
 - **Verified**: Sparse public-API solve converges to the analytical
-  three-material Fourier-mode magnetic field
+  three-material Fourier-mode magnetic field and attains first-order field
+  convergence for a smooth manufactured curl-mass problem
 - **Working**: Mesh generation and visualization with fortplotlib
 - **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
