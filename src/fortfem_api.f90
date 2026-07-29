@@ -4,7 +4,8 @@ module fortfem_api
         assemble_triangle_nedelec_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_div_mass_csc, &
-        assemble_triangle_rt_div_mass_element
+        assemble_triangle_rt_div_mass_element, &
+        assemble_triangle_rt_divergence_csc
     use fortfem_kinds
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
@@ -51,6 +52,8 @@ module fortfem_api
         build_triangle_discrete_gradient
     use fortfem_triangle_global_dof_map, only: &
         build_triangle_trimmed_dof_map
+    use fortfem_triangle_discontinuous_dof_map, only: &
+        build_triangle_discontinuous_dof_map
     use fortfem_triangle_vector_interpolation, only: &
         evaluate_triangle_nedelec_interpolant, &
         evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec, &
@@ -162,6 +165,7 @@ module fortfem_api
     public :: map_triangle_rt_contravariant
     public :: build_triangle_discrete_gradient
     public :: build_triangle_trimmed_dof_map
+    public :: build_triangle_discontinuous_dof_map
     public :: interpolate_triangle_nedelec
     public :: evaluate_triangle_nedelec_interpolant
     public :: evaluate_triangle_rt_interpolant
@@ -174,6 +178,7 @@ module fortfem_api
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_rt_div_mass_element
     public :: assemble_triangle_rt_div_mass_csc
+    public :: assemble_triangle_rt_divergence_csc
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
