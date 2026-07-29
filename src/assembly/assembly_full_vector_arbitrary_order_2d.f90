@@ -20,9 +20,54 @@ module fortfem_assembly_full_vector_arbitrary_order_2d
     private
 
     public :: assemble_triangle_bdm_div_mass_csc
+    public :: assemble_triangle_bdm_div_mass_element
     public :: assemble_triangle_nedelec_second_curl_mass_csc
+    public :: assemble_triangle_nedelec_second_curl_mass_element
 
 contains
+
+    subroutine assemble_triangle_nedelec_second_curl_mass_element( &
+            vertices, degree, quadrature_degree, matrix, status, &
+            curl_coefficient, mass_coefficient)
+        real(dp), intent(in) :: vertices(2, 3)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+
+        real(dp) :: curl_weight, mass_weight
+
+        curl_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        call assemble_triangle_full_vector_element( &
+            vertices, degree, quadrature_degree, .false., curl_weight, &
+            mass_weight, matrix, status)
+    end subroutine assemble_triangle_nedelec_second_curl_mass_element
+
+    subroutine assemble_triangle_bdm_div_mass_element( &
+            vertices, degree, quadrature_degree, matrix, status, &
+            divergence_coefficient, mass_coefficient)
+        real(dp), intent(in) :: vertices(2, 3)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: divergence_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
+
+        real(dp) :: divergence_weight, mass_weight
+
+        divergence_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(divergence_coefficient)) then
+            divergence_weight = divergence_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        call assemble_triangle_full_vector_element( &
+            vertices, degree, quadrature_degree, .true., divergence_weight, &
+            mass_weight, matrix, status)
+    end subroutine assemble_triangle_bdm_div_mass_element
 
     subroutine assemble_triangle_nedelec_second_curl_mass_csc( &
             mesh, degree, quadrature_degree, matrix, status)
@@ -86,7 +131,7 @@ contains
             vertices = mesh%vertices(:, mesh%triangles(:, triangle))
             call assemble_triangle_full_vector_element( &
                 vertices, degree, quadrature_degree, normal_family, &
-                element_matrix, local_status)
+                1.0_dp, 1.0_dp, element_matrix, local_status)
             if (local_status /= 0) then
                 call status_set( &
                     status, FORTSPARSE_INVALID_MATRIX, &
@@ -111,10 +156,12 @@ contains
     end subroutine assemble_triangle_full_vector_csc
 
     subroutine assemble_triangle_full_vector_element( &
-            vertices, degree, quadrature_degree, normal_family, matrix, status)
+            vertices, degree, quadrature_degree, normal_family, &
+            derivative_coefficient, mass_coefficient, matrix, status)
         real(dp), intent(in) :: vertices(2, 3)
         integer, intent(in) :: degree, quadrature_degree
         logical, intent(in) :: normal_family
+        real(dp), intent(in) :: derivative_coefficient, mass_coefficient
         real(dp), allocatable, intent(out) :: matrix(:, :)
         integer, intent(out) :: status
 
@@ -178,9 +225,9 @@ contains
                 do row = 1, dof_count
                     matrix(row, column) = matrix(row, column) + &
                         physical_weight * ( &
-                        physical_derivatives(row) * &
+                        derivative_coefficient * physical_derivatives(row) * &
                         physical_derivatives(column) + &
-                        dot_product( &
+                        mass_coefficient * dot_product( &
                         physical_values(:, row), physical_values(:, column)))
                 end do
             end do
