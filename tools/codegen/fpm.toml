@@ -1,0 +1,19 @@
+name = "fortfem_codegen"
+version = "0.1.0"
+license = "MIT"
+
+[dependencies]
+fortsym = { path = "../../../fortsym" }
+
+[build]
+auto-executables = true
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[[executable]]
+name = "gen_tetra_nedelec_candidates"
+source-dir = "app"
+main = "gen_tetra_nedelec_candidates.f90"

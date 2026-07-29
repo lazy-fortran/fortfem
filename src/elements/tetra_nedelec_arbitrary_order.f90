@@ -1,4 +1,12 @@
 module fortfem_tetra_nedelec_arbitrary_order
+    use fortfem_generated_tetra_nedelec_candidates_order_1, only: &
+        evaluate_candidates_order_1
+    use fortfem_generated_tetra_nedelec_candidates_order_2, only: &
+        evaluate_candidates_order_2
+    use fortfem_generated_tetra_nedelec_candidates_order_3, only: &
+        evaluate_candidates_order_3
+    use fortfem_generated_tetra_nedelec_candidates_order_4, only: &
+        evaluate_candidates_order_4
     use fortfem_kinds, only: dp
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
@@ -17,8 +25,6 @@ module fortfem_tetra_nedelec_arbitrary_order
         private
         integer :: order = 0
         integer :: dof_count = 0
-        integer, allocatable :: candidate_kind(:)
-        integer, allocatable :: powers(:, :)
         real(dp), allocatable :: coefficients(:, :)
     end type tetra_nedelec_first_kind_t
 
@@ -46,56 +52,16 @@ contains
 
         real(dp), allocatable :: moment_matrix(:, :)
         integer, allocatable :: pivots(:)
-        integer :: candidate, component, info, total_degree
-        integer :: x_degree, y_degree, z_degree
+        integer :: candidate, info
 
         status = 1
-        if (order < 1) return
+        if (order < 1 .or. order > 4) return
 
         basis%order = order
         basis%dof_count = order * (order + 2) * (order + 3) / 2
-        allocate(basis%candidate_kind(basis%dof_count))
-        allocate(basis%powers(3, basis%dof_count))
         allocate(basis%coefficients(basis%dof_count, basis%dof_count))
         allocate(moment_matrix(basis%dof_count, basis%dof_count))
         allocate(pivots(basis%dof_count))
-
-        candidate = 0
-        do component = 1, 3
-            do total_degree = 0, order - 1
-                do x_degree = 0, total_degree
-                    do y_degree = 0, total_degree - x_degree
-                        z_degree = total_degree - x_degree - y_degree
-                        candidate = candidate + 1
-                        basis%candidate_kind(candidate) = component
-                        basis%powers(:, candidate) = [ &
-                            x_degree, y_degree, z_degree]
-                    end do
-                end do
-            end do
-        end do
-        total_degree = order - 1
-        do component = 4, 5
-            do x_degree = 0, total_degree
-                do y_degree = 0, total_degree - x_degree
-                    z_degree = total_degree - x_degree - y_degree
-                    candidate = candidate + 1
-                    basis%candidate_kind(candidate) = component
-                    basis%powers(:, candidate) = [ &
-                        x_degree, y_degree, z_degree]
-                end do
-            end do
-        end do
-        do y_degree = 0, total_degree
-            z_degree = total_degree - y_degree
-            candidate = candidate + 1
-            basis%candidate_kind(candidate) = 6
-            basis%powers(:, candidate) = [0, y_degree, z_degree]
-        end do
-        if (candidate /= basis%dof_count) then
-            status = 2
-            return
-        end if
 
         call build_nedelec_moment_matrix(basis, moment_matrix, status)
         if (status /= 0) return
@@ -260,124 +226,24 @@ contains
         real(dp), intent(in) :: point(3)
         real(dp), intent(out) :: values(:, :), curls(:, :)
 
-        integer :: candidate, kind, powers(3)
-
-        values = 0.0_dp
-        curls = 0.0_dp
-        do candidate = 1, basis%dof_count
-            kind = basis%candidate_kind(candidate)
-            powers = basis%powers(:, candidate)
-            select case (kind)
-            case (1:3)
-                call add_vector_monomial( &
-                    kind, 1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-            case (4)
-                powers(2) = powers(2) + 1
-                call add_vector_monomial( &
-                    1, -1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-                powers = basis%powers(:, candidate)
-                powers(1) = powers(1) + 1
-                call add_vector_monomial( &
-                    2, 1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-            case (5)
-                powers(3) = powers(3) + 1
-                call add_vector_monomial( &
-                    1, -1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-                powers = basis%powers(:, candidate)
-                powers(1) = powers(1) + 1
-                call add_vector_monomial( &
-                    3, 1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-            case (6)
-                powers(3) = powers(3) + 1
-                call add_vector_monomial( &
-                    2, -1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-                powers = basis%powers(:, candidate)
-                powers(2) = powers(2) + 1
-                call add_vector_monomial( &
-                    3, 1.0_dp, powers, point, values(:, candidate), &
-                    curls(:, candidate))
-            end select
-        end do
-    end subroutine evaluate_nedelec_candidates
-
-    pure subroutine add_vector_monomial( &
-            component, coefficient, powers, point, value, curl)
-        integer, intent(in) :: component, powers(3)
-        real(dp), intent(in) :: coefficient, point(3)
-        real(dp), intent(inout) :: value(3), curl(3)
-
-        real(dp) :: derivatives(3)
-        integer :: direction
-
-        value(component) = value(component) + coefficient * &
-            monomial_value(point, powers)
-        do direction = 1, 3
-            derivatives(direction) = coefficient * &
-                monomial_derivative(point, powers, direction)
-        end do
-        select case (component)
+        select case (basis%order)
         case (1)
-            curl(2) = curl(2) + derivatives(3)
-            curl(3) = curl(3) - derivatives(2)
+            call evaluate_candidates_order_1( &
+                point(1), point(2), point(3), values, curls)
         case (2)
-            curl(1) = curl(1) - derivatives(3)
-            curl(3) = curl(3) + derivatives(1)
+            call evaluate_candidates_order_2( &
+                point(1), point(2), point(3), values, curls)
         case (3)
-            curl(1) = curl(1) + derivatives(2)
-            curl(2) = curl(2) - derivatives(1)
+            call evaluate_candidates_order_3( &
+                point(1), point(2), point(3), values, curls)
+        case (4)
+            call evaluate_candidates_order_4( &
+                point(1), point(2), point(3), values, curls)
+        case default
+            values = 0.0_dp
+            curls = 0.0_dp
         end select
-    end subroutine add_vector_monomial
-
-    pure function monomial_value(point, powers) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3)
-        real(dp) :: value
-
-        value = integer_power(point(1), powers(1)) * &
-            integer_power(point(2), powers(2)) * &
-            integer_power(point(3), powers(3))
-    end function monomial_value
-
-    pure function monomial_derivative( &
-            point, powers, direction) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3), direction
-        real(dp) :: value
-
-        integer :: coordinate
-
-        value = 0.0_dp
-        if (powers(direction) == 0) return
-        value = real(powers(direction), dp)
-        do coordinate = 1, 3
-            if (coordinate == direction) then
-                value = value * &
-                    integer_power(point(coordinate), powers(coordinate) - 1)
-            else
-                value = value * &
-                    integer_power(point(coordinate), powers(coordinate))
-            end if
-        end do
-    end function monomial_derivative
-
-    pure function integer_power(base, exponent) result(value)
-        real(dp), intent(in) :: base
-        integer, intent(in) :: exponent
-        real(dp) :: value
-
-        integer :: factor
-
-        value = 1.0_dp
-        do factor = 1, exponent
-            value = value * base
-        end do
-    end function integer_power
+    end subroutine evaluate_nedelec_candidates
 
     pure subroutine reference_edge(edge, parameter, point, tangent)
         integer, intent(in) :: edge
@@ -466,14 +332,6 @@ contains
 
         left%order = right%order
         left%dof_count = right%dof_count
-        if (allocated(right%candidate_kind)) then
-            allocate(left%candidate_kind(size(right%candidate_kind)))
-            left%candidate_kind = right%candidate_kind
-        end if
-        if (allocated(right%powers)) then
-            allocate(left%powers(size(right%powers, 1), size(right%powers, 2)))
-            left%powers = right%powers
-        end if
         if (allocated(right%coefficients)) then
             allocate(left%coefficients( &
                 size(right%coefficients, 1), size(right%coefficients, 2)))

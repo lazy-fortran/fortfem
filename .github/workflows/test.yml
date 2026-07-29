@@ -7,6 +7,49 @@ on:
     branches: [ main ]
 
 jobs:
+  generated:
+    name: generated sources are current
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          cmake \
+          g++ \
+          gfortran \
+          libflint-dev \
+          libgmp-dev \
+          libmpfr-dev \
+          ninja-build
+
+    - name: Install pinned SymEngine
+      run: scripts/ci/install_symengine.sh
+
+    - name: Install fpm and fo
+      run: |
+        sudo curl -L -o /usr/local/bin/fpm \
+          https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+        sudo chmod +x /usr/local/bin/fpm
+        git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+        (
+          cd /tmp/fo
+          fpm install --profile release --prefix "$HOME/.local"
+        )
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Checkout locked fortsym revision
+      run: |
+        git clone https://github.com/lazy-fortran/fortsym.git ../fortsym
+        git -C ../fortsym checkout "$(cat tools/codegen/fortsym.lock)"
+
+    - name: Check generated sources
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        tools/codegen/check_generated.sh
+
   build-test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -143,15 +186,20 @@ jobs:
   # Summary job for branch protection - must be named 'test' for PR checks
   test:
     name: test
-    needs: [build-test]
+    needs: [build-test, generated]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
           echo "Build-test result: ${{ needs.build-test.result }}"
+          echo "Generated-source result: ${{ needs.generated.result }}"
           if [ "${{ needs.build-test.result }}" != "success" ]; then
             echo "::error::Tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.generated.result }}" != "success" ]; then
+            echo "::error::Generated sources are stale"
             exit 1
           fi
           echo "All tests passed"
