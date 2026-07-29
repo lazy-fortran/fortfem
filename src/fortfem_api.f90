@@ -47,6 +47,7 @@ module fortfem_api
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_triangle_lagrange_arbitrary_order, only: &
         assignment(=), evaluate_triangle_lagrange_basis, &
         initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
@@ -194,6 +195,7 @@ module fortfem_api
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
     public :: triangle_duffy_quadrature
+    public :: tetra_duffy_quadrature
     public :: assignment(=)
     public :: evaluate_triangle_lagrange_basis
     public :: initialize_triangle_lagrange_basis
