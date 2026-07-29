@@ -1,7 +1,8 @@
 module fortfem_api_forms
     use fortfem_kinds
     use fortfem_forms_simple, only: assignment(=), compile_form, &
-        compile_form_matrix, create_curl, create_grad, create_inner, &
+        compile_form_matrix, compile_vector_form_element, create_curl, &
+        create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
         create_symbol, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
@@ -21,6 +22,7 @@ module fortfem_api_forms
     public :: curl
     public :: compile_form
     public :: compile_form_matrix
+    public :: compile_vector_form_element
     public :: assignment(=)
     public :: operator(*)
     public :: operator(+)

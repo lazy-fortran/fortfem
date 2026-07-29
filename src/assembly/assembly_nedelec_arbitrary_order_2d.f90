@@ -28,21 +28,28 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
 contains
 
     subroutine assemble_triangle_nedelec_curl_mass_element( &
-            vertices, order, quadrature_degree, matrix, status)
+            vertices, order, quadrature_degree, matrix, status, &
+            curl_coefficient, mass_coefficient)
         real(dp), intent(in) :: vertices(2, 3)
         integer, intent(in) :: order, quadrature_degree
         real(dp), allocatable, intent(out) :: matrix(:, :)
         integer, intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
 
         type(triangle_nedelec_first_kind_t) :: basis
         real(dp), allocatable :: eta(:), physical_curls(:)
         real(dp), allocatable :: physical_values(:, :), reference_curls(:)
         real(dp), allocatable :: reference_values(:, :), weights(:), xi(:)
-        real(dp) :: determinant, jacobian(2, 2), physical_weight
+        real(dp) :: curl_weight, determinant, jacobian(2, 2), mass_weight
+        real(dp) :: physical_weight
         integer :: basis_dof_count, column, point, row
 
         status = 1
         if (order < 1 .or. quadrature_degree < 0) return
+        curl_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
 
         jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
         jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
@@ -78,8 +85,8 @@ contains
                 do row = 1, basis_dof_count
                     matrix(row, column) = matrix(row, column) + &
                         physical_weight * ( &
-                        physical_curls(row) * physical_curls(column) + &
-                        dot_product( &
+                        curl_weight * physical_curls(row) * &
+                        physical_curls(column) + mass_weight * dot_product( &
                         physical_values(:, row), physical_values(:, column)))
                 end do
             end do
