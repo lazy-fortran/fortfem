@@ -116,10 +116,59 @@ program test_compiled_vector_form_solve
     call record_condition(boundary_error < 2.0e-14_dp, &
         "Owned nonconstant boundary moments are imposed exactly")
 
+    call test_sparse_manufactured_solution()
+
     call check_summary("Compiled vector form solve")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_sparse_manufactured_solution()
+        type(form_expr_t) :: large_bilinear, large_linear
+        type(mesh_t) :: large_mesh
+        type(solver_stats_t) :: statistics
+        type(vector_bc_t) :: large_boundary
+        type(vector_function_space_t) :: large_space
+        type(vector_function_t) :: large_solution, large_source
+        type(vector_test_function_t) :: large_test
+        type(vector_trial_function_t) :: large_trial
+        real(dp) :: error, large_edge_vector(2)
+        integer :: large_dof, large_edge
+
+        large_mesh = unit_square_mesh(35)
+        large_space = vector_function_space(large_mesh, "Nedelec", 1)
+        large_trial = vector_trial_function(large_space)
+        large_test = vector_test_function(large_space)
+        large_bilinear = ( &
+            inner(curl(large_trial), curl(large_test)) + &
+            inner(large_trial, large_test)) * dx
+        large_source = vector_function(large_space)
+        large_source%values(:, 1) = 1.0_dp
+        large_source%values(:, 2) = 0.0_dp
+        large_linear = inner(large_source, large_test) * dx
+        large_boundary = vector_bc( &
+            large_space, [1.0_dp, 0.0_dp], "tangential")
+        large_solution = vector_function(large_space)
+
+        call solve( &
+            large_bilinear == large_linear, large_solution, &
+            large_boundary, "direct", stats=statistics)
+
+        error = 0.0_dp
+        do large_edge = 1, large_mesh%data%n_edges
+            large_dof = large_mesh%data%edge_to_dof(large_edge) + 1
+            large_edge_vector = large_mesh%data%vertices(:, &
+                large_mesh%data%edges(2, large_edge)) - &
+                large_mesh%data%vertices(:, &
+                large_mesh%data%edges(1, large_edge))
+            error = max(error, abs( &
+                large_solution%values(large_dof, 1) - &
+                large_edge_vector(1)))
+        end do
+        call record_condition( &
+            statistics%converged .and. error < 2.0e-10_dp, &
+            "Large compiled solve reproduces an exact constant field")
+    end subroutine test_sparse_manufactured_solution
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition

@@ -6,6 +6,7 @@ module fortfem_api_solvers_vector
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     use fortfem_basis_edge_2d, only: edge_basis_2d_t
+    use fortfem_sparse_direct, only: sparse_direct_solve_csc
     use fortsparse, only: csc_t, fortsparse_status_t
     implicit none
 
@@ -83,13 +84,15 @@ contains
 
         type(csc_t) :: sparse_matrix
         type(fortsparse_status_t) :: sparse_status
-        real(dp), allocatable :: dense_matrix(:, :), right_hand_side(:)
-        real(dp), allocatable :: solution(:)
+        real(dp), allocatable :: dense_matrix(:, :), prescribed_values(:)
+        real(dp), allocatable :: right_hand_side(:), solution(:)
         real(dp) :: edge_vector(2), prescribed_value
         integer :: boundary_index, degree_of_freedom, edge, dof_count
+        integer :: interior_count
 
         dof_count = field%space%ndof
-        allocate(right_hand_side(dof_count), solution(dof_count))
+        allocate(right_hand_side(dof_count), prescribed_values(dof_count))
+        allocate(solution(dof_count))
         call compile_vector_form_csc( &
             equation%lhs, field%space%mesh%data, "Nedelec", 1, 4, &
             sparse_matrix, sparse_status)
@@ -106,9 +109,7 @@ contains
             sparse_matrix%ncol /= dof_count) then
             error stop "solve: Nedelec function-space dimension mismatch"
         end if
-        allocate(dense_matrix(dof_count, dof_count))
-        call copy_csc_to_dense(sparse_matrix, dense_matrix)
-
+        prescribed_values = 0.0_dp
         do boundary_index = 1, &
                 size(field%space%mesh%data%boundary_edges)
             edge = field%space%mesh%data%boundary_edges(boundary_index)
@@ -125,31 +126,22 @@ contains
                 prescribed_value = &
                     dot_product(boundary_condition%values, edge_vector)
             end if
-            right_hand_side = right_hand_side - &
-                dense_matrix(:, degree_of_freedom) * prescribed_value
-            dense_matrix(:, degree_of_freedom) = 0.0_dp
-            dense_matrix(degree_of_freedom, :) = 0.0_dp
-            dense_matrix(degree_of_freedom, degree_of_freedom) = 1.0_dp
-            right_hand_side(degree_of_freedom) = prescribed_value
+            prescribed_values(degree_of_freedom) = prescribed_value
         end do
 
         solution = 0.0_dp
         select case (trim(solver_type))
         case ("direct")
-            call solve_direct_vector( &
-                dense_matrix, right_hand_side, solution)
-            stats%converged = maxval(abs( &
-                matmul(dense_matrix, solution) - right_hand_side)) < 1.0e-10_dp
-            stats%iterations = 1
-            stats%final_residual = sqrt(sum( &
-                (matmul(dense_matrix, solution) - right_hand_side)**2))
-            stats%solve_time = 0.0_dp
-            stats%memory_usage = 0
-            stats%method_used = "lapack_lu"
-            stats%restarts = 0
-            stats%parallel_efficiency = 0.0_dp
-            stats%condition_estimate = 0.0_dp
+            interior_count = field%space%mesh%data%n_interior_dofs
+            call solve_sparse_dirichlet( &
+                sparse_matrix, right_hand_side, prescribed_values, &
+                interior_count, solution, stats)
         case default
+            allocate(dense_matrix(dof_count, dof_count))
+            call copy_csc_to_dense(sparse_matrix, dense_matrix)
+            call apply_dense_dirichlet( &
+                dense_matrix, right_hand_side, prescribed_values, &
+                field%space%mesh%data%n_interior_dofs)
             call gmres_solve( &
                 dense_matrix, right_hand_side, solution, options, stats)
         end select
@@ -160,6 +152,115 @@ contains
         field%values(:, 1) = solution
         field%values(:, 2) = 0.0_dp
     end subroutine solve_compiled_nedelec_problem
+
+    subroutine solve_sparse_dirichlet( &
+            matrix, rhs, prescribed, interior_count, solution, stats)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:), prescribed(:)
+        integer, intent(in) :: interior_count
+        real(dp), intent(out) :: solution(:)
+        type(solver_stats_t), intent(out) :: stats
+
+        integer, allocatable :: column_pointers(:), row_indices(:)
+        real(dp), allocatable :: interior_rhs(:), interior_solution(:)
+        real(dp), allocatable :: residual(:), values(:)
+        integer :: column, entry, interior_entry, row, status
+
+        solution = prescribed
+        call initialize_direct_stats(stats)
+        if (interior_count == 0) then
+            stats%converged = .true.
+            return
+        end if
+
+        allocate(column_pointers(interior_count + 1))
+        interior_entry = 0
+        do column = 1, interior_count
+            column_pointers(column) = interior_entry + 1
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                if (matrix%row_idx(entry) <= interior_count) then
+                    interior_entry = interior_entry + 1
+                end if
+            end do
+        end do
+        column_pointers(interior_count + 1) = interior_entry + 1
+        allocate(row_indices(interior_entry), values(interior_entry))
+
+        interior_entry = 0
+        do column = 1, interior_count
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (row <= interior_count) then
+                    interior_entry = interior_entry + 1
+                    row_indices(interior_entry) = row
+                    values(interior_entry) = matrix%val(entry)
+                end if
+            end do
+        end do
+
+        allocate(interior_rhs(interior_count))
+        allocate(interior_solution(interior_count), residual(interior_count))
+        interior_rhs = rhs(:interior_count)
+        do column = interior_count + 1, matrix%ncol
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (row <= interior_count) then
+                    interior_rhs(row) = interior_rhs(row) - &
+                        matrix%val(entry) * prescribed(column)
+                end if
+            end do
+        end do
+
+        call sparse_direct_solve_csc( &
+            interior_count, column_pointers, row_indices, values, &
+            interior_rhs, interior_solution, status)
+        if (status /= 0) error stop "solve: sparse Nedelec solve failed"
+        solution(:interior_count) = interior_solution
+
+        residual = -interior_rhs
+        do column = 1, interior_count
+            do entry = column_pointers(column), &
+                    column_pointers(column + 1) - 1
+                residual(row_indices(entry)) = &
+                    residual(row_indices(entry)) + &
+                    values(entry) * interior_solution(column)
+            end do
+        end do
+        stats%final_residual = sqrt(sum(residual**2))
+        stats%converged = stats%final_residual < 1.0e-10_dp
+    end subroutine solve_sparse_dirichlet
+
+    subroutine initialize_direct_stats(stats)
+        type(solver_stats_t), intent(out) :: stats
+
+        stats%converged = .false.
+        stats%iterations = 1
+        stats%final_residual = 0.0_dp
+        stats%solve_time = 0.0_dp
+        stats%memory_usage = 0
+        stats%method_used = "fortsparse_direct"
+        stats%restarts = 0
+        stats%parallel_efficiency = 0.0_dp
+        stats%condition_estimate = 0.0_dp
+    end subroutine initialize_direct_stats
+
+    subroutine apply_dense_dirichlet( &
+            matrix, rhs, prescribed, interior_count)
+        real(dp), intent(inout) :: matrix(:, :), rhs(:)
+        real(dp), intent(in) :: prescribed(:)
+        integer, intent(in) :: interior_count
+
+        integer :: degree_of_freedom
+
+        do degree_of_freedom = interior_count + 1, size(rhs)
+            rhs = rhs - matrix(:, degree_of_freedom) * &
+                prescribed(degree_of_freedom)
+            matrix(:, degree_of_freedom) = 0.0_dp
+            matrix(degree_of_freedom, :) = 0.0_dp
+            matrix(degree_of_freedom, degree_of_freedom) = 1.0_dp
+            rhs(degree_of_freedom) = prescribed(degree_of_freedom)
+        end do
+    end subroutine apply_dense_dirichlet
 
     pure subroutine copy_csc_to_dense(sparse_matrix, dense_matrix)
         type(csc_t), intent(in) :: sparse_matrix
