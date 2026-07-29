@@ -59,6 +59,36 @@ void fortfem_triangle_mesh_edges(
 void fortfem_triangle_mesh_free(int handle, int *status);
 
 /*
+ * RT0 coefficients use the global degree-of-freedom order returned by
+ * fortfem_triangle_mesh_edges. Triangles are zero-based at this boundary.
+ */
+void fortfem_rt0_evaluate(
+    int handle,
+    int triangle,
+    double x,
+    double y,
+    int n_dofs,
+    const fortfem_complex *dofs,
+    fortfem_complex *value,
+    fortfem_complex *divergence,
+    int *status);
+
+void fortfem_rt0_l2_norm(
+    int handle,
+    int n_dofs,
+    const fortfem_complex *dofs,
+    double *norm,
+    int *status);
+
+void fortfem_rt0_toroidal(
+    int handle,
+    int mode,
+    int n_dofs,
+    const fortfem_complex *dofs,
+    fortfem_complex *toroidal,
+    int *status);
+
+/*
  * Factor a zero-based complex CSC matrix and return a positive opaque handle.
  * Handles retain the factorization across solves and must be released with
  * fortfem_factor_free. The handle registry is process-local.

@@ -1,7 +1,9 @@
 module fortfem_capi_mesh
-    use iso_c_binding, only: c_double, c_int
+    use iso_c_binding, only: c_double, c_double_complex, c_int
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
+    use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
+        reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     implicit none
     private
 
@@ -13,6 +15,9 @@ module fortfem_capi_mesh
     public :: fortfem_triangle_mesh_create
     public :: fortfem_triangle_mesh_edges
     public :: fortfem_triangle_mesh_free
+    public :: fortfem_rt0_evaluate
+    public :: fortfem_rt0_l2_norm
+    public :: fortfem_rt0_toroidal
 
 contains
 
@@ -81,6 +86,89 @@ contains
         mesh_occupied(slot) = .false.
         status = 0_c_int
     end subroutine fortfem_triangle_mesh_free
+
+    subroutine fortfem_rt0_evaluate( &
+            handle, triangle, x, y, n_dofs, dofs, &
+            value, divergence, status) bind(c, name="fortfem_rt0_evaluate")
+        integer(c_int), value :: handle, triangle, n_dofs
+        real(c_double), value :: x, y
+        complex(c_double_complex), intent(in) :: dofs(*)
+        complex(c_double_complex), intent(out) :: value(*), divergence
+        integer(c_int), intent(out) :: status
+
+        complex(dp), allocatable :: fortran_dofs(:)
+        complex(dp) :: fortran_value(2), fortran_divergence
+        integer :: component, slot
+
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+        status = -1_c_int
+        if (n_dofs /= int(meshes(slot)%n_edges, c_int)) return
+        if (triangle < 0_c_int .or. &
+            triangle >= int(meshes(slot)%n_triangles, c_int)) return
+
+        call copy_complex_dofs(n_dofs, dofs, fortran_dofs)
+        call evaluate_rt_field_2d(meshes(slot), int(triangle) + 1, &
+            real(x, dp), real(y, dp), fortran_dofs, &
+            fortran_value, fortran_divergence)
+        do component = 1, 2
+            value(component) = to_c_complex(fortran_value(component))
+        end do
+        divergence = to_c_complex(fortran_divergence)
+        status = 0_c_int
+    end subroutine fortfem_rt0_evaluate
+
+    subroutine fortfem_rt0_l2_norm( &
+            handle, n_dofs, dofs, norm, status) &
+            bind(c, name="fortfem_rt0_l2_norm")
+        integer(c_int), value :: handle, n_dofs
+        complex(c_double_complex), intent(in) :: dofs(*)
+        real(c_double), intent(out) :: norm
+        integer(c_int), intent(out) :: status
+
+        complex(dp), allocatable :: fortran_dofs(:)
+        integer :: slot
+
+        norm = 0.0_c_double
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+        status = -1_c_int
+        if (n_dofs /= int(meshes(slot)%n_edges, c_int)) return
+
+        call copy_complex_dofs(n_dofs, dofs, fortran_dofs)
+        norm = real(rt_l2_norm(meshes(slot), fortran_dofs), c_double)
+        status = 0_c_int
+    end subroutine fortfem_rt0_l2_norm
+
+    subroutine fortfem_rt0_toroidal( &
+            handle, mode, n_dofs, dofs, toroidal, status) &
+            bind(c, name="fortfem_rt0_toroidal")
+        integer(c_int), value :: handle, mode, n_dofs
+        complex(c_double_complex), intent(in) :: dofs(*)
+        complex(c_double_complex), intent(out) :: toroidal(*)
+        integer(c_int), intent(out) :: status
+
+        complex(dp), allocatable :: fortran_dofs(:), fortran_toroidal(:)
+        integer :: slot, triangle
+
+        status = -3_c_int
+        slot = int(handle)
+        if (.not. valid_mesh_handle(slot)) return
+        status = -1_c_int
+        if (n_dofs /= int(meshes(slot)%n_edges, c_int)) return
+        if (mode == 0_c_int) return
+
+        call copy_complex_dofs(n_dofs, dofs, fortran_dofs)
+        allocate(fortran_toroidal(meshes(slot)%n_triangles))
+        call reconstruct_axisymmetric_fourier_toroidal( &
+            meshes(slot), int(mode), fortran_dofs, fortran_toroidal)
+        do triangle = 1, meshes(slot)%n_triangles
+            toroidal(triangle) = to_c_complex(fortran_toroidal(triangle))
+        end do
+        status = 0_c_int
+    end subroutine fortfem_rt0_toroidal
 
     subroutine fortfem_triangle_edge_map( &
             n_vertices, vertices, n_triangles, triangles, &
@@ -210,5 +298,26 @@ contains
         valid = slot >= 1 .and. slot <= max_meshes
         if (valid) valid = mesh_occupied(slot)
     end function valid_mesh_handle
+
+    subroutine copy_complex_dofs(n_dofs, c_dofs, fortran_dofs)
+        integer(c_int), intent(in) :: n_dofs
+        complex(c_double_complex), intent(in) :: c_dofs(*)
+        complex(dp), allocatable, intent(out) :: fortran_dofs(:)
+
+        integer :: dof
+
+        allocate(fortran_dofs(int(n_dofs)))
+        do dof = 1, int(n_dofs)
+            fortran_dofs(dof) = cmplx( &
+                real(c_dofs(dof), dp), aimag(c_dofs(dof)), dp)
+        end do
+    end subroutine copy_complex_dofs
+
+    pure complex(c_double_complex) function to_c_complex(value) result(c_value)
+        complex(dp), intent(in) :: value
+
+        c_value = cmplx( &
+            real(value, c_double), aimag(value), c_double_complex)
+    end function to_c_complex
 
 end module fortfem_capi_mesh
