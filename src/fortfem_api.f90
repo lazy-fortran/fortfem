@@ -26,6 +26,8 @@ module fortfem_api
     use fortfem_api_solvers
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
+    use fortfem_laplace_representation_3d, only: &
+        evaluate_laplace_representation_triangles_3d
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
@@ -152,6 +154,7 @@ module fortfem_api
     public :: rectangle_mesh
     public :: unit_disk_mesh
     public :: generate_torus_surface_mesh
+    public :: evaluate_laplace_representation_triangles_3d
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
