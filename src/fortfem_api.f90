@@ -34,6 +34,8 @@ module fortfem_api
         evaluate_helmholtz_representation_triangles_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
+    use fortfem_planar_acoustic_displacement_dtn, only: &
+        apply_planar_acoustic_displacement_dtn
     use fortfem_scalar_helmholtz_planar_dtn_2d, only: &
         solve_scalar_helmholtz_planar_dtn_p1
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
@@ -226,6 +228,7 @@ module fortfem_api
     public :: solve_neumann
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
+    public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_helmholtz_dtn_form
     public :: solve_scalar_helmholtz_planar_dtn_p1
     public :: apply_circular_helmholtz_dtn
