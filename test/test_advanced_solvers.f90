@@ -6,7 +6,6 @@ program test_advanced_solvers
         ilu_preconditioner
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
         spmv
-    use fortfem_umfpack_interface, only: umfpack_available
     use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
         unit_square_mesh, function_space, dirichlet_bc, &
         assemble_laplacian_system
@@ -218,14 +217,14 @@ contains
 
     ! Test direct sparse solvers
     subroutine test_direct_sparse_solvers()
-        real(dp), allocatable :: A(:, :), b(:), x_lu(:), x_umf(:)
-        type(solver_options_t) :: opts_lu, opts_umf
-        type(solver_stats_t) :: stats_lu, stats_umf
+        real(dp), allocatable :: A(:, :), b(:), x_lu(:), x_sparse(:)
+        type(solver_options_t) :: opts_lu, opts_sparse
+        type(solver_stats_t) :: stats_lu, stats_sparse
         integer :: n = 100
         real(dp) :: error_norm
 
         call create_spd_matrix(n, A)
-        allocate (b(n), x_lu(n), x_umf(n))
+        allocate (b(n), x_lu(n), x_sparse(n))
         b = 1.0_dp
 
         ! Test sparse LU factorization
@@ -242,25 +241,22 @@ contains
         call check_condition(error_norm < 1.0e-12_dp, &
             "Sparse LU: machine precision accuracy")
 
-        ! Test UMFPACK if available
-        if (umfpack_available()) then
-            x_umf = 0.0_dp
-            opts_umf = solver_options(method="umfpack")
-            call solve(A, b, x_umf, opts_umf, stats_umf)
+        x_sparse = 0.0_dp
+        opts_sparse = solver_options(method="fortsparse")
+        call solve(A, b, x_sparse, opts_sparse, stats_sparse)
 
-            call check_condition(stats_umf%converged, &
-                "UMFPACK: solved")
-            call check_condition(norm(x_lu - x_umf) < 1.0e-10_dp, &
-                "UMFPACK: consistent with LU")
+        call check_condition(stats_sparse%converged, &
+            "Fortsparse: solved")
+        call check_condition(norm(x_lu - x_sparse) < 1.0e-10_dp, &
+            "Fortsparse: consistent with LU")
+        if (.not. stats_sparse%converged) error stop 1
+        if (norm(x_lu - x_sparse) >= 1.0e-10_dp) error stop 1
 
-            write (*, *) "   UMFPACK available and tested"
-        else
-            write (*, *) "   UMFPACK not available, skipped"
-        end if
+        write (*, *) "   Fortsparse backend tested"
 
         write (*, *) "   LU residual:", error_norm
 
-        deallocate (A, b, x_lu, x_umf)
+        deallocate (A, b, x_lu, x_sparse)
         write (*, *) "   Direct sparse solvers: all tests passed"
     end subroutine test_direct_sparse_solvers
 
