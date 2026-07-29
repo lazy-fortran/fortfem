@@ -418,6 +418,9 @@ its cross-code and production-case validation gate remains open:
 - two tetrahedra with opposite shared-face ordering reuse all three common
   global edge degrees of freedom and expose the required local orientation
   reversal.
+- the first-order tetrahedral curl-mass operator assembles directly to
+  `fortsparse` CSC. Exact constant-field mass and rotational-field curl
+  energies verify the oriented two-cell operator.
 - arbitrary-order first- and second-kind Nedelec, Raviart-Thomas, and BDM
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
@@ -536,8 +539,8 @@ passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
 through degree-four mixed PDE validation, tetrahedral assembly beyond the
-verified first-order affine kernel and edge topology, and the three-dimensional
-box in item 5 remain. The Phase 2 exit gate is therefore not yet met.
+verified first-order curl-mass operator, and the three-dimensional box in
+item 5 remain. The Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 

@@ -78,7 +78,8 @@ end interface
   with covariant Piola maps and oriented sparse curl-mass forms.
 - **Tetrahedral Nédélec**: The first-order edge basis, curls, and affine
   covariant map are verified. Global edge identity and orientation are
-  verified on a two-cell mesh; sparse assembly remains.
+  verified on a two-cell mesh; the oriented curl-mass operator assembles
+  directly to `fortsparse` CSC.
 - **Raviart--Thomas and BDM**: Triangular families through order four, with
   contravariant Piola maps and oriented sparse divergence-mass forms.
 - Weighted vector forms compile to local matrices and `fortsparse` CSC

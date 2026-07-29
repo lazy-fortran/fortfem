@@ -12,6 +12,8 @@ module fortfem_api
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element, &
         assemble_triangle_rt_divergence_csc
+    use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_curl_mass_csc
     use fortfem_kinds
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
@@ -241,6 +243,7 @@ module fortfem_api
     public :: assemble_triangle_rt_div_mass_element
     public :: assemble_triangle_rt_div_mass_csc
     public :: assemble_triangle_rt_divergence_csc
+    public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
