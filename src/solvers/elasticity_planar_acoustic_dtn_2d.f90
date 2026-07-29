@@ -9,9 +9,14 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
 
     public :: solve_elasticity_planar_acoustic_dtn_p1
 
+    interface solve_elasticity_planar_acoustic_dtn_p1
+        module procedure solve_elasticity_planar_acoustic_dtn_p1_real
+        module procedure solve_elasticity_planar_acoustic_dtn_p1_complex
+    end interface
+
 contains
 
-    subroutine solve_elasticity_planar_acoustic_dtn_p1( &
+    subroutine solve_elasticity_planar_acoustic_dtn_p1_real( &
             vertices, triangles, interface_nodes, interface_normals, &
             angular_frequency, sound_speed, fluid_density, period, &
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
@@ -22,6 +27,36 @@ contains
         real(dp), intent(in) :: interface_normals(:, :)
         real(dp), intent(in) :: angular_frequency, sound_speed, fluid_density
         real(dp), intent(in) :: period, young_modulus, poisson_ratio
+        real(dp), intent(in) :: solid_density
+        integer, intent(in) :: maximum_mode
+        complex(dp), intent(in) :: volume_load(:), incident_pressure(:)
+        integer, intent(in) :: dirichlet_dofs(:)
+        complex(dp), intent(in) :: dirichlet_values(:)
+        complex(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+
+        call solve_elasticity_planar_acoustic_dtn_p1_complex( &
+            vertices, triangles, interface_nodes, interface_normals, &
+            angular_frequency, cmplx(sound_speed, 0.0_dp, dp), &
+            fluid_density, period, maximum_mode, &
+            cmplx(young_modulus, 0.0_dp, dp), poisson_ratio, solid_density, &
+            volume_load, incident_pressure, dirichlet_dofs, &
+            dirichlet_values, solution, status)
+    end subroutine solve_elasticity_planar_acoustic_dtn_p1_real
+
+    subroutine solve_elasticity_planar_acoustic_dtn_p1_complex( &
+            vertices, triangles, interface_nodes, interface_normals, &
+            angular_frequency, sound_speed, fluid_density, period, &
+            maximum_mode, young_modulus, poisson_ratio, solid_density, &
+            volume_load, incident_pressure, dirichlet_dofs, &
+            dirichlet_values, solution, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), interface_nodes(:)
+        real(dp), intent(in) :: interface_normals(:, :)
+        real(dp), intent(in) :: angular_frequency, fluid_density
+        complex(dp), intent(in) :: sound_speed
+        real(dp), intent(in) :: period, poisson_ratio
+        complex(dp), intent(in) :: young_modulus
         real(dp), intent(in) :: solid_density
         integer, intent(in) :: maximum_mode
         complex(dp), intent(in) :: volume_load(:), incident_pressure(:)
@@ -120,9 +155,9 @@ contains
             if (size(volume_load) /= dof_count .or. &
                 size(solution) /= dof_count) return
             if (size(dirichlet_dofs) /= size(dirichlet_values)) return
-            if (angular_frequency <= 0.0_dp .or. sound_speed <= 0.0_dp .or. &
+            if (angular_frequency <= 0.0_dp .or. abs(sound_speed) <= 0.0_dp .or. &
                 fluid_density <= 0.0_dp .or. solid_density <= 0.0_dp) return
-            if (period <= 0.0_dp .or. young_modulus <= 0.0_dp) return
+            if (period <= 0.0_dp .or. abs(young_modulus) <= 0.0_dp) return
             if (poisson_ratio <= -1.0_dp .or. &
                 poisson_ratio >= 0.5_dp) return
             if (any(triangles < 1) .or. any(triangles > vertex_count)) return
@@ -138,9 +173,10 @@ contains
             complex(dp), intent(out) :: volume_matrix(:, :)
             integer, intent(out) :: operator_status
 
-            real(dp) :: area, determinant, lambda, mu
-            real(dp) :: b_matrix(3, 6), d_matrix(3, 3)
-            real(dp) :: local_matrix(6, 6), local_mass(3, 3)
+            real(dp) :: area, determinant
+            complex(dp) :: b_matrix(3, 6), d_matrix(3, 3)
+            complex(dp) :: lambda, local_matrix(6, 6), mu
+            real(dp) :: local_mass(3, 3)
             real(dp) :: dx(3), dy(3), x1, x2, x3, y1, y2, y3
             integer :: element, first_local, local_dofs(6), local_nodes(3)
             integer :: second_local
@@ -150,7 +186,7 @@ contains
             mu = young_modulus/(2.0_dp*(1.0_dp + poisson_ratio))
             lambda = young_modulus*poisson_ratio/( &
                 (1.0_dp + poisson_ratio)*(1.0_dp - 2.0_dp*poisson_ratio))
-            d_matrix = 0.0_dp
+            d_matrix = cmplx(0.0_dp, 0.0_dp, dp)
             d_matrix(1, 1) = lambda + 2.0_dp*mu
             d_matrix(1, 2) = lambda
             d_matrix(2, 1) = lambda
@@ -170,7 +206,7 @@ contains
                 if (area <= tiny(1.0_dp)) return
                 dx = [y2 - y3, y3 - y1, y1 - y2]/determinant
                 dy = [x3 - x2, x1 - x3, x2 - x1]/determinant
-                b_matrix = 0.0_dp
+                b_matrix = cmplx(0.0_dp, 0.0_dp, dp)
                 do first_local = 1, 3
                     b_matrix(1, 2*first_local - 1) = dx(first_local)
                     b_matrix(2, 2*first_local) = dy(first_local)
@@ -212,7 +248,7 @@ contains
             end do
             operator_status = 0
         end subroutine assemble_elastic_volume_matrix
-    end subroutine solve_elasticity_planar_acoustic_dtn_p1
+    end subroutine solve_elasticity_planar_acoustic_dtn_p1_complex
 
     pure subroutine apply_periodic_p1_mass(values, period, weighted_values)
         complex(dp), intent(in) :: values(:)
