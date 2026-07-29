@@ -151,6 +151,9 @@ end program
   membrane-series centre value within the paper test's tolerance, and its
   off-grid magnetic-field reconstruction converges toward independently
   differentiated series values
+- **Verified**: First-kind tetrahedral Nédélec reference bases through order
+  four have exact edge, face, and cell moments, polynomial-gradient
+  reproduction, and independently differentiated curls
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
-  tensor and complex coefficients, higher-order high-level solves, and 3D
-  elements
+  tensor and complex coefficients, higher-order high-level solves, and
+  higher-order tetrahedral topology and assembly

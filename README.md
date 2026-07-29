@@ -16,11 +16,13 @@ Verified numerical paths:
   Raviart--Thomas, BDM, and discontinuous scalar families through order four.
   Their affine Piola maps, global moment orientations, commuting projections,
   and sparse differential or mass forms have analytical tests.
-- The first-order tetrahedral Nédélec basis has exact oriented edge moments,
-  independently differentiated curls, and an affine covariant map that
-  preserves physical tangential moments. Neighboring tetrahedra share global
-  edge degrees of freedom with explicit local orientation signs, and their
-  curl-mass operator assembles directly to `fortsparse` CSC.
+- First-kind tetrahedral Nédélec reference bases through order four have
+  complete Kronecker edge, face, and cell moments, reproduce polynomial
+  gradients, and have independently differentiated curls. The affine
+  covariant map accepts every implemented order. At first order, neighboring
+  tetrahedra share global edge degrees of freedom with explicit local
+  orientation signs, and the curl-mass operator assembles directly to
+  `fortsparse` CSC.
 - Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
   magnetic-paper box centre value at its 12×12×8 reference resolution. The
   reconstructed magnetic field at an off-grid point converges toward an
