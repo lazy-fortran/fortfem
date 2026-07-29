@@ -42,6 +42,11 @@ module fortfem_api
         assignment(=), evaluate_triangle_nedelec_first_kind, &
         initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
         triangle_nedelec_first_kind_t
+    use fortfem_triangle_nedelec_second_kind, only: &
+        assignment(=), evaluate_triangle_nedelec_second_kind, &
+        initialize_triangle_nedelec_second_kind, &
+        triangle_nedelec_second_kind_dof_count, &
+        triangle_nedelec_second_kind_t
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
@@ -157,6 +162,10 @@ module fortfem_api
     public :: initialize_triangle_nedelec_first_kind
     public :: triangle_nedelec_dof_count
     public :: triangle_nedelec_first_kind_t
+    public :: evaluate_triangle_nedelec_second_kind
+    public :: initialize_triangle_nedelec_second_kind
+    public :: triangle_nedelec_second_kind_dof_count
+    public :: triangle_nedelec_second_kind_t
     public :: evaluate_triangle_raviart_thomas
     public :: initialize_triangle_raviart_thomas
     public :: triangle_rt_basis_t
