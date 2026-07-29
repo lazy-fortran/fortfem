@@ -1,5 +1,11 @@
 program test_paper_magnetic_t1
     use check, only: check_condition, check_summary
+    use fortfem_api, only: cell_coefficient, cell_coefficient_t, curl, dx, &
+        form_expr_t, init_measures, inner, mesh_t, operator(*), operator(+), &
+        operator(==), rectangle_mesh, solve, vector_bc_edge_moments, &
+        vector_bc_t, vector_function, vector_function_space, &
+        vector_function_space_t, vector_function_t, vector_test_function, &
+        vector_test_function_t, vector_trial_function, vector_trial_function_t
     use fortfem_assembly_nedelec_2d, only: assemble_nedelec_weighted
     use fortfem_gauss_quadrature_2d, only: &
         gauss_quadrature_triangle_t, get_gauss_quadrature_triangle
@@ -8,22 +14,99 @@ program test_paper_magnetic_t1
     use fortfem_nedelec_field_2d, only: evaluate_nedelec_field_2d
     implicit none
 
-    real(dp) :: coarse_error, fine_error
+    real(dp) :: coarse_error, compiled_coarse_error
+    real(dp) :: compiled_fine_error, fine_error
     logical :: all_passed
 
     all_passed = .true.
     coarse_error = solve_paper_case(10)
     fine_error = solve_paper_case(20)
+    compiled_coarse_error = solve_compiled_paper_case(10)
+    compiled_fine_error = solve_compiled_paper_case(20)
 
     call record_condition(fine_error < 7.0e-2_dp, &
         "Paper n=1 transverse field reaches the analytical solution")
     call record_condition(fine_error < 0.65_dp * coarse_error, &
         "Paper n=1 transverse field converges under mesh refinement")
+    call record_condition(compiled_fine_error < 9.0e-2_dp, &
+        "Compiled paper form reaches the analytical material solution")
+    call record_condition( &
+        compiled_fine_error < 0.7_dp * compiled_coarse_error, &
+        "Compiled paper form converges under mesh refinement")
 
     call check_summary("Paper magnetic n=1 transverse case")
     if (.not. all_passed) error stop 1
 
 contains
+
+    real(dp) function solve_compiled_paper_case(divisions) &
+            result(relative_error)
+        integer, intent(in) :: divisions
+
+        type(cell_coefficient_t) :: curl_coefficient, mass_coefficient
+        type(form_expr_t) :: bilinear_form, linear_form
+        type(mesh_t) :: mesh
+        type(vector_bc_t) :: boundary_condition
+        type(vector_function_space_t) :: space
+        type(vector_function_t) :: solution, source
+        type(vector_test_function_t) :: test_field
+        type(vector_trial_function_t) :: trial_field
+        complex(dp), allocatable :: field_dofs(:)
+        real(dp), allocatable :: boundary_values(:)
+        real(dp), allocatable :: curl_values(:), mass_values(:)
+        real(dp) :: centroid(2)
+        integer :: boundary_index, degree_of_freedom, edge, triangle
+        integer :: vertex_a, vertex_b
+
+        call init_measures()
+        mesh = rectangle_mesh( &
+            divisions + 1, divisions + 1, &
+            [0.0_dp, 1.0_dp, -0.5_dp, 0.5_dp])
+        space = vector_function_space(mesh, "Nedelec", 1)
+        trial_field = vector_trial_function(space)
+        test_field = vector_test_function(space)
+        allocate(curl_values(mesh%data%n_triangles))
+        allocate(mass_values(mesh%data%n_triangles))
+        do triangle = 1, mesh%data%n_triangles
+            centroid = sum(mesh%data%vertices(:, &
+                mesh%data%triangles(:, triangle)), dim=2) / 3.0_dp
+            curl_values(triangle) = &
+                reluctivity(centroid(1), centroid(2)) * centroid(1)
+            mass_values(triangle) = &
+                reluctivity(centroid(1), centroid(2)) / centroid(1)
+        end do
+        curl_coefficient = cell_coefficient(curl_values)
+        mass_coefficient = cell_coefficient(mass_values)
+        bilinear_form = ( &
+            curl_coefficient * &
+            inner(curl(trial_field), curl(test_field)) + &
+            mass_coefficient * inner(trial_field, test_field)) * dx
+        source = vector_function(space)
+        source%values = 0.0_dp
+        linear_form = inner(source, test_field) * dx
+
+        allocate(boundary_values(space%ndof))
+        boundary_values = 0.0_dp
+        do boundary_index = 1, size(mesh%data%boundary_edges)
+            edge = mesh%data%boundary_edges(boundary_index)
+            degree_of_freedom = mesh%data%edge_to_dof(edge) + 1
+            vertex_a = mesh%data%edges(1, edge)
+            vertex_b = mesh%data%edges(2, edge)
+            boundary_values(degree_of_freedom) = boundary_moment( &
+                mesh%data%vertices(:, vertex_a), &
+                mesh%data%vertices(:, vertex_b))
+        end do
+        boundary_condition = vector_bc_edge_moments( &
+            space, boundary_values, "tangential")
+        solution = vector_function(space)
+        call solve( &
+            bilinear_form == linear_form, solution, boundary_condition, &
+            "direct")
+
+        allocate(field_dofs(space%ndof))
+        field_dofs = cmplx(solution%values(:, 1), 0.0_dp, dp)
+        relative_error = magnetic_field_error(mesh%data, field_dofs)
+    end function solve_compiled_paper_case
 
     real(dp) function solve_paper_case(divisions) result(relative_error)
         integer, intent(in) :: divisions
