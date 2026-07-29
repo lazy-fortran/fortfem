@@ -8,6 +8,8 @@ module fortfem_api
     use fortfem_api_solvers
     use fortfem_api_plot
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
+    use fortfem_circular_dtn_2d, only: &
+        circular_helmholtz_dtn_eigenvalue
     use fortfem_edge_interpolation_2d, only: &
         interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
@@ -91,6 +93,7 @@ module fortfem_api
     public :: solve_neumann
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
+    public :: circular_helmholtz_dtn_eigenvalue
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     public :: interpolate_axisymmetric_rt_edge_dofs
     public :: evaluate_rt_field_2d
