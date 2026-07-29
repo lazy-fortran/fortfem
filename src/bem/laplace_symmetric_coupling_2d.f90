@@ -1,4 +1,6 @@
 module fortfem_laplace_symmetric_coupling_2d
+    use fortfem_advanced_solvers, only: solve_dense => solve, &
+        solver_options, solver_options_t, solver_stats_t
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_double_layer_mixed_linear, &
@@ -9,6 +11,7 @@ module fortfem_laplace_symmetric_coupling_2d
     private
 
     public :: assemble_laplace_symmetric_coupling_p1_p0
+    public :: solve_laplace_symmetric_coupling_p1_p0
 
 contains
 
@@ -76,6 +79,70 @@ contains
             -transpose(matrix(vertex_count + 1:, 1:vertex_count))
         status = 0
     end subroutine assemble_laplace_symmetric_coupling_p1_p0
+
+    subroutine solve_laplace_symmetric_coupling_p1_p0( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            quadrature_order, volume_load, dirichlet_jump, neumann_jump, &
+            interior_solution, exterior_flux, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        integer, intent(in) :: quadrature_order
+        real(dp), intent(in) :: volume_load(:), dirichlet_jump(:)
+        real(dp), intent(in) :: neumann_jump(:)
+        real(dp), intent(out) :: interior_solution(:), exterior_flux(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: hypersingular(:, :), mass(:, :)
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:), solution(:)
+        type(solver_options_t) :: options
+        type(solver_stats_t) :: statistics
+        integer :: operator_status, panel_count, total_dofs, vertex_count
+
+        interior_solution = 0.0_dp
+        exterior_flux = 0.0_dp
+        status = 1
+        vertex_count = size(vertices, 2)
+        panel_count = size(panel_start, 2)
+        total_dofs = vertex_count + panel_count
+        if (size(volume_load) /= vertex_count .or. &
+            size(dirichlet_jump) /= vertex_count) return
+        if (size(neumann_jump) /= panel_count) return
+        if (size(interior_solution) /= vertex_count .or. &
+            size(exterior_flux) /= panel_count) return
+
+        allocate(matrix(total_dofs, total_dofs))
+        call assemble_laplace_symmetric_coupling_p1_p0( &
+            vertices, triangles, panel_start, panel_end, panel_nodes, &
+            quadrature_order, matrix, operator_status)
+        if (operator_status /= 0) return
+
+        allocate(mass(panel_count, vertex_count))
+        call assemble_boundary_mass( &
+            panel_start, panel_end, panel_nodes, mass, operator_status)
+        if (operator_status /= 0) return
+        allocate(hypersingular(vertex_count, vertex_count))
+        call assemble_laplace_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, vertex_count, &
+            quadrature_order, hypersingular, operator_status)
+        if (operator_status /= 0) return
+
+        allocate(right_hand_side(total_dofs), solution(total_dofs))
+        right_hand_side(1:vertex_count) = volume_load + &
+            matmul(transpose(mass), neumann_jump) + &
+            matmul(hypersingular, dirichlet_jump)
+        right_hand_side(vertex_count + 1:) = matmul( &
+            matrix(vertex_count + 1:, 1:vertex_count), dirichlet_jump)
+        solution = 0.0_dp
+        options = solver_options(method="lapack_lu")
+        call solve_dense(matrix, right_hand_side, solution, options, statistics)
+        if (.not. statistics%converged) return
+
+        interior_solution = solution(1:vertex_count)
+        exterior_flux = solution(vertex_count + 1:)
+        status = 0
+    end subroutine solve_laplace_symmetric_coupling_p1_p0
 
     pure logical function valid_discretization_shapes( &
             vertices, triangles, panel_start, panel_end, panel_nodes, &
