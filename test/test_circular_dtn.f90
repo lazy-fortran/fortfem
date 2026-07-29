@@ -1,6 +1,7 @@
 program test_circular_dtn
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_kinds, only: dp
     implicit none
@@ -47,11 +48,60 @@ program test_circular_dtn
         0, 1.0_dp, 0.0_dp, eigenvalue, status)
     call record_condition(status /= 0, &
         "Circular DtN rejects zero radius")
+    call test_modal_application()
 
     call check_summary("Circular Helmholtz DtN")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_modal_application()
+        integer, parameter :: point_count = 13
+        complex(dp), parameter :: lambda2 = &
+            (-0.9338381358297664_dp, 1.2589265099477043_dp)
+        complex(dp), parameter :: lambda5 = &
+            (-4.4432429649354090_dp, 0.00644848493650646_dp)
+        complex(dp) :: derivative(point_count), expected(point_count)
+        complex(dp) :: mode2, mode5, trace(point_count)
+        real(dp) :: angle, discarded_relative_norm
+        integer :: point
+
+        do point = 1, point_count
+            angle = 2.0_dp * acos(-1.0_dp) * &
+                real(point - 1, dp) / real(point_count, dp)
+            mode2 = exp(cmplx(0.0_dp, 2.0_dp * angle, dp))
+            mode5 = exp(cmplx(0.0_dp, 5.0_dp * angle, dp))
+            trace(point) = 3.0_dp * mode2 + 4.0_dp * mode5
+            expected(point) = 3.0_dp * lambda2 * mode2
+        end do
+
+        call apply_circular_helmholtz_dtn( &
+            trace, 2.0_dp, 1.0_dp, 2, derivative, &
+            discarded_relative_norm, status)
+        call record_condition(status == 0 .and. &
+            maxval(abs(derivative - expected)) < 2.0e-12_dp, &
+            "Truncated circular DtN retains the exact low mode")
+        call record_condition( &
+            abs(discarded_relative_norm - 0.8_dp) < 2.0e-14_dp, &
+            "Circular DtN reports the exact discarded trace norm")
+
+        do point = 1, point_count
+            angle = 2.0_dp * acos(-1.0_dp) * &
+                real(point - 1, dp) / real(point_count, dp)
+            mode2 = exp(cmplx(0.0_dp, 2.0_dp * angle, dp))
+            mode5 = exp(cmplx(0.0_dp, 5.0_dp * angle, dp))
+            expected(point) = &
+                3.0_dp * lambda2 * mode2 + 4.0_dp * lambda5 * mode5
+        end do
+        call apply_circular_helmholtz_dtn( &
+            trace, 2.0_dp, 1.0_dp, 6, derivative, &
+            discarded_relative_norm, status)
+        call record_condition(status == 0 .and. &
+            maxval(abs(derivative - expected)) < 5.0e-12_dp, &
+            "Untruncated circular DtN applies all resolvable modes")
+        call record_condition(discarded_relative_norm < 2.0e-15_dp, &
+            "Untruncated circular DtN reports zero discarded norm")
+    end subroutine test_modal_application
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
