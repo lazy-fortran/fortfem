@@ -1,12 +1,16 @@
 module fortfem_triangle_vector_interpolation
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_first_kind, triangle_nedelec_first_kind_t
+    use fortfem_triangle_piola_maps, only: map_triangle_nedelec_covariant
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
     private
 
     public :: interpolate_triangle_nedelec
+    public :: evaluate_triangle_nedelec_interpolant
 
     abstract interface
         subroutine vector_field_2d(x, y, value)
@@ -17,6 +21,40 @@ module fortfem_triangle_vector_interpolation
     end interface
 
 contains
+
+    subroutine evaluate_triangle_nedelec_interpolant( &
+            vertices, basis, dofs, xi, eta, value, curl, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        type(triangle_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), xi, eta
+        real(dp), intent(out) :: value(2), curl
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: physical_curls(:), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:), reference_values(:, :)
+        real(dp) :: jacobian(2, 2)
+        integer :: dof_count
+
+        value = 0.0_dp
+        curl = 0.0_dp
+        status = 1
+        dof_count = size(dofs)
+        if (dof_count < 1) return
+        allocate(reference_values(2, dof_count), reference_curls(dof_count))
+        allocate(physical_values(2, dof_count), physical_curls(dof_count))
+        call evaluate_triangle_nedelec_first_kind( &
+            basis, xi, eta, reference_values, reference_curls, status)
+        if (status /= 0) return
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        call map_triangle_nedelec_covariant( &
+            jacobian, reference_values, reference_curls, physical_values, &
+            physical_curls, status)
+        if (status /= 0) return
+        value = matmul(physical_values, dofs)
+        curl = dot_product(physical_curls, dofs)
+        status = 0
+    end subroutine evaluate_triangle_nedelec_interpolant
 
     subroutine interpolate_triangle_nedelec( &
             vertices, order, quadrature_degree, field, dofs, status)
