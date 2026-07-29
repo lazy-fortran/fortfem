@@ -313,14 +313,16 @@ The first four Phase 0 foundations are now partly or fully implemented:
 - the mesh exposes local-to-global edge signs, and the global Nedelec
   curl-curl plus mass operator reproduces the exact continuum energy of
   constant fields;
+- RT0 div-div plus mass assembly reproduces its exact reference matrix and
+  the continuum energy of globally conforming constant fluxes;
 - `fortsparse` replaces FortFEM's direct UMFPACK binding and is tested with
   exact real and complex systems.
 - a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
   propagating and evanescent Fourier-mode tests.
 
-This does not complete Phase 0. RT0 global assembly, executable weak-form
-coefficients, DtN integration into scalar and elastic boundary forms,
-feature-claim cleanup, and consumer validation remain.
+This does not complete Phase 0. Executable weak-form coefficients, DtN
+integration into scalar and elastic boundary forms, feature-claim cleanup,
+and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
