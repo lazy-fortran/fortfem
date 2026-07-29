@@ -48,10 +48,55 @@ program test_mesh_extension_2d
             "Former core boundary edge becomes an interior edge")
     end do
 
+    call test_production_scale_boundary()
+
     call check_summary("Triangle mesh extension")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_production_scale_boundary()
+        integer, parameter :: divisions = 40
+        integer, parameter :: outer_count = 20
+        type(mesh_2d_t) :: large_core, large_extended
+        real(dp) :: angle, expected_area
+        real(dp) :: large_outer_vertices(2, outer_count)
+        real(dp), allocatable :: large_areas(:)
+        integer :: point, large_status
+
+        call large_core%create_rectangular( &
+            divisions + 1, divisions + 1, &
+            2.0_dp, 3.0_dp, 0.0_dp, 1.0_dp)
+        do point = 1, outer_count
+            angle = 2.0_dp * acos(-1.0_dp) * &
+                real(point - 1, dp) / real(outer_count, dp)
+            large_outer_vertices(:, point) = [ &
+                2.5_dp + cos(angle), 0.5_dp + sin(angle)]
+        end do
+
+        call extend_triangle_mesh( &
+            large_core, large_outer_vertices, large_extended, large_status)
+        call record_condition(large_status == 0, &
+            "Mesh extension accepts a production-scale circular outer loop")
+        if (large_status /= 0) return
+
+        call record_condition( &
+            large_extended%n_vertices == 1701 .and. &
+            large_extended%n_triangles == 3380 .and. &
+            large_extended%n_edges == 5080, &
+            "Production-scale extension satisfies annular topology")
+        call record_condition(large_extended%n_boundary_edges == outer_count, &
+            "Production-scale extension retains only its outer boundary")
+        call record_condition(all(large_extended%triangles( &
+            :, 1:large_core%n_triangles) == large_core%triangles), &
+            "Production-scale extension preserves every core triangle")
+        large_areas = large_extended%compute_areas()
+        expected_area = 0.5_dp * real(outer_count, dp) * &
+            sin(2.0_dp * acos(-1.0_dp) / real(outer_count, dp))
+        call record_condition(abs(sum(large_areas) - expected_area) < &
+            2.0e-13_dp, &
+            "Production-scale extension covers the exact outer polygon")
+    end subroutine test_production_scale_boundary
 
     logical function all_positive_triangles(mesh) result(positive)
         type(mesh_2d_t), intent(in) :: mesh
