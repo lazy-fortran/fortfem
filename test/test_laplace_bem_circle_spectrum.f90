@@ -15,8 +15,9 @@ program test_laplace_bem_circle_spectrum
         call circle_spectral_error(mesh_sizes(mesh_id), errors(mesh_id))
     end do
 
-    call record_condition(errors(2) < errors(1) .and. errors(3) < errors(2), &
-        "Laplace boundary spectra converge under circle refinement")
+    call record_condition(errors(1) > 3.5_dp * errors(2) .and. &
+        errors(2) > 3.5_dp * errors(3), &
+        "Laplace boundary spectra converge at second order")
     call record_condition(errors(3) < 1.0e-2_dp, &
         "Laplace boundary spectra resolve the first two circle modes")
 

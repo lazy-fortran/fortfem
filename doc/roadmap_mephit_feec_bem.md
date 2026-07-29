@@ -331,10 +331,16 @@ its cross-code and production-case validation gate remains open:
   double-layer, and hypersingular Galerkin operators act on oriented line
   panels. Analytical self terms and Duffy-reduced endpoint interactions pass
   exact logarithmic and jump-relation tests.
+- outgoing two-dimensional Helmholtz versions of the four operators use the
+  same singular terms and integrate the wavenumber-dependent remainder.
+  SciPy 1.18 panel integrals verify constant and continuous linear moments.
 - the Laplace hypersingular operator uses a weakly singular regularization on
   connected continuous linear traces. Three regular-polygon refinements
   converge to the first two exact single-layer and hypersingular circle
   spectra; the accompanying example reports the mode-one convergence.
+- three regular-polygon refinements also converge at second order to the first
+  two exact complex Helmholtz circle spectra for \(V\), \(K\), and \(W\). A
+  runnable example reports the mode-one errors.
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
@@ -452,9 +458,9 @@ Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
 
-Item 2 and the Laplace part of item 3 are implemented. Helmholtz kernels,
-Calderon identities beyond the jump and spectral checks, adaptive
-near-singular quadrature, and items 1 and 4--6 remain.
+Item 2 and the Laplace and Helmholtz kernel portions of item 3 are
+implemented. Calderon identities beyond the jump and spectral checks,
+adaptive near-singular quadrature, and items 1 and 4--6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 

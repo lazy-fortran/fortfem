@@ -1,0 +1,132 @@
+program helmholtz_bem_circle_spectrum
+    use fortfem_api, only: assemble_helmholtz_double_layer_constant, &
+        assemble_helmholtz_hypersingular_linear, &
+        assemble_helmholtz_single_layer_constant
+    use fortfem_kinds, only: dp
+    implicit none
+
+    integer, parameter :: mesh_sizes(3) = [12, 24, 48]
+    complex(dp), parameter :: exact_single_layer = &
+        (0.4497818998782933_dp, 0.4280549908588178_dp)
+    complex(dp), parameter :: exact_double_layer = &
+        (-0.25522568497710474_dp, 0.2329503859714022_dp)
+    complex(dp), parameter :: exact_hypersingular = &
+        (0.41099886362254484_dp, -0.1267731564473764_dp)
+    complex(dp) :: double_layer, hypersingular, single_layer
+    integer :: mesh_id
+
+    print "(a)", "Unit-circle outgoing Helmholtz BEM spectrum, k = 1.3, mode 1"
+    print "(a)", " panels     rel(V)      rel(K)      rel(W)"
+    do mesh_id = 1, size(mesh_sizes)
+        call circle_mode_eigenvalues( &
+            mesh_sizes(mesh_id), single_layer, double_layer, hypersingular)
+        print "(i7,3es12.3)", mesh_sizes(mesh_id), &
+            relative_error(single_layer, exact_single_layer), &
+            relative_error(double_layer, exact_double_layer), &
+            relative_error(hypersingular, exact_hypersingular)
+    end do
+
+contains
+
+    subroutine circle_mode_eigenvalues( &
+            panel_count, single_layer_eigenvalue, double_layer_eigenvalue, &
+            hypersingular_eigenvalue)
+        integer, intent(in) :: panel_count
+        complex(dp), intent(out) :: single_layer_eigenvalue
+        complex(dp), intent(out) :: double_layer_eigenvalue
+        complex(dp), intent(out) :: hypersingular_eigenvalue
+
+        complex(dp), allocatable :: double_layer_matrix(:, :)
+        complex(dp), allocatable :: hypersingular_matrix(:, :)
+        complex(dp), allocatable :: single_layer_matrix(:, :)
+        integer, allocatable :: panel_nodes(:, :)
+        real(dp), allocatable :: nodal_mode(:), panel_end(:, :)
+        real(dp), allocatable :: panel_mode(:), panel_start(:, :)
+        real(dp) :: angle, length, pi
+        integer :: panel, status
+
+        allocate(panel_start(2, panel_count), panel_end(2, panel_count))
+        allocate(panel_nodes(2, panel_count))
+        allocate(single_layer_matrix(panel_count, panel_count))
+        allocate(double_layer_matrix(panel_count, panel_count))
+        allocate(hypersingular_matrix(panel_count, panel_count))
+        allocate(panel_mode(panel_count), nodal_mode(panel_count))
+
+        pi = acos(-1.0_dp)
+        do panel = 1, panel_count
+            angle = 2.0_dp * pi * real(panel - 1, dp) / real(panel_count, dp)
+            panel_start(1, panel) = cos(angle)
+            panel_start(2, panel) = sin(angle)
+            nodal_mode(panel) = cos(angle)
+            angle = 2.0_dp * pi * real(panel, dp) / real(panel_count, dp)
+            panel_end(1, panel) = cos(angle)
+            panel_end(2, panel) = sin(angle)
+            panel_mode(panel) = cos( &
+                2.0_dp * pi * (real(panel, dp) - 0.5_dp) / &
+                real(panel_count, dp))
+            panel_nodes(1, panel) = panel
+            panel_nodes(2, panel) = modulo(panel, panel_count) + 1
+        end do
+        length = norm2(panel_end(:, 1) - panel_start(:, 1))
+
+        call assemble_helmholtz_single_layer_constant( &
+            panel_start, panel_end, 1.3_dp, 16, single_layer_matrix, status)
+        if (status /= 0) error stop "Single-layer assembly failed"
+        call assemble_helmholtz_double_layer_constant( &
+            panel_start, panel_end, 1.3_dp, 16, double_layer_matrix, status)
+        if (status /= 0) error stop "Double-layer assembly failed"
+        call assemble_helmholtz_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, panel_count, 1.3_dp, 16, &
+            hypersingular_matrix, status)
+        if (status /= 0) error stop "Hypersingular assembly failed"
+
+        single_layer_eigenvalue = quadratic_form( &
+            single_layer_matrix, panel_mode) / &
+            (length * dot_product(panel_mode, panel_mode))
+        double_layer_eigenvalue = quadratic_form( &
+            double_layer_matrix, panel_mode) / &
+            (length * dot_product(panel_mode, panel_mode))
+        hypersingular_eigenvalue = quadratic_form( &
+            hypersingular_matrix, nodal_mode) / &
+            linear_mass_norm(nodal_mode, length)
+    end subroutine circle_mode_eigenvalues
+
+    pure function quadratic_form(matrix, values) result(value)
+        complex(dp), intent(in) :: matrix(:, :)
+        real(dp), intent(in) :: values(:)
+        complex(dp) :: value
+
+        integer :: column, row
+
+        value = (0.0_dp, 0.0_dp)
+        do column = 1, size(values)
+            do row = 1, size(values)
+                value = value + &
+                    values(row) * matrix(row, column) * values(column)
+            end do
+        end do
+    end function quadratic_form
+
+    pure function linear_mass_norm(values, panel_length) result(norm)
+        real(dp), intent(in) :: values(:), panel_length
+        real(dp) :: norm
+
+        integer :: panel, successor
+
+        norm = 0.0_dp
+        do panel = 1, size(values)
+            successor = modulo(panel, size(values)) + 1
+            norm = norm + panel_length / 3.0_dp * ( &
+                values(panel)**2 + values(panel) * values(successor) + &
+                values(successor)**2)
+        end do
+    end function linear_mass_norm
+
+    pure function relative_error(value, reference) result(error)
+        complex(dp), intent(in) :: value, reference
+        real(dp) :: error
+
+        error = abs(value - reference) / abs(reference)
+    end function relative_error
+
+end program helmholtz_bem_circle_spectrum
