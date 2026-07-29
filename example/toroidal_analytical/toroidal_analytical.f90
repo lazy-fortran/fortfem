@@ -1,6 +1,7 @@
 program toroidal_analytical
     use fortfem_api, only: &
         cartesian_to_toroidal, evaluate_laplace_representation_triangles_3d, &
+        evaluate_helmholtz_representation_triangles_3d, &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
         generate_torus_surface_mesh, toroidal_point_to_cartesian, &
         toroidal_poisson_exterior_dtn_p, toroidal_vector_to_cartesian
@@ -19,10 +20,12 @@ program toroidal_analytical
     real(dp), parameter :: eta = &
         1.3169578969248167086250463473079684_dp
     real(dp), parameter :: target_eta = 0.35_dp
+    real(dp), parameter :: wave_number = 0.2_dp
     real(dp), parameter :: pi = acos(-1.0_dp)
     character(*), parameter :: output_directory = &
         "output/example/toroidal_analytical"
     real(dp) :: theta_trace(trace_points), potential(trace_points)
+    real(dp) :: axial_z(trace_points)
     real(dp) :: bem_potential(trace_points)
     real(dp) :: field_eta(trace_points), field_theta(trace_points)
     real(dp) :: field_phi(trace_points)
@@ -32,11 +35,14 @@ program toroidal_analytical
     real(dp) :: bem_error(phi_cells, theta_cells)
     real(dp) :: x(surface_points), y(surface_points), z(surface_points)
     real(dp), allocatable :: boundary_trace(:), boundary_flux(:)
+    complex(dp), allocatable :: helmholtz_trace(:), helmholtz_flux(:)
+    complex(dp) :: helmholtz_exact(trace_points)
+    complex(dp) :: helmholtz_bem(trace_points)
     real(dp), allocatable :: vertices(:, :)
     integer, allocatable :: triangles(:, :)
     real(dp) :: field(3), theta_value, phi_value, denominator, target(3)
     real(dp) :: bem_gradient(3), cartesian_field(3), start_time, end_time
-    real(dp) :: bem_seconds, exact_seconds
+    real(dp) :: bem_seconds, exact_seconds, helmholtz_seconds
     integer :: i, j, point, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
@@ -45,6 +51,7 @@ program toroidal_analytical
         vertices, triangles)
     call build_boundary_data()
     call generate_trace()
+    call generate_helmholtz_trace()
     call generate_surface_map()
     call generate_geometry()
     call write_trace_data()
@@ -165,6 +172,41 @@ contains
         call savefig(output_directory//"/toroidal_geometry_3d.png")
     end subroutine generate_geometry
 
+    subroutine generate_helmholtz_trace()
+        real(dp) :: radius, source(3)
+
+        source = [2.0_dp/sqrt(3.0_dp), 0.0_dp, 0.0_dp]
+        allocate(helmholtz_trace(size(vertices, 2)))
+        allocate(helmholtz_flux(size(triangles, 2)))
+        call build_helmholtz_boundary_data(source)
+        call cpu_time(start_time)
+        do i = 1, trace_points
+            axial_z(i) = &
+                -1.5_dp + 3.0_dp*real(i - 1, dp)/real(trace_points - 1, dp)
+            target = [0.0_dp, 0.0_dp, axial_z(i)]
+            radius = norm2(target - source)
+            helmholtz_exact(i) = &
+                exp(cmplx(0.0_dp, wave_number*radius, dp))/radius
+            call evaluate_helmholtz_representation_triangles_3d( &
+                vertices, triangles, helmholtz_trace, helmholtz_flux, &
+                target, wave_number, 6, helmholtz_bem(i), status)
+            if (status /= 0) error stop "Toroidal Helmholtz BEM failed"
+        end do
+        call cpu_time(end_time)
+        helmholtz_seconds = end_time - start_time
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(axial_z, abs(helmholtz_exact), &
+            label="Helmholtz analytical |u|", linestyle="-")
+        call plot(axial_z, abs(helmholtz_bem), &
+            label="Helmholtz BEM |u|", linestyle="--")
+        call xlabel("axial coordinate z")
+        call ylabel("field magnitude")
+        call title("Outgoing Helmholtz point source through toroidal BEM")
+        call legend()
+        call savefig(output_directory//"/toroidal_helmholtz_1d.png")
+    end subroutine generate_helmholtz_trace
+
     subroutine write_trace_data()
         open (newunit=unit, &
             file=output_directory//"/toroidal_trace.csv", &
@@ -183,10 +225,15 @@ contains
         write (unit, "(a,i0)") "trace targets: ", trace_points
         write (unit, "(a,es14.6)") "analytical seconds: ", exact_seconds
         write (unit, "(a,es14.6)") "BEM seconds: ", bem_seconds
+        write (unit, "(a,es14.6)") &
+            "Helmholtz BEM seconds: ", helmholtz_seconds
         write (unit, "(a,es14.6)") "Poisson max relative error: ", maxval( &
             abs(bem_potential - potential))/maxval(abs(potential))
         write (unit, "(a,es14.6)") "Ampere max relative error: ", maxval( &
             abs(bem_field_norm - field_norm))/maxval(field_norm)
+        write (unit, "(a,es14.6)") "Helmholtz max relative error: ", maxval( &
+            abs(helmholtz_bem - helmholtz_exact))/ &
+            maxval(abs(helmholtz_exact))
         close (unit)
     end subroutine write_trace_data
 
@@ -216,5 +263,44 @@ contains
             boundary_flux(element) = normal_derivative
         end do
     end subroutine build_boundary_data
+
+    subroutine build_helmholtz_boundary_data(source)
+        real(dp), intent(in) :: source(3)
+        real(dp) :: centroid(3), displacement(3), first_edge(3), normal(3)
+        real(dp) :: radius, second_edge(3)
+        integer :: element
+
+        do point = 1, size(vertices, 2)
+            displacement = vertices(:, point) - source
+            radius = norm2(displacement)
+            helmholtz_trace(point) = &
+                exp(cmplx(0.0_dp, wave_number*radius, dp))/radius
+        end do
+        do element = 1, size(triangles, 2)
+            centroid = sum(vertices(:, triangles(:, element)), dim=2)/3.0_dp
+            first_edge = vertices(:, triangles(2, element)) - &
+                vertices(:, triangles(1, element))
+            second_edge = vertices(:, triangles(3, element)) - &
+                vertices(:, triangles(1, element))
+            normal = cross_product(first_edge, second_edge)
+            normal = normal/norm2(normal)
+            displacement = centroid - source
+            radius = norm2(displacement)
+            helmholtz_flux(element) = &
+                exp(cmplx(0.0_dp, wave_number*radius, dp))* &
+                cmplx(-1.0_dp/radius**2, wave_number/radius, dp)* &
+                dot_product(displacement/radius, normal)
+        end do
+    end subroutine build_helmholtz_boundary_data
+
+    pure function cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function cross_product
 
 end program toroidal_analytical
