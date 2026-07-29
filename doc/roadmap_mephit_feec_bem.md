@@ -304,7 +304,7 @@ test, not a convergence test.
 
 ### Implementation status on 2026-07-29
 
-The Phase 0 foundations are implemented:
+The Phase 0 foundations and the first Phase 1 interfaces are implemented:
 
 - the triangular lowest-order Nedelec basis, curl, and covariant Piola map
   pass exact edge-moment and affine-map tests;
@@ -340,6 +340,9 @@ The Phase 0 foundations are implemented:
 - complex RT0 coefficients cross the C boundary in global edge-DOF order for
   point evaluation, divergence, L2 integration, and toroidal Fourier
   reconstruction.
+- an installable `fortfem::capi` shared CMake target builds the focused
+  MEPHIT-facing surface with pinned `fortsparse`; a standalone C consumer
+  finds the installed package, links, and exercises a retained mesh.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary

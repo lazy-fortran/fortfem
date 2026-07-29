@@ -17,6 +17,8 @@ Verified numerical paths:
   assembly.
 - Iterative dense solvers and real or complex sparse direct solves through
   `fortsparse`.
+- A C/C++ API for oriented triangle meshes, retained complex sparse factors,
+  and RT0 coefficient transfer.
 - A periodic planar Helmholtz DtN operator using `fortnum` FFTs.
 - Mesh generation, refinement, and plotting through `fortplot`.
 
@@ -44,6 +46,20 @@ fpm test
 # Run examples
 fpm run --example simple_poisson
 ```
+
+For C and C++ consumers, CMake builds the focused shared API and fetches the
+pinned `fortsparse` dependency when needed:
+
+```bash
+cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build/cmake
+cmake --install build/cmake --prefix /desired/prefix
+```
+
+Downstream CMake projects can then use `find_package(fortfem CONFIG REQUIRED)`
+and link `fortfem::capi`. The installed
+[`fortfem.h`](include/fortfem.h) documents the zero-based array layouts,
+process-local handles, and status arguments.
 
 ## Usage Example
 
