@@ -94,8 +94,12 @@ module fortfem_api_types
     type :: vector_bc_t
         type(vector_function_space_t), pointer :: space => null()
         real(dp) :: values(2) = [0.0_dp, 0.0_dp]
+        real(dp), allocatable :: edge_values(:)
         character(len=32) :: bc_type = "tangential"
         logical :: on_boundary = .false.
+    contains
+        procedure, private :: assign_vector_bc
+        generic :: assignment(=) => assign_vector_bc
     end type vector_bc_t
 
     ! Neumann boundary condition type
@@ -141,5 +145,17 @@ contains
         this%space => null()
     end subroutine vector_function_destroy
 
-end module fortfem_api_types
+    subroutine assign_vector_bc(lhs, rhs)
+        class(vector_bc_t), intent(out) :: lhs
+        type(vector_bc_t), intent(in) :: rhs
 
+        lhs%space => rhs%space
+        lhs%values = rhs%values
+        if (allocated(rhs%edge_values)) then
+            allocate(lhs%edge_values, source=rhs%edge_values)
+        end if
+        lhs%bc_type = rhs%bc_type
+        lhs%on_boundary = rhs%on_boundary
+    end subroutine assign_vector_bc
+
+end module fortfem_api_types

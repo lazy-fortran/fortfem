@@ -118,8 +118,13 @@ contains
                 field%space%mesh%data%edges(2, edge)) - &
                 field%space%mesh%data%vertices(:, &
                 field%space%mesh%data%edges(1, edge))
-            prescribed_value = &
-                dot_product(boundary_condition%values, edge_vector)
+            if (allocated(boundary_condition%edge_values)) then
+                prescribed_value = boundary_condition%edge_values( &
+                    degree_of_freedom)
+            else
+                prescribed_value = &
+                    dot_product(boundary_condition%values, edge_vector)
+            end if
             right_hand_side = right_hand_side - &
                 dense_matrix(:, degree_of_freedom) * prescribed_value
             dense_matrix(:, degree_of_freedom) = 0.0_dp
