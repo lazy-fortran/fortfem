@@ -37,12 +37,12 @@ contains
         if (status /= 0) return
 
         allocate(annulus_points(2, inner_count + outer_count))
+        annulus_points(:, 1:outer_count) = outer_vertices
         do point = 1, inner_count
-            annulus_points(:, point) = &
+            annulus_points(:, outer_count + point) = &
                 core%vertices(:, boundary_vertices(point))
         end do
-        annulus_points(:, inner_count + 1:) = outer_vertices
-        call make_loop_segments(inner_count, outer_count, segments)
+        call make_loop_segments(outer_count, inner_count, segments)
         allocate(hole_point(2, 1))
         hole_point(:, 1) = sum( &
             core%vertices(:, core%triangles(:, 1)), dim=2) / 3.0_dp
