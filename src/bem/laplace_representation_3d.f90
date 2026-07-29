@@ -10,7 +10,7 @@ contains
 
     subroutine evaluate_laplace_representation_triangles_3d( &
             vertices, triangles, dirichlet_values, neumann_values, target, &
-            quadrature_degree, value, status)
+            quadrature_degree, value, status, gradient)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), intent(in) :: dirichlet_values(:), neumann_values(:)
@@ -18,14 +18,17 @@ contains
         integer, intent(in) :: quadrature_degree
         real(dp), intent(out) :: value
         integer, intent(out) :: status
+        real(dp), intent(out), optional :: gradient(3)
 
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: barycentric(3), displacement(3), first_edge(3)
         real(dp) :: green, green_normal_derivative, jacobian, normal(3)
+        real(dp) :: green_gradient(3), normal_gradient(3)
         real(dp) :: point(3), second_edge(3), trace_value
         integer :: element, node, quadrature_status
 
         value = 0.0_dp
+        if (present(gradient)) gradient = 0.0_dp
         status = 1
         if (size(vertices, 1) /= 3 .or. size(vertices, 2) < 3) return
         if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
@@ -61,6 +64,18 @@ contains
                 value = value + jacobian*weights(node)*( &
                     trace_value*green_normal_derivative - &
                     green*neumann_values(element))
+                if (present(gradient)) then
+                    green_gradient = -displacement/( &
+                        4.0_dp*acos(-1.0_dp)*norm2(displacement)**3)
+                    normal_gradient = normal/( &
+                        4.0_dp*acos(-1.0_dp)*norm2(displacement)**3) - &
+                        3.0_dp*dot_product(displacement, normal)* &
+                        displacement/( &
+                        4.0_dp*acos(-1.0_dp)*norm2(displacement)**5)
+                    gradient = gradient + jacobian*weights(node)*( &
+                        trace_value*normal_gradient - &
+                        neumann_values(element)*green_gradient)
+                end if
             end do
         end do
         status = 0
