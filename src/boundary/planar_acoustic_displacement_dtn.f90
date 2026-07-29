@@ -9,13 +9,39 @@ module fortfem_planar_acoustic_displacement_dtn
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
 
+    interface apply_planar_acoustic_displacement_dtn
+        module procedure apply_planar_acoustic_displacement_dtn_real
+        module procedure apply_planar_acoustic_displacement_dtn_complex
+    end interface
+
+    interface assemble_planar_acoustic_displacement_dtn_form
+        module procedure assemble_planar_acoustic_dtn_form_real
+        module procedure assemble_planar_acoustic_dtn_form_complex
+    end interface
+
 contains
 
-    subroutine assemble_planar_acoustic_displacement_dtn_form( &
+    subroutine assemble_planar_acoustic_dtn_form_real( &
             sample_count, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, form, status)
         integer, intent(in) :: sample_count, maximum_mode
         real(dp), intent(in) :: angular_frequency, sound_speed
+        real(dp), intent(in) :: fluid_density, period
+        complex(dp), intent(out) :: form(:, :)
+        integer, intent(out) :: status
+
+        call assemble_planar_acoustic_dtn_form_complex( &
+            sample_count, angular_frequency, &
+            cmplx(sound_speed, 0.0_dp, dp), fluid_density, period, &
+            maximum_mode, form, status)
+    end subroutine assemble_planar_acoustic_dtn_form_real
+
+    subroutine assemble_planar_acoustic_dtn_form_complex( &
+            sample_count, angular_frequency, sound_speed, fluid_density, &
+            period, maximum_mode, form, status)
+        integer, intent(in) :: sample_count, maximum_mode
+        real(dp), intent(in) :: angular_frequency
+        complex(dp), intent(in) :: sound_speed
         real(dp), intent(in) :: fluid_density, period
         complex(dp), intent(out) :: form(:, :)
         integer, intent(out) :: status
@@ -51,9 +77,9 @@ contains
                 strong_operator(next, :))
         end do
         status = 0
-    end subroutine assemble_planar_acoustic_displacement_dtn_form
+    end subroutine assemble_planar_acoustic_dtn_form_complex
 
-    subroutine apply_planar_acoustic_displacement_dtn( &
+    subroutine apply_planar_acoustic_displacement_dtn_real( &
             displacement, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, pressure, status)
         complex(dp), intent(in) :: displacement(:)
@@ -63,16 +89,33 @@ contains
         complex(dp), intent(out) :: pressure(:)
         integer, intent(out) :: status
 
+        call apply_planar_acoustic_displacement_dtn_complex( &
+            displacement, angular_frequency, &
+            cmplx(sound_speed, 0.0_dp, dp), fluid_density, period, &
+            maximum_mode, pressure, status)
+    end subroutine apply_planar_acoustic_displacement_dtn_real
+
+    subroutine apply_planar_acoustic_displacement_dtn_complex( &
+            displacement, angular_frequency, sound_speed, fluid_density, &
+            period, maximum_mode, pressure, status)
+        complex(dp), intent(in) :: displacement(:)
+        real(dp), intent(in) :: angular_frequency
+        complex(dp), intent(in) :: sound_speed
+        real(dp), intent(in) :: fluid_density, period
+        integer, intent(in) :: maximum_mode
+        complex(dp), intent(out) :: pressure(:)
+        integer, intent(out) :: status
+
         complex(dp), allocatable :: spectrum(:)
-        complex(dp) :: normal_wavenumber
-        real(dp) :: acoustic_wavenumber, radicand, tangential_wavenumber
+        complex(dp) :: acoustic_wavenumber, normal_wavenumber, radicand
+        real(dp) :: tangential_wavenumber
         integer :: bin, mode, sample_count
 
         pressure = cmplx(0.0_dp, 0.0_dp, dp)
         status = 1
         sample_count = size(displacement)
         if (sample_count < 1 .or. size(pressure) /= sample_count) return
-        if (angular_frequency <= 0.0_dp .or. sound_speed <= 0.0_dp .or. &
+        if (angular_frequency <= 0.0_dp .or. abs(sound_speed) <= 0.0_dp .or. &
             fluid_density <= 0.0_dp .or. period <= 0.0_dp) return
         if (maximum_mode < 0 .or. maximum_mode > sample_count/2) return
 
@@ -93,18 +136,14 @@ contains
             tangential_wavenumber = 2.0_dp*pi*real(mode, dp)/period
             radicand = acoustic_wavenumber**2 - tangential_wavenumber**2
             if (abs(radicand) <= &
-                32.0_dp*epsilon(1.0_dp)*acoustic_wavenumber**2) then
+                32.0_dp*epsilon(1.0_dp)*abs(acoustic_wavenumber)**2) then
                 if (abs(spectrum(bin + 1)) > &
                     64.0_dp*epsilon(1.0_dp)*max( &
                     1.0_dp, maxval(abs(spectrum)))) return
                 spectrum(bin + 1) = cmplx(0.0_dp, 0.0_dp, dp)
                 cycle
             end if
-            if (radicand > 0.0_dp) then
-                normal_wavenumber = cmplx(sqrt(radicand), 0.0_dp, dp)
-            else
-                normal_wavenumber = cmplx(0.0_dp, sqrt(-radicand), dp)
-            end if
+            normal_wavenumber = sqrt(radicand)
             spectrum(bin + 1) = &
                 -cmplx(0.0_dp, 1.0_dp, dp)*fluid_density* &
                 angular_frequency**2/normal_wavenumber*spectrum(bin + 1)
@@ -112,5 +151,5 @@ contains
         call fft_c2c(spectrum, 1)
         pressure = spectrum/real(sample_count, dp)
         status = 0
-    end subroutine apply_planar_acoustic_displacement_dtn
+    end subroutine apply_planar_acoustic_displacement_dtn_complex
 end module fortfem_planar_acoustic_displacement_dtn

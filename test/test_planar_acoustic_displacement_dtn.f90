@@ -17,6 +17,7 @@ program test_planar_acoustic_displacement_dtn
         "Evanescent displacement produces a real decaying pressure")
     call check_truncation()
     call check_grazing_rejection()
+    call check_complex_sound_speed()
     call check_weak_form()
 
     call check_summary("Planar acoustic displacement DtN")
@@ -84,6 +85,19 @@ contains
         call record_condition(status /= 0, &
             "Acoustic DtN reports a singular grazing mode")
     end subroutine check_grazing_rejection
+
+    subroutine check_complex_sound_speed()
+        complex(dp) :: displacement(7), pressure(7)
+        integer :: status
+
+        displacement = cmplx(1.0_dp, 0.0_dp, dp)
+        call apply_planar_acoustic_displacement_dtn( &
+            displacement, 3.0_dp, cmplx(1.0_dp, 0.1_dp, dp), 2.0_dp, &
+            2.0_dp*pi, 3, pressure, status)
+        call record_condition(status == 0 .and. maxval(abs(pressure - &
+            cmplx(0.6_dp, -6.0_dp, dp))) < 2.0e-12_dp, &
+            "Acoustic DtN supports a complex lossy sound speed")
+    end subroutine check_complex_sound_speed
 
     subroutine check_weak_form()
         integer, parameter :: sample_count = 11
