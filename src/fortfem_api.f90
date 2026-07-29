@@ -13,7 +13,9 @@ module fortfem_api
         assemble_triangle_rt_div_mass_element, &
         assemble_triangle_rt_divergence_csc
     use fortfem_assembly_tetra_nedelec_3d, only: &
-        assemble_tetra_nedelec_curl_mass_csc
+        assemble_tetra_nedelec_curl_mass_csc, &
+        assemble_tetra_nedelec_vector_load, &
+        assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
@@ -95,6 +97,7 @@ module fortfem_api
         sparse_direct_solve_factored
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0
+    use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -180,6 +183,7 @@ module fortfem_api
     public :: solve
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
+    public :: solve_magnetic_box_3d
     public :: solve_mixed_bc
     public :: solve_neumann
     public :: compute_boundary_integral
@@ -244,6 +248,8 @@ module fortfem_api
     public :: assemble_triangle_rt_div_mass_csc
     public :: assemble_triangle_rt_divergence_csc
     public :: assemble_tetra_nedelec_curl_mass_csc
+    public :: assemble_tetra_nedelec_weighted_csc
+    public :: assemble_tetra_nedelec_vector_load
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant

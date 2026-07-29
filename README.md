@@ -21,6 +21,8 @@ Verified numerical paths:
   preserves physical tangential moments. Neighboring tetrahedra share global
   edge degrees of freedom with explicit local orientation signs, and their
   curl-mass operator assembles directly to `fortsparse` CSC.
+- Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
+  magnetic-paper box centre value at its 12×12×8 reference resolution.
 - Iterative dense solvers and real or complex sparse direct solves through
   `fortsparse`.
 - A C/C++ API for oriented triangle meshes, retained complex sparse factors,
@@ -50,9 +52,9 @@ Experimental interfaces:
   three-material, Fourier-mode magnetic solution. A smooth manufactured
   curl-mass problem attains first-order field convergence.
 
-Tensor and complex coefficients, higher-order high-level solves,
-three-dimensional meshes, mappings, and assembly, electromagnetic BEM
-coupling, and validation
+Two-dimensional tensor coefficients, complex coefficients, higher-order
+high-level solves, general three-dimensional meshes and higher-order
+elements, electromagnetic BEM coupling, and validation
 against the unavailable proprietary MEPHIT cases and the not-yet-ported
 acoustic-paper fixtures remain. See the
 [FEEC, MEPHIT, and open-boundary roadmap](doc/roadmap_mephit_feec_bem.md).

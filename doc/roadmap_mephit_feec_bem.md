@@ -421,6 +421,11 @@ its cross-code and production-case validation gate remains open:
 - the first-order tetrahedral curl-mass operator assembles directly to
   `fortsparse` CSC. Exact constant-field mass and rotational-field curl
   energies verify the oriented two-cell operator.
+- tensor-weighted tetrahedral curl assembly, physical vector-load assembly,
+  boundary-edge elimination, and sparse reconstruction reproduce pull
+  request 9's anisotropic 12-by-12-by-8 magnetic box centre value within its
+  five-percent membrane-series tolerance. A 6-by-6-by-4 result improves under
+  refinement.
 - arbitrary-order first- and second-kind Nedelec, Raviart-Thomas, and BDM
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
@@ -539,8 +544,9 @@ passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
 through degree-four mixed PDE validation, tetrahedral assembly beyond the
-verified first-order curl-mass operator, and the three-dimensional box in
-item 5 remain. The Phase 2 exit gate is therefore not yet met.
+verified first-order curl-mass operator, higher-order tetrahedral families,
+and magnetic-field validation for the three-dimensional box remain. The
+Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
