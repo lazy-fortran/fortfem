@@ -172,6 +172,10 @@ The existing triangle quadrature cannot be replaced by fortnum today because
 fortnum supplies one-dimensional rules. Triangle and tetrahedron rules need a
 simplex-rule module or a Duffy tensor-product construction.
 
+FortFEM now uses `fft_c2c` for a standalone periodic planar Helmholtz DtN map.
+Exact positive and negative Fourier modes test the outgoing propagating branch
+and the decaying evanescent branch at a prime transform length.
+
 ### fortsparse
 
 `fortsparse` already supplies the required real and complex CSC types,
@@ -311,10 +315,12 @@ The first four Phase 0 foundations are now partly or fully implemented:
   constant fields;
 - `fortsparse` replaces FortFEM's direct UMFPACK binding and is tested with
   exact real and complex systems.
+- a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
+  propagating and evanescent Fourier-mode tests.
 
 This does not complete Phase 0. RT0 global assembly, executable weak-form
-coefficients, the planar FFT DtN map, feature-claim cleanup, and consumer
-validation remain.
+coefficients, DtN integration into scalar and elastic boundary forms,
+feature-claim cleanup, and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 

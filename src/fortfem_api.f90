@@ -7,6 +7,7 @@ module fortfem_api
     use fortfem_api_forms
     use fortfem_api_solvers
     use fortfem_api_plot
+    use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -81,6 +82,7 @@ module fortfem_api
     public :: solve_mixed_bc
     public :: solve_neumann
     public :: compute_boundary_integral
+    public :: apply_planar_helmholtz_dtn
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t
@@ -92,4 +94,3 @@ module fortfem_api
     public :: plot
 
 end module fortfem_api
-
