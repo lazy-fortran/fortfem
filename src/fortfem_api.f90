@@ -87,7 +87,8 @@ module fortfem_api
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
         sparse_direct_factor_csc, sparse_direct_free, &
         sparse_direct_solve_factored
-    use fortfem_mixed_poisson_2d, only: solve_mixed_poisson_rt0
+    use fortfem_mixed_poisson_2d, only: &
+        solve_mixed_poisson_rt, solve_mixed_poisson_rt0
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -172,6 +173,7 @@ module fortfem_api
     public :: assemble_laplacian_system
     public :: solve
     public :: solve_mixed_poisson_rt0
+    public :: solve_mixed_poisson_rt
     public :: solve_mixed_bc
     public :: solve_neumann
     public :: compute_boundary_integral
