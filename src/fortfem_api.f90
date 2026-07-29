@@ -49,6 +49,7 @@ module fortfem_api
     use fortfem_helmholtz_boundary_operators_2d, only: &
         assemble_helmholtz_adjoint_double_layer_constant, &
         assemble_helmholtz_double_layer_constant, &
+        assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant, &
         assemble_helmholtz_single_layer_linear
@@ -269,6 +270,7 @@ module fortfem_api
     public :: interpolate_triangle_nedelec_second_kind
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_double_layer_mixed_linear
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: assemble_triangle_nedelec_curl_mass_element
