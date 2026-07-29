@@ -149,6 +149,8 @@ module fortfem_api
     public :: curl
     public :: dx
     public :: compile_form
+    public :: compile_form_matrix
+    public :: init_measures
     public :: operator(*)
     public :: operator(+)
     public :: operator(==)
