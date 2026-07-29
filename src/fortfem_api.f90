@@ -18,6 +18,7 @@ module fortfem_api
     use fortfem_helmholtz_boundary_operators_2d, only: &
         assemble_helmholtz_adjoint_double_layer_constant, &
         assemble_helmholtz_double_layer_constant, &
+        assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant, &
         assemble_helmholtz_single_layer_linear
     use fortfem_edge_interpolation_2d, only: &
@@ -107,6 +108,7 @@ module fortfem_api
     public :: circular_helmholtz_dtn_eigenvalue
     public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
