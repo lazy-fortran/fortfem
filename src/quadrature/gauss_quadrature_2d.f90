@@ -285,13 +285,12 @@ contains
         type(gauss_quadrature_triangle_t), intent(out) :: this
         real(dp), parameter :: a = 0.0651301029022_dp
         real(dp), parameter :: b = 0.2603459660790_dp
-        real(dp), parameter :: c = 0.0839477740996_dp
+        real(dp), parameter :: c = 0.0486903154253_dp
         real(dp), parameter :: d = 0.3128654960049_dp
-        real(dp), parameter :: e = 0.0486903154253_dp
         real(dp), parameter :: w0 = -0.1495700444677_dp
         real(dp), parameter :: w1 = 0.0533472356089_dp
-        real(dp), parameter :: w2 = 0.0771137608903_dp
-        real(dp), parameter :: w3 = 0.1756152574332_dp
+        real(dp), parameter :: w2 = 0.1756152574332_dp
+        real(dp), parameter :: w3 = 0.0771137608903_dp
 
         this%n_points = 13
         allocate(this%xi(13), this%eta(13), this%weights(13))
