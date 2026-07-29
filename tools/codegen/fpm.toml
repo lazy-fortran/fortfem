@@ -17,3 +17,8 @@ source-form = "free"
 name = "gen_tetra_nedelec_candidates"
 source-dir = "app"
 main = "gen_tetra_nedelec_candidates.f90"
+
+[[executable]]
+name = "gen_tetra_face_moment_transforms"
+source-dir = "app"
+main = "gen_tetra_face_moment_transforms.f90"
