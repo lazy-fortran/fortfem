@@ -1,0 +1,191 @@
+module fortfem_assembly_full_vector_arbitrary_order_2d
+    use fortfem_kinds, only: dp
+    use fortfem_mesh_2d, only: mesh_2d_t
+    use fortfem_triangle_bdm_arbitrary_order, only: &
+        evaluate_triangle_bdm, initialize_triangle_bdm, triangle_bdm_basis_t
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_triangle_global_dof_map, only: &
+        build_triangle_full_vector_dof_map
+    use fortfem_triangle_nedelec_second_kind, only: &
+        evaluate_triangle_nedelec_second_kind, &
+        initialize_triangle_nedelec_second_kind, &
+        triangle_nedelec_second_kind_t
+    use fortfem_triangle_piola_maps, only: &
+        map_triangle_nedelec_covariant, map_triangle_rt_contravariant
+    use fortsparse, only: &
+        csc_from_triplet, csc_t, FORTSPARSE_INVALID_MATRIX, &
+        fortsparse_status_t, status_set
+    implicit none
+
+    private
+
+    public :: assemble_triangle_bdm_div_mass_csc
+    public :: assemble_triangle_nedelec_second_curl_mass_csc
+
+contains
+
+    subroutine assemble_triangle_nedelec_second_curl_mass_csc( &
+            mesh, degree, quadrature_degree, matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc( &
+            mesh, degree, quadrature_degree, .false., matrix, status)
+    end subroutine assemble_triangle_nedelec_second_curl_mass_csc
+
+    subroutine assemble_triangle_bdm_div_mass_csc( &
+            mesh, degree, quadrature_degree, matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc( &
+            mesh, degree, quadrature_degree, .true., matrix, status)
+    end subroutine assemble_triangle_bdm_div_mass_csc
+
+    subroutine assemble_triangle_full_vector_csc( &
+            mesh, degree, quadrature_degree, normal_family, matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        logical, intent(in) :: normal_family
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: element_matrix(:, :), values(:)
+        real(dp) :: vertices(2, 3)
+        integer :: column, entry, global_dof_count, local_dof_count
+        integer :: local_status, row, triangle
+
+        if (degree < 1 .or. quadrature_degree < 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Full vector sparse assembly requires positive degree")
+            return
+        end if
+        call build_triangle_full_vector_dof_map( &
+            mesh, degree, global_dofs, transforms, global_dof_count, &
+            local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Full vector sparse assembly requires a valid triangle mesh")
+            return
+        end if
+
+        local_dof_count = size(global_dofs, 1)
+        allocate(rows(mesh%n_triangles * local_dof_count**2))
+        allocate(columns(mesh%n_triangles * local_dof_count**2))
+        allocate(values(mesh%n_triangles * local_dof_count**2))
+        entry = 0
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            call assemble_triangle_full_vector_element( &
+                vertices, degree, quadrature_degree, normal_family, &
+                element_matrix, local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Full vector assembly requires valid CCW triangles")
+                return
+            end if
+            do column = 1, local_dof_count
+                do row = 1, local_dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, triangle)
+                    columns(entry) = global_dofs(column, triangle)
+                    values(entry) = real( &
+                        transforms(row, triangle) * &
+                        transforms(column, triangle), dp) * &
+                        element_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_triangle_full_vector_csc
+
+    subroutine assemble_triangle_full_vector_element( &
+            vertices, degree, quadrature_degree, normal_family, matrix, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        integer, intent(in) :: degree, quadrature_degree
+        logical, intent(in) :: normal_family
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        type(triangle_bdm_basis_t) :: bdm_basis
+        type(triangle_nedelec_second_kind_t) :: nedelec_basis
+        real(dp), allocatable :: eta(:), physical_derivatives(:)
+        real(dp), allocatable :: physical_values(:, :)
+        real(dp), allocatable :: reference_derivatives(:)
+        real(dp), allocatable :: reference_values(:, :), weights(:), xi(:)
+        real(dp) :: determinant, jacobian(2, 2), physical_weight
+        integer :: column, dof_count, point, row
+
+        status = 1
+        if (degree < 1 .or. quadrature_degree < 0) return
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        determinant = jacobian(1, 1) * jacobian(2, 2) - &
+            jacobian(1, 2) * jacobian(2, 1)
+        if (determinant <= 64.0_dp * epsilon(1.0_dp) * &
+            max(1.0_dp, maxval(abs(jacobian))**2)) return
+
+        dof_count = (degree + 1) * (degree + 2)
+        if (normal_family) then
+            call initialize_triangle_bdm(degree, bdm_basis, status)
+        else
+            call initialize_triangle_nedelec_second_kind( &
+                degree, nedelec_basis, status)
+        end if
+        if (status /= 0) return
+        allocate(matrix(dof_count, dof_count))
+        allocate(reference_values(2, dof_count))
+        allocate(reference_derivatives(dof_count))
+        allocate(physical_values(2, dof_count))
+        allocate(physical_derivatives(dof_count))
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+
+        matrix = 0.0_dp
+        do point = 1, size(weights)
+            if (normal_family) then
+                call evaluate_triangle_bdm( &
+                    bdm_basis, xi(point), eta(point), reference_values, &
+                    reference_derivatives, status)
+                if (status /= 0) return
+                call map_triangle_rt_contravariant( &
+                    jacobian, reference_values, reference_derivatives, &
+                    physical_values, physical_derivatives, status)
+            else
+                call evaluate_triangle_nedelec_second_kind( &
+                    nedelec_basis, xi(point), eta(point), reference_values, &
+                    reference_derivatives, status)
+                if (status /= 0) return
+                call map_triangle_nedelec_covariant( &
+                    jacobian, reference_values, reference_derivatives, &
+                    physical_values, physical_derivatives, status)
+            end if
+            if (status /= 0) return
+            physical_weight = determinant * weights(point)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    matrix(row, column) = matrix(row, column) + &
+                        physical_weight * ( &
+                        physical_derivatives(row) * &
+                        physical_derivatives(column) + &
+                        dot_product( &
+                        physical_values(:, row), physical_values(:, column)))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_triangle_full_vector_element
+
+end module fortfem_assembly_full_vector_arbitrary_order_2d

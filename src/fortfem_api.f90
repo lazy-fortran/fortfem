@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
+        assemble_triangle_bdm_div_mass_csc, &
+        assemble_triangle_nedelec_second_curl_mass_csc
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_csc, &
         assemble_triangle_nedelec_curl_mass_csc, &
@@ -200,6 +203,8 @@ module fortfem_api
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: assemble_triangle_nedelec_curl_mass_element
+    public :: assemble_triangle_bdm_div_mass_csc
+    public :: assemble_triangle_nedelec_second_curl_mass_csc
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_rt_div_mass_element
