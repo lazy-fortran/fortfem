@@ -1,6 +1,8 @@
 module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_mass_element
+    use fortfem_assembly_rt_arbitrary_order_2d, only: &
+        assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
     implicit none
 
@@ -14,6 +16,7 @@ module fortfem_forms_simple
     integer, parameter :: token_add = 6
     integer, parameter :: token_scalar = 7
     integer, parameter :: token_measure = 8
+    integer, parameter :: token_divergence = 9
 
     integer, parameter :: role_trial = 1
     integer, parameter :: role_test = 2
@@ -22,6 +25,7 @@ module fortfem_forms_simple
     integer, parameter :: derivative_identity = 0
     integer, parameter :: derivative_gradient = 1
     integer, parameter :: derivative_curl = 2
+    integer, parameter :: derivative_divergence = 3
 
     integer, parameter :: item_argument = 1
     integer, parameter :: item_form = 2
@@ -55,11 +59,13 @@ module fortfem_forms_simple
         real(dp) :: mass_coefficient = 0.0_dp
         real(dp) :: stiffness_coefficient = 0.0_dp
         real(dp) :: curl_coefficient = 0.0_dp
+        real(dp) :: divergence_coefficient = 0.0_dp
     end type compiler_item_t
 
     public :: assignment(=)
     public :: compile_form, compile_form_matrix, compile_vector_form_element
-    public :: create_curl, create_grad, create_inner, create_measure
+    public :: create_curl, create_divergence, create_grad, create_inner
+    public :: create_measure
     public :: create_product, create_scale, create_sum, create_symbol
 
     interface assignment(=)
@@ -128,6 +134,18 @@ contains
         expr%form_type = func_type
         expr%tensor_rank = 0
     end function create_curl
+
+    function create_divergence(func_name, func_type) result(expr)
+        character(len=*), intent(in) :: func_name, func_type
+        type(form_expr_t) :: expr
+        type(form_expr_t) :: symbol
+
+        symbol = create_symbol(func_name, func_type, 1)
+        expr = append_unary_token(symbol, token_divergence)
+        expr%description = "div(" // trim(func_name) // ")"
+        expr%form_type = func_type
+        expr%tensor_rank = 0
+    end function create_divergence
 
     function create_inner(a, b) result(expr)
         type(form_expr_t), intent(in) :: a, b
@@ -245,18 +263,33 @@ contains
         real(dp), allocatable, intent(out) :: matrix(:, :)
         integer, intent(out) :: status
 
-        real(dp) :: curl_coefficient, mass_coefficient
+        real(dp) :: curl_coefficient, divergence_coefficient
+        real(dp) :: mass_coefficient
         integer :: compiler_status
 
         status = 1
         call analyze_vector_bilinear_form( &
-            expr, mass_coefficient, curl_coefficient, compiler_status)
+            expr, mass_coefficient, curl_coefficient, &
+            divergence_coefficient, compiler_status)
         if (compiler_status /= 0) return
         select case (trim(family))
         case ("Nedelec", "Nedelec1", "Edge")
+            if (divergence_coefficient /= 0.0_dp) then
+                status = 3
+                return
+            end if
             call assemble_triangle_nedelec_curl_mass_element( &
                 vertices, degree, quadrature_degree, matrix, status, &
                 curl_coefficient=curl_coefficient, &
+                mass_coefficient=mass_coefficient)
+        case ("RT", "Raviart-Thomas")
+            if (curl_coefficient /= 0.0_dp) then
+                status = 3
+                return
+            end if
+            call assemble_triangle_rt_div_mass_element( &
+                vertices, degree, quadrature_degree, matrix, status, &
+                divergence_coefficient=divergence_coefficient, &
                 mass_coefficient=mass_coefficient)
         case default
             status = 3
@@ -304,15 +337,21 @@ contains
             status = 2
             return
         end if
+        if (stack(1)%divergence_coefficient /= 0.0_dp) then
+            status = 2
+            return
+        end if
         mass_coefficient = stack(1)%mass_coefficient
         stiffness_coefficient = stack(1)%stiffness_coefficient
         status = 0
     end subroutine analyze_scalar_bilinear_form
 
     subroutine analyze_vector_bilinear_form( &
-            expr, mass_coefficient, curl_coefficient, status)
+            expr, mass_coefficient, curl_coefficient, divergence_coefficient, &
+            status)
         type(form_expr_t), intent(in) :: expr
         real(dp), intent(out) :: mass_coefficient, curl_coefficient
+        real(dp), intent(out) :: divergence_coefficient
         integer, intent(out) :: status
 
         type(compiler_item_t), allocatable :: stack(:)
@@ -320,6 +359,7 @@ contains
 
         mass_coefficient = 0.0_dp
         curl_coefficient = 0.0_dp
+        divergence_coefficient = 0.0_dp
         status = 2
         if (.not. allocated(expr%tokens)) return
         if (size(expr%tokens) < 1) return
@@ -352,6 +392,7 @@ contains
         end if
         mass_coefficient = stack(1)%mass_coefficient
         curl_coefficient = stack(1)%curl_coefficient
+        divergence_coefficient = stack(1)%divergence_coefficient
         status = 0
     end subroutine analyze_vector_bilinear_form
 
@@ -382,6 +423,12 @@ contains
             if (stack(stack_size)%tensor_rank /= 1) return
             stack(stack_size)%tensor_rank = 0
             stack(stack_size)%derivative = derivative_curl
+        case (token_divergence)
+            if (stack_size < 1) return
+            if (stack(stack_size)%item_type /= item_argument) return
+            if (stack(stack_size)%tensor_rank /= 1) return
+            stack(stack_size)%tensor_rank = 0
+            stack(stack_size)%derivative = derivative_divergence
         case (token_inner)
             call apply_inner_token(stack, stack_size, status)
             return
@@ -433,6 +480,9 @@ contains
         case (derivative_curl)
             if (first%tensor_rank /= 0) return
             stack(stack_size)%curl_coefficient = 1.0_dp
+        case (derivative_divergence)
+            if (first%tensor_rank /= 0) return
+            stack(stack_size)%divergence_coefficient = 1.0_dp
         case default
             return
         end select
@@ -484,6 +534,8 @@ contains
             stack(stack_size - 1)%stiffness_coefficient
         stack(stack_size - 1)%curl_coefficient = factor * &
             stack(stack_size - 1)%curl_coefficient
+        stack(stack_size - 1)%divergence_coefficient = factor * &
+            stack(stack_size - 1)%divergence_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_multiply_token
@@ -502,6 +554,7 @@ contains
         if (first%item_type /= item_form .or. &
             second%item_type /= item_form) return
         if (first%integrated .neqv. second%integrated) return
+        if (first%field_rank /= second%field_rank) return
         stack(stack_size - 1) = first
         stack(stack_size - 1)%mass_coefficient = &
             first%mass_coefficient + second%mass_coefficient
@@ -509,6 +562,8 @@ contains
             first%stiffness_coefficient + second%stiffness_coefficient
         stack(stack_size - 1)%curl_coefficient = &
             first%curl_coefficient + second%curl_coefficient
+        stack(stack_size - 1)%divergence_coefficient = &
+            first%divergence_coefficient + second%divergence_coefficient
         stack_size = stack_size - 1
         status = 0
     end subroutine apply_add_token

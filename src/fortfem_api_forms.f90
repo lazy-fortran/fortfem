@@ -2,7 +2,7 @@ module fortfem_api_forms
     use fortfem_kinds
     use fortfem_forms_simple, only: assignment(=), compile_form, &
         compile_form_matrix, compile_vector_form_element, create_curl, &
-        create_grad, create_inner, &
+        create_divergence, create_grad, create_inner, &
         create_measure, create_product, create_scale, create_sum, &
         create_symbol, form_expr_t
     use fortfem_api_types, only: trial_function_t, test_function_t,         &
@@ -20,6 +20,7 @@ module fortfem_api_forms
     public :: inner
     public :: grad
     public :: curl
+    public :: div
     public :: compile_form
     public :: compile_form_matrix
     public :: compile_vector_form_element
@@ -133,6 +134,20 @@ contains
             curlu = create_curl("unknown", "unknown")
         end select
     end function curl
+
+    function div(u) result(divu)
+        class(*), intent(in) :: u
+        type(form_expr_t) :: divu
+
+        select type(u)
+            type is (vector_trial_function_t)
+            divu = create_divergence("u", "trial")
+            type is (vector_test_function_t)
+            divu = create_divergence("v", "test")
+        class default
+            divu = create_divergence("unknown", "unknown")
+        end select
+    end function div
 
     function expr_times_expr(a, b) result(product)
         type(form_expr_t), intent(in) :: a, b
