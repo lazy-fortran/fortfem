@@ -345,6 +345,9 @@ its cross-code and production-case validation gate remains open:
   \(D\phi-i\eta S\phi\) for exterior Dirichlet scattering and evaluates the
   layer potential off the boundary. Three polygon refinements converge near
   second order to the outgoing Mie series for a sound-soft circle.
+- recursive panel subdivision evaluates the combined potential at targets
+  close to the boundary. A target at distance \(10^{-4}\) from one panel
+  matches SciPy 1.18 quadrature to \(2\times10^{-10}\).
 - coefficient callbacks and a built-in axisymmetric Fourier kernel assemble
   the MEPHIT weights \(R\) and \(n^2/R\); the latter converges to an exact
   logarithmic energy on a shifted annular strip.
@@ -371,6 +374,19 @@ its cross-code and production-case validation gate remains open:
 - an installable `fortfem::capi` shared CMake target builds the focused
   MEPHIT-facing surface with pinned `fortsparse`; a standalone C consumer
   finds the installed package, links, and exercises a retained mesh.
+- a Duffy tensor-product triangle rule uses `fortnum` Gauss-Legendre points
+  at arbitrary requested polynomial degree. Exact monomial integrals verify
+  every degree through twelve.
+- generated triangular Lagrange bases for degrees zero through four,
+  first-kind Nedelec bases for orders one through four, and Raviart-Thomas
+  bases for degrees zero through three pass complete edge, cell, value,
+  gradient, curl, and divergence reproduction tests.
+- covariant and contravariant affine Piola maps preserve arbitrary tangential
+  and normal moments on a skew triangle. Shifted-Legendre edge moments use
+  the exact alternating reversal parity for higher-order orientations.
+- generated local discrete gradients have the constant nullspace and full
+  remaining rank through order four. Their interpolated Nedelec curls vanish
+  pointwise, establishing the first local exact-sequence map.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and
@@ -448,6 +464,13 @@ Exit gate: optimal convergence holds for H1, H(curl), H(div), and L2 members
 of the discrete sequence for degrees 0 through 4. The 3D box test reproduces
 its analytical vector potential and curl.
 
+The reference-element portions of items 1--3 now include Lagrange,
+first-kind Nedelec, Raviart-Thomas, arbitrary-degree quadrature, affine Piola
+maps, edge orientation parity, and the local discrete gradient through the
+orders listed above. Second-kind Nedelec, BDM, discontinuous scalar bases,
+global entity maps, sparse assembly, commuting projections beyond the local
+gradient, convergence solves, and item 5 remain.
+
 ### Phase 3: acoustic DtN and 2D BEM
 
 1. Integrate the planar FFT DtN operator into scalar and elastic boundary
@@ -464,8 +487,8 @@ discretization error.
 
 Item 2, the Laplace and Helmholtz kernel portions of item 3, and the dense
 constant-panel reference path in item 4 are implemented. Calderon identities
-beyond the jump and spectral checks, adaptive near-singular quadrature,
-higher-order exterior traces, and items 1, 5, and 6 remain.
+beyond the jump and spectral checks, adaptive near-singular panel-pair
+assembly, higher-order exterior traces, and items 1, 5, and 6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
