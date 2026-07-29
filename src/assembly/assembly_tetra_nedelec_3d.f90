@@ -3,6 +3,11 @@ module fortfem_assembly_tetra_nedelec_3d
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_first_order, only: &
         evaluate_tetra_nedelec_first_order
+    use fortfem_tetra_nedelec_arbitrary_order, only: &
+        evaluate_tetra_nedelec_first_kind, &
+        initialize_tetra_nedelec_first_kind, tetra_nedelec_dof_count, &
+        tetra_nedelec_first_kind_t
+    use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortnum_linalg, only: det3
     use fortsparse, only: csc_from_triplet, csc_t, &
@@ -12,6 +17,7 @@ module fortfem_assembly_tetra_nedelec_3d
     private
 
     public :: assemble_tetra_nedelec_curl_mass_csc
+    public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
 
@@ -30,6 +36,67 @@ module fortfem_assembly_tetra_nedelec_3d
     end interface
 
 contains
+
+    subroutine assemble_tetra_nedelec_curl_mass_element( &
+            vertices, order, quadrature_degree, matrix, status, &
+            curl_coefficient, mass_coefficient)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: curl_weight, determinant, jacobian(3, 3), mass_weight
+        real(dp) :: physical_weight, point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (order < 1 .or. quadrature_degree < 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+
+        curl_weight = 1.0_dp
+        mass_weight = 1.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(matrix(dof_count, dof_count))
+        allocate( &
+            reference_values(3, dof_count), reference_curls(3, dof_count), &
+            physical_values(3, dof_count), physical_curls(3, dof_count))
+        matrix = 0.0_dp
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_weight = determinant * weights(point_index)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    matrix(row, column) = matrix(row, column) + &
+                        physical_weight * (curl_weight * dot_product( &
+                        physical_curls(:, row), physical_curls(:, column)) + &
+                        mass_weight * dot_product( &
+                        physical_values(:, row), physical_values(:, column)))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_curl_mass_element
 
     subroutine assemble_tetra_nedelec_weighted_csc( &
             mesh_vertices, tetrahedra, coefficient, mass_coefficient, &

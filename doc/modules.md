@@ -153,7 +153,8 @@ end program
   differentiated series values
 - **Verified**: First-kind tetrahedral Nédélec reference bases through order
   four have exact edge, face, and cell moments, polynomial-gradient
-  reproduction, and independently differentiated curls
+  reproduction, independently differentiated curls, and exact local
+  curl-mass energies on affine cells
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, higher-order high-level solves, and
-  higher-order tetrahedral topology and assembly
+  higher-order tetrahedral topology and global assembly

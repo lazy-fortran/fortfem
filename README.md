@@ -19,10 +19,10 @@ Verified numerical paths:
 - First-kind tetrahedral Nédélec reference bases through order four have
   complete Kronecker edge, face, and cell moments, reproduce polynomial
   gradients, and have independently differentiated curls. The affine
-  covariant map accepts every implemented order. At first order, neighboring
-  tetrahedra share global edge degrees of freedom with explicit local
-  orientation signs, and the curl-mass operator assembles directly to
-  `fortsparse` CSC.
+  covariant map and local curl-mass assembly accept every implemented order.
+  At first order, neighboring tetrahedra share global edge degrees of freedom
+  with explicit local orientation signs, and the global curl-mass operator
+  assembles directly to `fortsparse` CSC.
 - Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
   magnetic-paper box centre value at its 12×12×8 reference resolution. The
   reconstructed magnetic field at an off-grid point converges toward an
