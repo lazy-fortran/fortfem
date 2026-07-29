@@ -112,9 +112,12 @@ end program
 
 ## Implementation Status
 
-- **Experimental**: FEniCS-style descriptions with problem-specific dispatch
-- **Working**: Scalar Poisson problems with P1 Lagrange elements
-- **Verified kernels**: Lowest-order Nédélec and Raviart--Thomas elements
+- **Working**: Executable P1 scalar mass, stiffness, and constant-load forms
+- **Working**: Scalar P1 solves assembled from the symbolic equation
+- **Verified kernels**: Arbitrary-order triangular Nédélec,
+  Raviart--Thomas, BDM, and discontinuous scalar elements
+- **Working**: Weighted vector form compilation to local and CSC operators
 - **Experimental**: High-level vector curl-curl solve
 - **Working**: Mesh generation and visualization with fortplotlib
-- **Planned**: Executable general forms, arbitrary order, BEM, and FEM--BEM
+- **Working**: Dense two-dimensional BEM and Laplace FEM/BEM transmission
+- **Planned**: Mixed-form compilation, vector source forms, and 3D elements

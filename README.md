@@ -12,26 +12,32 @@ Verified numerical paths:
 
 - P1 and P2 triangular Lagrange elements, Q1 quadrilaterals, and scalar
   Poisson solvers.
-- Lowest-order triangular Nédélec and Raviart--Thomas reference elements,
-  affine Piola maps, global edge orientations, and curl-mass or div-mass
-  assembly.
+- Arbitrary-order triangular Lagrange, first- and second-kind Nédélec,
+  Raviart--Thomas, BDM, and discontinuous scalar families through order four.
+  Their affine Piola maps, global moment orientations, commuting projections,
+  and sparse differential or mass forms have analytical tests.
 - Iterative dense solvers and real or complex sparse direct solves through
   `fortsparse`.
 - A C/C++ API for oriented triangle meshes, retained complex sparse factors,
   and RT0 coefficient transfer.
-- A periodic planar Helmholtz DtN operator using `fortnum` FFTs.
+- Planar and circular outgoing Helmholtz DtN operators, dense two-dimensional
+  Laplace and Helmholtz boundary operators, a Helmholtz CFIE solve, and
+  symmetric Laplace FEM/BEM transmission coupling.
+- Executable symbolic P1 scalar mass, stiffness, and constant-load forms.
+  Weighted H(curl) and H(div) forms compile to element matrices or
+  `fortsparse` CSC matrices for all four triangular vector families.
 - Mesh generation, refinement, and plotting through `fortplot`.
 
 Experimental interfaces:
 
-- The FEniCS-style form syntax records symbolic descriptions and dispatches
-  selected scalar problems. It is not yet a general executable form compiler.
 - The high-level curl-curl solver and example predate the verified Nédélec
   assembly and do not yet transport coefficients or source fields from the
   symbolic form. Treat them as API and visualization prototypes.
+- Symbolic mixed forms, nonconstant scalar loads, boundary measures, and
+  high-level vector solves are not compiled yet.
 
-Arbitrary-order H(curl)/H(div), three-dimensional elements, general BEM, and
-FEM--BEM coupling are planned. See the
+Three-dimensional elements, electromagnetic BEM coupling, and production
+paper validation remain. See the
 [FEEC, MEPHIT, and open-boundary roadmap](doc/roadmap_mephit_feec_bem.md).
 
 ## Quick Start

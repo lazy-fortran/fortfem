@@ -402,6 +402,10 @@ its cross-code and production-case validation gate remains open:
   curl/div-plus-mass operators assemble directly into `fortsparse` CSC
   matrices. Rectangular Nedelec--DG curl and RT--DG divergence forms reproduce
   exact polynomial pairings.
+- symbolic scalar P1 mass, stiffness, and constant-load forms compile to
+  executable operators. Weighted curl-mass and divergence-mass forms compile
+  to local or oriented CSC operators for every implemented triangular vector
+  family. The high-level scalar P1 solver uses the compiled matrix and load.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and
@@ -425,10 +429,9 @@ its cross-code and production-case validation gate remains open:
   native build also omits Triangle and the FreeFem++ runtime and helper
   scripts; the default build retains the legacy path.
 
-The Phase 0 exit gate is met at the numerical-kernel level. Connection to
-general executable weak forms, DtN integration into scalar and elastic
-boundary forms, production-mesh FreeFem++ parity, and production MEPHIT
-validation remain.
+The Phase 0 exit gate is met at the numerical-kernel level. Mixed and boundary
+form compilation, DtN integration into scalar and elastic boundary forms,
+production-mesh FreeFem++ parity, and production MEPHIT validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
@@ -483,9 +486,9 @@ Items 1--4 are implemented for the two-dimensional triangular H1, first- and
 second-kind H(curl), Raviart-Thomas and BDM H(div), and discontinuous L2
 families through order four. This includes affine Piola maps, full
 orientation-aware global topology, sparse mass and differential forms,
-commuting projections, and manufactured interpolation convergence. A
-high-level general form compiler, PDE-level convergence solves, tetrahedral
-families, and item 5 remain; the Phase 2 exit gate is therefore not yet met.
+commuting projections, manufactured interpolation convergence, and executable
+weighted form compilation. Mixed-form PDE solves, tetrahedral families, and
+item 5 remain. The Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
@@ -501,13 +504,14 @@ Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
 
-Item 2 is implemented. Item 3 includes dense Laplace and Helmholtz
+Items 2 and 5 are implemented. Item 3 includes dense Laplace and Helmholtz
 single-layer, double-layer, adjoint double-layer, and hypersingular
 operators with circle-spectrum checks. Item 4 includes a constant-panel CFIE
 solve, Mie-series convergence, and adaptively verified off-surface field
-evaluation. Calderon identities beyond the jump and spectral checks,
-adaptive near-singular panel-pair assembly, higher-order exterior traces, and
-items 1, 5, and 6 remain.
+evaluation. The symmetric P1/P0 Laplace transmission solver passes an exact
+affine solution and a nonzero exterior dipole refinement study. Calderon
+identities beyond the jump and spectral checks, adaptive near-singular
+panel-pair assembly, higher-order exterior traces, and items 1 and 6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
