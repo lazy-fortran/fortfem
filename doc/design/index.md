@@ -79,9 +79,12 @@ end interface
 - **Raviart--Thomas and BDM**: Triangular families through order four, with
   contravariant Piola maps and oriented sparse divergence-mass forms.
 - Weighted vector forms compile to local matrices and `fortsparse` CSC
-  matrices. The order-one Nédélec solve supports constant vector sources and
-  constant tangential data. Nonconstant sources and higher-order high-level
-  solves remain experimental.
+  matrices. The order-one Nédélec solve supports cellwise scalar curl and mass
+  coefficients, constant vector sources, constant physical tangential data,
+  owned nonconstant edge moments, and a sparse direct interior solve. Its
+  three-material Fourier-mode magnetic convergence has an analytical oracle.
+  Nonconstant sources, tensor coefficients, and higher-order high-level solves
+  remain experimental.
 
 ## Weak Form Framework
 

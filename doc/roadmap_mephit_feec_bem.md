@@ -12,7 +12,7 @@ This audit answers four questions:
 4. What implementation and validation sequence leads to arbitrary-order
    H(curl), H(div), DtN, BEM, and FEM-BEM support?
 
-The findings use the following evidence:
+The initial findings used the following evidence:
 
 - FortFEM `main` at `58dda23`, including a clean full `fo` run with 48 passing
   test targets.
@@ -35,6 +35,9 @@ The findings use the following evidence:
   [Grote and Keller](https://doi.org/10.1006/jcph.1995.1210) and the
   [Bempp boundary-operator documentation](https://bempp.com/handbook/api/boundary_operators.html).
 
+The current implementation baseline is FortFEM `9d0f430` with 119 passing
+test targets and MEPHIT `1b4a022` with five passing native-adapter tests.
+
 ## Repository state
 
 At the initial audit, FortFEM contained 22,622 lines of Fortran across `src`,
@@ -48,10 +51,11 @@ iterative solvers, and plotting. The native constrained Delaunay mesher has
 substantial MEPHIT-oriented tests. Triangle-compatible output and a CMake
 consumer interface remain on unmerged pull request 56.
 
-The expression API records descriptions such as `inner(grad(u), grad(v))`.
-It does not compile a general form into element kernels. The high-level
-solvers recognize expression strings and dispatch to problem-specific dense
-assemblers.
+At the initial audit, the expression API only recorded descriptions such as
+`inner(grad(u), grad(v))`. It now compiles executable scalar P1 forms and
+weighted vector mass and differential forms. The high-level order-one
+Nedelec direct solve assembles a `fortsparse` CSC operator instead of a dense
+global matrix.
 
 ### Vector finite elements
 
@@ -60,7 +64,8 @@ incorrect curls, no distinct Raviart--Thomas basis, and no global orientation
 map. Those reference-element and assembly defects are now repaired for
 lowest-order triangles and covered by analytical tests.
 
-The remaining high-level vector path is not a verified PDE solver:
+At the initial audit, the remaining high-level vector path was not a verified
+PDE solver:
 
 - `vector_function_space(..., "RT", 1)` still shares the generic edge-space
   container and is not connected to RT-specific interpolation or mixed forms.
@@ -73,10 +78,11 @@ The remaining high-level vector path is not a verified PDE solver:
   edge moments, assembled matrices, fields, or convergence against an
   independent solution.
 
-FortFEM now has verified lowest-order H(curl) and H(div) kernels and global
-operators. Arbitrary polynomial order, tetrahedra, mixed spaces, orientation
-transforms for higher moments, a discrete de Rham complex, and integration
-with the expression API are absent.
+FortFEM now has verified H(curl), H(div), and discontinuous scalar families
+through order four, orientation-aware global operators, commuting
+projections, and weighted expression compilation. Tetrahedra, mixed
+high-level PDE solves, and higher-order high-level solver dispatch remain
+absent.
 
 ### Sparse algebra
 
@@ -118,8 +124,10 @@ launching FreeFem++ when built with `WITH_FORTFEM`. The compatibility gate is
 not met: a deterministic mesh now matches a FreeFem++ 4.15 matrix, mixed
 load, solution, and nodal interpolation oracle, but the six mesh fixtures and
 full 33353 case remain unavailable for production validation. Current MEPHIT
-inputs use only lowest order. The broader library goal requires arbitrary
-order.
+inputs use only lowest order. A generated production-scale case exercises
+1,681 vertices, 3,200 triangles, and 4,880 edge degrees of freedom with
+affine RT0, zero-source, nonzero-response, and complex-phase oracles. The
+broader library goal requires arbitrary order.
 
 ### Magnetic paper
 
@@ -132,9 +140,13 @@ racetrack-coil cases. Current work in `paper_magnetic` adds a three-dimensional
 lowest-order Nedelec box problem with an analytical center value and magnetic
 field comparison.
 
-FortFEM lacks the verified edge space, tensor coefficients, Fourier form,
-general boundary terms, and three-dimensional mesh and element support.
-It cannot reproduce the paper at present.
+FortFEM now reproduces the paper's two-dimensional, three-material \(n=1\)
+transverse magnetic solution through both the low-level weighted assembler
+and the public symbolic API. The public path uses cellwise scalar material
+coefficients, prescribed edge moments, a sparse direct solve, and a
+refinement oracle for the analytical magnetic field. Tensor and anisotropic
+coefficients in general coordinates, Neumann terms, the shielding and
+racetrack cases, and the three-dimensional box case remain.
 
 ### Acoustic and ultrasonic papers
 
@@ -151,11 +163,12 @@ planar DtN multiplier with a hand-written DFT, and solves the interface
 equation with restarted GMRES. Its committed tests compare the Fortran result
 to FreeFem++ and include plane-wave and FDTD validation.
 
-This code is a useful migration source, but it is not a general BEM. The
-interface is planar and periodic, the exterior medium is homogeneous, the
-transform is quadratic-cost, and no single-layer, double-layer, adjoint
-double-layer, or hypersingular boundary operator is assembled. FortFEM
-contains none of this functionality.
+The paper prototype is a useful migration source, but it is not a general
+BEM. FortFEM now provides FFT-based planar and modal circular DtN maps, dense
+two-dimensional Laplace and Helmholtz Calderon operators, a Helmholtz CFIE,
+and symmetric Laplace FEM/BEM transmission. The committed acoustic-paper
+fixture, integration of DtN maps into scalar and elastic forms, and
+higher-order or fast boundary operators remain.
 
 ## Use of fortnum and fortsparse
 
@@ -406,8 +419,13 @@ its cross-code and production-case validation gate remains open:
   executable operators. Weighted curl-mass and divergence-mass forms compile
   to local or oriented CSC operators for every implemented triangular vector
   family. The high-level scalar P1 solver uses the compiled matrix and load.
-  The order-one Nedelec solver compiles constant vector sources and constant
-  tangential boundary data.
+  The order-one Nedelec solver compiles cellwise scalar curl and mass
+  coefficients, constant vector sources, constant physical tangential data,
+  and owned nonconstant tangential edge moments. Its direct path solves the
+  sparse interior block with `fortsparse`.
+- the public order-one Nedelec path converges under refinement to the
+  analytical three-material \(n=1\) transverse magnetic field from the
+  magnetic paper.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
   assemblies, evaluates complex Nedelec fields in a selected triangle, and
@@ -430,10 +448,14 @@ its cross-code and production-case validation gate remains open:
   FortFEM build does not launch the supplied external FEM backend. The
   native build also omits Triangle and the FreeFem++ runtime and helper
   scripts; the default build retains the legacy path.
+- a generated production-scale MEPHIT mesh exercises 1,681 vertices, 3,200
+  triangles, and 4,880 edge degrees of freedom. It retains exact affine RT0
+  norm and zero-source oracles and verifies nonzero complex-phase response.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Mixed and boundary
-form compilation, DtN integration into scalar and elastic boundary forms,
-production-mesh FreeFem++ parity, and production MEPHIT validation remain.
+form compilation, nonconstant vector-source compilation, DtN integration
+into scalar and elastic boundary forms, production-mesh FreeFem++ parity, and
+production MEPHIT validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
@@ -466,11 +488,12 @@ Exit gate: MEPHIT can run without FreeFem++ or Triangle for the validated case,
 with field and residual tolerances recorded from independent reference data.
 
 Items 1--4 are implemented. Item 5 passes on the deterministic FreeFem++ 4.15
-reference described above. MEPHIT `main` at `7ec85d3` runs the native backend
-without Triangle or a FreeFem++ process and uses the matched nodal
-interpolation convention. Item 6 remains the blocking production-validation
-work; no claim of production numerical equivalence is made before those
-comparisons pass.
+reference described above. MEPHIT `main` at `1b4a022` runs the native backend
+without Triangle or a FreeFem++ process, uses the matched nodal interpolation
+convention, and passes the generated production-scale test described above.
+Item 6 remains the blocking production-validation work because the six
+reference meshes and the full 33353 case are unavailable. No claim of
+production numerical equivalence is made before those comparisons pass.
 
 ### Phase 2: arbitrary-order FEEC
 
@@ -489,8 +512,10 @@ second-kind H(curl), Raviart-Thomas and BDM H(div), and discontinuous L2
 families through order four. This includes affine Piola maps, full
 orientation-aware global topology, sparse mass and differential forms,
 commuting projections, manufactured interpolation convergence, and executable
-weighted form compilation. Mixed-form PDE solves, tetrahedral families, and
-item 5 remain. The Phase 2 exit gate is therefore not yet met.
+weighted form compilation. The two-dimensional magnetic paper case also
+passes through the public order-one Nedelec solver. Mixed-form PDE solves,
+tetrahedral families, and the three-dimensional box in item 5 remain. The
+Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 

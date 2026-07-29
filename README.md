@@ -31,12 +31,17 @@ Verified numerical paths:
 Experimental interfaces:
 
 - Symbolic mixed forms, nonconstant scalar loads, boundary measures, and
-  nonconstant vector sources are not compiled yet. The high-level
-  order-one Nédélec solver supports weighted curl-mass forms, constant physical
-  vector sources, and constant tangential boundary data.
+  nonconstant vector sources are not compiled yet.
+- The high-level order-one Nédélec path compiles cellwise scalar curl and mass
+  coefficients, constant physical vector sources, and constant physical or
+  explicitly supplied tangential edge moments. Its direct solve uses a
+  `fortsparse` interior block and converges to the analytical three-material,
+  Fourier-mode magnetic solution.
 
-Three-dimensional elements, electromagnetic BEM coupling, and production
-paper validation remain. See the
+Tensor and complex coefficients, higher-order high-level solves,
+three-dimensional elements, electromagnetic BEM coupling, and validation
+against the unavailable proprietary MEPHIT cases and the not-yet-ported
+acoustic-paper fixtures remain. See the
 [FEEC, MEPHIT, and open-boundary roadmap](doc/roadmap_mephit_feec_bem.md).
 
 ## Quick Start
