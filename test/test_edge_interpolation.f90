@@ -8,6 +8,8 @@ program test_edge_interpolation
 
     type(mesh_2d_t) :: mesh
     real(dp), allocatable :: nedelec_dofs(:), rt_dofs(:)
+    complex(dp), allocatable :: complex_nedelec_dofs(:), complex_rt_dofs(:)
+    complex(dp), parameter :: scale = (2.0_dp, -3.0_dp)
     real(dp) :: expected, point_a(2), point_b(2), edge_vector(2)
     integer :: edge_id, dof_id
     logical :: all_passed
@@ -26,8 +28,14 @@ program test_edge_interpolation
     call mesh%build_edge_connectivity()
 
     allocate(nedelec_dofs(mesh%n_edges), rt_dofs(mesh%n_edges))
+    allocate(complex_nedelec_dofs(mesh%n_edges))
+    allocate(complex_rt_dofs(mesh%n_edges))
     call interpolate_nedelec_edge_dofs(mesh, gradient_field, 2, nedelec_dofs)
     call interpolate_rt_edge_dofs(mesh, flux_field, 2, rt_dofs)
+    call interpolate_nedelec_edge_dofs( &
+        mesh, complex_gradient_field, 2, complex_nedelec_dofs)
+    call interpolate_rt_edge_dofs( &
+        mesh, complex_flux_field, 2, complex_rt_dofs)
 
     do edge_id = 1, mesh%n_edges
         point_a = mesh%vertices(:, mesh%edges(1, edge_id))
@@ -45,6 +53,11 @@ program test_edge_interpolation
             point_a(2), point_b(2))
         call record_condition(abs(rt_dofs(dof_id) - expected) < 1.0e-13_dp, &
             "RT interpolation matches the exact polynomial normal flux")
+        call record_condition(abs(complex_nedelec_dofs(dof_id) - &
+            scale * (potential(point_b) - potential(point_a))) < &
+            1.0e-13_dp, "Complex Nedelec moments preserve Fourier coefficients")
+        call record_condition(abs(complex_rt_dofs(dof_id) - scale * expected) < &
+            1.0e-13_dp, "Complex RT moments preserve Fourier coefficients")
     end do
 
     call check_summary("Oriented edge interpolation")
@@ -65,6 +78,20 @@ contains
 
         value = [x**2, y**2]
     end subroutine flux_field
+
+    pure subroutine complex_gradient_field(x, y, value)
+        real(dp), intent(in) :: x, y
+        complex(dp), intent(out) :: value(2)
+
+        value = scale * [x**2 + y, x - y**2]
+    end subroutine complex_gradient_field
+
+    pure subroutine complex_flux_field(x, y, value)
+        real(dp), intent(in) :: x, y
+        complex(dp), intent(out) :: value(2)
+
+        value = scale * [x**2, y**2]
+    end subroutine complex_flux_field
 
     pure real(dp) function potential(point) result(value)
         real(dp), intent(in) :: point(2)
