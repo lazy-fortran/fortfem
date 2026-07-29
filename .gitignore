@@ -21,6 +21,7 @@ test_*
 coverage.info
 
 # Output files
+/output/
 *.png
 *.eps
 *.vtk
