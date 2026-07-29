@@ -420,15 +420,16 @@ its cross-code and production-case validation gate remains open:
   are Kronecker, they reproduce polynomial gradients with zero curl, and
   their analytical curls agree with independent finite differences. Local
   curl-mass matrices reproduce exact covariantly mapped polynomial energies
-  at every implemented order. Their candidate polynomials and curls now come
-  from revision-pinned `fortsym` generators with a byte-for-byte regeneration
-  gate; the normal FortFEM build remains CAS-free.
+  at every implemented order. Their candidate polynomials, curls, exact
+  dual-basis coefficients, and face transforms come from revision-pinned
+  `fortsym` generators with a byte-for-byte regeneration gate; the normal
+  FortFEM build remains CAS-free.
 - two tetrahedra with opposite shared-face ordering reuse all three common
-  global edge degrees of freedom and expose the required local orientation
-  reversal.
-- the first-order tetrahedral curl-mass operator assembles directly to
-  `fortsparse` CSC. Exact constant-field mass and rotational-field curl
-  energies verify the oriented two-cell operator.
+  global edges and all face moments. Exact edge signs and generated face
+  transforms map every order to canonical global degrees of freedom.
+- tetrahedral curl-mass operators through order four assemble directly to
+  `fortsparse` CSC. Exact constant-field mass energies verify orders one
+  through four, and a rotational-field curl energy verifies the lowest order.
 - tensor-weighted tetrahedral curl assembly, physical vector-load assembly,
   boundary-edge elimination, and sparse reconstruction reproduce pull
   request 9's anisotropic 12-by-12-by-8 magnetic box centre value within its
@@ -552,11 +553,9 @@ weighted form compilation. The two-dimensional magnetic paper case also
 passes through the public order-one Nedelec solver. The RT0-DG0 mixed Poisson
 helper is conservative and convergent, and the matching-degree solver is
 verified at RT1-DG1. Symbolic mixed-form compilation, exhaustive degree-two
-through degree-four mixed PDE validation, tetrahedral assembly beyond the
-verified first-order curl-mass operator, higher-order tetrahedral topology and
-global assembly, other tetrahedral FEEC families, and optimal higher-order
-tetrahedral convergence remain. The Phase 2 exit gate is therefore not yet
-met.
+through degree-four mixed PDE validation, other tetrahedral FEEC families,
+and optimal higher-order tetrahedral convergence remain. The Phase 2 exit
+gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
