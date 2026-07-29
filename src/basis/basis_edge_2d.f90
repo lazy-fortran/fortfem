@@ -76,40 +76,17 @@ contains
         real(dp), intent(in) :: xi, eta, triangle_area
         real(dp), intent(out) :: values(2, 3) ! 2D vectors, 3 edges
 
-        ! RT0Ortho/Nédélec elements on reference triangle (0,0)-(1,0)-(0,1)
-        ! Based on FreeFEM's RT0Ortho implementation which is RT0 rotated by 90°
-        ! RT0 basis functions rotated: (x,y) → (-y,x)
-        ! This gives H(curl) conforming edge elements
+        ! The reference triangle vertices are (0,0), (1,0), and (0,1).
+        ! Edges are oriented 1->2, 2->3, and 3->1. With barycentric
+        ! coordinates lambda_i, the basis is
+        ! lambda_i*grad(lambda_j) - lambda_j*grad(lambda_i).
+        if (triangle_area <= 0.0_dp) then
+            error stop "evaluate_edge_basis_2d: triangle area must be positive"
+        end if
 
-        real(dp) :: rt0_values(2, 3)
-
-        ! First compute RT0 basis functions
-        ! RT0 edge 0: φ₀ = (1-eta, 0)/(2*area)
-        ! RT0 edge 1: φ₁ = (xi, eta-1)/(2*area)
-        ! RT0 edge 2: φ₂ = (-xi, 1-eta)/(2*area)
-
-        ! Normalize by triangle area for proper scaling
-        real(dp) :: scale_factor
-        scale_factor = 1.0_dp / (2.0_dp * triangle_area)
-
-        rt0_values(1, 1) = (1.0_dp - eta) * scale_factor
-        rt0_values(2, 1) = 0.0_dp
-
-        rt0_values(1, 2) = xi * scale_factor
-        rt0_values(2, 2) = (eta - 1.0_dp) * scale_factor
-
-        rt0_values(1, 3) = -xi * scale_factor
-        rt0_values(2, 3) = (1.0_dp - eta) * scale_factor
-
-        ! Apply 90° rotation: (x,y) → (-y,x) to get RT0Ortho
-        values(1, 1) = -rt0_values(2, 1) ! -0 = 0
-        values(2, 1) = rt0_values(1, 1) ! (1-eta)/2A
-
-        values(1, 2) = -rt0_values(2, 2) ! -(eta-1)/2A = (1-eta)/2A
-        values(2, 2) = rt0_values(1, 2) ! xi/2A
-
-        values(1, 3) = -rt0_values(2, 3) ! -(1-eta)/2A = (eta-1)/2A
-        values(2, 3) = rt0_values(1, 3) ! -xi/2A
+        values(:, 1) = [1.0_dp - eta, xi]
+        values(:, 2) = [-eta, xi]
+        values(:, 3) = [-eta, xi - 1.0_dp]
     end subroutine evaluate_edge_basis_2d
 
     ! Evaluate curl of edge basis functions
@@ -117,25 +94,17 @@ contains
         real(dp), intent(in) :: xi, eta, triangle_area
         real(dp), intent(out) :: curls(3) ! Scalar curl in 2D
 
-        ! For 2D vector field φ = (φˣ, φʸ), curl(φ) = ∂φʸ/∂ξ - ∂φˣ/∂η
-        ! Then transform from reference to physical: curl_phys = curl_ref / jacobian_det
-        ! where jacobian_det = 2 * triangle_area for linear triangular mapping
+        if (triangle_area <= 0.0_dp) then
+            error stop "evaluate_edge_basis_curl_2d: triangle area must be positive"
+        end if
 
-        real(dp) :: jacobian_det, scale_factor
-        jacobian_det = 2.0_dp * triangle_area
-        scale_factor = 1.0_dp / (2.0_dp * triangle_area)
+        ! Every reference curl equals two. The affine covariant Piola map
+        ! divides curl by det(J) = 2*area.
+        curls = 1.0_dp / triangle_area
 
-        ! For RT0Ortho basis functions (RT0 rotated by 90°):
-        ! φ₀ = (0, (1-eta)/(2A)): curl = ∂((1-eta)/(2A))/∂ξ - ∂(0)/∂η = 0 - 0 = 0
-        ! φ₁ = ((1-eta)/(2A), xi/(2A)): curl = ∂(xi/(2A))/∂ξ - ∂((1-eta)/(2A))/∂η
-        !      = 1/(2A) - (-1/(2A)) = 2/(2A) = 1/A
-        ! φ₂ = ((eta-1)/(2A), -xi/(2A)): curl = ∂(-xi/(2A))/∂ξ - ∂((eta-1)/(2A))/∂η
-        !      = -1/(2A) - 1/(2A) = -2/(2A) = -1/A
-
-        ! Transform to physical element (already in physical coordinates)
-        curls(1) = 0.0_dp
-        curls(2) = 1.0_dp / triangle_area
-        curls(3) = -1.0_dp / triangle_area
+        associate (unused_coordinates => [xi, eta])
+            if (size(unused_coordinates) /= 2) error stop
+        end associate
     end subroutine evaluate_edge_basis_curl_2d
 
     ! Evaluate edge basis functions with Piola transformation
@@ -146,9 +115,8 @@ contains
         real(dp), intent(out) :: values(2, 3) ! 2D vectors, 3 edges
 
         real(dp) :: ref_values(2, 3) ! Reference basis values
-        real(dp) :: jacobian(2, 2), inv_jacobian(2, 2), det_jacobian
-        real(dp) :: triangle_area
-        integer :: i, j, k
+        real(dp) :: jacobian(2, 2), det_jacobian
+        integer :: i
         real(dp) :: x1, y1, x2, y2, x3, y3
 
         ! Get triangle vertices
@@ -166,15 +134,19 @@ contains
         jacobian(2, 2) = y3 - y1 ! ∂y/∂η
 
         det_jacobian = jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)
-        triangle_area = 0.5_dp * abs(det_jacobian)
+        if (det_jacobian <= 0.0_dp) then
+            error stop "evaluate_edge_basis_2d_piola: triangle must be counter-clockwise"
+        end if
 
         ! Evaluate reference basis functions
-        call evaluate_edge_basis_2d(xi, eta, triangle_area, ref_values)
+        call evaluate_edge_basis_2d(xi, eta, 0.5_dp, ref_values)
 
-        ! Apply Piola transformation: φ_phys = (1/J) * F * φ_ref
+        ! Covariant Piola transformation: phi_phys = J^(-T)*phi_ref.
         do i = 1, 3
-            values(1, i) = (jacobian(1, 1) * ref_values(1, i) + jacobian(1, 2) * ref_values(2, i)) / det_jacobian
-            values(2, i) = (jacobian(2, 1) * ref_values(1, i) + jacobian(2, 2) * ref_values(2, i)) / det_jacobian
+            values(1, i) = (jacobian(2, 2) * ref_values(1, i) - &
+                jacobian(2, 1) * ref_values(2, i)) / det_jacobian
+            values(2, i) = (-jacobian(1, 2) * ref_values(1, i) + &
+                jacobian(1, 1) * ref_values(2, i)) / det_jacobian
         end do
     end subroutine evaluate_edge_basis_2d_piola
 
