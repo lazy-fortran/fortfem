@@ -35,6 +35,30 @@ void fortfem_triangle_edge_map(
     int *status);
 
 /*
+ * Persistent variant of fortfem_triangle_edge_map. Mesh handles are positive,
+ * process-local integers. Call fortfem_triangle_mesh_free when finished.
+ */
+void fortfem_triangle_mesh_create(
+    int n_vertices,
+    const double *vertices,
+    int n_triangles,
+    const int *triangles,
+    int *handle,
+    int *n_edges,
+    int *status);
+
+void fortfem_triangle_mesh_edges(
+    int handle,
+    int edge_capacity,
+    int *n_edges,
+    int *edges,
+    int *triangle_edge_dofs,
+    int *triangle_edge_signs,
+    int *status);
+
+void fortfem_triangle_mesh_free(int handle, int *status);
+
+/*
  * Factor a zero-based complex CSC matrix and return a positive opaque handle.
  * Handles retain the factorization across solves and must be released with
  * fortfem_factor_free. The handle registry is process-local.

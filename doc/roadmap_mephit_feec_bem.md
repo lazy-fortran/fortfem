@@ -331,7 +331,9 @@ The Phase 0 foundations are implemented:
   divergences, provide an L2 norm, and recover the toroidal Fourier component
   required by the zero-divergence constraint.
 - the first C ABI entry accepts zero-based interleaved triangle meshes and
-  returns globally oriented edge degrees of freedom and local signs.
+  returns globally oriented edge degrees of freedom and local signs; a
+  persistent mesh-handle variant retains that topology for subsequent field
+  operations.
 - the C ABI also accepts zero-based complex CSC matrices, retains
   `fortsparse` factors behind opaque process-local handles, reuses them across
   right-hand sides, and rejects released handles.
