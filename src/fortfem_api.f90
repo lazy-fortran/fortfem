@@ -9,6 +9,7 @@ module fortfem_api
     use fortfem_api_plot
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
     use fortfem_edge_interpolation_2d, only: &
+        interpolate_axisymmetric_rt_edge_dofs, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
@@ -91,6 +92,7 @@ module fortfem_api
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
+    public :: interpolate_axisymmetric_rt_edge_dofs
     public :: evaluate_rt_field_2d
     public :: reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     public :: sparse_direct_factor_t, sparse_direct_factor_csc

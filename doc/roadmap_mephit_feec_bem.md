@@ -325,14 +325,15 @@ The Phase 0 foundations are implemented:
   logarithmic energy on a shifted annular strip.
 - oriented real and complex Nedelec tangential and RT0 normal edge moments use
   `fortnum` Gauss-Legendre rules and pass exact polynomial line-integral
-  tests.
+  tests; the RT path also exposes MEPHIT's \(R\,v\cdot n\) cylindrical
+  projection directly.
 - complex RT0 coefficients reconstruct physical fields and element
   divergences, provide an L2 norm, and recover the toroidal Fourier component
   required by the zero-divergence constraint.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 executable weak forms, DtN integration into scalar and elastic boundary
-forms, weighted RT0 projections, and consumer validation remain.
+forms and consumer validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
