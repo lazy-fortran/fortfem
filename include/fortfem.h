@@ -90,6 +90,21 @@ void fortfem_rt0_evaluate(
     fortfem_complex *divergence,
     int *status);
 
+/*
+ * Evaluate a complex lowest-order Nedelec field and scalar curl inside a
+ * zero-based triangle. Coefficients use the retained mesh's global edge order.
+ */
+void fortfem_nedelec_evaluate(
+    int handle,
+    int triangle,
+    double x,
+    double y,
+    int n_dofs,
+    const fortfem_complex *dofs,
+    fortfem_complex *value,
+    fortfem_complex *curl,
+    int *status);
+
 void fortfem_rt0_l2_norm(
     int handle,
     int n_dofs,
