@@ -7,9 +7,67 @@ module fortfem_laplace_boundary_operators_2d
 
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant
+    public :: assemble_laplace_hypersingular_linear
     public :: assemble_laplace_single_layer_constant
 
 contains
+
+    subroutine assemble_laplace_hypersingular_linear( &
+            panel_start, panel_end, panel_nodes, node_count, quadrature_order, &
+            matrix, status)
+        real(dp), intent(in) :: panel_start(:, :), panel_end(:, :)
+        integer, intent(in) :: panel_nodes(:, :)
+        integer, intent(in) :: node_count, quadrature_order
+        real(dp), intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), parameter :: endpoint_sign(2) = [-1.0_dp, 1.0_dp]
+        real(dp), allocatable :: lengths(:), single_layer(:, :)
+        real(dp) :: first_derivative, second_derivative
+        integer :: first_endpoint, first_node, first_panel
+        integer :: panel_count, second_endpoint, second_node, second_panel
+
+        matrix = 0.0_dp
+        status = 1
+        panel_count = size(panel_start, 2)
+        if (node_count < 1 .or. size(panel_nodes, 1) /= 2) return
+        if (size(panel_nodes, 2) /= panel_count) return
+        if (size(matrix, 1) /= node_count .or. &
+            size(matrix, 2) /= node_count) return
+        if (any(panel_nodes < 1) .or. any(panel_nodes > node_count)) return
+
+        allocate(lengths(panel_count), single_layer(panel_count, panel_count))
+        do first_panel = 1, panel_count
+            lengths(first_panel) = norm2( &
+                panel_end(:, first_panel) - panel_start(:, first_panel))
+        end do
+        if (any(lengths <= 0.0_dp)) return
+
+        call assemble_laplace_single_layer_constant( &
+            panel_start, panel_end, quadrature_order, single_layer, status)
+        if (status /= 0) return
+
+        do first_panel = 1, panel_count
+            do second_panel = 1, panel_count
+                do first_endpoint = 1, 2
+                    first_node = panel_nodes(first_endpoint, first_panel)
+                    first_derivative = endpoint_sign(first_endpoint) / &
+                        lengths(first_panel)
+                    do second_endpoint = 1, 2
+                        second_node = panel_nodes(second_endpoint, second_panel)
+                        second_derivative = endpoint_sign(second_endpoint) / &
+                            lengths(second_panel)
+                        matrix(first_node, second_node) = &
+                            matrix(first_node, second_node) + &
+                            first_derivative * &
+                            single_layer(first_panel, second_panel) * &
+                            second_derivative
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_laplace_hypersingular_linear
 
     subroutine assemble_laplace_adjoint_double_layer_constant( &
             panel_start, panel_end, quadrature_order, matrix, status)
