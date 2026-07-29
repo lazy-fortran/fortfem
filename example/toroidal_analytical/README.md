@@ -22,6 +22,7 @@ The program produces:
 - `toroidal_trace_1d.png`: analytical and BEM Poisson/Ampère traces;
 - `toroidal_surface_2d.png`: the analytical scalar mode in \((\theta,\phi)\);
 - `toroidal_bem_error_2d.png`: BEM relative error over the exterior surface;
+- `toroidal_helmholtz_1d.png`: outgoing Helmholtz point source, exact vs BEM;
 - `toroidal_geometry_3d.png`: the physical toroidal interface;
 - `toroidal_trace.csv`: reproducible source data for comparisons.
 - `benchmark.txt`: mesh size, timings, and global relative errors.
