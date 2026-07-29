@@ -28,6 +28,9 @@ module fortfem_api
     use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
+    use fortfem_spherical_helmholtz_dtn, only: &
+        apply_spherical_helmholtz_dtn, &
+        spherical_helmholtz_dtn_eigenvalue
     use fortfem_toroidal_poisson_dtn, only: &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
         toroidal_poisson_exterior_dtn_p
@@ -203,6 +206,8 @@ module fortfem_api
     public :: apply_planar_helmholtz_dtn
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: apply_spherical_helmholtz_dtn
+    public :: spherical_helmholtz_dtn_eigenvalue
     public :: evaluate_toroidal_harmonic_p
     public :: evaluate_toroidal_ampere_field_p
     public :: toroidal_poisson_exterior_dtn_p
