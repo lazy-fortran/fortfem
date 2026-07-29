@@ -60,7 +60,7 @@ module fortfem_api
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_global_dof_map, only: &
-        build_triangle_trimmed_dof_map
+        build_triangle_full_vector_dof_map, build_triangle_trimmed_dof_map
     use fortfem_triangle_discontinuous_dof_map, only: &
         build_triangle_discontinuous_dof_map
     use fortfem_triangle_vector_interpolation, only: &
@@ -182,6 +182,7 @@ module fortfem_api
     public :: map_triangle_rt_contravariant
     public :: build_triangle_discrete_gradient
     public :: build_triangle_trimmed_dof_map
+    public :: build_triangle_full_vector_dof_map
     public :: build_triangle_discontinuous_dof_map
     public :: interpolate_triangle_nedelec
     public :: evaluate_triangle_nedelec_interpolant
