@@ -115,10 +115,11 @@ orientations, weighted Fourier form, mixed RT0 load, retained factorization,
 coefficient reconstruction, and vacuum-mesh extension needed by this daemon.
 MEPHIT can dispatch the Maxwell solve and RT0 norm to FortFEM without
 launching FreeFem++ when built with `WITH_FORTFEM`. The compatibility gate is
-not met: matrices and solutions still need comparison against the FreeFem++
-reference, followed by the six mesh fixtures and full 33353 case. Current
-MEPHIT inputs use only lowest order. The broader library goal requires
-arbitrary order.
+not met: a deterministic mesh now matches a FreeFem++ 4.15 matrix, mixed
+load, solution, and nodal interpolation oracle, but the six mesh fixtures and
+full 33353 case remain unavailable for production validation. Current MEPHIT
+inputs use only lowest order. The broader library goal requires arbitrary
+order.
 
 ### Magnetic paper
 
@@ -352,7 +353,13 @@ its cross-code and production-case validation gate remains open:
   finds the installed package, links, and exercises a retained mesh.
 - the C ABI extends a retained core mesh through an outer polygon, numbers
   outer-boundary edge degrees of freedom last, exposes both sparse
-  assemblies, and evaluates complex Nedelec fields in a selected triangle.
+  assemblies, evaluates complex Nedelec fields in a selected triangle, and
+  reproduces FreeFem++ nodal interpolation by selecting the last incident
+  triangle of a retained vertex.
+- an executable FreeFem++ 4.15 fixture generator supplies an independent
+  \(3\times3\)-vertex reference. FortFEM matches its complete interior
+  Maxwell matrix, mixed RT0 load, solved edge coefficients, and nodal
+  interpolation to absolute tolerance \(5\times10^{-12}\).
 - MEPHIT `main` optionally finds `fortfem::capi`, retains its production
   triangle mesh, constructs the vacuum annulus, eliminates homogeneous outer
   boundary degrees of freedom, factors the weighted operator once, and
@@ -364,12 +371,13 @@ its cross-code and production-case validation gate remains open:
   response, and complex-phase oracles. Its public `FEM_*` dispatch is tested
   through the MEPHIT shared library, and a process-level test verifies that a
   FortFEM build does not launch the supplied external FEM backend. The
-  default build retains the FreeFem++ path.
+  native build also omits Triangle and the FreeFem++ runtime and helper
+  scripts; the default build retains the legacy path.
 
 The Phase 0 exit gate is met at the numerical-kernel level. Connection to
 general executable weak forms, DtN integration into scalar and elastic
-boundary forms, FreeFem++ fixture parity, and production MEPHIT validation
-remain.
+boundary forms, production-mesh FreeFem++ parity, and production MEPHIT
+validation remain.
 
 ### Phase 0: correct claims and numerical dependencies
 
@@ -401,9 +409,11 @@ tests. No direct UMFPACK binding remains in FortFEM.
 Exit gate: MEPHIT can run without FreeFem++ or Triangle for the validated case,
 with field and residual tolerances recorded from independent reference data.
 
-Items 1--4 are implemented. MEPHIT `main` at `4f578b3` runs the native
-backend without a FreeFem++ process. Items 5 and 6 remain the blocking
-validation work; no claim of numerical equivalence is made before those
+Items 1--4 are implemented. Item 5 passes on the deterministic FreeFem++ 4.15
+reference described above. MEPHIT `main` at `7ec85d3` runs the native backend
+without Triangle or a FreeFem++ process and uses the matched nodal
+interpolation convention. Item 6 remains the blocking production-validation
+work; no claim of production numerical equivalence is made before those
 comparisons pass.
 
 ### Phase 2: arbitrary-order FEEC
