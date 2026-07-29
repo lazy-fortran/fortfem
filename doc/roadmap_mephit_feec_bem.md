@@ -1,6 +1,6 @@
 # FortFEM capability audit and implementation roadmap
 
-Date: 2026-07-29
+Date: 2026-07-30
 
 ## Scope and evidence
 
@@ -35,8 +35,22 @@ The initial findings used the following evidence:
   [Grote and Keller](https://doi.org/10.1006/jcph.1995.1210) and the
   [Bempp boundary-operator documentation](https://bempp.com/handbook/api/boundary_operators.html).
 
-The current implementation baseline is FortFEM `9d0f430` with 119 passing
-test targets and MEPHIT `1b4a022` with five passing native-adapter tests.
+The current implementation baseline is FortFEM `b0f154c` with 147 passing
+test targets. The audited consumer revisions are MEPHIT `a2d837c`,
+`paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
+
+### Audited capability boundary on 2026-07-30
+
+| Requirement | Verified FortFEM capability | Remaining gate |
+| --- | --- | --- |
+| MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
+| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, and convergence tests | High-level arbitrary-order PDE dispatch and exhaustive mixed solves above RT1-DG1 |
+| Arbitrary-order 3D FEEC | First-kind tetrahedral Nedelec bases and curl-mass assembly through order four; anisotropic lowest-order magnetic box solve | Tetrahedral H1, H(div), and L2 sequence members, higher-order box convergence, and high-level dispatch |
+| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels | Assembly into scalar/elastic weak forms, Maxwell DtN, and the committed acoustic fixture |
+| 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
+| 3D BEM | Laplace and Helmholtz representation evaluation on triangular surfaces, including sphere and torus analytical checks | Galerkin boundary operators, exterior solves, Maxwell traces, and FEM/BEM coupling |
+| Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl) kernels and toroidal-coordinate kernels with byte-for-byte gates | Generate the remaining exact element/operator kernels instead of maintaining coefficient tables by hand |
+| Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions; current `fortsparse` provides CSC construction, retained factors, and solves | Migrate the legacy FortFEM CSR/Krylov surface only after behavioral-equivalence tests |
 
 ## Repository state
 
@@ -164,9 +178,9 @@ equation with restarted GMRES. Its committed tests compare the Fortran result
 to FreeFem++ and include plane-wave and FDTD validation.
 
 The paper prototype is a useful migration source, but it is not a general
-BEM. FortFEM now provides FFT-based planar and modal circular DtN maps, dense
+BEM. FortFEM now provides FFT-based planar, circular, and spherical DtN maps, dense
 two-dimensional Laplace and Helmholtz Calderon operators, a Helmholtz CFIE,
-and symmetric Laplace FEM/BEM transmission. The committed acoustic-paper
+and symmetric Laplace and Helmholtz FEM/BEM transmission. The committed acoustic-paper
 fixture, integration of DtN maps into scalar and elastic forms, and
 higher-order or fast boundary operators remain.
 
@@ -319,7 +333,7 @@ test, not a convergence test.
 
 ## Execution sequence
 
-### Implementation status on 2026-07-29
+### Implementation status on 2026-07-30
 
 Phase 0 is complete. The Phase 1 implementation is connected to MEPHIT, but
 its cross-code and production-case validation gate remains open:
@@ -576,7 +590,9 @@ single-layer, double-layer, adjoint double-layer, and hypersingular
 operators with circle-spectrum checks. Item 4 includes a constant-panel CFIE
 solve, Mie-series convergence, and adaptively verified off-surface field
 evaluation. The symmetric P1/P0 Laplace transmission solver passes an exact
-affine solution and a nonzero exterior dipole refinement study. Calderon
+affine solution and a nonzero exterior dipole refinement study. Its complex
+Helmholtz counterpart passes a manufactured plane-wave transmission
+refinement study with independently integrated Neumann data. Calderon
 identities beyond the jump and spectral checks, adaptive near-singular
 panel-pair assembly, higher-order exterior traces, and items 1 and 6 remain.
 
