@@ -1,7 +1,9 @@
 program test_laplace_bem_galerkin_3d
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        apply_helmholtz_single_layer_p0_hierarchical_3d, &
         apply_laplace_single_layer_p0_hierarchical_3d, &
+        assemble_helmholtz_single_layer_p0_3d, &
         assemble_laplace_calderon_p1_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
@@ -19,6 +21,9 @@ program test_laplace_bem_galerkin_3d
     real(dp), allocatable :: dense_action(:), fast_action(:)
     real(dp), allocatable :: volume_vertices(:, :)
     complex(dp), allocatable :: complex_density(:), dirichlet(:)
+    complex(dp), allocatable :: helmholtz_dense(:, :)
+    complex(dp), allocatable :: helmholtz_dense_action(:)
+    complex(dp), allocatable :: helmholtz_fast_action(:)
     integer, allocatable :: triangles(:, :)
     integer, allocatable :: tetrahedra(:, :)
     complex(dp) :: exact_field, numerical_field
@@ -72,6 +77,20 @@ program test_laplace_bem_galerkin_3d
     end if
     call record_condition(interaction_count < size(triangles, 2)**2/2, &
         "Hierarchical 3D single layer uses subquadratic interactions")
+
+    complex_density = cmplx(density, 0.25_dp*density, dp)
+    call assemble_helmholtz_single_layer_p0_3d( &
+        vertices, triangles, 0.7_dp, 8, helmholtz_dense, status)
+    helmholtz_dense_action = matmul(helmholtz_dense, complex_density)
+    call apply_helmholtz_single_layer_p0_hierarchical_3d( &
+        vertices, triangles, complex_density, 0.7_dp, 0.45_dp, 6, &
+        helmholtz_fast_action, status, interaction_count)
+    call record_condition(status == 0 .and. norm2(abs( &
+        helmholtz_fast_action - helmholtz_dense_action))/ &
+        norm2(abs(helmholtz_dense_action)) < 4.0e-2_dp, &
+        "Hierarchical Helmholtz action agrees with dense Galerkin assembly")
+    call record_condition(interaction_count < size(triangles, 2)**2/2, &
+        "Hierarchical Helmholtz action uses subquadratic interactions")
 
     allocate(volume_vertices(3, size(vertices, 2) + 1))
     volume_vertices(:, :size(vertices, 2)) = vertices
