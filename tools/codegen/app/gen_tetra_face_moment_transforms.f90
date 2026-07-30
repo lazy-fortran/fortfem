@@ -13,7 +13,7 @@ program gen_tetra_face_moment_transforms
         1, 2, 3, 1, 3, 2, 2, 1, 3, 2, 3, 1, 3, 1, 2, 3, 2, 1], [3, 6])
     type(arena_t), target :: arena
     type(native_engine_t) :: engine
-    integer :: order, output_unit
+    integer :: degree, order, output_unit
 
     call arena%init()
     engine = make_native_engine(arena)
@@ -21,9 +21,90 @@ program gen_tetra_face_moment_transforms
     do order = 2, 4
         call generate_order(order)
     end do
+    do degree = 0, 4
+        call generate_rt_degree(degree)
+    end do
     call write_module_footer()
 
 contains
+
+    subroutine generate_rt_degree(degree)
+        integer, intent(in) :: degree
+
+        type(exact_linear_system_result_t) :: solution
+        type(expr_t), allocatable :: canonical(:, :), local(:, :)
+        type(expr_t), allocatable :: left(:, :), right(:, :)
+        integer :: dof_count, permutation
+
+        dof_count = (degree + 1)*(degree + 2)/2
+        allocate( &
+            canonical(dof_count, dof_count), local(dof_count, dof_count), &
+            left(dof_count, dof_count), right(dof_count, dof_count))
+        call build_rt_moment_matrix(degree, permutations(:, 1), canonical)
+        call write_order_header( &
+            "transform_rt_degree_"//integer_text(degree), dof_count)
+        do permutation = 1, size(permutations, 2)
+            call build_rt_moment_matrix( &
+                degree, permutations(:, permutation), local)
+            left = transpose(local)
+            right = transpose(canonical)
+            solution = solve_exact_linear_system(engine, left, right)
+            if (.not. solution%ok) then
+                error stop "exact RT face moment transform solve failed"
+            end if
+            call write_transform_case( &
+                permutation, transpose(solution%values))
+        end do
+        call write_order_footer( &
+            "transform_rt_degree_"//integer_text(degree))
+
+        call write_order_header( &
+            "rt_basis_to_local_degree_"//integer_text(degree), dof_count)
+        do permutation = 1, size(permutations, 2)
+            call build_rt_moment_matrix( &
+                degree, permutations(:, permutation), local)
+            left = transpose(canonical)
+            right = transpose(local)
+            solution = solve_exact_linear_system(engine, left, right)
+            if (.not. solution%ok) then
+                error stop "exact RT face basis transform solve failed"
+            end if
+            call write_transform_case( &
+                permutation, transpose(solution%values))
+        end do
+        call write_order_footer( &
+            "rt_basis_to_local_degree_"//integer_text(degree))
+    end subroutine generate_rt_degree
+
+    subroutine build_rt_moment_matrix(degree, permutation, matrix)
+        integer, intent(in) :: degree, permutation(3)
+        type(expr_t), intent(out) :: matrix(:, :)
+
+        integer :: affine(2, 2), offset(2)
+        integer :: basis_degree, basis_x, basis_y, column
+        integer :: moment_degree, moment_x, moment_y, row
+
+        call permutation_map(permutation, offset, affine)
+        matrix = num(arena, 0)
+        column = 0
+        do basis_degree = 0, degree
+            do basis_x = 0, basis_degree
+                basis_y = basis_degree - basis_x
+                column = column + 1
+                row = 0
+                do moment_degree = 0, degree
+                    do moment_x = 0, moment_degree
+                        moment_y = moment_degree - moment_x
+                        row = row + 1
+                        matrix(row, column) = &
+                            transformed_monomial_integral( &
+                            basis_x, basis_y, moment_x, moment_y, &
+                            offset, affine)
+                    end do
+                end do
+            end do
+        end do
+    end subroutine build_rt_moment_matrix
 
     subroutine generate_order(order)
         integer, intent(in) :: order
@@ -118,7 +199,7 @@ contains
         integer, intent(in) :: offset(2), affine(2, 2)
         type(expr_t) :: value
 
-        integer(int64) :: coefficients(0:2, 0:2)
+        integer(int64) :: coefficients(0:4, 0:4)
         integer :: x_degree, y_degree
 
         coefficients = 0_int64
@@ -128,8 +209,8 @@ contains
         call multiply_affine_power( &
             coefficients, basis_y, offset(2), affine(2, 1), affine(2, 2))
         value = num(arena, 0)
-        do x_degree = 0, 2
-            do y_degree = 0, 2 - x_degree
+        do x_degree = 0, 4
+            do y_degree = 0, 4 - x_degree
                 if (coefficients(x_degree, y_degree) == 0_int64) cycle
                 value = value + num( &
                     arena, coefficients(x_degree, y_degree)) * &
@@ -141,27 +222,27 @@ contains
 
     subroutine multiply_affine_power( &
             coefficients, power, constant, x_coefficient, y_coefficient)
-        integer(int64), intent(inout) :: coefficients(0:2, 0:2)
+        integer(int64), intent(inout) :: coefficients(0:4, 0:4)
         integer, intent(in) :: power, constant, x_coefficient, y_coefficient
 
-        integer(int64) :: next(0:2, 0:2)
+        integer(int64) :: next(0:4, 0:4)
         integer :: factor, x_degree, y_degree
 
         do factor = 1, power
             next = 0_int64
-            do x_degree = 0, 2
-                do y_degree = 0, 2 - x_degree
+            do x_degree = 0, 4
+                do y_degree = 0, 4 - x_degree
                     next(x_degree, y_degree) = &
                         next(x_degree, y_degree) + &
                         int(constant, int64) * &
                         coefficients(x_degree, y_degree)
-                    if (x_degree < 2) then
+                    if (x_degree < 4) then
                         next(x_degree + 1, y_degree) = &
                             next(x_degree + 1, y_degree) + &
                             int(x_coefficient, int64) * &
                             coefficients(x_degree, y_degree)
                     end if
-                    if (y_degree < 2) then
+                    if (y_degree < 4) then
                         next(x_degree, y_degree + 1) = &
                             next(x_degree, y_degree + 1) + &
                             int(y_coefficient, int64) * &
@@ -233,12 +314,105 @@ contains
             "    public :: transform_tetra_face_moments"
         write(output_unit, "(a)") &
             "    public :: map_tetra_face_basis_to_local"
+        write(output_unit, "(a)") &
+            "    public :: transform_tetra_rt_face_moments"
+        write(output_unit, "(a)") &
+            "    public :: map_tetra_rt_face_basis_to_local"
         write(output_unit, "(a)") ""
         write(output_unit, "(a)") "contains"
         write(output_unit, "(a)") ""
         call write_dispatch_procedure()
         call write_basis_dispatch_procedure()
+        call write_rt_dispatch_procedure()
+        call write_rt_basis_dispatch_procedure()
     end subroutine write_module_header
+
+    subroutine write_rt_dispatch_procedure()
+        integer :: selected_degree
+
+        write(output_unit, "(a)") &
+            "    pure subroutine transform_tetra_rt_face_moments( &"
+        write(output_unit, "(a)") &
+            "            degree, permutation, local, canonical, status)"
+        call write_rt_dispatch_body_header()
+        do selected_degree = 0, 4
+            write(output_unit, "(a,i0,a)") "        case (", &
+                selected_degree, ")"
+            write(output_unit, "(a,i0,a)") &
+                "            call transform_rt_degree_", selected_degree, &
+                "(permutation_index, local, canonical, status)"
+        end do
+        call write_rt_dispatch_body_footer( &
+            "transform_tetra_rt_face_moments")
+    end subroutine write_rt_dispatch_procedure
+
+    subroutine write_rt_basis_dispatch_procedure()
+        integer :: selected_degree
+
+        write(output_unit, "(a)") &
+            "    pure subroutine map_tetra_rt_face_basis_to_local( &"
+        write(output_unit, "(a)") &
+            "            degree, permutation, canonical, local, status)"
+        call write_rt_basis_dispatch_body_header()
+        do selected_degree = 0, 4
+            write(output_unit, "(a,i0,a)") "        case (", &
+                selected_degree, ")"
+            write(output_unit, "(a,i0,a)") &
+                "            call rt_basis_to_local_degree_", &
+                selected_degree, &
+                "(permutation_index, canonical, local, status)"
+        end do
+        call write_rt_dispatch_body_footer( &
+            "map_tetra_rt_face_basis_to_local")
+    end subroutine write_rt_basis_dispatch_procedure
+
+    subroutine write_rt_basis_dispatch_body_header()
+        write(output_unit, "(a)") &
+            "        integer, intent(in) :: degree, permutation(3)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(in) :: canonical(:)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(out) :: local(:)"
+        write(output_unit, "(a)") "        integer, intent(out) :: status"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        integer :: permutation_index"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        local = 0.0_real64"
+        write(output_unit, "(a)") "        status = 1"
+        write(output_unit, "(a)") &
+            "        permutation_index = face_permutation_index(permutation)"
+        write(output_unit, "(a)") &
+            "        if (permutation_index == 0) return"
+        write(output_unit, "(a)") "        select case (degree)"
+    end subroutine write_rt_basis_dispatch_body_header
+
+    subroutine write_rt_dispatch_body_header()
+        write(output_unit, "(a)") &
+            "        integer, intent(in) :: degree, permutation(3)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(in) :: local(:)"
+        write(output_unit, "(a)") &
+            "        real(real64), intent(out) :: canonical(:)"
+        write(output_unit, "(a)") "        integer, intent(out) :: status"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        integer :: permutation_index"
+        write(output_unit, "(a)") ""
+        write(output_unit, "(a)") "        canonical = 0.0_real64"
+        write(output_unit, "(a)") "        status = 1"
+        write(output_unit, "(a)") &
+            "        permutation_index = face_permutation_index(permutation)"
+        write(output_unit, "(a)") &
+            "        if (permutation_index == 0) return"
+        write(output_unit, "(a)") "        select case (degree)"
+    end subroutine write_rt_dispatch_body_header
+
+    subroutine write_rt_dispatch_body_footer(procedure_name)
+        character(*), intent(in) :: procedure_name
+
+        write(output_unit, "(a)") "        end select"
+        write(output_unit, "(a)") "    end subroutine "//procedure_name
+        write(output_unit, "(a)") ""
+    end subroutine write_rt_dispatch_body_footer
 
     subroutine write_dispatch_procedure()
         write(output_unit, "(a)") &
