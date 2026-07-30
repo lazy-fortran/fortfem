@@ -102,6 +102,9 @@ module fortfem_api
         assignment(=), evaluate_tetra_discontinuous, &
         initialize_tetra_discontinuous, tetra_discontinuous_dof_count, &
         tetra_discontinuous_t
+    use fortfem_tetra_lagrange_arbitrary_order, only: &
+        assignment(=), evaluate_tetra_lagrange, initialize_tetra_lagrange, &
+        tetra_lagrange_dof_count, tetra_lagrange_nodes, tetra_lagrange_t
     use fortfem_tetra_rt_arbitrary_order, only: &
         assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_rt_dof_count, tetra_rt_t
@@ -285,6 +288,11 @@ module fortfem_api
     public :: initialize_tetra_discontinuous
     public :: tetra_discontinuous_dof_count
     public :: tetra_discontinuous_t
+    public :: evaluate_tetra_lagrange
+    public :: initialize_tetra_lagrange
+    public :: tetra_lagrange_dof_count
+    public :: tetra_lagrange_nodes
+    public :: tetra_lagrange_t
     public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
