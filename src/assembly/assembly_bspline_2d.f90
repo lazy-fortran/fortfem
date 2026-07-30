@@ -11,13 +11,22 @@ module fortfem_assembly_bspline_2d
     private
 
     public :: assemble_bspline_h1_operator_csc
+    public :: scalar_weight_2d
+
+    abstract interface
+        pure subroutine scalar_weight_2d(point, value)
+            import :: dp
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+        end subroutine scalar_weight_2d
+    end interface
 
 contains
 
     subroutine assemble_bspline_h1_operator_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
             quadrature_order, matrix, status, stiffness_coefficient, &
-            mass_coefficient)
+            mass_coefficient, stiffness_weight_function, mass_weight_function)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -25,6 +34,8 @@ contains
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: stiffness_coefficient
         real(dp), intent(in), optional :: mass_coefficient
+        procedure(scalar_weight_2d), optional :: stiffness_weight_function
+        procedure(scalar_weight_2d), optional :: mass_weight_function
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -36,6 +47,7 @@ contains
         real(dp) :: basis_column, basis_row, gradient_column(2), gradient_row(2)
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
+        real(dp) :: mass_weight_at_point, stiffness_weight_at_point
         integer :: entry, local_column, local_count, local_row
         integer :: local_status, max_entries, nx, ny, point_x, point_y
         integer :: span_x, span_y
@@ -102,6 +114,16 @@ contains
                         physical_weight = determinant* &
                             quadrature_weights_x(point_x)* &
                             quadrature_weights_y(point_y)
+                        stiffness_weight_at_point = stiffness_weight
+                        mass_weight_at_point = mass_weight
+                        if (present(stiffness_weight_function)) then
+                            call stiffness_weight_function( &
+                                geometry_point, stiffness_weight_at_point)
+                        end if
+                        if (present(mass_weight_function)) then
+                            call mass_weight_function( &
+                                geometry_point, mass_weight_at_point)
+                        end if
                         do local_column = 1, local_count
                             call local_basis_data( &
                                 local_column, span_x, span_y, degree_x, &
@@ -118,9 +140,9 @@ contains
                                     matmul(transpose(inverse), gradient_row)
                                 local_matrix(local_row, local_column) = &
                                     local_matrix(local_row, local_column) + &
-                                    physical_weight*(stiffness_weight* &
+                                    physical_weight*(stiffness_weight_at_point* &
                                     dot_product(gradient_row, gradient_column) + &
-                                    mass_weight*basis_row*basis_column)
+                                    mass_weight_at_point*basis_row*basis_column)
                             end do
                         end do
                     end do

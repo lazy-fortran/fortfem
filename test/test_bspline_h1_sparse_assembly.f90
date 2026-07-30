@@ -9,7 +9,7 @@ program test_bspline_h1_sparse_assembly
         0.0_dp, 0.0_dp, 0.0_dp, 0.35_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     real(dp), parameter :: knots_y(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
-    type(csc_t) :: mass, stiffness
+    type(csc_t) :: mass, stiffness, weighted_stiffness
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: product(:), weights(:, :), x_points(:), y_points(:)
@@ -23,7 +23,7 @@ program test_bspline_h1_sparse_assembly
     weights = 1.0_dp
     do iy = 1, size(y_points)
         do ix = 1, size(x_points)
-            control_points(:, ix, iy) = [x_points(ix), y_points(iy)]
+            control_points(:, ix, iy) = [1.0_dp + x_points(ix), y_points(iy)]
         end do
     end do
 
@@ -53,6 +53,19 @@ program test_bspline_h1_sparse_assembly
     call check_condition(abs(sum(product)) < 3.0e-13_dp, &
         "Spline stiffness annihilates constants in the weak form")
 
+    call assemble_bspline_h1_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 6, &
+        weighted_stiffness, sparse_status, stiffness_coefficient=1.0_dp, &
+        mass_coefficient=0.0_dp, stiffness_weight_function=one_over_radius)
+    do iy = 1, size(y_points)
+        coefficients(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = 1.0_dp + x_points
+    end do
+    product = csc_matvec(weighted_stiffness, coefficients)
+    energy = dot_product(coefficients, product)
+    call check_condition(abs(energy - log(2.0_dp)) < 2.0e-11_dp, &
+        "Cylindrical 1/R spline diffusion matches analytical log(2) energy")
+
     call check_summary("Sparse isogeometric H1 assembly")
 
 contains
@@ -68,5 +81,12 @@ contains
             points(basis) = sum(knots(basis + 1:basis + degree))/real(degree, dp)
         end do
     end function greville_abscissae
+
+    pure subroutine one_over_radius(point, value)
+        real(dp), intent(in) :: point(2)
+        real(dp), intent(out) :: value
+
+        value = 1.0_dp/point(1)
+    end subroutine one_over_radius
 
 end program test_bspline_h1_sparse_assembly
