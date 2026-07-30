@@ -2,6 +2,7 @@ program test_maxwell_sphere_curved_rwg
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_maxwell_rwg_surface_space, &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis, &
         evaluate_maxwell_sphere_curved_rwg_basis, &
         generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
@@ -12,8 +13,9 @@ program test_maxwell_sphere_curved_rwg
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: eta(:), vertices(:, :), weights(:), xi(:)
     real(dp) :: divergence, divergence_integral, edge_length, jacobian
+    real(dp) :: local_integral
     real(dp) :: point(3), radius, value(3)
-    integer :: basis, local, node, orientation, panel, status
+    integer :: basis, local, local_edge, node, orientation, panel, status
     logical :: all_passed, geometry_ok
 
     all_passed = .true.
@@ -55,6 +57,33 @@ program test_maxwell_sphere_curved_rwg
     call record_condition(abs(divergence_integral - &
         real(orientation, dp)*edge_length) < 2.0e-13_dp, &
         "surface Piola map preserves the analytical RWG edge flux")
+    do local_edge = 1, 3
+        local_integral = 0.0_dp
+        do node = 1, size(weights)
+            call evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+                vertices, triangles, panel, local_edge, radius, xi(node), &
+                eta(node), point, value, divergence, jacobian, status)
+            geometry_ok = geometry_ok .and. status == 0 .and. &
+                abs(dot_product(point, value)) < 3.0e-14_dp
+            local_integral = local_integral + &
+                weights(node)*jacobian*divergence
+        end do
+        select case (local_edge)
+        case (1)
+            edge_length = norm2(vertices(:, triangles(2, panel)) - &
+                vertices(:, triangles(1, panel)))
+        case (2)
+            edge_length = norm2(vertices(:, triangles(1, panel)) - &
+                vertices(:, triangles(3, panel)))
+        case (3)
+            edge_length = norm2(vertices(:, triangles(3, panel)) - &
+                vertices(:, triangles(2, panel)))
+        end select
+        geometry_ok = geometry_ok .and. &
+            abs(local_integral - edge_length) < 2.0e-13_dp
+    end do
+    call record_condition(geometry_ok, &
+        "all curved localized RWG functions preserve positive edge flux")
 
     call check_summary("Curved-sphere RWG surface Piola map")
     if (.not. all_passed) error stop 1
