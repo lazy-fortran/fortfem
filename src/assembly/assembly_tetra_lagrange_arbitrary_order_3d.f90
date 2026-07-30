@@ -16,6 +16,16 @@ module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
 
     public :: assemble_tetra_lagrange_stiffness_csc
     public :: assemble_tetra_lagrange_stiffness_element
+    public :: assemble_tetra_lagrange_scalar_load
+    public :: scalar_source_3d
+
+    abstract interface
+        pure subroutine scalar_source_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value
+        end subroutine scalar_source_3d
+    end interface
 
 contains
 
@@ -145,5 +155,76 @@ contains
             global_count, global_count, rows, columns, triplet_values, &
             matrix, status)
     end subroutine assemble_tetra_lagrange_stiffness_csc
+
+    subroutine assemble_tetra_lagrange_scalar_load( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, source, &
+            right_hand_side, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :)
+        integer, intent(in) :: degree, quadrature_degree
+        procedure(scalar_source_3d) :: source
+        real(dp), allocatable, intent(out) :: right_hand_side(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: gradients(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: source_value, vertices(3, 4)
+        integer :: dof, dof_count, global_count, local_status, node, point
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Tetrahedral H1 scalar load assembly failed")
+        if (size(mesh_vertices, 1) /= 3) return
+        if (size(tetrahedra, 1) /= 4 .or. size(tetrahedra, 2) < 1) return
+        if (any(tetrahedra < 1)) return
+        if (any(tetrahedra > size(mesh_vertices, 2))) return
+        call initialize_tetra_lagrange(degree, basis, local_status)
+        if (local_status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        allocate ( &
+            right_hand_side(global_count), values(dof_count), &
+            gradients(3, dof_count))
+        right_hand_side = 0.0_dp
+
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+            jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+            jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+            determinant = det3(jacobian)
+            if (determinant <= 64.0_dp*epsilon(1.0_dp)* &
+                max(1.0_dp, maxval(abs(jacobian))**3)) return
+            do point = 1, size(weights)
+                call evaluate_tetra_lagrange( &
+                    basis, [x(point), y(point), z(point)], values, gradients, &
+                    local_status)
+                if (local_status /= 0) return
+                physical_point = vertices(:, 1) + &
+                    matmul(jacobian, [x(point), y(point), z(point)])
+                call source( &
+                    physical_point(1), physical_point(2), physical_point(3), &
+                    source_value)
+                do dof = 1, dof_count
+                    right_hand_side(global_dofs(dof, tetrahedron)) = &
+                        right_hand_side(global_dofs(dof, tetrahedron)) + &
+                        determinant*weights(point)*source_value*values(dof)
+                end do
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_lagrange_scalar_load
 
 end module fortfem_assembly_tetra_lagrange_arbitrary_order_3d

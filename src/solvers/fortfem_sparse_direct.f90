@@ -7,6 +7,7 @@ module fortfem_sparse_direct
     private
 
     public :: sparse_direct_solve_csc
+    public :: sparse_direct_solve_constrained
     public :: sparse_direct_solve_zero_constrained
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
@@ -43,6 +44,24 @@ contains
         real(dp), intent(out) :: solution(:)
         integer, intent(out) :: status
 
+        real(dp), allocatable :: constrained_values(:)
+
+        status = -1
+        allocate (constrained_values(size(constrained)))
+        constrained_values = 0.0_dp
+        call sparse_direct_solve_constrained( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+    end subroutine sparse_direct_solve_zero_constrained
+
+    subroutine sparse_direct_solve_constrained( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:)
+        logical, intent(in) :: constrained(:)
+        real(dp), intent(in) :: constrained_values(:)
+        real(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+
         integer, allocatable :: column_pointers(:), free_dofs(:)
         integer, allocatable :: free_index(:), row_indices(:)
         real(dp), allocatable :: reduced_rhs(:), reduced_solution(:)
@@ -54,9 +73,14 @@ contains
         if (matrix%nrow /= matrix%ncol) return
         if (size(rhs) /= matrix%nrow) return
         if (size(constrained) /= matrix%nrow) return
+        if (size(constrained_values) /= matrix%nrow) return
         if (size(solution) /= matrix%nrow) return
+        solution = constrained_values
         free_count = count(.not. constrained)
-        if (free_count < 1) return
+        if (free_count == 0) then
+            status = 0
+            return
+        end if
         allocate(free_dofs(free_count), free_index(matrix%nrow))
         free_count = 0
         do column = 1, matrix%ncol
@@ -94,12 +118,22 @@ contains
         end do
         allocate(reduced_rhs(free_count), reduced_solution(free_count))
         reduced_rhs = rhs(free_dofs)
+        do column = 1, matrix%ncol
+            if (.not. constrained(column)) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_rhs(free_index(row)) = &
+                    reduced_rhs(free_index(row)) - &
+                    matrix%val(entry)*constrained_values(column)
+            end do
+        end do
         call sparse_direct_solve_csc( &
             free_count, column_pointers, row_indices, values, reduced_rhs, &
             reduced_solution, status)
         if (status /= 0) return
         solution(free_dofs) = reduced_solution
-    end subroutine sparse_direct_solve_zero_constrained
+    end subroutine sparse_direct_solve_constrained
 
     subroutine sparse_direct_factor_csc_real( &
             factor, n, col_ptr, row_ind, values, status)

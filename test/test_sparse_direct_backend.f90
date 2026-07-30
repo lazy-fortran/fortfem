@@ -2,7 +2,9 @@ program test_sparse_direct_backend
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
         sparse_direct_factor_csc, sparse_direct_free, &
-        sparse_direct_solve_csc, sparse_direct_solve_factored
+        sparse_direct_solve_constrained, sparse_direct_solve_csc, &
+        sparse_direct_solve_factored
+    use fortsparse, only: csc_t
     use check, only: check_condition, check_summary
     implicit none
 
@@ -10,6 +12,7 @@ program test_sparse_direct_backend
 
     all_passed = .true.
     call test_real_solve()
+    call test_nonzero_constraint_elimination()
     call test_complex_solve()
     call test_reused_complex_factor()
     call check_summary("Fortsparse direct backend")
@@ -35,6 +38,29 @@ contains
         call record_condition(maxval(abs(solution - expected)) < 1.0e-13_dp, &
             "Real sparse solve matches the exact solution")
     end subroutine test_real_solve
+
+    subroutine test_nonzero_constraint_elimination()
+        logical, parameter :: constrained(2) = [.true., .false.]
+        real(dp), parameter :: constrained_values(2) = [2.0_dp, 0.0_dp]
+        real(dp), parameter :: expected(2) = [2.0_dp, 5.0_dp]
+        real(dp), parameter :: rhs(2) = [13.0_dp, 19.0_dp]
+        type(csc_t) :: matrix
+        real(dp) :: solution(2)
+        integer :: status
+
+        matrix%nrow = 2
+        matrix%ncol = 2
+        matrix%col_ptr = [1, 3, 5]
+        matrix%row_idx = [1, 2, 1, 2]
+        matrix%val = [4.0_dp, 2.0_dp, 1.0_dp, 3.0_dp]
+        call sparse_direct_solve_constrained( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+
+        call record_condition(status == 0, &
+            "Nonzero sparse constraint elimination succeeds")
+        call record_condition(maxval(abs(solution - expected)) < 1.0e-13_dp, &
+            "Nonzero sparse constraints reproduce the exact linear solution")
+    end subroutine test_nonzero_constraint_elimination
 
     subroutine test_complex_solve()
         integer, parameter :: col_ptr(3) = [1, 2, 3]
