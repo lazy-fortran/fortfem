@@ -1,0 +1,153 @@
+program acoustic_fem_dtn
+    use fortfem_api, only: solve_elasticity_planar_acoustic_dtn_p1
+    use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
+    implicit none
+
+    integer, parameter :: n = 17
+    real(dp), parameter :: angular_frequency = 2.3_dp
+    complex(dp), parameter :: sound_speed = cmplx(1.0_dp, 0.01_dp, dp)
+    real(dp), parameter :: fluid_density = 1.0_dp
+    complex(dp), parameter :: young_modulus = cmplx(10.0_dp, 0.1_dp, dp)
+    real(dp), parameter :: poisson_ratio = 0.25_dp
+    real(dp), parameter :: solid_density = 1.0_dp
+    character(*), parameter :: output_directory = &
+        "output/example/acoustic_fem_dtn"
+
+    complex(dp), allocatable :: dirichlet_values(:), incident_pressure(:)
+    complex(dp), allocatable :: load(:), solution(:)
+    real(dp), allocatable :: interface_normals(:, :), vertices(:, :)
+    integer, allocatable :: dirichlet_dofs(:), interface_nodes(:)
+    integer, allocatable :: triangles(:, :)
+    complex(dp) :: compressional_modulus, incident, lambda, mu
+    complex(dp) :: solid_wavenumber
+    real(dp) :: analytical(n), coordinate(n), interface_amplitude(n)
+    real(dp) :: numerical(n), spacing
+    integer :: dof, node, row, status
+
+    call execute_command_line("mkdir -p "//output_directory)
+    spacing = 1.0_dp/real(n - 1, dp)
+    allocate(vertices(2, n*n), triangles(3, 2*(n - 1)**2))
+    call build_square_mesh(vertices, triangles)
+    allocate(interface_nodes(n), interface_normals(2, n))
+    do node = 1, n
+        interface_nodes(node) = node*n
+    end do
+    interface_normals = 0.0_dp
+    interface_normals(1, :) = 1.0_dp
+
+    mu = young_modulus/(2.0_dp*(1.0_dp + poisson_ratio))
+    lambda = young_modulus*poisson_ratio/( &
+        (1.0_dp + poisson_ratio)*(1.0_dp - 2.0_dp*poisson_ratio))
+    compressional_modulus = lambda + 2.0_dp*mu
+    solid_wavenumber = angular_frequency*sqrt( &
+        solid_density/compressional_modulus)
+    incident = -compressional_modulus*solid_wavenumber* &
+        cos(solid_wavenumber) + cmplx(0.0_dp, 1.0_dp, dp)* &
+        fluid_density*angular_frequency*sound_speed*sin(solid_wavenumber)
+    allocate(incident_pressure(n))
+    incident_pressure = incident
+
+    call build_dirichlet_dofs(dirichlet_dofs)
+    allocate(dirichlet_values(size(dirichlet_dofs)))
+    do dof = 1, size(dirichlet_dofs)
+        node = (dirichlet_dofs(dof) + 1)/2
+        if (mod(dirichlet_dofs(dof), 2) == 1) then
+            dirichlet_values(dof) = &
+                sin(solid_wavenumber*vertices(1, node))
+        else
+            dirichlet_values(dof) = cmplx(0.0_dp, 0.0_dp, dp)
+        end if
+    end do
+    allocate(load(2*n*n), solution(2*n*n))
+    load = cmplx(0.0_dp, 0.0_dp, dp)
+    call solve_elasticity_planar_acoustic_dtn_p1( &
+        vertices, triangles, interface_nodes, interface_normals, &
+        angular_frequency, sound_speed, fluid_density, &
+        spacing*real(n, dp), 2, young_modulus, poisson_ratio, &
+        solid_density, load, incident_pressure, dirichlet_dofs, &
+        dirichlet_values, solution, status)
+    if (status /= 0) error stop "Elastic acoustic DtN solve failed"
+
+    row = (n + 1)/2
+    do node = 1, n
+        coordinate(node) = vertices(1, node + (row - 1)*n)
+        numerical(node) = abs(solution(2*(node + (row - 1)*n) - 1))
+        analytical(node) = abs(sin(solid_wavenumber*coordinate(node)))
+        interface_amplitude(node) = &
+            abs(solution(2*interface_nodes(node) - 1))
+    end do
+    call figure(figsize=[8.0_dp, 5.0_dp])
+    call plot(coordinate, analytical, label="analytical", linestyle="-")
+    call plot(coordinate, numerical, label="FEM + acoustic DtN", &
+        linestyle="--")
+    call xlabel("normal coordinate")
+    call ylabel("|u_x|")
+    call title("Outgoing elastic wave with acoustic DtN")
+    call legend()
+    call savefig(output_directory//"/elastic_dtn_centerline.png")
+
+    call figure(figsize=[8.0_dp, 5.0_dp])
+    call plot(vertices(2, interface_nodes), interface_amplitude, &
+        label="interface displacement")
+    call xlabel("tangential coordinate")
+    call ylabel("|u_x|")
+    call title("Acoustic DtN interface trace")
+    call legend()
+    call savefig(output_directory//"/elastic_dtn_interface.png")
+
+contains
+
+    subroutine build_square_mesh(mesh_vertices, mesh_triangles)
+        real(dp), intent(out) :: mesh_vertices(:, :)
+        integer, intent(out) :: mesh_triangles(:, :)
+
+        integer :: column, lower_left, triangle, vertex
+
+        vertex = 0
+        do row = 0, n - 1
+            do column = 0, n - 1
+                vertex = vertex + 1
+                mesh_vertices(:, vertex) = spacing*real([column, row], dp)
+            end do
+        end do
+        triangle = 0
+        do row = 1, n - 1
+            do column = 1, n - 1
+                lower_left = column + (row - 1)*n
+                triangle = triangle + 1
+                mesh_triangles(:, triangle) = [ &
+                    lower_left, lower_left + 1, lower_left + n + 1]
+                triangle = triangle + 1
+                mesh_triangles(:, triangle) = [ &
+                    lower_left, lower_left + n + 1, lower_left + n]
+            end do
+        end do
+    end subroutine build_square_mesh
+
+    subroutine build_dirichlet_dofs(dofs)
+        integer, allocatable, intent(out) :: dofs(:)
+
+        logical :: constrained(2*n*n)
+        integer :: column, count_dofs
+
+        constrained = .false.
+        do row = 1, n
+            node = (row - 1)*n + 1
+            constrained(2*node - 1:2*node) = .true.
+        end do
+        do column = 1, n
+            node = column
+            constrained(2*node - 1:2*node) = .true.
+            node = (n - 1)*n + column
+            constrained(2*node - 1:2*node) = .true.
+        end do
+        allocate(dofs(count(constrained)))
+        count_dofs = 0
+        do node = 1, 2*n*n
+            if (.not. constrained(node)) cycle
+            count_dofs = count_dofs + 1
+            dofs(count_dofs) = node
+        end do
+    end subroutine build_dirichlet_dofs
+end program acoustic_fem_dtn
