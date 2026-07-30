@@ -4,6 +4,7 @@ module fortfem_maxwell_sphere_curved_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_sphere_curved_panel, only: evaluate_sphere_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
     private
 
@@ -11,8 +12,85 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
+    public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
+            vertices, triangles, edge_vertices, edge_triangles, first_basis, &
+            panel, second_basis, radius, wave_number, quadrature_degree, &
+            value, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        integer, intent(in) :: first_basis, panel, second_basis
+        integer, intent(in) :: quadrature_degree
+        complex(dp), intent(out) :: value
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: eta(:), line_nodes(:), line_weights(:)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: direction(2), first_divergence, first_jacobian
+        real(dp) :: first_point(3), first_value(3), reference_vertices(2, 3)
+        real(dp) :: physical_distance, rho, second_divergence, second_eta
+        real(dp) :: second_jacobian, second_point(3), second_value(3)
+        real(dp) :: second_xi, t, wedge_first(2), wedge_jacobian
+        real(dp) :: wedge_second(2)
+        integer :: first_node, line_count, radial_node, tangential_node, wedge
+
+        value = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        line_count = max(2, quadrature_degree)
+        allocate(line_nodes(line_count), line_weights(line_count))
+        call gauss_legendre_ab( &
+            line_count, 0.0_dp, 1.0_dp, line_nodes, line_weights)
+        reference_vertices = reshape( &
+            [0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], [2, 3])
+        do first_node = 1, size(weights)
+            call evaluate_maxwell_sphere_curved_rwg_basis( &
+                vertices, triangles, edge_vertices, edge_triangles, &
+                first_basis, panel, radius, xi(first_node), eta(first_node), &
+                first_point, first_value, first_divergence, first_jacobian, &
+                status)
+            if (status /= 0) return
+            do wedge = 1, 3
+                wedge_first = reference_vertices(:, wedge) - &
+                    [xi(first_node), eta(first_node)]
+                wedge_second = reference_vertices(:, modulo(wedge, 3) + 1) - &
+                    [xi(first_node), eta(first_node)]
+                wedge_jacobian = abs( &
+                    wedge_first(1)*wedge_second(2) - &
+                    wedge_first(2)*wedge_second(1))
+                do radial_node = 1, line_count
+                    rho = line_nodes(radial_node)
+                    do tangential_node = 1, line_count
+                        t = line_nodes(tangential_node)
+                        direction = (1.0_dp - t)*wedge_first + t*wedge_second
+                        second_xi = xi(first_node) + rho*direction(1)
+                        second_eta = eta(first_node) + rho*direction(2)
+                        call evaluate_maxwell_sphere_curved_rwg_basis( &
+                            vertices, triangles, edge_vertices, edge_triangles, &
+                            second_basis, panel, radius, second_xi, second_eta, &
+                            second_point, second_value, second_divergence, &
+                            second_jacobian, status)
+                        if (status /= 0) return
+                        physical_distance = norm2(first_point - second_point)
+                        value = value + weights(first_node)*first_jacobian* &
+                            line_weights(radial_node)* &
+                            line_weights(tangential_node)*rho*wedge_jacobian* &
+                            second_jacobian* &
+                            helmholtz_green(wave_number, physical_distance)* &
+                            dot_product(first_value, second_value)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
 
     subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d( &
             vertices, triangles, radius, coefficients, direction, wave_number, &
@@ -231,5 +309,13 @@ contains
             2.0_dp*real(orientation, dp)*edge_length/surface_jacobian
         status = 0
     end subroutine evaluate_maxwell_sphere_curved_rwg_basis
+
+    pure function helmholtz_green(wave_number, radius) result(value)
+        real(dp), intent(in) :: wave_number, radius
+        complex(dp) :: value
+
+        value = exp(cmplx(0.0_dp, wave_number*radius, dp))/ &
+            (4.0_dp*acos(-1.0_dp)*radius)
+    end function helmholtz_green
 
 end module fortfem_maxwell_sphere_curved_rwg
