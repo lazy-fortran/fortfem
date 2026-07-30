@@ -215,6 +215,8 @@ module fortfem_api
         assemble_bspline_poloidal_bracket_csc, &
         apply_bspline_jorek_flux_rhs, &
         apply_bspline_jorek_flux_jvp, &
+        apply_bspline_jorek_thermodynamic_rhs, &
+        apply_bspline_jorek_thermodynamic_jvp, &
         advance_bspline_jorek_poloidal_flux_midpoint, &
         advance_bspline_jorek_poloidal_flux_midpoint_steps, &
         apply_bspline_toroidal_poloidal_bracket, &
@@ -567,6 +569,8 @@ module fortfem_api
     public :: assemble_bspline_poloidal_bracket_csc
     public :: apply_bspline_jorek_flux_rhs
     public :: apply_bspline_jorek_flux_jvp
+    public :: apply_bspline_jorek_thermodynamic_rhs
+    public :: apply_bspline_jorek_thermodynamic_jvp
     public :: advance_bspline_jorek_poloidal_flux_midpoint
     public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
     public :: build_bspline_feec_2d_operators_csc

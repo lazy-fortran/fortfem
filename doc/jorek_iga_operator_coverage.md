@@ -30,6 +30,7 @@ The operator inventory is based on:
 | Nonlinear toroidal mode coupling | Exact retained-mode convolution `p+q=n` |
 | Scalar coefficient products | Coefficient-weighted H1 Galerkin mass |
 | Magnetic-flux evolution | Cylindrical weak residual and analytical JVP |
+| Density and pressure transport | No-parallel cylindrical residual and analytical JVP |
 | Ideal poloidal flux subflow | Cayley/implicit-midpoint Poisson propagator |
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
@@ -42,6 +43,13 @@ unrelated retained harmonic. Its analytical directional derivative retains
 both bilinear product-rule terms. Deterministic random trials verify the
 quadratic skew invariant, and an independent central difference verifies the
 JVP for complex multi-mode fields.
+
+The no-parallel thermodynamic block implements equations (26)--(27) of Franck
+et al. as `R[q,u] + 2 gamma_q q dZ(u)`, with `gamma_q=1` for density and the
+physical adiabatic index for pressure. Both products retain exact Fourier
+convolution. An affine manufactured field checks the compressibility factor,
+an independent cylindrical test function verifies mass conservation, and a
+complex randomized central difference verifies the complete product-rule JVP.
 
 The magnetic-axis extraction maps satisfy both commuting diagrams against an
 independently assembled periodic tensor-product cell complex. FortSym proves
@@ -82,9 +90,10 @@ of the current implementation.
 ## Remaining coupled-model work
 
 - Complete the residual and Newton/Jacobian block layout beyond the implemented
-  magnetic-flux equation, for electric potential, vorticity, density,
-  temperature, and parallel velocity.
-- Add conservative density/pressure transport and parallel-gradient blocks.
+  magnetic-flux and no-parallel density/pressure equations, for electric
+  potential, vorticity, and parallel velocity.
+- Add the parallel-flow products to density/pressure transport and the
+  parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
 - Replace the remaining dense tensor result workspace in physical magnetic-axis
