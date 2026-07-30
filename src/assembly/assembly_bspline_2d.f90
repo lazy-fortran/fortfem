@@ -13,6 +13,7 @@ module fortfem_assembly_bspline_2d
     private
 
     public :: assemble_bspline_h1_operator_csc
+    public :: assemble_bspline_h1_weighted_mass_csc
     public :: assemble_bspline_hcurl_operator_csc
     public :: assemble_bspline_hdiv_operator_csc
     public :: assemble_bspline_h1_hcurl_gradient_csc
@@ -44,6 +45,23 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine assemble_bspline_h1_weighted_mass_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            field_coefficients, quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: field_coefficients(:)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status, stiffness_coefficient=0.0_dp, &
+            mass_coefficient=1.0_dp, &
+            mass_field_coefficients=field_coefficients)
+    end subroutine assemble_bspline_h1_weighted_mass_csc
 
     subroutine apply_bspline_toroidal_poloidal_bracket( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
@@ -933,7 +951,7 @@ contains
             quadrature_order, matrix, status, stiffness_coefficient, &
             mass_coefficient, stiffness_weight_function, mass_weight_function, &
             stiffness_tensor_function, advecting_coefficients, &
-            advection_coefficient)
+            advection_coefficient, mass_field_coefficients)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -946,6 +964,7 @@ contains
         procedure(tensor_weight_2d), optional :: stiffness_tensor_function
         real(dp), intent(in), optional :: advecting_coefficients(:)
         real(dp), intent(in), optional :: advection_coefficient
+        real(dp), intent(in), optional :: mass_field_coefficients(:)
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -959,6 +978,7 @@ contains
         real(dp) :: advection_weight
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
+        real(dp) :: mass_field_at_point
         real(dp) :: mass_weight_at_point, stiffness_weight_at_point
         real(dp) :: stiffness_tensor_at_point(2, 2)
         integer :: entry, local_column, local_count, local_row
@@ -989,6 +1009,9 @@ contains
             if (size(advecting_coefficients) /= nx*ny) return
         else if (advection_weight /= 0.0_dp) then
             return
+        end if
+        if (present(mass_field_coefficients)) then
+            if (size(mass_field_coefficients) /= nx*ny) return
         end if
         local_count = (degree_x + 1)*(degree_y + 1)
         max_entries = positive_span_count(knots_x, degree_x, nx)* &
@@ -1048,6 +1071,21 @@ contains
                             call mass_weight_function( &
                                 geometry_point, mass_weight_at_point)
                         end if
+                        mass_field_at_point = 1.0_dp
+                        if (present(mass_field_coefficients)) then
+                            mass_field_at_point = 0.0_dp
+                            do local_row = 1, local_count
+                                call local_basis_data( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, derivative_x, value_y, &
+                                    derivative_y, basis_row, gradient_row)
+                                mass_field_at_point = mass_field_at_point + &
+                                    mass_field_coefficients( &
+                                    local_dofs(local_row))*basis_row
+                            end do
+                        end if
+                        mass_weight_at_point = &
+                            mass_weight_at_point*mass_field_at_point
                         if (present(stiffness_tensor_function)) then
                             call stiffness_tensor_function( &
                                 geometry_point, stiffness_tensor_at_point)

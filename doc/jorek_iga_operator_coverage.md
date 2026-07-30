@@ -24,6 +24,7 @@ The operator inventory is based on:
 | Toroidal part of scalar Laplacian | Mode-dependent `n^2/R` mass |
 | Nonlinear poloidal Poisson brackets | Energy-skew Galerkin bracket |
 | Nonlinear toroidal mode coupling | Exact retained-mode convolution `p+q=n` |
+| Scalar coefficient products | Coefficient-weighted H1 Galerkin mass |
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |

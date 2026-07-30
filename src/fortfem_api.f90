@@ -193,6 +193,7 @@ module fortfem_api
         map_isogeometric_hcurl, map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_assembly_bspline_2d, only: &
         assemble_bspline_h1_operator_csc, &
+        assemble_bspline_h1_weighted_mass_csc, &
         assemble_bspline_hcurl_operator_csc, &
         assemble_bspline_hdiv_operator_csc, &
         assemble_bspline_h1_hcurl_gradient_csc, &
@@ -539,6 +540,7 @@ module fortfem_api
     public :: map_isogeometric_hdiv
     public :: map_isogeometric_l2
     public :: assemble_bspline_h1_operator_csc
+    public :: assemble_bspline_h1_weighted_mass_csc
     public :: assemble_bspline_hcurl_operator_csc
     public :: assemble_bspline_hdiv_operator_csc
     public :: assemble_bspline_h1_hcurl_gradient_csc
