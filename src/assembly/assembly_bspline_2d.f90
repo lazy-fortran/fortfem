@@ -6,7 +6,8 @@ module fortfem_assembly_bspline_2d
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: &
-        csc_from_triplet, csc_matmul, csc_t, FORTSPARSE_INVALID_MATRIX, &
+        csc_from_triplet, csc_matmul, csc_t, csc_transpose, &
+        FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
     implicit none
     private
@@ -15,6 +16,7 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_hcurl_operator_csc
     public :: assemble_bspline_hdiv_operator_csc
     public :: assemble_bspline_h1_hcurl_gradient_csc
+    public :: assemble_bspline_hcurl_h1_adjoint_gradient_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
@@ -34,6 +36,24 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine assemble_bspline_hcurl_h1_adjoint_gradient_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: weak_gradient
+
+        call assemble_bspline_h1_hcurl_gradient_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, weak_gradient, status)
+        if (status%code /= 0) return
+        call csc_transpose(weak_gradient, matrix, status)
+    end subroutine assemble_bspline_hcurl_h1_adjoint_gradient_csc
 
     subroutine assemble_bspline_h1_hcurl_gradient_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
