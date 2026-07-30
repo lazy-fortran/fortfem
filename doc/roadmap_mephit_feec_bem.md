@@ -270,10 +270,14 @@ Exact positive and negative Fourier modes test the outgoing propagating branch
 and the decaying evanescent branch at a prime transform length.
 FortFEM also routes every host-side dense `GESV` operation through
 `dense_solve`; no direct `DGESV` or `ZGESV` declaration remains in `src`.
-The hierarchical 3D Helmholtz solve retains one pointer-free cluster tree and
-its exact Galerkin self terms across restarted `complex_gmres_operator`
-matvecs. Its sphere test compares both the density with a dense Galerkin solve
-and the exterior field with the analytical outgoing radial solution.
+The hierarchical 3D Helmholtz solves retain one pointer-free cluster tree and
+their exact Galerkin self terms across restarted `complex_gmres_operator`
+matvecs. The single-layer sphere test compares both the density with a dense
+Galerkin solve and the exterior field with the analytical outgoing radial
+solution. The combined-field path adds dipole cluster moments and remains
+accurate at the first interior sphere resonance \(k=\pi\), following
+Brakhage--Werner (1965), doi:10.1007/BF01220037, and Lin (1985),
+doi:10.1137/0722041.
 The established `lapack_lu` solver option remains a compatibility name for
 the LU algorithm, while FortNum owns the backend call and error handling.
 
@@ -738,7 +742,8 @@ scattering and magnetostatic transmission match analytical series.
 Item 4 is implemented for affine triangular surfaces. The dense reference
 path includes analytical Laplace self-panel integration, Helmholtz
 singularity subtraction, P0 single layers, mixed P1/P0 Laplace Calderon
-operators, a resonance-safe Helmholtz CFIE, and P1 tetrahedral/P0 surface
+operators, a resonance-safe dense and retained-tree Helmholtz CFIE, and P1
+tetrahedral/P0 surface
 Johnson-Nedelec coupling and symmetric-indefinite Costabel-Han Laplace and
 Helmholtz coupling using all four Calderon blocks. Analytical tests cover sphere capacitance,
 outgoing monopoles including the first interior resonance, Calderon constant
