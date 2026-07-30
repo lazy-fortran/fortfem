@@ -103,6 +103,14 @@ contains
                 error stop "vector_function_space: invalid BDM space"
             end if
             space%ndof = global_dof_count
+        case ("Nedelec2", "Nedelec-second")
+            call build_triangle_full_vector_dof_map( &
+                mesh%data, degree, global_dofs, transforms, &
+                global_dof_count, status)
+            if (status /= 0) then
+                error stop "vector_function_space: invalid Nedelec2 space"
+            end if
+            space%ndof = global_dof_count
         end select
     end function vector_function_space
 

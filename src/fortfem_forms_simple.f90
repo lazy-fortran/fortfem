@@ -7,6 +7,7 @@ module fortfem_forms_simple
         assemble_triangle_bdm_cell_vector_load, &
         assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_bdm_div_mass_element, &
+        assemble_triangle_nedelec_second_cell_vector_load, &
         assemble_triangle_nedelec_second_curl_mass_csc, &
         assemble_triangle_nedelec_second_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
@@ -592,10 +593,12 @@ contains
             trim(family) /= "Nedelec1" .and. trim(family) /= "Edge" .and. &
             trim(family) /= "RT" .and. &
             trim(family) /= "Raviart-Thomas" .and. &
-            trim(family) /= "BDM") then
+            trim(family) /= "BDM" .and. &
+            trim(family) /= "Nedelec2" .and. &
+            trim(family) /= "Nedelec-second") then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
-                "Sparse vector load compiler requires Nedelec, RT, or BDM")
+                "Sparse vector load compiler received an unsupported family")
             return
         end if
         if (source_token /= 0) then
@@ -606,7 +609,13 @@ contains
                     "Sparse vector load compiler lost its cell source")
                 return
             end if
-            if (trim(family) == "BDM") then
+            if (trim(family) == "Nedelec2" .or. &
+                trim(family) == "Nedelec-second") then
+                call assemble_triangle_nedelec_second_cell_vector_load( &
+                    mesh, degree, quadrature_degree, &
+                    expr%tokens(source_token)%cell_vector_values, &
+                    vector, status)
+            else if (trim(family) == "BDM") then
                 call assemble_triangle_bdm_cell_vector_load( &
                     mesh, degree, quadrature_degree, &
                     expr%tokens(source_token)%cell_vector_values, &
@@ -624,6 +633,14 @@ contains
                     vector, status)
             end if
             if (status%code == 0) vector = source_scale * vector
+            return
+        end if
+        if (trim(family) == "Nedelec2" .or. &
+            trim(family) == "Nedelec-second") then
+            allocate(cell_values(2, mesh%n_triangles))
+            cell_values = spread(source_value, 2, mesh%n_triangles)
+            call assemble_triangle_nedelec_second_cell_vector_load( &
+                mesh, degree, quadrature_degree, cell_values, vector, status)
             return
         end if
         if (trim(family) == "BDM") then
