@@ -191,7 +191,7 @@ contains
         valid = size(vertices, 1) == 3 .and. size(tetrahedra, 1) == 4 .and. &
             size(vertices, 2) >= 4 .and. size(tetrahedra, 2) >= 1 .and. &
             all(tetrahedra >= 1) .and. all(tetrahedra <= size(vertices, 2)) &
-            .and. order >= 1 .and. order <= 5 .and. nx >= 2 .and. ny >= 2 &
+            .and. order >= 1 .and. nx >= 2 .and. ny >= 2 &
             .and. modulo(nx, 2) == 1 .and. modulo(ny, 2) == 1 .and. &
             norm2(periods(:, 1)) > tiny(1.0_dp) .and. &
             norm2(periods(:, 2)) > tiny(1.0_dp)

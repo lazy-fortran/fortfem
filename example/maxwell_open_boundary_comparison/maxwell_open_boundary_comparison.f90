@@ -30,14 +30,14 @@ program maxwell_open_boundary_comparison
     type(fortsparse_status_t) :: sparse_status
     real(dp) :: exact_te(mode_count), exact_tm(mode_count)
     real(dp) :: numerical_te(mode_count), numerical_tm(mode_count)
-    real(dp) :: coupling_error(4), orders(4), trace_error(4)
+    real(dp) :: coupling_error(6), orders(6), trace_error(6)
     real(dp) :: modes(mode_count), reflection(3), reflection_log(3)
     real(dp) :: method_index(3)
     real(dp) :: beta, end_time, phase_angle, pml_error, pml_seconds
     real(dp) :: seconds, start_time
     real(dp) :: max_modal_error
     real(dp) :: bounds(3, 2), origin(3), periods(3, 2), trace_weight
-    integer :: boundary_count(4), edge, i, j, mode, order, status, unit
+    integer :: boundary_count(6), edge, i, j, mode, order, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
     do mode = 0, mode_count - 1
@@ -103,7 +103,7 @@ program maxwell_open_boundary_comparison
     call generate_structured_tetra_box_mesh( &
         bounds, [1, 1, 1], vertices, tetrahedra, status)
     if (status /= 0) error stop "Maxwell trace mesh failed"
-    do order = 1, 4
+    do order = 1, 6
         orders(order) = real(order, dp)
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, 1.0_dp, 1.0_dp, &
@@ -129,10 +129,14 @@ program maxwell_open_boundary_comparison
         weak_result = matmul( &
             boundary_form, &
             cmplx(coefficients(boundary_dofs), 0.0_dp, dp))
-        coupling_error(order) = maxval(abs(weak_result - weak_exact))
+        coupling_error(order) = maxval(abs(weak_result - weak_exact))/ &
+            max(maxval(abs(weak_exact)), 1.0_dp)
         boundary_count(order) = size(boundary_dofs)
-        if (trace_error(order) >= 3.0e-10_dp .or. &
-            coupling_error(order) >= 3.0e-8_dp) &
+        write (*, "(a,i0,a,2(es12.4,1x))") &
+            "Nedelec order ", order, " trace/DtN errors: ", &
+            trace_error(order), coupling_error(order)
+        if (trace_error(order) >= 5.0e-8_dp .or. &
+            coupling_error(order) >= 5.0e-8_dp) &
             error stop "Maxwell Nedelec-DtN coupling regression"
         deallocate( &
             coefficients, boundary_dofs, sampling, sampled_trace, &
@@ -220,7 +224,7 @@ program maxwell_open_boundary_comparison
         "Nedelec PML relative edge error: ", pml_error
     write (unit, "(a,es14.6)") &
         "ordinary far-wall reflection: ", reflection(3)
-    do order = 1, 4
+    do order = 1, 6
         write (unit, "(a,i0,a,i0,a,es14.6,a,es14.6)") &
             "Nedelec order ", order, " boundary dofs: ", &
             boundary_count(order), " trace error: ", trace_error(order), &

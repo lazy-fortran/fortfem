@@ -13,8 +13,8 @@ wave and is independent of the assembled system. The comparison follows the
 transparent boundary formulation of Jiang et al., arXiv:1811.12449.
 
 The volume-boundary example additionally constructs a tetrahedral box,
-reproduces a constant field with first-kind Nedelec elements of orders one
-through four, samples its tangential trace on the FFT grid, and pulls the
+reproduces a constant field with first-kind Nédélec elements of orders one
+through six, samples its tangential trace on the FFT grid, and pulls the
 capacity form back to only the edge and face moments on the selected planar
 boundary. A separate tetrahedral box then exercises the complex FortSparse
 curl-curl/PML solver and records its solve time and relative edge error.
