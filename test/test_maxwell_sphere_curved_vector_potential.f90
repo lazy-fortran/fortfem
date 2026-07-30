@@ -20,7 +20,7 @@ program test_maxwell_sphere_curved_vector_potential
     all_passed = .true.
     call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
     call assemble_maxwell_sphere_curved_vector_potential_rwg_3d( &
-        vertices, triangles, 1.0_dp, 0.7_dp, 6, 1.0e-7_dp, 3, matrix, status)
+        vertices, triangles, 1.0_dp, 0.7_dp, 4, 1.0e-5_dp, 2, matrix, status)
     call record_condition(status == 0 .and. maxval(abs(matrix)) > 0.0_dp, &
         "global curved RWG vector potential assembles")
     symmetry_error = maxval(abs(matrix - transpose(matrix)))
@@ -37,12 +37,12 @@ program test_maxwell_sphere_curved_vector_potential
             if (panel == edge_triangles(second_slot, basis)) then
                 call integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
                     vertices, triangles, edge_vertices, edge_triangles, basis, &
-                    panel, basis, 1.0_dp, 0.7_dp, 6, panel_entry, status)
+                    panel, basis, 1.0_dp, 0.7_dp, 4, panel_entry, status)
             else
                 call integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
                     vertices, triangles, edge_vertices, edge_triangles, basis, &
                     panel, basis, edge_triangles(second_slot, basis), 1.0_dp, &
-                    0.7_dp, 6, 1.0e-7_dp, 3, panel_entry, status)
+                    0.7_dp, 4, 1.0e-5_dp, 2, panel_entry, status)
             end if
             direct_entry = direct_entry + panel_entry
         end do
@@ -53,7 +53,7 @@ program test_maxwell_sphere_curved_vector_potential
 
     call generate_sphere_surface_mesh(2.0_dp, 0, scaled_vertices, triangles)
     call assemble_maxwell_sphere_curved_vector_potential_rwg_3d( &
-        scaled_vertices, triangles, 2.0_dp, 0.35_dp, 6, 1.0e-7_dp, 3, &
+        scaled_vertices, triangles, 2.0_dp, 0.35_dp, 4, 1.0e-5_dp, 2, &
         scaled_matrix, status)
     error = maxval(abs(scaled_matrix - 8.0_dp*matrix))/ &
         maxval(abs(scaled_matrix))
