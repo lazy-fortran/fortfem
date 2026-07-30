@@ -29,6 +29,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [laplace_symmetric_transmission](laplace_symmetric_transmission.html) - Manufactured transmission pair:
 - [curved_acoustic_ntd](curved_acoustic_ntd.html) - This example maps the normal displacement of an arbitrary closed polygonal
 - [bem_sphere_3d](bem_sphere_3d.html) - This example solves the unit-sphere Laplace Dirichlet problem with the P0
+- [adaptive_bem_prolate](adaptive_bem_prolate.html) - This example solves the exterior electrostatic Dirichlet problem with constant
 - [magnetic_curvilinear_metrics](magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
 - [maxwell_torus_curved_scattering](maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
