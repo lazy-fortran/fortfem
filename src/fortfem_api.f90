@@ -33,6 +33,7 @@ module fortfem_api
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
+    use fortfem_sphere_curved_panel, only: evaluate_sphere_curved_panel
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
     use fortfem_maxwell_localized_rwg_surface, only: &
@@ -245,6 +246,7 @@ module fortfem_api
     public :: unit_disk_mesh
     public :: generate_torus_surface_mesh
     public :: generate_sphere_surface_mesh
+    public :: evaluate_sphere_curved_panel
     public :: barycentric_refine_surface_mesh
     public :: evaluate_maxwell_localized_rwg_basis
     public :: build_maxwell_bc_transformation
