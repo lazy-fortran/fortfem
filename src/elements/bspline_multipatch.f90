@@ -9,6 +9,7 @@ module fortfem_bspline_multipatch
     integer, parameter, public :: BSPLINE_FACE_Y_MAX = 4
 
     public :: build_bspline_feec_2d_interface_dofs
+    public :: build_bspline_feec_2d_two_patch_maps
 
 contains
 
@@ -51,6 +52,76 @@ contains
         end if
         status = 0
     end subroutine build_bspline_feec_2d_interface_dofs
+
+    subroutine build_bspline_feec_2d_two_patch_maps( &
+            nx_left, ny_left, nx_right, ny_right, face_left, face_right, &
+            reversed, h1_left_map, h1_right_map, hcurl_left_map, &
+            hcurl_right_map, hcurl_left_sign, hcurl_right_sign, l2_left_map, &
+            l2_right_map, status)
+        integer, intent(in) :: nx_left, ny_left, nx_right, ny_right
+        integer, intent(in) :: face_left, face_right
+        logical, intent(in) :: reversed
+        integer, allocatable, intent(out) :: h1_left_map(:), h1_right_map(:)
+        integer, allocatable, intent(out) :: hcurl_left_map(:)
+        integer, allocatable, intent(out) :: hcurl_right_map(:)
+        integer, allocatable, intent(out) :: hcurl_left_sign(:)
+        integer, allocatable, intent(out) :: hcurl_right_sign(:)
+        integer, allocatable, intent(out) :: l2_left_map(:), l2_right_map(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: h1_left_trace(:), h1_right_trace(:)
+        integer, allocatable :: hcurl_left_trace(:), hcurl_right_trace(:)
+        integer, allocatable :: trace_sign(:)
+        integer :: dof, global_dof, trace
+
+        call build_bspline_feec_2d_interface_dofs( &
+            nx_left, ny_left, nx_right, ny_right, face_left, face_right, &
+            reversed, h1_left_trace, h1_right_trace, hcurl_left_trace, &
+            hcurl_right_trace, trace_sign, status)
+        if (status /= 0) return
+        allocate( &
+            h1_left_map(nx_left*ny_left), h1_right_map(nx_right*ny_right), &
+            hcurl_left_map((nx_left - 1)*ny_left + nx_left*(ny_left - 1)), &
+            hcurl_right_map( &
+            (nx_right - 1)*ny_right + nx_right*(ny_right - 1)), &
+            l2_left_map((nx_left - 1)*(ny_left - 1)), &
+            l2_right_map((nx_right - 1)*(ny_right - 1)))
+        allocate( &
+            hcurl_left_sign(size(hcurl_left_map)), &
+            hcurl_right_sign(size(hcurl_right_map)))
+        h1_left_map = [(dof, dof = 1, size(h1_left_map))]
+        h1_right_map = 0
+        do trace = 1, size(h1_left_trace)
+            h1_right_map(h1_right_trace(trace)) = &
+                h1_left_map(h1_left_trace(trace))
+        end do
+        global_dof = size(h1_left_map)
+        do dof = 1, size(h1_right_map)
+            if (h1_right_map(dof) /= 0) cycle
+            global_dof = global_dof + 1
+            h1_right_map(dof) = global_dof
+        end do
+
+        hcurl_left_map = [(dof, dof = 1, size(hcurl_left_map))]
+        hcurl_left_sign = 1
+        hcurl_right_map = 0
+        hcurl_right_sign = 1
+        do trace = 1, size(hcurl_left_trace)
+            hcurl_right_map(hcurl_right_trace(trace)) = &
+                hcurl_left_map(hcurl_left_trace(trace))
+            hcurl_right_sign(hcurl_right_trace(trace)) = trace_sign(trace)
+        end do
+        global_dof = size(hcurl_left_map)
+        do dof = 1, size(hcurl_right_map)
+            if (hcurl_right_map(dof) /= 0) cycle
+            global_dof = global_dof + 1
+            hcurl_right_map(dof) = global_dof
+        end do
+
+        l2_left_map = [(dof, dof = 1, size(l2_left_map))]
+        l2_right_map = &
+            [(size(l2_left_map) + dof, dof = 1, size(l2_right_map))]
+    end subroutine build_bspline_feec_2d_two_patch_maps
 
     pure integer function face_trace_count(nx, ny, face) result(count)
         integer, intent(in) :: nx, ny, face

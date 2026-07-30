@@ -33,7 +33,10 @@ module fortfem_api
     use fortfem_kinds
     use fortfem_bspline_multipatch, only: &
         BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
-        BSPLINE_FACE_Y_MIN, build_bspline_feec_2d_interface_dofs
+        BSPLINE_FACE_Y_MIN, build_bspline_feec_2d_interface_dofs, &
+        build_bspline_feec_2d_two_patch_maps
+    use fortfem_assembly_bspline_multipatch_2d, only: &
+        build_bspline_feec_2d_two_patch_operators_csc
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
     use fortfem_api_mesh
@@ -552,6 +555,8 @@ module fortfem_api
     public :: BSPLINE_FACE_Y_MAX
     public :: BSPLINE_FACE_Y_MIN
     public :: build_bspline_feec_2d_interface_dofs
+    public :: build_bspline_feec_2d_two_patch_maps
+    public :: build_bspline_feec_2d_two_patch_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
     public :: evaluate_maxwell_surface_rt_basis
