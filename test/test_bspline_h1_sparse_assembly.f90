@@ -5,6 +5,7 @@ program test_bspline_h1_sparse_assembly
         assemble_bspline_hcurl_operator_csc, &
         assemble_bspline_hdiv_operator_csc, &
         assemble_bspline_h1_hcurl_gradient_csc, &
+        assemble_bspline_hcurl_h1_adjoint_gradient_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -18,6 +19,7 @@ program test_bspline_h1_sparse_assembly
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
     type(csc_t) :: hdiv_mass, div_div
     type(csc_t) :: weak_gradient
+    type(csc_t) :: adjoint_gradient
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
@@ -112,6 +114,13 @@ program test_bspline_h1_sparse_assembly
     call check_condition(abs(dot_product(edge_values, product) - 1.0_dp) < &
         3.0e-12_dp, &
         "Mixed spline gradient block reproduces exact affine Hcurl energy")
+    call assemble_bspline_hcurl_h1_adjoint_gradient_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, &
+        adjoint_gradient, sparse_status)
+    call check_condition(abs( &
+        dot_product(edge_values, product) - dot_product(coefficients, &
+        csc_matvec(adjoint_gradient, edge_values))) < 3.0e-13_dp, &
+        "Sparse mixed gradient and adjoint preserve weak duality")
 
     call assemble_bspline_hcurl_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 5, hcurl_mass, &
