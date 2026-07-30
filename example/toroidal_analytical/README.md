@@ -20,12 +20,19 @@ uses the corresponding complex curved-torus DtN solve with Laplace
 singularity subtraction. Analytical toroidal harmonics and an outgoing point
 source are independent oracles.
 
+A second, deliberately small solid-torus run couples a tetrahedral P1 FEM
+interior to the same exact-parametric curved BEM surface with the symmetric
+Costabel-Han formulation. It reports wall-clock solve time and boundary
+error for both Poisson and scalar Helmholtz, making the DtN-only and coupled
+paths reproducibly comparable without committing generated media.
+
 The program produces:
 
 - `toroidal_trace_1d.png`: analytical and BEM Poisson/Ampère traces;
 - `toroidal_surface_2d.png`: the analytical scalar mode in \((\theta,\phi)\);
 - `toroidal_bem_error_2d.png`: BEM relative error over the exterior surface;
 - `toroidal_helmholtz_1d.png`: outgoing Helmholtz point source, exact vs BEM;
+- `toroidal_fem_bem_1d.png`: analytical vs coupled FEM-BEM boundary traces;
 - `toroidal_geometry_3d.png`: the physical toroidal interface;
 - `toroidal_trace.csv`: reproducible source data for comparisons.
 - `benchmark.txt`: mesh size, separate DtN-solve/evaluation timings, and
