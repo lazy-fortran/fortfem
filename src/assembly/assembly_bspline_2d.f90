@@ -17,6 +17,9 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_hdiv_operator_csc
     public :: assemble_bspline_h1_hcurl_gradient_csc
     public :: assemble_bspline_hcurl_h1_adjoint_gradient_csc
+    public :: assemble_bspline_l2_mass_csc
+    public :: assemble_bspline_hcurl_l2_curl_csc
+    public :: assemble_bspline_l2_hcurl_adjoint_curl_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
@@ -36,6 +39,182 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine assemble_bspline_l2_hcurl_adjoint_curl_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: weak_curl
+
+        call assemble_bspline_hcurl_l2_curl_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, weak_curl, status)
+        if (status%code /= 0) return
+        call csc_transpose(weak_curl, matrix, status)
+    end subroutine assemble_bspline_l2_hcurl_adjoint_curl_csc
+
+    subroutine assemble_bspline_hcurl_l2_curl_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: curl_incidence, gradient_incidence, l2_mass
+
+        call build_bspline_feec_2d_operators_csc( &
+            knots_x, knots_y, degree_x, degree_y, gradient_incidence, &
+            curl_incidence, status)
+        if (status%code /= 0) return
+        call assemble_bspline_l2_mass_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, l2_mass, status)
+        if (status%code /= 0) return
+        call csc_matmul(l2_mass, curl_incidence, matrix, status)
+    end subroutine assemble_bspline_hcurl_l2_curl_csc
+
+    subroutine assemble_bspline_l2_mass_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), local_dofs(:), rows(:)
+        real(dp), allocatable :: derivative_x(:), derivative_y(:)
+        real(dp), allocatable :: local_matrix(:, :), nodes_x(:), nodes_y(:)
+        real(dp), allocatable :: qw_x(:), qw_y(:), triplet_values(:)
+        real(dp), allocatable :: value_x(:), value_y(:)
+        real(dp) :: determinant, geometry_jacobian(2, 2), geometry_point(2)
+        real(dp) :: inverse(2, 2), physical_weight
+        integer :: basis_x, basis_y, entry, local_column, local_count
+        integer :: local_row, local_status, max_entries, nx, ny
+        integer :: point_x, point_y, span_x, span_y
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sparse isogeometric L2 mass assembly failed")
+        if (degree_x < 1 .or. degree_y < 1 .or. quadrature_order < 1) return
+        nx = size(knots_x) - degree_x - 1
+        ny = size(knots_y) - degree_y - 1
+        if (nx < degree_x + 1 .or. ny < degree_y + 1) return
+        if (any(shape(weights) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2 .or. &
+            any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        local_count = degree_x*degree_y
+        max_entries = positive_span_count(knots_x, degree_x, nx)* &
+            positive_span_count(knots_y, degree_y, ny)*local_count**2
+        allocate( &
+            rows(max_entries), columns(max_entries), &
+            triplet_values(max_entries), local_dofs(local_count), &
+            local_matrix(local_count, local_count), &
+            nodes_x(quadrature_order), nodes_y(quadrature_order), &
+            qw_x(quadrature_order), qw_y(quadrature_order))
+        entry = 0
+        do span_y = degree_y + 1, ny
+            if (knots_y(span_y + 1) <= knots_y(span_y)) cycle
+            call gauss_legendre_ab( &
+                quadrature_order, knots_y(span_y), knots_y(span_y + 1), &
+                nodes_y, qw_y)
+            do span_x = degree_x + 1, nx
+                if (knots_x(span_x + 1) <= knots_x(span_x)) cycle
+                call gauss_legendre_ab( &
+                    quadrature_order, knots_x(span_x), knots_x(span_x + 1), &
+                    nodes_x, qw_x)
+                call build_l2_local_dofs( &
+                    span_x, span_y, degree_x, degree_y, nx, local_dofs)
+                local_matrix = 0.0_dp
+                do point_y = 1, quadrature_order
+                    call evaluate_bspline_basis( &
+                        knots_y(2:size(knots_y) - 1), degree_y - 1, &
+                        nodes_y(point_y), value_y, derivative_y, local_status)
+                    if (local_status /= 0) return
+                    do point_x = 1, quadrature_order
+                        call evaluate_bspline_basis( &
+                            knots_x(2:size(knots_x) - 1), degree_x - 1, &
+                            nodes_x(point_x), value_x, derivative_x, &
+                            local_status)
+                        if (local_status /= 0) return
+                        call evaluate_nurbs_surface_geometry( &
+                            knots_x, knots_y, degree_x, degree_y, &
+                            control_points, weights, nodes_x(point_x), &
+                            nodes_y(point_y), geometry_point, &
+                            geometry_jacobian, local_status)
+                        if (local_status /= 0) return
+                        call inverse_2d( &
+                            geometry_jacobian, inverse, determinant, local_status)
+                        if (local_status /= 0 .or. determinant <= 0.0_dp) return
+                        physical_weight = qw_x(point_x)*qw_y(point_y)/determinant
+                        do local_column = 1, local_count
+                            basis_x = span_x - degree_x + &
+                                modulo(local_column - 1, degree_x)
+                            basis_y = span_y - degree_y + &
+                                (local_column - 1)/degree_x
+                            do local_row = 1, local_count
+                                local_matrix(local_row, local_column) = &
+                                    local_matrix(local_row, local_column) + &
+                                    physical_weight*value_x(basis_x)* &
+                                    value_y(basis_y)*l2_local_value( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, value_y)
+                            end do
+                        end do
+                    end do
+                end do
+                do local_column = 1, local_count
+                    do local_row = 1, local_count
+                        entry = entry + 1
+                        rows(entry) = local_dofs(local_row)
+                        columns(entry) = local_dofs(local_column)
+                        triplet_values(entry) = &
+                            local_matrix(local_row, local_column)
+                    end do
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            (nx - 1)*(ny - 1), (nx - 1)*(ny - 1), rows(:entry), &
+            columns(:entry), triplet_values(:entry), matrix, status)
+    end subroutine assemble_bspline_l2_mass_csc
+
+    pure subroutine build_l2_local_dofs( &
+            span_x, span_y, degree_x, degree_y, nx, local_dofs)
+        integer, intent(in) :: span_x, span_y, degree_x, degree_y, nx
+        integer, intent(out) :: local_dofs(:)
+
+        integer :: basis_x, basis_y, local_dof
+
+        local_dof = 0
+        do basis_y = span_y - degree_y, span_y - 1
+            do basis_x = span_x - degree_x, span_x - 1
+                local_dof = local_dof + 1
+                local_dofs(local_dof) = basis_x + (basis_y - 1)*(nx - 1)
+            end do
+        end do
+    end subroutine build_l2_local_dofs
+
+    pure function l2_local_value( &
+            local_dof, span_x, span_y, degree_x, degree_y, value_x, value_y) &
+            result(value)
+        integer, intent(in) :: local_dof, span_x, span_y, degree_x, degree_y
+        real(dp), intent(in) :: value_x(:), value_y(:)
+        real(dp) :: value
+
+        integer :: basis_x, basis_y
+
+        basis_x = span_x - degree_x + modulo(local_dof - 1, degree_x)
+        basis_y = span_y - degree_y + (local_dof - 1)/degree_x
+        value = value_x(basis_x)*value_y(basis_y)
+    end function l2_local_value
 
     subroutine assemble_bspline_hcurl_h1_adjoint_gradient_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
