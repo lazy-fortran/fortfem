@@ -3,6 +3,7 @@ program test_bspline_h1_sparse_assembly
     use fortfem_api, only: &
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_hcurl_operator_csc, &
+        assemble_bspline_hdiv_operator_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -14,10 +15,12 @@ program test_bspline_h1_sparse_assembly
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
+    type(csc_t) :: hdiv_mass, div_div
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
     real(dp), allocatable :: hcurl_coefficients(:)
+    real(dp), allocatable :: hdiv_coefficients(:)
     real(dp), allocatable :: x_points(:), y_points(:)
     real(dp) :: energy, integral
     integer :: ix, iy
@@ -117,6 +120,27 @@ program test_bspline_h1_sparse_assembly
     call check_condition(abs(energy - 4.0_dp) < 3.0e-11_dp, &
         "Spline curl-curl gives exact rigid-rotation curl energy")
 
+    call assemble_bspline_hdiv_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, hdiv_mass, &
+        sparse_status, divergence_coefficient=0.0_dp, mass_coefficient=1.0_dp)
+    allocate(hdiv_coefficients(size(x_points)*(size(y_points) - 1) + &
+        (size(x_points) - 1)*size(y_points)))
+    hdiv_coefficients = 0.0_dp
+    hdiv_coefficients(1:size(x_points)*(size(y_points) - 1)) = 1.0_dp
+    product = csc_matvec(hdiv_mass, hdiv_coefficients)
+    energy = dot_product(hdiv_coefficients, product)
+    call check_condition(abs(energy - 1.0_dp) < 3.0e-12_dp, &
+        "Contravariant spline Hdiv mass gives exact constant-flux energy")
+
+    call assemble_bspline_hdiv_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, div_div, &
+        sparse_status, divergence_coefficient=1.0_dp, mass_coefficient=0.0_dp)
+    call set_affine_flux_coefficients(x_points, y_points, hdiv_coefficients)
+    product = csc_matvec(div_div, hdiv_coefficients)
+    energy = dot_product(hdiv_coefficients, product)
+    call check_condition(abs(energy - 4.0_dp) < 3.0e-11_dp, &
+        "Spline div-div gives exact affine-flux divergence energy")
+
     call check_summary("Sparse isogeometric H1 assembly")
 
 contains
@@ -168,5 +192,25 @@ contains
             end do
         end do
     end subroutine set_rotation_coefficients
+
+    pure subroutine set_affine_flux_coefficients(x, y, coefficients_local)
+        real(dp), intent(in) :: x(:), y(:)
+        real(dp), intent(out) :: coefficients_local(:)
+        integer :: basis_x, basis_y, offset
+
+        offset = size(x)*(size(y) - 1)
+        do basis_y = 1, size(y) - 1
+            do basis_x = 1, size(x)
+                coefficients_local(basis_x + (basis_y - 1)*size(x)) = &
+                    1.0_dp + x(basis_x)
+            end do
+        end do
+        do basis_y = 1, size(y)
+            do basis_x = 1, size(x) - 1
+                coefficients_local(offset + basis_x + &
+                    (basis_y - 1)*(size(x) - 1)) = y(basis_y)
+            end do
+        end do
+    end subroutine set_affine_flux_coefficients
 
 end program test_bspline_h1_sparse_assembly
