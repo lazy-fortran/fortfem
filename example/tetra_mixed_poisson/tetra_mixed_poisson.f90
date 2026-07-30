@@ -21,8 +21,8 @@ program tetra_mixed_poisson
     type(vector_trial_function_t) :: flux_trial
     integer, allocatable :: tetrahedra(:, :)
     real(dp), allocatable :: balance(:), flux(:), pressure(:), vertices(:, :)
-    real(dp) :: balance_error(5), bounds(3, 2), cell_balance
-    real(dp) :: dofs(5), jacobian(3, 3), orders(5), volume
+    real(dp) :: balance_error(6), bounds(3, 2), cell_balance
+    real(dp) :: dofs(6), jacobian(3, 3), orders(6), volume
     integer :: degree, dg_count, local_status, tetrahedron
 
     call init_measures()
@@ -33,7 +33,7 @@ program tetra_mixed_poisson
         bounds, [1, 1, 1], vertices, tetrahedra, local_status)
     if (local_status /= 0) error stop "tetrahedral box mesh failed"
 
-    do degree = 0, 4
+    do degree = 0, 5
         orders(degree + 1) = real(degree, dp)
         call solve_symbolic_tetra_mixed_poisson_rt( &
             vertices, tetrahedra, degree, 2*degree + 4, &

@@ -15,7 +15,7 @@ program test_tetra_rt_h_convergence
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 4
+    do degree = 0, 5
         call measure_error(2, degree, errors(:, 1))
         call measure_error(4, degree, errors(:, 2))
         rates = log(errors(:, 1)/errors(:, 2))/log(2.0_dp)

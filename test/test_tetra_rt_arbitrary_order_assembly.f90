@@ -8,7 +8,7 @@ program test_tetra_rt_arbitrary_order_assembly
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
-    integer, parameter :: expected_counts(0:4) = [4, 15, 36, 70, 120]
+    integer, parameter :: expected_counts(0:5) = [4, 15, 36, 70, 120, 189]
     type(csc_t) :: matrix
     type(fortsparse_status_t) :: sparse_status
     integer, allocatable :: face_orientations(:, :)
@@ -25,7 +25,7 @@ program test_tetra_rt_arbitrary_order_assembly
     vertices(:, 2) = [2.1_dp, -0.5_dp, 0.4_dp]
     vertices(:, 3) = [0.6_dp, 1.4_dp, -0.2_dp]
     vertices(:, 4) = [-0.1_dp, 0.2_dp, 1.6_dp]
-    do degree = 0, 4
+    do degree = 0, 5
         call assemble_tetra_rt_div_mass_element( &
             vertices, degree, 2*degree + 3, element_matrix, status)
         call record_condition(status == 0 .and. &

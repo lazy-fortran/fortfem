@@ -8,7 +8,7 @@ split into six tetrahedra:
  (\nabla\!\cdot q,v)=(1,v).
 \]
 
-It runs every implemented tetrahedral pair from RT0/DG0 through RT4/DG4.
+It runs every implemented tetrahedral pair from RT0/DG0 through RT5/DG5.
 The RT mass and rectangular divergence expressions compile directly into
 FortSparse CSC blocks. For each tetrahedron, the constant DG test moment of
 the numerical divergence must equal the independently computed geometric

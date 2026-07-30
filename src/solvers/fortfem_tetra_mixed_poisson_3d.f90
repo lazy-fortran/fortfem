@@ -50,7 +50,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Symbolic tetra RT-DG mixed Poisson solve failed")
-        if (degree < 0 .or. degree > 4 .or. quadrature_degree < 0) return
+        if (degree < 0 .or. degree > 5 .or. quadrature_degree < 0) return
         call compile_tetra_rt_form_csc( &
             flux_mass_form, vertices, tetrahedra, degree, quadrature_degree, &
             flux_mass, status)
@@ -144,7 +144,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral DG source load failed")
         if (size(vertices, 1) /= 3 .or. size(tetrahedra, 1) /= 4) return
-        if (degree < 0 .or. degree > 4 .or. quadrature_degree < 0) return
+        if (degree < 0 .or. degree > 5 .or. quadrature_degree < 0) return
         call initialize_tetra_discontinuous(degree, basis, local_status)
         if (local_status /= 0) return
         call tetra_duffy_quadrature( &

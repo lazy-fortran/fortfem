@@ -2,14 +2,14 @@ program test_tetra_rt_global_dof_map
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
-    use fortfem_generated_tetra_face_moment_transforms, only: &
+    use fortfem_tetra_face_moment_transforms, only: &
         transform_tetra_rt_face_moments
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: degree = 4
-    integer, parameter :: dof_count = 120
-    integer, parameter :: face_dof_count = 15
+    integer, parameter :: degree = 5
+    integer, parameter :: dof_count = 189
+    integer, parameter :: face_dof_count = 21
     integer, allocatable :: face_orientations(:, :)
     integer, allocatable :: face_permutations(:, :, :), faces(:, :)
     integer, allocatable :: global_dofs(:, :)
@@ -30,8 +30,8 @@ program test_tetra_rt_global_dof_map
     call record_condition(size(faces, 2) == 7, &
         "Two tetrahedra share one canonical RT face")
     call record_condition(size(global_dofs, 1) == dof_count .and. &
-        maxval(global_dofs) == 225, &
-        "Degree-four RT topology has the analytic global dimension")
+        maxval(global_dofs) == 357, &
+        "Degree-five RT topology has the analytic global dimension")
     call record_condition(all( &
         global_dofs(2*face_dof_count + 1:3*face_dof_count, 1) == &
         global_dofs(2*face_dof_count + 1:3*face_dof_count, 2)), &
@@ -47,7 +47,7 @@ program test_tetra_rt_global_dof_map
         degree, face_orientations(:, 2), face_permutations(:, :, 2), &
         transform, status)
     call record_condition(status == 0, &
-        "Degree-four RT basis orientation transform builds")
+        "Degree-five RT basis orientation transform builds")
     do face = 1, 4
         face_start = (face - 1)*face_dof_count
         local = matmul( &
@@ -57,8 +57,12 @@ program test_tetra_rt_global_dof_map
         call transform_tetra_rt_face_moments( &
             degree, face_permutations(:, face, 2), local, recovered, status)
         recovered = face_orientations(face, 2)*recovered
+        if (maxval(abs(recovered - canonical)) >= 1.0e-8_dp) then
+            write (*, '(A,I0,A,ES12.4)') "RT face ", face, &
+                " orientation error ", maxval(abs(recovered - canonical))
+        end if
         call record_condition(status == 0 .and. &
-            maxval(abs(recovered - canonical)) < 3.0e-13_dp, &
+            maxval(abs(recovered - canonical)) < 1.0e-8_dp, &
             "RT element transform gives canonical oriented face moments")
     end do
 

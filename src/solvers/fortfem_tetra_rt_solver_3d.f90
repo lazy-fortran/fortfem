@@ -43,7 +43,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral RT div-mass solve failed")
-        if (degree < 0 .or. degree > 4) return
+        if (degree < 0 .or. degree > 5) return
         if (mass_coefficient <= 0.0_dp) return
         call assemble_tetra_rt_div_mass_csc( &
             vertices, tetrahedra, degree, 2*degree + 4, matrix, status, &

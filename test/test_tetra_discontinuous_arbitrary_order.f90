@@ -7,7 +7,7 @@ program test_tetra_discontinuous_arbitrary_order
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: expected_counts(0:4) = [1, 4, 10, 20, 35]
+    integer, parameter :: expected_counts(0:5) = [1, 4, 10, 20, 35, 56]
     type(tetra_discontinuous_t) :: basis, copied_basis
     real(dp), allocatable :: values(:), x(:), y(:), z(:), weights(:)
     real(dp) :: exact_integral, numerical_integral
@@ -15,7 +15,7 @@ program test_tetra_discontinuous_arbitrary_order
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 4
+    do degree = 0, 5
         call initialize_tetra_discontinuous(degree, basis, status)
         call record_condition(status == 0 .and. &
             tetra_discontinuous_dof_count(basis) == expected_counts(degree), &
@@ -50,7 +50,7 @@ program test_tetra_discontinuous_arbitrary_order
     call initialize_tetra_discontinuous(-1, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral discontinuous basis rejects negative degree")
-    call initialize_tetra_discontinuous(5, basis, status)
+    call initialize_tetra_discontinuous(6, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral discontinuous basis rejects unsupported degree")
 
