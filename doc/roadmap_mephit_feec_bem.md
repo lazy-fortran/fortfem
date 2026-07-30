@@ -35,7 +35,7 @@ The initial findings used the following evidence:
   [Grote and Keller](https://doi.org/10.1006/jcph.1995.1210) and the
   [Bempp boundary-operator documentation](https://bempp.com/handbook/api/boundary_operators.html).
 
-The current implementation baseline is FortFEM `b0f154c` with 147 passing
+The current implementation baseline is FortFEM `9b28a25` with 152 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -46,7 +46,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, and convergence tests | High-level arbitrary-order PDE dispatch and exhaustive mixed solves above RT1-DG1 |
 | Arbitrary-order 3D FEEC | First-kind tetrahedral Nedelec bases and curl-mass assembly through order four; anisotropic lowest-order magnetic box solve | Tetrahedral H1, H(div), and L2 sequence members, higher-order box convergence, and high-level dispatch |
-| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels | Assembly into scalar/elastic weak forms, Maxwell DtN, and the committed acoustic fixture |
+| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN and curved-boundary elastic coupling |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
 | 3D BEM | Laplace and Helmholtz representation evaluation on triangular surfaces, including sphere and torus analytical checks | Galerkin boundary operators, exterior solves, Maxwell traces, and FEM/BEM coupling |
 | Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl) kernels and toroidal-coordinate kernels with byte-for-byte gates | Generate the remaining exact element/operator kernels instead of maintaining coefficient tables by hand |
@@ -180,9 +180,11 @@ to FreeFem++ and include plane-wave and FDTD validation.
 The paper prototype is a useful migration source, but it is not a general
 BEM. FortFEM now provides FFT-based planar, circular, and spherical DtN maps, dense
 two-dimensional Laplace and Helmholtz Calderon operators, a Helmholtz CFIE,
-and symmetric Laplace and Helmholtz FEM/BEM transmission. The committed acoustic-paper
-fixture, integration of DtN maps into scalar and elastic forms, and
-higher-order or fast boundary operators remain.
+and symmetric Laplace and Helmholtz FEM/BEM transmission. Scalar Helmholtz
+and complex P1 elasticity now integrate the planar maps into their weak
+forms. The 5 MHz steel-water fixture matches the independent
+`paper_acoustics` Fortran result. Higher-order or fast boundary operators
+remain.
 
 ## Use of fortnum and fortsparse
 
@@ -585,7 +587,11 @@ Exit gate: the analytical DtN, circle-scattering, Calderon, and manufactured
 non-circular FEM/BEM tests pass. The paper fixture agrees within its published
 discretization error.
 
-Items 2 and 5 are implemented. Item 3 includes dense Laplace and Helmholtz
+Items 1--5 are implemented. The scalar planar DtN solver passes an outgoing
+plane-wave refinement study. The complex P1 elastic-acoustic solver passes a
+lossy longitudinal-wave refinement study and matches the 5 MHz steel-water
+`paper_acoustics` fixture at revision `6300ab0`; P/S impedance conditions
+close its other three boundaries. Item 3 includes dense Laplace and Helmholtz
 single-layer, double-layer, adjoint double-layer, and hypersingular
 operators with circle-spectrum checks. Item 4 includes a constant-panel CFIE
 solve, Mie-series convergence, and adaptively verified off-surface field
@@ -594,7 +600,8 @@ affine solution and a nonzero exterior dipole refinement study. Its complex
 Helmholtz counterpart passes a manufactured plane-wave transmission
 refinement study with independently integrated Neumann data. Calderon
 identities beyond the jump and spectral checks, adaptive near-singular
-panel-pair assembly, higher-order exterior traces, and items 1 and 6 remain.
+panel-pair assembly, higher-order exterior traces, and the remaining layered
+paper validation cases in item 6 remain.
 
 ### Phase 4: fast and three-dimensional BEM
 
