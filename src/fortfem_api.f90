@@ -31,7 +31,9 @@ module fortfem_api
         assemble_tetra_nedelec_vector_load, &
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
-    use fortfem_bspline_polar, only: build_bspline_polar_h1_extraction
+    use fortfem_bspline_polar, only: &
+        build_bspline_polar_feec_2d_operators, &
+        build_bspline_polar_h1_extraction
     use fortfem_bspline_multipatch, only: &
         BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
         BSPLINE_FACE_Y_MIN, BSPLINE_FACE_Z_MAX, BSPLINE_FACE_Z_MIN, &
@@ -821,6 +823,7 @@ module fortfem_api
     public :: evaluate_rt_field_2d
     public :: reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     public :: build_bspline_polar_h1_extraction
+    public :: build_bspline_polar_feec_2d_operators
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
     public :: sparse_direct_solve_factored, sparse_direct_free
 

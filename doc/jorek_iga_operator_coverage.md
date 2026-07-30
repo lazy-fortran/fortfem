@@ -34,7 +34,7 @@ The operator inventory is based on:
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |
-| Magnetic-axis scalar regularity | Type-1 polar H1 extraction |
+| Magnetic-axis regularity | Type-1 polar H1 extraction and locally exact 0--1--2 incidence complex |
 
 The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
@@ -71,9 +71,9 @@ of the current implementation.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
-- Complete the magnetic-axis polar complex with the locally exact 1- and
-  2-form extraction and incidence operators. The scalar extraction is not
-  advertised as a complete polar FEEC complex on its own.
+- Complete physical magnetic-axis assembly with the polar 1- and 2-form basis
+  extraction/Hodge operators. The scalar extraction and incidence complex are
+  not advertised as complete physical polar FEEC assembly on their own.
 - Verify a nonlinear manufactured equilibrium and an energy-transfer problem
   against the published continuous invariants.
 - Benchmark cached harmonic-bracket assembly and nonlinear residual evaluation.

@@ -1,0 +1,22 @@
+name = "fortfem-symbolic-verification"
+version = "0.1.0"
+license = "MIT"
+
+[build]
+auto-executables = true
+auto-tests = false
+auto-examples = false
+link = ["symengine", "flint", "mpfr", "gmp", "stdc++", "dl"]
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[dependencies]
+fortsym = { git = "https://github.com/lazy-fortran/fortsym.git", rev = "eb3192876d16990bff5632cd4eb09efab12f917c" }
+
+[[executable]]
+name = "verify_polar_complex"
+source-dir = "app"
+main = "verify_polar_complex.f90"

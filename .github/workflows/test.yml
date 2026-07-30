@@ -54,6 +54,12 @@ jobs:
         export PATH="$HOME/.local/bin:$PATH"
         tools/codegen/check_generated.sh
 
+    - name: Prove polar-complex identities with FortSym
+      working-directory: verification/fortsym
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        fo exec verify_polar_complex
+
   build-test:
     runs-on: ${{ matrix.os }}
     strategy:
