@@ -573,7 +573,7 @@ contains
         type(fortsparse_status_t), intent(out) :: status
 
         type(csc_t) :: mass_matrix
-        real(dp), allocatable :: source_dofs(:)
+        real(dp), allocatable :: cell_values(:, :), source_dofs(:)
         real(dp) :: edge_vector(2), source_scale, source_value(2)
         integer :: compiler_status, dof, edge, source_token
 
@@ -593,12 +593,6 @@ contains
                 "Sparse vector load compiler supports first-kind Nedelec")
             return
         end if
-        if (degree /= 1) then
-            call status_set( &
-                status, FORTSPARSE_INVALID_MATRIX, &
-                "Sparse vector load compiler supports Nedelec order one")
-            return
-        end if
         if (source_token /= 0) then
             if (.not. allocated( &
                 expr%tokens(source_token)%cell_vector_values)) then
@@ -611,6 +605,13 @@ contains
                 mesh, degree, quadrature_degree, &
                 expr%tokens(source_token)%cell_vector_values, vector, status)
             if (status%code == 0) vector = source_scale * vector
+            return
+        end if
+        if (degree > 1) then
+            allocate(cell_values(2, mesh%n_triangles))
+            cell_values = spread(source_value, 2, mesh%n_triangles)
+            call assemble_triangle_nedelec_cell_vector_load( &
+                mesh, degree, quadrature_degree, cell_values, vector, status)
             return
         end if
         if (.not. allocated(mesh%edges)) call mesh%build_edge_connectivity()

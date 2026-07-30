@@ -57,8 +57,10 @@ contains
             trim(equation%rhs%description)
         write(*,*) "Using solver: ", trim(solver)
 
-        if (trim(Eh%space%element_family) == "Nedelec" .and. &
-            Eh%space%degree == 1) then
+        if ((trim(Eh%space%element_family) == "Nedelec" .or. &
+            trim(Eh%space%element_family) == "Nedelec1" .or. &
+            trim(Eh%space%element_family) == "Edge") .and. &
+            Eh%space%degree >= 1) then
             call solve_compiled_nedelec_problem( &
                 equation, Eh, bc, solver, local_opts, local_stats)
         else if (index(equation%lhs%description, "curl") > 0) then
@@ -87,20 +89,24 @@ contains
         real(dp), allocatable :: dense_matrix(:, :), prescribed_values(:)
         real(dp), allocatable :: right_hand_side(:), solution(:)
         real(dp) :: edge_vector(2), prescribed_value
-        integer :: boundary_index, degree_of_freedom, edge, dof_count
-        integer :: interior_count
+        logical, allocatable :: prescribed_mask(:)
+        integer :: boundary_index, degree_of_freedom, edge, dof_count, moment
+        integer :: order
 
         dof_count = field%space%ndof
         allocate(right_hand_side(dof_count), prescribed_values(dof_count))
+        allocate(prescribed_mask(dof_count))
         allocate(solution(dof_count))
         call compile_vector_form_csc( &
-            equation%lhs, field%space%mesh%data, "Nedelec", 1, 4, &
+            equation%lhs, field%space%mesh%data, "Nedelec", &
+            field%space%degree, 2 * field%space%degree + 2, &
             sparse_matrix, sparse_status)
         if (sparse_status%code /= 0) then
             error stop "solve: unsupported Nedelec bilinear form"
         end if
         call compile_vector_form_rhs( &
-            equation%rhs, field%space%mesh%data, "Nedelec", 1, 4, &
+            equation%rhs, field%space%mesh%data, "Nedelec", &
+            field%space%degree, 2 * field%space%degree + 2, &
             right_hand_side, sparse_status)
         if (sparse_status%code /= 0) then
             error stop "solve: unsupported Nedelec linear form"
@@ -110,33 +116,42 @@ contains
             error stop "solve: Nedelec function-space dimension mismatch"
         end if
         prescribed_values = 0.0_dp
+        prescribed_mask = .false.
+        order = field%space%degree
         do boundary_index = 1, &
                 size(field%space%mesh%data%boundary_edges)
             edge = field%space%mesh%data%boundary_edges(boundary_index)
-            degree_of_freedom = &
-                field%space%mesh%data%edge_to_dof(edge) + 1
             edge_vector = field%space%mesh%data%vertices(:, &
                 field%space%mesh%data%edges(2, edge)) - &
                 field%space%mesh%data%vertices(:, &
                 field%space%mesh%data%edges(1, edge))
-            if (allocated(boundary_condition%edge_values)) then
-                prescribed_value = boundary_condition%edge_values( &
-                    degree_of_freedom)
-            else
-                prescribed_value = &
-                    dot_product(boundary_condition%values, edge_vector)
-            end if
-            prescribed_values(degree_of_freedom) = prescribed_value
+            do moment = 1, order
+                degree_of_freedom = &
+                    field%space%mesh%data%edge_to_dof(edge) * order + moment
+                if (allocated(boundary_condition%edge_values)) then
+                    prescribed_value = boundary_condition%edge_values( &
+                        degree_of_freedom)
+                else if (moment == 1) then
+                    prescribed_value = &
+                        dot_product(boundary_condition%values, edge_vector)
+                else
+                    prescribed_value = 0.0_dp
+                end if
+                prescribed_values(degree_of_freedom) = prescribed_value
+                prescribed_mask(degree_of_freedom) = .true.
+            end do
         end do
 
         solution = 0.0_dp
         select case (trim(solver_type))
         case ("direct")
-            interior_count = field%space%mesh%data%n_interior_dofs
             call solve_sparse_dirichlet( &
                 sparse_matrix, right_hand_side, prescribed_values, &
-                interior_count, solution, stats)
+                prescribed_mask, solution, stats)
         case default
+            if (order /= 1) then
+                error stop "solve: higher-order Nedelec requires direct solver"
+            end if
             allocate(dense_matrix(dof_count, dof_count))
             call copy_csc_to_dense(sparse_matrix, dense_matrix)
             call apply_dense_dirichlet( &
@@ -154,71 +169,88 @@ contains
     end subroutine solve_compiled_nedelec_problem
 
     subroutine solve_sparse_dirichlet( &
-            matrix, rhs, prescribed, interior_count, solution, stats)
+            matrix, rhs, prescribed, prescribed_mask, solution, stats)
         type(csc_t), intent(in) :: matrix
         real(dp), intent(in) :: rhs(:), prescribed(:)
-        integer, intent(in) :: interior_count
+        logical, intent(in) :: prescribed_mask(:)
         real(dp), intent(out) :: solution(:)
         type(solver_stats_t), intent(out) :: stats
 
-        integer, allocatable :: column_pointers(:), row_indices(:)
+        integer, allocatable :: column_pointers(:), free_dofs(:)
+        integer, allocatable :: free_index(:), row_indices(:)
         real(dp), allocatable :: interior_rhs(:), interior_solution(:)
         real(dp), allocatable :: residual(:), values(:)
-        integer :: column, entry, interior_entry, row, status
+        integer :: column, entry, free_count, interior_entry, row, status
 
         solution = prescribed
         call initialize_direct_stats(stats)
-        if (interior_count == 0) then
+        free_count = count(.not. prescribed_mask)
+        if (free_count == 0) then
             stats%converged = .true.
             return
         end if
 
-        allocate(column_pointers(interior_count + 1))
+        allocate(free_dofs(free_count), free_index(matrix%nrow))
+        free_count = 0
+        do column = 1, matrix%ncol
+            if (prescribed_mask(column)) cycle
+            free_count = free_count + 1
+            free_dofs(free_count) = column
+        end do
+        free_index = 0
+        do column = 1, free_count
+            free_index(free_dofs(column)) = column
+        end do
+        allocate(column_pointers(free_count + 1))
         interior_entry = 0
-        do column = 1, interior_count
+        do column = 1, free_count
             column_pointers(column) = interior_entry + 1
-            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
-                if (matrix%row_idx(entry) <= interior_count) then
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                if (.not. prescribed_mask(matrix%row_idx(entry))) then
                     interior_entry = interior_entry + 1
                 end if
             end do
         end do
-        column_pointers(interior_count + 1) = interior_entry + 1
+        column_pointers(free_count + 1) = interior_entry + 1
         allocate(row_indices(interior_entry), values(interior_entry))
 
         interior_entry = 0
-        do column = 1, interior_count
-            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+        do column = 1, free_count
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
                 row = matrix%row_idx(entry)
-                if (row <= interior_count) then
+                if (.not. prescribed_mask(row)) then
                     interior_entry = interior_entry + 1
-                    row_indices(interior_entry) = row
+                    row_indices(interior_entry) = free_index(row)
                     values(interior_entry) = matrix%val(entry)
                 end if
             end do
         end do
 
-        allocate(interior_rhs(interior_count))
-        allocate(interior_solution(interior_count), residual(interior_count))
-        interior_rhs = rhs(:interior_count)
-        do column = interior_count + 1, matrix%ncol
+        allocate(interior_rhs(free_count))
+        allocate(interior_solution(free_count), residual(free_count))
+        interior_rhs = rhs(free_dofs)
+        do column = 1, matrix%ncol
+            if (.not. prescribed_mask(column)) cycle
             do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
                 row = matrix%row_idx(entry)
-                if (row <= interior_count) then
-                    interior_rhs(row) = interior_rhs(row) - &
+                if (.not. prescribed_mask(row)) then
+                    interior_rhs(free_index(row)) = &
+                        interior_rhs(free_index(row)) - &
                         matrix%val(entry) * prescribed(column)
                 end if
             end do
         end do
 
         call sparse_direct_solve_csc( &
-            interior_count, column_pointers, row_indices, values, &
+            free_count, column_pointers, row_indices, values, &
             interior_rhs, interior_solution, status)
         if (status /= 0) error stop "solve: sparse Nedelec solve failed"
-        solution(:interior_count) = interior_solution
+        solution(free_dofs) = interior_solution
 
         residual = -interior_rhs
-        do column = 1, interior_count
+        do column = 1, free_count
             do entry = column_pointers(column), &
                     column_pointers(column + 1) - 1
                 residual(row_indices(entry)) = &
