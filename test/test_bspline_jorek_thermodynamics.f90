@@ -2,7 +2,10 @@ program test_bspline_jorek_thermodynamics
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         apply_bspline_jorek_thermodynamic_jvp, &
-        apply_bspline_jorek_thermodynamic_rhs
+        apply_bspline_jorek_thermodynamic_rhs, &
+        apply_bspline_jorek_density_jvp, &
+        apply_bspline_jorek_density_rhs, &
+        project_bspline_toroidal_product
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -15,8 +18,11 @@ program test_bspline_jorek_thermodynamics
     real(dp), parameter :: gamma = 5.0_dp/3.0_dp
     real(dp), parameter :: finite_difference_step = 1.0e-6_dp
     complex(dp), allocatable :: field(:, :), field_direction(:, :)
+    complex(dp), allocatable :: flux(:, :), flux_direction(:, :)
     complex(dp), allocatable :: jvp(:, :), minus(:, :), plus(:, :)
     complex(dp), allocatable :: potential(:, :), potential_direction(:, :)
+    complex(dp), allocatable :: projected_product(:, :)
+    complex(dp), allocatable :: velocity(:, :), velocity_direction(:, :)
     complex(dp), allocatable :: rhs(:, :)
     real(dp), allocatable :: cylindrical_test(:)
     real(dp), allocatable :: control_points(:, :, :), r(:), weights(:, :), z(:)
@@ -76,6 +82,32 @@ program test_bspline_jorek_thermodynamics
         "JOREK density transport conserves cylindrical mass")
 
     call seed_random_numbers()
+    field = cmplx(0.0_dp, 0.0_dp, dp)
+    field(:, 1) = cmplx(1.0_dp, 0.0_dp, dp)
+    call random_complex_field(potential)
+    call project_bspline_toroidal_product( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, field, &
+        potential, 5, projected_product, status)
+    call check_condition(status%code == 0 .and. maxval(abs( &
+        projected_product - potential)) < 3.0e-12_dp, &
+        "Galerkin Fourier product preserves multiplication by one")
+
+    allocate( &
+        flux(dof, size(modes)), velocity(dof, size(modes)), &
+        flux_direction(dof, size(modes)), velocity_direction(dof, size(modes)))
+    field = cmplx(0.0_dp, 0.0_dp, dp)
+    potential = cmplx(0.0_dp, 0.0_dp, dp)
+    flux = cmplx(0.0_dp, 0.0_dp, dp)
+    velocity = cmplx(0.0_dp, 0.0_dp, dp)
+    field(:, 2) = cmplx(1.0_dp, 0.0_dp, dp)
+    velocity(:, 1) = cmplx(1.0_dp, 0.0_dp, dp)
+    call apply_bspline_jorek_density_rhs( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, field, &
+        potential, flux, velocity, 2.0_dp, 10, rhs, status)
+    call check_condition(abs(sum(rhs(:, 2)) + &
+        cmplx(0.0_dp, 1.0_dp, dp)) < 3.0e-12_dp, &
+        "JOREK density residual reproduces conservative parallel flux")
+
     call random_complex_field(field)
     call random_complex_field(potential)
     call random_complex_field(field_direction)
@@ -97,6 +129,32 @@ program test_bspline_jorek_thermodynamics
     call check_condition(maxval(abs( &
         (plus - minus)/(2.0_dp*finite_difference_step) - jvp)) < 3.0e-8_dp, &
         "Analytical JOREK thermodynamic JVP matches a central difference")
+
+    call random_complex_field(flux)
+    call random_complex_field(velocity)
+    call random_complex_field(flux_direction)
+    call random_complex_field(velocity_direction)
+    call apply_bspline_jorek_density_jvp( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, field, &
+        potential, flux, velocity, field_direction, potential_direction, &
+        flux_direction, velocity_direction, 1.7_dp, 5, jvp, status)
+    call apply_bspline_jorek_density_rhs( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, &
+        field + finite_difference_step*field_direction, &
+        potential + finite_difference_step*potential_direction, &
+        flux + finite_difference_step*flux_direction, &
+        velocity + finite_difference_step*velocity_direction, 1.7_dp, 5, &
+        plus, status)
+    call apply_bspline_jorek_density_rhs( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, &
+        field - finite_difference_step*field_direction, &
+        potential - finite_difference_step*potential_direction, &
+        flux - finite_difference_step*flux_direction, &
+        velocity - finite_difference_step*velocity_direction, 1.7_dp, 5, &
+        minus, status)
+    call check_condition(maxval(abs( &
+        (plus - minus)/(2.0_dp*finite_difference_step) - jvp)) < 8.0e-8_dp, &
+        "Analytical complete density JVP matches a central difference")
 
     call check_summary("JOREK isogeometric thermodynamic transport")
 
