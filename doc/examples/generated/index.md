@@ -33,6 +33,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [adaptive_helmholtz_bem_sphere](adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
 - [magnetic_curvilinear_metrics](magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
+- [iga_shape_sensitivity](iga_shape_sensitivity.html) - This example differentiates a complete scalar isogeometric state problem,
 - [iga_polar_feec](iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence
 - [iga_jorek_flux](iga_jorek_flux.html) - This advanced example evolves the ideal poloidal magnetic-flux subflow
 - [maxwell_torus_curved_scattering](maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
