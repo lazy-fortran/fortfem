@@ -17,6 +17,8 @@ operators, sparse solvers, and analytical verification examples.
 ## User Guide
 
 - [Design Documentation](design/index.html) - Architecture and design decisions
+- [Differentiation](design/differentiation.html) - JVP/VJP contracts,
+  FortSym generation, Enzyme validation, and sparse adjoints
 - [API Reference](../lists/modules.html) - Detailed module documentation
 - [Source Files](../lists/files.html) - Browse source code
 

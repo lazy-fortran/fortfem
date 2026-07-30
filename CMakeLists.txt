@@ -8,6 +8,10 @@ include(CMakePackageConfigHelpers)
 
 option(FORTFEM_FETCH_DEPENDENCIES
     "Fetch pinned dependencies when targets are not already available" ON)
+option(FORTFEM_ENABLE_ENZYME
+    "Enable optional Flang/Enzyme element-kernel tournaments" OFF)
+option(FORTFEM_ENZYME_REQUIRED
+    "Fail configuration when the optional Enzyme toolchain is unavailable" OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_Fortran_STANDARD 2018)
@@ -91,3 +95,28 @@ install(EXPORT fortfemTargets
     FILE fortfemTargets.cmake
     NAMESPACE fortfem::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/fortfem)
+
+if(FORTFEM_ENABLE_ENZYME)
+    # Reuse FortNum's tested Flang -> LLVM IR -> Enzyme -> Flang pipeline.
+    # Fetching the pinned source does not build FortNum; only its generic CMake
+    # fixture support is included.
+    FetchContent_Declare(fortnum_enzyme_support
+        GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
+        GIT_TAG 609d7b0a095e006128c08502c1a30242e2889344
+        GIT_SHALLOW FALSE
+        SOURCE_SUBDIR cmake/enzyme-support)
+    FetchContent_MakeAvailable(fortnum_enzyme_support)
+    set(FORTNUM_ENABLE_ENZYME ON)
+    set(FORTNUM_ENZYME_REQUIRED ${FORTFEM_ENZYME_REQUIRED})
+    include("${fortnum_enzyme_support_SOURCE_DIR}/cmake/FortnumEnzyme.cmake")
+    include(
+        "${fortnum_enzyme_support_SOURCE_DIR}/cmake/FortnumAddEnzymeTest.cmake")
+    enable_testing()
+    fortnum_add_enzyme_test(
+        NAME fortfem_enzyme_h1_geometry_products
+        SOURCES
+            src/generated/fortfem_bspline_h1_geometry_products.f90
+            cmake/enzyme/h1_geometry_products.f90
+        MODE forward
+        OPT_LEVEL O2)
+endif()
