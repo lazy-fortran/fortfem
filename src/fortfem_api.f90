@@ -377,6 +377,7 @@ module fortfem_api
     use fortfem_tetra_rt_global_dof_map, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant, &
+        map_tetra_nedelec_covariant_jvp, map_tetra_nedelec_covariant_vjp, &
         map_tetra_rt_contravariant
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_global_dof_map, only: &
@@ -837,6 +838,8 @@ module fortfem_api
     public :: build_tetra_rt_basis_transform
     public :: build_tetra_rt_dof_map
     public :: map_tetra_nedelec_covariant
+    public :: map_tetra_nedelec_covariant_jvp
+    public :: map_tetra_nedelec_covariant_vjp
     public :: map_tetra_rt_contravariant
     public :: build_tetra_edge_dof_map
     public :: build_tetra_nedelec_basis_transform
