@@ -22,6 +22,7 @@ module fortfem_api
         assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_pml_element, &
+        assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_vector_load, &
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
@@ -562,6 +563,7 @@ module fortfem_api
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_element
+    public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
     public :: assemble_helmholtz_single_layer_linear
