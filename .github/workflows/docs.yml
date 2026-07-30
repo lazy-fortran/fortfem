@@ -59,7 +59,19 @@ jobs:
         
       - name: Create empty plots directory if no artifacts
         run: |
+          set -euo pipefail
           mkdir -p ./artifacts/plots/
+          interoperability_dir=./artifacts/plots/examples/interoperability_benchmarks
+          if [[ -d "$interoperability_dir" ]]; then
+            shopt -s nullglob
+            nested=("$interoperability_dir"/generated-interoperability-plots-*)
+            if [[ "${#nested[@]}" -gt 0 ]]; then
+              test "${#nested[@]}" -eq 1
+              find "${nested[0]}" -maxdepth 1 -type f \
+                -exec mv {} "$interoperability_dir/" \;
+              rmdir "${nested[0]}"
+            fi
+          fi
           find ./artifacts/plots/ -maxdepth 4 -type f -print
         
       - name: Install dependencies
@@ -80,6 +92,8 @@ jobs:
           source_dir=artifacts/plots/examples
           test -d "$source_dir"
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
+          test "$(find "$source_dir/interoperability_benchmarks" \
+            -maxdepth 1 -name '*.png' | wc -l)" -eq 4
           mkdir -p build/doc/page/media/examples build/doc/media/examples
           cp -r "$source_dir"/. build/doc/page/media/examples/
           cp -r "$source_dir"/. build/doc/media/examples/
