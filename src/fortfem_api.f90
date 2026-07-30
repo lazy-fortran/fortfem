@@ -260,6 +260,7 @@ module fortfem_api
         assemble_planar_helmholtz_dtn_form_jvp, &
         assemble_planar_helmholtz_dtn_form_vjp
     use fortfem_planar_maxwell_dtn, only: apply_planar_maxwell_dtn, &
+        apply_planar_maxwell_dtn_jvp, apply_planar_maxwell_dtn_vjp, &
         assemble_planar_maxwell_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
         apply_planar_acoustic_displacement_dtn, &
@@ -723,6 +724,8 @@ module fortfem_api
     public :: apply_planar_helmholtz_dtn_jvp
     public :: apply_planar_helmholtz_dtn_vjp
     public :: apply_planar_maxwell_dtn
+    public :: apply_planar_maxwell_dtn_jvp
+    public :: apply_planar_maxwell_dtn_vjp
     public :: assemble_planar_maxwell_dtn_form
     public :: assemble_planar_nedelec_maxwell_dtn_form
     public :: build_planar_nedelec_trace_sampling
