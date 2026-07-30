@@ -53,6 +53,8 @@ module fortfem_api
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d
+    use fortfem_maxwell_rwg_surface, only: &
+        build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
@@ -226,6 +228,8 @@ module fortfem_api
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
+    public :: build_maxwell_rwg_surface_space
+    public :: evaluate_maxwell_rwg_basis
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
