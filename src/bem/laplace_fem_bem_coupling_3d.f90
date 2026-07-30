@@ -1,0 +1,135 @@
+module fortfem_laplace_fem_bem_coupling_3d
+    use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
+        assemble_tetra_lagrange_stiffness_element
+    use fortfem_kinds, only: dp
+    use fortfem_laplace_galerkin_3d, only: &
+        assemble_laplace_calderon_p1_p0_3d
+    implicit none
+
+    private
+
+    public :: solve_laplace_fem_bem_johnson_nedelec_3d
+
+    interface
+        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            real(dp), intent(inout) :: a(lda, *)
+            integer, intent(out) :: ipiv(*)
+            real(dp), intent(inout) :: b(ldb, *)
+            integer, intent(out) :: info
+        end subroutine dgesv
+    end interface
+
+contains
+
+    subroutine solve_laplace_fem_bem_johnson_nedelec_3d( &
+            vertices, tetrahedra, boundary_triangles, volume_load, &
+            quadrature_degree, potential, normal_flux, status)
+        real(dp), intent(in) :: vertices(:, :), volume_load(:)
+        integer, intent(in) :: tetrahedra(:, :), boundary_triangles(:, :)
+        integer, intent(in) :: quadrature_degree
+        real(dp), allocatable, intent(out) :: potential(:), normal_flux(:)
+        integer, intent(out) :: status
+
+        integer, parameter :: basis_to_vertex(4) = [4, 3, 2, 1]
+        real(dp), allocatable :: adjoint(:, :), double_layer(:, :)
+        real(dp), allocatable :: element_matrix(:, :), hypersingular(:, :)
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
+        real(dp), allocatable :: single_layer(:, :)
+        integer, allocatable :: pivots(:)
+        real(dp) :: area, tetra_vertices(3, 4)
+        integer :: column, info, local_status, node, row, tetrahedron
+        integer :: total_dof_count, triangle, vertex_count
+
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(vertices, 2) < 4) return
+        if (size(tetrahedra, 1) /= 4 .or. size(tetrahedra, 2) < 1) return
+        if (size(boundary_triangles, 1) /= 3 .or. &
+            size(boundary_triangles, 2) < 4) return
+        if (size(volume_load) /= size(vertices, 2)) return
+        if (any(tetrahedra < 1) .or. &
+            any(tetrahedra > size(vertices, 2))) return
+        if (any(boundary_triangles < 1) .or. &
+            any(boundary_triangles > size(vertices, 2))) return
+        call assemble_laplace_calderon_p1_p0_3d( &
+            vertices, boundary_triangles, quadrature_degree, single_layer, &
+            double_layer, adjoint, hypersingular, local_status)
+        if (local_status /= 0) return
+
+        vertex_count = size(vertices, 2)
+        total_dof_count = vertex_count + size(boundary_triangles, 2)
+        allocate(matrix(total_dof_count, total_dof_count))
+        allocate(right_hand_side(total_dof_count, 1), pivots(total_dof_count))
+        matrix = 0.0_dp
+        right_hand_side = 0.0_dp
+        right_hand_side(:vertex_count, 1) = volume_load
+        do tetrahedron = 1, size(tetrahedra, 2)
+            tetra_vertices = vertices(:, tetrahedra(:, tetrahedron))
+            call assemble_tetra_lagrange_stiffness_element( &
+                tetra_vertices, 1, 2, element_matrix, local_status)
+            if (local_status /= 0) return
+            do column = 1, 4
+                do row = 1, 4
+                    matrix( &
+                        tetrahedra(basis_to_vertex(row), tetrahedron), &
+                        tetrahedra(basis_to_vertex(column), tetrahedron)) = &
+                        matrix( &
+                        tetrahedra(basis_to_vertex(row), tetrahedron), &
+                        tetrahedra(basis_to_vertex(column), tetrahedron)) + &
+                        element_matrix(row, column)
+                end do
+            end do
+        end do
+
+        do triangle = 1, size(boundary_triangles, 2)
+            area = triangle_area( &
+                vertices(:, boundary_triangles(:, triangle)))
+            do node = 1, 3
+                matrix( &
+                    boundary_triangles(node, triangle), &
+                    vertex_count + triangle) = &
+                    matrix( &
+                    boundary_triangles(node, triangle), &
+                    vertex_count + triangle) - area/3.0_dp
+                matrix( &
+                    vertex_count + triangle, &
+                    boundary_triangles(node, triangle)) = &
+                    matrix( &
+                    vertex_count + triangle, &
+                    boundary_triangles(node, triangle)) + area/6.0_dp
+            end do
+        end do
+        matrix(vertex_count + 1:, :vertex_count) = &
+            matrix(vertex_count + 1:, :vertex_count) - double_layer
+        matrix(vertex_count + 1:, vertex_count + 1:) = single_layer
+
+        call dgesv( &
+            total_dof_count, 1, matrix, total_dof_count, pivots, &
+            right_hand_side, total_dof_count, info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        allocate(potential(vertex_count))
+        allocate(normal_flux(size(boundary_triangles, 2)))
+        potential = right_hand_side(:vertex_count, 1)
+        normal_flux = right_hand_side(vertex_count + 1:, 1)
+        status = 0
+    end subroutine solve_laplace_fem_bem_johnson_nedelec_3d
+
+    pure function triangle_area(vertices) result(area)
+        real(dp), intent(in) :: vertices(3, 3)
+        real(dp) :: area
+
+        real(dp) :: first(3), second(3)
+
+        first = vertices(:, 2) - vertices(:, 1)
+        second = vertices(:, 3) - vertices(:, 1)
+        area = 0.5_dp*norm2([ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)])
+    end function triangle_area
+
+end module fortfem_laplace_fem_bem_coupling_3d
