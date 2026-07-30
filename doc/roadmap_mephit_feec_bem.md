@@ -686,6 +686,12 @@ traces, items 1--2, and adaptive
 refinement remain. Item 5 is implemented for affine and radially curved
 sphere Maxwell traces as summarized above.
 
+A structured solid-torus volume mesh now sweeps a conforming triangulated
+disk into positively oriented tetrahedra. Its only incidence-one faces are
+the declared exact-torus boundary panels, which retain their angle
+coordinates for curved BEM integration. This supplies the missing common
+volume/surface topology for toroidal Costabel coupling.
+
 ## Commit policy
 
 Each commit contains one test-driven capability or one dependency migration.

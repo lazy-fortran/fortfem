@@ -32,6 +32,7 @@ module fortfem_api
     use fortfem_api_solvers
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
+    use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
@@ -289,6 +290,7 @@ module fortfem_api
     public :: rectangle_mesh
     public :: unit_disk_mesh
     public :: generate_torus_surface_mesh
+    public :: generate_solid_torus_tetra_mesh
     public :: evaluate_torus_curved_panel
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
