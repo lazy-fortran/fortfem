@@ -13,6 +13,7 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
@@ -23,6 +24,33 @@ module fortfem_maxwell_torus_curved_rwg
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_efie_imaginary_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, decay_rate
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (decay_rate <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status, decaying_kernel=.true.)
+        if (status /= 0) return
+        matrix = -impedance*( &
+            decay_rate*vector_potential + scalar_potential/decay_rate)
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
 
     subroutine assemble_maxwell_torus_curved_mfie_rwg_rbc_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
