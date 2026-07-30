@@ -9,6 +9,11 @@ module fortfem_api_solvers
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve, &
         jacobi_preconditioner, ilu_preconditioner
+    use fortfem_sparse_direct, only: sparse_direct_factor_t, &
+        sparse_direct_factor_csc, sparse_direct_factor_transpose_csc, &
+        sparse_direct_solve_csc, sparse_direct_solve_factored, &
+        sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp, &
+        sparse_direct_free
     implicit none
 
     private
@@ -17,6 +22,11 @@ module fortfem_api_solvers
     public :: solver_options
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     public :: jacobi_preconditioner, ilu_preconditioner
+    public :: sparse_direct_factor_t
+    public :: sparse_direct_factor_csc, sparse_direct_factor_transpose_csc
+    public :: sparse_direct_solve_csc
+    public :: sparse_direct_solve_factored, sparse_direct_solve_factored_jvp
+    public :: sparse_direct_solve_factored_vjp, sparse_direct_free
 
     public :: assemble_laplacian_system
     public :: solve

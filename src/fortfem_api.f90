@@ -849,7 +849,10 @@ module fortfem_api
     public :: assemble_bspline_polar_h1_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
-    public :: sparse_direct_solve_factored, sparse_direct_free
+    public :: sparse_direct_factor_transpose_csc, sparse_direct_solve_csc
+    public :: sparse_direct_solve_factored
+    public :: sparse_direct_solve_factored_jvp
+    public :: sparse_direct_solve_factored_vjp, sparse_direct_free
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t
