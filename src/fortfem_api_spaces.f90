@@ -87,16 +87,14 @@ contains
                 error stop "vector_function_space: invalid Nedelec space"
             end if
             space%ndof = global_dof_count
-        case ("RT")
-            if (degree == 1) then
-                if (.not. allocated(mesh%data%edges)) then
-                    call mesh%data%build_edge_connectivity()
-                end if
-                if (.not. allocated(mesh%data%edge_to_dof)) then
-                    call mesh%data%build_edge_dof_numbering()
-                end if
-                space%ndof = mesh%data%n_edges
+        case ("RT", "Raviart-Thomas")
+            call build_triangle_trimmed_dof_map( &
+                mesh%data, degree + 1, global_dofs, transforms, &
+                global_dof_count, status)
+            if (status /= 0) then
+                error stop "vector_function_space: invalid RT space"
             end if
+            space%ndof = global_dof_count
         end select
     end function vector_function_space
 

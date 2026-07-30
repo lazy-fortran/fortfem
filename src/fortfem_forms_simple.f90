@@ -9,6 +9,7 @@ module fortfem_forms_simple
         assemble_triangle_nedelec_second_curl_mass_csc, &
         assemble_triangle_nedelec_second_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
+        assemble_triangle_rt_cell_vector_load, &
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
@@ -587,10 +588,12 @@ contains
             return
         end if
         if (trim(family) /= "Nedelec" .and. &
-            trim(family) /= "Nedelec1" .and. trim(family) /= "Edge") then
+            trim(family) /= "Nedelec1" .and. trim(family) /= "Edge" .and. &
+            trim(family) /= "RT" .and. &
+            trim(family) /= "Raviart-Thomas") then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
-                "Sparse vector load compiler supports first-kind Nedelec")
+                "Sparse vector load compiler requires Nedelec or RT")
             return
         end if
         if (source_token /= 0) then
@@ -601,10 +604,27 @@ contains
                     "Sparse vector load compiler lost its cell source")
                 return
             end if
-            call assemble_triangle_nedelec_cell_vector_load( &
-                mesh, degree, quadrature_degree, &
-                expr%tokens(source_token)%cell_vector_values, vector, status)
+            if (trim(family) == "RT" .or. &
+                trim(family) == "Raviart-Thomas") then
+                call assemble_triangle_rt_cell_vector_load( &
+                    mesh, degree, quadrature_degree, &
+                    expr%tokens(source_token)%cell_vector_values, &
+                    vector, status)
+            else
+                call assemble_triangle_nedelec_cell_vector_load( &
+                    mesh, degree, quadrature_degree, &
+                    expr%tokens(source_token)%cell_vector_values, &
+                    vector, status)
+            end if
             if (status%code == 0) vector = source_scale * vector
+            return
+        end if
+        if (trim(family) == "RT" .or. &
+            trim(family) == "Raviart-Thomas") then
+            allocate(cell_values(2, mesh%n_triangles))
+            cell_values = spread(source_value, 2, mesh%n_triangles)
+            call assemble_triangle_rt_cell_vector_load( &
+                mesh, degree, quadrature_degree, cell_values, vector, status)
             return
         end if
         if (degree > 1) then

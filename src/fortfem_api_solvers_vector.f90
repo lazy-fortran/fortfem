@@ -61,8 +61,15 @@ contains
             trim(Eh%space%element_family) == "Nedelec1" .or. &
             trim(Eh%space%element_family) == "Edge") .and. &
             Eh%space%degree >= 1) then
-            call solve_compiled_nedelec_problem( &
-                equation, Eh, bc, solver, local_opts, local_stats)
+            call solve_compiled_vector_problem( &
+                equation, Eh, bc, solver, local_opts, local_stats, &
+                "Nedelec", Eh%space%degree, .false.)
+        else if ((trim(Eh%space%element_family) == "RT" .or. &
+                trim(Eh%space%element_family) == "Raviart-Thomas") .and. &
+                Eh%space%degree >= 0) then
+            call solve_compiled_vector_problem( &
+                equation, Eh, bc, solver, local_opts, local_stats, &
+                "RT", Eh%space%degree + 1, .true.)
         else if (index(equation%lhs%description, "curl") > 0) then
             call solve_curl_curl_problem(Eh, bc, solver, local_opts, &
                 local_stats)
@@ -75,38 +82,43 @@ contains
         end if
     end subroutine solve_vector
 
-    subroutine solve_compiled_nedelec_problem( &
-            equation, field, boundary_condition, solver_type, options, stats)
+    subroutine solve_compiled_vector_problem( &
+            equation, field, boundary_condition, solver_type, options, stats, &
+            family, edge_moment_count, normal_family)
         type(form_equation_t), intent(in) :: equation
         type(vector_function_t), intent(inout) :: field
         type(vector_bc_t), intent(in) :: boundary_condition
         character(len=*), intent(in) :: solver_type
         type(solver_options_t), intent(in) :: options
         type(solver_stats_t), intent(out) :: stats
+        character(len=*), intent(in) :: family
+        integer, intent(in) :: edge_moment_count
+        logical, intent(in) :: normal_family
 
         type(csc_t) :: sparse_matrix
         type(fortsparse_status_t) :: sparse_status
         real(dp), allocatable :: dense_matrix(:, :), prescribed_values(:)
         real(dp), allocatable :: right_hand_side(:), solution(:)
-        real(dp) :: edge_vector(2), prescribed_value
+        real(dp) :: edge_component, edge_vector(2), prescribed_value
         logical, allocatable :: prescribed_mask(:)
         integer :: boundary_index, degree_of_freedom, edge, dof_count, moment
-        integer :: order
+        integer :: assembly_degree
 
+        assembly_degree = field%space%degree
         dof_count = field%space%ndof
         allocate(right_hand_side(dof_count), prescribed_values(dof_count))
         allocate(prescribed_mask(dof_count))
         allocate(solution(dof_count))
         call compile_vector_form_csc( &
-            equation%lhs, field%space%mesh%data, "Nedelec", &
-            field%space%degree, 2 * field%space%degree + 2, &
+            equation%lhs, field%space%mesh%data, family, assembly_degree, &
+            2 * edge_moment_count + 2, &
             sparse_matrix, sparse_status)
         if (sparse_status%code /= 0) then
             error stop "solve: unsupported Nedelec bilinear form"
         end if
         call compile_vector_form_rhs( &
-            equation%rhs, field%space%mesh%data, "Nedelec", &
-            field%space%degree, 2 * field%space%degree + 2, &
+            equation%rhs, field%space%mesh%data, family, assembly_degree, &
+            2 * edge_moment_count + 2, &
             right_hand_side, sparse_status)
         if (sparse_status%code /= 0) then
             error stop "solve: unsupported Nedelec linear form"
@@ -117,7 +129,6 @@ contains
         end if
         prescribed_values = 0.0_dp
         prescribed_mask = .false.
-        order = field%space%degree
         do boundary_index = 1, &
                 size(field%space%mesh%data%boundary_edges)
             edge = field%space%mesh%data%boundary_edges(boundary_index)
@@ -125,9 +136,15 @@ contains
                 field%space%mesh%data%edges(2, edge)) - &
                 field%space%mesh%data%vertices(:, &
                 field%space%mesh%data%edges(1, edge))
-            do moment = 1, order
+            if (normal_family) then
+                edge_component = edge_vector(1)
+                edge_vector(1) = edge_vector(2)
+                edge_vector(2) = -edge_component
+            end if
+            do moment = 1, edge_moment_count
                 degree_of_freedom = &
-                    field%space%mesh%data%edge_to_dof(edge) * order + moment
+                    field%space%mesh%data%edge_to_dof(edge) * &
+                    edge_moment_count + moment
                 if (allocated(boundary_condition%edge_values)) then
                     prescribed_value = boundary_condition%edge_values( &
                         degree_of_freedom)
@@ -149,8 +166,8 @@ contains
                 sparse_matrix, right_hand_side, prescribed_values, &
                 prescribed_mask, solution, stats)
         case default
-            if (order /= 1) then
-                error stop "solve: higher-order Nedelec requires direct solver"
+            if (edge_moment_count /= 1 .or. normal_family) then
+                error stop "solve: arbitrary-order vector form needs direct"
             end if
             allocate(dense_matrix(dof_count, dof_count))
             call copy_csc_to_dense(sparse_matrix, dense_matrix)
@@ -166,7 +183,7 @@ contains
         end if
         field%values(:, 1) = solution
         field%values(:, 2) = 0.0_dp
-    end subroutine solve_compiled_nedelec_problem
+    end subroutine solve_compiled_vector_problem
 
     subroutine solve_sparse_dirichlet( &
             matrix, rhs, prescribed, prescribed_mask, solution, stats)
