@@ -18,6 +18,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -31,6 +32,60 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d( &
+            vertices, triangles, radius, coefficients, observation, &
+            wave_number, quadrature_degree, magnetic_field, status)
+        real(dp), intent(in) :: vertices(:, :), radius, observation(3)
+        complex(dp), intent(in) :: coefficients(:)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(out) :: magnetic_field(3)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), displacement(3), divergence, jacobian
+        real(dp) :: point(3), distance
+        complex(dp) :: gradient_green(3), green, surface_current(3)
+        integer :: basis, node, panel
+
+        magnetic_field = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status)
+                    if (status /= 0) return
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                end do
+                displacement = observation - point
+                distance = norm2(displacement)
+                if (distance <= 128.0_dp*epsilon(1.0_dp)*radius) return
+                green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*distance)
+                gradient_green = green* &
+                    (cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance)* &
+                    displacement/distance
+                magnetic_field = magnetic_field + weights(node)*jacobian* &
+                    complex_cross_product(gradient_green, surface_current)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
 
     subroutine solve_maxwell_pec_sphere_curved_efie_rwg_3d( &
             vertices, triangles, radius, direction, polarization, wave_number, &
@@ -726,6 +781,16 @@ contains
         value = exp(cmplx(0.0_dp, wave_number*radius, dp))/ &
             (4.0_dp*acos(-1.0_dp)*radius)
     end function helmholtz_green
+
+    pure function complex_cross_product(first, second) result(product)
+        complex(dp), intent(in) :: first(3), second(3)
+        complex(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function complex_cross_product
 
     pure logical function curved_reference_children_touch( &
             vertices, triangles, first_panel, second_panel, radius, &
