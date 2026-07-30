@@ -4,7 +4,9 @@ title: FortFEM Documentation
 
 # FortFEM Documentation
 
-Welcome to the FortFEM documentation! FortFEM is a modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS.
+FortFEM is a modern Fortran library for finite-element and boundary-element
+methods. It includes scalar and vector-valued discretizations, open-boundary
+operators, sparse solvers, and analytical verification examples.
 
 ## Getting Started
 
@@ -20,11 +22,16 @@ Welcome to the FortFEM documentation! FortFEM is a modern Fortran finite element
 
 ## Features
 
-- **Natural mathematical notation** for expressing weak forms
-- **Multiple element types**: P1 Lagrange and Nédélec edge elements
-- **Built-in visualization**: Plotting with fortplotlib integration
-- **Modern Fortran**: Object-oriented design with clear interfaces
-- **Clean API**: FEniCS-inspired interface for ease of use
+- **Finite-element exterior calculus**: arbitrary-order triangular and
+  tetrahedral H1, H(curl), H(div), and discontinuous families
+- **Open boundaries**: planar, circular, and spherical DtN maps, PML, and
+  scalar and Maxwell boundary-integral operators
+- **FEM/BEM coupling**: scalar transmission formulations and compatible
+  Nédélec/RWG Maxwell trace coupling
+- **Shared numerics**: `fortnum` quadrature and special functions plus
+  `fortsparse` CSC assembly, factorization, and solves
+- **Reproducible examples**: analytical comparisons and fortplot-generated
+  gallery artifacts
 
 ## Example Code
 
@@ -66,7 +73,8 @@ end program
 
 ## Contributing
 
-FortFEM is open source and welcomes contributions! Visit our [GitHub repository](https://github.com/itpplasma/fortfem) to:
+FortFEM is open source and welcomes contributions! Visit our
+[GitHub repository](https://github.com/lazy-fortran/fortfem) to:
 - Report issues
 - Submit pull requests
 - Join discussions
