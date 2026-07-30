@@ -7,6 +7,7 @@ module fortfem_sparse_direct
     private
 
     public :: sparse_direct_solve_csc
+    public :: sparse_direct_solve_zero_constrained
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
     public :: sparse_direct_solve_factored
@@ -33,6 +34,72 @@ module fortfem_sparse_direct
     end interface validate_csc_dimensions
 
 contains
+
+    subroutine sparse_direct_solve_zero_constrained( &
+            matrix, rhs, constrained, solution, status)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:)
+        logical, intent(in) :: constrained(:)
+        real(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: column_pointers(:), free_dofs(:)
+        integer, allocatable :: free_index(:), row_indices(:)
+        real(dp), allocatable :: reduced_rhs(:), reduced_solution(:)
+        real(dp), allocatable :: values(:)
+        integer :: column, entry, free_count, reduced_entry, row
+
+        status = -1
+        solution = 0.0_dp
+        if (matrix%nrow /= matrix%ncol) return
+        if (size(rhs) /= matrix%nrow) return
+        if (size(constrained) /= matrix%nrow) return
+        if (size(solution) /= matrix%nrow) return
+        free_count = count(.not. constrained)
+        if (free_count < 1) return
+        allocate(free_dofs(free_count), free_index(matrix%nrow))
+        free_count = 0
+        do column = 1, matrix%ncol
+            if (constrained(column)) cycle
+            free_count = free_count + 1
+            free_dofs(free_count) = column
+        end do
+        free_index = 0
+        do column = 1, free_count
+            free_index(free_dofs(column)) = column
+        end do
+        allocate(column_pointers(free_count + 1))
+        reduced_entry = 0
+        do column = 1, free_count
+            column_pointers(column) = reduced_entry + 1
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                if (.not. constrained(matrix%row_idx(entry))) then
+                    reduced_entry = reduced_entry + 1
+                end if
+            end do
+        end do
+        column_pointers(free_count + 1) = reduced_entry + 1
+        allocate(row_indices(reduced_entry), values(reduced_entry))
+        reduced_entry = 0
+        do column = 1, free_count
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_entry = reduced_entry + 1
+                row_indices(reduced_entry) = free_index(row)
+                values(reduced_entry) = matrix%val(entry)
+            end do
+        end do
+        allocate(reduced_rhs(free_count), reduced_solution(free_count))
+        reduced_rhs = rhs(free_dofs)
+        call sparse_direct_solve_csc( &
+            free_count, column_pointers, row_indices, values, reduced_rhs, &
+            reduced_solution, status)
+        if (status /= 0) return
+        solution(free_dofs) = reduced_solution
+    end subroutine sparse_direct_solve_zero_constrained
 
     subroutine sparse_direct_factor_csc_real( &
             factor, n, col_ptr, row_ind, values, status)

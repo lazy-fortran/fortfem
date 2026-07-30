@@ -238,6 +238,7 @@ module fortfem_api
     ! Public arbitrary-order H(curl) solve, including optional homogeneous PEC.
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass
+    ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &

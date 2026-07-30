@@ -3,7 +3,8 @@ module fortfem_tetra_nedelec_solver_3d
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_vector_load_order
     use fortfem_kinds, only: dp
-    use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortfem_sparse_direct, only: sparse_direct_solve_csc, &
+        sparse_direct_solve_zero_constrained
     use fortfem_tetra_nedelec_global_dof_map, only: &
         build_tetra_nedelec_dof_map
     use fortsparse, only: csc_t, FORTSPARSE_INTERNAL_ERROR, &
@@ -63,7 +64,7 @@ contains
             call build_zero_tangential_mask( &
                 tetrahedra, order, constrained, solve_status)
             if (solve_status /= 0) return
-            call solve_zero_constrained( &
+            call sparse_direct_solve_zero_constrained( &
                 matrix, right_hand_side, constrained, solution, solve_status)
         else
             call sparse_direct_solve_csc( &
@@ -139,67 +140,5 @@ contains
 
         found = any(face == edge(1)) .and. any(face == edge(2))
     end function all_vertices_in_face
-
-    subroutine solve_zero_constrained( &
-            matrix, rhs, constrained, solution, status)
-        type(csc_t), intent(in) :: matrix
-        real(dp), intent(in) :: rhs(:)
-        logical, intent(in) :: constrained(:)
-        real(dp), intent(out) :: solution(:)
-        integer, intent(out) :: status
-
-        integer, allocatable :: column_pointers(:), free_dofs(:)
-        integer, allocatable :: free_index(:), row_indices(:)
-        real(dp), allocatable :: reduced_rhs(:), reduced_solution(:)
-        real(dp), allocatable :: values(:)
-        integer :: column, entry, free_count, reduced_entry, row
-
-        status = 1
-        solution = 0.0_dp
-        free_count = count(.not. constrained)
-        if (free_count < 1) return
-        allocate(free_dofs(free_count), free_index(matrix%nrow))
-        free_count = 0
-        do column = 1, matrix%ncol
-            if (constrained(column)) cycle
-            free_count = free_count + 1
-            free_dofs(free_count) = column
-        end do
-        free_index = 0
-        do column = 1, free_count
-            free_index(free_dofs(column)) = column
-        end do
-        allocate(column_pointers(free_count + 1))
-        reduced_entry = 0
-        do column = 1, free_count
-            column_pointers(column) = reduced_entry + 1
-            do entry = matrix%col_ptr(free_dofs(column)), &
-                    matrix%col_ptr(free_dofs(column) + 1) - 1
-                if (.not. constrained(matrix%row_idx(entry))) then
-                    reduced_entry = reduced_entry + 1
-                end if
-            end do
-        end do
-        column_pointers(free_count + 1) = reduced_entry + 1
-        allocate(row_indices(reduced_entry), values(reduced_entry))
-        reduced_entry = 0
-        do column = 1, free_count
-            do entry = matrix%col_ptr(free_dofs(column)), &
-                    matrix%col_ptr(free_dofs(column) + 1) - 1
-                row = matrix%row_idx(entry)
-                if (constrained(row)) cycle
-                reduced_entry = reduced_entry + 1
-                row_indices(reduced_entry) = free_index(row)
-                values(reduced_entry) = matrix%val(entry)
-            end do
-        end do
-        allocate(reduced_rhs(free_count), reduced_solution(free_count))
-        reduced_rhs = rhs(free_dofs)
-        call sparse_direct_solve_csc( &
-            free_count, column_pointers, row_indices, values, reduced_rhs, &
-            reduced_solution, status)
-        if (status /= 0) return
-        solution(free_dofs) = reduced_solution
-    end subroutine solve_zero_constrained
 
 end module fortfem_tetra_nedelec_solver_3d
