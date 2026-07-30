@@ -1,7 +1,9 @@
 module fortfem_planar_nedelec_maxwell_dtn
     !! Pull back the planar Maxwell capacity map to tetrahedral Nedelec traces.
     use fortfem_kinds, only: dp
-    use fortfem_planar_maxwell_dtn, only: assemble_planar_maxwell_dtn_form
+    use fortfem_planar_maxwell_dtn, only: assemble_planar_maxwell_dtn_form, &
+        assemble_planar_maxwell_dtn_form_jvp, &
+        assemble_planar_maxwell_dtn_form_vjp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
         initialize_tetra_nedelec_first_kind, tetra_nedelec_dof_count, &
@@ -15,6 +17,9 @@ module fortfem_planar_nedelec_maxwell_dtn
 
     public :: assemble_planar_nedelec_maxwell_dtn_form
     public :: build_planar_nedelec_trace_sampling
+    public :: pullback_planar_maxwell_dtn_form
+    public :: pullback_planar_maxwell_dtn_form_jvp
+    public :: pullback_planar_maxwell_dtn_form_vjp
 
 contains
 
@@ -28,7 +33,7 @@ contains
         complex(dp), allocatable, intent(out) :: form(:, :)
         integer, intent(out) :: status
 
-        complex(dp), allocatable :: capacity(:, :), sampling(:, :)
+        complex(dp), allocatable :: sampling(:, :)
         real(dp) :: length_x, length_y
 
         status = 1
@@ -39,13 +44,116 @@ contains
         if (status /= 0) return
         length_x = norm2(periods(:, 1))
         length_y = norm2(periods(:, 2))
+        allocate(form(size(boundary_dofs), size(boundary_dofs)))
+        call pullback_planar_maxwell_dtn_form( &
+            sampling, nx, ny, wave_number, length_x, length_y, form, status)
+    end subroutine assemble_planar_nedelec_maxwell_dtn_form
+
+    subroutine pullback_planar_maxwell_dtn_form( &
+            sampling, nx, ny, wave_number, length_x, length_y, form, status)
+        complex(dp), intent(in) :: sampling(:, :)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        complex(dp), intent(out) :: form(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: capacity(:, :)
+
+        form = cmplx(0.0_dp, 0.0_dp, dp)
+        call validate_pullback_inputs(sampling, form, nx, ny, status)
+        if (status /= 0) return
         call assemble_planar_maxwell_dtn_form( &
             nx, ny, wave_number, length_x, length_y, capacity, status)
         if (status /= 0) return
-        allocate(form(size(boundary_dofs), size(boundary_dofs)))
         form = matmul(transpose(sampling), matmul(capacity, sampling))
         status = 0
-    end subroutine assemble_planar_nedelec_maxwell_dtn_form
+    end subroutine pullback_planar_maxwell_dtn_form
+
+    subroutine pullback_planar_maxwell_dtn_form_jvp( &
+            sampling, nx, ny, wave_number, length_x, length_y, sampling_dot, &
+            wave_number_dot, length_x_dot, length_y_dot, form_dot, status)
+        complex(dp), intent(in) :: sampling(:, :), sampling_dot(:, :)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        real(dp), intent(in) :: wave_number_dot, length_x_dot, length_y_dot
+        complex(dp), intent(out) :: form_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: capacity(:, :), capacity_dot(:, :)
+
+        form_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        call validate_pullback_inputs(sampling, form_dot, nx, ny, status)
+        if (status /= 0) return
+        if (any(shape(sampling_dot) /= shape(sampling))) then
+            status = 1
+            return
+        end if
+        call assemble_planar_maxwell_dtn_form( &
+            nx, ny, wave_number, length_x, length_y, capacity, status)
+        if (status /= 0) return
+        call assemble_planar_maxwell_dtn_form_jvp( &
+            nx, ny, wave_number, length_x, length_y, wave_number_dot, &
+            length_x_dot, length_y_dot, capacity_dot, status)
+        if (status /= 0) return
+        form_dot = &
+            matmul(transpose(sampling_dot), matmul(capacity, sampling)) + &
+            matmul(transpose(sampling), matmul(capacity_dot, sampling)) + &
+            matmul(transpose(sampling), matmul(capacity, sampling_dot))
+        status = 0
+    end subroutine pullback_planar_maxwell_dtn_form_jvp
+
+    subroutine pullback_planar_maxwell_dtn_form_vjp( &
+            sampling, nx, ny, wave_number, length_x, length_y, form_bar, &
+            sampling_bar, wave_number_bar, length_x_bar, length_y_bar, status)
+        complex(dp), intent(in) :: sampling(:, :), form_bar(:, :)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        complex(dp), intent(out) :: sampling_bar(:, :)
+        real(dp), intent(out) :: wave_number_bar, length_x_bar, length_y_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: capacity(:, :), capacity_bar(:, :)
+        complex(dp), allocatable :: capacity_sampling(:, :)
+        complex(dp), allocatable :: sampling_transpose_capacity(:, :)
+
+        sampling_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        wave_number_bar = 0.0_dp
+        length_x_bar = 0.0_dp
+        length_y_bar = 0.0_dp
+        call validate_pullback_inputs(sampling, form_bar, nx, ny, status)
+        if (status /= 0) return
+        if (any(shape(sampling_bar) /= shape(sampling))) then
+            status = 1
+            return
+        end if
+        call assemble_planar_maxwell_dtn_form( &
+            nx, ny, wave_number, length_x, length_y, capacity, status)
+        if (status /= 0) return
+        capacity_sampling = matmul(capacity, sampling)
+        sampling_transpose_capacity = matmul(transpose(sampling), capacity)
+        sampling_bar = &
+            matmul(conjg(capacity_sampling), transpose(form_bar)) + &
+            matmul(conjg(transpose(sampling_transpose_capacity)), form_bar)
+        capacity_bar = matmul( &
+            conjg(sampling), matmul(form_bar, transpose(conjg(sampling))))
+        call assemble_planar_maxwell_dtn_form_vjp( &
+            nx, ny, wave_number, length_x, length_y, capacity_bar, &
+            wave_number_bar, length_x_bar, length_y_bar, status)
+    end subroutine pullback_planar_maxwell_dtn_form_vjp
+
+    subroutine validate_pullback_inputs(sampling, form, nx, ny, status)
+        complex(dp), intent(in) :: sampling(:, :), form(:, :)
+        integer, intent(in) :: nx, ny
+        integer, intent(out) :: status
+
+        status = 1
+        if (nx < 2 .or. ny < 2) return
+        if (size(sampling, 1) /= 2*nx*ny) return
+        if (size(sampling, 2) < 1) return
+        if (size(form, 1) /= size(sampling, 2)) return
+        if (size(form, 2) /= size(sampling, 2)) return
+        status = 0
+    end subroutine validate_pullback_inputs
 
     subroutine build_planar_nedelec_trace_sampling( &
             vertices, tetrahedra, order, origin, periods, nx, ny, &

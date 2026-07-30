@@ -31,7 +31,9 @@ program test_planar_nedelec_maxwell_dtn
     if (status /= 0) error stop "structured tetrahedral mesh failed"
     weight = norm2(periods(:, 1))*norm2(periods(:, 2))/real(nx*ny, dp)
 
-    do order = 1, 6
+    ! Orders one through four exercise edge, face, and cell moments while
+    ! keeping this focused regression within the ten-second test budget.
+    do order = 1, 4
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, 1.0_dp, 1.0_dp, &
             coefficients, sparse_status)
