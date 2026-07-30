@@ -35,7 +35,7 @@ The initial findings used the following evidence:
   [Grote and Keller](https://doi.org/10.1006/jcph.1995.1210) and the
   [Bempp boundary-operator documentation](https://bempp.com/handbook/api/boundary_operators.html).
 
-The current implementation baseline is FortFEM `2ab9fb3` with 168 passing
+The current implementation baseline is FortFEM `c86f686` with 168 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -48,7 +48,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; and commuting grad/curl/div tests | Higher-order magnetic-box convergence and high-level PDE dispatch |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on nonspherical surfaces and curved-boundary elastic coupling |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
-| 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; off-surface evaluation; tetrahedral P1 Johnson-Nedelec FEM/BEM coupling; Maxwell RWG traces, Nedelec-to-RWG transfer, and split EFIE blocks; and an automatically plotted sphere benchmark | Product singular quadrature for the RWG vector-potential block, Maxwell MFIE/CFIE and coupled solves, curved/higher-order traces, production FMM or H-matrices, and adaptive mesh refinement |
+| 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; off-surface evaluation; tetrahedral P1 Johnson-Nedelec FEM/BEM coupling; Maxwell RWG traces, Nedelec-to-RWG transfer, and split EFIE blocks with radial-Duffy coincident-panel product quadrature; and an automatically plotted sphere benchmark | Maxwell MFIE/CFIE and coupled solves, adaptive adjacent-panel RWG product quadrature, curved/higher-order traces, production FMM or H-matrices, and adaptive mesh refinement |
 | Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, and toroidal-coordinate kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
 | Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions; current `fortsparse` provides CSC construction, retained factors, solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
 
