@@ -9,6 +9,7 @@ module fortfem_laplace_torus_curved_bem_3d
 
     public :: assemble_laplace_torus_curved_dtn_3d
     public :: assemble_laplace_torus_curved_calderon_3d
+    public :: evaluate_torus_curved_p1_surface_curls
     public :: solve_laplace_bem_dtn_torus_curved_3d
 
 contains
@@ -373,7 +374,7 @@ contains
                 xi(target_node), eta(target_node), point_target, &
                 target_tangent_xi, target_tangent_eta, jacobian_target, status)
             if (status /= 0) return
-            call surface_curls( &
+            call evaluate_torus_curved_p1_surface_curls( &
                 target_tangent_xi, target_tangent_eta, jacobian_target, &
                 curls_target, status)
             if (status /= 0) return
@@ -384,7 +385,7 @@ contains
                     source_tangent_xi, source_tangent_eta, jacobian_source, &
                     status)
                 if (status /= 0) return
-                call surface_curls( &
+                call evaluate_torus_curved_p1_surface_curls( &
                     source_tangent_xi, source_tangent_eta, jacobian_source, &
                     curls_source, status)
                 if (status /= 0) return
@@ -432,7 +433,7 @@ contains
                 first_reference(1), first_reference(2), point_target, &
                 target_tangent_xi, target_tangent_eta, jacobian_target, status)
             if (status /= 0) return
-            call surface_curls( &
+            call evaluate_torus_curved_p1_surface_curls( &
                 target_tangent_xi, target_tangent_eta, jacobian_target, &
                 curls_target, status)
             if (status /= 0) return
@@ -457,7 +458,7 @@ contains
                             point_source, source_tangent_xi, &
                             source_tangent_eta, jacobian_source, status)
                         if (status /= 0) return
-                        call surface_curls( &
+                        call evaluate_torus_curved_p1_surface_curls( &
                             source_tangent_xi, source_tangent_eta, &
                             jacobian_source, curls_source, status)
                         if (status /= 0) return
@@ -480,7 +481,7 @@ contains
         status = 0
     end subroutine integrate_coincident_hypersingular_pair
 
-    pure subroutine surface_curls( &
+    pure subroutine evaluate_torus_curved_p1_surface_curls( &
             tangent_xi, tangent_eta, jacobian, curls, status)
         real(dp), intent(in) :: tangent_xi(3), tangent_eta(3), jacobian
         real(dp), intent(out) :: curls(3, 3)
@@ -515,7 +516,7 @@ contains
             curls(:, basis) = cross_product(normal, gradient)
         end do
         status = 0
-    end subroutine surface_curls
+    end subroutine evaluate_torus_curved_p1_surface_curls
 
     pure function cross_product(first, second) result(product)
         real(dp), intent(in) :: first(3), second(3)
