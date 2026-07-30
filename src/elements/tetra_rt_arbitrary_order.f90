@@ -15,6 +15,8 @@ module fortfem_tetra_rt_arbitrary_order
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
+        tetrahedron_koornwinder_gradient, triangle_dubiner
     implicit none
     private
 
@@ -45,7 +47,7 @@ contains
         basis%dof_count = 0
         if (allocated(basis%coefficients)) deallocate(basis%coefficients)
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         basis%dof_count = 3*(degree + 1)*(degree + 2)*(degree + 3)/6 + &
             (degree + 1)*(degree + 2)/2
         if (degree <= 4) then
@@ -165,8 +167,9 @@ contains
                         call evaluate_runtime_candidates( &
                             degree, point, candidates, divergences)
                         matrix(moment, :) = matrix(moment, :) + &
-                            weights(node)*x(node)**x_degree* &
-                            y(node)**y_degree* &
+                            weights(node)*moment_value_triangle( &
+                            degree, x_degree, y_degree, &
+                            x(node), y(node))* &
                             matmul(area_normal, candidates)
                     end do
                 end do
@@ -187,8 +190,9 @@ contains
                             call evaluate_runtime_candidates( &
                                 degree, point, candidates, divergences)
                             matrix(moment, :) = matrix(moment, :) + &
-                                weights(node)*x(node)**x_degree* &
-                                y(node)**y_degree*z(node)**z_degree* &
+                                weights(node)*moment_value_tetrahedron( &
+                                degree, x_degree, y_degree, z_degree, &
+                                point)* &
                                 candidates(component, :)
                         end do
                     end do
@@ -229,7 +233,7 @@ contains
 
         integer :: candidate, component, powers(3)
         integer :: total_degree, x_degree, y_degree, z_degree
-        real(dp) :: value
+        real(dp) :: gradient(3), value
 
         values = 0.0_dp
         divergences = 0.0_dp
@@ -240,10 +244,21 @@ contains
                     do y_degree = 0, total_degree - x_degree
                         z_degree = total_degree - x_degree - y_degree
                         candidate = candidate + 1
-                        powers = [x_degree, y_degree, z_degree]
-                        values(component, candidate) = monomial(point, powers)
-                        divergences(candidate) = monomial_derivative( &
-                            point, powers, component)
+                        if (degree <= 5) then
+                            powers = [x_degree, y_degree, z_degree]
+                            value = monomial(point, powers)
+                            gradient(component) = monomial_derivative( &
+                                point, powers, component)
+                        else
+                            value = tetrahedron_koornwinder( &
+                                x_degree, y_degree, z_degree, &
+                                point(1), point(2), point(3))
+                            call tetrahedron_koornwinder_gradient( &
+                                x_degree, y_degree, z_degree, &
+                                point(1), point(2), point(3), gradient)
+                        end if
+                        values(component, candidate) = value
+                        divergences(candidate) = gradient(component)
                     end do
                 end do
             end do
@@ -253,13 +268,56 @@ contains
             do y_degree = 0, total_degree - x_degree
                 z_degree = total_degree - x_degree - y_degree
                 candidate = candidate + 1
-                powers = [x_degree, y_degree, z_degree]
-                value = monomial(point, powers)
+                if (degree <= 5) then
+                    powers = [x_degree, y_degree, z_degree]
+                    value = monomial(point, powers)
+                    do component = 1, 3
+                        gradient(component) = monomial_derivative( &
+                            point, powers, component)
+                    end do
+                else
+                    value = tetrahedron_koornwinder( &
+                        x_degree, y_degree, z_degree, &
+                        point(1), point(2), point(3))
+                    call tetrahedron_koornwinder_gradient( &
+                        x_degree, y_degree, z_degree, &
+                        point(1), point(2), point(3), gradient)
+                end if
                 values(:, candidate) = point*value
-                divergences(candidate) = real(degree + 3, dp)*value
+                divergences(candidate) = &
+                    3.0_dp*value + dot_product(point, gradient)
             end do
         end do
     end subroutine evaluate_runtime_candidates
+
+    pure real(dp) function moment_value_triangle( &
+            degree, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: degree, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (degree <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function moment_value_triangle
+
+    pure real(dp) function moment_value_tetrahedron( &
+            degree, first_degree, second_degree, third_degree, point) &
+            result(value)
+        integer, intent(in) :: degree
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+
+        if (degree <= 5) then
+            value = point(1)**first_degree*point(2)**second_degree* &
+                point(3)**third_degree
+        else
+            value = tetrahedron_koornwinder( &
+                first_degree, second_degree, third_degree, &
+                point(1), point(2), point(3))
+        end if
+    end function moment_value_tetrahedron
 
     pure real(dp) function monomial(point, powers) result(value)
         real(dp), intent(in) :: point(3)

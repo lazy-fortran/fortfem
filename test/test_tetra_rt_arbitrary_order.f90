@@ -4,15 +4,18 @@ program test_tetra_rt_arbitrary_order
         tetra_duffy_quadrature, tetra_rt_dof_count, tetra_rt_t
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
+        triangle_dubiner
     implicit none
 
-    integer, parameter :: expected_counts(0:5) = [4, 15, 36, 70, 120, 189]
+    integer, parameter :: expected_counts(0:6) = &
+        [4, 15, 36, 70, 120, 189, 280]
     type(tetra_rt_t) :: basis
     integer :: degree, status
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 5
+    do degree = 0, 6
         call initialize_tetra_rt(degree, basis, status)
         call record_condition(status == 0 .and. &
             tetra_rt_dof_count(basis) == expected_counts(degree), &
@@ -23,9 +26,6 @@ program test_tetra_rt_arbitrary_order
     call initialize_tetra_rt(-1, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral RT rejects a negative degree")
-    call initialize_tetra_rt(6, basis, status)
-    call record_condition(status /= 0, &
-        "Tetrahedral RT rejects an unsupported degree")
 
     call check_summary("Tetrahedral Raviart-Thomas arbitrary order")
     if (.not. all_passed) error stop 1
@@ -86,9 +86,9 @@ contains
                             end if
                             computed_vector = computed_vector + &
                                 weights(point_id)*values(component, :)* &
-                                x(point_id)**x_degree* &
-                                y(point_id)**y_degree* &
-                                z(point_id)**z_degree
+                                volume_moment_value( &
+                                degree, x_degree, y_degree, z_degree, &
+                                point)
                         end do
                         expected_vector = 0.0_dp
                         expected_vector(moment) = 1.0_dp
@@ -143,10 +143,40 @@ contains
                 if (local_status /= 0) error stop "RT face evaluation failed"
                 integrals = integrals + weights(first)*weights(second)* &
                     (1.0_dp - s)*matmul(area_normal, values)* &
-                    s**x_power*t**y_power
+                    face_moment_value( &
+                    selected_basis%degree, x_power, y_power, s, t)
             end do
         end do
     end subroutine integrate_face_moments
+
+    pure real(dp) function face_moment_value( &
+            degree, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: degree, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (degree <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_moment_value
+
+    pure real(dp) function volume_moment_value( &
+            degree, first_degree, second_degree, third_degree, point) &
+            result(value)
+        integer, intent(in) :: degree
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+
+        if (degree <= 5) then
+            value = point(1)**first_degree*point(2)**second_degree* &
+                point(3)**third_degree
+        else
+            value = tetrahedron_koornwinder( &
+                first_degree, second_degree, third_degree, &
+                point(1), point(2), point(3))
+        end if
+    end function volume_moment_value
 
     subroutine check_divergence(selected_basis)
         type(tetra_rt_t), intent(in) :: selected_basis
@@ -154,6 +184,7 @@ contains
         real(dp), parameter :: step = 1.0e-3_dp
         real(dp) :: point(3), shifted(3)
         real(dp), allocatable :: divergences(:), finite_difference(:)
+        real(dp), allocatable :: minus_three(:, :), plus_three(:, :)
         real(dp), allocatable :: minus_one(:, :), minus_two(:, :)
         real(dp), allocatable :: plus_one(:, :), plus_two(:, :)
         real(dp) :: divergence_error, divergence_scale
@@ -163,8 +194,10 @@ contains
         allocate(finite_difference(tetra_rt_dof_count(selected_basis)))
         allocate(minus_one(3, tetra_rt_dof_count(selected_basis)))
         allocate(minus_two(3, tetra_rt_dof_count(selected_basis)))
+        allocate(minus_three(3, tetra_rt_dof_count(selected_basis)))
         allocate(plus_one(3, tetra_rt_dof_count(selected_basis)))
         allocate(plus_two(3, tetra_rt_dof_count(selected_basis)))
+        allocate(plus_three(3, tetra_rt_dof_count(selected_basis)))
         point = [0.19_dp, 0.23_dp, 0.17_dp]
         finite_difference = 0.0_dp
         do component = 1, 3
@@ -179,6 +212,11 @@ contains
                 selected_basis, shifted, plus_two, divergences, &
                 local_status)
             shifted = point
+            shifted(component) = shifted(component) + 3.0_dp*step
+            call evaluate_tetra_rt( &
+                selected_basis, shifted, plus_three, divergences, &
+                local_status)
+            shifted = point
             shifted(component) = shifted(component) - step
             call evaluate_tetra_rt( &
                 selected_basis, shifted, minus_one, divergences, &
@@ -188,10 +226,18 @@ contains
             call evaluate_tetra_rt( &
                 selected_basis, shifted, minus_two, divergences, &
                 local_status)
+            shifted = point
+            shifted(component) = shifted(component) - 3.0_dp*step
+            call evaluate_tetra_rt( &
+                selected_basis, shifted, minus_three, divergences, &
+                local_status)
             finite_difference = finite_difference + &
-                (-plus_two(component, :) + 8.0_dp*plus_one(component, :) - &
-                8.0_dp*minus_one(component, :) + minus_two(component, :))/ &
-                (12.0_dp*step)
+                (-minus_three(component, :) + &
+                9.0_dp*minus_two(component, :) - &
+                45.0_dp*minus_one(component, :) + &
+                45.0_dp*plus_one(component, :) - &
+                9.0_dp*plus_two(component, :) + &
+                plus_three(component, :))/(60.0_dp*step)
         end do
         call evaluate_tetra_rt( &
             selected_basis, point, plus_one, divergences, local_status)
