@@ -4,7 +4,8 @@ program test_bspline_feec_2d
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
         evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
-        map_isogeometric_hcurl, map_isogeometric_hdiv, map_isogeometric_l2
+        evaluate_nurbs_volume_geometry, map_isogeometric_hcurl, &
+        map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_kinds, only: dp
     implicit none
 
@@ -18,11 +19,14 @@ program test_bspline_feec_2d
     real(dp), allocatable :: curl_3d(:, :), divergence_3d(:, :)
     real(dp), allocatable :: gradient_3d(:, :)
     real(dp), allocatable :: control_points(:, :, :), nurbs_weights(:, :)
+    real(dp), allocatable :: volume_controls(:, :, :, :)
+    real(dp), allocatable :: volume_weights(:, :, :)
     real(dp) :: jacobian(3, 2), mapped_point(3)
     real(dp), allocatable :: mapped_hcurl(:, :), mapped_hdiv(:, :)
     real(dp), allocatable :: mapped_gradient(:, :), mapped_l2(:)
     real(dp) :: affine_jacobian(2, 2), determinant
     real(dp) :: reference_vector(2, 1)
+    real(dp) :: volume_jacobian(3, 3), volume_point(3)
     real(dp) :: points(5), reproduced, x
     integer :: i, status
 
@@ -111,6 +115,19 @@ program test_bspline_feec_2d
     call check_condition(abs(mapped_l2(1) - 2.0_dp/2.875_dp) < 2.0e-14_dp, &
         "L2 density uses the determinant-preserving pullback")
 
+    call make_affine_volume_control_net( &
+        knots_x, knots_y, knots_y, 2, volume_controls, volume_weights)
+    call evaluate_nurbs_volume_geometry( &
+        knots_x, knots_y, knots_y, 2, 2, 2, volume_controls, volume_weights, &
+        0.2_dp, 0.3_dp, 0.4_dp, volume_point, volume_jacobian, status)
+    call check_condition(status == 0 .and. maxval(abs(volume_point - &
+        [1.4_dp, -0.1_dp, 2.1_dp])) < 5.0e-14_dp, &
+        "NURBS volume reproduces an affine physical map exactly")
+    call check_condition(maxval(abs(volume_jacobian - reshape([ &
+        2.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp, 0.0_dp, &
+        0.0_dp, 0.0_dp, 4.0_dp], [3, 3]))) < 4.0e-13_dp, &
+        "NURBS volume returns the analytical three-dimensional Jacobian")
+
     call check_summary("Structure-preserving B-spline FEEC")
 
 contains
@@ -150,5 +167,34 @@ contains
             end do
         end do
     end subroutine make_affine_control_net
+
+    subroutine make_affine_volume_control_net( &
+            knots_x_local, knots_y_local, knots_z_local, degree, points, weights)
+        real(dp), intent(in) :: knots_x_local(:), knots_y_local(:)
+        real(dp), intent(in) :: knots_z_local(:)
+        integer, intent(in) :: degree
+        real(dp), allocatable, intent(out) :: points(:, :, :, :)
+        real(dp), allocatable, intent(out) :: weights(:, :, :)
+
+        real(dp), allocatable :: x_points(:), y_points(:), z_points(:)
+        integer :: ix, iy, iz
+
+        x_points = greville_abscissae(knots_x_local, degree)
+        y_points = greville_abscissae(knots_y_local, degree)
+        z_points = greville_abscissae(knots_z_local, degree)
+        allocate(points(3, size(x_points), size(y_points), size(z_points)))
+        allocate(weights(size(x_points), size(y_points), size(z_points)))
+        weights = 1.0_dp
+        do iz = 1, size(z_points)
+            do iy = 1, size(y_points)
+                do ix = 1, size(x_points)
+                    points(:, ix, iy, iz) = [ &
+                        1.0_dp + 2.0_dp*x_points(ix), &
+                        -1.0_dp + 3.0_dp*y_points(iy), &
+                        0.5_dp + 4.0_dp*z_points(iz)]
+                end do
+            end do
+        end do
+    end subroutine make_affine_volume_control_net
 
 end program test_bspline_feec_2d

@@ -13,6 +13,7 @@ module fortfem_bspline_feec
     public :: build_bspline_feec_3d_operators
     public :: evaluate_bspline_basis
     public :: evaluate_nurbs_surface_geometry
+    public :: evaluate_nurbs_volume_geometry
     public :: map_isogeometric_h1_gradient
     public :: map_isogeometric_hcurl
     public :: map_isogeometric_hdiv
@@ -167,6 +168,82 @@ contains
         end do
         status = 0
     end subroutine evaluate_nurbs_surface_geometry
+
+    subroutine evaluate_nurbs_volume_geometry( &
+            knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
+            control_points, weights, coordinate_x, coordinate_y, coordinate_z, &
+            point, jacobian, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:), knots_z(:)
+        integer, intent(in) :: degree_x, degree_y, degree_z
+        real(dp), intent(in) :: control_points(:, :, :, :), weights(:, :, :)
+        real(dp), intent(in) :: coordinate_x, coordinate_y, coordinate_z
+        real(dp), intent(out) :: point(:), jacobian(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: dx(:), dy(:), dz(:), vx(:), vy(:), vz(:)
+        real(dp) :: denominator, derivative_denominator(3), factor
+        real(dp) :: numerator(size(point)), derivative_numerator(size(point), 3)
+        integer :: ix, iy, iz
+
+        status = 1
+        point = 0.0_dp
+        jacobian = 0.0_dp
+        call evaluate_bspline_basis( &
+            knots_x, degree_x, coordinate_x, vx, dx, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_y, degree_y, coordinate_y, vy, dy, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_z, degree_z, coordinate_z, vz, dz, status)
+        if (status /= 0) return
+        if (size(control_points, 1) /= size(point)) return
+        if (any(shape(control_points(1, :, :, :)) /= &
+            [size(vx), size(vy), size(vz)])) return
+        if (any(shape(weights) /= [size(vx), size(vy), size(vz)])) return
+        if (size(jacobian, 1) /= size(point) .or. &
+            size(jacobian, 2) /= 3 .or. any(weights <= 0.0_dp)) return
+        denominator = 0.0_dp
+        derivative_denominator = 0.0_dp
+        numerator = 0.0_dp
+        derivative_numerator = 0.0_dp
+        do iz = 1, size(vz)
+            do iy = 1, size(vy)
+                do ix = 1, size(vx)
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*vz(iz)
+                    denominator = denominator + factor
+                    numerator = numerator + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*dx(ix)*vy(iy)*vz(iz)
+                    derivative_denominator(1) = &
+                        derivative_denominator(1) + factor
+                    derivative_numerator(:, 1) = &
+                        derivative_numerator(:, 1) + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*vx(ix)*dy(iy)*vz(iz)
+                    derivative_denominator(2) = &
+                        derivative_denominator(2) + factor
+                    derivative_numerator(:, 2) = &
+                        derivative_numerator(:, 2) + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*dz(iz)
+                    derivative_denominator(3) = &
+                        derivative_denominator(3) + factor
+                    derivative_numerator(:, 3) = &
+                        derivative_numerator(:, 3) + &
+                        factor*control_points(:, ix, iy, iz)
+                end do
+            end do
+        end do
+        if (denominator <= tiny(1.0_dp)) return
+        point = numerator/denominator
+        do ix = 1, 3
+            jacobian(:, ix) = ( &
+                derivative_numerator(:, ix) - &
+                point*derivative_denominator(ix))/denominator
+        end do
+        status = 0
+    end subroutine evaluate_nurbs_volume_geometry
 
     subroutine map_isogeometric_h1_gradient( &
             jacobian, reference_gradients, physical_gradients, determinant, &

@@ -178,6 +178,7 @@ module fortfem_api
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
         evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
+        evaluate_nurbs_volume_geometry, &
         map_isogeometric_hcurl, map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_assembly_bspline_2d, only: &
         assemble_bspline_h1_operator_csc, &
@@ -508,6 +509,7 @@ module fortfem_api
     public :: build_bspline_feec_3d_operators
     public :: evaluate_bspline_basis
     public :: evaluate_nurbs_surface_geometry
+    public :: evaluate_nurbs_volume_geometry
     public :: map_isogeometric_h1_gradient
     public :: map_isogeometric_hcurl
     public :: map_isogeometric_hdiv
