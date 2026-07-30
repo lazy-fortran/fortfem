@@ -19,6 +19,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -32,6 +33,62 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    pure subroutine evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+            vertices, triangles, panel, local_edge, radius, xi, eta, point, &
+            value, surface_divergence, surface_jacobian, status)
+        real(dp), intent(in) :: vertices(:, :), radius, xi, eta
+        integer, intent(in) :: triangles(:, :), panel, local_edge
+        real(dp), intent(out) :: point(3), value(3), surface_divergence
+        real(dp), intent(out) :: surface_jacobian
+        integer, intent(out) :: status
+
+        real(dp) :: edge_length, opposite_coordinates(2), panel_vertices(3, 3)
+        real(dp) :: tangent_eta(3), tangent_xi(3)
+        integer :: edge_vertices(2), local, opposite
+
+        point = 0.0_dp
+        value = 0.0_dp
+        surface_divergence = 0.0_dp
+        surface_jacobian = 0.0_dp
+        status = 1
+        if (panel < 1 .or. panel > size(triangles, 2)) return
+        if (local_edge < 1 .or. local_edge > 3) return
+        select case (local_edge)
+        case (1)
+            edge_vertices = [1, 2]
+            opposite = 3
+        case (2)
+            edge_vertices = [3, 1]
+            opposite = 2
+        case (3)
+            edge_vertices = [2, 3]
+            opposite = 1
+        end select
+        do local = 1, 3
+            panel_vertices(:, local) = vertices(:, triangles(local, panel))
+        end do
+        call evaluate_sphere_curved_panel( &
+            panel_vertices, radius, xi, eta, point, tangent_xi, tangent_eta, &
+            surface_jacobian, status)
+        if (status /= 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge_length = norm2( &
+            panel_vertices(:, edge_vertices(2)) - &
+            panel_vertices(:, edge_vertices(1)))
+        value = edge_length/surface_jacobian*( &
+            (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta)
+        surface_divergence = 2.0_dp*edge_length/surface_jacobian
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_localized_rwg_basis
 
     subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d( &
             vertices, triangles, radius, coefficients, observation, &
