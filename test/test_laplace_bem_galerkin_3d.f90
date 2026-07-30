@@ -1,11 +1,15 @@
 program test_laplace_bem_galerkin_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_laplace_dirichlet_p0_3d
+    use fortfem_api, only: &
+        evaluate_helmholtz_representation_triangles_3d, &
+        solve_helmholtz_dirichlet_p0_3d, solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
     implicit none
 
     real(dp), allocatable :: density(:), vertices(:, :)
+    complex(dp), allocatable :: complex_density(:), dirichlet(:)
     integer, allocatable :: triangles(:, :)
+    complex(dp) :: exact_field, numerical_field
     real(dp) :: capacities(0:2), errors(0:2)
     integer :: level, status
     logical :: all_passed
@@ -28,6 +32,19 @@ program test_laplace_bem_galerkin_3d
     end if
     call record_condition(errors(2) < 0.8_dp, &
         "Refined sphere capacitance matches the analytical value")
+
+    call solve_helmholtz_dirichlet_p0_3d( &
+        vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), 0.7_dp, 8, &
+        complex_density, status)
+    allocate(dirichlet(size(vertices, 2)))
+    dirichlet = cmplx(0.0_dp, 0.0_dp, dp)
+    call evaluate_helmholtz_representation_triangles_3d( &
+        vertices, triangles, dirichlet, -complex_density, &
+        [0.0_dp, 0.0_dp, 2.0_dp], 0.7_dp, 8, numerical_field, status)
+    exact_field = 0.5_dp*exp(cmplx(0.0_dp, 0.7_dp, dp))
+    call record_condition(status == 0 .and. &
+        abs(numerical_field - exact_field) < 6.0e-2_dp, &
+        "Three-dimensional Helmholtz BEM matches an outgoing sphere mode")
 
     call solve_laplace_dirichlet_p0_3d( &
         vertices(:, :2), triangles, 1.0_dp, 8, density, capacities(2), status)
