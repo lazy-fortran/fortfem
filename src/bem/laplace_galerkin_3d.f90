@@ -6,6 +6,7 @@ module fortfem_laplace_galerkin_3d
     private
 
     public :: assemble_laplace_single_layer_p0_3d
+    public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_calderon_p1_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
 
@@ -21,6 +22,106 @@ module fortfem_laplace_galerkin_3d
     end interface
 
 contains
+
+    subroutine assemble_laplace_single_layer_p0_adaptive_3d( &
+            vertices, triangles, tolerance, max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), tolerance
+        integer, intent(in) :: triangles(:, :), max_depth
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: first_vertices(3, 3), second_vertices(3, 3)
+        integer :: first, second
+
+        status = 1
+        if (tolerance <= 0.0_dp .or. max_depth < 1) return
+        call assemble_laplace_single_layer_p0_3d( &
+            vertices, triangles, 6, matrix, status)
+        if (status /= 0) return
+        do first = 1, size(triangles, 2)
+            first_vertices = vertices(:, triangles(:, first))
+            do second = 1, first - 1
+                second_vertices = vertices(:, triangles(:, second))
+                matrix(first, second) = adaptive_panel_pair( &
+                    first_vertices, second_vertices, tolerance, 0, max_depth)
+                matrix(second, first) = matrix(first, second)
+            end do
+        end do
+        status = 0
+    end subroutine assemble_laplace_single_layer_p0_adaptive_3d
+
+    recursive function adaptive_panel_pair( &
+            first_vertices, second_vertices, tolerance, depth, max_depth) &
+            result(value)
+        real(dp), intent(in) :: first_vertices(3, 3), second_vertices(3, 3)
+        real(dp), intent(in) :: tolerance
+        integer, intent(in) :: depth, max_depth
+        real(dp) :: value
+
+        real(dp) :: first_children(3, 3, 4), refined
+        real(dp) :: second_children(3, 3, 4)
+        integer :: first, second
+
+        value = centroid_panel_pair(first_vertices, second_vertices)
+        call subdivide_triangle(first_vertices, first_children)
+        call subdivide_triangle(second_vertices, second_children)
+        refined = 0.0_dp
+        do first = 1, 4
+            do second = 1, 4
+                refined = refined + centroid_panel_pair( &
+                    first_children(:, :, first), &
+                    second_children(:, :, second))
+            end do
+        end do
+        if (depth >= max_depth .or. &
+            abs(refined - value) <= tolerance*max( &
+            tiny(1.0_dp), abs(refined))) then
+            value = refined
+            return
+        end if
+        value = 0.0_dp
+        do first = 1, 4
+            do second = 1, 4
+                value = value + adaptive_panel_pair( &
+                    first_children(:, :, first), &
+                    second_children(:, :, second), tolerance, depth + 1, &
+                    max_depth)
+            end do
+        end do
+    end function adaptive_panel_pair
+
+    pure function centroid_panel_pair(first_vertices, second_vertices) &
+            result(value)
+        real(dp), intent(in) :: first_vertices(3, 3), second_vertices(3, 3)
+        real(dp) :: value
+
+        real(dp) :: distance
+
+        distance = norm2( &
+            sum(first_vertices, dim=2)/3.0_dp - &
+            sum(second_vertices, dim=2)/3.0_dp)
+        value = triangle_area(first_vertices)*triangle_area(second_vertices)/ &
+            (4.0_dp*acos(-1.0_dp)*distance)
+    end function centroid_panel_pair
+
+    pure subroutine subdivide_triangle(vertices, children)
+        real(dp), intent(in) :: vertices(3, 3)
+        real(dp), intent(out) :: children(3, 3, 4)
+
+        real(dp) :: midpoint_12(3), midpoint_23(3), midpoint_31(3)
+
+        midpoint_12 = 0.5_dp*(vertices(:, 1) + vertices(:, 2))
+        midpoint_23 = 0.5_dp*(vertices(:, 2) + vertices(:, 3))
+        midpoint_31 = 0.5_dp*(vertices(:, 3) + vertices(:, 1))
+        children(:, :, 1) = reshape( &
+            [vertices(:, 1), midpoint_12, midpoint_31], [3, 3])
+        children(:, :, 2) = reshape( &
+            [midpoint_12, vertices(:, 2), midpoint_23], [3, 3])
+        children(:, :, 3) = reshape( &
+            [midpoint_31, midpoint_23, vertices(:, 3)], [3, 3])
+        children(:, :, 4) = reshape( &
+            [midpoint_12, midpoint_23, midpoint_31], [3, 3])
+    end subroutine subdivide_triangle
 
     subroutine assemble_laplace_calderon_p1_p0_3d( &
             vertices, triangles, quadrature_degree, single_layer, &
