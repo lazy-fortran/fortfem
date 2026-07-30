@@ -9,6 +9,7 @@ on:
       - ".github/workflows/interoperability.yml"
       - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
+      - "benchmark/mfem/**"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
@@ -18,6 +19,7 @@ on:
       - ".github/workflows/interoperability.yml"
       - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
+      - "benchmark/mfem/**"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
@@ -143,3 +145,117 @@ jobs:
           name: interoperability-fenicsx-${{ github.sha }}
           path: benchmark-results/fenicsx/
           retention-days: 30
+
+  mfem:
+    name: MFEM analytical oracles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore pinned MFEM build
+        id: mfem-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/mfem-v4.9
+          key: mfem-d9d6526c-serial-gcc-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build MFEM 4.9
+        if: steps.mfem-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v4.9 \
+            https://github.com/mfem/mfem.git \
+            "${RUNNER_TEMP}/mfem-v4.9"
+          test "$(git -C "${RUNNER_TEMP}/mfem-v4.9" rev-parse HEAD)" = \
+            d9d6526cc1749980a2ba1da16e2c1ca1e07d82ec
+          make -C "${RUNNER_TEMP}/mfem-v4.9" config
+          make -C "${RUNNER_TEMP}/mfem-v4.9" -j"$(nproc)"
+
+      - name: Compile MFEM adapter
+        run: |
+          set -euo pipefail
+          cp benchmark/mfem/manufactured_oracles.cpp \
+            "${RUNNER_TEMP}/mfem-v4.9/examples/fortfem_interoperability.cpp"
+          make -C "${RUNNER_TEMP}/mfem-v4.9/examples" \
+            fortfem_interoperability
+
+      - name: Run Poisson and Ampere oracles
+        run: |
+          set -euo pipefail
+          "${RUNNER_TEMP}/mfem-v4.9/examples/fortfem_interoperability" \
+            benchmark-results/mfem
+
+      - name: Record runner metadata
+        run: |
+          set -euo pipefail
+          {
+            printf 'solver=MFEM\n'
+            printf 'version=4.9\n'
+            printf 'upstream_commit=%s\n' \
+              "$(git -C "${RUNNER_TEMP}/mfem-v4.9" rev-parse HEAD)"
+            printf 'runner_image=%s\n' "${ImageOS:-unknown}"
+            printf 'runner_arch=%s\n' "$RUNNER_ARCH"
+            printf 'commit=%s\n' "$GITHUB_SHA"
+          } > benchmark-results/mfem/metadata.txt
+
+      - name: Upload raw benchmark records
+        uses: actions/upload-artifact@v4
+        with:
+          name: interoperability-mfem-${{ github.sha }}
+          path: benchmark-results/mfem/
+          retention-days: 30
+
+  compare:
+    name: Cross-code oracle agreement
+    runs-on: ubuntu-24.04
+    needs: [freefem, fenicsx, mfem]
+    steps:
+      - name: Download solver records
+        uses: actions/download-artifact@v4
+        with:
+          pattern: interoperability-*-${{ github.sha }}
+          path: benchmark-results
+
+      - name: Compare analytical errors
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          roots = {
+              path.name.split("-")[1]: path
+              for path in Path("benchmark-results").iterdir()
+          }
+          if set(roots) != {"freefem", "fenicsx", "mfem"}:
+              raise SystemExit(f"missing solver records: {sorted(roots)}")
+          for case, norms in (
+              ("poisson.csv", ("l2_error", "h1_error")),
+              ("ampere.csv", ("l2_error", "hcurl_error")),
+          ):
+              records = {}
+              for solver, root in roots.items():
+                  with (root / case).open(
+                      newline="", encoding="utf-8"
+                  ) as stream:
+                      records[solver] = list(csv.DictReader(stream))
+              mesh_ids = {
+                  solver: [row["mesh_id"] for row in rows]
+                  for solver, rows in records.items()
+              }
+              if len({tuple(ids) for ids in mesh_ids.values()}) != 1:
+                  raise SystemExit(f"{case}: mesh levels disagree")
+              reference = records["fenicsx"]
+              for solver, rows in records.items():
+                  for expected, actual in zip(reference, rows):
+                      for norm in norms:
+                          denominator = max(abs(float(expected[norm])), 1e-15)
+                          difference = abs(
+                              float(actual[norm]) - float(expected[norm])
+                          ) / denominator
+                          if difference > 1e-4:
+                              raise SystemExit(
+                                  f"{case}: {solver} {actual['mesh_id']} "
+                                  f"{norm} differs by {difference:.3e}"
+                              )
+          PY
