@@ -1,9 +1,10 @@
 module fortfem_advanced_solvers
     use fortfem_kinds, only: dp
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, spmv
-    use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
+    use fortfem_krylov_solvers, only: bicgstab_impl
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
     use fortnum_linalg, only: dense_solve
+    use fortnum_krylov, only: KRYLOV_OK, real_gmres_operator
     implicit none
     private
 
@@ -494,12 +495,31 @@ contains
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
 
-        call gmres_impl(A, b, x, opts%tolerance, opts%max_iterations, &
-            opts%restart, opts%tolerance_type, opts%verbosity, &
-            stats%converged, stats%iterations, stats%restarts, &
-            stats%final_residual)
+        real(dp) :: tolerance
+        integer :: info, restart
+
+        tolerance = opts%tolerance
+        if (trim(opts%tolerance_type) == "absolute") then
+            tolerance = tolerance/max(norm2(b), 1.0_dp)
+        end if
+        restart = min(max(opts%restart, 1), opts%max_iterations)
+        call real_gmres_operator( &
+            apply_matrix, b, x, tolerance, opts%max_iterations, restart, &
+            info, stats%iterations, stats%final_residual)
+        stats%converged = info == KRYLOV_OK
+        stats%restarts = max(0, (stats%iterations - 1)/restart)
 
         stats%method_used = "gmres"
+
+    contains
+
+        subroutine apply_matrix(input, output)
+            real(dp), intent(in) :: input(:)
+            real(dp), intent(out) :: output(:)
+
+            output = matmul(A, input)
+        end subroutine apply_matrix
+
     end subroutine gmres_solve
 
     ! Direct solver using LAPACK
