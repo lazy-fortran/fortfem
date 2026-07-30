@@ -32,6 +32,8 @@ module fortfem_api
         assemble_tetra_lagrange_stiffness_element
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_element, &
+        assemble_tetra_nedelec_curl_mass_element_jvp, &
+        assemble_tetra_nedelec_curl_mass_element_vjp, &
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_pml_element, &
         assemble_tetra_nedelec_pml_csc, &
@@ -892,6 +894,8 @@ module fortfem_api
     public :: assemble_tetra_lagrange_scalar_load
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
+    public :: assemble_tetra_nedelec_curl_mass_element_jvp
+    public :: assemble_tetra_nedelec_curl_mass_element_vjp
     public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_weighted_csc

@@ -152,3 +152,10 @@ FortNum's FortSym-generated determinant and inverse JVP/VJP kernels with the
 closed covariant value and curl transformations. Consequently element and
 mesh geometry adjoints remain analytical and GCC-compatible while sharing
 the same guarded linear-algebra primitives used elsewhere.
+
+Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
+compose those Piola products with quadrature. Their JVPs cover all twelve
+vertex coordinates and both material coefficients. A single analytical
+reverse quadrature sweep returns the corresponding vertex and coefficient
+cotangents, rather than requiring one forward sweep per design coordinate.
+This is the preferred element path for large moving-mesh design spaces.

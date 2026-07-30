@@ -12,8 +12,9 @@ module fortfem_assembly_tetra_nedelec_3d
     use fortfem_tetra_nedelec_global_dof_map, only: &
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
-    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
-    use fortnum_linalg, only: det3
+    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant, &
+        map_tetra_nedelec_covariant_jvp, map_tetra_nedelec_covariant_vjp
+    use fortnum_linalg, only: det3, det3_jvp, det3_vjp
     use fortsparse, only: csc_from_triplet, csc_t, csc_z_t, &
         FORTSPARSE_INVALID_MATRIX, fortsparse_status_t, status_set
     implicit none
@@ -22,6 +23,8 @@ module fortfem_assembly_tetra_nedelec_3d
 
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
+    public :: assemble_tetra_nedelec_curl_mass_element_jvp
+    public :: assemble_tetra_nedelec_curl_mass_element_vjp
     public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_weighted_csc
@@ -221,6 +224,187 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_nedelec_curl_mass_element
+
+    subroutine assemble_tetra_nedelec_curl_mass_element_jvp( &
+            vertices, order, quadrature_degree, curl_coefficient, &
+            mass_coefficient, vertices_dot, curl_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_coefficient
+        real(dp), intent(in) :: curl_coefficient_dot, mass_coefficient_dot
+        real(dp), allocatable, intent(out) :: matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:, :), curls_dot(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_values(:, :)
+        real(dp), allocatable :: zero_curls(:, :), zero_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: curl_energy, determinant, determinant_dot
+        real(dp) :: jacobian(3, 3), jacobian_dot(3, 3), mass_energy, point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (order < 1 .or. quadrature_degree < 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_jacobian(vertices_dot, jacobian_dot)
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(matrix_dot(dof_count, dof_count), source=0.0_dp)
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(zero_values(3, dof_count), zero_curls(3, dof_count), source=0.0_dp)
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_dot(3, dof_count), curls_dot(3, dof_count))
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant_jvp( &
+                jacobian, ref_values, ref_curls, jacobian_dot, zero_values, &
+                zero_curls, values_dot, curls_dot, status)
+            if (status /= 0) return
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    curl_energy = dot_product(curls(:, row), curls(:, column))
+                    mass_energy = dot_product(values(:, row), values(:, column))
+                    matrix_dot(row, column) = matrix_dot(row, column) + &
+                        weights(point_index)*(determinant_dot*( &
+                        curl_coefficient*curl_energy + &
+                        mass_coefficient*mass_energy) + determinant*( &
+                        curl_coefficient_dot*curl_energy + &
+                        curl_coefficient*(dot_product( &
+                        curls_dot(:, row), curls(:, column)) + dot_product( &
+                        curls(:, row), curls_dot(:, column))) + &
+                        mass_coefficient_dot*mass_energy + &
+                        mass_coefficient*(dot_product( &
+                        values_dot(:, row), values(:, column)) + dot_product( &
+                        values(:, row), values_dot(:, column)))))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_curl_mass_element_jvp
+
+    subroutine assemble_tetra_nedelec_curl_mass_element_vjp( &
+            vertices, order, quadrature_degree, curl_coefficient, &
+            mass_coefficient, matrix_bar, vertices_bar, curl_coefficient_bar, &
+            mass_coefficient_bar, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+        real(dp), intent(out) :: curl_coefficient_bar, mass_coefficient_bar
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:, :), curls_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_curls_bar(:, :)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: curl_energy, determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), jacobian(3, 3)
+        real(dp) :: jacobian_bar(3, 3), local_jacobian_bar(3, 3)
+        real(dp) :: mass_energy, point(3), seed
+        integer :: column, dof_count, point_index, row
+
+        vertices_bar = 0.0_dp
+        curl_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        status = 1
+        if (order < 1 .or. quadrature_degree < 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        if (size(matrix_bar, 1) /= dof_count .or. &
+            size(matrix_bar, 2) /= dof_count) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(ref_values_bar(3, dof_count), ref_curls_bar(3, dof_count))
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_bar(3, dof_count), curls_bar(3, dof_count))
+        jacobian_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            values_bar = 0.0_dp
+            curls_bar = 0.0_dp
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    seed = weights(point_index)*matrix_bar(row, column)
+                    curl_energy = dot_product(curls(:, row), curls(:, column))
+                    mass_energy = dot_product(values(:, row), values(:, column))
+                    determinant_bar = determinant_bar + seed*( &
+                        curl_coefficient*curl_energy + &
+                        mass_coefficient*mass_energy)
+                    curl_coefficient_bar = curl_coefficient_bar + &
+                        seed*determinant*curl_energy
+                    mass_coefficient_bar = mass_coefficient_bar + &
+                        seed*determinant*mass_energy
+                    curls_bar(:, row) = curls_bar(:, row) + &
+                        seed*determinant*curl_coefficient*curls(:, column)
+                    curls_bar(:, column) = curls_bar(:, column) + &
+                        seed*determinant*curl_coefficient*curls(:, row)
+                    values_bar(:, row) = values_bar(:, row) + &
+                        seed*determinant*mass_coefficient*values(:, column)
+                    values_bar(:, column) = values_bar(:, column) + &
+                        seed*determinant*mass_coefficient*values(:, row)
+                end do
+            end do
+            call map_tetra_nedelec_covariant_vjp( &
+                jacobian, ref_values, ref_curls, values_bar, curls_bar, &
+                local_jacobian_bar, ref_values_bar, ref_curls_bar, status)
+            if (status /= 0) return
+            jacobian_bar = jacobian_bar + local_jacobian_bar
+        end do
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        jacobian_bar = jacobian_bar + determinant_jacobian_bar
+        call tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        status = 0
+    end subroutine assemble_tetra_nedelec_curl_mass_element_vjp
+
+    pure subroutine tetra_jacobian(vertices, jacobian)
+        real(dp), intent(in) :: vertices(3, 4)
+        real(dp), intent(out) :: jacobian(3, 3)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+    end subroutine tetra_jacobian
+
+    pure subroutine tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        real(dp), intent(in) :: jacobian_bar(3, 3)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+
+        vertices_bar(:, 1) = -sum(jacobian_bar, dim=2)
+        vertices_bar(:, 2) = jacobian_bar(:, 1)
+        vertices_bar(:, 3) = jacobian_bar(:, 2)
+        vertices_bar(:, 4) = jacobian_bar(:, 3)
+    end subroutine tetra_jacobian_vjp
 
     subroutine assemble_tetra_nedelec_pml_element( &
             vertices, order, quadrature_degree, stretch, wave_number, matrix, &
