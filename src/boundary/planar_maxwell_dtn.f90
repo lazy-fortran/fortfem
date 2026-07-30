@@ -18,6 +18,8 @@ module fortfem_planar_maxwell_dtn
     public :: apply_planar_maxwell_dtn_jvp
     public :: apply_planar_maxwell_dtn_vjp
     public :: assemble_planar_maxwell_dtn_form
+    public :: assemble_planar_maxwell_dtn_form_jvp
+    public :: assemble_planar_maxwell_dtn_form_vjp
 
 contains
 
@@ -55,6 +57,114 @@ contains
         end do
         status = 0
     end subroutine assemble_planar_maxwell_dtn_form
+
+    subroutine assemble_planar_maxwell_dtn_form_jvp( &
+            nx, ny, wave_number, length_x, length_y, wave_number_dot, &
+            length_x_dot, length_y_dot, form_dot, status)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        real(dp), intent(in) :: wave_number_dot, length_x_dot, length_y_dot
+        complex(dp), allocatable, intent(out) :: form_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:, :, :), derivative_dot(:, :, :)
+        complex(dp), allocatable :: trace(:, :, :), trace_dot(:, :, :)
+        real(dp) :: weight, weight_dot
+        integer :: column, component, i, j, quotient
+
+        status = 1
+        if (allocated(form_dot)) deallocate(form_dot)
+        if (nx < 2 .or. ny < 2) return
+        if (modulo(nx, 2) == 0 .or. modulo(ny, 2) == 0) return
+        if (wave_number <= 0.0_dp) return
+        if (length_x <= 0.0_dp .or. length_y <= 0.0_dp) return
+        allocate(form_dot(2*nx*ny, 2*nx*ny))
+        allocate(trace(2, nx, ny), trace_dot(2, nx, ny))
+        allocate(derivative(2, nx, ny), derivative_dot(2, nx, ny))
+        trace_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        weight = length_x*length_y/real(nx*ny, dp)
+        weight_dot = (length_x_dot*length_y + &
+            length_x*length_y_dot)/real(nx*ny, dp)
+        do column = 1, size(form_dot, 2)
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            component = modulo(column - 1, 2) + 1
+            quotient = (column - 1)/2
+            i = modulo(quotient, nx) + 1
+            j = quotient/nx + 1
+            trace(component, i, j) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_maxwell_dtn( &
+                trace, wave_number, length_x, length_y, derivative, status)
+            if (status /= 0) return
+            call apply_planar_maxwell_dtn_jvp( &
+                trace, wave_number, length_x, length_y, trace_dot, &
+                wave_number_dot, length_x_dot, length_y_dot, derivative_dot, &
+                status)
+            if (status /= 0) return
+            form_dot(:, column) = weight_dot*reshape(derivative, &
+                [size(derivative)]) + weight*reshape(derivative_dot, &
+                [size(derivative_dot)])
+        end do
+        status = 0
+    end subroutine assemble_planar_maxwell_dtn_form_jvp
+
+    subroutine assemble_planar_maxwell_dtn_form_vjp( &
+            nx, ny, wave_number, length_x, length_y, form_bar, wave_number_bar, &
+            length_x_bar, length_y_bar, status)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        complex(dp), intent(in) :: form_bar(:, :)
+        real(dp), intent(out) :: wave_number_bar, length_x_bar, length_y_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:, :, :), derivative_bar(:, :, :)
+        complex(dp), allocatable :: trace(:, :, :), trace_bar(:, :, :)
+        real(dp) :: local_length_x_bar, local_length_y_bar
+        real(dp) :: local_wave_number_bar, weight, weight_bar
+        integer :: column, component, i, j, quotient
+
+        wave_number_bar = 0.0_dp
+        length_x_bar = 0.0_dp
+        length_y_bar = 0.0_dp
+        status = 1
+        if (nx < 2 .or. ny < 2) return
+        if (modulo(nx, 2) == 0 .or. modulo(ny, 2) == 0) return
+        if (wave_number <= 0.0_dp) return
+        if (length_x <= 0.0_dp .or. length_y <= 0.0_dp) return
+        if (size(form_bar, 1) /= 2*nx*ny .or. &
+            size(form_bar, 2) /= 2*nx*ny) return
+        allocate(trace(2, nx, ny), trace_bar(2, nx, ny))
+        allocate(derivative(2, nx, ny), derivative_bar(2, nx, ny))
+        weight = length_x*length_y/real(nx*ny, dp)
+        weight_bar = 0.0_dp
+        do column = 1, size(form_bar, 2)
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            component = modulo(column - 1, 2) + 1
+            quotient = (column - 1)/2
+            i = modulo(quotient, nx) + 1
+            j = quotient/nx + 1
+            trace(component, i, j) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_maxwell_dtn( &
+                trace, wave_number, length_x, length_y, derivative, status)
+            if (status /= 0) return
+            weight_bar = weight_bar + real(sum(conjg(form_bar(:, column))* &
+                reshape(derivative, [size(derivative)])), dp)
+            derivative_bar = reshape( &
+                weight*form_bar(:, column), shape(derivative_bar))
+            call apply_planar_maxwell_dtn_vjp( &
+                trace, wave_number, length_x, length_y, derivative_bar, &
+                trace_bar, local_wave_number_bar, local_length_x_bar, &
+                local_length_y_bar, status)
+            if (status /= 0) return
+            wave_number_bar = wave_number_bar + local_wave_number_bar
+            length_x_bar = length_x_bar + local_length_x_bar
+            length_y_bar = length_y_bar + local_length_y_bar
+        end do
+        length_x_bar = length_x_bar + &
+            weight_bar*length_y/real(nx*ny, dp)
+        length_y_bar = length_y_bar + &
+            weight_bar*length_x/real(nx*ny, dp)
+        status = 0
+    end subroutine assemble_planar_maxwell_dtn_form_vjp
 
     subroutine apply_planar_maxwell_dtn( &
             tangential_trace, wave_number, length_x, length_y, &
