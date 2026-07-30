@@ -18,6 +18,7 @@ module fortfem_maxwell_cfie_regularized_3d
     public :: assemble_maxwell_regularized_cfie_rwg_3d
     public :: assemble_maxwell_plane_wave_rhs_bc_3d
     public :: solve_maxwell_pec_regularized_cfie_rwg_3d
+    public :: solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -42,50 +43,90 @@ contains
         complex(dp), allocatable, intent(out) :: density(:)
         integer, intent(out) :: status
 
+        complex(dp), allocatable :: densities(:, :)
+        real(dp) :: directions(3, 1)
+        complex(dp) :: polarizations(3, 1)
+
+        directions(:, 1) = direction
+        polarizations(:, 1) = polarization
+        call solve_maxwell_pec_regularized_cfie_rwg_multiple_3d( &
+            vertices, triangles, directions, polarizations, wave_number, &
+            impedance, quadrature_degree, tolerance, max_depth, densities, &
+            status)
+        if (status /= 0) return
+        allocate(density(size(densities, 1)))
+        density = densities(:, 1)
+    end subroutine solve_maxwell_pec_regularized_cfie_rwg_3d
+
+    subroutine solve_maxwell_pec_regularized_cfie_rwg_multiple_3d( &
+            vertices, triangles, directions, polarizations, wave_number, &
+            impedance, quadrature_degree, tolerance, max_depth, densities, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), directions(:, :)
+        real(dp), intent(in) :: wave_number, impedance, tolerance
+        complex(dp), intent(in) :: polarizations(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: densities(:, :)
+        integer, intent(out) :: status
+
         complex(dp), allocatable :: bc_rhs(:), cfie(:, :), efie(:, :)
         complex(dp), allocatable :: efie_rhs(:), mapped_rhs(:, :)
         complex(dp), allocatable :: mass(:, :), mfie(:, :), product(:, :)
         complex(dp), allocatable :: regularizer(:, :), right_hand_side(:, :)
         real(dp), allocatable :: real_mass(:, :)
         integer, allocatable :: pivots(:)
-        integer :: info, n
+        integer :: incidence, incidence_count, info, n
 
+        status = 1
+        if (allocated(densities)) deallocate(densities)
+        if (size(directions, 1) /= 3) return
+        if (size(polarizations, 1) /= 3) return
+        incidence_count = size(directions, 2)
+        if (incidence_count < 1) return
+        if (size(polarizations, 2) /= incidence_count) return
         call assemble_maxwell_regularized_cfie_rwg_3d( &
             vertices, triangles, wave_number, impedance, quadrature_degree, &
             tolerance, max_depth, cfie, efie, mfie, regularizer, product, status)
-        if (status /= 0) return
-        call assemble_maxwell_plane_wave_rhs_rwg_3d( &
-            vertices, triangles, direction, polarization, wave_number, &
-            quadrature_degree, efie_rhs, status)
-        if (status /= 0) return
-        call assemble_maxwell_plane_wave_rhs_bc_3d( &
-            vertices, triangles, direction, polarization, wave_number, &
-            quadrature_degree, bc_rhs, status)
         if (status /= 0) return
         call assemble_maxwell_rwg_rbc_pairing( &
             vertices, triangles, quadrature_degree, real_mass, status)
         if (status /= 0) return
         n = size(real_mass, 1)
         allocate( &
-            mass(n, n), mapped_rhs(n, 1), right_hand_side(n, 1), &
-            pivots(n), density(n))
+            mass(n, n), mapped_rhs(n, incidence_count), &
+            right_hand_side(n, incidence_count), pivots(n), &
+            densities(n, incidence_count))
+        do incidence = 1, incidence_count
+            call assemble_maxwell_plane_wave_rhs_rwg_3d( &
+                vertices, triangles, directions(:, incidence), &
+                polarizations(:, incidence), wave_number, quadrature_degree, &
+                efie_rhs, status)
+            if (status /= 0) return
+            call assemble_maxwell_plane_wave_rhs_bc_3d( &
+                vertices, triangles, directions(:, incidence), &
+                polarizations(:, incidence), wave_number, quadrature_degree, &
+                bc_rhs, status)
+            if (status /= 0) return
+            mapped_rhs(:, incidence) = efie_rhs
+            right_hand_side(:, incidence) = bc_rhs
+        end do
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        mapped_rhs(:, 1) = efie_rhs
-        call zgesv(n, 1, mass, n, pivots, mapped_rhs, n, info)
+        call zgesv( &
+            n, incidence_count, mass, n, pivots, mapped_rhs, n, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        right_hand_side(:, 1) = bc_rhs - &
-            matmul(regularizer, mapped_rhs(:, 1))
-        call zgesv(n, 1, cfie, n, pivots, right_hand_side, n, info)
+        right_hand_side = right_hand_side - matmul(regularizer, mapped_rhs)
+        call zgesv( &
+            n, incidence_count, cfie, n, pivots, right_hand_side, n, info)
         if (info /= 0) then
             status = 3
             return
         end if
-        density = right_hand_side(:, 1)
+        densities = right_hand_side
         status = 0
-    end subroutine solve_maxwell_pec_regularized_cfie_rwg_3d
+    end subroutine solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
 
     subroutine assemble_maxwell_plane_wave_rhs_bc_3d( &
             vertices, triangles, direction, polarization, wave_number, &
