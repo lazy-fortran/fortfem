@@ -2,7 +2,8 @@ module fortfem_api_forms
     use fortfem_kinds
     use fortfem_forms_simple, only: assignment(=), compile_form, &
         compile_form_matrix, compile_form_vector, compile_vector_form_csc, &
-        compile_vector_form_element, compile_vector_form_rhs, create_curl, &
+        compile_mixed_form_csc, compile_vector_form_element, &
+        compile_vector_form_rhs, create_curl, &
         create_cell_coefficient, create_constant_load, create_divergence, &
         create_cell_tensor_coefficient, create_cell_vector_source, &
         create_grad, create_inner, &
@@ -30,6 +31,7 @@ module fortfem_api_forms
     public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
+    public :: compile_mixed_form_csc
     public :: compile_vector_form_rhs
     public :: assignment(=)
     public :: operator(*)

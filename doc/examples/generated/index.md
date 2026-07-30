@@ -11,6 +11,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [minimal_mesh_example](minimal_mesh_example.html) - A simple demonstration of FortFEM's mesh generation capabilities.
 - [plot_mesh](plot_mesh.html) - This example demonstrates FortFEM's mesh visualization capabilities, showing how to create and plot finite element meshes at different refinement levels.
 - [plotting](plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
+- [mixed_poisson](mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](curl_curl.html) - This is an experimental API and visualization prototype for a future
 - [tetra_h1_poisson](tetra_h1_poisson.html) - This example solves
 - [tetra_nedelec_p_convergence](tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.

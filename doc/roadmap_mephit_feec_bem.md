@@ -63,8 +63,8 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | Requirement | Verified FortFEM capability | Remaining gate |
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
-| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors and explicit-edge mixed tangential/curl-Neumann data through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
-| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass, tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves through order four; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl through order four | A general symbolic mixed-form API; the single-field FEEC family gate is complete |
+| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors and explicit-edge mixed tangential/curl-Neumann data through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, rectangular symbolic RT–DG divergence and Nedelec–DG curl blocks, and a symbolic mixed Poisson solve with optimal RT–DG convergence | General multi-field block composition beyond the implemented differential pairings |
+| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass, tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves through order four; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl through order four | Symbolic rectangular 3D mixed forms; the single-field FEEC family gate is complete |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; arbitrary-polygon P1/P0 acoustic displacement-to-pressure NtD, its work-conjugate vector weak form, and a monolithic complex P1 elasticity solve through a resonance-safe combined Calderon equation; biperiodic planar Maxwell strong and weak capacity operators; automatic arbitrary-order tetrahedral Nedelec trace sampling and pulled-back planar capacity blocks; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on general curved surfaces |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD with monolithic P1 elasticity coupling on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, and remaining paper fixtures |
@@ -123,8 +123,11 @@ RT0--RT3 div-div-plus-mass forms with normal edge moments, constant or
 cellwise vector loads, and `fortsparse` direct solves. BDM1--BDM4 forms use
 the same public H(div) path with their full polynomial cell moments. The
 mixed Poisson solver attains the expected second-, third-, and fourth-order
-rates for RT1--DG1 through RT3--DG3. A general symbolic mixed-form API
-remains absent.
+rates for RT1--DG1 through RT3--DG3. The public expression compiler now
+builds signed rectangular RT--DG divergence and Nedelec--DG curl blocks in
+either trial/test direction and composes the RT--DG blocks into a symbolic
+mixed Poisson solve. General multi-field block composition and the matching
+three-dimensional symbolic surface remain absent.
 
 ### Sparse algebra
 
@@ -695,8 +698,13 @@ attains the membrane-series vector potential and differentiated magnetic
 field through order four. Physical-element interpolation and projection now
 attain the expected h-rates for H1 degrees 1--4, first-kind H(curl) orders
 1--4, RT H(div) degrees 0--4, and discontinuous L2 degrees 0--4. The Phase 2
-single-field numerical exit gate is met. General symbolic mixed-form
-compilation remains an API gap rather than a missing finite-element family.
+single-field numerical exit gate is met. In two dimensions the symbolic
+compiler now emits rectangular RT--DG divergence and Nedelec--DG curl blocks,
+including signed transposes, and a public mixed Poisson path composes the
+mass and divergence expressions into one FortSparse saddle solve. Cellwise
+conservation and optimal RT1--DG1 refinement provide independent oracles.
+General block composition and three-dimensional mixed-form compilation
+remain API gaps rather than missing finite-element families.
 
 ### Phase 3: acoustic DtN and 2D BEM
 

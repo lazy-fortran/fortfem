@@ -68,6 +68,11 @@ contains
             else if (degree == 2) then
                 space%ndof = mesh%data%n_vertices + mesh%data%n_edges
             end if
+        case ("DG", "Discontinuous Lagrange")
+            if (degree >= 0 .and. degree <= 4) then
+                space%ndof = mesh%data%n_triangles* &
+                    (degree + 1)*(degree + 2)/2
+            end if
         end select
     end function function_space
 
