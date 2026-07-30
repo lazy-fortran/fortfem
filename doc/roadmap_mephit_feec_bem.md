@@ -65,9 +65,9 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first- and second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
 | Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass, tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves through order four; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl through order four | A general symbolic mixed-form API; the single-field FEEC family gate is complete |
-| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; biperiodic planar Maxwell strong and weak capacity operators; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Nedelec trace sampling for automated planar coupling, Maxwell DtN on general curved surfaces, and curved-boundary elastic coupling |
+| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; arbitrary-polygon P1/P0 acoustic displacement-to-pressure NtD through a resonance-safe combined Calderon equation; biperiodic planar Maxwell strong and weak capacity operators; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Nedelec trace sampling for automated planar coupling, Maxwell DtN on general curved surfaces, and monolithic curved-boundary elastic coupling |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
-| 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
+| 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, monolithic elasticity coupling, and remaining paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace and Helmholtz P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; affine and exact-curved-torus Laplace/Helmholtz off-surface evaluation; full exact-curved-torus Laplace and Helmholtz P1/P0 Calderon operators and exterior DtN solves; tetrahedral P1 Johnson-Nedelec and symmetric Costabel Laplace/Helmholtz FEM/BEM coupling; solid-torus P1 FEM/exact-curved-BEM symmetric Laplace and Helmholtz coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves with batched multiple-incidence factor reuse, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, affine-torus regularized-CFIE scattering with a Lorentz-reciprocity oracle, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy and resonance suppression, and exact-curved-torus surface-Piola RWG traces, mass pairing, plane-wave loads, far-field radiation, radial-Duffy coincident integration, adaptive adjacent-panel integration, full vector/scalar EFIE assembly, exact barycentric BC/RBC geometry, full-rank curved RWG-RBC dual pairing, Maxwell-consistent exterior/interior magnetic jumps, a one-sided extrapolated MFIE limit, coercive RWG- and BC-domain imaginary-wavenumber EFIE regularizers, provenance-faithful regularized-CFIE product assembly, exact BC incident traces, batched incident-field factor reuse, and solved scattering satisfying Lorentz reciprocity | Higher-order Galerkin surface operators, production FMM or H-matrices, and adaptive mesh refinement |
 | Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, and toroidal-coordinate kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
 | Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions; current `fortsparse` provides CSC construction, retained factors, solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
@@ -208,13 +208,23 @@ equation with restarted GMRES. Its committed tests compare the Fortran result
 to FreeFem++ and include plane-wave and FDTD validation.
 
 The paper prototype is a useful migration source, but it is not a general
-BEM. FortFEM now provides FFT-based planar, circular, and spherical DtN maps, dense
-two-dimensional Laplace and Helmholtz Calderon operators, a Helmholtz CFIE,
-and symmetric Laplace and Helmholtz FEM/BEM transmission. Scalar Helmholtz
-and complex P1 elasticity now integrate the planar maps into their weak
-forms. The 5 MHz steel-water fixture matches the independent
-`paper_acoustics` Fortran result. Higher-order or fast boundary operators
-remain.
+BEM. FortFEM now provides FFT-based planar, circular, and spherical DtN maps,
+dense two-dimensional Laplace and Helmholtz Calderon operators, a Helmholtz
+CFIE, and symmetric Laplace and Helmholtz FEM/BEM transmission. A public
+arbitrary-polygon acoustic map converts panelwise normal displacement to
+continuous pressure with the interface condition
+\(\partial_n p=\rho_f\omega^2u_n\). It combines both exterior Calderon
+equations with the Burton--Miller \(ik\) coupling, avoiding the fictitious
+resonances of a single equation. Its polygonal-circle refinement test
+converges to the independent outgoing Hankel NtD eigenvalue. The formulation
+is provenance-matched to `paper_acoustics` revision `6300ab0` and Burton and
+Miller, *Proc. R. Soc. A* 323 (1971), 201--210,
+DOI `10.1098/rspa.1971.0097`.
+
+Scalar Helmholtz and complex P1 elasticity integrate the planar maps into
+their weak forms. The 5 MHz steel-water fixture matches the independent
+`paper_acoustics` Fortran result. Monolithic elasticity coupling to the new
+curved NtD map, higher-order traces, and fast boundary operators remain.
 
 ## Use of fortnum and fortsparse
 
@@ -664,7 +674,12 @@ Helmholtz counterpart passes a manufactured plane-wave transmission
 refinement study with independently integrated Neumann data. Calderon
 identities beyond the jump and spectral checks, adaptive near-singular
 panel-pair assembly, higher-order exterior traces, and the remaining layered
-paper validation cases in item 6 remain.
+paper validation cases in item 6 remain. The same P1/P0 blocks now provide an
+arbitrary-polygon acoustic displacement-to-pressure map through a
+Burton--Miller combined Calderon solve. Its first circular Fourier mode
+converges quadratically to the independent Hankel quotient, and the
+`curved_acoustic_ntd` Fortplot example publishes the trace comparison and
+convergence curve without checking generated images into git.
 
 ### Phase 4: fast and three-dimensional BEM
 
