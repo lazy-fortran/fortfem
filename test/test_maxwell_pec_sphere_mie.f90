@@ -2,8 +2,10 @@ program test_maxwell_pec_sphere_mie
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         evaluate_maxwell_efie_far_field_rwg_3d, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
         generate_sphere_surface_mesh, solve_maxwell_pec_efie_rwg_3d, &
-        solve_maxwell_pec_regularized_cfie_rwg_3d
+        solve_maxwell_pec_regularized_cfie_rwg_3d, &
+        solve_maxwell_pec_sphere_curved_efie_rwg_3d
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
@@ -11,7 +13,8 @@ program test_maxwell_pec_sphere_mie
     complex(dp), allocatable :: density(:)
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: vertices(:, :)
-    real(dp) :: cfie_cross_section, cfie_error
+    real(dp) :: cfie_cross_section, cfie_error, curved_cross_section
+    real(dp) :: curved_error
     real(dp) :: cross_sections(0:2), errors(0:2), exact_cross_section
     integer :: level, status
     logical :: all_passed
@@ -42,6 +45,22 @@ program test_maxwell_pec_sphere_mie
     call record_condition(errors(2)/exact_cross_section < 0.55_dp, &
         "Refined PEC sphere reaches the coarse-mesh Mie accuracy target")
     call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
+    call solve_maxwell_pec_sphere_curved_efie_rwg_3d( &
+        vertices, triangles, 1.0_dp, [0.0_dp, 0.0_dp, 1.0_dp], &
+        [cmplx(1.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
+        cmplx(0.0_dp, 0.0_dp, dp)], 0.8_dp, 1.0_dp, 4, 1.0e-5_dp, 2, &
+        density, status)
+    curved_cross_section = numerical_curved_cross_section( &
+        vertices, triangles, density, 0.8_dp, status)
+    curved_error = abs(curved_cross_section - exact_cross_section)
+    if (status /= 0 .or. curved_error >= errors(0)) write (*, *) &
+        "curved/planar/Mie cross sections", curved_cross_section, &
+        cross_sections(0), exact_cross_section
+    call record_condition(status == 0 .and. curved_cross_section > 0.0_dp, &
+        "curved PEC sphere EFIE produces positive radiated power")
+    call record_condition(curved_error < errors(0), &
+        "exact curved panels improve coarse-sphere Mie accuracy")
+    call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
     call solve_maxwell_pec_regularized_cfie_rwg_3d( &
         vertices, triangles, [0.0_dp, 0.0_dp, 1.0_dp], &
         [cmplx(1.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
@@ -62,6 +81,39 @@ program test_maxwell_pec_sphere_mie
     if (.not. all_passed) error stop 1
 
 contains
+
+    function numerical_curved_cross_section( &
+            vertices, triangles, density, wave_number, status) result(value)
+        real(dp), intent(in) :: vertices(:, :), wave_number
+        integer, intent(in) :: triangles(:, :)
+        complex(dp), intent(in) :: density(:)
+        integer, intent(out) :: status
+        real(dp) :: value
+
+        real(dp) :: azimuth, direction(3), radial, mu_nodes(8), mu_weights(8)
+        complex(dp) :: far_field(3)
+        integer :: azimuth_index, mu_index
+
+        call gauss_legendre_ab( &
+            8, -1.0_dp, 1.0_dp, mu_nodes, mu_weights)
+        value = 0.0_dp
+        do mu_index = 1, 8
+            radial = sqrt(max(0.0_dp, 1.0_dp - mu_nodes(mu_index)**2))
+            do azimuth_index = 0, 15
+                azimuth = 2.0_dp*acos(-1.0_dp)* &
+                    real(azimuth_index, dp)/16.0_dp
+                direction = [ &
+                    radial*cos(azimuth), radial*sin(azimuth), &
+                    mu_nodes(mu_index)]
+                call evaluate_maxwell_sphere_curved_far_field_rwg_3d( &
+                    vertices, triangles, 1.0_dp, density, direction, &
+                    wave_number, 1.0_dp, 8, far_field, status)
+                if (status /= 0) return
+                value = value + mu_weights(mu_index)* &
+                    2.0_dp*acos(-1.0_dp)/16.0_dp*sum(abs(far_field)**2)
+            end do
+        end do
+    end function numerical_curved_cross_section
 
     function numerical_cross_section( &
             vertices, triangles, density, wave_number, status) result(value)
