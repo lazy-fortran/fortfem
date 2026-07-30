@@ -8,11 +8,18 @@ module fortfem_barycentric_surface_refinement
 contains
 
     subroutine barycentric_refine_surface_mesh( &
-            vertices, triangles, refined_vertices, refined_triangles)
+            vertices, triangles, refined_vertices, refined_triangles, &
+            primal_edges, edge_midpoint_vertices, face_centroid_vertices, &
+            parent_faces, local_sectors)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), allocatable, intent(out) :: refined_vertices(:, :)
         integer, allocatable, intent(out) :: refined_triangles(:, :)
+        integer, allocatable, intent(out), optional :: primal_edges(:, :)
+        integer, allocatable, intent(out), optional :: edge_midpoint_vertices(:)
+        integer, allocatable, intent(out), optional :: face_centroid_vertices(:)
+        integer, allocatable, intent(out), optional :: parent_faces(:)
+        integer, allocatable, intent(out), optional :: local_sectors(:)
 
         integer, allocatable :: edge_vertices(:, :)
         integer :: a, b, c, center, edge_count, face
@@ -50,7 +57,24 @@ contains
             refined_vertices(:, size(vertices, 2) + edge_count + face) = &
                 sum(vertices(:, triangles(:, face)), dim=2)/3.0_dp
         end do
+        if (present(primal_edges)) then
+            allocate(primal_edges(2, edge_count))
+            primal_edges = edge_vertices(:, :edge_count)
+        end if
+        if (present(edge_midpoint_vertices)) then
+            allocate(edge_midpoint_vertices(edge_count))
+            edge_midpoint_vertices = [ &
+                (size(vertices, 2) + a, a=1, edge_count)]
+        end if
+        if (present(face_centroid_vertices)) then
+            allocate(face_centroid_vertices(size(triangles, 2)))
+            face_centroid_vertices = [ &
+                (size(vertices, 2) + edge_count + face, &
+                face=1, size(triangles, 2))]
+        end if
         allocate(refined_triangles(3, 6*size(triangles, 2)))
+        if (present(parent_faces)) allocate(parent_faces(6*size(triangles, 2)))
+        if (present(local_sectors)) allocate(local_sectors(6*size(triangles, 2)))
         do face = 1, size(triangles, 2)
             a = triangles(1, face)
             b = triangles(2, face)
@@ -63,11 +87,17 @@ contains
                 find_edge(c, a, edge_vertices, edge_count)
             center = size(vertices, 2) + edge_count + face
             refined_triangles(:, 6*face - 5) = [a, midpoint_ab, center]
-            refined_triangles(:, 6*face - 4) = [a, center, midpoint_ca]
+            refined_triangles(:, 6*face - 4) = [b, center, midpoint_ab]
             refined_triangles(:, 6*face - 3) = [b, midpoint_bc, center]
-            refined_triangles(:, 6*face - 2) = [b, center, midpoint_ab]
+            refined_triangles(:, 6*face - 2) = [c, center, midpoint_bc]
             refined_triangles(:, 6*face - 1) = [c, midpoint_ca, center]
-            refined_triangles(:, 6*face) = [c, center, midpoint_bc]
+            refined_triangles(:, 6*face) = [a, center, midpoint_ca]
+            if (present(parent_faces)) then
+                parent_faces(6*face - 5:6*face) = face
+            end if
+            if (present(local_sectors)) then
+                local_sectors(6*face - 5:6*face) = [1, 2, 3, 4, 5, 6]
+            end if
         end do
     end subroutine barycentric_refine_surface_mesh
 
