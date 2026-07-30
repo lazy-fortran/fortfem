@@ -18,8 +18,71 @@ module fortfem_maxwell_efie_rwg_3d
 
     public :: assemble_maxwell_efie_rwg_3d
     public :: assemble_maxwell_rwg_potential_operators_3d
+    public :: evaluate_maxwell_efie_field_rwg_3d
 
 contains
+
+    subroutine evaluate_maxwell_efie_field_rwg_3d( &
+            vertices, triangles, coefficients, target, wave_number, impedance, &
+            quadrature_degree, field, status)
+        real(dp), intent(in) :: vertices(:, :), coefficients(:), target(3)
+        real(dp), intent(in) :: wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(out) :: field(3)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_divergence, basis_value(3), displacement(3)
+        real(dp) :: jacobian, point(3), radius, surface_current(3)
+        real(dp) :: surface_divergence
+        complex(dp) :: gradient_green(3), green
+        integer :: basis, node, panel
+
+        field = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        do panel = 1, size(triangles, 2)
+            jacobian = 2.0_dp*triangle_area( &
+                vertices(:, triangles(:, panel)))
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    vertices(:, triangles(:, panel)), xi(node), eta(node))
+                surface_current = 0.0_dp
+                surface_divergence = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, point, basis_value, basis_divergence, status)
+                    if (status /= 0) return
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                    surface_divergence = surface_divergence + &
+                        coefficients(basis)*basis_divergence
+                end do
+                displacement = target - point
+                radius = norm2(displacement)
+                if (radius <= 0.0_dp) return
+                green = helmholtz_green(wave_number, radius)
+                gradient_green = green* &
+                    cmplx(-1.0_dp, wave_number*radius, dp)* &
+                    displacement/radius**2
+                field = field + jacobian*weights(node)*( &
+                    cmplx(0.0_dp, wave_number*impedance, dp)*green* &
+                    surface_current + &
+                    cmplx(0.0_dp, impedance/wave_number, dp)* &
+                    gradient_green*surface_divergence)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_efie_field_rwg_3d
 
     subroutine assemble_maxwell_efie_rwg_3d( &
             vertices, triangles, wave_number, impedance, quadrature_degree, &

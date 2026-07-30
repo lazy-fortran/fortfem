@@ -4,14 +4,17 @@ program test_maxwell_efie_rwg_3d
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_rwg_potential_operators_3d, &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
-        build_maxwell_rwg_surface_space
+        build_maxwell_rwg_surface_space, &
+        evaluate_helmholtz_representation_triangles_3d, &
+        evaluate_maxwell_efie_field_rwg_3d
     use fortfem_kinds, only: dp
     implicit none
 
     complex(dp), allocatable :: efie(:, :), scaled_efie(:, :)
     complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
     complex(dp), allocatable :: panel_operator(:, :)
-    complex(dp) :: expected_energy, rwg_energy
+    complex(dp) :: expected_energy, expected_field(3), rwg_energy
+    complex(dp) :: field(3), scalar_field
     real(dp), allocatable :: coefficients(:)
     real(dp) :: electric_field(3), face_currents(3, 4), vertices(3, 4)
     integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
@@ -81,6 +84,20 @@ program test_maxwell_efie_rwg_3d
     call record_condition(abs(rwg_energy - expected_energy)/ &
         abs(expected_energy) < 2.5e-2_dp, &
         "Affine RWG integration matches an independent constant-trace energy")
+    call evaluate_maxwell_efie_field_rwg_3d( &
+        vertices, boundary_triangles, coefficients, [2.0_dp, 2.0_dp, 2.0_dp], &
+        0.8_dp, 1.7_dp, 12, field, status)
+    do edge = 1, 3
+        call evaluate_helmholtz_representation_triangles_3d( &
+            vertices, boundary_triangles, &
+            [(cmplx(0.0_dp, 0.0_dp, dp), panel=1, 4)], &
+            -cmplx(face_currents(edge, :), 0.0_dp, dp), &
+            [2.0_dp, 2.0_dp, 2.0_dp], 0.8_dp, 12, scalar_field, status)
+        expected_field(edge) = cmplx(0.0_dp, 0.8_dp*1.7_dp, dp)*scalar_field
+    end do
+    call record_condition(status == 0 .and. &
+        sqrt(sum(abs(field - expected_field)**2)) < 2.0e-13_dp, &
+        "RWG Maxwell representation matches independent scalar potentials")
 
     call assemble_maxwell_efie_rwg_3d( &
         vertices, boundary_triangles, 0.8_dp, 1.7_dp, 12, 1.0e-3_dp, 1, &
