@@ -171,16 +171,76 @@ jobs:
         path: ci-artifacts/plots/
         retention-days: 30
 
+  enzyme:
+    name: released Flang 22 + pinned Enzyme
+    runs-on: ubuntu-24.04
+    env:
+      LLVM_MAJOR: "22"
+      ENZYME_REVISION: c96508349d9f121957292308c646b4a1fd53c507
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ca-certificates cmake curl g++ gfortran git gnupg \
+          libblas-dev liblapack-dev libsuitesparse-dev libsuperlu-dev \
+          lsb-release ninja-build software-properties-common
+
+    - name: Install released LLVM and Flang
+      run: |
+        curl -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh
+        chmod +x /tmp/llvm.sh
+        sudo /tmp/llvm.sh "$LLVM_MAJOR"
+        sudo apt-get install -y --no-install-recommends \
+          "flang-$LLVM_MAJOR" \
+          "libclang-$LLVM_MAJOR-dev" \
+          "llvm-$LLVM_MAJOR-dev"
+        mkdir -p "$RUNNER_TEMP/llvm-bin"
+        for tool in clang flang-new llvm-link opt; do
+          ln -s "/usr/bin/$tool-$LLVM_MAJOR" "$RUNNER_TEMP/llvm-bin/$tool"
+        done
+        echo "$RUNNER_TEMP/llvm-bin" >> "$GITHUB_PATH"
+
+    - name: Build pinned Enzyme plugin
+      run: |
+        git clone https://github.com/EnzymeAD/Enzyme.git "$RUNNER_TEMP/enzyme"
+        git -C "$RUNNER_TEMP/enzyme" checkout "$ENZYME_REVISION"
+        cmake -S "$RUNNER_TEMP/enzyme/enzyme" \
+          -B "$RUNNER_TEMP/enzyme-build" -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLLVM_DIR="/usr/lib/llvm-$LLVM_MAJOR/lib/cmake/llvm"
+        cmake --build "$RUNNER_TEMP/enzyme-build" \
+          --target "LLVMEnzyme-$LLVM_MAJOR" -j 2
+        echo "FORTFEM_CI_ENZYME_PLUGIN=$RUNNER_TEMP/enzyme-build/Enzyme/LLVMEnzyme-$LLVM_MAJOR.so" \
+          >> "$GITHUB_ENV"
+
+    - name: Configure required Enzyme tournament
+      run: |
+        cmake -S . -B build-enzyme -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DFORTFEM_ENABLE_ENZYME=ON \
+          -DFORTFEM_ENZYME_REQUIRED=ON \
+          -DFORTNUM_ENZYME_PLUGIN="$FORTFEM_CI_ENZYME_PLUGIN"
+
+    - name: Build and test real Enzyme products
+      run: |
+        cmake --build build-enzyme \
+          --target fortfem_enzyme_h1_geometry_products_build -j 2
+        ctest --test-dir build-enzyme --output-on-failure -R fortfem_enzyme
+
   # Summary job for branch protection - must be named 'test' for PR checks
   test:
     name: test
-    needs: [build-test, generated]
+    needs: [build-test, enzyme, generated]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
           echo "Build-test result: ${{ needs.build-test.result }}"
+          echo "Enzyme result: ${{ needs.enzyme.result }}"
           echo "Generated-source result: ${{ needs.generated.result }}"
           if [ "${{ needs.build-test.result }}" != "success" ]; then
             echo "::error::Tests failed"
@@ -188,6 +248,10 @@ jobs:
           fi
           if [ "${{ needs.generated.result }}" != "success" ]; then
             echo "::error::Generated sources are stale"
+            exit 1
+          fi
+          if [ "${{ needs.enzyme.result }}" != "success" ]; then
+            echo "::error::Enzyme tests failed"
             exit 1
           fi
           echo "All tests passed"

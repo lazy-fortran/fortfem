@@ -12,6 +12,10 @@ FortFEM is designed with the following principles:
 - **Performance**: Efficient sparse matrix operations and assembly routines
 - **Extensibility**: Easy to add new element types and problem formulations
 
+The [differentiation strategy](differentiation.html) defines the common
+primal/JVP/VJP API, analytical FortSym path, optional Enzyme tournament, and
+implicit sparse-solve adjoints.
+
 ## Architecture
 
 ### Core Components
