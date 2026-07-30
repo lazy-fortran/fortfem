@@ -63,6 +63,8 @@ module fortfem_api
         assemble_maxwell_rwg_potential_operators_3d, &
         evaluate_maxwell_efie_far_field_rwg_3d, &
         evaluate_maxwell_efie_field_rwg_3d, solve_maxwell_pec_efie_rwg_3d
+    use fortfem_maxwell_fem_bem_coupling_3d, only: &
+        assemble_maxwell_fem_bem_boundary_matrix_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
@@ -246,6 +248,7 @@ module fortfem_api
     public :: evaluate_maxwell_efie_field_rwg_3d
     public :: evaluate_maxwell_efie_far_field_rwg_3d
     public :: solve_maxwell_pec_efie_rwg_3d
+    public :: assemble_maxwell_fem_bem_boundary_matrix_3d
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
