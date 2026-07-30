@@ -18,7 +18,7 @@ This guide will help you get started with FortFEM quickly.
 
 ```bash
 # Clone the repository
-git clone https://github.com/itpplasma/fortfem.git
+git clone https://github.com/lazy-fortran/fortfem.git
 cd fortfem
 
 # Build the library
