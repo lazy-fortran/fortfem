@@ -1,0 +1,257 @@
+---
+title: maxwell_torus_curved_scattering Example
+---
+
+# maxwell_torus_curved_scattering Example
+
+# Exact-curved torus Maxwell scattering
+
+This example solves time-harmonic perfect-electric-conductor scattering on an
+exact parametric torus. The numerical trace space uses surface-Piola RWG
+functions, a barycentrically refined Buffa--Christiansen dual space, and the
+nondegenerate RWG--RBC pairing. Radial-Duffy quadrature treats coincident
+Green kernels, adaptive product quadrature treats adjacent panels, and a
+one-sided extrapolation supplies the MFIE trace.
+
+The resonance-safe CFIE composes the real-wavenumber EFIE with a coercive
+imaginary-wavenumber BC operator through the discrete dual mass matrix. This
+is the range-aware product algebra described by Scroggs, Betcke, Burman,
+Smigaj, and van 't Wout, and the purely imaginary regularizer follows the
+operator-preconditioned formulation of Le and Cools. The dual trace space
+comes from the Buffa--Christiansen complex:
+
+- [Scroggs et al., *Software frameworks for integral equations in
+  electromagnetic scattering based on Calderón
+  identities*](https://arxiv.org/abs/1703.10900)
+- [Le and Cools, *An operator preconditioned combined field integral equation
+  for electromagnetic scattering*](https://doi.org/10.1137/23M1581674)
+- [Buffa and Christiansen, *A dual finite element complex on the barycentric
+  refinement*](https://doi.org/10.1090/S0025-5718-07-01965-5)
+
+Two incident plane waves share one assembled and factored CFIE. Their
+cross-observed far fields must satisfy Lorentz reciprocity; this independent
+physical identity is the example's accuracy gate. Degree two near-trace
+quadrature fails that gate, while degree three passes and is recorded in the
+benchmark output.
+
+Generated, uncommitted artifacts are:
+
+- `maxwell_torus_rcs_1d.png`: equatorial bistatic radar-cross-section cut;
+- `maxwell_torus_rcs_2d.png`: angular radar-cross-section map;
+- `maxwell_torus_rcs_3d.png`: normalized three-dimensional radiation surface;
+- `rcs_trace.csv`: reproducible equatorial samples;
+- `benchmark.txt`: unknown counts, timings, quadrature, reciprocity error, and
+  peak radar cross section.
+
+GitHub Actions generates these files and publishes them in the example
+gallery. No rendered image is checked into the repository.
+
+## Usage
+
+```bash
+fpm run --example maxwell_torus_curved_scattering
+```
+
+## Source Code
+
+```fortran
+program maxwell_torus_curved_scattering
+    !! Exact-curved torus PEC scattering with a regularized Maxwell CFIE.
+    use fortfem_api, only: &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d, &
+        generate_torus_surface_mesh, &
+        solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    use fortfem_kinds, only: dp
+    use fortplot, only: &
+        add_scatter, colorbar, figure, legend, pcolormesh, plot, savefig, title, &
+        xlabel, ylabel
+    implicit none
+
+    integer, parameter :: azimuth_cells = 36, polar_cells = 18
+    integer, parameter :: trace_points = 73
+    real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp
+    real(dp), parameter :: wave_number = 0.45_dp, impedance = 1.7_dp
+    real(dp), parameter :: pi = acos(-1.0_dp)
+    character(*), parameter :: output_directory = &
+        "output/example/maxwell_torus_curved_scattering"
+    complex(dp), allocatable :: currents(:, :)
+    complex(dp) :: far_field(3), first_reciprocal(3), second_reciprocal(3)
+    complex(dp), parameter :: z_polarization(3) = [ &
+        cmplx(0.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
+        cmplx(1.0_dp, 0.0_dp, dp)]
+    integer, allocatable :: triangles(:, :)
+    real(dp), allocatable :: parameters(:, :), vertices(:, :)
+    real(dp) :: azimuth, direction(3), end_time, far_field_seconds
+    real(dp) :: first_amplitude, polar, radius, reciprocity_error
+    real(dp) :: solve_seconds, start_time
+    real(dp) :: azimuth_edges(azimuth_cells + 1)
+    real(dp) :: polar_edges(polar_cells + 1)
+    real(dp) :: rcs_map(azimuth_cells, polar_cells)
+    real(dp) :: trace_azimuth(trace_points), trace_rcs(trace_points)
+    real(dp) :: x(azimuth_cells*polar_cells)
+    real(dp) :: y(azimuth_cells*polar_cells)
+    real(dp) :: z(azimuth_cells*polar_cells)
+    integer :: azimuth_index, point, polar_index, status, unit
+
+    call execute_command_line("mkdir -p "//output_directory)
+    call generate_torus_surface_mesh( &
+        major_radius, minor_radius, 3, 3, vertices, triangles, parameters)
+    call cpu_time(start_time)
+    call solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d( &
+        vertices, triangles, parameters, major_radius, minor_radius, reshape([ &
+        1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -1.0_dp, 0.0_dp], [3, 2]), &
+        reshape([z_polarization, z_polarization], [3, 2]), wave_number, &
+        impedance, 3, 3.0e-4_dp, 1, 0.12_dp, currents, status)
+    call cpu_time(end_time)
+    if (status /= 0) error stop "exact-torus Maxwell gallery solve failed"
+    solve_seconds = end_time - start_time
+
+    call cpu_time(start_time)
+    call build_far_field_map()
+    call build_trace()
+    call evaluate_reciprocity()
+    call cpu_time(end_time)
+    far_field_seconds = end_time - start_time
+    call render_plots()
+    call write_outputs()
+
+contains
+
+    subroutine build_far_field_map()
+        point = 0
+        do azimuth_index = 1, azimuth_cells + 1
+            azimuth_edges(azimuth_index) = 2.0_dp*pi* &
+                real(azimuth_index - 1, dp)/real(azimuth_cells, dp)
+        end do
+        do polar_index = 1, polar_cells + 1
+            polar_edges(polar_index) = pi* &
+                real(polar_index - 1, dp)/real(polar_cells, dp)
+        end do
+        do polar_index = 1, polar_cells
+            polar = 0.5_dp*( &
+                polar_edges(polar_index) + polar_edges(polar_index + 1))
+            do azimuth_index = 1, azimuth_cells
+                azimuth = 0.5_dp*( &
+                    azimuth_edges(azimuth_index) + &
+                    azimuth_edges(azimuth_index + 1))
+                direction = [ &
+                    sin(polar)*cos(azimuth), sin(polar)*sin(azimuth), &
+                    cos(polar)]
+                call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+                    vertices, triangles, parameters, major_radius, &
+                    minor_radius, currents(:, 1), direction, wave_number, &
+                    impedance, 8, far_field, status)
+                if (status /= 0) error stop "toroidal far-field map failed"
+                rcs_map(azimuth_index, polar_index) = &
+                    4.0_dp*pi*sum(abs(far_field)**2)
+                point = point + 1
+                radius = rcs_map(azimuth_index, polar_index)
+                x(point) = radius*direction(1)
+                y(point) = radius*direction(2)
+                z(point) = radius*direction(3)
+            end do
+        end do
+        radius = max(maxval(rcs_map), tiny(1.0_dp))
+        x = x/radius
+        y = y/radius
+        z = z/radius
+    end subroutine build_far_field_map
+
+    subroutine build_trace()
+        integer :: sample
+
+        do sample = 1, trace_points
+            trace_azimuth(sample) = 2.0_dp*pi*real(sample - 1, dp)/ &
+                real(trace_points - 1, dp)
+            direction = [ &
+                cos(trace_azimuth(sample)), sin(trace_azimuth(sample)), &
+                0.0_dp]
+            call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+                vertices, triangles, parameters, major_radius, minor_radius, &
+                currents(:, 1), direction, wave_number, impedance, 8, &
+                far_field, status)
+            if (status /= 0) error stop "toroidal azimuth trace failed"
+            trace_rcs(sample) = 4.0_dp*pi*sum(abs(far_field)**2)
+        end do
+    end subroutine build_trace
+
+    subroutine evaluate_reciprocity()
+        call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            currents(:, 1), [0.0_dp, 1.0_dp, 0.0_dp], wave_number, impedance, &
+            8, first_reciprocal, status)
+        if (status /= 0) error stop "first toroidal reciprocal field failed"
+        call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            currents(:, 2), [-1.0_dp, 0.0_dp, 0.0_dp], wave_number, &
+            impedance, 8, second_reciprocal, status)
+        if (status /= 0) error stop "second toroidal reciprocal field failed"
+        first_amplitude = max( &
+            abs(first_reciprocal(3)), abs(second_reciprocal(3)))
+        reciprocity_error = &
+            abs(first_reciprocal(3) - second_reciprocal(3))/first_amplitude
+    end subroutine evaluate_reciprocity
+
+    subroutine render_plots()
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(trace_azimuth, trace_rcs, &
+            label="exact-curved CFIE bistatic RCS", linestyle="-")
+        call xlabel("observation azimuth phi [rad]")
+        call ylabel("4 pi |E_infinity|^2")
+        call title("PEC torus Maxwell scattering: equatorial cut")
+        call legend()
+        call savefig(output_directory//"/maxwell_torus_rcs_1d.png")
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call pcolormesh( &
+            polar_edges, azimuth_edges, rcs_map, cmap="viridis")
+        call colorbar(label="4 pi |E_infinity|^2")
+        call xlabel("observation polar angle theta [rad]")
+        call ylabel("observation azimuth phi [rad]")
+        call title("PEC torus Maxwell bistatic RCS")
+        call savefig(output_directory//"/maxwell_torus_rcs_2d.png")
+
+        call figure(figsize=[7.5_dp, 6.5_dp])
+        call add_scatter(x, y, z, label="normalized RCS surface", marker=".")
+        call title("PEC torus Maxwell three-dimensional radiation pattern")
+        call savefig(output_directory//"/maxwell_torus_rcs_3d.png")
+    end subroutine render_plots
+
+    subroutine write_outputs()
+        integer :: sample
+
+        open (newunit=unit, file=output_directory//"/rcs_trace.csv", &
+            status="replace", action="write")
+        write (unit, "(a)") "azimuth,radar_cross_section"
+        do sample = 1, trace_points
+            write (unit, "(*(es24.16,:,','))") &
+                trace_azimuth(sample), trace_rcs(sample)
+        end do
+        close (unit)
+        open (newunit=unit, file=output_directory//"/benchmark.txt", &
+            status="replace", action="write")
+        write (unit, "(a,i0)") "surface triangles: ", size(triangles, 2)
+        write (unit, "(a,i0)") "RWG unknowns: ", size(currents, 1)
+        write (unit, "(a,i0)") "incident fields: ", size(currents, 2)
+        write (unit, "(a,i0)") "CFIE quadrature degree: ", 3
+        write (unit, "(a,es14.6)") "batched CFIE solve seconds: ", solve_seconds
+        write (unit, "(a,es14.6)") &
+            "far-field sampling seconds: ", far_field_seconds
+        write (unit, "(a,es14.6)") &
+            "Lorentz reciprocity relative error: ", reciprocity_error
+        write (unit, "(a,es14.6)") "maximum bistatic RCS: ", maxval(rcs_map)
+        close (unit)
+        if (reciprocity_error >= 2.0e-1_dp) &
+            error stop "toroidal Maxwell gallery reciprocity regression"
+    end subroutine write_outputs
+
+end program maxwell_torus_curved_scattering
+```
+
+## Generated Plots
+
+*No plot artifact is produced by this example.*
+
+---
+
+[← Back to all examples](../index.html)

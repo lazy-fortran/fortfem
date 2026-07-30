@@ -104,21 +104,20 @@ jobs:
       run: |
         set -euo pipefail
         echo "Running all examples..."
-        for example_dir in example/*/; do
-          if [[ -d "$example_dir" ]]; then
-            example_name=$(basename "$example_dir")
-            if [[ "$example_name" == "interoperability_benchmarks" ]]; then
-              echo "Skipping $example_name: external solver artifacts required"
-              continue
-            fi
-            if [[ -f "$example_dir/${example_name}.f90" ]]; then
-              echo "Running example: $example_name"
-              fpm run --example "$example_name"
-              mkdir -p "output/example/$example_name"
-              find . -maxdepth 1 -type f -name '*.png' \
-                -exec mv {} "output/example/$example_name/" \;
-            fi
+        mapfile -t example_sources < <(
+          find example -mindepth 1 -maxdepth 2 -type f -name '*.f90' | sort
+        )
+        for example_source in "${example_sources[@]}"; do
+          example_name=$(basename "$example_source" .f90)
+          if [[ "$example_name" == "interoperability_benchmarks" ]]; then
+            echo "Skipping $example_name: external solver artifacts required"
+            continue
           fi
+          echo "Running example: $example_name"
+          fpm run --example "$example_name"
+          mkdir -p "output/example/$example_name"
+          find . -maxdepth 1 -type f -name '*.png' \
+            -exec mv {} "output/example/$example_name/" \;
         done
 
     - name: Run all benchmarks  

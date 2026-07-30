@@ -13,6 +13,7 @@ build/
 test_*
 !test_*.f90
 !test_*.F90
+!test_*.sh
 
 # Coverage files
 *.gcov

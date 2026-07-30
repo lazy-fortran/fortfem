@@ -6,7 +6,13 @@ title: curl_curl Example
 
 # Curl-Curl Electromagnetic Example
 
-This example demonstrates solving electromagnetic problems using Nédélec edge elements for H(curl) conforming finite element spaces.
+This is an experimental API and visualization prototype for a future
+Nédélec curl-curl solver. It demonstrates the intended form syntax, solver
+dispatch, and vector plotting.
+
+It is not currently a numerical validation example. The high-level vector
+solver does not yet use the verified global Nédélec assembly or carry the
+coefficient and source objects from the symbolic form into assembly.
 
 ## Problem Description
 
@@ -23,7 +29,7 @@ Where:
 - `curl(E) = ∂E_y/∂x - ∂E_x/∂y` for 2D vector fields
 - Tangential boundary conditions enforce `E × n = 0`
 
-## Analytical Solution
+## Intended Analytical Solution
 
 The example uses the analytical solution:
 ```
@@ -35,14 +41,15 @@ This gives:
 - `curl(curl(E)) = ∂x/∂y - ∂(0)/∂x = 0`
 - Therefore: `J = curl(curl(E)) + E = [x*y, x²]`
 
+The program plots this field as a reference, but it does not compute an error
+against it.
+
 ## Features Demonstrated
 
-- **Nédélec edge elements**: H(curl) conforming finite element space
-- **Vector problems**: Two-component electromagnetic fields
-- **GMRES solver**: Iterative solver for large sparse systems
-- **Tangential boundary conditions**: Natural boundary conditions for electromagnetic problems
-- **Vector field visualization**: Streamplot representation of electric fields
-- **Error analysis**: Comparison with analytical solution
+- Intended FEniCS-style vector form syntax.
+- GMRES dispatch through the experimental vector solver.
+- Tangential boundary-condition API.
+- Vector-field streamplot output.
 
 ## Mathematical Formulation
 
@@ -58,11 +65,8 @@ The weak formulation seeks `E ∈ H(curl, Ω)` such that:
 - `curlcurl_exact.png`: Vector field plot of analytical solution
 - `curl_field.png`: Scalar plot of the curl field
 
-## Convergence Analysis
-
-The example performs convergence studies showing optimal convergence rates for:
-- L² error in the electric field
-- H(curl) error including curl components
+For verified lowest-order edge moments, covariant Piola mapping, orientations,
+and operator assembly, see the Nédélec tests under `test/`.
 
 ## Applications
 
@@ -71,6 +75,7 @@ This formulation is fundamental for:
 - Eddy current problems
 - Maxwell equations
 - Microwave engineering
+
 ## Usage
 
 ```bash
@@ -84,7 +89,7 @@ program curl_curl_example
     ! Clean FEniCS-style example solving the curl-curl equation
     ! ∇ × (∇ × E) + E = J in Ω = [0,1]²
     ! E × n = 0 on ∂Ω (tangential boundary condition)
-    ! 
+    !
     ! This demonstrates FEniCS-style syntax for electromagnetic problems
     ! using edge elements (Nédélec) and iterative GMRES solver
 
@@ -109,14 +114,14 @@ program curl_curl_example
     write(*,*) ""
 
     ! Create mesh and vector function space using FEniCS-style API
-    mesh = unit_square_mesh(8)  ! 8x8 grid for efficiency
+    mesh = unit_square_mesh(8) ! 8x8 grid for efficiency
     Vh = vector_function_space(mesh, "Nedelec", 1)
-    
+
     n_vertices = mesh%data%n_vertices
     n_elements = mesh%data%n_triangles
     n_dofs = Vh%ndof
-    h = 1.0_dp / 7.0_dp  ! mesh spacing
-    
+    h = 1.0_dp / 7.0_dp ! mesh spacing
+
     write(*,*) "Mesh statistics:"
     write(*,*) "  Vertices:", n_vertices
     write(*,*) "  Elements:", n_elements
@@ -130,12 +135,12 @@ program curl_curl_example
 
     ! Define source current J = [1, 0] (x-directed current)
     J = vector_function(Vh)
-    J%values(:, 1) = 1.0_dp  ! Jx = 1
-    J%values(:, 2) = 0.0_dp  ! Jy = 0
+    J%values(:, 1) = 1.0_dp ! Jx = 1
+    J%values(:, 2) = 0.0_dp ! Jy = 0
 
     ! Define weak form using mathematical notation
-    a = inner(curl(E), curl(F))*dx + inner(E, F)*dx  ! Bilinear form
-    L = inner(J, F)*dx                                ! Linear form
+    a = inner(curl(E), curl(F))*dx + inner(E, F)*dx ! Bilinear form
+    L = inner(J, F)*dx ! Linear form
 
     write(*,*) "Weak form:"
     write(*,*) "  a(E,F) = ", trim(a%description)
@@ -157,43 +162,43 @@ program curl_curl_example
 
     ! Analyze solution
     max_E = maxval(sqrt(Eh%values(:,1)**2 + Eh%values(:,2)**2))
-    
+
     write(*,*) "Solution statistics:"
     write(*,*) "  Max |E| =", max_E
     write(*,*) "  Max Ex =", maxval(abs(Eh%values(:,1)))
     write(*,*) "  Max Ey =", maxval(abs(Eh%values(:,2)))
     write(*,*) ""
-    
+
     ! Plot the numerical solution
     write(*,*) "Creating numerical solution plot..."
     call plot(Eh, filename="curl_curl_numerical.png", &
-              title="Curl-Curl Numerical Solution", &
-              plot_type="streamplot")
-    
+        title="Curl-Curl Numerical Solution", &
+        plot_type="streamplot")
+
     ! Create and plot analytical reference solution E = [x*y, x²]
     write(*,*) "Creating analytical reference solution plot..."
     Eh_ref = vector_function(Vh)
-    
+
     ! Simple approach: set analytical values at mesh centers
     ! For proper implementation, this would need edge element interpolation
     do i = 1, Vh%ndof
         ! Use simple coordinate mapping for demonstration
         if (i <= Vh%ndof/2) then
-            x_coord = 0.3_dp  ! Approximate coordinates
+            x_coord = 0.3_dp ! Approximate coordinates
             y_coord = 0.3_dp
         else
             x_coord = 0.7_dp
-            y_coord = 0.7_dp  
+            y_coord = 0.7_dp
         end if
-        Eh_ref%values(i, 1) = x_coord * y_coord  ! Ex = x*y
-        Eh_ref%values(i, 2) = x_coord * x_coord  ! Ey = x²
+        Eh_ref%values(i, 1) = x_coord * y_coord ! Ex = x*y
+        Eh_ref%values(i, 2) = x_coord * x_coord ! Ey = x²
     end do
-    
+
     call plot(Eh_ref, filename="curl_curl_analytical.png", &
-              title="Curl-Curl Analytical Solution: E=[xy, x²]", &
-              plot_type="streamplot")
+        title="Curl-Curl Analytical Solution: E=[xy, x²]", &
+        plot_type="streamplot")
     write(*,*) ""
-    
+
     write(*,*) "Example completed successfully!"
     write(*,*) ""
     write(*,*) "This example demonstrates:"
@@ -204,23 +209,13 @@ program curl_curl_example
     write(*,*) "- Vector field visualization with streamplots"
     write(*,*) "- Comparison with analytical solution E=[x*y, x²]"
 
-end program curl_curl_example```
+end program curl_curl_example
+```
 
 ## Generated Plots
 
-### curl_curl_analytical.png
-
-![curl_curl_analytical.png](../../../artifacts/plots/curl_curl_analytical.png)
-
-### curl_curl_numerical.png
-
-![curl_curl_numerical.png](../../../artifacts/plots/curl_curl_numerical.png)
-
-### curl_curl_solution.png
-
-![curl_curl_solution.png](../../../artifacts/plots/curl_curl_solution.png)
-
+*No plot artifact is produced by this example.*
 
 ---
 
-[← Back to Examples](../index.html) | [FortFEM Documentation](../../index.html)
+[← Back to all examples](../index.html)

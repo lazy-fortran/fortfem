@@ -70,7 +70,7 @@ program simple_poisson
 
     mesh = unit_square_mesh(20)
     Vh = function_space(mesh, "Lagrange", 1)
-    
+
     u = trial_function(Vh)
     v = test_function(Vh)
     f = constant(1.0_dp)
@@ -82,45 +82,27 @@ program simple_poisson
     uh = function(Vh)
 
     call solve(a == L, uh, bc)
-    
+
     ! Plot mesh
     call plot(mesh, filename="poisson_mesh.png", title="Poisson Mesh (20x20)")
-    
+
     ! Plot solution
     call plot(uh, filename="poisson_solution.png", &
-              title="Poisson Solution: -Δu = 1", &
-              colormap="viridis")
+        title="Poisson Solution: -Δu = 1", &
+        colormap="viridis")
 
     write(*,*) "Simple Poisson example completed!"
     write(*,*) "Generated files:"
     write(*,*) "  - Mesh: poisson_mesh.png"
     write(*,*) "  - Solution: poisson_solution.png"
 
-end program simple_poisson```
+end program simple_poisson
+```
 
 ## Generated Plots
 
-### poisson_solution.png
-
-![poisson_solution.png](../../../artifacts/plots/poisson_solution.png)
-
-### mesh.png
-
-![mesh.png](../../../artifacts/plots/mesh.png)
-
-### mesh_basic.png
-
-![mesh_basic.png](../../../artifacts/plots/mesh_basic.png)
-
-### mesh_coarse.png
-
-![mesh_coarse.png](../../../artifacts/plots/mesh_coarse.png)
-
-### mesh_fine.png
-
-![mesh_fine.png](../../../artifacts/plots/mesh_fine.png)
-
+*No plot artifact is produced by this example.*
 
 ---
 
-[← Back to Examples](../index.html) | [FortFEM Documentation](../../index.html)
+[← Back to all examples](../index.html)
