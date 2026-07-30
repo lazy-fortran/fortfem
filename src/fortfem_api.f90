@@ -38,7 +38,9 @@ module fortfem_api
         evaluate_laplace_representation_triangles_3d
     use fortfem_laplace_galerkin_3d, only: &
         assemble_laplace_calderon_p1_p0_3d, &
-        assemble_laplace_single_layer_p0_3d, solve_laplace_dirichlet_p0_3d
+        assemble_laplace_single_layer_p0_3d, &
+        assemble_laplace_single_layer_p0_adaptive_3d, &
+        solve_laplace_dirichlet_p0_3d
     use fortfem_laplace_fem_bem_coupling_3d, only: &
         solve_laplace_fem_bem_johnson_nedelec_3d
     use fortfem_laplace_hierarchical_3d, only: &
@@ -211,6 +213,7 @@ module fortfem_api
     public :: toroidal_vector_to_cartesian
     public :: evaluate_laplace_representation_triangles_3d
     public :: assemble_laplace_single_layer_p0_3d
+    public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_calderon_p1_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
     public :: solve_laplace_fem_bem_johnson_nedelec_3d
