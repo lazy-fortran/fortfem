@@ -47,3 +47,8 @@ main = "gen_toroidal_coordinates.f90"
 name = "gen_interoperability_oracles"
 source-dir = "app"
 main = "gen_interoperability_oracles.f90"
+
+[[executable]]
+name = "gen_tetra_h1_oracle"
+source-dir = "app"
+main = "gen_tetra_h1_oracle.f90"
