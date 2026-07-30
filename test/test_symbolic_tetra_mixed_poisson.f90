@@ -44,7 +44,7 @@ program test_symbolic_tetra_mixed_poisson
             vertices(:, tetrahedra(1, tetrahedron))
         volumes(tetrahedron) = abs(det3(jacobian))/6.0_dp
     end do
-    do degree = 0, 5
+    do degree = 0, 6
         call solve_symbolic_tetra_mixed_poisson_rt( &
             vertices, tetrahedra, degree, 2*degree + 4, &
             inner(flux_trial, flux_test)*dx, &

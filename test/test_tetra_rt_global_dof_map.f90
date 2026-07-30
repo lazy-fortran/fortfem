@@ -7,9 +7,9 @@ program test_tetra_rt_global_dof_map
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: degree = 5
-    integer, parameter :: dof_count = 189
-    integer, parameter :: face_dof_count = 21
+    integer, parameter :: degree = 6
+    integer, parameter :: dof_count = 280
+    integer, parameter :: face_dof_count = 28
     integer, allocatable :: face_orientations(:, :)
     integer, allocatable :: face_permutations(:, :, :), faces(:, :)
     integer, allocatable :: global_dofs(:, :)
@@ -30,8 +30,8 @@ program test_tetra_rt_global_dof_map
     call record_condition(size(faces, 2) == 7, &
         "Two tetrahedra share one canonical RT face")
     call record_condition(size(global_dofs, 1) == dof_count .and. &
-        maxval(global_dofs) == 357, &
-        "Degree-five RT topology has the analytic global dimension")
+        maxval(global_dofs) == 532, &
+        "Degree-six RT topology has the analytic global dimension")
     call record_condition(all( &
         global_dofs(2*face_dof_count + 1:3*face_dof_count, 1) == &
         global_dofs(2*face_dof_count + 1:3*face_dof_count, 2)), &
@@ -47,7 +47,7 @@ program test_tetra_rt_global_dof_map
         degree, face_orientations(:, 2), face_permutations(:, :, 2), &
         transform, status)
     call record_condition(status == 0, &
-        "Degree-five RT basis orientation transform builds")
+        "Degree-six RT basis orientation transform builds")
     do face = 1, 4
         face_start = (face - 1)*face_dof_count
         local = matmul( &

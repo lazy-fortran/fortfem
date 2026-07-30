@@ -7,7 +7,7 @@ program test_tetra_discontinuous_arbitrary_order
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: expected_counts(0:5) = [1, 4, 10, 20, 35, 56]
+    integer, parameter :: expected_counts(0:6) = [1, 4, 10, 20, 35, 56, 84]
     type(tetra_discontinuous_t) :: basis, copied_basis
     real(dp), allocatable :: values(:), x(:), y(:), z(:), weights(:)
     real(dp) :: exact_integral, numerical_integral
@@ -15,7 +15,7 @@ program test_tetra_discontinuous_arbitrary_order
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 5
+    do degree = 0, 6
         call initialize_tetra_discontinuous(degree, basis, status)
         call record_condition(status == 0 .and. &
             tetra_discontinuous_dof_count(basis) == expected_counts(degree), &
@@ -35,14 +35,19 @@ program test_tetra_discontinuous_arbitrary_order
             call integrate_basis( &
                 basis, basis_id, x, y, z, weights, numerical_integral)
             exponent_sum = sum(basis%exponents(:, basis_id))
-            exact_integral = real( &
-                factorial(basis%exponents(1, basis_id))* &
-                factorial(basis%exponents(2, basis_id))* &
-                factorial(basis%exponents(3, basis_id)), dp)/ &
-                real(factorial(exponent_sum + 3), dp)
+            if (degree <= 5) then
+                exact_integral = real( &
+                    factorial(basis%exponents(1, basis_id))* &
+                    factorial(basis%exponents(2, basis_id))* &
+                    factorial(basis%exponents(3, basis_id)), dp)/ &
+                    real(factorial(exponent_sum + 3), dp)
+            else
+                exact_integral = merge(1.0_dp/6.0_dp, 0.0_dp, &
+                    exponent_sum == 0)
+            end if
             call record_condition(abs(numerical_integral - exact_integral) < &
                 2.0e-13_dp, &
-                "Tetrahedral discontinuous monomial has exact integral")
+                "Tetrahedral discontinuous basis has exact integral")
         end do
         deallocate(values)
     end do
@@ -50,9 +55,6 @@ program test_tetra_discontinuous_arbitrary_order
     call initialize_tetra_discontinuous(-1, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral discontinuous basis rejects negative degree")
-    call initialize_tetra_discontinuous(6, basis, status)
-    call record_condition(status /= 0, &
-        "Tetrahedral discontinuous basis rejects unsupported degree")
 
     call check_summary("Tetrahedral discontinuous arbitrary order")
     if (.not. all_passed) error stop 1

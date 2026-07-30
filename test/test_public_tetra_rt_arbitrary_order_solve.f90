@@ -23,7 +23,7 @@ program test_public_tetra_rt_arbitrary_order_solve
     real(dp) :: maximum_error
     integer :: degree
 
-    do degree = 0, 5
+    do degree = 0, 6
         call solve_tetra_rt_div_mass( &
             vertices, tetrahedra, degree, constant_source, &
             1.0_dp, 1.0_dp, solution, status)

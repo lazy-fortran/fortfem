@@ -4,6 +4,7 @@ program test_tetra_rt_face_moment_transforms
         map_tetra_rt_face_basis_to_local, transform_tetra_rt_face_moments
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_special_jacobi, only: triangle_dubiner
     implicit none
 
     integer, parameter :: permutations(3, 6) = reshape([ &
@@ -13,7 +14,7 @@ program test_tetra_rt_face_moment_transforms
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 5
+    do degree = 0, 6
         do permutation = 1, 6
             call check_transform(degree, permutations(:, permutation))
         end do
@@ -91,7 +92,8 @@ contains
                         moment = moment + 1
                         moments(moment) = moments(moment) + &
                             weights(first)*weights(second)*(1.0_dp - s)* &
-                            polynomial_value*s**x_power*t**y_power
+                            polynomial_value*face_polynomial( &
+                            degree, x_power, y_power, s, t)
                     end do
                 end do
             end do
@@ -112,11 +114,23 @@ contains
             do x_power = 0, total
                 y_power = total - x_power
                 basis = basis + 1
-                value = value + coefficients(basis)* &
-                    point(1)**x_power*point(2)**y_power
+                value = value + coefficients(basis)*face_polynomial( &
+                    degree, x_power, y_power, point(1), point(2))
             end do
         end do
     end function evaluate_polynomial
+
+    pure real(dp) function face_polynomial( &
+            degree, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: degree, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (degree <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_polynomial
 
     pure subroutine permutation_map(permutation, offset, affine)
         integer, intent(in) :: permutation(3)
