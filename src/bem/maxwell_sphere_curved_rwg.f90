@@ -15,8 +15,85 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
+    public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: vector_potential(:, :)
+        complex(dp), allocatable, intent(out) :: scalar_potential(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: reference_divergence(:, :)
+        complex(dp) :: contribution, scalar_green
+        real(dp) :: divergence, jacobian, point(3), rwg_value(3)
+        integer :: basis, first, first_panel, first_slot, second, second_panel
+        integer :: second_slot
+
+        status = 1
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(edge_vertices, 2) == 0) return
+        allocate( &
+            vector_potential(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            scalar_potential(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            reference_divergence(2, size(edge_vertices, 2)))
+        vector_potential = cmplx(0.0_dp, 0.0_dp, dp)
+        scalar_potential = cmplx(0.0_dp, 0.0_dp, dp)
+        do basis = 1, size(edge_vertices, 2)
+            do first_slot = 1, 2
+                call evaluate_maxwell_sphere_curved_rwg_basis( &
+                    vertices, triangles, edge_vertices, edge_triangles, basis, &
+                    edge_triangles(first_slot, basis), radius, 1.0_dp/3.0_dp, &
+                    1.0_dp/3.0_dp, point, rwg_value, divergence, jacobian, &
+                    status)
+                if (status /= 0) return
+                reference_divergence(first_slot, basis) = divergence*jacobian
+            end do
+        end do
+        do first = 1, size(edge_vertices, 2)
+            do second = 1, first
+                do first_slot = 1, 2
+                    first_panel = edge_triangles(first_slot, first)
+                    do second_slot = 1, 2
+                        second_panel = edge_triangles(second_slot, second)
+                        if (first_panel == second_panel) then
+                            call &
+                                integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
+                                vertices, triangles, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                radius, wave_number, quadrature_degree, &
+                                contribution, status, scalar_green)
+                        else
+                            call &
+                                integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
+                                vertices, triangles, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                second_panel, radius, wave_number, &
+                                quadrature_degree, tolerance, max_depth, &
+                                contribution, status, scalar_green)
+                        end if
+                        if (status /= 0) return
+                        vector_potential(first, second) = &
+                            vector_potential(first, second) + contribution
+                        scalar_potential(first, second) = &
+                            scalar_potential(first, second) + &
+                            reference_divergence(first_slot, first)* &
+                            reference_divergence(second_slot, second)* &
+                            scalar_green
+                    end do
+                end do
+                vector_potential(second, first) = vector_potential(first, second)
+                scalar_potential(second, first) = scalar_potential(first, second)
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_potential_operators_rwg_3d
 
     subroutine assemble_maxwell_sphere_curved_vector_potential_rwg_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
@@ -73,7 +150,7 @@ contains
     subroutine integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
-            quadrature_degree, tolerance, max_depth, value, status)
+            quadrature_degree, tolerance, max_depth, value, status, scalar_value)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number, tolerance
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -81,11 +158,14 @@ contains
         integer, intent(in) :: second_panel, quadrature_degree, max_depth
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
+        complex(dp), optional, intent(out) :: scalar_value
 
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: reference_triangle(2, 3)
+        complex(dp) :: scalar_integral
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
+        if (present(scalar_value)) scalar_value = cmplx(0.0_dp, 0.0_dp, dp)
         status = 1
         if (radius <= 0.0_dp .or. wave_number < 0.0_dp .or. &
             tolerance <= 0.0_dp .or. max_depth < 1) return
@@ -101,14 +181,16 @@ contains
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             reference_triangle, reference_triangle, xi, eta, weights, &
-            tolerance, 0, max_depth, value, status)
+            tolerance, present(scalar_value), 0, max_depth, value, &
+            scalar_integral, status)
+        if (present(scalar_value)) scalar_value = scalar_integral
     end subroutine integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
 
     recursive subroutine integrate_adaptive_curved_rwg_pair( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             first_reference, second_reference, xi, eta, weights, tolerance, &
-            depth, max_depth, value, status)
+            need_scalar, depth, max_depth, value, scalar_value, status)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -117,21 +199,25 @@ contains
         real(dp), intent(in) :: first_reference(2, 3)
         real(dp), intent(in) :: second_reference(2, 3)
         real(dp), intent(in) :: xi(:), eta(:), weights(:), tolerance
-        complex(dp), intent(out) :: value
+        logical, intent(in) :: need_scalar
+        complex(dp), intent(out) :: value, scalar_value
         integer, intent(out) :: status
 
         real(dp) :: first_children(2, 3, 4), second_children(2, 3, 4)
-        complex(dp) :: coarse, contribution, refined
+        complex(dp) :: coarse, coarse_scalar, contribution
+        complex(dp) :: contribution_scalar, refined, refined_scalar
         integer :: first_child, second_child
 
         call integrate_regular_curved_rwg_pair( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
-            first_reference, second_reference, xi, eta, weights, coarse, status)
+            first_reference, second_reference, xi, eta, weights, coarse, &
+            coarse_scalar, status)
         if (status /= 0) return
         call subdivide_reference_triangle(first_reference, first_children)
         call subdivide_reference_triangle(second_reference, second_children)
         refined = cmplx(0.0_dp, 0.0_dp, dp)
+        refined_scalar = cmplx(0.0_dp, 0.0_dp, dp)
         do first_child = 1, 4
             do second_child = 1, 4
                 call integrate_regular_curved_rwg_pair( &
@@ -139,18 +225,23 @@ contains
                     first_basis, first_panel, second_basis, second_panel, &
                     radius, wave_number, first_children(:, :, first_child), &
                     second_children(:, :, second_child), xi, eta, weights, &
-                    contribution, status)
+                    contribution, contribution_scalar, status)
                 if (status /= 0) return
                 refined = refined + contribution
+                refined_scalar = refined_scalar + contribution_scalar
             end do
         end do
-        if (depth + 1 >= max_depth .or. abs(refined - coarse) <= &
-            tolerance*max(tiny(1.0_dp), abs(refined))) then
+        if (depth + 1 >= max_depth .or. (abs(refined - coarse) <= &
+            tolerance*max(tiny(1.0_dp), abs(refined)) .and. &
+            (.not. need_scalar .or. abs(refined_scalar - coarse_scalar) <= &
+            tolerance*max(tiny(1.0_dp), abs(refined_scalar))))) then
             value = refined
+            scalar_value = refined_scalar
             status = 0
             return
         end if
         value = cmplx(0.0_dp, 0.0_dp, dp)
+        scalar_value = cmplx(0.0_dp, 0.0_dp, dp)
         do first_child = 1, 4
             do second_child = 1, 4
                 if (curved_reference_children_touch( &
@@ -162,17 +253,20 @@ contains
                         first_basis, first_panel, second_basis, second_panel, &
                         radius, wave_number, first_children(:, :, first_child), &
                         second_children(:, :, second_child), xi, eta, weights, &
-                        tolerance, depth + 1, max_depth, contribution, status)
+                        tolerance, need_scalar, depth + 1, max_depth, &
+                        contribution, &
+                        contribution_scalar, status)
                 else
                     call integrate_regular_curved_rwg_pair( &
                         vertices, triangles, edge_vertices, edge_triangles, &
                         first_basis, first_panel, second_basis, second_panel, &
                         radius, wave_number, first_children(:, :, first_child), &
                         second_children(:, :, second_child), xi, eta, weights, &
-                        contribution, status)
+                        contribution, contribution_scalar, status)
                 end if
                 if (status /= 0) return
                 value = value + contribution
+                scalar_value = scalar_value + contribution_scalar
             end do
         end do
         status = 0
@@ -181,7 +275,8 @@ contains
     subroutine integrate_regular_curved_rwg_pair( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
-            first_reference, second_reference, xi, eta, weights, value, status)
+            first_reference, second_reference, xi, eta, weights, value, &
+            scalar_value, status)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -190,7 +285,7 @@ contains
         real(dp), intent(in) :: first_reference(2, 3)
         real(dp), intent(in) :: second_reference(2, 3)
         real(dp), intent(in) :: xi(:), eta(:), weights(:)
-        complex(dp), intent(out) :: value
+        complex(dp), intent(out) :: value, scalar_value
         integer, intent(out) :: status
 
         real(dp) :: first_divergence, first_jacobian, first_point(3)
@@ -198,9 +293,11 @@ contains
         real(dp) :: physical_distance, second_divergence, second_jacobian
         real(dp) :: second_point(3), second_reference_jacobian
         real(dp) :: second_value(3), second_xi_eta(2)
+        complex(dp) :: green
         integer :: first_node, second_node
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
+        scalar_value = cmplx(0.0_dp, 0.0_dp, dp)
         first_reference_jacobian = reference_triangle_jacobian(first_reference)
         second_reference_jacobian = &
             reference_triangle_jacobian(second_reference)
@@ -223,11 +320,14 @@ contains
                     second_divergence, second_jacobian, status)
                 if (status /= 0) return
                 physical_distance = norm2(first_point - second_point)
+                green = helmholtz_green(wave_number, physical_distance)
                 value = value + first_reference_jacobian* &
                     second_reference_jacobian*weights(first_node)* &
-                    weights(second_node)*first_jacobian*second_jacobian* &
-                    helmholtz_green(wave_number, physical_distance)* &
+                    weights(second_node)*first_jacobian*second_jacobian*green* &
                     dot_product(first_value, second_value)
+                scalar_value = scalar_value + first_reference_jacobian* &
+                    second_reference_jacobian*weights(first_node)* &
+                    weights(second_node)*green
             end do
         end do
         status = 0
@@ -236,7 +336,7 @@ contains
     subroutine integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             panel, second_basis, radius, wave_number, quadrature_degree, &
-            value, status)
+            value, status, scalar_value)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -244,6 +344,7 @@ contains
         integer, intent(in) :: quadrature_degree
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
+        complex(dp), optional, intent(out) :: scalar_value
 
         real(dp), allocatable :: eta(:), line_nodes(:), line_weights(:)
         real(dp), allocatable :: weights(:), xi(:)
@@ -253,9 +354,12 @@ contains
         real(dp) :: second_jacobian, second_point(3), second_value(3)
         real(dp) :: second_xi, t, wedge_first(2), wedge_jacobian
         real(dp) :: wedge_second(2)
+        complex(dp) :: green, scalar_integral
         integer :: first_node, line_count, radial_node, tangential_node, wedge
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
+        scalar_integral = cmplx(0.0_dp, 0.0_dp, dp)
+        if (present(scalar_value)) scalar_value = scalar_integral
         status = 1
         if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
         call triangle_duffy_quadrature( &
@@ -298,16 +402,22 @@ contains
                             second_jacobian, status)
                         if (status /= 0) return
                         physical_distance = norm2(first_point - second_point)
+                        green = helmholtz_green( &
+                            wave_number, physical_distance)
                         value = value + weights(first_node)*first_jacobian* &
                             line_weights(radial_node)* &
                             line_weights(tangential_node)*rho*wedge_jacobian* &
-                            second_jacobian* &
-                            helmholtz_green(wave_number, physical_distance)* &
+                            second_jacobian*green* &
                             dot_product(first_value, second_value)
+                        scalar_integral = scalar_integral + &
+                            weights(first_node)*line_weights(radial_node)* &
+                            line_weights(tangential_node)*rho*wedge_jacobian* &
+                            green
                     end do
                 end do
             end do
         end do
+        if (present(scalar_value)) scalar_value = scalar_integral
         status = 0
     end subroutine integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
 
