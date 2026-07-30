@@ -1,4 +1,6 @@
 module fortfem_api
+    use fortfem_magnetic_curvilinear_coefficients_2d, only: &
+        scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_cartesian_pml_geometry, only: &
         build_cartesian_pml_element_stretch
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
@@ -344,6 +346,7 @@ module fortfem_api
     public :: cell_vector_source_t
     public :: form_expr_t
     public :: form_equation_t
+    public :: scalar_reluctivity_curvilinear_fourier_coefficients
 
     ! Public mesh constructors and refinement
     public :: unit_square_mesh
