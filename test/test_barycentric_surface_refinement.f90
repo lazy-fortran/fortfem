@@ -5,9 +5,11 @@ program test_barycentric_surface_refinement
     implicit none
 
     integer, allocatable :: refined_triangles(:, :)
+    integer, allocatable :: edge_midpoints(:), face_centroids(:)
+    integer, allocatable :: parent_faces(:), primal_edges(:, :), sectors(:)
     real(dp), allocatable :: refined_vertices(:, :)
     real(dp) :: normal(3), vertices(3, 4)
-    integer :: boundary_triangles(3, 4), triangle
+    integer :: boundary_triangles(3, 4), local_sector, triangle
     logical :: all_passed
 
     all_passed = .true.
@@ -20,7 +22,8 @@ program test_barycentric_surface_refinement
     boundary_triangles(:, 3) = [1, 4, 3]
     boundary_triangles(:, 4) = [2, 3, 4]
     call barycentric_refine_surface_mesh( &
-        vertices, boundary_triangles, refined_vertices, refined_triangles)
+        vertices, boundary_triangles, refined_vertices, refined_triangles, &
+        primal_edges, edge_midpoints, face_centroids, parent_faces, sectors)
     call record_condition(size(refined_vertices, 2) == 14 .and. &
         size(refined_triangles, 2) == 24, &
         "Barycentric tetrahedral surface has V+E+F vertices and 6F panels")
@@ -39,6 +42,17 @@ program test_barycentric_surface_refinement
         refined_vertices(:, 5:) - spread( &
         [0.5_dp, 0.0_dp, 0.0_dp], 2, 10))**2, dim=1))) < 2.0e-14_dp, &
         "Barycentric refinement contains the analytical edge midpoint")
+    call record_condition(size(primal_edges, 2) == 6 .and. &
+        all(edge_midpoints == [(triangle, triangle=5, 10)]) .and. &
+        all(face_centroids == [(triangle, triangle=11, 14)]), &
+        "Barycentric topology exposes primal-edge and dual-vertex numbering")
+    call record_condition(all(parent_faces == [( &
+        (triangle, local_sector=1, 6), triangle=1, 4)]) .and. &
+        all(sectors == [(local_sector, local_sector=1, 6), &
+        (local_sector, local_sector=1, 6), &
+        (local_sector, local_sector=1, 6), &
+        (local_sector, local_sector=1, 6)]), &
+        "Barycentric topology records each parent face and local sector")
     call check_summary("Barycentric surface refinement")
     if (.not. all_passed) error stop 1
 
