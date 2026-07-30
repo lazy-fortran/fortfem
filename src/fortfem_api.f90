@@ -321,6 +321,8 @@ module fortfem_api
         solve_tetra_nedelec_weighted_curl_mass
     ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
+    use fortfem_tetra_mixed_poisson_3d, only: &
+        solve_symbolic_tetra_mixed_poisson_rt
     use fortfem_tetra_lagrange_solver_3d, only: &
         assignment(=), evaluate_tetra_lagrange_solution, &
         evaluate_tetra_lagrange_solution_prepared, &
@@ -521,6 +523,8 @@ module fortfem_api
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
     public :: compile_mixed_form_csc
+    public :: compile_tetra_mixed_form_csc
+    public :: compile_tetra_rt_form_csc
     public :: compile_vector_form_rhs
     public :: init_measures
     public :: operator(*)
@@ -538,6 +542,7 @@ module fortfem_api
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_nedelec_weighted_curl_mass
     public :: solve_tetra_rt_div_mass
+    public :: solve_symbolic_tetra_mixed_poisson_rt
     public :: evaluate_tetra_lagrange_solution
     public :: evaluate_tetra_lagrange_solution_prepared
     public :: initialize_tetra_lagrange_solution_evaluator

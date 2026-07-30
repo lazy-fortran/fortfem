@@ -8,6 +8,7 @@ plotting
 mixed_poisson
 curl_curl
 tetra_h1_poisson
+tetra_mixed_poisson
 tetra_nedelec_p_convergence
 
 # Open boundaries
