@@ -53,8 +53,21 @@ The initial findings used the following evidence:
   regularizer \(R\) assembled at imaginary wavenumber. This rules out adding
   incompatible EFIE and MFIE weak matrices merely because they have the same
   dimensions.
+- The arbitrary-order, divergence-conforming surface-current construction of
+  [Notaros (2008)](https://atmos.colostate.edu/~notaros/Papers/Notaros_Higher_Order_CEM.pdf)
+  and the well-conditioned hierarchical simplicial H(div) bases of
+  [Xin, Cai, and Guo (2015)](https://doi.org/10.4208/cicp.180813.110714a).
+  These distinguish a genuine higher-order surface space from an algebraic
+  multiresolution transform of lowest-order RWG functions.
+- The fast isogeometric Galerkin BEM design in
+  [Bembel](https://arxiv.org/abs/1906.00785) and the distributed
+  \(\mathcal H^2\) BEM construction of
+  [Börm (2022)](https://arxiv.org/abs/2203.05665). Both retain accurate
+  near-field Galerkin interactions and compress admissible far-field blocks;
+  this is the scalability model for FortFEM rather than replacing singular
+  quadrature with point sampling.
 
-The current implementation baseline is FortFEM `112d26e` with 265 passing
+The current implementation baseline is FortFEM `5d6a2a0` with 265 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -98,8 +111,8 @@ incorrect curls, no distinct Raviart--Thomas basis, and no global orientation
 map. Those reference-element and assembly defects are now repaired for
 lowest-order triangles and covered by analytical tests.
 
-At the initial audit, the remaining high-level vector path was not a verified
-PDE solver:
+The original FEniCS-style vector facade remains a compatibility and expression
+prototype rather than the verified PDE path:
 
 - `vector_function_space(..., "RT", 1)` still shares the generic edge-space
   container and is not connected to RT-specific interpolation or mixed forms.
@@ -108,8 +121,8 @@ PDE solver:
   the number of unique mesh edges.
 - The mass and load terms are placeholders. Boundary values other than zero
   are ignored.
-- Existing vector tests establish that calls complete. They do not compare
-  edge moments, assembled matrices, fields, or convergence against an
+- Its historical vector tests establish that calls complete. They do not
+  compare edge moments, assembled matrices, fields, or convergence against an
   independent solution.
 
 FortFEM now has verified H(curl), H(div), and discontinuous scalar families
@@ -802,6 +815,28 @@ converges to an independent outgoing-source trace. Higher-order geometry and
 traces, items 1--2, and adaptive
 refinement remain. Item 5 is implemented for affine and radially curved
 sphere Maxwell traces as summarized above.
+
+The executable `curl_curl` gallery no longer routes through the prototype
+facade. It directly exercises the public sparse tetrahedral Nedelec solver,
+PEC elimination, and orders one through five. Its independently evaluated
+analytical field and curl both converge monotonically after covariant Piola
+mapping.
+
+The next Maxwell surface milestone is deliberately ordered as follows:
+
+1. implement a reference-triangle surface RT hierarchy with normal-edge and
+   cell moments, generated modal polynomial identities, and exact divergence;
+2. assemble its curved contravariant surface Piola image and prove normal-trace
+   continuity, divergence commutation, and reduction to RWG at lowest order;
+3. extend EFIE and BC/RBC dual products with exact singular and adaptive-near
+   quadrature before exposing higher-order Maxwell FEM-BEM solves;
+4. add a retained near/far block tree and FortNum GMRES application interface,
+   then verify dense agreement, requested compression tolerance, and
+   subquadratic storage on sphere and torus sequences.
+
+FortSym is the source of fixed modal values, derivatives, and orientation
+transforms in steps 1--2. Geometry-dependent panel topology and adaptive
+near/far decisions remain runtime algorithms.
 
 A structured solid-torus volume mesh now sweeps a conforming triangulated
 disk into positively oriented tetrahedra. Its only incidence-one faces are
