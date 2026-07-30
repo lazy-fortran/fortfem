@@ -5,6 +5,8 @@ module fortfem_api_spaces
         trial_function_t, test_function_t, vector_trial_function_t,         &
         vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
         cell_coefficient_t, cell_vector_source_t
+    use fortfem_triangle_global_dof_map, only: &
+        build_triangle_trimmed_dof_map
     implicit none
 
     private
@@ -68,6 +70,8 @@ contains
         character(len=*), intent(in) :: family
         integer, intent(in) :: degree
         type(vector_function_space_t) :: space
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        integer :: global_dof_count, status
 
         space%mesh => mesh
         space%element_family = family
@@ -75,7 +79,15 @@ contains
         space%n_components = 2
 
         select case (trim(family))
-        case ("Nedelec", "Edge", "RT")
+        case ("Nedelec", "Nedelec1", "Edge")
+            call build_triangle_trimmed_dof_map( &
+                mesh%data, degree, global_dofs, transforms, &
+                global_dof_count, status)
+            if (status /= 0) then
+                error stop "vector_function_space: invalid Nedelec space"
+            end if
+            space%ndof = global_dof_count
+        case ("RT")
             if (degree == 1) then
                 if (.not. allocated(mesh%data%edges)) then
                     call mesh%data%build_edge_connectivity()
