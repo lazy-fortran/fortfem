@@ -212,7 +212,8 @@ module fortfem_api
         assemble_helmholtz_single_layer_constant, &
         assemble_helmholtz_single_layer_linear
     use fortfem_curved_acoustic_displacement_ntd_2d, only: &
-        apply_curved_acoustic_displacement_ntd_2d
+        apply_curved_acoustic_displacement_ntd_2d, &
+        assemble_curved_acoustic_displacement_ntd_form_2d
     use fortfem_helmholtz_exterior_2d, only: &
         evaluate_helmholtz_combined_potential_adaptive_constant, &
         evaluate_helmholtz_combined_potential_constant, &
@@ -655,6 +656,7 @@ module fortfem_api
     public :: assemble_laplace_symmetric_coupling_p1_p0
     public :: assemble_helmholtz_symmetric_coupling_p1_p0
     public :: apply_curved_acoustic_displacement_ntd_2d
+    public :: assemble_curved_acoustic_displacement_ntd_form_2d
     public :: solve_helmholtz_symmetric_coupling_p1_p0
     public :: solve_laplace_symmetric_coupling_p1_p0
     public :: interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
