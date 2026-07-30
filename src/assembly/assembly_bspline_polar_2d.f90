@@ -111,6 +111,8 @@ contains
         real(dp) :: angular_weights(quadrature_order)
         real(dp) :: determinant, inverse(2, 2), jacobian(2, 2)
         real(dp) :: physical_column(2), physical_row(2), quadrature_weight
+        integer, allocatable :: active_dofs(:)
+        integer :: active_column, active_count, active_row
         integer :: angular, angular_cell, angular_point, column, dof_count
         integer :: local_status, radial, radial_count, radial_point, span
         integer :: row, tensor_radial_count
@@ -137,6 +139,7 @@ contains
             allocate(scalar_value(dof_count))
         end if
         allocate(dense(dof_count, dof_count))
+        allocate(active_dofs(dof_count))
         allocate(reduced_knots(size(radial_knots) - 2))
         allocate(radial_nodes(quadrature_order), radial_weights(quadrature_order))
         reduced_knots = radial_knots(2:size(radial_knots) - 1)
@@ -214,11 +217,21 @@ contains
                                         modulo(angular, azimuth_count) + 1)
                                 end do
                             end do
-                            do column = 1, dof_count
+                            active_count = 0
+                            do row = 1, dof_count
+                                if (any(reference_value(:, row) /= 0.0_dp) .or. &
+                                    reference_curl(row) /= 0.0_dp) then
+                                    active_count = active_count + 1
+                                    active_dofs(active_count) = row
+                                end if
+                            end do
+                            do active_column = 1, active_count
+                                column = active_dofs(active_column)
                                 physical_column = matmul( &
                                     transpose(inverse), &
                                     reference_value(:, column))
-                                do row = 1, dof_count
+                                do active_row = 1, active_count
+                                    row = active_dofs(active_row)
                                     physical_row = matmul( &
                                         transpose(inverse), &
                                         reference_value(:, row))
@@ -240,8 +253,17 @@ contains
                                         modulo(angular, azimuth_count) + 1)
                                 end do
                             end do
-                            do column = 1, dof_count
-                                do row = 1, dof_count
+                            active_count = 0
+                            do row = 1, dof_count
+                                if (scalar_value(row) /= 0.0_dp) then
+                                    active_count = active_count + 1
+                                    active_dofs(active_count) = row
+                                end if
+                            end do
+                            do active_column = 1, active_count
+                                column = active_dofs(active_column)
+                                do active_row = 1, active_count
+                                    row = active_dofs(active_row)
                                     dense(row, column) = dense(row, column) + &
                                         quadrature_weight*mass_weight* &
                                         scalar_value(row)* &

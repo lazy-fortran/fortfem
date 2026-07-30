@@ -84,9 +84,9 @@ of the current implementation.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
-- Replace the correctness-first dense tensor quadrature workspace in physical
-  magnetic-axis H(curl)/L2 assembly with support-local sparse accumulation, and
-  benchmark both paths.
+- Replace the remaining dense tensor result workspace in physical magnetic-axis
+  H(curl)/L2 assembly with direct CSC accumulation, and publish scaling
+  benchmarks. Quadrature already traverses only active local support.
 - Verify a nonlinear manufactured equilibrium and an energy-transfer problem
   against the published continuous invariants.
 - Benchmark cached harmonic-bracket assembly and nonlinear residual evaluation.
