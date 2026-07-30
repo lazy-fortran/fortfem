@@ -13,6 +13,10 @@ The operator inventory is based on:
 - E. Franck et al., *Energy conservation and numerical stability for the
   reduced MHD models of the non-linear JOREK code* (2015),
   [arXiv:1408.2099](https://arxiv.org/abs/1408.2099).
+- D. Toshniwal and T. J. R. Hughes, *Isogeometric discrete differential
+  forms: Non-uniform degrees, Bézier extraction, polar splines and flows on
+  surfaces*, CMAME 376 (2021), 113576,
+  [doi:10.1016/j.cma.2020.113576](https://doi.org/10.1016/j.cma.2020.113576).
 
 ## Implemented primitives
 
@@ -30,6 +34,7 @@ The operator inventory is based on:
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |
+| Magnetic-axis scalar regularity | Type-1 polar H1 extraction |
 
 The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
@@ -66,6 +71,9 @@ of the current implementation.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
+- Complete the magnetic-axis polar complex with the locally exact 1- and
+  2-form extraction and incidence operators. The scalar extraction is not
+  advertised as a complete polar FEEC complex on its own.
 - Verify a nonlinear manufactured equilibrium and an energy-transfer problem
   against the published continuous invariants.
 - Benchmark cached harmonic-bracket assembly and nonlinear residual evaluation.
