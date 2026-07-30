@@ -3,13 +3,53 @@ module fortfem_maxwell_rwg_surface
     !! orientable triangular surface. One basis function is created for each
     !! edge shared by exactly two panels.
     use fortfem_kinds, only: dp
+    use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     implicit none
     private
 
     public :: build_maxwell_rwg_surface_space
     public :: evaluate_maxwell_rwg_basis
+    public :: map_maxwell_rwg_to_tetra_nedelec_edges
 
 contains
+
+    subroutine map_maxwell_rwg_to_tetra_nedelec_edges( &
+            vertices, tetrahedra, rwg_edges, nedelec_dofs, scales, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), rwg_edges(:, :)
+        integer, allocatable, intent(out) :: nedelec_dofs(:)
+        real(dp), allocatable, intent(out) :: scales(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_dofs(:, :), edge_orientations(:, :)
+        integer, allocatable :: volume_edges(:, :)
+        integer :: edge, volume_edge
+
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(rwg_edges, 1) /= 2) return
+        if (any(rwg_edges < 1) .or. any(rwg_edges > size(vertices, 2))) return
+        call build_tetra_edge_dof_map( &
+            tetrahedra, volume_edges, edge_dofs, edge_orientations, status)
+        if (status /= 0) return
+        allocate(nedelec_dofs(size(rwg_edges, 2)), scales(size(rwg_edges, 2)))
+        do edge = 1, size(rwg_edges, 2)
+            nedelec_dofs(edge) = 0
+            do volume_edge = 1, size(volume_edges, 2)
+                if (all(volume_edges(:, volume_edge) == rwg_edges(:, edge))) then
+                    nedelec_dofs(edge) = volume_edge
+                    exit
+                end if
+            end do
+            if (nedelec_dofs(edge) == 0) then
+                status = 2
+                return
+            end if
+            scales(edge) = 1.0_dp/norm2( &
+                vertices(:, rwg_edges(2, edge)) - &
+                vertices(:, rwg_edges(1, edge)))
+        end do
+        status = 0
+    end subroutine map_maxwell_rwg_to_tetra_nedelec_edges
 
     subroutine build_maxwell_rwg_surface_space( &
             vertices, triangles, edge_vertices, edge_triangles, status)

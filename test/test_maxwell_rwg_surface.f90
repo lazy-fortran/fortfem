@@ -1,13 +1,15 @@
 program test_maxwell_rwg_surface
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
-        build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis
+        build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
+        map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_kinds, only: dp
     implicit none
 
     real(dp), allocatable :: divergence(:, :), values(:, :, :)
     real(dp) :: conormal(3), edge_midpoint(3), normal(3), vertices(3, 4)
     integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+    integer, allocatable :: trace_dofs(:)
     integer :: basis, status, triangle, triangles(3, 2)
     logical :: all_passed
 
@@ -59,10 +61,70 @@ program test_maxwell_rwg_surface
         divergence(1, basis), status)
     call record_condition(status /= 0, &
         "RWG evaluation rejects a point outside the selected panel")
+
+    call test_tetra_nedelec_trace()
     call check_summary("Maxwell RWG surface trace space")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_tetra_nedelec_trace()
+        real(dp), allocatable :: basis_value(:, :), basis_divergence(:)
+        real(dp), allocatable :: trace_coefficients(:), trace_scales(:)
+        real(dp) :: centroid(3), electric_field(3), expected(3), normal(3)
+        real(dp) :: tetra_vertices(3, 4)
+        integer, allocatable :: rwg_triangles(:, :), rwg_vertices(:, :)
+        integer :: boundary_triangles(3, 4), edge, face, local_status
+        integer :: tetrahedra(4, 1)
+
+        tetra_vertices(:, 1) = [0.0_dp, 0.0_dp, 0.0_dp]
+        tetra_vertices(:, 2) = [1.0_dp, 0.0_dp, 0.0_dp]
+        tetra_vertices(:, 3) = [0.0_dp, 1.0_dp, 0.0_dp]
+        tetra_vertices(:, 4) = [0.0_dp, 0.0_dp, 1.0_dp]
+        tetrahedra(:, 1) = [1, 2, 3, 4]
+        boundary_triangles(:, 1) = [1, 3, 2]
+        boundary_triangles(:, 2) = [1, 2, 4]
+        boundary_triangles(:, 3) = [1, 4, 3]
+        boundary_triangles(:, 4) = [2, 3, 4]
+        call build_maxwell_rwg_surface_space( &
+            tetra_vertices, boundary_triangles, rwg_vertices, rwg_triangles, &
+            local_status)
+        call map_maxwell_rwg_to_tetra_nedelec_edges( &
+            tetra_vertices, tetrahedra, rwg_vertices, trace_dofs, &
+            trace_scales, local_status)
+        call record_condition(local_status == 0 .and. &
+            all(trace_dofs >= 1) .and. all(trace_dofs <= 6), &
+            "RWG trace unknowns map to global tetrahedral Nedelec edges")
+
+        electric_field = [0.7_dp, -0.4_dp, 0.2_dp]
+        allocate( &
+            trace_coefficients(6), basis_value(3, 6), basis_divergence(6))
+        do edge = 1, 6
+            trace_coefficients(edge) = trace_scales(edge)*dot_product( &
+                electric_field, &
+                tetra_vertices(:, rwg_vertices(2, edge)) - &
+                tetra_vertices(:, rwg_vertices(1, edge)))
+        end do
+        do face = 1, 4
+            centroid = sum( &
+                tetra_vertices(:, boundary_triangles(:, face)), dim=2)/3.0_dp
+            basis_value = 0.0_dp
+            do edge = 1, 6
+                if (.not. any(rwg_triangles(:, edge) == face)) cycle
+                call evaluate_maxwell_rwg_basis( &
+                    tetra_vertices, boundary_triangles, rwg_vertices, &
+                    rwg_triangles, edge, face, centroid, &
+                    basis_value(:, edge), basis_divergence(edge), local_status)
+            end do
+            normal = triangle_normal( &
+                tetra_vertices(:, boundary_triangles(:, face)))
+            expected = cross_product(electric_field, normal)
+            call record_condition(norm2( &
+                matmul(basis_value, trace_coefficients) - expected) < &
+                2.0e-14_dp, &
+                "RWG functions reproduce the rotated Nedelec tangential trace")
+        end do
+    end subroutine test_tetra_nedelec_trace
 
     pure function triangle_normal(points) result(normal)
         real(dp), intent(in) :: points(3, 3)
