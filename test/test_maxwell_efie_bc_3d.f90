@@ -4,12 +4,15 @@ program test_maxwell_efie_bc_3d
         assemble_maxwell_bc_potential_operators_3d, &
         assemble_maxwell_bc_scalar_potential_3d, &
         assemble_maxwell_efie_bc_3d, &
+        assemble_maxwell_efie_bc_imaginary_3d, &
         build_maxwell_bc_panel_divergence, &
         build_maxwell_bc_to_refined_rwg, build_maxwell_bc_transformation
     use fortfem_kinds, only: dp
     implicit none
 
     complex(dp), allocatable :: full_matrix(:, :), matrix(:, :)
+    complex(dp), allocatable :: imaginary_matrix(:, :)
+    complex(dp), allocatable :: scaled_imaginary_matrix(:, :)
     complex(dp), allocatable :: scalar_potential(:, :), scaled_matrix(:, :)
     complex(dp), allocatable :: vector_potential(:, :)
     integer, allocatable :: refined_triangles(:, :)
@@ -81,6 +84,21 @@ program test_maxwell_efie_bc_3d
         maxval(abs(full_matrix - transpose(full_matrix))) < 3.0e-13_dp .and. &
         all(abs(full_matrix) < huge(1.0_dp)), &
         "BC EFIE is a finite complex-symmetric operator")
+    call assemble_maxwell_efie_bc_imaginary_3d( &
+        vertices, triangles, 1.2_dp, 1.7_dp, 2, 1.0e-5_dp, 1, &
+        imaginary_matrix, status)
+    call record_condition(status == 0 .and. &
+        maxval(abs(aimag(imaginary_matrix))) < 3.0e-14_dp .and. &
+        maxval(abs(imaginary_matrix - transpose(imaginary_matrix))) < &
+        3.0e-13_dp .and. all(real([(imaginary_matrix(basis, basis), &
+        basis=1, 6)], dp) < 0.0_dp), &
+        "imaginary-wave BC regularizer is real symmetric with negative diagonal")
+    call assemble_maxwell_efie_bc_imaginary_3d( &
+        2.0_dp*vertices, triangles, 0.6_dp, 1.7_dp, 2, 1.0e-5_dp, 1, &
+        scaled_imaginary_matrix, status)
+    call record_condition(maxval(abs( &
+        scaled_imaginary_matrix - imaginary_matrix)) < 3.0e-11_dp, &
+        "imaginary-wave BC regularizer is invariant under wave scaling")
 
     call check_summary("Three-dimensional Maxwell BC electric block")
     if (.not. all_passed) error stop 1
