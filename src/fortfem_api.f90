@@ -168,6 +168,7 @@ module fortfem_api
         assemble_maxwell_rwg_mass_matrix, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
         map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_maxwell_surface_rt, only: evaluate_maxwell_surface_rt_basis
     use fortfem_maxwell_efie_rwg_3d, only: &
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_plane_wave_rhs_rwg_3d, &
@@ -479,6 +480,7 @@ module fortfem_api
     public :: build_maxwell_rwg_surface_space
     public :: assemble_maxwell_rwg_mass_matrix
     public :: evaluate_maxwell_rwg_basis
+    public :: evaluate_maxwell_surface_rt_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
     public :: assemble_maxwell_efie_rwg_3d
     public :: assemble_maxwell_plane_wave_rhs_rwg_3d
