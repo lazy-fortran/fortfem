@@ -4,14 +4,22 @@ module fortfem_tetra_nedelec_interpolation
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: det3
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
     private
 
     public :: interpolate_reference_tetra_nedelec
+    public :: interpolate_physical_tetra_nedelec
 
     abstract interface
+        pure subroutine physical_vector_field_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value(3)
+        end subroutine physical_vector_field_3d
+
         pure subroutine reference_vector_field_3d(point, value)
             import :: dp
             real(dp), intent(in) :: point(3)
@@ -20,6 +28,44 @@ module fortfem_tetra_nedelec_interpolation
     end interface
 
 contains
+
+    subroutine interpolate_physical_tetra_nedelec( &
+            basis, vertices, field, dofs, status)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: vertices(3, 4)
+        procedure(physical_vector_field_3d) :: field
+        real(dp), allocatable, intent(out) :: dofs(:)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, jacobian(3, 3)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+        determinant = det3(jacobian)
+        status = 1
+        if (determinant <= 64.0_dp*epsilon(1.0_dp)* &
+            max(1.0_dp, maxval(abs(jacobian))**3)) return
+        call interpolate_reference_tetra_nedelec( &
+            basis, pulled_back_field, dofs, status)
+
+    contains
+
+        pure subroutine pulled_back_field(reference_point, value)
+            real(dp), intent(in) :: reference_point(3)
+            real(dp), intent(out) :: value(3)
+
+            real(dp) :: physical_point(3), physical_value(3)
+
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, reference_point)
+            call field( &
+                physical_point(1), physical_point(2), physical_point(3), &
+                physical_value)
+            value = matmul(transpose(jacobian), physical_value)
+        end subroutine pulled_back_field
+
+    end subroutine interpolate_physical_tetra_nedelec
 
     subroutine interpolate_reference_tetra_nedelec( &
             basis, field, dofs, status)
