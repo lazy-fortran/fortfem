@@ -7,9 +7,12 @@ module fortfem_bspline_multipatch
     integer, parameter, public :: BSPLINE_FACE_X_MAX = 2
     integer, parameter, public :: BSPLINE_FACE_Y_MIN = 3
     integer, parameter, public :: BSPLINE_FACE_Y_MAX = 4
+    integer, parameter, public :: BSPLINE_FACE_Z_MIN = 5
+    integer, parameter, public :: BSPLINE_FACE_Z_MAX = 6
 
     public :: build_bspline_feec_2d_interface_dofs
     public :: build_bspline_feec_2d_two_patch_maps
+    public :: build_bspline_feec_3d_interface_dofs
 
 contains
 
@@ -122,6 +125,255 @@ contains
         l2_right_map = &
             [(size(l2_left_map) + dof, dof = 1, size(l2_right_map))]
     end subroutine build_bspline_feec_2d_two_patch_maps
+
+    subroutine build_bspline_feec_3d_interface_dofs( &
+            nx_left, ny_left, nz_left, nx_right, ny_right, nz_right, &
+            face_left, face_right, swap_axes, reverse_u, reverse_v, h1_left, &
+            h1_right, hcurl_left, hcurl_right, hcurl_sign, hdiv_left, &
+            hdiv_right, hdiv_sign, status)
+        integer, intent(in) :: nx_left, ny_left, nz_left
+        integer, intent(in) :: nx_right, ny_right, nz_right
+        integer, intent(in) :: face_left, face_right
+        logical, intent(in) :: swap_axes, reverse_u, reverse_v
+        integer, allocatable, intent(out) :: h1_left(:), h1_right(:)
+        integer, allocatable, intent(out) :: hcurl_left(:), hcurl_right(:)
+        integer, allocatable, intent(out) :: hcurl_sign(:)
+        integer, allocatable, intent(out) :: hdiv_left(:), hdiv_right(:)
+        integer, allocatable, intent(out) :: hdiv_sign(:)
+        integer, intent(out) :: status
+
+        integer :: edge, iu, iv, ju1, ju2, jv1, jv2
+        integer :: nu_left, nu_right, nv_left, nv_right
+        integer :: node1(3), node2(3), right_node1(3), right_node2(3)
+        integer :: orientation
+
+        status = 1
+        call face_shape_3d( &
+            nx_left, ny_left, nz_left, face_left, nu_left, nv_left)
+        call face_shape_3d( &
+            nx_right, ny_right, nz_right, face_right, nu_right, nv_right)
+        if (min(nu_left, nv_left, nu_right, nv_right) < 2) return
+        if (swap_axes) then
+            if (nu_left /= nv_right .or. nv_left /= nu_right) return
+        else
+            if (nu_left /= nu_right .or. nv_left /= nv_right) return
+        end if
+        allocate( &
+            h1_left(nu_left*nv_left), h1_right(nu_left*nv_left), &
+            hcurl_left((nu_left - 1)*nv_left + nu_left*(nv_left - 1)), &
+            hcurl_right((nu_left - 1)*nv_left + nu_left*(nv_left - 1)), &
+            hcurl_sign((nu_left - 1)*nv_left + nu_left*(nv_left - 1)), &
+            hdiv_left((nu_left - 1)*(nv_left - 1)), &
+            hdiv_right((nu_left - 1)*(nv_left - 1)), &
+            hdiv_sign((nu_left - 1)*(nv_left - 1)))
+        do iv = 1, nv_left
+            do iu = 1, nu_left
+                edge = iu + (iv - 1)*nu_left
+                call face_node_3d( &
+                    nx_left, ny_left, nz_left, face_left, iu, iv, node1)
+                call map_face_indices( &
+                    iu, iv, nu_right, nv_right, swap_axes, reverse_u, &
+                    reverse_v, ju1, jv1)
+                call face_node_3d( &
+                    nx_right, ny_right, nz_right, face_right, ju1, jv1, &
+                    right_node1)
+                h1_left(edge) = node_dof_3d( &
+                    node1, nx_left, ny_left)
+                h1_right(edge) = node_dof_3d( &
+                    right_node1, nx_right, ny_right)
+            end do
+        end do
+
+        edge = 0
+        do iv = 1, nv_left
+            do iu = 1, nu_left - 1
+                edge = edge + 1
+                call append_face_edge( &
+                    iu, iv, iu + 1, iv, edge)
+            end do
+        end do
+        do iv = 1, nv_left - 1
+            do iu = 1, nu_left
+                edge = edge + 1
+                call append_face_edge( &
+                    iu, iv, iu, iv + 1, edge)
+            end do
+        end do
+
+        orientation = 1
+        if (swap_axes) orientation = -orientation
+        if (reverse_u) orientation = -orientation
+        if (reverse_v) orientation = -orientation
+        orientation = orientation*face_form_sign(face_left)* &
+            face_form_sign(face_right)
+        edge = 0
+        do iv = 1, nv_left - 1
+            do iu = 1, nu_left - 1
+                edge = edge + 1
+                call face_cell_dof_3d( &
+                    nx_left, ny_left, nz_left, face_left, iu, iv, &
+                    hdiv_left(edge))
+                call map_face_indices( &
+                    iu, iv, nu_right, nv_right, swap_axes, reverse_u, &
+                    reverse_v, ju1, jv1)
+                call map_face_indices( &
+                    iu + 1, iv + 1, nu_right, nv_right, swap_axes, reverse_u, &
+                    reverse_v, ju2, jv2)
+                call face_cell_dof_3d( &
+                    nx_right, ny_right, nz_right, face_right, min(ju1, ju2), &
+                    min(jv1, jv2), hdiv_right(edge))
+                hdiv_sign(edge) = orientation
+            end do
+        end do
+        status = 0
+
+    contains
+
+        subroutine append_face_edge(iu1, iv1, iu2, iv2, local_edge)
+            integer, intent(in) :: iu1, iv1, iu2, iv2, local_edge
+
+            call face_node_3d( &
+                nx_left, ny_left, nz_left, face_left, iu1, iv1, node1)
+            call face_node_3d( &
+                nx_left, ny_left, nz_left, face_left, iu2, iv2, node2)
+            call map_face_indices( &
+                iu1, iv1, nu_right, nv_right, swap_axes, reverse_u, reverse_v, &
+                ju1, jv1)
+            call map_face_indices( &
+                iu2, iv2, nu_right, nv_right, swap_axes, reverse_u, reverse_v, &
+                ju2, jv2)
+            call face_node_3d( &
+                nx_right, ny_right, nz_right, face_right, ju1, jv1, &
+                right_node1)
+            call face_node_3d( &
+                nx_right, ny_right, nz_right, face_right, ju2, jv2, &
+                right_node2)
+            call edge_dof_3d( &
+                node1, node2, nx_left, ny_left, nz_left, &
+                hcurl_left(local_edge), orientation)
+            call edge_dof_3d( &
+                right_node1, right_node2, nx_right, ny_right, nz_right, &
+                hcurl_right(local_edge), hcurl_sign(local_edge))
+            hcurl_sign(local_edge) = hcurl_sign(local_edge)*orientation
+        end subroutine append_face_edge
+
+    end subroutine build_bspline_feec_3d_interface_dofs
+
+    pure subroutine face_shape_3d(nx, ny, nz, face, nu, nv)
+        integer, intent(in) :: nx, ny, nz, face
+        integer, intent(out) :: nu, nv
+
+        select case (face)
+        case (BSPLINE_FACE_X_MIN, BSPLINE_FACE_X_MAX)
+            nu = ny
+            nv = nz
+        case (BSPLINE_FACE_Y_MIN, BSPLINE_FACE_Y_MAX)
+            nu = nx
+            nv = nz
+        case (BSPLINE_FACE_Z_MIN, BSPLINE_FACE_Z_MAX)
+            nu = nx
+            nv = ny
+        case default
+            nu = 0
+            nv = 0
+        end select
+    end subroutine face_shape_3d
+
+    pure subroutine map_face_indices( &
+            iu, iv, nu_right, nv_right, swap_axes, reverse_u, reverse_v, ju, jv)
+        integer, intent(in) :: iu, iv, nu_right, nv_right
+        logical, intent(in) :: swap_axes, reverse_u, reverse_v
+        integer, intent(out) :: ju, jv
+
+        if (swap_axes) then
+            ju = iv
+            jv = iu
+        else
+            ju = iu
+            jv = iv
+        end if
+        if (reverse_u) ju = nu_right + 1 - ju
+        if (reverse_v) jv = nv_right + 1 - jv
+    end subroutine map_face_indices
+
+    pure subroutine face_node_3d(nx, ny, nz, face, iu, iv, node)
+        integer, intent(in) :: nx, ny, nz, face, iu, iv
+        integer, intent(out) :: node(3)
+
+        select case (face)
+        case (BSPLINE_FACE_X_MIN, BSPLINE_FACE_X_MAX)
+            node = [1, iu, iv]
+            if (face == BSPLINE_FACE_X_MAX) node(1) = nx
+        case (BSPLINE_FACE_Y_MIN, BSPLINE_FACE_Y_MAX)
+            node = [iu, 1, iv]
+            if (face == BSPLINE_FACE_Y_MAX) node(2) = ny
+        case default
+            node = [iu, iv, 1]
+            if (face == BSPLINE_FACE_Z_MAX) node(3) = nz
+        end select
+    end subroutine face_node_3d
+
+    pure integer function node_dof_3d(node, nx, ny) result(dof)
+        integer, intent(in) :: node(3), nx, ny
+
+        dof = node(1) + (node(2) - 1)*nx + &
+            (node(3) - 1)*nx*ny
+    end function node_dof_3d
+
+    pure subroutine edge_dof_3d(node1, node2, nx, ny, nz, dof, sign)
+        integer, intent(in) :: node1(3), node2(3), nx, ny, nz
+        integer, intent(out) :: dof, sign
+        integer :: axis, lower(3)
+
+        axis = maxloc(abs(node2 - node1), dim=1)
+        lower = min(node1, node2)
+        sign = merge(1, -1, node2(axis) > node1(axis))
+        select case (axis)
+        case (1)
+            dof = lower(1) + (lower(2) - 1)*(nx - 1) + &
+                (lower(3) - 1)*(nx - 1)*ny
+        case (2)
+            dof = (nx - 1)*ny*nz + lower(1) + &
+                (lower(2) - 1)*nx + (lower(3) - 1)*nx*(ny - 1)
+        case default
+            dof = (nx - 1)*ny*nz + nx*(ny - 1)*nz + lower(1) + &
+                (lower(2) - 1)*nx + (lower(3) - 1)*nx*ny
+        end select
+    end subroutine edge_dof_3d
+
+    pure subroutine face_cell_dof_3d( &
+            nx, ny, nz, face, iu, iv, dof)
+        integer, intent(in) :: nx, ny, nz, face, iu, iv
+        integer, intent(out) :: dof
+        integer :: bx_count, by_count, fixed
+
+        bx_count = nx*(ny - 1)*(nz - 1)
+        by_count = (nx - 1)*ny*(nz - 1)
+        select case (face)
+        case (BSPLINE_FACE_X_MIN, BSPLINE_FACE_X_MAX)
+            fixed = 1
+            if (face == BSPLINE_FACE_X_MAX) fixed = nx
+            dof = fixed + (iu - 1)*nx + (iv - 1)*nx*(ny - 1)
+        case (BSPLINE_FACE_Y_MIN, BSPLINE_FACE_Y_MAX)
+            fixed = 1
+            if (face == BSPLINE_FACE_Y_MAX) fixed = ny
+            dof = bx_count + iu + (fixed - 1)*(nx - 1) + &
+                (iv - 1)*(nx - 1)*ny
+        case default
+            fixed = 1
+            if (face == BSPLINE_FACE_Z_MAX) fixed = nz
+            dof = bx_count + by_count + iu + (iv - 1)*(nx - 1) + &
+                (fixed - 1)*(nx - 1)*(ny - 1)
+        end select
+    end subroutine face_cell_dof_3d
+
+    pure integer function face_form_sign(face) result(sign)
+        integer, intent(in) :: face
+
+        sign = 1
+        if (face == BSPLINE_FACE_Y_MIN .or. &
+            face == BSPLINE_FACE_Y_MAX) sign = -1
+    end function face_form_sign
 
     pure integer function face_trace_count(nx, ny, face) result(count)
         integer, intent(in) :: nx, ny, face
