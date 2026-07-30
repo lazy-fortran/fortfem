@@ -2,14 +2,23 @@ program test_bspline_polar_axis
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_bspline_polar_feec_2d_operators, &
-        build_bspline_polar_h1_extraction
+        build_bspline_polar_feec_2d_extractions, &
+        build_bspline_polar_h1_extraction, &
+        restrict_bspline_polar_operator_csc
     use fortfem_kinds, only: dp
+    use fortsparse, only: &
+        csc_from_triplet, csc_matvec, csc_t, fortsparse_status_t
     implicit none
 
     integer, parameter :: azimuth_count = 8
     integer, parameter :: radial_count = 5
     real(dp), allocatable :: extraction(:, :), polar_points(:, :)
     real(dp), allocatable :: curl(:, :), gradient(:, :), random_state(:)
+    real(dp), allocatable :: hcurl_extraction(:, :), l2_extraction(:, :)
+    real(dp), allocatable :: expected(:), polar_state(:)
+    real(dp), allocatable :: tensor_curl(:, :), tensor_gradient(:, :)
+    type(csc_t) :: polar_mass, tensor_identity
+    type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: tensor_points(:, :)
     real(dp) :: angle, radius(azimuth_count)
     integer :: azimuth, status
@@ -74,6 +83,31 @@ program test_bspline_polar_axis
     call check_condition(gram_is_positive_definite(transpose( &
         gradient(:, 2:))), "Polar gradient has constants as its only kernel")
 
+    call build_bspline_polar_feec_2d_extractions( &
+        azimuth_count, radial_count, extraction, hcurl_extraction, &
+        l2_extraction, status)
+    call build_periodic_tensor_complex( &
+        azimuth_count, radial_count, tensor_gradient, tensor_curl)
+    call check_condition(maxval(abs( &
+        matmul(tensor_gradient, transpose(extraction)) - &
+        matmul(transpose(hcurl_extraction), gradient))) < 2.0e-15_dp, &
+        "Polar H1 and Hcurl extraction commutes with the gradient")
+    call check_condition(maxval(abs( &
+        matmul(tensor_curl, transpose(hcurl_extraction)) - &
+        matmul(transpose(l2_extraction), curl))) < 2.0e-15_dp, &
+        "Polar Hcurl and L2 extraction commutes with the curl")
+
+    call build_sparse_identity(size(extraction, 2), tensor_identity)
+    call restrict_bspline_polar_operator_csc( &
+        extraction, tensor_identity, polar_mass, sparse_status)
+    polar_state = [(sin(real(azimuth, dp)), &
+        azimuth = 1, size(extraction, 1))]
+    expected = matmul( &
+        extraction, matmul(transpose(extraction), polar_state))
+    call check_condition(sparse_status%code == 0 .and. maxval(abs( &
+        csc_matvec(polar_mass, polar_state) - expected)) < 2.0e-14_dp, &
+        "Sparse polar Hodge restriction equals E M E-transpose")
+
     allocate(random_state(size(gradient, 2)))
     call seed_random_numbers()
     do azimuth = 1, 20
@@ -130,5 +164,61 @@ contains
         seed = [(104729 + 7919*entry, entry = 1, size(seed))]
         call random_seed(put=seed)
     end subroutine seed_random_numbers
+
+    subroutine build_periodic_tensor_complex( &
+            na, nr, tensor_gradient, tensor_curl)
+        integer, intent(in) :: na, nr
+        real(dp), allocatable, intent(out) :: tensor_gradient(:, :)
+        real(dp), allocatable, intent(out) :: tensor_curl(:, :)
+        integer :: angular, angular_offset, face, next_angular
+        integer :: radial, radial_edge, top_angular, bottom_angular
+
+        angular_offset = (nr - 1)*na
+        allocate( &
+            tensor_gradient(angular_offset + nr*na, nr*na), &
+            tensor_curl((nr - 1)*na, angular_offset + nr*na))
+        tensor_gradient = 0.0_dp
+        tensor_curl = 0.0_dp
+        do radial = 1, nr
+            do angular = 1, na
+                next_angular = modulo(angular, na) + 1
+                bottom_angular = angular_offset + &
+                    (radial - 1)*na + angular
+                tensor_gradient(bottom_angular, &
+                    (radial - 1)*na + angular) = -1.0_dp
+                tensor_gradient(bottom_angular, &
+                    (radial - 1)*na + next_angular) = 1.0_dp
+                if (radial == nr) cycle
+                radial_edge = (radial - 1)*na + angular
+                tensor_gradient(radial_edge, &
+                    (radial - 1)*na + angular) = -1.0_dp
+                tensor_gradient(radial_edge, radial*na + angular) = 1.0_dp
+
+                face = radial_edge
+                top_angular = bottom_angular + na
+                tensor_curl(face, radial_edge) = 1.0_dp
+                tensor_curl(face, &
+                    (radial - 1)*na + next_angular) = -1.0_dp
+                tensor_curl(face, top_angular) = 1.0_dp
+                tensor_curl(face, bottom_angular) = -1.0_dp
+            end do
+        end do
+    end subroutine build_periodic_tensor_complex
+
+    subroutine build_sparse_identity(dimension, matrix)
+        integer, intent(in) :: dimension
+        type(csc_t), intent(out) :: matrix
+        integer :: indices(dimension), entry
+        real(dp) :: values(dimension)
+        type(fortsparse_status_t) :: identity_status
+
+        indices = [(entry, entry = 1, dimension)]
+        values = 1.0_dp
+        call csc_from_triplet( &
+            dimension, dimension, indices, indices, values, matrix, &
+            identity_status)
+        if (identity_status%code /= 0) &
+            error stop "Could not construct polar oracle identity"
+    end subroutine build_sparse_identity
 
 end program test_bspline_polar_axis

@@ -11,6 +11,7 @@ module fortfem_bspline_polar
 
     public :: build_bspline_polar_h1_extraction
     public :: build_bspline_polar_feec_2d_operators
+    public :: build_bspline_polar_feec_2d_extractions
 
 contains
 
@@ -28,9 +29,10 @@ contains
 
         real(dp), allocatable :: extraction(:, :)
         real(dp) :: delta(3)
-        integer :: azimuth, face, next_azimuth, radial, row
-        integer :: current_vertex, next_vertex
-        integer :: bottom_edge, current_spoke, next_spoke, top_edge
+        integer :: angular_edge, azimuth, face, next_azimuth, radial
+        integer :: current_vertex, next_vertex, previous_vertex
+        integer :: current_radial, next_radial, previous_angular
+        integer :: radial_edge_count, special_edge
 
         call build_bspline_polar_h1_extraction( &
             azimuth_count, radial_count, extraction, status)
@@ -43,64 +45,49 @@ contains
         gradient = 0.0_dp
         curl = 0.0_dp
 
-        gradient(1, 1:2) = [-1.0_dp, 1.0_dp]
-        gradient(2, [1, 3]) = [-1.0_dp, 1.0_dp]
-        do azimuth = 1, azimuth_count
-            next_azimuth = modulo(azimuth, azimuth_count) + 1
-            current_vertex = polar_vertex(1, azimuth)
-            next_vertex = polar_vertex(1, next_azimuth)
-            current_spoke = 2 + azimuth
-            bottom_edge = 2 + azimuth_count + azimuth
-
-            gradient(current_spoke, 1:3) = &
-                -extraction(1:3, azimuth_count + azimuth)
-            gradient(current_spoke, current_vertex) = 1.0_dp
-            gradient(bottom_edge, current_vertex) = -1.0_dp
-            gradient(bottom_edge, next_vertex) = 1.0_dp
-
-            delta = extraction(1:3, azimuth_count + next_azimuth) - &
-                extraction(1:3, azimuth_count + azimuth)
-            next_spoke = 2 + next_azimuth
-            face = azimuth
-            curl(face, current_spoke) = -1.0_dp
-            curl(face, next_spoke) = 1.0_dp
-            curl(face, bottom_edge) = -1.0_dp
-            curl(face, 1) = delta(2)
-            curl(face, 2) = delta(3)
-        end do
-
-        row = 2 + 2*azimuth_count
-        face = azimuth_count
-        do radial = 1, radial_count - 3
+        radial_edge_count = azimuth_count*(radial_count - 2)
+        do radial = 1, radial_count - 2
             do azimuth = 1, azimuth_count
-                next_azimuth = modulo(azimuth, azimuth_count) + 1
                 current_vertex = polar_vertex(radial, azimuth)
-                next_vertex = polar_vertex(radial + 1, azimuth)
-                row = row + 1
-                gradient(row, current_vertex) = -1.0_dp
-                gradient(row, next_vertex) = 1.0_dp
-            end do
-            do azimuth = 1, azimuth_count
-                next_azimuth = modulo(azimuth, azimuth_count) + 1
-                current_vertex = polar_vertex(radial + 1, azimuth)
-                next_vertex = polar_vertex(radial + 1, next_azimuth)
-                row = row + 1
-                gradient(row, current_vertex) = -1.0_dp
-                gradient(row, next_vertex) = 1.0_dp
+                current_radial = &
+                    (radial - 1)*azimuth_count + azimuth
+                if (radial == 1) then
+                    gradient(current_radial, 1:3) = &
+                        -extraction(1:3, azimuth_count + azimuth)
+                else
+                    previous_vertex = polar_vertex(radial - 1, azimuth)
+                    gradient(current_radial, previous_vertex) = -1.0_dp
+                end if
+                gradient(current_radial, current_vertex) = 1.0_dp
 
-                face = face + 1
-                bottom_edge = &
-                    2 + 2*azimuth_count*radial - azimuth_count + azimuth
-                current_spoke = &
-                    2 + 2*azimuth_count*radial + azimuth
-                next_spoke = 2 + 2*azimuth_count*radial + next_azimuth
-                top_edge = row
-                curl(face, bottom_edge) = 1.0_dp
-                curl(face, next_spoke) = 1.0_dp
-                curl(face, top_edge) = -1.0_dp
-                curl(face, current_spoke) = -1.0_dp
+                next_azimuth = modulo(azimuth, azimuth_count) + 1
+                next_vertex = polar_vertex(radial, next_azimuth)
+                angular_edge = radial_edge_count + 2 + &
+                    (radial - 1)*azimuth_count + azimuth
+                gradient(angular_edge, current_vertex) = -1.0_dp
+                gradient(angular_edge, next_vertex) = 1.0_dp
+
+                face = (radial - 1)*azimuth_count + azimuth
+                next_radial = &
+                    (radial - 1)*azimuth_count + next_azimuth
+                curl(face, current_radial) = 1.0_dp
+                curl(face, next_radial) = -1.0_dp
+                curl(face, angular_edge) = 1.0_dp
+                if (radial == 1) then
+                    delta = &
+                        extraction(1:3, azimuth_count + next_azimuth) - &
+                        extraction(1:3, azimuth_count + azimuth)
+                    curl(face, radial_edge_count + 1) = -delta(2)
+                    curl(face, radial_edge_count + 2) = -delta(3)
+                else
+                    previous_angular = angular_edge - azimuth_count
+                    curl(face, previous_angular) = -1.0_dp
+                end if
             end do
         end do
+        special_edge = radial_edge_count + 1
+        gradient(special_edge, 1:2) = [-1.0_dp, 1.0_dp]
+        gradient(special_edge + 1, [1, 3]) = [-1.0_dp, 1.0_dp]
         status = 0
 
     contains
@@ -113,6 +100,78 @@ contains
         end function polar_vertex
 
     end subroutine build_bspline_polar_feec_2d_operators
+
+    subroutine build_bspline_polar_feec_2d_extractions( &
+            azimuth_count, radial_count, h1_extraction, hcurl_extraction, &
+            l2_extraction, status)
+        !! Sparse-block basis extractions from the periodic tensor space.
+        !!
+        !! Rows are polar basis functions and columns are tensor-product basis
+        !! functions. This is the Type-1 C1 construction of
+        !! Toshniwal--Hughes (2021), equations (68), (90), and (102).
+        integer, intent(in) :: azimuth_count, radial_count
+        real(dp), allocatable, intent(out) :: h1_extraction(:, :)
+        real(dp), allocatable, intent(out) :: hcurl_extraction(:, :)
+        real(dp), allocatable, intent(out) :: l2_extraction(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: angular_delta
+        integer :: angular_column_offset, angular_row_offset, azimuth
+        integer :: polar_row, radial, radial_edge_count, special_row
+        integer :: tensor_column, tensor_radial_edge_count
+
+        call build_bspline_polar_h1_extraction( &
+            azimuth_count, radial_count, h1_extraction, status)
+        if (status /= 0) return
+        radial_edge_count = azimuth_count*(radial_count - 2)
+        tensor_radial_edge_count = azimuth_count*(radial_count - 1)
+        allocate(hcurl_extraction( &
+            2 + 2*radial_edge_count, &
+            azimuth_count*(2*radial_count - 1)))
+        allocate(l2_extraction( &
+            radial_edge_count, azimuth_count*(radial_count - 1)))
+        hcurl_extraction = 0.0_dp
+        l2_extraction = 0.0_dp
+
+        do radial = 1, radial_count - 2
+            do azimuth = 1, azimuth_count
+                polar_row = (radial - 1)*azimuth_count + azimuth
+                tensor_column = radial*azimuth_count + azimuth
+                hcurl_extraction(polar_row, tensor_column) = 1.0_dp
+
+                angular_row_offset = radial_edge_count + 2
+                polar_row = angular_row_offset + &
+                    (radial - 1)*azimuth_count + azimuth
+                angular_column_offset = tensor_radial_edge_count
+                tensor_column = angular_column_offset + &
+                    (radial + 1)*azimuth_count + azimuth
+                hcurl_extraction(polar_row, tensor_column) = 1.0_dp
+
+                polar_row = (radial - 1)*azimuth_count + azimuth
+                tensor_column = radial*azimuth_count + azimuth
+                l2_extraction(polar_row, tensor_column) = 1.0_dp
+            end do
+        end do
+
+        do polar_row = 1, 2
+            special_row = radial_edge_count + polar_row
+            do azimuth = 1, azimuth_count
+                hcurl_extraction(special_row, azimuth) = &
+                    h1_extraction(polar_row + 1, &
+                    azimuth_count + azimuth) - 1.0_dp/3.0_dp
+                angular_delta = h1_extraction( &
+                    polar_row + 1, azimuth_count + &
+                    modulo(azimuth, azimuth_count) + 1) - &
+                    h1_extraction( &
+                    polar_row + 1, azimuth_count + azimuth)
+                tensor_column = tensor_radial_edge_count + &
+                    azimuth_count + azimuth
+                hcurl_extraction( &
+                    special_row, tensor_column) = angular_delta
+            end do
+        end do
+        status = 0
+    end subroutine build_bspline_polar_feec_2d_extractions
 
     subroutine build_bspline_polar_h1_extraction( &
             azimuth_count, radial_count, extraction, status)
