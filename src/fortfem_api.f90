@@ -40,6 +40,7 @@ module fortfem_api
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
+        assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d, &
         assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
@@ -53,7 +54,8 @@ module fortfem_api
         evaluate_maxwell_sphere_curved_rwg_basis, &
         integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_sphere_curved_coincident_rwg_pair_3d, &
-        solve_maxwell_pec_sphere_curved_efie_rwg_3d
+        solve_maxwell_pec_sphere_curved_efie_rwg_3d, &
+        solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
     use fortfem_maxwell_localized_rwg_surface, only: &
@@ -273,9 +275,11 @@ module fortfem_api
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
     public :: assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
+    public :: solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d

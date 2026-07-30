@@ -23,6 +23,8 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
+    public :: solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
@@ -42,6 +44,153 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            impedance, quadrature_degree, tolerance, max_depth, mfie_offset, &
+            density, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number, impedance, tolerance, mfie_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: density(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: cfie(:, :), efie(:, :), mfie(:, :)
+        complex(dp), allocatable :: product(:, :), regularizer(:, :)
+        complex(dp), allocatable :: right_hand_side(:)
+        complex(dp), allocatable :: right_hand_side_matrix(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: info
+
+        call assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, mfie_offset, cfie, efie, &
+            mfie, regularizer, product, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            impedance, quadrature_degree, regularizer, right_hand_side, status)
+        if (status /= 0) return
+        allocate( &
+            density(size(right_hand_side)), &
+            right_hand_side_matrix(size(right_hand_side), 1), &
+            pivots(size(right_hand_side)))
+        right_hand_side_matrix(:, 1) = right_hand_side
+        call zgesv( &
+            size(right_hand_side), 1, cfie, size(right_hand_side), pivots, &
+            right_hand_side_matrix, size(right_hand_side), info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        density = right_hand_side_matrix(:, 1)
+        status = 0
+    end subroutine &
+        solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
+
+    subroutine assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            impedance, quadrature_degree, regularizer, right_hand_side, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: regularizer(:, :)
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: bc_rhs(:), efie_rhs(:), mass(:, :)
+        complex(dp), allocatable :: mapped_rhs(:, :)
+        real(dp), allocatable :: real_mass(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: info, system_size
+
+        status = 1
+        if (impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, efie_rhs, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, bc_rhs, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_rwg_rbc_pairing( &
+            vertices, triangles, radius, quadrature_degree, real_mass, status)
+        if (status /= 0) return
+        system_size = size(real_mass, 1)
+        if (any(shape(regularizer) /= [system_size, system_size])) return
+        allocate( &
+            mass(system_size, system_size), mapped_rhs(system_size, 1), &
+            pivots(system_size), right_hand_side(system_size))
+        mass = transpose(cmplx(real_mass, 0.0_dp, dp))
+        mapped_rhs(:, 1) = efie_rhs
+        call zgesv( &
+            system_size, 1, mass, system_size, pivots, mapped_rhs, system_size, &
+            info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        right_hand_side = bc_rhs - matmul(regularizer, mapped_rhs(:, 1))
+        status = 0
+    end subroutine &
+        assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
+
+    subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, right_hand_side, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp) :: divergence, jacobian, local_value(3), point(3)
+        complex(dp) :: incident_field(3)
+        integer :: basis, local_edge, node, panel, row
+
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
+        if (abs(norm2(direction) - 1.0_dp) > 128.0_dp*epsilon(1.0_dp)) return
+        if (abs(sum(polarization*direction)) > &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+            sqrt(sum(abs(polarization)**2)))) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(right_hand_side(size(transformation, 2)))
+        right_hand_side = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                do local_edge = 1, 3
+                    call evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, panel, local_edge, &
+                        radius, xi(node), eta(node), point, local_value, &
+                        divergence, jacobian, status)
+                    if (status /= 0) return
+                    incident_field = polarization*exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    row = 3*(panel - 1) + local_edge
+                    do basis = 1, size(transformation, 2)
+                        right_hand_side(basis) = right_hand_side(basis) - &
+                            jacobian*weights(node)*transformation(row, basis)* &
+                            sum(cmplx(local_value, 0.0_dp, dp)*incident_field)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
 
     subroutine assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
             vertices, triangles, radius, wave_number, impedance, &
