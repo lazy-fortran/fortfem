@@ -4,8 +4,11 @@ program bem_sphere_3d
         apply_laplace_single_layer_p0_hierarchical_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
         assemble_laplace_single_layer_p0_3d, &
+        evaluate_helmholtz_cfie_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         generate_sphere_surface_mesh, &
+        solve_helmholtz_cfie_p0_3d, &
+        solve_helmholtz_cfie_p0_hierarchical_3d, &
         solve_helmholtz_dirichlet_p0_3d, &
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
@@ -22,8 +25,11 @@ program bem_sphere_3d
     complex(dp), allocatable :: helmholtz_dirichlet(:)
     complex(dp), allocatable :: helmholtz_fast(:), helmholtz_matrix(:, :)
     complex(dp), allocatable :: helmholtz_fast_density(:)
+    complex(dp), allocatable :: cfie_dense_density(:), cfie_fast_density(:)
     integer, allocatable :: triangles(:, :)
     complex(dp) :: analytical_field(16), dense_field(16), fast_field(16)
+    complex(dp) :: cfie_analytical_field(16), cfie_dense_field(16)
+    complex(dp) :: cfie_fast_field(16)
     real(dp) :: capacities(0:2), dense_seconds, exact(0:2)
     real(dp) :: field_radius(16)
     real(dp) :: fast_error, fast_seconds, panel_axis(0:2), seconds(0:2)
@@ -32,6 +38,9 @@ program bem_sphere_3d
     real(dp) :: helmholtz_error, helmholtz_fast_field_error
     real(dp) :: helmholtz_fast_seconds, helmholtz_fast_solve_seconds
     real(dp) :: helmholtz_residual, start_time
+    real(dp) :: cfie_dense_field_error, cfie_dense_solve_seconds
+    real(dp) :: cfie_fast_field_error, cfie_fast_solve_seconds, cfie_residual
+    integer :: cfie_interactions, cfie_iterations
     integer :: field_point, helmholtz_interactions, laplace_interactions
     integer :: level, solve_interactions, solve_iterations, status, unit
 
@@ -123,6 +132,44 @@ program bem_sphere_3d
     helmholtz_dense_field_error = maxval(abs(dense_field - analytical_field))
     helmholtz_fast_field_error = maxval(abs(fast_field - analytical_field))
 
+    call cpu_time(start_time)
+    call solve_helmholtz_cfie_p0_3d( &
+        vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), acos(-1.0_dp), &
+        acos(-1.0_dp), 8, cfie_dense_density, status)
+    call cpu_time(cfie_dense_solve_seconds)
+    cfie_dense_solve_seconds = cfie_dense_solve_seconds - start_time
+    if (status /= 0) error stop "dense Helmholtz CFIE solve failed"
+    call cpu_time(start_time)
+    call solve_helmholtz_cfie_p0_hierarchical_3d( &
+        vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), acos(-1.0_dp), &
+        acos(-1.0_dp), 0.45_dp, 6, 1.0e-10_dp, 80, 20, &
+        cfie_fast_density, status, cfie_iterations, cfie_residual, &
+        cfie_interactions)
+    call cpu_time(cfie_fast_solve_seconds)
+    cfie_fast_solve_seconds = cfie_fast_solve_seconds - start_time
+    if (status /= 0) error stop "hierarchical Helmholtz CFIE solve failed"
+    do field_point = 1, size(field_radius)
+        cfie_analytical_field(field_point) = exp(cmplx( &
+            0.0_dp, acos(-1.0_dp)*(field_radius(field_point) - 1.0_dp), dp))/ &
+            field_radius(field_point)
+        call evaluate_helmholtz_cfie_p0_3d( &
+            vertices, triangles, cfie_dense_density, &
+            [0.0_dp, 0.0_dp, field_radius(field_point)], acos(-1.0_dp), &
+            acos(-1.0_dp), 8, cfie_dense_field(field_point), status)
+        if (status /= 0) error stop "dense Helmholtz CFIE evaluation failed"
+        call evaluate_helmholtz_cfie_p0_3d( &
+            vertices, triangles, cfie_fast_density, &
+            [0.0_dp, 0.0_dp, field_radius(field_point)], acos(-1.0_dp), &
+            acos(-1.0_dp), 8, cfie_fast_field(field_point), status)
+        if (status /= 0) then
+            error stop "hierarchical Helmholtz CFIE evaluation failed"
+        end if
+    end do
+    cfie_dense_field_error = &
+        maxval(abs(cfie_dense_field - cfie_analytical_field))
+    cfie_fast_field_error = &
+        maxval(abs(cfie_fast_field - cfie_analytical_field))
+
     call figure(figsize=[8.0_dp, 5.0_dp])
     call plot(panel_axis, exact, label="analytical 4 pi", linestyle="-")
     call plot( &
@@ -191,6 +238,31 @@ program bem_sphere_3d
     call legend()
     call savefig(output_directory//"/sphere_helmholtz_solve.png")
 
+    call figure(figsize=[8.0_dp, 5.0_dp])
+    call plot( &
+        field_radius, real(cfie_analytical_field, dp), &
+        label="analytical real", linestyle="-")
+    call plot( &
+        field_radius, real(cfie_dense_field, dp), label="dense CFIE real", &
+        linestyle="--", marker="o")
+    call plot( &
+        field_radius, real(cfie_fast_field, dp), &
+        label="hierarchical CFIE real", linestyle=":")
+    call plot( &
+        field_radius, aimag(cfie_analytical_field), &
+        label="analytical imaginary", linestyle="-")
+    call plot( &
+        field_radius, aimag(cfie_dense_field), &
+        label="dense CFIE imaginary", linestyle="--", marker="o")
+    call plot( &
+        field_radius, aimag(cfie_fast_field), &
+        label="hierarchical CFIE imaginary", linestyle=":")
+    call xlabel("radial coordinate")
+    call ylabel("outgoing Helmholtz field")
+    call title("Resonance-safe sphere CFIE at k = pi")
+    call legend()
+    call savefig(output_directory//"/sphere_helmholtz_cfie_resonance.png")
+
     open( &
         newunit=unit, file=output_directory//"/benchmark.txt", &
         status="replace", action="write")
@@ -228,6 +300,20 @@ program bem_sphere_3d
         "helmholtz_dense_field_max_error=", helmholtz_dense_field_error
     write (unit, '(A,ES14.6)') &
         "helmholtz_hierarchical_field_max_error=", helmholtz_fast_field_error
+    write (unit, '(A,ES14.6)') &
+        "helmholtz_cfie_dense_solve_seconds=", cfie_dense_solve_seconds
+    write (unit, '(A,ES14.6)') &
+        "helmholtz_cfie_hierarchical_solve_seconds=", cfie_fast_solve_seconds
+    write (unit, '(A,I0)') &
+        "helmholtz_cfie_hierarchical_iterations=", cfie_iterations
+    write (unit, '(A,ES14.6)') &
+        "helmholtz_cfie_hierarchical_residual=", cfie_residual
+    write (unit, '(A,I0)') &
+        "helmholtz_cfie_hierarchical_interactions=", cfie_interactions
+    write (unit, '(A,ES14.6)') &
+        "helmholtz_cfie_dense_field_max_error=", cfie_dense_field_error
+    write (unit, '(A,ES14.6)') &
+        "helmholtz_cfie_hierarchical_field_max_error=", cfie_fast_field_error
     close(unit)
 
 contains
