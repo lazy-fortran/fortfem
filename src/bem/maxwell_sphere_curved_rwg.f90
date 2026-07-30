@@ -22,6 +22,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
+    public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
@@ -41,6 +42,63 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, mfie_offset, matrix, &
+            efie, mfie, regularizer, regularized_efie, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, impedance
+        real(dp), intent(in) :: tolerance, mfie_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :), efie(:, :)
+        complex(dp), allocatable, intent(out) :: mfie(:, :), regularizer(:, :)
+        complex(dp), allocatable, intent(out) :: regularized_efie(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: mass(:, :), mapped_efie(:, :)
+        real(dp), allocatable :: real_mass(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: info, system_size
+
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_efie_rwg_3d( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, efie, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_efie_bc_imaginary_3d( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, regularizer, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            mfie_offset, mfie, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_rwg_rbc_pairing( &
+            vertices, triangles, radius, quadrature_degree, real_mass, status)
+        if (status /= 0) return
+        system_size = size(real_mass, 1)
+        if (size(real_mass, 2) /= system_size) return
+        if (any(shape(efie) /= [system_size, system_size])) return
+        if (any(shape(mfie) /= [system_size, system_size])) return
+        if (any(shape(regularizer) /= [system_size, system_size])) return
+        allocate( &
+            mass(system_size, system_size), &
+            mapped_efie(system_size, system_size), pivots(system_size))
+        mass = transpose(cmplx(real_mass, 0.0_dp, dp))
+        mapped_efie = efie
+        call zgesv( &
+            system_size, system_size, mass, system_size, pivots, mapped_efie, &
+            system_size, info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        regularized_efie = matmul(regularizer, mapped_efie)
+        matrix = mfie - regularized_efie
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
 
     subroutine assemble_maxwell_sphere_curved_efie_bc_imaginary_3d( &
             vertices, triangles, radius, decay_rate, impedance, &
