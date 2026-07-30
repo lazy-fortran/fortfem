@@ -3,12 +3,14 @@ program test_maxwell_pec_efie_solve_3d
     use fortfem_api, only: &
         assemble_maxwell_efie_rwg_3d, assemble_maxwell_plane_wave_rhs_rwg_3d, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
-        solve_maxwell_pec_efie_rwg_3d
+        evaluate_maxwell_efie_far_field_rwg_3d, &
+        evaluate_maxwell_efie_field_rwg_3d, solve_maxwell_pec_efie_rwg_3d
     use fortfem_kinds, only: dp
     implicit none
 
     complex(dp), allocatable :: density(:), matrix(:, :), right_hand_side(:)
     complex(dp), allocatable :: static_right_hand_side(:)
+    complex(dp) :: far_field(3), finite_field(3)
     integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
     real(dp) :: area, basis_divergence, basis_value(3), centroid(3)
     real(dp) :: vertices(3, 4)
@@ -68,6 +70,18 @@ program test_maxwell_pec_efie_solve_3d
         matmul(matrix, density) - right_hand_side)**2))/ &
         sqrt(sum(abs(right_hand_side)**2)) < 2.0e-12_dp, &
         "PEC EFIE solve satisfies the independently reassembled linear system")
+    call evaluate_maxwell_efie_far_field_rwg_3d( &
+        vertices, boundary_triangles, density, &
+        [1.0_dp, 1.0_dp, 1.0_dp]/sqrt(3.0_dp), 0.8_dp, 1.7_dp, 12, &
+        far_field, status)
+    call evaluate_maxwell_efie_field_rwg_3d( &
+        vertices, boundary_triangles, density, &
+        200.0_dp*[1.0_dp, 1.0_dp, 1.0_dp]/sqrt(3.0_dp), &
+        0.8_dp, 1.7_dp, 12, finite_field, status)
+    call record_condition(status == 0 .and. sqrt(sum(abs( &
+        200.0_dp*exp(cmplx(0.0_dp, -160.0_dp, dp))*finite_field - &
+        far_field)**2))/sqrt(sum(abs(far_field)**2)) < 1.0e-2_dp, &
+        "RWG far field matches the large-radius radiated-field limit")
 
     call assemble_maxwell_plane_wave_rhs_rwg_3d( &
         vertices, boundary_triangles, [0.0_dp, 0.0_dp, 2.0_dp], &
