@@ -109,6 +109,9 @@ module fortfem_api
         assemble_helmholtz_torus_curved_calderon_3d, &
         assemble_helmholtz_torus_curved_dtn_3d, &
         solve_helmholtz_bem_dtn_torus_curved_3d
+    use fortfem_helmholtz_torus_curved_fem_bem_coupling_3d, only: &
+        assemble_helmholtz_fem_bem_costabel_torus_curved_3d, &
+        solve_helmholtz_fem_bem_costabel_torus_curved_3d
     use fortfem_helmholtz_galerkin_3d, only: &
         assemble_helmholtz_calderon_p1_p0_3d, &
         assemble_helmholtz_double_layer_p0_3d, &
@@ -356,6 +359,8 @@ module fortfem_api
     public :: assemble_helmholtz_torus_curved_calderon_3d
     public :: assemble_helmholtz_torus_curved_dtn_3d
     public :: solve_helmholtz_bem_dtn_torus_curved_3d
+    public :: assemble_helmholtz_fem_bem_costabel_torus_curved_3d
+    public :: solve_helmholtz_fem_bem_costabel_torus_curved_3d
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_helmholtz_calderon_p1_p0_3d
     public :: assemble_helmholtz_fem_bem_costabel_3d
