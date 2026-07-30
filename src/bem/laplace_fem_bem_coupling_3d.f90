@@ -10,6 +10,7 @@ module fortfem_laplace_fem_bem_coupling_3d
     use fortfem_kinds, only: dp
     use fortfem_laplace_galerkin_3d, only: &
         assemble_laplace_calderon_p1_p0_3d
+    use fortnum_linalg, only: dense_solve
     implicit none
 
     private
@@ -17,17 +18,6 @@ module fortfem_laplace_fem_bem_coupling_3d
     public :: assemble_laplace_fem_bem_costabel_3d
     public :: solve_laplace_fem_bem_costabel_3d
     public :: solve_laplace_fem_bem_johnson_nedelec_3d
-
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            real(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine dgesv
-    end interface
 
 contains
 
@@ -40,8 +30,7 @@ contains
         real(dp), allocatable, intent(out) :: potential(:), normal_flux(:)
         integer, intent(out) :: status
 
-        real(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
-        integer, allocatable :: pivots(:)
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:), solution(:)
         integer :: info, total_dof_count, vertex_count
 
         status = 1
@@ -52,21 +41,18 @@ contains
         if (status /= 0) return
         total_dof_count = size(matrix, 1)
         vertex_count = size(vertices, 2)
-        allocate(right_hand_side(total_dof_count, 1))
-        allocate(pivots(total_dof_count))
+        allocate(right_hand_side(total_dof_count), solution(total_dof_count))
         right_hand_side = 0.0_dp
-        right_hand_side(:vertex_count, 1) = volume_load
-        call dgesv( &
-            total_dof_count, 1, matrix, total_dof_count, pivots, &
-            right_hand_side, total_dof_count, info)
+        right_hand_side(:vertex_count) = volume_load
+        call dense_solve(matrix, right_hand_side, solution, info)
         if (info /= 0) then
             status = 2
             return
         end if
         allocate(potential(vertex_count))
         allocate(normal_flux(total_dof_count - vertex_count))
-        potential = right_hand_side(:vertex_count, 1)
-        normal_flux = right_hand_side(vertex_count + 1:, 1)
+        potential = solution(:vertex_count)
+        normal_flux = solution(vertex_count + 1:)
         status = 0
     end subroutine solve_laplace_fem_bem_costabel_3d
 
@@ -155,9 +141,8 @@ contains
         integer, parameter :: basis_to_vertex(4) = [4, 3, 2, 1]
         real(dp), allocatable :: adjoint(:, :), double_layer(:, :)
         real(dp), allocatable :: element_matrix(:, :), hypersingular(:, :)
-        real(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:), solution(:)
         real(dp), allocatable :: single_layer(:, :)
-        integer, allocatable :: pivots(:)
         real(dp) :: area, tetra_vertices(3, 4)
         integer :: column, info, local_status, node, row, tetrahedron
         integer :: total_dof_count, triangle, vertex_count
@@ -180,10 +165,10 @@ contains
         vertex_count = size(vertices, 2)
         total_dof_count = vertex_count + size(boundary_triangles, 2)
         allocate(matrix(total_dof_count, total_dof_count))
-        allocate(right_hand_side(total_dof_count, 1), pivots(total_dof_count))
+        allocate(right_hand_side(total_dof_count), solution(total_dof_count))
         matrix = 0.0_dp
         right_hand_side = 0.0_dp
-        right_hand_side(:vertex_count, 1) = volume_load
+        right_hand_side(:vertex_count) = volume_load
         do tetrahedron = 1, size(tetrahedra, 2)
             tetra_vertices = vertices(:, tetrahedra(:, tetrahedron))
             call assemble_tetra_lagrange_stiffness_element( &
@@ -224,17 +209,15 @@ contains
             matrix(vertex_count + 1:, :vertex_count) - double_layer
         matrix(vertex_count + 1:, vertex_count + 1:) = single_layer
 
-        call dgesv( &
-            total_dof_count, 1, matrix, total_dof_count, pivots, &
-            right_hand_side, total_dof_count, info)
+        call dense_solve(matrix, right_hand_side, solution, info)
         if (info /= 0) then
             status = 2
             return
         end if
         allocate(potential(vertex_count))
         allocate(normal_flux(size(boundary_triangles, 2)))
-        potential = right_hand_side(:vertex_count, 1)
-        normal_flux = right_hand_side(vertex_count + 1:, 1)
+        potential = solution(:vertex_count)
+        normal_flux = solution(vertex_count + 1:)
         status = 0
     end subroutine solve_laplace_fem_bem_johnson_nedelec_3d
 
