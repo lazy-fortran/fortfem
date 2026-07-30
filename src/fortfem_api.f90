@@ -189,6 +189,8 @@ module fortfem_api
         assemble_bspline_hcurl_l2_curl_csc, &
         assemble_bspline_l2_hcurl_adjoint_curl_csc, &
         assemble_bspline_l2_mass_csc, &
+        assemble_bspline_grad_shafranov_csc, &
+        assemble_bspline_toroidal_fourier_laplacian_csc, &
         build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_assembly_bspline_3d, only: &
         assemble_bspline_h1_operator_3d_csc, &
@@ -525,6 +527,8 @@ module fortfem_api
     public :: assemble_bspline_hcurl_l2_curl_csc
     public :: assemble_bspline_l2_hcurl_adjoint_curl_csc
     public :: assemble_bspline_l2_mass_csc
+    public :: assemble_bspline_grad_shafranov_csc
+    public :: assemble_bspline_toroidal_fourier_laplacian_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: build_bspline_feec_3d_operators_csc
     public :: assemble_bspline_h1_operator_3d_csc

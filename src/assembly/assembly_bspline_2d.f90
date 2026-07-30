@@ -20,6 +20,8 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_l2_mass_csc
     public :: assemble_bspline_hcurl_l2_curl_csc
     public :: assemble_bspline_l2_hcurl_adjoint_curl_csc
+    public :: assemble_bspline_grad_shafranov_csc
+    public :: assemble_bspline_toroidal_fourier_laplacian_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
@@ -39,6 +41,67 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine assemble_bspline_toroidal_fourier_laplacian_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, toroidal_mode, matrix, status)
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        integer, intent(in) :: toroidal_mode
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, matrix, status, stiffness_coefficient=1.0_dp, &
+            mass_coefficient=1.0_dp, &
+            stiffness_weight_function=radial_weight, &
+            mass_weight_function=fourier_mass_weight)
+
+    contains
+
+        pure subroutine radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = point(1)
+        end subroutine radial_weight
+
+        pure subroutine fourier_mass_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = real(toroidal_mode**2, dp)/point(1)
+        end subroutine fourier_mass_weight
+
+    end subroutine assemble_bspline_toroidal_fourier_laplacian_csc
+
+    subroutine assemble_bspline_grad_shafranov_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, matrix, status, stiffness_coefficient=1.0_dp, &
+            mass_coefficient=0.0_dp, &
+            stiffness_weight_function=inverse_radial_weight)
+
+    contains
+
+        pure subroutine inverse_radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = 1.0_dp/point(1)
+        end subroutine inverse_radial_weight
+
+    end subroutine assemble_bspline_grad_shafranov_csc
 
     subroutine assemble_bspline_l2_hcurl_adjoint_curl_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
