@@ -2,6 +2,7 @@ module fortfem_maxwell_sphere_curved_rwg
     !! Surface-Piola image of the affine RWG basis on a radial sphere panel.
     use fortfem_kinds, only: dp
     use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
+    use fortfem_maxwell_efie_bc_3d, only: build_maxwell_bc_to_refined_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_sphere_curved_panel, only: &
         evaluate_sphere_curved_panel, invert_sphere_curved_panel
@@ -19,6 +20,8 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
@@ -38,6 +41,61 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_efie_bc_imaginary_3d( &
+            vertices, triangles, radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, decay_rate, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: refined_vertices(:, :), transformation(:, :)
+        complex(dp), allocatable :: complex_transformation(:, :)
+        complex(dp), allocatable :: refined_matrix(:, :)
+
+        status = 1
+        call build_maxwell_bc_to_refined_rwg( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d( &
+            refined_vertices, refined_triangles, radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, refined_matrix, status)
+        if (status /= 0) return
+        complex_transformation = cmplx(transformation, 0.0_dp, dp)
+        matrix = matmul( &
+            transpose(complex_transformation), &
+            matmul(refined_matrix, complex_transformation))
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
+
+    subroutine assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d( &
+            vertices, triangles, radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, decay_rate, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+
+        status = 1
+        if (radius <= 0.0_dp .or. decay_rate <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, decay_rate, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status, &
+            decaying_kernel=.true.)
+        if (status /= 0) return
+        matrix = -impedance*( &
+            decay_rate*vector_potential + scalar_potential/decay_rate)
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
 
     subroutine assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
@@ -449,12 +507,14 @@ contains
 
     subroutine assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
-            tolerance, max_depth, vector_potential, scalar_potential, status)
+            tolerance, max_depth, vector_potential, scalar_potential, status, &
+            decaying_kernel)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number, tolerance
         integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
         complex(dp), allocatable, intent(out) :: vector_potential(:, :)
         complex(dp), allocatable, intent(out) :: scalar_potential(:, :)
         integer, intent(out) :: status
+        logical, optional, intent(in) :: decaying_kernel
 
         integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
         real(dp), allocatable :: reference_divergence(:, :)
@@ -462,8 +522,11 @@ contains
         real(dp) :: divergence, jacobian, point(3), rwg_value(3)
         integer :: basis, first, first_panel, first_slot, second, second_panel
         integer :: second_slot
+        logical :: use_decaying_kernel
 
         status = 1
+        use_decaying_kernel = .false.
+        if (present(decaying_kernel)) use_decaying_kernel = decaying_kernel
         call build_maxwell_rwg_surface_space( &
             vertices, triangles, edge_vertices, edge_triangles, status)
         if (status /= 0 .or. size(edge_vertices, 2) == 0) return
@@ -496,7 +559,8 @@ contains
                                 vertices, triangles, edge_vertices, &
                                 edge_triangles, first, first_panel, second, &
                                 radius, wave_number, quadrature_degree, &
-                                contribution, status, scalar_green)
+                                contribution, status, scalar_green, &
+                                use_decaying_kernel)
                         else
                             call &
                                 integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
@@ -504,7 +568,8 @@ contains
                                 edge_triangles, first, first_panel, second, &
                                 second_panel, radius, wave_number, &
                                 quadrature_degree, tolerance, max_depth, &
-                                contribution, status, scalar_green)
+                                contribution, status, scalar_green, &
+                                use_decaying_kernel)
                         end if
                         if (status /= 0) return
                         vector_potential(first, second) = &
@@ -578,7 +643,8 @@ contains
     subroutine integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
-            quadrature_degree, tolerance, max_depth, value, status, scalar_value)
+            quadrature_degree, tolerance, max_depth, value, status, &
+            scalar_value, decaying_kernel)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number, tolerance
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -587,13 +653,17 @@ contains
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
         complex(dp), optional, intent(out) :: scalar_value
+        logical, optional, intent(in) :: decaying_kernel
 
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: reference_triangle(2, 3)
         complex(dp) :: scalar_integral
+        logical :: use_decaying_kernel
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
         if (present(scalar_value)) scalar_value = cmplx(0.0_dp, 0.0_dp, dp)
+        use_decaying_kernel = .false.
+        if (present(decaying_kernel)) use_decaying_kernel = decaying_kernel
         status = 1
         if (radius <= 0.0_dp .or. wave_number < 0.0_dp .or. &
             tolerance <= 0.0_dp .or. max_depth < 1) return
@@ -609,7 +679,8 @@ contains
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             reference_triangle, reference_triangle, xi, eta, weights, &
-            tolerance, present(scalar_value), 0, max_depth, value, &
+            tolerance, present(scalar_value), use_decaying_kernel, 0, &
+            max_depth, value, &
             scalar_integral, status)
         if (present(scalar_value)) scalar_value = scalar_integral
     end subroutine integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
@@ -618,7 +689,8 @@ contains
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             first_reference, second_reference, xi, eta, weights, tolerance, &
-            need_scalar, depth, max_depth, value, scalar_value, status)
+            need_scalar, decaying_kernel, depth, max_depth, value, scalar_value, &
+            status)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -628,6 +700,7 @@ contains
         real(dp), intent(in) :: second_reference(2, 3)
         real(dp), intent(in) :: xi(:), eta(:), weights(:), tolerance
         logical, intent(in) :: need_scalar
+        logical, intent(in) :: decaying_kernel
         complex(dp), intent(out) :: value, scalar_value
         integer, intent(out) :: status
 
@@ -640,7 +713,7 @@ contains
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             first_reference, second_reference, xi, eta, weights, coarse, &
-            coarse_scalar, status)
+            coarse_scalar, decaying_kernel, status)
         if (status /= 0) return
         call subdivide_reference_triangle(first_reference, first_children)
         call subdivide_reference_triangle(second_reference, second_children)
@@ -653,7 +726,7 @@ contains
                     first_basis, first_panel, second_basis, second_panel, &
                     radius, wave_number, first_children(:, :, first_child), &
                     second_children(:, :, second_child), xi, eta, weights, &
-                    contribution, contribution_scalar, status)
+                    contribution, contribution_scalar, decaying_kernel, status)
                 if (status /= 0) return
                 refined = refined + contribution
                 refined_scalar = refined_scalar + contribution_scalar
@@ -681,7 +754,8 @@ contains
                         first_basis, first_panel, second_basis, second_panel, &
                         radius, wave_number, first_children(:, :, first_child), &
                         second_children(:, :, second_child), xi, eta, weights, &
-                        tolerance, need_scalar, depth + 1, max_depth, &
+                        tolerance, need_scalar, decaying_kernel, depth + 1, &
+                        max_depth, &
                         contribution, &
                         contribution_scalar, status)
                 else
@@ -690,7 +764,8 @@ contains
                         first_basis, first_panel, second_basis, second_panel, &
                         radius, wave_number, first_children(:, :, first_child), &
                         second_children(:, :, second_child), xi, eta, weights, &
-                        contribution, contribution_scalar, status)
+                        contribution, contribution_scalar, decaying_kernel, &
+                        status)
                 end if
                 if (status /= 0) return
                 value = value + contribution
@@ -704,7 +779,7 @@ contains
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, radius, wave_number, &
             first_reference, second_reference, xi, eta, weights, value, &
-            scalar_value, status)
+            scalar_value, decaying_kernel, status)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -714,6 +789,7 @@ contains
         real(dp), intent(in) :: second_reference(2, 3)
         real(dp), intent(in) :: xi(:), eta(:), weights(:)
         complex(dp), intent(out) :: value, scalar_value
+        logical, intent(in) :: decaying_kernel
         integer, intent(out) :: status
 
         real(dp) :: first_divergence, first_jacobian, first_point(3)
@@ -748,7 +824,8 @@ contains
                     second_divergence, second_jacobian, status)
                 if (status /= 0) return
                 physical_distance = norm2(first_point - second_point)
-                green = helmholtz_green(wave_number, physical_distance)
+                green = boundary_green( &
+                    wave_number, physical_distance, decaying_kernel)
                 value = value + first_reference_jacobian* &
                     second_reference_jacobian*weights(first_node)* &
                     weights(second_node)*first_jacobian*second_jacobian*green* &
@@ -764,7 +841,7 @@ contains
     subroutine integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             panel, second_basis, radius, wave_number, quadrature_degree, &
-            value, status, scalar_value)
+            value, status, scalar_value, decaying_kernel)
         real(dp), intent(in) :: vertices(:, :), radius, wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -773,6 +850,7 @@ contains
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
         complex(dp), optional, intent(out) :: scalar_value
+        logical, optional, intent(in) :: decaying_kernel
 
         real(dp), allocatable :: eta(:), line_nodes(:), line_weights(:)
         real(dp), allocatable :: weights(:), xi(:)
@@ -783,11 +861,14 @@ contains
         real(dp) :: second_xi, t, wedge_first(2), wedge_jacobian
         real(dp) :: wedge_second(2)
         complex(dp) :: green, scalar_integral
+        logical :: use_decaying_kernel
         integer :: first_node, line_count, radial_node, tangential_node, wedge
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
         scalar_integral = cmplx(0.0_dp, 0.0_dp, dp)
         if (present(scalar_value)) scalar_value = scalar_integral
+        use_decaying_kernel = .false.
+        if (present(decaying_kernel)) use_decaying_kernel = decaying_kernel
         status = 1
         if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
         call triangle_duffy_quadrature( &
@@ -830,8 +911,8 @@ contains
                             second_jacobian, status)
                         if (status /= 0) return
                         physical_distance = norm2(first_point - second_point)
-                        green = helmholtz_green( &
-                            wave_number, physical_distance)
+                        green = boundary_green( &
+                            wave_number, physical_distance, use_decaying_kernel)
                         value = value + weights(first_node)*first_jacobian* &
                             line_weights(radial_node)* &
                             line_weights(tangential_node)*rho*wedge_jacobian* &
@@ -1077,6 +1158,20 @@ contains
         value = exp(cmplx(0.0_dp, wave_number*radius, dp))/ &
             (4.0_dp*acos(-1.0_dp)*radius)
     end function helmholtz_green
+
+    pure function boundary_green( &
+            wave_number, radius, decaying_kernel) result(value)
+        real(dp), intent(in) :: wave_number, radius
+        logical, intent(in) :: decaying_kernel
+        complex(dp) :: value
+
+        if (decaying_kernel) then
+            value = cmplx(exp(-wave_number*radius)/ &
+                (4.0_dp*acos(-1.0_dp)*radius), 0.0_dp, dp)
+        else
+            value = helmholtz_green(wave_number, radius)
+        end if
+    end function boundary_green
 
     pure function complex_cross_product(first, second) result(product)
         complex(dp), intent(in) :: first(3), second(3)

@@ -211,13 +211,14 @@ contains
 
     subroutine build_maxwell_bc_to_refined_rwg( &
             vertices, triangles, refined_vertices, refined_triangles, &
-            transformation, status)
+            transformation, status, sphere_radius)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), allocatable, intent(out) :: refined_vertices(:, :)
         integer, allocatable, intent(out) :: refined_triangles(:, :)
         real(dp), allocatable, intent(out) :: transformation(:, :)
         integer, intent(out) :: status
+        real(dp), optional, intent(in) :: sphere_radius
 
         integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
         real(dp), allocatable :: localized_transformation(:, :)
@@ -225,9 +226,15 @@ contains
         real(dp) :: orientation, candidate
         integer :: basis, edge, local_edge, panel, row, slot
 
-        call build_maxwell_bc_transformation( &
-            vertices, triangles, refined_vertices, refined_triangles, &
-            localized_transformation, status)
+        if (present(sphere_radius)) then
+            call build_maxwell_bc_transformation( &
+                vertices, triangles, refined_vertices, refined_triangles, &
+                localized_transformation, status, sphere_radius=sphere_radius)
+        else
+            call build_maxwell_bc_transformation( &
+                vertices, triangles, refined_vertices, refined_triangles, &
+                localized_transformation, status)
+        end if
         if (status /= 0) return
         call build_maxwell_rwg_surface_space( &
             refined_vertices, refined_triangles, edge_vertices, edge_panels, &
