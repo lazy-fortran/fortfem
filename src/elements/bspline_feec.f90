@@ -13,6 +13,10 @@ module fortfem_bspline_feec
     public :: build_bspline_feec_3d_operators
     public :: evaluate_bspline_basis
     public :: evaluate_nurbs_surface_geometry
+    public :: map_isogeometric_h1_gradient
+    public :: map_isogeometric_hcurl
+    public :: map_isogeometric_hdiv
+    public :: map_isogeometric_l2
 
 contains
 
@@ -163,6 +167,144 @@ contains
         end do
         status = 0
     end subroutine evaluate_nurbs_surface_geometry
+
+    subroutine map_isogeometric_h1_gradient( &
+            jacobian, reference_gradients, physical_gradients, determinant, &
+            status)
+        real(dp), intent(in) :: jacobian(:, :), reference_gradients(:, :)
+        real(dp), allocatable, intent(out) :: physical_gradients(:, :)
+        real(dp), intent(out) :: determinant
+        integer, intent(out) :: status
+
+        call map_covariant( &
+            jacobian, reference_gradients, physical_gradients, determinant, &
+            status)
+    end subroutine map_isogeometric_h1_gradient
+
+    subroutine map_isogeometric_hcurl( &
+            jacobian, reference_values, physical_values, determinant, status)
+        real(dp), intent(in) :: jacobian(:, :), reference_values(:, :)
+        real(dp), allocatable, intent(out) :: physical_values(:, :)
+        real(dp), intent(out) :: determinant
+        integer, intent(out) :: status
+
+        call map_covariant( &
+            jacobian, reference_values, physical_values, determinant, status)
+    end subroutine map_isogeometric_hcurl
+
+    subroutine map_covariant( &
+            jacobian, reference_values, physical_values, determinant, status)
+        real(dp), intent(in) :: jacobian(:, :), reference_values(:, :)
+        real(dp), allocatable, intent(out) :: physical_values(:, :)
+        real(dp), intent(out) :: determinant
+        integer, intent(out) :: status
+
+        real(dp) :: inverse(size(jacobian, 1), size(jacobian, 2))
+
+        status = 1
+        determinant = 0.0_dp
+        if (size(jacobian, 1) /= size(jacobian, 2)) return
+        if (size(reference_values, 1) /= size(jacobian, 1)) return
+        call small_inverse(jacobian, inverse, determinant, status)
+        if (status /= 0) return
+        allocate(physical_values, mold=reference_values)
+        physical_values = matmul(transpose(inverse), reference_values)
+        status = 0
+    end subroutine map_covariant
+
+    subroutine map_isogeometric_hdiv( &
+            jacobian, reference_values, physical_values, determinant, status)
+        real(dp), intent(in) :: jacobian(:, :), reference_values(:, :)
+        real(dp), allocatable, intent(out) :: physical_values(:, :)
+        real(dp), intent(out) :: determinant
+        integer, intent(out) :: status
+
+        real(dp) :: inverse(size(jacobian, 1), size(jacobian, 2))
+
+        status = 1
+        determinant = 0.0_dp
+        if (size(jacobian, 1) /= size(jacobian, 2)) return
+        if (size(reference_values, 1) /= size(jacobian, 1)) return
+        call small_inverse(jacobian, inverse, determinant, status)
+        if (status /= 0) return
+        allocate(physical_values, mold=reference_values)
+        physical_values = matmul(jacobian, reference_values)/determinant
+        status = 0
+    end subroutine map_isogeometric_hdiv
+
+    subroutine map_isogeometric_l2( &
+            jacobian, reference_values, physical_values, determinant, status)
+        real(dp), intent(in) :: jacobian(:, :), reference_values(:)
+        real(dp), allocatable, intent(out) :: physical_values(:)
+        real(dp), intent(out) :: determinant
+        integer, intent(out) :: status
+
+        real(dp) :: inverse(size(jacobian, 1), size(jacobian, 2))
+
+        status = 1
+        determinant = 0.0_dp
+        if (size(jacobian, 1) /= size(jacobian, 2)) return
+        call small_inverse(jacobian, inverse, determinant, status)
+        if (status /= 0) return
+        allocate(physical_values, mold=reference_values)
+        physical_values = reference_values/determinant
+        status = 0
+    end subroutine map_isogeometric_l2
+
+    pure subroutine small_inverse(matrix, inverse, determinant, status)
+        real(dp), intent(in) :: matrix(:, :)
+        real(dp), intent(out) :: inverse(:, :), determinant
+        integer, intent(out) :: status
+
+        real(dp) :: scale
+
+        inverse = 0.0_dp
+        determinant = 0.0_dp
+        status = 1
+        if (any(shape(matrix) /= shape(inverse))) return
+        select case (size(matrix, 1))
+        case (2)
+            determinant = matrix(1, 1)*matrix(2, 2) - &
+                matrix(1, 2)*matrix(2, 1)
+            scale = max(1.0_dp, maxval(abs(matrix))**2)
+            if (abs(determinant) <= 64.0_dp*epsilon(1.0_dp)*scale) return
+            inverse = reshape([ &
+                matrix(2, 2), -matrix(2, 1), &
+                -matrix(1, 2), matrix(1, 1)], [2, 2])/determinant
+        case (3)
+            determinant = &
+                matrix(1, 1)*(matrix(2, 2)*matrix(3, 3) - &
+                matrix(2, 3)*matrix(3, 2)) - &
+                matrix(1, 2)*(matrix(2, 1)*matrix(3, 3) - &
+                matrix(2, 3)*matrix(3, 1)) + &
+                matrix(1, 3)*(matrix(2, 1)*matrix(3, 2) - &
+                matrix(2, 2)*matrix(3, 1))
+            scale = max(1.0_dp, maxval(abs(matrix))**3)
+            if (abs(determinant) <= 128.0_dp*epsilon(1.0_dp)*scale) return
+            inverse(1, 1) = matrix(2, 2)*matrix(3, 3) - &
+                matrix(2, 3)*matrix(3, 2)
+            inverse(1, 2) = matrix(1, 3)*matrix(3, 2) - &
+                matrix(1, 2)*matrix(3, 3)
+            inverse(1, 3) = matrix(1, 2)*matrix(2, 3) - &
+                matrix(1, 3)*matrix(2, 2)
+            inverse(2, 1) = matrix(2, 3)*matrix(3, 1) - &
+                matrix(2, 1)*matrix(3, 3)
+            inverse(2, 2) = matrix(1, 1)*matrix(3, 3) - &
+                matrix(1, 3)*matrix(3, 1)
+            inverse(2, 3) = matrix(1, 3)*matrix(2, 1) - &
+                matrix(1, 1)*matrix(2, 3)
+            inverse(3, 1) = matrix(2, 1)*matrix(3, 2) - &
+                matrix(2, 2)*matrix(3, 1)
+            inverse(3, 2) = matrix(1, 2)*matrix(3, 1) - &
+                matrix(1, 1)*matrix(3, 2)
+            inverse(3, 3) = matrix(1, 1)*matrix(2, 2) - &
+                matrix(1, 2)*matrix(2, 1)
+            inverse = inverse/determinant
+        case default
+            return
+        end select
+        status = 0
+    end subroutine small_inverse
 
     subroutine build_bspline_feec_2d_operators( &
             knots_x, knots_y, degree_x, degree_y, gradient, curl, status)

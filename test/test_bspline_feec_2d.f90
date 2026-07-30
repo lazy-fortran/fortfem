@@ -3,7 +3,8 @@ program test_bspline_feec_2d
     use fortfem_api, only: &
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
-        evaluate_nurbs_surface_geometry
+        evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
+        map_isogeometric_hcurl, map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_kinds, only: dp
     implicit none
 
@@ -18,6 +19,10 @@ program test_bspline_feec_2d
     real(dp), allocatable :: gradient_3d(:, :)
     real(dp), allocatable :: control_points(:, :, :), nurbs_weights(:, :)
     real(dp) :: jacobian(3, 2), mapped_point(3)
+    real(dp), allocatable :: mapped_hcurl(:, :), mapped_hdiv(:, :)
+    real(dp), allocatable :: mapped_gradient(:, :), mapped_l2(:)
+    real(dp) :: affine_jacobian(2, 2), determinant
+    real(dp) :: reference_vector(2, 1)
     real(dp) :: points(5), reproduced, x
     integer :: i, status
 
@@ -84,6 +89,27 @@ program test_bspline_feec_2d
     call check_condition(maxval(abs(jacobian - reshape([ &
         3.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 2.0_dp, -1.0_dp], [3, 2]))) < &
         3.0e-13_dp, "NURBS geometry returns the analytical Jacobian")
+
+    affine_jacobian = reshape([2.0_dp, 0.25_dp, 0.5_dp, 1.5_dp], [2, 2])
+    reference_vector(:, 1) = [1.0_dp, -0.5_dp]
+    call map_isogeometric_h1_gradient( &
+        affine_jacobian, reference_vector, mapped_gradient, determinant, status)
+    call map_isogeometric_hcurl( &
+        affine_jacobian, reference_vector, mapped_hcurl, determinant, status)
+    call map_isogeometric_hdiv( &
+        affine_jacobian, reference_vector, mapped_hdiv, determinant, status)
+    call map_isogeometric_l2( &
+        affine_jacobian, [2.0_dp], mapped_l2, determinant, status)
+    call check_condition(status == 0 .and. &
+        abs(determinant - 2.875_dp) < 2.0e-14_dp .and. &
+        maxval(abs(mapped_gradient - mapped_hcurl)) < 2.0e-14_dp, &
+        "H1 gradients and Hcurl fields use the covariant Piola map")
+    call check_condition(abs( &
+        determinant*dot_product(mapped_hcurl(:, 1), mapped_hdiv(:, 1)) - &
+        dot_product(reference_vector(:, 1), reference_vector(:, 1))) < &
+        3.0e-14_dp, "Covariant and contravariant Piola maps preserve pairing")
+    call check_condition(abs(mapped_l2(1) - 2.0_dp/2.875_dp) < 2.0e-14_dp, &
+        "L2 density uses the determinant-preserving pullback")
 
     call check_summary("Structure-preserving B-spline FEEC")
 
