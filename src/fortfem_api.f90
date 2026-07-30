@@ -102,7 +102,8 @@ module fortfem_api
     use fortfem_tetra_rt_arbitrary_order, only: &
         assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_rt_dof_count, tetra_rt_t
-    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
+    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant, &
+        map_tetra_rt_contravariant
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_global_dof_map, only: &
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
@@ -284,6 +285,7 @@ module fortfem_api
     public :: tetra_rt_dof_count
     public :: tetra_rt_t
     public :: map_tetra_nedelec_covariant
+    public :: map_tetra_rt_contravariant
     public :: build_tetra_edge_dof_map
     public :: build_tetra_nedelec_basis_transform
     public :: build_tetra_nedelec_dof_map
