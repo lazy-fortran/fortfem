@@ -1,9 +1,11 @@
 program test_bspline_polar_axis
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        assemble_bspline_polar_h1_operator_csc, &
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_feec_2d_extractions, &
         build_bspline_polar_h1_extraction, &
+        evaluate_periodic_bspline_basis, &
         restrict_bspline_polar_operator_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: &
@@ -12,16 +14,23 @@ program test_bspline_polar_axis
 
     integer, parameter :: azimuth_count = 8
     integer, parameter :: radial_count = 5
+    real(dp), parameter :: radial_knots(7) = [ &
+        0.0_dp, 0.0_dp, 0.25_dp, 0.5_dp, 0.75_dp, 1.0_dp, 1.0_dp]
     real(dp), allocatable :: extraction(:, :), polar_points(:, :)
     real(dp), allocatable :: curl(:, :), gradient(:, :), random_state(:)
     real(dp), allocatable :: hcurl_extraction(:, :), l2_extraction(:, :)
+    real(dp), allocatable :: periodic_derivatives(:), periodic_values(:)
+    real(dp), allocatable :: periodic_left(:), periodic_right(:)
+    real(dp), allocatable :: physical_control_points(:, :, :)
+    real(dp), allocatable :: physical_weights(:, :)
     real(dp), allocatable :: expected(:), polar_state(:)
     real(dp), allocatable :: tensor_curl(:, :), tensor_gradient(:, :)
+    type(csc_t) :: physical_mass, physical_stiffness
     type(csc_t) :: polar_mass, tensor_identity
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: tensor_points(:, :)
-    real(dp) :: angle, radius(azimuth_count)
-    integer :: azimuth, status
+    real(dp) :: angle, polygon_area, radius(azimuth_count)
+    integer :: azimuth, radial, status
 
     call build_bspline_polar_h1_extraction( &
         azimuth_count, radial_count, extraction, status)
@@ -62,6 +71,29 @@ program test_bspline_polar_axis
         tensor_points(:, azimuth_count + 2), tensor_points(:, 1))
     call check_condition(abs(angle) > 1.0e-2_dp, &
         "Polar control fan has a well-defined orientation")
+
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 3, 0.0_dp, periodic_values, periodic_derivatives, status)
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 3, 1.0_dp, periodic_right, periodic_left, status)
+    call check_condition(maxval(abs(periodic_values - periodic_right)) < &
+        2.0e-15_dp, "Periodic B-spline basis closes exactly at the seam")
+    call check_condition(abs(sum(periodic_values) - 1.0_dp) < 2.0e-15_dp .and. &
+        abs(sum(periodic_derivatives)) < 2.0e-15_dp, &
+        "Periodic B-spline basis preserves partition of unity")
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 3, 0.371_dp - 1.0e-7_dp, periodic_left, &
+        periodic_derivatives, status)
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 3, 0.371_dp + 1.0e-7_dp, periodic_right, &
+        periodic_derivatives, status)
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 3, 0.371_dp, periodic_values, periodic_derivatives, &
+        status)
+    call check_condition(maxval(abs( &
+        (periodic_right - periodic_left)/2.0e-7_dp - &
+        periodic_derivatives)) < 2.0e-8_dp, &
+        "Periodic B-spline derivatives match a central difference")
 
     call build_bspline_polar_feec_2d_operators( &
         azimuth_count, radial_count, gradient, curl, status)
@@ -107,6 +139,38 @@ program test_bspline_polar_axis
     call check_condition(sparse_status%code == 0 .and. maxval(abs( &
         csc_matvec(polar_mass, polar_state) - expected)) < 2.0e-14_dp, &
         "Sparse polar Hodge restriction equals E M E-transpose")
+
+    allocate( &
+        physical_control_points(2, azimuth_count, radial_count), &
+        physical_weights(azimuth_count, radial_count))
+    physical_weights = 1.0_dp
+    do radial = 1, radial_count
+        do azimuth = 1, azimuth_count
+            angle = 2.0_dp*acos(-1.0_dp)* &
+                real(azimuth, dp)/real(azimuth_count, dp)
+            physical_control_points(:, azimuth, radial) = &
+                real(radial - 1, dp)/real(radial_count - 1, dp)* &
+                [cos(angle), sin(angle)]
+        end do
+    end do
+    call assemble_bspline_polar_h1_operator_csc( &
+        radial_knots, 1, azimuth_count, 1, physical_control_points, &
+        physical_weights, 3, physical_mass, sparse_status, &
+        stiffness_coefficient=0.0_dp, mass_coefficient=1.0_dp)
+    polar_state = 1.0_dp
+    expected = csc_matvec(physical_mass, polar_state)
+    polygon_area = 0.5_dp*real(azimuth_count, dp)* &
+        sin(2.0_dp*acos(-1.0_dp)/real(azimuth_count, dp))
+    call check_condition(sparse_status%code == 0 .and. abs( &
+        dot_product(polar_state, expected) - polygon_area) < 2.0e-13_dp, &
+        "Physical polar mass integrates the exact regular-polygon area")
+    call assemble_bspline_polar_h1_operator_csc( &
+        radial_knots, 1, azimuth_count, 1, physical_control_points, &
+        physical_weights, 3, physical_stiffness, sparse_status, &
+        stiffness_coefficient=1.0_dp, mass_coefficient=0.0_dp)
+    call check_condition(maxval(abs( &
+        csc_matvec(physical_stiffness, polar_state))) < 2.0e-13_dp, &
+        "Physical polar stiffness annihilates constants")
 
     allocate(random_state(size(gradient, 2)))
     call seed_random_numbers()

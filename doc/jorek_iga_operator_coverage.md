@@ -34,7 +34,7 @@ The operator inventory is based on:
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |
-| Magnetic-axis regularity | Type-1 polar H1 extraction and locally exact 0--1--2 incidence complex |
+| Magnetic-axis regularity | Type-1 polar H1/Hcurl/L2 extraction, locally exact incidence, and physical H1 mass/diffusion |
 
 The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
@@ -44,9 +44,12 @@ The magnetic-axis extraction maps satisfy both commuting diagrams against an
 independently assembled periodic tensor-product cell complex. FortSym proves
 the generic polar-cap and regular-cell identities exactly. Sparse physical
 operators use the Galerkin restriction `E A E^T`; no dense pseudoinverse is
-formed. The block layout is also cross-checked during development against the
-MIT-licensed STRUPHY polar implementation, while FortFEM retains its own
-Fortran implementation and tests.
+formed. Direct radial--periodic-angular quadrature assembles the physical polar
+H1 mass and diffusion. Its constant mass reproduces the exact area of a
+regular-polygon polar map, while its stiffness annihilates constants. The block
+layout is also cross-checked during development against the MIT-licensed
+STRUPHY polar implementation, while FortFEM retains its own Fortran
+implementation and tests.
 
 ## Time discretization
 
@@ -79,10 +82,9 @@ of the current implementation.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
-- Complete physical magnetic-axis assembly with the polar 1- and 2-form basis
-  quadrature on a periodic tensor grid. Extraction and sparse Hodge restriction
-  are implemented, but are not advertised as complete physical polar FEEC
-  assembly on their own.
+- Complete physical magnetic-axis Hcurl and L2 quadrature/Hodge assembly. The
+  full extraction complex, generic sparse Hodge restriction, and physical H1
+  assembly are implemented.
 - Verify a nonlinear manufactured equilibrium and an energy-transfer problem
   against the published continuous invariants.
 - Benchmark cached harmonic-bracket assembly and nonlinear residual evaluation.

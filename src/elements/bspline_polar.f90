@@ -12,8 +12,65 @@ module fortfem_bspline_polar
     public :: build_bspline_polar_h1_extraction
     public :: build_bspline_polar_feec_2d_operators
     public :: build_bspline_polar_feec_2d_extractions
+    public :: evaluate_periodic_bspline_basis
 
 contains
+
+    subroutine evaluate_periodic_bspline_basis( &
+            basis_count, degree, coordinate, values, derivatives, status)
+        !! Uniform periodic B-spline basis on [0,1).
+        integer, intent(in) :: basis_count, degree
+        real(dp), intent(in) :: coordinate
+        real(dp), allocatable, intent(out) :: values(:), derivatives(:)
+        integer, intent(out) :: status
+
+        real(dp) :: scaled_coordinate, value
+        integer :: extended_basis, first_basis, periodic_basis
+
+        status = 1
+        if (basis_count < degree + 1 .or. degree < 1) return
+        if (coordinate < 0.0_dp .or. coordinate > 1.0_dp) return
+        scaled_coordinate = real(basis_count, dp)*coordinate
+        if (coordinate == 1.0_dp) scaled_coordinate = 0.0_dp
+        allocate(values(basis_count), derivatives(basis_count))
+        values = 0.0_dp
+        derivatives = 0.0_dp
+        first_basis = floor(scaled_coordinate) - degree
+        do extended_basis = first_basis, first_basis + degree
+            periodic_basis = modulo(extended_basis, basis_count) + 1
+            value = cardinal_bspline( &
+                degree, scaled_coordinate - real(extended_basis, dp))
+            values(periodic_basis) = values(periodic_basis) + value
+            derivatives(periodic_basis) = derivatives(periodic_basis) + &
+                real(basis_count, dp)*( &
+                cardinal_bspline( &
+                degree - 1, scaled_coordinate - &
+                real(extended_basis, dp)) - &
+                cardinal_bspline( &
+                degree - 1, scaled_coordinate - &
+                real(extended_basis + 1, dp)))
+        end do
+        status = 0
+    end subroutine evaluate_periodic_bspline_basis
+
+    recursive pure real(dp) function cardinal_bspline(degree, coordinate) &
+            result(value)
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: coordinate
+
+        if (degree == 0) then
+            if (coordinate >= 0.0_dp .and. coordinate < 1.0_dp) then
+                value = 1.0_dp
+            else
+                value = 0.0_dp
+            end if
+            return
+        end if
+        value = coordinate/real(degree, dp)* &
+            cardinal_bspline(degree - 1, coordinate) + &
+            (real(degree + 1, dp) - coordinate)/real(degree, dp)* &
+            cardinal_bspline(degree - 1, coordinate - 1.0_dp)
+    end function cardinal_bspline
 
     subroutine build_bspline_polar_feec_2d_operators( &
             azimuth_count, radial_count, gradient, curl, status)
