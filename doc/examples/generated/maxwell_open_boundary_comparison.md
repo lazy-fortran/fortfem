@@ -12,17 +12,18 @@ outgoing normal wavenumber
 \(\beta=\sqrt{k^2-|\xi|^2}\), the eigenvalue magnitudes are
 \(\beta\) for TE and \(k^2/\beta\) for TM.
 
-It also places the exact DtN residual, the analytically predicted reflection
-of the quadratic PML used by the scalar and vector tests, and an undamped
-far-wall reflection on one scale. The comparison follows the transparent
-boundary formulation of Jiang et al., arXiv:1811.12449.
+It also places the exact DtN residual, the measured error from an executable
+Nédélec curl-curl PML solve, and an undamped far-wall reflection on one
+scale. The PML oracle is the exact edge integral of a complex-stretched plane
+wave and is independent of the assembled system. The comparison follows the
+transparent boundary formulation of Jiang et al., arXiv:1811.12449.
 
 The volume-boundary example additionally constructs a tetrahedral box,
-reproduces a constant field with first-kind Nedelec elements of orders one
-through four, samples its tangential trace on the FFT grid, and pulls the
+reproduces a constant field with first-kind Nédélec elements of orders one
+through six, samples its tangential trace on the FFT grid, and pulls the
 capacity form back to only the edge and face moments on the selected planar
-boundary. This is the same compact block accepted by the complex FortSparse
-curl-curl/PML solver.
+boundary. A separate tetrahedral box then exercises the complex FortSparse
+curl-curl/PML solver and records its solve time and relative edge error.
 
 CI generates `maxwell_dtn_modes_1d.png`, `maxwell_reflection_1d.png`,
 `maxwell_nedelec_dtn_1d.png`, and `benchmark.txt`; generated media are not
@@ -41,8 +42,10 @@ program maxwell_open_boundary_comparison
     use fortfem_api, only: &
         apply_planar_maxwell_dtn, &
         assemble_planar_nedelec_maxwell_dtn_form, &
+        build_tetra_edge_dof_map, &
         build_planar_nedelec_trace_sampling, &
-        generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass
+        generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass, &
+        solve_tetra_nedelec_pml
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
@@ -59,18 +62,22 @@ program maxwell_open_boundary_comparison
     complex(dp) :: derivative(2, nx, ny), trace(2, nx, ny)
     complex(dp), allocatable :: boundary_form(:, :), sampling(:, :)
     complex(dp), allocatable :: sampled_trace(:), weak_exact(:), weak_result(:)
-    integer, allocatable :: boundary_dofs(:), tetrahedra(:, :)
+    complex(dp), allocatable :: boundary_values(:), exact_pml(:), load(:)
+    complex(dp), allocatable :: pml_solution(:), stretch(:, :)
+    integer, allocatable :: boundary_dofs(:), edges(:, :), global_dofs(:, :)
+    integer, allocatable :: orientations(:, :), tetrahedra(:, :)
     real(dp), allocatable :: coefficients(:), vertices(:, :)
     type(fortsparse_status_t) :: sparse_status
     real(dp) :: exact_te(mode_count), exact_tm(mode_count)
     real(dp) :: numerical_te(mode_count), numerical_tm(mode_count)
-    real(dp) :: coupling_error(4), orders(4), trace_error(4)
+    real(dp) :: coupling_error(6), orders(6), trace_error(6)
     real(dp) :: modes(mode_count), reflection(3), reflection_log(3)
     real(dp) :: method_index(3)
-    real(dp) :: beta, end_time, phase_angle, seconds, start_time
+    real(dp) :: beta, end_time, phase_angle, pml_error, pml_seconds
+    real(dp) :: seconds, start_time
     real(dp) :: max_modal_error
     real(dp) :: bounds(3, 2), origin(3), periods(3, 2), trace_weight
-    integer :: boundary_count(4), i, j, mode, order, status, unit
+    integer :: boundary_count(6), edge, i, j, mode, order, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
     do mode = 0, mode_count - 1
@@ -136,7 +143,7 @@ program maxwell_open_boundary_comparison
     call generate_structured_tetra_box_mesh( &
         bounds, [1, 1, 1], vertices, tetrahedra, status)
     if (status /= 0) error stop "Maxwell trace mesh failed"
-    do order = 1, 4
+    do order = 1, 6
         orders(order) = real(order, dp)
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, 1.0_dp, 1.0_dp, &
@@ -162,15 +169,52 @@ program maxwell_open_boundary_comparison
         weak_result = matmul( &
             boundary_form, &
             cmplx(coefficients(boundary_dofs), 0.0_dp, dp))
-        coupling_error(order) = maxval(abs(weak_result - weak_exact))
+        coupling_error(order) = maxval(abs(weak_result - weak_exact))/ &
+            max(maxval(abs(weak_exact)), 1.0_dp)
         boundary_count(order) = size(boundary_dofs)
-        if (trace_error(order) >= 3.0e-10_dp .or. &
-            coupling_error(order) >= 3.0e-8_dp) &
+        write (*, "(a,i0,a,2(es12.4,1x))") &
+            "Nedelec order ", order, " trace/DtN errors: ", &
+            trace_error(order), coupling_error(order)
+        if (trace_error(order) >= 5.0e-8_dp .or. &
+            coupling_error(order) >= 5.0e-8_dp) &
             error stop "Maxwell Nedelec-DtN coupling regression"
         deallocate( &
             coefficients, boundary_dofs, sampling, sampled_trace, &
             boundary_form, weak_exact, weak_result)
     end do
+
+    deallocate(vertices, tetrahedra)
+    bounds(:, 1) = [0.0_dp, 0.0_dp, 0.0_dp]
+    bounds(:, 2) = [1.0_dp, 1.0_dp, 1.0_dp]
+    call generate_structured_tetra_box_mesh( &
+        bounds, [4, 4, 4], vertices, tetrahedra, status)
+    if (status /= 0) error stop "Maxwell PML mesh failed"
+    call build_tetra_edge_dof_map( &
+        tetrahedra, edges, global_dofs, orientations, status)
+    if (status /= 0) error stop "Maxwell PML edge map failed"
+    allocate(exact_pml(size(edges, 2)))
+    do edge = 1, size(edges, 2)
+        exact_pml(edge) = pml_plane_wave_edge_integral( &
+            vertices(:, edges(1, edge)), vertices(:, edges(2, edge)))
+    end do
+    call find_boundary_edges(vertices, edges, boundary_dofs)
+    allocate(boundary_values(size(boundary_dofs)))
+    boundary_values = exact_pml(boundary_dofs)
+    allocate(load(size(edges, 2)), stretch(3, size(tetrahedra, 2)))
+    load = cmplx(0.0_dp, 0.0_dp, dp)
+    stretch(1, :) = cmplx(1.0_dp, 0.35_dp, dp)
+    stretch(2:3, :) = cmplx(1.0_dp, 0.0_dp, dp)
+    call cpu_time(start_time)
+    call solve_tetra_nedelec_pml( &
+        vertices, tetrahedra, 1, stretch, 1.4_dp, load, boundary_dofs, &
+        boundary_values, pml_solution, status)
+    call cpu_time(end_time)
+    if (status /= 0) error stop "Maxwell PML gallery solve failed"
+    pml_seconds = end_time - start_time
+    pml_error = sqrt(sum(abs(pml_solution - exact_pml)**2))/ &
+        sqrt(sum(abs(exact_pml)**2))
+    if (pml_error >= 2.0e-2_dp) &
+        error stop "Maxwell PML gallery accuracy regression"
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(modes, exact_te, label="TE analytical", linestyle="-")
@@ -185,14 +229,14 @@ program maxwell_open_boundary_comparison
 
     method_index = [1.0_dp, 2.0_dp, 3.0_dp]
     reflection = [ &
-        max_modal_error, exp(-2.0_dp*12.0_dp/3.0_dp), 1.0_dp]
+        max_modal_error, pml_error, 1.0_dp]
     reflection_log = log10(max(reflection, tiny(1.0_dp)))
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(method_index, reflection_log, label="reflection magnitude", &
         marker="o")
     call xlabel("method: 1=DtN, 2=PML, 3=far wall")
-    call ylabel("log10 predicted/measured reflection")
-    call title("Maxwell open-boundary reflection scale")
+    call ylabel("log10 measured error/reflection")
+    call title("Maxwell DtN, PML, and far-wall comparison")
     call legend()
     call savefig(output_directory//"/maxwell_reflection_1d.png")
 
@@ -215,10 +259,12 @@ program maxwell_open_boundary_comparison
     write (unit, "(a,es14.6)") &
         "maximum TE/TM eigenvalue error: ", max_modal_error
     write (unit, "(a,es14.6)") &
-        "quadratic PML predicted reflection: ", reflection(2)
+        "Nedelec PML solve seconds: ", pml_seconds
+    write (unit, "(a,es14.6)") &
+        "Nedelec PML relative edge error: ", pml_error
     write (unit, "(a,es14.6)") &
         "ordinary far-wall reflection: ", reflection(3)
-    do order = 1, 4
+    do order = 1, 6
         write (unit, "(a,i0,a,i0,a,es14.6,a,es14.6)") &
             "Nedelec order ", order, " boundary dofs: ", &
             boundary_count(order), " trace error: ", trace_error(order), &
@@ -236,6 +282,52 @@ contains
         end associate
         value = [1.25_dp, -0.75_dp, 0.5_dp]
     end subroutine constant_source
+
+    subroutine find_boundary_edges(vertices, edges, boundary_dofs)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: edges(:, :)
+        integer, allocatable, intent(out) :: boundary_dofs(:)
+
+        logical, allocatable :: boundary(:)
+        integer :: coordinate, local_edge
+
+        allocate(boundary(size(edges, 2)))
+        boundary = .false.
+        do local_edge = 1, size(edges, 2)
+            do coordinate = 1, 3
+                if (all(abs(vertices(coordinate, edges(:, local_edge))) < &
+                    1.0e-14_dp)) boundary(local_edge) = .true.
+                if (all(abs(vertices(coordinate, edges(:, local_edge)) - &
+                    1.0_dp) < 1.0e-14_dp)) boundary(local_edge) = .true.
+            end do
+        end do
+        allocate(boundary_dofs(count(boundary)))
+        boundary_dofs = pack( &
+            [(local_edge, local_edge=1, size(edges, 2))], boundary)
+    end subroutine find_boundary_edges
+
+    pure complex(dp) function pml_plane_wave_edge_integral( &
+            first, second) result(value)
+        real(dp), intent(in) :: first(3), second(3)
+
+        complex(dp), parameter :: x_stretch = cmplx(1.0_dp, 0.35_dp, dp)
+        real(dp), parameter :: pml_wave_number = 1.4_dp
+        complex(dp) :: phase, phase_increment
+        real(dp) :: delta_x, delta_y
+
+        delta_x = second(1) - first(1)
+        delta_y = second(2) - first(2)
+        phase = exp( &
+            cmplx(0.0_dp, pml_wave_number, dp)*x_stretch*first(1))
+        if (abs(delta_x) < 1.0e-14_dp) then
+            value = delta_y*phase
+        else
+            phase_increment = &
+                cmplx(0.0_dp, pml_wave_number, dp)*x_stretch*delta_x
+            value = delta_y*phase*(exp(phase_increment) - 1.0_dp)/ &
+                phase_increment
+        end if
+    end function pml_plane_wave_edge_integral
 
 end program maxwell_open_boundary_comparison
 ```

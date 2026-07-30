@@ -89,7 +89,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/curl_curl.html">curl_curl</a></h3>
-<p>This is an experimental API and visualization prototype for a future</p>
+<p>This example solves a manufactured three-dimensional curl-curl problem with</p>
 </div>
 </article>
 <article class="example-card" data-example="tetra_h1_poisson">
@@ -352,7 +352,7 @@ fpm run --example <example_name>
 - [plot_mesh](generated/plot_mesh.html) - This example demonstrates FortFEM's mesh visualization capabilities, showing how to create and plot finite element meshes at different refinement levels.
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
-- [curl_curl](generated/curl_curl.html) - This is an experimental API and visualization prototype for a future
+- [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
