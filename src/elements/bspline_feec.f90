@@ -10,6 +10,7 @@ module fortfem_bspline_feec
 
     public :: build_bspline_derivative_matrix
     public :: build_bspline_feec_2d_operators
+    public :: build_bspline_feec_3d_operators
     public :: evaluate_bspline_basis
 
 contains
@@ -160,6 +161,158 @@ contains
         end do
         status = 0
     end subroutine build_bspline_feec_2d_operators
+
+    subroutine build_bspline_feec_3d_operators( &
+            knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
+            gradient, curl, divergence, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:), knots_z(:)
+        integer, intent(in) :: degree_x, degree_y, degree_z
+        real(dp), allocatable, intent(out) :: gradient(:, :), curl(:, :)
+        real(dp), allocatable, intent(out) :: divergence(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: dx(:, :), dy(:, :), dz(:, :)
+        integer :: bx_count, by_count, column, ex_count, ey_count
+        integer :: ix, iy, iz, nx, ny, nz, row
+
+        status = 1
+        call build_bspline_derivative_matrix(knots_x, degree_x, dx, status)
+        if (status /= 0) return
+        call build_bspline_derivative_matrix(knots_y, degree_y, dy, status)
+        if (status /= 0) return
+        call build_bspline_derivative_matrix(knots_z, degree_z, dz, status)
+        if (status /= 0) return
+        nx = size(dx, 2)
+        ny = size(dy, 2)
+        nz = size(dz, 2)
+        ex_count = (nx - 1)*ny*nz
+        ey_count = nx*(ny - 1)*nz
+        bx_count = nx*(ny - 1)*(nz - 1)
+        by_count = (nx - 1)*ny*(nz - 1)
+        allocate( &
+            gradient(ex_count + ey_count + nx*ny*(nz - 1), nx*ny*nz), &
+            curl(bx_count + by_count + (nx - 1)*(ny - 1)*nz, &
+            ex_count + ey_count + nx*ny*(nz - 1)), &
+            divergence((nx - 1)*(ny - 1)*(nz - 1), &
+            bx_count + by_count + (nx - 1)*(ny - 1)*nz))
+        gradient = 0.0_dp
+        curl = 0.0_dp
+        divergence = 0.0_dp
+
+        do iz = 1, nz
+            do iy = 1, ny
+                do ix = 1, nx - 1
+                    row = index_3d(ix, iy, iz, nx - 1, ny)
+                    do column = 1, nx
+                        gradient(row, index_3d(column, iy, iz, nx, ny)) = &
+                            dx(ix, column)
+                    end do
+                end do
+            end do
+        end do
+        do iz = 1, nz
+            do iy = 1, ny - 1
+                do ix = 1, nx
+                    row = ex_count + index_3d(ix, iy, iz, nx, ny - 1)
+                    do column = 1, ny
+                        gradient(row, index_3d(ix, column, iz, nx, ny)) = &
+                            dy(iy, column)
+                    end do
+                end do
+            end do
+        end do
+        do iz = 1, nz - 1
+            do iy = 1, ny
+                do ix = 1, nx
+                    row = ex_count + ey_count + index_3d(ix, iy, iz, nx, ny)
+                    do column = 1, nz
+                        gradient(row, index_3d(ix, iy, column, nx, ny)) = &
+                            dz(iz, column)
+                    end do
+                end do
+            end do
+        end do
+
+        do iz = 1, nz - 1
+            do iy = 1, ny - 1
+                do ix = 1, nx
+                    row = index_3d(ix, iy, iz, nx, ny - 1)
+                    do column = 1, ny
+                        curl(row, ex_count + ey_count + &
+                            index_3d(ix, column, iz, nx, ny)) = dy(iy, column)
+                    end do
+                    do column = 1, nz
+                        curl(row, ex_count + &
+                            index_3d(ix, iy, column, nx, ny - 1)) = &
+                            -dz(iz, column)
+                    end do
+                end do
+            end do
+        end do
+        do iz = 1, nz - 1
+            do iy = 1, ny
+                do ix = 1, nx - 1
+                    row = bx_count + index_3d(ix, iy, iz, nx - 1, ny)
+                    do column = 1, nz
+                        curl(row, index_3d(ix, iy, column, nx - 1, ny)) = &
+                            dz(iz, column)
+                    end do
+                    do column = 1, nx
+                        curl(row, ex_count + ey_count + &
+                            index_3d(column, iy, iz, nx, ny)) = -dx(ix, column)
+                    end do
+                end do
+            end do
+        end do
+        do iz = 1, nz
+            do iy = 1, ny - 1
+                do ix = 1, nx - 1
+                    row = bx_count + by_count + &
+                        index_3d(ix, iy, iz, nx - 1, ny - 1)
+                    do column = 1, nx
+                        curl(row, ex_count + &
+                            index_3d(column, iy, iz, nx, ny - 1)) = &
+                            dx(ix, column)
+                    end do
+                    do column = 1, ny
+                        curl(row, index_3d(ix, column, iz, nx - 1, ny)) = &
+                            -dy(iy, column)
+                    end do
+                end do
+            end do
+        end do
+
+        do iz = 1, nz - 1
+            do iy = 1, ny - 1
+                do ix = 1, nx - 1
+                    row = index_3d(ix, iy, iz, nx - 1, ny - 1)
+                    do column = 1, nx
+                        divergence(row, &
+                            index_3d(column, iy, iz, nx, ny - 1)) = &
+                            dx(ix, column)
+                    end do
+                    do column = 1, ny
+                        divergence(row, bx_count + &
+                            index_3d(ix, column, iz, nx - 1, ny)) = &
+                            dy(iy, column)
+                    end do
+                    do column = 1, nz
+                        divergence(row, bx_count + by_count + &
+                            index_3d(ix, iy, column, nx - 1, ny - 1)) = &
+                            dz(iz, column)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine build_bspline_feec_3d_operators
+
+    pure integer function index_3d( &
+            ix, iy, iz, count_x, count_y) result(index)
+        integer, intent(in) :: ix, iy, iz, count_x, count_y
+
+        index = ix + (iy - 1)*count_x + (iz - 1)*count_x*count_y
+    end function index_3d
 
     pure logical function valid_knot_vector(knots, degree) result(valid)
         real(dp), intent(in) :: knots(:)
