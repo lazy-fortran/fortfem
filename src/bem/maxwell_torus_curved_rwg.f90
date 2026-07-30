@@ -14,6 +14,7 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
+    public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
@@ -22,6 +23,42 @@ module fortfem_maxwell_torus_curved_rwg
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_mfie_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: full_offset(:, :), half_offset(:, :)
+        complex(dp), allocatable :: quarter_offset(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (relative_offset <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, full_offset, &
+            status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset/2.0_dp, &
+            half_offset, status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset/4.0_dp, &
+            quarter_offset, status)
+        if (status /= 0) return
+        matrix = full_offset/3.0_dp - 2.0_dp*half_offset + &
+            8.0_dp*quarter_offset/3.0_dp
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
 
     subroutine assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
