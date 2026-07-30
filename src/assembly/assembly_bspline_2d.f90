@@ -6,8 +6,8 @@ module fortfem_assembly_bspline_2d
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: &
-        csc_from_triplet, csc_matmul, csc_t, csc_transpose, &
-        FORTSPARSE_INVALID_MATRIX, &
+        csc_from_triplet, csc_matmul, csc_matvec, csc_t, csc_transpose, &
+        FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t, status_set
     implicit none
     private
@@ -23,6 +23,8 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_grad_shafranov_csc
     public :: assemble_bspline_toroidal_fourier_laplacian_csc
     public :: assemble_bspline_poloidal_bracket_csc
+    public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_toroidal_fourier_derivative
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
@@ -42,6 +44,142 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, advecting_coefficients, transported_coefficients, &
+            quadrature_order, residual, status)
+        !! Energy-skew poloidal bracket with exact Fourier-mode convolution.
+        !!
+        !! This is the nonlinear mode coupling used by reduced-MHD models:
+        !! mode n receives every retained pair p+q=n. The formulation follows
+        !! the JOREK reduced-MHD weak structure in Franck et al. (2015),
+        !! arXiv:1408.2099, while retaining the skew Galerkin spatial bracket.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: advecting_coefficients(:, :)
+        complex(dp), intent(in) :: transported_coefficients(:, :)
+        complex(dp), allocatable, intent(out) :: residual(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: action(:), advecting_part(:)
+        type(csc_t) :: bracket_imaginary, bracket_real
+        integer :: mode_advecting, mode_output, mode_transported
+        logical :: has_imaginary, has_real
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Toroidal isogeometric poloidal-bracket convolution failed")
+        if (size(advecting_coefficients, 1) /= &
+            size(transported_coefficients, 1)) return
+        if (size(advecting_coefficients, 2) /= size(modes) .or. &
+            size(transported_coefficients, 2) /= size(modes)) return
+        if (has_duplicate_modes(modes)) return
+        allocate( &
+            residual(size(transported_coefficients, 1), size(modes)), &
+            advecting_part(size(advecting_coefficients, 1)))
+        residual = cmplx(0.0_dp, 0.0_dp, dp)
+        do mode_advecting = 1, size(modes)
+            has_real = any(real( &
+                advecting_coefficients(:, mode_advecting), dp) /= 0.0_dp)
+            has_imaginary = any(aimag( &
+                advecting_coefficients(:, mode_advecting)) /= 0.0_dp)
+            if (has_real) then
+                advecting_part = &
+                    real(advecting_coefficients(:, mode_advecting), dp)
+                call assemble_bspline_poloidal_bracket_csc( &
+                    knots_r, knots_z, degree_r, degree_z, control_points, &
+                    weights, advecting_part, quadrature_order, bracket_real, &
+                    status)
+                if (status%code /= 0) return
+            end if
+            if (has_imaginary) then
+                advecting_part = &
+                    aimag(advecting_coefficients(:, mode_advecting))
+                call assemble_bspline_poloidal_bracket_csc( &
+                    knots_r, knots_z, degree_r, degree_z, control_points, &
+                    weights, advecting_part, quadrature_order, &
+                    bracket_imaginary, status)
+                if (status%code /= 0) return
+            end if
+            do mode_transported = 1, size(modes)
+                mode_output = find_mode( &
+                    modes, modes(mode_advecting) + modes(mode_transported))
+                if (mode_output == 0) cycle
+                if (has_real) then
+                    action = csc_matvec( &
+                        bracket_real, real( &
+                        transported_coefficients(:, mode_transported), dp))
+                    residual(:, mode_output) = residual(:, mode_output) + action
+                    action = csc_matvec( &
+                        bracket_real, aimag( &
+                        transported_coefficients(:, mode_transported)))
+                    residual(:, mode_output) = residual(:, mode_output) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                end if
+                if (has_imaginary) then
+                    action = csc_matvec( &
+                        bracket_imaginary, real( &
+                        transported_coefficients(:, mode_transported), dp))
+                    residual(:, mode_output) = residual(:, mode_output) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                    action = csc_matvec( &
+                        bracket_imaginary, aimag( &
+                        transported_coefficients(:, mode_transported)))
+                    residual(:, mode_output) = residual(:, mode_output) - action
+                end if
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_bspline_toroidal_poloidal_bracket
+
+    pure subroutine apply_toroidal_fourier_derivative( &
+            modes, coefficients, derivative, status)
+        !! Exact derivative of exp(i*n*phi) Fourier coefficients.
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: coefficients(:, :)
+        complex(dp), allocatable, intent(out) :: derivative(:, :)
+        integer, intent(out) :: status
+        integer :: mode
+
+        status = 1
+        if (size(coefficients, 2) /= size(modes)) return
+        if (has_duplicate_modes(modes)) return
+        allocate(derivative(size(coefficients, 1), size(coefficients, 2)))
+        do mode = 1, size(modes)
+            derivative(:, mode) = &
+                cmplx(0.0_dp, real(modes(mode), dp), dp)*coefficients(:, mode)
+        end do
+        status = 0
+    end subroutine apply_toroidal_fourier_derivative
+
+    pure integer function find_mode(modes, requested) result(location)
+        integer, intent(in) :: modes(:), requested
+        integer :: mode
+
+        location = 0
+        do mode = 1, size(modes)
+            if (modes(mode) /= requested) cycle
+            location = mode
+            return
+        end do
+    end function find_mode
+
+    pure logical function has_duplicate_modes(modes) result(duplicate)
+        integer, intent(in) :: modes(:)
+        integer :: first, second
+
+        duplicate = .false.
+        do second = 2, size(modes)
+            do first = 1, second - 1
+                if (modes(first) /= modes(second)) cycle
+                duplicate = .true.
+                return
+            end do
+        end do
+    end function has_duplicate_modes
 
     subroutine assemble_bspline_poloidal_bracket_csc( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &

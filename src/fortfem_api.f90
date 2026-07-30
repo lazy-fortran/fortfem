@@ -203,6 +203,8 @@ module fortfem_api
         assemble_bspline_grad_shafranov_csc, &
         assemble_bspline_toroidal_fourier_laplacian_csc, &
         assemble_bspline_poloidal_bracket_csc, &
+        apply_bspline_toroidal_poloidal_bracket, &
+        apply_toroidal_fourier_derivative, &
         build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_assembly_bspline_3d, only: &
         assemble_bspline_h1_operator_3d_csc, &
@@ -555,6 +557,8 @@ module fortfem_api
     public :: assemble_bspline_hdiv_l2_divergence_3d_csc
     public :: assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
     public :: assemble_bspline_l2_mass_3d_csc
+    public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_toroidal_fourier_derivative
     public :: BSPLINE_FACE_X_MAX
     public :: BSPLINE_FACE_X_MIN
     public :: BSPLINE_FACE_Y_MAX
