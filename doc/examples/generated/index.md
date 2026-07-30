@@ -30,6 +30,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [curved_acoustic_ntd](curved_acoustic_ntd.html) - This example maps the normal displacement of an arbitrary closed polygonal
 - [bem_sphere_3d](bem_sphere_3d.html) - This example solves the unit-sphere Laplace Dirichlet problem with the P0
 - [adaptive_bem_prolate](adaptive_bem_prolate.html) - This example solves the exterior electrostatic Dirichlet problem with constant
+- [adaptive_helmholtz_bem_sphere](adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
 - [magnetic_curvilinear_metrics](magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
 - [maxwell_torus_curved_scattering](maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an

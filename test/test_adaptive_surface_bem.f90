@@ -1,6 +1,7 @@
 program test_adaptive_surface_bem
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        estimate_helmholtz_p0_two_level_residual_3d, &
         estimate_laplace_p0_two_level_residual_3d, &
         generate_sphere_surface_mesh, mark_bem_dorfler, &
         refine_surface_mesh_marked
@@ -10,6 +11,7 @@ program test_adaptive_surface_bem
     integer, allocatable :: parent(:), refined_triangles(:, :), triangles(:, :)
     real(dp), allocatable :: density(:), indicators(:), refined_vertices(:, :)
     real(dp), allocatable :: vertices(:, :)
+    complex(dp), allocatable :: complex_density(:)
     logical, allocatable :: marked(:)
     real(dp) :: captured, expected_indicator, total
     integer :: edge, first, occurrences, second, status
@@ -69,6 +71,17 @@ program test_adaptive_surface_bem
     call record_condition( &
         captured >= 0.6_dp*total .and. count(marked) < size(marked), &
         "Dorfler marking captures the requested residual fraction")
+
+    allocate(complex_density(size(triangles, 2)), source=(0.0_dp, 0.0_dp))
+    call estimate_helmholtz_p0_two_level_residual_3d( &
+        vertices, triangles, complex_density, cmplx(1.0_dp, -2.0_dp, dp), &
+        0.7_dp, 5, indicators, status)
+    if (status /= 0) error stop "two-level Helmholtz estimator failed"
+    expected_indicator = sqrt(5.0_dp*triangle_area( &
+        vertices(:, triangles(:, 1))))
+    call record_condition( &
+        maxval(abs(indicators - expected_indicator)) < 1.0e-12_dp, &
+        "zero-density Helmholtz indicators equal the exact residual norm")
 
     call check_summary("Adaptive triangular-surface BEM")
     if (.not. all_passed) error stop 1

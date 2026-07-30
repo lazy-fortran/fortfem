@@ -1,10 +1,13 @@
 module fortfem_adaptive_surface_bem
     use fortfem_kinds, only: dp
+    use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_single_layer_p0_3d
     use fortfem_laplace_galerkin_3d, only: &
         assemble_laplace_single_layer_p0_3d
     implicit none
     private
 
+    public :: estimate_helmholtz_p0_two_level_residual_3d
     public :: estimate_laplace_p0_two_level_residual_3d
     public :: mark_bem_dorfler
     public :: refine_surface_mesh_marked
@@ -163,6 +166,55 @@ contains
         indicators = sqrt(indicators)
         status = 0
     end subroutine estimate_laplace_p0_two_level_residual_3d
+
+    subroutine estimate_helmholtz_p0_two_level_residual_3d( &
+            vertices, triangles, density, boundary_value, wavenumber, &
+            quadrature_degree, indicators, status)
+        real(dp), intent(in) :: vertices(:, :), wavenumber
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: density(:), boundary_value
+        real(dp), allocatable, intent(out) :: indicators(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: parent(:), refined_triangles(:, :)
+        complex(dp), allocatable :: matrix(:, :), prolonged(:), residual(:)
+        complex(dp), allocatable :: right_hand_side(:)
+        real(dp), allocatable :: refined_vertices(:, :)
+        logical, allocatable :: marked(:)
+        real(dp) :: area
+        integer :: child
+
+        status = 1
+        if (size(density) /= size(triangles, 2)) return
+        if (wavenumber <= 0.0_dp .or. quadrature_degree < 1) return
+        allocate(marked(size(triangles, 2)), source=.true.)
+        call refine_surface_mesh_marked( &
+            vertices, triangles, marked, refined_vertices, refined_triangles, &
+            parent, status)
+        if (status /= 0) return
+        call assemble_helmholtz_single_layer_p0_3d( &
+            refined_vertices, refined_triangles, wavenumber, &
+            quadrature_degree, matrix, status)
+        if (status /= 0) return
+        allocate(prolonged(size(parent)), residual(size(parent)))
+        allocate(right_hand_side(size(parent)))
+        do child = 1, size(parent)
+            prolonged(child) = density(parent(child))
+            area = triangle_area( &
+                refined_vertices(:, refined_triangles(:, child)))
+            right_hand_side(child) = boundary_value*area
+        end do
+        residual = right_hand_side - matmul(matrix, prolonged)
+        allocate(indicators(size(triangles, 2)), source=0.0_dp)
+        do child = 1, size(parent)
+            area = triangle_area( &
+                refined_vertices(:, refined_triangles(:, child)))
+            indicators(parent(child)) = indicators(parent(child)) + &
+                abs(residual(child))**2/max(area, tiny(1.0_dp))
+        end do
+        indicators = sqrt(indicators)
+        status = 0
+    end subroutine estimate_helmholtz_p0_two_level_residual_3d
 
     subroutine mark_bem_dorfler(indicators, theta, marked, status)
         real(dp), intent(in) :: indicators(:), theta

@@ -30,6 +30,7 @@ laplace_symmetric_transmission
 curved_acoustic_ntd
 bem_sphere_3d
 adaptive_bem_prolate
+adaptive_helmholtz_bem_sphere
 
 # Advanced geometry
 magnetic_curvilinear_metrics
