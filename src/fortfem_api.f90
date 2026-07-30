@@ -261,7 +261,8 @@ module fortfem_api
     use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_physical_tetra_nedelec, &
         interpolate_reference_tetra_nedelec
-    use fortfem_tetra_rt_interpolation, only: interpolate_reference_tetra_rt
+    use fortfem_tetra_rt_interpolation, only: &
+        interpolate_physical_tetra_rt, interpolate_reference_tetra_rt
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
@@ -576,6 +577,7 @@ module fortfem_api
     public :: build_tetra_discrete_gradient
     public :: build_tetra_discrete_curl
     public :: interpolate_reference_tetra_rt
+    public :: interpolate_physical_tetra_rt
     public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
