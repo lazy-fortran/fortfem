@@ -54,7 +54,7 @@ The initial findings used the following evidence:
   incompatible EFIE and MFIE weak matrices merely because they have the same
   dimensions.
 
-The current implementation baseline is FortFEM `6516785` with 204 passing
+The current implementation baseline is FortFEM `59d2ed9` with 205 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -64,7 +64,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first- and second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
-| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; and public Nedelec curl-curl-plus-mass solves through order four | Higher-order magnetic-box convergence and public H1/H(div) PDE dispatch |
+| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass solves through order four; and public RT div-div-plus-mass solves through degree four | Higher-order magnetic-box convergence and public H1 PDE dispatch |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on nonspherical surfaces and curved-boundary elastic coupling |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; off-surface evaluation; tetrahedral P1 Johnson-Nedelec FEM/BEM coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, and exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy, and resonance suppression | General curved and higher-order surfaces beyond the exact sphere map; production FMM or H-matrices; and adaptive mesh refinement |
@@ -484,6 +484,11 @@ its cross-code and production-case validation gate remains open:
   solves curl-curl-plus-mass systems with `fortsparse`. On two tetrahedra
   sharing a face it reproduces an exact constant field and zero curl at every
   implemented order.
+- the public tetrahedral RT solver integrates physical vector sources through
+  degree four, applies generated oriented face transforms, and solves
+  div-div-plus-mass systems with `fortsparse`. The same shared-face test
+  reproduces an exact constant field and zero divergence from RT0 through
+  RT4.
 - tensor-weighted tetrahedral curl assembly, physical vector-load assembly,
   boundary-edge elimination, and sparse reconstruction reproduce pull
   request 9's anisotropic 12-by-12-by-8 magnetic box centre value within its
@@ -609,10 +614,11 @@ weighted form compilation, and public single-field solves for every family.
 The two-dimensional magnetic paper case also passes through the public
 Nedelec solver. The RT0-DG0 mixed Poisson helper is conservative and
 convergent, and matching-degree solves attain optimal convergence through
-RT3-DG3. Tetrahedral Nedelec curl-curl-plus-mass solves now cover orders one
-through four. Symbolic mixed-form compilation, public tetrahedral H1/H(div)
-PDE dispatch, and optimal higher-order tetrahedral convergence remain. The
-Phase 2 exit gate is therefore not yet met.
+RT3-DG3. Tetrahedral Nedelec curl-curl-plus-mass and RT
+div-div-plus-mass solves now cover every implemented order. Symbolic
+mixed-form compilation, public tetrahedral H1 PDE dispatch, and optimal
+higher-order tetrahedral convergence remain. The Phase 2 exit gate is
+therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
