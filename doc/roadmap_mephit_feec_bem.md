@@ -54,7 +54,7 @@ The initial findings used the following evidence:
   incompatible EFIE and MFIE weak matrices merely because they have the same
   dimensions.
 
-The current implementation baseline is FortFEM `59d2ed9` with 205 passing
+The current implementation baseline is FortFEM `8ba28cd` with 263 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -64,13 +64,13 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors and explicit-edge mixed tangential/curl-Neumann data through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, rectangular symbolic RT–DG divergence and Nedelec–DG curl blocks, and a symbolic mixed Poisson solve with optimal RT–DG convergence | General multi-field block composition beyond the implemented differential pairings |
-| Arbitrary-order 3D FEEC | Tetrahedral first-kind Nedelec H(curl) bases, topology, sparse assembly, planar Maxwell DtN traces, and public curl-curl solves through order five; tetrahedral RT H(div) and DG L2 through degree five; tetrahedral H1 through degree four; Piola maps; generated/runtime moment bases and face transforms; commuting grad/curl/div tests; tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves; symbolic rectangular RT–DG divergence and mixed Poisson through RT5–DG5; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl | Extend the runtime moment path beyond order five and to H1; general multi-field block composition |
+| Arbitrary-order 3D FEEC | Tetrahedral first-kind Nedelec H(curl) bases, topology, sparse assembly, planar Maxwell DtN traces, and public curl-curl solves through order six; tetrahedral RT H(div) and DG L2 through degree six; tetrahedral H1 through degree four; Piola maps; generated/runtime moment bases and face transforms; commuting grad/curl/div tests; tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves; symbolic rectangular RT–DG divergence and mixed Poisson through RT6–DG6; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl | Extend the arbitrary-order runtime path to H1; general multi-field block composition |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; arbitrary-polygon P1/P0 acoustic displacement-to-pressure NtD, its work-conjugate vector weak form, and a monolithic complex P1 elasticity solve through a resonance-safe combined Calderon equation; biperiodic planar Maxwell strong and weak capacity operators; automatic arbitrary-order tetrahedral Nedelec trace sampling and pulled-back planar capacity blocks; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on general curved surfaces |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD with monolithic P1 elasticity coupling on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, and remaining paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace and Helmholtz P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; pointer-free hierarchical Laplace and outgoing Helmholtz applications; a retained-tree matrix-free outgoing Helmholtz solve using FortNum complex GMRES with dense-density and analytical-field sphere oracles; conforming marked triangular refinement, two-level Laplace and Helmholtz P0 residual indicators, and Dörfler marking; affine and exact-curved-torus Laplace/Helmholtz off-surface evaluation; full exact-curved-torus Laplace and Helmholtz P1/P0 Calderon operators and exterior DtN solves; tetrahedral P1 Johnson-Nedelec and symmetric Costabel Laplace/Helmholtz FEM/BEM coupling; solid-torus P1 FEM/exact-curved-BEM symmetric Laplace and Helmholtz coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves with batched multiple-incidence factor reuse, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, affine-torus regularized-CFIE scattering with a Lorentz-reciprocity oracle, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy and resonance suppression, and exact-curved-torus surface-Piola RWG traces, mass pairing, plane-wave loads, far-field radiation, radial-Duffy coincident integration, adaptive adjacent-panel integration, full vector/scalar EFIE assembly, exact barycentric BC/RBC geometry, full-rank curved RWG-RBC dual pairing, Maxwell-consistent exterior/interior magnetic jumps, a one-sided extrapolated MFIE limit, coercive RWG- and BC-domain imaginary-wavenumber EFIE regularizers, provenance-faithful regularized-CFIE product assembly, exact BC incident traces, batched incident-field factor reuse, and solved scattering satisfying Lorentz reciprocity | Higher-order Galerkin surface operators, production FMM or H-matrices, and adaptive refinement for Maxwell and higher-order spaces |
-| Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, toroidal-coordinate, and curvilinear magnetic-coefficient kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
-| Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions, all host-side dense real/complex LU solves, and restarted matrix-free real and complex GMRES; current `fortsparse` provides CSC construction, retained factors, sparse solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
+| Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), modal vector identities, face-permutation, toroidal-coordinate, and curvilinear magnetic-coefficient kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
+| Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions, stable simplex modal polynomials and exact gradients, all host-side dense real/complex LU solves, and restarted matrix-free real and complex GMRES; current `fortsparse` provides CSC construction, retained factors, sparse solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
 
 ## Repository state
 
@@ -531,33 +531,35 @@ its cross-code and production-case validation gate remains open:
   moments, and its constant curls agree with independent finite differences.
   Its affine covariant map preserves all six tangential edge moments on a
   skew tetrahedron, and mapped curls agree with physical finite differences.
-- first-kind tetrahedral reference bases through order five have the exact
-  dimensions 6, 20, 45, 84, and 140. Their complete edge, face, and cell moments
-  are Kronecker, they reproduce polynomial gradients with zero curl, and
+- first-kind tetrahedral reference bases through order six have the exact
+  dimensions 6, 20, 45, 84, 140, and 216. Their complete edge, face, and cell
+  moments are Kronecker, they reproduce polynomial gradients with zero curl, and
   their analytical curls agree with independent finite differences. Local
   curl-mass matrices reproduce exact covariantly mapped polynomial energies
   at every implemented order. Their candidate polynomials, curls, exact
   dual-basis coefficients, and face transforms through order four come from
   revision-pinned `fortsym` generators with a byte-for-byte regeneration gate.
-  Order five evaluates the same polynomial candidate specification and builds
-  the moment inverse and face maps at runtime with FortNum, avoiding another
-  large generated coefficient table.
+  Order five evaluates the same monomial candidate specification at runtime.
+  Orders six and above use FortSym-generated modal vector identities with
+  FortNum's stable Dubiner/Koornwinder recurrences and exact gradients,
+  avoiding another large generated coefficient table.
 - two tetrahedra with opposite shared-face ordering reuse all three common
   global edges and all face moments. Exact edge signs and generated face
   transforms map every order to canonical global degrees of freedom.
-- tetrahedral curl-mass operators through order five assemble directly to
+- tetrahedral curl-mass operators through order six assemble directly to
   `fortsparse` CSC. Exact constant-field mass energies verify orders one
   through four, and a rotational-field curl energy verifies the lowest order.
 - the public tetrahedral Nedelec solver integrates physical vector sources
-  through order five, applies the generated/runtime edge/face basis transforms, and
+  through order six, applies the generated/runtime edge/face basis
+  transforms, and
   solves curl-curl-plus-mass systems with `fortsparse`. On two tetrahedra
   sharing a face it reproduces an exact constant field and zero curl at every
   implemented order.
 - the public tetrahedral RT solver integrates physical vector sources through
-  degree five, applies generated/runtime oriented face transforms, and solves
+  degree six, applies generated/runtime oriented face transforms, and solves
   div-div-plus-mass systems with `fortsparse`. The same shared-face test
   reproduces an exact constant field and zero divergence from RT0 through
-  RT5.
+  RT6.
 - tensor-weighted tetrahedral curl assembly, physical vector-load assembly,
   boundary-edge elimination, and sparse reconstruction reproduce pull
   request 9's anisotropic 12-by-12-by-8 magnetic box centre value within its
@@ -715,7 +717,8 @@ pairing and its signed transpose now compile symbolically as well. A public
 tetrahedral mixed Poisson solve
 composes those blocks with the RT mass form and a quadrature-built DG source.
 RT0--DG0 through RT5--DG5 reproduce every unit-cube tetrahedron's independent
-geometric source balance.
+geometric source balance. RT6--DG6 independently reproduces the balance on a
+physical skew tetrahedron while keeping the full regression suite practical.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
