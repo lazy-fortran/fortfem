@@ -81,6 +81,14 @@ jobs:
     - name: Build
       run: fpm build --profile release
 
+    - name: Set up uv for the external IGA oracle
+      uses: astral-sh/setup-uv@v6
+
+    - name: Verify IGA operators against Nutils
+      run: |
+        uv run --with nutils==9.2 \
+          python test/reference/nutils_iga_oracle.py
+
     - name: Run tests
       run: fpm test
 

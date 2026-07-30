@@ -25,6 +25,20 @@ side. The analytical fields are the primary oracle. Cross-code agreement is a
 secondary oracle that can expose a shared FortFEM implementation error but
 never replaces convergence against the exact solution.
 
+The ordinary correctness workflow also runs a lightweight isogeometric oracle
+with Nutils 9.2. On the same uniform quadratic tensor-product patch, Nutils
+independently assembles the scalar mass and stiffness matrices and verifies:
+
+- 20 global spline degrees of freedom;
+- unit constant-field mass;
+- unit energy for the reproduced coordinate field; and
+- annihilation of constants by the stiffness matrix.
+
+Nutils is installed ephemerally with `uv`; no Nutils source, wheel, or generated
+matrix is committed. FortFEM retains separate analytical tests on nonuniform
+knot vectors, which Nutils' structured-topology parameterization does not use
+as an identical algebraic basis.
+
 The published result records, for every mesh level:
 
 - code name, exact version, compiler, scalar type, and solver configuration;
@@ -118,6 +132,7 @@ detection, not for authoritative speed rankings.
 
 Installation choices follow the upstream documentation:
 
+- [Nutils documentation](https://docs.nutils.org/)
 - [DOLFINx installation](https://docs.fenicsproject.org/dolfinx/main/python/installation.html)
 - [FreeFEM installation](https://doc.freefem.org/introduction/installation.html)
 - [MFEM build documentation](https://mfem.org/building/)
