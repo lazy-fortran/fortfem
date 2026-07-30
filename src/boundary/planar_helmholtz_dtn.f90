@@ -18,6 +18,8 @@ module fortfem_planar_helmholtz_dtn
     public :: apply_planar_helmholtz_dtn_jvp
     public :: apply_planar_helmholtz_dtn_vjp
     public :: assemble_planar_helmholtz_dtn_form
+    public :: assemble_planar_helmholtz_dtn_form_jvp
+    public :: assemble_planar_helmholtz_dtn_form_vjp
 
 contains
 
@@ -61,6 +63,126 @@ contains
         end do
         status = 0
     end subroutine assemble_planar_helmholtz_dtn_form
+
+    subroutine assemble_planar_helmholtz_dtn_form_jvp( &
+            sample_count, wavenumber, period, wavenumber_dot, period_dot, &
+            form_dot, status)
+        integer, intent(in) :: sample_count
+        real(dp), intent(in) :: wavenumber, period
+        real(dp), intent(in) :: wavenumber_dot, period_dot
+        complex(dp), intent(out) :: form_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:), derivative_dot(:)
+        complex(dp), allocatable :: strong_operator(:, :)
+        complex(dp), allocatable :: strong_operator_dot(:, :), trace(:)
+        complex(dp), allocatable :: trace_dot(:)
+        real(dp) :: spacing, spacing_dot
+        integer :: column, next, previous, row
+
+        form_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (sample_count < 3 .or. wavenumber < 0.0_dp .or. &
+            period <= 0.0_dp) return
+        if (size(form_dot, 1) /= sample_count .or. &
+            size(form_dot, 2) /= sample_count) return
+
+        allocate (trace(sample_count), trace_dot(sample_count))
+        allocate (derivative(sample_count), derivative_dot(sample_count))
+        allocate (strong_operator(sample_count, sample_count))
+        allocate (strong_operator_dot(sample_count, sample_count))
+        trace_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do column = 1, sample_count
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            trace(column) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_helmholtz_dtn( &
+                trace, wavenumber, period, derivative)
+            call apply_planar_helmholtz_dtn_jvp( &
+                trace, wavenumber, period, trace_dot, wavenumber_dot, &
+                period_dot, derivative_dot)
+            strong_operator(:, column) = derivative
+            strong_operator_dot(:, column) = derivative_dot
+        end do
+
+        spacing = period/real(sample_count, dp)
+        spacing_dot = period_dot/real(sample_count, dp)
+        do row = 1, sample_count
+            previous = modulo(row - 2, sample_count) + 1
+            next = modulo(row, sample_count) + 1
+            form_dot(row, :) = spacing_dot/6.0_dp*( &
+                strong_operator(previous, :) + &
+                4.0_dp*strong_operator(row, :) + &
+                strong_operator(next, :)) + spacing/6.0_dp*( &
+                strong_operator_dot(previous, :) + &
+                4.0_dp*strong_operator_dot(row, :) + &
+                strong_operator_dot(next, :))
+        end do
+        status = 0
+    end subroutine assemble_planar_helmholtz_dtn_form_jvp
+
+    subroutine assemble_planar_helmholtz_dtn_form_vjp( &
+            sample_count, wavenumber, period, form_bar, wavenumber_bar, &
+            period_bar, status)
+        integer, intent(in) :: sample_count
+        real(dp), intent(in) :: wavenumber, period
+        complex(dp), intent(in) :: form_bar(:, :)
+        real(dp), intent(out) :: wavenumber_bar, period_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:), strong_bar(:, :)
+        complex(dp), allocatable :: strong_operator(:, :), trace(:), trace_bar(:)
+        real(dp) :: local_period_bar, local_wavenumber_bar, spacing
+        integer :: column, next, previous, row
+
+        wavenumber_bar = 0.0_dp
+        period_bar = 0.0_dp
+        status = 1
+        if (sample_count < 3 .or. wavenumber < 0.0_dp .or. &
+            period <= 0.0_dp) return
+        if (size(form_bar, 1) /= sample_count .or. &
+            size(form_bar, 2) /= sample_count) return
+
+        allocate (trace(sample_count), trace_bar(sample_count))
+        allocate (derivative(sample_count))
+        allocate (strong_operator(sample_count, sample_count))
+        allocate (strong_bar(sample_count, sample_count))
+        do column = 1, sample_count
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            trace(column) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_helmholtz_dtn( &
+                trace, wavenumber, period, derivative)
+            strong_operator(:, column) = derivative
+        end do
+
+        spacing = period/real(sample_count, dp)
+        strong_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do row = 1, sample_count
+            previous = modulo(row - 2, sample_count) + 1
+            next = modulo(row, sample_count) + 1
+            strong_bar(previous, :) = strong_bar(previous, :) + &
+                spacing/6.0_dp*form_bar(row, :)
+            strong_bar(row, :) = strong_bar(row, :) + &
+                4.0_dp*spacing/6.0_dp*form_bar(row, :)
+            strong_bar(next, :) = strong_bar(next, :) + &
+                spacing/6.0_dp*form_bar(row, :)
+            period_bar = period_bar + real(sum(conjg(form_bar(row, :))*( &
+                strong_operator(previous, :) + &
+                4.0_dp*strong_operator(row, :) + &
+                strong_operator(next, :)))/ &
+                (6.0_dp*real(sample_count, dp)), dp)
+        end do
+
+        do column = 1, sample_count
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            trace(column) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_helmholtz_dtn_vjp( &
+                trace, wavenumber, period, strong_bar(:, column), trace_bar, &
+                local_wavenumber_bar, local_period_bar)
+            wavenumber_bar = wavenumber_bar + local_wavenumber_bar
+            period_bar = period_bar + local_period_bar
+        end do
+        status = 0
+    end subroutine assemble_planar_helmholtz_dtn_form_vjp
 
     subroutine apply_planar_helmholtz_dtn( &
             trace, wavenumber, period, normal_derivative)

@@ -256,7 +256,9 @@ module fortfem_api
         solve_maxwell_fem_bem_torus_curved_system_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, apply_planar_helmholtz_dtn_jvp, &
-        apply_planar_helmholtz_dtn_vjp, assemble_planar_helmholtz_dtn_form
+        apply_planar_helmholtz_dtn_vjp, assemble_planar_helmholtz_dtn_form, &
+        assemble_planar_helmholtz_dtn_form_jvp, &
+        assemble_planar_helmholtz_dtn_form_vjp
     use fortfem_planar_maxwell_dtn, only: apply_planar_maxwell_dtn, &
         assemble_planar_maxwell_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
@@ -725,6 +727,8 @@ module fortfem_api
     public :: solve_elasticity_planar_acoustic_dtn_p1
     public :: solve_elasticity_curved_acoustic_ntd_p1
     public :: assemble_planar_helmholtz_dtn_form
+    public :: assemble_planar_helmholtz_dtn_form_jvp
+    public :: assemble_planar_helmholtz_dtn_form_vjp
     public :: solve_scalar_helmholtz_planar_dtn_p1
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
