@@ -166,3 +166,10 @@ They compose the FortSym-generated curl--curl PML coefficient JVP/VJP with
 the analytical Piola and quadrature products. Reverse mode returns real
 geometry and wave-number gradients together with complex stretch cotangents
 under the library's real-complex inner-product convention.
+
+Global tetrahedral PML assembly preserves the primal merged CSC pattern in
+its JVP. Its VJP accepts value cotangents aligned with that pattern, reverses
+the Nedelec orientation transforms, and accumulates element geometry
+cotangents at shared mesh vertices. Elementwise complex stretch gradients
+remain separate, while the global wave-number gradient is summed across all
+cells. This is the mesh-level interface consumed by sparse state adjoints.
