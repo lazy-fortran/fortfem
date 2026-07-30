@@ -23,6 +23,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
+    public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -36,6 +37,123 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            relative_offset, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :)
+        complex(dp), allocatable :: magnetic_fields(:, :)
+        real(dp) :: divergence, jacobian, local_value(3), point(3), target(3)
+        integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
+
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp .or. &
+            relative_offset <= 0.0_dp) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            magnetic_fields(3, size(edge_vertices, 2)))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do refined_panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, refined_panel, &
+                        local_edge, radius, xi(node), eta(node), point, &
+                        local_value, divergence, jacobian, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                target = (1.0_dp + relative_offset)*point
+                call evaluate_all_curved_rwg_magnetic_fields( &
+                    vertices, triangles, edge_vertices, edge_triangles, radius, &
+                    target, wave_number, xi, eta, weights, magnetic_fields, &
+                    status)
+                if (status /= 0) return
+                do test_basis = 1, size(edge_vertices, 2)
+                    do trial_basis = 1, size(edge_vertices, 2)
+                        matrix(test_basis, trial_basis) = &
+                            matrix(test_basis, trial_basis) - &
+                            jacobian*weights(node)*sum( &
+                            bc_values(:, test_basis)* &
+                            magnetic_fields(:, trial_basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine &
+        assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
+
+    subroutine evaluate_all_curved_rwg_magnetic_fields( &
+            vertices, triangles, edge_vertices, edge_triangles, radius, target, &
+            wave_number, xi, eta, weights, magnetic_fields, status)
+        real(dp), intent(in) :: vertices(:, :), radius, target(3), wave_number
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        real(dp), intent(in) :: xi(:), eta(:), weights(:)
+        complex(dp), intent(out) :: magnetic_fields(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: basis_value(3), displacement(3), divergence, jacobian
+        real(dp) :: point(3), distance
+        complex(dp) :: curl_integrand(3), gradient_green(3), green
+        integer :: basis, node, panel
+
+        magnetic_fields = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status)
+                    if (status /= 0) return
+                    displacement = target - point
+                    distance = norm2(displacement)
+                    if (distance <= 128.0_dp*epsilon(1.0_dp)*radius) return
+                    green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                        (4.0_dp*acos(-1.0_dp)*distance)
+                    gradient_green = green* &
+                        (cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance)* &
+                        displacement/distance
+                    curl_integrand = complex_cross_product( &
+                        gradient_green, cmplx(basis_value, 0.0_dp, dp))
+                    magnetic_fields(:, basis) = magnetic_fields(:, basis) + &
+                        weights(node)*jacobian*curl_integrand
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_all_curved_rwg_magnetic_fields
 
     subroutine assemble_maxwell_sphere_curved_rwg_rbc_pairing( &
             vertices, triangles, radius, quadrature_degree, matrix, status)
