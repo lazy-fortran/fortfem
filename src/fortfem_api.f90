@@ -37,7 +37,8 @@ module fortfem_api
         barycentric_refine_surface_mesh
     use fortfem_maxwell_localized_rwg_surface, only: &
         evaluate_maxwell_localized_rwg_basis
-    use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
+    use fortfem_maxwell_bc_surface, only: &
+        assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
@@ -232,6 +233,7 @@ module fortfem_api
     public :: barycentric_refine_surface_mesh
     public :: evaluate_maxwell_localized_rwg_basis
     public :: build_maxwell_bc_transformation
+    public :: assemble_maxwell_rwg_rbc_pairing
     public :: cartesian_to_toroidal
     public :: toroidal_point_to_cartesian
     public :: toroidal_vector_to_cartesian
