@@ -10,6 +10,8 @@ module fortfem_tetra_piola_maps
     public :: map_tetra_nedelec_covariant_jvp
     public :: map_tetra_nedelec_covariant_vjp
     public :: map_tetra_rt_contravariant
+    public :: map_tetra_rt_contravariant_jvp
+    public :: map_tetra_rt_contravariant_vjp
 
 contains
 
@@ -215,5 +217,123 @@ contains
         physical_divergences = reference_divergences/determinant
         status = 0
     end subroutine map_tetra_rt_contravariant
+
+    pure subroutine map_tetra_rt_contravariant_jvp( &
+            jacobian, reference_values, reference_divergences, jacobian_dot, &
+            reference_values_dot, reference_divergences_dot, &
+            physical_values_dot, physical_divergences_dot, status)
+        real(dp), intent(in) :: jacobian(3, 3), jacobian_dot(3, 3)
+        real(dp), intent(in) :: reference_values(:, :)
+        real(dp), intent(in) :: reference_divergences(:)
+        real(dp), intent(in) :: reference_values_dot(:, :)
+        real(dp), intent(in) :: reference_divergences_dot(:)
+        real(dp), intent(out) :: physical_values_dot(:, :)
+        real(dp), intent(out) :: physical_divergences_dot(:)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, determinant_dot
+        real(dp) :: mapped_values(3, size(reference_values, 2)), tolerance
+
+        physical_values_dot = 0.0_dp
+        physical_divergences_dot = 0.0_dp
+        call validate_rt_shapes( &
+            reference_values, reference_divergences, physical_values_dot, &
+            physical_divergences_dot, status)
+        if (status /= 0) return
+        if (any(shape(reference_values_dot) /= shape(reference_values)) .or. &
+            size(reference_divergences_dot) /= &
+            size(reference_divergences)) then
+            status = 1
+            return
+        end if
+        determinant = det3(jacobian)
+        tolerance = 64.0_dp*epsilon(1.0_dp)* &
+            max(1.0_dp, maxval(abs(jacobian))**3)
+        if (determinant <= tolerance) then
+            status = 1
+            return
+        end if
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+        mapped_values = matmul(jacobian, reference_values)
+        physical_values_dot = ( &
+            matmul(jacobian_dot, reference_values) + &
+            matmul(jacobian, reference_values_dot))/determinant - &
+            mapped_values*determinant_dot/determinant**2
+        physical_divergences_dot = &
+            reference_divergences_dot/determinant - &
+            reference_divergences*determinant_dot/determinant**2
+        status = 0
+    end subroutine map_tetra_rt_contravariant_jvp
+
+    pure subroutine map_tetra_rt_contravariant_vjp( &
+            jacobian, reference_values, reference_divergences, &
+            physical_values_bar, physical_divergences_bar, jacobian_bar, &
+            reference_values_bar, reference_divergences_bar, status)
+        real(dp), intent(in) :: jacobian(3, 3)
+        real(dp), intent(in) :: reference_values(:, :)
+        real(dp), intent(in) :: reference_divergences(:)
+        real(dp), intent(in) :: physical_values_bar(:, :)
+        real(dp), intent(in) :: physical_divergences_bar(:)
+        real(dp), intent(out) :: jacobian_bar(3, 3)
+        real(dp), intent(out) :: reference_values_bar(:, :)
+        real(dp), intent(out) :: reference_divergences_bar(:)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3)
+        real(dp) :: mapped_values(3, size(reference_values, 2))
+        real(dp) :: mapped_values_bar(3, size(reference_values, 2)), tolerance
+
+        jacobian_bar = 0.0_dp
+        reference_values_bar = 0.0_dp
+        reference_divergences_bar = 0.0_dp
+        call validate_rt_shapes( &
+            reference_values, reference_divergences, physical_values_bar, &
+            physical_divergences_bar, status)
+        if (status /= 0) return
+        if (any(shape(reference_values_bar) /= shape(reference_values)) .or. &
+            size(reference_divergences_bar) /= &
+            size(reference_divergences)) then
+            status = 1
+            return
+        end if
+        determinant = det3(jacobian)
+        tolerance = 64.0_dp*epsilon(1.0_dp)* &
+            max(1.0_dp, maxval(abs(jacobian))**3)
+        if (determinant <= tolerance) then
+            status = 1
+            return
+        end if
+        mapped_values = matmul(jacobian, reference_values)
+        mapped_values_bar = physical_values_bar/determinant
+        jacobian_bar = &
+            matmul(mapped_values_bar, transpose(reference_values))
+        reference_values_bar = &
+            matmul(transpose(jacobian), mapped_values_bar)
+        reference_divergences_bar = physical_divergences_bar/determinant
+        determinant_bar = &
+            -sum(physical_values_bar*mapped_values)/determinant**2 - &
+            sum(physical_divergences_bar*reference_divergences)/determinant**2
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        jacobian_bar = jacobian_bar + determinant_jacobian_bar
+        status = 0
+    end subroutine map_tetra_rt_contravariant_vjp
+
+    pure subroutine validate_rt_shapes( &
+            reference_values, reference_divergences, physical_values, &
+            physical_divergences, status)
+        real(dp), intent(in) :: reference_values(:, :)
+        real(dp), intent(in) :: reference_divergences(:)
+        real(dp), intent(in) :: physical_values(:, :)
+        real(dp), intent(in) :: physical_divergences(:)
+        integer, intent(out) :: status
+
+        status = 1
+        if (size(reference_values, 1) /= 3) return
+        if (size(reference_divergences) /= size(reference_values, 2)) return
+        if (any(shape(physical_values) /= shape(reference_values))) return
+        if (size(physical_divergences) /= size(reference_divergences)) return
+        status = 0
+    end subroutine validate_rt_shapes
 
 end module fortfem_tetra_piola_maps
