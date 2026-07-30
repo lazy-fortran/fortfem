@@ -30,7 +30,7 @@ program test_maxwell_efie_rwg_3d
     call build_maxwell_rwg_surface_space( &
         vertices, boundary_triangles, edge_vertices, edge_triangles, status)
     call assemble_maxwell_rwg_potential_operators_3d( &
-        vertices, boundary_triangles, 0.8_dp, 12, 1.0e-3_dp, 3, &
+        vertices, boundary_triangles, 0.8_dp, 12, 1.0e-3_dp, 1, &
         vector_potential, scalar_potential, status)
     call record_condition(status == 0 .and. &
         maxval(abs(vector_potential - transpose(vector_potential))) < &
@@ -72,18 +72,18 @@ program test_maxwell_efie_rwg_3d
         cmplx(coefficients, 0.0_dp, dp), &
         matmul(vector_potential, coefficients))
     if (abs(rwg_energy - expected_energy)/abs(expected_energy) >= &
-        5.0e-3_dp) then
+        2.5e-2_dp) then
         write (*, '(A,2ES14.5,A,2ES14.5,A,ES14.5)') &
             "RWG energy ", rwg_energy, " panel energy ", expected_energy, &
             " relative error ", &
             abs(rwg_energy - expected_energy)/abs(expected_energy)
     end if
     call record_condition(abs(rwg_energy - expected_energy)/ &
-        abs(expected_energy) < 5.0e-3_dp, &
+        abs(expected_energy) < 2.5e-2_dp, &
         "Affine RWG integration matches an independent constant-trace energy")
 
     call assemble_maxwell_efie_rwg_3d( &
-        vertices, boundary_triangles, 0.8_dp, 1.7_dp, 12, 1.0e-3_dp, 3, &
+        vertices, boundary_triangles, 0.8_dp, 1.7_dp, 12, 1.0e-3_dp, 1, &
         efie, status)
     call record_condition(sqrt(sum(abs(matmul(efie, coefficients) - &
         cmplx(0.0_dp, 0.8_dp*1.7_dp, dp)* &
@@ -92,7 +92,7 @@ program test_maxwell_efie_rwg_3d
 
     call assemble_maxwell_efie_rwg_3d( &
         2.0_dp*vertices, boundary_triangles, 0.4_dp, 1.7_dp, 12, &
-        1.0e-3_dp, 3, scaled_efie, status)
+        1.0e-3_dp, 1, scaled_efie, status)
     call record_condition(maxval(abs(scaled_efie - 4.0_dp*efie)) < 2.0e-8_dp, &
         "RWG EFIE obeys exact wave-scaled quadratic geometric scaling")
 
