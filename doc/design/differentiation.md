@@ -145,3 +145,10 @@ cotangents for every volume-matrix entry, every trace-sampling entry, the
 complex load, and all three scalar boundary parameters. This algebraic
 boundary lets element and moving-mesh geometry products compose with the
 state adjoint without making mesh topology or point location implicit.
+
+The tetrahedral Nedelec covariant Piola map provides products for the
+Jacobian, reference values, and reference curls. Its implementation composes
+FortNum's FortSym-generated determinant and inverse JVP/VJP kernels with the
+closed covariant value and curl transformations. Consequently element and
+mesh geometry adjoints remain analytical and GCC-compatible while sharing
+the same guarded linear-algebra primitives used elsewhere.
