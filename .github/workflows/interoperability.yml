@@ -105,6 +105,9 @@ jobs:
     name: FEniCSx analytical oracles
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     container:
       image: dolfinx/dolfinx:v0.10.0
     steps:
