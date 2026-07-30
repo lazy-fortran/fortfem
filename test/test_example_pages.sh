@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-page_root="$repository_dir/build/doc/page"
+page_root=$(realpath -m "$repository_dir/build/doc/page")
 examples_root="$page_root/examples"
 
 test -s "$examples_root/index.html"
@@ -53,7 +53,7 @@ while IFS= read -r relative_plot; do
     esac
     test -s "$resolved"
 done < <(
-    grep -o 'src="\.\./media/examples/[^"]*\.png"' \
+    grep -o 'src="\.\./media/examples/[^"]*\.\(png\|svg\)"' \
         "$examples_root/index.html"
 )
 

@@ -70,7 +70,8 @@ contains
             x_tri(4) = x_tri(1)
             y_tri(4) = y_tri(1)
 
-            call fig%add_plot(x_tri, y_tri)
+            call fig%add_plot( &
+                x_tri, y_tri, color=[0.12_dp, 0.31_dp, 0.45_dp])
         end do
     end subroutine add_mesh_triangles_to_figure
 
