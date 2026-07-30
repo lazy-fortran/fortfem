@@ -98,13 +98,14 @@ contains
 
     subroutine build_maxwell_bc_transformation( &
             vertices, triangles, refined_vertices, refined_triangles, &
-            transformation, status)
+            transformation, status, sphere_radius)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), allocatable, intent(out) :: refined_vertices(:, :)
         integer, allocatable, intent(out) :: refined_triangles(:, :)
         real(dp), allocatable, intent(out) :: transformation(:, :)
         integer, intent(out) :: status
+        real(dp), optional, intent(in) :: sphere_radius
 
         integer, allocatable :: edge_panels(:, :), primal_edges(:, :)
         integer, allocatable :: refined_element_edges(:, :)
@@ -112,6 +113,7 @@ contains
         integer :: basis, lower, upper, vertex1, vertex2
         integer :: local_vertex1, local_vertex2
         integer :: upper_minus, upper_plus, lower_minus, lower_plus
+        integer :: refined_vertex
 
         status = 1
         call build_maxwell_rwg_surface_space( &
@@ -123,6 +125,16 @@ contains
         end if
         call barycentric_refine_surface_mesh( &
             vertices, triangles, refined_vertices, refined_triangles)
+        if (present(sphere_radius)) then
+            if (sphere_radius <= 0.0_dp) return
+            do refined_vertex = 1, size(refined_vertices, 2)
+                if (norm2(refined_vertices(:, refined_vertex)) <= &
+                    tiny(1.0_dp)) return
+                refined_vertices(:, refined_vertex) = sphere_radius* &
+                    refined_vertices(:, refined_vertex)/ &
+                    norm2(refined_vertices(:, refined_vertex))
+            end do
+        end if
         call enumerate_local_edges( &
             refined_triangles, refined_edges, refined_element_edges)
         allocate(transformation(3*size(refined_triangles, 2), &
