@@ -1,7 +1,9 @@
 program test_mesh_plotting
     ! TDD test for mesh plotting functionality
     use fortfem_api
+    use fortfem_api_plot_mesh, only: prepare_mesh_plot
     use fortfem_kinds
+    use fortplot_figure, only: figure_t
     implicit none
 
     integer :: test_count = 0, passed_tests = 0
@@ -12,6 +14,7 @@ program test_mesh_plotting
     call test_plot_function_exists()
     call test_simple_mesh_plot()
     call test_plot_with_options()
+    call test_mesh_edges_share_one_color()
     call test_quad_mesh_plot()
     call test_mixed_mesh_plot()
 
@@ -136,6 +139,29 @@ contains
 
         call end_test()
     end subroutine
+
+    subroutine test_mesh_edges_share_one_color()
+        character(len=*), parameter :: test_name = "Uniform Mesh Edge Color"
+        type(figure_t) :: fig
+        type(mesh_t) :: mesh
+        integer :: triangle
+
+        call start_test(test_name)
+        mesh = unit_square_mesh(4)
+        call prepare_mesh_plot(mesh, fig, .false., "Uniform mesh")
+        if (fig%plot_count /= mesh%data%n_triangles) then
+            write (*, *) "  ✗ one wireframe path is required per triangle"
+            return
+        end if
+        do triangle = 2, fig%plot_count
+            if (any(abs(fig%plots(triangle)%color - fig%plots(1)%color) > &
+                64.0_dp*epsilon(1.0_dp))) then
+                write (*, *) "  ✗ mesh edges must not cycle through line colors"
+                return
+            end if
+        end do
+        call end_test()
+    end subroutine test_mesh_edges_share_one_color
 
     ! Test framework helpers
     subroutine start_test(test_name)

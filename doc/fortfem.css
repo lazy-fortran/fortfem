@@ -73,4 +73,9 @@
     #sidebar-toc {
         display: none;
     }
+
+    #text {
+        flex: 0 0 auto;
+        width: 100%;
+    }
 }

@@ -5,6 +5,7 @@ repository_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 index_file="$repository_dir/doc/examples/index.md"
 generated_dir="$repository_dir/doc/examples/generated"
 readme_file="$repository_dir/README.md"
+order_file="$repository_dir/doc/examples/gallery_order.txt"
 
 mapfile -t expected < <(
     find "$repository_dir/example" -mindepth 1 -maxdepth 2 \
@@ -19,8 +20,10 @@ mapfile -t documented < <(
 )
 mapfile -t gallery_cards < <(
     sed -n 's/^<article class="example-card" data-example="\([^"]*\)">$/\1/p' \
-        "$index_file" |
-        sort -u
+        "$index_file"
+)
+mapfile -t ordered < <(
+    sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$order_file"
 )
 
 if ! diff -u \
@@ -31,11 +34,23 @@ if ! diff -u \
 fi
 
 if ! diff -u \
-        <(printf '%s\n' "${expected[@]}") \
+        <(printf '%s\n' "${ordered[@]}") \
         <(printf '%s\n' "${gallery_cards[@]}"); then
-    echo "example gallery does not show every Fortran example" >&2
+    echo "example gallery is not in the documented learning order" >&2
     exit 1
 fi
+
+if ! diff -u \
+        <(printf '%s\n' "${expected[@]}") \
+        <(printf '%s\n' "${ordered[@]}" | sort -u); then
+    echo "example gallery order does not cover every Fortran example" >&2
+    exit 1
+fi
+
+test "${gallery_cards[0]}" = simple_poisson
+test "$(grep -c '<img class="example-card-image"' "$index_file")" \
+    -eq "${#expected[@]}"
+grep -Fq "classic Poisson equation" "$index_file"
 
 for example_name in "${expected[@]}"; do
     page="$generated_dir/$example_name.md"

@@ -1,0 +1,34 @@
+# Getting started
+simple_poisson
+minimal_mesh_example
+plot_mesh
+plotting
+
+# Finite elements
+curl_curl
+tetra_h1_poisson
+tetra_nedelec_p_convergence
+
+# Open boundaries
+circular_dtn_modes
+helmholtz_open_boundary_comparison
+acoustic_fem_dtn
+maxwell_open_boundary_comparison
+
+# Verification and performance
+fortfem_mesh_benchmark
+solver_benchmark
+interoperability_benchmarks
+
+# Boundary elements and coupling
+laplace_bem_circle_spectrum
+helmholtz_bem_circle_spectrum
+helmholtz_cfie_circle
+laplace_symmetric_transmission
+curved_acoustic_ntd
+bem_sphere_3d
+
+# Advanced geometry
+magnetic_curvilinear_metrics
+toroidal_analytical
+maxwell_torus_curved_scattering
