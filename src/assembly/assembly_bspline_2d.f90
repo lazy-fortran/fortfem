@@ -8,7 +8,8 @@ module fortfem_assembly_bspline_2d
     use fortsparse, only: &
         csc_from_triplet, csc_matmul, csc_matvec, csc_t, csc_transpose, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
-        fortsparse_status_t, status_set
+        fortsparse_status_t, sparse_factor, sparse_free, sparse_solve, &
+        sparse_solver_t, status_set
     implicit none
     private
 
@@ -25,6 +26,10 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_toroidal_fourier_laplacian_csc
     public :: assemble_bspline_poloidal_bracket_csc
     public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_bspline_jorek_flux_rhs
+    public :: apply_bspline_jorek_flux_jvp
+    public :: advance_bspline_jorek_poloidal_flux_midpoint
+    public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
     public :: apply_toroidal_fourier_derivative
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
@@ -46,6 +51,95 @@ module fortfem_assembly_bspline_2d
 
 contains
 
+    subroutine advance_bspline_jorek_poloidal_flux_midpoint( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            electric_potential, quadrature_order, time_step, magnetic_flux, &
+            status)
+        !! Cayley/implicit-midpoint subflow for dt(psi)=R[psi,u], fixed u.
+        !!
+        !! The spatial bracket is skew, so this map exactly preserves the
+        !! spline mass norm and is time reversible. It is suitable as one
+        !! Poisson propagator in a symmetric Hamiltonian splitting.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: electric_potential(:), time_step
+        real(dp), intent(inout) :: magnetic_flux(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call advance_bspline_jorek_poloidal_flux_midpoint_steps( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            electric_potential, quadrature_order, time_step, 1, magnetic_flux, &
+            status)
+    end subroutine advance_bspline_jorek_poloidal_flux_midpoint
+
+    subroutine advance_bspline_jorek_poloidal_flux_midpoint_steps( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            electric_potential, quadrature_order, time_step, step_count, &
+            magnetic_flux, status)
+        !! Repeated midpoint subflow retaining one sparse factorization.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: electric_potential(:), time_step
+        integer, intent(in) :: step_count
+        real(dp), intent(inout) :: magnetic_flux(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: new_flux(:), right_hand_side(:)
+        type(csc_t) :: left_matrix, right_matrix
+        type(sparse_solver_t) :: solver
+        integer :: step
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK midpoint propagator requires a positive step count")
+        if (step_count < 1) return
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, left_matrix, status, &
+            stiffness_coefficient=0.0_dp, mass_coefficient=1.0_dp, &
+            advecting_coefficients=electric_potential, &
+            advection_coefficient=0.5_dp*time_step, &
+            advection_weight_function=radial_weight)
+        if (status%code /= 0) return
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, right_matrix, status, &
+            stiffness_coefficient=0.0_dp, mass_coefficient=1.0_dp, &
+            advecting_coefficients=electric_potential, &
+            advection_coefficient=-0.5_dp*time_step, &
+            advection_weight_function=radial_weight)
+        if (status%code /= 0) return
+        allocate(new_flux(size(magnetic_flux)))
+        call sparse_factor(solver, left_matrix, status)
+        if (status%code /= 0) then
+            call sparse_free(solver)
+            return
+        end if
+        do step = 1, step_count
+            right_hand_side = csc_matvec(right_matrix, magnetic_flux)
+            call sparse_solve(solver, right_hand_side, new_flux, status)
+            if (status%code /= 0) then
+                call sparse_free(solver)
+                return
+            end if
+            magnetic_flux = new_flux
+        end do
+        call sparse_free(solver)
+
+    contains
+
+        pure subroutine radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = point(1)
+        end subroutine radial_weight
+
+    end subroutine advance_bspline_jorek_poloidal_flux_midpoint_steps
+
     subroutine assemble_bspline_h1_weighted_mass_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
             field_coefficients, quadrature_order, matrix, status)
@@ -66,7 +160,7 @@ contains
     subroutine apply_bspline_toroidal_poloidal_bracket( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
             modes, advecting_coefficients, transported_coefficients, &
-            quadrature_order, residual, status)
+            quadrature_order, residual, status, bracket_weight_function)
         !! Energy-skew poloidal bracket with exact Fourier-mode convolution.
         !!
         !! This is the nonlinear mode coupling used by reduced-MHD models:
@@ -81,6 +175,7 @@ contains
         complex(dp), intent(in) :: transported_coefficients(:, :)
         complex(dp), allocatable, intent(out) :: residual(:, :)
         type(fortsparse_status_t), intent(out) :: status
+        procedure(scalar_weight_2d), optional :: bracket_weight_function
 
         real(dp), allocatable :: action(:), advecting_part(:)
         type(csc_t) :: bracket_imaginary, bracket_real
@@ -110,7 +205,7 @@ contains
                 call assemble_bspline_poloidal_bracket_csc( &
                     knots_r, knots_z, degree_r, degree_z, control_points, &
                     weights, advecting_part, quadrature_order, bracket_real, &
-                    status)
+                    status, bracket_weight_function)
                 if (status%code /= 0) return
             end if
             if (has_imaginary) then
@@ -119,7 +214,7 @@ contains
                 call assemble_bspline_poloidal_bracket_csc( &
                     knots_r, knots_z, degree_r, degree_z, control_points, &
                     weights, advecting_part, quadrature_order, &
-                    bracket_imaginary, status)
+                    bracket_imaginary, status, bracket_weight_function)
                 if (status%code /= 0) return
             end if
             do mode_transported = 1, size(modes)
@@ -152,6 +247,161 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_bspline_toroidal_poloidal_bracket
+
+    subroutine apply_bspline_jorek_flux_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux, electric_potential, toroidal_current, &
+            resistivity, toroidal_field, quadrature_order, rhs, status)
+        !! Weak right-hand side of Franck et al. (2015), equation (10):
+        !! dt psi = R[psi,u] + eta*j - F0*dphi(u)
+        !!          + eta/R^2*dphi_phi(psi).
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: magnetic_flux(:, :)
+        complex(dp), intent(in) :: electric_potential(:, :)
+        complex(dp), intent(in) :: toroidal_current(:, :)
+        real(dp), intent(in) :: resistivity, toroidal_field
+        complex(dp), allocatable, intent(out) :: rhs(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:, :), flux_derivative(:, :)
+        complex(dp), allocatable :: second_derivative(:, :)
+        complex(dp), allocatable :: nonlinear(:, :)
+        type(csc_t) :: inverse_radius_squared_mass, mass
+        integer :: local_status, mode
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK isogeometric magnetic-flux residual failed")
+        if (any(shape(magnetic_flux) /= shape(electric_potential)) .or. &
+            any(shape(magnetic_flux) /= shape(toroidal_current))) return
+        if (size(magnetic_flux, 2) /= size(modes)) return
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux, electric_potential, quadrature_order, &
+            nonlinear, status, radial_weight)
+        if (status%code /= 0) return
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, mass, status, stiffness_coefficient=0.0_dp, &
+            mass_coefficient=1.0_dp)
+        if (status%code /= 0) return
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, inverse_radius_squared_mass, status, &
+            stiffness_coefficient=0.0_dp, mass_coefficient=1.0_dp, &
+            mass_weight_function=inverse_radius_squared)
+        if (status%code /= 0) return
+        call apply_toroidal_fourier_derivative( &
+            modes, electric_potential, derivative, local_status)
+        if (local_status /= 0) return
+        call apply_toroidal_fourier_derivative( &
+            modes, magnetic_flux, flux_derivative, local_status)
+        if (local_status /= 0) return
+        call apply_toroidal_fourier_derivative( &
+            modes, flux_derivative, second_derivative, local_status)
+        if (local_status /= 0) return
+        rhs = nonlinear
+        do mode = 1, size(modes)
+            call add_complex_matrix_action( &
+                mass, toroidal_current(:, mode), resistivity, rhs(:, mode))
+            call add_complex_matrix_action( &
+                mass, derivative(:, mode), -toroidal_field, rhs(:, mode))
+            call add_complex_matrix_action( &
+                inverse_radius_squared_mass, second_derivative(:, mode), &
+                resistivity, rhs(:, mode))
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+
+    contains
+
+        pure subroutine radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = point(1)
+        end subroutine radial_weight
+
+        pure subroutine inverse_radius_squared(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = 1.0_dp/point(1)**2
+        end subroutine inverse_radius_squared
+
+    end subroutine apply_bspline_jorek_flux_rhs
+
+    subroutine apply_bspline_jorek_flux_jvp( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux, electric_potential, magnetic_flux_direction, &
+            electric_potential_direction, current_direction, resistivity, &
+            toroidal_field, quadrature_order, jvp, status)
+        !! Analytical Jacobian-vector product of apply_bspline_jorek_flux_rhs.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: magnetic_flux(:, :)
+        complex(dp), intent(in) :: electric_potential(:, :)
+        complex(dp), intent(in) :: magnetic_flux_direction(:, :)
+        complex(dp), intent(in) :: electric_potential_direction(:, :)
+        complex(dp), intent(in) :: current_direction(:, :)
+        real(dp), intent(in) :: resistivity, toroidal_field
+        complex(dp), allocatable, intent(out) :: jvp(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: bracket_cross(:, :)
+        complex(dp), allocatable :: bracket_direction(:, :)
+
+        call apply_bspline_jorek_flux_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux_direction, electric_potential_direction, &
+            current_direction, resistivity, toroidal_field, quadrature_order, &
+            jvp, status)
+        if (status%code /= 0) return
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux_direction, electric_potential, &
+            quadrature_order, bracket_cross, status, radial_weight)
+        if (status%code /= 0) return
+        jvp = jvp + bracket_cross
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux, electric_potential_direction, &
+            quadrature_order, bracket_cross, status, radial_weight)
+        if (status%code /= 0) return
+        jvp = jvp + bracket_cross
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, magnetic_flux_direction, electric_potential_direction, &
+            quadrature_order, bracket_direction, status, radial_weight)
+        if (status%code /= 0) return
+        jvp = jvp - bracket_direction
+        call status_set(status, FORTSPARSE_OK, "")
+
+    contains
+
+        pure subroutine radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = point(1)
+        end subroutine radial_weight
+
+    end subroutine apply_bspline_jorek_flux_jvp
+
+    subroutine add_complex_matrix_action(matrix, vector, scale, result)
+        type(csc_t), intent(in) :: matrix
+        complex(dp), intent(in) :: vector(:)
+        real(dp), intent(in) :: scale
+        complex(dp), intent(inout) :: result(:)
+
+        result = result + scale*csc_matvec(matrix, real(vector, dp))
+        result = result + cmplx(0.0_dp, scale, dp)* &
+            csc_matvec(matrix, aimag(vector))
+    end subroutine add_complex_matrix_action
 
     pure subroutine apply_toroidal_fourier_derivative( &
             modes, coefficients, derivative, status)
@@ -201,20 +451,23 @@ contains
 
     subroutine assemble_bspline_poloidal_bracket_csc( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
-            advecting_coefficients, quadrature_order, matrix, status)
+            advecting_coefficients, quadrature_order, matrix, status, &
+            bracket_weight_function)
         real(dp), intent(in) :: knots_r(:), knots_z(:)
         integer, intent(in) :: degree_r, degree_z, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
         real(dp), intent(in) :: advecting_coefficients(:)
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        procedure(scalar_weight_2d), optional :: bracket_weight_function
 
         call assemble_bspline_h1_operator_csc( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
             quadrature_order, matrix, status, stiffness_coefficient=0.0_dp, &
             mass_coefficient=0.0_dp, &
             advecting_coefficients=advecting_coefficients, &
-            advection_coefficient=1.0_dp)
+            advection_coefficient=1.0_dp, &
+            advection_weight_function=bracket_weight_function)
     end subroutine assemble_bspline_poloidal_bracket_csc
 
     subroutine assemble_bspline_toroidal_fourier_laplacian_csc( &
@@ -951,7 +1204,8 @@ contains
             quadrature_order, matrix, status, stiffness_coefficient, &
             mass_coefficient, stiffness_weight_function, mass_weight_function, &
             stiffness_tensor_function, advecting_coefficients, &
-            advection_coefficient, mass_field_coefficients)
+            advection_coefficient, mass_field_coefficients, &
+            advection_weight_function)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -965,6 +1219,7 @@ contains
         real(dp), intent(in), optional :: advecting_coefficients(:)
         real(dp), intent(in), optional :: advection_coefficient
         real(dp), intent(in), optional :: mass_field_coefficients(:)
+        procedure(scalar_weight_2d), optional :: advection_weight_function
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -976,6 +1231,7 @@ contains
         real(dp) :: basis_column, basis_row, gradient_column(2), gradient_row(2)
         real(dp) :: advecting_gradient(2), advection_velocity(2)
         real(dp) :: advection_weight
+        real(dp) :: advection_weight_at_point
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
         real(dp) :: mass_field_at_point
@@ -1061,6 +1317,7 @@ contains
                             quadrature_weights_y(point_y)
                         stiffness_weight_at_point = stiffness_weight
                         mass_weight_at_point = mass_weight
+                        advection_weight_at_point = advection_weight
                         stiffness_tensor_at_point = reshape( &
                             [1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], [2, 2])
                         if (present(stiffness_weight_function)) then
@@ -1089,6 +1346,10 @@ contains
                         if (present(stiffness_tensor_function)) then
                             call stiffness_tensor_function( &
                                 geometry_point, stiffness_tensor_at_point)
+                        end if
+                        if (present(advection_weight_function)) then
+                            call advection_weight_function( &
+                                geometry_point, advection_weight_at_point)
                         end if
                         advecting_gradient = 0.0_dp
                         if (present(advecting_coefficients)) then
@@ -1129,7 +1390,8 @@ contains
                                     mass_weight_at_point*basis_row*basis_column)
                                 local_matrix(local_row, local_column) = &
                                     local_matrix(local_row, local_column) + &
-                                    0.5_dp*physical_weight*advection_weight*( &
+                                    0.5_dp*physical_weight* &
+                                    advection_weight_at_point*( &
                                     basis_row*dot_product( &
                                     advection_velocity, gradient_column) - &
                                     basis_column*dot_product( &
