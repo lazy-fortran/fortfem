@@ -2,7 +2,7 @@ program gen_cartesian_pml_products
     use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, operator(*), operator(/), sym
+    use fortsym_expr, only: expr_t, operator(*), operator(/), operator(**), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
     use fortsym_string, only: chars, str
@@ -15,11 +15,15 @@ program gen_cartesian_pml_products
     type(expr_t) :: stretch(3), stretch_dot(3)
     type(expr_t) :: scalar_outputs(4), scalar_outputs_bar(4)
     type(expr_t) :: curl_outputs(6), curl_outputs_bar(6)
+    type(expr_t) :: attenuation(1), attenuation_bar(1)
+    type(expr_t) :: attenuation_variables(4), attenuation_dot(4)
     type(expr_t) :: scalar_jvp(4), scalar_vjp(3)
     type(expr_t) :: curl_jvp(6), curl_vjp(3)
+    type(expr_t) :: attenuation_jvp(1), attenuation_vjp(4)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: scalar_jvp_code, scalar_vjp_code
     character(:), allocatable :: curl_jvp_code, curl_vjp_code
+    character(:), allocatable :: attenuation_jvp_code, attenuation_vjp_code
     integer :: ios, root, unit
 
     call arena%init()
@@ -44,15 +48,31 @@ program gen_cartesian_pml_products
         sym(arena, "curl_1_bar"), sym(arena, "curl_2_bar"), &
         sym(arena, "curl_3_bar"), sym(arena, "mass_1_bar"), &
         sym(arena, "mass_2_bar"), sym(arena, "mass_3_bar")]
+    attenuation_variables = [ &
+        sym(arena, "distance"), sym(arena, "layer_width"), &
+        sym(arena, "wave_number"), sym(arena, "sigma_max")]
+    attenuation_dot = [ &
+        sym(arena, "distance_dot"), sym(arena, "layer_width_dot"), &
+        sym(arena, "wave_number_dot"), sym(arena, "sigma_max_dot")]
+    attenuation(1) = attenuation_variables(4)/attenuation_variables(3)* &
+        (attenuation_variables(1)/attenuation_variables(2))** &
+        sym(arena, "polynomial_degree")
+    attenuation_bar(1) = sym(arena, "attenuation_bar")
 
     scalar_jvp = jvp(scalar_outputs, stretch, stretch_dot)
     scalar_vjp = vjp(scalar_outputs, stretch, scalar_outputs_bar)
     curl_jvp = jvp(curl_outputs, stretch, stretch_dot)
     curl_vjp = vjp(curl_outputs, stretch, curl_outputs_bar)
+    attenuation_jvp = jvp( &
+        attenuation, attenuation_variables, attenuation_dot)
+    attenuation_vjp = vjp( &
+        attenuation, attenuation_variables, attenuation_bar)
     call simplify_all(scalar_jvp)
     call simplify_all(scalar_vjp)
     call simplify_all(curl_jvp)
     call simplify_all(curl_vjp)
+    call simplify_all(attenuation_jvp)
+    call simplify_all(attenuation_vjp)
 
     call initialize_spec( &
         spec, "generated_cartesian_scalar_pml_jvp", &
@@ -98,6 +118,29 @@ program gen_cartesian_pml_products
         str("stretch_1_bar"), str("stretch_2_bar"), str("stretch_3_bar")]
     curl_vjp_code = emit_text(curl_vjp, spec)
 
+    call initialize_spec( &
+        spec, "generated_cartesian_pml_attenuation_jvp", &
+        "fortfem_generated_cartesian_pml_attenuation_jvp", 9, 1)
+    spec%scalar_type = str("real(dp)")
+    spec%args = [ &
+        str("distance"), str("layer_width"), str("wave_number"), &
+        str("sigma_max"), str("polynomial_degree"), str("distance_dot"), &
+        str("layer_width_dot"), str("wave_number_dot"), str("sigma_max_dot")]
+    spec%outputs = [str("attenuation_dot")]
+    attenuation_jvp_code = emit_text(attenuation_jvp, spec)
+
+    call initialize_spec( &
+        spec, "generated_cartesian_pml_attenuation_vjp", &
+        "fortfem_generated_cartesian_pml_attenuation_vjp", 6, 4)
+    spec%scalar_type = str("real(dp)")
+    spec%args = [ &
+        str("distance"), str("layer_width"), str("wave_number"), &
+        str("sigma_max"), str("polynomial_degree"), str("attenuation_bar")]
+    spec%outputs = [ &
+        str("distance_bar"), str("layer_width_bar"), &
+        str("wave_number_bar"), str("sigma_max_bar")]
+    attenuation_vjp_code = emit_text(attenuation_vjp, spec)
+
     open (newunit=unit, &
         file=generated_path("fortfem_cartesian_pml_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -106,6 +149,8 @@ program gen_cartesian_pml_products
     write (unit, "(a)") scalar_vjp_code(:len(scalar_vjp_code) - 1)
     write (unit, "(a)") curl_jvp_code(:len(curl_jvp_code) - 1)
     write (unit, "(a)") curl_vjp_code(:len(curl_vjp_code) - 1)
+    write (unit, "(a)") attenuation_jvp_code(:len(attenuation_jvp_code) - 1)
+    write (unit, "(a)") attenuation_vjp_code(:len(attenuation_vjp_code) - 1)
     close (unit)
 
 contains
