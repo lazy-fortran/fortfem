@@ -1,9 +1,10 @@
 module fortfem_elasticity_planar_acoustic_dtn_2d
+    use fortfem_elasticity_p1_2d_core, only: &
+        assemble_elasticity_dynamic_p1_2d, &
+        solve_dense_complex_dirichlet_fortsparse
     use fortfem_kinds, only: dp
     use fortfem_planar_acoustic_displacement_dtn, only: &
         assemble_planar_acoustic_displacement_dtn_form
-    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
-        sparse_solve_once
     implicit none
     private
 
@@ -85,13 +86,10 @@ contains
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
 
-        type(csc_z_t) :: sparse_matrix
-        type(fortsparse_status_t) :: sparse_status
         complex(dp), allocatable :: fluid_form(:, :), matrix(:, :), rhs(:)
-        complex(dp), allocatable :: incident_weak(:), triplet_values(:)
-        integer, allocatable :: columns(:), rows(:)
-        integer :: column, component, dof_count, entry, first, node
-        integer :: row, second, vertex_count
+        complex(dp), allocatable :: incident_weak(:)
+        integer :: column, component, dof_count, first, node
+        integer :: second, vertex_count
 
         solution = cmplx(0.0_dp, 0.0_dp, dp)
         status = 1
@@ -100,7 +98,9 @@ contains
         if (.not. valid_inputs()) return
 
         allocate(matrix(dof_count, dof_count), rhs(dof_count))
-        call assemble_elastic_volume_matrix(matrix, status)
+        call assemble_elasticity_dynamic_p1_2d( &
+            vertices, triangles, angular_frequency, young_modulus, &
+            poisson_ratio, solid_density, matrix, status)
         if (status /= 0) return
         if (present(absorbing_edges)) then
             call assemble_absorbing_boundary(matrix, status)
@@ -137,34 +137,8 @@ contains
             end do
         end do
 
-        do entry = 1, size(dirichlet_dofs)
-            node = dirichlet_dofs(entry)
-            rhs = rhs - matrix(:, node)*dirichlet_values(entry)
-            matrix(:, node) = cmplx(0.0_dp, 0.0_dp, dp)
-            matrix(node, :) = cmplx(0.0_dp, 0.0_dp, dp)
-            matrix(node, node) = cmplx(1.0_dp, 0.0_dp, dp)
-            rhs(node) = dirichlet_values(entry)
-        end do
-
-        allocate(rows(dof_count**2), columns(dof_count**2))
-        allocate(triplet_values(dof_count**2))
-        entry = 0
-        do column = 1, dof_count
-            do row = 1, dof_count
-                if (abs(matrix(row, column)) <= tiny(1.0_dp)) cycle
-                entry = entry + 1
-                rows(entry) = row
-                columns(entry) = column
-                triplet_values(entry) = matrix(row, column)
-            end do
-        end do
-        call csc_from_triplet( &
-            dof_count, dof_count, rows(:entry), columns(:entry), &
-            triplet_values(:entry), sparse_matrix, sparse_status)
-        if (sparse_status%code /= 0) return
-        call sparse_solve_once(sparse_matrix, rhs, solution, sparse_status)
-        if (sparse_status%code /= 0) return
-        status = 0
+        call solve_dense_complex_dirichlet_fortsparse( &
+            matrix, rhs, dirichlet_dofs, dirichlet_values, solution, status)
 
     contains
 
@@ -272,86 +246,6 @@ contains
             operator_status = 0
         end subroutine assemble_absorbing_boundary
 
-        subroutine assemble_elastic_volume_matrix( &
-                volume_matrix, operator_status)
-            complex(dp), intent(out) :: volume_matrix(:, :)
-            integer, intent(out) :: operator_status
-
-            real(dp) :: area, determinant
-            complex(dp) :: b_matrix(3, 6), d_matrix(3, 3)
-            complex(dp) :: lambda, local_matrix(6, 6), mu
-            real(dp) :: local_mass(3, 3)
-            real(dp) :: dx(3), dy(3), x1, x2, x3, y1, y2, y3
-            integer :: element, first_local, local_dofs(6), local_nodes(3)
-            integer :: second_local
-
-            volume_matrix = cmplx(0.0_dp, 0.0_dp, dp)
-            operator_status = 1
-            mu = young_modulus/(2.0_dp*(1.0_dp + poisson_ratio))
-            lambda = young_modulus*poisson_ratio/( &
-                (1.0_dp + poisson_ratio)*(1.0_dp - 2.0_dp*poisson_ratio))
-            d_matrix = cmplx(0.0_dp, 0.0_dp, dp)
-            d_matrix(1, 1) = lambda + 2.0_dp*mu
-            d_matrix(1, 2) = lambda
-            d_matrix(2, 1) = lambda
-            d_matrix(2, 2) = lambda + 2.0_dp*mu
-            d_matrix(3, 3) = mu
-            do element = 1, size(triangles, 2)
-                local_nodes = triangles(:, element)
-                x1 = vertices(1, local_nodes(1))
-                y1 = vertices(2, local_nodes(1))
-                x2 = vertices(1, local_nodes(2))
-                y2 = vertices(2, local_nodes(2))
-                x3 = vertices(1, local_nodes(3))
-                y3 = vertices(2, local_nodes(3))
-                determinant = (x2 - x1)*(y3 - y1) - &
-                    (x3 - x1)*(y2 - y1)
-                area = 0.5_dp*abs(determinant)
-                if (area <= tiny(1.0_dp)) return
-                dx = [y2 - y3, y3 - y1, y1 - y2]/determinant
-                dy = [x3 - x2, x1 - x3, x2 - x1]/determinant
-                b_matrix = cmplx(0.0_dp, 0.0_dp, dp)
-                do first_local = 1, 3
-                    b_matrix(1, 2*first_local - 1) = dx(first_local)
-                    b_matrix(2, 2*first_local) = dy(first_local)
-                    b_matrix(3, 2*first_local - 1) = dy(first_local)
-                    b_matrix(3, 2*first_local) = dx(first_local)
-                    local_dofs(2*first_local - 1) = &
-                        2*local_nodes(first_local) - 1
-                    local_dofs(2*first_local) = 2*local_nodes(first_local)
-                end do
-                local_matrix = area*matmul( &
-                    transpose(b_matrix), matmul(d_matrix, b_matrix))
-                local_mass = area/12.0_dp
-                local_mass(1, 1) = area/6.0_dp
-                local_mass(2, 2) = area/6.0_dp
-                local_mass(3, 3) = area/6.0_dp
-                do first_local = 1, 3
-                    do second_local = 1, 3
-                        local_matrix(2*first_local - 1, &
-                            2*second_local - 1) = &
-                            local_matrix(2*first_local - 1, &
-                            2*second_local - 1) - solid_density* &
-                            angular_frequency**2* &
-                            local_mass(first_local, second_local)
-                        local_matrix(2*first_local, 2*second_local) = &
-                            local_matrix(2*first_local, 2*second_local) - &
-                            solid_density*angular_frequency**2* &
-                            local_mass(first_local, second_local)
-                    end do
-                end do
-                do first_local = 1, 6
-                    do second_local = 1, 6
-                        volume_matrix(local_dofs(first_local), &
-                            local_dofs(second_local)) = &
-                            volume_matrix(local_dofs(first_local), &
-                            local_dofs(second_local)) + &
-                            local_matrix(first_local, second_local)
-                    end do
-                end do
-            end do
-            operator_status = 0
-        end subroutine assemble_elastic_volume_matrix
     end subroutine solve_elasticity_planar_acoustic_dtn_p1_complex
 
     pure subroutine apply_periodic_p1_mass(values, period, weighted_values)
