@@ -76,7 +76,7 @@ contains
     subroutine advance_bspline_jorek_poloidal_flux_midpoint_steps( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
             electric_potential, quadrature_order, time_step, step_count, &
-            magnetic_flux, status)
+            magnetic_flux, status, magnetic_flux_history)
         !! Repeated midpoint subflow retaining one sparse factorization.
         real(dp), intent(in) :: knots_r(:), knots_z(:)
         integer, intent(in) :: degree_r, degree_z, quadrature_order
@@ -85,6 +85,8 @@ contains
         integer, intent(in) :: step_count
         real(dp), intent(inout) :: magnetic_flux(:)
         type(fortsparse_status_t), intent(out) :: status
+        real(dp), allocatable, intent(out), optional :: &
+            magnetic_flux_history(:, :)
 
         real(dp), allocatable :: new_flux(:), right_hand_side(:)
         type(csc_t) :: left_matrix, right_matrix
@@ -95,6 +97,10 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "JOREK midpoint propagator requires a positive step count")
         if (step_count < 1) return
+        if (present(magnetic_flux_history)) then
+            allocate(magnetic_flux_history(size(magnetic_flux), step_count + 1))
+            magnetic_flux_history(:, 1) = magnetic_flux
+        end if
 
         call assemble_bspline_h1_operator_csc( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
@@ -126,6 +132,9 @@ contains
                 return
             end if
             magnetic_flux = new_flux
+            if (present(magnetic_flux_history)) then
+                magnetic_flux_history(:, step + 1) = magnetic_flux
+            end if
         end do
         call sparse_free(solver)
 

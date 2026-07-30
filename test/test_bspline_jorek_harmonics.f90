@@ -25,6 +25,7 @@ program test_bspline_jorek_harmonics
     complex(dp), allocatable :: current_direction(:, :), flux_direction(:, :)
     complex(dp), allocatable :: potential_direction(:, :)
     real(dp), allocatable :: control_points(:, :, :), reference(:)
+    real(dp), allocatable :: flux_history(:, :)
     real(dp), allocatable :: flux_initial(:), flux_state(:), potential(:)
     real(dp), allocatable :: r_points(:), weights(:, :), z_points(:)
     real(dp), parameter :: finite_difference_step = 1.0e-6_dp
@@ -175,7 +176,12 @@ program test_bspline_jorek_harmonics
     flux_state = flux_initial
     call advance_bspline_jorek_poloidal_flux_midpoint_steps( &
         knots_r, knots_z, 2, 2, control_points, weights, potential, 5, &
-        0.02_dp, 100, flux_state, sparse_status)
+        0.02_dp, 100, flux_state, sparse_status, flux_history)
+    call check_condition( &
+        size(flux_history, 2) == 101 .and. &
+        maxval(abs(flux_history(:, 1) - flux_initial)) < 2.0e-14_dp .and. &
+        maxval(abs(flux_history(:, 101) - flux_state)) < 2.0e-14_dp, &
+        "JOREK midpoint trajectory contains both exact endpoints")
     call check_condition(abs(dot_product( &
         flux_state, csc_matvec(mass, flux_state)) - initial_norm) < 2.0e-11_dp, &
         "JOREK midpoint bracket propagator preserves the spatial mass norm")

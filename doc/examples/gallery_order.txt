@@ -35,4 +35,5 @@ adaptive_helmholtz_bem_sphere
 # Advanced geometry
 magnetic_curvilinear_metrics
 toroidal_analytical
+iga_jorek_flux
 maxwell_torus_curved_scattering
