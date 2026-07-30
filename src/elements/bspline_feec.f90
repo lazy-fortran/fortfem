@@ -9,6 +9,10 @@ module fortfem_bspline_feec
         generated_nurbs_geometry_quotient_jvp
     use fortfem_generated_nurbs_geometry_vjp, only: &
         generated_nurbs_geometry_quotient_vjp
+    use fortfem_generated_nurbs_volume_jvp, only: &
+        generated_nurbs_volume_quotient_jvp
+    use fortfem_generated_nurbs_volume_vjp, only: &
+        generated_nurbs_volume_quotient_vjp
     implicit none
     private
 
@@ -20,6 +24,8 @@ module fortfem_bspline_feec
     public :: evaluate_nurbs_surface_geometry_jvp
     public :: evaluate_nurbs_surface_geometry_vjp
     public :: evaluate_nurbs_volume_geometry
+    public :: evaluate_nurbs_volume_geometry_jvp
+    public :: evaluate_nurbs_volume_geometry_vjp
     public :: map_isogeometric_h1_gradient
     public :: map_isogeometric_hcurl
     public :: map_isogeometric_hdiv
@@ -459,6 +465,266 @@ contains
         end do
         status = 0
     end subroutine evaluate_nurbs_volume_geometry
+
+    subroutine evaluate_nurbs_volume_geometry_jvp( &
+            knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
+            control_points, weights, control_points_dot, weights_dot, &
+            coordinate_x, coordinate_y, coordinate_z, point_dot, &
+            jacobian_dot, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:), knots_z(:)
+        integer, intent(in) :: degree_x, degree_y, degree_z
+        real(dp), intent(in) :: control_points(:, :, :, :), weights(:, :, :)
+        real(dp), intent(in) :: control_points_dot(:, :, :, :)
+        real(dp), intent(in) :: weights_dot(:, :, :)
+        real(dp), intent(in) :: coordinate_x, coordinate_y, coordinate_z
+        real(dp), intent(out) :: point_dot(:), jacobian_dot(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: dx(:), dy(:), dz(:), vx(:), vy(:), vz(:)
+        real(dp) :: denominator, denominator_dot
+        real(dp) :: derivative_denominator(3), derivative_denominator_dot(3)
+        real(dp) :: derivative_numerator(size(point_dot), 3)
+        real(dp) :: derivative_numerator_dot(size(point_dot), 3)
+        real(dp) :: factor, factor_dot, numerator(size(point_dot))
+        real(dp) :: numerator_dot(size(point_dot))
+        integer :: component, ix, iy, iz
+
+        status = 1
+        point_dot = 0.0_dp
+        jacobian_dot = 0.0_dp
+        call evaluate_bspline_basis( &
+            knots_x, degree_x, coordinate_x, vx, dx, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_y, degree_y, coordinate_y, vy, dy, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_z, degree_z, coordinate_z, vz, dz, status)
+        if (status /= 0) return
+        if (size(control_points, 1) /= size(point_dot)) return
+        if (any(shape(control_points_dot) /= shape(control_points))) return
+        if (any(shape(weights_dot) /= shape(weights))) return
+        if (any(shape(control_points(1, :, :, :)) /= &
+            [size(vx), size(vy), size(vz)])) return
+        if (any(shape(weights) /= [size(vx), size(vy), size(vz)])) return
+        if (size(jacobian_dot, 1) /= size(point_dot) .or. &
+            size(jacobian_dot, 2) /= 3 .or. any(weights <= 0.0_dp)) return
+
+        denominator = 0.0_dp
+        denominator_dot = 0.0_dp
+        derivative_denominator = 0.0_dp
+        derivative_denominator_dot = 0.0_dp
+        numerator = 0.0_dp
+        numerator_dot = 0.0_dp
+        derivative_numerator = 0.0_dp
+        derivative_numerator_dot = 0.0_dp
+        do iz = 1, size(vz)
+            do iy = 1, size(vy)
+                do ix = 1, size(vx)
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*vz(iz)
+                    factor_dot = weights_dot(ix, iy, iz)*vx(ix)*vy(iy)*vz(iz)
+                    denominator = denominator + factor
+                    denominator_dot = denominator_dot + factor_dot
+                    numerator = numerator + &
+                        factor*control_points(:, ix, iy, iz)
+                    numerator_dot = numerator_dot + &
+                        factor_dot*control_points(:, ix, iy, iz) + &
+                        factor*control_points_dot(:, ix, iy, iz)
+
+                    factor = weights(ix, iy, iz)*dx(ix)*vy(iy)*vz(iz)
+                    factor_dot = weights_dot(ix, iy, iz)*dx(ix)*vy(iy)*vz(iz)
+                    derivative_denominator(1) = &
+                        derivative_denominator(1) + factor
+                    derivative_denominator_dot(1) = &
+                        derivative_denominator_dot(1) + factor_dot
+                    derivative_numerator(:, 1) = &
+                        derivative_numerator(:, 1) + &
+                        factor*control_points(:, ix, iy, iz)
+                    derivative_numerator_dot(:, 1) = &
+                        derivative_numerator_dot(:, 1) + &
+                        factor_dot*control_points(:, ix, iy, iz) + &
+                        factor*control_points_dot(:, ix, iy, iz)
+
+                    factor = weights(ix, iy, iz)*vx(ix)*dy(iy)*vz(iz)
+                    factor_dot = weights_dot(ix, iy, iz)*vx(ix)*dy(iy)*vz(iz)
+                    derivative_denominator(2) = &
+                        derivative_denominator(2) + factor
+                    derivative_denominator_dot(2) = &
+                        derivative_denominator_dot(2) + factor_dot
+                    derivative_numerator(:, 2) = &
+                        derivative_numerator(:, 2) + &
+                        factor*control_points(:, ix, iy, iz)
+                    derivative_numerator_dot(:, 2) = &
+                        derivative_numerator_dot(:, 2) + &
+                        factor_dot*control_points(:, ix, iy, iz) + &
+                        factor*control_points_dot(:, ix, iy, iz)
+
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*dz(iz)
+                    factor_dot = weights_dot(ix, iy, iz)*vx(ix)*vy(iy)*dz(iz)
+                    derivative_denominator(3) = &
+                        derivative_denominator(3) + factor
+                    derivative_denominator_dot(3) = &
+                        derivative_denominator_dot(3) + factor_dot
+                    derivative_numerator(:, 3) = &
+                        derivative_numerator(:, 3) + &
+                        factor*control_points(:, ix, iy, iz)
+                    derivative_numerator_dot(:, 3) = &
+                        derivative_numerator_dot(:, 3) + &
+                        factor_dot*control_points(:, ix, iy, iz) + &
+                        factor*control_points_dot(:, ix, iy, iz)
+                end do
+            end do
+        end do
+        if (denominator <= tiny(1.0_dp)) return
+        do component = 1, size(point_dot)
+            call generated_nurbs_volume_quotient_jvp( &
+                numerator(component), derivative_numerator(component, 1), &
+                derivative_numerator(component, 2), &
+                derivative_numerator(component, 3), denominator, &
+                derivative_denominator(1), derivative_denominator(2), &
+                derivative_denominator(3), numerator_dot(component), &
+                derivative_numerator_dot(component, 1), &
+                derivative_numerator_dot(component, 2), &
+                derivative_numerator_dot(component, 3), denominator_dot, &
+                derivative_denominator_dot(1), &
+                derivative_denominator_dot(2), &
+                derivative_denominator_dot(3), point_dot(component), &
+                jacobian_dot(component, 1), jacobian_dot(component, 2), &
+                jacobian_dot(component, 3))
+        end do
+        status = 0
+    end subroutine evaluate_nurbs_volume_geometry_jvp
+
+    subroutine evaluate_nurbs_volume_geometry_vjp( &
+            knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
+            control_points, weights, coordinate_x, coordinate_y, coordinate_z, &
+            point_bar, jacobian_bar, control_points_bar, weights_bar, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:), knots_z(:)
+        integer, intent(in) :: degree_x, degree_y, degree_z
+        real(dp), intent(in) :: control_points(:, :, :, :), weights(:, :, :)
+        real(dp), intent(in) :: coordinate_x, coordinate_y, coordinate_z
+        real(dp), intent(in) :: point_bar(:), jacobian_bar(:, :)
+        real(dp), intent(out) :: control_points_bar(:, :, :, :)
+        real(dp), intent(out) :: weights_bar(:, :, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: dx(:), dy(:), dz(:), vx(:), vy(:), vz(:)
+        real(dp) :: denominator, denominator_bar, denominator_bar_component
+        real(dp) :: derivative_denominator(3), derivative_denominator_bar(3)
+        real(dp) :: derivative_denominator_bar_component(3)
+        real(dp) :: derivative_numerator(size(point_bar), 3)
+        real(dp) :: derivative_numerator_bar(size(point_bar), 3)
+        real(dp) :: factor, numerator(size(point_bar))
+        real(dp) :: numerator_bar(size(point_bar))
+        real(dp) :: weighted_basis_bar(size(point_bar))
+        integer :: component, ix, iy, iz
+
+        status = 1
+        control_points_bar = 0.0_dp
+        weights_bar = 0.0_dp
+        call evaluate_bspline_basis( &
+            knots_x, degree_x, coordinate_x, vx, dx, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_y, degree_y, coordinate_y, vy, dy, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_z, degree_z, coordinate_z, vz, dz, status)
+        if (status /= 0) return
+        if (size(control_points, 1) /= size(point_bar)) return
+        if (any(shape(control_points_bar) /= shape(control_points))) return
+        if (any(shape(weights_bar) /= shape(weights))) return
+        if (any(shape(control_points(1, :, :, :)) /= &
+            [size(vx), size(vy), size(vz)])) return
+        if (any(shape(weights) /= [size(vx), size(vy), size(vz)])) return
+        if (size(jacobian_bar, 1) /= size(point_bar) .or. &
+            size(jacobian_bar, 2) /= 3 .or. any(weights <= 0.0_dp)) return
+
+        denominator = 0.0_dp
+        derivative_denominator = 0.0_dp
+        numerator = 0.0_dp
+        derivative_numerator = 0.0_dp
+        do iz = 1, size(vz)
+            do iy = 1, size(vy)
+                do ix = 1, size(vx)
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*vz(iz)
+                    denominator = denominator + factor
+                    numerator = numerator + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*dx(ix)*vy(iy)*vz(iz)
+                    derivative_denominator(1) = &
+                        derivative_denominator(1) + factor
+                    derivative_numerator(:, 1) = &
+                        derivative_numerator(:, 1) + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*vx(ix)*dy(iy)*vz(iz)
+                    derivative_denominator(2) = &
+                        derivative_denominator(2) + factor
+                    derivative_numerator(:, 2) = &
+                        derivative_numerator(:, 2) + &
+                        factor*control_points(:, ix, iy, iz)
+                    factor = weights(ix, iy, iz)*vx(ix)*vy(iy)*dz(iz)
+                    derivative_denominator(3) = &
+                        derivative_denominator(3) + factor
+                    derivative_numerator(:, 3) = &
+                        derivative_numerator(:, 3) + &
+                        factor*control_points(:, ix, iy, iz)
+                end do
+            end do
+        end do
+        if (denominator <= tiny(1.0_dp)) return
+
+        denominator_bar = 0.0_dp
+        derivative_denominator_bar = 0.0_dp
+        do component = 1, size(point_bar)
+            call generated_nurbs_volume_quotient_vjp( &
+                numerator(component), derivative_numerator(component, 1), &
+                derivative_numerator(component, 2), &
+                derivative_numerator(component, 3), denominator, &
+                derivative_denominator(1), derivative_denominator(2), &
+                derivative_denominator(3), point_bar(component), &
+                jacobian_bar(component, 1), jacobian_bar(component, 2), &
+                jacobian_bar(component, 3), numerator_bar(component), &
+                derivative_numerator_bar(component, 1), &
+                derivative_numerator_bar(component, 2), &
+                derivative_numerator_bar(component, 3), &
+                denominator_bar_component, &
+                derivative_denominator_bar_component(1), &
+                derivative_denominator_bar_component(2), &
+                derivative_denominator_bar_component(3))
+            denominator_bar = denominator_bar + denominator_bar_component
+            derivative_denominator_bar = derivative_denominator_bar + &
+                derivative_denominator_bar_component
+        end do
+
+        do iz = 1, size(vz)
+            do iy = 1, size(vy)
+                do ix = 1, size(vx)
+                    weighted_basis_bar = &
+                        vx(ix)*vy(iy)*vz(iz)*numerator_bar + &
+                        dx(ix)*vy(iy)*vz(iz)* &
+                        derivative_numerator_bar(:, 1) + &
+                        vx(ix)*dy(iy)*vz(iz)* &
+                        derivative_numerator_bar(:, 2) + &
+                        vx(ix)*vy(iy)*dz(iz)* &
+                        derivative_numerator_bar(:, 3)
+                    control_points_bar(:, ix, iy, iz) = &
+                        weights(ix, iy, iz)*weighted_basis_bar
+                    weights_bar(ix, iy, iz) = &
+                        vx(ix)*vy(iy)*vz(iz)*denominator_bar + &
+                        dx(ix)*vy(iy)*vz(iz)* &
+                        derivative_denominator_bar(1) + &
+                        vx(ix)*dy(iy)*vz(iz)* &
+                        derivative_denominator_bar(2) + &
+                        vx(ix)*vy(iy)*dz(iz)* &
+                        derivative_denominator_bar(3) + &
+                        dot_product( &
+                        control_points(:, ix, iy, iz), weighted_basis_bar)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_nurbs_volume_geometry_vjp
 
     subroutine map_isogeometric_h1_gradient( &
             jacobian, reference_gradients, physical_gradients, determinant, &

@@ -6,7 +6,8 @@ program test_bspline_feec_2d
         build_bspline_feec_3d_operators_csc, &
         evaluate_nurbs_surface_geometry, evaluate_nurbs_surface_geometry_jvp, &
         evaluate_nurbs_surface_geometry_vjp, map_isogeometric_h1_gradient, &
-        evaluate_nurbs_volume_geometry, map_isogeometric_hcurl, &
+        evaluate_nurbs_volume_geometry, evaluate_nurbs_volume_geometry_jvp, &
+        evaluate_nurbs_volume_geometry_vjp, map_isogeometric_hcurl, &
         map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -32,7 +33,15 @@ program test_bspline_feec_2d
     real(dp), allocatable :: nurbs_weights_minus(:, :)
     real(dp), allocatable :: nurbs_weights_plus(:, :)
     real(dp), allocatable :: volume_controls(:, :, :, :)
+    real(dp), allocatable :: volume_controls_bar(:, :, :, :)
+    real(dp), allocatable :: volume_controls_dot(:, :, :, :)
+    real(dp), allocatable :: volume_controls_minus(:, :, :, :)
+    real(dp), allocatable :: volume_controls_plus(:, :, :, :)
     real(dp), allocatable :: volume_weights(:, :, :)
+    real(dp), allocatable :: volume_weights_bar(:, :, :)
+    real(dp), allocatable :: volume_weights_dot(:, :, :)
+    real(dp), allocatable :: volume_weights_minus(:, :, :)
+    real(dp), allocatable :: volume_weights_plus(:, :, :)
     real(dp) :: jacobian(3, 2), mapped_point(3)
     real(dp) :: jacobian_bar(3, 2), jacobian_dot(3, 2)
     real(dp) :: jacobian_minus(3, 2), jacobian_plus(3, 2)
@@ -43,6 +52,10 @@ program test_bspline_feec_2d
     real(dp) :: affine_jacobian(2, 2), determinant
     real(dp) :: reference_vector(2, 1)
     real(dp) :: volume_jacobian(3, 3), volume_point(3)
+    real(dp) :: volume_jacobian_bar(3, 3), volume_jacobian_dot(3, 3)
+    real(dp) :: volume_jacobian_minus(3, 3), volume_jacobian_plus(3, 3)
+    real(dp) :: volume_point_bar(3), volume_point_dot(3)
+    real(dp) :: volume_point_minus(3), volume_point_plus(3)
     type(csc_t) :: sparse_curl, sparse_divergence, sparse_gradient
     type(fortsparse_status_t) :: sparse_status
     real(dp), parameter :: differentiation_step = 1.0e-6_dp
@@ -213,6 +226,62 @@ program test_bspline_feec_2d
         2.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp, 0.0_dp, &
         0.0_dp, 0.0_dp, 4.0_dp], [3, 3]))) < 4.0e-13_dp, &
         "NURBS volume returns the analytical three-dimensional Jacobian")
+
+    allocate (volume_controls_dot, mold=volume_controls)
+    allocate (volume_weights_dot, mold=volume_weights)
+    volume_controls_dot = reshape([ &
+        (sin(real(3*i + 2, dp)), i=1, size(volume_controls_dot))], &
+        shape(volume_controls_dot))
+    volume_weights_dot = reshape([ &
+        (0.1_dp*cos(real(7*i + 1, dp)), i=1, size(volume_weights_dot))], &
+        shape(volume_weights_dot))
+    call evaluate_nurbs_volume_geometry_jvp( &
+        knots_x, knots_y, knots_y, 2, 2, 2, volume_controls, volume_weights, &
+        volume_controls_dot, volume_weights_dot, 0.2_dp, 0.3_dp, 0.4_dp, &
+        volume_point_dot, volume_jacobian_dot, status)
+    allocate (volume_controls_plus, mold=volume_controls)
+    allocate (volume_controls_minus, mold=volume_controls)
+    allocate (volume_weights_plus, mold=volume_weights)
+    allocate (volume_weights_minus, mold=volume_weights)
+    volume_controls_plus = &
+        volume_controls + differentiation_step*volume_controls_dot
+    volume_controls_minus = &
+        volume_controls - differentiation_step*volume_controls_dot
+    volume_weights_plus = &
+        volume_weights + differentiation_step*volume_weights_dot
+    volume_weights_minus = &
+        volume_weights - differentiation_step*volume_weights_dot
+    call evaluate_nurbs_volume_geometry( &
+        knots_x, knots_y, knots_y, 2, 2, 2, volume_controls_plus, &
+        volume_weights_plus, 0.2_dp, 0.3_dp, 0.4_dp, volume_point_plus, &
+        volume_jacobian_plus, status)
+    call evaluate_nurbs_volume_geometry( &
+        knots_x, knots_y, knots_y, 2, 2, 2, volume_controls_minus, &
+        volume_weights_minus, 0.2_dp, 0.3_dp, 0.4_dp, volume_point_minus, &
+        volume_jacobian_minus, status)
+    call check_condition(maxval(abs(volume_point_dot - &
+        (volume_point_plus - volume_point_minus)/(2.0_dp* &
+        differentiation_step))) < 4.0e-9_dp .and. &
+        maxval(abs(volume_jacobian_dot - &
+        (volume_jacobian_plus - volume_jacobian_minus)/(2.0_dp* &
+        differentiation_step))) < 5.0e-9_dp, &
+        "NURBS volume JVP matches an independent central difference")
+
+    volume_point_bar = [0.4_dp, -0.3_dp, 0.8_dp]
+    volume_jacobian_bar = reshape([ &
+        (0.1_dp*sin(real(2*i + 1, dp)), i=1, 9)], [3, 3])
+    allocate (volume_controls_bar, mold=volume_controls)
+    allocate (volume_weights_bar, mold=volume_weights)
+    call evaluate_nurbs_volume_geometry_vjp( &
+        knots_x, knots_y, knots_y, 2, 2, 2, volume_controls, volume_weights, &
+        0.2_dp, 0.3_dp, 0.4_dp, volume_point_bar, volume_jacobian_bar, &
+        volume_controls_bar, volume_weights_bar, status)
+    adjoint_left = dot_product(volume_point_bar, volume_point_dot) + &
+        sum(volume_jacobian_bar*volume_jacobian_dot)
+    adjoint_right = sum(volume_controls_bar*volume_controls_dot) + &
+        sum(volume_weights_bar*volume_weights_dot)
+    call check_condition(abs(adjoint_left - adjoint_right) < 5.0e-12_dp, &
+        "NURBS volume JVP and VJP satisfy the adjoint identity")
 
     call check_summary("Structure-preserving B-spline FEEC")
 
