@@ -17,6 +17,16 @@ for order in 1 2 3 4; do
         "$temporary_dir/$filename"
 done
 
+for degree in 0 1 2 3 4; do
+    filename="fortfem_tetra_rt_candidates_degree_${degree}.f90"
+    cmp -- "$repository_dir/src/generated/$filename" \
+        "$temporary_dir/$filename"
+done
+
+filename="fortfem_tetra_rt_coefficients.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_tetra_face_moment_transforms.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
