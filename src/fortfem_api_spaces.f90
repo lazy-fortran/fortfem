@@ -6,7 +6,7 @@ module fortfem_api_spaces
         vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
         cell_coefficient_t, cell_vector_source_t
     use fortfem_triangle_global_dof_map, only: &
-        build_triangle_trimmed_dof_map
+        build_triangle_full_vector_dof_map, build_triangle_trimmed_dof_map
     implicit none
 
     private
@@ -93,6 +93,14 @@ contains
                 global_dof_count, status)
             if (status /= 0) then
                 error stop "vector_function_space: invalid RT space"
+            end if
+            space%ndof = global_dof_count
+        case ("BDM")
+            call build_triangle_full_vector_dof_map( &
+                mesh%data, degree, global_dofs, transforms, &
+                global_dof_count, status)
+            if (status /= 0) then
+                error stop "vector_function_space: invalid BDM space"
             end if
             space%ndof = global_dof_count
         end select
