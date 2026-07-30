@@ -1,6 +1,7 @@
 module fortfem_triangle_nedelec_arbitrary_order
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
@@ -25,17 +26,6 @@ module fortfem_triangle_nedelec_arbitrary_order
         module procedure assign_triangle_nedelec_first_kind
     end interface
 
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            real(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine dgesv
-    end interface
-
 contains
 
     subroutine initialize_triangle_nedelec_first_kind(order, basis, status)
@@ -43,8 +33,7 @@ contains
         type(triangle_nedelec_first_kind_t), intent(out) :: basis
         integer, intent(out) :: status
 
-        real(dp), allocatable :: moment_matrix(:, :)
-        integer, allocatable :: pivots(:)
+        real(dp), allocatable :: inverse(:, :), moment_matrix(:, :)
         integer :: candidate, component, info, total_degree
         integer :: x_degree, y_degree
 
@@ -57,7 +46,7 @@ contains
         allocate(basis%powers(2, basis%dof_count))
         allocate(basis%coefficients(basis%dof_count, basis%dof_count))
         allocate(moment_matrix(basis%dof_count, basis%dof_count))
-        allocate(pivots(basis%dof_count))
+        allocate(inverse(basis%dof_count, basis%dof_count))
 
         candidate = 0
         do component = 1, 2
@@ -89,13 +78,12 @@ contains
         do candidate = 1, basis%dof_count
             basis%coefficients(candidate, candidate) = 1.0_dp
         end do
-        call dgesv( &
-            basis%dof_count, basis%dof_count, moment_matrix, basis%dof_count, &
-            pivots, basis%coefficients, basis%dof_count, info)
+        call dense_solve(moment_matrix, basis%coefficients, inverse, info)
         if (info /= 0) then
             status = 2
             return
         end if
+        basis%coefficients = inverse
         status = 0
     end subroutine initialize_triangle_nedelec_first_kind
 

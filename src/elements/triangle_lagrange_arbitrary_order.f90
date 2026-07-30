@@ -1,5 +1,6 @@
 module fortfem_triangle_lagrange_arbitrary_order
     use fortfem_kinds, only: dp
+    use fortnum_linalg, only: dense_solve
     implicit none
 
     private
@@ -23,17 +24,6 @@ module fortfem_triangle_lagrange_arbitrary_order
         module procedure assign_triangle_lagrange_basis
     end interface
 
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            real(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine dgesv
-    end interface
-
 contains
 
     subroutine initialize_triangle_lagrange_basis(degree, basis, status)
@@ -42,8 +32,7 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: bernstein_values(:), gradients(:, :)
-        real(dp), allocatable :: vandermonde(:, :)
-        integer, allocatable :: pivots(:)
+        real(dp), allocatable :: inverse(:, :), vandermonde(:, :)
         integer :: dof, first_power, info, second_power, third_power
 
         status = 1
@@ -57,7 +46,7 @@ contains
         allocate(bernstein_values(basis%dof_count))
         allocate(gradients(2, basis%dof_count))
         allocate(vandermonde(basis%dof_count, basis%dof_count))
-        allocate(pivots(basis%dof_count))
+        allocate(inverse(basis%dof_count, basis%dof_count))
 
         if (degree == 0) then
             basis%barycentric_powers(:, 1) = 0
@@ -89,13 +78,12 @@ contains
         do dof = 1, basis%dof_count
             basis%coefficients(dof, dof) = 1.0_dp
         end do
-        call dgesv( &
-            basis%dof_count, basis%dof_count, vandermonde, basis%dof_count, &
-            pivots, basis%coefficients, basis%dof_count, info)
+        call dense_solve(vandermonde, basis%coefficients, inverse, info)
         if (info /= 0) then
             status = 2
             return
         end if
+        basis%coefficients = inverse
         status = 0
     end subroutine initialize_triangle_lagrange_basis
 

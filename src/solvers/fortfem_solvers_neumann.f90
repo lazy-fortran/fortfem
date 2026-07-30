@@ -3,6 +3,7 @@ module fortfem_solvers_neumann
     use fortfem_api_types, only: function_t, dirichlet_bc_t, neumann_bc_t
     use fortfem_api_forms, only: form_equation_t
     use fortfem_solvers_laplacian, only: add_p1_triangle_contribution
+    use fortnum_linalg, only: dense_solve
     implicit none
 
     private
@@ -12,15 +13,6 @@ module fortfem_solvers_neumann
     public :: compute_boundary_integral
     public :: solve_laplacian_with_neumann
     public :: solve_pure_neumann_problem
-
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
-            integer, intent(out) :: ipiv(*), info
-        end subroutine dgesv
-    end interface
 
 contains
 
@@ -87,27 +79,25 @@ contains
         type(dirichlet_bc_t), intent(in) :: dirichlet_bc
         type(neumann_bc_t), intent(in) :: neumann_bc
 
-        real(dp), allocatable :: K(:, :), F(:)
-        integer, allocatable :: ipiv(:)
+        real(dp), allocatable :: K(:, :), F(:), solution(:)
         integer :: ndof, info
 
         ndof = uh%space%ndof
-        allocate (K(ndof, ndof), F(ndof), ipiv(ndof))
+        allocate (K(ndof, ndof), F(ndof), solution(ndof))
 
         call assemble_laplacian_neumann_system(uh, dirichlet_bc, neumann_bc, &
             K, F)
 
-        call dgesv(ndof, 1, K, ndof, ipiv, F, ndof, info)
+        call dense_solve(K, F, solution, info)
 
         if (info == 0) then
-            uh%values = F
+            uh%values = solution
         else
             write (*, *) "Warning: Mixed BC LAPACK solver failed with info =", &
                 info
             if (allocated(uh%values)) uh%values = 0.0_dp
         end if
 
-        deallocate (K, F, ipiv)
     end subroutine solve_laplacian_with_neumann
 
     subroutine assemble_laplacian_neumann_system(uh, dirichlet_bc, &
@@ -196,4 +186,3 @@ contains
     end subroutine solve_pure_neumann_problem
 
 end module fortfem_solvers_neumann
-
