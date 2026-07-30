@@ -95,6 +95,7 @@ module fortfem_api
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d
     use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_calderon_p1_p0_3d, &
         assemble_helmholtz_double_layer_p0_3d, &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
@@ -326,6 +327,7 @@ module fortfem_api
     public :: apply_laplace_single_layer_p0_hierarchical_3d
     public :: evaluate_helmholtz_representation_triangles_3d
     public :: assemble_helmholtz_single_layer_p0_3d
+    public :: assemble_helmholtz_calderon_p1_p0_3d
     public :: assemble_helmholtz_single_layer_p0_adaptive_3d
     public :: assemble_helmholtz_double_layer_p0_3d
     public :: evaluate_helmholtz_cfie_p0_3d
