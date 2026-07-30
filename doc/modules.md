@@ -63,6 +63,12 @@ FortFEM provides a clean, high-level API that hides implementation details while
 - **solve_mixed_poisson_rt(mesh, degree, quadrature, source, ...)**: Solve a
   homogeneous-Dirichlet matching-degree RT-DG system from a physical source
   callback
+- **interpolate_physical_tetra_nedelec(...)** and
+  **interpolate_physical_tetra_rt(...)**: Apply the covariant and
+  contravariant physical-element pullbacks for arbitrary-order H(curl) and
+  H(div) interpolation
+- **project_physical_tetra_discontinuous(...)**: Compute the physical-element
+  discontinuous L2 projection with FortNum dense linear algebra
 - **solve_magnetic_box_3d(n_xy, n_z, az_centre, n_dofs, status, ..., order)**:
   Solve the order-one through order-four anisotropic magnetic-paper
   tetrahedral box benchmark, optionally
