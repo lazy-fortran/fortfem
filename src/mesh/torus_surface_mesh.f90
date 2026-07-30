@@ -9,11 +9,12 @@ contains
 
     subroutine generate_torus_surface_mesh( &
             major_radius, minor_radius, poloidal_count, toroidal_count, &
-            vertices, triangles)
+            vertices, triangles, parameter_coordinates)
         real(dp), intent(in) :: major_radius, minor_radius
         integer, intent(in) :: poloidal_count, toroidal_count
         real(dp), allocatable, intent(out) :: vertices(:, :)
         integer, allocatable, intent(out) :: triangles(:, :)
+        real(dp), allocatable, intent(out), optional :: parameter_coordinates(:, :)
 
         real(dp) :: phi, theta
         integer :: cell, phi_index, theta_index
@@ -29,6 +30,9 @@ contains
 
         allocate(vertices(3, poloidal_count*toroidal_count))
         allocate(triangles(3, 2*poloidal_count*toroidal_count))
+        if (present(parameter_coordinates)) then
+            allocate(parameter_coordinates(2, poloidal_count*toroidal_count))
+        end if
         do phi_index = 0, toroidal_count - 1
             phi = 2.0_dp*acos(-1.0_dp)*real(phi_index, dp)/ &
                 real(toroidal_count, dp)
@@ -40,6 +44,9 @@ contains
                     (major_radius + minor_radius*cos(theta))*cos(phi), &
                     (major_radius + minor_radius*cos(theta))*sin(phi), &
                     minor_radius*sin(theta)]
+                if (present(parameter_coordinates)) then
+                    parameter_coordinates(:, vertex) = [theta, phi]
+                end if
             end do
         end do
 
