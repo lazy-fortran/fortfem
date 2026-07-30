@@ -6,6 +6,7 @@ module fortfem_laplace_galerkin_3d
     private
 
     public :: assemble_laplace_single_layer_p0_3d
+    public :: assemble_laplace_calderon_p1_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
 
     interface
@@ -20,6 +21,97 @@ module fortfem_laplace_galerkin_3d
     end interface
 
 contains
+
+    subroutine assemble_laplace_calderon_p1_p0_3d( &
+            vertices, triangles, quadrature_degree, single_layer, &
+            double_layer, adjoint_double_layer, hypersingular, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: single_layer(:, :)
+        real(dp), allocatable, intent(out) :: double_layer(:, :)
+        real(dp), allocatable, intent(out) :: adjoint_double_layer(:, :)
+        real(dp), allocatable, intent(out) :: hypersingular(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: barycentric(3), displacement(3)
+        real(dp) :: first_gradients(3, 3), first_jacobian
+        real(dp) :: first_point_value(3), first_vertices(3, 3)
+        real(dp) :: normal(3), radius, second_gradients(3, 3)
+        real(dp) :: second_jacobian, second_vertices(3, 3)
+        integer :: first, first_local, first_point, quadrature_status
+        integer :: second, second_local, second_point
+
+        status = 1
+        call assemble_laplace_single_layer_p0_3d( &
+            vertices, triangles, quadrature_degree, single_layer, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, quadrature_status)
+        if (quadrature_status /= 0) return
+        allocate(double_layer(size(triangles, 2), size(vertices, 2)))
+        allocate(adjoint_double_layer(size(vertices, 2), size(triangles, 2)))
+        allocate(hypersingular(size(vertices, 2), size(vertices, 2)))
+        double_layer = 0.0_dp
+        hypersingular = 0.0_dp
+
+        do second = 1, size(triangles, 2)
+            second_vertices = vertices(:, triangles(:, second))
+            call triangle_geometry( &
+                second_vertices, second_jacobian, normal, second_gradients)
+            if (second_jacobian <= 0.0_dp) return
+            do first = 1, size(triangles, 2)
+                first_vertices = vertices(:, triangles(:, first))
+                call triangle_geometry( &
+                    first_vertices, first_jacobian, normal, first_gradients)
+                if (first_jacobian <= 0.0_dp) return
+                do first_local = 1, 3
+                    do second_local = 1, 3
+                        hypersingular( &
+                            triangles(first_local, first), &
+                            triangles(second_local, second)) = &
+                            hypersingular( &
+                            triangles(first_local, first), &
+                            triangles(second_local, second)) + &
+                            dot_product( &
+                            first_gradients(:, first_local), &
+                            second_gradients(:, second_local))* &
+                            single_layer(first, second)
+                    end do
+                end do
+                if (first == second) cycle
+                call triangle_geometry( &
+                    second_vertices, second_jacobian, normal, &
+                    second_gradients)
+                do first_point = 1, size(weights)
+                    first_point_value = triangle_point( &
+                        first_vertices, xi(first_point), eta(first_point))
+                    do second_point = 1, size(weights)
+                        displacement = first_point_value - triangle_point( &
+                            second_vertices, xi(second_point), &
+                            eta(second_point))
+                        radius = norm2(displacement)
+                        barycentric = [ &
+                            1.0_dp - xi(second_point) - eta(second_point), &
+                            xi(second_point), eta(second_point)]
+                        do second_local = 1, 3
+                            double_layer( &
+                                first, triangles(second_local, second)) = &
+                                double_layer( &
+                                first, triangles(second_local, second)) + &
+                                first_jacobian*second_jacobian* &
+                                weights(first_point)*weights(second_point)* &
+                                barycentric(second_local)* &
+                                dot_product(displacement, normal)/ &
+                                (4.0_dp*acos(-1.0_dp)*radius**3)
+                        end do
+                    end do
+                end do
+            end do
+        end do
+        adjoint_double_layer = transpose(double_layer)
+        status = 0
+    end subroutine assemble_laplace_calderon_p1_p0_3d
 
     subroutine solve_laplace_dirichlet_p0_3d( &
             vertices, triangles, boundary_value, quadrature_degree, density, &
@@ -164,6 +256,28 @@ contains
             vertices(:, 2) - vertices(:, 1), &
             vertices(:, 3) - vertices(:, 1)))
     end function triangle_area
+
+    pure subroutine triangle_geometry( &
+            vertices, jacobian, normal, gradients)
+        real(dp), intent(in) :: vertices(3, 3)
+        real(dp), intent(out) :: jacobian, normal(3), gradients(3, 3)
+
+        normal = cross_product( &
+            vertices(:, 2) - vertices(:, 1), &
+            vertices(:, 3) - vertices(:, 1))
+        jacobian = norm2(normal)
+        if (jacobian <= 0.0_dp) then
+            gradients = 0.0_dp
+            return
+        end if
+        normal = normal/jacobian
+        gradients(:, 1) = &
+            cross_product(normal, vertices(:, 3) - vertices(:, 2))/jacobian
+        gradients(:, 2) = &
+            cross_product(normal, vertices(:, 1) - vertices(:, 3))/jacobian
+        gradients(:, 3) = &
+            cross_product(normal, vertices(:, 2) - vertices(:, 1))/jacobian
+    end subroutine triangle_geometry
 
     pure function valid_surface(vertices, triangles) result(valid)
         real(dp), intent(in) :: vertices(:, :)

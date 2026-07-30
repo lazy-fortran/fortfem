@@ -1,13 +1,16 @@
 program test_laplace_bem_galerkin_3d
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        assemble_laplace_calderon_p1_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d, solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
     implicit none
 
-    real(dp), allocatable :: density(:), vertices(:, :)
+    real(dp), allocatable :: adjoint(:, :), density(:)
+    real(dp), allocatable :: double_layer(:, :), hypersingular(:, :)
+    real(dp), allocatable :: ones(:), single_layer(:, :), vertices(:, :)
     complex(dp), allocatable :: complex_density(:), dirichlet(:)
     integer, allocatable :: triangles(:, :)
     complex(dp) :: exact_field, numerical_field
@@ -33,6 +36,21 @@ program test_laplace_bem_galerkin_3d
     end if
     call record_condition(errors(2) < 0.8_dp, &
         "Refined sphere capacitance matches the analytical value")
+    call assemble_laplace_calderon_p1_p0_3d( &
+        vertices, triangles, 8, single_layer, double_layer, adjoint, &
+        hypersingular, status)
+    allocate(ones(size(vertices, 2)))
+    ones = 1.0_dp
+    call record_condition(status == 0 .and. &
+        maxval(abs(adjoint - transpose(double_layer))) < 2.0e-13_dp, &
+        "Three-dimensional adjoint double layer is the Galerkin transpose")
+    call record_condition(maxval(abs(hypersingular - &
+        transpose(hypersingular))) < 2.0e-12_dp .and. &
+        maxval(abs(matmul(hypersingular, ones))) < 2.0e-11_dp, &
+        "Regularized 3D hypersingular operator is symmetric and kills constants")
+    call record_condition(maxval(abs(matmul(double_layer, ones) + &
+        0.5_dp*triangle_areas(vertices, triangles))) < 2.0e-2_dp, &
+        "Three-dimensional double layer has the closed-surface constant trace")
 
     call solve_helmholtz_dirichlet_p0_3d( &
         vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), 0.7_dp, 8, &
@@ -166,6 +184,26 @@ contains
         edge_midpoints(edge_count) = vertex_count
         midpoint = vertex_count
     end function midpoint_vertex
+
+    pure function triangle_areas(vertices, triangles) result(areas)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp) :: areas(size(triangles, 2))
+
+        real(dp) :: first(3), second(3)
+        integer :: triangle
+
+        do triangle = 1, size(triangles, 2)
+            first = vertices(:, triangles(2, triangle)) - &
+                vertices(:, triangles(1, triangle))
+            second = vertices(:, triangles(3, triangle)) - &
+                vertices(:, triangles(1, triangle))
+            areas(triangle) = 0.5_dp*norm2([ &
+                first(2)*second(3) - first(3)*second(2), &
+                first(3)*second(1) - first(1)*second(3), &
+                first(1)*second(2) - first(2)*second(1)])
+        end do
+    end function triangle_areas
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
