@@ -6,6 +6,7 @@ program test_advanced_solvers
         ilu_preconditioner
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
         spmv
+    use fortsparse, only: csc_is_valid
     use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
         unit_square_mesh, function_space, dirichlet_bc, &
         assemble_laplacian_system
@@ -748,6 +749,8 @@ contains
         n = 10
         call create_spd_matrix(n, Ad)
         call sparse_from_dense(Ad, As)
+        call check_condition(csc_is_valid(As), &
+            "Sparse matrix: FortSparse CSC structure is valid")
 
         allocate (x(n), y_dense(n), y_sparse(n))
         x = [(real(i, dp), i=1, n)]
