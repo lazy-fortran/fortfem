@@ -14,6 +14,7 @@ module fortfem_assembly_bspline_3d
 
     public :: build_bspline_feec_3d_operators_csc
     public :: assemble_bspline_h1_operator_3d_csc
+    public :: assemble_bspline_hcurl_operator_3d_csc
     public :: assemble_bspline_hdiv_operator_3d_csc
     public :: assemble_bspline_l2_mass_3d_csc
     public :: assemble_bspline_hdiv_l2_divergence_3d_csc
@@ -486,6 +487,265 @@ contains
             divergence = vxr(basis_x)*vyr(basis_y)*dz(basis_z)
         end if
     end subroutine hdiv_local_basis_data_3d
+
+    subroutine assemble_bspline_hcurl_operator_3d_csc( &
+            knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
+            control_points, weights, quadrature_order, matrix, status, &
+            curl_coefficient, mass_coefficient)
+        real(dp), intent(in) :: knots_x(:), knots_y(:), knots_z(:)
+        integer, intent(in) :: degree_x, degree_y, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :, :), weights(:, :, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+
+        integer, allocatable :: columns(:), local_dofs(:), rows(:)
+        real(dp), allocatable :: dx(:), dxr(:), dy(:), dyr(:), dz(:), dzr(:)
+        real(dp), allocatable :: local_matrix(:, :), nodes_x(:), nodes_y(:)
+        real(dp), allocatable :: nodes_z(:), qw_x(:), qw_y(:), qw_z(:)
+        real(dp), allocatable :: triplet_values(:), vx(:), vxr(:), vy(:)
+        real(dp), allocatable :: vyr(:), vz(:), vzr(:)
+        real(dp) :: curl_column(3), curl_row(3), curl_weight, determinant
+        real(dp) :: geometry_jacobian(3, 3), geometry_point(3), inverse(3, 3)
+        real(dp) :: mass_weight, physical_column(3), physical_curl_column(3)
+        real(dp) :: physical_curl_row(3), physical_row(3), physical_weight
+        real(dp) :: reference_column(3), reference_row(3)
+        integer :: entry, local_column, local_count, local_row, local_status
+        integer :: max_entries, nx, ny, nz, point_x, point_y, point_z
+        integer :: span_x, span_y, span_z
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sparse 3D isogeometric Hcurl assembly failed")
+        if (degree_x < 1 .or. degree_y < 1 .or. degree_z < 1) return
+        if (quadrature_order < 1) return
+        nx = size(knots_x) - degree_x - 1
+        ny = size(knots_y) - degree_y - 1
+        nz = size(knots_z) - degree_z - 1
+        if (any(shape(weights) /= [nx, ny, nz])) return
+        if (size(control_points, 1) /= 3 .or. &
+            any(shape(control_points(1, :, :, :)) /= [nx, ny, nz])) return
+        curl_weight = 1.0_dp
+        mass_weight = 0.0_dp
+        if (present(curl_coefficient)) curl_weight = curl_coefficient
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        local_count = &
+            degree_x*(degree_y + 1)*(degree_z + 1) + &
+            (degree_x + 1)*degree_y*(degree_z + 1) + &
+            (degree_x + 1)*(degree_y + 1)*degree_z
+        max_entries = positive_span_count(knots_x, degree_x, nx)* &
+            positive_span_count(knots_y, degree_y, ny)* &
+            positive_span_count(knots_z, degree_z, nz)*local_count**2
+        allocate( &
+            rows(max_entries), columns(max_entries), &
+            triplet_values(max_entries), local_dofs(local_count), &
+            local_matrix(local_count, local_count), &
+            nodes_x(quadrature_order), nodes_y(quadrature_order), &
+            nodes_z(quadrature_order), qw_x(quadrature_order), &
+            qw_y(quadrature_order), qw_z(quadrature_order))
+        entry = 0
+        do span_z = degree_z + 1, nz
+            if (knots_z(span_z + 1) <= knots_z(span_z)) cycle
+            call gauss_legendre_ab( &
+                quadrature_order, knots_z(span_z), knots_z(span_z + 1), &
+                nodes_z, qw_z)
+            do span_y = degree_y + 1, ny
+                if (knots_y(span_y + 1) <= knots_y(span_y)) cycle
+                call gauss_legendre_ab( &
+                    quadrature_order, knots_y(span_y), knots_y(span_y + 1), &
+                    nodes_y, qw_y)
+                do span_x = degree_x + 1, nx
+                    if (knots_x(span_x + 1) <= knots_x(span_x)) cycle
+                    call gauss_legendre_ab( &
+                        quadrature_order, knots_x(span_x), &
+                        knots_x(span_x + 1), nodes_x, qw_x)
+                    call build_hcurl_local_dofs_3d( &
+                        span_x, span_y, span_z, degree_x, degree_y, degree_z, &
+                        nx, ny, nz, local_dofs)
+                    local_matrix = 0.0_dp
+                    do point_z = 1, quadrature_order
+                        call evaluate_bspline_basis( &
+                            knots_z, degree_z, nodes_z(point_z), vz, dz, &
+                            local_status)
+                        if (local_status /= 0) return
+                        call evaluate_bspline_basis( &
+                            knots_z(2:size(knots_z) - 1), degree_z - 1, &
+                            nodes_z(point_z), vzr, dzr, local_status)
+                        if (local_status /= 0) return
+                        do point_y = 1, quadrature_order
+                            call evaluate_bspline_basis( &
+                                knots_y, degree_y, nodes_y(point_y), vy, dy, &
+                                local_status)
+                            if (local_status /= 0) return
+                            call evaluate_bspline_basis( &
+                                knots_y(2:size(knots_y) - 1), degree_y - 1, &
+                                nodes_y(point_y), vyr, dyr, local_status)
+                            if (local_status /= 0) return
+                            do point_x = 1, quadrature_order
+                                call evaluate_bspline_basis( &
+                                    knots_x, degree_x, nodes_x(point_x), vx, &
+                                    dx, local_status)
+                                if (local_status /= 0) return
+                                call evaluate_bspline_basis( &
+                                    knots_x(2:size(knots_x) - 1), &
+                                    degree_x - 1, nodes_x(point_x), vxr, dxr, &
+                                    local_status)
+                                if (local_status /= 0) return
+                                call evaluate_nurbs_volume_geometry( &
+                                    knots_x, knots_y, knots_z, degree_x, &
+                                    degree_y, degree_z, control_points, weights, &
+                                    nodes_x(point_x), nodes_y(point_y), &
+                                    nodes_z(point_z), geometry_point, &
+                                    geometry_jacobian, local_status)
+                                if (local_status /= 0) return
+                                call inverse_3d( &
+                                    geometry_jacobian, inverse, determinant, &
+                                    local_status)
+                                if (local_status /= 0 .or. &
+                                    determinant <= 0.0_dp) return
+                                physical_weight = determinant*qw_x(point_x)* &
+                                    qw_y(point_y)*qw_z(point_z)
+                                do local_column = 1, local_count
+                                    call hcurl_local_basis_data_3d( &
+                                        local_column, span_x, span_y, span_z, &
+                                        degree_x, degree_y, degree_z, vx, dx, &
+                                        vxr, vy, dy, vyr, vz, dz, vzr, &
+                                        reference_column, curl_column)
+                                    physical_column = matmul( &
+                                        transpose(inverse), reference_column)
+                                    physical_curl_column = matmul( &
+                                        geometry_jacobian, curl_column)/ &
+                                        determinant
+                                    do local_row = 1, local_count
+                                        call hcurl_local_basis_data_3d( &
+                                            local_row, span_x, span_y, span_z, &
+                                            degree_x, degree_y, degree_z, vx, &
+                                            dx, vxr, vy, dy, vyr, vz, dz, &
+                                            vzr, reference_row, curl_row)
+                                        physical_row = matmul( &
+                                            transpose(inverse), reference_row)
+                                        physical_curl_row = matmul( &
+                                            geometry_jacobian, curl_row)/ &
+                                            determinant
+                                        local_matrix(local_row, local_column) = &
+                                            local_matrix( &
+                                            local_row, local_column) + &
+                                            physical_weight*(mass_weight* &
+                                            dot_product( &
+                                            physical_row, physical_column) + &
+                                            curl_weight*dot_product( &
+                                            physical_curl_row, &
+                                            physical_curl_column))
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end do
+                    do local_column = 1, local_count
+                        do local_row = 1, local_count
+                            entry = entry + 1
+                            rows(entry) = local_dofs(local_row)
+                            columns(entry) = local_dofs(local_column)
+                            triplet_values(entry) = &
+                                local_matrix(local_row, local_column)
+                        end do
+                    end do
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            (nx - 1)*ny*nz + nx*(ny - 1)*nz + nx*ny*(nz - 1), &
+            (nx - 1)*ny*nz + nx*(ny - 1)*nz + nx*ny*(nz - 1), &
+            rows(:entry), columns(:entry), triplet_values(:entry), &
+            matrix, status)
+    end subroutine assemble_bspline_hcurl_operator_3d_csc
+
+    pure subroutine build_hcurl_local_dofs_3d( &
+            span_x, span_y, span_z, degree_x, degree_y, degree_z, nx, ny, nz, &
+            dofs)
+        integer, intent(in) :: span_x, span_y, span_z
+        integer, intent(in) :: degree_x, degree_y, degree_z, nx, ny, nz
+        integer, intent(out) :: dofs(:)
+
+        integer :: basis_x, basis_y, basis_z, ex_count, ey_count, local_dof
+
+        local_dof = 0
+        ex_count = (nx - 1)*ny*nz
+        ey_count = nx*(ny - 1)*nz
+        do basis_z = span_z - degree_z, span_z
+            do basis_y = span_y - degree_y, span_y
+                do basis_x = span_x - degree_x, span_x - 1
+                    local_dof = local_dof + 1
+                    dofs(local_dof) = &
+                        index_3d(basis_x, basis_y, basis_z, nx - 1, ny)
+                end do
+            end do
+        end do
+        do basis_z = span_z - degree_z, span_z
+            do basis_y = span_y - degree_y, span_y - 1
+                do basis_x = span_x - degree_x, span_x
+                    local_dof = local_dof + 1
+                    dofs(local_dof) = ex_count + &
+                        index_3d(basis_x, basis_y, basis_z, nx, ny - 1)
+                end do
+            end do
+        end do
+        do basis_z = span_z - degree_z, span_z - 1
+            do basis_y = span_y - degree_y, span_y
+                do basis_x = span_x - degree_x, span_x
+                    local_dof = local_dof + 1
+                    dofs(local_dof) = ex_count + ey_count + &
+                        index_3d(basis_x, basis_y, basis_z, nx, ny)
+                end do
+            end do
+        end do
+    end subroutine build_hcurl_local_dofs_3d
+
+    pure subroutine hcurl_local_basis_data_3d( &
+            local_dof, span_x, span_y, span_z, degree_x, degree_y, degree_z, &
+            vx, dx, vxr, vy, dy, vyr, vz, dz, vzr, value, curl)
+        integer, intent(in) :: local_dof, span_x, span_y, span_z
+        integer, intent(in) :: degree_x, degree_y, degree_z
+        real(dp), intent(in) :: vx(:), dx(:), vxr(:)
+        real(dp), intent(in) :: vy(:), dy(:), vyr(:)
+        real(dp), intent(in) :: vz(:), dz(:), vzr(:)
+        real(dp), intent(out) :: value(3), curl(3)
+
+        integer :: basis_x, basis_y, basis_z, offset, x_count, y_count
+
+        value = 0.0_dp
+        curl = 0.0_dp
+        x_count = degree_x*(degree_y + 1)*(degree_z + 1)
+        y_count = (degree_x + 1)*degree_y*(degree_z + 1)
+        if (local_dof <= x_count) then
+            offset = local_dof - 1
+            basis_x = span_x - degree_x + modulo(offset, degree_x)
+            offset = offset/degree_x
+            basis_y = span_y - degree_y + modulo(offset, degree_y + 1)
+            basis_z = span_z - degree_z + offset/(degree_y + 1)
+            value(1) = vxr(basis_x)*vy(basis_y)*vz(basis_z)
+            curl(2) = vxr(basis_x)*vy(basis_y)*dz(basis_z)
+            curl(3) = -vxr(basis_x)*dy(basis_y)*vz(basis_z)
+        else if (local_dof <= x_count + y_count) then
+            offset = local_dof - x_count - 1
+            basis_x = span_x - degree_x + modulo(offset, degree_x + 1)
+            offset = offset/(degree_x + 1)
+            basis_y = span_y - degree_y + modulo(offset, degree_y)
+            basis_z = span_z - degree_z + offset/degree_y
+            value(2) = vx(basis_x)*vyr(basis_y)*vz(basis_z)
+            curl(1) = -vx(basis_x)*vyr(basis_y)*dz(basis_z)
+            curl(3) = dx(basis_x)*vyr(basis_y)*vz(basis_z)
+        else
+            offset = local_dof - x_count - y_count - 1
+            basis_x = span_x - degree_x + modulo(offset, degree_x + 1)
+            offset = offset/(degree_x + 1)
+            basis_y = span_y - degree_y + modulo(offset, degree_y + 1)
+            basis_z = span_z - degree_z + offset/(degree_y + 1)
+            value(3) = vx(basis_x)*vy(basis_y)*vzr(basis_z)
+            curl(1) = vx(basis_x)*dy(basis_y)*vzr(basis_z)
+            curl(2) = -dx(basis_x)*vy(basis_y)*vzr(basis_z)
+        end if
+    end subroutine hcurl_local_basis_data_3d
 
     subroutine assemble_bspline_h1_operator_3d_csc( &
             knots_x, knots_y, knots_z, degree_x, degree_y, degree_z, &
