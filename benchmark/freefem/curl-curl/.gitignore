@@ -1,5 +1,6 @@
 # FreeFEM output files
 *.dat
+*.csv
 *.eps
 *.png
 *.ps
