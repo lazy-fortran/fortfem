@@ -1,6 +1,7 @@
 program test_laplace_bem_galerkin_3d
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        apply_laplace_single_layer_p0_hierarchical_3d, &
         assemble_laplace_calderon_p1_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
@@ -14,13 +15,14 @@ program test_laplace_bem_galerkin_3d
     real(dp), allocatable :: double_layer(:, :), hypersingular(:, :)
     real(dp), allocatable :: ones(:), single_layer(:, :), vertices(:, :)
     real(dp), allocatable :: fem_solution(:), flux(:), load(:)
+    real(dp), allocatable :: dense_action(:), fast_action(:)
     real(dp), allocatable :: volume_vertices(:, :)
     complex(dp), allocatable :: complex_density(:), dirichlet(:)
     integer, allocatable :: triangles(:, :)
     integer, allocatable :: tetrahedra(:, :)
     complex(dp) :: exact_field, numerical_field
     real(dp) :: capacities(0:2), errors(0:2)
-    integer :: level, status
+    integer :: interaction_count, level, status
     logical :: all_passed
 
     all_passed = .true.
@@ -56,6 +58,19 @@ program test_laplace_bem_galerkin_3d
     call record_condition(maxval(abs(matmul(double_layer, ones) + &
         0.5_dp*triangle_areas(vertices, triangles))) < 2.0e-2_dp, &
         "Three-dimensional double layer has the closed-surface constant trace")
+    dense_action = matmul(single_layer, density)
+    call apply_laplace_single_layer_p0_hierarchical_3d( &
+        vertices, triangles, density, 0.6_dp, 6, fast_action, status, &
+        interaction_count)
+    call record_condition(status == 0 .and. &
+        norm2(fast_action - dense_action)/norm2(dense_action) < 3.0e-2_dp, &
+        "Hierarchical 3D single layer agrees with dense Galerkin action")
+    if (interaction_count >= size(triangles, 2)**2/2) then
+        write (*, '(A,I0,A,I0)') "hierarchical interactions ", &
+            interaction_count, " dense ", size(triangles, 2)**2
+    end if
+    call record_condition(interaction_count < size(triangles, 2)**2/2, &
+        "Hierarchical 3D single layer uses subquadratic interactions")
 
     allocate(volume_vertices(3, size(vertices, 2) + 1))
     volume_vertices(:, :size(vertices, 2)) = vertices
