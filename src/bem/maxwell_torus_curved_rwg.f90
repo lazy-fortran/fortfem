@@ -19,13 +19,86 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
+    interface
+        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            complex(dp), intent(inout) :: a(lda, *)
+            integer, intent(out) :: ipiv(*)
+            complex(dp), intent(inout) :: b(ldb, *)
+            integer, intent(out) :: info
+        end subroutine zgesv
+    end interface
+
 contains
+
+    subroutine assemble_maxwell_torus_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            mfie_offset, matrix, efie, mfie, regularizer, regularized_efie, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance, mfie_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :), efie(:, :)
+        complex(dp), allocatable, intent(out) :: mfie(:, :), regularizer(:, :)
+        complex(dp), allocatable, intent(out) :: regularized_efie(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: mass(:, :), mapped_efie(:, :)
+        real(dp), allocatable :: real_mass(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: info, system_size
+
+        status = 1
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_efie_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            efie, status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_efie_bc_imaginary_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            regularizer, status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_mfie_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, mfie_offset, mfie, status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_rwg_rbc_pairing( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            quadrature_degree, real_mass, status)
+        if (status /= 0) return
+        system_size = size(real_mass, 1)
+        if (size(real_mass, 2) /= system_size) return
+        if (any(shape(efie) /= [system_size, system_size])) return
+        if (any(shape(mfie) /= [system_size, system_size])) return
+        if (any(shape(regularizer) /= [system_size, system_size])) return
+        allocate( &
+            mass(system_size, system_size), &
+            mapped_efie(system_size, system_size), pivots(system_size))
+        mass = transpose(cmplx(real_mass, 0.0_dp, dp))
+        mapped_efie = efie
+        call zgesv( &
+            system_size, system_size, mass, system_size, pivots, mapped_efie, &
+            system_size, info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        regularized_efie = matmul(regularizer, mapped_efie)
+        matrix = mfie - regularized_efie
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
 
     subroutine assemble_maxwell_torus_curved_efie_bc_imaginary_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
