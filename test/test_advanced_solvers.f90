@@ -195,8 +195,8 @@ contains
         call check_condition(stats%restarts >= 0, &
             "GMRES: restart count tracked")
 
-        residual_norm = norm(matmul(A, x) - b)
-        call check_condition(residual_norm < 1.0e-7_dp, &
+        residual_norm = norm(matmul(A, x) - b)/norm(b)
+        call check_condition(residual_norm < opts%tolerance, &
             "GMRES: small residual")
 
         ! Test flexible GMRES with preconditioning
