@@ -85,7 +85,8 @@ program test_maxwell_efie_rwg_3d
         abs(expected_energy) < 2.5e-2_dp, &
         "Affine RWG integration matches an independent constant-trace energy")
     call evaluate_maxwell_efie_field_rwg_3d( &
-        vertices, boundary_triangles, coefficients, [2.0_dp, 2.0_dp, 2.0_dp], &
+        vertices, boundary_triangles, cmplx(coefficients, 0.0_dp, dp), &
+        [2.0_dp, 2.0_dp, 2.0_dp], &
         0.8_dp, 1.7_dp, 12, field, status)
     do edge = 1, 3
         call evaluate_helmholtz_representation_triangles_3d( &
