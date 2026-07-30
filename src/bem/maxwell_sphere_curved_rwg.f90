@@ -24,6 +24,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
+    public :: assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -37,6 +38,36 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            relative_offset, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: full_offset(:, :), half_offset(:, :)
+        complex(dp), allocatable :: quarter_offset(:, :)
+
+        status = 1
+        call assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            relative_offset, full_offset, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            relative_offset/2.0_dp, half_offset, status)
+        if (status /= 0) return
+        call assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            relative_offset/4.0_dp, quarter_offset, status)
+        if (status /= 0) return
+        matrix = full_offset/3.0_dp - 2.0_dp*half_offset + &
+            8.0_dp*quarter_offset/3.0_dp
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d
 
     subroutine assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
