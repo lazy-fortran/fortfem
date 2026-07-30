@@ -37,6 +37,9 @@ module fortfem_api
         assemble_laplace_single_layer_p0_3d, solve_laplace_dirichlet_p0_3d
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d
+    use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_single_layer_p0_3d, &
+        solve_helmholtz_dirichlet_p0_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
@@ -195,6 +198,8 @@ module fortfem_api
     public :: assemble_laplace_single_layer_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
     public :: evaluate_helmholtz_representation_triangles_3d
+    public :: assemble_helmholtz_single_layer_p0_3d
+    public :: solve_helmholtz_dirichlet_p0_3d
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
