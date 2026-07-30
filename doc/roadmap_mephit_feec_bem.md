@@ -65,7 +65,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first- and second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
 | Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass solves through order four; and public RT div-div-plus-mass solves through degree four | Higher-order magnetic-box convergence and public H1 PDE dispatch |
-| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on nonspherical surfaces and curved-boundary elastic coupling |
+| Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; biperiodic planar and spherical TE/TM Maxwell capacity maps; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on general curved surfaces and curved-boundary elastic coupling |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab and triangular 2D solver with FortSparse; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and 3D Maxwell convergence to an analytical complex-stretched plane wave | Maxwell PML-versus-DtN reflection benchmark |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace and Helmholtz P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; affine and exact-curved-torus Laplace/Helmholtz off-surface evaluation; full exact-curved-torus Laplace and Helmholtz P1/P0 Calderon operators and exterior DtN solves; tetrahedral P1 Johnson-Nedelec and symmetric Costabel Laplace/Helmholtz FEM/BEM coupling; solid-torus P1 FEM/exact-curved-BEM symmetric Laplace and Helmholtz coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, and exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy, and resonance suppression | Higher-order Galerkin surface operators, production FMM or H-matrices, and adaptive mesh refinement |
@@ -310,8 +310,10 @@ kernels as the form path.
 
 Two exact DtN families precede general BEM:
 
-1. A planar periodic half-space operator for the acoustic paper. It handles
-   propagating and evanescent Fourier modes and uses `fortnum` FFT plans.
+1. Planar periodic half-space operators for the acoustic and Maxwell paths.
+   They handle propagating and evanescent Fourier modes and use `fortnum`
+   FFTs. The Maxwell capacity symbol follows Jiang et al.,
+   arXiv:1811.12449, and separates the TE and TM tangential components.
 2. Circular and spherical artificial boundaries. Their modal eigenvalues use
    outgoing Hankel functions and support explicit truncation control.
 
@@ -354,6 +356,7 @@ independent mathematical or cross-code oracle.
 | H(div) solve | Manufactured mixed Poisson/Darcy flux with local conservation and optimal flux/divergence convergence. |
 | MEPHIT | FreeFem++ matrix and solution comparison, coefficient round-trip with the edge sign map, and six Triangle mesh fixtures. |
 | Planar DtN | Individual propagating and evanescent Fourier modes, zero-reflection plane wave, and the committed acoustic paper fixture. |
+| Planar Maxwell DtN | Normal-incidence impedance and oblique TE/TM Fourier eigenvalues. |
 | Circular DtN | Exact outgoing cylindrical modes and truncation convergence. |
 | BEM operators | Analytical circle spectra, jump relations, Calderon identities, and boundary traces of off-surface point sources. |
 | Exterior Helmholtz BEM | Mie-series scattering by a circle across frequencies that include interior resonances. |
@@ -388,6 +391,8 @@ its cross-code and production-case validation gate remains open:
   right-hand sides without refactorization.
 - a periodic planar Helmholtz DtN map uses `fortnum` FFTs and passes exact
   propagating and evanescent Fourier-mode tests.
+- a biperiodic planar Maxwell capacity operator uses two-dimensional
+  `fortnum` FFTs and passes normal-incidence and oblique TE/TM modal tests.
 - a circular outgoing Helmholtz DtN map uses `fortnum` Hankel values, applies
   an explicit Fourier truncation, and reports the discarded trace norm.
 - dense two-dimensional Laplace single-layer, double-layer, adjoint
