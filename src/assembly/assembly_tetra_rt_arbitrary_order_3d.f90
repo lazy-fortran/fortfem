@@ -20,8 +20,117 @@ module fortfem_assembly_tetra_rt_arbitrary_order_3d
     public :: assemble_tetra_rt_div_mass_csc
     public :: assemble_tetra_rt_div_mass_element
     public :: assemble_tetra_rt_divergence_csc
+    public :: assemble_tetra_rt_vector_load
+
+    abstract interface
+        pure subroutine vector_source_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value(3)
+        end subroutine vector_source_3d
+    end interface
 
 contains
+
+    subroutine assemble_tetra_rt_vector_load( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, source, &
+            vector, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        procedure(vector_source_3d) :: source
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        integer, allocatable :: face_orientations(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_vector(:)
+        real(dp), allocatable :: oriented_vector(:)
+        real(dp), allocatable :: physical_divergences(:)
+        real(dp), allocatable :: physical_values(:, :)
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: point(3), source_value(3), vertices(3, 4)
+        integer :: component, dof, dof_count, local_status, node, point_index
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Tetrahedral RT vector load failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (degree < 0 .or. degree > 4 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) return
+
+        dof_count = tetra_rt_dof_count(basis)
+        allocate(vector(maxval(global_dofs)))
+        allocate(element_vector(dof_count))
+        allocate(oriented_vector(dof_count))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(reference_values(3, dof_count))
+        allocate(reference_divergences(dof_count))
+        allocate(physical_values(3, dof_count))
+        allocate(physical_divergences(dof_count))
+        vector = 0.0_dp
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_geometry(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            element_vector = 0.0_dp
+            do point_index = 1, size(weights)
+                point(1) = x(point_index)
+                point(2) = y(point_index)
+                point(3) = z(point_index)
+                call evaluate_tetra_rt( &
+                    basis, point, reference_values, reference_divergences, &
+                    local_status)
+                if (local_status /= 0) return
+                call map_tetra_rt_contravariant( &
+                    jacobian, reference_values, reference_divergences, &
+                    physical_values, physical_divergences, local_status)
+                if (local_status /= 0) return
+                physical_point = vertices(:, 1)
+                do component = 1, 3
+                    physical_point = physical_point + &
+                        jacobian(:, component)*point(component)
+                end do
+                call source( &
+                    physical_point(1), physical_point(2), physical_point(3), &
+                    source_value)
+                do dof = 1, dof_count
+                    element_vector(dof) = element_vector(dof) + &
+                        determinant*weights(point_index)*dot_product( &
+                        source_value, physical_values(:, dof))
+                end do
+            end do
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_vector = &
+                matmul(transpose(basis_transform), element_vector)
+            do dof = 1, dof_count
+                vector(global_dofs(dof, tetrahedron)) = &
+                    vector(global_dofs(dof, tetrahedron)) + &
+                    oriented_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_rt_vector_load
 
     subroutine assemble_tetra_rt_divergence_csc( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
