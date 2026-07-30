@@ -281,8 +281,11 @@ module fortfem_api
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_spherical_helmholtz_dtn, only: &
-        apply_spherical_helmholtz_dtn, &
-        spherical_helmholtz_dtn_eigenvalue
+        apply_spherical_helmholtz_dtn, apply_spherical_helmholtz_dtn_jvp, &
+        apply_spherical_helmholtz_dtn_vjp, &
+        spherical_helmholtz_dtn_eigenvalue, &
+        spherical_helmholtz_dtn_eigenvalue_jvp, &
+        spherical_helmholtz_dtn_eigenvalue_vjp
     use fortfem_spherical_maxwell_dtn, only: &
         apply_spherical_maxwell_dtn, apply_spherical_maxwell_dtn_jvp, &
         apply_spherical_maxwell_dtn_vjp, spherical_maxwell_dtn_eigenvalues, &
@@ -755,7 +758,11 @@ module fortfem_api
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
     public :: apply_spherical_helmholtz_dtn
+    public :: apply_spherical_helmholtz_dtn_jvp
+    public :: apply_spherical_helmholtz_dtn_vjp
     public :: spherical_helmholtz_dtn_eigenvalue
+    public :: spherical_helmholtz_dtn_eigenvalue_jvp
+    public :: spherical_helmholtz_dtn_eigenvalue_vjp
     public :: apply_spherical_maxwell_dtn
     public :: apply_spherical_maxwell_dtn_jvp
     public :: apply_spherical_maxwell_dtn_vjp

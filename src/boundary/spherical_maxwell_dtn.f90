@@ -13,7 +13,8 @@ module fortfem_spherical_maxwell_dtn
     !! derivative is shared with the spherical Helmholtz DtN implementation.
     use fortfem_kinds, only: dp
     use fortfem_spherical_helmholtz_dtn, only: &
-        spherical_helmholtz_dtn_eigenvalue
+        spherical_helmholtz_dtn_eigenvalue, &
+        spherical_helmholtz_dtn_eigenvalue_jvp
     implicit none
 
     private
@@ -179,27 +180,17 @@ contains
         integer, intent(out) :: status
 
         complex(dp) :: logarithmic_derivative, logarithmic_derivative_dot
-        complex(dp) :: ratio, ratio_argument_derivative
         complex(dp) :: riccati_derivative, riccati_derivative_dot
-        real(dp) :: argument, argument_dot
 
         te_eigenvalue_dot = cmplx(0.0_dp, 0.0_dp, dp)
         tm_eigenvalue_dot = cmplx(0.0_dp, 0.0_dp, dp)
         call spherical_maxwell_dtn_eigenvalues( &
             degree, wavenumber, radius, te_eigenvalue, tm_eigenvalue, status)
         if (status /= 0) return
-        call spherical_helmholtz_dtn_eigenvalue( &
-            degree, wavenumber, radius, logarithmic_derivative, status)
+        call spherical_helmholtz_dtn_eigenvalue_jvp( &
+            degree, wavenumber, radius, wavenumber_dot, radius_dot, &
+            logarithmic_derivative, logarithmic_derivative_dot, status)
         if (status /= 0) return
-        argument = wavenumber*radius
-        argument_dot = wavenumber_dot*radius + wavenumber*radius_dot
-        ratio = logarithmic_derivative/wavenumber
-        ratio_argument_derivative = &
-            -2.0_dp*ratio/argument - 1.0_dp + &
-            real(degree*(degree + 1), dp)/argument**2 - ratio**2
-        logarithmic_derivative_dot = &
-            wavenumber_dot*ratio + &
-            wavenumber*ratio_argument_derivative*argument_dot
         riccati_derivative = logarithmic_derivative + 1.0_dp/radius
         riccati_derivative_dot = &
             logarithmic_derivative_dot - radius_dot/radius**2
