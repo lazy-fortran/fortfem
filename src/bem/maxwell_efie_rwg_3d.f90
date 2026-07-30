@@ -107,7 +107,7 @@ contains
                             vertices, triangles, edge_vertices, edge_triangles, &
                             first, first_panel, second, second_panel, wave_number, &
                             xi, eta, weights, line_nodes, line_weights, &
-                            vector_entry, status)
+                            tolerance, max_depth, vector_entry, status)
                         if (status /= 0) return
                         vector_potential(first, second) = &
                             vector_potential(first, second) + vector_entry
@@ -127,7 +127,8 @@ contains
     subroutine integrate_rwg_vector_panel_pair( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
             first_panel, second_basis, second_panel, wave_number, xi, eta, &
-            weights, line_nodes, line_weights, value, status)
+            weights, line_nodes, line_weights, tolerance, max_depth, value, &
+            status)
         real(dp), intent(in) :: vertices(:, :), wave_number
         integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
         integer, intent(in) :: edge_triangles(:, :)
@@ -135,6 +136,8 @@ contains
         integer, intent(in) :: second_panel
         real(dp), intent(in) :: xi(:), eta(:), weights(:)
         real(dp), intent(in) :: line_nodes(:), line_weights(:)
+        real(dp), intent(in) :: tolerance
+        integer, intent(in) :: max_depth
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
 
@@ -148,6 +151,13 @@ contains
                 first_basis, first_panel, second_basis, first_vertices, &
                 wave_number, xi, eta, weights, line_nodes, line_weights, &
                 value, status)
+        else if (panels_touch( &
+                triangles(:, first_panel), triangles(:, second_panel))) then
+            call integrate_adaptive_rwg_pair( &
+                vertices, triangles, edge_vertices, edge_triangles, &
+                first_basis, first_panel, second_basis, second_panel, &
+                first_vertices, second_vertices, wave_number, xi, eta, &
+                weights, tolerance, 0, max_depth, value, status)
         else
             call integrate_regular_rwg_pair( &
                 vertices, triangles, edge_vertices, edge_triangles, &
@@ -156,6 +166,79 @@ contains
                 weights, value, status)
         end if
     end subroutine integrate_rwg_vector_panel_pair
+
+    recursive subroutine integrate_adaptive_rwg_pair( &
+            vertices, triangles, edge_vertices, edge_triangles, first_basis, &
+            first_panel, second_basis, second_panel, first_vertices, &
+            second_vertices, wave_number, xi, eta, weights, tolerance, depth, &
+            max_depth, value, status)
+        real(dp), intent(in) :: vertices(:, :), first_vertices(3, 3)
+        real(dp), intent(in) :: second_vertices(3, 3), wave_number, tolerance
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        integer, intent(in) :: first_basis, first_panel, second_basis
+        integer, intent(in) :: second_panel, depth, max_depth
+        real(dp), intent(in) :: xi(:), eta(:), weights(:)
+        complex(dp), intent(out) :: value
+        integer, intent(out) :: status
+
+        real(dp) :: first_children(3, 3, 4), second_children(3, 3, 4)
+        complex(dp) :: coarse, refined, contribution
+        integer :: first_child, second_child
+
+        call integrate_regular_rwg_pair( &
+            vertices, triangles, edge_vertices, edge_triangles, first_basis, &
+            first_panel, second_basis, second_panel, first_vertices, &
+            second_vertices, wave_number, xi, eta, weights, coarse, status)
+        if (status /= 0) return
+        call subdivide_triangle(first_vertices, first_children)
+        call subdivide_triangle(second_vertices, second_children)
+        refined = cmplx(0.0_dp, 0.0_dp, dp)
+        do first_child = 1, 4
+            do second_child = 1, 4
+                call integrate_regular_rwg_pair( &
+                    vertices, triangles, edge_vertices, edge_triangles, &
+                    first_basis, first_panel, second_basis, second_panel, &
+                    first_children(:, :, first_child), &
+                    second_children(:, :, second_child), wave_number, xi, eta, &
+                    weights, contribution, status)
+                if (status /= 0) return
+                refined = refined + contribution
+            end do
+        end do
+        if (depth + 1 >= max_depth .or. abs(refined - coarse) <= &
+            tolerance*max(tiny(1.0_dp), abs(refined))) then
+            value = refined
+            status = 0
+            return
+        end if
+        value = cmplx(0.0_dp, 0.0_dp, dp)
+        do first_child = 1, 4
+            do second_child = 1, 4
+                if (geometric_panels_touch( &
+                    first_children(:, :, first_child), &
+                    second_children(:, :, second_child))) then
+                    call integrate_adaptive_rwg_pair( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        first_basis, first_panel, second_basis, second_panel, &
+                        first_children(:, :, first_child), &
+                        second_children(:, :, second_child), wave_number, xi, &
+                        eta, weights, tolerance, depth + 1, max_depth, &
+                        contribution, status)
+                else
+                    call integrate_regular_rwg_pair( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        first_basis, first_panel, second_basis, second_panel, &
+                        first_children(:, :, first_child), &
+                        second_children(:, :, second_child), wave_number, xi, &
+                        eta, weights, contribution, status)
+                end if
+                if (status /= 0) return
+                value = value + contribution
+            end do
+        end do
+        status = 0
+    end subroutine integrate_adaptive_rwg_pair
 
     subroutine integrate_regular_rwg_pair( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
@@ -296,6 +379,59 @@ contains
             vertices(:, 2) - vertices(:, 1), &
             vertices(:, 3) - vertices(:, 1)))
     end function triangle_area
+
+    pure logical function panels_touch(first, second) result(touch)
+        integer, intent(in) :: first(3), second(3)
+
+        integer :: first_vertex
+
+        touch = .false.
+        do first_vertex = 1, 3
+            if (any(second == first(first_vertex))) then
+                touch = .true.
+                return
+            end if
+        end do
+    end function panels_touch
+
+    pure logical function geometric_panels_touch(first, second) result(touch)
+        real(dp), intent(in) :: first(3, 3), second(3, 3)
+
+        real(dp) :: scale
+        integer :: first_vertex, second_vertex
+
+        scale = max(1.0_dp, maxval(abs(first)), maxval(abs(second)))
+        touch = .false.
+        do first_vertex = 1, 3
+            do second_vertex = 1, 3
+                if (norm2(first(:, first_vertex) - &
+                    second(:, second_vertex)) <= &
+                    128.0_dp*epsilon(1.0_dp)*scale) then
+                    touch = .true.
+                    return
+                end if
+            end do
+        end do
+    end function geometric_panels_touch
+
+    pure subroutine subdivide_triangle(vertices, children)
+        real(dp), intent(in) :: vertices(3, 3)
+        real(dp), intent(out) :: children(3, 3, 4)
+
+        real(dp) :: midpoint_12(3), midpoint_23(3), midpoint_31(3)
+
+        midpoint_12 = 0.5_dp*(vertices(:, 1) + vertices(:, 2))
+        midpoint_23 = 0.5_dp*(vertices(:, 2) + vertices(:, 3))
+        midpoint_31 = 0.5_dp*(vertices(:, 3) + vertices(:, 1))
+        children(:, :, 1) = reshape( &
+            [vertices(:, 1), midpoint_12, midpoint_31], [3, 3])
+        children(:, :, 2) = reshape( &
+            [midpoint_12, vertices(:, 2), midpoint_23], [3, 3])
+        children(:, :, 3) = reshape( &
+            [midpoint_31, midpoint_23, vertices(:, 3)], [3, 3])
+        children(:, :, 4) = reshape( &
+            [midpoint_12, midpoint_23, midpoint_31], [3, 3])
+    end subroutine subdivide_triangle
 
     pure function cross_product(first, second) result(product)
         real(dp), intent(in) :: first(3), second(3)
