@@ -19,6 +19,7 @@ module fortfem_api_types
     public :: neumann_bc_t
     public :: simple_expression_t
     public :: cell_coefficient_t
+    public :: cell_tensor_coefficient_t
     public :: cell_vector_source_t
 
     ! Mesh type (wrapper around mesh_2d_t)
@@ -125,6 +126,13 @@ module fortfem_api_types
         generic :: assignment(=) => assign_cell_coefficient
     end type cell_coefficient_t
 
+    type :: cell_tensor_coefficient_t
+        real(dp), allocatable :: values(:, :, :)
+    contains
+        procedure, private :: assign_cell_tensor_coefficient
+        generic :: assignment(=) => assign_cell_tensor_coefficient
+    end type cell_tensor_coefficient_t
+
     type :: cell_vector_source_t
         real(dp), allocatable :: values(:, :)
     contains
@@ -182,6 +190,15 @@ contains
             allocate(lhs%values, source=rhs%values)
         end if
     end subroutine assign_cell_coefficient
+
+    subroutine assign_cell_tensor_coefficient(lhs, rhs)
+        class(cell_tensor_coefficient_t), intent(out) :: lhs
+        type(cell_tensor_coefficient_t), intent(in) :: rhs
+
+        if (allocated(rhs%values)) then
+            allocate(lhs%values, source=rhs%values)
+        end if
+    end subroutine assign_cell_tensor_coefficient
 
     subroutine assign_cell_vector_source(lhs, rhs)
         class(cell_vector_source_t), intent(out) :: lhs
