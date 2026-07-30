@@ -22,6 +22,7 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_l2_hcurl_adjoint_curl_csc
     public :: assemble_bspline_grad_shafranov_csc
     public :: assemble_bspline_toroidal_fourier_laplacian_csc
+    public :: assemble_bspline_poloidal_bracket_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d
@@ -41,6 +42,24 @@ module fortfem_assembly_bspline_2d
     end interface
 
 contains
+
+    subroutine assemble_bspline_poloidal_bracket_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            advecting_coefficients, quadrature_order, matrix, status)
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: advecting_coefficients(:)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, matrix, status, stiffness_coefficient=0.0_dp, &
+            mass_coefficient=0.0_dp, &
+            advecting_coefficients=advecting_coefficients, &
+            advection_coefficient=1.0_dp)
+    end subroutine assemble_bspline_poloidal_bracket_csc
 
     subroutine assemble_bspline_toroidal_fourier_laplacian_csc( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
@@ -775,7 +794,8 @@ contains
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
             quadrature_order, matrix, status, stiffness_coefficient, &
             mass_coefficient, stiffness_weight_function, mass_weight_function, &
-            stiffness_tensor_function)
+            stiffness_tensor_function, advecting_coefficients, &
+            advection_coefficient)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -786,6 +806,8 @@ contains
         procedure(scalar_weight_2d), optional :: stiffness_weight_function
         procedure(scalar_weight_2d), optional :: mass_weight_function
         procedure(tensor_weight_2d), optional :: stiffness_tensor_function
+        real(dp), intent(in), optional :: advecting_coefficients(:)
+        real(dp), intent(in), optional :: advection_coefficient
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -795,6 +817,8 @@ contains
         real(dp), allocatable :: value_x(:), value_y(:)
         real(dp) :: determinant, geometry_jacobian(2, 2), geometry_point(2)
         real(dp) :: basis_column, basis_row, gradient_column(2), gradient_row(2)
+        real(dp) :: advecting_gradient(2), advection_velocity(2)
+        real(dp) :: advection_weight
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
         real(dp) :: mass_weight_at_point, stiffness_weight_at_point
@@ -819,6 +843,15 @@ contains
             stiffness_weight = stiffness_coefficient
         end if
         if (present(mass_coefficient)) mass_weight = mass_coefficient
+        advection_weight = 0.0_dp
+        if (present(advection_coefficient)) then
+            advection_weight = advection_coefficient
+        end if
+        if (present(advecting_coefficients)) then
+            if (size(advecting_coefficients) /= nx*ny) return
+        else if (advection_weight /= 0.0_dp) then
+            return
+        end if
         local_count = (degree_x + 1)*(degree_y + 1)
         max_entries = positive_span_count(knots_x, degree_x, nx)* &
             positive_span_count(knots_y, degree_y, ny)*local_count**2
@@ -881,6 +914,22 @@ contains
                             call stiffness_tensor_function( &
                                 geometry_point, stiffness_tensor_at_point)
                         end if
+                        advecting_gradient = 0.0_dp
+                        if (present(advecting_coefficients)) then
+                            do local_row = 1, local_count
+                                call local_basis_data( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, derivative_x, value_y, &
+                                    derivative_y, basis_row, gradient_row)
+                                gradient_row = matmul( &
+                                    transpose(inverse), gradient_row)
+                                advecting_gradient = advecting_gradient + &
+                                    advecting_coefficients( &
+                                    local_dofs(local_row))*gradient_row
+                            end do
+                        end if
+                        advection_velocity = [ &
+                            -advecting_gradient(2), advecting_gradient(1)]
                         do local_column = 1, local_count
                             call local_basis_data( &
                                 local_column, span_x, span_y, degree_x, &
@@ -902,6 +951,13 @@ contains
                                     stiffness_tensor_at_point, &
                                     gradient_column)) + &
                                     mass_weight_at_point*basis_row*basis_column)
+                                local_matrix(local_row, local_column) = &
+                                    local_matrix(local_row, local_column) + &
+                                    0.5_dp*physical_weight*advection_weight*( &
+                                    basis_row*dot_product( &
+                                    advection_velocity, gradient_column) - &
+                                    basis_column*dot_product( &
+                                    advection_velocity, gradient_row))
                             end do
                         end do
                     end do
