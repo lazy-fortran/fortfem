@@ -2,11 +2,18 @@ module fortfem_assembly_bspline_2d
     !! Sparse scalar isogeometric assembly on one rational tensor patch.
     use fortfem_bspline_feec, only: &
         build_bspline_derivative_matrix, evaluate_bspline_basis, &
-        evaluate_nurbs_surface_geometry
+        evaluate_nurbs_surface_geometry, &
+        evaluate_nurbs_surface_geometry_jvp, &
+        evaluate_nurbs_surface_geometry_vjp
+    use fortfem_generated_bspline_h1_geometry_jvp, only: &
+        generated_bspline_h1_geometry_jvp
+    use fortfem_generated_bspline_h1_geometry_vjp, only: &
+        generated_bspline_h1_geometry_vjp
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: &
-        csc_from_triplet, csc_matmul, csc_matvec, csc_t, csc_transpose, &
+        csc_from_triplet, csc_is_valid, csc_matmul, csc_matvec, csc_t, &
+        csc_transpose, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t, sparse_factor, sparse_free, sparse_solve, &
         sparse_solver_t, status_set
@@ -14,6 +21,8 @@ module fortfem_assembly_bspline_2d
     private
 
     public :: assemble_bspline_h1_operator_csc
+    public :: assemble_bspline_h1_operator_csc_jvp
+    public :: assemble_bspline_h1_operator_csc_vjp
     public :: assemble_bspline_h1_weighted_mass_csc
     public :: assemble_bspline_hcurl_operator_csc
     public :: assemble_bspline_hdiv_operator_csc
@@ -1982,6 +1991,293 @@ contains
             triplet_values(:entry), matrix, status)
     end subroutine assemble_bspline_h1_operator_csc
 
+    subroutine assemble_bspline_h1_operator_csc_jvp( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            control_points_dot, weights_dot, quadrature_order, matrix_dot, &
+            status, stiffness_coefficient, mass_coefficient)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: control_points_dot(:, :, :)
+        real(dp), intent(in) :: weights_dot(:, :)
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: stiffness_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
+
+        integer, allocatable :: columns(:), local_dofs(:), rows(:)
+        real(dp), allocatable :: derivative_x(:), derivative_y(:)
+        real(dp), allocatable :: local_matrix_dot(:, :)
+        real(dp), allocatable :: nodes_x(:), nodes_y(:)
+        real(dp), allocatable :: quadrature_weights_x(:)
+        real(dp), allocatable :: quadrature_weights_y(:)
+        real(dp), allocatable :: triplet_values(:)
+        real(dp), allocatable :: value_x(:), value_y(:)
+        real(dp) :: basis_column, basis_row, contribution_dot
+        real(dp) :: geometry_jacobian(2, 2), geometry_jacobian_dot(2, 2)
+        real(dp) :: geometry_point(2), geometry_point_dot(2)
+        real(dp) :: gradient_column(2), gradient_row(2)
+        real(dp) :: mass_weight, quadrature_weight, stiffness_weight
+        integer :: entry, local_column, local_count, local_row
+        integer :: local_status, max_entries, nx, ny, point_x, point_y
+        integer :: span_x, span_y
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sparse isogeometric H1 assembly JVP failed")
+        if (degree_x < 1 .or. degree_y < 1 .or. quadrature_order < 1) return
+        nx = size(knots_x) - degree_x - 1
+        ny = size(knots_y) - degree_y - 1
+        if (nx < degree_x + 1 .or. ny < degree_y + 1) return
+        if (any(shape(weights) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (any(shape(control_points_dot) /= shape(control_points))) return
+        if (any(shape(weights_dot) /= shape(weights))) return
+        stiffness_weight = 1.0_dp
+        mass_weight = 0.0_dp
+        if (present(stiffness_coefficient)) then
+            stiffness_weight = stiffness_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        local_count = (degree_x + 1)*(degree_y + 1)
+        max_entries = positive_span_count(knots_x, degree_x, nx)* &
+            positive_span_count(knots_y, degree_y, ny)*local_count**2
+        allocate ( &
+            rows(max_entries), columns(max_entries), &
+            triplet_values(max_entries), local_dofs(local_count), &
+            local_matrix_dot(local_count, local_count), &
+            nodes_x(quadrature_order), nodes_y(quadrature_order), &
+            quadrature_weights_x(quadrature_order), &
+            quadrature_weights_y(quadrature_order))
+        entry = 0
+        do span_y = degree_y + 1, ny
+            if (knots_y(span_y + 1) <= knots_y(span_y)) cycle
+            call gauss_legendre_ab( &
+                quadrature_order, knots_y(span_y), knots_y(span_y + 1), &
+                nodes_y, quadrature_weights_y)
+            do span_x = degree_x + 1, nx
+                if (knots_x(span_x + 1) <= knots_x(span_x)) cycle
+                call gauss_legendre_ab( &
+                    quadrature_order, knots_x(span_x), knots_x(span_x + 1), &
+                    nodes_x, quadrature_weights_x)
+                call build_local_dofs( &
+                    span_x, span_y, degree_x, degree_y, nx, local_dofs)
+                local_matrix_dot = 0.0_dp
+                do point_y = 1, quadrature_order
+                    call evaluate_bspline_basis( &
+                        knots_y, degree_y, nodes_y(point_y), value_y, &
+                        derivative_y, local_status)
+                    if (local_status /= 0) return
+                    do point_x = 1, quadrature_order
+                        call evaluate_bspline_basis( &
+                            knots_x, degree_x, nodes_x(point_x), value_x, &
+                            derivative_x, local_status)
+                        if (local_status /= 0) return
+                        call evaluate_nurbs_surface_geometry( &
+                            knots_x, knots_y, degree_x, degree_y, &
+                            control_points, weights, nodes_x(point_x), &
+                            nodes_y(point_y), geometry_point, &
+                            geometry_jacobian, local_status)
+                        if (local_status /= 0) return
+                        call evaluate_nurbs_surface_geometry_jvp( &
+                            knots_x, knots_y, degree_x, degree_y, &
+                            control_points, weights, control_points_dot, &
+                            weights_dot, nodes_x(point_x), nodes_y(point_y), &
+                            geometry_point_dot, geometry_jacobian_dot, &
+                            local_status)
+                        if (local_status /= 0) return
+                        quadrature_weight = quadrature_weights_x(point_x)* &
+                            quadrature_weights_y(point_y)
+                        do local_column = 1, local_count
+                            call local_basis_data( &
+                                local_column, span_x, span_y, degree_x, &
+                                degree_y, value_x, derivative_x, value_y, &
+                                derivative_y, basis_column, gradient_column)
+                            do local_row = 1, local_count
+                                call local_basis_data( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, derivative_x, value_y, &
+                                    derivative_y, basis_row, gradient_row)
+                                call generated_bspline_h1_geometry_jvp( &
+                                    geometry_jacobian(1, 1), &
+                                    geometry_jacobian(2, 1), &
+                                    geometry_jacobian(1, 2), &
+                                    geometry_jacobian(2, 2), gradient_row(1), &
+                                    gradient_row(2), gradient_column(1), &
+                                    gradient_column(2), basis_row, basis_column, &
+                                    stiffness_weight, mass_weight, &
+                                    quadrature_weight, &
+                                    geometry_jacobian_dot(1, 1), &
+                                    geometry_jacobian_dot(2, 1), &
+                                    geometry_jacobian_dot(1, 2), &
+                                    geometry_jacobian_dot(2, 2), &
+                                    contribution_dot)
+                                local_matrix_dot(local_row, local_column) = &
+                                    local_matrix_dot(local_row, local_column) + &
+                                    contribution_dot
+                            end do
+                        end do
+                    end do
+                end do
+                do local_column = 1, local_count
+                    do local_row = 1, local_count
+                        entry = entry + 1
+                        rows(entry) = local_dofs(local_row)
+                        columns(entry) = local_dofs(local_column)
+                        triplet_values(entry) = &
+                            local_matrix_dot(local_row, local_column)
+                    end do
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            nx*ny, nx*ny, rows(:entry), columns(:entry), &
+            triplet_values(:entry), matrix_dot, status)
+    end subroutine assemble_bspline_h1_operator_csc_jvp
+
+    subroutine assemble_bspline_h1_operator_csc_vjp( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix_bar, control_points_bar, weights_bar, &
+            status, stiffness_coefficient, mass_coefficient)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        type(csc_t), intent(in) :: matrix_bar
+        real(dp), intent(out) :: control_points_bar(:, :, :)
+        real(dp), intent(out) :: weights_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), intent(in), optional :: stiffness_coefficient
+        real(dp), intent(in), optional :: mass_coefficient
+
+        integer, allocatable :: local_dofs(:)
+        real(dp), allocatable :: derivative_x(:), derivative_y(:)
+        real(dp), allocatable :: geometry_control_points_bar(:, :, :)
+        real(dp), allocatable :: geometry_weights_bar(:, :)
+        real(dp), allocatable :: nodes_x(:), nodes_y(:)
+        real(dp), allocatable :: quadrature_weights_x(:)
+        real(dp), allocatable :: quadrature_weights_y(:)
+        real(dp), allocatable :: value_x(:), value_y(:)
+        real(dp) :: basis_column, basis_row, contribution_bar
+        real(dp) :: geometry_jacobian(2, 2), geometry_jacobian_bar(2, 2)
+        real(dp) :: geometry_jacobian_bar_entry(2, 2)
+        real(dp) :: geometry_point(2), geometry_point_bar(2)
+        real(dp) :: gradient_column(2), gradient_row(2)
+        real(dp) :: mass_weight, quadrature_weight, stiffness_weight
+        integer :: local_column, local_count, local_row
+        integer :: local_status, nx, ny, point_x, point_y, span_x, span_y
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sparse isogeometric H1 assembly VJP failed")
+        control_points_bar = 0.0_dp
+        weights_bar = 0.0_dp
+        if (degree_x < 1 .or. degree_y < 1 .or. quadrature_order < 1) return
+        nx = size(knots_x) - degree_x - 1
+        ny = size(knots_y) - degree_y - 1
+        if (nx < degree_x + 1 .or. ny < degree_y + 1) return
+        if (any(shape(weights) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (any(shape(control_points_bar) /= shape(control_points))) return
+        if (any(shape(weights_bar) /= shape(weights))) return
+        if (.not. csc_is_valid(matrix_bar)) return
+        if (matrix_bar%nrow /= nx*ny .or. matrix_bar%ncol /= nx*ny) return
+        stiffness_weight = 1.0_dp
+        mass_weight = 0.0_dp
+        if (present(stiffness_coefficient)) then
+            stiffness_weight = stiffness_coefficient
+        end if
+        if (present(mass_coefficient)) mass_weight = mass_coefficient
+        local_count = (degree_x + 1)*(degree_y + 1)
+        allocate ( &
+            local_dofs(local_count), nodes_x(quadrature_order), &
+            nodes_y(quadrature_order), &
+            quadrature_weights_x(quadrature_order), &
+            quadrature_weights_y(quadrature_order))
+        allocate (geometry_control_points_bar, mold=control_points)
+        allocate (geometry_weights_bar, mold=weights)
+        geometry_point_bar = 0.0_dp
+        do span_y = degree_y + 1, ny
+            if (knots_y(span_y + 1) <= knots_y(span_y)) cycle
+            call gauss_legendre_ab( &
+                quadrature_order, knots_y(span_y), knots_y(span_y + 1), &
+                nodes_y, quadrature_weights_y)
+            do span_x = degree_x + 1, nx
+                if (knots_x(span_x + 1) <= knots_x(span_x)) cycle
+                call gauss_legendre_ab( &
+                    quadrature_order, knots_x(span_x), knots_x(span_x + 1), &
+                    nodes_x, quadrature_weights_x)
+                call build_local_dofs( &
+                    span_x, span_y, degree_x, degree_y, nx, local_dofs)
+                do point_y = 1, quadrature_order
+                    call evaluate_bspline_basis( &
+                        knots_y, degree_y, nodes_y(point_y), value_y, &
+                        derivative_y, local_status)
+                    if (local_status /= 0) return
+                    do point_x = 1, quadrature_order
+                        call evaluate_bspline_basis( &
+                            knots_x, degree_x, nodes_x(point_x), value_x, &
+                            derivative_x, local_status)
+                        if (local_status /= 0) return
+                        call evaluate_nurbs_surface_geometry( &
+                            knots_x, knots_y, degree_x, degree_y, &
+                            control_points, weights, nodes_x(point_x), &
+                            nodes_y(point_y), geometry_point, &
+                            geometry_jacobian, local_status)
+                        if (local_status /= 0) return
+                        quadrature_weight = quadrature_weights_x(point_x)* &
+                            quadrature_weights_y(point_y)
+                        geometry_jacobian_bar = 0.0_dp
+                        do local_column = 1, local_count
+                            call local_basis_data( &
+                                local_column, span_x, span_y, degree_x, &
+                                degree_y, value_x, derivative_x, value_y, &
+                                derivative_y, basis_column, gradient_column)
+                            do local_row = 1, local_count
+                                call local_basis_data( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, derivative_x, value_y, &
+                                    derivative_y, basis_row, gradient_row)
+                                contribution_bar = csc_entry_value( &
+                                    matrix_bar, local_dofs(local_row), &
+                                    local_dofs(local_column))
+                                call generated_bspline_h1_geometry_vjp( &
+                                    geometry_jacobian(1, 1), &
+                                    geometry_jacobian(2, 1), &
+                                    geometry_jacobian(1, 2), &
+                                    geometry_jacobian(2, 2), gradient_row(1), &
+                                    gradient_row(2), gradient_column(1), &
+                                    gradient_column(2), basis_row, basis_column, &
+                                    stiffness_weight, mass_weight, &
+                                    quadrature_weight, contribution_bar, &
+                                    geometry_jacobian_bar_entry(1, 1), &
+                                    geometry_jacobian_bar_entry(2, 1), &
+                                    geometry_jacobian_bar_entry(1, 2), &
+                                    geometry_jacobian_bar_entry(2, 2))
+                                geometry_jacobian_bar = &
+                                    geometry_jacobian_bar + &
+                                    geometry_jacobian_bar_entry
+                            end do
+                        end do
+                        call evaluate_nurbs_surface_geometry_vjp( &
+                            knots_x, knots_y, degree_x, degree_y, &
+                            control_points, weights, nodes_x(point_x), &
+                            nodes_y(point_y), geometry_point_bar, &
+                            geometry_jacobian_bar, &
+                            geometry_control_points_bar, geometry_weights_bar, &
+                            local_status)
+                        if (local_status /= 0) return
+                        control_points_bar = control_points_bar + &
+                            geometry_control_points_bar
+                        weights_bar = weights_bar + geometry_weights_bar
+                    end do
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine assemble_bspline_h1_operator_csc_vjp
+
     subroutine local_basis_data( &
             local_dof, span_x, span_y, degree_x, degree_y, value_x, &
             derivative_x, value_y, derivative_y, basis_value, gradient)
@@ -2030,6 +2326,21 @@ contains
             if (knots(span + 1) > knots(span)) count = count + 1
         end do
     end function positive_span_count
+
+    pure real(dp) function csc_entry_value(matrix, row, column) result(value)
+        type(csc_t), intent(in) :: matrix
+        integer, intent(in) :: row, column
+
+        integer :: entry
+
+        value = 0.0_dp
+        do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+            if (matrix%row_idx(entry) == row) then
+                value = matrix%val(entry)
+                return
+            end if
+        end do
+    end function csc_entry_value
 
     pure subroutine inverse_2d(matrix, inverse, determinant, status)
         real(dp), intent(in) :: matrix(2, 2)

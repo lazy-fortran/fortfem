@@ -2,6 +2,8 @@ program test_bspline_h1_sparse_assembly
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_bspline_h1_operator_csc, &
+        assemble_bspline_h1_operator_csc_jvp, &
+        assemble_bspline_h1_operator_csc_vjp, &
         assemble_bspline_hcurl_operator_csc, &
         assemble_bspline_hdiv_operator_csc, &
         assemble_bspline_h1_hcurl_gradient_csc, &
@@ -25,19 +27,28 @@ program test_bspline_h1_sparse_assembly
     type(csc_t) :: grad_shafranov, toroidal_fourier
     type(csc_t) :: poloidal_bracket
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
+    type(csc_t) :: sensitivity_bar, sensitivity_dot
+    type(csc_t) :: sensitivity_matrix, sensitivity_minus, sensitivity_plus
     type(csc_t) :: hdiv_mass, div_div
     type(csc_t) :: weak_gradient
     type(csc_t) :: adjoint_gradient
     type(csc_t) :: adjoint_curl, l2_mass, weak_curl
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
+    real(dp), allocatable :: control_points_bar(:, :, :)
+    real(dp), allocatable :: control_points_dot(:, :, :)
+    real(dp), allocatable :: control_points_minus(:, :, :)
+    real(dp), allocatable :: control_points_plus(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
+    real(dp), allocatable :: weights_bar(:, :), weights_dot(:, :)
+    real(dp), allocatable :: weights_minus(:, :), weights_plus(:, :)
     real(dp), allocatable :: hcurl_coefficients(:)
     real(dp), allocatable :: hdiv_coefficients(:)
     real(dp), allocatable :: l2_coefficients(:)
     real(dp), allocatable :: bracket_field(:), bracket_test(:), bracket_trial(:)
     real(dp), allocatable :: x_points(:), y_points(:)
-    real(dp) :: energy, integral
+    real(dp), parameter :: sensitivity_step = 1.0e-6_dp
+    real(dp) :: adjoint_left, adjoint_right, energy, integral
     integer :: ix, iy
 
     x_points = greville_abscissae(knots_x, 2)
@@ -76,6 +87,63 @@ program test_bspline_h1_sparse_assembly
         "Sparse isogeometric stiffness gives exact affine-field energy")
     call check_condition(abs(sum(product)) < 3.0e-13_dp, &
         "Spline stiffness annihilates constants in the weak form")
+
+    allocate (control_points_dot, mold=control_points)
+    allocate (weights_dot, mold=weights)
+    control_points_dot = reshape([ &
+        (sin(real(5*ix + 1, dp)), ix=1, size(control_points_dot))], &
+        shape(control_points_dot))
+    weights_dot = reshape([ &
+        (0.1_dp*cos(real(7*ix - 2, dp)), ix=1, size(weights_dot))], &
+        shape(weights_dot))
+    call assemble_bspline_h1_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 4, &
+        sensitivity_matrix, sparse_status, stiffness_coefficient=0.7_dp, &
+        mass_coefficient=0.3_dp)
+    call assemble_bspline_h1_operator_csc_jvp( &
+        knots_x, knots_y, 2, 2, control_points, weights, &
+        control_points_dot, weights_dot, 4, sensitivity_dot, sparse_status, &
+        stiffness_coefficient=0.7_dp, mass_coefficient=0.3_dp)
+    allocate (control_points_plus, mold=control_points)
+    allocate (control_points_minus, mold=control_points)
+    allocate (weights_plus, mold=weights)
+    allocate (weights_minus, mold=weights)
+    control_points_plus = &
+        control_points + sensitivity_step*control_points_dot
+    control_points_minus = &
+        control_points - sensitivity_step*control_points_dot
+    weights_plus = weights + sensitivity_step*weights_dot
+    weights_minus = weights - sensitivity_step*weights_dot
+    call assemble_bspline_h1_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points_plus, weights_plus, 4, &
+        sensitivity_plus, sparse_status, stiffness_coefficient=0.7_dp, &
+        mass_coefficient=0.3_dp)
+    call assemble_bspline_h1_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points_minus, weights_minus, 4, &
+        sensitivity_minus, sparse_status, stiffness_coefficient=0.7_dp, &
+        mass_coefficient=0.3_dp)
+    call check_condition( &
+        all(sensitivity_dot%col_ptr == sensitivity_matrix%col_ptr) .and. &
+        all(sensitivity_dot%row_idx == sensitivity_matrix%row_idx) .and. &
+        maxval(abs(sensitivity_dot%val - &
+        (sensitivity_plus%val - sensitivity_minus%val)/(2.0_dp* &
+        sensitivity_step))) < 2.0e-9_dp, &
+        "Isogeometric H1 assembly JVP matches a central difference")
+
+    sensitivity_bar = sensitivity_matrix
+    sensitivity_bar%val = [ &
+        (sin(real(3*ix + 2, dp)), ix=1, sensitivity_bar%nnz)]
+    allocate (control_points_bar, mold=control_points)
+    allocate (weights_bar, mold=weights)
+    call assemble_bspline_h1_operator_csc_vjp( &
+        knots_x, knots_y, 2, 2, control_points, weights, 4, sensitivity_bar, &
+        control_points_bar, weights_bar, sparse_status, &
+        stiffness_coefficient=0.7_dp, mass_coefficient=0.3_dp)
+    adjoint_left = dot_product(sensitivity_bar%val, sensitivity_dot%val)
+    adjoint_right = sum(control_points_bar*control_points_dot) + &
+        sum(weights_bar*weights_dot)
+    call check_condition(abs(adjoint_left - adjoint_right) < 4.0e-11_dp, &
+        "Isogeometric H1 assembly JVP and VJP satisfy the adjoint identity")
 
     call assemble_bspline_h1_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 6, &
