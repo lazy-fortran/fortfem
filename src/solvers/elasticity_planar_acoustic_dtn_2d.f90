@@ -21,7 +21,8 @@ contains
             angular_frequency, sound_speed, fluid_density, period, &
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, &
-            dirichlet_values, solution, status)
+            dirichlet_values, solution, status, absorbing_edges, &
+            absorbing_normals)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -34,14 +35,30 @@ contains
         complex(dp), intent(in) :: dirichlet_values(:)
         complex(dp), intent(out) :: solution(:)
         integer, intent(out) :: status
+        integer, intent(in), optional :: absorbing_edges(:, :)
+        real(dp), intent(in), optional :: absorbing_normals(:, :)
 
-        call solve_elasticity_planar_acoustic_dtn_p1_complex( &
-            vertices, triangles, interface_nodes, interface_normals, &
-            angular_frequency, cmplx(sound_speed, 0.0_dp, dp), &
-            fluid_density, period, maximum_mode, &
-            cmplx(young_modulus, 0.0_dp, dp), poisson_ratio, solid_density, &
-            volume_load, incident_pressure, dirichlet_dofs, &
-            dirichlet_values, solution, status)
+        if (present(absorbing_edges) .neqv. present(absorbing_normals)) then
+            solution = cmplx(0.0_dp, 0.0_dp, dp)
+            status = 1
+        else if (present(absorbing_edges)) then
+            call solve_elasticity_planar_acoustic_dtn_p1_complex( &
+                vertices, triangles, interface_nodes, interface_normals, &
+                angular_frequency, cmplx(sound_speed, 0.0_dp, dp), &
+                fluid_density, period, maximum_mode, &
+                cmplx(young_modulus, 0.0_dp, dp), poisson_ratio, &
+                solid_density, volume_load, incident_pressure, &
+                dirichlet_dofs, dirichlet_values, solution, status, &
+                absorbing_edges, absorbing_normals)
+        else
+            call solve_elasticity_planar_acoustic_dtn_p1_complex( &
+                vertices, triangles, interface_nodes, interface_normals, &
+                angular_frequency, cmplx(sound_speed, 0.0_dp, dp), &
+                fluid_density, period, maximum_mode, &
+                cmplx(young_modulus, 0.0_dp, dp), poisson_ratio, &
+                solid_density, volume_load, incident_pressure, &
+                dirichlet_dofs, dirichlet_values, solution, status)
+        end if
     end subroutine solve_elasticity_planar_acoustic_dtn_p1_real
 
     subroutine solve_elasticity_planar_acoustic_dtn_p1_complex( &
@@ -49,7 +66,8 @@ contains
             angular_frequency, sound_speed, fluid_density, period, &
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, &
-            dirichlet_values, solution, status)
+            dirichlet_values, solution, status, absorbing_edges, &
+            absorbing_normals)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -64,6 +82,8 @@ contains
         complex(dp), intent(in) :: dirichlet_values(:)
         complex(dp), intent(out) :: solution(:)
         integer, intent(out) :: status
+        integer, intent(in), optional :: absorbing_edges(:, :)
+        real(dp), intent(in), optional :: absorbing_normals(:, :)
 
         type(csc_z_t) :: sparse_matrix
         type(fortsparse_status_t) :: sparse_status
@@ -82,6 +102,10 @@ contains
         allocate(matrix(dof_count, dof_count), rhs(dof_count))
         call assemble_elastic_volume_matrix(matrix, status)
         if (status /= 0) return
+        if (present(absorbing_edges)) then
+            call assemble_absorbing_boundary(matrix, status)
+            if (status /= 0) return
+        end if
         allocate(fluid_form(size(interface_nodes), size(interface_nodes)))
         call assemble_planar_acoustic_displacement_dtn_form( &
             size(interface_nodes), angular_frequency, sound_speed, &
@@ -155,6 +179,16 @@ contains
             if (size(volume_load) /= dof_count .or. &
                 size(solution) /= dof_count) return
             if (size(dirichlet_dofs) /= size(dirichlet_values)) return
+            if (present(absorbing_edges) .neqv. &
+                present(absorbing_normals)) return
+            if (present(absorbing_edges)) then
+                if (size(absorbing_edges, 1) /= 2 .or. &
+                    size(absorbing_normals, 1) /= 2) return
+                if (size(absorbing_edges, 2) /= &
+                    size(absorbing_normals, 2)) return
+                if (any(absorbing_edges < 1) .or. &
+                    any(absorbing_edges > vertex_count)) return
+            end if
             if (angular_frequency <= 0.0_dp .or. abs(sound_speed) <= 0.0_dp .or. &
                 fluid_density <= 0.0_dp .or. solid_density <= 0.0_dp) return
             if (period <= 0.0_dp .or. abs(young_modulus) <= 0.0_dp) return
@@ -167,6 +201,76 @@ contains
                 any(dirichlet_dofs > dof_count)) return
             valid_inputs = .true.
         end function valid_inputs
+
+        subroutine assemble_absorbing_boundary( &
+                volume_matrix, operator_status)
+            complex(dp), intent(inout) :: volume_matrix(:, :)
+            integer, intent(out) :: operator_status
+
+            complex(dp) :: lambda, mu, p_impedance, s_impedance
+            complex(dp) :: coefficient(2, 2), local(4, 4)
+            real(dp) :: edge_mass(2, 2), length, normal(2)
+            integer :: component, edge, first, first_dof, first_node
+            integer :: other_component, second, second_dof, second_node
+
+            operator_status = 1
+            mu = young_modulus/(2.0_dp*(1.0_dp + poisson_ratio))
+            lambda = young_modulus*poisson_ratio/( &
+                (1.0_dp + poisson_ratio)*(1.0_dp - 2.0_dp*poisson_ratio))
+            p_impedance = sqrt((lambda + 2.0_dp*mu)*solid_density)
+            s_impedance = sqrt(mu*solid_density)
+            do edge = 1, size(absorbing_edges, 2)
+                first_node = absorbing_edges(1, edge)
+                second_node = absorbing_edges(2, edge)
+                length = norm2(vertices(:, second_node) - &
+                    vertices(:, first_node))
+                normal = absorbing_normals(:, edge)
+                if (length <= tiny(1.0_dp) .or. &
+                    abs(norm2(normal) - 1.0_dp) > 1.0e-10_dp) return
+                edge_mass = length/6.0_dp*reshape( &
+                    [2.0_dp, 1.0_dp, 1.0_dp, 2.0_dp], [2, 2])
+                coefficient = cmplx(0.0_dp, 0.0_dp, dp)
+                do component = 1, 2
+                    coefficient(component, component) = &
+                        cmplx(real(s_impedance, dp), 0.0_dp, dp)
+                end do
+                do first = 1, 2
+                    do second = 1, 2
+                        coefficient(first, second) = &
+                            coefficient(first, second) + &
+                            (real(p_impedance, dp) - &
+                            real(s_impedance, dp))*normal(first)*normal(second)
+                    end do
+                end do
+                local = cmplx(0.0_dp, 0.0_dp, dp)
+                do first = 1, 2
+                    do second = 1, 2
+                        local(2*first - 1:2*first, &
+                            2*second - 1:2*second) = &
+                            cmplx(0.0_dp, angular_frequency* &
+                            edge_mass(first, second), dp)*coefficient
+                    end do
+                end do
+                do first = 1, 2
+                    first_node = absorbing_edges(first, edge)
+                    do second = 1, 2
+                        second_node = absorbing_edges(second, edge)
+                        do component = 1, 2
+                            first_dof = 2*first_node - 2 + component
+                            do other_component = 1, 2
+                                second_dof = 2*second_node - 2 + &
+                                    other_component
+                                volume_matrix(first_dof, second_dof) = &
+                                    volume_matrix(first_dof, second_dof) + &
+                                    local(2*first - 2 + component, &
+                                    2*second - 2 + other_component)
+                            end do
+                        end do
+                    end do
+                end do
+            end do
+            operator_status = 0
+        end subroutine assemble_absorbing_boundary
 
         subroutine assemble_elastic_volume_matrix( &
                 volume_matrix, operator_status)
