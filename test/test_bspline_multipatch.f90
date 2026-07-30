@@ -3,8 +3,10 @@ program test_bspline_multipatch
     use fortfem_api, only: &
         BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
         build_bspline_feec_2d_interface_dofs, &
-        build_bspline_feec_2d_operators
+        build_bspline_feec_2d_operators, &
+        build_bspline_feec_2d_two_patch_operators_csc
     use fortfem_kinds, only: dp
+    use fortsparse, only: csc_matmul, csc_t, fortsparse_status_t
     implicit none
 
     integer, allocatable :: h1_left(:), h1_right(:)
@@ -15,10 +17,14 @@ program test_bspline_multipatch
     real(dp), allocatable :: trace_gradient_left(:), trace_gradient_right(:)
     real(dp), parameter :: knots_long(8) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.3_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
+    real(dp), parameter :: knots_long_incompatible(8) = [ &
+        0.0_dp, 0.0_dp, 0.0_dp, 0.25_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     real(dp), parameter :: knots_short(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     real(dp) :: trace_values(5)
     integer :: status
+    type(csc_t) :: global_curl, global_gradient, zero
+    type(fortsparse_status_t) :: sparse_status
 
     call build_bspline_feec_2d_interface_dofs( &
         5, 4, 5, 4, BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, .false., &
@@ -60,6 +66,26 @@ program test_bspline_multipatch
         trace_gradient_right(hcurl_right) - &
         real(hcurl_sign, dp)*trace_gradient_left(hcurl_left))) < 2.0e-14_dp, &
         "Multipatch orientation makes the discrete trace gradient commute")
+
+    call build_bspline_feec_2d_two_patch_operators_csc( &
+        knots_long, knots_short, 2, 2, knots_short, knots_long, 2, 2, &
+        BSPLINE_FACE_Y_MAX, BSPLINE_FACE_X_MIN, .true., global_gradient, &
+        global_curl, sparse_status)
+    call check_condition(sparse_status%code == 0 .and. &
+        global_gradient%nrow == 58 .and. global_gradient%ncol == 35 .and. &
+        global_curl%nrow == 24 .and. global_curl%ncol == 58, &
+        "Two-patch quotient complex has the conforming global dimensions")
+    call csc_matmul(global_curl, global_gradient, zero, sparse_status)
+    call check_condition(sparse_status%code == 0 .and. &
+        (zero%nnz == 0 .or. maxval(abs(zero%val)) < 2.0e-14_dp), &
+        "Global multipatch spline complex preserves curl(grad)=0")
+
+    call build_bspline_feec_2d_two_patch_operators_csc( &
+        knots_long, knots_short, 2, 2, knots_short, &
+        knots_long_incompatible, 2, 2, BSPLINE_FACE_Y_MAX, &
+        BSPLINE_FACE_X_MIN, .true., global_gradient, global_curl, sparse_status)
+    call check_condition(sparse_status%code /= 0, &
+        "Global multipatch assembly rejects incompatible trace knot spaces")
 
     call build_bspline_feec_2d_interface_dofs( &
         5, 4, 5, 5, BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, .false., &
