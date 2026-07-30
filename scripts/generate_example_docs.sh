@@ -1,375 +1,170 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🔨 Generating example documentation pages..."
-echo "Current directory: $(pwd)"
-echo "Available directories:"
-ls -la
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repository_dir=$(cd "$script_dir/.." && pwd)
+example_dir="$repository_dir/example"
+doc_examples_dir="$repository_dir/doc/examples"
+generated_dir="$doc_examples_dir/generated"
+artifacts_dir="$repository_dir/artifacts/plots/examples"
 
-# Directories
-EXAMPLE_DIR="example"
-DOC_EXAMPLES_DIR="doc/examples"
-ARTIFACTS_DIR="artifacts/plots"
-OUTPUT_DIR="$DOC_EXAMPLES_DIR/generated"
+mkdir -p "$generated_dir"
 
-# Create output directory
-mkdir -p "$OUTPUT_DIR"
-
-# Create index.md for the generated subdirectory
-cat > "$OUTPUT_DIR/index.md" << 'EOF'
----
-title: Example Source Code
----
-
-# Example Source Code and Plots
-
-This section contains detailed documentation for each FortFEM example, including:
-- Complete source code listings
-- Generated plots and visualizations
-- Usage instructions
-
-[← Back to Examples](../index.html)
-EOF
-
-# Initialize the examples index page
-cat > "$DOC_EXAMPLES_DIR/index.md" << 'EOF'
----
-title: Examples
----
-
-# FortFEM Examples
-
-This page provides an overview of the example programs included with FortFEM, complete with source code listings and generated plots.
-
-## Running Examples
-
-To run any example:
-```bash
-fpm run --example <example_name>
-```
-
-To list all available examples:
-```bash
-fpm run --example --list
-```
-
-## Available Examples
-
-EOF
-
-# Process each example directory
-example_count=0
-for example_dir in "$EXAMPLE_DIR"/*/; do
-    echo "🔍 Checking directory: $example_dir"
-    if [[ ! -d "$example_dir" ]]; then
-        echo "No example directories found in $EXAMPLE_DIR"
-        continue
-    fi
-    
-    example_name=$(basename "$example_dir")
-    example_file="$example_dir/${example_name}.f90"
-    example_readme="$example_dir/README.md"
-    
-    echo "🔍 Looking for: $example_file"
-    if [[ ! -f "$example_file" ]]; then
-        echo "⚠️  No ${example_name}.f90 found in $example_dir, skipping..."
-        continue
-    fi
-    
-    echo "📄 Processing example: $example_name"
-    
-    # Create individual example page
-    example_doc="$OUTPUT_DIR/${example_name}.md"
-    
-    # Start building the example page
-    cat > "$example_doc" << EOF
----
-title: $example_name Example
----
-
-# $example_name Example
-
-EOF
-    
-    # Add README content if it exists
-    if [[ -f "$example_readme" ]]; then
-        echo "📖 Adding README for $example_name"
-        cat "$example_readme" >> "$example_doc"
-        echo "" >> "$example_doc"
-    else
-        # Generate basic description from program comment if available
-        first_comment=$(grep -m 1 "^[[:space:]]*!" "$example_file" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' 2>/dev/null || echo "")
-        if [[ -n "$first_comment" ]]; then
-            echo "$first_comment" >> "$example_doc"
-            echo "" >> "$example_doc"
-        fi
-    fi
-    
-    # Add usage section
-    cat >> "$example_doc" << EOF
-## Usage
-
-\`\`\`bash
-fpm run --example $example_name
-\`\`\`
-
-## Source Code
-
-\`\`\`fortran
-EOF
-    
-    # Add source code with line numbers
-    cat "$example_file" >> "$example_doc"
-    
-    cat >> "$example_doc" << EOF
-\`\`\`
-
-## Generated Plots
-
-EOF
-    
-    # Find and add related plots
-    plot_found=false
-    unset added_plots
-    declare -A added_plots  # Track which plots have been added
-    
-    if [[ -d "$ARTIFACTS_DIR" ]]; then
-        echo "🖼️  Looking for plots in $ARTIFACTS_DIR for $example_name"
-        
-        # Prefer the producer-preserving artifact layout emitted by CI.
-        for plot_pattern in "*.png"; do
-            for plot_file in "$ARTIFACTS_DIR/examples/$example_name"/$plot_pattern; do
-                if [[ -f "$plot_file" ]]; then
-                    plot_name=$(basename "$plot_file")
-                    
-                    # Skip if already added
-                    if [[ -n "${added_plots[$plot_name]}" ]]; then
-                        continue
-                    fi
-                    added_plots[$plot_name]=1
-                    
-                    rel_plot_path="../../media/examples/$example_name/$plot_name"
-                    echo "  Found plot: $plot_name"
-                    
-                    cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                    plot_found=true
-                fi
-            done
-        done
-        
-        # Also look for generic patterns based on example type
-        case "$example_name" in
-            plot_mesh)
-                # For plot_mesh example, include all mesh plots
-                for plot_file in "$ARTIFACTS_DIR"/mesh*.png; do
-                    if [[ -f "$plot_file" ]]; then
-                        plot_name=$(basename "$plot_file")
-                        
-                        # Skip if already added
-                        if [[ -n "${added_plots[$plot_name]}" ]]; then
-                            continue
-                        fi
-                        added_plots[$plot_name]=1
-                        
-                        rel_plot_path="../../../artifacts/plots/$plot_name"
-                        echo "  Found related plot: $plot_name"
-                        
-                        cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                        plot_found=true
-                    fi
-                done
-                ;;
-            *plotting*)
-                # For the plotting example, include all demonstration plots
-                for plot_file in "$ARTIFACTS_DIR"/solution_*.png "$ARTIFACTS_DIR"/test_mesh*.png; do
-                    if [[ -f "$plot_file" ]]; then
-                        plot_name=$(basename "$plot_file")
-                        
-                        # Skip if already added
-                        if [[ -n "${added_plots[$plot_name]}" ]]; then
-                            continue
-                        fi
-                        added_plots[$plot_name]=1
-                        
-                        rel_plot_path="../../../artifacts/plots/$plot_name"
-                        echo "  Found related plot: $plot_name"
-                        
-                        cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                        plot_found=true
-                    fi
-                done
-                ;;
-            *poisson*)
-                for plot_file in "$ARTIFACTS_DIR"/poisson*.png "$ARTIFACTS_DIR"/mesh*.png; do
-                    if [[ -f "$plot_file" ]]; then
-                        plot_name=$(basename "$plot_file")
-                        
-                        # Skip if already added
-                        if [[ -n "${added_plots[$plot_name]}" ]]; then
-                            continue
-                        fi
-                        added_plots[$plot_name]=1
-                        
-                        rel_plot_path="../../../artifacts/plots/$plot_name"
-                        echo "  Found related plot: $plot_name"
-                        
-                        cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                        plot_found=true
-                    fi
-                done
-                ;;
-            *curl*)
-                for plot_file in "$ARTIFACTS_DIR"/curl*.png "$ARTIFACTS_DIR"/curlcurl*.png; do
-                    if [[ -f "$plot_file" ]]; then
-                        plot_name=$(basename "$plot_file")
-                        
-                        # Skip if already added
-                        if [[ -n "${added_plots[$plot_name]}" ]]; then
-                            continue
-                        fi
-                        added_plots[$plot_name]=1
-                        
-                        rel_plot_path="../../../artifacts/plots/$plot_name"
-                        echo "  Found related plot: $plot_name"
-                        
-                        cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                        plot_found=true
-                    fi
-                done
-                ;;
-            *mesh*)
-                for plot_file in "$ARTIFACTS_DIR"/mesh*.png; do
-                    if [[ -f "$plot_file" ]]; then
-                        plot_name=$(basename "$plot_file")
-                        
-                        # Skip if already added
-                        if [[ -n "${added_plots[$plot_name]}" ]]; then
-                            continue
-                        fi
-                        added_plots[$plot_name]=1
-                        
-                        rel_plot_path="../../../artifacts/plots/$plot_name"
-                        echo "  Found related plot: $plot_name"
-                        
-                        cat >> "$example_doc" << EOF
-### $plot_name
-
-![${plot_name}](${rel_plot_path})
-
-EOF
-                        plot_found=true
-                    fi
-                done
-                ;;
-        esac
-    fi
-    
-    if [[ "$plot_found" == false ]]; then
-        echo "  No plots found for $example_name"
-        cat >> "$example_doc" << EOF
-*No plots available for this example.*
-
-EOF
-    fi
-    
-    # Add footer
-    cat >> "$example_doc" << EOF
-
----
-
-[← Back to Examples](../index.html) | [FortFEM Documentation](../../index.html)
-EOF
-    
-    # Add to examples index
-    echo "  Adding to index..."
-    example_description=$(head -n 20 "$example_file" 2>/dev/null | grep -m 1 "^[[:space:]]*!" 2>/dev/null | sed 's/^[[:space:]]*![[:space:]]*//' 2>/dev/null || echo "Example program")
-    cat >> "$DOC_EXAMPLES_DIR/index.md" << EOF
-- [$example_name](generated/${example_name}.html) - $example_description
-EOF
-    
-    # Also add to generated subdirectory index
-    cat >> "$OUTPUT_DIR/index.md" << EOF
-- [$example_name](${example_name}.html) - $example_description
-EOF
-    
-    echo "  ✅ Completed processing $example_name"
-    example_count=$((example_count + 1))
-    echo "🔍 Moving to next example..."
-done
-
-echo "🔍 Loop completed. Found $example_count examples total."
-
-echo "📝 Processing complete, finalizing index..."
-
-# Complete the examples index
-echo "📝 Adding final sections to index file..."
-cat >> "$DOC_EXAMPLES_DIR/index.md" << 'EOF'
-
-## Creating Your Own Examples
-
-To create a new example:
-
-1. Create a new file in `example/` directory
-2. Follow the minimal FEniCS-style pattern
-3. Optionally create a `<example_name>_README.md` file for detailed documentation
-
-## Visualization
-
-FortFEM provides built-in plotting via fortplotlib:
-
-```fortran
-! Scalar field plotting
-call plot(uh, filename="solution.png", plot_title="Poisson Solution", colormap="viridis")
-
-! Vector field plotting  
-call plot(Eh, filename="field.png", plot_type="streamplot", plot_title="E Field")
-
-! Mesh plotting
-call plot(mesh, filename="mesh.png", plot_title="FEM Mesh")
-```
-
-Available colormaps: `viridis`, `plasma`, `jet`, `coolwarm`, `hot`, `gray`
-
----
-
-[← Back to Documentation](../index.html)
-EOF
-
-echo "✅ Generated documentation for $example_count examples"
-
-# Copy plots to documentation directory for FORD
-if [[ -d "$ARTIFACTS_DIR" ]]; then
-    echo "📁 Copying plots to documentation directory..."
-    mkdir -p build/doc/artifacts/plots || true
-    cp -r "$ARTIFACTS_DIR"/* build/doc/artifacts/plots/ 2>/dev/null || true
-    echo "✅ Plots copied to build/doc/artifacts/plots/"
-else
-    echo "📁 No artifacts directory found, skipping plot copy"
+mapfile -t example_sources < <(
+    find "$example_dir" -mindepth 1 -maxdepth 2 \
+        -type f -name '*.f90' -print |
+        sort
+)
+if [[ "${#example_sources[@]}" -eq 0 ]]; then
+    echo "no Fortran examples found under $example_dir" >&2
+    exit 1
 fi
 
-echo "🎉 Example documentation generation complete!"
+declare -A source_for_name
+for source in "${example_sources[@]}"; do
+    example_name=$(basename "$source" .f90)
+    if [[ -n "${source_for_name[$example_name]:-}" ]]; then
+        echo "duplicate example target name: $example_name" >&2
+        exit 1
+    fi
+    source_for_name[$example_name]=$source
+done
+
+mapfile -t example_names < <(printf '%s\n' "${!source_for_name[@]}" | sort)
+
+description_for()
+{
+    local source=$1
+    local readme=$2
+    local description
+
+    description=$(sed -n \
+        '/^[[:space:]]*!/ { s/^[[:space:]]*!\+[[:space:]]*//; /^[[:space:]]*$/d; p; q; }' \
+        "$source")
+    if [[ -z "$description" && -f "$readme" ]]; then
+        description=$(awk '
+            /^---$/ { in_frontmatter = !in_frontmatter; next }
+            in_frontmatter || /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+            { print; exit }
+        ' "$readme")
+    fi
+    if [[ -z "$description" ]]; then
+        description="Executable FortFEM ${source##*/} example."
+    fi
+    printf '%s' "$description"
+}
+
+{
+    printf '%s\n' \
+        '---' \
+        'title: Example Source Code' \
+        '---' \
+        '' \
+        '# Example Source Code and Plots' \
+        '' \
+        'Every executable example shipped with FortFEM is listed here.' \
+        'Pages contain the complete source, usage command, and generated plots.' \
+        ''
+} > "$generated_dir/index.md"
+
+{
+    printf '%s\n' \
+        '---' \
+        'title: Examples' \
+        '---' \
+        '' \
+        '# FortFEM Examples' \
+        '' \
+        'This gallery covers every Fortran program under `example/`.' \
+        'Plots are generated by GitHub Actions and are not stored in the source tree.' \
+        '' \
+        '## Running Examples' \
+        '' \
+        '```bash' \
+        'fpm run --example <example_name>' \
+        '```' \
+        '' \
+        '## Available Examples' \
+        ''
+} > "$doc_examples_dir/index.md"
+
+for example_name in "${example_names[@]}"; do
+    source=${source_for_name[$example_name]}
+    source_directory=$(dirname "$source")
+    readme="$source_directory/README.md"
+    if [[ "$source_directory" == "$example_dir" ]]; then
+        readme="$example_dir/${example_name}_README.md"
+    fi
+    description=$(description_for "$source" "$readme")
+    page="$generated_dir/$example_name.md"
+
+    {
+        printf '%s\n' \
+            '---' \
+            "title: $example_name Example" \
+            '---' \
+            '' \
+            "# $example_name Example" \
+            ''
+        if [[ -f "$readme" ]]; then
+            cat "$readme"
+            printf '\n'
+        else
+            printf '%s\n\n' "$description"
+        fi
+        printf '%s\n' \
+            '## Usage' \
+            '' \
+            '```bash' \
+            "fpm run --example $example_name" \
+            '```' \
+            '' \
+            '## Source Code' \
+            '' \
+            '```fortran'
+        cat "$source"
+        printf '%s\n' \
+            '```' \
+            '' \
+            '## Generated Plots' \
+            ''
+
+        plot_count=0
+        if [[ -d "$artifacts_dir/$example_name" ]]; then
+            while IFS= read -r plot; do
+                plot_name=$(basename "$plot")
+                printf '%s\n' \
+                    "### $plot_name" \
+                    '' \
+                    "![$plot_name](../../media/examples/$example_name/$plot_name)" \
+                    ''
+                plot_count=$((plot_count + 1))
+            done < <(
+                find "$artifacts_dir/$example_name" -maxdepth 1 \
+                    -type f -name '*.png' -print |
+                    sort
+            )
+        fi
+        if [[ "$plot_count" -eq 0 ]]; then
+            printf '%s\n\n' '*No plot artifact is produced by this example.*'
+        fi
+        printf '%s\n' \
+            '---' \
+            '' \
+            '[← Back to all examples](../index.html)'
+    } > "$page"
+
+    printf -- '- [%s](generated/%s.html) - %s\n' \
+        "$example_name" "$example_name" "$description" \
+        >> "$doc_examples_dir/index.md"
+    printf -- '- [%s](%s.html) - %s\n' \
+        "$example_name" "$example_name" "$description" \
+        >> "$generated_dir/index.md"
+done
+
+printf '\n[← Back to FortFEM documentation](../index.html)\n' \
+    >> "$doc_examples_dir/index.md"
+printf '\n[← Back to examples](../index.html)\n' \
+    >> "$generated_dir/index.md"
+
+echo "generated documentation for ${#example_names[@]} executable examples"

@@ -1,0 +1,21 @@
+/* Keep deeply nested page trees from turning the FORD sidebar into a second
+ * copy of large generated galleries. The gallery itself remains the complete
+ * navigation surface for individual examples. */
+#sidebar-toc nav.nav nav.nav nav.nav {
+    display: none;
+}
+
+#sidebar-toc .nav-link,
+#text a {
+    overflow-wrap: anywhere;
+}
+
+#text {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    #sidebar-toc {
+        display: none;
+    }
+}

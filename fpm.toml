@@ -47,6 +47,7 @@ proc_internals = true
 sort = "permission-alpha"
 print_creation_date = true
 creation_date = "%Y-%m-%d %H:%M %z"
+css = "doc/fortfem.css"
 md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markdown.extensions.fenced_code", "markdown.extensions.codehilite"]
 
 [dependencies]

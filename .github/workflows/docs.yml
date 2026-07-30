@@ -82,6 +82,7 @@ jobs:
         run: |
           chmod +x scripts/generate_example_docs.sh
           ./scripts/generate_example_docs.sh
+          bash test/test_example_docs.sh
         
       - name: Build documentation
         run: make doc
@@ -102,6 +103,9 @@ jobs:
             test -s "build/doc/page/media/examples/$relative"
             test -s "build/doc/media/examples/$relative"
           done < <(find "$source_dir" -type f)
+
+      - name: Validate complete examples page
+        run: bash test/test_example_pages.sh
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
