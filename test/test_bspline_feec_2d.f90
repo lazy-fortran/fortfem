@@ -4,7 +4,8 @@ program test_bspline_feec_2d
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
         build_bspline_feec_3d_operators_csc, &
-        evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
+        evaluate_nurbs_surface_geometry, evaluate_nurbs_surface_geometry_jvp, &
+        evaluate_nurbs_surface_geometry_vjp, map_isogeometric_h1_gradient, &
         evaluate_nurbs_volume_geometry, map_isogeometric_hcurl, &
         map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_kinds, only: dp
@@ -22,9 +23,21 @@ program test_bspline_feec_2d
     real(dp), allocatable :: gradient_3d(:, :)
     real(dp), allocatable :: cell_values(:), edge_values(:), face_values(:)
     real(dp), allocatable :: control_points(:, :, :), nurbs_weights(:, :)
+    real(dp), allocatable :: control_points_bar(:, :, :)
+    real(dp), allocatable :: control_points_dot(:, :, :)
+    real(dp), allocatable :: control_points_minus(:, :, :)
+    real(dp), allocatable :: control_points_plus(:, :, :)
+    real(dp), allocatable :: nurbs_weights_bar(:, :)
+    real(dp), allocatable :: nurbs_weights_dot(:, :)
+    real(dp), allocatable :: nurbs_weights_minus(:, :)
+    real(dp), allocatable :: nurbs_weights_plus(:, :)
     real(dp), allocatable :: volume_controls(:, :, :, :)
     real(dp), allocatable :: volume_weights(:, :, :)
     real(dp) :: jacobian(3, 2), mapped_point(3)
+    real(dp) :: jacobian_bar(3, 2), jacobian_dot(3, 2)
+    real(dp) :: jacobian_minus(3, 2), jacobian_plus(3, 2)
+    real(dp) :: mapped_point_bar(3), mapped_point_dot(3)
+    real(dp) :: mapped_point_minus(3), mapped_point_plus(3)
     real(dp), allocatable :: mapped_hcurl(:, :), mapped_hdiv(:, :)
     real(dp), allocatable :: mapped_gradient(:, :), mapped_l2(:)
     real(dp) :: affine_jacobian(2, 2), determinant
@@ -32,7 +45,8 @@ program test_bspline_feec_2d
     real(dp) :: volume_jacobian(3, 3), volume_point(3)
     type(csc_t) :: sparse_curl, sparse_divergence, sparse_gradient
     type(fortsparse_status_t) :: sparse_status
-    real(dp) :: points(5), reproduced, x
+    real(dp), parameter :: differentiation_step = 1.0e-6_dp
+    real(dp) :: adjoint_left, adjoint_right, points(5), reproduced, x
     integer :: i, status
 
     points = [0.0_dp, 0.13_dp, 0.35_dp, 0.82_dp, 1.0_dp]
@@ -113,6 +127,58 @@ program test_bspline_feec_2d
     call check_condition(maxval(abs(jacobian - reshape([ &
         3.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 2.0_dp, -1.0_dp], [3, 2]))) < &
         3.0e-13_dp, "NURBS geometry returns the analytical Jacobian")
+
+    allocate (control_points_dot, mold=control_points)
+    allocate (nurbs_weights_dot, mold=nurbs_weights)
+    control_points_dot = reshape([ &
+        (sin(real(7*i + 1, dp)), i=1, size(control_points_dot))], &
+        shape(control_points_dot))
+    nurbs_weights_dot = reshape([ &
+        (0.1_dp*cos(real(5*i - 2, dp)), i=1, size(nurbs_weights_dot))], &
+        shape(nurbs_weights_dot))
+    call evaluate_nurbs_surface_geometry_jvp( &
+        knots_x, knots_y, 2, 2, control_points, nurbs_weights, &
+        control_points_dot, nurbs_weights_dot, 0.23_dp, 0.61_dp, &
+        mapped_point_dot, jacobian_dot, status)
+    allocate (control_points_plus, mold=control_points)
+    allocate (control_points_minus, mold=control_points)
+    allocate (nurbs_weights_plus, mold=nurbs_weights)
+    allocate (nurbs_weights_minus, mold=nurbs_weights)
+    control_points_plus = &
+        control_points + differentiation_step*control_points_dot
+    control_points_minus = &
+        control_points - differentiation_step*control_points_dot
+    nurbs_weights_plus = nurbs_weights + differentiation_step*nurbs_weights_dot
+    nurbs_weights_minus = &
+        nurbs_weights - differentiation_step*nurbs_weights_dot
+    call evaluate_nurbs_surface_geometry( &
+        knots_x, knots_y, 2, 2, control_points_plus, nurbs_weights_plus, &
+        0.23_dp, 0.61_dp, mapped_point_plus, jacobian_plus, status)
+    call evaluate_nurbs_surface_geometry( &
+        knots_x, knots_y, 2, 2, control_points_minus, nurbs_weights_minus, &
+        0.23_dp, 0.61_dp, mapped_point_minus, jacobian_minus, status)
+    call check_condition(maxval(abs(mapped_point_dot - &
+        (mapped_point_plus - mapped_point_minus)/(2.0_dp* &
+        differentiation_step))) < 3.0e-9_dp .and. &
+        maxval(abs(jacobian_dot - (jacobian_plus - jacobian_minus)/( &
+        2.0_dp*differentiation_step))) < 3.0e-9_dp, &
+        "NURBS geometry JVP matches an independent central difference")
+
+    mapped_point_bar = [0.7_dp, -0.2_dp, 0.5_dp]
+    jacobian_bar = reshape([ &
+        0.3_dp, -0.4_dp, 0.1_dp, 0.6_dp, -0.2_dp, 0.8_dp], [3, 2])
+    allocate (control_points_bar, mold=control_points)
+    allocate (nurbs_weights_bar, mold=nurbs_weights)
+    call evaluate_nurbs_surface_geometry_vjp( &
+        knots_x, knots_y, 2, 2, control_points, nurbs_weights, &
+        0.23_dp, 0.61_dp, mapped_point_bar, jacobian_bar, &
+        control_points_bar, nurbs_weights_bar, status)
+    adjoint_left = dot_product(mapped_point_bar, mapped_point_dot) + &
+        sum(jacobian_bar*jacobian_dot)
+    adjoint_right = sum(control_points_bar*control_points_dot) + &
+        sum(nurbs_weights_bar*nurbs_weights_dot)
+    call check_condition(abs(adjoint_left - adjoint_right) < 3.0e-12_dp, &
+        "NURBS geometry JVP and VJP satisfy the adjoint identity")
 
     affine_jacobian = reshape([2.0_dp, 0.25_dp, 0.5_dp, 1.5_dp], [2, 2])
     reference_vector(:, 1) = [1.0_dp, -0.5_dp]

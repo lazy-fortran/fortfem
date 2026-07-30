@@ -62,3 +62,8 @@ main = "gen_tetra_h1_oracle.f90"
 name = "gen_magnetic_curvilinear_coefficients"
 source-dir = "app"
 main = "gen_magnetic_curvilinear_coefficients.f90"
+
+[[executable]]
+name = "gen_nurbs_geometry_products"
+source-dir = "app"
+main = "gen_nurbs_geometry_products.f90"
