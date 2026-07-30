@@ -2,7 +2,8 @@ program test_bspline_feec_2d
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
-        build_bspline_feec_3d_operators, evaluate_bspline_basis
+        build_bspline_feec_3d_operators, evaluate_bspline_basis, &
+        evaluate_nurbs_surface_geometry
     use fortfem_kinds, only: dp
     implicit none
 
@@ -15,6 +16,8 @@ program test_bspline_feec_2d
     real(dp), allocatable :: gradient_matrix(:, :), coefficients(:)
     real(dp), allocatable :: curl_3d(:, :), divergence_3d(:, :)
     real(dp), allocatable :: gradient_3d(:, :)
+    real(dp), allocatable :: control_points(:, :, :), nurbs_weights(:, :)
+    real(dp) :: jacobian(3, 2), mapped_point(3)
     real(dp) :: points(5), reproduced, x
     integer :: i, status
 
@@ -70,6 +73,18 @@ program test_bspline_feec_2d
     call check_condition(maxval(abs(matmul(divergence_3d, curl_3d))) < &
         4.0e-14_dp, "3D isogeometric complex satisfies div curl equals zero")
 
+    call make_affine_control_net( &
+        knots_x, knots_y, 2, 2, control_points, nurbs_weights)
+    call evaluate_nurbs_surface_geometry( &
+        knots_x, knots_y, 2, 2, control_points, nurbs_weights, &
+        0.23_dp, 0.61_dp, mapped_point, jacobian, status)
+    call check_condition(status == 0 .and. maxval(abs(mapped_point - &
+        [2.69_dp, 0.22_dp, 0.12_dp])) < 4.0e-14_dp, &
+        "NURBS geometry reproduces an affine physical surface exactly")
+    call check_condition(maxval(abs(jacobian - reshape([ &
+        3.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 2.0_dp, -1.0_dp], [3, 2]))) < &
+        3.0e-13_dp, "NURBS geometry returns the analytical Jacobian")
+
     call check_summary("Structure-preserving B-spline FEEC")
 
 contains
@@ -85,5 +100,29 @@ contains
             points(basis) = sum(knots(basis + 1:basis + degree))/real(degree, dp)
         end do
     end function greville_abscissae
+
+    subroutine make_affine_control_net( &
+            knots_x_local, knots_y_local, degree_x, degree_y, points, weights)
+        real(dp), intent(in) :: knots_x_local(:), knots_y_local(:)
+        integer, intent(in) :: degree_x, degree_y
+        real(dp), allocatable, intent(out) :: points(:, :, :), weights(:, :)
+
+        real(dp), allocatable :: x_points(:), y_points(:)
+        integer :: ix, iy
+
+        x_points = greville_abscissae(knots_x_local, degree_x)
+        y_points = greville_abscissae(knots_y_local, degree_y)
+        allocate(points(3, size(x_points), size(y_points)))
+        allocate(weights(size(x_points), size(y_points)))
+        weights = 1.0_dp
+        do iy = 1, size(y_points)
+            do ix = 1, size(x_points)
+                points(:, ix, iy) = [ &
+                    2.0_dp + 3.0_dp*x_points(ix), &
+                    -1.0_dp + 2.0_dp*y_points(iy), &
+                    0.5_dp + x_points(ix) - y_points(iy)]
+            end do
+        end do
+    end subroutine make_affine_control_net
 
 end program test_bspline_feec_2d
