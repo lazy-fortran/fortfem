@@ -159,3 +159,10 @@ vertex coordinates and both material coefficients. A single analytical
 reverse quadrature sweep returns the corresponding vertex and coefficient
 cotangents, rather than requiring one forward sweep per design coordinate.
 This is the preferred element path for large moving-mesh design spaces.
+
+Complex tetrahedral Nedelec PML elements expose the same geometry products
+for all vertex coordinates, the complex Cartesian stretch, and wave number.
+They compose the FortSym-generated curl--curl PML coefficient JVP/VJP with
+the analytical Piola and quadrature products. Reverse mode returns real
+geometry and wave-number gradients together with complex stretch cotangents
+under the library's real-complex inner-product convention.
