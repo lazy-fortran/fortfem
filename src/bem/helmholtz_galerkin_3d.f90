@@ -15,6 +15,7 @@ module fortfem_helmholtz_galerkin_3d
         assemble_laplace_single_layer_p0_3d, &
         assemble_laplace_single_layer_p0_adaptive_3d
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
@@ -27,17 +28,6 @@ module fortfem_helmholtz_galerkin_3d
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -365,9 +355,8 @@ contains
         integer, intent(out) :: status
 
         complex(dp), allocatable :: double_layer(:, :), matrix(:, :)
-        complex(dp), allocatable :: right_hand_side(:, :)
+        complex(dp), allocatable :: right_hand_side(:)
         complex(dp), allocatable :: single_layer(:, :)
-        integer, allocatable :: pivots(:)
         real(dp) :: area
         integer :: element, info
 
@@ -384,21 +373,17 @@ contains
         matrix = double_layer - cmplx(0.0_dp, coupling, dp)*single_layer
         allocate( &
             density(size(triangles, 2)), &
-            right_hand_side(size(triangles, 2), 1), &
-            pivots(size(triangles, 2)))
+            right_hand_side(size(triangles, 2)))
         do element = 1, size(triangles, 2)
             area = triangle_area(vertices(:, triangles(:, element)))
             matrix(element, element) = matrix(element, element) + 0.5_dp*area
-            right_hand_side(element, 1) = boundary_value*area
+            right_hand_side(element) = boundary_value*area
         end do
-        call zgesv( &
-            size(triangles, 2), 1, matrix, size(triangles, 2), pivots, &
-            right_hand_side, size(triangles, 2), info)
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side(:, 1)
         status = 0
     end subroutine solve_helmholtz_cfie_p0_3d
 
@@ -517,8 +502,7 @@ contains
         complex(dp), allocatable, intent(out) :: density(:)
         integer, intent(out) :: status
 
-        complex(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
-        integer, allocatable :: pivots(:)
+        complex(dp), allocatable :: matrix(:, :), right_hand_side(:)
         integer :: element, info
 
         status = 1
@@ -528,20 +512,16 @@ contains
         if (status /= 0) return
         allocate( &
             density(size(triangles, 2)), &
-            right_hand_side(size(triangles, 2), 1), &
-            pivots(size(triangles, 2)))
+            right_hand_side(size(triangles, 2)))
         do element = 1, size(triangles, 2)
-            right_hand_side(element, 1) = boundary_value*triangle_area( &
+            right_hand_side(element) = boundary_value*triangle_area( &
                 vertices(:, triangles(:, element)))
         end do
-        call zgesv( &
-            size(triangles, 2), 1, matrix, size(triangles, 2), pivots, &
-            right_hand_side, size(triangles, 2), info)
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side(:, 1)
         status = 0
     end subroutine solve_helmholtz_dirichlet_p0_3d
 
