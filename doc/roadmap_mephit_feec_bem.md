@@ -35,7 +35,7 @@ The initial findings used the following evidence:
   [Grote and Keller](https://doi.org/10.1006/jcph.1995.1210) and the
   [Bempp boundary-operator documentation](https://bempp.com/handbook/api/boundary_operators.html).
 
-The current implementation baseline is FortFEM `8c7eb29` with 160 passing
+The current implementation baseline is FortFEM `663ca25` with 163 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -45,10 +45,10 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, and convergence tests | High-level arbitrary-order PDE dispatch and exhaustive mixed solves above RT1-DG1 |
-| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H(curl)/H(div) orientations; sparse curl/div assembly; commuting gradient and divergence tests; anisotropic lowest-order magnetic box solve | Global H1 topology, a directly assembled H(curl)-to-H(div) curl incidence operator, higher-order box convergence, and high-level dispatch |
+| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; and commuting grad/curl/div tests | Higher-order magnetic-box convergence and high-level PDE dispatch |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN and curved-boundary elastic coupling |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
-| 3D BEM | Laplace and Helmholtz representation evaluation on triangular surfaces, including sphere and torus analytical checks | Galerkin boundary operators, exterior solves, Maxwell traces, and FEM/BEM coupling |
+| 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals; Laplace P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; off-surface evaluation; and tetrahedral P1 Johnson-Nedelec FEM/BEM coupling with sphere capacitance, monopole, point-charge, and conservation oracles | Adaptive singular panel pairs, curved/higher-order traces, fast compression, Maxwell traces, and electromagnetic FEM/BEM coupling |
 | Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, and toroidal-coordinate kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
 | Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions; current `fortsparse` provides CSC construction, retained factors, solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
 
@@ -617,6 +617,15 @@ paper validation cases in item 6 remain.
 Exit gate: fast and dense operators agree to requested tolerance. Memory grows
 subquadratically on the benchmark sequence. Three-dimensional sphere
 scattering and magnetostatic transmission match analytical series.
+
+Item 4 is implemented for affine triangular surfaces. The dense reference
+path includes analytical Laplace self-panel integration, Helmholtz
+singularity subtraction, P0 single layers, mixed P1/P0 Laplace Calderon
+operators, a resonance-safe Helmholtz CFIE, and P1 tetrahedral/P0 surface
+Johnson-Nedelec coupling. Analytical tests cover sphere capacitance,
+outgoing monopoles including the first interior resonance, Calderon constant
+traces, hypersingular symmetry and nullspace, and unit point-charge flux
+conservation. Items 1--3 and 5 remain.
 
 ## Commit policy
 
