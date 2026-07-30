@@ -214,6 +214,7 @@ program test_bspline_polar_axis
             csc_matvec(physical_hcurl_mass, expected))) < 2.0e-11_dp, &
             "Physical polar grad energy commutes with the Hcurl Hodge map")
         polar_state = expected
+        call random_number(polar_state)
         expected = matmul(curl, polar_state)
         call check_condition(abs( &
             dot_product(polar_state, &

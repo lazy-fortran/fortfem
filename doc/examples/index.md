@@ -332,6 +332,17 @@ fpm run --example <example_name>
 <p>This example evaluates the real \(n=2,m=1\) toroidal harmonic</p>
 </div>
 </article>
+<article class="example-card" data-example="iga_polar_feec">
+<a class="example-card-preview" href="generated/iga_polar_feec.html">
+<img class="example-card-image"
+ src="../media/examples/iga_polar_feec/cover.svg"
+ alt="Plot preview for iga_polar_feec" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/iga_polar_feec.html">iga_polar_feec</a></h3>
+<p>This example constructs the Type-1 polar spline de Rham sequence</p>
+</div>
+</article>
 <article class="example-card" data-example="iga_jorek_flux">
 <a class="example-card-preview" href="generated/iga_jorek_flux.html">
 <img class="example-card-image"
@@ -384,6 +395,7 @@ fpm run --example <example_name>
 - [adaptive_helmholtz_bem_sphere](generated/adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
 - [magnetic_curvilinear_metrics](generated/magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](generated/toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
+- [iga_polar_feec](generated/iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence
 - [iga_jorek_flux](generated/iga_jorek_flux.html) - This advanced example evolves the ideal poloidal magnetic-flux subflow
 - [maxwell_torus_curved_scattering](generated/maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
 
