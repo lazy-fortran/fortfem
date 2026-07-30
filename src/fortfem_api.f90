@@ -46,7 +46,9 @@ module fortfem_api
     use fortfem_maxwell_efie_bc_3d, only: &
         assemble_maxwell_bc_potential_operators_3d, &
         assemble_maxwell_bc_scalar_potential_3d, &
-        assemble_maxwell_efie_bc_3d, build_maxwell_bc_panel_divergence, &
+        assemble_maxwell_efie_bc_3d, &
+        assemble_maxwell_efie_bc_imaginary_3d, &
+        build_maxwell_bc_panel_divergence, &
         build_maxwell_bc_to_refined_rwg
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
@@ -248,6 +250,7 @@ module fortfem_api
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
     public :: assemble_maxwell_efie_bc_3d
+    public :: assemble_maxwell_efie_bc_imaginary_3d
     public :: build_maxwell_bc_panel_divergence
     public :: build_maxwell_bc_to_refined_rwg
     public :: cartesian_to_toroidal
