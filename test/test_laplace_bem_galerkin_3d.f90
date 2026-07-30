@@ -8,6 +8,7 @@ program test_laplace_bem_galerkin_3d
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         generate_sphere_surface_mesh, &
+        solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_helmholtz_dirichlet_p0_3d, &
         solve_laplace_fem_bem_johnson_nedelec_3d, &
         solve_laplace_dirichlet_p0_3d
@@ -24,11 +25,13 @@ program test_laplace_bem_galerkin_3d
     complex(dp), allocatable :: helmholtz_dense(:, :)
     complex(dp), allocatable :: helmholtz_dense_action(:)
     complex(dp), allocatable :: helmholtz_fast_action(:)
+    complex(dp), allocatable :: hierarchical_density(:)
     integer, allocatable :: triangles(:, :)
     integer, allocatable :: tetrahedra(:, :)
-    complex(dp) :: exact_field, numerical_field
+    complex(dp) :: exact_field, hierarchical_field, numerical_field
     real(dp) :: capacities(0:2), errors(0:2)
-    integer :: interaction_count, level, status
+    real(dp) :: hierarchical_residual
+    integer :: hierarchical_iterations, interaction_count, level, status
     logical :: all_passed
 
     all_passed = .true.
@@ -115,6 +118,21 @@ program test_laplace_bem_galerkin_3d
     call solve_helmholtz_dirichlet_p0_3d( &
         vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), 0.7_dp, 8, &
         complex_density, status)
+    call solve_helmholtz_dirichlet_p0_hierarchical_3d( &
+        vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), 0.7_dp, &
+        0.3_dp, 6, 1.0e-10_dp, 80, 20, hierarchical_density, status, &
+        hierarchical_iterations, hierarchical_residual, interaction_count)
+    call record_condition(status == 0 .and. hierarchical_iterations > 0 .and. &
+        hierarchical_residual < 1.0e-8_dp, &
+        "FortNum GMRES solves the hierarchical Helmholtz boundary equation")
+    hierarchical_residual = &
+        norm2(abs(hierarchical_density - complex_density))/ &
+        norm2(abs(complex_density))
+    print '(a,es12.4)', &
+        "Hierarchical Helmholtz density relative difference: ", &
+        hierarchical_residual
+    call record_condition(hierarchical_residual < 8.0e-2_dp, &
+        "Hierarchical Helmholtz density agrees with dense Galerkin BEM")
     allocate(dirichlet(size(vertices, 2)))
     dirichlet = cmplx(0.0_dp, 0.0_dp, dp)
     call evaluate_helmholtz_representation_triangles_3d( &
@@ -124,6 +142,12 @@ program test_laplace_bem_galerkin_3d
     call record_condition(status == 0 .and. &
         abs(numerical_field - exact_field) < 6.0e-2_dp, &
         "Three-dimensional Helmholtz BEM matches an outgoing sphere mode")
+    call evaluate_helmholtz_representation_triangles_3d( &
+        vertices, triangles, dirichlet, -hierarchical_density, &
+        [0.0_dp, 0.0_dp, 2.0_dp], 0.7_dp, 8, hierarchical_field, status)
+    call record_condition(status == 0 .and. &
+        abs(hierarchical_field - exact_field) < 8.0e-2_dp, &
+        "Hierarchical Helmholtz solve matches the analytical outgoing sphere")
 
     call solve_helmholtz_cfie_p0_3d( &
         vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), acos(-1.0_dp), &
