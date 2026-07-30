@@ -14,8 +14,61 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
+    public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_vector_potential_rwg_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            tolerance, max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        complex(dp) :: contribution
+        integer :: first, first_panel, first_slot, second, second_panel
+        integer :: second_slot
+
+        status = 1
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(edge_vertices, 2) == 0) return
+        allocate(matrix(size(edge_vertices, 2), size(edge_vertices, 2)))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do first = 1, size(edge_vertices, 2)
+            do second = 1, first
+                do first_slot = 1, 2
+                    first_panel = edge_triangles(first_slot, first)
+                    do second_slot = 1, 2
+                        second_panel = edge_triangles(second_slot, second)
+                        if (first_panel == second_panel) then
+                            call &
+                                integrate_maxwell_sphere_curved_coincident_rwg_pair_3d( &
+                                vertices, triangles, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                radius, wave_number, quadrature_degree, &
+                                contribution, status)
+                        else
+                            call &
+                                integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
+                                vertices, triangles, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                second_panel, radius, wave_number, &
+                                quadrature_degree, tolerance, max_depth, &
+                                contribution, status)
+                        end if
+                        if (status /= 0) return
+                        matrix(first, second) = &
+                            matrix(first, second) + contribution
+                    end do
+                end do
+                matrix(second, first) = matrix(first, second)
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_vector_potential_rwg_3d
 
     subroutine integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d( &
             vertices, triangles, edge_vertices, edge_triangles, first_basis, &
