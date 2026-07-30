@@ -18,6 +18,7 @@ module fortfem_api
         assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_div_mass_element, &
         assemble_tetra_rt_divergence_csc
     use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
+        assemble_tetra_lagrange_scalar_load, &
         assemble_tetra_lagrange_stiffness_csc, &
         assemble_tetra_lagrange_stiffness_element
     use fortfem_assembly_tetra_nedelec_3d, only: &
@@ -297,6 +298,10 @@ module fortfem_api
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
+    use fortfem_tetra_lagrange_solver_3d, only: &
+        evaluate_tetra_lagrange_solution, &
+        solve_tetra_lagrange_diffusion_reaction, &
+        solve_tetra_lagrange_poisson
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -494,6 +499,9 @@ module fortfem_api
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_rt_div_mass
+    public :: evaluate_tetra_lagrange_solution
+    public :: solve_tetra_lagrange_diffusion_reaction
+    public :: solve_tetra_lagrange_poisson
     public :: solve_mixed_bc
     public :: solve_neumann
     public :: compute_boundary_integral
@@ -612,6 +620,7 @@ module fortfem_api
     public :: assemble_tetra_rt_divergence_csc
     public :: assemble_tetra_lagrange_stiffness_csc
     public :: assemble_tetra_lagrange_stiffness_element
+    public :: assemble_tetra_lagrange_scalar_load
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_element

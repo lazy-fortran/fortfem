@@ -64,7 +64,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first- and second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
-| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass solves through order four; and public RT div-div-plus-mass solves through degree four | Higher-order magnetic-box convergence and public H1 PDE dispatch |
+| Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves through order four; nonzero H1 Dirichlet elimination; and FortSym-oracle H1 p-convergence with exact quartic reproduction | Higher-order magnetic-box and optimal tetrahedral h-convergence |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; biperiodic planar Maxwell strong and weak capacity operators; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Nedelec trace sampling for automated planar coupling, Maxwell DtN on general curved surfaces, and curved-boundary elastic coupling |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
@@ -623,11 +623,13 @@ weighted form compilation, and public single-field solves for every family.
 The two-dimensional magnetic paper case also passes through the public
 Nedelec solver. The RT0-DG0 mixed Poisson helper is conservative and
 convergent, and matching-degree solves attain optimal convergence through
-RT3-DG3. Tetrahedral Nedelec curl-curl-plus-mass and RT
-div-div-plus-mass solves now cover every implemented order. Symbolic
-mixed-form compilation, public tetrahedral H1 PDE dispatch, and optimal
-higher-order tetrahedral convergence remain. The Phase 2 exit gate is
-therefore not yet met.
+RT3-DG3. Tetrahedral Nedelec curl-curl-plus-mass, RT div-div-plus-mass, and
+H1 diffusion-reaction/Poisson solves now cover every implemented order. The
+H1 path uses FortSparse CSC assembly and nonzero boundary elimination,
+decreases both value and gradient error under p-refinement, and reproduces a
+FortSym-generated quartic solution at degree four. Symbolic mixed-form
+compilation, optimal tetrahedral h-convergence, and the higher-order magnetic
+box remain. The Phase 2 exit gate is therefore not yet met.
 
 ### Phase 3: acoustic DtN and 2D BEM
 
