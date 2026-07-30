@@ -1,4 +1,6 @@
 module fortfem_tetra_nedelec_arbitrary_order
+    use fortfem_generated_tetra_modal_vector_identities, only: &
+        evaluate_tetra_modal_vector_identities
     use fortfem_generated_tetra_nedelec_candidates_order_1, only: &
         evaluate_candidates_order_1
     use fortfem_generated_tetra_nedelec_candidates_order_2, only: &
@@ -14,6 +16,8 @@ module fortfem_tetra_nedelec_arbitrary_order
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
+        tetrahedron_koornwinder_gradient, triangle_dubiner
     implicit none
 
     private
@@ -43,7 +47,7 @@ contains
         integer, intent(out) :: status
 
         status = 1
-        if (order < 1 .or. order > 5) return
+        if (order < 1) return
 
         basis%order = order
         basis%dof_count = order * (order + 2) * (order + 3) / 2
@@ -134,6 +138,7 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: candidates(:, :), curls(:, :)
+        real(dp), allocatable :: column_scale(:), row_scale(:)
         real(dp), allocatable :: edge_nodes(:), edge_weights(:)
         real(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
         real(dp), allocatable :: tetra_weights(:), triangle_weights(:)
@@ -184,8 +189,9 @@ contains
                             call evaluate_runtime_candidates( &
                                 order, point, candidates, curls)
                             matrix(moment, :) = matrix(moment, :) + &
-                                triangle_weights(node)*x(node)**x_degree* &
-                                y(node)**y_degree* &
+                                triangle_weights(node)*face_moment_value( &
+                                order, x_degree, y_degree, &
+                                x(node), y(node))* &
                                 matmul(tangents(:, component), candidates)
                         end do
                     end do
@@ -207,8 +213,9 @@ contains
                             call evaluate_runtime_candidates( &
                                 order, point, candidates, curls)
                             matrix(moment, :) = matrix(moment, :) + &
-                                tetra_weights(node)*x(node)**x_degree* &
-                                y(node)**y_degree*z(node)**z_degree* &
+                                tetra_weights(node)*volume_moment_value( &
+                                order, x_degree, y_degree, z_degree, &
+                                point)* &
                                 candidates(component, :)
                         end do
                     end do
@@ -216,13 +223,26 @@ contains
             end do
         end do
         if (moment /= size(matrix, 1)) return
+        allocate(row_scale(size(matrix, 1)), column_scale(size(matrix, 2)))
+        do moment = 1, size(matrix, 1)
+            row_scale(moment) = 1.0_dp/maxval(abs(matrix(moment, :)))
+            matrix(moment, :) = row_scale(moment)*matrix(moment, :)
+        end do
+        do component = 1, size(matrix, 2)
+            column_scale(component) = 1.0_dp/maxval(abs(matrix(:, component)))
+            matrix(:, component) = column_scale(component)*matrix(:, component)
+        end do
         right_hand_side = 0.0_dp
         do diagonal = 1, size(matrix, 1)
-            right_hand_side(diagonal, diagonal) = 1.0_dp
+            right_hand_side(diagonal, diagonal) = row_scale(diagonal)
         end do
         allocate(coefficients(size(matrix, 1), size(matrix, 2)))
         call dense_solve(matrix, right_hand_side, coefficients, info)
         if (info /= 0) return
+        do component = 1, size(coefficients, 1)
+            coefficients(component, :) = &
+                column_scale(component)*coefficients(component, :)
+        end do
         status = 0
     end subroutine build_runtime_coefficients
 
@@ -244,10 +264,16 @@ contains
                     do y_degree = 0, total_degree - x_degree
                         z_degree = total_degree - x_degree - y_degree
                         candidate = candidate + 1
-                        call add_candidate_term( &
-                            candidate, component, 1.0_dp, &
-                            [x_degree, y_degree, z_degree], point, &
-                            values, curls)
+                        if (order <= 5) then
+                            call add_candidate_term( &
+                                candidate, component, 1.0_dp, &
+                                [x_degree, y_degree, z_degree], point, &
+                                values, curls)
+                        else
+                            call add_modal_component_candidate( &
+                                candidate, component, x_degree, y_degree, &
+                                z_degree, point, values, curls)
+                        end if
                     end do
                 end do
             end do
@@ -258,7 +284,11 @@ contains
                 do y_degree = 0, total_degree - x_degree
                     z_degree = total_degree - x_degree - y_degree
                     candidate = candidate + 1
-                    if (component == 4) then
+                    if (order > 5) then
+                        call add_modal_cross_candidate( &
+                            candidate, component, x_degree, y_degree, &
+                            z_degree, point, values, curls)
+                    else if (component == 4) then
                         call add_candidate_term( &
                             candidate, 1, -1.0_dp, &
                             [x_degree, y_degree + 1, z_degree], point, &
@@ -283,14 +313,101 @@ contains
         do y_degree = 0, total_degree
             z_degree = total_degree - y_degree
             candidate = candidate + 1
-            call add_candidate_term( &
-                candidate, 2, -1.0_dp, [0, y_degree, z_degree + 1], &
-                point, values, curls)
-            call add_candidate_term( &
-                candidate, 3, 1.0_dp, [0, y_degree + 1, z_degree], &
-                point, values, curls)
+            if (order > 5) then
+                call add_modal_cross_candidate( &
+                    candidate, 6, 0, y_degree, z_degree, &
+                    point, values, curls)
+            else
+                call add_candidate_term( &
+                    candidate, 2, -1.0_dp, [0, y_degree, z_degree + 1], &
+                    point, values, curls)
+                call add_candidate_term( &
+                    candidate, 3, 1.0_dp, [0, y_degree + 1, z_degree], &
+                    point, values, curls)
+            end if
         end do
     end subroutine evaluate_runtime_candidates
+
+    pure subroutine add_modal_component_candidate( &
+            candidate, component, first_degree, second_degree, third_degree, &
+            point, values, curls)
+        integer, intent(in) :: candidate, component
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+        real(dp), intent(inout) :: values(:, :), curls(:, :)
+
+        real(dp) :: component_curls(3, 3), cross_curls(3, 3)
+        real(dp) :: cross_values(3, 3), gradient(3), value
+
+        value = tetrahedron_koornwinder( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3))
+        call tetrahedron_koornwinder_gradient( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3), gradient)
+        call evaluate_tetra_modal_vector_identities( &
+            point(1), point(2), point(3), value, &
+            gradient(1), gradient(2), gradient(3), &
+            component_curls, cross_values, cross_curls)
+        values(component, candidate) = value
+        curls(:, candidate) = component_curls(:, component)
+    end subroutine add_modal_component_candidate
+
+    pure subroutine add_modal_cross_candidate( &
+            candidate, family, first_degree, second_degree, third_degree, &
+            point, values, curls)
+        integer, intent(in) :: candidate, family
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+        real(dp), intent(inout) :: values(:, :), curls(:, :)
+
+        real(dp) :: component_curls(3, 3), cross_curls(3, 3)
+        real(dp) :: cross_values(3, 3), gradient(3), value, x, y, z
+        integer :: family_index
+
+        x = point(1)
+        y = point(2)
+        z = point(3)
+        value = tetrahedron_koornwinder( &
+            first_degree, second_degree, third_degree, x, y, z)
+        call tetrahedron_koornwinder_gradient( &
+            first_degree, second_degree, third_degree, x, y, z, gradient)
+        call evaluate_tetra_modal_vector_identities( &
+            x, y, z, value, gradient(1), gradient(2), gradient(3), &
+            component_curls, cross_values, cross_curls)
+        family_index = family - 3
+        values(:, candidate) = cross_values(:, family_index)
+        curls(:, candidate) = cross_curls(:, family_index)
+    end subroutine add_modal_cross_candidate
+
+    pure real(dp) function face_moment_value( &
+            order, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: order, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (order <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_moment_value
+
+    pure real(dp) function volume_moment_value( &
+            order, first_degree, second_degree, third_degree, point) &
+            result(value)
+        integer, intent(in) :: order
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+
+        if (order <= 5) then
+            value = point(1)**first_degree*point(2)**second_degree* &
+                point(3)**third_degree
+        else
+            value = tetrahedron_koornwinder( &
+                first_degree, second_degree, third_degree, &
+                point(1), point(2), point(3))
+        end if
+    end function volume_moment_value
 
     pure subroutine add_candidate_term( &
             candidate, component, coefficient, powers, point, values, curls)

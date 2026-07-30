@@ -7,9 +7,9 @@ program test_tetra_nedelec_global_dof_map
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: order = 5
-    integer, parameter :: dof_count = 140
-    integer, parameter :: face_dof_count = 20
+    integer, parameter :: order = 6
+    integer, parameter :: dof_count = 216
+    integer, parameter :: face_dof_count = 30
     integer, allocatable :: edge_orientations(:, :), edges(:, :)
     integer, allocatable :: face_permutations(:, :, :), faces(:, :)
     integer, allocatable :: global_dofs(:, :)
@@ -30,8 +30,8 @@ program test_tetra_nedelec_global_dof_map
     call record_condition(size(edges, 2) == 9 .and. size(faces, 2) == 7, &
         "Shared face reuses three edges and one canonical face")
     call record_condition(size(global_dofs, 1) == dof_count .and. &
-        maxval(global_dofs) == 245, &
-        "Order-five topology has the analytic global dimension")
+        maxval(global_dofs) == 384, &
+        "Order-six topology has the analytic global dimension")
     face_start = 6 * order + 1
     call record_condition(all( &
         global_dofs(face_start:face_start + face_dof_count - 1, 1) == &

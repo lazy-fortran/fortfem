@@ -282,7 +282,7 @@ contains
         output = 0.0_dp
         status = 1
         size_ = order*(order - 1)
-        if (order < 2 .or. order > 5) return
+        if (order < 2) return
         if (size(input) /= size_ .or. size(output) /= size_) return
         if (.not. valid_permutation(permutation)) return
         allocate(transform(size_, size_))
@@ -307,7 +307,7 @@ contains
         transform = 0.0_dp
         status = 1
         size_ = order*(order - 1)
-        if (order < 2 .or. order > 5) return
+        if (order < 2) return
         if (size(transform, 1) /= size_ .or. size(transform, 2) /= size_) &
             return
         if (.not. valid_permutation(permutation)) return
@@ -365,9 +365,12 @@ contains
                                         real(affine( &
                                         basis_component, &
                                         moment_component), dp)* &
-                                        mapped(1)**basis_x* &
-                                        mapped(2)**basis_y* &
-                                        u(node)**moment_x*v(node)**moment_y
+                                        face_polynomial( &
+                                        order, basis_x, basis_y, &
+                                        mapped(1), mapped(2))* &
+                                        face_polynomial( &
+                                        order, moment_x, moment_y, &
+                                        u(node), v(node))
                                 end do
                             end do
                         end do
@@ -378,6 +381,18 @@ contains
         status = merge(0, 1, &
             row == size(matrix, 1) .and. column == size(matrix, 2))
     end subroutine build_moment_matrix
+
+    pure real(dp) function face_polynomial( &
+            order, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: order, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (order <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_polynomial
 
     pure subroutine permutation_map(permutation, offset, affine)
         integer, intent(in) :: permutation(3)

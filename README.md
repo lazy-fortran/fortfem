@@ -16,21 +16,25 @@ Verified numerical paths:
   Raviart--Thomas, BDM, and discontinuous scalar families through order four.
   Their affine Piola maps, global moment orientations, commuting projections,
   and sparse differential or mass forms have analytical tests.
-- First-kind tetrahedral Nédélec reference bases through order five have
+- First-kind tetrahedral Nédélec reference bases have no fixed order ceiling;
+  the public solve, topology, orientation, and sparse assembly paths are
+  verified through order six. They have
   complete Kronecker edge, face, and cell moments, reproduce polynomial
   gradients, and have independently verified curls. Their candidate
   polynomials, analytical curls, and dual-basis coefficients use pinned
-  `fortsym` kernels through order four and runtime moment construction at
-  order five. The affine covariant map, canonical
+  `fortsym` kernels through order four, runtime monomial moments at order
+  five, and FortNum orthogonal simplex modes above order five. A
+  FortSym-generated kernel supplies the modal vector and curl identities.
+  The affine covariant map, canonical
   edge and face orientations, global topology, and sparse curl-mass assembly
   accept every implemented order.
-- Tetrahedral Raviart--Thomas H(div) and discontinuous L2 spaces run through
-  degree five. FortSym-generated exact candidate and dual-basis tables remain
-  the source of truth through degree four; degree five evaluates the same
-  polynomial specification and constructs its 189-moment dual basis and
-  face-permutation maps at runtime with FortNum. Piola interpolation attains
-  sixth-order field and divergence convergence, and the symbolic RT5--DG5
-  mixed Poisson solve preserves every cell source balance.
+- Tetrahedral Raviart--Thomas H(div) and discontinuous L2 spaces have no fixed
+  order ceiling and are verified through degree six. FortSym-generated exact
+  candidate and dual-basis tables remain the source of truth through degree
+  four; degree five uses runtime monomial moments, while higher degrees use
+  FortNum's orthogonal Dubiner/Koornwinder modes and exact gradients. Piola
+  interpolation, global face transforms, sparse assembly, and the symbolic
+  RT6--DG6 mixed Poisson solve have analytical conservation tests.
 - Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
   magnetic-paper box centre value at its 12×12×8 reference resolution. The
   reconstructed magnetic field at an off-grid point converges toward an

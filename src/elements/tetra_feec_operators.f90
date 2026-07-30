@@ -32,7 +32,7 @@ contains
         integer :: nedelec_dof_count, selected_dof
 
         status = 1
-        if (order < 1 .or. order > 5) return
+        if (order < 1) return
         call initialize_tetra_nedelec_first_kind( &
             order, nedelec_basis, status)
         if (status /= 0) return
@@ -80,7 +80,7 @@ contains
         integer :: lagrange_dof_count, selected_dof
 
         status = 1
-        if (order < 1 .or. order > 5) return
+        if (order < 1) return
         call initialize_tetra_lagrange(order, lagrange_basis, status)
         if (status /= 0) return
         call initialize_tetra_nedelec_first_kind( &

@@ -60,7 +60,7 @@ program test_tetra_nedelec_sparse_assembly
 
     deallocate(dofs, matrix_times_dofs)
     constant_field = [1.0_dp, 2.0_dp, -1.0_dp]
-    do polynomial_order = 2, 5
+    do polynomial_order = 2, 6
         call build_tetra_nedelec_dof_map( &
             polynomial_order, tetrahedra, edges, faces, global_dofs, &
             orientations, face_permutations, status)
@@ -83,10 +83,6 @@ program test_tetra_nedelec_sparse_assembly
             "Higher-order sparse mass assembly has exact constant-field energy")
         deallocate(dofs, matrix_times_dofs)
     end do
-    call assemble_tetra_nedelec_curl_mass_csc( &
-        vertices, tetrahedra, matrix, sparse_status, order=6)
-    call record_condition(sparse_status%code /= 0, &
-        "Sparse assembly rejects an unsupported polynomial order")
 
     call check_summary("Sparse tetrahedral Nedelec assembly")
     if (.not. all_passed) error stop 1
@@ -128,8 +124,15 @@ contains
                         monomial = monomial + 1
                         dof = face_offset + (face - 1) * face_dof_count + &
                             (component - 1) * face_dof_count / 2 + monomial
-                        dofs(dof) = dot_product(field, tangent) * &
-                            triangle_monomial_integral(x_degree, y_degree)
+                        if (order <= 5) then
+                            dofs(dof) = dot_product(field, tangent)* &
+                                triangle_monomial_integral( &
+                                x_degree, y_degree)
+                        else
+                            dofs(dof) = merge( &
+                                0.5_dp*dot_product(field, tangent), &
+                                0.0_dp, degree == 0)
+                        end if
                     end do
                 end do
             end do
@@ -150,10 +153,16 @@ contains
                         do y_degree = 0, degree - x_degree
                             z_degree = degree - x_degree - y_degree
                             local_dof = local_dof + 1
-                            dofs(cell_dofs(local_dof, cell)) = &
-                                reference_field(component) * &
-                                tetra_monomial_integral( &
-                                x_degree, y_degree, z_degree)
+                            if (order <= 5) then
+                                dofs(cell_dofs(local_dof, cell)) = &
+                                    reference_field(component)* &
+                                    tetra_monomial_integral( &
+                                    x_degree, y_degree, z_degree)
+                            else
+                                dofs(cell_dofs(local_dof, cell)) = merge( &
+                                    reference_field(component)/6.0_dp, &
+                                    0.0_dp, degree == 0)
+                            end if
                         end do
                     end do
                 end do

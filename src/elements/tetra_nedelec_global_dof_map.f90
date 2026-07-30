@@ -31,7 +31,7 @@ contains
         logical :: found
 
         status = 1
-        if (order < 1 .or. order > 5) return
+        if (order < 1) return
         call build_tetra_edge_dof_map( &
             tetrahedra, edges, edge_indices, edge_orientations, status)
         if (status /= 0) return
@@ -117,7 +117,7 @@ contains
         transform = 0.0_dp
         status = 1
         dof_count = order * (order + 2) * (order + 3) / 2
-        if (order < 1 .or. order > 5) return
+        if (order < 1) return
         if (size(transform, 1) /= dof_count .or. &
             size(transform, 2) /= dof_count) return
         if (any(abs(edge_orientations) /= 1)) return
