@@ -128,3 +128,10 @@ conjugate transpose required by the real-complex reverse inner product.
 Mesh point-location and boundary-face selection remain explicit fixed-topology
 operations; geometry products can be composed on either side of the sampling
 cotangent without pretending those discrete decisions are differentiable.
+
+Spherical Maxwell DtN modes expose eigenvalue and applied-operator JVPs and
+VJPs for TE/TM traces, wave number, and sphere radius. The derivative of the
+outgoing Hankel logarithmic derivative is evaluated analytically from the
+spherical Bessel differential equation. This avoids differentiating the
+special-function recurrence, keeps the implementation available with GCC,
+and preserves the exact TE/TM impedance duality in the primal map.
