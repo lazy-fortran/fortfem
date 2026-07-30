@@ -118,3 +118,13 @@ products with the cell-area quadrature weight, including both length
 derivatives. Reverse products use the real inner product
 `real(sum(conjg(output_bar)*output_dot))`; exact cutoff modes are rejected
 because their parameter derivative is singular.
+
+The Nedelec trace coupling exposes the smooth pullback
+`sampling^T * capacity * sampling` as a separate differentiable primitive.
+Its JVP accepts a sampling perturbation, and its VJP returns a dense
+sampling-matrix cotangent together with the Maxwell parameters. This keeps
+the reciprocal bilinear transpose used by the weak form distinct from the
+conjugate transpose required by the real-complex reverse inner product.
+Mesh point-location and boundary-face selection remain explicit fixed-topology
+operations; geometry products can be composed on either side of the sampling
+cotangent without pretending those discrete decisions are differentiable.
