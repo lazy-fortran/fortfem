@@ -361,24 +361,35 @@ contains
 
     subroutine assemble_tetra_nedelec_weighted_csc( &
             mesh_vertices, tetrahedra, coefficient, mass_coefficient, &
-            matrix, status)
+            matrix, status, order)
         real(dp), intent(in) :: mesh_vertices(:, :)
         integer, intent(in) :: tetrahedra(:, :)
         procedure(tensor_coefficient_3d) :: coefficient
         real(dp), intent(in) :: mass_coefficient
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
+        integer, intent(in), optional :: order
 
         integer, allocatable :: columns(:), edges(:, :), global_dofs(:, :)
         integer, allocatable :: orientations(:, :), rows(:)
         real(dp), allocatable :: triplet_values(:)
         real(dp) :: element_matrix(6, 6), vertices(3, 4)
-        integer :: column, entry, local_status, node, row, tetrahedron
+        integer :: column, entry, local_status, node, polynomial_order
+        integer :: row, tetrahedron
 
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Weighted tetrahedral Nedelec assembly failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        polynomial_order = 1
+        if (present(order)) polynomial_order = order
+        if (polynomial_order < 1 .or. polynomial_order > 4) return
+        if (polynomial_order > 1) then
+            call assemble_arbitrary_order_weighted_csc( &
+                mesh_vertices, tetrahedra, polynomial_order, coefficient, &
+                mass_coefficient, matrix, status)
+            return
+        end if
         call build_tetra_edge_dof_map( &
             tetrahedra, edges, global_dofs, orientations, local_status)
         if (local_status /= 0) return
@@ -410,6 +421,75 @@ contains
             size(edges, 2), size(edges, 2), rows, columns, triplet_values, &
             matrix, status)
     end subroutine assemble_tetra_nedelec_weighted_csc
+
+    subroutine assemble_arbitrary_order_weighted_csc( &
+            mesh_vertices, tetrahedra, order, coefficient, mass_coefficient, &
+            matrix, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        procedure(tensor_coefficient_3d) :: coefficient
+        real(dp), intent(in) :: mass_coefficient
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edge_orientations(:, :)
+        integer, allocatable :: edges(:, :), face_permutations(:, :, :)
+        integer, allocatable :: faces(:, :), global_dofs(:, :), rows(:)
+        real(dp), allocatable :: basis_transform(:, :), element_matrix(:, :)
+        real(dp), allocatable :: oriented_matrix(:, :), values(:)
+        real(dp) :: vertices(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Higher-order weighted tetrahedral Nedelec assembly failed")
+        if (order < 2 .or. order > 4) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate ( &
+            rows(dof_count*dof_count*size(tetrahedra, 2)), &
+            columns(dof_count*dof_count*size(tetrahedra, 2)), &
+            values(dof_count*dof_count*size(tetrahedra, 2)))
+        allocate ( &
+            basis_transform(dof_count, dof_count), &
+            oriented_matrix(dof_count, dof_count))
+
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_weighted_element_order( &
+                vertices, order, 2*order + 2, coefficient, mass_coefficient, &
+                element_matrix, local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_matrix = matmul( &
+                transpose(basis_transform), &
+                matmul(element_matrix, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_arbitrary_order_weighted_csc
 
     subroutine assemble_tetra_nedelec_vector_load( &
             mesh_vertices, tetrahedra, source, vector, status)
@@ -685,6 +765,70 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_nedelec_weighted_element
+
+    subroutine assemble_tetra_nedelec_weighted_element_order( &
+            vertices, order, quadrature_degree, coefficient, &
+            mass_coefficient, matrix, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        procedure(tensor_coefficient_3d) :: coefficient
+        real(dp), intent(in) :: mass_coefficient
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: reference_point(3), tensor(3, 3)
+        integer :: column, dof_count, point, row
+
+        status = 1
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate ( &
+            matrix(dof_count, dof_count), &
+            reference_values(3, dof_count), &
+            reference_curls(3, dof_count), &
+            physical_values(3, dof_count), &
+            physical_curls(3, dof_count))
+        matrix = 0.0_dp
+        do point = 1, size(weights)
+            reference_point = [x(point), y(point), z(point)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, reference_point, reference_values, reference_curls, &
+                status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, reference_point)
+            call coefficient( &
+                physical_point(1), physical_point(2), physical_point(3), &
+                tensor)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    matrix(row, column) = matrix(row, column) + &
+                        determinant*weights(point)*(dot_product( &
+                        physical_curls(:, row), &
+                        matmul(tensor, physical_curls(:, column))) + &
+                        mass_coefficient*dot_product( &
+                        physical_values(:, row), physical_values(:, column)))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_weighted_element_order
 
     subroutine assemble_tetra_nedelec_load_element( &
             vertices, source, vector, status)

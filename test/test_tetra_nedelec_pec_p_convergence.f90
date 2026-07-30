@@ -1,6 +1,6 @@
 program test_tetra_nedelec_pec_p_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_tetra_nedelec_curl_mass
+    use fortfem_api, only: solve_tetra_nedelec_weighted_curl_mass
     use fortfem_kinds, only: dp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
@@ -19,9 +19,9 @@ program test_tetra_nedelec_pec_p_convergence
 
     call build_cube_mesh(vertices, tetrahedra)
     do order = 1, 4
-        call solve_tetra_nedelec_curl_mass( &
-            vertices, tetrahedra, order, magnetic_source, &
-            1.0_dp, 1.0_dp, solution, status, &
+        call solve_tetra_nedelec_weighted_curl_mass( &
+            vertices, tetrahedra, order, paper_reluctivity, magnetic_source, &
+            1.0_dp, solution, status, &
             .true.)
         if (status%code /= 0) error stop "PEC tetra Hcurl solve failed"
         call measure_field_error( &
@@ -41,6 +41,18 @@ program test_tetra_nedelec_pec_p_convergence
     call check_summary("Tetrahedral PEC magnetic p-convergence")
 
 contains
+
+    pure subroutine paper_reluctivity(x, y, z, value)
+        real(dp), intent(in) :: x, y, z
+        real(dp), intent(out) :: value(3, 3)
+
+        associate(unused => x + y)
+        end associate
+        value = 0.0_dp
+        value(1, 1) = 1.0_dp
+        value(2, 2) = 1.0_dp
+        value(3, 3) = z
+    end subroutine paper_reluctivity
 
     pure subroutine magnetic_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z
