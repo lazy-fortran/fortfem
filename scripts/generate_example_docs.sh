@@ -54,6 +54,12 @@ description_for()
     printf '%s' "$description"
 }
 
+html_escape()
+{
+    printf '%s' "$1" |
+        sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
 {
     printf '%s\n' \
         '---' \
@@ -84,8 +90,9 @@ description_for()
         'fpm run --example <example_name>' \
         '```' \
         '' \
-        '## Available Examples' \
-        ''
+        '## Gallery' \
+        '' \
+        '<div class="example-gallery">'
 } > "$doc_examples_dir/index.md"
 
 for example_name in "${example_names[@]}"; do
@@ -96,6 +103,7 @@ for example_name in "${example_names[@]}"; do
         readme="$example_dir/${example_name}_README.md"
     fi
     description=$(description_for "$source" "$readme")
+    escaped_description=$(html_escape "$description")
     page="$generated_dir/$example_name.md"
 
     {
@@ -154,12 +162,56 @@ for example_name in "${example_names[@]}"; do
             '[← Back to all examples](../index.html)'
     } > "$page"
 
-    printf -- '- [%s](generated/%s.html) - %s\n' \
-        "$example_name" "$example_name" "$description" \
+    printf '%s\n' \
+        "<article class=\"example-card\" data-example=\"$example_name\">" \
+        "<a class=\"example-card-preview\" href=\"generated/$example_name.html\">" \
+        >> "$doc_examples_dir/index.md"
+    preview=
+    if [[ -d "$artifacts_dir/$example_name" ]]; then
+        preview=$(find "$artifacts_dir/$example_name" -maxdepth 1 \
+            -type f -name '*.png' -print | sort | sed -n '1p')
+    fi
+    if [[ -n "$preview" ]]; then
+        preview_name=$(basename "$preview")
+        printf '%s\n' \
+            "<img src=\"../media/examples/$example_name/$preview_name\"" \
+            " alt=\"Plot preview for $example_name\" loading=\"lazy\">" \
+            >> "$doc_examples_dir/index.md"
+    else
+        printf '%s\n' \
+            '<span class="example-card-placeholder" aria-hidden="true">FortFEM</span>' \
+            >> "$doc_examples_dir/index.md"
+    fi
+    printf '%s\n' \
+        '</a>' \
+        '<div class="example-card-body">' \
+        "<h3><a href=\"generated/$example_name.html\">$example_name</a></h3>" \
+        "<p>$escaped_description</p>" \
+        '</div>' \
+        '</article>' \
         >> "$doc_examples_dir/index.md"
     printf -- '- [%s](%s.html) - %s\n' \
         "$example_name" "$example_name" "$description" \
         >> "$generated_dir/index.md"
+done
+
+printf '%s\n' \
+    '</div>' \
+    '' \
+    '## Complete Example Index' \
+    '' \
+    >> "$doc_examples_dir/index.md"
+for example_name in "${example_names[@]}"; do
+    source=${source_for_name[$example_name]}
+    source_directory=$(dirname "$source")
+    readme="$source_directory/README.md"
+    if [[ "$source_directory" == "$example_dir" ]]; then
+        readme="$example_dir/${example_name}_README.md"
+    fi
+    description=$(description_for "$source" "$readme")
+    printf -- '- [%s](generated/%s.html) - %s\n' \
+        "$example_name" "$example_name" "$description" \
+        >> "$doc_examples_dir/index.md"
 done
 
 printf '\n[← Back to FortFEM documentation](../index.html)\n' \
