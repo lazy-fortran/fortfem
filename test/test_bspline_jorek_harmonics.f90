@@ -3,6 +3,7 @@ program test_bspline_jorek_harmonics
     use fortfem_api, only: &
         apply_bspline_toroidal_poloidal_bracket, &
         apply_toroidal_fourier_derivative, &
+        assemble_bspline_h1_weighted_mass_csc, &
         assemble_bspline_poloidal_bracket_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -17,7 +18,7 @@ program test_bspline_jorek_harmonics
     complex(dp), allocatable :: residual(:, :), transported(:, :)
     real(dp), allocatable :: control_points(:, :, :), reference(:)
     real(dp), allocatable :: r_points(:), weights(:, :), z_points(:)
-    type(csc_t) :: bracket
+    type(csc_t) :: bracket, weighted_mass
     type(fortsparse_status_t) :: sparse_status
     integer :: dof, ix, iy, status
 
@@ -63,6 +64,14 @@ program test_bspline_jorek_harmonics
     call check_condition(status == 0 .and. maxval(abs( &
         derivative(:, 3) + 2.0_dp*aimag(transported(:, 3)))) < 2.0e-14_dp, &
         "Toroidal derivative applies the exact i*n Fourier multiplier")
+
+    call assemble_bspline_h1_weighted_mass_csc( &
+        knots_r, knots_z, 2, 2, control_points, weights, &
+        real(advecting(:, 2), dp), 5, weighted_mass, sparse_status)
+    reference = csc_matvec(weighted_mass, [(1.0_dp, ix = 1, size(reference))])
+    call check_condition(sparse_status%code == 0 .and. &
+        abs(sum(reference) - 1.5_dp) < 3.0e-12_dp, &
+        "Coefficient-weighted spline mass integrates the affine density")
 
     call check_summary("JOREK isogeometric toroidal harmonics")
 
