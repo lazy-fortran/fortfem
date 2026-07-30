@@ -25,6 +25,8 @@ The operator inventory is based on:
 | Nonlinear poloidal Poisson brackets | Energy-skew Galerkin bracket |
 | Nonlinear toroidal mode coupling | Exact retained-mode convolution `p+q=n` |
 | Scalar coefficient products | Coefficient-weighted H1 Galerkin mass |
+| Magnetic-flux evolution | Cylindrical weak residual and analytical JVP |
+| Ideal poloidal flux subflow | Cayley/implicit-midpoint Poisson propagator |
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |
@@ -33,11 +35,34 @@ The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
 unrelated retained harmonic.
 
+## Time discretization
+
+The ideal poloidal flux subflow
+
+`dt(psi) = R [psi,u]`
+
+with fixed electric potential is advanced by the implicit midpoint/Cayley map.
+Because the assembled bracket is skew, this map preserves the discrete mass
+norm and is exactly time reversible. Repeated steps retain one FortSparse
+factorization.
+
+FortNum provides symmetric Strang and fourth-order Yoshida compositions for
+combining such model propagators. This follows the propagator architecture of
+F. Holderied, S. Possanner, and X. Wang,
+*MHD-kinetic hybrid code based on structure-preserving finite elements with
+particles-in-cell*, JCP 433 (2021), 110143,
+[doi:10.1016/j.jcp.2021.110143](https://doi.org/10.1016/j.jcp.2021.110143).
+
+The fourth-order composition has negative substeps and is restricted to
+reversible Hamiltonian pieces. Resistive and viscous pieces must be composed
+with contractive dissipative propagators instead. Space--time FEM is not part
+of the current implementation.
+
 ## Remaining coupled-model work
 
-- Assemble the complete reduced-MHD residual and Newton/Jacobian block layout
-  for flux, electric potential, vorticity, density, temperature, and parallel
-  velocity.
+- Complete the residual and Newton/Jacobian block layout beyond the implemented
+  magnetic-flux equation, for electric potential, vorticity, density,
+  temperature, and parallel velocity.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
