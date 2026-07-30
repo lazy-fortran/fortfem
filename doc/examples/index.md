@@ -343,6 +343,17 @@ fpm run --example <example_name>
 <p>This example differentiates a complete scalar isogeometric state problem,</p>
 </div>
 </article>
+<article class="example-card" data-example="maxwell_mesh_adjoint">
+<a class="example-card-preview" href="generated/maxwell_mesh_adjoint.html">
+<img class="example-card-image"
+ src="../media/examples/maxwell_mesh_adjoint/cover.svg"
+ alt="Plot preview for maxwell_mesh_adjoint" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/maxwell_mesh_adjoint.html">maxwell_mesh_adjoint</a></h3>
+<p>This example benchmarks analytical forward and reverse products for</p>
+</div>
+</article>
 <article class="example-card" data-example="iga_polar_feec">
 <a class="example-card-preview" href="generated/iga_polar_feec.html">
 <img class="example-card-image"
@@ -407,6 +418,7 @@ fpm run --example <example_name>
 - [magnetic_curvilinear_metrics](generated/magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](generated/toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
 - [iga_shape_sensitivity](generated/iga_shape_sensitivity.html) - This example differentiates a complete scalar isogeometric state problem,
+- [maxwell_mesh_adjoint](generated/maxwell_mesh_adjoint.html) - This example benchmarks analytical forward and reverse products for
 - [iga_polar_feec](generated/iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence
 - [iga_jorek_flux](generated/iga_jorek_flux.html) - This advanced example evolves the ideal poloidal magnetic-flux subflow
 - [maxwell_torus_curved_scattering](generated/maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
