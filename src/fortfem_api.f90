@@ -183,6 +183,7 @@ module fortfem_api
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_hcurl_operator_csc, &
         assemble_bspline_hdiv_operator_csc, &
+        assemble_bspline_h1_hcurl_gradient_csc, &
         build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_maxwell_efie_rwg_3d, only: &
         assemble_maxwell_efie_rwg_3d, &
@@ -510,6 +511,7 @@ module fortfem_api
     public :: assemble_bspline_h1_operator_csc
     public :: assemble_bspline_hcurl_operator_csc
     public :: assemble_bspline_hdiv_operator_csc
+    public :: assemble_bspline_h1_hcurl_gradient_csc
     public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
     public :: tensor_weight_2d

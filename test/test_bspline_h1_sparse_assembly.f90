@@ -4,6 +4,7 @@ program test_bspline_h1_sparse_assembly
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_hcurl_operator_csc, &
         assemble_bspline_hdiv_operator_csc, &
+        assemble_bspline_h1_hcurl_gradient_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -16,6 +17,7 @@ program test_bspline_h1_sparse_assembly
     type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
     type(csc_t) :: hdiv_mass, div_div
+    type(csc_t) :: weak_gradient
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
@@ -97,6 +99,19 @@ program test_bspline_h1_sparse_assembly
     call check_condition(sparse_status%code == 0 .and. &
         maxval(abs(product)) < 4.0e-14_dp, &
         "FortSparse isogeometric incidence satisfies curl grad equals zero")
+
+    call assemble_bspline_h1_hcurl_gradient_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, weak_gradient, &
+        sparse_status)
+    do iy = 1, size(y_points)
+        coefficients(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = 1.0_dp + x_points
+    end do
+    edge_values = csc_matvec(gradient_incidence, coefficients)
+    product = csc_matvec(weak_gradient, coefficients)
+    call check_condition(abs(dot_product(edge_values, product) - 1.0_dp) < &
+        3.0e-12_dp, &
+        "Mixed spline gradient block reproduces exact affine Hcurl energy")
 
     call assemble_bspline_hcurl_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 5, hcurl_mass, &
