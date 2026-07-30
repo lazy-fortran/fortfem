@@ -31,6 +31,9 @@ module fortfem_api
         assemble_tetra_nedelec_vector_load, &
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
+    use fortfem_bspline_multipatch, only: &
+        BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
+        BSPLINE_FACE_Y_MIN, build_bspline_feec_2d_interface_dofs
     use fortfem_boundary, only: boundary_t
     use fortfem_api_types
     use fortfem_api_mesh
@@ -544,6 +547,11 @@ module fortfem_api
     public :: assemble_bspline_hdiv_l2_divergence_3d_csc
     public :: assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
     public :: assemble_bspline_l2_mass_3d_csc
+    public :: BSPLINE_FACE_X_MAX
+    public :: BSPLINE_FACE_X_MIN
+    public :: BSPLINE_FACE_Y_MAX
+    public :: BSPLINE_FACE_Y_MIN
+    public :: build_bspline_feec_2d_interface_dofs
     public :: scalar_weight_2d
     public :: tensor_weight_2d
     public :: evaluate_maxwell_surface_rt_basis
