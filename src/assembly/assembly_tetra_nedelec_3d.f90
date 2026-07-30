@@ -1,4 +1,6 @@
 module fortfem_assembly_tetra_nedelec_3d
+    use fortfem_cartesian_helmholtz_pml, only: &
+        cartesian_curl_curl_pml_coefficients
     use fortfem_kinds, only: dp
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_first_order, only: &
@@ -20,6 +22,7 @@ module fortfem_assembly_tetra_nedelec_3d
 
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
+    public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
     public :: assemble_tetra_nedelec_vector_load_order
@@ -217,6 +220,69 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_nedelec_curl_mass_element
+
+    subroutine assemble_tetra_nedelec_pml_element( &
+            vertices, order, quadrature_degree, stretch, wave_number, matrix, &
+            status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        complex(dp), intent(in) :: stretch(3)
+        real(dp), intent(in) :: wave_number
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        complex(dp) :: curl_coefficient(3), mass_coefficient(3)
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_weight, point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (order < 1 .or. order > 4) return
+        if (quadrature_degree < 0 .or. wave_number <= 0.0_dp) return
+        call cartesian_curl_curl_pml_coefficients( &
+            stretch, curl_coefficient, mass_coefficient, status)
+        if (status /= 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(matrix(dof_count, dof_count))
+        allocate( &
+            reference_values(3, dof_count), reference_curls(3, dof_count), &
+            physical_values(3, dof_count), physical_curls(3, dof_count))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_weight = determinant*weights(point_index)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    matrix(row, column) = matrix(row, column) + &
+                        physical_weight*(sum(curl_coefficient* &
+                        physical_curls(:, row)*physical_curls(:, column)) - &
+                        wave_number**2*sum(mass_coefficient* &
+                        physical_values(:, row)*physical_values(:, column)))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_pml_element
 
     subroutine assemble_tetra_nedelec_weighted_csc( &
             mesh_vertices, tetrahedra, coefficient, mass_coefficient, &
