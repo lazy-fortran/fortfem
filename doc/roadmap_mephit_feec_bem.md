@@ -69,7 +69,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD with monolithic P1 elasticity coupling on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, and remaining paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace and Helmholtz P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; affine and exact-curved-torus Laplace/Helmholtz off-surface evaluation; full exact-curved-torus Laplace and Helmholtz P1/P0 Calderon operators and exterior DtN solves; tetrahedral P1 Johnson-Nedelec and symmetric Costabel Laplace/Helmholtz FEM/BEM coupling; solid-torus P1 FEM/exact-curved-BEM symmetric Laplace and Helmholtz coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves with batched multiple-incidence factor reuse, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, affine-torus regularized-CFIE scattering with a Lorentz-reciprocity oracle, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy and resonance suppression, and exact-curved-torus surface-Piola RWG traces, mass pairing, plane-wave loads, far-field radiation, radial-Duffy coincident integration, adaptive adjacent-panel integration, full vector/scalar EFIE assembly, exact barycentric BC/RBC geometry, full-rank curved RWG-RBC dual pairing, Maxwell-consistent exterior/interior magnetic jumps, a one-sided extrapolated MFIE limit, coercive RWG- and BC-domain imaginary-wavenumber EFIE regularizers, provenance-faithful regularized-CFIE product assembly, exact BC incident traces, batched incident-field factor reuse, and solved scattering satisfying Lorentz reciprocity | Higher-order Galerkin surface operators, production FMM or H-matrices, and adaptive mesh refinement |
-| Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, and toroidal-coordinate kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
+| Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, toroidal-coordinate, and curvilinear magnetic-coefficient kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
 | Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions, and all host-side dense real/complex LU solves; current `fortsparse` provides CSC construction, retained factors, sparse solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
 
 ## Repository state
@@ -194,8 +194,13 @@ order. A discontinuous anisotropic manufactured material converges to its
 analytical transverse field. Explicit mesh-edge masks also support mixed
 tangential essential and nonzero curl-Neumann data at every implemented
 order; a rotating analytical field verifies the boundary orientation and
-converges under refinement. General curvilinear metric construction and the
-shielding and racetrack cases remain.
+converges under refinement. A revision-pinned FortSym generator now maps any
+positive, block-diagonal three-dimensional metric and scalar reluctivity to
+the transverse H(curl) mass tensor and curl weight. Independent cylindrical,
+spherical, and sheared-chart identities test the generated kernel, and a
+gallery example plots the cylindrical and spherical coefficients. Full
+spatial metric-field construction and the shielding and racetrack cases
+remain.
 
 ### Acoustic and ultrasonic papers
 
@@ -660,6 +665,10 @@ Its public solver accepts disjoint explicit edge masks for tangential
 essential and curl-Neumann data. Constant natural flux is assembled in the
 dual shifted-Legendre edge basis with topology-derived boundary orientation;
 orders one through four pass an analytical mixed-boundary refinement oracle.
+The public magnetic-coordinate helper validates a block-diagonal metric and
+uses a FortSym-generated kernel for the exact Fourier curl weight and
+transverse mass tensor; cylindrical, spherical, and nonorthogonal sheared
+metrics provide independent analytical oracles.
 The H1 path uses FortSparse CSC assembly and nonzero
 boundary elimination, attains the expected value and gradient h-rates,
 decreases both errors under p-refinement, and reproduces a FortSym-generated

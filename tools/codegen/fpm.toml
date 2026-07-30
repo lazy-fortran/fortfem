@@ -52,3 +52,8 @@ main = "gen_interoperability_oracles.f90"
 name = "gen_tetra_h1_oracle"
 source-dir = "app"
 main = "gen_tetra_h1_oracle.f90"
+
+[[executable]]
+name = "gen_magnetic_curvilinear_coefficients"
+source-dir = "app"
+main = "gen_magnetic_curvilinear_coefficients.f90"
