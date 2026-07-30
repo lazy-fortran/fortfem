@@ -12,6 +12,7 @@ module fortfem_bspline_feec
     public :: build_bspline_feec_2d_operators
     public :: build_bspline_feec_3d_operators
     public :: evaluate_bspline_basis
+    public :: evaluate_nurbs_surface_geometry
 
 contains
 
@@ -102,6 +103,66 @@ contains
         end do
         status = 0
     end subroutine build_bspline_derivative_matrix
+
+    subroutine evaluate_nurbs_surface_geometry( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            coordinate_x, coordinate_y, point, jacobian, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: coordinate_x, coordinate_y
+        real(dp), intent(out) :: point(:), jacobian(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: derivative_x(:), derivative_y(:)
+        real(dp), allocatable :: value_x(:), value_y(:)
+        real(dp) :: denominator, derivative_denominator(2), factor
+        real(dp) :: numerator(size(point)), derivative_numerator(size(point), 2)
+        integer :: ix, iy
+
+        status = 1
+        point = 0.0_dp
+        jacobian = 0.0_dp
+        call evaluate_bspline_basis( &
+            knots_x, degree_x, coordinate_x, value_x, derivative_x, status)
+        if (status /= 0) return
+        call evaluate_bspline_basis( &
+            knots_y, degree_y, coordinate_y, value_y, derivative_y, status)
+        if (status /= 0) return
+        if (size(control_points, 1) /= size(point)) return
+        if (size(control_points, 2) /= size(value_x) .or. &
+            size(control_points, 3) /= size(value_y)) return
+        if (any(shape(weights) /= [size(value_x), size(value_y)])) return
+        if (size(jacobian, 1) /= size(point) .or. &
+            size(jacobian, 2) /= 2 .or. any(weights <= 0.0_dp)) return
+        denominator = 0.0_dp
+        derivative_denominator = 0.0_dp
+        numerator = 0.0_dp
+        derivative_numerator = 0.0_dp
+        do iy = 1, size(value_y)
+            do ix = 1, size(value_x)
+                factor = weights(ix, iy)*value_x(ix)*value_y(iy)
+                denominator = denominator + factor
+                numerator = numerator + factor*control_points(:, ix, iy)
+                factor = weights(ix, iy)*derivative_x(ix)*value_y(iy)
+                derivative_denominator(1) = derivative_denominator(1) + factor
+                derivative_numerator(:, 1) = derivative_numerator(:, 1) + &
+                    factor*control_points(:, ix, iy)
+                factor = weights(ix, iy)*value_x(ix)*derivative_y(iy)
+                derivative_denominator(2) = derivative_denominator(2) + factor
+                derivative_numerator(:, 2) = derivative_numerator(:, 2) + &
+                    factor*control_points(:, ix, iy)
+            end do
+        end do
+        if (denominator <= tiny(1.0_dp)) return
+        point = numerator/denominator
+        do ix = 1, 2
+            jacobian(:, ix) = ( &
+                derivative_numerator(:, ix) - &
+                point*derivative_denominator(ix))/denominator
+        end do
+        status = 0
+    end subroutine evaluate_nurbs_surface_geometry
 
     subroutine build_bspline_feec_2d_operators( &
             knots_x, knots_y, degree_x, degree_y, gradient, curl, status)
