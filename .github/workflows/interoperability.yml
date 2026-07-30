@@ -10,6 +10,8 @@ on:
       - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
       - "benchmark/mfem/**"
+      - "example/interoperability_benchmarks/**"
+      - "src/interoperability/fortfem_interoperability_records.f90"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
@@ -20,6 +22,8 @@ on:
       - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
       - "benchmark/mfem/**"
+      - "example/interoperability_benchmarks/**"
+      - "src/interoperability/fortfem_interoperability_records.f90"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
@@ -211,6 +215,8 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [freefem, fenicsx, mfem]
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download solver records
         uses: actions/download-artifact@v4
         with:
@@ -259,3 +265,40 @@ jobs:
                                   f"{norm} differs by {difference:.3e}"
                               )
           PY
+
+      - name: Arrange neutral record directories
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-results/normalized
+          for solver in fenicsx freefem mfem; do
+            ln -s "../interoperability-${solver}-${GITHUB_SHA}" \
+              "benchmark-results/normalized/${solver}"
+          done
+
+      - name: Install Fortplot build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gfortran libblas-dev liblapack-dev libsuperlu-dev \
+            libsuitesparse-dev
+          sudo curl -L -o /usr/local/bin/fpm \
+            https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          sudo chmod +x /usr/local/bin/fpm
+
+      - name: Generate Fortplot benchmark gallery
+        run: |
+          set -euo pipefail
+          fpm run --profile release --example interoperability_benchmarks -- \
+            benchmark-results/normalized \
+            output/example/interoperability_benchmarks
+          test "$(find output/example/interoperability_benchmarks \
+            -name '*.png' | wc -l)" -eq 4
+          test "$(find output/example/interoperability_benchmarks \
+            -name '*.svg' | wc -l)" -eq 4
+
+      - name: Upload generated benchmark gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-interoperability-plots-${{ github.sha }}
+          path: output/example/interoperability_benchmarks/
+          retention-days: 30

@@ -51,7 +51,8 @@ must check out an explicitly pinned commit from that repository.
 
 There is currently no `lazy-fortran/data` or `lazy-fortran/benchmark-data`
 repository. Until one is created, GitHub Actions artifacts are retained for
-review but are not treated as durable published measurements.
+review and feed the generated Pages gallery, but are not treated as durable
+published measurements.
 
 ## Runner policy
 
@@ -87,6 +88,13 @@ After review, a benchmark-data commit is immutable. GitHub Pages checks out the
 pinned commit, validates it again, and generates all tables and Fortplot figures
 during the docs build. Plot images remain generated artifacts and are never
 checked into FortFEM.
+
+While the durable data repository is unavailable, the interoperability
+workflow validates the three raw artifacts, generates four Fortplot figures
+directly from those records, and publishes the uncommitted figures to Pages.
+The gallery contains separate Poisson and Ampere accuracy plots and separate
+runner-local timing diagnostics. Its timing plots are explicitly not a
+cross-code performance ranking.
 
 For meaningful performance numbers:
 
