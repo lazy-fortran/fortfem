@@ -2,6 +2,7 @@ module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_cell_vector_load, &
         assemble_triangle_nedelec_cell_tensor_csc, &
+        assemble_triangle_nedelec_curl_csc, &
         assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_element
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
@@ -13,6 +14,7 @@ module fortfem_forms_simple
         assemble_triangle_nedelec_second_curl_mass_element
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_cell_vector_load, &
+        assemble_triangle_rt_divergence_csc, &
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element
     use fortfem_kinds, only: dp
@@ -87,6 +89,7 @@ module fortfem_forms_simple
         real(dp) :: stiffness_coefficient = 0.0_dp
         real(dp) :: curl_coefficient = 0.0_dp
         real(dp) :: divergence_coefficient = 0.0_dp
+        real(dp) :: mixed_coefficient = 0.0_dp
         real(dp) :: load_coefficient = 0.0_dp
         real(dp) :: vector_load(2) = 0.0_dp
         real(dp) :: vector_value(2) = 0.0_dp
@@ -100,10 +103,13 @@ module fortfem_forms_simple
         real(dp) :: mass_field_scale = 0.0_dp
         real(dp) :: curl_field_scale = 0.0_dp
         real(dp) :: divergence_field_scale = 0.0_dp
+        integer :: mixed_derivative = derivative_identity
+        integer :: mixed_vector_role = 0
     end type compiler_item_t
 
     public :: assignment(=)
     public :: compile_form, compile_form_matrix, compile_form_vector
+    public :: compile_mixed_form_csc
     public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
     public :: create_cell_coefficient, create_constant_load
@@ -610,6 +616,84 @@ contains
                 "Sparse form compiler received an unknown vector family")
         end select
     end subroutine compile_vector_form_csc
+
+    subroutine compile_mixed_form_csc( &
+            expr, mesh, vector_family, vector_degree, quadrature_degree, &
+            matrix, status)
+        type(form_expr_t), intent(in) :: expr
+        type(mesh_2d_t), intent(inout) :: mesh
+        character(*), intent(in) :: vector_family
+        integer, intent(in) :: vector_degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: vector_to_scalar
+        real(dp) :: coefficient
+        integer :: derivative, vector_role, compiler_status
+
+        call analyze_mixed_bilinear_form( &
+            expr, coefficient, derivative, vector_role, compiler_status)
+        if (compiler_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Mixed compiler requires an integrated differential pairing")
+            return
+        end if
+        select case (trim(vector_family))
+        case ("RT", "Raviart-Thomas")
+            if (derivative /= derivative_divergence) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_rt_divergence_csc( &
+                mesh, vector_degree, quadrature_degree, vector_to_scalar, &
+                status)
+        case ("Nedelec", "Nedelec1", "Edge")
+            if (derivative /= derivative_curl) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            call assemble_triangle_nedelec_curl_csc( &
+                mesh, vector_degree, quadrature_degree, vector_to_scalar, &
+                status)
+        case default
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Mixed compiler received an unsupported vector family")
+            return
+        end select
+        if (status%code /= 0) return
+        if (vector_role == role_trial) then
+            matrix = vector_to_scalar
+            matrix%val = coefficient*matrix%val
+        else
+            call transpose_scaled_csc( &
+                vector_to_scalar, coefficient, matrix, status)
+        end if
+    end subroutine compile_mixed_form_csc
+
+    subroutine transpose_scaled_csc(input, scale, output, status)
+        type(csc_t), intent(in) :: input
+        real(dp), intent(in) :: scale
+        type(csc_t), intent(out) :: output
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: values(:)
+        integer :: column, entry
+
+        allocate(rows(input%nnz), columns(input%nnz), values(input%nnz))
+        entry = 0
+        do column = 1, input%ncol
+            do entry = input%col_ptr(column), input%col_ptr(column + 1) - 1
+                rows(entry) = column
+                columns(entry) = input%row_idx(entry)
+                values(entry) = scale*input%val(entry)
+            end do
+        end do
+        call csc_from_triplet( &
+            input%ncol, input%nrow, rows, columns, values, output, status)
+    end subroutine transpose_scaled_csc
 
     subroutine compile_vector_form_rhs( &
             expr, mesh, family, degree, quadrature_degree, vector, status)
@@ -1124,6 +1208,42 @@ contains
         status = 0
     end subroutine analyze_vector_linear_form
 
+    subroutine analyze_mixed_bilinear_form( &
+            expr, coefficient, derivative, vector_role, status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(out) :: coefficient
+        integer, intent(out) :: derivative, vector_role, status
+
+        type(compiler_item_t), allocatable :: stack(:)
+        integer :: stack_size, token_index
+
+        coefficient = 0.0_dp
+        derivative = derivative_identity
+        vector_role = 0
+        status = 2
+        if (.not. allocated(expr%tokens)) return
+        if (size(expr%tokens) < 1) return
+        allocate(stack(size(expr%tokens)))
+        stack_size = 0
+        do token_index = 1, size(expr%tokens)
+            call apply_compiler_token( &
+                expr%tokens(token_index), token_index, stack, stack_size, &
+                status)
+            if (status /= 0) return
+        end do
+        if (stack_size /= 1) return
+        if (stack(1)%item_type /= item_form) return
+        if (.not. stack(1)%integrated) return
+        if (stack(1)%mixed_derivative /= derivative_divergence .and. &
+            stack(1)%mixed_derivative /= derivative_curl) return
+        if (stack(1)%mixed_vector_role /= role_trial .and. &
+            stack(1)%mixed_vector_role /= role_test) return
+        coefficient = stack(1)%mixed_coefficient
+        derivative = stack(1)%mixed_derivative
+        vector_role = stack(1)%mixed_vector_role
+        status = 0
+    end subroutine analyze_mixed_bilinear_form
+
     subroutine apply_compiler_token( &
             token, token_index, stack, stack_size, status)
         type(form_token_t), intent(in) :: token
@@ -1232,7 +1352,36 @@ contains
             return
         end if
         if (.not. complementary_roles(first%role, second%role)) return
-        if (first%derivative /= second%derivative) return
+        if (first%derivative /= second%derivative) then
+            if (first%tensor_rank /= 0 .or. second%tensor_rank /= 0) return
+            if (first%field_rank == 1 .and. second%field_rank == 0 .and. &
+                first%derivative /= derivative_identity .and. &
+                second%derivative == derivative_identity) then
+                stack_size = stack_size - 1
+                stack(stack_size) = compiler_item_t()
+                stack(stack_size)%item_type = item_form
+                stack(stack_size)%field_rank = -1
+                stack(stack_size)%mixed_coefficient = 1.0_dp
+                stack(stack_size)%mixed_derivative = first%derivative
+                stack(stack_size)%mixed_vector_role = first%role
+                status = 0
+                return
+            end if
+            if (second%field_rank == 1 .and. first%field_rank == 0 .and. &
+                second%derivative /= derivative_identity .and. &
+                first%derivative == derivative_identity) then
+                stack_size = stack_size - 1
+                stack(stack_size) = compiler_item_t()
+                stack(stack_size)%item_type = item_form
+                stack(stack_size)%field_rank = -1
+                stack(stack_size)%mixed_coefficient = 1.0_dp
+                stack(stack_size)%mixed_derivative = second%derivative
+                stack(stack_size)%mixed_vector_role = second%role
+                status = 0
+                return
+            end if
+            return
+        end if
         if (first%tensor_rank /= second%tensor_rank) return
         stack_size = stack_size - 1
         stack(stack_size) = compiler_item_t()
@@ -1319,6 +1468,8 @@ contains
             stack(stack_size - 1)%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = factor * &
             stack(stack_size - 1)%divergence_coefficient
+        stack(stack_size - 1)%mixed_coefficient = factor * &
+            stack(stack_size - 1)%mixed_coefficient
         stack(stack_size - 1)%mass_field_scale = factor * &
             stack(stack_size - 1)%mass_field_scale
         stack(stack_size - 1)%curl_field_scale = factor * &
@@ -1389,6 +1540,10 @@ contains
             first%curl_coefficient + second%curl_coefficient
         stack(stack_size - 1)%divergence_coefficient = &
             first%divergence_coefficient + second%divergence_coefficient
+        if (first%mixed_derivative /= second%mixed_derivative .or. &
+            first%mixed_vector_role /= second%mixed_vector_role) return
+        stack(stack_size - 1)%mixed_coefficient = &
+            first%mixed_coefficient + second%mixed_coefficient
         call combine_field_terms( &
             first%mass_field_token, first%mass_field_scale, &
             second%mass_field_token, second%mass_field_scale, &

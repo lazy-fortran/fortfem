@@ -5,6 +5,7 @@ plot_mesh
 plotting
 
 # Finite elements
+mixed_poisson
 curl_curl
 tetra_h1_poisson
 tetra_nedelec_p_convergence

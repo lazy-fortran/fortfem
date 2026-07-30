@@ -70,6 +70,17 @@ fpm run --example <example_name>
 ### Finite elements
 
 <div class="example-gallery">
+<article class="example-card" data-example="mixed_poisson">
+<a class="example-card-preview" href="generated/mixed_poisson.html">
+<img class="example-card-image"
+ src="../media/examples/mixed_poisson/mixed_poisson_convergence_1d.png"
+ alt="Plot preview for mixed_poisson" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/mixed_poisson.html">mixed_poisson</a></h3>
+<p>This example is the first vector finite-element problem after the scalar</p>
+</div>
+</article>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
@@ -307,6 +318,7 @@ fpm run --example <example_name>
 - [minimal_mesh_example](generated/minimal_mesh_example.html) - A simple demonstration of FortFEM's mesh generation capabilities.
 - [plot_mesh](generated/plot_mesh.html) - This example demonstrates FortFEM's mesh visualization capabilities, showing how to create and plot finite element meshes at different refinement levels.
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
+- [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](generated/curl_curl.html) - This is an experimental API and visualization prototype for a future
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.

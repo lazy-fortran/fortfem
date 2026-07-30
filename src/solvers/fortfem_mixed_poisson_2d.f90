@@ -3,6 +3,8 @@ module fortfem_mixed_poisson_2d
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_divergence_csc
     use fortfem_kinds, only: dp
+    use fortfem_forms_simple, only: &
+        compile_mixed_form_csc, compile_vector_form_csc, form_expr_t
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
     use fortfem_triangle_discontinuous_dof_map, only: &
@@ -20,6 +22,7 @@ module fortfem_mixed_poisson_2d
 
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
+    public :: solve_symbolic_mixed_poisson_rt
 
     abstract interface
         pure function scalar_source_2d(x, y) result(value)
@@ -30,6 +33,102 @@ module fortfem_mixed_poisson_2d
     end interface
 
 contains
+
+    subroutine solve_symbolic_mixed_poisson_rt( &
+            mesh, degree, quadrature_degree, flux_mass_form, &
+            pressure_to_flux_form, balance_form, source, flux_dofs, &
+            pressure_dofs, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        type(form_expr_t), intent(in) :: flux_mass_form
+        type(form_expr_t), intent(in) :: pressure_to_flux_form
+        type(form_expr_t), intent(in) :: balance_form
+        procedure(scalar_source_2d) :: source
+        real(dp), allocatable, intent(out) :: flux_dofs(:)
+        real(dp), allocatable, intent(out) :: pressure_dofs(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: balance, flux_mass, pressure_to_flux, system
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: load(:), right_hand_side(:), solution(:)
+        real(dp), allocatable :: values(:)
+        integer :: column, entry, flux_count, matrix_entry
+        integer :: pressure_count, solve_status, system_size
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Symbolic RT-DG mixed Poisson solve failed")
+        if (degree < 0 .or. degree > 4 .or. quadrature_degree < 0) return
+        call compile_vector_form_csc( &
+            flux_mass_form, mesh, "RT", degree, quadrature_degree, &
+            flux_mass, status)
+        if (status%code /= 0) return
+        call compile_mixed_form_csc( &
+            pressure_to_flux_form, mesh, "RT", degree, quadrature_degree, &
+            pressure_to_flux, status)
+        if (status%code /= 0) return
+        call compile_mixed_form_csc( &
+            balance_form, mesh, "RT", degree, quadrature_degree, balance, &
+            status)
+        if (status%code /= 0) return
+        call assemble_dg_source_load( &
+            mesh, degree, quadrature_degree, source, load, status)
+        if (status%code /= 0) return
+
+        flux_count = flux_mass%nrow
+        pressure_count = balance%nrow
+        if (flux_mass%ncol /= flux_count) return
+        if (balance%ncol /= flux_count) return
+        if (pressure_to_flux%nrow /= flux_count .or. &
+            pressure_to_flux%ncol /= pressure_count) return
+        if (size(load) /= pressure_count) return
+        system_size = flux_count + pressure_count
+        allocate(rows( &
+            flux_mass%nnz + pressure_to_flux%nnz + balance%nnz))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        call append_block(flux_mass, 0, 0)
+        call append_block(pressure_to_flux, 0, flux_count)
+        call append_block(balance, flux_count, 0)
+        call csc_from_triplet( &
+            system_size, system_size, rows, columns, values, system, status)
+        if (status%code /= 0) return
+
+        allocate(right_hand_side(system_size), solution(system_size))
+        right_hand_side = 0.0_dp
+        right_hand_side(flux_count + 1:) = load
+        call sparse_direct_solve_csc( &
+            system_size, system%col_ptr, system%row_idx, system%val, &
+            right_hand_side, solution, solve_status)
+        if (solve_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INTERNAL_ERROR, &
+                "Symbolic RT-DG mixed sparse solve failed")
+            return
+        end if
+        allocate(flux_dofs(flux_count), pressure_dofs(pressure_count))
+        flux_dofs = solution(:flux_count)
+        pressure_dofs = solution(flux_count + 1:)
+        call status_set(status, 0, "")
+
+    contains
+
+        subroutine append_block(block, row_offset, column_offset)
+            type(csc_t), intent(in) :: block
+            integer, intent(in) :: row_offset, column_offset
+
+            do column = 1, block%ncol
+                do matrix_entry = block%col_ptr(column), &
+                        block%col_ptr(column + 1) - 1
+                    entry = entry + 1
+                    rows(entry) = block%row_idx(matrix_entry) + row_offset
+                    columns(entry) = column + column_offset
+                    values(entry) = block%val(matrix_entry)
+                end do
+            end do
+        end subroutine append_block
+
+    end subroutine solve_symbolic_mixed_poisson_rt
 
     !> Solve the homogeneous-Dirichlet mixed Poisson problem in matching
     !> RT(degree)-DG(degree) spaces.

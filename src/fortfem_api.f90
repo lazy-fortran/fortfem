@@ -312,7 +312,8 @@ module fortfem_api
         sparse_direct_factor_csc, sparse_direct_free, &
         sparse_direct_solve_factored
     use fortfem_mixed_poisson_2d, only: &
-        solve_mixed_poisson_rt, solve_mixed_poisson_rt0
+        solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
+        solve_symbolic_mixed_poisson_rt
     use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
     ! Public arbitrary-order H(curl) solve, including optional homogeneous PEC.
     use fortfem_tetra_nedelec_solver_3d, only: &
@@ -519,6 +520,7 @@ module fortfem_api
     public :: compile_form_vector
     public :: compile_vector_form_element
     public :: compile_vector_form_csc
+    public :: compile_mixed_form_csc
     public :: compile_vector_form_rhs
     public :: init_measures
     public :: operator(*)
@@ -530,6 +532,7 @@ module fortfem_api
     public :: solve
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
+    public :: solve_symbolic_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
