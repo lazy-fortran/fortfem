@@ -27,7 +27,7 @@ program test_maxwell_torus_curved_reciprocity_slow
         vertices, triangles, parameters, major_radius, minor_radius, reshape([ &
         1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -1.0_dp, 0.0_dp], [3, 2]), &
         reshape([z_polarization, z_polarization], [3, 2]), wave_number, &
-        impedance, 6, 3.0e-4_dp, 1, 0.12_dp, currents, status)
+        impedance, 3, 3.0e-4_dp, 1, 0.12_dp, currents, status)
     if (status /= 0) error stop "exact-torus batched Maxwell CFIE solve failed"
     call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
         vertices, triangles, parameters, major_radius, minor_radius, &
