@@ -54,7 +54,7 @@ The initial findings used the following evidence:
   incompatible EFIE and MFIE weak matrices merely because they have the same
   dimensions.
 
-The current implementation baseline is FortFEM `207a5ce` with 198 passing
+The current implementation baseline is FortFEM `4389976` with 199 passing
 test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 `paper_magnetic` `070fded`, and `paper_acoustics` `6300ab0`.
 
@@ -63,7 +63,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | Requirement | Verified FortFEM capability | Remaining gate |
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
-| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, and convergence tests | High-level arbitrary-order PDE dispatch and exhaustive mixed solves above RT1-DG1 |
+| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, and public symbolic first-kind H(curl) solves through order four | High-level RT/BDM dispatch and exhaustive mixed solves above RT1-DG1 |
 | Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; and commuting grad/curl/div tests | Higher-order magnetic-box convergence and high-level PDE dispatch |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on nonspherical surfaces and curved-boundary elastic coupling |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, and symmetric P1/P0 Laplace and Helmholtz transmission solves | Curved/higher-order panels, adaptivity, fast operators, and paper fixtures |
@@ -114,8 +114,11 @@ PDE solver:
 FortFEM now has verified H(curl), H(div), and discontinuous scalar families
 through order four on triangles and tetrahedra, orientation-aware global
 operators, commuting projections, and weighted expression compilation.
-General mixed high-level PDE solves and higher-order high-level solver
-dispatch remain absent.
+The public symbolic API now dispatches first-kind triangle Nedelec
+curl-curl-plus-mass solves through order four, including higher edge moments,
+cell moments, constant tangential data, arbitrary constrained-DOF
+elimination, and `fortsparse` direct solves. General mixed high-level PDE
+solves and public RT/BDM dispatch remain absent.
 
 ### Sparse algebra
 
