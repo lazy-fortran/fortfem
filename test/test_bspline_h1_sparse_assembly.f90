@@ -11,6 +11,7 @@ program test_bspline_h1_sparse_assembly
         assemble_bspline_l2_mass_csc, &
         assemble_bspline_grad_shafranov_csc, &
         assemble_bspline_toroidal_fourier_laplacian_csc, &
+        assemble_bspline_poloidal_bracket_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -22,6 +23,7 @@ program test_bspline_h1_sparse_assembly
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
     type(csc_t) :: grad_shafranov, toroidal_fourier
+    type(csc_t) :: poloidal_bracket
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
     type(csc_t) :: hdiv_mass, div_div
     type(csc_t) :: weak_gradient
@@ -33,6 +35,7 @@ program test_bspline_h1_sparse_assembly
     real(dp), allocatable :: hcurl_coefficients(:)
     real(dp), allocatable :: hdiv_coefficients(:)
     real(dp), allocatable :: l2_coefficients(:)
+    real(dp), allocatable :: bracket_field(:), bracket_test(:), bracket_trial(:)
     real(dp), allocatable :: x_points(:), y_points(:)
     real(dp) :: energy, integral
     integer :: ix, iy
@@ -101,6 +104,27 @@ program test_bspline_h1_sparse_assembly
     call check_condition(abs(dot_product(coefficients, product) - &
         4.0_dp*log(2.0_dp)) < 3.0e-11_dp, &
         "Toroidal Fourier mode energy matches analytical 4 log(2)")
+    allocate( &
+        bracket_field(size(coefficients)), bracket_test(size(coefficients)), &
+        bracket_trial(size(coefficients)))
+    do iy = 1, size(y_points)
+        bracket_field(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = 1.0_dp + x_points
+        bracket_test(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = 1.0_dp + x_points
+        bracket_trial(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = y_points(iy)
+    end do
+    call assemble_bspline_poloidal_bracket_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, bracket_field, 5, &
+        poloidal_bracket, sparse_status)
+    product = csc_matvec(poloidal_bracket, bracket_trial)
+    energy = dot_product(bracket_test, product)
+    call check_condition(abs(energy - 0.75_dp) < 3.0e-11_dp, &
+        "Poloidal spline bracket reproduces exact affine weak action")
+    call check_condition(abs(energy + dot_product(bracket_trial, &
+        csc_matvec(poloidal_bracket, bracket_test))) < 3.0e-13_dp, &
+        "Poloidal spline bracket is exactly skew in the Galerkin pairing")
 
     call assemble_bspline_h1_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 5, anisotropic, &
