@@ -154,6 +154,8 @@ module fortfem_api
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_curl_curl_pml_coefficients, &
         cartesian_scalar_helmholtz_pml_coefficients
+    use fortfem_scalar_helmholtz_pml_slab_1d, only: &
+        solve_scalar_helmholtz_pml_slab_1d
     use fortfem_toroidal_poisson_dtn, only: &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
         toroidal_poisson_exterior_dtn_p
@@ -457,6 +459,7 @@ module fortfem_api
     public :: spherical_maxwell_dtn_eigenvalues
     public :: cartesian_curl_curl_pml_coefficients
     public :: cartesian_scalar_helmholtz_pml_coefficients
+    public :: solve_scalar_helmholtz_pml_slab_1d
     public :: evaluate_toroidal_harmonic_p
     public :: evaluate_toroidal_ampere_field_p
     public :: toroidal_poisson_exterior_dtn_p
