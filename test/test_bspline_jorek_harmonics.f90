@@ -5,6 +5,7 @@ program test_bspline_jorek_harmonics
         apply_bspline_jorek_flux_jvp, &
         advance_bspline_jorek_poloidal_flux_midpoint_steps, &
         apply_bspline_toroidal_poloidal_bracket, &
+        apply_bspline_toroidal_poloidal_bracket_jvp, &
         apply_toroidal_fourier_derivative, &
         assemble_bspline_h1_weighted_mass_csc, &
         assemble_bspline_h1_operator_csc, &
@@ -20,6 +21,8 @@ program test_bspline_jorek_harmonics
     integer, parameter :: modes(4) = [0, 1, 2, 3]
     complex(dp), allocatable :: advecting(:, :), derivative(:, :)
     complex(dp), allocatable :: residual(:, :), transported(:, :)
+    complex(dp), allocatable :: bracket_jvp(:, :)
+    complex(dp), allocatable :: bracket_minus(:, :), bracket_plus(:, :)
     complex(dp), allocatable :: flux_rhs(:, :)
     complex(dp), allocatable :: flux_jvp(:, :), flux_minus(:, :), flux_plus(:, :)
     complex(dp), allocatable :: current_direction(:, :), flux_direction(:, :)
@@ -27,6 +30,7 @@ program test_bspline_jorek_harmonics
     real(dp), allocatable :: control_points(:, :, :), reference(:)
     real(dp), allocatable :: flux_history(:, :)
     real(dp), allocatable :: flux_initial(:), flux_state(:), potential(:)
+    real(dp), allocatable :: random_advecting(:), random_transported(:)
     real(dp), allocatable :: r_points(:), weights(:, :), z_points(:)
     real(dp), parameter :: finite_difference_step = 1.0e-6_dp
     type(csc_t) :: bracket, mass, weighted_mass
@@ -71,6 +75,57 @@ program test_bspline_jorek_harmonics
     call check_condition(maxval(abs(residual(:, :3))) < 2.0e-14_dp, &
         "JOREK bracket convolution leaves nonresonant modes empty")
 
+    allocate( &
+        flux_direction(size(advecting, 1), size(modes)), &
+        potential_direction(size(advecting, 1), size(modes)), &
+        current_direction(size(advecting, 1), size(modes)))
+    call seed_random_numbers()
+    call random_complex_field(advecting)
+    call random_complex_field(transported)
+    call random_complex_field(flux_direction)
+    call random_complex_field(potential_direction)
+    call apply_bspline_toroidal_poloidal_bracket_jvp( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, advecting, &
+        transported, flux_direction, potential_direction, 5, bracket_jvp, &
+        sparse_status)
+    call apply_bspline_toroidal_poloidal_bracket( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, &
+        advecting + finite_difference_step*flux_direction, &
+        transported + finite_difference_step*potential_direction, 5, &
+        bracket_plus, sparse_status)
+    call apply_bspline_toroidal_poloidal_bracket( &
+        knots_r, knots_z, 2, 2, control_points, weights, modes, &
+        advecting - finite_difference_step*flux_direction, &
+        transported - finite_difference_step*potential_direction, 5, &
+        bracket_minus, sparse_status)
+    call check_condition(maxval(abs( &
+        (bracket_plus - bracket_minus)/(2.0_dp*finite_difference_step) - &
+        bracket_jvp)) < 2.0e-8_dp, &
+        "Analytical bracket JVP matches an independent central difference")
+
+    allocate(random_advecting(size(reference)))
+    allocate(random_transported(size(reference)))
+    do iy = 1, 20
+        call random_number(random_advecting)
+        call random_number(random_transported)
+        call assemble_bspline_poloidal_bracket_csc( &
+            knots_r, knots_z, 2, 2, control_points, weights, &
+            random_advecting, 5, bracket, sparse_status)
+        call check_condition(abs(dot_product( &
+            random_transported, &
+            csc_matvec(bracket, random_transported))) < 2.0e-13_dp, &
+            "Random bracket trial preserves the skew quadratic invariant")
+    end do
+
+    advecting = cmplx(0.0_dp, 0.0_dp, dp)
+    transported = cmplx(0.0_dp, 0.0_dp, dp)
+    do iy = 1, size(z_points)
+        do ix = 1, size(r_points)
+            dof = ix + (iy - 1)*size(r_points)
+            advecting(dof, 2) = cmplx(1.0_dp + r_points(ix), 0.0_dp, dp)
+            transported(dof, 3) = cmplx(0.0_dp, z_points(iy), dp)
+        end do
+    end do
     call apply_toroidal_fourier_derivative( &
         modes, transported, derivative, status)
     call check_condition(status == 0 .and. maxval(abs( &
@@ -118,10 +173,6 @@ program test_bspline_jorek_harmonics
     call check_condition(abs(sum(flux_rhs(:, 1)) - 0.75_dp) < 3.0e-12_dp, &
         "JOREK flux residual reproduces the cylindrical R*[R,Z] weak action")
 
-    allocate( &
-        flux_direction(size(advecting, 1), size(modes)), &
-        potential_direction(size(advecting, 1), size(modes)), &
-        current_direction(size(advecting, 1), size(modes)))
     do iy = 1, size(modes)
         do ix = 1, size(advecting, 1)
             advecting(ix, iy) = cmplx( &
@@ -194,6 +245,26 @@ program test_bspline_jorek_harmonics
     call check_summary("JOREK isogeometric toroidal harmonics")
 
 contains
+
+    subroutine random_complex_field(field)
+        complex(dp), intent(out) :: field(:, :)
+        real(dp) :: imaginary_part(size(field, 1), size(field, 2))
+        real(dp) :: real_part(size(field, 1), size(field, 2))
+
+        call random_number(real_part)
+        call random_number(imaginary_part)
+        field = cmplx(real_part, imaginary_part, dp)
+    end subroutine random_complex_field
+
+    subroutine seed_random_numbers()
+        integer, allocatable :: seed(:)
+        integer :: entry
+
+        call random_seed(size=entry)
+        allocate(seed(entry))
+        seed = [(49979687 + 67867967*entry, entry = 1, size(seed))]
+        call random_seed(put=seed)
+    end subroutine seed_random_numbers
 
     pure function greville_abscissae(knots, degree) result(points)
         real(dp), intent(in) :: knots(:)

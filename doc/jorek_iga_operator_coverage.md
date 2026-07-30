@@ -26,7 +26,7 @@ The operator inventory is based on:
 | Grad--Shafranov operator | Cylindrical `1/R` weighted H1 diffusion |
 | Toroidal Fourier derivatives | Exact complex `i*n` multiplier |
 | Toroidal part of scalar Laplacian | Mode-dependent `n^2/R` mass |
-| Nonlinear poloidal Poisson brackets | Energy-skew Galerkin bracket |
+| Nonlinear poloidal Poisson brackets | Energy-skew Galerkin bracket and exact analytical JVP |
 | Nonlinear toroidal mode coupling | Exact retained-mode convolution `p+q=n` |
 | Scalar coefficient products | Coefficient-weighted H1 Galerkin mass |
 | Magnetic-flux evolution | Cylindrical weak residual and analytical JVP |
@@ -38,7 +38,10 @@ The operator inventory is based on:
 
 The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
-unrelated retained harmonic.
+unrelated retained harmonic. Its analytical directional derivative retains
+both bilinear product-rule terms. Deterministic random trials verify the
+quadratic skew invariant, and an independent central difference verifies the
+JVP for complex multi-mode fields.
 
 The magnetic-axis extraction maps satisfy both commuting diagrams against an
 independently assembled periodic tensor-product cell complex. FortSym proves

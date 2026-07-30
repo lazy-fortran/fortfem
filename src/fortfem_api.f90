@@ -218,6 +218,7 @@ module fortfem_api
         advance_bspline_jorek_poloidal_flux_midpoint, &
         advance_bspline_jorek_poloidal_flux_midpoint_steps, &
         apply_bspline_toroidal_poloidal_bracket, &
+        apply_bspline_toroidal_poloidal_bracket_jvp, &
         apply_toroidal_fourier_derivative, &
         build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_assembly_bspline_3d, only: &
@@ -577,6 +578,7 @@ module fortfem_api
     public :: assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
     public :: assemble_bspline_l2_mass_3d_csc
     public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_bspline_toroidal_poloidal_bracket_jvp
     public :: apply_toroidal_fourier_derivative
     public :: BSPLINE_FACE_X_MAX
     public :: BSPLINE_FACE_X_MIN
