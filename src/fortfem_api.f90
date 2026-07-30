@@ -37,6 +37,7 @@ module fortfem_api
         evaluate_sphere_curved_panel, invert_sphere_curved_panel
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
+        assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
@@ -265,6 +266,7 @@ module fortfem_api
     public :: invert_sphere_curved_panel
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
