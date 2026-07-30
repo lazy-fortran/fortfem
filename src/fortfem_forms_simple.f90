@@ -17,6 +17,8 @@ module fortfem_forms_simple
         assemble_triangle_rt_divergence_csc, &
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element
+    use fortfem_assembly_tetra_rt_arbitrary_order_3d, only: &
+        assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_divergence_csc
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_t, &
@@ -110,6 +112,7 @@ module fortfem_forms_simple
     public :: assignment(=)
     public :: compile_form, compile_form_matrix, compile_form_vector
     public :: compile_mixed_form_csc
+    public :: compile_tetra_mixed_form_csc, compile_tetra_rt_form_csc
     public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
     public :: create_cell_coefficient, create_constant_load
@@ -671,6 +674,74 @@ contains
                 vector_to_scalar, coefficient, matrix, status)
         end if
     end subroutine compile_mixed_form_csc
+
+    subroutine compile_tetra_rt_form_csc( &
+            expr, vertices, tetrahedra, degree, quadrature_degree, matrix, &
+            status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: curl_coefficient, divergence_coefficient
+        real(dp) :: curl_field_scale, divergence_field_scale
+        real(dp) :: mass_coefficient, mass_field_scale
+        integer :: compiler_status, curl_field_token
+        integer :: divergence_field_token, mass_field_token
+
+        call analyze_vector_bilinear_form( &
+            expr, mass_coefficient, curl_coefficient, &
+            divergence_coefficient, mass_field_token, curl_field_token, &
+            divergence_field_token, mass_field_scale, curl_field_scale, &
+            divergence_field_scale, compiler_status)
+        if (compiler_status /= 0 .or. curl_coefficient /= 0.0_dp .or. &
+            mass_field_token /= 0 .or. curl_field_token /= 0 .or. &
+            divergence_field_token /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetra RT compiler requires a constant div-mass form")
+            return
+        end if
+        call assemble_tetra_rt_div_mass_csc( &
+            vertices, tetrahedra, degree, quadrature_degree, matrix, status, &
+            divergence_coefficient, mass_coefficient)
+    end subroutine compile_tetra_rt_form_csc
+
+    subroutine compile_tetra_mixed_form_csc( &
+            expr, vertices, tetrahedra, degree, quadrature_degree, matrix, &
+            status)
+        type(form_expr_t), intent(in) :: expr
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: vector_to_scalar
+        real(dp) :: coefficient
+        integer :: derivative, vector_role, compiler_status
+
+        call analyze_mixed_bilinear_form( &
+            expr, coefficient, derivative, vector_role, compiler_status)
+        if (compiler_status /= 0 .or. &
+            derivative /= derivative_divergence) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetra mixed compiler requires an RT-DG divergence pairing")
+            return
+        end if
+        call assemble_tetra_rt_divergence_csc( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            vector_to_scalar, status)
+        if (status%code /= 0) return
+        if (vector_role == role_trial) then
+            matrix = vector_to_scalar
+            matrix%val = coefficient*matrix%val
+        else
+            call transpose_scaled_csc( &
+                vector_to_scalar, coefficient, matrix, status)
+        end if
+    end subroutine compile_tetra_mixed_form_csc
 
     subroutine transpose_scaled_csc(input, scale, output, status)
         type(csc_t), intent(in) :: input

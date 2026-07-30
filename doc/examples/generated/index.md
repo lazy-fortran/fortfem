@@ -14,6 +14,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [mixed_poisson](mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](curl_curl.html) - This is an experimental API and visualization prototype for a future
 - [tetra_h1_poisson](tetra_h1_poisson.html) - This example solves
+- [tetra_mixed_poisson](tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
 - [circular_dtn_modes](circular_dtn_modes.html) - Boundary data on the unit circle:
 - [helmholtz_open_boundary_comparison](helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing

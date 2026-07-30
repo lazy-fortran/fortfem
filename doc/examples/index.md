@@ -103,6 +103,17 @@ fpm run --example <example_name>
 <p>This example solves</p>
 </div>
 </article>
+<article class="example-card" data-example="tetra_mixed_poisson">
+<a class="example-card-preview" href="generated/tetra_mixed_poisson.html">
+<img class="example-card-image"
+ src="../media/examples/tetra_mixed_poisson/tetra_mixed_conservation_1d.png"
+ alt="Plot preview for tetra_mixed_poisson" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/tetra_mixed_poisson.html">tetra_mixed_poisson</a></h3>
+<p>This example extends the symbolic Darcy form from triangles to a unit cube</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_nedelec_p_convergence">
 <a class="example-card-preview" href="generated/tetra_nedelec_p_convergence.html">
 <img class="example-card-image"
@@ -321,6 +332,7 @@ fpm run --example <example_name>
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](generated/curl_curl.html) - This is an experimental API and visualization prototype for a future
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
+- [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
 - [circular_dtn_modes](generated/circular_dtn_modes.html) - Boundary data on the unit circle:
 - [helmholtz_open_boundary_comparison](generated/helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing
