@@ -105,6 +105,7 @@ module fortfem_api
     use fortfem_tetra_lagrange_arbitrary_order, only: &
         assignment(=), evaluate_tetra_lagrange, initialize_tetra_lagrange, &
         tetra_lagrange_dof_count, tetra_lagrange_nodes, tetra_lagrange_t
+    use fortfem_tetra_feec_operators, only: build_tetra_discrete_gradient
     use fortfem_tetra_rt_arbitrary_order, only: &
         assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_rt_dof_count, tetra_rt_t
@@ -293,6 +294,7 @@ module fortfem_api
     public :: tetra_lagrange_dof_count
     public :: tetra_lagrange_nodes
     public :: tetra_lagrange_t
+    public :: build_tetra_discrete_gradient
     public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
