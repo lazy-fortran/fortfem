@@ -88,6 +88,7 @@ module fortfem_api
     use fortfem_maxwell_torus_curved_rwg, only: &
         assemble_maxwell_torus_curved_efie_rwg_3d, &
         assemble_maxwell_torus_curved_efie_imaginary_rwg_3d, &
+        assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
         assemble_maxwell_torus_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
@@ -370,6 +371,7 @@ module fortfem_api
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
