@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/interoperability.yml"
+      - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/interoperability.yml"
+      - "benchmark/fenicsx/**"
       - "benchmark/freefem/**"
       - "src/generated/fortfem_interoperability_oracles.f90"
       - "test/test_interoperability_manufactured_oracles.f90"
@@ -97,4 +99,44 @@ jobs:
         with:
           name: interoperability-freefem-${{ github.sha }}
           path: benchmark-results/freefem/
+          retention-days: 30
+
+  fenicsx:
+    name: FEniCSx analytical oracles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: dolfinx/dolfinx:v0.10.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Poisson and Ampere oracles
+        run: python3 benchmark/fenicsx/manufactured_oracles.py
+
+      - name: Record runner metadata
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import platform
+          from pathlib import Path
+
+          import dolfinx
+
+          output = Path("benchmark-results/fenicsx/metadata.txt")
+          output.write_text(
+              "solver=FEniCSx\n"
+              f"version={dolfinx.__version__}\n"
+              f"python={platform.python_version()}\n"
+              f"runner_arch={platform.machine()}\n"
+              "image=dolfinx/dolfinx:v0.10.0\n"
+              "commit=${{ github.sha }}\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload raw benchmark records
+        uses: actions/upload-artifact@v4
+        with:
+          name: interoperability-fenicsx-${{ github.sha }}
+          path: benchmark-results/fenicsx/
           retention-days: 30
