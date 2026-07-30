@@ -1,7 +1,9 @@
 program test_bspline_polar_axis
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        assemble_bspline_polar_hcurl_operator_csc, &
         assemble_bspline_polar_h1_operator_csc, &
+        assemble_bspline_polar_l2_mass_csc, &
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_feec_2d_extractions, &
         build_bspline_polar_h1_extraction, &
@@ -25,7 +27,8 @@ program test_bspline_polar_axis
     real(dp), allocatable :: physical_weights(:, :)
     real(dp), allocatable :: expected(:), polar_state(:)
     real(dp), allocatable :: tensor_curl(:, :), tensor_gradient(:, :)
-    type(csc_t) :: physical_mass, physical_stiffness
+    type(csc_t) :: physical_hcurl_curl, physical_hcurl_mass
+    type(csc_t) :: physical_l2_mass, physical_mass, physical_stiffness
     type(csc_t) :: polar_mass, tensor_identity
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: tensor_points(:, :)
@@ -94,6 +97,13 @@ program test_bspline_polar_axis
         (periodic_right - periodic_left)/2.0e-7_dp - &
         periodic_derivatives)) < 2.0e-8_dp, &
         "Periodic B-spline derivatives match a central difference")
+    call evaluate_periodic_bspline_basis( &
+        azimuth_count, 0, 0.371_dp, periodic_values, periodic_derivatives, &
+        status)
+    call check_condition(status == 0 .and. &
+        abs(sum(periodic_values) - 1.0_dp) < 2.0e-15_dp .and. &
+        maxval(abs(periodic_derivatives)) == 0.0_dp, &
+        "Periodic degree-zero basis supports derivative-normalized forms")
 
     call build_bspline_polar_feec_2d_operators( &
         azimuth_count, radial_count, gradient, curl, status)
@@ -171,6 +181,23 @@ program test_bspline_polar_axis
     call check_condition(maxval(abs( &
         csc_matvec(physical_stiffness, polar_state))) < 2.0e-13_dp, &
         "Physical polar stiffness annihilates constants")
+    call assemble_bspline_polar_hcurl_operator_csc( &
+        radial_knots, 1, azimuth_count, 1, physical_control_points, &
+        physical_weights, 3, physical_hcurl_mass, sparse_status, &
+        curl_coefficient=0.0_dp, mass_coefficient=1.0_dp)
+    call check_condition(sparse_status%code == 0, &
+        "Physical polar Hcurl mass assembles on the magnetic axis")
+    call assemble_bspline_polar_hcurl_operator_csc( &
+        radial_knots, 1, azimuth_count, 1, physical_control_points, &
+        physical_weights, 3, physical_hcurl_curl, sparse_status, &
+        curl_coefficient=1.0_dp, mass_coefficient=0.0_dp)
+    call check_condition(sparse_status%code == 0, &
+        "Physical polar curl-curl operator assembles on the magnetic axis")
+    call assemble_bspline_polar_l2_mass_csc( &
+        radial_knots, 1, azimuth_count, 1, physical_control_points, &
+        physical_weights, 3, physical_l2_mass, sparse_status)
+    call check_condition(sparse_status%code == 0, &
+        "Physical polar L2 mass assembles on the magnetic axis")
 
     allocate(random_state(size(gradient, 2)))
     call seed_random_numbers()
@@ -179,6 +206,21 @@ program test_bspline_polar_axis
         call check_condition(maxval(abs( &
             matmul(curl, matmul(gradient, random_state)))) < 5.0e-15_dp, &
             "Random polar exact-sequence trial preserves curl(grad)=0")
+        expected = matmul(gradient, random_state)
+        call check_condition(abs( &
+            dot_product(random_state, &
+            csc_matvec(physical_stiffness, random_state)) - &
+            dot_product(expected, &
+            csc_matvec(physical_hcurl_mass, expected))) < 2.0e-11_dp, &
+            "Physical polar grad energy commutes with the Hcurl Hodge map")
+        polar_state = expected
+        expected = matmul(curl, polar_state)
+        call check_condition(abs( &
+            dot_product(polar_state, &
+            csc_matvec(physical_hcurl_curl, polar_state)) - &
+            dot_product(expected, &
+            csc_matvec(physical_l2_mass, expected))) < 2.0e-11_dp, &
+            "Physical polar curl energy commutes with the L2 Hodge map")
     end do
 
     call check_summary("Isogeometric magnetic-axis polar extraction")

@@ -28,7 +28,8 @@ contains
         integer :: extended_basis, first_basis, periodic_basis
 
         status = 1
-        if (basis_count < degree + 1 .or. degree < 1) return
+        if (degree < 0) return
+        if (basis_count < degree + 1) return
         if (coordinate < 0.0_dp .or. coordinate > 1.0_dp) return
         scaled_coordinate = real(basis_count, dp)*coordinate
         if (coordinate == 1.0_dp) scaled_coordinate = 0.0_dp
@@ -41,6 +42,7 @@ contains
             value = cardinal_bspline( &
                 degree, scaled_coordinate - real(extended_basis, dp))
             values(periodic_basis) = values(periodic_basis) + value
+            if (degree == 0) cycle
             derivatives(periodic_basis) = derivatives(periodic_basis) + &
                 real(basis_count, dp)*( &
                 cardinal_bspline( &

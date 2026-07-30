@@ -34,7 +34,7 @@ The operator inventory is based on:
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
 | Patch interfaces | Orientation-aware 2D and 3D quotient complexes |
-| Magnetic-axis regularity | Type-1 polar H1/Hcurl/L2 extraction, locally exact incidence, and physical H1 mass/diffusion |
+| Magnetic-axis regularity | Type-1 polar H1/Hcurl/L2 extraction, exact incidence, and physical Hodge operators |
 
 The nonlinear bracket convolution is deliberately truncated only after exact
 integer mode addition. It therefore cannot alias a discarded triad into an
@@ -45,11 +45,13 @@ independently assembled periodic tensor-product cell complex. FortSym proves
 the generic polar-cap and regular-cell identities exactly. Sparse physical
 operators use the Galerkin restriction `E A E^T`; no dense pseudoinverse is
 formed. Direct radial--periodic-angular quadrature assembles the physical polar
-H1 mass and diffusion. Its constant mass reproduces the exact area of a
-regular-polygon polar map, while its stiffness annihilates constants. The block
-layout is also cross-checked during development against the MIT-licensed
-STRUPHY polar implementation, while FortFEM retains its own Fortran
-implementation and tests.
+H1 mass and diffusion, covariant-Piola H(curl) mass and curl--curl, and density
+mapped L2 mass. Its constant mass reproduces the exact area of a regular-polygon
+polar map, while its stiffness annihilates constants. Deterministic random
+trials independently verify the H1-gradient/H(curl)-mass and
+H(curl)-curl/L2-mass energy identities. The block layout is also cross-checked
+during development against the MIT-licensed STRUPHY polar implementation,
+while FortFEM retains its own Fortran implementation and tests.
 
 ## Time discretization
 
@@ -82,9 +84,9 @@ of the current implementation.
 - Add conservative density/pressure transport and parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
-- Complete physical magnetic-axis Hcurl and L2 quadrature/Hodge assembly. The
-  full extraction complex, generic sparse Hodge restriction, and physical H1
-  assembly are implemented.
+- Replace the correctness-first dense tensor quadrature workspace in physical
+  magnetic-axis H(curl)/L2 assembly with support-local sparse accumulation, and
+  benchmark both paths.
 - Verify a nonlinear manufactured equilibrium and an energy-transfer problem
   against the published continuous invariants.
 - Benchmark cached harmonic-bracket assembly and nonlinear residual evaluation.
