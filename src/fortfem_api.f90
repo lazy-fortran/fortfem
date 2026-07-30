@@ -235,6 +235,7 @@ module fortfem_api
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0
     use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
+    ! Public arbitrary-order H(curl) solve, including optional homogeneous PEC.
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
