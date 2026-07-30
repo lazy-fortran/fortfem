@@ -102,3 +102,8 @@ square-root products, while FortNum's FFT adjoint supplies the dense trace
 reverse product without forming the Fourier matrix. A mode exactly at cutoff
 is rejected by parameter products because the square-root derivative is
 singular there; the primal operator remains defined.
+The corresponding fixed-mesh P1 FEM--DtN state solve composes those products
+with the complex implicit FortSparse adjoint. It differentiates wave number,
+period, complex volume loads, and complex Dirichlet data. Reverse elimination
+accounts for the dependence of the reduced right-hand side on both the
+pre-elimination matrix and prescribed boundary values.
