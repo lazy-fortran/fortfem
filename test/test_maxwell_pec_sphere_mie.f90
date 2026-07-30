@@ -2,7 +2,8 @@ program test_maxwell_pec_sphere_mie
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         evaluate_maxwell_efie_far_field_rwg_3d, &
-        generate_sphere_surface_mesh, solve_maxwell_pec_efie_rwg_3d
+        generate_sphere_surface_mesh, solve_maxwell_pec_efie_rwg_3d, &
+        solve_maxwell_pec_regularized_cfie_rwg_3d
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
@@ -10,6 +11,7 @@ program test_maxwell_pec_sphere_mie
     complex(dp), allocatable :: density(:)
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: vertices(:, :)
+    real(dp) :: cfie_cross_section, cfie_error
     real(dp) :: cross_sections(0:2), errors(0:2), exact_cross_section
     integer :: level, status
     logical :: all_passed
@@ -39,6 +41,23 @@ program test_maxwell_pec_sphere_mie
         "PEC sphere EFIE cross section converges toward the Mie series")
     call record_condition(errors(2)/exact_cross_section < 0.55_dp, &
         "Refined PEC sphere reaches the coarse-mesh Mie accuracy target")
+    call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
+    call solve_maxwell_pec_regularized_cfie_rwg_3d( &
+        vertices, triangles, [0.0_dp, 0.0_dp, 1.0_dp], &
+        [cmplx(1.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
+        cmplx(0.0_dp, 0.0_dp, dp)], 0.8_dp, 1.0_dp, 3, 1.0e-4_dp, 1, &
+        density, status)
+    cfie_cross_section = numerical_cross_section( &
+        vertices, triangles, density, 0.8_dp, status)
+    cfie_error = abs(cfie_cross_section - exact_cross_section)
+    if (status /= 0 .or. cfie_cross_section <= 0.0_dp .or. &
+        cfie_error >= exact_cross_section) then
+        write (*, *) "CFIE/Mie cross sections", &
+            cfie_cross_section, exact_cross_section
+    end if
+    call record_condition(status == 0 .and. cfie_cross_section > 0.0_dp .and. &
+        cfie_error < exact_cross_section, &
+        "regularized CFIE sphere solve agrees with Mie scattering on coarse mesh")
     call check_summary("PEC sphere Maxwell EFIE versus Mie series")
     if (.not. all_passed) error stop 1
 
