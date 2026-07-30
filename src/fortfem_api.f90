@@ -92,6 +92,7 @@ module fortfem_api
         assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
         assemble_maxwell_torus_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d, &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d, &
         assemble_maxwell_torus_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
@@ -100,7 +101,9 @@ module fortfem_api
         evaluate_maxwell_torus_curved_localized_rwg_basis, &
         evaluate_maxwell_torus_curved_rwg_basis, &
         integrate_maxwell_torus_curved_adjacent_rwg_pair_3d, &
-        integrate_maxwell_torus_curved_coincident_rwg_pair_3d
+        integrate_maxwell_torus_curved_coincident_rwg_pair_3d, &
+        solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d, &
+        solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
@@ -376,6 +379,7 @@ module fortfem_api
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
@@ -383,6 +387,8 @@ module fortfem_api
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
+    public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
+    public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     public :: cartesian_to_toroidal
     public :: toroidal_point_to_cartesian
     public :: toroidal_vector_to_cartesian

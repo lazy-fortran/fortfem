@@ -20,11 +20,14 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
+    public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
+    public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -38,6 +41,180 @@ module fortfem_maxwell_torus_curved_rwg
     end interface
 
 contains
+
+    subroutine solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            direction, polarization, wave_number, impedance, quadrature_degree, &
+            tolerance, max_depth, mfie_offset, density, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number, impedance, tolerance, mfie_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: density(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: densities(:, :)
+        real(dp) :: directions(3, 1)
+        complex(dp) :: polarizations(3, 1)
+
+        directions(:, 1) = direction
+        polarizations(:, 1) = polarization
+        call &
+            solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            directions, polarizations, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, mfie_offset, densities, &
+            status)
+        if (status /= 0) return
+        allocate(density(size(densities, 1)))
+        density = densities(:, 1)
+    end subroutine solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
+
+    subroutine &
+            solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            directions, polarizations, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, mfie_offset, densities, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, directions(:, :)
+        complex(dp), intent(in) :: polarizations(:, :)
+        real(dp), intent(in) :: wave_number, impedance, tolerance, mfie_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: densities(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: bc_rhs(:), cfie(:, :), efie(:, :)
+        complex(dp), allocatable :: efie_rhs(:), mapped_rhs(:, :)
+        complex(dp), allocatable :: mfie(:, :), product(:, :)
+        complex(dp), allocatable :: regularizer(:, :), right_hand_side(:, :)
+        complex(dp), allocatable :: mass(:, :)
+        real(dp), allocatable :: real_mass(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: incidence, incidence_count, info, system_size
+
+        status = 1
+        if (allocated(densities)) deallocate(densities)
+        if (size(directions, 1) /= 3) return
+        if (size(polarizations, 1) /= 3) return
+        incidence_count = size(directions, 2)
+        if (incidence_count < 1) return
+        if (size(polarizations, 2) /= incidence_count) return
+        call assemble_maxwell_torus_curved_regularized_cfie_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            mfie_offset, cfie, efie, mfie, regularizer, product, status)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_rwg_rbc_pairing( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            quadrature_degree, real_mass, status)
+        if (status /= 0) return
+        system_size = size(real_mass, 1)
+        allocate( &
+            mass(system_size, system_size), &
+            mapped_rhs(system_size, incidence_count), &
+            right_hand_side(system_size, incidence_count), &
+            densities(system_size, incidence_count), pivots(system_size))
+        do incidence = 1, incidence_count
+            call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d( &
+                vertices, triangles, parameters, major_radius, minor_radius, &
+                directions(:, incidence), polarizations(:, incidence), &
+                wave_number, quadrature_degree, efie_rhs, status)
+            if (status /= 0) return
+            call assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d( &
+                vertices, triangles, parameters, major_radius, minor_radius, &
+                directions(:, incidence), polarizations(:, incidence), &
+                wave_number, quadrature_degree, bc_rhs, status)
+            if (status /= 0) return
+            mapped_rhs(:, incidence) = efie_rhs
+            right_hand_side(:, incidence) = bc_rhs
+        end do
+        mass = transpose(cmplx(real_mass, 0.0_dp, dp))
+        call zgesv( &
+            system_size, incidence_count, mass, system_size, pivots, &
+            mapped_rhs, system_size, info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        right_hand_side = &
+            right_hand_side - matmul(regularizer, mapped_rhs)
+        call zgesv( &
+            system_size, incidence_count, cfie, system_size, pivots, &
+            right_hand_side, system_size, info)
+        if (info /= 0) then
+            status = 3
+            return
+        end if
+        densities = right_hand_side
+        status = 0
+    end subroutine &
+        solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+
+    subroutine assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            direction, polarization, wave_number, quadrature_degree, &
+            right_hand_side, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_parameters(:, :)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp) :: divergence, jacobian, local_value(3), point(3)
+        complex(dp) :: incident_field(3)
+        integer :: basis, local_edge, node, refined_panel, row
+
+        status = 1
+        if (allocated(right_hand_side)) deallocate(right_hand_side)
+        if (wave_number < 0.0_dp) return
+        if (abs(norm2(direction) - 1.0_dp) > &
+            128.0_dp*epsilon(1.0_dp)) return
+        if (abs(sum(polarization*direction)) > &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+            sqrt(sum(abs(polarization)**2)))) return
+        if (sqrt(sum(abs(polarization)**2)) <= tiny(1.0_dp)) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(right_hand_side(size(transformation, 2)))
+        right_hand_side = cmplx(0.0_dp, 0.0_dp, dp)
+        do refined_panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                incident_field = cmplx(0.0_dp, 0.0_dp, dp)
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, &
+                        refined_parameters, refined_panel, local_edge, &
+                        major_radius, minor_radius, xi(node), eta(node), point, &
+                        local_value, divergence, jacobian, status)
+                    if (status /= 0) return
+                    incident_field = polarization*exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    row = 3*(refined_panel - 1) + local_edge
+                    do basis = 1, size(transformation, 2)
+                        right_hand_side(basis) = right_hand_side(basis) - &
+                            jacobian*weights(node)*transformation(row, basis)* &
+                            sum(cmplx(local_value, 0.0_dp, dp)*incident_field)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
 
     subroutine assemble_maxwell_torus_curved_regularized_cfie_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
