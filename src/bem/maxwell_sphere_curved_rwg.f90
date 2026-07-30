@@ -1,13 +1,66 @@
 module fortfem_maxwell_sphere_curved_rwg
     !! Surface-Piola image of the affine RWG basis on a radial sphere panel.
     use fortfem_kinds, only: dp
+    use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_sphere_curved_panel, only: evaluate_sphere_curved_panel
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
     private
 
     public :: evaluate_maxwell_sphere_curved_rwg_basis
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix( &
+            vertices, triangles, radius, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp), allocatable :: values(:, :)
+        real(dp) :: divergence, jacobian, point(3)
+        integer :: basis, node, panel, test_basis
+
+        status = 1
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(edge_vertices, 2) == 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            values(3, size(edge_vertices, 2)))
+        matrix = 0.0_dp
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                values = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        values(:, basis), divergence, jacobian, status)
+                    if (status /= 0) return
+                end do
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    do test_basis = 1, size(edge_vertices, 2)
+                        if (.not. any( &
+                            edge_triangles(:, test_basis) == panel)) cycle
+                        matrix(test_basis, basis) = matrix(test_basis, basis) + &
+                            weights(node)*jacobian*dot_product( &
+                            values(:, test_basis), values(:, basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix
 
     pure subroutine evaluate_maxwell_sphere_curved_rwg_basis( &
             vertices, triangles, edge_vertices, edge_triangles, basis, panel, &
