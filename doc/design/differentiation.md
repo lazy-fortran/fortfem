@@ -153,6 +153,12 @@ closed covariant value and curl transformations. Consequently element and
 mesh geometry adjoints remain analytical and GCC-compatible while sharing
 the same guarded linear-algebra primitives used elsewhere.
 
+The tetrahedral RT contravariant Piola map likewise exposes Jacobian,
+reference-value, and reference-divergence products. It composes the
+FortSym-generated determinant products with the closed H(div) value and
+divergence transformations, providing the geometry primitive required by
+mixed Poisson and flux-conservative Ampere discretizations.
+
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
 vertex coordinates and both material coefficients. A single analytical
