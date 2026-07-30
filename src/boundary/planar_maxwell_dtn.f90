@@ -11,8 +11,44 @@ module fortfem_planar_maxwell_dtn
     private
 
     public :: apply_planar_maxwell_dtn
+    public :: assemble_planar_maxwell_dtn_form
 
 contains
+
+    subroutine assemble_planar_maxwell_dtn_form( &
+            nx, ny, wave_number, length_x, length_y, form, status)
+        integer, intent(in) :: nx, ny
+        real(dp), intent(in) :: wave_number, length_x, length_y
+        complex(dp), allocatable, intent(out) :: form(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: derivative(:, :, :), trace(:, :, :)
+        real(dp) :: weight
+        integer :: column, component, i, j, quotient
+
+        status = 1
+        if (allocated(form)) deallocate(form)
+        if (nx < 2 .or. ny < 2) return
+        if (modulo(nx, 2) == 0 .or. modulo(ny, 2) == 0) return
+        if (wave_number <= 0.0_dp) return
+        if (length_x <= 0.0_dp .or. length_y <= 0.0_dp) return
+        allocate(form(2*nx*ny, 2*nx*ny))
+        allocate(trace(2, nx, ny), derivative(2, nx, ny))
+        weight = length_x*length_y/real(nx*ny, dp)
+        do column = 1, size(form, 2)
+            trace = cmplx(0.0_dp, 0.0_dp, dp)
+            component = modulo(column - 1, 2) + 1
+            quotient = (column - 1)/2
+            i = modulo(quotient, nx) + 1
+            j = quotient/nx + 1
+            trace(component, i, j) = cmplx(1.0_dp, 0.0_dp, dp)
+            call apply_planar_maxwell_dtn( &
+                trace, wave_number, length_x, length_y, derivative, status)
+            if (status /= 0) return
+            form(:, column) = weight*reshape(derivative, [size(derivative)])
+        end do
+        status = 0
+    end subroutine assemble_planar_maxwell_dtn_form
 
     subroutine apply_planar_maxwell_dtn( &
             tangential_trace, wave_number, length_x, length_y, &

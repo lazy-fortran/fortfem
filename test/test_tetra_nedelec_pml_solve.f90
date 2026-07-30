@@ -12,8 +12,9 @@ program test_tetra_nedelec_pml_solve
     integer :: tetrahedra(4, 2)
     complex(dp) :: stretch(3, 2)
     complex(dp), allocatable :: exact(:), load(:), solution(:)
+    complex(dp) :: boundary_form(3, 3)
     complex(dp) :: prescribed_values(2)
-    integer :: prescribed_dofs(2), dof, status
+    integer :: boundary_operator_dofs(3), prescribed_dofs(2), dof, status
     logical :: all_passed
 
     all_passed = .true.
@@ -37,15 +38,26 @@ program test_tetra_nedelec_pml_solve
             sin(0.3_dp*real(dof, dp)), cos(0.2_dp*real(dof, dp)), dp)
     end do
     load = csc_matvec(matrix, exact)
+    boundary_operator_dofs = [2, 3, 4]
+    boundary_form = reshape([ &
+        cmplx(0.5_dp, -0.2_dp, dp), cmplx(0.1_dp, 0.05_dp, dp), &
+        cmplx(-0.03_dp, 0.02_dp, dp), cmplx(0.1_dp, 0.05_dp, dp), &
+        cmplx(0.7_dp, -0.1_dp, dp), cmplx(0.08_dp, -0.04_dp, dp), &
+        cmplx(-0.03_dp, 0.02_dp, dp), cmplx(0.08_dp, -0.04_dp, dp), &
+        cmplx(0.6_dp, -0.3_dp, dp)], [3, 3])
+    load(boundary_operator_dofs) = load(boundary_operator_dofs) + &
+        matmul(boundary_form, exact(boundary_operator_dofs))
     prescribed_dofs = [1, matrix%nrow]
     prescribed_values = exact(prescribed_dofs)
     call solve_tetra_nedelec_pml( &
         vertices, tetrahedra, 2, stretch, 1.1_dp, load, prescribed_dofs, &
-        prescribed_values, solution, status)
+        prescribed_values, solution, status, &
+        boundary_operator_dofs=boundary_operator_dofs, &
+        boundary_operator=boundary_form)
     call record_condition(status == 0, &
         "complex Maxwell PML boundary-value solve succeeds")
     call record_condition(maxval(abs(solution - exact)) < 2.0e-10_dp, &
-        "complex Maxwell PML solve recovers a manufactured coefficient field")
+        "Maxwell solve recovers a field with an active DtN boundary form")
     call check_summary("Tetrahedral Nedelec PML solve")
     if (.not. all_passed) error stop 1
 
