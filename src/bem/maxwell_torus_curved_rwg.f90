@@ -2,6 +2,7 @@ module fortfem_maxwell_torus_curved_rwg
     !! Surface-Piola RWG basis on exact parametric torus panels.
     use fortfem_kinds, only: dp
     use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
+    use fortfem_maxwell_efie_bc_3d, only: build_maxwell_bc_to_refined_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
@@ -14,6 +15,7 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
@@ -24,6 +26,43 @@ module fortfem_maxwell_torus_curved_rwg
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_efie_bc_imaginary_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, decay_rate
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: refined_parameters(:, :)
+        real(dp), allocatable :: refined_vertices(:, :), transformation(:, :)
+        complex(dp), allocatable :: complex_transformation(:, :)
+        complex(dp), allocatable :: refined_matrix(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        call build_maxwell_bc_to_refined_rwg( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call assemble_maxwell_torus_curved_efie_imaginary_rwg_3d( &
+            refined_vertices, refined_triangles, refined_parameters, &
+            major_radius, minor_radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, refined_matrix, status)
+        if (status /= 0) return
+        complex_transformation = cmplx(transformation, 0.0_dp, dp)
+        matrix = matmul( &
+            transpose(complex_transformation), &
+            matmul(refined_matrix, complex_transformation))
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_efie_bc_imaginary_3d
 
     subroutine assemble_maxwell_torus_curved_efie_imaginary_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &

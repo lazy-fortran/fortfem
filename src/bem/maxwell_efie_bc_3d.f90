@@ -211,7 +211,8 @@ contains
 
     subroutine build_maxwell_bc_to_refined_rwg( &
             vertices, triangles, refined_vertices, refined_triangles, &
-            transformation, status, sphere_radius)
+            transformation, status, sphere_radius, torus_parameters, &
+            torus_major_radius, torus_minor_radius, refined_torus_parameters)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), allocatable, intent(out) :: refined_vertices(:, :)
@@ -219,14 +220,40 @@ contains
         real(dp), allocatable, intent(out) :: transformation(:, :)
         integer, intent(out) :: status
         real(dp), optional, intent(in) :: sphere_radius
+        real(dp), optional, intent(in) :: torus_parameters(:, :)
+        real(dp), optional, intent(in) :: torus_major_radius
+        real(dp), optional, intent(in) :: torus_minor_radius
+        real(dp), allocatable, optional, intent(out) :: &
+            refined_torus_parameters(:, :)
 
         integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
         real(dp), allocatable :: localized_transformation(:, :)
         real(dp) :: divergence, global_value(3), local_value(3), point(3)
         real(dp) :: orientation, candidate
         integer :: basis, edge, local_edge, panel, row, slot
+        integer :: torus_argument_count
 
-        if (present(sphere_radius)) then
+        status = 1
+        torus_argument_count = 0
+        if (present(torus_parameters)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(torus_major_radius)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(torus_minor_radius)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(refined_torus_parameters)) torus_argument_count = &
+            torus_argument_count + 1
+        if (torus_argument_count /= 0 .and. torus_argument_count /= 4) return
+        if (present(sphere_radius) .and. torus_argument_count == 4) return
+        if (torus_argument_count == 4) then
+            call build_maxwell_bc_transformation( &
+                vertices, triangles, refined_vertices, refined_triangles, &
+                localized_transformation, status, &
+                torus_parameters=torus_parameters, &
+                torus_major_radius=torus_major_radius, &
+                torus_minor_radius=torus_minor_radius, &
+                refined_torus_parameters=refined_torus_parameters)
+        else if (present(sphere_radius)) then
             call build_maxwell_bc_transformation( &
                 vertices, triangles, refined_vertices, refined_triangles, &
                 localized_transformation, status, sphere_radius=sphere_radius)
