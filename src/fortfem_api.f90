@@ -105,7 +105,8 @@ module fortfem_api
     use fortfem_tetra_lagrange_arbitrary_order, only: &
         assignment(=), evaluate_tetra_lagrange, initialize_tetra_lagrange, &
         tetra_lagrange_dof_count, tetra_lagrange_nodes, tetra_lagrange_t
-    use fortfem_tetra_feec_operators, only: build_tetra_discrete_gradient
+    use fortfem_tetra_feec_operators, only: &
+        build_tetra_discrete_curl, build_tetra_discrete_gradient
     use fortfem_tetra_rt_arbitrary_order, only: &
         assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_rt_dof_count, tetra_rt_t
@@ -118,6 +119,7 @@ module fortfem_api
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_reference_tetra_nedelec
+    use fortfem_tetra_rt_interpolation, only: interpolate_reference_tetra_rt
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
@@ -295,6 +297,8 @@ module fortfem_api
     public :: tetra_lagrange_nodes
     public :: tetra_lagrange_t
     public :: build_tetra_discrete_gradient
+    public :: build_tetra_discrete_curl
+    public :: interpolate_reference_tetra_rt
     public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
