@@ -67,3 +67,8 @@ main = "gen_magnetic_curvilinear_coefficients.f90"
 name = "gen_nurbs_geometry_products"
 source-dir = "app"
 main = "gen_nurbs_geometry_products.f90"
+
+[[executable]]
+name = "gen_bspline_h1_geometry_products"
+source-dir = "app"
+main = "gen_bspline_h1_geometry_products.f90"
