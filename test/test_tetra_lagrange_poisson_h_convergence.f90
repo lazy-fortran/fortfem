@@ -1,6 +1,7 @@
 program test_tetra_lagrange_poisson_h_convergence
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_lagrange_solution_prepared, &
+        generate_structured_tetra_box_mesh, &
         initialize_tetra_lagrange_solution_evaluator, &
         solve_tetra_lagrange_poisson, tetra_duffy_quadrature, &
         tetra_lagrange_solution_evaluator_t
@@ -14,6 +15,8 @@ program test_tetra_lagrange_poisson_h_convergence
         1, 2, 3, &
         1, 2, 3, &
         1, 2, 3], [3, 4])
+    real(dp), parameter :: unit_bounds(3, 2) = reshape([ &
+        0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp], [3, 2])
     real(dp) :: errors(2, 3, 4), rates(2)
     logical :: all_passed
     integer :: degree, level
@@ -53,8 +56,12 @@ contains
         integer, allocatable :: tetrahedra(:, :)
         real(dp), allocatable :: solution(:), vertices(:, :)
         type(fortsparse_status_t) :: status
+        integer :: mesh_status
 
-        call build_cube_mesh(refinement, vertices, tetrahedra)
+        call generate_structured_tetra_box_mesh( &
+            unit_bounds, [refinement, refinement, refinement], vertices, &
+            tetrahedra, mesh_status)
+        if (mesh_status /= 0) error stop "H1 cube mesh generation failed"
         call solve_tetra_lagrange_poisson( &
             vertices, tetrahedra, degree, manufactured_source, &
             manufactured_boundary, solution, status)
@@ -108,81 +115,6 @@ contains
         end do
         error = sqrt(error)
     end subroutine measure_error
-
-    subroutine build_cube_mesh(refinement, vertices, tetrahedra)
-        integer, intent(in) :: refinement
-        real(dp), allocatable, intent(out) :: vertices(:, :)
-        integer, allocatable, intent(out) :: tetrahedra(:, :)
-
-        integer :: cube(8), i, j, k, cell, vertex
-        real(dp) :: jacobian(3, 3)
-
-        allocate (vertices(3, (refinement + 1)**3))
-        do k = 0, refinement
-            do j = 0, refinement
-                do i = 0, refinement
-                    vertex = vertex_index(i, j, k, refinement)
-                    vertices(:, vertex) = real([i, j, k], dp)/ &
-                        real(refinement, dp)
-                end do
-            end do
-        end do
-        allocate (tetrahedra(4, 6*refinement**3))
-        cell = 0
-        do k = 0, refinement - 1
-            do j = 0, refinement - 1
-                do i = 0, refinement - 1
-                    cube = [ &
-                        vertex_index(i, j, k, refinement), &
-                        vertex_index(i + 1, j, k, refinement), &
-                        vertex_index(i, j + 1, k, refinement), &
-                        vertex_index(i + 1, j + 1, k, refinement), &
-                        vertex_index(i, j, k + 1, refinement), &
-                        vertex_index(i + 1, j, k + 1, refinement), &
-                        vertex_index(i, j + 1, k + 1, refinement), &
-                        vertex_index(i + 1, j + 1, k + 1, refinement)]
-                    call add_cube_tetrahedra(cube, tetrahedra, cell)
-                end do
-            end do
-        end do
-        do cell = 1, size(tetrahedra, 2)
-            jacobian(:, 1) = vertices(:, tetrahedra(2, cell)) - &
-                vertices(:, tetrahedra(1, cell))
-            jacobian(:, 2) = vertices(:, tetrahedra(3, cell)) - &
-                vertices(:, tetrahedra(1, cell))
-            jacobian(:, 3) = vertices(:, tetrahedra(4, cell)) - &
-                vertices(:, tetrahedra(1, cell))
-            if (det3(jacobian) < 0.0_dp) then
-                vertex = tetrahedra(3, cell)
-                tetrahedra(3, cell) = tetrahedra(4, cell)
-                tetrahedra(4, cell) = vertex
-            end if
-        end do
-    end subroutine build_cube_mesh
-
-    pure integer function vertex_index(i, j, k, refinement) result(index)
-        integer, intent(in) :: i, j, k, refinement
-
-        index = 1 + i + (refinement + 1)*(j + (refinement + 1)*k)
-    end function vertex_index
-
-    subroutine add_cube_tetrahedra(cube, tetrahedra, cell_count)
-        integer, intent(in) :: cube(8)
-        integer, intent(inout) :: tetrahedra(:, :), cell_count
-
-        integer :: local_tetrahedra(4, 6), local_cell
-
-        local_tetrahedra(:, 1) = cube([1, 2, 4, 8])
-        local_tetrahedra(:, 2) = cube([1, 2, 6, 8])
-        local_tetrahedra(:, 3) = cube([1, 3, 4, 8])
-        local_tetrahedra(:, 4) = cube([1, 3, 7, 8])
-        local_tetrahedra(:, 5) = cube([1, 5, 6, 8])
-        local_tetrahedra(:, 6) = cube([1, 5, 7, 8])
-        do local_cell = 1, 6
-            cell_count = cell_count + 1
-            tetrahedra(:, cell_count) = local_tetrahedra(:, local_cell)
-        end do
-    end subroutine add_cube_tetrahedra
 
     pure real(dp) function manufactured_value(point) result(value)
         real(dp), intent(in) :: point(3)
