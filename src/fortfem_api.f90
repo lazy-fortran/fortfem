@@ -235,6 +235,8 @@ module fortfem_api
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0
     use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
+    use fortfem_tetra_nedelec_solver_3d, only: &
+        solve_tetra_nedelec_curl_mass
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         jacobi_preconditioner, ilu_preconditioner
@@ -390,6 +392,7 @@ module fortfem_api
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
     public :: solve_magnetic_box_3d
+    public :: solve_tetra_nedelec_curl_mass
     public :: solve_mixed_bc
     public :: solve_neumann
     public :: compute_boundary_integral

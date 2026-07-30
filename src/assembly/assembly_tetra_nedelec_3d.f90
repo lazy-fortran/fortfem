@@ -22,6 +22,7 @@ module fortfem_assembly_tetra_nedelec_3d
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
+    public :: assemble_tetra_nedelec_vector_load_order
 
     abstract interface
         pure subroutine tensor_coefficient_3d(x, y, z, value)
@@ -38,6 +39,123 @@ module fortfem_assembly_tetra_nedelec_3d
     end interface
 
 contains
+
+    subroutine assemble_tetra_nedelec_vector_load_order( &
+            mesh_vertices, tetrahedra, order, source, vector, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        procedure(vector_source_3d) :: source
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_vector(:)
+        real(dp), allocatable :: oriented_vector(:)
+        real(dp) :: vertices(3, 4)
+        integer :: dof, dof_count, local_status, node, tetrahedron
+
+        if (order == 1) then
+            call assemble_tetra_nedelec_vector_load( &
+                mesh_vertices, tetrahedra, source, vector, status)
+            return
+        end if
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Higher-order tetrahedral Nedelec vector load failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (order < 2 .or. order > 4) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(vector(maxval(global_dofs)))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_vector(dof_count))
+        vector = 0.0_dp
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_load_element_order( &
+                vertices, order, source, element_vector, local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_vector = matmul(transpose(basis_transform), element_vector)
+            do dof = 1, dof_count
+                vector(global_dofs(dof, tetrahedron)) = &
+                    vector(global_dofs(dof, tetrahedron)) + &
+                    oriented_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_vector_load_order
+
+    subroutine assemble_tetra_nedelec_load_element_order( &
+            vertices, order, source, vector, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order
+        procedure(vector_source_3d) :: source
+        real(dp), allocatable, intent(out) :: vector(:)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_point(3)
+        real(dp) :: reference_point(3), source_value(3)
+        integer :: dof, dof_count, point
+
+        status = 1
+        if (order < 2 .or. order > 4) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            2 * order + 2, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(vector(dof_count))
+        allocate(reference_values(3, dof_count), reference_curls(3, dof_count))
+        allocate(physical_values(3, dof_count), physical_curls(3, dof_count))
+        vector = 0.0_dp
+        do point = 1, size(weights)
+            reference_point(1) = x(point)
+            reference_point(2) = y(point)
+            reference_point(3) = z(point)
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, reference_point, reference_values, reference_curls, &
+                status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_point = vertices(:, 1)
+            do dof = 1, 3
+                physical_point = physical_point + &
+                    jacobian(:, dof) * reference_point(dof)
+            end do
+            call source( &
+                physical_point(1), physical_point(2), physical_point(3), &
+                source_value)
+            do dof = 1, dof_count
+                vector(dof) = vector(dof) + determinant * weights(point) * &
+                    dot_product(source_value, physical_values(:, dof))
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_load_element_order
 
     subroutine assemble_tetra_nedelec_curl_mass_element( &
             vertices, order, quadrature_degree, matrix, status, &
