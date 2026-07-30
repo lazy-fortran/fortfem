@@ -4,6 +4,8 @@ module fortfem_magnetic_box_3d
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortfem_structured_tetra_box_mesh, only: &
+        generate_structured_tetra_box_mesh
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
@@ -27,6 +29,8 @@ module fortfem_magnetic_box_3d
     ! Higher-order curl-curl systems need a resolvable penalty on the gradient
     ! nullspace; this remains six orders below the physical operator scale.
     real(dp), parameter :: higher_order_gauge_mass = 1.0e-6_dp
+    real(dp), parameter :: box_bounds(3, 2) = reshape([ &
+        0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, 2.0_dp], [3, 2])
 
     public :: solve_magnetic_box_3d
 
@@ -64,8 +68,8 @@ contains
         polynomial_order = 1
         if (present(order)) polynomial_order = order
         if (polynomial_order < 1 .or. polynomial_order > 4) return
-        call build_box_tetra_mesh( &
-            n_xy, n_z, vertices, tetrahedra, local_status)
+        call generate_structured_tetra_box_mesh( &
+            box_bounds, [n_xy, n_xy, n_z], vertices, tetrahedra, local_status)
         if (local_status /= 0) return
         if (polynomial_order > 1) then
             call solve_tetra_nedelec_weighted_curl_mass( &
@@ -132,93 +136,6 @@ contains
         end if
         call status_set(status, 0, "")
     end subroutine solve_magnetic_box_3d
-
-    subroutine build_box_tetra_mesh( &
-            n_xy, n_z, vertices, tetrahedra, status)
-        integer, intent(in) :: n_xy, n_z
-        real(dp), allocatable, intent(out) :: vertices(:, :)
-        integer, allocatable, intent(out) :: tetrahedra(:, :)
-        integer, intent(out) :: status
-
-        integer :: cube_vertices(8), i, j, k, tetrahedron, vertex
-        real(dp) :: jacobian(3, 3)
-
-        status = 1
-        if (n_xy < 1 .or. n_z < 1) return
-        allocate(vertices(3, (n_xy + 1)**2 * (n_z + 1)))
-        do k = 0, n_z
-            do j = 0, n_xy
-                do i = 0, n_xy
-                    vertex = box_vertex_index(i, j, k, n_xy)
-                    vertices(:, vertex) = [ &
-                        real(i, dp) / real(n_xy, dp), &
-                        real(j, dp) / real(n_xy, dp), &
-                        1.0_dp + real(k, dp) / real(n_z, dp)]
-                end do
-            end do
-        end do
-
-        allocate(tetrahedra(4, 6 * n_xy * n_xy * n_z))
-        tetrahedron = 0
-        do k = 0, n_z - 1
-            do j = 0, n_xy - 1
-                do i = 0, n_xy - 1
-                    cube_vertices = [ &
-                        box_vertex_index(i, j, k, n_xy), &
-                        box_vertex_index(i + 1, j, k, n_xy), &
-                        box_vertex_index(i, j + 1, k, n_xy), &
-                        box_vertex_index(i + 1, j + 1, k, n_xy), &
-                        box_vertex_index(i, j, k + 1, n_xy), &
-                        box_vertex_index(i + 1, j, k + 1, n_xy), &
-                        box_vertex_index(i, j + 1, k + 1, n_xy), &
-                        box_vertex_index(i + 1, j + 1, k + 1, n_xy)]
-                    call add_cube_tetrahedra( &
-                        cube_vertices, tetrahedra, tetrahedron)
-                end do
-            end do
-        end do
-        do tetrahedron = 1, size(tetrahedra, 2)
-            jacobian(:, 1) = vertices(:, tetrahedra(2, tetrahedron)) - &
-                vertices(:, tetrahedra(1, tetrahedron))
-            jacobian(:, 2) = vertices(:, tetrahedra(3, tetrahedron)) - &
-                vertices(:, tetrahedra(1, tetrahedron))
-            jacobian(:, 3) = vertices(:, tetrahedra(4, tetrahedron)) - &
-                vertices(:, tetrahedra(1, tetrahedron))
-            if (det3(jacobian) < 0.0_dp) then
-                vertex = tetrahedra(3, tetrahedron)
-                tetrahedra(3, tetrahedron) = tetrahedra(4, tetrahedron)
-                tetrahedra(4, tetrahedron) = vertex
-            end if
-        end do
-        status = 0
-    end subroutine build_box_tetra_mesh
-
-    pure integer function box_vertex_index(i, j, k, n_xy) result(index)
-        integer, intent(in) :: i, j, k, n_xy
-
-        index = 1 + i + (n_xy + 1) * (j + (n_xy + 1) * k)
-    end function box_vertex_index
-
-    subroutine add_cube_tetrahedra( &
-            cube, tetrahedra, tetrahedron_count)
-        integer, intent(in) :: cube(8)
-        integer, intent(inout) :: tetrahedra(:, :)
-        integer, intent(inout) :: tetrahedron_count
-
-        integer :: local_tetrahedra(4, 6), tetrahedron
-
-        local_tetrahedra(:, 1) = cube([1, 2, 4, 8])
-        local_tetrahedra(:, 2) = cube([1, 2, 6, 8])
-        local_tetrahedra(:, 3) = cube([1, 3, 4, 8])
-        local_tetrahedra(:, 4) = cube([1, 3, 7, 8])
-        local_tetrahedra(:, 5) = cube([1, 5, 6, 8])
-        local_tetrahedra(:, 6) = cube([1, 5, 7, 8])
-        do tetrahedron = 1, 6
-            tetrahedron_count = tetrahedron_count + 1
-            tetrahedra(:, tetrahedron_count) = &
-                local_tetrahedra(:, tetrahedron)
-        end do
-    end subroutine add_cube_tetrahedra
 
     subroutine solve_box_interior( &
             vertices, edges, matrix, rhs, solution, status)
