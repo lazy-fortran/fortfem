@@ -1,4 +1,6 @@
 module fortfem_api
+    use fortfem_cartesian_pml_geometry, only: &
+        build_cartesian_pml_element_stretch
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
         assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_bdm_div_mass_element, &
@@ -464,6 +466,7 @@ module fortfem_api
     public :: spherical_maxwell_dtn_eigenvalues
     public :: cartesian_curl_curl_pml_coefficients
     public :: cartesian_scalar_helmholtz_pml_coefficients
+    public :: build_cartesian_pml_element_stretch
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_p1_2d
     public :: evaluate_toroidal_harmonic_p
