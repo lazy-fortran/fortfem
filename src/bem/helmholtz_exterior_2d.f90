@@ -3,6 +3,7 @@ module fortfem_helmholtz_exterior_2d
     use fortfem_helmholtz_boundary_operators_2d, only: &
         assemble_helmholtz_double_layer_constant, &
         assemble_helmholtz_single_layer_constant
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortnum_special_complex_bessel, only: hankel_h1_real
     use fortnum_status, only: fortnum_status_t
@@ -13,17 +14,6 @@ module fortfem_helmholtz_exterior_2d
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -113,9 +103,7 @@ contains
 
         complex(dp), allocatable :: matrix(:, :), original_matrix(:, :)
         complex(dp), allocatable :: right_hand_side(:)
-        complex(dp), allocatable :: solution_matrix(:, :)
         real(dp), allocatable :: lengths(:)
-        integer, allocatable :: pivots(:)
         integer :: info, panel, panel_count
 
         density = (0.0_dp, 0.0_dp)
@@ -132,8 +120,6 @@ contains
         allocate(matrix(panel_count, panel_count))
         allocate(original_matrix(panel_count, panel_count))
         allocate(right_hand_side(panel_count), lengths(panel_count))
-        allocate(solution_matrix(panel_count, 1))
-        allocate(pivots(panel_count))
         do panel = 1, panel_count
             lengths(panel) = norm2( &
                 panel_end(:, panel) - panel_start(:, panel))
@@ -154,15 +140,11 @@ contains
 
         right_hand_side = -lengths * dirichlet_trace
         original_matrix = matrix
-        solution_matrix(:, 1) = right_hand_side
-        call zgesv( &
-            panel_count, 1, matrix, panel_count, pivots, solution_matrix, &
-            panel_count, info)
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = solution_matrix(:, 1)
         relative_residual = dense_relative_residual( &
             original_matrix, density, right_hand_side)
         status = 0
