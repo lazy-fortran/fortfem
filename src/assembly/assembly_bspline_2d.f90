@@ -29,6 +29,8 @@ module fortfem_assembly_bspline_2d
     public :: apply_bspline_toroidal_poloidal_bracket_jvp
     public :: apply_bspline_jorek_flux_rhs
     public :: apply_bspline_jorek_flux_jvp
+    public :: apply_bspline_jorek_thermodynamic_rhs
+    public :: apply_bspline_jorek_thermodynamic_jvp
     public :: advance_bspline_jorek_poloidal_flux_midpoint
     public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
     public :: apply_toroidal_fourier_derivative
@@ -302,6 +304,197 @@ contains
         if (status%code /= 0) return
         jvp = advecting_action + transported_action
     end subroutine apply_bspline_toroidal_poloidal_bracket_jvp
+
+    subroutine apply_bspline_jorek_thermodynamic_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field, electric_potential, adiabatic_index, &
+            quadrature_order, rhs, status)
+        !! No-parallel-flow part of Franck et al. equations (26)--(27):
+        !! dt(q) = R[q,u] + 2*gamma_q*q*dZ(u).
+        !!
+        !! Use gamma_q=1 for density and the physical adiabatic index for
+        !! pressure. Both terms are assembled as weak Galerkin loads.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: field(:, :), electric_potential(:, :)
+        real(dp), intent(in) :: adiabatic_index
+        complex(dp), allocatable, intent(out) :: rhs(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: bracket(:, :), compression(:, :)
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK isogeometric thermodynamic residual failed")
+        if (adiabatic_index <= 0.0_dp) return
+        if (any(shape(field) /= shape(electric_potential))) return
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field, electric_potential, quadrature_order, bracket, &
+            status, radial_weight)
+        if (status%code /= 0) return
+        call apply_bspline_toroidal_product_derivative( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field, electric_potential, [0.0_dp, 1.0_dp], &
+            quadrature_order, compression, status)
+        if (status%code /= 0) return
+        rhs = bracket + 2.0_dp*adiabatic_index*compression
+
+    contains
+
+        pure subroutine radial_weight(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = point(1)
+        end subroutine radial_weight
+
+    end subroutine apply_bspline_jorek_thermodynamic_rhs
+
+    subroutine apply_bspline_jorek_thermodynamic_jvp( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field, electric_potential, field_direction, &
+            potential_direction, adiabatic_index, quadrature_order, jvp, &
+            status)
+        !! Exact product-rule JVP of the no-parallel thermodynamic residual.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: field(:, :), electric_potential(:, :)
+        complex(dp), intent(in) :: field_direction(:, :)
+        complex(dp), intent(in) :: potential_direction(:, :)
+        real(dp), intent(in) :: adiabatic_index
+        complex(dp), allocatable, intent(out) :: jvp(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: field_action(:, :), potential_action(:, :)
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK isogeometric thermodynamic JVP failed")
+        if (any(shape(field) /= shape(electric_potential))) return
+        if (any(shape(field) /= shape(field_direction))) return
+        if (any(shape(field) /= shape(potential_direction))) return
+        call apply_bspline_jorek_thermodynamic_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field_direction, electric_potential, adiabatic_index, &
+            quadrature_order, field_action, status)
+        if (status%code /= 0) return
+        call apply_bspline_jorek_thermodynamic_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, field, potential_direction, adiabatic_index, &
+            quadrature_order, potential_action, status)
+        if (status%code /= 0) return
+        jvp = field_action + potential_action
+    end subroutine apply_bspline_jorek_thermodynamic_jvp
+
+    subroutine apply_bspline_toroidal_product_derivative( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            modes, multiplying_coefficients, differentiated_coefficients, &
+            direction, quadrature_order, residual, status)
+        !! Weak Fourier convolution of a_h * direction.grad(b_h).
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: multiplying_coefficients(:, :)
+        complex(dp), intent(in) :: differentiated_coefficients(:, :)
+        real(dp), intent(in) :: direction(2)
+        complex(dp), allocatable, intent(out) :: residual(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: action(:), multiplying_part(:)
+        type(csc_t) :: matrix_imaginary, matrix_real
+        integer :: differentiated_mode, multiplying_mode, output_mode
+        logical :: has_imaginary, has_real
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Toroidal spline product-derivative convolution failed")
+        if (any(shape(multiplying_coefficients) /= &
+            shape(differentiated_coefficients))) return
+        if (size(multiplying_coefficients, 2) /= size(modes)) return
+        if (has_duplicate_modes(modes)) return
+        allocate( &
+            residual(size(multiplying_coefficients, 1), size(modes)), &
+            multiplying_part(size(multiplying_coefficients, 1)))
+        residual = cmplx(0.0_dp, 0.0_dp, dp)
+        do multiplying_mode = 1, size(modes)
+            has_real = any(real( &
+                multiplying_coefficients(:, multiplying_mode), dp) /= 0.0_dp)
+            has_imaginary = any(aimag( &
+                multiplying_coefficients(:, multiplying_mode)) /= 0.0_dp)
+            if (has_real) then
+                multiplying_part = real( &
+                    multiplying_coefficients(:, multiplying_mode), dp)
+                call assemble_bspline_product_derivative_csc( &
+                    knots_x, knots_y, degree_x, degree_y, control_points, &
+                    weights, multiplying_part, direction, quadrature_order, &
+                    matrix_real, status)
+                if (status%code /= 0) return
+            end if
+            if (has_imaginary) then
+                multiplying_part = aimag( &
+                    multiplying_coefficients(:, multiplying_mode))
+                call assemble_bspline_product_derivative_csc( &
+                    knots_x, knots_y, degree_x, degree_y, control_points, &
+                    weights, multiplying_part, direction, quadrature_order, &
+                    matrix_imaginary, status)
+                if (status%code /= 0) return
+            end if
+            do differentiated_mode = 1, size(modes)
+                output_mode = find_mode( &
+                    modes, modes(multiplying_mode) + &
+                    modes(differentiated_mode))
+                if (output_mode == 0) cycle
+                if (has_real) then
+                    action = csc_matvec(matrix_real, real( &
+                        differentiated_coefficients(:, differentiated_mode), &
+                        dp))
+                    residual(:, output_mode) = &
+                        residual(:, output_mode) + action
+                    action = csc_matvec(matrix_real, aimag( &
+                        differentiated_coefficients(:, differentiated_mode)))
+                    residual(:, output_mode) = residual(:, output_mode) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                end if
+                if (has_imaginary) then
+                    action = csc_matvec(matrix_imaginary, real( &
+                        differentiated_coefficients(:, differentiated_mode), &
+                        dp))
+                    residual(:, output_mode) = residual(:, output_mode) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                    action = csc_matvec(matrix_imaginary, aimag( &
+                        differentiated_coefficients(:, differentiated_mode)))
+                    residual(:, output_mode) = &
+                        residual(:, output_mode) - action
+                end if
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_bspline_toroidal_product_derivative
+
+    subroutine assemble_bspline_product_derivative_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            multiplying_coefficients, direction, quadrature_order, matrix, &
+            status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        real(dp), intent(in) :: multiplying_coefficients(:), direction(2)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_bspline_h1_operator_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, matrix, status, stiffness_coefficient=0.0_dp, &
+            mass_coefficient=0.0_dp, &
+            reaction_coefficients=multiplying_coefficients, &
+            reaction_direction=direction, reaction_coefficient=1.0_dp)
+    end subroutine assemble_bspline_product_derivative_csc
 
     subroutine apply_bspline_jorek_flux_rhs( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
@@ -1260,7 +1453,8 @@ contains
             mass_coefficient, stiffness_weight_function, mass_weight_function, &
             stiffness_tensor_function, advecting_coefficients, &
             advection_coefficient, mass_field_coefficients, &
-            advection_weight_function)
+            advection_weight_function, reaction_coefficients, &
+            reaction_direction, reaction_coefficient)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -1275,6 +1469,9 @@ contains
         real(dp), intent(in), optional :: advection_coefficient
         real(dp), intent(in), optional :: mass_field_coefficients(:)
         procedure(scalar_weight_2d), optional :: advection_weight_function
+        real(dp), intent(in), optional :: reaction_coefficients(:)
+        real(dp), intent(in), optional :: reaction_direction(2)
+        real(dp), intent(in), optional :: reaction_coefficient
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -1290,6 +1487,7 @@ contains
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
         real(dp) :: mass_field_at_point
+        real(dp) :: reaction_field_at_point, reaction_weight
         real(dp) :: mass_weight_at_point, stiffness_weight_at_point
         real(dp) :: stiffness_tensor_at_point(2, 2)
         integer :: entry, local_column, local_count, local_row
@@ -1323,6 +1521,16 @@ contains
         end if
         if (present(mass_field_coefficients)) then
             if (size(mass_field_coefficients) /= nx*ny) return
+        end if
+        reaction_weight = 0.0_dp
+        if (present(reaction_coefficient)) then
+            reaction_weight = reaction_coefficient
+        end if
+        if (present(reaction_coefficients)) then
+            if (size(reaction_coefficients) /= nx*ny) return
+            if (.not. present(reaction_direction)) return
+        else if (reaction_weight /= 0.0_dp) then
+            return
         end if
         local_count = (degree_x + 1)*(degree_y + 1)
         max_entries = positive_span_count(knots_x, degree_x, nx)* &
@@ -1398,6 +1606,19 @@ contains
                         end if
                         mass_weight_at_point = &
                             mass_weight_at_point*mass_field_at_point
+                        reaction_field_at_point = 0.0_dp
+                        if (present(reaction_coefficients)) then
+                            do local_row = 1, local_count
+                                call local_basis_data( &
+                                    local_row, span_x, span_y, degree_x, &
+                                    degree_y, value_x, derivative_x, value_y, &
+                                    derivative_y, basis_row, gradient_row)
+                                reaction_field_at_point = &
+                                    reaction_field_at_point + &
+                                    reaction_coefficients( &
+                                    local_dofs(local_row))*basis_row
+                            end do
+                        end if
                         if (present(stiffness_tensor_function)) then
                             call stiffness_tensor_function( &
                                 geometry_point, stiffness_tensor_at_point)
@@ -1451,6 +1672,14 @@ contains
                                     advection_velocity, gradient_column) - &
                                     basis_column*dot_product( &
                                     advection_velocity, gradient_row))
+                                if (present(reaction_direction)) then
+                                    local_matrix(local_row, local_column) = &
+                                        local_matrix(local_row, local_column) + &
+                                        physical_weight*reaction_weight* &
+                                        reaction_field_at_point*basis_row* &
+                                        dot_product( &
+                                        reaction_direction, gradient_column)
+                                end if
                             end do
                         end do
                     end do
