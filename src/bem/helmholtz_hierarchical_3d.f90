@@ -8,11 +8,13 @@ module fortfem_helmholtz_hierarchical_3d
         assemble_helmholtz_single_layer_p0_3d
     use fortfem_kinds, only: dp
     use fortfem_panel_cluster_tree_3d, only: build_panel_cluster_tree_3d
+    use fortnum_krylov, only: complex_gmres_operator, KRYLOV_OK
     implicit none
 
     private
 
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
+    public :: solve_helmholtz_dirichlet_p0_hierarchical_3d
 
 contains
 
@@ -30,9 +32,8 @@ contains
         integer, allocatable :: second_child(:)
         real(dp), allocatable :: areas(:), centers(:, :)
         real(dp), allocatable :: node_centers(:, :), radii(:)
-        complex(dp), allocatable :: charges(:), self_matrix(:, :)
-        real(dp) :: local_vertices(3, 3)
-        integer :: local_triangle(3, 1), node, node_count, panel
+        complex(dp), allocatable :: self_diagonal(:)
+        integer :: node_count
 
         status = 1
         interaction_count = 0
@@ -50,22 +51,148 @@ contains
             inverse_position, first, last, first_child, second_child, &
             node_centers, radii, node_count, status)
         if (status /= 0) return
-        allocate(result(size(density)), charges(2*size(density)))
-        do node = node_count, 1, -1
-            charges(node) = sum( &
-                density(permutation(first(node):last(node)))* &
-                areas(permutation(first(node):last(node))))
-        end do
+        call precompute_self_diagonal( &
+            vertices, triangles, wave_number, self_diagonal, status)
+        if (status /= 0) return
+        allocate(result(size(density)))
+        call apply_prebuilt( &
+            density, wave_number, opening_angle, areas, centers, permutation, &
+            inverse_position, first, last, first_child, second_child, &
+            node_centers, radii, node_count, self_diagonal, result, &
+            interaction_count)
+        status = 0
+    end subroutine apply_helmholtz_single_layer_p0_hierarchical_3d
 
-        result = cmplx(0.0_dp, 0.0_dp, dp)
+    subroutine solve_helmholtz_dirichlet_p0_hierarchical_3d( &
+            vertices, triangles, boundary_value, wave_number, opening_angle, &
+            leaf_size, tolerance, max_iterations, restart, density, status, &
+            iterations, residual_norm, interaction_count)
+        real(dp), intent(in) :: vertices(:, :), wave_number, opening_angle
+        real(dp), intent(in) :: tolerance
+        integer, intent(in) :: triangles(:, :), leaf_size
+        integer, intent(in) :: max_iterations, restart
+        complex(dp), intent(in) :: boundary_value
+        complex(dp), allocatable, intent(out) :: density(:)
+        integer, intent(out) :: status, iterations, interaction_count
+        real(dp), intent(out) :: residual_norm
+
+        integer, allocatable :: first_child(:), inverse_position(:)
+        integer, allocatable :: last(:), first(:), permutation(:)
+        integer, allocatable :: second_child(:)
+        real(dp), allocatable :: areas(:), centers(:, :)
+        real(dp), allocatable :: node_centers(:, :), radii(:)
+        complex(dp), allocatable :: right_hand_side(:), self_diagonal(:)
+        integer :: krylov_status, node_count
+
+        status = 1
+        iterations = 0
+        interaction_count = 0
+        residual_norm = huge(1.0_dp)
+        if (size(vertices, 1) /= 3 .or. size(vertices, 2) < 3) return
+        if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
+        if (any(triangles < 1) .or. &
+            any(triangles > size(vertices, 2))) return
+        if (wave_number < 0.0_dp) return
+        if (opening_angle <= 0.0_dp .or. opening_angle >= 1.0_dp) return
+        if (leaf_size < 1 .or. tolerance <= 0.0_dp) return
+        if (max_iterations < 1 .or. restart < 1) return
+        if (restart > max_iterations) return
+
+        call build_panel_cluster_tree_3d( &
+            vertices, triangles, leaf_size, areas, centers, permutation, &
+            inverse_position, first, last, first_child, second_child, &
+            node_centers, radii, node_count, status)
+        if (status /= 0) return
+        call precompute_self_diagonal( &
+            vertices, triangles, wave_number, self_diagonal, status)
+        if (status /= 0) return
+        allocate(density(size(areas)), right_hand_side(size(areas)))
+        density = cmplx(0.0_dp, 0.0_dp, dp)
+        right_hand_side = boundary_value*areas
+        call complex_gmres_operator( &
+            matvec, right_hand_side, density, tolerance, max_iterations, &
+            restart, krylov_status, iterations, residual_norm)
+        if (krylov_status /= KRYLOV_OK) then
+            status = 2
+            return
+        end if
+        status = 0
+
+    contains
+
+        subroutine matvec(input, output)
+            complex(dp), intent(in) :: input(:)
+            complex(dp), intent(out) :: output(:)
+
+            integer :: matvec_interactions
+
+            call apply_prebuilt( &
+                input, wave_number, opening_angle, areas, centers, &
+                permutation, inverse_position, first, last, first_child, &
+                second_child, node_centers, radii, node_count, self_diagonal, &
+                output, matvec_interactions)
+            interaction_count = interaction_count + matvec_interactions
+        end subroutine matvec
+
+    end subroutine solve_helmholtz_dirichlet_p0_hierarchical_3d
+
+    subroutine precompute_self_diagonal( &
+            vertices, triangles, wave_number, self_diagonal, status)
+        real(dp), intent(in) :: vertices(:, :), wave_number
+        integer, intent(in) :: triangles(:, :)
+        complex(dp), allocatable, intent(out) :: self_diagonal(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: self_matrix(:, :)
+        real(dp) :: local_vertices(3, 3)
+        integer :: local_triangle(3, 1), panel
+
+        status = 1
+        allocate(self_diagonal(size(triangles, 2)))
         local_triangle(:, 1) = [1, 2, 3]
-        do panel = 1, size(density)
+        do panel = 1, size(triangles, 2)
             local_vertices = vertices(:, triangles(:, panel))
             call assemble_helmholtz_single_layer_p0_3d( &
                 local_vertices, local_triangle, wave_number, 8, &
                 self_matrix, status)
             if (status /= 0) return
-            result(panel) = self_matrix(1, 1)*density(panel)
+            self_diagonal(panel) = self_matrix(1, 1)
+        end do
+        status = 0
+    end subroutine precompute_self_diagonal
+
+    subroutine apply_prebuilt( &
+            density, wave_number, opening_angle, areas, centers, permutation, &
+            inverse_position, first, last, first_child, second_child, &
+            node_centers, radii, node_count, self_diagonal, result, &
+            interaction_count)
+        complex(dp), intent(in) :: density(:), self_diagonal(:)
+        real(dp), intent(in) :: wave_number, opening_angle
+        real(dp), intent(in) :: areas(:), centers(:, :)
+        integer, intent(in) :: permutation(:), inverse_position(:)
+        integer, intent(in) :: first(:), last(:), first_child(:)
+        integer, intent(in) :: second_child(:), node_count
+        real(dp), intent(in) :: node_centers(:, :), radii(:)
+        complex(dp), intent(out) :: result(:)
+        integer, intent(out) :: interaction_count
+
+        complex(dp), allocatable :: charges(:)
+        integer :: node, panel
+
+        allocate(charges(node_count))
+        do node = node_count, 1, -1
+            if (first_child(node) == 0) then
+                charges(node) = sum( &
+                    density(permutation(first(node):last(node)))* &
+                    areas(permutation(first(node):last(node))))
+            else
+                charges(node) = &
+                    charges(first_child(node)) + charges(second_child(node))
+            end if
+        end do
+        interaction_count = 0
+        result = self_diagonal*density
+        do panel = 1, size(density)
             interaction_count = interaction_count + 1
             call apply_node( &
                 1, panel, inverse_position(panel), wave_number, &
@@ -73,8 +200,7 @@ contains
                 last, first_child, second_child, node_centers, radii, &
                 charges, result(panel), interaction_count)
         end do
-        status = 0
-    end subroutine apply_helmholtz_single_layer_p0_hierarchical_3d
+    end subroutine apply_prebuilt
 
     recursive subroutine apply_node( &
             node, target, target_position, wave_number, opening_angle, &
