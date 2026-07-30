@@ -7,7 +7,6 @@
 // curl E = pi*(cos(pi*x) - cos(pi*y))
 // f = (pi^2 + 1)*E
 
-load "Element_Mixte"
 verbosity = 0;
 cout.precision(17);
 
