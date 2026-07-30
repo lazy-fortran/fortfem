@@ -18,6 +18,7 @@ module fortfem_tetra_lagrange_arbitrary_order
     public :: evaluate_tetra_lagrange
     public :: initialize_tetra_lagrange
     public :: tetra_lagrange_dof_count
+    public :: tetra_lagrange_barycentric_indices
     public :: tetra_lagrange_nodes
     public :: tetra_lagrange_t
 
@@ -157,6 +158,14 @@ contains
         dof_count = 0
         if (allocated(basis%nodes)) dof_count = size(basis%nodes, 2)
     end function tetra_lagrange_dof_count
+
+    subroutine tetra_lagrange_barycentric_indices(basis, indices)
+        type(tetra_lagrange_t), intent(in) :: basis
+        integer, allocatable, intent(out) :: indices(:, :)
+
+        allocate(indices(4, tetra_lagrange_dof_count(basis)))
+        indices = basis%barycentric_indices
+    end subroutine tetra_lagrange_barycentric_indices
 
     subroutine tetra_lagrange_nodes(basis, nodes)
         type(tetra_lagrange_t), intent(in) :: basis

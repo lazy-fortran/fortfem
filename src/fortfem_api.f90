@@ -112,7 +112,10 @@ module fortfem_api
         tetra_discontinuous_t
     use fortfem_tetra_lagrange_arbitrary_order, only: &
         assignment(=), evaluate_tetra_lagrange, initialize_tetra_lagrange, &
-        tetra_lagrange_dof_count, tetra_lagrange_nodes, tetra_lagrange_t
+        tetra_lagrange_barycentric_indices, tetra_lagrange_dof_count, &
+        tetra_lagrange_nodes, tetra_lagrange_t
+    use fortfem_tetra_lagrange_global_dof_map, only: &
+        build_tetra_lagrange_dof_map
     use fortfem_tetra_feec_operators, only: &
         build_tetra_discrete_curl, build_tetra_discrete_gradient
     use fortfem_tetra_rt_arbitrary_order, only: &
@@ -310,8 +313,10 @@ module fortfem_api
     public :: evaluate_tetra_lagrange
     public :: initialize_tetra_lagrange
     public :: tetra_lagrange_dof_count
+    public :: tetra_lagrange_barycentric_indices
     public :: tetra_lagrange_nodes
     public :: tetra_lagrange_t
+    public :: build_tetra_lagrange_dof_map
     public :: build_tetra_discrete_gradient
     public :: build_tetra_discrete_curl
     public :: interpolate_reference_tetra_rt
