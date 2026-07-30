@@ -75,6 +75,12 @@ contains
             call solve_compiled_vector_problem( &
                 equation, Eh, bc, solver, local_opts, local_stats, &
                 "BDM", Eh%space%degree + 1, .true.)
+        else if ((trim(Eh%space%element_family) == "Nedelec2" .or. &
+                trim(Eh%space%element_family) == "Nedelec-second") .and. &
+                Eh%space%degree >= 1) then
+            call solve_compiled_vector_problem( &
+                equation, Eh, bc, solver, local_opts, local_stats, &
+                "Nedelec2", Eh%space%degree + 1, .false.)
         else if (index(equation%lhs%description, "curl") > 0) then
             call solve_curl_curl_problem(Eh, bc, solver, local_opts, &
                 local_stats)
