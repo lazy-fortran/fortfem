@@ -11,6 +11,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [bem_sphere_3d](bem_sphere_3d.html) - This example solves the unit-sphere Laplace Dirichlet problem with the P0
 - [circular_dtn_modes](circular_dtn_modes.html) - Boundary data on the unit circle:
 - [curl_curl](curl_curl.html) - Clean FEniCS-style example solving the curl-curl equation
+- [curved_acoustic_ntd](curved_acoustic_ntd.html) - This example maps the normal displacement of an arbitrary closed polygonal
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - FortFEM mesh generation benchmark to compare with FreeFEM
 - [helmholtz_bem_circle_spectrum](helmholtz_bem_circle_spectrum.html) - Executable FortFEM helmholtz_bem_circle_spectrum.f90 example.
 - [helmholtz_cfie_circle](helmholtz_cfie_circle.html) - Executable FortFEM helmholtz_cfie_circle.f90 example.
