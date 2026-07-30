@@ -17,10 +17,117 @@ module fortfem_maxwell_efie_rwg_3d
     private
 
     public :: assemble_maxwell_efie_rwg_3d
+    public :: assemble_maxwell_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_rwg_potential_operators_3d
     public :: evaluate_maxwell_efie_field_rwg_3d
+    public :: solve_maxwell_pec_efie_rwg_3d
+
+    interface
+        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
+            import :: dp
+            integer, intent(in) :: n, nrhs, lda, ldb
+            complex(dp), intent(inout) :: a(lda, *)
+            integer, intent(out) :: ipiv(*)
+            complex(dp), intent(inout) :: b(ldb, *)
+            integer, intent(out) :: info
+        end subroutine zgesv
+    end interface
 
 contains
+
+    subroutine solve_maxwell_pec_efie_rwg_3d( &
+            vertices, triangles, direction, polarization, wave_number, &
+            impedance, quadrature_degree, tolerance, max_depth, density, status)
+        real(dp), intent(in) :: vertices(:, :), direction(3), wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        complex(dp), intent(in) :: polarization(3)
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: density(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: matrix(:, :), right_hand_side(:)
+        complex(dp), allocatable :: right_hand_side_matrix(:, :)
+        integer, allocatable :: pivots(:)
+        integer :: info
+
+        status = 1
+        call assemble_maxwell_efie_rwg_3d( &
+            vertices, triangles, wave_number, impedance, quadrature_degree, &
+            tolerance, max_depth, matrix, status)
+        if (status /= 0) return
+        call assemble_maxwell_plane_wave_rhs_rwg_3d( &
+            vertices, triangles, direction, polarization, wave_number, &
+            quadrature_degree, right_hand_side, status)
+        if (status /= 0) return
+        allocate( &
+            density(size(right_hand_side)), &
+            right_hand_side_matrix(size(right_hand_side), 1), &
+            pivots(size(right_hand_side)))
+        right_hand_side_matrix(:, 1) = right_hand_side
+        call zgesv( &
+            size(right_hand_side), 1, matrix, size(right_hand_side), pivots, &
+            right_hand_side_matrix, size(right_hand_side), info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        density = right_hand_side_matrix(:, 1)
+        status = 0
+    end subroutine solve_maxwell_pec_efie_rwg_3d
+
+    subroutine assemble_maxwell_plane_wave_rhs_rwg_3d( &
+            vertices, triangles, direction, polarization, wave_number, &
+            quadrature_degree, right_hand_side, status)
+        real(dp), intent(in) :: vertices(:, :), direction(3), wave_number
+        complex(dp), intent(in) :: polarization(3)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_divergence, basis_value(3), jacobian, point(3)
+        complex(dp) :: incident_field(3)
+        integer :: basis, node, panel
+
+        status = 1
+        if (wave_number < 0.0_dp) return
+        if (abs(norm2(direction) - 1.0_dp) > 128.0_dp*epsilon(1.0_dp)) return
+        if (abs(sum(polarization*direction)) > &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+            sqrt(sum(abs(polarization)**2)))) return
+        if (sqrt(sum(abs(polarization)**2)) <= tiny(1.0_dp)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(edge_vertices, 2) == 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(right_hand_side(size(edge_vertices, 2)))
+        right_hand_side = cmplx(0.0_dp, 0.0_dp, dp)
+        do basis = 1, size(edge_vertices, 2)
+            do panel = 1, 2
+                jacobian = 2.0_dp*triangle_area(vertices(:, triangles(:, &
+                    edge_triangles(panel, basis))))
+                do node = 1, size(weights)
+                    point = triangle_point( &
+                        vertices(:, triangles(:, edge_triangles(panel, basis))), &
+                        xi(node), eta(node))
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, edge_triangles(panel, basis), point, basis_value, &
+                        basis_divergence, status)
+                    if (status /= 0) return
+                    incident_field = polarization*exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    right_hand_side(basis) = right_hand_side(basis) - &
+                        jacobian*weights(node)* &
+                        sum(cmplx(basis_value, 0.0_dp, dp)*incident_field)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_plane_wave_rhs_rwg_3d
 
     subroutine evaluate_maxwell_efie_field_rwg_3d( &
             vertices, triangles, coefficients, target, wave_number, impedance, &
