@@ -9,6 +9,8 @@ program test_bspline_h1_sparse_assembly
         assemble_bspline_hcurl_l2_curl_csc, &
         assemble_bspline_l2_hcurl_adjoint_curl_csc, &
         assemble_bspline_l2_mass_csc, &
+        assemble_bspline_grad_shafranov_csc, &
+        assemble_bspline_toroidal_fourier_laplacian_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -19,6 +21,7 @@ program test_bspline_h1_sparse_assembly
     real(dp), parameter :: knots_y(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
+    type(csc_t) :: grad_shafranov, toroidal_fourier
     type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
     type(csc_t) :: hdiv_mass, div_div
     type(csc_t) :: weak_gradient
@@ -83,6 +86,21 @@ program test_bspline_h1_sparse_assembly
     energy = dot_product(coefficients, product)
     call check_condition(abs(energy - log(2.0_dp)) < 2.0e-11_dp, &
         "Cylindrical 1/R spline diffusion matches analytical log(2) energy")
+    call assemble_bspline_grad_shafranov_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 6, grad_shafranov, &
+        sparse_status)
+    product = csc_matvec(grad_shafranov, coefficients)
+    call check_condition(abs(dot_product(coefficients, product) - &
+        log(2.0_dp)) < 2.0e-11_dp, &
+        "Named isogeometric Grad-Shafranov operator matches log(2) energy")
+    call assemble_bspline_toroidal_fourier_laplacian_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 6, 2, &
+        toroidal_fourier, sparse_status)
+    coefficients = 1.0_dp
+    product = csc_matvec(toroidal_fourier, coefficients)
+    call check_condition(abs(dot_product(coefficients, product) - &
+        4.0_dp*log(2.0_dp)) < 3.0e-11_dp, &
+        "Toroidal Fourier mode energy matches analytical 4 log(2)")
 
     call assemble_bspline_h1_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 5, anisotropic, &
