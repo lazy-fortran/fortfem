@@ -7,6 +7,7 @@ module fortfem_tetra_face_moment_transforms
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
+    use fortnum_special_jacobi, only: triangle_dubiner
     implicit none
     private
 
@@ -94,7 +95,7 @@ contains
         transform = 0.0_dp
         size_ = (degree + 1)*(degree + 2)/2
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (size(transform, 1) /= size_ .or. size(transform, 2) /= size_) &
             return
         if (degree > 4) then
@@ -160,7 +161,7 @@ contains
         output = 0.0_dp
         status = 1
         size_ = (degree + 1)*(degree + 2)/2
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (size(input) /= size_ .or. size(output) /= size_) return
         if (.not. valid_permutation(permutation)) return
         allocate(transform(size_, size_))
@@ -185,7 +186,7 @@ contains
         transform = 0.0_dp
         status = 1
         size_ = (degree + 1)*(degree + 2)/2
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (size(transform, 1) /= size_ .or. size(transform, 2) /= size_) &
             return
         if (.not. valid_permutation(permutation)) return
@@ -240,9 +241,12 @@ contains
                             mapped = real(offset, dp) + matmul( &
                                 real(affine, dp), [u(node), v(node)])
                             matrix(row, column) = matrix(row, column) + &
-                                weights(node)*mapped(1)**basis_x* &
-                                mapped(2)**basis_y* &
-                                u(node)**moment_x*v(node)**moment_y
+                                weights(node)*rt_face_polynomial( &
+                                degree, basis_x, basis_y, &
+                                mapped(1), mapped(2))* &
+                                rt_face_polynomial( &
+                                degree, moment_x, moment_y, &
+                                u(node), v(node))
                         end do
                     end do
                 end do
@@ -251,6 +255,18 @@ contains
         status = merge(0, 1, &
             row == size(matrix, 1) .and. column == size(matrix, 2))
     end subroutine build_rt_moment_matrix
+
+    pure real(dp) function rt_face_polynomial( &
+            degree, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: degree, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (degree <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function rt_face_polynomial
 
     subroutine apply_runtime_transform( &
             order, permutation, input, output, basis_to_local, status)

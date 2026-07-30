@@ -1,5 +1,6 @@
 module fortfem_tetra_discontinuous_arbitrary_order
     use fortfem_kinds, only: dp
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder
     implicit none
     private
 
@@ -30,7 +31,7 @@ contains
         basis%degree = -1
         if (allocated(basis%exponents)) deallocate(basis%exponents)
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         allocate(basis%exponents(3, (degree + 1)*(degree + 2)* &
             (degree + 3)/6))
         entry = 0
@@ -61,10 +62,17 @@ contains
         if (.not. allocated(basis%exponents)) return
         if (size(values) /= size(basis%exponents, 2)) return
         do basis_id = 1, size(values)
-            values(basis_id) = &
-                x**basis%exponents(1, basis_id)* &
-                y**basis%exponents(2, basis_id)* &
-                z**basis%exponents(3, basis_id)
+            if (basis%degree <= 5) then
+                values(basis_id) = &
+                    x**basis%exponents(1, basis_id)* &
+                    y**basis%exponents(2, basis_id)* &
+                    z**basis%exponents(3, basis_id)
+            else
+                values(basis_id) = tetrahedron_koornwinder( &
+                    basis%exponents(1, basis_id), &
+                    basis%exponents(2, basis_id), &
+                    basis%exponents(3, basis_id), x, y, z)
+            end if
         end do
         status = 0
     end subroutine evaluate_tetra_discontinuous

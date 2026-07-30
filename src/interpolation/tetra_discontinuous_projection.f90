@@ -73,8 +73,9 @@ contains
     pure integer function degree_from_dof_count(dof_count) result(degree)
         integer, intent(in) :: dof_count
 
-        do degree = 0, 5
+        do degree = 0, 1000
             if (dof_count == (degree + 1)*(degree + 2)*(degree + 3)/6) return
+            if ((degree + 1)*(degree + 2)*(degree + 3)/6 > dof_count) exit
         end do
         degree = -1
     end function degree_from_dof_count

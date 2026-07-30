@@ -61,7 +61,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral RT vector load failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
-        if (degree < 0 .or. degree > 5 .or. quadrature_degree < 0) return
+        if (degree < 0 .or. quadrature_degree < 0) return
         call initialize_tetra_rt(degree, basis, local_status)
         if (local_status /= 0) return
         call tetra_duffy_quadrature( &
@@ -163,7 +163,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral RT-DG divergence assembly failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (quadrature_degree < 0) return
         call initialize_tetra_rt(degree, rt_basis, local_status)
         if (local_status /= 0) return
@@ -268,7 +268,7 @@ contains
         integer :: column, dof_count, point_index, row
 
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (quadrature_degree < 0) return
         call tetra_geometry(vertices, jacobian, determinant, status)
         if (status /= 0) return
@@ -341,7 +341,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral RT sparse assembly failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (quadrature_degree < 0) return
         divergence_weight = 1.0_dp
         mass_weight = 1.0_dp

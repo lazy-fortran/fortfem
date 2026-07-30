@@ -29,7 +29,7 @@ contains
         logical :: found
 
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         if (size(tetrahedra, 1) /= 4) return
         do tetrahedron = 1, size(tetrahedra, 2)
             if (any(tetrahedra(:, tetrahedron) < 1)) return
@@ -114,7 +114,7 @@ contains
 
         transform = 0.0_dp
         status = 1
-        if (degree < 0 .or. degree > 5) return
+        if (degree < 0) return
         dof_count = (degree + 1)*(degree + 2)*(degree + 4)/2
         face_dof_count = (degree + 1)*(degree + 2)/2
         if (size(transform, 1) /= dof_count) return
