@@ -4,7 +4,8 @@ module fortfem_api_spaces
         vector_function_space_t, function_t, vector_function_t,             &
         trial_function_t, test_function_t, vector_trial_function_t,         &
         vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
-        cell_coefficient_t, cell_tensor_coefficient_t, cell_vector_source_t
+        vector_neumann_bc_t, cell_coefficient_t, cell_tensor_coefficient_t, &
+        cell_vector_source_t
     use fortfem_triangle_global_dof_map, only: &
         build_triangle_full_vector_dof_map, build_triangle_trimmed_dof_map
     implicit none
@@ -22,6 +23,7 @@ module fortfem_api_spaces
     public :: vector_test_function_t
     public :: dirichlet_bc_t
     public :: vector_bc_t
+    public :: vector_neumann_bc_t
     public :: neumann_bc_t
     public :: function_space
     public :: vector_function_space
@@ -36,6 +38,8 @@ module fortfem_api_spaces
     public :: dirichlet_bc_on_boundary
     public :: vector_bc
     public :: vector_bc_edge_moments
+    public :: vector_bc_on_edges
+    public :: vector_neumann_bc_on_edges
     public :: neumann_bc_constant
     public :: neumann_bc_on_boundary
     public :: cell_coefficient_t
@@ -245,6 +249,48 @@ contains
             bc%bc_type = "tangential"
         end if
     end function vector_bc_edge_moments
+
+    function vector_bc_on_edges( &
+            space, edge_values, edge_mask, bc_type) result(bc)
+        type(vector_function_space_t), target, intent(in) :: space
+        real(dp), intent(in) :: edge_values(:)
+        logical, intent(in) :: edge_mask(:)
+        character(len=*), intent(in), optional :: bc_type
+        type(vector_bc_t) :: bc
+
+        if (size(edge_values) /= space%ndof) then
+            error stop "vector_bc_on_edges: wrong edge-moment count"
+        end if
+        if (size(edge_mask) /= space%mesh%data%n_edges) then
+            error stop "vector_bc_on_edges: wrong mesh-edge mask size"
+        end if
+        bc%space => space
+        allocate(bc%edge_values, source=edge_values)
+        allocate(bc%edge_mask, source=edge_mask)
+        bc%on_boundary = .true.
+        if (present(bc_type)) then
+            bc%bc_type = bc_type
+        else
+            bc%bc_type = "tangential"
+        end if
+    end function vector_bc_on_edges
+
+    function vector_neumann_bc_on_edges( &
+            space, edge_values, edge_mask) result(bc)
+        type(vector_function_space_t), intent(in) :: space
+        real(dp), intent(in) :: edge_values(:)
+        logical, intent(in) :: edge_mask(:)
+        type(vector_neumann_bc_t) :: bc
+
+        if (size(edge_values) /= space%mesh%data%n_edges) then
+            error stop "vector_neumann_bc_on_edges: wrong edge-value count"
+        end if
+        if (size(edge_mask) /= space%mesh%data%n_edges) then
+            error stop "vector_neumann_bc_on_edges: wrong mesh-edge mask size"
+        end if
+        allocate(bc%edge_values, source=edge_values)
+        allocate(bc%edge_mask, source=edge_mask)
+    end function vector_neumann_bc_on_edges
 
     function neumann_bc_constant(space, flux_value) result(bc)
         type(function_space_t), target, intent(in) :: space

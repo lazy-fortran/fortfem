@@ -63,7 +63,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | Requirement | Verified FortFEM capability | Remaining gate |
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
-| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
+| Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors and explicit-edge mixed tangential/curl-Neumann data through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, and mixed Poisson convergence through RT3–DG3 | A general symbolic mixed-form API |
 | Arbitrary-order 3D FEEC | Tetrahedral H1, first-kind Nedelec H(curl), RT H(div), and DG L2 bases through order four; Piola maps; CAS-generated moment bases and face transforms; global H1/H(curl)/H(div) topology; sparse H1/curl/div assembly; commuting grad/curl/div tests; public Nedelec curl-curl-plus-mass, tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves through order four; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl through order four | A general symbolic mixed-form API; the single-field FEEC family gate is complete |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; arbitrary-polygon P1/P0 acoustic displacement-to-pressure NtD, its work-conjugate vector weak form, and a monolithic complex P1 elasticity solve through a resonance-safe combined Calderon equation; biperiodic planar Maxwell strong and weak capacity operators; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Nedelec trace sampling for automated planar coupling and Maxwell DtN on general curved surfaces |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
@@ -191,8 +191,11 @@ coefficients, prescribed edge moments, a sparse direct solve, and a
 refinement oracle for the analytical magnetic field. It also accepts a
 cellwise \(2\times2\) tensor in the H(curl) mass term at every implemented
 order. A discontinuous anisotropic manufactured material converges to its
-analytical transverse field. General curvilinear metric construction,
-nonzero Neumann terms, and the shielding and racetrack cases remain.
+analytical transverse field. Explicit mesh-edge masks also support mixed
+tangential essential and nonzero curl-Neumann data at every implemented
+order; a rotating analytical field verifies the boundary orientation and
+converges under refinement. General curvilinear metric construction and the
+shielding and racetrack cases remain.
 
 ### Acoustic and ultrasonic papers
 
@@ -653,6 +656,10 @@ RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves now cover every
 implemented order. The two-dimensional first-kind Nedelec compiler also
 assembles cellwise anisotropic mass tensors at every implemented order and
 passes exact tensor-energy and manufactured-field convergence oracles.
+Its public solver accepts disjoint explicit edge masks for tangential
+essential and curl-Neumann data. Constant natural flux is assembled in the
+dual shifted-Legendre edge basis with topology-derived boundary orientation;
+orders one through four pass an analytical mixed-boundary refinement oracle.
 The H1 path uses FortSparse CSC assembly and nonzero
 boundary elimination, attains the expected value and gradient h-rates,
 decreases both errors under p-refinement, and reproduces a FortSym-generated

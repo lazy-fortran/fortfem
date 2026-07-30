@@ -16,6 +16,7 @@ module fortfem_api_types
     public :: vector_test_function_t
     public :: dirichlet_bc_t
     public :: vector_bc_t
+    public :: vector_neumann_bc_t
     public :: neumann_bc_t
     public :: simple_expression_t
     public :: cell_coefficient_t
@@ -98,12 +99,21 @@ module fortfem_api_types
         type(vector_function_space_t), pointer :: space => null()
         real(dp) :: values(2) = [0.0_dp, 0.0_dp]
         real(dp), allocatable :: edge_values(:)
+        logical, allocatable :: edge_mask(:)
         character(len=32) :: bc_type = "tangential"
         logical :: on_boundary = .false.
     contains
         procedure, private :: assign_vector_bc
         generic :: assignment(=) => assign_vector_bc
     end type vector_bc_t
+
+    type :: vector_neumann_bc_t
+        real(dp), allocatable :: edge_values(:)
+        logical, allocatable :: edge_mask(:)
+    contains
+        procedure, private :: assign_vector_neumann_bc
+        generic :: assignment(=) => assign_vector_neumann_bc
+    end type vector_neumann_bc_t
 
     ! Neumann boundary condition type
     type :: neumann_bc_t
@@ -178,9 +188,24 @@ contains
         if (allocated(rhs%edge_values)) then
             allocate(lhs%edge_values, source=rhs%edge_values)
         end if
+        if (allocated(rhs%edge_mask)) then
+            allocate(lhs%edge_mask, source=rhs%edge_mask)
+        end if
         lhs%bc_type = rhs%bc_type
         lhs%on_boundary = rhs%on_boundary
     end subroutine assign_vector_bc
+
+    subroutine assign_vector_neumann_bc(lhs, rhs)
+        class(vector_neumann_bc_t), intent(out) :: lhs
+        type(vector_neumann_bc_t), intent(in) :: rhs
+
+        if (allocated(rhs%edge_values)) then
+            allocate(lhs%edge_values, source=rhs%edge_values)
+        end if
+        if (allocated(rhs%edge_mask)) then
+            allocate(lhs%edge_mask, source=rhs%edge_mask)
+        end if
+    end subroutine assign_vector_neumann_bc
 
     subroutine assign_cell_coefficient(lhs, rhs)
         class(cell_coefficient_t), intent(out) :: lhs
