@@ -4,15 +4,20 @@ program test_laplace_bem_galerkin_3d
         assemble_laplace_calderon_p1_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
-        solve_helmholtz_dirichlet_p0_3d, solve_laplace_dirichlet_p0_3d
+        solve_helmholtz_dirichlet_p0_3d, &
+        solve_laplace_fem_bem_johnson_nedelec_3d, &
+        solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
     implicit none
 
     real(dp), allocatable :: adjoint(:, :), density(:)
     real(dp), allocatable :: double_layer(:, :), hypersingular(:, :)
     real(dp), allocatable :: ones(:), single_layer(:, :), vertices(:, :)
+    real(dp), allocatable :: fem_solution(:), flux(:), load(:)
+    real(dp), allocatable :: volume_vertices(:, :)
     complex(dp), allocatable :: complex_density(:), dirichlet(:)
     integer, allocatable :: triangles(:, :)
+    integer, allocatable :: tetrahedra(:, :)
     complex(dp) :: exact_field, numerical_field
     real(dp) :: capacities(0:2), errors(0:2)
     integer :: level, status
@@ -51,6 +56,26 @@ program test_laplace_bem_galerkin_3d
     call record_condition(maxval(abs(matmul(double_layer, ones) + &
         0.5_dp*triangle_areas(vertices, triangles))) < 2.0e-2_dp, &
         "Three-dimensional double layer has the closed-surface constant trace")
+
+    allocate(volume_vertices(3, size(vertices, 2) + 1))
+    volume_vertices(:, :size(vertices, 2)) = vertices
+    volume_vertices(:, size(vertices, 2) + 1) = 0.0_dp
+    allocate(tetrahedra(4, size(triangles, 2)))
+    tetrahedra(1, :) = size(vertices, 2) + 1
+    tetrahedra(2:4, :) = triangles
+    allocate(load(size(volume_vertices, 2)))
+    load = 0.0_dp
+    load(size(load)) = 1.0_dp
+    call solve_laplace_fem_bem_johnson_nedelec_3d( &
+        volume_vertices, tetrahedra, triangles, load, 8, fem_solution, &
+        flux, status)
+    call record_condition(status == 0 .and. abs(sum( &
+        flux*triangle_areas(vertices, triangles)) + 1.0_dp) < 2.0e-10_dp, &
+        "Three-dimensional FEM-BEM conserves unit point-source flux")
+    call record_condition(abs(sum(fem_solution(:size(vertices, 2)))/ &
+        real(size(vertices, 2), dp) - 1.0_dp/(4.0_dp*acos(-1.0_dp))) < &
+        2.5e-2_dp, &
+        "Three-dimensional FEM-BEM matches the point-charge boundary potential")
 
     call solve_helmholtz_dirichlet_p0_3d( &
         vertices, triangles, cmplx(1.0_dp, 0.0_dp, dp), 0.7_dp, 8, &
