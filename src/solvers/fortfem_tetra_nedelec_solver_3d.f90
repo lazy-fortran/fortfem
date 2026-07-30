@@ -2,7 +2,8 @@ module fortfem_tetra_nedelec_solver_3d
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_pml_csc, &
-        assemble_tetra_nedelec_vector_load_order
+        assemble_tetra_nedelec_vector_load_order, &
+        assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_solve_csc, &
         sparse_direct_solve_zero_constrained
@@ -17,8 +18,15 @@ module fortfem_tetra_nedelec_solver_3d
 
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
+    public :: solve_tetra_nedelec_weighted_curl_mass
 
     abstract interface
+        pure subroutine tensor_coefficient_3d(x, y, z, value)
+            import :: dp
+            real(dp), intent(in) :: x, y, z
+            real(dp), intent(out) :: value(3, 3)
+        end subroutine tensor_coefficient_3d
+
         pure subroutine vector_source_3d(x, y, z, value)
             import :: dp
             real(dp), intent(in) :: x, y, z
@@ -27,6 +35,62 @@ module fortfem_tetra_nedelec_solver_3d
     end interface
 
 contains
+
+    subroutine solve_tetra_nedelec_weighted_curl_mass( &
+            vertices, tetrahedra, order, curl_coefficient, source, &
+            mass_coefficient, solution, status, zero_tangential_boundary)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        procedure(tensor_coefficient_3d) :: curl_coefficient
+        procedure(vector_source_3d) :: source
+        real(dp), intent(in) :: mass_coefficient
+        real(dp), allocatable, intent(out) :: solution(:)
+        type(fortsparse_status_t), intent(out) :: status
+        logical, intent(in), optional :: zero_tangential_boundary
+
+        type(csc_t) :: matrix
+        logical, allocatable :: constrained(:)
+        real(dp), allocatable :: right_hand_side(:)
+        integer :: solve_status
+        logical :: impose_boundary
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Weighted tetrahedral Nedelec curl-mass solve failed")
+        if (order < 1 .or. order > 4) return
+        if (mass_coefficient <= 0.0_dp) return
+        call assemble_tetra_nedelec_weighted_csc( &
+            vertices, tetrahedra, curl_coefficient, mass_coefficient, &
+            matrix, status, order)
+        if (status%code /= 0) return
+        call assemble_tetra_nedelec_vector_load_order( &
+            vertices, tetrahedra, order, source, right_hand_side, status)
+        if (status%code /= 0) return
+        if (size(right_hand_side) /= matrix%nrow) return
+        allocate(solution(matrix%nrow))
+        impose_boundary = .false.
+        if (present(zero_tangential_boundary)) then
+            impose_boundary = zero_tangential_boundary
+        end if
+        if (impose_boundary) then
+            call build_zero_tangential_mask( &
+                tetrahedra, order, constrained, solve_status)
+            if (solve_status /= 0) return
+            call sparse_direct_solve_zero_constrained( &
+                matrix, right_hand_side, constrained, solution, solve_status)
+        else
+            call sparse_direct_solve_csc( &
+                matrix%nrow, matrix%col_ptr, matrix%row_idx, matrix%val, &
+                right_hand_side, solution, solve_status)
+        end if
+        if (solve_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INTERNAL_ERROR, &
+                "Weighted tetrahedral Nedelec sparse solve failed")
+            return
+        end if
+        call status_set(status, 0, "")
+    end subroutine solve_tetra_nedelec_weighted_curl_mass
 
     subroutine solve_tetra_nedelec_pml( &
             vertices, tetrahedra, order, stretch, wave_number, volume_load, &
