@@ -30,7 +30,8 @@ contains
 
     subroutine solve_tetra_nedelec_pml( &
             vertices, tetrahedra, order, stretch, wave_number, volume_load, &
-            dirichlet_dofs, dirichlet_values, solution, status)
+            dirichlet_dofs, dirichlet_values, solution, status, &
+            boundary_operator_dofs, boundary_operator)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: tetrahedra(:, :), order
         complex(dp), intent(in) :: stretch(:, :)
@@ -40,13 +41,17 @@ contains
         complex(dp), intent(in) :: dirichlet_values(:)
         complex(dp), allocatable, intent(out) :: solution(:)
         integer, intent(out) :: status
+        integer, intent(in), optional :: boundary_operator_dofs(:)
+        complex(dp), intent(in), optional :: boundary_operator(:, :)
 
         type(csc_z_t) :: matrix, constrained_matrix
         type(fortsparse_status_t) :: sparse_status
         complex(dp), allocatable :: right_hand_side(:), values(:)
         integer, allocatable :: columns(:), rows(:)
+        complex(dp), allocatable :: operator_values(:)
+        integer, allocatable :: operator_columns(:), operator_rows(:)
         logical, allocatable :: constrained(:)
-        integer :: column, constraint, entry, kept_entry, row
+        integer :: column, constraint, entry, kept_entry, operator_entry, row
 
         status = 1
         if (allocated(solution)) deallocate(solution)
@@ -55,6 +60,49 @@ contains
             vertices, tetrahedra, order, stretch, wave_number, matrix, &
             sparse_status)
         if (sparse_status%code /= 0) return
+        if (present(boundary_operator_dofs) .neqv. &
+            present(boundary_operator)) return
+        if (present(boundary_operator_dofs)) then
+            if (size(boundary_operator, 1) /= &
+                size(boundary_operator_dofs)) return
+            if (size(boundary_operator, 2) /= &
+                size(boundary_operator_dofs)) return
+            if (any(boundary_operator_dofs < 1) .or. &
+                any(boundary_operator_dofs > matrix%nrow)) return
+            allocate(operator_rows( &
+                matrix%nnz + size(boundary_operator_dofs)**2))
+            allocate(operator_columns(size(operator_rows)))
+            allocate(operator_values(size(operator_rows)))
+            operator_entry = 0
+            do column = 1, matrix%ncol
+                do entry = matrix%col_ptr(column), &
+                        matrix%col_ptr(column + 1) - 1
+                    operator_entry = operator_entry + 1
+                    operator_rows(operator_entry) = matrix%row_idx(entry)
+                    operator_columns(operator_entry) = column
+                    operator_values(operator_entry) = matrix%val(entry)
+                end do
+            end do
+            do column = 1, size(boundary_operator_dofs)
+                do row = 1, size(boundary_operator_dofs)
+                    operator_entry = operator_entry + 1
+                    operator_rows(operator_entry) = &
+                        boundary_operator_dofs(row)
+                    operator_columns(operator_entry) = &
+                        boundary_operator_dofs(column)
+                    operator_values(operator_entry) = &
+                        boundary_operator(row, column)
+                end do
+            end do
+            call csc_from_triplet( &
+                matrix%nrow, matrix%ncol, &
+                operator_rows(:operator_entry), &
+                operator_columns(:operator_entry), &
+                operator_values(:operator_entry), constrained_matrix, &
+                sparse_status)
+            if (sparse_status%code /= 0) return
+            matrix = constrained_matrix
+        end if
         if (size(volume_load) /= matrix%nrow) return
         if (any(dirichlet_dofs < 1) .or. &
             any(dirichlet_dofs > matrix%nrow)) return

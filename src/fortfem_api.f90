@@ -141,7 +141,8 @@ module fortfem_api
         assemble_maxwell_fem_bem_system_3d, solve_maxwell_fem_bem_system_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
-    use fortfem_planar_maxwell_dtn, only: apply_planar_maxwell_dtn
+    use fortfem_planar_maxwell_dtn, only: apply_planar_maxwell_dtn, &
+        assemble_planar_maxwell_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
         apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
@@ -455,6 +456,7 @@ module fortfem_api
     public :: compute_boundary_integral
     public :: apply_planar_helmholtz_dtn
     public :: apply_planar_maxwell_dtn
+    public :: assemble_planar_maxwell_dtn_form
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
     public :: solve_elasticity_planar_acoustic_dtn_p1
