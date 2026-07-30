@@ -19,7 +19,8 @@ program test_triangle_nedelec_arbitrary_order_sparse
     real(dp), allocatable :: nodal_values(:), nodes(:, :)
     integer, allocatable :: global_dofs(:, :), transforms(:, :)
     logical, allocatable :: assigned(:)
-    real(dp) :: exact_energy, physical_x, vertices(2, 3)
+    real(dp) :: exact_energy, physical_x, physical_y, tensor(2, 2)
+    real(dp) :: vertices(2, 3)
     integer :: dof, global_dof_count, local_status, node, order, triangle
     logical :: all_passed
 
@@ -34,6 +35,7 @@ program test_triangle_nedelec_arbitrary_order_sparse
     mesh%vertices(:, 4) = [0.0_dp, 1.0_dp]
     mesh%triangles(:, 1) = [1, 2, 3]
     mesh%triangles(:, 2) = [1, 3, 4]
+    tensor = reshape([2.0_dp, 0.5_dp, 0.5_dp, 3.0_dp], [2, 2])
 
     do order = 1, 4
         call build_triangle_trimmed_dof_map( &
@@ -56,7 +58,11 @@ program test_triangle_nedelec_arbitrary_order_sparse
                 physical_x = vertices(1, 1) + &
                     (vertices(1, 2) - vertices(1, 1)) * nodes(1, node) + &
                     (vertices(1, 3) - vertices(1, 1)) * nodes(2, node)
-                nodal_values(node) = physical_x**order
+                physical_y = vertices(2, 1) + &
+                    (vertices(2, 2) - vertices(2, 1)) * nodes(1, node) + &
+                    (vertices(2, 3) - vertices(2, 1)) * nodes(2, node)
+                nodal_values(node) = physical_x**order + &
+                    2.0_dp * physical_y**order
             end do
             local_dofs = matmul(gradient_matrix, nodal_values)
             do dof = 1, size(local_dofs)
@@ -75,10 +81,12 @@ program test_triangle_nedelec_arbitrary_order_sparse
         end do
 
         call assemble_triangle_nedelec_curl_mass_csc( &
-            mesh, order, 2 * order, matrix, sparse_status)
+            mesh, order, 2 * order, matrix, sparse_status, &
+            curl_coefficient=0.0_dp, mass_tensor=tensor)
         allocate(matrix_times_dofs(global_dof_count))
         matrix_times_dofs = csc_matvec(matrix, dofs)
-        exact_energy = real(order * order, dp) / real(2 * order - 1, dp)
+        exact_energy = 14.0_dp * real(order * order, dp) / &
+            real(2 * order - 1, dp) + 2.0_dp
         call record_condition(sparse_status%code == 0 .and. &
             matrix%nrow == global_dof_count .and. &
             matrix%ncol == global_dof_count, &
@@ -86,7 +94,7 @@ program test_triangle_nedelec_arbitrary_order_sparse
         call record_condition(abs( &
             dot_product(dofs, matrix_times_dofs) - exact_energy) < &
             8.0e-8_dp, &
-            "Sparse operator reproduces the exact square integral of grad x^r")
+            "Sparse operator reproduces exact anisotropic gradient energy")
 
         deallocate( &
             assigned, dofs, global_dofs, gradient_matrix, local_dofs, &

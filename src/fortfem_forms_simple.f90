@@ -1,6 +1,7 @@
 module fortfem_forms_simple
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_cell_vector_load, &
+        assemble_triangle_nedelec_cell_tensor_csc, &
         assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_element
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
@@ -34,6 +35,7 @@ module fortfem_forms_simple
     integer, parameter :: token_constant_load = 10
     integer, parameter :: token_cell_coefficient = 11
     integer, parameter :: token_cell_vector_source = 12
+    integer, parameter :: token_cell_tensor_coefficient = 13
 
     integer, parameter :: role_trial = 1
     integer, parameter :: role_test = 2
@@ -58,6 +60,7 @@ module fortfem_forms_simple
         real(dp) :: vector_value(2) = 0.0_dp
         real(dp), allocatable :: cell_values(:)
         real(dp), allocatable :: cell_vector_values(:, :)
+        real(dp), allocatable :: cell_tensor_values(:, :, :)
     contains
         procedure, private :: assign_form_token
         generic :: assignment(=) => assign_form_token
@@ -104,6 +107,7 @@ module fortfem_forms_simple
     public :: compile_vector_form_csc, compile_vector_form_rhs
     public :: compile_vector_form_element
     public :: create_cell_coefficient, create_constant_load
+    public :: create_cell_tensor_coefficient
     public :: create_cell_vector_source
     public :: create_curl, create_divergence
     public :: create_grad, create_inner
@@ -132,6 +136,10 @@ contains
         if (allocated(rhs%cell_vector_values)) then
             allocate( &
                 lhs%cell_vector_values, source=rhs%cell_vector_values)
+        end if
+        if (allocated(rhs%cell_tensor_values)) then
+            allocate( &
+                lhs%cell_tensor_values, source=rhs%cell_tensor_values)
         end if
     end subroutine assign_form_token
 
@@ -302,6 +310,18 @@ contains
         allocate(expr%tokens(1)%cell_values, source=values)
     end function create_cell_coefficient
 
+    function create_cell_tensor_coefficient(values) result(expr)
+        real(dp), intent(in) :: values(:, :, :)
+        type(form_expr_t) :: expr
+
+        allocate(expr%tokens(1))
+        expr%description = "cell_tensor_coefficient"
+        expr%form_type = "coefficient"
+        expr%tensor_rank = 2
+        expr%tokens(1)%token_type = token_cell_tensor_coefficient
+        allocate(expr%tokens(1)%cell_tensor_values, source=values)
+    end function create_cell_tensor_coefficient
+
     function create_vector_constant_function(value) result(expr)
         real(dp), intent(in) :: value(2)
         type(form_expr_t) :: expr
@@ -469,6 +489,7 @@ contains
         real(dp) :: curl_coefficient, divergence_coefficient
         real(dp) :: mass_coefficient
         real(dp), allocatable :: cell_curl(:), cell_mass(:)
+        real(dp), allocatable :: cell_tensors(:, :, :)
         real(dp) :: curl_field_scale, divergence_field_scale
         real(dp) :: mass_field_scale
         integer :: compiler_status, curl_field_token
@@ -495,7 +516,31 @@ contains
                 call set_incompatible_family_status(status)
                 return
             end if
-            if (mass_field_token /= 0 .or. curl_field_token /= 0) then
+            if (is_tensor_token(expr, curl_field_token)) then
+                call set_incompatible_family_status(status)
+                return
+            end if
+            if (is_tensor_token(expr, mass_field_token)) then
+                call build_cell_values( &
+                    expr, mesh%n_triangles, curl_coefficient, &
+                    curl_field_token, curl_field_scale, cell_curl, &
+                    compiler_status)
+                if (compiler_status /= 0) then
+                    call set_invalid_cell_coefficient_status(status)
+                    return
+                end if
+                call build_cell_tensors( &
+                    expr, mesh%n_triangles, mass_coefficient, &
+                    mass_field_token, mass_field_scale, cell_tensors, &
+                    compiler_status)
+                if (compiler_status /= 0) then
+                    call set_invalid_cell_coefficient_status(status)
+                    return
+                end if
+                call assemble_triangle_nedelec_cell_tensor_csc( &
+                    mesh, degree, quadrature_degree, cell_curl, cell_tensors, &
+                    matrix, status)
+            else if (mass_field_token /= 0 .or. curl_field_token /= 0) then
                 call build_cell_values( &
                     expr, mesh%n_triangles, curl_coefficient, &
                     curl_field_token, curl_field_scale, cell_curl, &
@@ -730,6 +775,51 @@ contains
             field_scale * expr%tokens(field_token)%cell_values
         status = 0
     end subroutine build_cell_values
+
+    pure logical function is_tensor_token(expr, token_index) result(is_tensor)
+        type(form_expr_t), intent(in) :: expr
+        integer, intent(in) :: token_index
+
+        is_tensor = .false.
+        if (token_index == 0) return
+        if (.not. allocated(expr%tokens)) return
+        if (token_index < 1 .or. token_index > size(expr%tokens)) return
+        is_tensor = allocated(expr%tokens(token_index)%cell_tensor_values)
+    end function is_tensor_token
+
+    subroutine build_cell_tensors( &
+            expr, triangle_count, constant_value, field_token, field_scale, &
+            values, status)
+        type(form_expr_t), intent(in) :: expr
+        integer, intent(in) :: triangle_count, field_token
+        real(dp), intent(in) :: constant_value, field_scale
+        real(dp), allocatable, intent(out) :: values(:, :, :)
+        integer, intent(out) :: status
+
+        integer :: triangle
+
+        allocate(values(2, 2, triangle_count))
+        values = 0.0_dp
+        do triangle = 1, triangle_count
+            values(1, 1, triangle) = constant_value
+            values(2, 2, triangle) = constant_value
+        end do
+        status = 2
+        if (field_token == 0) then
+            status = 0
+            return
+        end if
+        if (.not. allocated(expr%tokens)) return
+        if (field_token < 1 .or. field_token > size(expr%tokens)) return
+        if (.not. allocated( &
+            expr%tokens(field_token)%cell_tensor_values)) return
+        if (size( &
+            expr%tokens(field_token)%cell_tensor_values, 3) /= &
+            triangle_count) return
+        values = values + field_scale * &
+            expr%tokens(field_token)%cell_tensor_values
+        status = 0
+    end subroutine build_cell_tensors
 
     subroutine assemble_cell_weighted_nedelec_csc( &
             mesh, degree, quadrature_degree, curl_values, mass_values, &
@@ -1093,7 +1183,7 @@ contains
             stack(stack_size)%item_type = item_form
             stack(stack_size)%field_rank = 0
             stack(stack_size)%load_coefficient = token%scalar
-        case (token_cell_coefficient)
+        case (token_cell_coefficient, token_cell_tensor_coefficient)
             stack_size = stack_size + 1
             stack(stack_size)%item_type = item_coefficient
             stack(stack_size)%coefficient_token = token_index

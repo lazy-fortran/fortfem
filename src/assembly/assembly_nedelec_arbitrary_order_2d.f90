@@ -23,6 +23,7 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
 
     public :: assemble_triangle_nedelec_curl_mass_element
     public :: assemble_triangle_nedelec_curl_mass_csc
+    public :: assemble_triangle_nedelec_cell_tensor_csc
     public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_nedelec_cell_vector_load
 
@@ -142,19 +143,20 @@ contains
 
     subroutine assemble_triangle_nedelec_curl_mass_element( &
             vertices, order, quadrature_degree, matrix, status, &
-            curl_coefficient, mass_coefficient)
+            curl_coefficient, mass_coefficient, mass_tensor)
         real(dp), intent(in) :: vertices(2, 3)
         integer, intent(in) :: order, quadrature_degree
         real(dp), allocatable, intent(out) :: matrix(:, :)
         integer, intent(out) :: status
         real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+        real(dp), intent(in), optional :: mass_tensor(2, 2)
 
         type(triangle_nedelec_first_kind_t) :: basis
         real(dp), allocatable :: eta(:), physical_curls(:)
         real(dp), allocatable :: physical_values(:, :), reference_curls(:)
         real(dp), allocatable :: reference_values(:, :), weights(:), xi(:)
-        real(dp) :: curl_weight, determinant, jacobian(2, 2), mass_weight
-        real(dp) :: physical_weight
+        real(dp) :: curl_weight, determinant, jacobian(2, 2)
+        real(dp) :: mass_weight, physical_weight, tensor(2, 2)
         integer :: basis_dof_count, column, point, row
 
         status = 1
@@ -163,6 +165,10 @@ contains
         mass_weight = 1.0_dp
         if (present(curl_coefficient)) curl_weight = curl_coefficient
         if (present(mass_coefficient)) mass_weight = mass_coefficient
+        tensor = 0.0_dp
+        tensor(1, 1) = mass_weight
+        tensor(2, 2) = mass_weight
+        if (present(mass_tensor)) tensor = mass_tensor
 
         jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
         jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
@@ -199,8 +205,9 @@ contains
                     matrix(row, column) = matrix(row, column) + &
                         physical_weight * ( &
                         curl_weight * physical_curls(row) * &
-                        physical_curls(column) + mass_weight * dot_product( &
-                        physical_values(:, row), physical_values(:, column)))
+                        physical_curls(column) + dot_product( &
+                        physical_values(:, row), &
+                        matmul(tensor, physical_values(:, column))))
                 end do
             end do
         end do
@@ -209,17 +216,18 @@ contains
 
     subroutine assemble_triangle_nedelec_curl_mass_csc( &
             mesh, order, quadrature_degree, matrix, status, &
-            curl_coefficient, mass_coefficient)
+            curl_coefficient, mass_coefficient, mass_tensor)
         type(mesh_2d_t), intent(inout) :: mesh
         integer, intent(in) :: order, quadrature_degree
         type(csc_t), intent(out) :: matrix
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: curl_coefficient, mass_coefficient
+        real(dp), intent(in), optional :: mass_tensor(2, 2)
 
         integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
         integer, allocatable :: transforms(:, :)
         real(dp), allocatable :: element_matrix(:, :), values(:)
-        real(dp) :: curl_weight, mass_weight, vertices(2, 3)
+        real(dp) :: curl_weight, mass_weight, tensor(2, 2), vertices(2, 3)
         integer :: column, entry, global_dof_count, local_dof_count
         integer :: local_status, row, triangle
 
@@ -227,6 +235,10 @@ contains
         mass_weight = 1.0_dp
         if (present(curl_coefficient)) curl_weight = curl_coefficient
         if (present(mass_coefficient)) mass_weight = mass_coefficient
+        tensor = 0.0_dp
+        tensor(1, 1) = mass_weight
+        tensor(2, 2) = mass_weight
+        if (present(mass_tensor)) tensor = mass_tensor
         if (order < 1 .or. quadrature_degree < 0) then
             call status_set( &
                 status, FORTSPARSE_INVALID_MATRIX, &
@@ -252,7 +264,7 @@ contains
             vertices = mesh%vertices(:, mesh%triangles(:, triangle))
             call assemble_triangle_nedelec_curl_mass_element( &
                 vertices, order, quadrature_degree, element_matrix, &
-                local_status, curl_weight, mass_weight)
+                local_status, curl_weight, mass_tensor=tensor)
             if (local_status /= 0) then
                 call status_set( &
                     status, FORTSPARSE_INVALID_MATRIX, &
@@ -275,6 +287,76 @@ contains
             global_dof_count, global_dof_count, rows, columns, values, &
             matrix, status)
     end subroutine assemble_triangle_nedelec_curl_mass_csc
+
+    subroutine assemble_triangle_nedelec_cell_tensor_csc( &
+            mesh, order, quadrature_degree, curl_values, mass_tensors, &
+            matrix, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_values(:), mass_tensors(:, :, :)
+        type(csc_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: element_matrix(:, :), values(:)
+        real(dp) :: vertices(2, 3)
+        integer :: column, entry, global_dof_count, local_dof_count
+        integer :: local_status, row, triangle
+
+        if (order < 1 .or. quadrature_degree < 0 .or. &
+            size(curl_values) /= mesh%n_triangles .or. &
+            size(mass_tensors, 1) /= 2 .or. &
+            size(mass_tensors, 2) /= 2 .or. &
+            size(mass_tensors, 3) /= mesh%n_triangles) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec tensor assembly requires one 2-by-2 tensor per cell")
+            return
+        end if
+        call build_triangle_trimmed_dof_map( &
+            mesh, order, global_dofs, transforms, global_dof_count, &
+            local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Nedelec tensor assembly requires a valid triangle mesh")
+            return
+        end if
+
+        local_dof_count = size(global_dofs, 1)
+        allocate(rows(mesh%n_triangles * local_dof_count**2))
+        allocate(columns(mesh%n_triangles * local_dof_count**2))
+        allocate(values(mesh%n_triangles * local_dof_count**2))
+        entry = 0
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            call assemble_triangle_nedelec_curl_mass_element( &
+                vertices, order, quadrature_degree, element_matrix, &
+                local_status, curl_values(triangle), &
+                mass_tensor=mass_tensors(:, :, triangle))
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Nedelec tensor element assembly failed")
+                return
+            end if
+            do column = 1, local_dof_count
+                do row = 1, local_dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, triangle)
+                    columns(entry) = global_dofs(column, triangle)
+                    values(entry) = real( &
+                        transforms(row, triangle) * &
+                        transforms(column, triangle), dp) * &
+                        element_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_triangle_nedelec_cell_tensor_csc
 
     subroutine assemble_triangle_nedelec_curl_csc( &
             mesh, order, quadrature_degree, matrix, status)

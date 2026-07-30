@@ -4,7 +4,7 @@ module fortfem_api_spaces
         vector_function_space_t, function_t, vector_function_t,             &
         trial_function_t, test_function_t, vector_trial_function_t,         &
         vector_test_function_t, dirichlet_bc_t, vector_bc_t, neumann_bc_t,  &
-        cell_coefficient_t, cell_vector_source_t
+        cell_coefficient_t, cell_tensor_coefficient_t, cell_vector_source_t
     use fortfem_triangle_global_dof_map, only: &
         build_triangle_full_vector_dof_map, build_triangle_trimmed_dof_map
     implicit none
@@ -40,6 +40,8 @@ module fortfem_api_spaces
     public :: neumann_bc_on_boundary
     public :: cell_coefficient_t
     public :: cell_coefficient
+    public :: cell_tensor_coefficient_t
+    public :: cell_tensor_coefficient
     public :: cell_vector_source_t
     public :: cell_vector_source
 
@@ -177,6 +179,17 @@ contains
         end if
         allocate(coefficient%values, source=values)
     end function cell_coefficient
+
+    function cell_tensor_coefficient(values) result(coefficient)
+        real(dp), intent(in) :: values(:, :, :)
+        type(cell_tensor_coefficient_t) :: coefficient
+
+        if (size(values, 1) /= 2 .or. size(values, 2) /= 2 .or. &
+            size(values, 3) < 1) then
+            error stop "cell_tensor_coefficient: expected a 2-by-2-by-cell array"
+        end if
+        allocate(coefficient%values, source=values)
+    end function cell_tensor_coefficient
 
     function cell_vector_source(values) result(source)
         real(dp), intent(in) :: values(:, :)
