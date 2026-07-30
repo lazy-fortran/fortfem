@@ -1,10 +1,12 @@
 program toroidal_analytical
     use fortfem_api, only: &
-        cartesian_to_toroidal, evaluate_laplace_representation_triangles_3d, &
-        evaluate_helmholtz_representation_triangles_3d, &
+        cartesian_to_toroidal, &
+        evaluate_helmholtz_representation_torus_curved_3d, &
+        evaluate_laplace_representation_torus_curved_3d, &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
-        generate_torus_surface_mesh, toroidal_point_to_cartesian, &
-        toroidal_poisson_exterior_dtn_p, toroidal_vector_to_cartesian
+        generate_torus_surface_mesh, &
+        solve_helmholtz_bem_dtn_torus_curved_3d, &
+        solve_laplace_bem_dtn_torus_curved_3d, toroidal_point_to_cartesian
     use fortfem_kinds, only: dp
     use fortplot, only: figure, plot, pcolormesh, add_scatter, &
         xlabel, ylabel, title, legend, savefig
@@ -27,29 +29,36 @@ program toroidal_analytical
     real(dp) :: theta_trace(trace_points), potential(trace_points)
     real(dp) :: axial_z(trace_points)
     real(dp) :: bem_potential(trace_points)
-    real(dp) :: field_eta(trace_points), field_theta(trace_points)
-    real(dp) :: field_phi(trace_points)
     real(dp) :: field_norm(trace_points), bem_field_norm(trace_points)
     real(dp) :: theta_edges(theta_cells + 1), phi_edges(phi_cells + 1)
     real(dp) :: surface_value(phi_cells, theta_cells)
     real(dp) :: bem_error(phi_cells, theta_cells)
     real(dp) :: x(surface_points), y(surface_points), z(surface_points)
     real(dp), allocatable :: boundary_trace(:), boundary_flux(:)
+    real(dp), allocatable :: parameters(:, :)
     complex(dp), allocatable :: helmholtz_trace(:), helmholtz_flux(:)
     complex(dp) :: helmholtz_exact(trace_points)
     complex(dp) :: helmholtz_bem(trace_points)
     real(dp), allocatable :: vertices(:, :)
     integer, allocatable :: triangles(:, :)
     real(dp) :: field(3), theta_value, phi_value, denominator, target(3)
-    real(dp) :: bem_gradient(3), cartesian_field(3), start_time, end_time
+    real(dp) :: bem_gradient(3), start_time, end_time
     real(dp) :: bem_seconds, exact_seconds, helmholtz_seconds
+    real(dp) :: poisson_solve_seconds, helmholtz_solve_seconds
     integer :: i, j, point, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
     call generate_torus_surface_mesh( &
-        2.0_dp/sqrt(3.0_dp), 1.0_dp/sqrt(3.0_dp), 72, 56, &
-        vertices, triangles)
+        2.0_dp/sqrt(3.0_dp), 1.0_dp/sqrt(3.0_dp), 13, 15, &
+        vertices, triangles, parameters)
     call build_boundary_data()
+    call cpu_time(start_time)
+    call solve_laplace_bem_dtn_torus_curved_3d( &
+        parameters, triangles, 2.0_dp/sqrt(3.0_dp), 1.0_dp/sqrt(3.0_dp), &
+        boundary_trace, 7, boundary_flux, status)
+    call cpu_time(end_time)
+    if (status /= 0) error stop "Toroidal Laplace DtN solve failed"
+    poisson_solve_seconds = end_time - start_time
     call generate_trace()
     call generate_helmholtz_trace()
     call generate_surface_map()
@@ -71,9 +80,6 @@ contains
                 degree_index, order, scale, target_eta, theta_trace(i), 0.4_dp, &
                 field, status)
             if (status /= 0) error stop "Toroidal Ampere evaluation failed"
-            field_eta(i) = field(1)
-            field_theta(i) = field(2)
-            field_phi(i) = field(3)
             field_norm(i) = norm2(field)
         end do
         call cpu_time(end_time)
@@ -83,10 +89,12 @@ contains
         do i = 1, trace_points
             call toroidal_point_to_cartesian( &
                 scale, target_eta, theta_trace(i), 0.4_dp, target)
-            call evaluate_laplace_representation_triangles_3d( &
-                vertices, triangles, boundary_trace, boundary_flux, target, &
-                6, bem_potential(i), status, bem_gradient)
+            call evaluate_laplace_representation_torus_curved_3d( &
+                parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+                1.0_dp/sqrt(3.0_dp), boundary_trace, boundary_flux, target, &
+                7, bem_potential(i), status)
             if (status /= 0) error stop "Toroidal BEM evaluation failed"
+            call numerical_laplace_gradient(target, bem_gradient)
             bem_field_norm(i) = norm2(bem_gradient)
         end do
         call cpu_time(end_time)
@@ -127,14 +135,16 @@ contains
                 if (status /= 0) error stop "Toroidal map evaluation failed"
                 call toroidal_point_to_cartesian( &
                     scale, target_eta, theta_value, phi_value, target)
-                call evaluate_laplace_representation_triangles_3d( &
-                    vertices, triangles, boundary_trace, boundary_flux, &
-                    target, 6, bem_potential(1), status)
+                call evaluate_laplace_representation_torus_curved_3d( &
+                    parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+                    1.0_dp/sqrt(3.0_dp), boundary_trace, boundary_flux, &
+                    target, 7, bem_potential(1), status)
                 if (status /= 0) error stop "Toroidal BEM map failed"
-                bem_error(j, i) = abs(bem_potential(1) - surface_value(j, i))/ &
-                    max(abs(surface_value(j, i)), 1.0e-8_dp)
+                bem_error(j, i) = &
+                    abs(bem_potential(1) - surface_value(j, i))
             end do
         end do
+        bem_error = bem_error/max(maxval(abs(surface_value)), tiny(1.0_dp))
 
         call figure(figsize=[8.5_dp, 5.5_dp])
         call pcolormesh(theta_edges, phi_edges, surface_value, cmap="coolwarm")
@@ -147,7 +157,7 @@ contains
         call pcolormesh(theta_edges, phi_edges, bem_error, cmap="viridis")
         call xlabel("poloidal angle theta [rad]")
         call ylabel("toroidal angle phi [rad]")
-        call title("Poisson BEM relative error")
+        call title("Poisson BEM normalized absolute error")
         call savefig(output_directory//"/toroidal_bem_error_2d.png")
     end subroutine generate_surface_map
 
@@ -177,8 +187,15 @@ contains
 
         source = [2.0_dp/sqrt(3.0_dp), 0.0_dp, 0.0_dp]
         allocate(helmholtz_trace(size(vertices, 2)))
-        allocate(helmholtz_flux(size(triangles, 2)))
         call build_helmholtz_boundary_data(source)
+        call cpu_time(start_time)
+        call solve_helmholtz_bem_dtn_torus_curved_3d( &
+            parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+            1.0_dp/sqrt(3.0_dp), wave_number, helmholtz_trace, 7, &
+            helmholtz_flux, status)
+        call cpu_time(end_time)
+        if (status /= 0) error stop "Toroidal Helmholtz DtN solve failed"
+        helmholtz_solve_seconds = end_time - start_time
         call cpu_time(start_time)
         do i = 1, trace_points
             axial_z(i) = &
@@ -187,9 +204,10 @@ contains
             radius = norm2(target - source)
             helmholtz_exact(i) = &
                 exp(cmplx(0.0_dp, wave_number*radius, dp))/radius
-            call evaluate_helmholtz_representation_triangles_3d( &
-                vertices, triangles, helmholtz_trace, helmholtz_flux, &
-                target, wave_number, 6, helmholtz_bem(i), status)
+            call evaluate_helmholtz_representation_torus_curved_3d( &
+                parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+                1.0_dp/sqrt(3.0_dp), helmholtz_trace, helmholtz_flux, &
+                target, wave_number, 7, helmholtz_bem(i), status)
             if (status /= 0) error stop "Toroidal Helmholtz BEM failed"
         end do
         call cpu_time(end_time)
@@ -224,7 +242,11 @@ contains
         write (unit, "(a,i0)") "boundary triangles: ", size(triangles, 2)
         write (unit, "(a,i0)") "trace targets: ", trace_points
         write (unit, "(a,es14.6)") "analytical seconds: ", exact_seconds
+        write (unit, "(a,es14.6)") &
+            "Poisson BEM DtN solve seconds: ", poisson_solve_seconds
         write (unit, "(a,es14.6)") "BEM seconds: ", bem_seconds
+        write (unit, "(a,es14.6)") &
+            "Helmholtz BEM DtN solve seconds: ", helmholtz_solve_seconds
         write (unit, "(a,es14.6)") &
             "Helmholtz BEM seconds: ", helmholtz_seconds
         write (unit, "(a,es14.6)") "Poisson max relative error: ", maxval( &
@@ -235,15 +257,21 @@ contains
             abs(helmholtz_bem - helmholtz_exact))/ &
             maxval(abs(helmholtz_exact))
         close (unit)
+        if (maxval(abs(bem_potential - potential))/ &
+            maxval(abs(potential)) >= 3.0e-1_dp) &
+            error stop "Poisson BEM gallery accuracy regression"
+        if (maxval(abs(bem_field_norm - field_norm))/ &
+            maxval(field_norm) >= 3.0e-1_dp) &
+            error stop "Ampere BEM gallery accuracy regression"
+        if (maxval(abs(helmholtz_bem - helmholtz_exact))/ &
+            maxval(abs(helmholtz_exact)) >= 3.0e-2_dp) &
+            error stop "Helmholtz BEM gallery accuracy regression"
     end subroutine write_trace_data
 
     subroutine build_boundary_data()
-        real(dp) :: centroid(3), eta_at_point, normal_derivative
-        real(dp) :: dtn_value, value
-        integer :: element
+        real(dp) :: eta_at_point
 
         allocate(boundary_trace(size(vertices, 2)))
-        allocate(boundary_flux(size(triangles, 2)))
         do point = 1, size(vertices, 2)
             call cartesian_to_toroidal( &
                 vertices(:, point), scale, eta_at_point, theta_value, phi_value)
@@ -252,23 +280,11 @@ contains
                 boundary_trace(point), status)
             if (status /= 0) error stop "Toroidal boundary trace failed"
         end do
-        do element = 1, size(triangles, 2)
-            centroid = sum(vertices(:, triangles(:, element)), dim=2)/3.0_dp
-            call cartesian_to_toroidal( &
-                centroid, scale, eta_at_point, theta_value, phi_value)
-            call toroidal_poisson_exterior_dtn_p( &
-                degree_index, order, scale, eta, theta_value, phi_value, &
-                value, normal_derivative, dtn_value, status)
-            if (status /= 0) error stop "Toroidal boundary flux failed"
-            boundary_flux(element) = normal_derivative
-        end do
     end subroutine build_boundary_data
 
     subroutine build_helmholtz_boundary_data(source)
         real(dp), intent(in) :: source(3)
-        real(dp) :: centroid(3), displacement(3), first_edge(3), normal(3)
-        real(dp) :: radius, second_edge(3)
-        integer :: element
+        real(dp) :: displacement(3), radius
 
         do point = 1, size(vertices, 2)
             displacement = vertices(:, point) - source
@@ -276,31 +292,34 @@ contains
             helmholtz_trace(point) = &
                 exp(cmplx(0.0_dp, wave_number*radius, dp))/radius
         end do
-        do element = 1, size(triangles, 2)
-            centroid = sum(vertices(:, triangles(:, element)), dim=2)/3.0_dp
-            first_edge = vertices(:, triangles(2, element)) - &
-                vertices(:, triangles(1, element))
-            second_edge = vertices(:, triangles(3, element)) - &
-                vertices(:, triangles(1, element))
-            normal = cross_product(first_edge, second_edge)
-            normal = normal/norm2(normal)
-            displacement = centroid - source
-            radius = norm2(displacement)
-            helmholtz_flux(element) = &
-                exp(cmplx(0.0_dp, wave_number*radius, dp))* &
-                cmplx(-1.0_dp/radius**2, wave_number/radius, dp)* &
-                dot_product(displacement/radius, normal)
-        end do
     end subroutine build_helmholtz_boundary_data
 
-    pure function cross_product(first, second) result(product)
-        real(dp), intent(in) :: first(3), second(3)
-        real(dp) :: product(3)
+    subroutine numerical_laplace_gradient(evaluation_point, gradient)
+        real(dp), intent(in) :: evaluation_point(3)
+        real(dp), intent(out) :: gradient(3)
 
-        product = [ &
-            first(2)*second(3) - first(3)*second(2), &
-            first(3)*second(1) - first(1)*second(3), &
-            first(1)*second(2) - first(2)*second(1)]
-    end function cross_product
+        real(dp), parameter :: step = 1.0e-4_dp
+        real(dp) :: backward_point(3), backward_value
+        real(dp) :: forward_point(3), forward_value
+        integer :: coordinate
+
+        do coordinate = 1, 3
+            forward_point = evaluation_point
+            backward_point = evaluation_point
+            forward_point(coordinate) = forward_point(coordinate) + step
+            backward_point(coordinate) = backward_point(coordinate) - step
+            call evaluate_laplace_representation_torus_curved_3d( &
+                parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+                1.0_dp/sqrt(3.0_dp), boundary_trace, boundary_flux, &
+                forward_point, 7, forward_value, status)
+            if (status /= 0) error stop "Forward BEM gradient failed"
+            call evaluate_laplace_representation_torus_curved_3d( &
+                parameters, triangles, 2.0_dp/sqrt(3.0_dp), &
+                1.0_dp/sqrt(3.0_dp), boundary_trace, boundary_flux, &
+                backward_point, 7, backward_value, status)
+            if (status /= 0) error stop "Backward BEM gradient failed"
+            gradient(coordinate) = -(forward_value - backward_value)/(2*step)
+        end do
+    end subroutine numerical_laplace_gradient
 
 end program toroidal_analytical
