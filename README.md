@@ -1,6 +1,6 @@
-[![CI](https://github.com/itpplasma/fortfem/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/fortfem/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/itpplasma/fortfem/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/itpplasma/fortfem)
-[![Documentation](https://github.com/itpplasma/fortfem/actions/workflows/docs.yml/badge.svg)](https://itpplasma.github.io/fortfem/)
+[![CI](https://github.com/lazy-fortran/fortfem/actions/workflows/test.yml/badge.svg)](https://github.com/lazy-fortran/fortfem/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/lazy-fortran/fortfem/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/lazy-fortran/fortfem)
+[![Documentation](https://github.com/lazy-fortran/fortfem/actions/workflows/docs.yml/badge.svg)](https://lazy-fortran.github.io/fortfem/)
 
 > **Note**: This project is experimental and subject to major changes. APIs may change without notice.
 
@@ -127,40 +127,40 @@ end program
 
 ## Examples
 
-Explore the [examples/](https://github.com/itpplasma/fortfem/tree/main/example) directory for complete working examples:
+Explore the [examples/](https://github.com/lazy-fortran/fortfem/tree/main/example) directory for complete working examples:
 
-- [**Simple Poisson solver**](https://github.com/itpplasma/fortfem/blob/main/example/simple_poisson/simple_poisson.f90) - FEniCS-style API demonstration with plotting
-- [**Curl-curl electromagnetic prototype**](https://github.com/itpplasma/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Experimental vector API and plotting path
-- [**Plotting demonstration**](https://github.com/itpplasma/fortfem/blob/main/example/plotting/plotting.f90) - Plotting API examples
-- [**Mesh plotting**](https://github.com/itpplasma/fortfem/blob/main/example/plot_mesh/plot_mesh.f90) - Mesh visualization examples
+- [**Simple Poisson solver**](https://github.com/lazy-fortran/fortfem/blob/main/example/simple_poisson/simple_poisson.f90) - FEniCS-style API demonstration with plotting
+- [**Curl-curl electromagnetic prototype**](https://github.com/lazy-fortran/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Experimental vector API and plotting path
+- [**Plotting demonstration**](https://github.com/lazy-fortran/fortfem/blob/main/example/plotting/plotting.f90) - Plotting API examples
+- [**Mesh plotting**](https://github.com/lazy-fortran/fortfem/blob/main/example/plot_mesh/plot_mesh.f90) - Mesh visualization examples
 
 ## Project Structure
 
-- [`src/`](https://github.com/itpplasma/fortfem/tree/main/src) - Core library modules
-- [`test/`](https://github.com/itpplasma/fortfem/tree/main/test) - Comprehensive test suite
-- [`example/`](https://github.com/itpplasma/fortfem/tree/main/example) - Example programs
-- [`doc/`](https://github.com/itpplasma/fortfem/tree/main/doc) - Documentation
-- [`app/`](https://github.com/itpplasma/fortfem/tree/main/app) - Main applications
+- [`src/`](https://github.com/lazy-fortran/fortfem/tree/main/src) - Core library modules
+- [`test/`](https://github.com/lazy-fortran/fortfem/tree/main/test) - Comprehensive test suite
+- [`example/`](https://github.com/lazy-fortran/fortfem/tree/main/example) - Example programs
+- [`doc/`](https://github.com/lazy-fortran/fortfem/tree/main/doc) - Documentation
+- [`app/`](https://github.com/lazy-fortran/fortfem/tree/main/app) - Main applications
 
 ## Navigation
 
-- [API Documentation](https://itpplasma.github.io/fortfem/lists/modules.html) - Detailed module and procedure documentation
-- [Source Files](https://itpplasma.github.io/fortfem/lists/files.html) - Browse the source code
-- [Program Structure](https://itpplasma.github.io/fortfem/lists/procedures.html) - Main programs and procedures
-- [Design Documentation](https://itpplasma.github.io/fortfem/page/design/index.html) - Architecture and design decisions
+- [API Documentation](https://lazy-fortran.github.io/fortfem/lists/modules.html) - Detailed module and procedure documentation
+- [Source Files](https://lazy-fortran.github.io/fortfem/lists/files.html) - Browse the source code
+- [Program Structure](https://lazy-fortran.github.io/fortfem/lists/procedures.html) - Main programs and procedures
+- [Design Documentation](https://lazy-fortran.github.io/fortfem/page/design/index.html) - Architecture and design decisions
 
 ## Quick Links
 
-- [Getting Started](https://itpplasma.github.io/fortfem/page/quickstart.html) - Build and run your first FE simulation
-- [Examples](https://itpplasma.github.io/fortfem/page/examples/index.html) - Complete working examples
-- [Module Reference](https://itpplasma.github.io/fortfem/lists/modules.html) - Complete API reference
+- [Getting Started](https://lazy-fortran.github.io/fortfem/page/quickstart.html) - Build and run your first FE simulation
+- [Examples](https://lazy-fortran.github.io/fortfem/page/examples/index.html) - Complete working examples
+- [Module Reference](https://lazy-fortran.github.io/fortfem/lists/modules.html) - Complete API reference
 
 ## Contributing
 
-1. Check the [GitHub Issues](https://github.com/itpplasma/fortfem/issues) for current development priorities
+1. Check the [GitHub Issues](https://github.com/lazy-fortran/fortfem/issues) for current development priorities
 2. Follow strict TDD: write tests first
-3. See [CLAUDE.md](https://github.com/itpplasma/fortfem/blob/main/CLAUDE.md) for development guidelines
+3. See [CLAUDE.md](https://github.com/lazy-fortran/fortfem/blob/main/CLAUDE.md) for development guidelines
 
 ## License
 
-See [LICENSE](https://github.com/itpplasma/fortfem/blob/main/LICENSE) for details.
+See [LICENSE](https://github.com/lazy-fortran/fortfem/blob/main/LICENSE) for details.

@@ -4,6 +4,7 @@ set -euo pipefail
 repository_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 index_file="$repository_dir/doc/examples/index.md"
 generated_dir="$repository_dir/doc/examples/generated"
+readme_file="$repository_dir/README.md"
 
 mapfile -t expected < <(
     find "$repository_dir/example" -mindepth 1 -maxdepth 2 \
@@ -36,6 +37,14 @@ if grep -n '[[:blank:]]$' "$index_file" "$generated_dir/index.md"; then
     echo "example documentation indexes contain trailing whitespace" >&2
     exit 1
 fi
+
+if grep -Fq 'itpplasma.github.io/fortfem' "$readme_file"; then
+    echo "README links to the retired GitHub Pages organization" >&2
+    exit 1
+fi
+grep -Fq \
+    'https://lazy-fortran.github.io/fortfem/page/examples/index.html' \
+    "$readme_file"
 
 artifacts_dir="$repository_dir/artifacts/plots/examples"
 if [[ -d "$artifacts_dir" ]]; then
