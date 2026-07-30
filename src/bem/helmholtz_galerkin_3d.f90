@@ -12,6 +12,9 @@ module fortfem_helmholtz_galerkin_3d
     private
 
     public :: assemble_helmholtz_single_layer_p0_3d
+    public :: assemble_helmholtz_double_layer_p0_3d
+    public :: evaluate_helmholtz_cfie_p0_3d
+    public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
 
     interface
@@ -26,6 +29,159 @@ module fortfem_helmholtz_galerkin_3d
     end interface
 
 contains
+
+    subroutine solve_helmholtz_cfie_p0_3d( &
+            vertices, triangles, boundary_value, wave_number, coupling, &
+            quadrature_degree, density, status)
+        real(dp), intent(in) :: vertices(:, :), wave_number, coupling
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: boundary_value
+        complex(dp), allocatable, intent(out) :: density(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: double_layer(:, :), matrix(:, :)
+        complex(dp), allocatable :: right_hand_side(:, :)
+        complex(dp), allocatable :: single_layer(:, :)
+        integer, allocatable :: pivots(:)
+        real(dp) :: area
+        integer :: element, info
+
+        status = 1
+        if (coupling <= 0.0_dp) return
+        call assemble_helmholtz_single_layer_p0_3d( &
+            vertices, triangles, wave_number, quadrature_degree, &
+            single_layer, status)
+        if (status /= 0) return
+        call assemble_helmholtz_double_layer_p0_3d( &
+            vertices, triangles, wave_number, quadrature_degree, &
+            double_layer, status)
+        if (status /= 0) return
+        matrix = double_layer - cmplx(0.0_dp, coupling, dp)*single_layer
+        allocate( &
+            density(size(triangles, 2)), &
+            right_hand_side(size(triangles, 2), 1), &
+            pivots(size(triangles, 2)))
+        do element = 1, size(triangles, 2)
+            area = triangle_area(vertices(:, triangles(:, element)))
+            matrix(element, element) = matrix(element, element) + 0.5_dp*area
+            right_hand_side(element, 1) = boundary_value*area
+        end do
+        call zgesv( &
+            size(triangles, 2), 1, matrix, size(triangles, 2), pivots, &
+            right_hand_side, size(triangles, 2), info)
+        if (info /= 0) then
+            status = 2
+            return
+        end if
+        density = right_hand_side(:, 1)
+        status = 0
+    end subroutine solve_helmholtz_cfie_p0_3d
+
+    subroutine evaluate_helmholtz_cfie_p0_3d( &
+            vertices, triangles, density, target, wave_number, coupling, &
+            quadrature_degree, value, status)
+        real(dp), intent(in) :: vertices(:, :), target(3)
+        real(dp), intent(in) :: wave_number, coupling
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: density(:)
+        complex(dp), intent(out) :: value
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: displacement(3), jacobian, normal(3), point(3), radius
+        real(dp) :: triangle_vertices(3, 3)
+        complex(dp) :: green, normal_derivative
+        integer :: element, node, quadrature_status
+
+        value = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(density) /= size(triangles, 2)) return
+        if (wave_number < 0.0_dp .or. coupling <= 0.0_dp) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, quadrature_status)
+        if (quadrature_status /= 0) return
+        do element = 1, size(triangles, 2)
+            triangle_vertices = vertices(:, triangles(:, element))
+            normal = cross_product( &
+                triangle_vertices(:, 2) - triangle_vertices(:, 1), &
+                triangle_vertices(:, 3) - triangle_vertices(:, 1))
+            jacobian = norm2(normal)
+            if (jacobian <= 0.0_dp) return
+            normal = normal/jacobian
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    triangle_vertices, xi(node), eta(node))
+                displacement = target - point
+                radius = norm2(displacement)
+                if (radius <= 0.0_dp) return
+                green = exp(cmplx(0.0_dp, wave_number*radius, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*radius)
+                normal_derivative = green* &
+                    cmplx(1.0_dp, -wave_number*radius, dp)* &
+                    dot_product(displacement, normal)/radius**2
+                value = value + jacobian*weights(node)*density(element)* &
+                    (normal_derivative - cmplx(0.0_dp, coupling, dp)*green)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_helmholtz_cfie_p0_3d
+
+    subroutine assemble_helmholtz_double_layer_p0_3d( &
+            vertices, triangles, wave_number, quadrature_degree, matrix, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: displacement(3), first_jacobian, first_point_value(3)
+        real(dp) :: normal(3), radius, second_jacobian
+        real(dp) :: first_vertices(3, 3), second_vertices(3, 3)
+        complex(dp) :: green
+        integer :: first, first_point, quadrature_status, second, second_point
+
+        status = 1
+        if (wave_number < 0.0_dp) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, quadrature_status)
+        if (quadrature_status /= 0) return
+        allocate(matrix(size(triangles, 2), size(triangles, 2)))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do second = 1, size(triangles, 2)
+            second_vertices = vertices(:, triangles(:, second))
+            normal = cross_product( &
+                second_vertices(:, 2) - second_vertices(:, 1), &
+                second_vertices(:, 3) - second_vertices(:, 1))
+            second_jacobian = norm2(normal)
+            if (second_jacobian <= 0.0_dp) return
+            normal = normal/second_jacobian
+            do first = 1, size(triangles, 2)
+                if (first == second) cycle
+                first_vertices = vertices(:, triangles(:, first))
+                first_jacobian = 2.0_dp*triangle_area(first_vertices)
+                do first_point = 1, size(weights)
+                    first_point_value = triangle_point( &
+                        first_vertices, xi(first_point), eta(first_point))
+                    do second_point = 1, size(weights)
+                        displacement = first_point_value - triangle_point( &
+                            second_vertices, xi(second_point), &
+                            eta(second_point))
+                        radius = norm2(displacement)
+                        green = exp(cmplx( &
+                            0.0_dp, wave_number*radius, dp))/ &
+                            (4.0_dp*acos(-1.0_dp)*radius)
+                        matrix(first, second) = matrix(first, second) + &
+                            first_jacobian*second_jacobian* &
+                            weights(first_point)*weights(second_point)*green* &
+                            cmplx(1.0_dp, -wave_number*radius, dp)* &
+                            dot_product(displacement, normal)/radius**2
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_helmholtz_double_layer_p0_3d
 
     subroutine solve_helmholtz_dirichlet_p0_3d( &
             vertices, triangles, boundary_value, wave_number, &
