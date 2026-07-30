@@ -1,12 +1,44 @@
 module fortfem_sphere_curved_panel
     !! Exact radial map from an affine surface triangle to a sphere.
     use fortfem_kinds, only: dp
+    use fortnum_linalg, only: inv3
     implicit none
     private
 
     public :: evaluate_sphere_curved_panel
+    public :: invert_sphere_curved_panel
 
 contains
+
+    pure subroutine invert_sphere_curved_panel( &
+            vertices, radius, point, xi, eta, status)
+        real(dp), intent(in) :: vertices(3, 3), radius, point(3)
+        real(dp), intent(out) :: xi, eta
+        integer, intent(out) :: status
+
+        real(dp) :: inverse_matrix(3, 3), matrix(3, 3), solution(3)
+        real(dp) :: tolerance
+        integer :: inverse_status
+
+        xi = 0.0_dp
+        eta = 0.0_dp
+        status = 1
+        if (radius <= 0.0_dp) return
+        tolerance = 512.0_dp*epsilon(1.0_dp)*max(1.0_dp, radius)
+        if (abs(norm2(point) - radius) > tolerance) return
+        matrix(:, 1) = vertices(:, 2) - vertices(:, 1)
+        matrix(:, 2) = vertices(:, 3) - vertices(:, 1)
+        matrix(:, 3) = -point/radius
+        call inv3(matrix, inverse_matrix, inverse_status)
+        if (inverse_status /= 0) return
+        solution = matmul(inverse_matrix, -vertices(:, 1))
+        if (solution(3) <= 0.0_dp) return
+        if (solution(1) < -tolerance .or. solution(2) < -tolerance .or. &
+            solution(1) + solution(2) > 1.0_dp + tolerance) return
+        xi = solution(1)
+        eta = solution(2)
+        status = 0
+    end subroutine invert_sphere_curved_panel
 
     pure subroutine evaluate_sphere_curved_panel( &
             vertices, radius, xi, eta, point, tangent_xi, tangent_eta, &
