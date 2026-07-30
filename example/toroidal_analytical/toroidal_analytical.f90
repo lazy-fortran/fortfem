@@ -4,8 +4,10 @@ program toroidal_analytical
         evaluate_helmholtz_representation_torus_curved_3d, &
         evaluate_laplace_representation_torus_curved_3d, &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
-        generate_torus_surface_mesh, &
+        generate_solid_torus_tetra_mesh, generate_torus_surface_mesh, &
+        solve_helmholtz_fem_bem_costabel_torus_curved_3d, &
         solve_helmholtz_bem_dtn_torus_curved_3d, &
+        solve_laplace_fem_bem_costabel_torus_curved_3d, &
         solve_laplace_bem_dtn_torus_curved_3d, toroidal_point_to_cartesian
     use fortfem_kinds, only: dp
     use fortplot, only: figure, plot, pcolormesh, add_scatter, &
@@ -37,14 +39,28 @@ program toroidal_analytical
     real(dp), allocatable :: boundary_trace(:), boundary_flux(:)
     real(dp), allocatable :: parameters(:, :)
     complex(dp), allocatable :: helmholtz_trace(:), helmholtz_flux(:)
+    complex(dp), allocatable :: coupled_helmholtz_flux(:)
+    complex(dp), allocatable :: coupled_helmholtz_load(:)
+    complex(dp), allocatable :: coupled_helmholtz_potential(:)
     complex(dp) :: helmholtz_exact(trace_points)
     complex(dp) :: helmholtz_bem(trace_points)
+    integer, allocatable :: volume_tetrahedra(:, :)
+    integer, allocatable :: volume_boundary_triangles(:, :)
+    real(dp), allocatable :: volume_parameters(:, :), volume_vertices(:, :)
+    real(dp), allocatable :: coupled_flux(:), coupled_load(:)
+    real(dp), allocatable :: coupled_potential(:)
+    real(dp), allocatable :: coupled_theta(:), coupled_exact(:)
+    real(dp), allocatable :: coupled_numerical(:)
+    complex(dp), allocatable :: coupled_helmholtz_exact(:)
+    complex(dp), allocatable :: coupled_helmholtz_numerical(:)
     real(dp), allocatable :: vertices(:, :)
     integer, allocatable :: triangles(:, :)
     real(dp) :: field(3), theta_value, phi_value, denominator, target(3)
     real(dp) :: bem_gradient(3), start_time, end_time
     real(dp) :: bem_seconds, exact_seconds, helmholtz_seconds
     real(dp) :: poisson_solve_seconds, helmholtz_solve_seconds
+    real(dp) :: poisson_coupled_seconds, helmholtz_coupled_seconds
+    real(dp) :: poisson_coupled_error, helmholtz_coupled_error
     integer :: i, j, point, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
@@ -61,6 +77,7 @@ program toroidal_analytical
     poisson_solve_seconds = end_time - start_time
     call generate_trace()
     call generate_helmholtz_trace()
+    call generate_fem_bem_comparison()
     call generate_surface_map()
     call generate_geometry()
     call write_trace_data()
@@ -225,6 +242,83 @@ contains
         call savefig(output_directory//"/toroidal_helmholtz_1d.png")
     end subroutine generate_helmholtz_trace
 
+    subroutine generate_fem_bem_comparison()
+        integer, parameter :: poloidal_count = 7
+        integer, parameter :: toroidal_count = 9
+        integer :: first_boundary_vertex, node
+        real(dp) :: radius, source(3)
+
+        call generate_solid_torus_tetra_mesh( &
+            2.0_dp/sqrt(3.0_dp), 1.0_dp/sqrt(3.0_dp), 2, poloidal_count, &
+            toroidal_count, volume_vertices, volume_tetrahedra, &
+            volume_boundary_triangles, volume_parameters)
+        allocate(coupled_load(size(volume_vertices, 2)))
+        allocate(coupled_helmholtz_load(size(volume_vertices, 2)))
+        coupled_load = 0.0_dp
+        coupled_helmholtz_load = cmplx(0.0_dp, 0.0_dp, dp)
+        coupled_load(2) = 1.0_dp
+        coupled_helmholtz_load(2) = cmplx(1.0_dp, 0.0_dp, dp)
+        source = volume_vertices(:, 2)
+
+        call cpu_time(start_time)
+        call solve_laplace_fem_bem_costabel_torus_curved_3d( &
+            volume_vertices, volume_tetrahedra, volume_parameters, &
+            volume_boundary_triangles, 2.0_dp/sqrt(3.0_dp), &
+            1.0_dp/sqrt(3.0_dp), coupled_load, 5, coupled_potential, &
+            coupled_flux, status)
+        call cpu_time(end_time)
+        if (status /= 0) error stop "Toroidal Laplace FEM-BEM solve failed"
+        poisson_coupled_seconds = end_time - start_time
+
+        call cpu_time(start_time)
+        call solve_helmholtz_fem_bem_costabel_torus_curved_3d( &
+            volume_vertices, volume_tetrahedra, volume_parameters, &
+            volume_boundary_triangles, 2.0_dp/sqrt(3.0_dp), &
+            1.0_dp/sqrt(3.0_dp), wave_number, wave_number, &
+            coupled_helmholtz_load, 5, coupled_helmholtz_potential, &
+            coupled_helmholtz_flux, status)
+        call cpu_time(end_time)
+        if (status /= 0) error stop "Toroidal Helmholtz FEM-BEM solve failed"
+        helmholtz_coupled_seconds = end_time - start_time
+
+        allocate(coupled_theta(poloidal_count))
+        allocate(coupled_exact(poloidal_count))
+        allocate(coupled_numerical(poloidal_count))
+        allocate(coupled_helmholtz_exact(poloidal_count))
+        allocate(coupled_helmholtz_numerical(poloidal_count))
+        first_boundary_vertex = 2 + poloidal_count
+        do i = 1, poloidal_count
+            node = first_boundary_vertex + i - 1
+            coupled_theta(i) = volume_parameters(1, node)
+            radius = norm2(volume_vertices(:, node) - source)
+            coupled_exact(i) = 1.0_dp/(4.0_dp*pi*radius)
+            coupled_numerical(i) = coupled_potential(node)
+            coupled_helmholtz_exact(i) = &
+                exp(cmplx(0.0_dp, wave_number*radius, dp))/(4.0_dp*pi*radius)
+            coupled_helmholtz_numerical(i) = coupled_helmholtz_potential(node)
+        end do
+        poisson_coupled_error = norm2(coupled_numerical - coupled_exact)/ &
+            norm2(coupled_exact)
+        helmholtz_coupled_error = sqrt(sum(abs( &
+            coupled_helmholtz_numerical - coupled_helmholtz_exact)**2))/ &
+            sqrt(sum(abs(coupled_helmholtz_exact)**2))
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(coupled_theta, coupled_exact, &
+            label="Poisson analytical", linestyle="-")
+        call plot(coupled_theta, coupled_numerical, &
+            label="Poisson FEM-BEM", linestyle="--")
+        call plot(coupled_theta, abs(coupled_helmholtz_exact), &
+            label="Helmholtz analytical |u|", linestyle="-.")
+        call plot(coupled_theta, abs(coupled_helmholtz_numerical), &
+            label="Helmholtz FEM-BEM |u|", linestyle=":")
+        call xlabel("poloidal angle theta [rad]")
+        call ylabel("boundary potential")
+        call title("Solid-torus FEM-BEM coupling against analytical fields")
+        call legend()
+        call savefig(output_directory//"/toroidal_fem_bem_1d.png")
+    end subroutine generate_fem_bem_comparison
+
     subroutine write_trace_data()
         open (newunit=unit, &
             file=output_directory//"/toroidal_trace.csv", &
@@ -249,6 +343,10 @@ contains
             "Helmholtz BEM DtN solve seconds: ", helmholtz_solve_seconds
         write (unit, "(a,es14.6)") &
             "Helmholtz BEM seconds: ", helmholtz_seconds
+        write (unit, "(a,es14.6)") &
+            "Poisson FEM-BEM solve seconds: ", poisson_coupled_seconds
+        write (unit, "(a,es14.6)") &
+            "Helmholtz FEM-BEM solve seconds: ", helmholtz_coupled_seconds
         write (unit, "(a,es14.6)") "Poisson max relative error: ", maxval( &
             abs(bem_potential - potential))/maxval(abs(potential))
         write (unit, "(a,es14.6)") "Ampere max relative error: ", maxval( &
@@ -256,6 +354,11 @@ contains
         write (unit, "(a,es14.6)") "Helmholtz max relative error: ", maxval( &
             abs(helmholtz_bem - helmholtz_exact))/ &
             maxval(abs(helmholtz_exact))
+        write (unit, "(a,es14.6)") &
+            "Poisson FEM-BEM boundary relative error: ", poisson_coupled_error
+        write (unit, "(a,es14.6)") &
+            "Helmholtz FEM-BEM boundary relative error: ", &
+            helmholtz_coupled_error
         close (unit)
         if (maxval(abs(bem_potential - potential))/ &
             maxval(abs(potential)) >= 3.0e-1_dp) &
@@ -266,6 +369,10 @@ contains
         if (maxval(abs(helmholtz_bem - helmholtz_exact))/ &
             maxval(abs(helmholtz_exact)) >= 3.0e-2_dp) &
             error stop "Helmholtz BEM gallery accuracy regression"
+        if (poisson_coupled_error >= 3.5e-1_dp) &
+            error stop "Poisson FEM-BEM gallery accuracy regression"
+        if (helmholtz_coupled_error >= 3.5e-1_dp) &
+            error stop "Helmholtz FEM-BEM gallery accuracy regression"
     end subroutine write_trace_data
 
     subroutine build_boundary_data()
