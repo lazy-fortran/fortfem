@@ -101,6 +101,9 @@ module fortfem_api
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d
+    use fortfem_helmholtz_fem_bem_coupling_3d, only: &
+        assemble_helmholtz_fem_bem_costabel_3d, &
+        solve_helmholtz_fem_bem_costabel_3d
     use fortfem_maxwell_rwg_surface, only: &
         assemble_maxwell_rwg_mass_matrix, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
@@ -328,11 +331,13 @@ module fortfem_api
     public :: evaluate_helmholtz_representation_triangles_3d
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_helmholtz_calderon_p1_p0_3d
+    public :: assemble_helmholtz_fem_bem_costabel_3d
     public :: assemble_helmholtz_single_layer_p0_adaptive_3d
     public :: assemble_helmholtz_double_layer_p0_3d
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
+    public :: solve_helmholtz_fem_bem_costabel_3d
     public :: build_maxwell_rwg_surface_space
     public :: assemble_maxwell_rwg_mass_matrix
     public :: evaluate_maxwell_rwg_basis
