@@ -1,8 +1,10 @@
 module fortfem_maxwell_sphere_curved_rwg
     !! Surface-Piola image of the affine RWG basis on a radial sphere panel.
     use fortfem_kinds, only: dp
+    use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
-    use fortfem_sphere_curved_panel, only: evaluate_sphere_curved_panel
+    use fortfem_sphere_curved_panel, only: &
+        evaluate_sphere_curved_panel, invert_sphere_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
@@ -20,6 +22,7 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
+    public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -33,6 +36,90 @@ module fortfem_maxwell_sphere_curved_rwg
     end interface
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_rwg_rbc_pairing( &
+            vertices, triangles, radius, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :), rwg_values(:, :)
+        real(dp) :: coarse_jacobian, coarse_vertices(3, 3), divergence
+        real(dp) :: local_value(3), normal(3), point(3), refined_jacobian
+        real(dp) :: rotated_bc(3)
+        real(dp) :: coarse_eta, coarse_xi
+        integer :: basis, local, local_edge, node, parent, refined_panel, row
+        integer :: test_basis
+
+        status = 1
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            rwg_values(3, size(edge_vertices, 2)))
+        matrix = 0.0_dp
+        do refined_panel = 1, size(refined_triangles, 2)
+            parent = (refined_panel - 1)/6 + 1
+            do local = 1, 3
+                coarse_vertices(:, local) = &
+                    vertices(:, triangles(local, parent))
+            end do
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, refined_panel, &
+                        local_edge, radius, xi(node), eta(node), point, &
+                        local_value, divergence, refined_jacobian, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                normal = point/radius
+                call invert_sphere_curved_panel( &
+                    coarse_vertices, radius, point, coarse_xi, coarse_eta, &
+                    status)
+                if (status /= 0) return
+                rwg_values = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == parent)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, parent, radius, coarse_xi, coarse_eta, point, &
+                        rwg_values(:, basis), divergence, coarse_jacobian, status)
+                    if (status /= 0) return
+                end do
+                do test_basis = 1, size(edge_vertices, 2)
+                    rotated_bc = real_cross_product( &
+                        normal, bc_values(:, test_basis))
+                    do basis = 1, size(edge_vertices, 2)
+                        matrix(test_basis, basis) = matrix(test_basis, basis) + &
+                            refined_jacobian*weights(node)*dot_product( &
+                            rotated_bc, rwg_values(:, basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_rwg_rbc_pairing
 
     pure subroutine evaluate_maxwell_sphere_curved_localized_rwg_basis( &
             vertices, triangles, panel, local_edge, radius, xi, eta, point, &
@@ -104,7 +191,8 @@ contains
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: basis_value(3), displacement(3), divergence, jacobian
         real(dp) :: point(3), distance
-        complex(dp) :: gradient_green(3), green, surface_current(3)
+        complex(dp) :: curl_integrand(3), gradient_green(3), green
+        complex(dp) :: surface_current(3)
         integer :: basis, node, panel
 
         magnetic_field = cmplx(0.0_dp, 0.0_dp, dp)
@@ -137,8 +225,10 @@ contains
                 gradient_green = green* &
                     (cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance)* &
                     displacement/distance
-                magnetic_field = magnetic_field + weights(node)*jacobian* &
-                    complex_cross_product(gradient_green, surface_current)
+                curl_integrand = complex_cross_product( &
+                    gradient_green, surface_current)
+                magnetic_field = magnetic_field + &
+                    weights(node)*jacobian*curl_integrand
             end do
         end do
         status = 0
@@ -843,11 +933,19 @@ contains
         complex(dp), intent(in) :: first(3), second(3)
         complex(dp) :: product(3)
 
-        product = [ &
-            first(2)*second(3) - first(3)*second(2), &
-            first(3)*second(1) - first(1)*second(3), &
-            first(1)*second(2) - first(2)*second(1)]
+        product(1) = first(2)*second(3) - first(3)*second(2)
+        product(2) = first(3)*second(1) - first(1)*second(3)
+        product(3) = first(1)*second(2) - first(2)*second(1)
     end function complex_cross_product
+
+    pure function real_cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product(1) = first(2)*second(3) - first(3)*second(2)
+        product(2) = first(3)*second(1) - first(1)*second(3)
+        product(3) = first(1)*second(2) - first(2)*second(1)
+    end function real_cross_product
 
     pure logical function curved_reference_children_touch( &
             vertices, triangles, first_panel, second_panel, radius, &
