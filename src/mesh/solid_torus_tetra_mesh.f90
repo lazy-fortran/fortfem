@@ -20,7 +20,9 @@ contains
 
         integer, allocatable :: disk_triangles(:, :)
         integer :: boundary_cell, disk_triangle, layer, local_vertex
+        integer :: current_ring, next_ring
         integer :: phi_index, tetrahedron, theta_index
+        integer :: lower_current, lower_next, upper_current, upper_next
         integer :: lower(3), sorted(3), upper(3), vertex
         integer :: vertices_per_slice
         real(dp) :: phi, radius, theta
@@ -103,23 +105,32 @@ contains
         do phi_index = 0, toroidal_count - 1
             do theta_index = 0, poloidal_count - 1
                 boundary_cell = boundary_cell + 1
-                boundary_triangles(:, 2*boundary_cell - 1) = [ &
-                    volume_vertex(phi_index, &
-                    ring_vertex(radial_layers, theta_index)), &
-                    volume_vertex(modulo(phi_index + 1, toroidal_count), &
-                    ring_vertex(radial_layers, theta_index)), &
-                    volume_vertex(phi_index, &
-                    ring_vertex(radial_layers, &
-                    modulo(theta_index + 1, poloidal_count)))]
-                boundary_triangles(:, 2*boundary_cell) = [ &
-                    volume_vertex(phi_index, &
-                    ring_vertex(radial_layers, &
-                    modulo(theta_index + 1, poloidal_count))), &
-                    volume_vertex(modulo(phi_index + 1, toroidal_count), &
-                    ring_vertex(radial_layers, theta_index)), &
-                    volume_vertex(modulo(phi_index + 1, toroidal_count), &
-                    ring_vertex(radial_layers, &
-                    modulo(theta_index + 1, poloidal_count)))]
+                current_ring = ring_vertex(radial_layers, theta_index)
+                next_ring = ring_vertex( &
+                    radial_layers, modulo(theta_index + 1, poloidal_count))
+                lower_current = volume_vertex(phi_index, current_ring)
+                lower_next = volume_vertex(phi_index, next_ring)
+                upper_current = volume_vertex( &
+                    modulo(phi_index + 1, toroidal_count), current_ring)
+                upper_next = volume_vertex( &
+                    modulo(phi_index + 1, toroidal_count), next_ring)
+                if (current_ring < next_ring) then
+                    boundary_triangles(:, 2*boundary_cell - 1) = &
+                        [lower_current, lower_next, upper_next]
+                    boundary_triangles(:, 2*boundary_cell) = &
+                        [lower_current, upper_current, upper_next]
+                else
+                    boundary_triangles(:, 2*boundary_cell - 1) = &
+                        [lower_next, lower_current, upper_current]
+                    boundary_triangles(:, 2*boundary_cell) = &
+                        [lower_next, upper_next, upper_current]
+                end if
+                call orient_torus_surface( &
+                    vertices, major_radius, &
+                    boundary_triangles(:, 2*boundary_cell - 1))
+                call orient_torus_surface( &
+                    vertices, major_radius, &
+                    boundary_triangles(:, 2*boundary_cell))
             end do
         end do
 
@@ -137,6 +148,31 @@ contains
 
             index = 2 + (radial_layer - 1)*poloidal_count + theta_node
         end function ring_vertex
+
+        pure subroutine orient_torus_surface( &
+                mesh_vertices, torus_radius, triangle)
+            real(dp), intent(in) :: mesh_vertices(:, :), torus_radius
+            integer, intent(inout) :: triangle(3)
+
+            real(dp) :: centerline(3), centroid(3), normal(3), phi_angle
+            integer :: temporary
+
+            centroid = sum(mesh_vertices(:, triangle), dim=2)/3.0_dp
+            phi_angle = atan2(centroid(2), centroid(1))
+            centerline = [ &
+                torus_radius*cos(phi_angle), torus_radius*sin(phi_angle), &
+                0.0_dp]
+            normal = cross_product( &
+                mesh_vertices(:, triangle(2)) - &
+                mesh_vertices(:, triangle(1)), &
+                mesh_vertices(:, triangle(3)) - &
+                mesh_vertices(:, triangle(1)))
+            if (dot_product(normal, centroid - centerline) < 0.0_dp) then
+                temporary = triangle(2)
+                triangle(2) = triangle(3)
+                triangle(3) = temporary
+            end if
+        end subroutine orient_torus_surface
 
     end subroutine generate_solid_torus_tetra_mesh
 
