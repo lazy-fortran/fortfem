@@ -37,7 +37,7 @@ contains
         end if
         if (allocated(basis%nodes)) deallocate(basis%nodes)
         status = 1
-        if (degree < 0 .or. degree > 4) return
+        if (degree < 0) return
         allocate(basis%barycentric_indices(4, &
             (degree + 1)*(degree + 2)*(degree + 3)/6))
         allocate(basis%nodes(3, size(basis%barycentric_indices, 2)))

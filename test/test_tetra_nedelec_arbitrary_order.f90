@@ -10,18 +10,20 @@ program test_tetra_nedelec_arbitrary_order
         load_tetra_nedelec_coefficients
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
+        triangle_dubiner
     implicit none
 
     type(tetra_nedelec_first_kind_t) :: basis, copied_basis
     real(dp), allocatable :: curls(:, :), dofs(:), moment_matrix(:, :)
     real(dp), allocatable :: generated_coefficients(:, :), values(:, :)
-    real(dp) :: expected(3), p_errors(5), point(3), reconstructed(3)
+    real(dp) :: expected(3), p_errors(6), point(3), reconstructed(3)
     integer :: dof_count, order, status
     logical :: all_passed
 
     all_passed = .true.
     point = [0.23_dp, 0.19_dp, 0.17_dp]
-    do order = 1, 5
+    do order = 1, 6
         call initialize_tetra_nedelec_first_kind(order, basis, status)
         dof_count = tetra_nedelec_dof_count(basis)
         call record_condition(status == 0 .and. dof_count == &
@@ -79,9 +81,6 @@ program test_tetra_nedelec_arbitrary_order
     call initialize_tetra_nedelec_first_kind(0, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral first-kind Nedelec basis rejects order zero")
-    call initialize_tetra_nedelec_first_kind(6, basis, status)
-    call record_condition(status /= 0, &
-        "Tetrahedral first-kind Nedelec basis rejects unsupported order six")
 
     call check_summary("Arbitrary-order tetrahedral first-kind Nedelec basis")
     if (.not. all_passed) error stop 1
@@ -144,7 +143,9 @@ contains
                                 matrix(moment, basis_dof) = &
                                     matrix(moment, basis_dof) + &
                                     triangle_weights(node) * &
-                                    x(node)**x_degree * y(node)**y_degree * &
+                                    face_moment_value( &
+                                    order, x_degree, y_degree, &
+                                    x(node), y(node))* &
                                     dot_product( &
                                     values(:, basis_dof), &
                                     tangents(:, component))
@@ -168,8 +169,9 @@ contains
                             call evaluate_tetra_nedelec_first_kind( &
                                 basis, point, values, curls, status)
                             matrix(moment, :) = matrix(moment, :) + &
-                                tetra_weights(node) * x(node)**x_degree * &
-                                y(node)**y_degree * z(node)**z_degree * &
+                                tetra_weights(node)*volume_moment_value( &
+                                order, x_degree, y_degree, z_degree, &
+                                point)* &
                                 values(component, :)
                         end do
                     end do
@@ -222,7 +224,9 @@ contains
                             field = gradient_field(field_degree, point)
                             dofs(moment) = dofs(moment) + &
                                 triangle_weights(node) * &
-                                x(node)**x_degree * y(node)**y_degree * &
+                                face_moment_value( &
+                                order, x_degree, y_degree, &
+                                x(node), y(node))* &
                                 dot_product(field, tangents(:, component))
                         end do
                     end do
@@ -242,8 +246,9 @@ contains
                             point = [x(node), y(node), z(node)]
                             field = gradient_field(field_degree, point)
                             dofs(moment) = dofs(moment) + &
-                                tetra_weights(node) * x(node)**x_degree * &
-                                y(node)**y_degree * z(node)**z_degree * &
+                                tetra_weights(node)*volume_moment_value( &
+                                order, x_degree, y_degree, z_degree, &
+                                point)* &
                                 field(component)
                         end do
                     end do
@@ -465,6 +470,35 @@ contains
         end do
         value = current
     end function shifted_legendre
+
+    pure real(dp) function face_moment_value( &
+            order, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: order, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (order <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_moment_value
+
+    pure real(dp) function volume_moment_value( &
+            order, first_degree, second_degree, third_degree, point) &
+            result(value)
+        integer, intent(in) :: order
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+
+        if (order <= 5) then
+            value = point(1)**first_degree*point(2)**second_degree* &
+                point(3)**third_degree
+        else
+            value = tetrahedron_koornwinder( &
+                first_degree, second_degree, third_degree, &
+                point(1), point(2), point(3))
+        end if
+    end function volume_moment_value
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition

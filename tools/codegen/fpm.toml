@@ -19,6 +19,11 @@ source-dir = "app"
 main = "gen_tetra_nedelec_candidates.f90"
 
 [[executable]]
+name = "gen_tetra_modal_vector_identities"
+source-dir = "app"
+main = "gen_tetra_modal_vector_identities.f90"
+
+[[executable]]
 name = "gen_tetra_face_moment_transforms"
 source-dir = "app"
 main = "gen_tetra_face_moment_transforms.f90"

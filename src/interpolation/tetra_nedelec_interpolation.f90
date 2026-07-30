@@ -6,6 +6,8 @@ module fortfem_tetra_nedelec_interpolation
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: det3
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
+        triangle_dubiner
     implicit none
 
     private
@@ -119,7 +121,9 @@ contains
                             call field(point, field_value)
                             dofs(moment) = dofs(moment) + &
                                 triangle_weights(node) * &
-                                x(node)**x_degree * y(node)**y_degree * &
+                                face_moment_value( &
+                                order, x_degree, y_degree, &
+                                x(node), y(node))* &
                                 dot_product( &
                                 field_value, tangents(:, component))
                         end do
@@ -141,8 +145,9 @@ contains
                             point = [x(node), y(node), z(node)]
                             call field(point, field_value)
                             dofs(moment) = dofs(moment) + &
-                                tetra_weights(node) * x(node)**x_degree * &
-                                y(node)**y_degree * z(node)**z_degree * &
+                                tetra_weights(node)*volume_moment_value( &
+                                order, x_degree, y_degree, z_degree, &
+                                point)* &
                                 field_value(component)
                         end do
                     end do
@@ -157,11 +162,41 @@ contains
         integer, intent(in) :: dof_count
         integer :: order
 
-        do order = 1, 5
+        do order = 1, 1000
             if (dof_count == order * (order + 2) * (order + 3) / 2) return
+            if (order * (order + 2) * (order + 3) / 2 > dof_count) exit
         end do
         order = 0
     end function order_from_dof_count
+
+    pure real(dp) function face_moment_value( &
+            order, first_degree, second_degree, x, y) result(value)
+        integer, intent(in) :: order, first_degree, second_degree
+        real(dp), intent(in) :: x, y
+
+        if (order <= 5) then
+            value = x**first_degree*y**second_degree
+        else
+            value = triangle_dubiner(first_degree, second_degree, x, y)
+        end if
+    end function face_moment_value
+
+    pure real(dp) function volume_moment_value( &
+            order, first_degree, second_degree, third_degree, point) &
+            result(value)
+        integer, intent(in) :: order
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3)
+
+        if (order <= 5) then
+            value = point(1)**first_degree*point(2)**second_degree* &
+                point(3)**third_degree
+        else
+            value = tetrahedron_koornwinder( &
+                first_degree, second_degree, third_degree, &
+                point(1), point(2), point(3))
+        end if
+    end function volume_moment_value
 
     pure subroutine reference_edge(edge, parameter, point, tangent)
         integer, intent(in) :: edge

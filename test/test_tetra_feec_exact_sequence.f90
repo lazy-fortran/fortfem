@@ -5,6 +5,7 @@ program test_tetra_feec_exact_sequence
         evaluate_tetra_lagrange, evaluate_tetra_rt, &
         evaluate_tetra_nedelec_first_kind, initialize_tetra_lagrange, &
         initialize_tetra_nedelec_first_kind, initialize_tetra_rt, &
+        interpolate_reference_tetra_nedelec, interpolate_reference_tetra_rt, &
         tetra_lagrange_dof_count, tetra_lagrange_t, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t, &
         tetra_rt_dof_count, tetra_rt_t
@@ -64,6 +65,7 @@ program test_tetra_feec_exact_sequence
             values, gradients, nedelec_values, curls, rt_values, &
             rt_divergences, gradient_matrix, curl_matrix)
     end do
+    call check_order_six_polynomial_chain(point)
 
     call build_tetra_discrete_gradient(0, gradient_matrix, status)
     call record_condition(status /= 0, &
@@ -75,6 +77,66 @@ program test_tetra_feec_exact_sequence
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine check_order_six_polynomial_chain(location)
+        real(dp), intent(in) :: location(3)
+
+        type(tetra_nedelec_first_kind_t) :: high_nedelec
+        type(tetra_rt_t) :: high_rt
+        real(dp), allocatable :: high_curls(:, :), high_divergences(:)
+        real(dp), allocatable :: high_nedelec_dofs(:), high_rt_dofs(:)
+        real(dp), allocatable :: high_nedelec_values(:, :)
+        real(dp), allocatable :: high_rt_values(:, :)
+        real(dp) :: expected_curl(3), reconstructed_curl(3)
+        integer :: high_status
+
+        call initialize_tetra_nedelec_first_kind(6, high_nedelec, high_status)
+        call initialize_tetra_rt(5, high_rt, high_status)
+        call interpolate_reference_tetra_nedelec( &
+            high_nedelec, polynomial_potential, high_nedelec_dofs, &
+            high_status)
+        call interpolate_reference_tetra_rt( &
+            high_rt, polynomial_curl, high_rt_dofs, high_status)
+        allocate( &
+            high_nedelec_values(3, tetra_nedelec_dof_count(high_nedelec)), &
+            high_curls(3, tetra_nedelec_dof_count(high_nedelec)), &
+            high_rt_values(3, tetra_rt_dof_count(high_rt)), &
+            high_divergences(tetra_rt_dof_count(high_rt)))
+        call evaluate_tetra_nedelec_first_kind( &
+            high_nedelec, location, high_nedelec_values, high_curls, &
+            high_status)
+        call evaluate_tetra_rt( &
+            high_rt, location, high_rt_values, high_divergences, high_status)
+        call polynomial_curl(location, expected_curl)
+        reconstructed_curl = matmul(high_curls, high_nedelec_dofs)
+        call record_condition(high_status == 0 .and. maxval(abs( &
+            reconstructed_curl - expected_curl)) < 3.0e-9_dp, &
+            "Order-six Hcurl interpolation has the exact polynomial curl")
+        call record_condition(maxval(abs( &
+            matmul(high_rt_values, high_rt_dofs) - expected_curl)) < &
+            3.0e-9_dp, &
+            "Order-five Hdiv interpolation reproduces the Hcurl image")
+        if (abs(dot_product(high_divergences, high_rt_dofs)) >= 4.0e-9_dp) &
+            write (*, '(a,es12.4)') "High-order div-curl error ", &
+            abs(dot_product(high_divergences, high_rt_dofs))
+        call record_condition(abs(dot_product( &
+            high_divergences, high_rt_dofs)) < 4.0e-9_dp, &
+            "Order-six discrete divergence annihilates a polynomial curl")
+    end subroutine check_order_six_polynomial_chain
+
+    pure subroutine polynomial_potential(location, value)
+        real(dp), intent(in) :: location(3)
+        real(dp), intent(out) :: value(3)
+
+        value = [0.0_dp, 0.0_dp, location(1)**5]
+    end subroutine polynomial_potential
+
+    subroutine polynomial_curl(location, value)
+        real(dp), intent(in) :: location(3)
+        real(dp), intent(out) :: value(3)
+
+        value = [0.0_dp, -5.0_dp*location(1)**4, 0.0_dp]
+    end subroutine polynomial_curl
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition

@@ -24,19 +24,25 @@ program test_public_tetra_nedelec_arbitrary_order_solve
     real(dp) :: maximum_error
     integer :: order
 
-    do order = 1, 4
+    do order = 1, 6
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, &
             1.0_dp, 1.0_dp, solution, status)
         if (status%code /= 0) error stop "public tetra Nedelec solve failed"
         call measure_constant_error(order, solution, maximum_error)
-        call check_condition(maximum_error < 3.0e-10_dp, &
+        call check_condition(maximum_error < solve_tolerance(order), &
             "Public tetrahedral Hcurl solve reproduces a constant field")
         deallocate(solution)
     end do
     call check_summary("Public tetrahedral arbitrary-order Nedelec solve")
 
 contains
+
+    pure real(dp) function solve_tolerance(order) result(tolerance)
+        integer, intent(in) :: order
+
+        tolerance = merge(3.0e-10_dp, 2.0e-8_dp, order <= 4)
+    end function solve_tolerance
 
     pure subroutine constant_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z
