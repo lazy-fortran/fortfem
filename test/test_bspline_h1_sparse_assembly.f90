@@ -6,6 +6,9 @@ program test_bspline_h1_sparse_assembly
         assemble_bspline_hdiv_operator_csc, &
         assemble_bspline_h1_hcurl_gradient_csc, &
         assemble_bspline_hcurl_h1_adjoint_gradient_csc, &
+        assemble_bspline_hcurl_l2_curl_csc, &
+        assemble_bspline_l2_hcurl_adjoint_curl_csc, &
+        assemble_bspline_l2_mass_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -20,11 +23,13 @@ program test_bspline_h1_sparse_assembly
     type(csc_t) :: hdiv_mass, div_div
     type(csc_t) :: weak_gradient
     type(csc_t) :: adjoint_gradient
+    type(csc_t) :: adjoint_curl, l2_mass, weak_curl
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
     real(dp), allocatable :: hcurl_coefficients(:)
     real(dp), allocatable :: hdiv_coefficients(:)
+    real(dp), allocatable :: l2_coefficients(:)
     real(dp), allocatable :: x_points(:), y_points(:)
     real(dp) :: energy, integral
     integer :: ix, iy
@@ -143,6 +148,30 @@ program test_bspline_h1_sparse_assembly
     energy = dot_product(hcurl_coefficients, product)
     call check_condition(abs(energy - 4.0_dp) < 3.0e-11_dp, &
         "Spline curl-curl gives exact rigid-rotation curl energy")
+
+    call assemble_bspline_l2_mass_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, l2_mass, &
+        sparse_status)
+    allocate(l2_coefficients((size(x_points) - 1)*(size(y_points) - 1)))
+    l2_coefficients = 1.0_dp
+    product = csc_matvec(l2_mass, l2_coefficients)
+    call check_condition(abs(dot_product(l2_coefficients, product) - &
+        1.0_dp) < 3.0e-12_dp, &
+        "Determinant-scaled spline L2 mass integrates unit density exactly")
+    call assemble_bspline_hcurl_l2_curl_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, weak_curl, &
+        sparse_status)
+    edge_values = csc_matvec(curl_incidence, hcurl_coefficients)
+    product = csc_matvec(weak_curl, hcurl_coefficients)
+    call check_condition(abs(dot_product(edge_values, product) - 4.0_dp) < &
+        3.0e-11_dp, "Mixed spline curl block reproduces exact curl energy")
+    call assemble_bspline_l2_hcurl_adjoint_curl_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, adjoint_curl, &
+        sparse_status)
+    call check_condition(abs( &
+        dot_product(edge_values, product) - dot_product(hcurl_coefficients, &
+        csc_matvec(adjoint_curl, edge_values))) < 3.0e-13_dp, &
+        "Sparse mixed curl and adjoint preserve weak duality")
 
     call assemble_bspline_hdiv_operator_csc( &
         knots_x, knots_y, 2, 2, control_points, weights, 5, hdiv_mass, &
