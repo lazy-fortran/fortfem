@@ -1,6 +1,7 @@
 module fortfem_api_solvers_vector
     use fortfem_kinds, only: dp
-    use fortfem_api_types, only: vector_bc_t, vector_function_t
+    use fortfem_api_types, only: &
+        vector_bc_t, vector_function_t, vector_neumann_bc_t
     use fortfem_api_forms, only: compile_vector_form_csc, &
         compile_vector_form_rhs, form_equation_t
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
@@ -14,10 +15,44 @@ module fortfem_api_solvers_vector
     private
 
     public :: solve_vector
+    public :: solve_vector_mixed
     public :: solve_curl_curl_problem
     public :: solve_generic_vector_problem
 
 contains
+
+    subroutine solve_vector_mixed( &
+            equation, field, essential_condition, natural_condition, &
+            solver_type, options, stats)
+        type(form_equation_t), intent(in) :: equation
+        type(vector_function_t), intent(inout) :: field
+        type(vector_bc_t), intent(in) :: essential_condition
+        type(vector_neumann_bc_t), intent(in) :: natural_condition
+        character(len=*), intent(in), optional :: solver_type
+        type(solver_options_t), intent(in), optional :: options
+        type(solver_stats_t), intent(out), optional :: stats
+
+        character(len=32) :: solver
+        type(solver_options_t) :: local_options
+        type(solver_stats_t) :: local_stats
+
+        if (trim(field%space%element_family) /= "Nedelec" .and. &
+            trim(field%space%element_family) /= "Nedelec1" .and. &
+            trim(field%space%element_family) /= "Edge") then
+            error stop "solve: mixed vector boundary data requires Nedelec"
+        end if
+        solver = "direct"
+        if (present(solver_type)) solver = solver_type
+        local_options = solver_options( &
+            method="gmres", tolerance=1.0e-6_dp, max_iterations=100, &
+            restart=20)
+        if (present(options)) local_options = options
+        call solve_compiled_vector_problem( &
+            equation, field, essential_condition, solver, local_options, &
+            local_stats, "Nedelec", field%space%degree, .false., &
+            natural_condition)
+        if (present(stats)) stats = local_stats
+    end subroutine solve_vector_mixed
 
     subroutine solve_vector(equation, Eh, bc, solver_type, options, stats)
         type(form_equation_t), intent(in) :: equation
@@ -87,7 +122,7 @@ contains
 
     subroutine solve_compiled_vector_problem( &
             equation, field, boundary_condition, solver_type, options, stats, &
-            family, edge_moment_count, normal_family)
+            family, edge_moment_count, normal_family, natural_condition)
         type(form_equation_t), intent(in) :: equation
         type(vector_function_t), intent(inout) :: field
         type(vector_bc_t), intent(in) :: boundary_condition
@@ -97,6 +132,7 @@ contains
         character(len=*), intent(in) :: family
         integer, intent(in) :: edge_moment_count
         logical, intent(in) :: normal_family
+        type(vector_neumann_bc_t), intent(in), optional :: natural_condition
 
         type(csc_t) :: sparse_matrix
         type(fortsparse_status_t) :: sparse_status
@@ -126,6 +162,11 @@ contains
         if (sparse_status%code /= 0) then
             error stop "solve: unsupported Nedelec linear form"
         end if
+        if (present(natural_condition)) then
+            call add_nedelec_neumann_load( &
+                field, edge_moment_count, boundary_condition, &
+                natural_condition, right_hand_side)
+        end if
         if (sparse_matrix%nrow /= dof_count .or. &
             sparse_matrix%ncol /= dof_count) then
             error stop "solve: Nedelec function-space dimension mismatch"
@@ -135,6 +176,9 @@ contains
         do boundary_index = 1, &
                 size(field%space%mesh%data%boundary_edges)
             edge = field%space%mesh%data%boundary_edges(boundary_index)
+            if (allocated(boundary_condition%edge_mask)) then
+                if (.not. boundary_condition%edge_mask(edge)) cycle
+            end if
             edge_vector = field%space%mesh%data%vertices(:, &
                 field%space%mesh%data%edges(2, edge)) - &
                 field%space%mesh%data%vertices(:, &
@@ -187,6 +231,84 @@ contains
         field%values(:, 1) = solution
         field%values(:, 2) = 0.0_dp
     end subroutine solve_compiled_vector_problem
+
+    subroutine add_nedelec_neumann_load( &
+            field, edge_moment_count, essential_condition, natural_condition, &
+            right_hand_side)
+        type(vector_function_t), intent(in) :: field
+        integer, intent(in) :: edge_moment_count
+        type(vector_bc_t), intent(in) :: essential_condition
+        type(vector_neumann_bc_t), intent(in) :: natural_condition
+        real(dp), intent(inout) :: right_hand_side(:)
+
+        integer :: degree_of_freedom, edge, orientation
+
+        if (.not. allocated(natural_condition%edge_values)) then
+            error stop "solve: incomplete vector Neumann boundary data"
+        end if
+        if (.not. allocated(natural_condition%edge_mask)) then
+            error stop "solve: incomplete vector Neumann boundary data"
+        end if
+        do edge = 1, field%space%mesh%data%n_edges
+            if (.not. natural_condition%edge_mask(edge)) cycle
+            if (.not. field%space%mesh%data%is_boundary_edge(edge)) then
+                error stop "solve: vector Neumann mask contains an interior edge"
+            end if
+            if (allocated(essential_condition%edge_mask)) then
+                if (essential_condition%edge_mask(edge)) then
+                    error stop "solve: essential and Neumann edge masks overlap"
+                end if
+            end if
+            call boundary_edge_orientation( &
+                field, edge, orientation)
+            degree_of_freedom = &
+                field%space%mesh%data%edge_to_dof(edge) * &
+                edge_moment_count + 1
+            right_hand_side(degree_of_freedom) = &
+                right_hand_side(degree_of_freedom) + &
+                real(orientation, dp) * natural_condition%edge_values(edge)
+        end do
+    end subroutine add_nedelec_neumann_load
+
+    subroutine boundary_edge_orientation(field, edge, orientation)
+        type(vector_function_t), intent(in) :: field
+        integer, intent(in) :: edge
+        integer, intent(out) :: orientation
+
+        integer :: first_vertex, local_edge, second_vertex, triangle
+        integer :: triangle_vertices(3)
+
+        first_vertex = field%space%mesh%data%edges(1, edge)
+        second_vertex = field%space%mesh%data%edges(2, edge)
+        if (.not. allocated( &
+            field%space%mesh%data%edge_to_triangles)) then
+            error stop "solve: boundary edge adjacency is unavailable"
+        end if
+        triangle = field%space%mesh%data%edge_to_triangles(1, edge)
+        if (triangle < 1 .or. &
+            triangle > field%space%mesh%data%n_triangles) then
+            error stop "solve: boundary edge has no adjacent triangle"
+        end if
+        triangle_vertices = field%space%mesh%data%triangles(:, triangle)
+        orientation = 0
+        do local_edge = 1, 3
+            if (triangle_vertices(local_edge) /= first_vertex) cycle
+            if (triangle_vertices(mod(local_edge, 3) + 1) == &
+                second_vertex) then
+                orientation = 1
+                return
+            end if
+        end do
+        do local_edge = 1, 3
+            if (triangle_vertices(local_edge) /= second_vertex) cycle
+            if (triangle_vertices(mod(local_edge, 3) + 1) == &
+                first_vertex) then
+                orientation = -1
+                return
+            end if
+        end do
+        error stop "solve: could not orient a boundary edge"
+    end subroutine boundary_edge_orientation
 
     subroutine solve_sparse_dirichlet( &
             matrix, rhs, prescribed, prescribed_mask, solution, stats)

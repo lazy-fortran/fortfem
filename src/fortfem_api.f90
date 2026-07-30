@@ -335,6 +335,7 @@ module fortfem_api
     public :: vector_test_function_t
     public :: dirichlet_bc_t
     public :: vector_bc_t
+    public :: vector_neumann_bc_t
     public :: neumann_bc_t
     public :: boundary_t
     public :: simple_expression_t
@@ -487,6 +488,8 @@ module fortfem_api
     public :: dirichlet_bc_on_boundary
     public :: vector_bc
     public :: vector_bc_edge_moments
+    public :: vector_bc_on_edges
+    public :: vector_neumann_bc_on_edges
     public :: neumann_bc_constant
     public :: neumann_bc_on_boundary
 
