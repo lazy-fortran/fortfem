@@ -267,6 +267,10 @@ module fortfem_api
         assemble_planar_maxwell_dtn_form, &
         assemble_planar_maxwell_dtn_form_jvp, &
         assemble_planar_maxwell_dtn_form_vjp
+    use fortfem_planar_maxwell_dtn_system, only: &
+        solve_planar_maxwell_dtn_system, &
+        solve_planar_maxwell_dtn_system_jvp, &
+        solve_planar_maxwell_dtn_system_vjp
     use fortfem_planar_acoustic_displacement_dtn, only: &
         apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
@@ -740,6 +744,9 @@ module fortfem_api
     public :: assemble_planar_maxwell_dtn_form
     public :: assemble_planar_maxwell_dtn_form_jvp
     public :: assemble_planar_maxwell_dtn_form_vjp
+    public :: solve_planar_maxwell_dtn_system
+    public :: solve_planar_maxwell_dtn_system_jvp
+    public :: solve_planar_maxwell_dtn_system_vjp
     public :: assemble_planar_nedelec_maxwell_dtn_form
     public :: build_planar_nedelec_trace_sampling
     public :: pullback_planar_maxwell_dtn_form

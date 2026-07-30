@@ -136,3 +136,12 @@ evaluated analytically from the spherical Bessel differential equation and
 shared by the scalar and TE/TM maps. This avoids differentiating the
 special-function recurrence, keeps the implementation available with GCC,
 and preserves the exact TE/TM impedance duality in the primal map.
+
+A discrete planar Maxwell FEM--DtN state primitive composes an assembled
+curl--curl volume matrix, the differentiable Nedelec trace pullback, and the
+complex FortSparse implicit solve. Its JVP accepts volume-matrix, trace-map,
+load, wave-number, and cell-size perturbations. One adjoint solve returns
+cotangents for every volume-matrix entry, every trace-sampling entry, the
+complex load, and all three scalar boundary parameters. This algebraic
+boundary lets element and moving-mesh geometry products compose with the
+state adjoint without making mesh topology or point location implicit.
