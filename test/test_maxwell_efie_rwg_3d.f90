@@ -3,16 +3,19 @@ program test_maxwell_efie_rwg_3d
     use fortfem_api, only: &
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_rwg_potential_operators_3d, &
+        assemble_helmholtz_single_layer_p0_adaptive_3d, &
         build_maxwell_rwg_surface_space
     use fortfem_kinds, only: dp
     implicit none
 
     complex(dp), allocatable :: efie(:, :), scaled_efie(:, :)
     complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+    complex(dp), allocatable :: panel_operator(:, :)
+    complex(dp) :: expected_energy, rwg_energy
     real(dp), allocatable :: coefficients(:)
-    real(dp) :: electric_field(3), vertices(3, 4)
+    real(dp) :: electric_field(3), face_currents(3, 4), vertices(3, 4)
     integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
-    integer :: boundary_triangles(3, 4), edge, status
+    integer :: boundary_triangles(3, 4), edge, panel, status
     logical :: all_passed
 
     all_passed = .true.
@@ -27,7 +30,7 @@ program test_maxwell_efie_rwg_3d
     call build_maxwell_rwg_surface_space( &
         vertices, boundary_triangles, edge_vertices, edge_triangles, status)
     call assemble_maxwell_rwg_potential_operators_3d( &
-        vertices, boundary_triangles, 0.8_dp, 6, 1.0e-3_dp, 3, &
+        vertices, boundary_triangles, 0.8_dp, 12, 1.0e-3_dp, 3, &
         vector_potential, scalar_potential, status)
     call record_condition(status == 0 .and. &
         maxval(abs(vector_potential - transpose(vector_potential))) < &
@@ -49,9 +52,38 @@ program test_maxwell_efie_rwg_3d
     call record_condition(sqrt(sum(abs( &
         matmul(scalar_potential, coefficients))**2)) < 2.0e-13_dp, &
         "The charge block annihilates a divergence-free constant-field trace")
+    call assemble_helmholtz_single_layer_p0_adaptive_3d( &
+        vertices, boundary_triangles, 0.8_dp, 12, 1.0e-3_dp, 3, &
+        panel_operator, status)
+    do edge = 1, 4
+        face_currents(:, edge) = cross_product( &
+            electric_field, triangle_normal( &
+            vertices(:, boundary_triangles(:, edge))))
+    end do
+    expected_energy = cmplx(0.0_dp, 0.0_dp, dp)
+    do edge = 1, 4
+        do panel = 1, 4
+            expected_energy = expected_energy + &
+                dot_product(face_currents(:, edge), face_currents(:, panel))* &
+                panel_operator(edge, panel)
+        end do
+    end do
+    rwg_energy = dot_product( &
+        cmplx(coefficients, 0.0_dp, dp), &
+        matmul(vector_potential, coefficients))
+    if (abs(rwg_energy - expected_energy)/abs(expected_energy) >= &
+        5.0e-3_dp) then
+        write (*, '(A,2ES14.5,A,2ES14.5,A,ES14.5)') &
+            "RWG energy ", rwg_energy, " panel energy ", expected_energy, &
+            " relative error ", &
+            abs(rwg_energy - expected_energy)/abs(expected_energy)
+    end if
+    call record_condition(abs(rwg_energy - expected_energy)/ &
+        abs(expected_energy) < 5.0e-3_dp, &
+        "Affine RWG integration matches an independent constant-trace energy")
 
     call assemble_maxwell_efie_rwg_3d( &
-        vertices, boundary_triangles, 0.8_dp, 1.7_dp, 6, 1.0e-3_dp, 3, &
+        vertices, boundary_triangles, 0.8_dp, 1.7_dp, 12, 1.0e-3_dp, 3, &
         efie, status)
     call record_condition(sqrt(sum(abs(matmul(efie, coefficients) - &
         cmplx(0.0_dp, 0.8_dp*1.7_dp, dp)* &
@@ -59,7 +91,7 @@ program test_maxwell_efie_rwg_3d
         "EFIE has the exact vector-potential limit for solenoidal current")
 
     call assemble_maxwell_efie_rwg_3d( &
-        2.0_dp*vertices, boundary_triangles, 0.4_dp, 1.7_dp, 6, &
+        2.0_dp*vertices, boundary_triangles, 0.4_dp, 1.7_dp, 12, &
         1.0e-3_dp, 3, scaled_efie, status)
     call record_condition(maxval(abs(scaled_efie - 4.0_dp*efie)) < 2.0e-8_dp, &
         "RWG EFIE obeys exact wave-scaled quadratic geometric scaling")
@@ -73,6 +105,25 @@ program test_maxwell_efie_rwg_3d
     if (.not. all_passed) error stop 1
 
 contains
+
+    pure function triangle_normal(points) result(normal)
+        real(dp), intent(in) :: points(3, 3)
+        real(dp) :: normal(3)
+
+        normal = cross_product( &
+            points(:, 2) - points(:, 1), points(:, 3) - points(:, 1))
+        normal = normal/norm2(normal)
+    end function triangle_normal
+
+    pure function cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function cross_product
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
