@@ -30,7 +30,8 @@ The operator inventory is based on:
 | Nonlinear toroidal mode coupling | Exact retained-mode convolution `p+q=n` |
 | Scalar coefficient products | Coefficient-weighted H1 Galerkin mass |
 | Magnetic-flux evolution | Cylindrical weak residual and analytical JVP |
-| Density and pressure transport | No-parallel cylindrical residual and analytical JVP |
+| Density transport | Complete cylindrical residual with parallel flow and analytical JVP |
+| Pressure transport | No-parallel cylindrical residual and analytical JVP |
 | Ideal poloidal flux subflow | Cayley/implicit-midpoint Poisson propagator |
 | Magnetic/vector differential sequence | H1--H(curl)--H(div)--L2 incidence |
 | Curl--curl and div--div energies | Physical Piola-mapped vector forms |
@@ -50,6 +51,15 @@ physical adiabatic index for pressure. Both products retain exact Fourier
 convolution. An affine manufactured field checks the compressibility factor,
 an independent cylindrical test function verifies mass conservation, and a
 complex randomized central difference verifies the complete product-rule JVP.
+
+The density specialization also implements every parallel-flow term in equation
+(26). The conservative product `rho*v_parallel` is formed by an L2 Galerkin
+projection with one retained sparse mass factorization, rather than by
+coefficient-wise multiplication. Its toroidal derivative uses the exact
+Fourier multiplier and its magnetic advection uses the same skew bracket. A
+constant-product oracle, an analytical `1/R^2` cylindrical integral, and a
+four-field complex central difference verify the projection, residual, and
+complete JVP independently.
 
 The magnetic-axis extraction maps satisfy both commuting diagrams against an
 independently assembled periodic tensor-product cell complex. FortSym proves
@@ -90,10 +100,10 @@ of the current implementation.
 ## Remaining coupled-model work
 
 - Complete the residual and Newton/Jacobian block layout beyond the implemented
-  magnetic-flux and no-parallel density/pressure equations, for electric
-  potential, vorticity, and parallel velocity.
-- Add the parallel-flow products to density/pressure transport and the
-  parallel-gradient blocks.
+  magnetic-flux, complete density, and no-parallel pressure equations, for
+  electric potential, vorticity, and parallel velocity.
+- Add the remaining unequal-adiabatic-index parallel products to pressure
+  transport and the parallel-gradient blocks.
 - Add resistive, viscous, thermal, and source terms with coefficient fields.
 - Generalize pairwise patch quotients to arbitrary patch-interface graphs.
 - Replace the remaining dense tensor result workspace in physical magnetic-axis

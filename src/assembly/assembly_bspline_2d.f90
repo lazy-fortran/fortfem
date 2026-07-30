@@ -31,6 +31,9 @@ module fortfem_assembly_bspline_2d
     public :: apply_bspline_jorek_flux_jvp
     public :: apply_bspline_jorek_thermodynamic_rhs
     public :: apply_bspline_jorek_thermodynamic_jvp
+    public :: apply_bspline_jorek_density_rhs
+    public :: apply_bspline_jorek_density_jvp
+    public :: project_bspline_toroidal_product
     public :: advance_bspline_jorek_poloidal_flux_midpoint
     public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
     public :: apply_toroidal_fourier_derivative
@@ -390,6 +393,285 @@ contains
         if (status%code /= 0) return
         jvp = field_action + potential_action
     end subroutine apply_bspline_jorek_thermodynamic_jvp
+
+    subroutine project_bspline_toroidal_product( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            modes, first_coefficients, second_coefficients, quadrature_order, &
+            product_coefficients, status)
+        !! L2 Galerkin projection of a retained-mode spline product.
+        !!
+        !! The convolution is formed before truncation: output n receives all
+        !! represented pairs p+q=n. One mass factorization serves every mode.
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: first_coefficients(:, :)
+        complex(dp), intent(in) :: second_coefficients(:, :)
+        complex(dp), allocatable, intent(out) :: product_coefficients(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: load(:, :)
+        real(dp), allocatable :: action(:), field_part(:)
+        real(dp), allocatable :: imaginary_solution(:), real_solution(:)
+        type(csc_t) :: mass, weighted_imaginary, weighted_real
+        type(sparse_solver_t) :: solver
+        integer :: first_mode, output_mode, second_mode
+        logical :: has_imaginary, has_real
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Toroidal spline product projection failed")
+        if (any(shape(first_coefficients) /= shape(second_coefficients))) return
+        if (size(first_coefficients, 2) /= size(modes)) return
+        if (has_duplicate_modes(modes)) return
+        allocate( &
+            load(size(first_coefficients, 1), size(modes)), &
+            field_part(size(first_coefficients, 1)))
+        load = cmplx(0.0_dp, 0.0_dp, dp)
+        do first_mode = 1, size(modes)
+            has_real = any(real( &
+                first_coefficients(:, first_mode), dp) /= 0.0_dp)
+            has_imaginary = any(aimag( &
+                first_coefficients(:, first_mode)) /= 0.0_dp)
+            if (has_real) then
+                field_part = real(first_coefficients(:, first_mode), dp)
+                call assemble_bspline_h1_weighted_mass_csc( &
+                    knots_x, knots_y, degree_x, degree_y, control_points, &
+                    weights, field_part, quadrature_order, weighted_real, &
+                    status)
+                if (status%code /= 0) return
+            end if
+            if (has_imaginary) then
+                field_part = aimag(first_coefficients(:, first_mode))
+                call assemble_bspline_h1_weighted_mass_csc( &
+                    knots_x, knots_y, degree_x, degree_y, control_points, &
+                    weights, field_part, quadrature_order, weighted_imaginary, &
+                    status)
+                if (status%code /= 0) return
+            end if
+            do second_mode = 1, size(modes)
+                output_mode = find_mode( &
+                    modes, modes(first_mode) + modes(second_mode))
+                if (output_mode == 0) cycle
+                if (has_real) then
+                    action = csc_matvec(weighted_real, &
+                        real(second_coefficients(:, second_mode), dp))
+                    load(:, output_mode) = load(:, output_mode) + action
+                    action = csc_matvec( &
+                        weighted_real, aimag(second_coefficients(:, second_mode)))
+                    load(:, output_mode) = load(:, output_mode) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                end if
+                if (has_imaginary) then
+                    action = csc_matvec(weighted_imaginary, &
+                        real(second_coefficients(:, second_mode), dp))
+                    load(:, output_mode) = load(:, output_mode) + &
+                        cmplx(0.0_dp, 1.0_dp, dp)*action
+                    action = csc_matvec(weighted_imaginary, &
+                        aimag(second_coefficients(:, second_mode)))
+                    load(:, output_mode) = load(:, output_mode) - action
+                end if
+            end do
+        end do
+        call assemble_bspline_h1_operator_csc( &
+            knots_x, knots_y, degree_x, degree_y, control_points, weights, &
+            quadrature_order, mass, status, stiffness_coefficient=0.0_dp, &
+            mass_coefficient=1.0_dp)
+        if (status%code /= 0) return
+        call sparse_factor(solver, mass, status)
+        if (status%code /= 0) then
+            call sparse_free(solver)
+            return
+        end if
+        allocate( &
+            product_coefficients(size(load, 1), size(load, 2)), &
+            real_solution(size(load, 1)), imaginary_solution(size(load, 1)))
+        do output_mode = 1, size(modes)
+            call sparse_solve( &
+                solver, real(load(:, output_mode), dp), real_solution, status)
+            if (status%code /= 0) then
+                call sparse_free(solver)
+                return
+            end if
+            call sparse_solve( &
+                solver, aimag(load(:, output_mode)), imaginary_solution, status)
+            if (status%code /= 0) then
+                call sparse_free(solver)
+                return
+            end if
+            product_coefficients(:, output_mode) = &
+                cmplx(real_solution, imaginary_solution, dp)
+        end do
+        call sparse_free(solver)
+    end subroutine project_bspline_toroidal_product
+
+    subroutine apply_bspline_jorek_density_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, electric_potential, magnetic_flux, &
+            parallel_velocity, toroidal_field, quadrature_order, rhs, status)
+        !! Complete weak density equation (26) of Franck et al.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: density(:, :), electric_potential(:, :)
+        complex(dp), intent(in) :: magnetic_flux(:, :)
+        complex(dp), intent(in) :: parallel_velocity(:, :)
+        real(dp), intent(in) :: toroidal_field
+        complex(dp), allocatable, intent(out) :: rhs(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: parallel_product(:, :)
+        complex(dp), allocatable :: parallel_rhs(:, :)
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK isogeometric density residual failed")
+        if (any(shape(density) /= shape(electric_potential))) return
+        if (any(shape(density) /= shape(magnetic_flux))) return
+        if (any(shape(density) /= shape(parallel_velocity))) return
+        call apply_bspline_jorek_thermodynamic_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, electric_potential, 1.0_dp, quadrature_order, &
+            rhs, status)
+        if (status%code /= 0) return
+        call project_bspline_toroidal_product( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, parallel_velocity, quadrature_order, &
+            parallel_product, status)
+        if (status%code /= 0) return
+        call apply_bspline_jorek_density_parallel_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, parallel_product, magnetic_flux, toroidal_field, &
+            quadrature_order, parallel_rhs, status)
+        if (status%code /= 0) return
+        rhs = rhs + parallel_rhs
+    end subroutine apply_bspline_jorek_density_rhs
+
+    subroutine apply_bspline_jorek_density_jvp( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, electric_potential, magnetic_flux, &
+            parallel_velocity, density_direction, potential_direction, &
+            flux_direction, velocity_direction, toroidal_field, &
+            quadrature_order, jvp, status)
+        !! Exact product-rule JVP of the complete density equation.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: density(:, :), electric_potential(:, :)
+        complex(dp), intent(in) :: magnetic_flux(:, :)
+        complex(dp), intent(in) :: parallel_velocity(:, :)
+        complex(dp), intent(in) :: density_direction(:, :)
+        complex(dp), intent(in) :: potential_direction(:, :)
+        complex(dp), intent(in) :: flux_direction(:, :)
+        complex(dp), intent(in) :: velocity_direction(:, :)
+        real(dp), intent(in) :: toroidal_field
+        complex(dp), allocatable, intent(out) :: jvp(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: base_product(:, :), product_direction(:, :)
+        complex(dp), allocatable :: product_part(:, :), work(:, :)
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "JOREK isogeometric density JVP failed")
+        if (any(shape(density) /= shape(density_direction))) return
+        if (any(shape(density) /= shape(potential_direction))) return
+        if (any(shape(density) /= shape(flux_direction))) return
+        if (any(shape(density) /= shape(velocity_direction))) return
+        call apply_bspline_jorek_thermodynamic_jvp( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, electric_potential, density_direction, &
+            potential_direction, 1.0_dp, quadrature_order, jvp, status)
+        if (status%code /= 0) return
+        call project_bspline_toroidal_product( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density_direction, parallel_velocity, quadrature_order, &
+            product_direction, status)
+        if (status%code /= 0) return
+        call project_bspline_toroidal_product( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, velocity_direction, quadrature_order, work, status)
+        if (status%code /= 0) return
+        product_direction = product_direction + work
+        call project_bspline_toroidal_product( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density, parallel_velocity, quadrature_order, base_product, &
+            status)
+        if (status%code /= 0) return
+        call apply_bspline_jorek_density_parallel_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, product_direction, magnetic_flux, toroidal_field, &
+            quadrature_order, product_part, status)
+        if (status%code /= 0) return
+        call apply_bspline_jorek_density_parallel_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, base_product, flux_direction, 0.0_dp, quadrature_order, &
+            work, status)
+        if (status%code /= 0) return
+        jvp = jvp + product_part + work
+    end subroutine apply_bspline_jorek_density_jvp
+
+    subroutine apply_bspline_jorek_density_parallel_rhs( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density_velocity, magnetic_flux, toroidal_field, &
+            quadrature_order, rhs, status)
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: density_velocity(:, :)
+        complex(dp), intent(in) :: magnetic_flux(:, :)
+        real(dp), intent(in) :: toroidal_field
+        complex(dp), allocatable, intent(out) :: rhs(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        complex(dp), allocatable :: bracket(:, :), derivative(:, :)
+        type(csc_t) :: inverse_radius_squared_mass
+        integer :: local_status, mode
+
+        call apply_toroidal_fourier_derivative( &
+            modes, density_velocity, derivative, local_status)
+        if (local_status /= 0) return
+        call assemble_bspline_h1_operator_csc( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            quadrature_order, inverse_radius_squared_mass, status, &
+            stiffness_coefficient=0.0_dp, mass_coefficient=1.0_dp, &
+            mass_weight_function=inverse_radius_squared)
+        if (status%code /= 0) return
+        allocate(rhs(size(density_velocity, 1), size(modes)))
+        rhs = cmplx(0.0_dp, 0.0_dp, dp)
+        do mode = 1, size(modes)
+            call add_complex_matrix_action( &
+                inverse_radius_squared_mass, derivative(:, mode), &
+                -toroidal_field, rhs(:, mode))
+        end do
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, density_velocity, magnetic_flux, quadrature_order, bracket, &
+            status, inverse_radius)
+        if (status%code /= 0) return
+        rhs = rhs - bracket
+
+    contains
+
+        pure subroutine inverse_radius_squared(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = 1.0_dp/point(1)**2
+        end subroutine inverse_radius_squared
+
+        pure subroutine inverse_radius(point, value)
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value
+
+            value = 1.0_dp/point(1)
+        end subroutine inverse_radius
+
+    end subroutine apply_bspline_jorek_density_parallel_rhs
 
     subroutine apply_bspline_toroidal_product_derivative( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
