@@ -16,8 +16,33 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_sphere_curved_efie_rwg_3d
 
 contains
+
+    subroutine assemble_maxwell_sphere_curved_efie_rwg_3d( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_efie_rwg_3d
 
     subroutine assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
