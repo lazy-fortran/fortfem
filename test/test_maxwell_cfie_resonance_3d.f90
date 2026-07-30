@@ -3,6 +3,8 @@ program test_maxwell_cfie_resonance_3d
     use fortfem_api, only: &
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_regularized_cfie_rwg_3d, &
+        assemble_maxwell_sphere_curved_efie_rwg_3d, &
+        assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
         generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
@@ -11,7 +13,9 @@ program test_maxwell_cfie_resonance_3d
     complex(dp), allocatable :: product(:, :), regularizer(:, :)
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: vertices(:, :)
-    real(dp) :: cfie_condition, condition, efie_condition, peak_wave_number
+    real(dp) :: cfie_condition, condition, curved_cfie_condition
+    real(dp) :: curved_efie_condition, curved_peak_wave_number
+    real(dp) :: efie_condition, peak_wave_number
     real(dp) :: wave_number
     integer :: sample, status
     logical :: all_passed
@@ -53,6 +57,33 @@ program test_maxwell_cfie_resonance_3d
         abs(peak_wave_number - 2.743707269992269_dp) <= 0.4_dp .and. &
         cfie_condition < 0.2_dp*efie_condition .and. cfie_condition < 30.0_dp, &
         "regularized CFIE suppresses the first sphere-resonance condition peak")
+
+    call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
+    curved_efie_condition = 0.0_dp
+    curved_peak_wave_number = 0.0_dp
+    do sample = -4, 4
+        wave_number = 2.743707269992269_dp + 0.1_dp*real(sample, dp)
+        call assemble_maxwell_sphere_curved_efie_rwg_3d( &
+            vertices, triangles, 1.0_dp, wave_number, 1.0_dp, 2, 2.0e-4_dp, 1, &
+            efie, status)
+        condition = spectral_condition_number(efie, status)
+        if (condition > curved_efie_condition) then
+            curved_efie_condition = condition
+            curved_peak_wave_number = wave_number
+        end if
+    end do
+    call assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
+        vertices, triangles, 1.0_dp, curved_peak_wave_number, 1.0_dp, 2, &
+        2.0e-4_dp, 1, 0.18_dp, matrix, efie, mfie, regularizer, product, status)
+    curved_cfie_condition = spectral_condition_number(matrix, status)
+    if (status /= 0 .or. curved_cfie_condition >= &
+        0.8_dp*curved_efie_condition) write (*, *) &
+        "curved EFIE/CFIE conditions", curved_peak_wave_number, &
+        curved_efie_condition, curved_cfie_condition
+    call record_condition(status == 0 .and. &
+        abs(curved_peak_wave_number - 2.743707269992269_dp) <= 0.4_dp .and. &
+        curved_cfie_condition < 0.8_dp*curved_efie_condition, &
+        "curved regularized CFIE suppresses the sphere-resonance condition peak")
 
     call check_summary("Maxwell CFIE sphere resonance")
     if (.not. all_passed) error stop 1
