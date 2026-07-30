@@ -13,6 +13,7 @@ module fortfem_bspline_multipatch
     public :: build_bspline_feec_2d_interface_dofs
     public :: build_bspline_feec_2d_two_patch_maps
     public :: build_bspline_feec_3d_interface_dofs
+    public :: build_bspline_feec_3d_two_patch_maps
 
 contains
 
@@ -258,6 +259,126 @@ contains
         end subroutine append_face_edge
 
     end subroutine build_bspline_feec_3d_interface_dofs
+
+    subroutine build_bspline_feec_3d_two_patch_maps( &
+            nx_left, ny_left, nz_left, nx_right, ny_right, nz_right, &
+            face_left, face_right, swap_axes, reverse_u, reverse_v, &
+            h1_left_map, h1_right_map, hcurl_left_map, hcurl_right_map, &
+            hcurl_left_sign, hcurl_right_sign, hdiv_left_map, hdiv_right_map, &
+            hdiv_left_sign, hdiv_right_sign, l2_left_map, l2_right_map, status)
+        integer, intent(in) :: nx_left, ny_left, nz_left
+        integer, intent(in) :: nx_right, ny_right, nz_right
+        integer, intent(in) :: face_left, face_right
+        logical, intent(in) :: swap_axes, reverse_u, reverse_v
+        integer, allocatable, intent(out) :: h1_left_map(:), h1_right_map(:)
+        integer, allocatable, intent(out) :: hcurl_left_map(:)
+        integer, allocatable, intent(out) :: hcurl_right_map(:)
+        integer, allocatable, intent(out) :: hcurl_left_sign(:)
+        integer, allocatable, intent(out) :: hcurl_right_sign(:)
+        integer, allocatable, intent(out) :: hdiv_left_map(:)
+        integer, allocatable, intent(out) :: hdiv_right_map(:)
+        integer, allocatable, intent(out) :: hdiv_left_sign(:)
+        integer, allocatable, intent(out) :: hdiv_right_sign(:)
+        integer, allocatable, intent(out) :: l2_left_map(:), l2_right_map(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: h1_left_trace(:), h1_right_trace(:)
+        integer, allocatable :: hcurl_left_trace(:), hcurl_right_trace(:)
+        integer, allocatable :: hcurl_trace_sign(:)
+        integer, allocatable :: hdiv_left_trace(:), hdiv_right_trace(:)
+        integer, allocatable :: hdiv_trace_sign(:)
+        integer :: dof, global_dof, trace
+
+        call build_bspline_feec_3d_interface_dofs( &
+            nx_left, ny_left, nz_left, nx_right, ny_right, nz_right, &
+            face_left, face_right, swap_axes, reverse_u, reverse_v, &
+            h1_left_trace, h1_right_trace, hcurl_left_trace, &
+            hcurl_right_trace, hcurl_trace_sign, hdiv_left_trace, &
+            hdiv_right_trace, hdiv_trace_sign, status)
+        if (status /= 0) return
+        allocate( &
+            h1_left_map(nx_left*ny_left*nz_left), &
+            h1_right_map(nx_right*ny_right*nz_right), &
+            hcurl_left_map( &
+            (nx_left - 1)*ny_left*nz_left + &
+            nx_left*(ny_left - 1)*nz_left + &
+            nx_left*ny_left*(nz_left - 1)), &
+            hcurl_right_map( &
+            (nx_right - 1)*ny_right*nz_right + &
+            nx_right*(ny_right - 1)*nz_right + &
+            nx_right*ny_right*(nz_right - 1)), &
+            hdiv_left_map( &
+            nx_left*(ny_left - 1)*(nz_left - 1) + &
+            (nx_left - 1)*ny_left*(nz_left - 1) + &
+            (nx_left - 1)*(ny_left - 1)*nz_left), &
+            hdiv_right_map( &
+            nx_right*(ny_right - 1)*(nz_right - 1) + &
+            (nx_right - 1)*ny_right*(nz_right - 1) + &
+            (nx_right - 1)*(ny_right - 1)*nz_right), &
+            l2_left_map((nx_left - 1)*(ny_left - 1)*(nz_left - 1)), &
+            l2_right_map((nx_right - 1)*(ny_right - 1)*(nz_right - 1)))
+        allocate( &
+            hcurl_left_sign(size(hcurl_left_map)), &
+            hcurl_right_sign(size(hcurl_right_map)), &
+            hdiv_left_sign(size(hdiv_left_map)), &
+            hdiv_right_sign(size(hdiv_right_map)))
+        call merge_unsigned_maps( &
+            h1_left_trace, h1_right_trace, h1_left_map, h1_right_map)
+        call merge_signed_maps( &
+            hcurl_left_trace, hcurl_right_trace, hcurl_trace_sign, &
+            hcurl_left_map, hcurl_right_map, hcurl_left_sign, &
+            hcurl_right_sign)
+        call merge_signed_maps( &
+            hdiv_left_trace, hdiv_right_trace, hdiv_trace_sign, &
+            hdiv_left_map, hdiv_right_map, hdiv_left_sign, hdiv_right_sign)
+        l2_left_map = [(dof, dof = 1, size(l2_left_map))]
+        l2_right_map = &
+            [(size(l2_left_map) + dof, dof = 1, size(l2_right_map))]
+
+    contains
+
+        subroutine merge_unsigned_maps( &
+                left_trace, right_trace, left_map, right_map)
+            integer, intent(in) :: left_trace(:), right_trace(:)
+            integer, intent(out) :: left_map(:), right_map(:)
+
+            left_map = [(dof, dof = 1, size(left_map))]
+            right_map = 0
+            do trace = 1, size(left_trace)
+                right_map(right_trace(trace)) = left_map(left_trace(trace))
+            end do
+            global_dof = size(left_map)
+            do dof = 1, size(right_map)
+                if (right_map(dof) /= 0) cycle
+                global_dof = global_dof + 1
+                right_map(dof) = global_dof
+            end do
+        end subroutine merge_unsigned_maps
+
+        subroutine merge_signed_maps( &
+                left_trace, right_trace, trace_sign, left_map, right_map, &
+                left_sign, right_sign)
+            integer, intent(in) :: left_trace(:), right_trace(:), trace_sign(:)
+            integer, intent(out) :: left_map(:), right_map(:)
+            integer, intent(out) :: left_sign(:), right_sign(:)
+
+            left_map = [(dof, dof = 1, size(left_map))]
+            left_sign = 1
+            right_map = 0
+            right_sign = 1
+            do trace = 1, size(left_trace)
+                right_map(right_trace(trace)) = left_map(left_trace(trace))
+                right_sign(right_trace(trace)) = trace_sign(trace)
+            end do
+            global_dof = size(left_map)
+            do dof = 1, size(right_map)
+                if (right_map(dof) /= 0) cycle
+                global_dof = global_dof + 1
+                right_map(dof) = global_dof
+            end do
+        end subroutine merge_signed_maps
+
+    end subroutine build_bspline_feec_3d_two_patch_maps
 
     pure subroutine face_shape_3d(nx, ny, nz, face, nu, nv)
         integer, intent(in) :: nx, ny, nz, face
