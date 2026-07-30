@@ -58,8 +58,9 @@ module fortfem_api
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_maxwell_efie_rwg_3d, only: &
         assemble_maxwell_efie_rwg_3d, &
+        assemble_maxwell_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_rwg_potential_operators_3d, &
-        evaluate_maxwell_efie_field_rwg_3d
+        evaluate_maxwell_efie_field_rwg_3d, solve_maxwell_pec_efie_rwg_3d
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, assemble_planar_helmholtz_dtn_form
     use fortfem_planar_acoustic_displacement_dtn, only: &
@@ -237,8 +238,10 @@ module fortfem_api
     public :: evaluate_maxwell_rwg_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
     public :: assemble_maxwell_efie_rwg_3d
+    public :: assemble_maxwell_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_rwg_potential_operators_3d
     public :: evaluate_maxwell_efie_field_rwg_3d
+    public :: solve_maxwell_pec_efie_rwg_3d
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
