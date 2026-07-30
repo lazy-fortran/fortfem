@@ -3,7 +3,9 @@ program test_maxwell_surface_rt_mass
     use fortfem_api, only: &
         assemble_maxwell_rwg_mass_matrix, &
         assemble_maxwell_surface_rt_mass_matrix, &
-        build_maxwell_surface_rt_dof_map
+        build_maxwell_rwg_surface_space, &
+        build_maxwell_surface_rt_dof_map, evaluate_maxwell_rwg_basis, &
+        evaluate_maxwell_surface_rt_global_basis
     use fortfem_kinds, only: dp
     implicit none
 
@@ -15,12 +17,15 @@ program test_maxwell_surface_rt_mass
         0.0_dp, 1.0_dp, 0.0_dp, &
         0.0_dp, 0.0_dp, 1.0_dp], [3, 4])
     integer, allocatable :: edge_vertices(:, :), global_dofs(:, :)
+    integer, allocatable :: rwg_edge_triangles(:, :), rwg_edges(:, :)
     integer, allocatable :: transforms(:, :)
     real(dp), allocatable :: coefficients(:), high_mass(:, :)
     real(dp), allocatable :: rt0_mass(:, :), rwg_mass(:, :)
     real(dp), allocatable :: scaled_mass(:, :), scales(:)
-    real(dp) :: quadratic_form, rt0_error, symmetry_error
-    integer :: dof, status
+    real(dp) :: basis_error, centroid(3), divergence, quadratic_form
+    real(dp) :: rt0_error, rt_divergence, rt_value(3), rwg_value(3)
+    real(dp) :: symmetry_error
+    integer :: dof, panel, status
 
     call assemble_maxwell_rwg_mass_matrix( &
         vertices, triangles, 8, rwg_mass, status)
@@ -42,6 +47,31 @@ program test_maxwell_surface_rt_mass
     write (*, "(a,es12.4)") "surface RT0/RWG mass error: ", rt0_error
     call check_condition(rt0_error < 3.0e-12_dp, &
         "Normalized surface RT0 mass equals edge-scaled RWG assembly")
+    call build_maxwell_rwg_surface_space( &
+        vertices, triangles, rwg_edges, rwg_edge_triangles, status)
+    basis_error = 0.0_dp
+    do dof = 1, size(rwg_edges, 2)
+        do panel = 1, 2
+            centroid = sum( &
+                vertices(:, triangles(:, rwg_edge_triangles(panel, dof))), &
+                dim=2)/3.0_dp
+            call evaluate_maxwell_rwg_basis( &
+                vertices, triangles, rwg_edges, rwg_edge_triangles, dof, &
+                rwg_edge_triangles(panel, dof), centroid, rwg_value, &
+                divergence, status)
+            call evaluate_maxwell_surface_rt_global_basis( &
+                vertices, triangles, 0, rwg_edge_triangles(panel, dof), dof, &
+                centroid, rt_value, rt_divergence, status)
+            basis_error = max( &
+                basis_error, maxval(abs( &
+                rt_value - rwg_value/scales(dof))))
+            basis_error = max( &
+                basis_error, abs(rt_divergence - divergence/scales(dof)))
+        end do
+    end do
+    write (*, "(a,es12.4)") "surface RT0/RWG basis error: ", basis_error
+    call check_condition(basis_error < 3.0e-12_dp, &
+        "Global surface RT0 evaluator equals normalized RWG traces")
 
     call assemble_maxwell_surface_rt_mass_matrix( &
         vertices, triangles, 3, 12, high_mass, status)

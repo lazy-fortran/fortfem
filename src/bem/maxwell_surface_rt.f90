@@ -11,6 +11,7 @@ module fortfem_maxwell_surface_rt
     public :: assemble_maxwell_surface_rt_mass_matrix
     public :: build_maxwell_surface_rt_dof_map
     public :: evaluate_maxwell_surface_rt_basis
+    public :: evaluate_maxwell_surface_rt_global_basis
 
 contains
 
@@ -219,5 +220,79 @@ contains
         surface_divergences = reference_divergences/surface_jacobian
         status = 0
     end subroutine evaluate_maxwell_surface_rt_basis
+
+    subroutine evaluate_maxwell_surface_rt_global_basis( &
+            vertices, triangles, degree, panel, global_basis, point, value, &
+            surface_divergence, status)
+        real(dp), intent(in) :: vertices(:, :), point(3)
+        integer, intent(in) :: triangles(:, :), degree, panel, global_basis
+        real(dp), intent(out) :: value(3), surface_divergence
+        integer, intent(out) :: status
+
+        type(triangle_rt_basis_t) :: basis
+        integer, allocatable :: edge_vertices(:, :), global_dofs(:, :)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: divergences(:), values(:, :)
+        real(dp) :: determinant, displacement(3), eta, gram11, gram12
+        real(dp) :: gram22, jacobian, scale, tangent_eta(3), tangent_xi(3), xi
+        integer :: local_dof, local_dof_count
+
+        status = 1
+        value = 0.0_dp
+        surface_divergence = 0.0_dp
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (degree < 0 .or. panel < 1 .or. panel > size(triangles, 2)) return
+        if (any(triangles < 1) .or. any(triangles > size(vertices, 2))) return
+        call initialize_triangle_raviart_thomas(degree, basis, status)
+        if (status /= 0) return
+        call build_maxwell_surface_rt_dof_map( &
+            triangles, degree, edge_vertices, global_dofs, transforms, status)
+        if (status /= 0) return
+        if (global_basis < 1 .or. global_basis > maxval(global_dofs)) return
+        local_dof = 0
+        do local_dof_count = 1, size(global_dofs, 1)
+            if (global_dofs(local_dof_count, panel) /= global_basis) cycle
+            local_dof = local_dof_count
+            exit
+        end do
+        if (local_dof == 0) then
+            status = 2
+            return
+        end if
+        tangent_xi = &
+            vertices(:, triangles(2, panel)) - &
+            vertices(:, triangles(1, panel))
+        tangent_eta = &
+            vertices(:, triangles(3, panel)) - &
+            vertices(:, triangles(1, panel))
+        displacement = point - vertices(:, triangles(1, panel))
+        gram11 = dot_product(tangent_xi, tangent_xi)
+        gram12 = dot_product(tangent_xi, tangent_eta)
+        gram22 = dot_product(tangent_eta, tangent_eta)
+        determinant = gram11*gram22 - gram12*gram12
+        scale = max(1.0_dp, gram11*gram22)
+        if (determinant <= 64.0_dp*epsilon(1.0_dp)*scale) return
+        xi = ( &
+            gram22*dot_product(tangent_xi, displacement) - &
+            gram12*dot_product(tangent_eta, displacement))/determinant
+        eta = ( &
+            gram11*dot_product(tangent_eta, displacement) - &
+            gram12*dot_product(tangent_xi, displacement))/determinant
+        if (xi < -128.0_dp*epsilon(1.0_dp) .or. &
+            eta < -128.0_dp*epsilon(1.0_dp) .or. &
+            xi + eta > 1.0_dp + 256.0_dp*epsilon(1.0_dp)) return
+        jacobian = sqrt(determinant)
+        local_dof_count = triangle_rt_dof_count(basis)
+        allocate( &
+            values(3, local_dof_count), divergences(local_dof_count))
+        call evaluate_maxwell_surface_rt_basis( &
+            basis, xi, eta, tangent_xi, tangent_eta, jacobian, values, &
+            divergences, status)
+        if (status /= 0) return
+        value = real(transforms(local_dof, panel), dp)*values(:, local_dof)
+        surface_divergence = &
+            real(transforms(local_dof, panel), dp)*divergences(local_dof)
+        status = 0
+    end subroutine evaluate_maxwell_surface_rt_global_basis
 
 end module fortfem_maxwell_surface_rt
