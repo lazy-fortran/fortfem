@@ -269,7 +269,9 @@ module fortfem_api
     use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
         solve_elasticity_curved_acoustic_ntd_p1
     use fortfem_scalar_helmholtz_planar_dtn_2d, only: &
-        solve_scalar_helmholtz_planar_dtn_p1
+        solve_scalar_helmholtz_planar_dtn_p1, &
+        solve_scalar_helmholtz_planar_dtn_p1_jvp, &
+        solve_scalar_helmholtz_planar_dtn_p1_vjp
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
     use fortfem_spherical_helmholtz_dtn, only: &
@@ -732,6 +734,8 @@ module fortfem_api
     public :: assemble_planar_helmholtz_dtn_form_jvp
     public :: assemble_planar_helmholtz_dtn_form_vjp
     public :: solve_scalar_helmholtz_planar_dtn_p1
+    public :: solve_scalar_helmholtz_planar_dtn_p1_jvp
+    public :: solve_scalar_helmholtz_planar_dtn_p1_vjp
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
     public :: apply_spherical_helmholtz_dtn
