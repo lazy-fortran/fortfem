@@ -77,3 +77,8 @@ main = "gen_bspline_h1_geometry_products.f90"
 name = "gen_cartesian_pml_products"
 source-dir = "app"
 main = "gen_cartesian_pml_products.f90"
+
+[[executable]]
+name = "gen_planar_helmholtz_dtn_products"
+source-dir = "app"
+main = "gen_planar_helmholtz_dtn_products.f90"

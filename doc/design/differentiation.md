@@ -95,3 +95,10 @@ amplitude. Its reverse product accumulates contributions at shared vertices.
 At the physical/PML interface the active-set branch is intentionally
 piecewise: interior cells have zero stretch derivative, while derivatives in a
 PML layer are valid as long as a perturbation does not cross the interface.
+
+The planar Helmholtz DtN trace operator has analytical trace, wave-number, and
+period JVPs and VJPs. FortSym generates the propagating and evanescent modal
+square-root products, while FortNum's FFT adjoint supplies the dense trace
+reverse product without forming the Fourier matrix. A mode exactly at cutoff
+is rejected by parameter products because the square-root derivative is
+singular there; the primal operator remains defined.
