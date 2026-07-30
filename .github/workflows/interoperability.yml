@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p benchmark-results/freefem
-          version=$(FreeFem++ -nw --version 2>&1 | head -n 1)
+          version=$(dpkg-query -W -f='${Version}' freefem++)
           {
             printf 'solver=FreeFEM\n'
             printf 'version=%s\n' "$version"
