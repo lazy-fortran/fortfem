@@ -39,6 +39,7 @@ module fortfem_api
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_rwg_basis, &
+        integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
@@ -258,6 +259,7 @@ module fortfem_api
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
+    public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
     public :: barycentric_refine_surface_mesh
     public :: evaluate_maxwell_localized_rwg_basis
     public :: build_maxwell_bc_transformation
