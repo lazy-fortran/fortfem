@@ -33,7 +33,8 @@ module fortfem_api
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
-    use fortfem_sphere_curved_panel, only: evaluate_sphere_curved_panel
+    use fortfem_sphere_curved_panel, only: &
+        evaluate_sphere_curved_panel, invert_sphere_curved_panel
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
@@ -259,6 +260,7 @@ module fortfem_api
     public :: generate_torus_surface_mesh
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
+    public :: invert_sphere_curved_panel
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
