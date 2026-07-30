@@ -7,13 +7,94 @@ module fortfem_maxwell_bc_surface
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
     use fortfem_kinds, only: dp
+    use fortfem_maxwell_localized_rwg_surface, only: &
+        evaluate_maxwell_localized_rwg_basis
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
+    use fortfem_maxwell_rwg_surface, only: evaluate_maxwell_rwg_basis
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
     private
 
     public :: build_maxwell_bc_transformation
+    public :: assemble_maxwell_rwg_rbc_pairing
 
 contains
+
+    subroutine assemble_maxwell_rwg_rbc_pairing( &
+            vertices, triangles, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :), rwg_values(:, :)
+        real(dp) :: divergence, jacobian, local_value(3), normal(3), point(3)
+        integer :: basis, local_edge, node, parent, refined_panel, row
+        integer :: test_basis
+
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_panels, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(matrix(size(edge_vertices, 2), size(edge_vertices, 2)))
+        allocate( &
+            bc_values(3, size(edge_vertices, 2)), &
+            rwg_values(3, size(edge_vertices, 2)))
+        matrix = 0.0_dp
+        do refined_panel = 1, size(refined_triangles, 2)
+            parent = (refined_panel - 1)/6 + 1
+            normal = triangle_normal( &
+                refined_vertices(:, refined_triangles(:, refined_panel)))
+            jacobian = 2.0_dp*triangle_area( &
+                refined_vertices(:, refined_triangles(:, refined_panel)))
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    refined_vertices(:, refined_triangles(:, refined_panel)), &
+                    xi(node), eta(node))
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, refined_panel, &
+                        local_edge, point, local_value, divergence, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                rwg_values = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_panels(:, basis) == parent)) cycle
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_panels, &
+                        basis, parent, point, rwg_values(:, basis), divergence, &
+                        status)
+                    if (status /= 0) return
+                end do
+                do test_basis = 1, size(edge_vertices, 2)
+                    do basis = 1, size(edge_vertices, 2)
+                        matrix(test_basis, basis) = matrix(test_basis, basis) + &
+                            jacobian*weights(node)*dot_product( &
+                            cross_product(normal, bc_values(:, test_basis)), &
+                            rwg_values(:, basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_rwg_rbc_pairing
 
     subroutine build_maxwell_bc_transformation( &
             vertices, triangles, refined_vertices, refined_triangles, &
@@ -347,5 +428,40 @@ contains
         end do
         index = 0
     end function find_index
+
+    pure function triangle_normal(points) result(normal)
+        real(dp), intent(in) :: points(3, 3)
+        real(dp) :: normal(3)
+
+        normal = cross_product( &
+            points(:, 2) - points(:, 1), points(:, 3) - points(:, 1))
+        normal = normal/norm2(normal)
+    end function triangle_normal
+
+    pure function triangle_area(points) result(area)
+        real(dp), intent(in) :: points(3, 3)
+        real(dp) :: area
+
+        area = 0.5_dp*norm2(cross_product( &
+            points(:, 2) - points(:, 1), points(:, 3) - points(:, 1)))
+    end function triangle_area
+
+    pure function triangle_point(points, xi, eta) result(point)
+        real(dp), intent(in) :: points(3, 3), xi, eta
+        real(dp) :: point(3)
+
+        point = points(:, 1) + xi*(points(:, 2) - points(:, 1)) + &
+            eta*(points(:, 3) - points(:, 1))
+    end function triangle_point
+
+    pure function cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function cross_product
 
 end module fortfem_maxwell_bc_surface
