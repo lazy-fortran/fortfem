@@ -1,16 +1,83 @@
 module fortfem_maxwell_surface_rt
     !! Arbitrary-order divergence-conforming currents on parametric panels.
     use fortfem_kinds, only: dp
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_triangle_rt_arbitrary_order, only: &
-        evaluate_triangle_raviart_thomas, triangle_rt_basis_t, &
-        triangle_rt_dof_count
+        evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
+        triangle_rt_basis_t, triangle_rt_dof_count
     implicit none
     private
 
+    public :: assemble_maxwell_surface_rt_mass_matrix
     public :: build_maxwell_surface_rt_dof_map
     public :: evaluate_maxwell_surface_rt_basis
 
 contains
+
+    subroutine assemble_maxwell_surface_rt_mass_matrix( &
+            vertices, triangles, degree, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        type(triangle_rt_basis_t) :: basis
+        integer, allocatable :: edge_vertices(:, :), global_dofs(:, :)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: divergences(:), eta(:), values(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: jacobian, tangent_eta(3), tangent_xi(3)
+        integer :: column, global_column, global_row, local_dof_count
+        integer :: node, row, triangle
+
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (degree < 0 .or. quadrature_degree < 0) return
+        if (any(triangles < 1) .or. any(triangles > size(vertices, 2))) return
+        call initialize_triangle_raviart_thomas(degree, basis, status)
+        if (status /= 0) return
+        call build_maxwell_surface_rt_dof_map( &
+            triangles, degree, edge_vertices, global_dofs, transforms, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        local_dof_count = triangle_rt_dof_count(basis)
+        allocate( &
+            matrix(maxval(global_dofs), maxval(global_dofs)), &
+            values(3, local_dof_count), divergences(local_dof_count))
+        matrix = 0.0_dp
+        do triangle = 1, size(triangles, 2)
+            tangent_xi = &
+                vertices(:, triangles(2, triangle)) - &
+                vertices(:, triangles(1, triangle))
+            tangent_eta = &
+                vertices(:, triangles(3, triangle)) - &
+                vertices(:, triangles(1, triangle))
+            jacobian = norm2(vector_cross_product(tangent_xi, tangent_eta))
+            if (jacobian <= tiny(1.0_dp)) return
+            do node = 1, size(weights)
+                call evaluate_maxwell_surface_rt_basis( &
+                    basis, xi(node), eta(node), tangent_xi, tangent_eta, &
+                    jacobian, values, divergences, status)
+                if (status /= 0) return
+                do column = 1, local_dof_count
+                    global_column = global_dofs(column, triangle)
+                    do row = 1, local_dof_count
+                        global_row = global_dofs(row, triangle)
+                        matrix(global_row, global_column) = &
+                            matrix(global_row, global_column) + &
+                            jacobian*weights(node)* &
+                            real( &
+                            transforms(row, triangle)* &
+                            transforms(column, triangle), dp)* &
+                            dot_product(values(:, row), values(:, column))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_surface_rt_mass_matrix
 
     subroutine build_maxwell_surface_rt_dof_map( &
             triangles, degree, edge_vertices, global_dofs, transforms, status)
@@ -107,6 +174,16 @@ contains
             return
         end do
     end function find_surface_edge
+
+    pure function vector_cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function vector_cross_product
 
     subroutine evaluate_maxwell_surface_rt_basis( &
             basis, xi, eta, tangent_xi, tangent_eta, surface_jacobian, &
