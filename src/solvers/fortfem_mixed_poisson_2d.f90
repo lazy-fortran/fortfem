@@ -58,7 +58,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Symbolic RT-DG mixed Poisson solve failed")
-        if (degree < 0 .or. degree > 4 .or. quadrature_degree < 0) return
+        if (degree < 0 .or. quadrature_degree < 0) return
         call compile_vector_form_csc( &
             flux_mass_form, mesh, "RT", degree, quadrature_degree, &
             flux_mass, status)

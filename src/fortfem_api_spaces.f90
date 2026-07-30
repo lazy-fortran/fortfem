@@ -69,7 +69,7 @@ contains
                 space%ndof = mesh%data%n_vertices + mesh%data%n_edges
             end if
         case ("DG", "Discontinuous Lagrange")
-            if (degree >= 0 .and. degree <= 4) then
+            if (degree >= 0) then
                 space%ndof = mesh%data%n_triangles* &
                     (degree + 1)*(degree + 2)/2
             end if
