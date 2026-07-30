@@ -1,0 +1,100 @@
+name: interoperability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+  pull_request:
+    paths:
+      - ".github/workflows/interoperability.yml"
+      - "benchmark/freefem/**"
+      - "src/generated/fortfem_interoperability_oracles.f90"
+      - "test/test_interoperability_manufactured_oracles.f90"
+      - "tools/codegen/app/gen_interoperability_oracles.f90"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/interoperability.yml"
+      - "benchmark/freefem/**"
+      - "src/generated/fortfem_interoperability_oracles.f90"
+      - "test/test_interoperability_manufactured_oracles.f90"
+      - "tools/codegen/app/gen_interoperability_oracles.f90"
+
+permissions:
+  contents: read
+
+jobs:
+  freefem:
+    name: FreeFEM analytical oracles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FreeFEM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends freefem++
+
+      - name: Record runner metadata
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-results/freefem
+          version=$(FreeFem++ -nw --version 2>&1 | head -n 1)
+          {
+            printf 'solver=FreeFEM\n'
+            printf 'version=%s\n' "$version"
+            printf 'runner_image=%s\n' "${ImageOS:-unknown}"
+            printf 'runner_arch=%s\n' "$RUNNER_ARCH"
+            printf 'commit=%s\n' "$GITHUB_SHA"
+          } > benchmark-results/freefem/metadata.txt
+
+      - name: Run Poisson oracle
+        working-directory: benchmark/freefem/poisson-2d
+        run: |
+          set -euo pipefail
+          FreeFem++ -nw poisson_2d.edp
+          mv poisson.csv ../../../benchmark-results/freefem/
+
+      - name: Run Ampere oracle
+        working-directory: benchmark/freefem/curl-curl
+        run: |
+          set -euo pipefail
+          FreeFem++ -nw curl_curl_2d.edp
+          mv ampere.csv ../../../benchmark-results/freefem/
+
+      - name: Validate records
+        run: |
+          python3 - <<'PY'
+          import csv
+          import math
+          from pathlib import Path
+
+          root = Path("benchmark-results/freefem")
+          for name, norm in (("poisson.csv", "h1_error"),
+                             ("ampere.csv", "hcurl_error")):
+              with (root / name).open(newline="", encoding="utf-8") as stream:
+                  rows = list(csv.DictReader(stream))
+              if len(rows) != 5:
+                  raise SystemExit(f"{name}: expected five refinement rows")
+              for row in rows:
+                  for key in ("cells", "dofs", "h", "l2_error", norm,
+                              "assembly_seconds", "solve_seconds",
+                              "total_seconds"):
+                      value = float(row[key])
+                      if not math.isfinite(value) or value < 0.0:
+                          raise SystemExit(
+                              f"{name}: invalid {key}={row[key]}")
+              for key in ("l2_error", norm):
+                  values = [float(row[key]) for row in rows]
+                  if any(fine >= coarse
+                         for coarse, fine in zip(values, values[1:])):
+                      raise SystemExit(f"{name}: {key} is not decreasing")
+          PY
+
+      - name: Upload raw benchmark records
+        uses: actions/upload-artifact@v4
+        with:
+          name: interoperability-freefem-${{ github.sha }}
+          path: benchmark-results/freefem/
+          retention-days: 30

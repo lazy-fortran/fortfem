@@ -1,179 +1,79 @@
-// FreeFEM++ script for 2D curl-curl equation
-// Benchmark reference for FortFEM Nédélec element implementation
+// Independent FreeFEM implementation of the FortFEM interoperability Ampere
+// case. This adapter is original FortFEM project code; FreeFEM is an external
+// runtime and is not vendored.
 //
-// Problem: curl(curl(E)) + E = f in Ω
-//          E × n = 0 on ∂Ω (essential BC)
-//
-// Exact solution: E = [x*y, x^2]
-// curl(E) = 2*x - x = x
-// curl(curl(E)) = d/dy(x) - d/dx(0) = 0
-// So: f = curl(curl(E)) + E = [0, 0] + [x*y, x^2] = [x*y, x^2]
+// curl curl E + E = f on (0,1)^2, with zero tangential trace.
+// E = (sin(pi*y), sin(pi*x))
+// curl E = pi*(cos(pi*x) - cos(pi*y))
+// f = (pi^2 + 1)*E
 
 load "Element_Mixte"
+verbosity = 0;
+cout.precision(17);
 
-// Mesh parameters
-int nx = 20, ny = 20;
-real Lx = 1.0, Ly = 1.0;
+func ExactEx = sin(pi*y);
+func ExactEy = sin(pi*x);
+func ExactCurl = pi*(cos(pi*x) - cos(pi*y));
+func SourceX = (pi*pi + 1.0)*sin(pi*y);
+func SourceY = (pi*pi + 1.0)*sin(pi*x);
 
-// Create rectangular mesh
-mesh Th = square(nx, ny, [Lx*x, Ly*y]);
+ofstream results("ampere.csv");
+results << "mesh_id,cells,dofs,h,l2_error,hcurl_error,"
+        << "assembly_seconds,solve_seconds,total_seconds" << endl;
 
-// RT0Ortho = Nédélec edge elements for H(curl) conforming space
-// RT0 is for H(div), RT0Ortho is for H(curl)
-fespace Vh(Th, RT0Ortho);
-Vh [Ex, Ey], [vx, vy];
+real previousL2 = -1.0;
+real previousHcurl = -1.0;
+for (int level = 0; level < 5; ++level) {
+    int n = 4*2^level;
+    mesh Th = square(n, n, [x, y]);
+    fespace Vh(Th, RT0Ortho);
+    Vh [Ex, Ey], [vx, vy];
 
-// Test with different analytical solutions
-func ExactEx = x*y;
-func ExactEy = x*x;
-func ExactCurl = x;
+    real totalStart = clock();
+    real assemblyStart = clock();
+    varf operatorForm([Ex, Ey], [vx, vy]) =
+        int2d(Th, qforder=8)(
+            (dx(Ey) - dy(Ex))*(dx(vy) - dy(vx))
+            + Ex*vx + Ey*vy
+        )
+        + on(1, 2, 3, 4, Ex=0.0, Ey=0.0);
+    varf loadForm([Ex, Ey], [vx, vy]) =
+        int2d(Th, qforder=8)(SourceX*vx + SourceY*vy)
+        + on(1, 2, 3, 4, Ex=0.0, Ey=0.0);
+    matrix A = operatorForm(Vh, Vh, solver=UMFPACK);
+    real[int] b = loadForm(0, Vh);
+    real assemblySeconds = clock() - assemblyStart;
 
-// Right-hand side: f = curl(curl(E)) + E
-// For our exact solution: curl(curl(E)) = 0, so f = E
-func fx = x*y;
-func fy = x*x;
+    real solveStart = clock();
+    Ex[] = A^-1*b;
+    real solveSeconds = clock() - solveStart;
+    real totalSeconds = clock() - totalStart;
 
-// Bilinear form: a(E,v) = ∫_Ω curl(E)·curl(v) dx + ∫_Ω E·v dx
-// For H(curl), the natural BC is n × E = 0 (tangential component zero)
-// RT0Ortho elements naturally satisfy tangential continuity
-varf curlcurl([Ex, Ey], [vx, vy]) = 
-    int2d(Th)(
-        // curl-curl term: curl(E) * curl(v)
-        (dx(Ey) - dy(Ex)) * (dx(vy) - dy(vx))
-        // mass term: E · v
-        + Ex*vx + Ey*vy
-    )
-    // Essential BC: E_tangent = 0 on boundary
-    // For RT0Ortho, we enforce tangential component = 0
-    + on(1, 2, 3, 4, Ex=0, Ey=0);
+    real l2Squared = int2d(Th, qforder=10)(
+        (Ex - ExactEx)^2 + (Ey - ExactEy)^2
+    );
+    real curlSquared = int2d(Th, qforder=10)(
+        (dx(Ey) - dy(Ex) - ExactCurl)^2
+    );
+    real l2Error = sqrt(l2Squared);
+    real hcurlError = sqrt(l2Squared + curlSquared);
 
-// Linear form: l(v) = ∫_Ω f·v dx
-varf rhs([Ex, Ey], [vx, vy]) = 
-    int2d(Th)(
-        fx*vx + fy*vy
-    )
-    + on(1, 2, 3, 4, Ex=0, Ey=0);
+    results << "unit-square-n" << n << ","
+            << Th.nt << "," << Vh.ndof << "," << 1.0/n << ","
+            << l2Error << "," << hcurlError << ","
+            << assemblySeconds << "," << solveSeconds << ","
+            << totalSeconds << endl;
 
-// Assemble and solve
-matrix A = curlcurl(Vh, Vh);
-real[int] b = rhs(0, Vh);
-
-// Solve the system
-Ex[] = A^-1 * b;
-
-// Compute errors
-fespace Ph(Th, P0);  // Piecewise constant for error computation
-Ph errL2, errHcurl;
-
-// L2 error: ||E - E_exact||_L2
-errL2 = sqrt((Ex - ExactEx)^2 + (Ey - ExactEy)^2);
-
-// H(curl) error: ||curl(E) - curl(E_exact)||_L2  
-Ph curlE = dx(Ey) - dy(Ex);
-Ph curlExact = ExactCurl;
-errHcurl = abs(curlE - curlExact);
-
-real L2norm = sqrt(int2d(Th)(errL2^2));
-real Hcurlnorm = sqrt(int2d(Th)(errHcurl^2));
-
-cout << "Mesh size h = " << 1.0/nx << endl;
-cout << "DOFs = " << Vh.ndof << endl;
-cout << "L2 error = " << L2norm << endl;
-cout << "H(curl) error = " << Hcurlnorm << endl;
-
-// Output for comparison
-{
-    ofstream file("freefem_results.dat");
-    file << "# h L2_error Hcurl_error DOFs" << endl;
-    file << 1.0/nx << " " << L2norm << " " << Hcurlnorm << " " << Vh.ndof << endl;
-}
-
-// Convergence study
-if (true) {  // Set to true to run convergence study
-    cout << "\n=== FreeFEM Convergence Study ===" << endl;
-    cout << "h\t\tL2_error\tH(curl)_error\tDOFs" << endl;
-    
-    ofstream convfile("freefem_convergence.dat");
-    convfile << "# h L2_error Hcurl_error DOFs" << endl;
-    
-    for (int level = 1; level <= 6; level++) {
-        int n = 2 + 2*level;
-        mesh ThConv = square(n, n, [Lx*x, Ly*y]);
-        
-        fespace VhConv(ThConv, RT0Ortho);
-        VhConv [ExConv, EyConv], [vxConv, vyConv];
-        
-        varf curlcurlConv([ExConv, EyConv], [vxConv, vyConv]) = 
-            int2d(ThConv)(
-                (dx(EyConv) - dy(ExConv)) * (dx(vyConv) - dy(vxConv))
-                + ExConv*vxConv + EyConv*vyConv
-            )
-            + on(1, 2, 3, 4, ExConv=0, EyConv=0);
-        
-        varf rhsConv([ExConv, EyConv], [vxConv, vyConv]) = 
-            int2d(ThConv)(
-                fx*vxConv + fy*vyConv
-            )
-            + on(1, 2, 3, 4, ExConv=0, EyConv=0);
-        
-        matrix AConv = curlcurlConv(VhConv, VhConv);
-        real[int] bConv = rhsConv(0, VhConv);
-        ExConv[] = AConv^-1 * bConv;
-        
-        fespace PhConv(ThConv, P0);
-        PhConv errL2Conv = sqrt((ExConv - ExactEx)^2 + (EyConv - ExactEy)^2);
-        PhConv curlEConv = dx(EyConv) - dy(ExConv);
-        PhConv errHcurlConv = abs(curlEConv - ExactCurl);
-        
-        real L2normConv = sqrt(int2d(ThConv)(errL2Conv^2));
-        real HcurlnormConv = sqrt(int2d(ThConv)(errHcurlConv^2));
-        real h = 1.0/n;
-        
-        cout << h << "\t" << L2normConv << "\t" << HcurlnormConv << "\t" << VhConv.ndof << endl;
-        convfile << h << " " << L2normConv << " " << HcurlnormConv << " " << VhConv.ndof << endl;
+    if (previousL2 > 0.0 && l2Error >= previousL2) {
+        cerr << "L2 error did not decrease at n=" << n << endl;
+        exit(2);
     }
-    // convfile closes automatically
-}
-
-// Visualization (disabled for batch mode)
-// plot([Ex, Ey], wait=true, value=true, fill=true, 
-//      cmm="FreeFEM curl-curl solution E=[Ex,Ey]");
-
-// Save solution for comparison
-{
-    ofstream solfile("freefem_solution.dat");
-    solfile << "# x y Ex_exact Ey_exact curl_exact" << endl;
-    for (int i = 0; i < Th.nv; i++) {
-        real xi = Th(i).x;
-        real yi = Th(i).y;
-        solfile << xi << " " << yi << " " 
-                << xi*yi << " " << xi*xi << " " 
-                << xi << endl;
+    if (previousHcurl > 0.0 && hcurlError >= previousHcurl) {
+        cerr << "H(curl) error did not decrease at n=" << n << endl;
+        exit(3);
     }
+    previousL2 = l2Error;
+    previousHcurl = hcurlError;
 }
 
-// Save mesh plot
-plot(Th, cmm="FreeFEM Mesh (20x20)", ps="freefem_curlcurl_mesh.eps");
-
-// Save vector field visualization as PostScript (will be converted to PNG in CI)
-plot([Ex, Ey], value=true, coef=0.1, cmm="FreeFEM Curl-Curl Solution", ps="freefem_curlcurl_solution.eps");
-
-// Save exact solution for comparison
-Vh [ExExact, EyExact];
-ExExact = ExactEx;
-EyExact = ExactEy;
-plot([ExExact, EyExact], value=true, coef=0.1, cmm="Exact Curl-Curl Solution", ps="freefem_curlcurl_exact.eps");
-
-// Save curl field
-fespace Ph(Th, P0);
-Ph curlField = dx(Ey) - dy(Ex);
-plot(curlField, value=true, fill=true, cmm="FreeFEM Curl Field", ps="freefem_curl_field.eps");
-
-cout << "\nFreeFEM reference solution computed successfully!" << endl;
-cout << "Results saved to freefem_results.dat" << endl;
-cout << "Analytical solution saved to freefem_solution.dat" << endl;
-cout << "Plots saved:" << endl;
-cout << "  - Mesh: freefem_curlcurl_mesh.eps" << endl;
-cout << "  - Solution: freefem_curlcurl_solution.eps" << endl;
-cout << "  - Exact: freefem_curlcurl_exact.eps" << endl;
-cout << "  - Curl field: freefem_curl_field.eps" << endl;
+cout << "wrote ampere.csv" << endl;

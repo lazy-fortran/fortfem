@@ -1,91 +1,69 @@
-// FreeFEM++ script for 2D Poisson equation
-// Benchmark reference for FortFEM Poisson 2D implementation
+// Independent FreeFEM implementation of the FortFEM interoperability Poisson
+// case. FreeFEM is an external runtime and is not vendored.
 //
-// Problem: -Δu = f in (0,1)×(0,1)
-//          u = 0 on ∂Ω (Dirichlet BC)
-//
-// Exact solution: u(x,y) = sin(π*x)*sin(π*y)
-// Source term: f(x,y) = 2*π²*sin(π*x)*sin(π*y)
+// -Delta u = f on (0,1)^2, u=0 on the boundary.
+// u = sin(pi*x)*sin(pi*y), f = 2*pi^2*u.
 
-// Exact solution and source term
+verbosity = 0;
+cout.precision(17);
+
 func ExactU = sin(pi*x)*sin(pi*y);
-func Source = 2*pi*pi*sin(pi*x)*sin(pi*y);
+func ExactDx = pi*cos(pi*x)*sin(pi*y);
+func ExactDy = pi*sin(pi*x)*cos(pi*y);
+func Source = 2.0*pi*pi*sin(pi*x)*sin(pi*y);
 
-cout << "\n=== FreeFEM Poisson 2D Convergence Study ===" << endl;
-cout << "h\t\tL2_error\tH1_error\tDOFs" << endl;
+ofstream results("poisson.csv");
+results << "mesh_id,cells,dofs,h,l2_error,h1_error,"
+        << "assembly_seconds,solve_seconds,total_seconds" << endl;
 
-ofstream convfile("freefem_convergence_2d.dat");
-convfile << "# h L2_error H1_error DOFs" << endl;
-
-// Convergence study
-for (int level = 1; level <= 5; level++) {
-    int n = 4 * 2^(level-1);  // 4, 8, 16, 32, 64 elements per side
-    real h = 1.0/n;
-    
-    // Create rectangular mesh on unit square [0,1]×[0,1]
+real previousL2 = -1.0;
+real previousH1 = -1.0;
+for (int level = 0; level < 5; ++level) {
+    int n = 4*2^level;
     mesh Th = square(n, n, [x, y]);
-    
-    // P1 finite element space
     fespace Vh(Th, P1);
     Vh u, v;
-    
-    // Variational form: ∫ ∇u·∇v dx = ∫ f*v dx
-    varf poisson(u, v) = 
-        int2d(Th)( dx(u)*dx(v) + dy(u)*dy(v) )  // stiffness matrix
-        + on(1, 2, 3, 4, u=0);                  // Dirichlet BC on all boundaries
-    
-    varf rhs(u, v) = 
-        int2d(Th)( Source*v )                   // load vector
-        + on(1, 2, 3, 4, u=0);                  // Dirichlet BC
-    
-    // Assemble and solve
-    matrix A = poisson(Vh, Vh);
-    real[int] b = rhs(0, Vh);
-    u[] = A^-1 * b;
-    
-    // Compute errors
-    fespace Ph(Th, P0);  // Piecewise constant for error computation
-    Ph errL2 = abs(u - ExactU);
-    Ph errH1gradx = abs(dx(u) - pi*cos(pi*x)*sin(pi*y));
-    Ph errH1grady = abs(dy(u) - pi*sin(pi*x)*cos(pi*y));
-    
-    real L2norm = sqrt(int2d(Th)(errL2^2));
-    real H1norm = sqrt(int2d(Th)(errL2^2 + errH1gradx^2 + errH1grady^2));
-    
-    cout << h << "\t" << L2norm << "\t" << H1norm << "\t" << Vh.ndof << endl;
-    convfile << h << " " << L2norm << " " << H1norm << " " << Vh.ndof << endl;
+
+    real totalStart = clock();
+    real assemblyStart = clock();
+    varf operatorForm(u, v) =
+        int2d(Th, qforder=8)(dx(u)*dx(v) + dy(u)*dy(v))
+        + on(1, 2, 3, 4, u=0.0);
+    varf loadForm(u, v) =
+        int2d(Th, qforder=8)(Source*v)
+        + on(1, 2, 3, 4, u=0.0);
+    matrix A = operatorForm(Vh, Vh, solver=UMFPACK);
+    real[int] b = loadForm(0, Vh);
+    real assemblySeconds = clock() - assemblyStart;
+
+    real solveStart = clock();
+    u[] = A^-1*b;
+    real solveSeconds = clock() - solveStart;
+    real totalSeconds = clock() - totalStart;
+
+    real l2Squared = int2d(Th, qforder=10)((u - ExactU)^2);
+    real gradientSquared = int2d(Th, qforder=10)(
+        (dx(u) - ExactDx)^2 + (dy(u) - ExactDy)^2
+    );
+    real l2Error = sqrt(l2Squared);
+    real h1Error = sqrt(l2Squared + gradientSquared);
+
+    results << "unit-square-n" << n << ","
+            << Th.nt << "," << Vh.ndof << "," << 1.0/n << ","
+            << l2Error << "," << h1Error << ","
+            << assemblySeconds << "," << solveSeconds << ","
+            << totalSeconds << endl;
+
+    if (previousL2 > 0.0 && l2Error >= previousL2) {
+        cerr << "L2 error did not decrease at n=" << n << endl;
+        exit(2);
+    }
+    if (previousH1 > 0.0 && h1Error >= previousH1) {
+        cerr << "H1 error did not decrease at n=" << n << endl;
+        exit(3);
+    }
+    previousL2 = l2Error;
+    previousH1 = h1Error;
 }
 
-// Create visualization of final solution
-mesh ThFinal = square(32, 32, [x, y]);
-fespace VhFinal(ThFinal, P1);
-VhFinal uFinal, vFinal;
-
-varf poissonFinal(uFinal, vFinal) = 
-    int2d(ThFinal)( dx(uFinal)*dx(vFinal) + dy(uFinal)*dy(vFinal) )
-    + on(1, 2, 3, 4, uFinal=0);
-
-varf rhsFinal(uFinal, vFinal) = 
-    int2d(ThFinal)( Source*vFinal )
-    + on(1, 2, 3, 4, uFinal=0);
-
-matrix AFinal = poissonFinal(VhFinal, VhFinal);
-real[int] bFinal = rhsFinal(0, VhFinal);
-uFinal[] = AFinal^-1 * bFinal;
-
-// Save mesh plot
-plot(ThFinal, cmm="FreeFEM Mesh (32x32)", ps="freefem_poisson_mesh.eps");
-
-// Save solution plot as PostScript (will be converted to PNG in CI)
-plot(uFinal, value=true, fill=true, cmm="FreeFEM Poisson Solution", ps="freefem_poisson_solution.eps");
-
-// Save exact solution plot for comparison
-VhFinal exactSol = ExactU;
-plot(exactSol, value=true, fill=true, cmm="Exact Poisson Solution", ps="freefem_poisson_exact.eps");
-
-cout << "\nFreeFEM Poisson 2D reference computed successfully!" << endl;
-cout << "Results saved to freefem_convergence_2d.dat" << endl;
-cout << "Plots saved:" << endl;
-cout << "  - Mesh: freefem_poisson_mesh.eps" << endl;
-cout << "  - Solution: freefem_poisson_solution.eps" << endl;
-cout << "  - Exact: freefem_poisson_exact.eps" << endl;
+cout << "wrote poisson.csv" << endl;
