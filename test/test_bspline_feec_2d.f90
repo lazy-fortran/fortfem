@@ -3,10 +3,12 @@ program test_bspline_feec_2d
     use fortfem_api, only: &
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
+        build_bspline_feec_3d_operators_csc, &
         evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
         evaluate_nurbs_volume_geometry, map_isogeometric_hcurl, &
         map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_kinds, only: dp
+    use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
 
     real(dp), parameter :: knots_x(8) = [ &
@@ -18,6 +20,7 @@ program test_bspline_feec_2d
     real(dp), allocatable :: gradient_matrix(:, :), coefficients(:)
     real(dp), allocatable :: curl_3d(:, :), divergence_3d(:, :)
     real(dp), allocatable :: gradient_3d(:, :)
+    real(dp), allocatable :: cell_values(:), edge_values(:), face_values(:)
     real(dp), allocatable :: control_points(:, :, :), nurbs_weights(:, :)
     real(dp), allocatable :: volume_controls(:, :, :, :)
     real(dp), allocatable :: volume_weights(:, :, :)
@@ -27,6 +30,8 @@ program test_bspline_feec_2d
     real(dp) :: affine_jacobian(2, 2), determinant
     real(dp) :: reference_vector(2, 1)
     real(dp) :: volume_jacobian(3, 3), volume_point(3)
+    type(csc_t) :: sparse_curl, sparse_divergence, sparse_gradient
+    type(fortsparse_status_t) :: sparse_status
     real(dp) :: points(5), reproduced, x
     integer :: i, status
 
@@ -81,6 +86,21 @@ program test_bspline_feec_2d
         4.0e-14_dp, "3D isogeometric complex satisfies curl grad equals zero")
     call check_condition(maxval(abs(matmul(divergence_3d, curl_3d))) < &
         4.0e-14_dp, "3D isogeometric complex satisfies div curl equals zero")
+
+    call build_bspline_feec_3d_operators_csc( &
+        knots_x, knots_y, knots_y, 2, 2, 2, sparse_gradient, sparse_curl, &
+        sparse_divergence, sparse_status)
+    coefficients = [(sin(real(5*i + 2, dp)), i=1, 80)]
+    edge_values = csc_matvec(sparse_gradient, coefficients)
+    face_values = csc_matvec(sparse_curl, edge_values)
+    call check_condition(sparse_status%code == 0 .and. &
+        maxval(abs(face_values)) < 5.0e-14_dp, &
+        "Sparse 3D spline complex satisfies curl grad equals zero")
+    edge_values = [(cos(real(3*i - 1, dp)), i=1, 184)]
+    face_values = csc_matvec(sparse_curl, edge_values)
+    cell_values = csc_matvec(sparse_divergence, face_values)
+    call check_condition(maxval(abs(cell_values)) < 7.0e-14_dp, &
+        "Sparse 3D spline complex satisfies div curl equals zero")
 
     call make_affine_control_net( &
         knots_x, knots_y, 2, 2, control_points, nurbs_weights)
