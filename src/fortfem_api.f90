@@ -1,4 +1,6 @@
 module fortfem_api
+    use fortfem_assembly_bspline_polar_2d, only: &
+        restrict_bspline_polar_operator_csc
     use fortfem_magnetic_curvilinear_coefficients_2d, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_cartesian_pml_geometry, only: &
@@ -32,6 +34,7 @@ module fortfem_api
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
     use fortfem_bspline_polar, only: &
+        build_bspline_polar_feec_2d_extractions, &
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_h1_extraction
     use fortfem_bspline_multipatch, only: &
@@ -824,6 +827,8 @@ module fortfem_api
     public :: reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     public :: build_bspline_polar_h1_extraction
     public :: build_bspline_polar_feec_2d_operators
+    public :: build_bspline_polar_feec_2d_extractions
+    public :: restrict_bspline_polar_operator_csc
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
     public :: sparse_direct_solve_factored, sparse_direct_free
 
