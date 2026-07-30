@@ -17,11 +17,23 @@ mapfile -t documented < <(
         "$index_file" |
         sort -u
 )
+mapfile -t gallery_cards < <(
+    sed -n 's/^<article class="example-card" data-example="\([^"]*\)">$/\1/p' \
+        "$index_file" |
+        sort -u
+)
 
 if ! diff -u \
         <(printf '%s\n' "${expected[@]}") \
         <(printf '%s\n' "${documented[@]}"); then
     echo "example documentation index does not cover every Fortran example" >&2
+    exit 1
+fi
+
+if ! diff -u \
+        <(printf '%s\n' "${expected[@]}") \
+        <(printf '%s\n' "${gallery_cards[@]}"); then
+    echo "example gallery does not show every Fortran example" >&2
     exit 1
 fi
 

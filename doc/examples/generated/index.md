@@ -19,6 +19,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [laplace_bem_circle_spectrum](laplace_bem_circle_spectrum.html) - Executable FortFEM laplace_bem_circle_spectrum.f90 example.
 - [laplace_symmetric_transmission](laplace_symmetric_transmission.html) - Manufactured transmission pair:
+- [magnetic_curvilinear_metrics](magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [maxwell_open_boundary_comparison](maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
 - [maxwell_torus_curved_scattering](maxwell_torus_curved_scattering.html) - Exact-curved torus PEC scattering with a regularized Maxwell CFIE.
 - [minimal_mesh_example](minimal_mesh_example.html) - Minimal working example of FortFEM mesh generation

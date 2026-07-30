@@ -40,4 +40,21 @@ done < <(
         "$examples_root/generated"
 )
 
+while IFS= read -r relative_plot; do
+    relative_plot=${relative_plot#src=\"}
+    relative_plot=${relative_plot%\"}
+    resolved=$(realpath -m "$examples_root/$relative_plot")
+    case "$resolved" in
+        "$page_root"/media/examples/*) ;;
+        *)
+            echo "gallery preview escapes the gallery media root: $relative_plot" >&2
+            exit 1
+            ;;
+    esac
+    test -s "$resolved"
+done < <(
+    grep -o 'src="\.\./media/examples/[^"]*\.png"' \
+        "$examples_root/index.html"
+)
+
 echo "built GitHub Pages gallery covers ${#expected[@]} executable examples"
