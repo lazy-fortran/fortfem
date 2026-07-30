@@ -1,7 +1,8 @@
 module fortfem_assembly_bspline_2d
     !! Sparse scalar isogeometric assembly on one rational tensor patch.
     use fortfem_bspline_feec, only: &
-        evaluate_bspline_basis, evaluate_nurbs_surface_geometry
+        build_bspline_derivative_matrix, evaluate_bspline_basis, &
+        evaluate_nurbs_surface_geometry
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: &
@@ -11,7 +12,9 @@ module fortfem_assembly_bspline_2d
     private
 
     public :: assemble_bspline_h1_operator_csc
+    public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
+    public :: tensor_weight_2d
 
     abstract interface
         pure subroutine scalar_weight_2d(point, value)
@@ -19,14 +22,103 @@ module fortfem_assembly_bspline_2d
             real(dp), intent(in) :: point(2)
             real(dp), intent(out) :: value
         end subroutine scalar_weight_2d
+
+        pure subroutine tensor_weight_2d(point, value)
+            import :: dp
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: value(2, 2)
+        end subroutine tensor_weight_2d
     end interface
 
 contains
 
+    subroutine build_bspline_feec_2d_operators_csc( &
+            knots_x, knots_y, degree_x, degree_y, gradient, curl, status)
+        real(dp), intent(in) :: knots_x(:), knots_y(:)
+        integer, intent(in) :: degree_x, degree_y
+        type(csc_t), intent(out) :: gradient, curl
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), rows(:)
+        real(dp), allocatable :: derivative_x(:, :), derivative_y(:, :)
+        real(dp), allocatable :: values(:)
+        integer :: column, entry, ix, iy, nx, ny, row, x_component_count
+        integer :: local_status
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sparse isogeometric FEEC incidence assembly failed")
+        call build_bspline_derivative_matrix( &
+            knots_x, degree_x, derivative_x, local_status)
+        if (local_status /= 0) return
+        call build_bspline_derivative_matrix( &
+            knots_y, degree_y, derivative_y, local_status)
+        if (local_status /= 0) return
+        nx = size(derivative_x, 2)
+        ny = size(derivative_y, 2)
+        x_component_count = (nx - 1)*ny
+        allocate(rows(2*(x_component_count + nx*(ny - 1))))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        do iy = 1, ny
+            do ix = 1, nx - 1
+                row = ix + (iy - 1)*(nx - 1)
+                do column = ix, ix + 1
+                    entry = entry + 1
+                    rows(entry) = row
+                    columns(entry) = column + (iy - 1)*nx
+                    values(entry) = derivative_x(ix, column)
+                end do
+            end do
+        end do
+        do iy = 1, ny - 1
+            do ix = 1, nx
+                row = x_component_count + ix + (iy - 1)*nx
+                do column = iy, iy + 1
+                    entry = entry + 1
+                    rows(entry) = row
+                    columns(entry) = ix + (column - 1)*nx
+                    values(entry) = derivative_y(iy, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            x_component_count + nx*(ny - 1), nx*ny, rows(:entry), &
+            columns(:entry), values(:entry), gradient, status)
+        if (status%code /= 0) return
+
+        deallocate(rows, columns, values)
+        allocate(rows(4*(nx - 1)*(ny - 1)))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        do iy = 1, ny - 1
+            do ix = 1, nx - 1
+                row = ix + (iy - 1)*(nx - 1)
+                do column = iy, iy + 1
+                    entry = entry + 1
+                    rows(entry) = row
+                    columns(entry) = ix + (column - 1)*(nx - 1)
+                    values(entry) = -derivative_y(iy, column)
+                end do
+                do column = ix, ix + 1
+                    entry = entry + 1
+                    rows(entry) = row
+                    columns(entry) = x_component_count + &
+                        column + (iy - 1)*nx
+                    values(entry) = derivative_x(ix, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            (nx - 1)*(ny - 1), x_component_count + nx*(ny - 1), &
+            rows, columns, values, curl, status)
+    end subroutine build_bspline_feec_2d_operators_csc
+
     subroutine assemble_bspline_h1_operator_csc( &
             knots_x, knots_y, degree_x, degree_y, control_points, weights, &
             quadrature_order, matrix, status, stiffness_coefficient, &
-            mass_coefficient, stiffness_weight_function, mass_weight_function)
+            mass_coefficient, stiffness_weight_function, mass_weight_function, &
+            stiffness_tensor_function)
         real(dp), intent(in) :: knots_x(:), knots_y(:)
         integer, intent(in) :: degree_x, degree_y, quadrature_order
         real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
@@ -36,6 +128,7 @@ contains
         real(dp), intent(in), optional :: mass_coefficient
         procedure(scalar_weight_2d), optional :: stiffness_weight_function
         procedure(scalar_weight_2d), optional :: mass_weight_function
+        procedure(tensor_weight_2d), optional :: stiffness_tensor_function
 
         integer, allocatable :: columns(:), local_dofs(:), rows(:)
         real(dp), allocatable :: derivative_x(:), derivative_y(:)
@@ -48,6 +141,7 @@ contains
         real(dp) :: inverse(2, 2)
         real(dp) :: mass_weight, physical_weight, stiffness_weight
         real(dp) :: mass_weight_at_point, stiffness_weight_at_point
+        real(dp) :: stiffness_tensor_at_point(2, 2)
         integer :: entry, local_column, local_count, local_row
         integer :: local_status, max_entries, nx, ny, point_x, point_y
         integer :: span_x, span_y
@@ -116,6 +210,8 @@ contains
                             quadrature_weights_y(point_y)
                         stiffness_weight_at_point = stiffness_weight
                         mass_weight_at_point = mass_weight
+                        stiffness_tensor_at_point = reshape( &
+                            [1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], [2, 2])
                         if (present(stiffness_weight_function)) then
                             call stiffness_weight_function( &
                                 geometry_point, stiffness_weight_at_point)
@@ -123,6 +219,10 @@ contains
                         if (present(mass_weight_function)) then
                             call mass_weight_function( &
                                 geometry_point, mass_weight_at_point)
+                        end if
+                        if (present(stiffness_tensor_function)) then
+                            call stiffness_tensor_function( &
+                                geometry_point, stiffness_tensor_at_point)
                         end if
                         do local_column = 1, local_count
                             call local_basis_data( &
@@ -141,7 +241,9 @@ contains
                                 local_matrix(local_row, local_column) = &
                                     local_matrix(local_row, local_column) + &
                                     physical_weight*(stiffness_weight_at_point* &
-                                    dot_product(gradient_row, gradient_column) + &
+                                    dot_product(gradient_row, matmul( &
+                                    stiffness_tensor_at_point, &
+                                    gradient_column)) + &
                                     mass_weight_at_point*basis_row*basis_column)
                             end do
                         end do
