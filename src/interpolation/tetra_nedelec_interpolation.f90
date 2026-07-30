@@ -157,7 +157,7 @@ contains
         integer, intent(in) :: dof_count
         integer :: order
 
-        do order = 1, 4
+        do order = 1, 5
             if (dof_count == order * (order + 2) * (order + 3) / 2) return
         end do
         order = 0

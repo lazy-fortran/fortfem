@@ -76,11 +76,11 @@ end interface
 
 - **Nédélec**: First- and second-kind triangular families through order four,
   with covariant Piola maps and oriented sparse curl-mass forms.
-- **Tetrahedral Nédélec**: First-kind reference bases through order four have
+- **Tetrahedral Nédélec**: First-kind reference bases through order five have
   verified edge, face, and cell moments and curls. The affine covariant map
   and local curl-mass assembly accept all implemented orders. Canonical edge
-  signs and generated face transforms provide orientation-aware global
-  topology and direct `fortsparse` CSC assembly through order four.
+  signs and generated/runtime face transforms provide orientation-aware
+  global topology and direct `fortsparse` CSC assembly through order five.
 - **Raviart--Thomas and BDM**: Triangular families through order four, with
   contravariant Piola maps and oriented sparse divergence-mass forms.
 - Weighted vector forms compile to local matrices and `fortsparse` CSC

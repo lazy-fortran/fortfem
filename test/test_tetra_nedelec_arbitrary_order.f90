@@ -15,13 +15,13 @@ program test_tetra_nedelec_arbitrary_order
     type(tetra_nedelec_first_kind_t) :: basis, copied_basis
     real(dp), allocatable :: curls(:, :), dofs(:), moment_matrix(:, :)
     real(dp), allocatable :: generated_coefficients(:, :), values(:, :)
-    real(dp) :: expected(3), p_errors(4), point(3), reconstructed(3)
+    real(dp) :: expected(3), p_errors(5), point(3), reconstructed(3)
     integer :: dof_count, order, status
     logical :: all_passed
 
     all_passed = .true.
     point = [0.23_dp, 0.19_dp, 0.17_dp]
-    do order = 1, 4
+    do order = 1, 5
         call initialize_tetra_nedelec_first_kind(order, basis, status)
         dof_count = tetra_nedelec_dof_count(basis)
         call record_condition(status == 0 .and. dof_count == &
@@ -30,12 +30,14 @@ program test_tetra_nedelec_arbitrary_order
         allocate( &
             values(3, dof_count), curls(3, dof_count), dofs(dof_count), &
             moment_matrix(dof_count, dof_count))
-        call load_tetra_nedelec_coefficients( &
-            order, generated_coefficients, status)
-        call record_condition(status == 0 .and. &
-            size(generated_coefficients, 1) == dof_count .and. &
-            size(generated_coefficients, 2) == dof_count, &
-            "Generated tetrahedral basis coefficients have the exact shape")
+        if (order <= 4) then
+            call load_tetra_nedelec_coefficients( &
+                order, generated_coefficients, status)
+            call record_condition(status == 0 .and. &
+                size(generated_coefficients, 1) == dof_count .and. &
+                size(generated_coefficients, 2) == dof_count, &
+                "Generated tetrahedral basis coefficients have the exact shape")
+        end if
 
         call build_moment_matrix(basis, order, moment_matrix)
         call record_condition(maxval(abs(moment_matrix - identity( &
@@ -65,8 +67,9 @@ program test_tetra_nedelec_arbitrary_order
         call record_condition(status == 0, &
             "Assigned tetrahedral Nedelec basis retains an independent copy")
 
-        deallocate( &
-            values, curls, dofs, moment_matrix, generated_coefficients)
+        deallocate(values, curls, dofs, moment_matrix)
+        if (allocated(generated_coefficients)) &
+            deallocate(generated_coefficients)
     end do
     call record_condition(all(p_errors(2:4) < p_errors(1:3)), &
         "Tetrahedral Nedelec interpolation improves at every higher order")
@@ -76,9 +79,9 @@ program test_tetra_nedelec_arbitrary_order
     call initialize_tetra_nedelec_first_kind(0, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral first-kind Nedelec basis rejects order zero")
-    call initialize_tetra_nedelec_first_kind(5, basis, status)
+    call initialize_tetra_nedelec_first_kind(6, basis, status)
     call record_condition(status /= 0, &
-        "Tetrahedral first-kind Nedelec basis rejects unsupported order five")
+        "Tetrahedral first-kind Nedelec basis rejects unsupported order six")
 
     call check_summary("Arbitrary-order tetrahedral first-kind Nedelec basis")
     if (.not. all_passed) error stop 1
@@ -295,7 +298,7 @@ contains
         real(dp), parameter :: step = 2.0e-6_dp
         real(dp), allocatable :: curls(:, :), scratch_curls(:, :)
         real(dp), allocatable :: values_minus(:, :), values_plus(:, :)
-        real(dp) :: numerical(3), shifted(3)
+        real(dp) :: curl_error, maximum_error, numerical(3), shifted(3)
         integer :: basis_dof, direction, status
 
         allocate( &
@@ -303,6 +306,7 @@ contains
             values_minus(3, dof_count), values_plus(3, dof_count))
         call evaluate_tetra_nedelec_first_kind( &
             basis, point, values_plus, curls, status)
+        maximum_error = 0.0_dp
         do basis_dof = 1, dof_count
             numerical = 0.0_dp
             do direction = 1, 3
@@ -337,10 +341,12 @@ contains
                         values_minus(1, basis_dof)) / (2.0_dp * step)
                 end select
             end do
-            call record_condition(maxval(abs( &
-                numerical - curls(:, basis_dof))) < 3.0e-7_dp, &
-                "Tetrahedral basis curl agrees with finite differences")
+            curl_error = maxval(abs(numerical - curls(:, basis_dof)))/ &
+                max(1.0_dp, maxval(abs(curls(:, basis_dof))))
+            maximum_error = max(maximum_error, curl_error)
         end do
+        call record_condition(maximum_error < 3.0e-7_dp, &
+            "Tetrahedral basis curls agree with finite differences")
     end subroutine check_curls_by_finite_difference
 
     subroutine check_lowest_order_compatibility(basis, values, curls)

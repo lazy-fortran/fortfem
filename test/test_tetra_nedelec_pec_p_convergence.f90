@@ -14,11 +14,11 @@ program test_tetra_nedelec_pec_p_convergence
 
     type(fortsparse_status_t) :: status
     real(dp), allocatable :: solution(:)
-    real(dp) :: errors(2, 4), vertices(3, 8)
+    real(dp) :: errors(2, 5), vertices(3, 8)
     integer :: order, tetrahedra(4, 6)
 
     call build_cube_mesh(vertices, tetrahedra)
-    do order = 1, 4
+    do order = 1, 5
         call solve_tetra_nedelec_weighted_curl_mass( &
             vertices, tetrahedra, order, paper_reluctivity, magnetic_source, &
             1.0_dp, solution, status, &
@@ -32,12 +32,12 @@ program test_tetra_nedelec_pec_p_convergence
         deallocate(solution)
     end do
 
-    call check_condition(all(errors(:, 2:4) < errors(:, 1:3)), &
+    call check_condition(all(errors(:, 2:5) < errors(:, 1:4)), &
         "PEC magnetic field and curl errors decrease with polynomial order")
-    call check_condition(errors(1, 4) < 3.0e-2_dp, &
-        "Order-four PEC solve reaches the analytical vector field")
-    call check_condition(errors(2, 4) < 3.0e-1_dp, &
-        "Order-four PEC solve reaches the analytical magnetic curl")
+    call check_condition(errors(1, 5) < 1.0e-2_dp, &
+        "Order-five PEC solve reaches the analytical vector field")
+    call check_condition(errors(2, 5) < 1.5e-1_dp, &
+        "Order-five PEC solve reaches the analytical magnetic curl")
     call check_summary("Tetrahedral PEC magnetic p-convergence")
 
 contains

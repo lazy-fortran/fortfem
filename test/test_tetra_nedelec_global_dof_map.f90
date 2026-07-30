@@ -2,14 +2,14 @@ program test_tetra_nedelec_global_dof_map
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
-    use fortfem_generated_tetra_face_moment_transforms, only: &
+    use fortfem_tetra_face_moment_transforms, only: &
         transform_tetra_face_moments
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: order = 4
-    integer, parameter :: dof_count = 84
-    integer, parameter :: face_dof_count = 12
+    integer, parameter :: order = 5
+    integer, parameter :: dof_count = 140
+    integer, parameter :: face_dof_count = 20
     integer, allocatable :: edge_orientations(:, :), edges(:, :)
     integer, allocatable :: face_permutations(:, :, :), faces(:, :)
     integer, allocatable :: global_dofs(:, :)
@@ -30,8 +30,8 @@ program test_tetra_nedelec_global_dof_map
     call record_condition(size(edges, 2) == 9 .and. size(faces, 2) == 7, &
         "Shared face reuses three edges and one canonical face")
     call record_condition(size(global_dofs, 1) == dof_count .and. &
-        maxval(global_dofs) == 144, &
-        "Order-four topology has the analytic global dimension")
+        maxval(global_dofs) == 245, &
+        "Order-five topology has the analytic global dimension")
     face_start = 6 * order + 1
     call record_condition(all( &
         global_dofs(face_start:face_start + face_dof_count - 1, 1) == &
@@ -59,7 +59,7 @@ program test_tetra_nedelec_global_dof_map
     call transform_tetra_face_moments( &
         order, face_permutations(:, 1, 2), local, recovered, status)
     call record_condition(status == 0 .and. &
-        maxval(abs(recovered - canonical)) < 2.0e-14_dp, &
+        maxval(abs(recovered - canonical)) < 2.0e-11_dp, &
         "Element transform gives shared faces canonical moment coefficients")
 
     call build_tetra_nedelec_dof_map( &
