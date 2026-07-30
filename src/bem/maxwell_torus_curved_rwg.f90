@@ -1,6 +1,7 @@
 module fortfem_maxwell_torus_curved_rwg
     !! Surface-Piola RWG basis on exact parametric torus panels.
     use fortfem_kinds, only: dp
+    use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
@@ -9,15 +10,165 @@ module fortfem_maxwell_torus_curved_rwg
     private
 
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_rwg_rbc_pairing( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_parameters(:, :)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :), rwg_values(:, :)
+        real(dp) :: coarse_eta, coarse_jacobian, coarse_xi, divergence
+        real(dp) :: local_value(3)
+        real(dp) :: normal(3), point(3), refined_jacobian, rotated_bc(3)
+        integer :: basis, local_edge, node, parent, refined_panel, row
+        integer :: test_basis
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            rwg_values(3, size(edge_vertices, 2)))
+        matrix = 0.0_dp
+        do refined_panel = 1, size(refined_triangles, 2)
+            parent = (refined_panel - 1)/6 + 1
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, &
+                        refined_parameters, refined_panel, local_edge, &
+                        major_radius, minor_radius, xi(node), eta(node), point, &
+                        local_value, divergence, refined_jacobian, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                call map_refined_torus_point_to_parent( &
+                    refined_parameters(:, refined_triangles(:, refined_panel)), &
+                    parameters(:, triangles(:, parent)), xi(node), eta(node), &
+                    coarse_xi, coarse_eta, status)
+                if (status /= 0) return
+                rwg_values = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == parent)) cycle
+                    call evaluate_maxwell_torus_curved_rwg_basis( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, parent, major_radius, &
+                        minor_radius, coarse_xi, coarse_eta, point, &
+                        rwg_values(:, basis), divergence, coarse_jacobian, status)
+                    if (status /= 0) return
+                end do
+                normal = torus_unit_normal(point, major_radius)
+                do test_basis = 1, size(edge_vertices, 2)
+                    rotated_bc = real_cross_product( &
+                        normal, bc_values(:, test_basis))
+                    do basis = 1, size(edge_vertices, 2)
+                        matrix(test_basis, basis) = &
+                            matrix(test_basis, basis) + &
+                            refined_jacobian*weights(node)*dot_product( &
+                            rotated_bc, rwg_values(:, basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_rwg_rbc_pairing
+
+    pure subroutine evaluate_maxwell_torus_curved_localized_rwg_basis( &
+            vertices, triangles, parameters, panel, local_edge, major_radius, &
+            minor_radius, xi, eta, point, value, surface_divergence, &
+            surface_jacobian, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, xi, eta
+        integer, intent(in) :: triangles(:, :), panel, local_edge
+        real(dp), intent(out) :: point(3), value(3), surface_divergence
+        real(dp), intent(out) :: surface_jacobian
+        integer, intent(out) :: status
+
+        real(dp) :: edge_length, opposite_coordinates(2)
+        real(dp) :: panel_parameters(2, 3), tangent_eta(3), tangent_xi(3)
+        integer :: edge_local_vertices(2), local, opposite
+
+        point = 0.0_dp
+        value = 0.0_dp
+        surface_divergence = 0.0_dp
+        surface_jacobian = 0.0_dp
+        status = 1
+        if (panel < 1 .or. panel > size(triangles, 2)) return
+        if (local_edge < 1 .or. local_edge > 3) return
+        select case (local_edge)
+        case (1)
+            edge_local_vertices = [1, 2]
+            opposite = 3
+        case (2)
+            edge_local_vertices = [3, 1]
+            opposite = 2
+        case (3)
+            edge_local_vertices = [2, 3]
+            opposite = 1
+        end select
+        do local = 1, 3
+            panel_parameters(:, local) = &
+                parameters(:, triangles(local, panel))
+        end do
+        call evaluate_torus_curved_panel( &
+            panel_parameters, major_radius, minor_radius, xi, eta, point, &
+            tangent_xi, tangent_eta, surface_jacobian, status)
+        if (status /= 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge_length = norm2( &
+            vertices(:, triangles(edge_local_vertices(2), panel)) - &
+            vertices(:, triangles(edge_local_vertices(1), panel)))
+        value = edge_length/surface_jacobian*( &
+            (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta)
+        surface_divergence = 2.0_dp*edge_length/surface_jacobian
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_localized_rwg_basis
 
     subroutine assemble_maxwell_torus_curved_efie_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -738,6 +889,101 @@ contains
             end do
         end do
     end function torus_reference_children_touch
+
+    pure subroutine map_refined_torus_point_to_parent( &
+            refined_panel_parameters, parent_panel_parameters, xi, eta, &
+            parent_xi, parent_eta, status)
+        real(dp), intent(in) :: refined_panel_parameters(2, 3)
+        real(dp), intent(in) :: parent_panel_parameters(2, 3), xi, eta
+        real(dp), intent(out) :: parent_xi, parent_eta
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, parent_parameters(2, 3)
+        real(dp) :: refined_parameters(2, 3), right_hand_side(2), target(2)
+
+        parent_xi = 0.0_dp
+        parent_eta = 0.0_dp
+        status = 1
+        parent_parameters = parent_panel_parameters
+        refined_parameters = refined_panel_parameters
+        call unwrap_torus_parameter( &
+            parent_parameters(:, 1), parent_parameters(:, 2))
+        call unwrap_torus_parameter( &
+            parent_parameters(:, 1), parent_parameters(:, 3))
+        call unwrap_torus_parameter( &
+            refined_parameters(:, 1), refined_parameters(:, 2))
+        call unwrap_torus_parameter( &
+            refined_parameters(:, 1), refined_parameters(:, 3))
+        target = refined_parameters(:, 1) + &
+            xi*(refined_parameters(:, 2) - refined_parameters(:, 1)) + &
+            eta*(refined_parameters(:, 3) - refined_parameters(:, 1))
+        call unwrap_torus_parameter(parent_parameters(:, 1), target)
+        right_hand_side = target - parent_parameters(:, 1)
+        determinant = &
+            (parent_parameters(1, 2) - parent_parameters(1, 1))* &
+            (parent_parameters(2, 3) - parent_parameters(2, 1)) - &
+            (parent_parameters(1, 3) - parent_parameters(1, 1))* &
+            (parent_parameters(2, 2) - parent_parameters(2, 1))
+        if (abs(determinant) <= tiny(1.0_dp)) return
+        parent_xi = ( &
+            right_hand_side(1)* &
+            (parent_parameters(2, 3) - parent_parameters(2, 1)) - &
+            right_hand_side(2)* &
+            (parent_parameters(1, 3) - parent_parameters(1, 1)))/determinant
+        parent_eta = ( &
+            (parent_parameters(1, 2) - parent_parameters(1, 1))* &
+            right_hand_side(2) - &
+            (parent_parameters(2, 2) - parent_parameters(2, 1))* &
+            right_hand_side(1))/determinant
+        if (parent_xi < -256.0_dp*epsilon(1.0_dp)) return
+        if (parent_eta < -256.0_dp*epsilon(1.0_dp)) return
+        if (parent_xi + parent_eta > 1.0_dp + &
+            256.0_dp*epsilon(1.0_dp)) return
+        parent_xi = max(0.0_dp, parent_xi)
+        parent_eta = max(0.0_dp, parent_eta)
+        status = 0
+    end subroutine map_refined_torus_point_to_parent
+
+    pure subroutine unwrap_torus_parameter(reference, value)
+        real(dp), intent(in) :: reference(2)
+        real(dp), intent(inout) :: value(2)
+
+        integer :: coordinate
+
+        do coordinate = 1, 2
+            do while (value(coordinate) - reference(coordinate) > &
+                    acos(-1.0_dp))
+                value(coordinate) = value(coordinate) - 2.0_dp*acos(-1.0_dp)
+            end do
+            do while (value(coordinate) - reference(coordinate) < &
+                    -acos(-1.0_dp))
+                value(coordinate) = value(coordinate) + 2.0_dp*acos(-1.0_dp)
+            end do
+        end do
+    end subroutine unwrap_torus_parameter
+
+    pure function torus_unit_normal(point, major_radius) result(normal)
+        real(dp), intent(in) :: point(3), major_radius
+        real(dp) :: normal(3)
+        real(dp) :: cylindrical_radius
+
+        cylindrical_radius = sqrt(point(1)**2 + point(2)**2)
+        normal = [ &
+            (cylindrical_radius - major_radius)*point(1)/cylindrical_radius, &
+            (cylindrical_radius - major_radius)*point(2)/cylindrical_radius, &
+            point(3)]
+        normal = normal/norm2(normal)
+    end function torus_unit_normal
+
+    pure function real_cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function real_cross_product
 
     pure function torus_boundary_green( &
             wave_number, distance, decaying_kernel) result(value)

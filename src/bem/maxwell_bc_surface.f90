@@ -5,7 +5,8 @@ module fortfem_maxwell_bc_surface
     !! element-local RWG basis of the barycentric refinement. The construction
     !! follows the coefficient map of Buffa--Christiansen and Bempp-cl.
     use fortfem_barycentric_surface_refinement, only: &
-        barycentric_refine_surface_mesh
+        barycentric_refine_surface_mesh, &
+        barycentric_refine_torus_surface_mesh
     use fortfem_kinds, only: dp
     use fortfem_maxwell_localized_rwg_surface, only: &
         evaluate_maxwell_localized_rwg_basis
@@ -98,7 +99,8 @@ contains
 
     subroutine build_maxwell_bc_transformation( &
             vertices, triangles, refined_vertices, refined_triangles, &
-            transformation, status, sphere_radius)
+            transformation, status, sphere_radius, torus_parameters, &
+            torus_major_radius, torus_minor_radius, refined_torus_parameters)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), allocatable, intent(out) :: refined_vertices(:, :)
@@ -106,6 +108,11 @@ contains
         real(dp), allocatable, intent(out) :: transformation(:, :)
         integer, intent(out) :: status
         real(dp), optional, intent(in) :: sphere_radius
+        real(dp), optional, intent(in) :: torus_parameters(:, :)
+        real(dp), optional, intent(in) :: torus_major_radius
+        real(dp), optional, intent(in) :: torus_minor_radius
+        real(dp), allocatable, optional, intent(out) :: &
+            refined_torus_parameters(:, :)
 
         integer, allocatable :: edge_panels(:, :), primal_edges(:, :)
         integer, allocatable :: refined_element_edges(:, :)
@@ -114,8 +121,20 @@ contains
         integer :: local_vertex1, local_vertex2
         integer :: upper_minus, upper_plus, lower_minus, lower_plus
         integer :: refined_vertex
+        integer :: torus_argument_count
 
         status = 1
+        torus_argument_count = 0
+        if (present(torus_parameters)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(torus_major_radius)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(torus_minor_radius)) torus_argument_count = &
+            torus_argument_count + 1
+        if (present(refined_torus_parameters)) torus_argument_count = &
+            torus_argument_count + 1
+        if (torus_argument_count /= 0 .and. torus_argument_count /= 4) return
+        if (present(sphere_radius) .and. torus_argument_count == 4) return
         call build_maxwell_rwg_surface_space( &
             vertices, triangles, primal_edges, edge_panels, status)
         if (status /= 0) return
@@ -123,8 +142,16 @@ contains
             status = 2
             return
         end if
-        call barycentric_refine_surface_mesh( &
-            vertices, triangles, refined_vertices, refined_triangles)
+        if (torus_argument_count == 4) then
+            call barycentric_refine_torus_surface_mesh( &
+                vertices, triangles, torus_parameters, torus_major_radius, &
+                torus_minor_radius, refined_vertices, refined_triangles, &
+                refined_torus_parameters, status)
+            if (status /= 0) return
+        else
+            call barycentric_refine_surface_mesh( &
+                vertices, triangles, refined_vertices, refined_triangles)
+        end if
         if (present(sphere_radius)) then
             if (sphere_radius <= 0.0_dp) return
             do refined_vertex = 1, size(refined_vertices, 2)
