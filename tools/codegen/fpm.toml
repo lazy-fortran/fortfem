@@ -29,6 +29,16 @@ source-dir = "app"
 main = "gen_tetra_nedelec_coefficients.f90"
 
 [[executable]]
+name = "gen_tetra_rt_candidates"
+source-dir = "app"
+main = "gen_tetra_rt_candidates.f90"
+
+[[executable]]
+name = "gen_tetra_rt_coefficients"
+source-dir = "app"
+main = "gen_tetra_rt_coefficients.f90"
+
+[[executable]]
 name = "gen_toroidal_coordinates"
 source-dir = "app"
 main = "gen_toroidal_coordinates.f90"

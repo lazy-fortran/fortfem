@@ -99,6 +99,9 @@ module fortfem_api
         assignment(=), evaluate_tetra_discontinuous, &
         initialize_tetra_discontinuous, tetra_discontinuous_dof_count, &
         tetra_discontinuous_t
+    use fortfem_tetra_rt_arbitrary_order, only: &
+        assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
+        tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_global_dof_map, only: &
@@ -276,6 +279,10 @@ module fortfem_api
     public :: initialize_tetra_discontinuous
     public :: tetra_discontinuous_dof_count
     public :: tetra_discontinuous_t
+    public :: evaluate_tetra_rt
+    public :: initialize_tetra_rt
+    public :: tetra_rt_dof_count
+    public :: tetra_rt_t
     public :: map_tetra_nedelec_covariant
     public :: build_tetra_edge_dof_map
     public :: build_tetra_nedelec_basis_transform
