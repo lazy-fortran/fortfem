@@ -159,11 +159,17 @@ end program
   off-grid magnetic-field reconstruction converges toward independently
   differentiated series values
 - **Verified**: First-kind tetrahedral Nédélec reference bases through order
-  four have exact edge, face, and cell moments, polynomial-gradient
-  reproduction, independently differentiated curls, and exact local
-  curl-mass energies on affine cells. Their canonical edge and face
-  orientations, global topology, and sparse curl-mass assembly are verified
-  through order four. Pinned `fortsym` generators own the candidate
-  polynomials, analytical curls, exact basis coefficients, and face transforms
+  five have complete edge, face, and cell moments, polynomial-gradient
+  reproduction, independently differentiated curls, and local curl-mass
+  energies on affine cells. Their canonical edge and face orientations,
+  global topology, and sparse curl-mass assembly are verified through order
+  five. Pinned `fortsym` generators own the candidate polynomials, analytical
+  curls, exact basis coefficients, and face transforms through order four;
+  order five uses the same specification with compact FortNum runtime moment
+  construction.
+- **Verified**: Tetrahedral Raviart--Thomas H(div) and discontinuous L2
+  spaces, physical interpolation, global orientations, sparse assembly,
+  public div-div-plus-mass solves, and symbolic mixed Poisson run through
+  degree five. The RT5--DG5 solve conserves the source on every tetrahedron.
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, and higher-order high-level solves

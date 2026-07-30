@@ -24,6 +24,13 @@ Verified numerical paths:
   order five. The affine covariant map, canonical
   edge and face orientations, global topology, and sparse curl-mass assembly
   accept every implemented order.
+- Tetrahedral Raviart--Thomas H(div) and discontinuous L2 spaces run through
+  degree five. FortSym-generated exact candidate and dual-basis tables remain
+  the source of truth through degree four; degree five evaluates the same
+  polynomial specification and constructs its 189-moment dual basis and
+  face-permutation maps at runtime with FortNum. Piola interpolation attains
+  sixth-order field and divergence convergence, and the symbolic RT5--DG5
+  mixed Poisson solve preserves every cell source balance.
 - Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
   magnetic-paper box centre value at its 12×12×8 reference resolution. The
   reconstructed magnetic field at an off-grid point converges toward an

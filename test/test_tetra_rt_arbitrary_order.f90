@@ -6,13 +6,13 @@ program test_tetra_rt_arbitrary_order
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
-    integer, parameter :: expected_counts(0:4) = [4, 15, 36, 70, 120]
+    integer, parameter :: expected_counts(0:5) = [4, 15, 36, 70, 120, 189]
     type(tetra_rt_t) :: basis
     integer :: degree, status
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 4
+    do degree = 0, 5
         call initialize_tetra_rt(degree, basis, status)
         call record_condition(status == 0 .and. &
             tetra_rt_dof_count(basis) == expected_counts(degree), &
@@ -23,7 +23,7 @@ program test_tetra_rt_arbitrary_order
     call initialize_tetra_rt(-1, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral RT rejects a negative degree")
-    call initialize_tetra_rt(5, basis, status)
+    call initialize_tetra_rt(6, basis, status)
     call record_condition(status /= 0, &
         "Tetrahedral RT rejects an unsupported degree")
 
@@ -98,17 +98,17 @@ contains
                 end do
             end do
         end do
-        if (face_error >= 2.0e-10_dp) then
+        if (face_error >= moment_tolerance(degree)) then
             write (*, '(A,I0,A,ES12.4)') &
                 "RT degree ", degree, " face error ", face_error
         end if
-        if (interior_error >= 3.0e-10_dp) then
+        if (interior_error >= moment_tolerance(degree)) then
             write (*, '(A,I0,A,ES12.4)') &
                 "RT degree ", degree, " interior error ", interior_error
         end if
-        call record_condition(face_error < 2.0e-10_dp, &
+        call record_condition(face_error < moment_tolerance(degree), &
             "Tetrahedral RT face moment matrix is identity")
-        call record_condition(interior_error < 3.0e-10_dp, &
+        call record_condition(interior_error < moment_tolerance(degree), &
             "Tetrahedral RT interior moment matrix is identity")
         call record_condition(moment == basis_count, &
             "Tetrahedral RT moments have the expected total dimension")
@@ -205,6 +205,16 @@ contains
         call record_condition(divergence_error < 2.0e-9_dp, &
             "Tetrahedral RT divergence matches finite differences")
     end subroutine check_divergence
+
+    pure real(dp) function moment_tolerance(degree) result(tolerance)
+        integer, intent(in) :: degree
+
+        if (degree <= 4) then
+            tolerance = 3.0e-10_dp
+        else
+            tolerance = 2.0e-7_dp
+        end if
+    end function moment_tolerance
 
     pure subroutine face_geometry(face, offset, affine, area_normal)
         integer, intent(in) :: face

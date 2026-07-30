@@ -1,6 +1,6 @@
 module fortfem_tetra_rt_global_dof_map
-    use fortfem_generated_tetra_face_moment_transforms, only: &
-        map_tetra_rt_face_basis_to_local
+    use fortfem_tetra_face_moment_transforms, only: &
+        build_tetra_rt_face_basis_to_local_matrix
     use fortfem_kinds, only: dp
     implicit none
 
@@ -29,7 +29,7 @@ contains
         logical :: found
 
         status = 1
-        if (degree < 0 .or. degree > 4) return
+        if (degree < 0 .or. degree > 5) return
         if (size(tetrahedra, 1) /= 4) return
         do tetrahedron = 1, size(tetrahedra, 2)
             if (any(tetrahedra(:, tetrahedron) < 1)) return
@@ -109,12 +109,12 @@ contains
         real(dp), intent(out) :: transform(:, :)
         integer, intent(out) :: status
 
-        real(dp), allocatable :: canonical(:), local(:)
+        real(dp), allocatable :: face_transform(:, :)
         integer :: dof, dof_count, face, face_dof_count, start
 
         transform = 0.0_dp
         status = 1
-        if (degree < 0 .or. degree > 4) return
+        if (degree < 0 .or. degree > 5) return
         dof_count = (degree + 1)*(degree + 2)*(degree + 4)/2
         face_dof_count = (degree + 1)*(degree + 2)/2
         if (size(transform, 1) /= dof_count) return
@@ -124,23 +124,16 @@ contains
         do dof = 1, dof_count
             transform(dof, dof) = 1.0_dp
         end do
-        allocate(canonical(face_dof_count), local(face_dof_count))
+        allocate(face_transform(face_dof_count, face_dof_count))
         do face = 1, 4
             start = (face - 1)*face_dof_count
+            call build_tetra_rt_face_basis_to_local_matrix( &
+                degree, face_permutations(:, face), face_transform, status)
+            if (status /= 0) return
             transform( &
                 start + 1:start + face_dof_count, &
-                start + 1:start + face_dof_count) = 0.0_dp
-            do dof = 1, face_dof_count
-                canonical = 0.0_dp
-                canonical(dof) = 1.0_dp
-                call map_tetra_rt_face_basis_to_local( &
-                    degree, face_permutations(:, face), canonical, local, &
-                    status)
-                if (status /= 0) return
-                transform( &
-                    start + 1:start + face_dof_count, start + dof) = &
-                    face_orientations(face)*local
-            end do
+                start + 1:start + face_dof_count) = &
+                face_orientations(face)*face_transform
         end do
         status = 0
     end subroutine build_tetra_rt_basis_transform

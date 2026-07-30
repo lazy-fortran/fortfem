@@ -13,11 +13,11 @@ program test_tetra_rt_zero_normal_p_convergence
 
     type(fortsparse_status_t) :: status
     real(dp), allocatable :: solution(:)
-    real(dp) :: errors(2, 5), vertices(3, 8)
+    real(dp) :: errors(2, 6), vertices(3, 8)
     integer :: degree, tetrahedra(4, 6)
 
     call build_cube_mesh(vertices, tetrahedra)
-    do degree = 0, 4
+    do degree = 0, 5
         call solve_tetra_rt_div_mass( &
             vertices, tetrahedra, degree, vector_source, &
             1.0_dp, 1.0_dp, solution, status, .true.)
@@ -30,14 +30,14 @@ program test_tetra_rt_zero_normal_p_convergence
         deallocate(solution)
     end do
 
-    call check_condition(all(errors(1, 2:5) < errors(1, 1:4)), &
+    call check_condition(all(errors(1, 2:6) < errors(1, 1:5)), &
         "zero-normal field error decreases with degree")
-    call check_condition(errors(2, 5) < 0.01_dp*errors(2, 1), &
+    call check_condition(errors(2, 6) < 0.01_dp*errors(2, 1), &
         "zero-normal divergence converges by two orders of magnitude")
-    call check_condition(errors(1, 5) < 4.0e-2_dp, &
-        "degree-four solve reaches the analytical Hdiv field")
-    call check_condition(errors(2, 5) < 2.0e-1_dp, &
-        "degree-four solve reaches the analytical divergence")
+    call check_condition(errors(1, 6) < 1.0e-2_dp, &
+        "degree-five solve reaches the analytical Hdiv field")
+    call check_condition(errors(2, 6) < 5.0e-2_dp, &
+        "degree-five solve reaches the analytical divergence")
     call check_summary("Tetrahedral zero-normal Hdiv p-convergence")
 
 contains

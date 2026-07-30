@@ -134,7 +134,7 @@ contains
         integer, intent(in) :: dof_count
         integer :: degree
 
-        do degree = 0, 4
+        do degree = 0, 5
             if (dof_count == &
                 (degree + 1)*(degree + 2)*(degree + 4)/2) return
         end do

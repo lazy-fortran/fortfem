@@ -30,7 +30,7 @@ contains
         basis%degree = -1
         if (allocated(basis%exponents)) deallocate(basis%exponents)
         status = 1
-        if (degree < 0 .or. degree > 4) return
+        if (degree < 0 .or. degree > 5) return
         allocate(basis%exponents(3, (degree + 1)*(degree + 2)* &
             (degree + 3)/6))
         entry = 0

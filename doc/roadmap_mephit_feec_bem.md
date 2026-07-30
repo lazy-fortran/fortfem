@@ -64,7 +64,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | --- | --- | --- |
 | MEPHIT replacement | Lowest-order native Nedelec/RT0 topology, weighted Fourier assembly, retained sparse factors, coefficient transfer, C ABI, and generated 4,880-edge test | Six real mesh fixtures and full 33353 parity data are unavailable; the consumer still retains its legacy FreeFem pipe |
 | Arbitrary-order 2D FEEC | Triangle H1, first/second-kind H(curl), RT/BDM H(div), and DG through order four, with orientations, commuting projections, sparse assembly, convergence tests, public symbolic first-kind H(curl) solves with cellwise anisotropic tensors and explicit-edge mixed tangential/curl-Neumann data through order four, public symbolic second-kind H(curl) solves through order four, public symbolic RT0–RT3 and BDM1–BDM4 H(div) solves, rectangular symbolic RT–DG divergence and Nedelec–DG curl blocks, and a symbolic mixed Poisson solve with optimal RT–DG convergence | General multi-field block composition beyond the implemented differential pairings |
-| Arbitrary-order 3D FEEC | Tetrahedral first-kind Nedelec H(curl) bases, topology, sparse assembly, planar Maxwell DtN traces, and public curl-curl solves through order five; tetrahedral H1, RT H(div), and DG L2 through order four; Piola maps; generated/runtime moment bases and face transforms; commuting grad/curl/div tests; tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves; symbolic rectangular RT–DG divergence and mixed Poisson through RT4–DG4; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl | Extend the runtime moment path beyond order five and to RT/H1; general multi-field block composition |
+| Arbitrary-order 3D FEEC | Tetrahedral first-kind Nedelec H(curl) bases, topology, sparse assembly, planar Maxwell DtN traces, and public curl-curl solves through order five; tetrahedral RT H(div) and DG L2 through degree five; tetrahedral H1 through degree four; Piola maps; generated/runtime moment bases and face transforms; commuting grad/curl/div tests; tensor-weighted curl-curl, RT div-div-plus-mass, and H1 diffusion-reaction/Poisson solves; symbolic rectangular RT–DG divergence and mixed Poisson through RT5–DG5; nonzero H1 Dirichlet elimination; FortSym-oracle H1 p-convergence with exact quartic reproduction; optimal physical-mesh h-convergence for H1, H(curl), H(div), and L2; and the anisotropic `paper_magnetic` box potential/curl | Extend the runtime moment path beyond order five and to H1; general multi-field block composition |
 | Exact nonreflecting maps | FFT planar, circular, and spherical scalar Helmholtz DtN kernels; arbitrary-polygon P1/P0 acoustic displacement-to-pressure NtD, its work-conjugate vector weak form, and a monolithic complex P1 elasticity solve through a resonance-safe combined Calderon equation; biperiodic planar Maxwell strong and weak capacity operators; automatic arbitrary-order tetrahedral Nedelec trace sampling and pulled-back planar capacity blocks; spherical TE/TM Maxwell capacity map; scalar Helmholtz and complex elastic-acoustic weak forms | Maxwell DtN on general curved surfaces |
 | Perfectly matched layers | Transformation-consistent Cartesian scalar and curl-curl tensors; executable P1 scalar Helmholtz slab, triangular 2D, and tetrahedral 3D FortSparse solvers; arbitrary-order tetrahedral Nedelec curl-curl PML element kernels, orientation-aware complex FortSparse assembly, and prescribed-tangential-DOF solves; dimension-independent Cartesian element-layer generation; scalar predicted-reflection oracles and scalar/vector 3D convergence to analytical complex-stretched plane waves | Automatic curved-object enclosure meshing |
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD with monolithic P1 elasticity coupling on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, and remaining paper fixtures |
@@ -554,10 +554,10 @@ its cross-code and production-case validation gate remains open:
   sharing a face it reproduces an exact constant field and zero curl at every
   implemented order.
 - the public tetrahedral RT solver integrates physical vector sources through
-  degree four, applies generated oriented face transforms, and solves
+  degree five, applies generated/runtime oriented face transforms, and solves
   div-div-plus-mass systems with `fortsparse`. The same shared-face test
   reproduces an exact constant field and zero divergence from RT0 through
-  RT4.
+  RT5.
 - tensor-weighted tetrahedral curl assembly, physical vector-load assembly,
   boundary-edge elimination, and sparse reconstruction reproduce pull
   request 9's anisotropic 12-by-12-by-8 magnetic box centre value within its
@@ -714,7 +714,7 @@ missing finite-element family. The three-dimensional RT--DG divergence
 pairing and its signed transpose now compile symbolically as well. A public
 tetrahedral mixed Poisson solve
 composes those blocks with the RT mass form and a quadrature-built DG source.
-RT0--DG0 through RT4--DG4 reproduce every unit-cube tetrahedron's independent
+RT0--DG0 through RT5--DG5 reproduce every unit-cube tetrahedron's independent
 geometric source balance.
 
 ### Phase 3: acoustic DtN and 2D BEM

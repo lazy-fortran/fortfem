@@ -23,7 +23,7 @@ program test_public_tetra_rt_arbitrary_order_solve
     real(dp) :: maximum_error
     integer :: degree
 
-    do degree = 0, 4
+    do degree = 0, 5
         call solve_tetra_rt_div_mass( &
             vertices, tetrahedra, degree, constant_source, &
             1.0_dp, 1.0_dp, solution, status)
@@ -31,13 +31,23 @@ program test_public_tetra_rt_arbitrary_order_solve
         call measure_constant_error(degree, solution, maximum_error)
         write(*, '(a,i0,a,es12.4)') &
             "RT degree ", degree, " maximum error ", maximum_error
-        call check_condition(maximum_error < 5.0e-9_dp, &
+        call check_condition(maximum_error < solve_tolerance(degree), &
             "Public tetrahedral Hdiv solve reproduces a constant field")
         deallocate(solution)
     end do
     call check_summary("Public tetrahedral arbitrary-order RT solve")
 
 contains
+
+    pure real(dp) function solve_tolerance(degree) result(tolerance)
+        integer, intent(in) :: degree
+
+        if (degree <= 4) then
+            tolerance = 5.0e-9_dp
+        else
+            tolerance = 3.0e-7_dp
+        end if
+    end function solve_tolerance
 
     pure subroutine constant_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z

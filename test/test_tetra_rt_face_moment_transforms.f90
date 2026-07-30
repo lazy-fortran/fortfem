@@ -1,6 +1,6 @@
 program test_tetra_rt_face_moment_transforms
     use check, only: check_condition, check_summary
-    use fortfem_generated_tetra_face_moment_transforms, only: &
+    use fortfem_tetra_face_moment_transforms, only: &
         map_tetra_rt_face_basis_to_local, transform_tetra_rt_face_moments
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
@@ -13,7 +13,7 @@ program test_tetra_rt_face_moment_transforms
     logical :: all_passed
 
     all_passed = .true.
-    do degree = 0, 4
+    do degree = 0, 5
         do permutation = 1, 6
             call check_transform(degree, permutations(:, permutation))
         end do
@@ -51,13 +51,13 @@ contains
             degree, permutation, local, recovered, status)
         call record_condition(status == 0 .and. &
             maxval(abs(recovered - canonical)) < 2.0e-12_dp, &
-            "CAS RT transform matches independently integrated face moments")
+            "FortSym/runtime RT transform matches numerical face moments")
 
         call map_tetra_rt_face_basis_to_local( &
             degree, permutation, canonical, recovered, status)
         call record_condition(status == 0 .and. &
             maxval(abs(recovered - local)) < 2.0e-12_dp, &
-            "CAS RT inverse transform recovers local face moments")
+            "FortSym/runtime RT inverse transform recovers local moments")
     end subroutine check_transform
 
     subroutine numerical_moments( &
