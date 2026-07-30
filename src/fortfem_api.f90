@@ -267,7 +267,7 @@ module fortfem_api
     use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
     ! Public arbitrary-order H(curl) solve, including optional homogeneous PEC.
     use fortfem_tetra_nedelec_solver_3d, only: &
-        solve_tetra_nedelec_curl_mass
+        solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t,   &
@@ -445,6 +445,7 @@ module fortfem_api
     public :: solve_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass
+    public :: solve_tetra_nedelec_pml
     public :: solve_tetra_rt_div_mass
     public :: solve_mixed_bc
     public :: solve_neumann

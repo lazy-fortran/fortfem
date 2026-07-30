@@ -1,19 +1,22 @@
 module fortfem_tetra_nedelec_solver_3d
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_csc, &
+        assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_vector_load_order
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_solve_csc, &
         sparse_direct_solve_zero_constrained
     use fortfem_tetra_nedelec_global_dof_map, only: &
         build_tetra_nedelec_dof_map
-    use fortsparse, only: csc_t, FORTSPARSE_INTERNAL_ERROR, &
-        FORTSPARSE_INVALID_MATRIX, fortsparse_status_t, status_set
+    use fortsparse, only: csc_from_triplet, csc_t, csc_z_t, &
+        FORTSPARSE_INTERNAL_ERROR, FORTSPARSE_INVALID_MATRIX, &
+        fortsparse_status_t, sparse_solve_once, status_set
     implicit none
 
     private
 
     public :: solve_tetra_nedelec_curl_mass
+    public :: solve_tetra_nedelec_pml
 
     abstract interface
         pure subroutine vector_source_3d(x, y, z, value)
@@ -24,6 +27,90 @@ module fortfem_tetra_nedelec_solver_3d
     end interface
 
 contains
+
+    subroutine solve_tetra_nedelec_pml( &
+            vertices, tetrahedra, order, stretch, wave_number, volume_load, &
+            dirichlet_dofs, dirichlet_values, solution, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        complex(dp), intent(in) :: stretch(:, :)
+        real(dp), intent(in) :: wave_number
+        complex(dp), intent(in) :: volume_load(:)
+        integer, intent(in) :: dirichlet_dofs(:)
+        complex(dp), intent(in) :: dirichlet_values(:)
+        complex(dp), allocatable, intent(out) :: solution(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: matrix, constrained_matrix
+        type(fortsparse_status_t) :: sparse_status
+        complex(dp), allocatable :: right_hand_side(:), values(:)
+        integer, allocatable :: columns(:), rows(:)
+        logical, allocatable :: constrained(:)
+        integer :: column, constraint, entry, kept_entry, row
+
+        status = 1
+        if (allocated(solution)) deallocate(solution)
+        if (size(dirichlet_dofs) /= size(dirichlet_values)) return
+        call assemble_tetra_nedelec_pml_csc( &
+            vertices, tetrahedra, order, stretch, wave_number, matrix, &
+            sparse_status)
+        if (sparse_status%code /= 0) return
+        if (size(volume_load) /= matrix%nrow) return
+        if (any(dirichlet_dofs < 1) .or. &
+            any(dirichlet_dofs > matrix%nrow)) return
+        allocate(constrained(matrix%nrow))
+        constrained = .false.
+        do constraint = 1, size(dirichlet_dofs)
+            if (constrained(dirichlet_dofs(constraint))) return
+            constrained(dirichlet_dofs(constraint)) = .true.
+        end do
+        allocate(right_hand_side(matrix%nrow))
+        right_hand_side = volume_load
+        do constraint = 1, size(dirichlet_dofs)
+            column = dirichlet_dofs(constraint)
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                right_hand_side(row) = right_hand_side(row) - &
+                    matrix%val(entry)*dirichlet_values(constraint)
+            end do
+        end do
+
+        allocate(rows(matrix%nnz + size(dirichlet_dofs)))
+        allocate(columns(size(rows)), values(size(rows)))
+        kept_entry = 0
+        do column = 1, matrix%ncol
+            if (constrained(column)) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                kept_entry = kept_entry + 1
+                rows(kept_entry) = row
+                columns(kept_entry) = column
+                values(kept_entry) = matrix%val(entry)
+            end do
+        end do
+        do constraint = 1, size(dirichlet_dofs)
+            kept_entry = kept_entry + 1
+            row = dirichlet_dofs(constraint)
+            rows(kept_entry) = row
+            columns(kept_entry) = row
+            values(kept_entry) = cmplx(1.0_dp, 0.0_dp, dp)
+            right_hand_side(row) = dirichlet_values(constraint)
+        end do
+        call csc_from_triplet( &
+            matrix%nrow, matrix%ncol, rows(:kept_entry), &
+            columns(:kept_entry), values(:kept_entry), constrained_matrix, &
+            sparse_status)
+        if (sparse_status%code /= 0) return
+        allocate(solution(matrix%nrow))
+        call sparse_solve_once( &
+            constrained_matrix, right_hand_side, solution, sparse_status)
+        if (sparse_status%code /= 0) then
+            status = 2
+            return
+        end if
+        status = 0
+    end subroutine solve_tetra_nedelec_pml
 
     subroutine solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, source, curl_coefficient, &
