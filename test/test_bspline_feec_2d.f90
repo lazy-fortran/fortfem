@@ -1,0 +1,74 @@
+program test_bspline_feec_2d
+    use check, only: check_condition, check_summary
+    use fortfem_api, only: &
+        build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
+        evaluate_bspline_basis
+    use fortfem_kinds, only: dp
+    implicit none
+
+    real(dp), parameter :: knots_x(8) = [ &
+        0.0_dp, 0.0_dp, 0.0_dp, 0.35_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
+    real(dp), parameter :: knots_y(7) = [ &
+        0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
+    real(dp), allocatable :: basis(:), curl_matrix(:, :)
+    real(dp), allocatable :: derivative(:), derivative_matrix(:, :)
+    real(dp), allocatable :: gradient_matrix(:, :), coefficients(:)
+    real(dp) :: points(5), reproduced, x
+    integer :: i, status
+
+    points = [0.0_dp, 0.13_dp, 0.35_dp, 0.82_dp, 1.0_dp]
+    do i = 1, size(points)
+        x = points(i)
+        call evaluate_bspline_basis( &
+            knots_x, 2, x, basis, derivative, status)
+        call check_condition(status == 0 .and. &
+            abs(sum(basis) - 1.0_dp) < 3.0e-14_dp, &
+            "B-splines form a partition of unity")
+        allocate(coefficients(size(basis)))
+        coefficients = greville_abscissae(knots_x, 2)
+        reproduced = dot_product(coefficients, basis)
+        call check_condition(abs(reproduced - x) < 3.0e-14_dp, &
+            "Quadratic B-splines reproduce the coordinate exactly")
+        call check_condition(abs(dot_product(coefficients, derivative) - &
+            1.0_dp) < 2.0e-13_dp, &
+            "Analytical B-spline derivatives reproduce a unit gradient")
+        deallocate(basis, derivative, coefficients)
+    end do
+
+    call build_bspline_derivative_matrix( &
+        knots_x, 2, derivative_matrix, status)
+    coefficients = greville_abscissae(knots_x, 2)
+    call check_condition(status == 0 .and. maxval(abs( &
+        matmul(derivative_matrix, coefficients) - 1.0_dp)) < 3.0e-14_dp, &
+        "Spline coefficient derivative differentiates the coordinate exactly")
+
+    call build_bspline_feec_2d_operators( &
+        knots_x, knots_y, 2, 2, gradient_matrix, curl_matrix, status)
+    call check_condition(status == 0 .and. &
+        all(shape(gradient_matrix) == [31, 20]) .and. &
+        all(shape(curl_matrix) == [12, 31]), &
+        "Tensor-product spline de Rham operators have exact dimensions")
+    call check_condition(maxval(abs(matmul( &
+        curl_matrix, gradient_matrix))) < 3.0e-14_dp, &
+        "Tensor-product spline complex satisfies curl grad equals zero")
+    call check_condition(maxval(abs(matmul(gradient_matrix, &
+        [(1.0_dp, i=1, size(gradient_matrix, 2))]))) < 3.0e-14_dp, &
+        "Isogeometric gradient annihilates constants")
+
+    call check_summary("Structure-preserving 2D B-spline FEEC")
+
+contains
+
+    pure function greville_abscissae(knots, degree) result(points)
+        real(dp), intent(in) :: knots(:)
+        integer, intent(in) :: degree
+        real(dp), allocatable :: points(:)
+        integer :: basis
+
+        allocate(points(size(knots) - degree - 1))
+        do basis = 1, size(points)
+            points(basis) = sum(knots(basis + 1:basis + degree))/real(degree, dp)
+        end do
+    end function greville_abscissae
+
+end program test_bspline_feec_2d
