@@ -31,7 +31,7 @@ program test_planar_nedelec_maxwell_dtn
     if (status /= 0) error stop "structured tetrahedral mesh failed"
     weight = norm2(periods(:, 1))*norm2(periods(:, 2))/real(nx*ny, dp)
 
-    do order = 1, 5
+    do order = 1, 6
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, 1.0_dp, 1.0_dp, &
             coefficients, sparse_status)
