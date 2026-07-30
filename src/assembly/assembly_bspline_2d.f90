@@ -26,6 +26,7 @@ module fortfem_assembly_bspline_2d
     public :: assemble_bspline_toroidal_fourier_laplacian_csc
     public :: assemble_bspline_poloidal_bracket_csc
     public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_bspline_toroidal_poloidal_bracket_jvp
     public :: apply_bspline_jorek_flux_rhs
     public :: apply_bspline_jorek_flux_jvp
     public :: advance_bspline_jorek_poloidal_flux_midpoint
@@ -256,6 +257,51 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_bspline_toroidal_poloidal_bracket
+
+    subroutine apply_bspline_toroidal_poloidal_bracket_jvp( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, advecting_coefficients, transported_coefficients, &
+            advecting_direction, transported_direction, quadrature_order, &
+            jvp, status, bracket_weight_function)
+        !! Exact directional derivative of the bilinear Fourier bracket.
+        real(dp), intent(in) :: knots_r(:), knots_z(:)
+        integer, intent(in) :: degree_r, degree_z, quadrature_order
+        real(dp), intent(in) :: control_points(:, :, :), weights(:, :)
+        integer, intent(in) :: modes(:)
+        complex(dp), intent(in) :: advecting_coefficients(:, :)
+        complex(dp), intent(in) :: transported_coefficients(:, :)
+        complex(dp), intent(in) :: advecting_direction(:, :)
+        complex(dp), intent(in) :: transported_direction(:, :)
+        complex(dp), allocatable, intent(out) :: jvp(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        procedure(scalar_weight_2d), optional :: bracket_weight_function
+
+        complex(dp), allocatable :: advecting_action(:, :)
+        complex(dp), allocatable :: transported_action(:, :)
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Toroidal isogeometric bracket JVP failed")
+        if (any(shape(advecting_coefficients) /= &
+            shape(transported_coefficients))) return
+        if (any(shape(advecting_coefficients) /= &
+            shape(advecting_direction))) return
+        if (any(shape(advecting_coefficients) /= &
+            shape(transported_direction))) return
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, advecting_direction, transported_coefficients, &
+            quadrature_order, advecting_action, status, &
+            bracket_weight_function)
+        if (status%code /= 0) return
+        call apply_bspline_toroidal_poloidal_bracket( &
+            knots_r, knots_z, degree_r, degree_z, control_points, weights, &
+            modes, advecting_coefficients, transported_direction, &
+            quadrature_order, transported_action, status, &
+            bracket_weight_function)
+        if (status%code /= 0) return
+        jvp = advecting_action + transported_action
+    end subroutine apply_bspline_toroidal_poloidal_bracket_jvp
 
     subroutine apply_bspline_jorek_flux_rhs( &
             knots_r, knots_z, degree_r, degree_z, control_points, weights, &
