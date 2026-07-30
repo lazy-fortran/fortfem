@@ -1,6 +1,8 @@
 program test_bspline_h1_sparse_assembly
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_bspline_h1_operator_csc
+    use fortfem_api, only: &
+        assemble_bspline_h1_operator_csc, &
+        build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
@@ -9,10 +11,12 @@ program test_bspline_h1_sparse_assembly
         0.0_dp, 0.0_dp, 0.0_dp, 0.35_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     real(dp), parameter :: knots_y(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
+    type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
     type(csc_t) :: mass, stiffness, weighted_stiffness
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
-    real(dp), allocatable :: product(:), weights(:, :), x_points(:), y_points(:)
+    real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
+    real(dp), allocatable :: x_points(:), y_points(:)
     real(dp) :: energy, integral
     integer :: ix, iy
 
@@ -66,6 +70,29 @@ program test_bspline_h1_sparse_assembly
     call check_condition(abs(energy - log(2.0_dp)) < 2.0e-11_dp, &
         "Cylindrical 1/R spline diffusion matches analytical log(2) energy")
 
+    call assemble_bspline_h1_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, anisotropic, &
+        sparse_status, stiffness_coefficient=1.0_dp, mass_coefficient=0.0_dp, &
+        stiffness_tensor_function=constant_anisotropy)
+    do iy = 1, size(y_points)
+        coefficients(1 + (iy - 1)*size(x_points): &
+            iy*size(x_points)) = 1.0_dp + x_points + 2.0_dp*y_points(iy)
+    end do
+    product = csc_matvec(anisotropic, coefficients)
+    energy = dot_product(coefficients, product)
+    call check_condition(abs(energy - 14.0_dp) < 3.0e-11_dp, &
+        "Anisotropic spline diffusion reproduces exact tensor energy")
+
+    call build_bspline_feec_2d_operators_csc( &
+        knots_x, knots_y, 2, 2, gradient_incidence, curl_incidence, &
+        sparse_status)
+    coefficients = [(sin(real(3*ix + 1, dp)), ix=1, size(coefficients))]
+    edge_values = csc_matvec(gradient_incidence, coefficients)
+    product = csc_matvec(curl_incidence, edge_values)
+    call check_condition(sparse_status%code == 0 .and. &
+        maxval(abs(product)) < 4.0e-14_dp, &
+        "FortSparse isogeometric incidence satisfies curl grad equals zero")
+
     call check_summary("Sparse isogeometric H1 assembly")
 
 contains
@@ -88,5 +115,14 @@ contains
 
         value = 1.0_dp/point(1)
     end subroutine one_over_radius
+
+    pure subroutine constant_anisotropy(point, value)
+        real(dp), intent(in) :: point(2)
+        real(dp), intent(out) :: value(2, 2)
+
+        value = reshape([2.0_dp, 0.0_dp, 0.0_dp, 3.0_dp], [2, 2])
+        associate (unused => point)
+        end associate
+    end subroutine constant_anisotropy
 
 end program test_bspline_h1_sparse_assembly

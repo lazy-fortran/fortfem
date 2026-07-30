@@ -180,7 +180,8 @@ module fortfem_api
         evaluate_nurbs_surface_geometry, map_isogeometric_h1_gradient, &
         map_isogeometric_hcurl, map_isogeometric_hdiv, map_isogeometric_l2
     use fortfem_assembly_bspline_2d, only: &
-        assemble_bspline_h1_operator_csc, scalar_weight_2d
+        assemble_bspline_h1_operator_csc, &
+        build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_maxwell_efie_rwg_3d, only: &
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_plane_wave_rhs_rwg_3d, &
@@ -505,7 +506,9 @@ module fortfem_api
     public :: map_isogeometric_hdiv
     public :: map_isogeometric_l2
     public :: assemble_bspline_h1_operator_csc
+    public :: build_bspline_feec_2d_operators_csc
     public :: scalar_weight_2d
+    public :: tensor_weight_2d
     public :: evaluate_maxwell_surface_rt_basis
     public :: evaluate_maxwell_surface_rt_global_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
