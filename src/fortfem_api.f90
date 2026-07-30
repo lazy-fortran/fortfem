@@ -42,6 +42,9 @@ module fortfem_api
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
     use fortfem_structured_tetra_box_mesh, only: &
         generate_structured_tetra_box_mesh
+    use fortfem_planar_nedelec_maxwell_dtn, only: &
+        assemble_planar_nedelec_maxwell_dtn_form, &
+        build_planar_nedelec_trace_sampling
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
@@ -544,6 +547,8 @@ module fortfem_api
     public :: apply_planar_helmholtz_dtn
     public :: apply_planar_maxwell_dtn
     public :: assemble_planar_maxwell_dtn_form
+    public :: assemble_planar_nedelec_maxwell_dtn_form
+    public :: build_planar_nedelec_trace_sampling
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
     public :: solve_elasticity_planar_acoustic_dtn_p1
