@@ -44,8 +44,10 @@ module fortfem_api
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
+        assemble_maxwell_bc_potential_operators_3d, &
         assemble_maxwell_bc_scalar_potential_3d, &
-        build_maxwell_bc_panel_divergence
+        assemble_maxwell_efie_bc_3d, build_maxwell_bc_panel_divergence, &
+        build_maxwell_bc_to_refined_rwg
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
@@ -244,7 +246,10 @@ module fortfem_api
     public :: evaluate_maxwell_magnetic_field_rwg_3d
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
+    public :: assemble_maxwell_bc_potential_operators_3d
+    public :: assemble_maxwell_efie_bc_3d
     public :: build_maxwell_bc_panel_divergence
+    public :: build_maxwell_bc_to_refined_rwg
     public :: cartesian_to_toroidal
     public :: toroidal_point_to_cartesian
     public :: toroidal_vector_to_cartesian
