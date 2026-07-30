@@ -3,7 +3,8 @@ module fortfem_api_plot
     use fortfem_api_types, only: function_t, vector_function_t, mesh_t
     use fortfem_api_plot_interpolation, only: compute_scalar_plot_grid, &
         compute_vector_plot_grid
-    use fortfem_api_plot_mesh, only: prepare_mesh_plot, save_mesh_figure
+    use fortfem_api_plot_mesh, only: prepare_mesh_plot, save_mesh_figure, &
+        build_mesh_edge_path
     implicit none
 
     private
@@ -149,9 +150,8 @@ contains
         character(len=*), intent(in) :: cmap
         character(len=*), intent(in) :: output_filename
 
-        real(dp) :: x_edges(2), y_edges(2)
+        real(dp), allocatable :: x_edges(:), y_edges(:)
         real(dp), parameter :: black(3) = [0.0_dp, 0.0_dp, 0.0_dp]
-        integer :: v1, v2, e
 
         call figure()
         call plot_title(trim(title_text))
@@ -163,17 +163,9 @@ contains
             call uh%space%mesh%data%build_connectivity()
         end if
 
-        do e = 1, uh%space%mesh%data%n_edges
-            v1 = uh%space%mesh%data%edges(1, e)
-            v2 = uh%space%mesh%data%edges(2, e)
-
-            x_edges(1) = uh%space%mesh%data%vertices(1, v1)
-            x_edges(2) = uh%space%mesh%data%vertices(1, v2)
-            y_edges(1) = uh%space%mesh%data%vertices(2, v1)
-            y_edges(2) = uh%space%mesh%data%vertices(2, v2)
-
-            call add_plot(x_edges, y_edges, color=black)
-        end do
+        call build_mesh_edge_path(uh%space%mesh%data%vertices, &
+            uh%space%mesh%data%edges, x_edges, y_edges)
+        call add_plot(x_edges, y_edges, color=black)
 
         call savefig(trim(output_filename))
 

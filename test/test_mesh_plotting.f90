@@ -49,6 +49,7 @@ contains
 
     subroutine test_quad_mesh_plot()
         character(len=*), parameter :: test_name = "Quadrilateral Mesh Plot"
+        type(figure_t) :: fig
         type(mesh_t) :: mesh
 
         call start_test(test_name)
@@ -58,6 +59,11 @@ contains
         write(*,*) "  Testing quadrilateral mesh plotting..."
         call plot(mesh, filename="build/test_quad_mesh.png", &
             title="Structured Quad Mesh")
+        call prepare_mesh_plot(mesh, fig, .false., "Structured Quad Mesh")
+        if (.not. has_complete_edge_path(fig, mesh)) then
+            write (*, *) "  ✗ quadrilateral edges were truncated"
+            return
+        end if
         write(*,*) "  ✓ plot(quad mesh) works"
 
         call end_test()
@@ -65,6 +71,7 @@ contains
 
     subroutine test_mixed_mesh_plot()
         character(len=*), parameter :: test_name = "Mixed Mesh Plot"
+        type(figure_t) :: fig
         type(mesh_t) :: tri_mesh, quad_mesh, mixed_mesh
         integer :: n_vertices, i
 
@@ -102,6 +109,11 @@ contains
         write(*,*) "  Testing mixed tri/quad mesh plotting..."
         call plot(mixed_mesh, filename="build/test_mixed_mesh.png", &
             title="Mixed Tri/Quad Mesh")
+        call prepare_mesh_plot(mixed_mesh, fig, .false., "Mixed Mesh")
+        if (.not. has_complete_edge_path(fig, mixed_mesh)) then
+            write (*, *) "  ✗ mixed triangle/quadrilateral edges were truncated"
+            return
+        end if
         write(*,*) "  ✓ plot(mixed mesh) works"
 
         call end_test()
@@ -141,27 +153,39 @@ contains
     end subroutine
 
     subroutine test_mesh_edges_share_one_color()
-        character(len=*), parameter :: test_name = "Uniform Mesh Edge Color"
+        character(len=*), parameter :: test_name = "Complete Mesh Edge Path"
         type(figure_t) :: fig
         type(mesh_t) :: mesh
-        integer :: triangle
+        real(dp), parameter :: tolerance = 64.0_dp*epsilon(1.0_dp)
 
         call start_test(test_name)
-        mesh = unit_square_mesh(4)
+        mesh = unit_square_mesh(20)
         call prepare_mesh_plot(mesh, fig, .false., "Uniform mesh")
-        if (fig%plot_count /= mesh%data%n_triangles) then
-            write (*, *) "  ✗ one wireframe path is required per triangle"
+        if (fig%plot_count /= 1) then
+            write (*, *) "  ✗ the wireframe must use one complete mesh artist"
             return
         end if
-        do triangle = 2, fig%plot_count
-            if (any(abs(fig%plots(triangle)%color - fig%plots(1)%color) > &
-                64.0_dp*epsilon(1.0_dp))) then
-                write (*, *) "  ✗ mesh edges must not cycle through line colors"
-                return
-            end if
-        end do
+        if (size(fig%plots(1)%x) /= 3*mesh%data%n_edges) then
+            write (*, *) "  ✗ every mesh edge must be retained in the path"
+            return
+        end if
+        if (maxval(fig%plots(1)%y, mask=fig%plots(1)%y == &
+            fig%plots(1)%y) < 1.0_dp - tolerance) then
+            write (*, *) "  ✗ the final/top mesh edges were truncated"
+            return
+        end if
         call end_test()
     end subroutine test_mesh_edges_share_one_color
+
+    logical function has_complete_edge_path(fig, mesh)
+        type(figure_t), intent(in) :: fig
+        type(mesh_t), intent(in) :: mesh
+
+        has_complete_edge_path = fig%plot_count == 1
+        if (.not. has_complete_edge_path) return
+        has_complete_edge_path = &
+            size(fig%plots(1)%x) == 3*mesh%data%n_edges
+    end function has_complete_edge_path
 
     ! Test framework helpers
     subroutine start_test(test_name)

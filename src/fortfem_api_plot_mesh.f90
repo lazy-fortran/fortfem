@@ -1,4 +1,5 @@
 module fortfem_api_plot_mesh
+    use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use fortfem_kinds, only: dp
     use fortfem_api_types, only: mesh_t
     use fortplot_figure, only: figure_t
@@ -8,6 +9,7 @@ module fortfem_api_plot_mesh
 
     public :: prepare_mesh_plot
     public :: save_mesh_figure
+    public :: build_mesh_edge_path
 
 contains
 
@@ -17,8 +19,7 @@ contains
         logical, intent(in) :: labels
         character(len=*), intent(in) :: title_text
 
-        real(dp), allocatable :: x_tri(:), y_tri(:)
-        integer :: ntri_plot
+        real(dp), allocatable :: x_edges(:), y_edges(:)
         real(dp) :: x_min, x_max, y_min, y_max, margin
 
         x_min = minval(mesh%data%vertices(1, :))
@@ -29,14 +30,14 @@ contains
 
         call fig%initialize()
 
-        if (.not. allocated(mesh%data%triangles)) then
+        if (.not. allocated(mesh%data%edges)) then
             call mesh%data%build_connectivity()
         end if
 
-        allocate (x_tri(4), y_tri(4))
-
-        ntri_plot = min(mesh%data%n_triangles, fig%state%max_plots)
-        call add_mesh_triangles_to_figure(mesh, fig, ntri_plot, x_tri, y_tri)
+        call build_mesh_edge_path( &
+            mesh%data%vertices, mesh%data%edges, x_edges, y_edges)
+        call fig%add_plot( &
+            x_edges, y_edges, color=[0.12_dp, 0.31_dp, 0.45_dp])
 
         call fig%set_xlabel("x")
         call fig%set_ylabel("y")
@@ -45,35 +46,28 @@ contains
         call fig%set_xlim(x_min - margin, x_max + margin)
         call fig%set_ylim(y_min - margin, y_max + margin)
 
-        deallocate (x_tri, y_tri)
+        deallocate (x_edges, y_edges)
     end subroutine prepare_mesh_plot
 
-    subroutine add_mesh_triangles_to_figure(mesh, fig, ntri_plot, x_tri, y_tri)
-        type(mesh_t), intent(in) :: mesh
-        type(figure_t), intent(inout) :: fig
-        integer, intent(in) :: ntri_plot
-        real(dp), intent(inout) :: x_tri(:), y_tri(:)
+    pure subroutine build_mesh_edge_path(vertices, edges, x_path, y_path)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: edges(:, :)
+        real(dp), allocatable, intent(out) :: x_path(:), y_path(:)
 
-        integer :: t, v1, v2, v3
+        real(dp) :: separator
+        integer :: edge, offset
 
-        do t = 1, ntri_plot
-            v1 = mesh%data%triangles(1, t)
-            v2 = mesh%data%triangles(2, t)
-            v3 = mesh%data%triangles(3, t)
+        separator = ieee_value(0.0_dp, ieee_quiet_nan)
+        allocate (x_path(3*size(edges, 2)), y_path(3*size(edges, 2)))
 
-            x_tri(1) = mesh%data%vertices(1, v1)
-            y_tri(1) = mesh%data%vertices(2, v1)
-            x_tri(2) = mesh%data%vertices(1, v2)
-            y_tri(2) = mesh%data%vertices(2, v2)
-            x_tri(3) = mesh%data%vertices(1, v3)
-            y_tri(3) = mesh%data%vertices(2, v3)
-            x_tri(4) = x_tri(1)
-            y_tri(4) = y_tri(1)
-
-            call fig%add_plot( &
-                x_tri, y_tri, color=[0.12_dp, 0.31_dp, 0.45_dp])
+        do edge = 1, size(edges, 2)
+            offset = 3*(edge - 1)
+            x_path(offset + 1:offset + 2) = vertices(1, edges(:, edge))
+            y_path(offset + 1:offset + 2) = vertices(2, edges(:, edge))
+            x_path(offset + 3) = separator
+            y_path(offset + 3) = separator
         end do
-    end subroutine add_mesh_triangles_to_figure
+    end subroutine build_mesh_edge_path
 
     subroutine save_mesh_figure(fig, mesh, output_filename)
         type(figure_t), intent(inout) :: fig
