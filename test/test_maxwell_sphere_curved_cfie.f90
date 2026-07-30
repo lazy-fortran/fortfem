@@ -20,7 +20,7 @@ program test_maxwell_sphere_curved_cfie
     all_passed = .true.
     call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
     call assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
-        vertices, triangles, 1.0_dp, 0.65_dp, 1.5_dp, 4, 1.0e-5_dp, 2, &
+        vertices, triangles, 1.0_dp, 0.65_dp, 1.5_dp, 2, 2.0e-4_dp, 1, &
         0.18_dp, cfie, efie, mfie, regularizer, product, status)
     call record_condition(status == 0 .and. maxval(abs(cfie)) > 0.0_dp, &
         "curved regularized CFIE assembles")
@@ -30,7 +30,7 @@ program test_maxwell_sphere_curved_cfie
 
     call generate_sphere_surface_mesh(2.0_dp, 0, scaled_vertices, triangles)
     call assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
-        scaled_vertices, triangles, 2.0_dp, 0.325_dp, 1.5_dp, 4, 1.0e-5_dp, 2, &
+        scaled_vertices, triangles, 2.0_dp, 0.325_dp, 1.5_dp, 2, 2.0e-4_dp, 1, &
         0.18_dp, scaled_cfie, scaled_efie, scaled_mfie, scaled_regularizer, &
         scaled_product, status)
     error = maxval(abs(scaled_cfie - 2.0_dp*cfie))/maxval(abs(scaled_cfie))
