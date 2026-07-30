@@ -294,6 +294,17 @@ fpm run --example <example_name>
 <p>This example solves the exterior electrostatic Dirichlet problem with constant</p>
 </div>
 </article>
+<article class="example-card" data-example="adaptive_helmholtz_bem_sphere">
+<a class="example-card-preview" href="generated/adaptive_helmholtz_bem_sphere.html">
+<img class="example-card-image"
+ src="../media/examples/adaptive_helmholtz_bem_sphere/cover.svg"
+ alt="Plot preview for adaptive_helmholtz_bem_sphere" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/adaptive_helmholtz_bem_sphere.html">adaptive_helmholtz_bem_sphere</a></h3>
+<p>This example applies the solve-estimate-mark-refine loop to the complex P0</p>
+</div>
+</article>
 </div>
 
 ### Advanced geometry
@@ -359,6 +370,7 @@ fpm run --example <example_name>
 - [curved_acoustic_ntd](generated/curved_acoustic_ntd.html) - This example maps the normal displacement of an arbitrary closed polygonal
 - [bem_sphere_3d](generated/bem_sphere_3d.html) - This example solves the unit-sphere Laplace Dirichlet problem with the P0
 - [adaptive_bem_prolate](generated/adaptive_bem_prolate.html) - This example solves the exterior electrostatic Dirichlet problem with constant
+- [adaptive_helmholtz_bem_sphere](generated/adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
 - [magnetic_curvilinear_metrics](generated/magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](generated/toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
 - [maxwell_torus_curved_scattering](generated/maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
