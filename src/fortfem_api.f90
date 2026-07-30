@@ -274,7 +274,11 @@ module fortfem_api
         apply_spherical_maxwell_dtn, spherical_maxwell_dtn_eigenvalues
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_curl_curl_pml_coefficients, &
-        cartesian_scalar_helmholtz_pml_coefficients
+        cartesian_curl_curl_pml_coefficients_jvp, &
+        cartesian_curl_curl_pml_coefficients_vjp, &
+        cartesian_scalar_helmholtz_pml_coefficients, &
+        cartesian_scalar_helmholtz_pml_coefficients_jvp, &
+        cartesian_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
         solve_scalar_helmholtz_pml_slab_1d
     use fortfem_scalar_helmholtz_pml_2d, only: &
@@ -724,7 +728,11 @@ module fortfem_api
     public :: apply_spherical_maxwell_dtn
     public :: spherical_maxwell_dtn_eigenvalues
     public :: cartesian_curl_curl_pml_coefficients
+    public :: cartesian_curl_curl_pml_coefficients_jvp
+    public :: cartesian_curl_curl_pml_coefficients_vjp
     public :: cartesian_scalar_helmholtz_pml_coefficients
+    public :: cartesian_scalar_helmholtz_pml_coefficients_jvp
+    public :: cartesian_scalar_helmholtz_pml_coefficients_vjp
     public :: build_cartesian_pml_element_stretch
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_p1_2d

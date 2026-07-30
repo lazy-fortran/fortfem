@@ -82,3 +82,10 @@ assembly products, and exact implicit sparse-solve products. One reverse solve
 returns the gradient with respect to every control point and weight. A complete
 reassemble-and-refactor finite difference independently checks the resulting
 geometry-to-state adjoint.
+
+Cartesian PML coefficient maps expose analytical JVPs and VJPs for both scalar
+Helmholtz and Maxwell curl--curl forms. FortSym generates the complex local
+products. Their VJPs use the real-vector complex convention
+\(\operatorname{Re}(\bar y^H\dot y)
+=\operatorname{Re}(\bar x^H\dot x)\), so reverse mode applies the conjugate
+transpose required by optimization over real and imaginary design components.
