@@ -13,6 +13,7 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
@@ -21,6 +22,134 @@ module fortfem_maxwell_torus_curved_rwg
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_parameters(:, :)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :)
+        complex(dp), allocatable :: magnetic_fields(:, :)
+        real(dp) :: divergence, jacobian, local_value(3), normal(3), point(3)
+        real(dp) :: target(3)
+        integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (wave_number < 0.0_dp) return
+        if (abs(relative_offset) <= tiny(1.0_dp)) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            magnetic_fields(3, size(edge_vertices, 2)))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do refined_panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, &
+                        refined_parameters, refined_panel, local_edge, &
+                        major_radius, minor_radius, xi(node), eta(node), point, &
+                        local_value, divergence, jacobian, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                normal = torus_unit_normal(point, major_radius)
+                target = point + relative_offset*minor_radius*normal
+                call evaluate_all_torus_curved_rwg_magnetic_fields( &
+                    vertices, triangles, parameters, edge_vertices, &
+                    edge_triangles, major_radius, minor_radius, target, &
+                    wave_number, xi, eta, weights, magnetic_fields, status)
+                if (status /= 0) return
+                do test_basis = 1, size(edge_vertices, 2)
+                    do trial_basis = 1, size(edge_vertices, 2)
+                        matrix(test_basis, trial_basis) = &
+                            matrix(test_basis, trial_basis) - &
+                            jacobian*weights(node)*sum( &
+                            bc_values(:, test_basis)* &
+                            magnetic_fields(:, trial_basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine &
+        assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
+
+    subroutine evaluate_all_torus_curved_rwg_magnetic_fields( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            major_radius, minor_radius, target, wave_number, xi, eta, weights, &
+            magnetic_fields, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, target(3)
+        real(dp), intent(in) :: wave_number, xi(:), eta(:), weights(:)
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        complex(dp), intent(out) :: magnetic_fields(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: basis_value(3), displacement(3), distance, divergence
+        real(dp) :: jacobian, point(3)
+        complex(dp) :: curl_integrand(3), gradient_green(3), green
+        integer :: basis, node, panel
+
+        magnetic_fields = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_torus_curved_rwg_basis( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, panel, major_radius, &
+                        minor_radius, xi(node), eta(node), point, basis_value, &
+                        divergence, jacobian, status)
+                    if (status /= 0) return
+                    displacement = target - point
+                    distance = norm2(displacement)
+                    if (distance <= 128.0_dp*epsilon(1.0_dp)*minor_radius) return
+                    green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                        (4.0_dp*acos(-1.0_dp)*distance)
+                    gradient_green = green* &
+                        (cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance)* &
+                        displacement/distance
+                    curl_integrand = complex_cross_product( &
+                        gradient_green, cmplx(basis_value, 0.0_dp, dp))
+                    magnetic_fields(:, basis) = magnetic_fields(:, basis) + &
+                        weights(node)*jacobian*curl_integrand
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_all_torus_curved_rwg_magnetic_fields
 
     subroutine assemble_maxwell_torus_curved_rwg_rbc_pairing( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -984,6 +1113,16 @@ contains
             first(3)*second(1) - first(1)*second(3), &
             first(1)*second(2) - first(2)*second(1)]
     end function real_cross_product
+
+    pure function complex_cross_product(first, second) result(product)
+        complex(dp), intent(in) :: first(3), second(3)
+        complex(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function complex_cross_product
 
     pure function torus_boundary_green( &
             wave_number, distance, decaying_kernel) result(value)
