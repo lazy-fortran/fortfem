@@ -62,6 +62,8 @@ module fortfem_api
     use fortfem_spherical_helmholtz_dtn, only: &
         apply_spherical_helmholtz_dtn, &
         spherical_helmholtz_dtn_eigenvalue
+    use fortfem_spherical_maxwell_dtn, only: &
+        apply_spherical_maxwell_dtn, spherical_maxwell_dtn_eigenvalues
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_curl_curl_pml_coefficients, &
         cartesian_scalar_helmholtz_pml_coefficients
@@ -284,6 +286,8 @@ module fortfem_api
     public :: circular_helmholtz_dtn_eigenvalue
     public :: apply_spherical_helmholtz_dtn
     public :: spherical_helmholtz_dtn_eigenvalue
+    public :: apply_spherical_maxwell_dtn
+    public :: spherical_maxwell_dtn_eigenvalues
     public :: cartesian_curl_curl_pml_coefficients
     public :: cartesian_scalar_helmholtz_pml_coefficients
     public :: evaluate_toroidal_harmonic_p
