@@ -8,6 +8,7 @@ module fortfem_helmholtz_hierarchical_3d
         assemble_helmholtz_single_layer_p0_3d
     use fortfem_kinds, only: dp
     use fortfem_panel_cluster_tree_3d, only: build_panel_cluster_tree_3d
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_krylov, only: complex_gmres_operator, KRYLOV_OK
     implicit none
 
@@ -77,9 +78,11 @@ contains
 
         integer, allocatable :: first_child(:), inverse_position(:)
         integer, allocatable :: last(:), first(:), permutation(:)
+        integer, allocatable :: near_first(:), near_source(:)
         integer, allocatable :: second_child(:)
         real(dp), allocatable :: areas(:), centers(:, :), normals(:, :)
         real(dp), allocatable :: node_centers(:, :), radii(:)
+        complex(dp), allocatable :: near_double(:), near_single(:)
         complex(dp), allocatable :: self_diagonal(:)
         integer :: node_count
 
@@ -98,12 +101,17 @@ contains
         if (status /= 0) return
         call compute_panel_normals(vertices, triangles, normals, status)
         if (status /= 0) return
+        call build_near_layers( &
+            vertices, triangles, wave_number, near_first, near_source, &
+            near_single, near_double, status)
+        if (status /= 0) return
         allocate(result(size(density)))
         call apply_cfie_prebuilt( &
             density, wave_number, coupling, opening_angle, areas, centers, &
             normals, permutation, inverse_position, first, last, first_child, &
             second_child, node_centers, radii, node_count, self_diagonal, &
-            result, interaction_count)
+            near_first, near_source, near_single, near_double, result, &
+            interaction_count)
         status = 0
     end subroutine apply_helmholtz_cfie_p0_hierarchical_3d
 
@@ -195,10 +203,13 @@ contains
 
         integer, allocatable :: first_child(:), inverse_position(:)
         integer, allocatable :: last(:), first(:), permutation(:)
+        integer, allocatable :: near_first(:), near_source(:)
         integer, allocatable :: second_child(:)
         real(dp), allocatable :: areas(:), centers(:, :), normals(:, :)
         real(dp), allocatable :: node_centers(:, :), radii(:)
-        complex(dp), allocatable :: right_hand_side(:), self_diagonal(:)
+        complex(dp), allocatable :: near_double(:), near_single(:)
+        complex(dp), allocatable :: right_hand_side(:)
+        complex(dp), allocatable :: self_diagonal(:)
         integer :: krylov_status, node_count
 
         status = 1
@@ -219,6 +230,10 @@ contains
             vertices, triangles, wave_number, self_diagonal, status)
         if (status /= 0) return
         call compute_panel_normals(vertices, triangles, normals, status)
+        if (status /= 0) return
+        call build_near_layers( &
+            vertices, triangles, wave_number, near_first, near_source, &
+            near_single, near_double, status)
         if (status /= 0) return
         allocate(density(size(areas)), right_hand_side(size(areas)))
         density = cmplx(0.0_dp, 0.0_dp, dp)
@@ -244,7 +259,8 @@ contains
                 input, wave_number, coupling, opening_angle, areas, centers, &
                 normals, permutation, inverse_position, first, last, &
                 first_child, second_child, node_centers, radii, node_count, &
-                self_diagonal, output, matvec_interactions)
+                self_diagonal, near_first, near_source, near_single, &
+                near_double, output, matvec_interactions)
             interaction_count = interaction_count + matvec_interactions
         end subroutine matvec
 
@@ -320,13 +336,16 @@ contains
             density, wave_number, coupling, opening_angle, areas, centers, &
             normals, permutation, inverse_position, first, last, first_child, &
             second_child, node_centers, radii, node_count, self_diagonal, &
-            result, interaction_count)
+            near_first, near_source, near_single, near_double, result, &
+            interaction_count)
         complex(dp), intent(in) :: density(:), self_diagonal(:)
+        complex(dp), intent(in) :: near_single(:), near_double(:)
         real(dp), intent(in) :: wave_number, coupling, opening_angle
         real(dp), intent(in) :: areas(:), centers(:, :), normals(:, :)
         integer, intent(in) :: permutation(:), inverse_position(:)
         integer, intent(in) :: first(:), last(:), first_child(:)
         integer, intent(in) :: second_child(:), node_count
+        integer, intent(in) :: near_first(:), near_source(:)
         real(dp), intent(in) :: node_centers(:, :), radii(:)
         complex(dp), intent(out) :: result(:)
         integer, intent(out) :: interaction_count
@@ -362,7 +381,8 @@ contains
                 1, panel, inverse_position(panel), wave_number, coupling, &
                 opening_angle, centers, areas, normals, density, permutation, &
                 first, last, first_child, second_child, node_centers, radii, &
-                charges, dipoles, result(panel), interaction_count)
+                charges, dipoles, near_first, near_source, near_single, &
+                near_double, result(panel), interaction_count)
         end do
     end subroutine apply_cfie_prebuilt
 
@@ -370,21 +390,24 @@ contains
             node, target, target_position, wave_number, coupling, &
             opening_angle, centers, areas, normals, density, permutation, &
             first, last, first_child, second_child, node_centers, radii, &
-            charges, dipoles, value, interaction_count)
+            charges, dipoles, near_first, near_source, near_single, &
+            near_double, value, interaction_count)
         integer, intent(in) :: node, target, target_position
         real(dp), intent(in) :: wave_number, coupling, opening_angle
         real(dp), intent(in) :: centers(:, :), areas(:), normals(:, :)
         complex(dp), intent(in) :: density(:), charges(:), dipoles(:, :)
         integer, intent(in) :: permutation(:), first(:), last(:)
         integer, intent(in) :: first_child(:), second_child(:)
+        integer, intent(in) :: near_first(:), near_source(:)
         real(dp), intent(in) :: node_centers(:, :), radii(:)
+        complex(dp), intent(in) :: near_single(:), near_double(:)
         complex(dp), intent(inout) :: value
         integer, intent(inout) :: interaction_count
 
         real(dp) :: displacement(3), distance
-        complex(dp) :: green, normal_factor
+        complex(dp) :: double_value, green, normal_factor, single_value
         integer :: panel, position
-        logical :: contains_target
+        logical :: contains_target, is_near
 
         contains_target = target_position >= first(node) .and. &
             target_position <= last(node)
@@ -408,10 +431,19 @@ contains
                 displacement = centers(:, target) - centers(:, panel)
                 distance = norm2(displacement)
                 green = outgoing_kernel(wave_number, distance)
-                normal_factor = cmplx(1.0_dp, -wave_number*distance, dp)* &
-                    dot_product(displacement, normals(:, panel))/distance**2
-                value = value + areas(target)*areas(panel)*density(panel)* &
-                    green*(normal_factor - cmplx(0.0_dp, coupling, dp))
+                call get_near_layers( &
+                    target, panel, near_first, near_source, near_single, &
+                    near_double, single_value, double_value, is_near)
+                if (.not. is_near) then
+                    normal_factor = &
+                        cmplx(1.0_dp, -wave_number*distance, dp)* &
+                        dot_product(displacement, normals(:, panel))/distance**2
+                    double_value = areas(target)*areas(panel)*green*normal_factor
+                    single_value = areas(target)*areas(panel)*green
+                end if
+                value = value + density(panel)*( &
+                    double_value - cmplx(0.0_dp, coupling, dp)* &
+                    single_value)
                 interaction_count = interaction_count + 1
             end do
             return
@@ -420,13 +452,167 @@ contains
             first_child(node), target, target_position, wave_number, coupling, &
             opening_angle, centers, areas, normals, density, permutation, &
             first, last, first_child, second_child, node_centers, radii, &
-            charges, dipoles, value, interaction_count)
+            charges, dipoles, near_first, near_source, near_single, &
+            near_double, value, interaction_count)
         call apply_cfie_node( &
             second_child(node), target, target_position, wave_number, coupling, &
             opening_angle, centers, areas, normals, density, permutation, &
             first, last, first_child, second_child, node_centers, radii, &
-            charges, dipoles, value, interaction_count)
+            charges, dipoles, near_first, near_source, near_single, &
+            near_double, value, interaction_count)
     end subroutine apply_cfie_node
+
+    subroutine build_near_layers( &
+            vertices, triangles, wave_number, near_first, near_source, &
+            near_single, near_double, status)
+        real(dp), intent(in) :: vertices(:, :), wave_number
+        integer, intent(in) :: triangles(:, :)
+        integer, allocatable, intent(out) :: near_first(:), near_source(:)
+        complex(dp), allocatable, intent(out) :: near_single(:), near_double(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: cursor(:), incident(:), marker(:)
+        integer, allocatable :: vertex_first(:)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        integer :: candidate, local, panel, position, quadrature_status, vertex
+
+        status = 1
+        allocate(vertex_first(size(vertices, 2) + 1), cursor(size(vertices, 2)))
+        vertex_first = 0
+        do panel = 1, size(triangles, 2)
+            do local = 1, 3
+                vertex_first(triangles(local, panel) + 1) = &
+                    vertex_first(triangles(local, panel) + 1) + 1
+            end do
+        end do
+        vertex_first(1) = 1
+        do vertex = 1, size(vertices, 2)
+            vertex_first(vertex + 1) = &
+                vertex_first(vertex + 1) + vertex_first(vertex)
+        end do
+        cursor = vertex_first(:size(vertices, 2))
+        allocate(incident(3*size(triangles, 2)))
+        do panel = 1, size(triangles, 2)
+            do local = 1, 3
+                vertex = triangles(local, panel)
+                incident(cursor(vertex)) = panel
+                cursor(vertex) = cursor(vertex) + 1
+            end do
+        end do
+
+        allocate(near_first(size(triangles, 2) + 1))
+        allocate(marker(size(triangles, 2)), source=0)
+        near_first(1) = 1
+        do panel = 1, size(triangles, 2)
+            near_first(panel + 1) = near_first(panel)
+            do local = 1, 3
+                vertex = triangles(local, panel)
+                do position = vertex_first(vertex), vertex_first(vertex + 1) - 1
+                    candidate = incident(position)
+                    if (candidate == panel .or. marker(candidate) == panel) cycle
+                    marker(candidate) = panel
+                    near_first(panel + 1) = near_first(panel + 1) + 1
+                end do
+            end do
+        end do
+
+        allocate(near_source(near_first(size(near_first)) - 1))
+        allocate(near_single(size(near_source)), near_double(size(near_source)))
+        marker = 0
+        call triangle_duffy_quadrature( &
+            8, xi, eta, weights, quadrature_status)
+        if (quadrature_status /= 0) return
+        do panel = 1, size(triangles, 2)
+            position = near_first(panel)
+            do local = 1, 3
+                vertex = triangles(local, panel)
+                do candidate = vertex_first(vertex), vertex_first(vertex + 1) - 1
+                    if (incident(candidate) == panel .or. &
+                        marker(incident(candidate)) == panel) cycle
+                    marker(incident(candidate)) = panel
+                    near_source(position) = incident(candidate)
+                    call layer_pair( &
+                        vertices(:, triangles(:, panel)), &
+                        vertices(:, triangles(:, near_source(position))), &
+                        wave_number, xi, eta, weights, near_single(position), &
+                        near_double(position), status)
+                    if (status /= 0) return
+                    position = position + 1
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine build_near_layers
+
+    pure subroutine layer_pair( &
+            target_vertices, source_vertices, wave_number, xi, eta, weights, &
+            single_value, double_value, status)
+        real(dp), intent(in) :: target_vertices(3, 3), source_vertices(3, 3)
+        real(dp), intent(in) :: wave_number, xi(:), eta(:), weights(:)
+        complex(dp), intent(out) :: single_value, double_value
+        integer, intent(out) :: status
+
+        real(dp) :: displacement(3), radius, source_normal(3)
+        real(dp) :: source_jacobian, target_jacobian
+        complex(dp) :: green
+        integer :: source_node, target_node
+
+        source_normal = cross_product( &
+            source_vertices(:, 2) - source_vertices(:, 1), &
+            source_vertices(:, 3) - source_vertices(:, 1))
+        source_jacobian = norm2(source_normal)
+        target_jacobian = norm2(cross_product( &
+            target_vertices(:, 2) - target_vertices(:, 1), &
+            target_vertices(:, 3) - target_vertices(:, 1)))
+        single_value = cmplx(0.0_dp, 0.0_dp, dp)
+        double_value = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (source_jacobian <= 0.0_dp .or. target_jacobian <= 0.0_dp) return
+        source_normal = source_normal/source_jacobian
+        do target_node = 1, size(weights)
+            do source_node = 1, size(weights)
+                displacement = triangle_point( &
+                    target_vertices, xi(target_node), eta(target_node)) - &
+                    triangle_point( &
+                    source_vertices, xi(source_node), eta(source_node))
+                radius = norm2(displacement)
+                if (radius <= 0.0_dp) return
+                green = outgoing_kernel(wave_number, radius)
+                single_value = single_value + &
+                    target_jacobian*source_jacobian* &
+                    weights(target_node)*weights(source_node)*green
+                double_value = double_value + &
+                    target_jacobian*source_jacobian* &
+                    weights(target_node)*weights(source_node)*green* &
+                    cmplx(1.0_dp, -wave_number*radius, dp)* &
+                    dot_product(displacement, source_normal)/radius**2
+            end do
+        end do
+        status = 0
+    end subroutine layer_pair
+
+    pure subroutine get_near_layers( &
+            target, source, near_first, near_source, near_single, near_double, &
+            single_value, double_value, found)
+        integer, intent(in) :: target, source
+        integer, intent(in) :: near_first(:), near_source(:)
+        complex(dp), intent(in) :: near_single(:), near_double(:)
+        complex(dp), intent(out) :: single_value, double_value
+        logical, intent(out) :: found
+
+        integer :: position
+
+        found = .false.
+        single_value = cmplx(0.0_dp, 0.0_dp, dp)
+        double_value = cmplx(0.0_dp, 0.0_dp, dp)
+        do position = near_first(target), near_first(target + 1) - 1
+            if (near_source(position) /= source) cycle
+            single_value = near_single(position)
+            double_value = near_double(position)
+            found = .true.
+            return
+        end do
+    end subroutine get_near_layers
 
     subroutine compute_panel_normals(vertices, triangles, normals, status)
         real(dp), intent(in) :: vertices(:, :)
@@ -531,5 +717,23 @@ contains
         value = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
             (4.0_dp*acos(-1.0_dp)*distance)
     end function outgoing_kernel
+
+    pure function triangle_point(vertices, xi, eta) result(point)
+        real(dp), intent(in) :: vertices(3, 3), xi, eta
+        real(dp) :: point(3)
+
+        point = vertices(:, 1) + xi*(vertices(:, 2) - vertices(:, 1)) + &
+            eta*(vertices(:, 3) - vertices(:, 1))
+    end function triangle_point
+
+    pure function cross_product(first, second) result(result)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: result(3)
+
+        result = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function cross_product
 
 end module fortfem_helmholtz_hierarchical_3d

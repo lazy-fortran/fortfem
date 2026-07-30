@@ -1,5 +1,6 @@
 program bem_sphere_3d
     use fortfem_api, only: &
+        apply_helmholtz_cfie_p0_hierarchical_3d, &
         apply_helmholtz_single_layer_p0_hierarchical_3d, &
         apply_laplace_single_layer_p0_hierarchical_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
@@ -13,7 +14,8 @@ program bem_sphere_3d
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
+    use fortplot, only: figure, legend, plot, savefig, title, xlabel, xscale, &
+        ylabel, yscale
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -26,7 +28,10 @@ program bem_sphere_3d
     complex(dp), allocatable :: helmholtz_fast(:), helmholtz_matrix(:, :)
     complex(dp), allocatable :: helmholtz_fast_density(:)
     complex(dp), allocatable :: cfie_dense_density(:), cfie_fast_density(:)
+    complex(dp), allocatable :: scaling_action(:), scaling_density(:)
     integer, allocatable :: triangles(:, :)
+    integer, allocatable :: scaling_triangles(:, :)
+    real(dp), allocatable :: scaling_vertices(:, :)
     complex(dp) :: analytical_field(16), dense_field(16), fast_field(16)
     complex(dp) :: cfie_analytical_field(16), cfie_dense_field(16)
     complex(dp) :: cfie_fast_field(16)
@@ -41,6 +46,9 @@ program bem_sphere_3d
     real(dp) :: cfie_dense_field_error, cfie_dense_solve_seconds
     real(dp) :: cfie_fast_field_error, cfie_fast_solve_seconds, cfie_residual
     integer :: cfie_interactions, cfie_iterations
+    integer :: scaling_interactions(3)
+    real(dp) :: scaling_dense_interactions(3), scaling_panels(3)
+    real(dp) :: scaling_seconds(3)
     integer :: field_point, helmholtz_interactions, laplace_interactions
     integer :: level, solve_interactions, solve_iterations, status, unit
 
@@ -263,6 +271,39 @@ program bem_sphere_3d
     call legend()
     call savefig(output_directory//"/sphere_helmholtz_cfie_resonance.png")
 
+    do level = 2, 4
+        call generate_sphere_surface_mesh( &
+            1.0_dp, level, scaling_vertices, scaling_triangles)
+        scaling_panels(level - 1) = real(size(scaling_triangles, 2), dp)
+        scaling_dense_interactions(level - 1) = scaling_panels(level - 1)**2
+        allocate(scaling_density(size(scaling_triangles, 2)))
+        scaling_density = cmplx(1.0_dp, 0.25_dp, dp)
+        call cpu_time(start_time)
+        call apply_helmholtz_cfie_p0_hierarchical_3d( &
+            scaling_vertices, scaling_triangles, scaling_density, &
+            acos(-1.0_dp), acos(-1.0_dp), 0.45_dp, 6, scaling_action, &
+            status, scaling_interactions(level - 1))
+        call cpu_time(scaling_seconds(level - 1))
+        scaling_seconds(level - 1) = &
+            scaling_seconds(level - 1) - start_time
+        if (status /= 0) error stop "hierarchical CFIE scaling apply failed"
+        deallocate(scaling_density)
+    end do
+    call figure(figsize=[8.0_dp, 5.0_dp])
+    call plot( &
+        scaling_panels, scaling_dense_interactions, &
+        label="dense pair interactions", linestyle="--", marker="o")
+    call plot( &
+        scaling_panels, real(scaling_interactions, dp), &
+        label="hierarchical interactions", linestyle="-", marker="o")
+    call xscale("log")
+    call yscale("log")
+    call xlabel("surface triangles")
+    call ylabel("operator interactions")
+    call title("Helmholtz CFIE interaction scaling")
+    call legend()
+    call savefig(output_directory//"/sphere_helmholtz_cfie_scaling.png")
+
     open( &
         newunit=unit, file=output_directory//"/benchmark.txt", &
         status="replace", action="write")
@@ -314,6 +355,12 @@ program bem_sphere_3d
         "helmholtz_cfie_dense_field_max_error=", cfie_dense_field_error
     write (unit, '(A,ES14.6)') &
         "helmholtz_cfie_hierarchical_field_max_error=", cfie_fast_field_error
+    do level = 1, 3
+        write (unit, '(A,I0,A,I0,A,ES14.6)') &
+            "helmholtz_cfie_scaling_panels=", nint(scaling_panels(level)), &
+            " interactions=", scaling_interactions(level), &
+            " apply_seconds=", scaling_seconds(level)
+    end do
     close(unit)
 
 contains
