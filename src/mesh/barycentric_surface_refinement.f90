@@ -4,8 +4,88 @@ module fortfem_barycentric_surface_refinement
     private
 
     public :: barycentric_refine_surface_mesh
+    public :: barycentric_refine_torus_surface_mesh
 
 contains
+
+    subroutine barycentric_refine_torus_surface_mesh( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            refined_vertices, refined_triangles, refined_parameters, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius
+        integer, intent(in) :: triangles(:, :)
+        real(dp), allocatable, intent(out) :: refined_vertices(:, :)
+        integer, allocatable, intent(out) :: refined_triangles(:, :)
+        real(dp), allocatable, intent(out) :: refined_parameters(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: centroid_vertices(:), edge_midpoints(:)
+        integer, allocatable :: primal_edges(:, :)
+        real(dp) :: local_parameters(2, 3), theta, phi
+        integer :: edge, face, local, vertex
+
+        status = 1
+        if (allocated(refined_vertices)) deallocate(refined_vertices)
+        if (allocated(refined_triangles)) deallocate(refined_triangles)
+        if (allocated(refined_parameters)) deallocate(refined_parameters)
+        if (size(vertices, 1) /= 3 .or. size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
+        if (any(triangles < 1) .or. any(triangles > size(vertices, 2))) return
+        if (major_radius <= minor_radius .or. minor_radius <= 0.0_dp) return
+        call barycentric_refine_surface_mesh( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            primal_edges, edge_midpoints, centroid_vertices)
+        allocate(refined_parameters(2, size(refined_vertices, 2)))
+        refined_parameters(:, :size(parameters, 2)) = parameters
+        do edge = 1, size(primal_edges, 2)
+            local_parameters(:, 1) = parameters(:, primal_edges(1, edge))
+            local_parameters(:, 2) = parameters(:, primal_edges(2, edge))
+            call unwrap_parameters( &
+                local_parameters(:, 1), local_parameters(:, 2))
+            refined_parameters(:, edge_midpoints(edge)) = &
+                0.5_dp*(local_parameters(:, 1) + local_parameters(:, 2))
+        end do
+        do face = 1, size(triangles, 2)
+            do local = 1, 3
+                local_parameters(:, local) = &
+                    parameters(:, triangles(local, face))
+            end do
+            call unwrap_parameters( &
+                local_parameters(:, 1), local_parameters(:, 2))
+            call unwrap_parameters( &
+                local_parameters(:, 1), local_parameters(:, 3))
+            refined_parameters(:, centroid_vertices(face)) = &
+                sum(local_parameters, dim=2)/3.0_dp
+        end do
+        do vertex = 1, size(refined_vertices, 2)
+            theta = refined_parameters(1, vertex)
+            phi = refined_parameters(2, vertex)
+            refined_vertices(:, vertex) = [ &
+                (major_radius + minor_radius*cos(theta))*cos(phi), &
+                (major_radius + minor_radius*cos(theta))*sin(phi), &
+                minor_radius*sin(theta)]
+        end do
+        status = 0
+    end subroutine barycentric_refine_torus_surface_mesh
+
+    pure subroutine unwrap_parameters(reference, value)
+        real(dp), intent(in) :: reference(2)
+        real(dp), intent(inout) :: value(2)
+
+        integer :: coordinate
+
+        do coordinate = 1, 2
+            do while (value(coordinate) - reference(coordinate) > &
+                    acos(-1.0_dp))
+                value(coordinate) = value(coordinate) - 2.0_dp*acos(-1.0_dp)
+            end do
+            do while (value(coordinate) - reference(coordinate) < &
+                    -acos(-1.0_dp))
+                value(coordinate) = value(coordinate) + 2.0_dp*acos(-1.0_dp)
+            end do
+        end do
+    end subroutine unwrap_parameters
 
     subroutine barycentric_refine_surface_mesh( &
             vertices, triangles, refined_vertices, refined_triangles, &
