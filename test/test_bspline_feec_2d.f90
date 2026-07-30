@@ -2,7 +2,7 @@ program test_bspline_feec_2d
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
-        evaluate_bspline_basis
+        build_bspline_feec_3d_operators, evaluate_bspline_basis
     use fortfem_kinds, only: dp
     implicit none
 
@@ -13,6 +13,8 @@ program test_bspline_feec_2d
     real(dp), allocatable :: basis(:), curl_matrix(:, :)
     real(dp), allocatable :: derivative(:), derivative_matrix(:, :)
     real(dp), allocatable :: gradient_matrix(:, :), coefficients(:)
+    real(dp), allocatable :: curl_3d(:, :), divergence_3d(:, :)
+    real(dp), allocatable :: gradient_3d(:, :)
     real(dp) :: points(5), reproduced, x
     integer :: i, status
 
@@ -55,7 +57,20 @@ program test_bspline_feec_2d
         [(1.0_dp, i=1, size(gradient_matrix, 2))]))) < 3.0e-14_dp, &
         "Isogeometric gradient annihilates constants")
 
-    call check_summary("Structure-preserving 2D B-spline FEEC")
+    call build_bspline_feec_3d_operators( &
+        knots_x, knots_y, knots_y, 2, 2, 2, gradient_3d, curl_3d, &
+        divergence_3d, status)
+    call check_condition(status == 0 .and. &
+        all(shape(gradient_3d) == [184, 80]) .and. &
+        all(shape(curl_3d) == [141, 184]) .and. &
+        all(shape(divergence_3d) == [36, 141]), &
+        "3D spline de Rham operators have exact FEEC dimensions")
+    call check_condition(maxval(abs(matmul(curl_3d, gradient_3d))) < &
+        4.0e-14_dp, "3D isogeometric complex satisfies curl grad equals zero")
+    call check_condition(maxval(abs(matmul(divergence_3d, curl_3d))) < &
+        4.0e-14_dp, "3D isogeometric complex satisfies div curl equals zero")
+
+    call check_summary("Structure-preserving B-spline FEEC")
 
 contains
 
