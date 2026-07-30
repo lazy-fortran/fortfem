@@ -2,6 +2,7 @@ program test_bspline_h1_sparse_assembly
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_bspline_h1_operator_csc, &
+        assemble_bspline_hcurl_operator_csc, &
         build_bspline_feec_2d_operators_csc
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
@@ -12,10 +13,11 @@ program test_bspline_h1_sparse_assembly
     real(dp), parameter :: knots_y(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     type(csc_t) :: anisotropic, curl_incidence, gradient_incidence
-    type(csc_t) :: mass, stiffness, weighted_stiffness
+    type(csc_t) :: hcurl_mass, curl_curl, mass, stiffness, weighted_stiffness
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), control_points(:, :, :)
     real(dp), allocatable :: edge_values(:), product(:), weights(:, :)
+    real(dp), allocatable :: hcurl_coefficients(:)
     real(dp), allocatable :: x_points(:), y_points(:)
     real(dp) :: energy, integral
     integer :: ix, iy
@@ -93,6 +95,28 @@ program test_bspline_h1_sparse_assembly
         maxval(abs(product)) < 4.0e-14_dp, &
         "FortSparse isogeometric incidence satisfies curl grad equals zero")
 
+    call assemble_bspline_hcurl_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, hcurl_mass, &
+        sparse_status, curl_coefficient=0.0_dp, mass_coefficient=1.0_dp)
+    allocate(hcurl_coefficients((size(x_points) - 1)*size(y_points) + &
+        size(x_points)*(size(y_points) - 1)))
+    hcurl_coefficients = 0.0_dp
+    hcurl_coefficients(1:(size(x_points) - 1)*size(y_points)) = 1.0_dp
+    product = csc_matvec(hcurl_mass, hcurl_coefficients)
+    energy = dot_product(hcurl_coefficients, product)
+    call check_condition(abs(energy - 1.0_dp) < 3.0e-12_dp, &
+        "Covariant spline Hcurl mass gives exact constant-field energy")
+
+    call assemble_bspline_hcurl_operator_csc( &
+        knots_x, knots_y, 2, 2, control_points, weights, 5, curl_curl, &
+        sparse_status, curl_coefficient=1.0_dp, mass_coefficient=0.0_dp)
+    call set_rotation_coefficients( &
+        x_points, y_points, hcurl_coefficients)
+    product = csc_matvec(curl_curl, hcurl_coefficients)
+    energy = dot_product(hcurl_coefficients, product)
+    call check_condition(abs(energy - 4.0_dp) < 3.0e-11_dp, &
+        "Spline curl-curl gives exact rigid-rotation curl energy")
+
     call check_summary("Sparse isogeometric H1 assembly")
 
 contains
@@ -124,5 +148,25 @@ contains
         associate (unused => point)
         end associate
     end subroutine constant_anisotropy
+
+    pure subroutine set_rotation_coefficients(x, y, coefficients_local)
+        real(dp), intent(in) :: x(:), y(:)
+        real(dp), intent(out) :: coefficients_local(:)
+        integer :: basis_x, basis_y, offset
+
+        offset = (size(x) - 1)*size(y)
+        do basis_y = 1, size(y)
+            do basis_x = 1, size(x) - 1
+                coefficients_local(basis_x + &
+                    (basis_y - 1)*(size(x) - 1)) = -y(basis_y)
+            end do
+        end do
+        do basis_y = 1, size(y) - 1
+            do basis_x = 1, size(x)
+                coefficients_local(offset + basis_x + &
+                    (basis_y - 1)*size(x)) = 1.0_dp + x(basis_x)
+            end do
+        end do
+    end subroutine set_rotation_coefficients
 
 end program test_bspline_h1_sparse_assembly
