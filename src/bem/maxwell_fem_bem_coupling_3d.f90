@@ -10,23 +10,13 @@ module fortfem_maxwell_fem_bem_coupling_3d
         build_maxwell_rwg_surface_space, &
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortnum_linalg, only: dense_solve
     implicit none
     private
 
     public :: assemble_maxwell_fem_bem_boundary_matrix_3d
     public :: assemble_maxwell_fem_bem_system_3d
     public :: solve_maxwell_fem_bem_system_3d
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -43,10 +33,9 @@ contains
         complex(dp), allocatable, intent(out) :: field(:), current(:)
         integer, intent(out) :: status
 
-        complex(dp), allocatable :: matrix(:, :), solution(:, :)
+        complex(dp), allocatable :: matrix(:, :), solution(:)
         integer, allocatable :: edge_dofs(:, :), edge_orientations(:, :)
         integer, allocatable :: edges(:, :)
-        integer, allocatable :: pivots(:)
         integer :: field_count, info
 
         status = 1
@@ -55,11 +44,8 @@ contains
             mass_coefficient, wave_number, impedance, quadrature_degree, &
             tolerance, max_depth, matrix, status)
         if (status /= 0 .or. size(right_hand_side) /= size(matrix, 1)) return
-        allocate(solution(size(matrix, 1), 1), pivots(size(matrix, 1)))
-        solution(:, 1) = right_hand_side
-        call zgesv( &
-            size(matrix, 1), 1, matrix, size(matrix, 1), pivots, solution, &
-            size(matrix, 1), info)
+        allocate(solution(size(matrix, 1)))
+        call dense_solve(matrix, right_hand_side, solution, info)
         if (info /= 0) then
             status = 2
             return
@@ -70,8 +56,8 @@ contains
         field_count = size(edges, 2)
         if (field_count < 1 .or. field_count >= size(matrix, 1)) return
         allocate(field(field_count), current(size(matrix, 1) - field_count))
-        field = solution(:field_count, 1)
-        current = solution(field_count + 1:, 1)
+        field = solution(:field_count)
+        current = solution(field_count + 1:)
         status = 0
     end subroutine solve_maxwell_fem_bem_system_3d
 

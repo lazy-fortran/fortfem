@@ -12,6 +12,7 @@ module fortfem_maxwell_efie_rwg_3d
     use fortfem_maxwell_rwg_surface, only: &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
     private
@@ -22,17 +23,6 @@ module fortfem_maxwell_efie_rwg_3d
     public :: evaluate_maxwell_efie_field_rwg_3d
     public :: evaluate_maxwell_efie_far_field_rwg_3d
     public :: solve_maxwell_pec_efie_rwg_3d
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -102,8 +92,6 @@ contains
         integer, intent(out) :: status
 
         complex(dp), allocatable :: matrix(:, :), right_hand_side(:)
-        complex(dp), allocatable :: right_hand_side_matrix(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info
 
         status = 1
@@ -115,19 +103,12 @@ contains
             vertices, triangles, direction, polarization, wave_number, &
             quadrature_degree, right_hand_side, status)
         if (status /= 0) return
-        allocate( &
-            density(size(right_hand_side)), &
-            right_hand_side_matrix(size(right_hand_side), 1), &
-            pivots(size(right_hand_side)))
-        right_hand_side_matrix(:, 1) = right_hand_side
-        call zgesv( &
-            size(right_hand_side), 1, matrix, size(right_hand_side), pivots, &
-            right_hand_side_matrix, size(right_hand_side), info)
+        allocate(density(size(right_hand_side)))
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side_matrix(:, 1)
         status = 0
     end subroutine solve_maxwell_pec_efie_rwg_3d
 
