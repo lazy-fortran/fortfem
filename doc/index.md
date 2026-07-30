@@ -32,6 +32,9 @@ operators, sparse solvers, and analytical verification examples.
   `fortsparse` CSC assembly, factorization, and solves
 - **Reproducible examples**: analytical comparisons and fortplot-generated
   gallery artifacts
+- **Independent FEM oracles**: the
+  [interoperability benchmark protocol](interoperability_benchmarks.html)
+  defines license-safe comparisons with FEniCSx, FreeFEM, and MFEM
 
 ## Example Code
 

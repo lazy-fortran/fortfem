@@ -66,7 +66,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev \
-          libsuperlu-dev freefem++ ghostscript imagemagick
+          libsuperlu-dev
 
     - name: Setup Fortran Package Manager
       run: |
@@ -83,7 +83,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         fpm test --flag "--coverage"
-        find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read dir; do
+        find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
           gcov -o "$dir" src/*.f90 || true
         done
 
@@ -125,56 +125,19 @@ jobs:
         echo "Running convergence benchmarks..."
         fpm test run_convergence_tests || echo "Convergence tests completed"
 
-    - name: Run FreeFEM benchmarks with plotting
+    - name: Collect generated plots
       run: |
-        echo "Running FreeFEM Poisson 2D benchmark..."
-        cd benchmark/freefem/poisson-2d
-        FreeFem++ poisson_2d.edp || echo "FreeFEM Poisson benchmark completed"
-        cd ../../..
-        
-        echo "Running FreeFEM curl-curl benchmark..."
-        cd benchmark/freefem/curl-curl
-        FreeFem++ curl_curl_2d.edp || echo "FreeFEM curl-curl benchmark completed"
-        cd ../../..
-
-    - name: Convert FreeFEM EPS to PNG and collect plots
-      run: |
-        echo "Converting FreeFEM EPS files to PNG and collecting all plots..."
         set -euo pipefail
-        mkdir -p ci-artifacts/plots/examples ci-artifacts/plots/benchmarks
-        
-        # Convert FreeFEM EPS files to PNG
-        echo "Converting FreeFEM EPS files to PNG..."
-        find benchmark/ -name "*.eps" | while read eps_file; do
-          if [ -f "$eps_file" ]; then
-            png_file="ci-artifacts/plots/benchmarks/$(basename "$eps_file" .eps).png"
-            echo "Converting $eps_file to $png_file"
-            convert "$eps_file" "$png_file" || echo "Failed to convert $eps_file"
-          fi
-        done
-        
+        mkdir -p ci-artifacts/plots/examples
+
         # Preserve the producing example in the artifact path so equally named
         # plots cannot overwrite one another and gallery ownership is exact.
-        echo "Collecting FortFEM example plots..."
         if [[ -d output/example ]]; then
           cp -r output/example/. ci-artifacts/plots/examples/
         fi
-        
-        # Copy any existing PNG files from benchmark directories  
-        find benchmark/ -name "*.png" -exec cp {} ci-artifacts/plots/benchmarks/ \;
-        
-        # List all collected plots
-        echo "Final plot collection:"
-        ls -la ci-artifacts/plots/ || echo "No plots directory created"
-        
-        echo "Plot collection summary:"
+
         total_plots=$(find ci-artifacts/plots/ -name "*.png" | wc -l)
-        echo "Total PNG files collected: $total_plots"
-        
-        if [ "$total_plots" -gt 0 ]; then
-          echo "Plot files:"
-          find ci-artifacts/plots/ -name "*.png" -exec basename {} \;
-        else
+        if [ "$total_plots" -eq 0 ]; then
           echo "::error::No generated plots were collected"
           exit 1
         fi
@@ -186,14 +149,6 @@ jobs:
         name: generated-plots
         path: ci-artifacts/plots/
         retention-days: 30
-
-    - name: Validate benchmark results
-      run: |
-        echo "Checking benchmark output files..."
-        test -f benchmark/freefem/poisson-2d/freefem_convergence_2d.dat || echo "Missing Poisson convergence data"
-        test -f benchmark/freefem/curl-curl/freefem_results.dat || echo "Missing curl-curl results"
-        test -f benchmark/freefem/curl-curl/freefem_convergence.dat || echo "Missing curl-curl convergence data"
-        echo "✅ Benchmark validation completed"
 
   # Summary job for branch protection - must be named 'test' for PR checks
   test:
