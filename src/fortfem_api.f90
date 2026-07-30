@@ -397,8 +397,10 @@ module fortfem_api
     use fortfem_rt_field_2d, only: evaluate_rt_field_2d, &
         reconstruct_axisymmetric_fourier_toroidal, rt_l2_norm
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
-        sparse_direct_factor_csc, sparse_direct_free, &
-        sparse_direct_solve_factored
+        sparse_direct_factor_adjoint_csc, sparse_direct_factor_csc, &
+        sparse_direct_factor_transpose_csc, sparse_direct_free, &
+        sparse_direct_solve_csc, sparse_direct_solve_factored, &
+        sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
         solve_symbolic_mixed_poisson_rt
@@ -878,6 +880,7 @@ module fortfem_api
     public :: assemble_bspline_polar_h1_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
+    public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_transpose_csc, sparse_direct_solve_csc
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp

@@ -2,8 +2,8 @@ module fortfem_sparse_direct
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_t, csc_z_t, fortsparse_status_t, &
         sparse_direct_factor_t => sparse_solver_t, sparse_destroy, &
-        csc_transpose, sparse_factor, sparse_solve, sparse_solve_jvp, &
-        sparse_solve_once, sparse_solve_vjp
+        csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_solve, &
+        sparse_solve_jvp, sparse_solve_once, sparse_solve_vjp
     implicit none
     private
 
@@ -12,6 +12,7 @@ module fortfem_sparse_direct
     public :: sparse_direct_solve_zero_constrained
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
+    public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_transpose_csc
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp
@@ -32,6 +33,16 @@ module fortfem_sparse_direct
         module procedure sparse_direct_solve_factored_real
         module procedure sparse_direct_solve_factored_complex
     end interface sparse_direct_solve_factored
+
+    interface sparse_direct_solve_factored_jvp
+        module procedure sparse_direct_solve_factored_jvp_real
+        module procedure sparse_direct_solve_factored_jvp_complex
+    end interface sparse_direct_solve_factored_jvp
+
+    interface sparse_direct_solve_factored_vjp
+        module procedure sparse_direct_solve_factored_vjp_real
+        module procedure sparse_direct_solve_factored_vjp_complex
+    end interface sparse_direct_solve_factored_vjp
 
     interface validate_csc_dimensions
         module procedure validate_csc_dimensions_real
@@ -198,6 +209,29 @@ contains
         status = solver_status%code
     end subroutine sparse_direct_factor_transpose_csc
 
+    subroutine sparse_direct_factor_adjoint_csc( &
+            factor, n, col_ptr, row_ind, values, status)
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        integer, intent(in) :: n
+        integer, intent(in) :: col_ptr(:), row_ind(:)
+        complex(dp), intent(in) :: values(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: adjoint_matrix, matrix
+        type(fortsparse_status_t) :: solver_status
+
+        call initialize_csc_complex( &
+            n, col_ptr, row_ind, values, matrix, status)
+        if (status /= 0) return
+        call csc_conjugate_transpose(matrix, adjoint_matrix, solver_status)
+        if (solver_status%code /= 0) then
+            status = solver_status%code
+            return
+        end if
+        call sparse_factor(factor, adjoint_matrix, solver_status)
+        status = solver_status%code
+    end subroutine sparse_direct_factor_adjoint_csc
+
     subroutine sparse_direct_solve_factored_real( &
             factor, rhs, solution, status)
         type(sparse_direct_factor_t), intent(inout) :: factor
@@ -224,7 +258,7 @@ contains
         status = solver_status%code
     end subroutine sparse_direct_solve_factored_complex
 
-    subroutine sparse_direct_solve_factored_jvp( &
+    subroutine sparse_direct_solve_factored_jvp_real( &
             factor, n, col_ptr, row_ind, values_dot, solution, rhs_dot, &
             solution_dot, status)
         type(sparse_direct_factor_t), intent(inout) :: factor
@@ -244,9 +278,9 @@ contains
         call sparse_solve_jvp( &
             factor, matrix_dot, solution, rhs_dot, solution_dot, solver_status)
         status = solver_status%code
-    end subroutine sparse_direct_solve_factored_jvp
+    end subroutine sparse_direct_solve_factored_jvp_real
 
-    subroutine sparse_direct_solve_factored_vjp( &
+    subroutine sparse_direct_solve_factored_vjp_real( &
             transpose_factor, n, col_ptr, row_ind, solution, solution_bar, &
             rhs_bar, values_bar, status)
         type(sparse_direct_factor_t), intent(inout) :: transpose_factor
@@ -270,7 +304,53 @@ contains
             transpose_factor, matrix, solution, solution_bar, rhs_bar, &
             values_bar, solver_status)
         status = solver_status%code
-    end subroutine sparse_direct_solve_factored_vjp
+    end subroutine sparse_direct_solve_factored_vjp_real
+
+    subroutine sparse_direct_solve_factored_jvp_complex( &
+            factor, n, col_ptr, row_ind, values_dot, solution, rhs_dot, &
+            solution_dot, status)
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        integer, intent(in) :: n
+        integer, intent(in) :: col_ptr(:), row_ind(:)
+        complex(dp), intent(in) :: values_dot(:), solution(:), rhs_dot(:)
+        complex(dp), intent(out) :: solution_dot(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: matrix_dot
+        type(fortsparse_status_t) :: solver_status
+
+        call initialize_csc_complex( &
+            n, col_ptr, row_ind, values_dot, matrix_dot, status)
+        if (status /= 0) return
+        call sparse_solve_jvp( &
+            factor, matrix_dot, solution, rhs_dot, solution_dot, solver_status)
+        status = solver_status%code
+    end subroutine sparse_direct_solve_factored_jvp_complex
+
+    subroutine sparse_direct_solve_factored_vjp_complex( &
+            adjoint_factor, n, col_ptr, row_ind, solution, solution_bar, &
+            rhs_bar, values_bar, status)
+        type(sparse_direct_factor_t), intent(inout) :: adjoint_factor
+        integer, intent(in) :: n
+        integer, intent(in) :: col_ptr(:), row_ind(:)
+        complex(dp), intent(in) :: solution(:), solution_bar(:)
+        complex(dp), intent(out) :: rhs_bar(:), values_bar(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: matrix
+        type(fortsparse_status_t) :: solver_status
+        complex(dp), allocatable :: zero_values(:)
+
+        allocate (zero_values(size(values_bar)), &
+            source=cmplx(0.0_dp, 0.0_dp, dp))
+        call initialize_csc_complex( &
+            n, col_ptr, row_ind, zero_values, matrix, status)
+        if (status /= 0) return
+        call sparse_solve_vjp( &
+            adjoint_factor, matrix, solution, solution_bar, rhs_bar, &
+            values_bar, solver_status)
+        status = solver_status%code
+    end subroutine sparse_direct_solve_factored_vjp_complex
 
     subroutine sparse_direct_free(factor)
         type(sparse_direct_factor_t), intent(inout) :: factor
