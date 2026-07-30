@@ -7,6 +7,7 @@ module fortfem_api_solvers_vector
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     use fortfem_basis_edge_2d, only: edge_basis_2d_t
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortnum_linalg, only: dense_solve
     use fortsparse, only: csc_t, fortsparse_status_t
     implicit none
 
@@ -15,15 +16,6 @@ module fortfem_api_solvers_vector
     public :: solve_vector
     public :: solve_curl_curl_problem
     public :: solve_generic_vector_problem
-
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
-            integer, intent(out) :: ipiv(*), info
-        end subroutine dgesv
-    end interface
 
 contains
 
@@ -491,25 +483,14 @@ contains
         real(dp), intent(in) :: A(:, :), b(:)
         real(dp), intent(out) :: x(:)
 
-        real(dp), allocatable :: A_work(:, :), b_work(:)
-        integer :: n, info, ipiv(size(A, 1))
+        integer :: info
 
-        n = size(A, 1)
-        allocate(A_work(n, n), b_work(n))
+        call dense_solve(A, b, x, info)
 
-        A_work = A
-        b_work = b
-
-        call dgesv(n, 1, A_work, n, ipiv, b_work, n, info)
-
-        if (info == 0) then
-            x = b_work
-        else
+        if (info /= 0) then
             write(*,*) "Warning: Direct vector solver failed with info =", info
             x = 0.0_dp
         end if
-
-        deallocate(A_work, b_work)
     end subroutine solve_direct_vector
 
     subroutine solve_generic_vector_problem(Eh, bc)

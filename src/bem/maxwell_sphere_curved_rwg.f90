@@ -7,6 +7,7 @@ module fortfem_maxwell_sphere_curved_rwg
     use fortfem_sphere_curved_panel, only: &
         evaluate_sphere_curved_panel, invert_sphere_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
     private
@@ -32,17 +33,6 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
     public :: assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d
 
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
-
 contains
 
     subroutine solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d( &
@@ -59,8 +49,6 @@ contains
         complex(dp), allocatable :: cfie(:, :), efie(:, :), mfie(:, :)
         complex(dp), allocatable :: product(:, :), regularizer(:, :)
         complex(dp), allocatable :: right_hand_side(:)
-        complex(dp), allocatable :: right_hand_side_matrix(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info
 
         call assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
@@ -72,19 +60,12 @@ contains
             vertices, triangles, radius, direction, polarization, wave_number, &
             impedance, quadrature_degree, regularizer, right_hand_side, status)
         if (status /= 0) return
-        allocate( &
-            density(size(right_hand_side)), &
-            right_hand_side_matrix(size(right_hand_side), 1), &
-            pivots(size(right_hand_side)))
-        right_hand_side_matrix(:, 1) = right_hand_side
-        call zgesv( &
-            size(right_hand_side), 1, cfie, size(right_hand_side), pivots, &
-            right_hand_side_matrix, size(right_hand_side), info)
+        allocate(density(size(right_hand_side)))
+        call dense_solve(cfie, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side_matrix(:, 1)
         status = 0
     end subroutine &
         solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
@@ -101,9 +82,8 @@ contains
         integer, intent(out) :: status
 
         complex(dp), allocatable :: bc_rhs(:), efie_rhs(:), mass(:, :)
-        complex(dp), allocatable :: mapped_rhs(:, :)
+        complex(dp), allocatable :: mapped_rhs(:)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info, system_size
 
         status = 1
@@ -122,18 +102,15 @@ contains
         system_size = size(real_mass, 1)
         if (any(shape(regularizer) /= [system_size, system_size])) return
         allocate( &
-            mass(system_size, system_size), mapped_rhs(system_size, 1), &
-            pivots(system_size), right_hand_side(system_size))
+            mass(system_size, system_size), mapped_rhs(system_size), &
+            right_hand_side(system_size))
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        mapped_rhs(:, 1) = efie_rhs
-        call zgesv( &
-            system_size, 1, mass, system_size, pivots, mapped_rhs, system_size, &
-            info)
+        call dense_solve(mass, efie_rhs, mapped_rhs, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        right_hand_side = bc_rhs - matmul(regularizer, mapped_rhs(:, 1))
+        right_hand_side = bc_rhs - matmul(regularizer, mapped_rhs)
         status = 0
     end subroutine &
         assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
@@ -206,7 +183,6 @@ contains
 
         complex(dp), allocatable :: mass(:, :), mapped_efie(:, :)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info, system_size
 
         status = 1
@@ -234,12 +210,9 @@ contains
         if (any(shape(regularizer) /= [system_size, system_size])) return
         allocate( &
             mass(system_size, system_size), &
-            mapped_efie(system_size, system_size), pivots(system_size))
+            mapped_efie(system_size, system_size))
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        mapped_efie = efie
-        call zgesv( &
-            system_size, system_size, mass, system_size, pivots, mapped_efie, &
-            system_size, info)
+        call dense_solve(mass, efie, mapped_efie, info)
         if (info /= 0) then
             status = 2
             return
@@ -659,8 +632,6 @@ contains
         integer, intent(out) :: status
 
         complex(dp), allocatable :: matrix(:, :), right_hand_side(:)
-        complex(dp), allocatable :: right_hand_side_matrix(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info
 
         status = 1
@@ -672,19 +643,12 @@ contains
             vertices, triangles, radius, direction, polarization, wave_number, &
             quadrature_degree, right_hand_side, status)
         if (status /= 0) return
-        allocate( &
-            density(size(right_hand_side)), &
-            right_hand_side_matrix(size(right_hand_side), 1), &
-            pivots(size(right_hand_side)))
-        right_hand_side_matrix(:, 1) = right_hand_side
-        call zgesv( &
-            size(right_hand_side), 1, matrix, size(right_hand_side), pivots, &
-            right_hand_side_matrix, size(right_hand_side), info)
+        allocate(density(size(right_hand_side)))
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side_matrix(:, 1)
         status = 0
     end subroutine solve_maxwell_pec_sphere_curved_efie_rwg_3d
 

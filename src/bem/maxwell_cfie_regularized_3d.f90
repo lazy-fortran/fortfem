@@ -12,6 +12,7 @@ module fortfem_maxwell_cfie_regularized_3d
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     implicit none
     private
 
@@ -19,17 +20,6 @@ module fortfem_maxwell_cfie_regularized_3d
     public :: assemble_maxwell_plane_wave_rhs_bc_3d
     public :: solve_maxwell_pec_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -71,10 +61,10 @@ contains
 
         complex(dp), allocatable :: bc_rhs(:), cfie(:, :), efie(:, :)
         complex(dp), allocatable :: efie_rhs(:), mapped_rhs(:, :)
+        complex(dp), allocatable :: mapped_solution(:, :)
         complex(dp), allocatable :: mass(:, :), mfie(:, :), product(:, :)
         complex(dp), allocatable :: regularizer(:, :), right_hand_side(:, :)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: incidence, incidence_count, info, n
 
         status = 1
@@ -94,7 +84,8 @@ contains
         n = size(real_mass, 1)
         allocate( &
             mass(n, n), mapped_rhs(n, incidence_count), &
-            right_hand_side(n, incidence_count), pivots(n), &
+            mapped_solution(n, incidence_count), &
+            right_hand_side(n, incidence_count), &
             densities(n, incidence_count))
         do incidence = 1, incidence_count
             call assemble_maxwell_plane_wave_rhs_rwg_3d( &
@@ -111,20 +102,18 @@ contains
             right_hand_side(:, incidence) = bc_rhs
         end do
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        call zgesv( &
-            n, incidence_count, mass, n, pivots, mapped_rhs, n, info)
+        call dense_solve(mass, mapped_rhs, mapped_solution, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        right_hand_side = right_hand_side - matmul(regularizer, mapped_rhs)
-        call zgesv( &
-            n, incidence_count, cfie, n, pivots, right_hand_side, n, info)
+        right_hand_side = &
+            right_hand_side - matmul(regularizer, mapped_solution)
+        call dense_solve(cfie, right_hand_side, densities, info)
         if (info /= 0) then
             status = 3
             return
         end if
-        densities = right_hand_side
         status = 0
     end subroutine solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
 
@@ -200,7 +189,6 @@ contains
         complex(dp), allocatable :: mass(:, :), mapped_efie(:, :)
         complex(dp), allocatable :: principal_value(:, :)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info, size_system
 
         status = 1
@@ -227,12 +215,9 @@ contains
         if (any(shape(regularizer) /= [size_system, size_system])) return
         allocate( &
             mass(size_system, size_system), &
-            mapped_efie(size_system, size_system), pivots(size_system))
+            mapped_efie(size_system, size_system))
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        mapped_efie = efie
-        call zgesv( &
-            size_system, size_system, mass, size_system, pivots, mapped_efie, &
-            size_system, info)
+        call dense_solve(mass, efie, mapped_efie, info)
         if (info /= 0) then
             status = 2
             return

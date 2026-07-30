@@ -6,6 +6,7 @@ module fortfem_maxwell_torus_curved_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
     private
@@ -28,17 +29,6 @@ module fortfem_maxwell_torus_curved_rwg
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
-
-    interface
-        subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            complex(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            complex(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine zgesv
-    end interface
 
 contains
 
@@ -87,11 +77,11 @@ contains
 
         complex(dp), allocatable :: bc_rhs(:), cfie(:, :), efie(:, :)
         complex(dp), allocatable :: efie_rhs(:), mapped_rhs(:, :)
+        complex(dp), allocatable :: mapped_solution(:, :)
         complex(dp), allocatable :: mfie(:, :), product(:, :)
         complex(dp), allocatable :: regularizer(:, :), right_hand_side(:, :)
         complex(dp), allocatable :: mass(:, :)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: incidence, incidence_count, info, system_size
 
         status = 1
@@ -114,8 +104,9 @@ contains
         allocate( &
             mass(system_size, system_size), &
             mapped_rhs(system_size, incidence_count), &
+            mapped_solution(system_size, incidence_count), &
             right_hand_side(system_size, incidence_count), &
-            densities(system_size, incidence_count), pivots(system_size))
+            densities(system_size, incidence_count))
         do incidence = 1, incidence_count
             call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d( &
                 vertices, triangles, parameters, major_radius, minor_radius, &
@@ -131,23 +122,18 @@ contains
             right_hand_side(:, incidence) = bc_rhs
         end do
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        call zgesv( &
-            system_size, incidence_count, mass, system_size, pivots, &
-            mapped_rhs, system_size, info)
+        call dense_solve(mass, mapped_rhs, mapped_solution, info)
         if (info /= 0) then
             status = 2
             return
         end if
         right_hand_side = &
-            right_hand_side - matmul(regularizer, mapped_rhs)
-        call zgesv( &
-            system_size, incidence_count, cfie, system_size, pivots, &
-            right_hand_side, system_size, info)
+            right_hand_side - matmul(regularizer, mapped_solution)
+        call dense_solve(cfie, right_hand_side, densities, info)
         if (info /= 0) then
             status = 3
             return
         end if
-        densities = right_hand_side
         status = 0
     end subroutine &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
@@ -232,7 +218,6 @@ contains
 
         complex(dp), allocatable :: mass(:, :), mapped_efie(:, :)
         real(dp), allocatable :: real_mass(:, :)
-        integer, allocatable :: pivots(:)
         integer :: info, system_size
 
         status = 1
@@ -262,12 +247,9 @@ contains
         if (any(shape(regularizer) /= [system_size, system_size])) return
         allocate( &
             mass(system_size, system_size), &
-            mapped_efie(system_size, system_size), pivots(system_size))
+            mapped_efie(system_size, system_size))
         mass = transpose(cmplx(real_mass, 0.0_dp, dp))
-        mapped_efie = efie
-        call zgesv( &
-            system_size, system_size, mass, system_size, pivots, mapped_efie, &
-            system_size, info)
+        call dense_solve(mass, efie, mapped_efie, info)
         if (info /= 0) then
             status = 2
             return

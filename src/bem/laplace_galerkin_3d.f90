@@ -1,6 +1,7 @@
 module fortfem_laplace_galerkin_3d
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortnum_linalg, only: dense_solve
     implicit none
 
     private
@@ -9,17 +10,6 @@ module fortfem_laplace_galerkin_3d
     public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_calderon_p1_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
-
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            real(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine dgesv
-    end interface
 
 contains
 
@@ -225,8 +215,7 @@ contains
         real(dp), intent(out) :: capacity
         integer, intent(out) :: status
 
-        real(dp), allocatable :: matrix(:, :), right_hand_side(:, :)
-        integer, allocatable :: pivots(:)
+        real(dp), allocatable :: matrix(:, :), right_hand_side(:)
         real(dp) :: area
         integer :: element, info
 
@@ -237,21 +226,17 @@ contains
         if (status /= 0) return
         allocate( &
             density(size(triangles, 2)), &
-            right_hand_side(size(triangles, 2), 1), &
-            pivots(size(triangles, 2)))
+            right_hand_side(size(triangles, 2)))
         do element = 1, size(triangles, 2)
             area = triangle_area( &
                 vertices(:, triangles(:, element)))
-            right_hand_side(element, 1) = boundary_value*area
+            right_hand_side(element) = boundary_value*area
         end do
-        call dgesv( &
-            size(triangles, 2), 1, matrix, size(triangles, 2), pivots, &
-            right_hand_side, size(triangles, 2), info)
+        call dense_solve(matrix, right_hand_side, density, info)
         if (info /= 0) then
             status = 2
             return
         end if
-        density = right_hand_side(:, 1)
         do element = 1, size(triangles, 2)
             capacity = capacity + density(element)*triangle_area( &
                 vertices(:, triangles(:, element)))

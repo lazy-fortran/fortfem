@@ -70,7 +70,7 @@ test targets. The audited consumer revisions are MEPHIT `a2d837c`,
 | 2D FEM/BEM | Dense Laplace/Helmholtz Calderon operators, CFIE, off-surface evaluation, symmetric P1/P0 Laplace and Helmholtz transmission solves, and a Burton--Miller acoustic NtD with monolithic P1 elasticity coupling on arbitrary closed polygons | Curved high-order panels, adaptivity, fast operators, and remaining paper fixtures |
 | 3D BEM | P0 Galerkin Laplace and Helmholtz single layers with analytical singular diagonals and bounded adaptive adjacent-panel quadrature; Laplace and Helmholtz P1/P0 Calderon blocks; outgoing sphere solves; resonance-safe Helmholtz CFIE; hierarchical Laplace application; affine and exact-curved-torus Laplace/Helmholtz off-surface evaluation; full exact-curved-torus Laplace and Helmholtz P1/P0 Calderon operators and exterior DtN solves; tetrahedral P1 Johnson-Nedelec and symmetric Costabel Laplace/Helmholtz FEM/BEM coupling; solid-torus P1 FEM/exact-curved-BEM symmetric Laplace and Helmholtz coupling; Maxwell RWG traces and mass pairing, Nedelec-to-RWG transfer, split EFIE blocks with radial-Duffy coincident-panel and adaptive adjacent-panel product quadrature, plane-wave PEC solves with batched multiple-incidence factor reuse, off-surface and far-field evaluation, monotone convergence of integrated sphere scattering toward the independent Mie series, affine-torus regularized-CFIE scattering with a Lorentz-reciprocity oracle, a symmetric mixed Nedelec/RWG FEM-BEM solve, provenance-matched BC/RBC traces, stable RWG-RBC duality, BC-domain electric operators, off-surface magnetic fields, exact radially curved sphere panels with Piola RWG/BC/RBC traces, transformed singular EFIE quadrature, exterior-limit MFIE extrapolation, imaginary-wavenumber regularized CFIE, improved Mie-series accuracy and resonance suppression, and exact-curved-torus surface-Piola RWG traces, mass pairing, plane-wave loads, far-field radiation, radial-Duffy coincident integration, adaptive adjacent-panel integration, full vector/scalar EFIE assembly, exact barycentric BC/RBC geometry, full-rank curved RWG-RBC dual pairing, Maxwell-consistent exterior/interior magnetic jumps, a one-sided extrapolated MFIE limit, coercive RWG- and BC-domain imaginary-wavenumber EFIE regularizers, provenance-faithful regularized-CFIE product assembly, exact BC incident traces, batched incident-field factor reuse, and solved scattering satisfying Lorentz reciprocity | Higher-order Galerkin surface operators, production FMM or H-matrices, and adaptive mesh refinement |
 | Symbolic generation | Revision-pinned `fortsym` generation of tetrahedral H(curl), H(div), face-permutation, and toroidal-coordinate kernels with byte-for-byte gates | Generate future exact element/operator kernels instead of maintaining coefficient tables by hand |
-| Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions; current `fortsparse` provides CSC construction, retained factors, solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
+| Shared numerics | Current `fortnum` provides quadrature, FFT, Bessel/Legendre/toroidal functions, and all host-side dense real/complex LU solves; current `fortsparse` provides CSC construction, retained factors, sparse solves, and the CSC storage used by FortFEM Krylov methods | Retire only the remaining compatibility names after downstream callers migrate |
 
 ## Repository state
 
@@ -242,6 +242,7 @@ The following replacements are aligned with current consumers:
 
 | fortnum facility | Replacement or new use in FortFEM |
 | --- | --- |
+| `dense_solve` | Owns real and complex dense LU solves, including multiple right-hand sides used for basis construction and batched boundary-element incident fields. |
 | `fft_c2c` and reusable FFT plans | Replace the quadratic DFT in the planar DtN operator. |
 | `gauss_legendre` and `gauss_legendre_ab` | Edge moments, boundary quadrature, and MEPHIT's current GSL fixed Gauss rule. |
 | Gauss-Kronrod and CQUAD integration | Verification integrals and near-singular one-dimensional boundary integrals. Singular self-panels still need transformed or analytical rules. |
@@ -256,6 +257,10 @@ simplex-rule module or a Duffy tensor-product construction.
 FortFEM now uses `fft_c2c` for a standalone periodic planar Helmholtz DtN map.
 Exact positive and negative Fourier modes test the outgoing propagating branch
 and the decaying evanescent branch at a prime transform length.
+FortFEM also routes every host-side dense `GESV` operation through
+`dense_solve`; no direct `DGESV` or `ZGESV` declaration remains in `src`.
+The established `lapack_lu` solver option remains a compatibility name for
+the LU algorithm, while FortNum owns the backend call and error handling.
 
 ### fortsparse
 

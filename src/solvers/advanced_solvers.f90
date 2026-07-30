@@ -3,20 +3,9 @@ module fortfem_advanced_solvers
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, spmv
     use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortnum_linalg, only: dense_solve
     implicit none
     private
-
-    ! LAPACK interface
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            real(dp), intent(inout) :: a(lda, *)
-            integer, intent(out) :: ipiv(*)
-            real(dp), intent(inout) :: b(ldb, *)
-            integer, intent(out) :: info
-        end subroutine dgesv
-    end interface
 
     ! Public types and interfaces
     public :: solver_options_t, solver_stats_t
@@ -520,18 +509,9 @@ contains
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
 
-        real(dp), allocatable :: A_copy(:, :)
-        integer, allocatable :: ipiv(:)
-        integer :: n, info
+        integer :: info
 
-        n = size(x)
-        allocate (A_copy(n, n), ipiv(n))
-
-        A_copy = A
-        x = b
-
-        ! LU factorization and solve
-        call dgesv(n, 1, A_copy, n, ipiv, x, n, info)
+        call dense_solve(A, b, x, info)
 
         stats%converged = (info == 0)
         stats%iterations = 1
@@ -543,8 +523,6 @@ contains
         end if
 
         stats%method_used = "lapack_lu"
-
-        deallocate (A_copy, ipiv)
     end subroutine lapack_solve
 
     ! Sparse LU solver entry using dense LU factors
