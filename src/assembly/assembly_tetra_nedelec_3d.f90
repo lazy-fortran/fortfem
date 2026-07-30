@@ -14,7 +14,7 @@ module fortfem_assembly_tetra_nedelec_3d
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortnum_linalg, only: det3
-    use fortsparse, only: csc_from_triplet, csc_t, &
+    use fortsparse, only: csc_from_triplet, csc_t, csc_z_t, &
         FORTSPARSE_INVALID_MATRIX, fortsparse_status_t, status_set
     implicit none
 
@@ -23,6 +23,7 @@ module fortfem_assembly_tetra_nedelec_3d
     public :: assemble_tetra_nedelec_curl_mass_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_element
+    public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
     public :: assemble_tetra_nedelec_vector_load_order
@@ -283,6 +284,80 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_nedelec_pml_element
+
+    subroutine assemble_tetra_nedelec_pml_csc( &
+            mesh_vertices, tetrahedra, order, stretch, wave_number, matrix, &
+            status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        complex(dp), intent(in) :: stretch(:, :)
+        real(dp), intent(in) :: wave_number
+        type(csc_z_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edge_orientations(:, :)
+        integer, allocatable :: edges(:, :), face_permutations(:, :, :)
+        integer, allocatable :: faces(:, :), global_dofs(:, :), rows(:)
+        complex(dp), allocatable :: element_matrix(:, :)
+        complex(dp), allocatable :: oriented_matrix(:, :), values(:)
+        real(dp), allocatable :: basis_transform(:, :)
+        real(dp) :: vertices(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Complex tetrahedral Nedelec PML assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (order < 1 .or. order > 4) return
+        if (size(stretch, 1) /= 3) return
+        if (size(stretch, 2) /= size(tetrahedra, 2)) return
+        if (wave_number <= 0.0_dp) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate( &
+            rows(dof_count*dof_count*size(tetrahedra, 2)), &
+            columns(dof_count*dof_count*size(tetrahedra, 2)), &
+            values(dof_count*dof_count*size(tetrahedra, 2)))
+        allocate( &
+            basis_transform(dof_count, dof_count), &
+            oriented_matrix(dof_count, dof_count))
+
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_pml_element( &
+                vertices, order, 2*order + 2, stretch(:, tetrahedron), &
+                wave_number, element_matrix, local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_matrix = matmul( &
+                transpose(basis_transform), &
+                matmul(element_matrix, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_tetra_nedelec_pml_csc
 
     subroutine assemble_tetra_nedelec_weighted_csc( &
             mesh_vertices, tetrahedra, coefficient, mass_coefficient, &
