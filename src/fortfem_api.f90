@@ -99,6 +99,9 @@ module fortfem_api
         apply_laplace_single_layer_p0_hierarchical_3d
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d
+    use fortfem_helmholtz_torus_curved_bem_3d, only: &
+        assemble_helmholtz_torus_curved_dtn_3d, &
+        solve_helmholtz_bem_dtn_torus_curved_3d
     use fortfem_helmholtz_galerkin_3d, only: &
         assemble_helmholtz_calderon_p1_p0_3d, &
         assemble_helmholtz_double_layer_p0_3d, &
@@ -338,6 +341,8 @@ module fortfem_api
     public :: solve_laplace_fem_bem_johnson_nedelec_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d
     public :: evaluate_helmholtz_representation_triangles_3d
+    public :: assemble_helmholtz_torus_curved_dtn_3d
+    public :: solve_helmholtz_bem_dtn_torus_curved_3d
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_helmholtz_calderon_p1_p0_3d
     public :: assemble_helmholtz_fem_bem_costabel_3d
