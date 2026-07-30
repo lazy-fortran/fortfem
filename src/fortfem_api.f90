@@ -1,6 +1,8 @@
 module fortfem_api
     use fortfem_assembly_bspline_polar_2d, only: &
+        assemble_bspline_polar_hcurl_operator_csc, &
         assemble_bspline_polar_h1_operator_csc, &
+        assemble_bspline_polar_l2_mass_csc, &
         restrict_bspline_polar_operator_csc
     use fortfem_magnetic_curvilinear_coefficients_2d, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
@@ -831,7 +833,9 @@ module fortfem_api
     public :: build_bspline_polar_feec_2d_extractions
     public :: evaluate_periodic_bspline_basis
     public :: restrict_bspline_polar_operator_csc
+    public :: assemble_bspline_polar_hcurl_operator_csc
     public :: assemble_bspline_polar_h1_operator_csc
+    public :: assemble_bspline_polar_l2_mass_csc
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
     public :: sparse_direct_solve_factored, sparse_direct_free
 
