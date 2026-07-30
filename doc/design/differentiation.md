@@ -107,3 +107,12 @@ with the complex implicit FortSparse adjoint. It differentiates wave number,
 period, complex volume loads, and complex Dirichlet data. Reverse elimination
 accounts for the dependence of the reduced right-hand side on both the
 pre-elimination matrix and prescribed boundary values.
+
+The biperiodic planar Maxwell capacity operator follows the same public
+`foo`, `foo_jvp`, and `foo_vjp` contract. Its products differentiate both
+tangential trace components, the wave number, and the two cell lengths. The
+FFT remains matrix-free, the modal square-root derivative is shared with the
+FortSym-generated Helmholtz kernels, and the two-by-two TE/TM coupling is
+propagated analytically. Reverse products use the real inner product
+`real(sum(conjg(output_bar)*output_dot))`; exact cutoff modes are rejected
+because their parameter derivative is singular.
