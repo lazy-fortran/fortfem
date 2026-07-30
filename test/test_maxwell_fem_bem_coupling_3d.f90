@@ -3,17 +3,25 @@ program test_maxwell_fem_bem_coupling_3d
     use fortfem_api, only: &
         assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_fem_bem_boundary_matrix_3d, &
+        assemble_maxwell_fem_bem_system_3d, &
+        assemble_maxwell_rwg_mass_matrix, &
+        assemble_tetra_nedelec_curl_mass_element, &
         build_maxwell_rwg_surface_space, build_tetra_edge_dof_map, &
         map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_api, only: solve_maxwell_fem_bem_system_3d
     use fortfem_kinds, only: dp
     implicit none
 
     complex(dp), allocatable :: boundary_matrix(:, :), efie(:, :)
     complex(dp), allocatable :: scaled_matrix(:, :)
+    complex(dp), allocatable :: system_matrix(:, :)
+    complex(dp), allocatable :: right_hand_side(:), solved_current(:)
+    complex(dp), allocatable :: solved_field(:)
     integer, allocatable :: edge_dofs(:, :), edge_orientations(:, :)
     integer, allocatable :: edges(:, :), rwg_dofs(:), rwg_triangles(:, :)
     integer, allocatable :: rwg_vertices(:, :)
     real(dp), allocatable :: rwg_scales(:), trace_coefficients(:)
+    real(dp), allocatable :: element_matrix(:, :), rwg_mass(:, :)
     real(dp) :: electric_field(3), vertices(3, 4)
     real(dp), allocatable :: volume_coefficients(:)
     integer :: boundary_triangles(3, 4), edge, status, tetrahedra(4, 1)
@@ -68,6 +76,37 @@ program test_maxwell_fem_bem_coupling_3d
     call record_condition(maxval(abs(scaled_matrix - boundary_matrix)) < &
         2.0e-12_dp, &
         "Nedelec Maxwell boundary pullback is wave-scaled geometry invariant")
+
+    call assemble_maxwell_fem_bem_system_3d( &
+        vertices, tetrahedra, boundary_triangles, 1.2_dp, -0.64_dp, &
+        0.8_dp, 1.7_dp, 8, 1.0e-3_dp, 1, system_matrix, status)
+    call assemble_tetra_nedelec_curl_mass_element( &
+        vertices, 1, 8, element_matrix, status, &
+        curl_coefficient=1.2_dp, mass_coefficient=-0.64_dp)
+    call assemble_maxwell_rwg_mass_matrix( &
+        vertices, boundary_triangles, 4, rwg_mass, status)
+    call record_condition(status == 0 .and. &
+        size(system_matrix, 1) == 12 .and. &
+        maxval(abs(system_matrix - transpose(system_matrix))) < 2.0e-12_dp .and. &
+        maxval(abs(system_matrix(:6, :6) - element_matrix)) < 2.0e-12_dp .and. &
+        maxval(abs(system_matrix(7:, 7:) + efie)) < 2.0e-12_dp, &
+        "Mixed Maxwell FEM-BEM system contains the verified volume and EFIE blocks")
+    call record_condition(sqrt(sum(abs( &
+        matmul(system_matrix(7:, :6), volume_coefficients) - &
+        matmul(rwg_mass, trace_coefficients))**2)) < 2.0e-12_dp, &
+        "Mixed Maxwell system uses the exact RWG trace duality block")
+    allocate(right_hand_side(12))
+    right_hand_side(:6) = matmul( &
+        cmplx(element_matrix, 0.0_dp, dp), volume_coefficients)
+    right_hand_side(7:) = matmul(rwg_mass, trace_coefficients)
+    call solve_maxwell_fem_bem_system_3d( &
+        vertices, tetrahedra, boundary_triangles, 1.2_dp, -0.64_dp, &
+        0.8_dp, 1.7_dp, 8, 1.0e-3_dp, 1, right_hand_side, solved_field, &
+        solved_current, status)
+    call record_condition(status == 0 .and. &
+        sqrt(sum(abs(solved_field - volume_coefficients)**2)) < 2.0e-11_dp .and. &
+        sqrt(sum(abs(solved_current)**2)) < 2.0e-11_dp, &
+        "Mixed FEM-BEM solve recovers an analytical constant Nedelec field")
     call check_summary("Three-dimensional Maxwell FEM-BEM trace coupling")
     if (.not. all_passed) error stop 1
 
