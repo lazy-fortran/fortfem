@@ -72,3 +72,8 @@ main = "gen_nurbs_geometry_products.f90"
 name = "gen_bspline_h1_geometry_products"
 source-dir = "app"
 main = "gen_bspline_h1_geometry_products.f90"
+
+[[executable]]
+name = "gen_cartesian_pml_products"
+source-dir = "app"
+main = "gen_cartesian_pml_products.f90"
