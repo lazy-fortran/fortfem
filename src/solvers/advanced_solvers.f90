@@ -1,7 +1,6 @@
 module fortfem_advanced_solvers
     use fortfem_kinds, only: dp
-    use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
-        sparse_to_csc, spmv
+    use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, spmv
     use fortfem_krylov_solvers, only: gmres_impl, bicgstab_impl
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
     implicit none
@@ -138,9 +137,9 @@ contains
         real(dp) :: start_time, end_time
         integer :: n
 
-        n = A_sparse%nrows
+        n = A_sparse%nrow
 
-        if (A_sparse%ncols /= n) then
+        if (A_sparse%ncol /= n) then
             error stop "solve_sparse: only square matrices are supported"
         end if
 
@@ -566,19 +565,15 @@ contains
         type(solver_stats_t), intent(out) :: stats
 
         type(sparse_matrix_t) :: A_sparse
-        integer, allocatable :: col_ptr(:)
-        integer, allocatable :: row_ind(:)
-        real(dp), allocatable :: values_csc(:)
         real(dp) :: residual_norm
         integer :: n, status
 
         n = size(A, 1)
 
         call sparse_from_dense(A, A_sparse)
-        call sparse_to_csc(A_sparse, col_ptr, row_ind, values_csc)
-
         call sparse_direct_solve_csc( &
-            n, col_ptr, row_ind, values_csc, b, x, status)
+            n, A_sparse%col_ptr, A_sparse%row_idx, A_sparse%val, &
+            b, x, status)
 
         stats%converged = (status == 0)
         stats%iterations = 1
@@ -592,7 +587,6 @@ contains
         stats%final_residual = residual_norm
         stats%method_used = "fortsparse"
 
-        deallocate (col_ptr, row_ind, values_csc)
     end subroutine sparse_direct_solve
 
     pure function compute_solver_tolerance(initial_norm, opts) result(tolerance)
@@ -660,11 +654,10 @@ contains
         type(solver_options_t), intent(in) :: opts
 
         integer :: n, i, j, k
-        integer :: row_start, row_end
         real(dp) :: a_ii
         real(dp), allocatable :: A_dense(:, :)
 
-        n = A_sparse%nrows
+        n = A_sparse%nrow
         precond%type = precond_type
 
         select case (trim(precond_type))
@@ -672,11 +665,9 @@ contains
             allocate (precond%diagonal(n))
             do i = 1, n
                 a_ii = 0.0_dp
-                row_start = A_sparse%row_ptr(i)
-                row_end = A_sparse%row_ptr(i + 1) - 1
-                do k = row_start, row_end
-                    if (A_sparse%col_ind(k) == i) then
-                        a_ii = A_sparse%values(k)
+                do k = A_sparse%col_ptr(i), A_sparse%col_ptr(i + 1) - 1
+                    if (A_sparse%row_idx(k) == i) then
+                        a_ii = A_sparse%val(k)
                         exit
                     end if
                 end do
@@ -691,12 +682,10 @@ contains
             allocate (A_dense(n, n))
             A_dense = 0.0_dp
 
-            do i = 1, n
-                row_start = A_sparse%row_ptr(i)
-                row_end = A_sparse%row_ptr(i + 1) - 1
-                do k = row_start, row_end
-                    j = A_sparse%col_ind(k)
-                    A_dense(i, j) = A_sparse%values(k)
+            do j = 1, n
+                do k = A_sparse%col_ptr(j), A_sparse%col_ptr(j + 1) - 1
+                    i = A_sparse%row_idx(k)
+                    A_dense(i, j) = A_sparse%val(k)
                 end do
             end do
 
@@ -911,8 +900,8 @@ contains
         integer :: memory_bytes
         integer :: n, nnz
 
-        n = A_sparse%nrows
-        nnz = size(A_sparse%values)
+        n = A_sparse%nrow
+        nnz = A_sparse%nnz
 
         select case (trim(method))
         case ("lapack_lu", "direct")
