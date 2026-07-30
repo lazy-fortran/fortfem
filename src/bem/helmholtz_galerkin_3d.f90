@@ -5,13 +5,15 @@ module fortfem_helmholtz_galerkin_3d
     !! contribution to the analytical diagonal treatment.
     use fortfem_kinds, only: dp
     use fortfem_laplace_galerkin_3d, only: &
-        assemble_laplace_single_layer_p0_3d
+        assemble_laplace_single_layer_p0_3d, &
+        assemble_laplace_single_layer_p0_adaptive_3d
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
 
     private
 
     public :: assemble_helmholtz_single_layer_p0_3d
+    public :: assemble_helmholtz_single_layer_p0_adaptive_3d
     public :: assemble_helmholtz_double_layer_p0_3d
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_3d
@@ -29,6 +31,27 @@ module fortfem_helmholtz_galerkin_3d
     end interface
 
 contains
+
+    subroutine assemble_helmholtz_single_layer_p0_adaptive_3d( &
+            vertices, triangles, wave_number, quadrature_degree, tolerance, &
+            max_depth, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), wave_number, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: laplace_matrix(:, :)
+
+        status = 1
+        if (wave_number < 0.0_dp) return
+        call assemble_laplace_single_layer_p0_adaptive_3d( &
+            vertices, triangles, tolerance, max_depth, laplace_matrix, status)
+        if (status /= 0) return
+        allocate(matrix(size(laplace_matrix, 1), size(laplace_matrix, 2)))
+        matrix = cmplx(laplace_matrix, 0.0_dp, dp)
+        call add_single_layer_smooth_remainder( &
+            vertices, triangles, wave_number, quadrature_degree, matrix, status)
+    end subroutine assemble_helmholtz_single_layer_p0_adaptive_3d
 
     subroutine solve_helmholtz_cfie_p0_3d( &
             vertices, triangles, boundary_value, wave_number, coupling, &
@@ -229,6 +252,24 @@ contains
         integer, intent(out) :: status
 
         real(dp), allocatable :: laplace_matrix(:, :)
+        status = 1
+        if (wave_number < 0.0_dp) return
+        call assemble_laplace_single_layer_p0_3d( &
+            vertices, triangles, quadrature_degree, laplace_matrix, status)
+        if (status /= 0) return
+        allocate(matrix(size(laplace_matrix, 1), size(laplace_matrix, 2)))
+        matrix = cmplx(laplace_matrix, 0.0_dp, dp)
+        call add_single_layer_smooth_remainder( &
+            vertices, triangles, wave_number, quadrature_degree, matrix, status)
+    end subroutine assemble_helmholtz_single_layer_p0_3d
+
+    subroutine add_single_layer_smooth_remainder( &
+            vertices, triangles, wave_number, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :), wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(inout) :: matrix(:, :)
+        integer, intent(out) :: status
+
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: first_jacobian, first_point_value(3), radius
         real(dp) :: second_jacobian
@@ -237,15 +278,9 @@ contains
         integer :: second_point
 
         status = 1
-        if (wave_number < 0.0_dp) return
-        call assemble_laplace_single_layer_p0_3d( &
-            vertices, triangles, quadrature_degree, laplace_matrix, status)
-        if (status /= 0) return
         call triangle_duffy_quadrature( &
             quadrature_degree, xi, eta, weights, quadrature_status)
         if (quadrature_status /= 0) return
-        allocate(matrix(size(laplace_matrix, 1), size(laplace_matrix, 2)))
-        matrix = cmplx(laplace_matrix, 0.0_dp, dp)
         do first = 1, size(triangles, 2)
             first_vertices = vertices(:, triangles(:, first))
             first_jacobian = 2.0_dp*triangle_area(first_vertices)
@@ -269,7 +304,7 @@ contains
             end do
         end do
         status = 0
-    end subroutine assemble_helmholtz_single_layer_p0_3d
+    end subroutine add_single_layer_smooth_remainder
 
     pure function smooth_remainder(wave_number, radius) result(value)
         real(dp), intent(in) :: wave_number, radius
