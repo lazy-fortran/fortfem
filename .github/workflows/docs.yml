@@ -42,7 +42,6 @@ jobs:
           workflow_conclusion: success
           if_no_artifact_found: ignore
         continue-on-error: true
-        if: github.event_name == 'workflow_run'
 
       - name: Download latest interoperability plots
         uses: dawidd6/action-download-artifact@v3
@@ -55,7 +54,6 @@ jobs:
           workflow_conclusion: success
           if_no_artifact_found: ignore
         continue-on-error: true
-        if: github.event_name == 'workflow_run'
         
       - name: Create empty plots directory if no artifacts
         run: |
