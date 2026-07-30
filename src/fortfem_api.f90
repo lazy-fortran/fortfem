@@ -7,7 +7,9 @@ module fortfem_api
     use fortfem_magnetic_curvilinear_coefficients_2d, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_cartesian_pml_geometry, only: &
-        build_cartesian_pml_element_stretch
+        build_cartesian_pml_element_stretch, &
+        build_cartesian_pml_element_stretch_jvp, &
+        build_cartesian_pml_element_stretch_vjp
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
         assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_bdm_div_mass_element, &
@@ -734,6 +736,8 @@ module fortfem_api
     public :: cartesian_scalar_helmholtz_pml_coefficients_jvp
     public :: cartesian_scalar_helmholtz_pml_coefficients_vjp
     public :: build_cartesian_pml_element_stretch
+    public :: build_cartesian_pml_element_stretch_jvp
+    public :: build_cartesian_pml_element_stretch_vjp
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_p1_2d
     public :: solve_scalar_helmholtz_pml_p1_3d

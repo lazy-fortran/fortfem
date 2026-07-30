@@ -89,3 +89,9 @@ products. Their VJPs use the real-vector complex convention
 \(\operatorname{Re}(\bar y^H\dot y)
 =\operatorname{Re}(\bar x^H\dot x)\), so reverse mode applies the conjugate
 transpose required by optimization over real and imaginary design components.
+The preceding element-stretch map is differentiable with respect to every mesh
+vertex, physical and outer boundary coordinate, wave number, and attenuation
+amplitude. Its reverse product accumulates contributions at shared vertices.
+At the physical/PML interface the active-set branch is intentionally
+piecewise: interior cells have zero stretch derivative, while derivatives in a
+PML layer are valid as long as a perturbation does not cross the interface.
