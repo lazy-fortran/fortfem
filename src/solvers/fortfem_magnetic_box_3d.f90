@@ -5,9 +5,16 @@ module fortfem_magnetic_box_3d
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortfem_tetra_nedelec_arbitrary_order, only: &
+        evaluate_tetra_nedelec_first_kind, &
+        initialize_tetra_nedelec_first_kind, tetra_nedelec_first_kind_t
     use fortfem_tetra_nedelec_first_order, only: &
         evaluate_tetra_nedelec_first_order
+    use fortfem_tetra_nedelec_global_dof_map, only: &
+        build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
+    use fortfem_tetra_nedelec_solver_3d, only: &
+        solve_tetra_nedelec_weighted_curl_mass
     use fortnum_linalg, only: det3, inv3
     use fortsparse, only: csc_from_triplet, csc_t, &
         FORTSPARSE_INTERNAL_ERROR, FORTSPARSE_INVALID_MATRIX, &
@@ -17,6 +24,9 @@ module fortfem_magnetic_box_3d
     private
 
     real(dp), parameter :: gauge_mass = 1.0e-10_dp
+    ! Higher-order curl-curl systems need a resolvable penalty on the gradient
+    ! nullspace; this remains six orders below the physical operator scale.
+    real(dp), parameter :: higher_order_gauge_mass = 1.0e-6_dp
 
     public :: solve_magnetic_box_3d
 
@@ -24,20 +34,21 @@ contains
 
     subroutine solve_magnetic_box_3d( &
             n_xy, n_z, az_centre, n_dofs, status, magnetic_point, &
-            magnetic_field)
+            magnetic_field, order)
         integer, intent(in) :: n_xy, n_z
         real(dp), intent(out) :: az_centre
         integer, intent(out) :: n_dofs
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: magnetic_point(3)
         real(dp), intent(out), optional :: magnetic_field(3)
+        integer, intent(in), optional :: order
 
         type(csc_t) :: matrix
         integer, allocatable :: edges(:, :), global_dofs(:, :)
         integer, allocatable :: orientations(:, :), tetrahedra(:, :)
         real(dp), allocatable :: right_hand_side(:), solution(:)
         real(dp), allocatable :: vertices(:, :)
-        integer :: local_status
+        integer :: local_status, polynomial_order
 
         az_centre = 0.0_dp
         n_dofs = 0
@@ -50,9 +61,42 @@ contains
         if (present(magnetic_field)) then
             if (.not. present(magnetic_point)) return
         end if
+        polynomial_order = 1
+        if (present(order)) polynomial_order = order
+        if (polynomial_order < 1 .or. polynomial_order > 4) return
         call build_box_tetra_mesh( &
             n_xy, n_z, vertices, tetrahedra, local_status)
         if (local_status /= 0) return
+        if (polynomial_order > 1) then
+            call solve_tetra_nedelec_weighted_curl_mass( &
+                vertices, tetrahedra, polynomial_order, box_reluctivity, &
+                axial_source, higher_order_gauge_mass, solution, status, &
+                .true.)
+            if (status%code /= 0) return
+            n_dofs = size(solution)
+            call probe_box_solution_order( &
+                vertices, tetrahedra, polynomial_order, solution, &
+                [0.5_dp, 0.5_dp, 1.5_dp], az_centre, local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INTERNAL_ERROR, &
+                    "Higher-order magnetic box centre probe failed")
+                return
+            end if
+            if (present(magnetic_point)) then
+                call probe_box_curl_order( &
+                    vertices, tetrahedra, polynomial_order, solution, &
+                    magnetic_point, magnetic_field, local_status)
+                if (local_status /= 0) then
+                    call status_set( &
+                        status, FORTSPARSE_INTERNAL_ERROR, &
+                        "Higher-order magnetic box curl probe failed")
+                    return
+                end if
+            end if
+            call status_set(status, 0, "")
+            return
+        end if
         call build_tetra_edge_dof_map( &
             tetrahedra, edges, global_dofs, orientations, local_status)
         if (local_status /= 0) return
@@ -276,6 +320,111 @@ contains
             abs(second - plane) <= tolerance
     end function same_plane
 
+    subroutine probe_box_solution_order( &
+            vertices, tetrahedra, order, solution, point, az_value, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:), point(3)
+        integer, intent(in) :: tetrahedra(:, :), order
+        real(dp), intent(out) :: az_value
+        integer, intent(out) :: status
+
+        real(dp) :: curl_value(3), value(3)
+
+        call evaluate_box_solution_order( &
+            vertices, tetrahedra, order, solution, point, value, curl_value, &
+            status)
+        az_value = value(3)
+    end subroutine probe_box_solution_order
+
+    subroutine probe_box_curl_order( &
+            vertices, tetrahedra, order, solution, point, curl_value, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:), point(3)
+        integer, intent(in) :: tetrahedra(:, :), order
+        real(dp), intent(out) :: curl_value(3)
+        integer, intent(out) :: status
+
+        real(dp) :: value(3)
+
+        call evaluate_box_solution_order( &
+            vertices, tetrahedra, order, solution, point, value, curl_value, &
+            status)
+    end subroutine probe_box_curl_order
+
+    subroutine evaluate_box_solution_order( &
+            vertices, tetrahedra, order, solution, point, value, curl_value, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), solution(:), point(3)
+        integer, intent(in) :: tetrahedra(:, :), order
+        real(dp), intent(out) :: value(3), curl_value(3)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), local_dofs(:)
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp) :: determinant, inverse_jacobian(3, 3), jacobian(3, 3)
+        real(dp) :: reference_point(3), vertex_a(3)
+        integer :: containing_count, dof_count, inverse_status, tetrahedron
+
+        value = 0.0_dp
+        curl_value = 0.0_dp
+        containing_count = 0
+        status = 1
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, edge_orientations, &
+            face_permutations, status)
+        if (status /= 0) return
+        if (size(solution) /= maxval(global_dofs)) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate ( &
+            basis_transform(dof_count, dof_count), local_dofs(dof_count), &
+            reference_values(3, dof_count), reference_curls(3, dof_count), &
+            physical_values(3, dof_count), physical_curls(3, dof_count))
+
+        do tetrahedron = 1, size(tetrahedra, 2)
+            vertex_a = vertices(:, tetrahedra(1, tetrahedron))
+            jacobian(:, 1) = &
+                vertices(:, tetrahedra(2, tetrahedron)) - vertex_a
+            jacobian(:, 2) = &
+                vertices(:, tetrahedra(3, tetrahedron)) - vertex_a
+            jacobian(:, 3) = &
+                vertices(:, tetrahedra(4, tetrahedron)) - vertex_a
+            determinant = det3(jacobian)
+            if (determinant <= 0.0_dp) cycle
+            call inv3(jacobian, inverse_jacobian, inverse_status)
+            if (inverse_status /= 0) cycle
+            reference_point = matmul(inverse_jacobian, point - vertex_a)
+            if (any(reference_point < -1.0e-12_dp)) cycle
+            if (sum(reference_point) > 1.0_dp + 1.0e-12_dp) cycle
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, status)
+            if (status /= 0) return
+            local_dofs = matmul( &
+                basis_transform, solution(global_dofs(:, tetrahedron)))
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, reference_point, reference_values, reference_curls, &
+                status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            value = value + matmul(physical_values, local_dofs)
+            curl_value = curl_value + matmul(physical_curls, local_dofs)
+            containing_count = containing_count + 1
+        end do
+        if (containing_count < 1) return
+        value = value/real(containing_count, dp)
+        curl_value = curl_value/real(containing_count, dp)
+        status = 0
+    end subroutine evaluate_box_solution_order
+
     subroutine probe_box_az( &
             vertices, tetrahedra, global_dofs, orientations, solution, &
             az_centre, status)
@@ -307,7 +456,6 @@ contains
             reference_point = matmul(inverse_jacobian, point - vertex_a)
             if (any(reference_point < -1.0e-12_dp)) cycle
             if (sum(reference_point) > 1.0_dp + 1.0e-12_dp) cycle
-            reference_point = [0.25_dp, 0.25_dp, 0.25_dp]
             call evaluate_tetra_nedelec_first_order( &
                 reference_point, reference_values, reference_curls, status)
             if (status /= 0) return

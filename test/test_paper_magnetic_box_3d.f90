@@ -8,9 +8,10 @@ program test_paper_magnetic_box_3d
     real(dp), parameter :: reference = 0.07367135328_dp
     type(fortsparse_status_t) :: status
     real(dp) :: coarse_field(3), exact_field(3), fine_field(3)
+    real(dp) :: p_fields(3, 2:4)
     real(dp) :: field_point(3)
-    real(dp) :: coarse_value, fine_value
-    integer :: coarse_dofs, fine_dofs
+    real(dp) :: coarse_value, fine_value, p_values(2:4)
+    integer :: coarse_dofs, degree, fine_dofs, p_dofs
     logical :: all_passed
 
     all_passed = .true.
@@ -37,6 +38,27 @@ program test_paper_magnetic_box_3d
     call record_condition(norm2(fine_field - exact_field) < &
         norm2(coarse_field - exact_field), &
         "Magnetic box curl improves under refinement")
+    do degree = 2, 4
+        call solve_magnetic_box_3d( &
+            2, 1, p_values(degree), p_dofs, status, field_point, &
+            p_fields(:, degree), order=degree)
+        call record_condition(status%code == 0, &
+            "Higher-order magnetic-paper box solve succeeds")
+    end do
+    write (*, '(a,3(es12.4,1x))') &
+        "Magnetic box p=2:4 centre values ", p_values
+    call record_condition(all(abs(p_values(3:4) - reference) < &
+        abs(p_values(2:3) - reference)), &
+        "Magnetic box centre value improves with polynomial order")
+    call record_condition(abs(p_values(4) - reference)/reference < 0.05_dp, &
+        "Order-four magnetic box reaches the membrane series")
+    call record_condition( &
+        norm2(p_fields(:, 4) - exact_field) < &
+        norm2(p_fields(:, 2) - exact_field), &
+        "Magnetic box curl improves with polynomial order")
+    call record_condition( &
+        norm2(p_fields(:, 4) - exact_field)/norm2(exact_field) < 0.05_dp, &
+        "Order-four magnetic box curl reaches the differentiated series")
 
     call check_summary("Paper magnetic three-dimensional box")
     if (.not. all_passed) error stop 1
