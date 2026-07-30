@@ -28,6 +28,7 @@ coverage.info
 *.eps
 *.vtk
 *.dat
+verification/fortsym/results.json
 
 # Editor files
 .vscode/

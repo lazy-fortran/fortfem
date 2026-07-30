@@ -1,12 +1,15 @@
 program test_bspline_polar_axis
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_bspline_polar_h1_extraction
+    use fortfem_api, only: &
+        build_bspline_polar_feec_2d_operators, &
+        build_bspline_polar_h1_extraction
     use fortfem_kinds, only: dp
     implicit none
 
     integer, parameter :: azimuth_count = 8
     integer, parameter :: radial_count = 5
     real(dp), allocatable :: extraction(:, :), polar_points(:, :)
+    real(dp), allocatable :: curl(:, :), gradient(:, :), random_state(:)
     real(dp), allocatable :: tensor_points(:, :)
     real(dp) :: angle, radius(azimuth_count)
     integer :: azimuth, status
@@ -51,6 +54,35 @@ program test_bspline_polar_axis
     call check_condition(abs(angle) > 1.0e-2_dp, &
         "Polar control fan has a well-defined orientation")
 
+    call build_bspline_polar_feec_2d_operators( &
+        azimuth_count, radial_count, gradient, curl, status)
+    call check_condition(status == 0 .and. &
+        all(shape(gradient) == [ &
+        2 + 2*azimuth_count*(radial_count - 2), &
+        3 + azimuth_count*(radial_count - 2)]) .and. &
+        all(shape(curl) == [ &
+        azimuth_count*(radial_count - 2), &
+        2 + 2*azimuth_count*(radial_count - 2)]), &
+        "Polar form dimensions match Toshniwal-Hughes equations 74--76")
+    call check_condition(maxval(abs(matmul(curl, gradient))) < 2.0e-15_dp, &
+        "Polar differential forms preserve curl(grad)=0")
+    call check_condition(maxval(abs(matmul( &
+        gradient, [(1.0_dp, azimuth = 1, size(gradient, 2))]))) < &
+        2.0e-15_dp, "Polar gradient annihilates constants")
+    call check_condition(gram_is_positive_definite(curl), &
+        "Polar curl has full row rank")
+    call check_condition(gram_is_positive_definite(transpose( &
+        gradient(:, 2:))), "Polar gradient has constants as its only kernel")
+
+    allocate(random_state(size(gradient, 2)))
+    call seed_random_numbers()
+    do azimuth = 1, 20
+        call random_number(random_state)
+        call check_condition(maxval(abs( &
+            matmul(curl, matmul(gradient, random_state)))) < 5.0e-15_dp, &
+            "Random polar exact-sequence trial preserves curl(grad)=0")
+    end do
+
     call check_summary("Isogeometric magnetic-axis polar extraction")
 
 contains
@@ -88,5 +120,15 @@ contains
         area = (first(1) - origin(1))*(second(2) - origin(2)) - &
             (first(2) - origin(2))*(second(1) - origin(1))
     end function signed_area
+
+    subroutine seed_random_numbers()
+        integer, allocatable :: seed(:)
+        integer :: entry
+
+        call random_seed(size=entry)
+        allocate(seed(entry))
+        seed = [(104729 + 7919*entry, entry = 1, size(seed))]
+        call random_seed(put=seed)
+    end subroutine seed_random_numbers
 
 end program test_bspline_polar_axis
