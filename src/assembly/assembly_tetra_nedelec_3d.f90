@@ -69,7 +69,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Higher-order tetrahedral Nedelec vector load failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
-        if (order < 2 .or. order > 4) return
+        if (order < 2 .or. order > 5) return
         call build_tetra_nedelec_dof_map( &
             order, tetrahedra, edges, faces, global_dofs, &
             edge_orientations, face_permutations, local_status)
@@ -120,7 +120,7 @@ contains
         integer :: dof, dof_count, point
 
         status = 1
-        if (order < 2 .or. order > 4) return
+        if (order < 2 .or. order > 5) return
         call initialize_tetra_nedelec_first_kind(order, basis, status)
         if (status /= 0) return
         call tetra_duffy_quadrature( &
@@ -243,7 +243,7 @@ contains
 
         status = 1
         if (allocated(matrix)) deallocate(matrix)
-        if (order < 1 .or. order > 4) return
+        if (order < 1 .or. order > 5) return
         if (quadrature_degree < 0 .or. wave_number <= 0.0_dp) return
         call cartesian_curl_curl_pml_coefficients( &
             stretch, curl_coefficient, mass_coefficient, status)
@@ -309,7 +309,7 @@ contains
             status, FORTSPARSE_INVALID_MATRIX, &
             "Complex tetrahedral Nedelec PML assembly failed")
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
-        if (order < 1 .or. order > 4) return
+        if (order < 1 .or. order > 5) return
         if (size(stretch, 1) /= 3) return
         if (size(stretch, 2) /= size(tetrahedra, 2)) return
         if (wave_number <= 0.0_dp) return
@@ -383,7 +383,7 @@ contains
         if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
         polynomial_order = 1
         if (present(order)) polynomial_order = order
-        if (polynomial_order < 1 .or. polynomial_order > 4) return
+        if (polynomial_order < 1 .or. polynomial_order > 5) return
         if (polynomial_order > 1) then
             call assemble_arbitrary_order_weighted_csc( &
                 mesh_vertices, tetrahedra, polynomial_order, coefficient, &
@@ -444,7 +444,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Higher-order weighted tetrahedral Nedelec assembly failed")
-        if (order < 2 .or. order > 4) return
+        if (order < 2 .or. order > 5) return
         call build_tetra_nedelec_dof_map( &
             order, tetrahedra, edges, faces, global_dofs, &
             edge_orientations, face_permutations, local_status)
@@ -559,7 +559,7 @@ contains
         if (any(tetrahedra > size(mesh_vertices, 2))) return
         polynomial_order = 1
         if (present(order)) polynomial_order = order
-        if (polynomial_order < 1 .or. polynomial_order > 4) return
+        if (polynomial_order < 1 .or. polynomial_order > 5) return
         curl_weight = 1.0_dp
         mass_weight = 1.0_dp
         if (present(curl_coefficient)) curl_weight = curl_coefficient
@@ -624,7 +624,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Higher-order tetrahedral Nedelec assembly failed")
-        if (order < 2 .or. order > 4) return
+        if (order < 2 .or. order > 5) return
         call build_tetra_nedelec_dof_map( &
             order, tetrahedra, edges, faces, global_dofs, &
             edge_orientations, face_permutations, local_status)

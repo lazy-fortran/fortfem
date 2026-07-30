@@ -57,7 +57,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Weighted tetrahedral Nedelec curl-mass solve failed")
-        if (order < 1 .or. order > 4) return
+        if (order < 1 .or. order > 5) return
         if (mass_coefficient <= 0.0_dp) return
         call assemble_tetra_nedelec_weighted_csc( &
             vertices, tetrahedra, curl_coefficient, mass_coefficient, &
@@ -244,7 +244,7 @@ contains
         call status_set( &
             status, FORTSPARSE_INVALID_MATRIX, &
             "Tetrahedral Nedelec curl-mass solve failed")
-        if (order < 1 .or. order > 4) return
+        if (order < 1 .or. order > 5) return
         if (mass_coefficient <= 0.0_dp) return
         call assemble_tetra_nedelec_curl_mass_csc( &
             vertices, tetrahedra, matrix, status, curl_coefficient, &

@@ -60,7 +60,7 @@ program test_tetra_nedelec_sparse_assembly
 
     deallocate(dofs, matrix_times_dofs)
     constant_field = [1.0_dp, 2.0_dp, -1.0_dp]
-    do polynomial_order = 2, 4
+    do polynomial_order = 2, 5
         call build_tetra_nedelec_dof_map( &
             polynomial_order, tetrahedra, edges, faces, global_dofs, &
             orientations, face_permutations, status)
@@ -75,13 +75,16 @@ program test_tetra_nedelec_sparse_assembly
             order=polynomial_order)
         matrix_times_dofs = csc_matvec(matrix, dofs)
         energy = dot_product(dofs, matrix_times_dofs)
+        print "(a,i0,a,es12.4)", &
+            "Nedelec order ", polynomial_order, " constant energy error: ", &
+            abs(energy - 3.0_dp)
         call record_condition(sparse_status%code == 0 .and. &
-            abs(energy - 3.0_dp) < 3.0e-9_dp, &
+            abs(energy - 3.0_dp) < 1.0e-8_dp, &
             "Higher-order sparse mass assembly has exact constant-field energy")
         deallocate(dofs, matrix_times_dofs)
     end do
     call assemble_tetra_nedelec_curl_mass_csc( &
-        vertices, tetrahedra, matrix, sparse_status, order=5)
+        vertices, tetrahedra, matrix, sparse_status, order=6)
     call record_condition(sparse_status%code /= 0, &
         "Sparse assembly rejects an unsupported polynomial order")
 

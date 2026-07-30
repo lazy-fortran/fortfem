@@ -67,7 +67,7 @@ contains
         end if
         polynomial_order = 1
         if (present(order)) polynomial_order = order
-        if (polynomial_order < 1 .or. polynomial_order > 4) return
+        if (polynomial_order < 1 .or. polynomial_order > 5) return
         call generate_structured_tetra_box_mesh( &
             box_bounds, [n_xy, n_xy, n_z], vertices, tetrahedra, local_status)
         if (local_status /= 0) return
