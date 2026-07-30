@@ -173,3 +173,10 @@ the Nedelec orientation transforms, and accumulates element geometry
 cotangents at shared mesh vertices. Elementwise complex stretch gradients
 remain separate, while the global wave-number gradient is summed across all
 cells. This is the mesh-level interface consumed by sparse state adjoints.
+
+The real tetrahedral curl--curl-plus-mass CSC assembler provides the
+corresponding mesh, curl-coefficient, and mass-coefficient products. Its
+reverse pass handles both first-order edge orientation and arbitrary-order
+edge/face/cell basis transforms, then accumulates cotangents from adjacent
+elements at shared vertices. Thus FEM--DtN and PML volume operators expose
+the same geometry-facing contract.
