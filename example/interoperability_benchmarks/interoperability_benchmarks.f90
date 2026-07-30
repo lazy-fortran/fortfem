@@ -1,0 +1,185 @@
+program interoperability_benchmarks
+    use fortfem_interoperability_records, only: interoperability_record_t, &
+        read_interoperability_records
+    use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, set_xscale, &
+        set_yscale, title, xlabel, ylabel
+    implicit none
+
+    character(len=512) :: output_directory, records_root
+    integer :: command_status
+
+    if (command_argument_count() /= 2) then
+        error stop "usage: interoperability_benchmarks RECORDS_ROOT OUTPUT_DIR"
+    end if
+    call get_command_argument(1, records_root)
+    call get_command_argument(2, output_directory)
+    call execute_command_line( &
+        "mkdir -p '"//trim(output_directory)//"'", exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create plot output directory"
+
+    call accuracy_figure("poisson", "Poisson", "H1")
+    call accuracy_figure("ampere", "Ampere curl-curl", "H(curl)")
+    call timing_figure("poisson", "Poisson")
+    call timing_figure("ampere", "Ampere curl-curl")
+
+contains
+
+    subroutine accuracy_figure(case_name, display_name, graph_name)
+        character(len=*), intent(in) :: case_name, display_name, graph_name
+
+        type(interoperability_record_t), allocatable :: records(:)
+        real(dp) :: color(3)
+        real(dp), allocatable :: dofs(:), graph_error(:), l2_error(:)
+        real(dp), allocatable :: total_seconds(:)
+        integer :: solver
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        do solver = 1, 3
+            call load_records(case_name, solver, records)
+            call extract_columns( &
+                records, dofs, l2_error, graph_error, total_seconds)
+            color = solver_color(solver)
+            call plot( &
+                dofs, l2_error, label=trim(solver_name(solver))//" L2", &
+                linestyle=solver_line(solver), marker=solver_marker(solver), &
+                color=color)
+            call plot( &
+                dofs, graph_error, &
+                label=trim(solver_name(solver))//" "//graph_name, &
+                linestyle=":", marker=solver_marker(solver), &
+                color=color)
+        end do
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("degrees of freedom")
+        call ylabel("error norm")
+        call title(display_name//": analytical convergence")
+        call legend()
+        call save_pair(trim(case_name)//"_accuracy")
+    end subroutine accuracy_figure
+
+    subroutine timing_figure(case_name, display_name)
+        character(len=*), intent(in) :: case_name, display_name
+
+        type(interoperability_record_t), allocatable :: records(:)
+        real(dp) :: color(3)
+        real(dp), allocatable :: dofs(:), graph_error(:), l2_error(:)
+        real(dp), allocatable :: total_seconds(:)
+        integer :: solver
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        do solver = 1, 3
+            call load_records(case_name, solver, records)
+            call extract_columns( &
+                records, dofs, l2_error, graph_error, total_seconds)
+            color = solver_color(solver)
+            if (any(total_seconds <= 0.0_dp)) then
+                error stop "timing records must be positive for log plotting"
+            end if
+            call plot( &
+                dofs, total_seconds, label=solver_name(solver), &
+                linestyle=solver_line(solver), &
+                marker=solver_marker(solver), color=color)
+        end do
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("degrees of freedom")
+        call ylabel("runner-local wall time (s)")
+        call title(display_name//": CI timing diagnostic")
+        call legend()
+        call save_pair(trim(case_name)//"_timing")
+    end subroutine timing_figure
+
+    subroutine load_records(case_name, solver, records)
+        character(len=*), intent(in) :: case_name
+        integer, intent(in) :: solver
+        type(interoperability_record_t), allocatable, intent(out) :: records(:)
+
+        character(len=1024) :: path
+        integer :: status
+
+        path = trim(records_root)//"/"//trim(solver_directory(solver))//"/"// &
+            trim(case_name)//".csv"
+        call read_interoperability_records(trim(path), records, status)
+        if (status /= 0) error stop "invalid interoperability CSV: "//trim(path)
+        if (size(records) < 3) error stop "at least three refinements required"
+    end subroutine load_records
+
+    subroutine extract_columns( &
+            records, dofs, l2_error, graph_error, total_seconds)
+        type(interoperability_record_t), intent(in) :: records(:)
+        real(dp), allocatable, intent(out) :: dofs(:), graph_error(:)
+        real(dp), allocatable, intent(out) :: l2_error(:), total_seconds(:)
+
+        integer :: index
+
+        allocate ( &
+            dofs(size(records)), l2_error(size(records)), &
+            graph_error(size(records)), total_seconds(size(records)))
+        do index = 1, size(records)
+            dofs(index) = real(records(index)%dofs, dp)
+            l2_error(index) = records(index)%l2_error
+            graph_error(index) = records(index)%graph_error
+            total_seconds(index) = records(index)%total_seconds
+        end do
+    end subroutine extract_columns
+
+    subroutine save_pair(stem)
+        character(len=*), intent(in) :: stem
+
+        call savefig(trim(output_directory)//"/"//stem//".png")
+        call savefig(trim(output_directory)//"/"//stem//".svg")
+    end subroutine save_pair
+
+    pure function solver_name(solver) result(name)
+        integer, intent(in) :: solver
+        character(len=8) :: name
+
+        character(len=8), parameter :: names(3) = &
+            [character(len=8) :: "FEniCSx", "FreeFEM", "MFEM"]
+
+        name = names(solver)
+    end function solver_name
+
+    pure function solver_directory(solver) result(name)
+        integer, intent(in) :: solver
+        character(len=8) :: name
+
+        character(len=8), parameter :: names(3) = &
+            [character(len=8) :: "fenicsx", "freefem", "mfem"]
+
+        name = names(solver)
+    end function solver_directory
+
+    pure function solver_color(solver) result(color)
+        integer, intent(in) :: solver
+        real(dp) :: color(3)
+
+        real(dp), parameter :: colors(3, 3) = reshape( &
+            [0.0_dp, 114.0_dp, 178.0_dp, &
+            230.0_dp, 159.0_dp, 0.0_dp, &
+            0.0_dp, 158.0_dp, 115.0_dp]/255.0_dp, [3, 3])
+
+        color = colors(:, solver)
+    end function solver_color
+
+    pure function solver_line(solver) result(line)
+        integer, intent(in) :: solver
+        character(len=2) :: line
+
+        character(len=2), parameter :: lines(3) = ["- ", "--", "-."]
+
+        line = lines(solver)
+    end function solver_line
+
+    pure function solver_marker(solver) result(marker)
+        integer, intent(in) :: solver
+        character(len=1) :: marker
+
+        character(len=1), parameter :: markers(3) = ["o", "s", "^"]
+
+        marker = markers(solver)
+    end function solver_marker
+
+end program interoperability_benchmarks

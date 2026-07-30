@@ -107,6 +107,10 @@ jobs:
         for example_dir in example/*/; do
           if [[ -d "$example_dir" ]]; then
             example_name=$(basename "$example_dir")
+            if [[ "$example_name" == "interoperability_benchmarks" ]]; then
+              echo "Skipping $example_name: external solver artifacts required"
+              continue
+            fi
             if [[ -f "$example_dir/${example_name}.f90" ]]; then
               echo "Running example: $example_name"
               fpm run --example "$example_name"

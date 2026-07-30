@@ -6,7 +6,7 @@ on:
   
   # Run after test workflow completes successfully
   workflow_run:
-    workflows: ["test"]
+    workflows: ["test", "interoperability"]
     types:
       - completed
     branches: [main]
@@ -32,13 +32,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Download CI artifacts (plots) 
+      - name: Download latest example plots
         uses: dawidd6/action-download-artifact@v3
         with:
           name: generated-plots
           path: ./artifacts/plots/
           workflow: test.yml
-          run_id: ${{ github.event.workflow_run.id }}
+          branch: main
+          workflow_conclusion: success
+          if_no_artifact_found: ignore
+        continue-on-error: true
+        if: github.event_name == 'workflow_run'
+
+      - name: Download latest interoperability plots
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: generated-interoperability-plots-.*
+          name_is_regexp: true
+          path: ./artifacts/plots/examples/interoperability_benchmarks/
+          workflow: interoperability.yml
+          branch: main
+          workflow_conclusion: success
           if_no_artifact_found: ignore
         continue-on-error: true
         if: github.event_name == 'workflow_run'
