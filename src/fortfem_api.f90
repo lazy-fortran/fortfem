@@ -50,6 +50,8 @@ module fortfem_api
         assemble_maxwell_efie_bc_imaginary_3d, &
         build_maxwell_bc_panel_divergence, &
         build_maxwell_bc_to_refined_rwg
+    use fortfem_maxwell_cfie_regularized_3d, only: &
+        assemble_maxwell_regularized_cfie_rwg_3d
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
@@ -253,6 +255,7 @@ module fortfem_api
     public :: assemble_maxwell_efie_bc_imaginary_3d
     public :: build_maxwell_bc_panel_divergence
     public :: build_maxwell_bc_to_refined_rwg
+    public :: assemble_maxwell_regularized_cfie_rwg_3d
     public :: cartesian_to_toroidal
     public :: toroidal_point_to_cartesian
     public :: toroidal_vector_to_cartesian
