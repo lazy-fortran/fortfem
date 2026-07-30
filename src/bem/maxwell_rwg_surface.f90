@@ -4,14 +4,70 @@ module fortfem_maxwell_rwg_surface
     !! edge shared by exactly two panels.
     use fortfem_kinds, only: dp
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
     private
 
     public :: build_maxwell_rwg_surface_space
+    public :: assemble_maxwell_rwg_mass_matrix
     public :: evaluate_maxwell_rwg_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
 
 contains
+
+    subroutine assemble_maxwell_rwg_mass_matrix( &
+            vertices, triangles, quadrature_degree, matrix, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp), allocatable :: values(:, :)
+        real(dp) :: basis_divergence, jacobian, point(3)
+        integer :: basis, node, panel, test_basis
+
+        status = 1
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0 .or. size(edge_vertices, 2) == 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            values(3, size(edge_vertices, 2)))
+        matrix = 0.0_dp
+        do panel = 1, size(triangles, 2)
+            jacobian = 2.0_dp*triangle_area( &
+                vertices(:, triangles(:, panel)))
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    vertices(:, triangles(:, panel)), xi(node), eta(node))
+                values = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, point, values(:, basis), basis_divergence, &
+                        status)
+                    if (status /= 0) return
+                end do
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    do test_basis = 1, size(edge_vertices, 2)
+                        if (.not. any( &
+                            edge_triangles(:, test_basis) == panel)) cycle
+                        matrix(test_basis, basis) = matrix(test_basis, basis) + &
+                            jacobian*weights(node)*dot_product( &
+                            values(:, test_basis), values(:, basis))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_rwg_mass_matrix
 
     subroutine map_maxwell_rwg_to_tetra_nedelec_edges( &
             vertices, tetrahedra, rwg_edges, nedelec_dofs, scales, status)
@@ -223,6 +279,14 @@ contains
             vertices(:, 2) - vertices(:, 1), &
             vertices(:, 3) - vertices(:, 1)))
     end function triangle_area
+
+    pure function triangle_point(vertices, xi, eta) result(point)
+        real(dp), intent(in) :: vertices(3, 3), xi, eta
+        real(dp) :: point(3)
+
+        point = vertices(:, 1) + xi*(vertices(:, 2) - vertices(:, 1)) + &
+            eta*(vertices(:, 3) - vertices(:, 1))
+    end function triangle_point
 
     pure function cross_product(first, second) result(product)
         real(dp), intent(in) :: first(3), second(3)

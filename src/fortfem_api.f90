@@ -55,6 +55,7 @@ module fortfem_api
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d
     use fortfem_maxwell_rwg_surface, only: &
+        assemble_maxwell_rwg_mass_matrix, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_maxwell_efie_rwg_3d, only: &
@@ -240,6 +241,7 @@ module fortfem_api
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
     public :: build_maxwell_rwg_surface_space
+    public :: assemble_maxwell_rwg_mass_matrix
     public :: evaluate_maxwell_rwg_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
     public :: assemble_maxwell_efie_rwg_3d

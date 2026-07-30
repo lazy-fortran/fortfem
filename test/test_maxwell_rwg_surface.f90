@@ -1,6 +1,7 @@
 program test_maxwell_rwg_surface
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        assemble_maxwell_rwg_mass_matrix, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_kinds, only: dp
@@ -70,8 +71,10 @@ contains
 
     subroutine test_tetra_nedelec_trace()
         real(dp), allocatable :: basis_value(:, :), basis_divergence(:)
+        real(dp), allocatable :: mass_matrix(:, :)
         real(dp), allocatable :: trace_coefficients(:), trace_scales(:)
-        real(dp) :: centroid(3), electric_field(3), expected(3), normal(3)
+        real(dp) :: centroid(3), electric_field(3), energy, expected(3), normal(3)
+        real(dp) :: exact_energy
         real(dp) :: tetra_vertices(3, 4)
         integer, allocatable :: rwg_triangles(:, :), rwg_vertices(:, :)
         integer :: boundary_triangles(3, 4), edge, face, local_status
@@ -124,6 +127,21 @@ contains
                 2.0e-14_dp, &
                 "RWG functions reproduce the rotated Nedelec tangential trace")
         end do
+        call assemble_maxwell_rwg_mass_matrix( &
+            tetra_vertices, boundary_triangles, 4, mass_matrix, local_status)
+        energy = dot_product( &
+            trace_coefficients, matmul(mass_matrix, trace_coefficients))
+        exact_energy = 0.0_dp
+        do face = 1, 4
+            normal = triangle_normal( &
+                tetra_vertices(:, boundary_triangles(:, face)))
+            expected = cross_product(electric_field, normal)
+            exact_energy = exact_energy + &
+                triangle_area(tetra_vertices(:, boundary_triangles(:, face)))* &
+                dot_product(expected, expected)
+        end do
+        call record_condition(abs(energy - exact_energy) < 2.0e-14_dp, &
+            "RWG Gram matrix reproduces exact constant-trace surface energy")
     end subroutine test_tetra_nedelec_trace
 
     pure function triangle_normal(points) result(normal)
