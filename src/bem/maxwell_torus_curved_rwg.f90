@@ -10,12 +10,132 @@ module fortfem_maxwell_torus_curved_rwg
 
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
 
 contains
+
+    subroutine assemble_maxwell_torus_curved_efie_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_efie_rwg_3d
+
+    subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status, decaying_kernel)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: vector_potential(:, :)
+        complex(dp), allocatable, intent(out) :: scalar_potential(:, :)
+        integer, intent(out) :: status
+        logical, optional, intent(in) :: decaying_kernel
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: reference_divergence(:, :)
+        complex(dp) :: contribution, scalar_green
+        real(dp) :: divergence, jacobian, point(3), rwg_value(3)
+        integer :: basis, first, first_panel, first_slot, second, second_panel
+        integer :: second_slot
+        logical :: use_decaying_kernel
+
+        status = 1
+        if (allocated(vector_potential)) deallocate(vector_potential)
+        if (allocated(scalar_potential)) deallocate(scalar_potential)
+        use_decaying_kernel = .false.
+        if (present(decaying_kernel)) use_decaying_kernel = decaying_kernel
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(edge_vertices, 2) == 0) then
+            status = 1
+            return
+        end if
+        allocate( &
+            vector_potential(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            scalar_potential(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            reference_divergence(2, size(edge_vertices, 2)))
+        vector_potential = cmplx(0.0_dp, 0.0_dp, dp)
+        scalar_potential = cmplx(0.0_dp, 0.0_dp, dp)
+        do basis = 1, size(edge_vertices, 2)
+            do first_slot = 1, 2
+                call evaluate_maxwell_torus_curved_rwg_basis( &
+                    vertices, triangles, parameters, edge_vertices, &
+                    edge_triangles, basis, edge_triangles(first_slot, basis), &
+                    major_radius, minor_radius, 1.0_dp/3.0_dp, 1.0_dp/3.0_dp, &
+                    point, rwg_value, divergence, jacobian, status)
+                if (status /= 0) return
+                reference_divergence(first_slot, basis) = divergence*jacobian
+            end do
+        end do
+        do first = 1, size(edge_vertices, 2)
+            do second = 1, first
+                do first_slot = 1, 2
+                    first_panel = edge_triangles(first_slot, first)
+                    do second_slot = 1, 2
+                        second_panel = edge_triangles(second_slot, second)
+                        if (first_panel == second_panel) then
+                            call &
+                                integrate_maxwell_torus_curved_coincident_rwg_pair_3d( &
+                                vertices, triangles, parameters, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                major_radius, minor_radius, wave_number, &
+                                quadrature_degree, contribution, status, &
+                                scalar_green, use_decaying_kernel)
+                        else
+                            call &
+                                integrate_maxwell_torus_curved_adjacent_rwg_pair_3d( &
+                                vertices, triangles, parameters, edge_vertices, &
+                                edge_triangles, first, first_panel, second, &
+                                second_panel, major_radius, minor_radius, &
+                                wave_number, quadrature_degree, tolerance, &
+                                max_depth, contribution, status, scalar_green, &
+                                use_decaying_kernel)
+                        end if
+                        if (status /= 0) return
+                        vector_potential(first, second) = &
+                            vector_potential(first, second) + contribution
+                        scalar_potential(first, second) = &
+                            scalar_potential(first, second) + &
+                            reference_divergence(first_slot, first)* &
+                            reference_divergence(second_slot, second)* &
+                            scalar_green
+                    end do
+                end do
+                vector_potential(second, first) = vector_potential(first, second)
+                scalar_potential(second, first) = scalar_potential(first, second)
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d
 
     subroutine integrate_maxwell_torus_curved_adjacent_rwg_pair_3d( &
             vertices, triangles, parameters, edge_vertices, edge_triangles, &
