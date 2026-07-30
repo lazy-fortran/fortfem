@@ -70,6 +70,11 @@ contains
             call solve_compiled_vector_problem( &
                 equation, Eh, bc, solver, local_opts, local_stats, &
                 "RT", Eh%space%degree + 1, .true.)
+        else if (trim(Eh%space%element_family) == "BDM" .and. &
+                Eh%space%degree >= 1) then
+            call solve_compiled_vector_problem( &
+                equation, Eh, bc, solver, local_opts, local_stats, &
+                "BDM", Eh%space%degree + 1, .true.)
         else if (index(equation%lhs%description, "curl") > 0) then
             call solve_curl_curl_problem(Eh, bc, solver, local_opts, &
                 local_stats)
