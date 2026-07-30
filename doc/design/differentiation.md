@@ -113,6 +113,8 @@ The biperiodic planar Maxwell capacity operator follows the same public
 tangential trace components, the wave number, and the two cell lengths. The
 FFT remains matrix-free, the modal square-root derivative is shared with the
 FortSym-generated Helmholtz kernels, and the two-by-two TE/TM coupling is
-propagated analytically. Reverse products use the real inner product
+propagated analytically. The assembled weak boundary form composes these
+products with the cell-area quadrature weight, including both length
+derivatives. Reverse products use the real inner product
 `real(sum(conjg(output_bar)*output_dot))`; exact cutoff modes are rejected
 because their parameter derivative is singular.
