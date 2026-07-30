@@ -2,6 +2,7 @@ program test_bspline_3d_sparse_assembly
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_bspline_h1_operator_3d_csc, &
+        assemble_bspline_hdiv_operator_3d_csc, &
         assemble_bspline_hdiv_l2_divergence_3d_csc, &
         assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc, &
         assemble_bspline_l2_mass_3d_csc, &
@@ -14,7 +15,8 @@ program test_bspline_3d_sparse_assembly
         0.0_dp, 0.0_dp, 0.0_dp, 0.35_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
     real(dp), parameter :: knots_y(7) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.4_dp, 1.0_dp, 1.0_dp, 1.0_dp]
-    type(csc_t) :: adjoint_divergence, curl, divergence, gradient
+    type(csc_t) :: adjoint_divergence, curl, divergence, gradient, hdiv_mass
+    type(csc_t) :: hdiv_stiffness
     type(csc_t) :: l2_mass, mass, stiffness, weak_divergence
     type(fortsparse_status_t) :: sparse_status
     real(dp), allocatable :: coefficients(:), controls(:, :, :, :)
@@ -138,6 +140,29 @@ program test_bspline_3d_sparse_assembly
     call check_condition(abs(energy - 72.0_dp) < 3.0e-9_dp, &
         "Adjoint 3D divergence satisfies the physical L2 duality pairing")
 
+    hdiv_coefficients = 0.0_dp
+    hdiv_coefficients(:bx_count) = 12.0_dp
+    call assemble_bspline_hdiv_operator_3d_csc( &
+        knots_x, knots_y, knots_y, 2, 2, 2, controls, weights, 4, hdiv_mass, &
+        sparse_status, divergence_coefficient=0.0_dp, mass_coefficient=1.0_dp)
+    product = csc_matvec(hdiv_mass, hdiv_coefficients)
+    energy = dot_product(hdiv_coefficients, product)
+    call check_condition(sparse_status%code == 0 .and. &
+        abs(energy - 24.0_dp) < 3.0e-9_dp, &
+        "Sparse 3D Hdiv mass preserves a constant physical vector")
+
+    call set_affine_hdiv_coefficients( &
+        hdiv_coefficients, x_points, y_points, z_points)
+    call assemble_bspline_hdiv_operator_3d_csc( &
+        knots_x, knots_y, knots_y, 2, 2, 2, controls, weights, 4, &
+        hdiv_stiffness, sparse_status, divergence_coefficient=1.0_dp, &
+        mass_coefficient=0.0_dp)
+    product = csc_matvec(hdiv_stiffness, hdiv_coefficients)
+    energy = dot_product(hdiv_coefficients, product)
+    call check_condition(sparse_status%code == 0 .and. &
+        abs(energy - 216.0_dp) < 3.0e-9_dp, &
+        "Sparse 3D div-div form has exact affine-field energy")
+
     call check_summary("Sparse 3D isogeometric de Rham assembly")
 
 contains
@@ -160,5 +185,40 @@ contains
 
         index = ix + (iy - 1)*count_x + (iz - 1)*count_x*count_y
     end function index_3d
+
+    subroutine set_affine_hdiv_coefficients(values, x, y, z)
+        real(dp), intent(out) :: values(:)
+        real(dp), intent(in) :: x(:), y(:), z(:)
+        integer :: bx_size, by_size, i, j, k
+
+        bx_size = size(x)*(size(y) - 1)*(size(z) - 1)
+        by_size = (size(x) - 1)*size(y)*(size(z) - 1)
+        do k = 1, size(z) - 1
+            do j = 1, size(y) - 1
+                do i = 1, size(x)
+                    values(index_3d(i, j, k, size(x), size(y) - 1)) = &
+                        12.0_dp*(1.0_dp + 2.0_dp*x(i))
+                end do
+            end do
+        end do
+        do k = 1, size(z) - 1
+            do j = 1, size(y)
+                do i = 1, size(x) - 1
+                    values(bx_size + &
+                        index_3d(i, j, k, size(x) - 1, size(y))) = &
+                        8.0_dp*(-1.0_dp + 3.0_dp*y(j))
+                end do
+            end do
+        end do
+        do k = 1, size(z)
+            do j = 1, size(y) - 1
+                do i = 1, size(x) - 1
+                    values(bx_size + by_size + &
+                        index_3d(i, j, k, size(x) - 1, size(y) - 1)) = &
+                        6.0_dp*(0.5_dp + 4.0_dp*z(k))
+                end do
+            end do
+        end do
+    end subroutine set_affine_hdiv_coefficients
 
 end program test_bspline_3d_sparse_assembly

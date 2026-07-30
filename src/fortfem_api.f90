@@ -195,6 +195,7 @@ module fortfem_api
         build_bspline_feec_2d_operators_csc, scalar_weight_2d, tensor_weight_2d
     use fortfem_assembly_bspline_3d, only: &
         assemble_bspline_h1_operator_3d_csc, &
+        assemble_bspline_hdiv_operator_3d_csc, &
         assemble_bspline_hdiv_l2_divergence_3d_csc, &
         assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc, &
         assemble_bspline_l2_mass_3d_csc, &
@@ -537,6 +538,7 @@ module fortfem_api
     public :: build_bspline_feec_2d_operators_csc
     public :: build_bspline_feec_3d_operators_csc
     public :: assemble_bspline_h1_operator_3d_csc
+    public :: assemble_bspline_hdiv_operator_3d_csc
     public :: assemble_bspline_hdiv_l2_divergence_3d_csc
     public :: assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
     public :: assemble_bspline_l2_mass_3d_csc
