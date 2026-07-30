@@ -85,7 +85,9 @@ module fortfem_api
         solve_maxwell_pec_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
     use fortfem_maxwell_torus_curved_rwg, only: &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_rwg_basis
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
@@ -354,6 +356,8 @@ module fortfem_api
     public :: solve_maxwell_pec_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+    public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: cartesian_to_toroidal
     public :: toroidal_point_to_cartesian
