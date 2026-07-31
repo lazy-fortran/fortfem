@@ -54,6 +54,11 @@ source-dir = "app"
 main = "gen_torus_curved_panel_products.f90"
 
 [[executable]]
+name = "gen_toroidal_poisson_products"
+source-dir = "app"
+main = "gen_toroidal_poisson_products.f90"
+
+[[executable]]
 name = "gen_sphere_curved_panel_products"
 source-dir = "app"
 main = "gen_sphere_curved_panel_products.f90"
