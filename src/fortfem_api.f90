@@ -23,7 +23,7 @@ module fortfem_api
         evaluate_level_set_tetra_cut_quadrature_3d, &
         evaluate_level_set_tetra_cut_quadrature_3d_jvp
     use fortfem_fci_terminal_segment_2d, only: &
-        find_fci_first_hit_segment_2d
+        find_fci_first_hit_segment_2d, find_fci_first_hit_segment_2d_jvp
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -971,6 +971,7 @@ module fortfem_api
     public :: evaluate_level_set_tetra_cut_quadrature_3d
     public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
     public :: find_fci_first_hit_segment_2d
+    public :: find_fci_first_hit_segment_2d_jvp
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp

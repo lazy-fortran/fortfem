@@ -1033,7 +1033,9 @@ gallery example.
   derivative JVPs.
 - A geometry-only 2D FCI first-hit search now returns the nearest transverse
   oriented wall/target segment, exact hit parameter/point, and facet normal;
-  valid no-hit traces and malformed facets have explicit status contracts.
+  valid no-hit traces and malformed facets have explicit status contracts. Its
+  fixed-topology JVP differentiates hit point, parameter, and facet normal
+  against central differences; conservative terminal flux remains next.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
   conditions.
