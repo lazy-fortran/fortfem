@@ -190,6 +190,7 @@ module fortfem_api
         apply_fci_parallel_jacobi_preconditioner, &
         apply_fci_anisotropic_jacobi_preconditioner, &
         apply_fci_anisotropic_diffusion, &
+        apply_fci_anisotropic_diffusion_field_vjp, &
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_plane_multigrid, only: &
@@ -1489,6 +1490,7 @@ module fortfem_api
     public :: apply_fci_parallel_jacobi_preconditioner
     public :: apply_fci_anisotropic_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
+    public :: apply_fci_anisotropic_diffusion_field_vjp
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: apply_fci_plane_two_level_vcycle
