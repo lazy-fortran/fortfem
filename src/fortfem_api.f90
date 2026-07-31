@@ -176,6 +176,7 @@ module fortfem_api
         assemble_fci_parallel_gradient_csc, &
         assemble_fci_parallel_support_divergence_csc, &
         apply_fci_parallel_gradient, apply_fci_parallel_diffusion, &
+        apply_fci_parallel_diffusion_jvp, apply_fci_parallel_diffusion_vjp, &
         apply_fci_parallel_diffusion_field_vjp, &
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
@@ -1446,6 +1447,8 @@ module fortfem_api
     public :: assemble_fci_parallel_support_divergence_csc
     public :: apply_fci_parallel_gradient
     public :: apply_fci_parallel_diffusion
+    public :: apply_fci_parallel_diffusion_jvp
+    public :: apply_fci_parallel_diffusion_vjp
     public :: apply_fci_parallel_diffusion_field_vjp
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
