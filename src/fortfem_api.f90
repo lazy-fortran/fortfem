@@ -441,7 +441,12 @@ module fortfem_api
         triangle_bdm_basis_t, triangle_bdm_dof_count
     use fortfem_edge_moment_orientation, only: apply_edge_moment_orientation
     use fortfem_triangle_piola_maps, only: &
-        map_triangle_nedelec_covariant, map_triangle_rt_contravariant
+        map_triangle_nedelec_covariant, &
+        map_triangle_nedelec_covariant_jvp, &
+        map_triangle_nedelec_covariant_vjp, &
+        map_triangle_rt_contravariant, &
+        map_triangle_rt_contravariant_jvp, &
+        map_triangle_rt_contravariant_vjp
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_global_dof_map, only: &
@@ -929,7 +934,11 @@ module fortfem_api
     public :: triangle_rt_dof_count
     public :: apply_edge_moment_orientation
     public :: map_triangle_nedelec_covariant
+    public :: map_triangle_nedelec_covariant_jvp
+    public :: map_triangle_nedelec_covariant_vjp
     public :: map_triangle_rt_contravariant
+    public :: map_triangle_rt_contravariant_jvp
+    public :: map_triangle_rt_contravariant_vjp
     public :: build_triangle_discrete_gradient
     public :: build_triangle_trimmed_dof_map
     public :: build_triangle_full_vector_dof_map
