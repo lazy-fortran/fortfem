@@ -32,6 +32,7 @@ module fortfem_fci_parallel_operator
     public :: assemble_fci_parallel_gradient_csc
     public :: assemble_fci_parallel_support_divergence_csc
     public :: apply_fci_parallel_gradient
+    public :: apply_fci_parallel_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
 
@@ -203,6 +204,90 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_parallel_gradient
+
+    subroutine apply_fci_parallel_diffusion( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, field, diffusion_field, &
+            status)
+        !! Apply the matrix-free FCI parallel diffusion action
+        !!
+        !!   L_parallel = -W_c^{-1} Q^T W_s K_parallel Q.
+        !!
+        !! Positive coefficients and volumes therefore give the weighted
+        !! negative-energy identity
+        !!
+        !!   u^T W_c L_parallel u = -(Q u)^T W_s K_parallel Q u.
+        !!
+        !! This is the support-operator ingredient; perpendicular terms,
+        !! boundary conditions, and preconditioning remain higher-level
+        !! assembly concerns.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(out) :: diffusion_field(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        integer :: segment, sample, plane_node, row
+        integer :: lower_column, upper_column
+        real(dp), allocatable :: gradient_field(:)
+        real(dp) :: weighted_flux, coefficient
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI parallel diffusion received incompatible arrays")
+        diffusion_field = 0.0_dp
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (n_staggered < 1 .or. n_plane < 1 .or. n_segment < 1) return
+        if (any(shape(backward_map) /= shape(forward_map))) return
+        if (size(line_lengths, 1) /= n_staggered) return
+        if (size(line_lengths, 2) /= n_segment) return
+        if (size(parallel_coefficient) /= n_staggered*n_segment) return
+        if (size(staggered_volumes) /= n_staggered*n_segment) return
+        if (size(canonical_volumes) /= n_plane*(n_segment + 1)) return
+        if (size(field) /= n_plane*(n_segment + 1)) return
+        if (size(diffusion_field) /= n_plane*(n_segment + 1)) return
+        if (any(line_lengths <= 0.0_dp)) return
+        if (any(parallel_coefficient <= 0.0_dp)) return
+        if (any(canonical_volumes <= 0.0_dp)) return
+        if (any(staggered_volumes <= 0.0_dp)) return
+
+        allocate(gradient_field(n_staggered*n_segment))
+        call apply_fci_parallel_gradient( &
+            forward_map, backward_map, line_lengths, field, gradient_field, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        do segment = 1, n_segment
+            lower_column = (segment - 1)*n_plane
+            upper_column = segment*n_plane
+            do sample = 1, n_staggered
+                row = sample + (segment - 1)*n_staggered
+                weighted_flux = staggered_volumes(row)* &
+                    parallel_coefficient(row)*gradient_field(row)
+                do plane_node = 1, n_plane
+                    coefficient = backward_map(sample, plane_node, segment) / &
+                        line_lengths(sample, segment)
+                    diffusion_field(lower_column + plane_node) = &
+                        diffusion_field(lower_column + plane_node) + &
+                        coefficient*weighted_flux/ &
+                        canonical_volumes(lower_column + plane_node)
+                    coefficient = forward_map(sample, plane_node, segment) / &
+                        line_lengths(sample, segment)
+                    diffusion_field(upper_column + plane_node) = &
+                        diffusion_field(upper_column + plane_node) - &
+                        coefficient*weighted_flux/ &
+                        canonical_volumes(upper_column + plane_node)
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_parallel_diffusion
 
     subroutine apply_fci_parallel_gradient_jvp( &
             forward_map, backward_map, line_lengths, field, forward_map_dot, &
