@@ -8,10 +8,12 @@ assembles the sparse staggered gradient and its conservative support
 divergence.
 
 The geometry side now also exposes `trace_fci_field_line_rk4`, a fixed-step
-classical RK4 service with a callback for `d(point)/dphi`. It is intentionally
-agnostic about magnetic-field storage and mesh lookup. A constant-velocity
-oracle is exact, and an exponential test checks fourth-order refinement before
-the resulting points are passed to a separate interpolation/map builder.
+classical RK4 service with a callback for `d(point)/dphi`, and
+`trace_fci_field_line_rk4_jvp`, which advances a supplied tangent through the
+same stages. Both are intentionally agnostic about magnetic-field storage and
+mesh lookup. A constant-velocity oracle is exact, and exponential tests check
+the primal and tangent endpoints before the resulting points are passed to a
+separate interpolation/map builder.
 The first such builder is `build_fci_linear_interpolation_map_1d`, which
 provides partition-of-unity and affine-reproduction contracts for coordinate
 slices without coupling the operator to a mesh lookup implementation. Its

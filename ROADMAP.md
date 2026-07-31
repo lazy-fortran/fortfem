@@ -901,7 +901,8 @@ gallery example.
   mass-conservation and negative-energy profile. A 1D linear map builder and
   its fixed-topology JVP/VJP provide independent partition/affine and
   dot-product oracles, and a 2D Cartesian bilinear builder now covers a
-  genuine poloidal slice. The positive staggered flux-box volume constructor
+  genuine poloidal slice. The RK4 tracer also has a tangent callback path with
+  an exponential endpoint oracle. The positive staggered flux-box volume constructor
   now covers the traced expansion/area/(B_\varphi) product with pinned
   FortSym-generated value/JVP/VJP kernels. Higher-order or unstructured
   interpolation, while fixed-cell 2D map JVP/VJP products now cover source
