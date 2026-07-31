@@ -407,3 +407,13 @@ the JVP solves one unchanged local mass system and the VJP solves its
 transpose once. Reverse mode returns both sample cotangents and all twelve
 vertex cotangents through Eulerian quadrature-point motion; opaque callback
 derivatives are deliberately excluded.
+Tetrahedral Nedelec and RT interpolation use a shared topology-aware sample
+container. Edge, face, and volume field values are stored once per unique
+quadrature point even when several moments reuse them; matching spatial
+gradient tensors define Eulerian mesh motion. Nedelec products differentiate
+the covariant pullback directly. RT products compose FortNum's analytical
+determinant and three-by-three inverse products for the contravariant
+pullback. Both JVPs are direct moment sweeps with no solve, while both VJPs
+reverse the moment accumulation before returning sample and twelve-vertex
+cotangents. This is cheaper and has lower memory traffic than taping every
+individual moment evaluation.
