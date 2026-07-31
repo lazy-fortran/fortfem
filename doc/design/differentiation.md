@@ -271,6 +271,10 @@ Their global CSC products also share one orientation-aware implementation.
 The reverse sweep queries only participating sparse entries and accumulates
 shared vertices and both coefficients for BDM and second-kind Nedelec without
 a dense global cotangent.
+BDM and second-kind Nedelec sampled vector loads also share one Eulerian
+forcing implementation. The family switch changes only the Piola map; source
+motion, determinant quadrature, orientation transforms, source cotangents,
+and shared-vertex accumulation are common.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
