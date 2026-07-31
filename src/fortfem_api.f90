@@ -3,8 +3,8 @@ module fortfem_api
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, validate_cell_complex
     use fortfem_cell_identification, only: cell_identification_classes, &
-        cell_identification_t, initialize_cell_identification, &
-        validate_cell_identification
+        cell_identification_t, identify_boundary_matrix, &
+        initialize_cell_identification, validate_cell_identification
     use fortfem_region_interface_graph, only: &
         initialize_region_interface_graph, &
         region_interface_graph_components, region_interface_graph_incidence, &
@@ -809,6 +809,7 @@ module fortfem_api
     public :: initialize_cell_identification
     public :: validate_cell_identification
     public :: cell_identification_classes
+    public :: identify_boundary_matrix
     public :: region_interface_graph_t
     public :: initialize_region_interface_graph
     public :: validate_region_interface_graph
