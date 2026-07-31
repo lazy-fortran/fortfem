@@ -1186,8 +1186,10 @@ gallery example.
 - The shifted Heaviside partition-of-unity primitive is now public. It
   returns the sign-shifted enrichment, has fixed-sign zero JVP/VJP actions,
   and rejects a zero level value as a topology event. Independent sign and
-  derivative oracles cover the piecewise-smooth contract; cut-cell geometry,
-  support activation, blending correction, and vector enrichment remain.
+  derivative oracles cover the piecewise-smooth contract. The matching
+  product composition `N_i*(H(phi)-H(phi_i))` now has value/JVP/VJP actions
+  and a real adjoint oracle. Cut-cell geometry, support activation, blending
+  correction, and vector enrichment remain.
 - Cut-cell classification and high-order quadrature (the exact degree-one
   triangle centroid rule is the current baseline).
 - Heaviside, kink, singular, helical, and resonant enrichments.
