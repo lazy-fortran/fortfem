@@ -882,9 +882,11 @@ gallery example.
   interface-length consistency are now available for the same linear cut. A
   degree-one clipped-polygon quadrature primitive now adds exact positive and
   negative centroids, oriented normal data, and an affine-integration oracle.
-  Higher-order cut-cell quadrature, internal-manifold graphs, and fixed-topology
-  level-set derivatives remain next; the existing vector current pairing
-  consumes the surface-measure contract.
+  The fixed-topology 2D level-set interface JVP now differentiates edge
+  intersections, segment length, and the normalized physical normal with an
+  independent central-difference and topology-event oracle. Higher-order
+  cut-cell quadrature and internal-manifold graphs remain next; the existing
+  vector current pairing consumes the surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.

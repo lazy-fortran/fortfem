@@ -25,4 +25,16 @@ that event as a connectivity change and rebuild the cut stencil. The focused
 interface test uses the affine level set `x+y-0.4` and an independent
 segment/normal oracle; the quadrature test additionally checks polygon
 centroids and affine integration. Higher-dimensional level sets, higher-order
-cut-cell quadrature, and fixed-topology shape derivatives remain Phase 2 work.
+cut-cell quadrature, and internal-manifold graphs remain Phase 2 work.
+
+`evaluate_level_set_triangle_interface_2d_jvp` provides the fixed-topology
+forward derivative of the same primitive. It differentiates both the physical
+triangle vertices and the nodal level-set values, returning derivatives of the
+two ordered intersection points, segment length, and normalized level-set
+normal. The implementation differentiates the edge fractions and the affine
+physical gradient directly, so it does not finite-difference geometry inside a
+kernel. Nodal level-set zeros are rejected as topology events; callers must
+rebuild the cut stencil after an interface crosses a vertex or an edge-crossing
+pair changes. Its focused test compares an independently derived intersection
+and normal formula with a central-difference oracle while checking that a
+topology event is rejected.

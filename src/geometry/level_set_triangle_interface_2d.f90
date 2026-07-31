@@ -13,6 +13,7 @@ module fortfem_level_set_triangle_interface_2d
     real(dp), parameter :: topology_tolerance = 64.0_dp*epsilon(1.0_dp)
 
     public :: evaluate_level_set_triangle_interface_2d
+    public :: evaluate_level_set_triangle_interface_2d_jvp
     public :: evaluate_level_set_triangle_cut_areas_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d
 
@@ -81,6 +82,124 @@ contains
         normal = gradient/gradient_norm
         status = 0
     end subroutine evaluate_level_set_triangle_interface_2d
+
+    subroutine evaluate_level_set_triangle_interface_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, points_dot, &
+            length_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of the linear cut interface.
+        !!
+        !! A nodal level-set zero or edge crossing is a topology event and is
+        !! rejected.  Away from those events, edge intersections, physical
+        !! length, and the normalized physical gradient have analytic
+        !! derivatives.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        real(dp), intent(out) :: points_dot(2, 2), length_dot, normal_dot(2)
+        integer, intent(out) :: status
+
+        integer, parameter :: edge_start(3) = [1, 1, 2]
+        integer, parameter :: edge_end(3) = [2, 3, 3]
+        integer :: edge, first, second, point_count
+        real(dp) :: points(2, 2), length, normal(2), interface_gradient(2)
+        real(dp) :: first_edge(2), second_edge(2), first_edge_dot(2)
+        real(dp) :: second_edge_dot(2), determinant, determinant_dot
+        real(dp) :: level_a, level_b, level_a_dot, level_b_dot
+        real(dp) :: numerator_x, numerator_y, numerator_x_dot, numerator_y_dot
+        real(dp) :: gradient_dot(2), gradient_norm, gradient_norm_dot
+        real(dp) :: first_value, second_value, fraction, fraction_dot
+        real(dp) :: denominator, edge_vector(2), edge_vector_dot(2)
+        real(dp) :: edge_point(2), edge_point_dot(2)
+        integer :: interface_status
+
+        points_dot = 0.0_dp
+        length_dot = 0.0_dp
+        normal_dot = 0.0_dp
+        status = 1
+        if (size(vertices_dot, 1) /= 2 .or. size(vertices_dot, 2) /= 3) return
+        if (size(level_values_dot) /= 3) return
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values)) .or. &
+            any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(level_values_dot))) return
+        call evaluate_level_set_triangle_interface_2d( &
+            vertices, level_values, points, length, normal, interface_status)
+        if (interface_status /= 0) return
+        if (any(abs(level_values) <= topology_tolerance)) return
+
+        first_edge = vertices(:, 2) - vertices(:, 1)
+        second_edge = vertices(:, 3) - vertices(:, 1)
+        first_edge_dot = vertices_dot(:, 2) - vertices_dot(:, 1)
+        second_edge_dot = vertices_dot(:, 3) - vertices_dot(:, 1)
+        determinant = first_edge(1)*second_edge(2) - &
+            first_edge(2)*second_edge(1)
+        determinant_dot = first_edge_dot(1)*second_edge(2) + &
+            first_edge(1)*second_edge_dot(2) - first_edge_dot(2)*second_edge(1) - &
+            first_edge(2)*second_edge_dot(1)
+        if (abs(determinant) <= topology_tolerance) return
+
+        level_a = level_values(2) - level_values(1)
+        level_b = level_values(3) - level_values(1)
+        level_a_dot = level_values_dot(2) - level_values_dot(1)
+        level_b_dot = level_values_dot(3) - level_values_dot(1)
+        numerator_x = level_a*second_edge(2) - level_b*first_edge(2)
+        numerator_y = first_edge(1)*level_b - second_edge(1)*level_a
+        numerator_x_dot = level_a_dot*second_edge(2) + &
+            level_a*second_edge_dot(2) - level_b_dot*first_edge(2) - &
+            level_b*first_edge_dot(2)
+        numerator_y_dot = first_edge_dot(1)*level_b + &
+            first_edge(1)*level_b_dot - second_edge_dot(1)*level_a - &
+            second_edge(1)*level_a_dot
+        interface_gradient = [numerator_x, numerator_y]/determinant
+        gradient_dot = [ &
+            (numerator_x_dot*determinant - numerator_x*determinant_dot)/ &
+            determinant**2, &
+            (numerator_y_dot*determinant - numerator_y*determinant_dot)/ &
+            determinant**2]
+        gradient_norm = sqrt(dot_product(interface_gradient, interface_gradient))
+        if (gradient_norm <= topology_tolerance) return
+        gradient_norm_dot = dot_product(interface_gradient, gradient_dot)/ &
+            gradient_norm
+        normal_dot = (gradient_dot*gradient_norm - &
+            interface_gradient*gradient_norm_dot)/(gradient_norm**2)
+
+        point_count = 0
+        do edge = 1, 3
+            first = edge_start(edge)
+            second = edge_end(edge)
+            first_value = level_values(first)
+            second_value = level_values(second)
+            if (first_value*second_value < 0.0_dp) then
+                denominator = first_value - second_value
+                fraction = first_value/denominator
+                fraction_dot = (level_values_dot(first)*denominator - &
+                    first_value*(level_values_dot(first) - &
+                    level_values_dot(second)))/(denominator**2)
+                edge_vector = vertices(:, second) - vertices(:, first)
+                edge_vector_dot = vertices_dot(:, second) - vertices_dot(:, first)
+                edge_point = vertices(:, first) + fraction*edge_vector
+                edge_point_dot = vertices_dot(:, first) + fraction_dot*edge_vector + &
+                    fraction*edge_vector_dot
+                call add_unique_point_jvp( &
+                    edge_point, edge_point_dot, points, points_dot, point_count)
+            end if
+        end do
+        if (point_count /= 2) then
+            points_dot = 0.0_dp
+            length_dot = 0.0_dp
+            normal_dot = 0.0_dp
+            return
+        end if
+        edge_vector = points(:, 2) - points(:, 1)
+        edge_vector_dot = points_dot(:, 2) - points_dot(:, 1)
+        if (length <= topology_tolerance) then
+            points_dot = 0.0_dp
+            length_dot = 0.0_dp
+            normal_dot = 0.0_dp
+            return
+        end if
+        length_dot = dot_product(edge_vector, edge_vector_dot)/length
+        status = 0
+    end subroutine evaluate_level_set_triangle_interface_2d_jvp
 
     subroutine evaluate_level_set_triangle_cut_areas_2d( &
             vertices, level_values, positive_area, negative_area, &
@@ -294,5 +413,24 @@ contains
             points(:, point_count) = candidate
         end if
     end subroutine add_unique_point
+
+    pure subroutine add_unique_point_jvp( &
+            candidate, candidate_dot, points, points_dot, point_count)
+        real(dp), intent(in) :: candidate(2), candidate_dot(2)
+        real(dp), intent(inout) :: points(2, 2), points_dot(2, 2)
+        integer, intent(inout) :: point_count
+
+        integer :: point
+
+        do point = 1, min(point_count, 2)
+            if (maxval(abs(candidate - points(:, point))) <= &
+                topology_tolerance) return
+        end do
+        if (point_count < 2) then
+            point_count = point_count + 1
+            points(:, point_count) = candidate
+            points_dot(:, point_count) = candidate_dot
+        end if
+    end subroutine add_unique_point_jvp
 
 end module fortfem_level_set_triangle_interface_2d
