@@ -587,3 +587,8 @@ Krylov history, the tangent and adjoint each use CG on the corresponding
 linearized system. This keeps the derivative compiler-independent and makes
 the intended inactive-iteration contract explicit; the sparse `spmv` products
 are available for the analogous operator-level path.
+
+Preconditioned CG exposes the same JVP/VJP while retaining the selected
+Jacobi/ILU preconditioner for the tangent and adjoint solves. The preconditioner
+construction is an inactive solver detail under the converged-state contract;
+the returned derivatives are those of the underlying SPD linear system.
