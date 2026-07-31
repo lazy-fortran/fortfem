@@ -181,6 +181,7 @@ module fortfem_api
         compute_fci_parallel_diffusion_diagonal, &
         compute_fci_anisotropic_diffusion_diagonal, &
         apply_fci_parallel_jacobi_preconditioner, &
+        apply_fci_anisotropic_jacobi_preconditioner, &
         apply_fci_anisotropic_diffusion, &
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
@@ -1466,6 +1467,7 @@ module fortfem_api
     public :: compute_fci_parallel_diffusion_diagonal
     public :: compute_fci_anisotropic_diffusion_diagonal
     public :: apply_fci_parallel_jacobi_preconditioner
+    public :: apply_fci_anisotropic_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
