@@ -470,10 +470,14 @@ module fortfem_api
         tetra_nedelec_first_kind_t
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
         assignment(=), evaluate_tetra_discontinuous, &
+        evaluate_tetra_discontinuous_jvp, evaluate_tetra_discontinuous_vjp, &
         initialize_tetra_discontinuous, tetra_discontinuous_dof_count, &
         tetra_discontinuous_t
     use fortfem_tetra_discontinuous_projection, only: &
-        project_physical_tetra_discontinuous
+        project_physical_tetra_discontinuous, &
+        project_sampled_physical_tetra_discontinuous, &
+        project_sampled_physical_tetra_discontinuous_jvp, &
+        project_sampled_physical_tetra_discontinuous_vjp
     use fortfem_tetra_lagrange_arbitrary_order, only: &
         assignment(=), evaluate_tetra_lagrange, evaluate_tetra_lagrange_jvp, &
         evaluate_tetra_lagrange_vjp, initialize_tetra_lagrange, &
@@ -1030,10 +1034,15 @@ module fortfem_api
     public :: tetra_nedelec_dof_count
     public :: tetra_nedelec_first_kind_t
     public :: evaluate_tetra_discontinuous
+    public :: evaluate_tetra_discontinuous_jvp
+    public :: evaluate_tetra_discontinuous_vjp
     public :: initialize_tetra_discontinuous
     public :: tetra_discontinuous_dof_count
     public :: tetra_discontinuous_t
     public :: project_physical_tetra_discontinuous
+    public :: project_sampled_physical_tetra_discontinuous
+    public :: project_sampled_physical_tetra_discontinuous_jvp
+    public :: project_sampled_physical_tetra_discontinuous_vjp
     public :: evaluate_tetra_lagrange
     public :: evaluate_tetra_lagrange_jvp
     public :: evaluate_tetra_lagrange_vjp

@@ -398,3 +398,12 @@ compose these products with affine inversion and the existing inverse-Jacobian
 geometry products. A Poisson objective may therefore move its sensor, mesh,
 and state together, while reverse mode returns all three cotangent classes
 without an AD runtime.
+Discontinuous tetrahedral bases also expose analytical coordinate products
+for monomial and high-order Koornwinder branches. Their sampled physical
+L2 projection accepts explicit field values, spatial gradients, and
+independent parameter tangents. On an affine tetrahedron the constant
+Jacobian determinant cancels from the projection mass matrix and load, so
+the JVP solves one unchanged local mass system and the VJP solves its
+transpose once. Reverse mode returns both sample cotangents and all twelve
+vertex cotangents through Eulerian quadrature-point motion; opaque callback
+derivatives are deliberately excluded.
