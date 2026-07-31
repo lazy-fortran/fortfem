@@ -49,6 +49,14 @@ call evaluate_blending_corrected_enrichment_jvp( &
 call evaluate_blending_corrected_enrichment_vjp( &
     base_values, enriched_mask, enrichment_values, corrected_bar, base_bar, &
     enrichment_bar, status)
+call evaluate_vector_blending_corrected_enrichment( &
+    base_values, enriched_mask, enrichment_values, corrected_values, status)
+call evaluate_vector_blending_corrected_enrichment_jvp( &
+    base_values, enriched_mask, enrichment_values, base_dot, enrichment_dot, &
+    corrected_dot, status)
+call evaluate_vector_blending_corrected_enrichment_vjp( &
+    base_values, enriched_mask, enrichment_values, corrected_bar, base_bar, &
+    enrichment_bar, status)
 ```
 
 The activation sign is a fixed-topology discrete choice. Away from `phi=0`
@@ -86,10 +94,17 @@ discrete topology. This is the composition described by [Fries' corrected
 XFEM construction](https://doi.org/10.1002/nme.2259); cut-cell activation and
 rank/conditioning diagnostics stay outside this primitive.
 
+The vector companion applies the same ramp to every component. Its reverse
+action contracts the vector cotangent with the vector enrichment before
+accumulating the base-function cotangent, so it is suitable for covariant or
+contravariant Piola values and for IGA coefficient arrays without changing
+the fixed-mask topology contract.
+
 `test_heaviside_enrichment` checks the independent sign oracle, fixed-sign
 zero derivative identities, and topology-event rejection. The companion
 `test_shifted_enriched_basis` checks the scalar product oracle and real
 adjoint identity. `test_shifted_vector_enriched_basis` repeats those checks
 for a two-component vector base and rejects a zero-level topology event.
 `test_xfem_blending_correction` checks the ramp, full-enrichment limit, and
-its real adjoint identity.
+its real adjoint identity. `test_xfem_vector_blending_correction` checks the
+componentwise ramp and vector reverse contraction.
