@@ -878,17 +878,20 @@ gallery example.
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
   returns edge intersections, physical segment length, and gradient normal with
   an affine independent oracle. Exact positive/negative subcell areas and
-  interface-length consistency are now available for the same linear cut.
-  Cut-cell quadrature beyond linear triangles, internal-manifold graphs, and
-  fixed-topology level-set derivatives remain next; the existing vector
-  current pairing consumes the surface-measure contract.
+  interface-length consistency are now available for the same linear cut. A
+  degree-one clipped-polygon quadrature primitive now adds exact positive and
+  negative centroids, oriented normal data, and an affine-integration oracle.
+  Higher-order cut-cell quadrature, internal-manifold graphs, and fixed-topology
+  level-set derivatives remain next; the existing vector current pairing
+  consumes the surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
 
 ### Phase 2: Cut geometry and XFEM/XIGA: **planned**
 
-- Cut-cell classification and high-order quadrature.
+- Cut-cell classification and high-order quadrature (the exact degree-one
+  triangle centroid rule is the current baseline).
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
