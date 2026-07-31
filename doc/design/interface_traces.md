@@ -25,3 +25,5 @@ positive-semidefinite \([T^+,-T^-]^T[T^+,-T^-]\) block used by SIPG and the
 penalty portion of Nitsche coupling.  The public
 `assemble_symmetric_nitsche_interface` routine adds the common-normal average
 flux consistency terms and is checked against an independent block oracle.
+`assemble_mortar_trace_coupling` supplies the weighted cross-mass block when
+the test and trial trace spaces have different degree-of-freedom counts.

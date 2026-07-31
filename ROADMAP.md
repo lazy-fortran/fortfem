@@ -842,6 +842,8 @@ gallery example.
   semidefinite plus/minus jump block used by SIPG and Nitsche penalty terms.
 - `assemble_symmetric_nitsche_interface` adds the average-flux consistency
   terms under the same orientation convention.
+- `assemble_mortar_trace_coupling` supplies a weighted cross-mass block for
+  independently discretized trace spaces.
 - Internal manifolds, level sets, surface measures, and vector current
   pairings remain next.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
