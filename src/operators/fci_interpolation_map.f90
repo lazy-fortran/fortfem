@@ -24,6 +24,9 @@ module fortfem_fci_interpolation_map
     public :: build_fci_quadratic_interpolation_map_1d
     public :: build_fci_quadratic_interpolation_map_1d_jvp
     public :: build_fci_quadratic_interpolation_map_1d_vjp
+    public :: build_fci_quadratic_interpolation_maps_1d
+    public :: build_fci_quadratic_interpolation_maps_1d_jvp
+    public :: build_fci_quadratic_interpolation_maps_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
     public :: build_fci_bilinear_interpolation_map_2d_jvp
     public :: build_fci_bilinear_interpolation_map_2d_vjp
@@ -268,6 +271,8 @@ contains
             if (first_node == second_node .or. first_node == third_node .or. &
                 second_node == third_node) return
             nodes = source_coordinates([first_node, second_node, third_node])
+            if (nodes(1) == nodes(2) .or. nodes(1) == nodes(3) .or. &
+                nodes(2) == nodes(3)) return
             if (target_coordinates(row) < minval(nodes) .or. &
                 target_coordinates(row) > maxval(nodes)) return
             call generated_fci_quadratic_lagrange_weights( &
@@ -416,6 +421,164 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_quadratic_interpolation_map_1d_vjp
+
+    subroutine build_fci_quadratic_interpolation_maps_1d( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_maps, status)
+        !! Build quadratic maps for several fixed-topology FCI segments.
+        !!
+        !! `target_coordinates(:, segment)` and
+        !! `stencil_indices(:, :, segment)` describe one mapped slice.  The
+        !! output has shape `(n_target, n_source, n_segment)` and uses the
+        !! same source-column ordering as the single-slice builder.  Each
+        !! segment is delegated to the generated local Lagrange kernel through
+        !! `build_fci_quadratic_interpolation_map_1d`.
+        real(dp), intent(in) :: source_coordinates(:)
+        real(dp), intent(in) :: target_coordinates(:, :)
+        integer, intent(in) :: stencil_indices(:, :, :)
+        real(dp), intent(out) :: interpolation_maps(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: source_count, target_count, segment_count, segment
+
+        interpolation_maps = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI batched quadratic interpolation received incompatible arrays")
+        source_count = size(source_coordinates)
+        target_count = size(target_coordinates, 1)
+        segment_count = size(target_coordinates, 2)
+        if (source_count < 3 .or. target_count < 1 .or. segment_count < 1) return
+        if (size(stencil_indices, 1) /= 3 .or. &
+            size(stencil_indices, 2) /= target_count .or. &
+            size(stencil_indices, 3) /= segment_count) return
+        if (size(interpolation_maps, 1) /= target_count .or. &
+            size(interpolation_maps, 2) /= source_count .or. &
+            size(interpolation_maps, 3) /= segment_count) return
+        if (any(.not. ieee_is_finite(source_coordinates)) .or. &
+            any(.not. ieee_is_finite(target_coordinates))) return
+
+        do segment = 1, segment_count
+            call build_fci_quadratic_interpolation_map_1d( &
+                source_coordinates, target_coordinates(:, segment), &
+                stencil_indices(:, :, segment), interpolation_maps(:, :, segment), &
+                status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_quadratic_interpolation_maps_1d
+
+    subroutine build_fci_quadratic_interpolation_maps_1d_jvp( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            source_coordinates_dot, target_coordinates_dot, &
+            interpolation_maps_dot, status)
+        !! Apply the fixed-stencil JVP of the batched quadratic map builder.
+        real(dp), intent(in) :: source_coordinates(:)
+        real(dp), intent(in) :: target_coordinates(:, :)
+        integer, intent(in) :: stencil_indices(:, :, :)
+        real(dp), intent(in) :: source_coordinates_dot(:)
+        real(dp), intent(in) :: target_coordinates_dot(:, :)
+        real(dp), intent(out) :: interpolation_maps_dot(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: source_count, target_count, segment_count, segment
+
+        interpolation_maps_dot = 0.0_dp
+        source_count = size(source_coordinates)
+        target_count = size(target_coordinates, 1)
+        segment_count = size(target_coordinates, 2)
+        if (source_count < 3 .or. target_count < 1 .or. segment_count < 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic JVP received incompatible coordinates")
+            return
+        end if
+        if (size(stencil_indices, 1) /= 3 .or. &
+            size(stencil_indices, 2) /= target_count .or. &
+            size(stencil_indices, 3) /= segment_count .or. &
+            size(source_coordinates_dot) /= source_count .or. &
+            any(shape(target_coordinates_dot) /= shape(target_coordinates)) .or. &
+            any(shape(interpolation_maps_dot) /= [target_count, source_count, &
+            segment_count])) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic JVP received incompatible tangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(source_coordinates_dot)) .or. &
+            any(.not. ieee_is_finite(target_coordinates_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic JVP received non-finite tangents")
+            return
+        end if
+        do segment = 1, segment_count
+            call build_fci_quadratic_interpolation_map_1d_jvp( &
+                source_coordinates, target_coordinates(:, segment), &
+                stencil_indices(:, :, segment), source_coordinates_dot, &
+                target_coordinates_dot(:, segment), &
+                interpolation_maps_dot(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_quadratic_interpolation_maps_1d_jvp
+
+    subroutine build_fci_quadratic_interpolation_maps_1d_vjp( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_maps_bar, source_coordinates_bar, &
+            target_coordinates_bar, status)
+        !! Apply the real VJP of the fixed-stencil batched quadratic map.
+        real(dp), intent(in) :: source_coordinates(:)
+        real(dp), intent(in) :: target_coordinates(:, :)
+        integer, intent(in) :: stencil_indices(:, :, :)
+        real(dp), intent(in) :: interpolation_maps_bar(:, :, :)
+        real(dp), intent(out) :: source_coordinates_bar(:)
+        real(dp), intent(out) :: target_coordinates_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: source_count, target_count, segment_count, segment
+        real(dp), allocatable :: interpolation_maps(:, :, :)
+        real(dp), allocatable :: source_coordinates_bar_local(:)
+        real(dp), allocatable :: target_coordinates_bar_local(:)
+
+        source_coordinates_bar = 0.0_dp
+        target_coordinates_bar = 0.0_dp
+        source_count = size(source_coordinates)
+        target_count = size(target_coordinates, 1)
+        segment_count = size(target_coordinates, 2)
+        if (source_count < 3 .or. target_count < 1 .or. segment_count < 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic VJP received incompatible coordinates")
+            return
+        end if
+        allocate(interpolation_maps(target_count, source_count, segment_count))
+        call build_fci_quadratic_interpolation_maps_1d( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_maps, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (any(shape(interpolation_maps_bar) /= &
+            [target_count, source_count, segment_count]) .or. &
+            size(source_coordinates_bar) /= source_count .or. &
+            any(shape(target_coordinates_bar) /= [target_count, segment_count])) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic VJP received incompatible cotangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(interpolation_maps_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched quadratic VJP received non-finite cotangents")
+            return
+        end if
+        allocate(source_coordinates_bar_local(source_count))
+        allocate(target_coordinates_bar_local(target_count))
+        do segment = 1, segment_count
+            call build_fci_quadratic_interpolation_map_1d_vjp( &
+                source_coordinates, target_coordinates(:, segment), &
+                stencil_indices(:, :, segment), interpolation_maps_bar(:, :, segment), &
+                source_coordinates_bar_local, target_coordinates_bar_local, status)
+            if (status%code /= FORTSPARSE_OK) return
+            source_coordinates_bar = source_coordinates_bar + &
+                source_coordinates_bar_local
+            target_coordinates_bar(:, segment) = target_coordinates_bar_local
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_quadratic_interpolation_maps_1d_vjp
 
     subroutine build_fci_bilinear_interpolation_map_2d( &
             source_x, source_y, target_x, target_y, interpolation_map, status)

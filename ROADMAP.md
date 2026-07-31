@@ -967,6 +967,11 @@ gallery example.
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or
   unstructured plane cells and stencil rebuilds at topology events remain
   planned.
+- The fixed-stencil quadratic 1D map now has a batched segment adapter with
+  generated-kernel-backed JVP/VJP accumulation and independent polynomial,
+  finite-difference, and adjoint tests. Degenerate local source coordinates
+  are rejected before evaluating the Lagrange products. Curved or moving-cell
+  connectivity remains a topology-rebuild concern.
 - A positive FCI diffusion diagonal is public as the first anisotropy-aware
   preconditioner contract, with a matching Jacobi apply and positivity test;
   PARALLAX-compatible plane multigrid and stronger field-split preconditioners
