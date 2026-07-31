@@ -164,6 +164,9 @@ that map with quadrature. Their JVPs cover all twelve vertex coordinates and
 both operator coefficients. Their VJPs use one reverse quadrature sweep to
 return the complete geometry and coefficient cotangents, making reverse mode
 independent of the number of active mesh coordinates.
+The global CSC products preserve the merged sparse pattern, reverse RT face
+orientation and permutation transforms, and accumulate shared-vertex
+cotangents across adjacent tetrahedra.
 
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
