@@ -42,6 +42,14 @@ call evaluate_fourier_mode_jvp( &
 call evaluate_fourier_mode_vjp( &
     registry, index, radius, theta, phi, value_bar, radius_bar, theta_bar, &
     phi_bar, status)
+call assemble_fourier_vector_product( &
+    registry, coupling, left_values, right_values, product_values, status)
+call assemble_fourier_vector_product_jvp( &
+    registry, coupling, left_values, right_values, coupling_dot, &
+    left_values_dot, right_values_dot, product_values_dot, status)
+call assemble_fourier_vector_product_vjp( &
+    registry, coupling, left_values, right_values, product_values_bar, &
+    left_values_bar, right_values_bar, coupling_bar, status)
 ```
 
 `real_packed=.true.` requires every retained `(m,n)` to have its `(-m,-n)`
@@ -62,9 +70,27 @@ encoded here. A future torus-harmonic or FortNum special-function adapter can
 use the registry's indices and replace only the radial factor while retaining
 its phase, packing, and derivative contracts.
 
+The companion vector product uses a caller-owned coupling tensor and retains
+only pairs whose two mode indices sum to another registered mode:
+
+\[
+  P_{a,x,k}=\sum_{p+q=k}\sum_{b,c}
+      C_{abc}L_{b,x,p}R_{c,x,q}.
+\]
+
+It is a pointwise algebraic primitive rather than a model-specific bracket.
+Consequently the component counts can represent scalar, vector, tensor,
+H(curl), or H(div) coefficients, and a FortSym-generated constitutive block
+can supply `C`. Truncated triads are explicit omissions; de-aliasing and
+coefficient symmetry remain caller-owned. Its JVP differentiates all three
+factors and its complex VJP uses the same real-part inner product.
+
 ## Independent verification
 
 `test_fourier_mode_registry` checks deep-copy assignment, metadata validation,
 conjugate lookup, retained and absent triads, the phase/radial analytical
 formula, central-difference JVP, complex real-part VJP identity, and malformed
 real-packed, duplicate, and index inputs.
+`test_fourier_vector_product` checks an independent retained-triad contraction,
+the full three-factor product-rule JVP and central differences, the complex
+real-part VJP identity, and incompatible output-shape rejection.
