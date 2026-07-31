@@ -534,6 +534,9 @@ gradient action exposes FortSym-generated value, JVP, and VJP kernels.
 Independent tests cover a constant/exponential tracing oracle, a linear-field
 map oracle, constants, an explicit flux-balance vector, a central-difference
 JVP, the weighted adjoint identity, and the weighted negative-energy identity.
+The `fci_parallel_diffusion` gallery example now runs the same matrix-free
+action on a manufactured open-line cosine profile and publishes 1D FortPlot
+profiles plus CSV values for the mass-rate and dissipation oracles.
 Interpolation
 Jacobians, support-volume construction, and anisotropy-aware preconditioning
 remain active work.
@@ -875,9 +878,10 @@ gallery example.
 
 - FCI RK4 field-line tracing, support-operator gradient/divergence algebra, and
   matrix-free (P K_\parallel Q) diffusion (including FortSym-generated
-  gradient JVP/VJP products) are
-  public and independently tested; interpolation Jacobians and support-volume
-  map construction are still separate planned components.
+  gradient JVP/VJP products) are public and independently tested. The
+  `fci_parallel_diffusion` gallery fixture provides a reproducible open-line
+  mass-conservation and negative-energy profile. Interpolation Jacobians and
+  support-volume map construction are still separate planned components.
 - FCI field-line maps, interpolation Jacobians, and parallel derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
