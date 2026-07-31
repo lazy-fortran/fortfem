@@ -13,6 +13,7 @@ module fortfem_advanced_solvers
     public :: solve, solve_sparse, solver_options
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     public :: cg_solve_jvp, cg_solve_vjp
+    public :: pcg_solve_jvp, pcg_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
 
     ! Solver options type
@@ -312,6 +313,71 @@ contains
         A_bar = -spread(adjoint, 2, n)*spread(x, 1, n)
         status = 0
     end subroutine cg_solve_vjp
+
+    subroutine pcg_solve_jvp( &
+            A, b, x, opts, A_dot, b_dot, x_dot, status)
+        !! Implicit forward product for a converged SPD PCG state.
+        !! The preconditioner and stopping branch are inactive; PCG solves the
+        !! exact linearized state with the same preconditioner configuration.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: x_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: tangent_rhs(:)
+        type(solver_stats_t) :: tangent_stats
+        integer :: n
+
+        x_dot = 0.0_dp
+        status = 1
+        n = size(x)
+        if (.not. valid_cg_product_inputs( &
+            A, b, x, A_dot, b_dot, x_dot, n)) return
+        if (.not. valid_cg_matrix(A)) return
+        if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
+        allocate(tangent_rhs(n))
+        tangent_rhs = b_dot - matmul(A_dot, x)
+        x_dot = 0.0_dp
+        call pcg_solve(A, tangent_rhs, x_dot, opts, tangent_stats)
+        if (.not. tangent_stats%converged) then
+            status = 2
+            return
+        end if
+        status = 0
+    end subroutine pcg_solve_jvp
+
+    subroutine pcg_solve_vjp( &
+            A, b, x, opts, x_bar, A_bar, b_bar, status)
+        !! Implicit reverse product for a converged SPD PCG state.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), x_bar(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: A_bar(:, :), b_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: adjoint(:)
+        type(solver_stats_t) :: adjoint_stats
+        integer :: n
+
+        A_bar = 0.0_dp
+        b_bar = 0.0_dp
+        status = 1
+        n = size(x)
+        if (size(A_bar, 1) /= n .or. size(A_bar, 2) /= n .or. &
+            size(b_bar) /= n .or. size(x_bar) /= n) return
+        if (size(A, 1) /= n .or. size(A, 2) /= n .or. size(b) /= n) return
+        if (.not. valid_cg_matrix(A)) return
+        if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
+        allocate(adjoint(n))
+        adjoint = 0.0_dp
+        call pcg_solve(transpose(A), x_bar, adjoint, opts, adjoint_stats)
+        if (.not. adjoint_stats%converged) then
+            status = 2
+            return
+        end if
+        b_bar = adjoint
+        A_bar = -spread(adjoint, 2, n)*spread(x, 1, n)
+        status = 0
+    end subroutine pcg_solve_vjp
 
     pure logical function valid_cg_product_inputs( &
             A, b, x, A_dot, b_dot, x_dot, n) result(valid)
