@@ -239,3 +239,11 @@ and prescribed boundary values. The boundary mask remains an explicit
 inactive topology input, while one reduced adjoint solve returns every active
 cotangent needed by Poisson, diffusion-reaction, and scalar Helmholtz
 optimization loops.
+
+Scalar tetrahedral loads also have an explicit sampled-source contract.
+Source values live at physical quadrature points and supplied spatial
+gradients account for Eulerian point motion. A JVP combines mesh motion with
+an independent source-parameter tangent; the VJP returns both shared vertex
+cotangents and source-sample cotangents. This makes source parameters
+composable without attempting to differentiate an opaque Fortran procedure
+callback.
