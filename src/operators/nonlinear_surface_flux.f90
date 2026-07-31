@@ -202,10 +202,12 @@ contains
                     surface_tags(quadrature), component)
                 do dof = 1, dof_count
                     flux_bar_component = flux_bar_component + &
-                        trace_basis(quadrature, dof, component)*residual_bar(dof, component)
+                        trace_basis(quadrature, dof, component)* &
+                        residual_bar(dof, component)
                     trace_basis_bar(quadrature, dof, component) = &
                         trace_basis_bar(quadrature, dof, component) + &
-                        residual_bar(dof, component)*surface_weights(quadrature)*flux(component)
+                        residual_bar(dof, component)* &
+                        surface_weights(quadrature)*flux(component)
                 end do
                 flux_bar(component) = surface_weights(quadrature)*flux_bar_component
                 surface_weights_bar(quadrature) = surface_weights_bar(quadrature) + &
@@ -239,13 +241,17 @@ contains
         component_count = size(trace_basis, 3)
         if (quadrature_count < 1 .or. dof_count < 1 .or. component_count < 1) return
         if (size(surface_weights) /= quadrature_count .or. &
-            size(surface_normals, 1) /= 3 .or. size(surface_normals, 2) /= quadrature_count .or. &
+            size(surface_normals, 1) /= 3 .or. &
+            size(surface_normals, 2) /= quadrature_count .or. &
             size(surface_tags) /= quadrature_count .or. &
             size(trace_state, 1) /= quadrature_count .or. &
             size(trace_state, 2) /= component_count .or. &
-            size(residual, 1) /= dof_count .or. size(residual, 2) /= component_count .or. &
-            size(surface_ledger, 1) < 1 .or. size(surface_ledger, 2) /= component_count) return
-        if (any(surface_tags < 1) .or. any(surface_tags > size(surface_ledger, 1))) return
+            size(residual, 1) /= dof_count .or. &
+            size(residual, 2) /= component_count .or. &
+            size(surface_ledger, 1) < 1 .or. &
+            size(surface_ledger, 2) /= component_count) return
+        if (any(surface_tags < 1) .or. &
+            any(surface_tags > size(surface_ledger, 1))) return
         if (any(surface_weights <= 0.0_dp)) return
         if (any(.not. ieee_is_finite(trace_basis)) .or. &
             any(.not. ieee_is_finite(surface_weights)) .or. &
