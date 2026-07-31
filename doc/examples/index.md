@@ -92,6 +92,17 @@ fpm run --example <example_name>
 <p>This example solves a manufactured three-dimensional curl-curl problem with</p>
 </div>
 </article>
+<article class="example-card" data-example="cgl_pressure_tensor">
+<a class="example-card-preview" href="generated/cgl_pressure_tensor.html">
+<img class="example-card-image"
+ src="../media/examples/cgl_pressure_tensor/cgl_force_divergence_1d.png"
+ alt="Plot preview for cgl_pressure_tensor" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/cgl_pressure_tensor.html">cgl_pressure_tensor</a></h3>
+<p>This manufactured profile evaluates the gyrotropic CGL pressure tensor</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
@@ -397,6 +408,7 @@ fpm run --example <example_name>
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
+- [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.

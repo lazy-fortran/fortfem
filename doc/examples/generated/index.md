@@ -13,6 +13,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [plotting](plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
+- [cgl_pressure_tensor](cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [tetra_h1_poisson](tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
