@@ -221,3 +221,7 @@ products for all vertex coordinates and both scalar coefficients. They
 compose FortNum's FortSym-generated determinant and inverse products with
 physical-gradient quadrature. One reverse sweep returns the complete element
 shape gradient without forming the coordinate-to-matrix Jacobian.
+The corresponding global CSC products preserve the merged arbitrary-order
+DOF pattern. Reverse assembly gathers each sparse value cotangent directly
+from CSC storage and accumulates element shape gradients at shared mesh
+vertices, avoiding a dense global cotangent matrix.

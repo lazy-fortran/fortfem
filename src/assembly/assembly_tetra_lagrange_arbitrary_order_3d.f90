@@ -16,6 +16,8 @@ module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
     private
 
     public :: assemble_tetra_lagrange_stiffness_csc
+    public :: assemble_tetra_lagrange_stiffness_csc_jvp
+    public :: assemble_tetra_lagrange_stiffness_csc_vjp
     public :: assemble_tetra_lagrange_stiffness_element
     public :: assemble_tetra_lagrange_stiffness_element_jvp
     public :: assemble_tetra_lagrange_stiffness_element_vjp
@@ -328,6 +330,143 @@ contains
             matrix, status)
     end subroutine assemble_tetra_lagrange_stiffness_csc
 
+    subroutine assemble_tetra_lagrange_stiffness_csc_jvp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            stiffness_coefficient, mass_coefficient, mesh_vertices_dot, &
+            stiffness_coefficient_dot, mass_coefficient_dot, matrix_dot, &
+            status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: stiffness_coefficient, mass_coefficient
+        real(dp), intent(in) :: stiffness_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
+        real(dp), allocatable :: element_dot(:, :), triplet_values(:)
+        real(dp) :: vertices(3, 4), vertices_dot(3, 4)
+        integer :: column, dof_count, entry, global_count, local_status
+        integer :: node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Tetrahedral H1 JVP assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(rows(dof_count**2*size(tetrahedra, 2)))
+        allocate(columns(size(rows)), triplet_values(size(rows)))
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_lagrange_stiffness_element_jvp( &
+                vertices, degree, quadrature_degree, stiffness_coefficient, &
+                mass_coefficient, vertices_dot, stiffness_coefficient_dot, &
+                mass_coefficient_dot, element_dot, local_status)
+            if (local_status /= 0) return
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    triplet_values(entry) = element_dot(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_count, global_count, rows, columns, triplet_values, &
+            matrix_dot, status)
+    end subroutine assemble_tetra_lagrange_stiffness_csc_jvp
+
+    subroutine assemble_tetra_lagrange_stiffness_csc_vjp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            stiffness_coefficient, mass_coefficient, matrix_values_bar, &
+            mesh_vertices_bar, stiffness_coefficient_bar, &
+            mass_coefficient_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: stiffness_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: stiffness_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: matrix
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: element_bar(:, :)
+        real(dp) :: local_mass_bar, local_stiffness_bar
+        real(dp) :: local_vertices_bar(3, 4), vertices(3, 4)
+        integer :: column, dof_count, global_count, local_status, node, row
+        integer :: tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        stiffness_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        call assemble_tetra_lagrange_stiffness_csc( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
+            status, stiffness_coefficient, mass_coefficient)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh_vertices)) .or. &
+            size(matrix_values_bar) /= matrix%nnz) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetrahedral H1 VJP shapes differ")
+            return
+        end if
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetrahedral H1 VJP dof map failed")
+            return
+        end if
+        dof_count = size(global_dofs, 1)
+        allocate(element_bar(dof_count, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    element_bar(row, column) = csc_value_bar_at( &
+                        matrix, matrix_values_bar, &
+                        global_dofs(row, tetrahedron), &
+                        global_dofs(column, tetrahedron))
+                end do
+            end do
+            call assemble_tetra_lagrange_stiffness_element_vjp( &
+                vertices, degree, quadrature_degree, stiffness_coefficient, &
+                mass_coefficient, element_bar, local_vertices_bar, &
+                local_stiffness_bar, local_mass_bar, local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Tetrahedral H1 element VJP failed")
+                return
+            end if
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+            stiffness_coefficient_bar = &
+                stiffness_coefficient_bar + local_stiffness_bar
+            mass_coefficient_bar = mass_coefficient_bar + local_mass_bar
+        end do
+    end subroutine assemble_tetra_lagrange_stiffness_csc_vjp
+
     subroutine assemble_tetra_lagrange_scalar_load( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, source, &
             right_hand_side, status)
@@ -425,5 +564,35 @@ contains
         valid = determinant > 64.0_dp*epsilon(1.0_dp)* &
             max(1.0_dp, maxval(abs(jacobian))**3)
     end function valid_jacobian
+
+    pure logical function valid_tetra_mesh( &
+            mesh_vertices, tetrahedra) result(valid)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :)
+
+        valid = size(mesh_vertices, 1) == 3
+        if (.not. valid) return
+        valid = size(tetrahedra, 1) == 4 .and. size(tetrahedra, 2) > 0
+        if (.not. valid) return
+        valid = all(tetrahedra >= 1) .and. &
+            all(tetrahedra <= size(mesh_vertices, 2))
+    end function valid_tetra_mesh
+
+    pure real(dp) function csc_value_bar_at( &
+            matrix, values_bar, row, column) result(value_bar)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: values_bar(:)
+        integer, intent(in) :: row, column
+
+        integer :: entry
+
+        value_bar = 0.0_dp
+        do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+            if (matrix%row_idx(entry) == row) then
+                value_bar = values_bar(entry)
+                return
+            end if
+        end do
+    end function csc_value_bar_at
 
 end module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
