@@ -38,6 +38,9 @@ module fortfem_assembly_tetra_nedelec_3d
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
     public :: assemble_tetra_nedelec_vector_load_order
+    public :: assemble_tetra_nedelec_vector_load_samples
+    public :: assemble_tetra_nedelec_vector_load_samples_jvp
+    public :: assemble_tetra_nedelec_vector_load_samples_vjp
 
     abstract interface
         pure subroutine tensor_coefficient_3d(x, y, z, value)
@@ -112,6 +115,402 @@ contains
         end do
         call status_set(status, 0, "")
     end subroutine assemble_tetra_nedelec_vector_load_order
+
+    subroutine assemble_tetra_nedelec_vector_load_samples( &
+            mesh_vertices, tetrahedra, order, quadrature_degree, &
+            source_values, vector, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), source_values(:, :, :)
+        integer, intent(in) :: tetrahedra(:, :), order, quadrature_degree
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_vector(:)
+        real(dp), allocatable :: oriented_vector(:)
+        real(dp) :: vertices(3, 4)
+        integer :: dof, dof_count, local_status, node, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral Nedelec vector load failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (order < 1 .or. quadrature_degree < 0) return
+        call validate_nedelec_source_samples( &
+            source_values, quadrature_degree, size(tetrahedra, 2), &
+            local_status)
+        if (local_status /= 0) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(vector(maxval(global_dofs)), source=0.0_dp)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_vector(dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_nedelec_sampled_load_element( &
+                vertices, order, quadrature_degree, &
+                source_values(:, :, tetrahedron), element_vector, &
+                local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_vector = &
+                matmul(transpose(basis_transform), element_vector)
+            do dof = 1, dof_count
+                vector(global_dofs(dof, tetrahedron)) = &
+                    vector(global_dofs(dof, tetrahedron)) + &
+                    oriented_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_vector_load_samples
+
+    subroutine assemble_tetra_nedelec_vector_load_samples_jvp( &
+            mesh_vertices, tetrahedra, order, quadrature_degree, &
+            source_values, source_gradients, mesh_vertices_dot, &
+            source_parameter_dot, vector_dot, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        real(dp), allocatable, intent(out) :: vector_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_dot(:)
+        real(dp), allocatable :: oriented_dot(:)
+        real(dp) :: vertices(3, 4), vertices_dot(3, 4)
+        integer :: dof, dof_count, local_status, node, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral Nedelec vector load JVP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        if (order < 1 .or. quadrature_degree < 0) return
+        call validate_nedelec_source_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            quadrature_degree, size(tetrahedra, 2), local_status)
+        if (local_status /= 0) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(vector_dot(maxval(global_dofs)), source=0.0_dp)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_dot(dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_nedelec_sampled_load_element_jvp( &
+                vertices, order, quadrature_degree, &
+                source_values(:, :, tetrahedron), &
+                source_gradients(:, :, :, tetrahedron), vertices_dot, &
+                source_parameter_dot(:, :, tetrahedron), element_dot, &
+                local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_dot = matmul(transpose(basis_transform), element_dot)
+            do dof = 1, dof_count
+                vector_dot(global_dofs(dof, tetrahedron)) = &
+                    vector_dot(global_dofs(dof, tetrahedron)) + &
+                    oriented_dot(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_vector_load_samples_jvp
+
+    subroutine assemble_tetra_nedelec_vector_load_samples_vjp( &
+            mesh_vertices, tetrahedra, order, quadrature_degree, &
+            source_values, source_gradients, vector_bar, mesh_vertices_bar, &
+            source_values_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), source_values(:, :, :)
+        integer, intent(in) :: tetrahedra(:, :), order, quadrature_degree
+        real(dp), intent(in) :: source_gradients(:, :, :, :), vector_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: source_values_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_bar(:)
+        real(dp), allocatable :: oriented_bar(:)
+        real(dp) :: local_vertices_bar(3, 4), vertices(3, 4)
+        integer :: dof, dof_count, local_status, node, tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral Nedelec vector load VJP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh_vertices))) return
+        if (order < 1 .or. quadrature_degree < 0) return
+        call validate_nedelec_source_gradients( &
+            source_values, source_gradients, quadrature_degree, &
+            size(tetrahedra, 2), local_status)
+        if (local_status /= 0) return
+        if (any(shape(source_values_bar) /= shape(source_values))) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        if (size(vector_bar) /= maxval(global_dofs)) return
+        dof_count = size(global_dofs, 1)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_bar(dof_count), element_bar(dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            do dof = 1, dof_count
+                oriented_bar(dof) = vector_bar( &
+                    global_dofs(dof, tetrahedron))
+            end do
+            element_bar = matmul(basis_transform, oriented_bar)
+            call assemble_nedelec_sampled_load_element_vjp( &
+                vertices, order, quadrature_degree, &
+                source_values(:, :, tetrahedron), &
+                source_gradients(:, :, :, tetrahedron), element_bar, &
+                local_vertices_bar, source_values_bar(:, :, tetrahedron), &
+                local_status)
+            if (local_status /= 0) return
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_vector_load_samples_vjp
+
+    subroutine assemble_nedelec_sampled_load_element( &
+            vertices, order, quadrature_degree, source_values, vector, status)
+        real(dp), intent(in) :: vertices(3, 4), source_values(:, :)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), allocatable, intent(out) :: vector(:)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:, :), ref_curls(:, :)
+        real(dp), allocatable :: ref_values(:, :), values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), point(3)
+        integer :: dof, dof_count, point_index
+
+        status = 1
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        if (size(source_values, 1) /= 3 .or. &
+            size(source_values, 2) /= size(weights)) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(vector(dof_count), source=0.0_dp)
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(values(3, dof_count), curls(3, dof_count))
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            do dof = 1, dof_count
+                vector(dof) = vector(dof) + &
+                    determinant*weights(point_index)*dot_product( &
+                    source_values(:, point_index), values(:, dof))
+            end do
+        end do
+        status = 0
+    end subroutine assemble_nedelec_sampled_load_element
+
+    subroutine assemble_nedelec_sampled_load_element_jvp( &
+            vertices, order, quadrature_degree, source_values, &
+            source_gradients, vertices_dot, source_parameter_dot, vector_dot, &
+            status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :)
+        real(dp), allocatable, intent(out) :: vector_dot(:)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:, :), curls_dot(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_values(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp), allocatable :: zero_curls(:, :), zero_values(:, :)
+        real(dp) :: determinant, determinant_dot, jacobian(3, 3)
+        real(dp) :: jacobian_dot(3, 3), point(3), point_dot(3), source_dot(3)
+        integer :: dof, dof_count, point_index
+
+        status = 1
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        if (.not. valid_local_nedelec_source_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            size(weights))) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_jacobian(vertices_dot, jacobian_dot)
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(vector_dot(dof_count), source=0.0_dp)
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_dot(3, dof_count), curls_dot(3, dof_count))
+        allocate(zero_values(3, dof_count), zero_curls(3, dof_count), &
+            source=0.0_dp)
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant_jvp( &
+                jacobian, ref_values, ref_curls, jacobian_dot, zero_values, &
+                zero_curls, values_dot, curls_dot, status)
+            if (status /= 0) return
+            point_dot = vertices_dot(:, 1) + matmul(jacobian_dot, point)
+            source_dot = source_parameter_dot(:, point_index) + &
+                matmul(source_gradients(:, :, point_index), point_dot)
+            do dof = 1, dof_count
+                vector_dot(dof) = vector_dot(dof) + weights(point_index)*( &
+                    determinant_dot*dot_product( &
+                    source_values(:, point_index), values(:, dof)) + &
+                    determinant*(dot_product(source_dot, values(:, dof)) + &
+                    dot_product(source_values(:, point_index), &
+                    values_dot(:, dof))))
+            end do
+        end do
+        status = 0
+    end subroutine assemble_nedelec_sampled_load_element_jvp
+
+    subroutine assemble_nedelec_sampled_load_element_vjp( &
+            vertices, order, quadrature_degree, source_values, &
+            source_gradients, vector_bar, vertices_bar, source_values_bar, &
+            status)
+        real(dp), intent(in) :: vertices(3, 4), source_values(:, :)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: source_gradients(:, :, :), vector_bar(:)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+        real(dp), intent(out) :: source_values_bar(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:, :), curls_bar(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_curls_bar(:, :)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), jacobian(3, 3)
+        real(dp) :: jacobian_bar(3, 3), local_jacobian_bar(3, 3)
+        real(dp) :: point(3), point_bar(3), sample_bar(3), seed
+        real(dp) :: point_vertices_bar(3, 4), piola_vertices_bar(3, 4)
+        integer :: dof, dof_count, point_index
+
+        vertices_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        status = 1
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        if (size(vector_bar) /= dof_count) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        if (.not. valid_local_nedelec_source_gradients( &
+            source_values, source_gradients, size(weights))) return
+        if (any(shape(source_values_bar) /= shape(source_values))) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(ref_values_bar(3, dof_count), ref_curls_bar(3, dof_count))
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_bar(3, dof_count), curls_bar(3, dof_count))
+        jacobian_bar = 0.0_dp
+        point_vertices_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            values_bar = 0.0_dp
+            curls_bar = 0.0_dp
+            sample_bar = 0.0_dp
+            do dof = 1, dof_count
+                seed = weights(point_index)*vector_bar(dof)
+                determinant_bar = determinant_bar + seed*dot_product( &
+                    source_values(:, point_index), values(:, dof))
+                sample_bar = sample_bar + seed*determinant*values(:, dof)
+                values_bar(:, dof) = values_bar(:, dof) + &
+                    seed*determinant*source_values(:, point_index)
+            end do
+            source_values_bar(:, point_index) = sample_bar
+            point_bar = matmul( &
+                transpose(source_gradients(:, :, point_index)), sample_bar)
+            point_vertices_bar(:, 1) = &
+                point_vertices_bar(:, 1) + point_bar
+            jacobian_bar = jacobian_bar + spread(point_bar, 2, 3)* &
+                spread(point, 1, 3)
+            call map_tetra_nedelec_covariant_vjp( &
+                jacobian, ref_values, ref_curls, values_bar, curls_bar, &
+                local_jacobian_bar, ref_values_bar, ref_curls_bar, status)
+            if (status /= 0) return
+            jacobian_bar = jacobian_bar + local_jacobian_bar
+        end do
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        call tetra_jacobian_vjp( &
+            jacobian_bar + determinant_jacobian_bar, piola_vertices_bar)
+        vertices_bar = point_vertices_bar + piola_vertices_bar
+        status = 0
+    end subroutine assemble_nedelec_sampled_load_element_vjp
 
     subroutine assemble_tetra_nedelec_load_element_order( &
             vertices, order, source, vector, status)
@@ -1662,5 +2061,83 @@ contains
         if (any(tetrahedra > size(mesh_vertices, 2))) return
         valid_tetra_mesh = .true.
     end function valid_tetra_mesh
+
+    subroutine validate_nedelec_source_samples( &
+            source_values, quadrature_degree, tetrahedron_count, status)
+        real(dp), intent(in) :: source_values(:, :, :)
+        integer, intent(in) :: quadrature_degree, tetrahedron_count
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        status = merge(0, 1, size(source_values, 1) == 3 .and. &
+            size(source_values, 2) == size(weights) .and. &
+            size(source_values, 3) == tetrahedron_count)
+    end subroutine validate_nedelec_source_samples
+
+    subroutine validate_nedelec_source_gradients( &
+            source_values, source_gradients, quadrature_degree, &
+            tetrahedron_count, status)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        integer, intent(in) :: quadrature_degree, tetrahedron_count
+        integer, intent(out) :: status
+
+        call validate_nedelec_source_samples( &
+            source_values, quadrature_degree, tetrahedron_count, status)
+        if (status /= 0) return
+        status = merge(0, 1, size(source_gradients, 1) == 3 .and. &
+            size(source_gradients, 2) == 3 .and. &
+            size(source_gradients, 3) == size(source_values, 2) .and. &
+            size(source_gradients, 4) == tetrahedron_count)
+    end subroutine validate_nedelec_source_gradients
+
+    subroutine validate_nedelec_source_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            quadrature_degree, tetrahedron_count, status)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        integer, intent(in) :: quadrature_degree, tetrahedron_count
+        integer, intent(out) :: status
+
+        call validate_nedelec_source_gradients( &
+            source_values, source_gradients, quadrature_degree, &
+            tetrahedron_count, status)
+        if (status /= 0) return
+        status = merge(0, 1, &
+            all(shape(source_parameter_dot) == shape(source_values)))
+    end subroutine validate_nedelec_source_products
+
+    pure logical function valid_local_nedelec_source_gradients( &
+            source_values, source_gradients, point_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        integer, intent(in) :: point_count
+
+        valid = size(source_values, 1) == 3 .and. &
+            size(source_values, 2) == point_count
+        if (.not. valid) return
+        valid = size(source_gradients, 1) == 3 .and. &
+            size(source_gradients, 2) == 3 .and. &
+            size(source_gradients, 3) == point_count
+    end function valid_local_nedelec_source_gradients
+
+    pure logical function valid_local_nedelec_source_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            point_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :)
+        integer, intent(in) :: point_count
+
+        valid = valid_local_nedelec_source_gradients( &
+            source_values, source_gradients, point_count)
+        if (.not. valid) return
+        valid = all(shape(source_parameter_dot) == shape(source_values))
+    end function valid_local_nedelec_source_products
 
 end module fortfem_assembly_tetra_nedelec_3d
