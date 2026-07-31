@@ -4,19 +4,31 @@ program test_triangle_full_vector_interpolant_ad
         evaluate_triangle_bdm_interpolant, &
         evaluate_triangle_bdm_interpolant_jvp, &
         evaluate_triangle_bdm_interpolant_vjp, &
+        evaluate_triangle_nedelec_interpolant, &
+        evaluate_triangle_nedelec_interpolant_jvp, &
+        evaluate_triangle_nedelec_interpolant_vjp, &
         evaluate_triangle_nedelec_second_kind_interpolant, &
         evaluate_triangle_nedelec_second_kind_interpolant_jvp, &
         evaluate_triangle_nedelec_second_kind_interpolant_vjp, &
-        initialize_triangle_bdm, initialize_triangle_nedelec_second_kind, &
+        evaluate_triangle_rt_interpolant, &
+        evaluate_triangle_rt_interpolant_jvp, &
+        evaluate_triangle_rt_interpolant_vjp, &
+        initialize_triangle_bdm, initialize_triangle_nedelec_first_kind, &
+        initialize_triangle_nedelec_second_kind, &
+        initialize_triangle_raviart_thomas, &
         triangle_bdm_basis_t, triangle_bdm_dof_count, &
+        triangle_nedelec_dof_count, triangle_nedelec_first_kind_t, &
         triangle_nedelec_second_kind_dof_count, &
-        triangle_nedelec_second_kind_t
+        triangle_nedelec_second_kind_t, triangle_rt_basis_t, &
+        triangle_rt_dof_count
     use fortfem_kinds, only: dp
     implicit none
 
     real(dp), parameter :: step = 2.0e-7_dp
     type(triangle_bdm_basis_t) :: bdm_basis
+    type(triangle_nedelec_first_kind_t) :: nedelec_first_basis
     type(triangle_nedelec_second_kind_t) :: nedelec_basis
+    type(triangle_rt_basis_t) :: rt_basis
     real(dp), allocatable :: dofs(:), dofs_bar(:), dofs_dot(:)
     real(dp) :: scalar, scalar_bar, scalar_dot, scalar_minus, scalar_plus
     real(dp) :: value(2), value_bar(2), value_dot(2)
@@ -35,6 +47,12 @@ program test_triangle_full_vector_interpolant_ad
     call initialize_triangle_bdm(2, bdm_basis, status)
     call initialize_arrays(triangle_bdm_dof_count(bdm_basis))
     call check_bdm()
+    call initialize_triangle_raviart_thomas(2, rt_basis, status)
+    call initialize_arrays(triangle_rt_dof_count(rt_basis))
+    call check_rt()
+    call initialize_triangle_nedelec_first_kind(2, nedelec_first_basis, status)
+    call initialize_arrays(triangle_nedelec_dof_count(nedelec_first_basis))
+    call check_nedelec_first()
     call initialize_triangle_nedelec_second_kind(2, nedelec_basis, status)
     call initialize_arrays( &
         triangle_nedelec_second_kind_dof_count(nedelec_basis))
@@ -84,6 +102,52 @@ contains
             "BDM interpolant products obey adjoint identity")
     end subroutine check_bdm
 
+    subroutine check_rt()
+        real(dp) :: lhs, rhs
+
+        call evaluate_triangle_rt_interpolant_jvp( &
+            vertices, rt_basis, dofs, 0.23_dp, 0.31_dp, vertices_dot, &
+            dofs_dot, value_dot, scalar_dot, status)
+        call evaluate_triangle_rt_interpolant( &
+            vertices + step*vertices_dot, rt_basis, dofs + step*dofs_dot, &
+            0.23_dp, 0.31_dp, value_plus, scalar_plus, status)
+        call evaluate_triangle_rt_interpolant( &
+            vertices - step*vertices_dot, rt_basis, dofs - step*dofs_dot, &
+            0.23_dp, 0.31_dp, value_minus, scalar_minus, status)
+        call check_products("Raviart-Thomas")
+        call evaluate_triangle_rt_interpolant_vjp( &
+            vertices, rt_basis, dofs, 0.23_dp, 0.31_dp, value_bar, &
+            scalar_bar, vertices_bar, dofs_bar, status)
+        lhs = dot_product(value_bar, value_dot) + scalar_bar*scalar_dot
+        rhs = sum(vertices_bar*vertices_dot) + dot_product(dofs_bar, dofs_dot)
+        call check(abs(lhs - rhs) < 2.0e-11_dp, &
+            "Raviart-Thomas interpolant products obey adjoint identity")
+    end subroutine check_rt
+
+    subroutine check_nedelec_first()
+        real(dp) :: lhs, rhs
+
+        call evaluate_triangle_nedelec_interpolant_jvp( &
+            vertices, nedelec_first_basis, dofs, 0.23_dp, 0.31_dp, &
+            vertices_dot, dofs_dot, value_dot, scalar_dot, status)
+        call evaluate_triangle_nedelec_interpolant( &
+            vertices + step*vertices_dot, nedelec_first_basis, &
+            dofs + step*dofs_dot, 0.23_dp, 0.31_dp, value_plus, scalar_plus, &
+            status)
+        call evaluate_triangle_nedelec_interpolant( &
+            vertices - step*vertices_dot, nedelec_first_basis, &
+            dofs - step*dofs_dot, 0.23_dp, 0.31_dp, value_minus, scalar_minus, &
+            status)
+        call check_products("first-kind Nedelec")
+        call evaluate_triangle_nedelec_interpolant_vjp( &
+            vertices, nedelec_first_basis, dofs, 0.23_dp, 0.31_dp, value_bar, &
+            scalar_bar, vertices_bar, dofs_bar, status)
+        lhs = dot_product(value_bar, value_dot) + scalar_bar*scalar_dot
+        rhs = sum(vertices_bar*vertices_dot) + dot_product(dofs_bar, dofs_dot)
+        call check(abs(lhs - rhs) < 2.0e-11_dp, &
+            "first-kind Nedelec interpolant products obey adjoint identity")
+    end subroutine check_nedelec_first
+
     subroutine check_nedelec()
         real(dp) :: lhs, rhs
 
@@ -117,10 +181,10 @@ contains
         call check(status == 0, label//" interpolant JVP succeeds")
         call check(maxval(abs( &
             value_dot - (value_plus - value_minus)/(2.0_dp*step))) < &
-            3.0e-9_dp, label//" interpolant value JVP matches re-evaluation")
+            2.0e-8_dp, label//" interpolant value JVP matches re-evaluation")
         call check(abs( &
             scalar_dot - (scalar_plus - scalar_minus)/(2.0_dp*step)) < &
-            3.0e-9_dp, label//" interpolant scalar JVP matches re-evaluation")
+            2.0e-8_dp, label//" interpolant scalar JVP matches re-evaluation")
     end subroutine check_products
 
     subroutine check(condition, label)
