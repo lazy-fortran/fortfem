@@ -41,6 +41,14 @@ call assemble_surface_current_junction_balance_jvp( &
 call assemble_surface_current_junction_balance_vjp( &
     junction_incidence, manifold_current, junction_balance_bar, &
     global_balance_bar, manifold_current_bar, status)
+call assemble_surface_current_loop_constraints( &
+    loop_basis, manifold_current, target_loop_current, residual, status)
+call assemble_surface_current_loop_constraints_jvp( &
+    loop_basis, manifold_current, target_loop_current, manifold_current_dot, &
+    target_loop_current_dot, residual_dot, status)
+call assemble_surface_current_loop_constraints_vjp( &
+    loop_basis, manifold_current, target_loop_current, residual_bar, &
+    manifold_current_bar, target_loop_current_bar, status)
 ```
 
 The primal validates positive quadrature weights, finite three-component
@@ -59,6 +67,19 @@ boundaryless manifolds have zero incidence columns and therefore cannot create
 a spurious net current. Its topology is fixed for differentiation; the JVP
 and VJP act on the manifold-current values only.
 
+Closed cycles or externally prescribed current loops use an integer loop basis
+`loop_basis(loop, manifold)`. The loop residual is
+
+\[
+  r_\ell = \sum_m B_{\ell m} K_m - K_{\ell,\mathrm{target}}.
+\]
+
+This is a neutral constraint block: the target may be a flux, current, or
+other application-owned normalization with declared units. Its fixed-topology
+JVP differentiates manifold and target values, while the VJP is the transpose
+of the same integer map. The loop basis is not differentiated across a graph
+rebuild or cycle-basis change.
+
 ## Independent verification
 
 `test_surface_current` checks a two-point analytical jump and weighted ledger,
@@ -67,3 +88,5 @@ malformed normal/weight rejection. Surface quadrature geometry and current
 conservation at interface edges remain separate geometry contracts.
 `test_surface_current_balance` checks open, closed, and malformed incidence,
 global conservation, and the real ledger adjoint identity.
+`test_surface_current_constraints` checks an independent two-cycle residual,
+the fixed-topology JVP, the real adjoint identity, and shape rejection.

@@ -204,7 +204,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
-| Sheet-current interface | Neutral open/closed internal-manifold graph and integrated-current junction ledger with fixed-topology JVP/VJP are public; ownership, tangential surface-current unknowns, geometric edge balance, total-pressure balance, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
+| Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, and fixed-topology loop-current constraint JVP/VJP are public; ownership, tangential surface-current unknowns, geometric edge balance, total-pressure balance, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts and enrichment activation | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
@@ -1130,6 +1130,12 @@ gallery example.
   junctions, with a zero global balance oracle for conservative columns and
   fixed-topology JVP/VJP actions. Geometric edge flux, tangential current
   unknowns, and physical pressure/flux laws remain application composition.
+- The fixed-topology loop-current constraint now applies an integer cycle basis
+  to integrated manifold currents and subtracts caller-owned target values.
+  Its residual, JVP, and VJP have an independent cycle oracle. Open-edge
+  junction balance and closed-loop constraints are therefore separate linear
+  ledgers; geometric surface divergence, tangential current unknowns, and
+  physical pressure/flux laws remain composition layers.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
