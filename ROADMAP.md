@@ -1014,7 +1014,9 @@ gallery example.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
   conditions.
 - Small MMS and performance cases aligned with PARALLAX, GRILLIX, and BOUT++
-  concepts, without copying their implementations.
+  concepts, without copying their implementations. The FCI gallery fixture
+  now records the measured matrix-free action cost alongside its conservation
+  and dissipation diagnostics; larger problem-size scaling remains active.
 
 ### Phase 8: Cross-code oracles and gallery: **active**
 
