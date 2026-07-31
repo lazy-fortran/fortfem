@@ -46,6 +46,10 @@ The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.
 
+The [internal-manifold graph contract](internal_manifold_graph.html) adds
+explicit open/closed manifold endpoints and junction incidence for later
+surface-current divergence and interface-balance operators.
+
 The [signed cell-identification contract](cell_identification.html) records
 canonical representatives and orientation signs for quotient or periodic
 metadata without constructing a mesh or interpreting application coordinates.
