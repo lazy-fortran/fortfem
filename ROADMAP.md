@@ -1092,6 +1092,10 @@ gallery example.
   scalar SIPG and non-symmetric consistency variants remain.
 - `assemble_mortar_trace_coupling` supplies a weighted cross-mass block for
   independently discretized trace spaces.
+  `assemble_scalar_sipg_interface` now composes independently sized test and
+  trial trace/flux spaces with symmetric, incomplete, or nonsymmetric
+  consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC and
+  hybridized skeleton blocks remain.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent
@@ -1209,13 +1213,14 @@ gallery example.
 - Verify the commuting diagram for every enriched vector space and document
   the exact sequence identity that a physical jump intentionally changes.
 
-### Phase 3: DG and HDG: **planned**
+### Phase 3: DG and HDG: **active**
 
 - The public mortar trace cross-mass block now has value/JVP/VJP actions for
-  independently discretized skeleton traces; scalar SIPG and non-symmetric
-  variants remain. The symmetric jump-penalty block now also has value/JVP/VJP
-  actions, including penalty and surface-weight directions; full consistency
-  and flux variants remain.
+  independently discretized skeleton traces. The scalar SIPG interface block
+  now has symmetric, incomplete, and nonsymmetric consistency variants with
+  value/JVP/VJP actions; vector FEEC and hybridized skeleton blocks remain.
+  The symmetric jump-penalty block also has value/JVP/VJP actions, including
+  penalty and surface-weight directions.
 - Conservative/upwind/entropy-aware flux interface.
 - Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
 
