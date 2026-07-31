@@ -1211,7 +1211,9 @@ gallery example.
 
 - The public mortar trace cross-mass block now has value/JVP/VJP actions for
   independently discretized skeleton traces; scalar SIPG and non-symmetric
-  variants remain.
+  variants remain. The symmetric jump-penalty block now also has value/JVP/VJP
+  actions, including penalty and surface-weight directions; full consistency
+  and flux variants remain.
 - Conservative/upwind/entropy-aware flux interface.
 - Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
 
