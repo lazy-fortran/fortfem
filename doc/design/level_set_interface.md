@@ -62,5 +62,8 @@ negative polyhedra with the interface polygon, and accumulates exact volumes
 and first moments from oriented tetrahedral fans. The resulting degree-one
 quadrature data is checked against analytic one-corner cuts, uncut limits,
 quadrilateral cuts, and volume/first-moment conservation. Fixed-topology
-tetrahedral JVPs and internal-manifold graphs remain separate follow-up
-contracts.
+tetrahedral JVPs now propagate moving vertices, level values, clipped-face
+intersections, volumes, centroids, interface area, and gradient-oriented normal.
+The JVP is checked against central differences, side-volume/first-moment
+conservation, and the independent interface-JVP contract. Internal-manifold
+graphs remain a separate follow-up contract.

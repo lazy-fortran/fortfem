@@ -892,8 +892,10 @@ gallery example.
   or quadrilateral cut polygons, area, and gradient-oriented normal with
   independent plane/intersection tests. Exact positive/negative tetra cut
   volumes and centroids now close the degree-one volume/first-moment contract
-  with analytic and conservation oracles. Fixed-topology tetra JVPs and
-  internal-manifold graphs remain next; the existing vector current pairing
+  with analytic and conservation oracles. Fixed-topology tetra cut JVPs now
+  propagate moving vertices and level values through clipped-face moments and
+  interface area/normal with central-difference and conservation oracles;
+  internal-manifold graphs remain next. The existing vector current pairing
   consumes the surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
