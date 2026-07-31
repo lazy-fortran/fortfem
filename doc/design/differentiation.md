@@ -267,6 +267,10 @@ second-kind Nedelec and BDM curl/div-plus-mass elements share one analytical
 product implementation, selecting the appropriate covariant or
 contravariant Piola pullback. This avoids duplicating the quadrature reverse
 sweep while exposing family-specific public JVP/VJP names.
+Their global CSC products also share one orientation-aware implementation.
+The reverse sweep queries only participating sparse entries and accumulates
+shared vertices and both coefficients for BDM and second-kind Nedelec without
+a dense global cotangent.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
