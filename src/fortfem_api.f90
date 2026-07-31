@@ -1390,6 +1390,7 @@ module fortfem_api
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp
     public :: sparse_direct_solve_factored_vjp, sparse_direct_free
+    public :: sparse_matrix_t, sparse_from_dense, spmv, spmv_jvp, spmv_vjp
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t

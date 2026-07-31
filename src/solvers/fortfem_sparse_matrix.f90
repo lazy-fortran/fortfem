@@ -8,6 +8,8 @@ module fortfem_sparse_matrix
     public :: sparse_matrix_t
     public :: sparse_from_dense
     public :: spmv
+    public :: spmv_jvp
+    public :: spmv_vjp
 
 contains
 
@@ -54,4 +56,72 @@ contains
         end if
         product = csc_matvec(matrix, vector)
     end subroutine spmv
+
+    pure subroutine spmv_jvp( &
+            matrix, vector, matrix_values_dot, vector_dot, product_dot)
+        !! Forward product with the CSC value array and input vector active.
+        type(sparse_matrix_t), intent(in) :: matrix
+        real(dp), intent(in) :: vector(:), matrix_values_dot(:)
+        real(dp), intent(in) :: vector_dot(:)
+        real(dp), intent(out) :: product_dot(:)
+
+        integer :: column, entry, row
+
+        if (size(vector) /= matrix%ncol) then
+            error stop "spmv_jvp: vector has incompatible size"
+        end if
+        if (size(vector_dot) /= matrix%ncol) then
+            error stop "spmv_jvp: vector_dot has incompatible size"
+        end if
+        if (size(matrix_values_dot) /= matrix%nnz) then
+            error stop "spmv_jvp: matrix value tangent has incompatible size"
+        end if
+        if (size(product_dot) /= matrix%nrow) then
+            error stop "spmv_jvp: product_dot has incompatible size"
+        end if
+
+        product_dot = 0.0_dp
+        do column = 1, matrix%ncol
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                product_dot(row) = product_dot(row) + &
+                    matrix%val(entry)*vector_dot(column) + &
+                    matrix_values_dot(entry)*vector(column)
+            end do
+        end do
+    end subroutine spmv_jvp
+
+    pure subroutine spmv_vjp( &
+            matrix, vector, product_bar, matrix_values_bar, vector_bar)
+        !! Real adjoint of CSC value/vector multiplication.
+        type(sparse_matrix_t), intent(in) :: matrix
+        real(dp), intent(in) :: vector(:), product_bar(:)
+        real(dp), intent(out) :: matrix_values_bar(:), vector_bar(:)
+
+        integer :: column, entry, row
+
+        if (size(vector) /= matrix%ncol) then
+            error stop "spmv_vjp: vector has incompatible size"
+        end if
+        if (size(product_bar) /= matrix%nrow) then
+            error stop "spmv_vjp: product_bar has incompatible size"
+        end if
+        if (size(matrix_values_bar) /= matrix%nnz) then
+            error stop "spmv_vjp: matrix value cotangent has incompatible size"
+        end if
+        if (size(vector_bar) /= matrix%ncol) then
+            error stop "spmv_vjp: vector_bar has incompatible size"
+        end if
+
+        matrix_values_bar = 0.0_dp
+        vector_bar = 0.0_dp
+        do column = 1, matrix%ncol
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                matrix_values_bar(entry) = product_bar(row)*vector(column)
+                vector_bar(column) = vector_bar(column) + &
+                    matrix%val(entry)*product_bar(row)
+            end do
+        end do
+    end subroutine spmv_vjp
 end module fortfem_sparse_matrix
