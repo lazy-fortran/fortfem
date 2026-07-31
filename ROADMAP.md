@@ -1000,8 +1000,9 @@ gallery example.
   preconditioning oracle. `apply_fci_anisotropic_jacobi_preconditioner` applies
   that diagonal directly for small matrix-free solves; cached diagonal use and
   `apply_fci_plane_two_level_vcycle` now provides the next plane-solver layer;
-  deeper multigrid remains active; the retained-factor path and additive
-  field-split composition are tested separately.
+  a public recursive multilevel V(1,1) path now covers arbitrary level sizes;
+  the retained-factor path and additive field-split composition are tested
+  separately. Stronger W-cycles and coupled blocks remain active.
 - The split action now also has a field-only VJP that composes the conservative
   FCI transpose with an explicit transpose of every plane CSC block. An
   independent nonsymmetric-plane oracle and real dot-product test guard this
@@ -1013,8 +1014,9 @@ gallery example.
   variable plane sizes without padding. The public additive field-split
   preconditioner combines cached parallel Jacobi and ragged plane cycles with
   explicit nonnegative weights. A public retained coarse-factor path now
-  reuses FortSparse factorizations across right-hand sides; deeper multilevel
-  hierarchies remain active work.
+  reuses FortSparse factorizations across right-hand sides, and the recursive
+  multilevel V-cycle accepts flat level offsets for nonuniform hierarchies;
+  stronger W-cycles remain active work.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
