@@ -194,6 +194,11 @@ using a single sparse adjoint solve followed by one RT assembly reverse sweep.
 Keeping the load explicit avoids silently assuming derivatives for an opaque
 Fortran source callback; spatially differentiable source representations can
 compose at this boundary.
+Sampled tetrahedral RT vector loads provide that representation. Their
+products include Eulerian vector-source gradients, contravariant Piola
+geometry, determinant quadrature, arbitrary-order face transforms, and
+shared mesh accumulation. The VJP returns source-sample and mesh-coordinate
+cotangents without differentiating an opaque callback.
 
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
