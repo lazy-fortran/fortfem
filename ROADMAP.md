@@ -226,7 +226,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
-| Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, topology-only edge-flux balance, and normal-traction jump are public; ownership, tangential surface-current unknowns, geometry-to-edge-flux assembly, constitutive pressure laws, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
+| Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, and normal-traction jump are public; ownership, tangential surface-current unknowns, constitutive pressure laws, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | The scalar shifted-Heaviside XFEM activation contract is public; vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
@@ -1231,7 +1231,11 @@ gallery example.
   exposes vertex divergence, a global conservation scalar, and fixed-topology
   JVP/VJP actions with open-chain and closed-cycle oracles. Conormal geometry,
   edge quadrature, and the physical tangential-current law remain composition
-  layers.
+  layers. `assemble_surface_edge_flux` now supplies the missing neutral
+  geometry-to-edge contraction from oriented conormal quadrature and surface
+  current, with product-rule JVP/VJP actions and independent orientation,
+  finite-difference, and adjoint tests. Surface-basis ownership and physical
+  current laws remain composition layers.
 - The neutral normal-traction jump now projects caller-supplied plus/minus
   traction vectors onto a validated unit normal and subtracts a caller-owned
   target. Its product-rule JVP/VJP oracle composes generated CGL, elastic, or

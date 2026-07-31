@@ -57,6 +57,14 @@ call assemble_surface_edge_flux_balance_jvp( &
 call assemble_surface_edge_flux_balance_vjp( &
     edge_boundary, edge_flux, vertex_balance_bar, global_balance_bar, &
     edge_flux_bar, status)
+call assemble_surface_edge_flux( &
+    edge_conormal, edge_weights, surface_current, edge_flux, status)
+call assemble_surface_edge_flux_jvp( &
+    edge_conormal, edge_weights, surface_current, edge_conormal_dot, &
+    edge_weights_dot, surface_current_dot, edge_flux_dot, status)
+call assemble_surface_edge_flux_vjp( &
+    edge_conormal, edge_weights, surface_current, edge_flux_bar, &
+    edge_conormal_bar, edge_weights_bar, surface_current_bar, status)
 ```
 
 The primal validates positive quadrature weights, finite three-component
@@ -88,14 +96,21 @@ JVP differentiates manifold and target values, while the VJP is the transpose
 of the same integer map. The loop basis is not differentiated across a graph
 rebuild or cycle-basis change.
 
-For a triangulated or spline surface, a caller can first integrate the
-tangential current against each oriented edge conormal and pass the resulting
-scalar `edge_flux` to `assemble_surface_edge_flux_balance`. The routine
-applies the integer vertex-edge boundary map and returns the discrete surface
-divergence ledger. It also returns the global sum, which is zero for every
-conservative edge column. This is deliberately a topology/ledger contract:
-edge geometry, conormal quadrature, and the physical tangential current law
-remain external composition layers.
+For a triangulated or spline surface, `assemble_surface_edge_flux` performs
+that geometry-to-edge contraction from caller-owned conormal quadrature:
+
+\[
+  f_e=\sum_q w_{qe}\,\mathbf c_{qe}\cdot\mathbf K_{qe}.
+\]
+
+The conormal carries the edge orientation and may include metric factors; it
+does not have to be unit length. Its fixed-topology JVP applies the product
+rule to conormals, weights, and current values, and its real VJP is the
+transpose contraction. The resulting scalar `edge_flux` can then be passed to
+`assemble_surface_edge_flux_balance`, which applies the integer vertex-edge
+boundary map and returns the discrete surface divergence ledger. This remains
+a neutral geometry/ledger contract: the physical tangential-current law,
+surface basis ownership, and edge topology construction remain external.
 
 ## Independent verification
 
@@ -109,3 +124,6 @@ global conservation, and the real ledger adjoint identity.
 the fixed-topology JVP, the real adjoint identity, and shape rejection.
 `test_surface_edge_balance` checks an open chain, a closed edge cycle,
 global conservation, the fixed-topology JVP/VJP, and malformed incidence.
+`test_surface_edge_flux` checks the independent conormal contraction,
+orientation reversal, central-difference JVP, real-adjoint identity, and
+positive-weight validation.

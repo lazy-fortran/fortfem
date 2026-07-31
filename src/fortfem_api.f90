@@ -36,6 +36,9 @@ module fortfem_api
         assemble_surface_edge_flux_balance, &
         assemble_surface_edge_flux_balance_jvp, &
         assemble_surface_edge_flux_balance_vjp
+    use fortfem_surface_edge_flux, only: &
+        assemble_surface_edge_flux, assemble_surface_edge_flux_jvp, &
+        assemble_surface_edge_flux_vjp
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -945,6 +948,9 @@ module fortfem_api
     public :: assemble_surface_edge_flux_balance
     public :: assemble_surface_edge_flux_balance_jvp
     public :: assemble_surface_edge_flux_balance_vjp
+    public :: assemble_surface_edge_flux
+    public :: assemble_surface_edge_flux_jvp
+    public :: assemble_surface_edge_flux_vjp
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp

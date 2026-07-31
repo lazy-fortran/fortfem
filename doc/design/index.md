@@ -68,6 +68,11 @@ The [surface-current trace contract](surface_current.html) provides generic
 Ampere jump algebra, an integrated current ledger, and fixed-topology JVP/VJP
 actions without embedding a material or plasma boundary law.
 
+The same [surface-current trace contract](surface_current.html) documents the
+geometry-to-edge-flux contraction and its analytic JVP/VJP, which composes
+caller-owned fitted, cut, DG, or IGA edge quadrature with the topology-only
+surface-edge balance.
+
 The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
