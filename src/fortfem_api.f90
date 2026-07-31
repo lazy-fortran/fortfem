@@ -342,6 +342,8 @@ module fortfem_api
     use fortfem_nitsche_interface, only: assemble_symmetric_nitsche_interface, &
         assemble_symmetric_nitsche_interface_jvp, &
         assemble_symmetric_nitsche_interface_vjp
+    use fortfem_scalar_sipg_interface, only: assemble_scalar_sipg_interface, &
+        assemble_scalar_sipg_interface_jvp, assemble_scalar_sipg_interface_vjp
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
@@ -1763,6 +1765,9 @@ module fortfem_api
     public :: assemble_symmetric_nitsche_interface
     public :: assemble_symmetric_nitsche_interface_jvp
     public :: assemble_symmetric_nitsche_interface_vjp
+    public :: assemble_scalar_sipg_interface
+    public :: assemble_scalar_sipg_interface_jvp
+    public :: assemble_scalar_sipg_interface_vjp
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp

@@ -35,6 +35,10 @@ the test and trial trace spaces have different degree-of-freedom counts. Its
 JVP propagates trace and surface-weight directions, while its VJP returns the
 test-trace, trial-trace, and quadrature-weight cotangents. The focused AD test
 checks the real dot-product identity and rejects incompatible directions.
+`assemble_scalar_sipg_interface` generalizes the same contract to independent
+test and trial traces. The consistency selector `theta=1,0,-1` gives symmetric,
+incomplete, and nonsymmetric interior-penalty blocks, with value/JVP/VJP
+actions for all trace, flux, weight, and penalty inputs.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
