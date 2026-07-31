@@ -14,6 +14,8 @@ module fortfem_advanced_solvers
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     public :: cg_solve_jvp, cg_solve_vjp
     public :: pcg_solve_jvp, pcg_solve_vjp
+    public :: bicgstab_solve_jvp, bicgstab_solve_vjp
+    public :: gmres_solve_jvp, gmres_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
 
     ! Solver options type
@@ -261,7 +263,7 @@ contains
         x_dot = 0.0_dp
         status = 1
         n = size(x)
-        if (.not. valid_cg_product_inputs( &
+        if (.not. valid_linear_product_inputs( &
             A, b, x, A_dot, b_dot, x_dot, n)) return
         if (.not. valid_cg_matrix(A)) return
         if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
@@ -331,7 +333,7 @@ contains
         x_dot = 0.0_dp
         status = 1
         n = size(x)
-        if (.not. valid_cg_product_inputs( &
+        if (.not. valid_linear_product_inputs( &
             A, b, x, A_dot, b_dot, x_dot, n)) return
         if (.not. valid_cg_matrix(A)) return
         if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
@@ -379,7 +381,139 @@ contains
         status = 0
     end subroutine pcg_solve_vjp
 
-    pure logical function valid_cg_product_inputs( &
+    subroutine bicgstab_solve_jvp( &
+            A, b, x, opts, A_dot, b_dot, x_dot, status)
+        !! Implicit forward product for a converged nonsymmetric BiCGSTAB state.
+        !!
+        !! The Krylov iteration and stopping branch are inactive.  The tangent
+        !! solves A*x_dot = b_dot - A_dot*x with the same primal solver.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: x_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: tangent_rhs(:)
+        type(solver_stats_t) :: tangent_stats
+        integer :: n
+
+        x_dot = 0.0_dp
+        status = 1
+        n = size(x)
+        if (.not. valid_linear_product_inputs( &
+            A, b, x, A_dot, b_dot, x_dot, n)) return
+        if (.not. valid_krylov_options(opts)) return
+        allocate(tangent_rhs(n))
+        tangent_rhs = b_dot - matmul(A_dot, x)
+        call bicgstab_solve(A, tangent_rhs, x_dot, opts, tangent_stats)
+        if (.not. tangent_stats%converged) then
+            status = 2
+            return
+        end if
+        status = 0
+    end subroutine bicgstab_solve_jvp
+
+    subroutine bicgstab_solve_vjp( &
+            A, b, x, opts, x_bar, A_bar, b_bar, status)
+        !! Implicit reverse product for a converged nonsymmetric BiCGSTAB state.
+        !!
+        !! The adjoint solves A^T*lambda = x_bar.  For x=A^{-1}b, the real
+        !! cotangents are b_bar=lambda and A_bar=-lambda*x^T.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), x_bar(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: A_bar(:, :), b_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: adjoint(:)
+        type(solver_stats_t) :: adjoint_stats
+        integer :: n
+
+        A_bar = 0.0_dp
+        b_bar = 0.0_dp
+        status = 1
+        n = size(x)
+        if (size(A_bar, 1) /= n .or. size(A_bar, 2) /= n .or. &
+            size(b_bar) /= n .or. size(x_bar) /= n) return
+        if (size(A, 1) /= n .or. size(A, 2) /= n .or. size(b) /= n) return
+        if (.not. valid_krylov_options(opts)) return
+        allocate(adjoint(n))
+        adjoint = 0.0_dp
+        call bicgstab_solve(transpose(A), x_bar, adjoint, opts, adjoint_stats)
+        if (.not. adjoint_stats%converged) then
+            status = 2
+            return
+        end if
+        b_bar = adjoint
+        A_bar = -spread(adjoint, 2, n)*spread(x, 1, n)
+        status = 0
+    end subroutine bicgstab_solve_vjp
+
+    subroutine gmres_solve_jvp( &
+            A, b, x, opts, A_dot, b_dot, x_dot, status)
+        !! Implicit forward product for a converged nonsymmetric GMRES state.
+        !!
+        !! The Krylov iteration and stopping branch are inactive.  The tangent
+        !! solves A*x_dot = b_dot - A_dot*x with the same primal solver.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: x_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: tangent_rhs(:)
+        type(solver_stats_t) :: tangent_stats
+        integer :: n
+
+        x_dot = 0.0_dp
+        status = 1
+        n = size(x)
+        if (.not. valid_linear_product_inputs( &
+            A, b, x, A_dot, b_dot, x_dot, n)) return
+        if (.not. valid_krylov_options(opts)) return
+        allocate(tangent_rhs(n))
+        tangent_rhs = b_dot - matmul(A_dot, x)
+        call gmres_solve(A, tangent_rhs, x_dot, opts, tangent_stats)
+        if (.not. tangent_stats%converged) then
+            status = 2
+            return
+        end if
+        status = 0
+    end subroutine gmres_solve_jvp
+
+    subroutine gmres_solve_vjp( &
+            A, b, x, opts, x_bar, A_bar, b_bar, status)
+        !! Implicit reverse product for a converged nonsymmetric GMRES state.
+        !!
+        !! The adjoint solves A^T*lambda = x_bar.  For x=A^{-1}b, the real
+        !! cotangents are b_bar=lambda and A_bar=-lambda*x^T.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), x_bar(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: A_bar(:, :), b_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: adjoint(:)
+        type(solver_stats_t) :: adjoint_stats
+        integer :: n
+
+        A_bar = 0.0_dp
+        b_bar = 0.0_dp
+        status = 1
+        n = size(x)
+        if (size(A_bar, 1) /= n .or. size(A_bar, 2) /= n .or. &
+            size(b_bar) /= n .or. size(x_bar) /= n) return
+        if (size(A, 1) /= n .or. size(A, 2) /= n .or. size(b) /= n) return
+        if (.not. valid_krylov_options(opts)) return
+        allocate(adjoint(n))
+        adjoint = 0.0_dp
+        call gmres_solve(transpose(A), x_bar, adjoint, opts, adjoint_stats)
+        if (.not. adjoint_stats%converged) then
+            status = 2
+            return
+        end if
+        b_bar = adjoint
+        A_bar = -spread(adjoint, 2, n)*spread(x, 1, n)
+        status = 0
+    end subroutine gmres_solve_vjp
+
+    pure logical function valid_linear_product_inputs( &
             A, b, x, A_dot, b_dot, x_dot, n) result(valid)
         real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
         real(dp), intent(in) :: x_dot(:)
@@ -397,7 +531,19 @@ contains
             return
         end if
         if (size(A_dot, 1) /= n .or. size(A_dot, 2) /= n) valid = .false.
-    end function valid_cg_product_inputs
+    end function valid_linear_product_inputs
+
+    pure logical function valid_krylov_options(opts) result(valid)
+        type(solver_options_t), intent(in) :: opts
+
+        valid = opts%max_iterations > 0 .and. opts%tolerance > 0.0_dp
+        if (valid .and. trim(opts%method) /= "auto") then
+            valid = trim(opts%method) == "bicgstab" .or. &
+                trim(opts%method) == "gmres" .or. &
+                trim(opts%method) == "fgmres"
+        end if
+        if (valid) valid = opts%restart > 0
+    end function valid_krylov_options
 
     pure logical function valid_cg_matrix(A) result(valid)
         real(dp), intent(in) :: A(:, :)
