@@ -6,6 +6,12 @@ repository_dir=$(cd "$codegen_dir/../.." && pwd)
 generated_dir=${FORTFEM_CODEGEN_OUTPUT_DIR:-"$repository_dir/src/generated"}
 export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
 
+# The generator builds FortSym and many independent Fortran applications.
+# Host-wide parallelism can exhaust memory on CI runners and make the
+# provenance check fail with a compiler segfault.  Keep an explicit caller
+# setting, but use a bounded default for reproducible generation.
+export FO_JOBS="${FO_JOBS:-2}"
+
 cd "$codegen_dir"
 ./check_fortsym_revision.sh
 fo build
