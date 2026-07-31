@@ -1197,8 +1197,9 @@ gallery example.
   contravariant Piola values and IGA coefficient blocks. Cut-cell geometry,
   support activation, rank/conditioning diagnostics, and Piola-aware vector
   differential operators remain.
-- Cut-cell classification and high-order quadrature (the exact degree-one
-  triangle centroid rule is the current baseline).
+- Cut-cell classification and high-order quadrature. The exact degree-one
+  triangle centroid rule and an exact degree-two raw-moment tensor with a
+  fixed-topology JVP are now public; tetrahedral higher-order rules remain.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
