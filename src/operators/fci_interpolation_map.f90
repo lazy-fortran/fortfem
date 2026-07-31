@@ -24,6 +24,9 @@ module fortfem_fci_interpolation_map
     public :: build_fci_triangle_interpolation_map_2d
     public :: build_fci_triangle_interpolation_map_2d_jvp
     public :: build_fci_triangle_interpolation_map_2d_vjp
+    public :: build_fci_triangle_interpolation_maps_2d
+    public :: build_fci_triangle_interpolation_maps_2d_jvp
+    public :: build_fci_triangle_interpolation_maps_2d_vjp
 
 contains
 
@@ -772,6 +775,191 @@ contains
         cross_2d_dot = left_dot(1)*right(2) + left(1)*right_dot(2) - &
             left_dot(2)*right(1) - left(2)*right_dot(1)
     end function cross_2d_dot
+
+    subroutine build_fci_triangle_interpolation_maps_2d( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map, backward_map, status)
+        !! Build per-segment barycentric maps on a fixed triangle mesh.
+        !!
+        !! Point arrays have shape `(2, n_staggered, n_segment)`, cell arrays
+        !! have shape `(n_staggered, n_segment)`, and map tensors have shape
+        !! `(n_staggered, n_vertices, n_segment)`.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: forward_points(:, :, :)
+        integer, intent(in) :: forward_cells(:, :)
+        real(dp), intent(in) :: backward_points(:, :, :)
+        integer, intent(in) :: backward_cells(:, :)
+        real(dp), intent(out) :: forward_map(:, :, :)
+        real(dp), intent(out) :: backward_map(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment
+
+        forward_map = 0.0_dp
+        backward_map = 0.0_dp
+        call validate_triangle_batch_inputs( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map, backward_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        do segment = 1, size(forward_points, 3)
+            call build_fci_triangle_interpolation_map_2d( &
+                vertices, triangles, forward_points(:, :, segment), &
+                forward_cells(:, segment), forward_map(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            call build_fci_triangle_interpolation_map_2d( &
+                vertices, triangles, backward_points(:, :, segment), &
+                backward_cells(:, segment), backward_map(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_maps_2d
+
+    subroutine build_fci_triangle_interpolation_maps_2d_jvp( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, vertices_dot, forward_points_dot, backward_points_dot, &
+            forward_map_dot, backward_map_dot, status)
+        !! Apply the fixed-cell JVP of the batched triangle map builder.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: forward_points(:, :, :)
+        integer, intent(in) :: forward_cells(:, :)
+        real(dp), intent(in) :: backward_points(:, :, :)
+        integer, intent(in) :: backward_cells(:, :)
+        real(dp), intent(in) :: vertices_dot(:, :)
+        real(dp), intent(in) :: forward_points_dot(:, :, :)
+        real(dp), intent(in) :: backward_points_dot(:, :, :)
+        real(dp), intent(out) :: forward_map_dot(:, :, :)
+        real(dp), intent(out) :: backward_map_dot(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment
+
+        forward_map_dot = 0.0_dp
+        backward_map_dot = 0.0_dp
+        call validate_triangle_batch_inputs( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map_dot, backward_map_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (any(shape(vertices_dot) /= shape(vertices)) .or. &
+            any(shape(forward_points_dot) /= shape(forward_points)) .or. &
+            any(shape(backward_points_dot) /= shape(backward_points))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle batched JVP received incompatible tangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(forward_points_dot)) .or. &
+            any(.not. ieee_is_finite(backward_points_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle batched JVP received non-finite tangents")
+            return
+        end if
+        do segment = 1, size(forward_points, 3)
+            call build_fci_triangle_interpolation_map_2d_jvp( &
+                vertices, triangles, forward_points(:, :, segment), &
+                forward_cells(:, segment), vertices_dot, &
+                forward_points_dot(:, :, segment), forward_map_dot(:, :, segment), &
+                status)
+            if (status%code /= FORTSPARSE_OK) return
+            call build_fci_triangle_interpolation_map_2d_jvp( &
+                vertices, triangles, backward_points(:, :, segment), &
+                backward_cells(:, segment), vertices_dot, &
+                backward_points_dot(:, :, segment), &
+                backward_map_dot(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_maps_2d_jvp
+
+    subroutine build_fci_triangle_interpolation_maps_2d_vjp( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map_bar, backward_map_bar, vertices_bar, &
+            forward_points_bar, backward_points_bar, status)
+        !! Apply the fixed-cell VJP of the batched triangle map builder.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: forward_points(:, :, :)
+        integer, intent(in) :: forward_cells(:, :)
+        real(dp), intent(in) :: backward_points(:, :, :)
+        integer, intent(in) :: backward_cells(:, :)
+        real(dp), intent(in) :: forward_map_bar(:, :, :)
+        real(dp), intent(in) :: backward_map_bar(:, :, :)
+        real(dp), intent(out) :: vertices_bar(:, :)
+        real(dp), intent(out) :: forward_points_bar(:, :, :)
+        real(dp), intent(out) :: backward_points_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment, n_vertices
+        real(dp), allocatable :: vertices_bar_local(:, :)
+
+        vertices_bar = 0.0_dp
+        forward_points_bar = 0.0_dp
+        backward_points_bar = 0.0_dp
+        call validate_triangle_batch_inputs( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map_bar, backward_map_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_vertices = size(vertices, 2)
+        if (any(shape(vertices_bar) /= shape(vertices))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle batched VJP received an incompatible vertex cotangent")
+            return
+        end if
+        if (any(shape(forward_points_bar) /= shape(forward_points)) .or. &
+            any(shape(backward_points_bar) /= shape(backward_points))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle batched VJP received incompatible point cotangents")
+            return
+        end if
+        allocate(vertices_bar_local(2, n_vertices))
+        do segment = 1, size(forward_points, 3)
+            call build_fci_triangle_interpolation_map_2d_vjp( &
+                vertices, triangles, forward_points(:, :, segment), &
+                forward_cells(:, segment), forward_map_bar(:, :, segment), &
+                vertices_bar_local, forward_points_bar(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            vertices_bar = vertices_bar + vertices_bar_local
+            call build_fci_triangle_interpolation_map_2d_vjp( &
+                vertices, triangles, backward_points(:, :, segment), &
+                backward_cells(:, segment), backward_map_bar(:, :, segment), &
+                vertices_bar_local, backward_points_bar(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            vertices_bar = vertices_bar + vertices_bar_local
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_maps_2d_vjp
+
+    subroutine validate_triangle_batch_inputs( &
+            vertices, triangles, forward_points, forward_cells, backward_points, &
+            backward_cells, forward_map, backward_map, status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: forward_points(:, :, :)
+        integer, intent(in) :: forward_cells(:, :)
+        real(dp), intent(in) :: backward_points(:, :, :)
+        integer, intent(in) :: backward_cells(:, :)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_vertices, n_staggered, n_segment
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI batched triangle map received incompatible arrays")
+        if (size(vertices, 1) /= 2 .or. size(triangles, 1) /= 3 .or. &
+            size(forward_points, 1) /= 2 .or. size(backward_points, 1) /= 2) return
+        n_vertices = size(vertices, 2)
+        n_staggered = size(forward_points, 2)
+        n_segment = size(forward_points, 3)
+        if (n_vertices < 3 .or. n_staggered < 1 .or. n_segment < 1) return
+        if (any(shape(backward_points) /= shape(forward_points)) .or. &
+            any(shape(forward_cells) /= [n_staggered, n_segment]) .or. &
+            any(shape(backward_cells) /= shape(forward_cells))) return
+        if (any(shape(forward_map) /= [n_staggered, n_vertices, n_segment]) .or. &
+            any(shape(backward_map) /= shape(forward_map))) return
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_triangle_batch_inputs
 
     subroutine build_fci_bilinear_interpolation_maps_2d( &
             source_x, source_y, forward_x, forward_y, backward_x, backward_y, &

@@ -117,6 +117,17 @@ call build_fci_triangle_interpolation_map_2d_jvp( &
 call build_fci_triangle_interpolation_map_2d_vjp( &
     vertices, triangles, target_points, target_cells, interpolation_map_bar, &
     vertices_bar, target_points_bar, status)
+call build_fci_triangle_interpolation_maps_2d( &
+    vertices, triangles, forward_points, forward_cells, backward_points, &
+    backward_cells, forward_map, backward_map, status)
+call build_fci_triangle_interpolation_maps_2d_jvp( &
+    vertices, triangles, forward_points, forward_cells, backward_points, &
+    backward_cells, vertices_dot, forward_points_dot, backward_points_dot, &
+    forward_map_dot, backward_map_dot, status)
+call build_fci_triangle_interpolation_maps_2d_vjp( &
+    vertices, triangles, forward_points, forward_cells, backward_points, &
+    backward_cells, forward_map_bar, backward_map_bar, vertices_bar, &
+    forward_points_bar, backward_points_bar, status)
 ```
 
 The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
@@ -141,6 +152,11 @@ fixed containing-cell id per target and emits barycentric weights over the
 global vertex vector. It reproduces affine fields and provides geometry/target
 JVP/VJP products. The primal path permits edge targets, while derivative paths
 reject zero barycentric weights as cell-boundary topology events.
+
+The batched triangle adapter applies this contract to traced forward and
+backward endpoints with shape `(2, n_staggered, n_segment)` and accumulates
+shared vertex cotangents over all segments. It is the unstructured counterpart
+of the Cartesian bilinear endpoint adapter.
 
 The focused test uses identity maps and an analytically linear field as an
 independent oracle. It also checks the weighted adjoint identity and a flux

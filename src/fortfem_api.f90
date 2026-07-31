@@ -197,7 +197,10 @@ module fortfem_api
         build_fci_bilinear_interpolation_maps_2d_vjp, &
         build_fci_triangle_interpolation_map_2d, &
         build_fci_triangle_interpolation_map_2d_jvp, &
-        build_fci_triangle_interpolation_map_2d_vjp
+        build_fci_triangle_interpolation_map_2d_vjp, &
+        build_fci_triangle_interpolation_maps_2d, &
+        build_fci_triangle_interpolation_maps_2d_jvp, &
+        build_fci_triangle_interpolation_maps_2d_vjp
     use fortfem_fci_support_geometry, only: &
         compute_fci_staggered_flux_box_volumes, &
         compute_fci_staggered_flux_box_volumes_jvp, &
@@ -1478,6 +1481,9 @@ module fortfem_api
     public :: build_fci_triangle_interpolation_map_2d
     public :: build_fci_triangle_interpolation_map_2d_jvp
     public :: build_fci_triangle_interpolation_map_2d_vjp
+    public :: build_fci_triangle_interpolation_maps_2d
+    public :: build_fci_triangle_interpolation_maps_2d_jvp
+    public :: build_fci_triangle_interpolation_maps_2d_vjp
     public :: compute_fci_staggered_flux_box_volumes
     public :: compute_fci_staggered_flux_box_volumes_jvp
     public :: compute_fci_staggered_flux_box_volumes_vjp
