@@ -434,10 +434,14 @@ module fortfem_api
         triangle_lagrange_nodes
     use fortfem_triangle_nedelec_arbitrary_order, only: &
         assignment(=), evaluate_triangle_nedelec_first_kind, &
+        evaluate_triangle_nedelec_first_kind_jvp, &
+        evaluate_triangle_nedelec_first_kind_vjp, &
         initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
         triangle_nedelec_first_kind_t
     use fortfem_triangle_nedelec_second_kind, only: &
         assignment(=), evaluate_triangle_nedelec_second_kind, &
+        evaluate_triangle_nedelec_second_kind_jvp, &
+        evaluate_triangle_nedelec_second_kind_vjp, &
         initialize_triangle_nedelec_second_kind, &
         triangle_nedelec_second_kind_dof_count, &
         triangle_nedelec_second_kind_t
@@ -480,10 +484,13 @@ module fortfem_api
         interpolate_physical_tetra_rt, interpolate_reference_tetra_rt
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas_jvp, &
+        evaluate_triangle_raviart_thomas_vjp, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
         triangle_rt_dof_count
     use fortfem_triangle_bdm_arbitrary_order, only: &
-        assignment(=), evaluate_triangle_bdm, initialize_triangle_bdm, &
+        assignment(=), evaluate_triangle_bdm, evaluate_triangle_bdm_jvp, &
+        evaluate_triangle_bdm_vjp, initialize_triangle_bdm, &
         triangle_bdm_basis_t, triangle_bdm_dof_count
     use fortfem_edge_moment_orientation, only: apply_edge_moment_orientation
     use fortfem_triangle_piola_maps, only: &
@@ -948,10 +955,14 @@ module fortfem_api
     public :: triangle_lagrange_basis_t
     public :: triangle_lagrange_nodes
     public :: evaluate_triangle_nedelec_first_kind
+    public :: evaluate_triangle_nedelec_first_kind_jvp
+    public :: evaluate_triangle_nedelec_first_kind_vjp
     public :: initialize_triangle_nedelec_first_kind
     public :: triangle_nedelec_dof_count
     public :: triangle_nedelec_first_kind_t
     public :: evaluate_triangle_nedelec_second_kind
+    public :: evaluate_triangle_nedelec_second_kind_jvp
+    public :: evaluate_triangle_nedelec_second_kind_vjp
     public :: initialize_triangle_nedelec_second_kind
     public :: triangle_nedelec_second_kind_dof_count
     public :: triangle_nedelec_second_kind_t
@@ -994,10 +1005,14 @@ module fortfem_api
     public :: interpolate_reference_tetra_nedelec
     public :: interpolate_physical_tetra_nedelec
     public :: evaluate_triangle_bdm
+    public :: evaluate_triangle_bdm_jvp
+    public :: evaluate_triangle_bdm_vjp
     public :: initialize_triangle_bdm
     public :: triangle_bdm_basis_t
     public :: triangle_bdm_dof_count
     public :: evaluate_triangle_raviart_thomas
+    public :: evaluate_triangle_raviart_thomas_jvp
+    public :: evaluate_triangle_raviart_thomas_vjp
     public :: initialize_triangle_raviart_thomas
     public :: triangle_rt_basis_t
     public :: triangle_rt_dof_count

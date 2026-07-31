@@ -12,6 +12,8 @@ module fortfem_triangle_nedelec_second_kind
 
     public :: assignment(=)
     public :: evaluate_triangle_nedelec_second_kind
+    public :: evaluate_triangle_nedelec_second_kind_jvp
+    public :: evaluate_triangle_nedelec_second_kind_vjp
     public :: initialize_triangle_nedelec_second_kind
     public :: triangle_nedelec_second_kind_dof_count
     public :: triangle_nedelec_second_kind_t
@@ -121,6 +123,70 @@ contains
         end do
         status = 0
     end subroutine evaluate_triangle_nedelec_second_kind
+
+    subroutine evaluate_triangle_nedelec_second_kind_jvp( &
+            basis, xi, eta, xi_dot, eta_dot, values_dot, curls_dot, status)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: xi, eta, xi_dot, eta_dot
+        real(dp), intent(out) :: values_dot(:, :), curls_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: candidate_curls_dot(:)
+        real(dp), allocatable :: candidate_values_dot(:, :)
+        integer :: basis_dof, candidate
+
+        values_dot = 0.0_dp
+        curls_dot = 0.0_dp
+        status = 1
+        if (.not. valid_evaluation_shapes(basis, values_dot, curls_dot)) return
+        if (.not. valid_reference_point(xi, eta)) return
+        allocate(candidate_values_dot(2, basis%dof_count))
+        allocate(candidate_curls_dot(basis%dof_count))
+        call evaluate_second_kind_candidates_jvp( &
+            basis, xi, eta, xi_dot, eta_dot, candidate_values_dot, &
+            candidate_curls_dot)
+        do basis_dof = 1, basis%dof_count
+            do candidate = 1, basis%dof_count
+                values_dot(:, basis_dof) = values_dot(:, basis_dof) + &
+                    basis%coefficients(candidate, basis_dof)* &
+                    candidate_values_dot(:, candidate)
+                curls_dot(basis_dof) = curls_dot(basis_dof) + &
+                    basis%coefficients(candidate, basis_dof)* &
+                    candidate_curls_dot(candidate)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_triangle_nedelec_second_kind_jvp
+
+    subroutine evaluate_triangle_nedelec_second_kind_vjp( &
+            basis, xi, eta, values_bar, curls_bar, xi_bar, eta_bar, status)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(in) :: values_bar(:, :), curls_bar(:)
+        real(dp), intent(out) :: xi_bar, eta_bar
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: curls_eta(:), curls_xi(:)
+        real(dp), allocatable :: values_eta(:, :), values_xi(:, :)
+
+        xi_bar = 0.0_dp
+        eta_bar = 0.0_dp
+        status = 1
+        if (.not. valid_evaluation_shapes(basis, values_bar, curls_bar)) return
+        allocate(values_xi, mold=values_bar)
+        allocate(values_eta, mold=values_bar)
+        allocate(curls_xi, mold=curls_bar)
+        allocate(curls_eta, mold=curls_bar)
+        call evaluate_triangle_nedelec_second_kind_jvp( &
+            basis, xi, eta, 1.0_dp, 0.0_dp, values_xi, curls_xi, status)
+        if (status /= 0) return
+        call evaluate_triangle_nedelec_second_kind_jvp( &
+            basis, xi, eta, 0.0_dp, 1.0_dp, values_eta, curls_eta, status)
+        if (status /= 0) return
+        xi_bar = sum(values_bar*values_xi) + dot_product(curls_bar, curls_xi)
+        eta_bar = sum(values_bar*values_eta) + &
+            dot_product(curls_bar, curls_eta)
+    end subroutine evaluate_triangle_nedelec_second_kind_vjp
 
     pure function triangle_nedelec_second_kind_dof_count( &
             basis) result(dof_count)
@@ -239,6 +305,75 @@ contains
             end if
         end do
     end subroutine evaluate_second_kind_candidates
+
+    pure subroutine evaluate_second_kind_candidates_jvp( &
+            basis, xi, eta, xi_dot, eta_dot, values_dot, curls_dot)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: xi, eta, xi_dot, eta_dot
+        real(dp), intent(out) :: values_dot(:, :), curls_dot(:)
+
+        integer :: candidate, component, x_degree, y_degree
+
+        values_dot = 0.0_dp
+        curls_dot = 0.0_dp
+        do candidate = 1, basis%dof_count
+            component = basis%candidate_component(candidate)
+            x_degree = basis%powers(1, candidate)
+            y_degree = basis%powers(2, candidate)
+            values_dot(component, candidate) = monomial_jvp( &
+                xi, eta, x_degree, y_degree, xi_dot, eta_dot)
+            if (component == 1 .and. y_degree > 0) then
+                curls_dot(candidate) = -real(y_degree, dp)*monomial_jvp( &
+                    xi, eta, x_degree, y_degree - 1, xi_dot, eta_dot)
+            else if (component == 2 .and. x_degree > 0) then
+                curls_dot(candidate) = real(x_degree, dp)*monomial_jvp( &
+                    xi, eta, x_degree - 1, y_degree, xi_dot, eta_dot)
+            end if
+        end do
+    end subroutine evaluate_second_kind_candidates_jvp
+
+    pure function monomial_jvp( &
+            xi, eta, x_degree, y_degree, xi_dot, eta_dot) result(value_dot)
+        real(dp), intent(in) :: xi, eta, xi_dot, eta_dot
+        integer, intent(in) :: x_degree, y_degree
+        real(dp) :: value_dot
+
+        value_dot = 0.0_dp
+        if (x_degree > 0) then
+            value_dot = value_dot + real(x_degree, dp)*xi_dot* &
+                integer_power(xi, x_degree - 1)*integer_power(eta, y_degree)
+        end if
+        if (y_degree > 0) then
+            value_dot = value_dot + real(y_degree, dp)*eta_dot* &
+                integer_power(xi, x_degree)*integer_power(eta, y_degree - 1)
+        end if
+    end function monomial_jvp
+
+    pure logical function valid_evaluation_shapes( &
+            basis, values, curls) result(valid)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: values(:, :), curls(:)
+
+        valid = basis%degree >= 1
+        if (.not. valid) return
+        valid = basis%dof_count >= 1
+        if (.not. valid) return
+        valid = size(values, 1) == 2
+        if (.not. valid) return
+        valid = size(values, 2) == basis%dof_count
+        if (.not. valid) return
+        valid = size(curls) == basis%dof_count
+    end function valid_evaluation_shapes
+
+    pure logical function valid_reference_point(xi, eta) result(valid)
+        real(dp), intent(in) :: xi, eta
+
+        valid = xi >= -64.0_dp*epsilon(1.0_dp)
+        if (.not. valid) return
+        valid = eta >= -64.0_dp*epsilon(1.0_dp)
+        if (.not. valid) return
+        valid = xi + eta <= 1.0_dp + 64.0_dp*epsilon(1.0_dp)
+    end function valid_reference_point
 
     pure subroutine reference_edge(edge, parameter, point, tangent)
         integer, intent(in) :: edge
