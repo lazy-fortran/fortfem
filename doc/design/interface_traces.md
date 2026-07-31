@@ -26,7 +26,10 @@ penalty portion of Nitsche coupling.  The public
 `assemble_symmetric_nitsche_interface` routine adds the common-normal average
 flux consistency terms and is checked against an independent block oracle.
 `assemble_mortar_trace_coupling` supplies the weighted cross-mass block when
-the test and trial trace spaces have different degree-of-freedom counts.
+the test and trial trace spaces have different degree-of-freedom counts. Its
+JVP propagates trace and surface-weight directions, while its VJP returns the
+test-trace, trial-trace, and quadrature-weight cotangents. The focused AD test
+checks the real dot-product identity and rejects incompatible directions.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
