@@ -25,11 +25,15 @@ module fortfem_assembly_full_vector_arbitrary_order_2d
     private
 
     public :: assemble_triangle_bdm_div_mass_csc
+    public :: assemble_triangle_bdm_div_mass_csc_jvp
+    public :: assemble_triangle_bdm_div_mass_csc_vjp
     public :: assemble_triangle_bdm_div_mass_element
     public :: assemble_triangle_bdm_div_mass_element_jvp
     public :: assemble_triangle_bdm_div_mass_element_vjp
     public :: assemble_triangle_bdm_cell_vector_load
     public :: assemble_triangle_nedelec_second_curl_mass_csc
+    public :: assemble_triangle_nedelec_second_curl_mass_csc_jvp
+    public :: assemble_triangle_nedelec_second_curl_mass_csc_vjp
     public :: assemble_triangle_nedelec_second_curl_mass_element
     public :: assemble_triangle_nedelec_second_curl_mass_element_jvp
     public :: assemble_triangle_nedelec_second_curl_mass_element_vjp
@@ -382,6 +386,80 @@ contains
             mass_weight, matrix, status)
     end subroutine assemble_triangle_bdm_div_mass_csc
 
+    subroutine assemble_triangle_nedelec_second_curl_mass_csc_jvp( &
+            mesh, degree, quadrature_degree, curl_coefficient, &
+            mass_coefficient, mesh_vertices_dot, curl_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_coefficient
+        real(dp), intent(in) :: mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: curl_coefficient_dot, mass_coefficient_dot
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc_jvp( &
+            mesh, degree, quadrature_degree, .false., curl_coefficient, &
+            mass_coefficient, mesh_vertices_dot, curl_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+    end subroutine assemble_triangle_nedelec_second_curl_mass_csc_jvp
+
+    subroutine assemble_triangle_bdm_div_mass_csc_jvp( &
+            mesh, degree, quadrature_degree, divergence_coefficient, &
+            mass_coefficient, mesh_vertices_dot, divergence_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: divergence_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc_jvp( &
+            mesh, degree, quadrature_degree, .true., divergence_coefficient, &
+            mass_coefficient, mesh_vertices_dot, divergence_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+    end subroutine assemble_triangle_bdm_div_mass_csc_jvp
+
+    subroutine assemble_triangle_nedelec_second_curl_mass_csc_vjp( &
+            mesh, degree, quadrature_degree, curl_coefficient, &
+            mass_coefficient, matrix_values_bar, mesh_vertices_bar, &
+            curl_coefficient_bar, mass_coefficient_bar, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: curl_coefficient_bar, mass_coefficient_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc_vjp( &
+            mesh, degree, quadrature_degree, .false., curl_coefficient, &
+            mass_coefficient, matrix_values_bar, mesh_vertices_bar, &
+            curl_coefficient_bar, mass_coefficient_bar, status)
+    end subroutine assemble_triangle_nedelec_second_curl_mass_csc_vjp
+
+    subroutine assemble_triangle_bdm_div_mass_csc_vjp( &
+            mesh, degree, quadrature_degree, divergence_coefficient, &
+            mass_coefficient, matrix_values_bar, mesh_vertices_bar, &
+            divergence_coefficient_bar, mass_coefficient_bar, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: divergence_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        call assemble_triangle_full_vector_csc_vjp( &
+            mesh, degree, quadrature_degree, .true., divergence_coefficient, &
+            mass_coefficient, matrix_values_bar, mesh_vertices_bar, &
+            divergence_coefficient_bar, mass_coefficient_bar, status)
+    end subroutine assemble_triangle_bdm_div_mass_csc_vjp
+
     subroutine assemble_triangle_full_vector_csc( &
             mesh, degree, quadrature_degree, normal_family, &
             derivative_coefficient, mass_coefficient, matrix, status)
@@ -448,6 +526,139 @@ contains
             global_dof_count, global_dof_count, rows, columns, values, &
             matrix, status)
     end subroutine assemble_triangle_full_vector_csc
+
+    subroutine assemble_triangle_full_vector_csc_jvp( &
+            mesh, degree, quadrature_degree, normal_family, &
+            derivative_coefficient, mass_coefficient, mesh_vertices_dot, &
+            derivative_coefficient_dot, mass_coefficient_dot, matrix_dot, &
+            status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        logical, intent(in) :: normal_family
+        real(dp), intent(in) :: derivative_coefficient, mass_coefficient
+        real(dp), intent(in) :: mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: derivative_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: element_dot(:, :), values(:)
+        real(dp) :: vertices(2, 3), vertices_dot(2, 3)
+        integer :: column, entry, global_count, local_count, local_status
+        integer :: row, triangle
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Full-vector triangle JVP assembly failed")
+        if (degree < 1 .or. quadrature_degree < 0) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh%vertices))) return
+        call build_triangle_full_vector_dof_map( &
+            mesh, degree, global_dofs, transforms, global_count, local_status)
+        if (local_status /= 0) return
+        local_count = size(global_dofs, 1)
+        allocate(rows(mesh%n_triangles*local_count**2))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            vertices_dot = &
+                mesh_vertices_dot(:, mesh%triangles(:, triangle))
+            call assemble_triangle_full_vector_element_jvp( &
+                vertices, degree, quadrature_degree, normal_family, &
+                derivative_coefficient, mass_coefficient, vertices_dot, &
+                derivative_coefficient_dot, mass_coefficient_dot, element_dot, &
+                local_status)
+            if (local_status /= 0) return
+            do column = 1, local_count
+                do row = 1, local_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, triangle)
+                    columns(entry) = global_dofs(column, triangle)
+                    values(entry) = real( &
+                        transforms(row, triangle)* &
+                        transforms(column, triangle), dp)* &
+                        element_dot(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_count, global_count, rows, columns, values, matrix_dot, &
+            status)
+    end subroutine assemble_triangle_full_vector_csc_jvp
+
+    subroutine assemble_triangle_full_vector_csc_vjp( &
+            mesh, degree, quadrature_degree, normal_family, &
+            derivative_coefficient, mass_coefficient, matrix_values_bar, &
+            mesh_vertices_bar, derivative_coefficient_bar, &
+            mass_coefficient_bar, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        logical, intent(in) :: normal_family
+        real(dp), intent(in) :: derivative_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: derivative_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: matrix
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: element_bar(:, :)
+        real(dp) :: local_derivative_bar, local_mass_bar
+        real(dp) :: local_vertices_bar(2, 3), vertices(2, 3)
+        integer :: column, global_count, local_count, local_status
+        integer :: node, row, triangle
+
+        mesh_vertices_bar = 0.0_dp
+        derivative_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        call assemble_triangle_full_vector_csc( &
+            mesh, degree, quadrature_degree, normal_family, &
+            derivative_coefficient, mass_coefficient, matrix, status)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh%vertices)) .or. &
+            size(matrix_values_bar) /= matrix%nnz) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Full-vector triangle VJP shapes differ")
+            return
+        end if
+        call build_triangle_full_vector_dof_map( &
+            mesh, degree, global_dofs, transforms, global_count, local_status)
+        if (local_status /= 0) return
+        local_count = size(global_dofs, 1)
+        allocate(element_bar(local_count, local_count))
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            do column = 1, local_count
+                do row = 1, local_count
+                    element_bar(row, column) = real( &
+                        transforms(row, triangle)* &
+                        transforms(column, triangle), dp)*csc_bar_at( &
+                        matrix, matrix_values_bar, &
+                        global_dofs(row, triangle), &
+                        global_dofs(column, triangle))
+                end do
+            end do
+            call assemble_triangle_full_vector_element_vjp( &
+                vertices, degree, quadrature_degree, normal_family, &
+                derivative_coefficient, mass_coefficient, element_bar, &
+                local_vertices_bar, local_derivative_bar, local_mass_bar, &
+                local_status)
+            if (local_status /= 0) return
+            do node = 1, 3
+                mesh_vertices_bar(:, mesh%triangles(node, triangle)) = &
+                    mesh_vertices_bar(:, mesh%triangles(node, triangle)) + &
+                    local_vertices_bar(:, node)
+            end do
+            derivative_coefficient_bar = &
+                derivative_coefficient_bar + local_derivative_bar
+            mass_coefficient_bar = mass_coefficient_bar + local_mass_bar
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_full_vector_csc_vjp
 
     subroutine assemble_triangle_full_vector_element( &
             vertices, degree, quadrature_degree, normal_family, &
@@ -778,5 +989,22 @@ contains
         vertices_bar(:, 2) = jacobian_bar(:, 1)
         vertices_bar(:, 3) = jacobian_bar(:, 2)
     end subroutine triangle_jacobian_vjp
+
+    pure real(dp) function csc_bar_at( &
+            matrix, values_bar, row, column) result(value_bar)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: values_bar(:)
+        integer, intent(in) :: row, column
+
+        integer :: entry
+
+        value_bar = 0.0_dp
+        do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+            if (matrix%row_idx(entry) == row) then
+                value_bar = values_bar(entry)
+                return
+            end if
+        end do
+    end function csc_bar_at
 
 end module fortfem_assembly_full_vector_arbitrary_order_2d
