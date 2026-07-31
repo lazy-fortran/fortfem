@@ -21,6 +21,11 @@ defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
+The [FCI boundary-patch mortar contract](fci_boundary_patch_mortar.html)
+defines conservative cross-mass transfer between an FCI background trace and a
+fitted or cut boundary patch, including constant reproduction, ownership, and
+the weighted adjoint identity.
+
 The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
