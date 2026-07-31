@@ -9,7 +9,12 @@ module fortfem_triangle_vector_interpolation
         evaluate_triangle_nedelec_second_kind, &
         triangle_nedelec_second_kind_t
     use fortfem_triangle_piola_maps, only: &
-        map_triangle_nedelec_covariant, map_triangle_rt_contravariant
+        map_triangle_nedelec_covariant, &
+        map_triangle_nedelec_covariant_jvp, &
+        map_triangle_nedelec_covariant_vjp, &
+        map_triangle_rt_contravariant, &
+        map_triangle_rt_contravariant_jvp, &
+        map_triangle_rt_contravariant_vjp
     use fortfem_triangle_rt_arbitrary_order, only: &
         evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t, triangle_rt_dof_count
@@ -23,7 +28,11 @@ module fortfem_triangle_vector_interpolation
     public :: evaluate_triangle_rt_interpolant
     public :: interpolate_triangle_rt
     public :: evaluate_triangle_bdm_interpolant
+    public :: evaluate_triangle_bdm_interpolant_jvp
+    public :: evaluate_triangle_bdm_interpolant_vjp
     public :: evaluate_triangle_nedelec_second_kind_interpolant
+    public :: evaluate_triangle_nedelec_second_kind_interpolant_jvp
+    public :: evaluate_triangle_nedelec_second_kind_interpolant_vjp
     public :: interpolate_triangle_bdm
     public :: interpolate_triangle_nedelec_second_kind
 
@@ -108,6 +117,238 @@ contains
         divergence = dot_product(physical_divergences, dofs)
         status = 0
     end subroutine evaluate_triangle_bdm_interpolant
+
+    subroutine evaluate_triangle_nedelec_second_kind_interpolant_jvp( &
+            vertices, basis, dofs, xi, eta, vertices_dot, dofs_dot, &
+            value_dot, curl_dot, status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), xi, eta
+        real(dp), intent(out) :: value_dot(2), curl_dot
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_curls(:), reference_values(:, :)
+
+        value_dot = 0.0_dp
+        curl_dot = 0.0_dp
+        status = 1
+        if (size(dofs_dot) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)), reference_curls(size(dofs)))
+        call evaluate_triangle_nedelec_second_kind( &
+            basis, xi, eta, reference_values, reference_curls, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_jvp( &
+            vertices, dofs, vertices_dot, dofs_dot, reference_values, &
+            reference_curls, .false., value_dot, curl_dot, status)
+    end subroutine evaluate_triangle_nedelec_second_kind_interpolant_jvp
+
+    subroutine evaluate_triangle_nedelec_second_kind_interpolant_vjp( &
+            vertices, basis, dofs, xi, eta, value_bar, curl_bar, vertices_bar, &
+            dofs_bar, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        type(triangle_nedelec_second_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), xi, eta, value_bar(2), curl_bar
+        real(dp), intent(out) :: vertices_bar(2, 3), dofs_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_curls(:), reference_values(:, :)
+
+        vertices_bar = 0.0_dp
+        dofs_bar = 0.0_dp
+        status = 1
+        if (size(dofs_bar) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)), reference_curls(size(dofs)))
+        call evaluate_triangle_nedelec_second_kind( &
+            basis, xi, eta, reference_values, reference_curls, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_vjp( &
+            vertices, dofs, reference_values, reference_curls, .false., &
+            value_bar, curl_bar, vertices_bar, dofs_bar, status)
+    end subroutine evaluate_triangle_nedelec_second_kind_interpolant_vjp
+
+    subroutine evaluate_triangle_bdm_interpolant_jvp( &
+            vertices, basis, dofs, xi, eta, vertices_dot, dofs_dot, &
+            value_dot, divergence_dot, status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        type(triangle_bdm_basis_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), xi, eta
+        real(dp), intent(out) :: value_dot(2), divergence_dot
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+
+        value_dot = 0.0_dp
+        divergence_dot = 0.0_dp
+        status = 1
+        if (size(dofs_dot) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)))
+        allocate(reference_divergences(size(dofs)))
+        call evaluate_triangle_bdm( &
+            basis, xi, eta, reference_values, reference_divergences, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_jvp( &
+            vertices, dofs, vertices_dot, dofs_dot, reference_values, &
+            reference_divergences, .true., value_dot, divergence_dot, status)
+    end subroutine evaluate_triangle_bdm_interpolant_jvp
+
+    subroutine evaluate_triangle_bdm_interpolant_vjp( &
+            vertices, basis, dofs, xi, eta, value_bar, divergence_bar, &
+            vertices_bar, dofs_bar, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        type(triangle_bdm_basis_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), xi, eta, value_bar(2), divergence_bar
+        real(dp), intent(out) :: vertices_bar(2, 3), dofs_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+
+        vertices_bar = 0.0_dp
+        dofs_bar = 0.0_dp
+        status = 1
+        if (size(dofs_bar) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)))
+        allocate(reference_divergences(size(dofs)))
+        call evaluate_triangle_bdm( &
+            basis, xi, eta, reference_values, reference_divergences, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_vjp( &
+            vertices, dofs, reference_values, reference_divergences, .true., &
+            value_bar, divergence_bar, vertices_bar, dofs_bar, status)
+    end subroutine evaluate_triangle_bdm_interpolant_vjp
+
+    subroutine evaluate_full_vector_interpolant_jvp( &
+            vertices, dofs, vertices_dot, dofs_dot, reference_values, &
+            reference_scalars, normal_family, value_dot, scalar_dot, status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        real(dp), intent(in) :: dofs(:), dofs_dot(:)
+        real(dp), intent(in) :: reference_values(:, :)
+        real(dp), intent(in) :: reference_scalars(:)
+        logical, intent(in) :: normal_family
+        real(dp), intent(out) :: value_dot(2), scalar_dot
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: physical_scalars(:), physical_scalars_dot(:)
+        real(dp), allocatable :: physical_values(:, :)
+        real(dp), allocatable :: physical_values_dot(:, :)
+        real(dp), allocatable :: reference_scalars_dot(:)
+        real(dp), allocatable :: reference_values_dot(:, :)
+        real(dp) :: jacobian(2, 2), jacobian_dot(2, 2)
+
+        value_dot = 0.0_dp
+        scalar_dot = 0.0_dp
+        status = 1
+        if (size(dofs) /= size(reference_scalars)) return
+        if (size(dofs_dot) /= size(dofs)) return
+        allocate(physical_values, mold=reference_values)
+        allocate(physical_values_dot, mold=reference_values)
+        allocate(reference_values_dot, mold=reference_values)
+        allocate(physical_scalars, mold=reference_scalars)
+        allocate(physical_scalars_dot, mold=reference_scalars)
+        allocate(reference_scalars_dot, mold=reference_scalars)
+        reference_values_dot = 0.0_dp
+        reference_scalars_dot = 0.0_dp
+        call triangle_jacobian(vertices, jacobian)
+        call triangle_jacobian(vertices_dot, jacobian_dot)
+        if (normal_family) then
+            call map_triangle_rt_contravariant( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values, physical_scalars, status)
+            if (status /= 0) return
+            call map_triangle_rt_contravariant_jvp( &
+                jacobian, reference_values, reference_scalars, jacobian_dot, &
+                reference_values_dot, reference_scalars_dot, &
+                physical_values_dot, physical_scalars_dot, status)
+        else
+            call map_triangle_nedelec_covariant( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values, physical_scalars, status)
+            if (status /= 0) return
+            call map_triangle_nedelec_covariant_jvp( &
+                jacobian, reference_values, reference_scalars, jacobian_dot, &
+                reference_values_dot, reference_scalars_dot, &
+                physical_values_dot, physical_scalars_dot, status)
+        end if
+        if (status /= 0) return
+        value_dot = matmul(physical_values_dot, dofs) + &
+            matmul(physical_values, dofs_dot)
+        scalar_dot = dot_product(physical_scalars_dot, dofs) + &
+            dot_product(physical_scalars, dofs_dot)
+    end subroutine evaluate_full_vector_interpolant_jvp
+
+    subroutine evaluate_full_vector_interpolant_vjp( &
+            vertices, dofs, reference_values, reference_scalars, &
+            normal_family, value_bar, scalar_bar, vertices_bar, dofs_bar, &
+            status)
+        real(dp), intent(in) :: vertices(2, 3), dofs(:)
+        real(dp), intent(in) :: reference_values(:, :)
+        real(dp), intent(in) :: reference_scalars(:)
+        logical, intent(in) :: normal_family
+        real(dp), intent(in) :: value_bar(2), scalar_bar
+        real(dp), intent(out) :: vertices_bar(2, 3), dofs_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: physical_scalars(:), physical_scalars_bar(:)
+        real(dp), allocatable :: physical_values(:, :)
+        real(dp), allocatable :: physical_values_bar(:, :)
+        real(dp), allocatable :: reference_scalars_bar(:)
+        real(dp), allocatable :: reference_values_bar(:, :)
+        real(dp) :: jacobian(2, 2), jacobian_bar(2, 2)
+        integer :: dof
+
+        vertices_bar = 0.0_dp
+        dofs_bar = 0.0_dp
+        status = 1
+        if (size(dofs) /= size(reference_scalars)) return
+        if (size(dofs_bar) /= size(dofs)) return
+        allocate(physical_values, mold=reference_values)
+        allocate(physical_values_bar, mold=reference_values)
+        allocate(reference_values_bar, mold=reference_values)
+        allocate(physical_scalars, mold=reference_scalars)
+        allocate(physical_scalars_bar, mold=reference_scalars)
+        allocate(reference_scalars_bar, mold=reference_scalars)
+        call triangle_jacobian(vertices, jacobian)
+        if (normal_family) then
+            call map_triangle_rt_contravariant( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values, physical_scalars, status)
+        else
+            call map_triangle_nedelec_covariant( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values, physical_scalars, status)
+        end if
+        if (status /= 0) return
+        dofs_bar = matmul(transpose(physical_values), value_bar) + &
+            scalar_bar*physical_scalars
+        do dof = 1, size(dofs)
+            physical_values_bar(:, dof) = value_bar*dofs(dof)
+            physical_scalars_bar(dof) = scalar_bar*dofs(dof)
+        end do
+        if (normal_family) then
+            call map_triangle_rt_contravariant_vjp( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values_bar, physical_scalars_bar, jacobian_bar, &
+                reference_values_bar, reference_scalars_bar, status)
+        else
+            call map_triangle_nedelec_covariant_vjp( &
+                jacobian, reference_values, reference_scalars, &
+                physical_values_bar, physical_scalars_bar, jacobian_bar, &
+                reference_values_bar, reference_scalars_bar, status)
+        end if
+        if (status /= 0) return
+        vertices_bar(:, 1) = -jacobian_bar(:, 1) - jacobian_bar(:, 2)
+        vertices_bar(:, 2) = jacobian_bar(:, 1)
+        vertices_bar(:, 3) = jacobian_bar(:, 2)
+    end subroutine evaluate_full_vector_interpolant_vjp
+
+    pure subroutine triangle_jacobian(vertices, jacobian)
+        real(dp), intent(in) :: vertices(2, 3)
+        real(dp), intent(out) :: jacobian(2, 2)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+    end subroutine triangle_jacobian
 
     subroutine evaluate_triangle_nedelec_interpolant( &
             vertices, basis, dofs, xi, eta, value, curl, status)
