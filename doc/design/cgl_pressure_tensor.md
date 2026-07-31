@@ -32,6 +32,16 @@ call evaluate_cgl_pressure_traction_jvp( &
 call evaluate_cgl_pressure_traction_vjp( &
     p_parallel, p_perpendicular, unit_direction, normal, traction_bar, &
     p_parallel_bar, p_perpendicular_bar, direction_bar, normal_bar, status)
+call evaluate_cgl_pressure_work( &
+    p_parallel, p_perpendicular, unit_direction, velocity_gradient, work, status)
+call evaluate_cgl_pressure_work_jvp( &
+    p_parallel, p_perpendicular, unit_direction, velocity_gradient, &
+    p_parallel_dot, p_perpendicular_dot, direction_dot, &
+    velocity_gradient_dot, work_dot, status)
+call evaluate_cgl_pressure_work_vjp( &
+    p_parallel, p_perpendicular, unit_direction, velocity_gradient, work_bar, &
+    p_parallel_bar, p_perpendicular_bar, direction_bar, &
+    velocity_gradient_bar, status)
 ```
 
 The six independent symmetric components, their JVP, and their real VJP are
@@ -64,6 +74,11 @@ are chained through the generated tensor, with `normal_bar=P^T traction_bar`
 and the full tensor cotangent `tensor_bar=traction_bar n^T`. This is a local
 constitutive/force ingredient; volume assembly, Braginskii corrections, and a
 full anisotropic MHD residual remain separate contracts.
+The stress-work composition is `P:grad(v)` and exposes value, JVP, and VJP.
+Its full gradient argument is intentional: the symmetric CGL tensor naturally
+annihilates the antisymmetric part, while the VJP returns the corresponding
+full-matrix work cotangent. This gives mixed wave and elasticity residuals an
+explicit pressure-power diagnostic without replacing the tensor by its trace.
 
 Independent tests check the closed-form tensor, traction, and force
 product-rule oracles, central-difference JVPs, real adjoint identities, and
