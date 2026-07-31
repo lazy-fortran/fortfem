@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_cell_complex, only: cell_complex_betti_numbers, &
+        cell_complex_euler_characteristic, cell_complex_t, &
+        initialize_cell_complex, validate_cell_complex
     use fortfem_surface_triangle_geometry_3d, only: &
         evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
@@ -789,6 +792,11 @@ module fortfem_api
     private
 
     ! Public types
+    public :: cell_complex_t
+    public :: initialize_cell_complex
+    public :: validate_cell_complex
+    public :: cell_complex_euler_characteristic
+    public :: cell_complex_betti_numbers
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t

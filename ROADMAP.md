@@ -1033,6 +1033,12 @@ gallery example.
   terms under the same orientation convention.
 - `assemble_mortar_trace_coupling` supplies a weighted cross-mass block for
   independently discretized trace spaces.
+- The neutral `cell_complex_t` contract now stores oriented integer chain
+  boundary maps, checks both boundary-of-boundary identities exactly, and
+  reports Euler characteristic and compact Betti diagnostics. Independent
+  interval, loop, sphere-CW, torus-CW, and malformed-orientation tests cover
+  the primitive; periodic quotient maps, region adjacency, harmonic bases,
+  gauge constraints, and cycle ledgers remain planned graph layers.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
@@ -1059,8 +1065,9 @@ gallery example.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
-- Build the region and cell-complex graph with periodic identifications,
-  harmonic representatives, gauge constraints, and stable cycle IDs.
+- Build the region and cell-complex graph around the validated chain maps,
+  adding periodic identifications, harmonic representatives, gauge constraints,
+  and stable cycle IDs.
 - Add closed-loop and open-edge sheet-current constraints, surface divergence,
   pressure balance, and current-ledger oracles on slab, cylinder, sphere, and
   torus fixtures.
