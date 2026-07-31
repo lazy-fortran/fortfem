@@ -417,3 +417,32 @@ pullback. Both JVPs are direct moment sweeps with no solve, while both VJPs
 reverse the moment accumulation before returning sample and twelve-vertex
 cotangents. This is cheaper and has lower memory traffic than taping every
 individual moment evaluation.
+
+## Tetrahedral interpolation product cost
+
+The reproducible microbenchmark
+`benchmark_tetra_vector_interpolation_ad.f90` times the public sampled
+interpolation APIs for an order-three Nedelec element and a degree-two RT
+element. Run it with:
+
+```sh
+make -C benchmark vector-interpolation-ad
+```
+
+A representative median of three warm release runs on 31 July 2026 gave:
+
+| Product | Time per call |
+| --- | ---: |
+| Nedelec primal | 38.7 us |
+| Nedelec JVP | 50.1 us |
+| Nedelec VJP | 69.7 us |
+| RT primal | 30.8 us |
+| RT JVP | 35.5 us |
+| RT VJP | 59.7 us |
+
+The measurement used GNU Fortran 16.1.1 on an AMD Ryzen 9 5950X. It includes
+the public API's output allocation and is evidence for method selection, not a
+machine-independent regression threshold. In particular, one reverse product
+returns cotangents for all twelve vertex coordinates, so its cost should be
+compared with twelve separate forward directions for a complete element shape
+gradient.
