@@ -441,7 +441,9 @@ module fortfem_api
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
         sparse_direct_factor_adjoint_csc, sparse_direct_factor_csc, &
         sparse_direct_factor_transpose_csc, sparse_direct_free, &
-        sparse_direct_solve_csc, sparse_direct_solve_factored, &
+        sparse_direct_solve_csc, sparse_direct_solve_constrained, &
+        sparse_direct_solve_constrained_jvp, &
+        sparse_direct_solve_constrained_vjp, sparse_direct_solve_factored, &
         sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
@@ -970,6 +972,9 @@ module fortfem_api
     public :: sparse_direct_factor_t, sparse_direct_factor_csc
     public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_transpose_csc, sparse_direct_solve_csc
+    public :: sparse_direct_solve_constrained
+    public :: sparse_direct_solve_constrained_jvp
+    public :: sparse_direct_solve_constrained_vjp
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp
     public :: sparse_direct_solve_factored_vjp, sparse_direct_free
