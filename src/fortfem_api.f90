@@ -186,6 +186,14 @@ module fortfem_api
     use fortfem_torus_curved_panel, only: &
         evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp, &
         evaluate_torus_curved_panel_vjp
+    use fortfem_laplace_torus_panel_pair_ad_3d, only: &
+        integrate_laplace_torus_panel_p0_3d, &
+        integrate_laplace_torus_panel_p0_3d_jvp, &
+        integrate_laplace_torus_panel_p0_3d_vjp
+    use fortfem_helmholtz_torus_panel_pair_ad_3d, only: &
+        integrate_helmholtz_torus_panel_p0_3d, &
+        integrate_helmholtz_torus_panel_p0_3d_jvp, &
+        integrate_helmholtz_torus_panel_p0_3d_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
         evaluate_sphere_curved_panel, invert_sphere_curved_panel
@@ -673,6 +681,12 @@ module fortfem_api
     public :: evaluate_torus_curved_panel
     public :: evaluate_torus_curved_panel_jvp
     public :: evaluate_torus_curved_panel_vjp
+    public :: integrate_laplace_torus_panel_p0_3d
+    public :: integrate_laplace_torus_panel_p0_3d_jvp
+    public :: integrate_laplace_torus_panel_p0_3d_vjp
+    public :: integrate_helmholtz_torus_panel_p0_3d
+    public :: integrate_helmholtz_torus_panel_p0_3d_jvp
+    public :: integrate_helmholtz_torus_panel_p0_3d_vjp
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
     public :: invert_sphere_curved_panel
