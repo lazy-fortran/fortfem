@@ -293,6 +293,12 @@ coordinates by composing FortNum's FortSym-generated two-by-two inverse
 products. Fixed physical sensors can therefore reverse mesh motion through
 reference-coordinate inversion without differentiating point-location
 topology.
+All four arbitrary-order triangle vector bases also expose reference-coordinate
+products. Monomial directional derivatives are evaluated analytically and
+then transformed by the stored moment inverse. Because the active reference
+coordinate has dimension two, each VJP uses exactly two analytical directional
+evaluations; this avoids a tape and remains independent of polynomial-space
+dimension in its number of sweeps.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
