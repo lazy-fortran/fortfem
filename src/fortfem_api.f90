@@ -197,8 +197,10 @@ module fortfem_api
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_plane_multigrid, only: &
-        apply_fci_plane_two_level_vcycle, apply_fci_plane_two_level_vcycles, &
-        apply_fci_plane_two_level_vcycles_ragged
+        apply_fci_plane_two_level_vcycle, &
+        factor_fci_plane_coarse_operator, &
+        apply_fci_plane_two_level_vcycle_factored, &
+        apply_fci_plane_two_level_vcycles, apply_fci_plane_two_level_vcycles_ragged
     use fortfem_fci_field_split_preconditioner, only: &
         apply_fci_additive_field_split_preconditioner
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
@@ -1507,6 +1509,8 @@ module fortfem_api
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: apply_fci_plane_two_level_vcycle
+    public :: factor_fci_plane_coarse_operator
+    public :: apply_fci_plane_two_level_vcycle_factored
     public :: apply_fci_plane_two_level_vcycles
     public :: apply_fci_plane_two_level_vcycles_ragged
     public :: apply_fci_additive_field_split_preconditioner
