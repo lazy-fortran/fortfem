@@ -39,3 +39,30 @@ routine; they belong in a declared split or metriplectic substep.
 The same contract is suitable for tensor-valued pressure, mixed elasticity,
 Maxwell, and acoustic-elastic coupling once their compatible mass and
 interconnection blocks are assembled.
+
+## Partitioned symplectic Euler
+
+`advance_mixed_wave_symplectic_euler` is the explicit partitioned companion
+for the ideal (nondissipative) part.  It first solves
+
+\[
+ M_v v_{n+1}=M_vv_n+\Delta t\,Cq_n,
+\]
+
+and then solves
+
+\[
+ M_q q_{n+1}=M_qq_n-\Delta t\,C^Tv_{n+1}.
+\]
+
+This is a first-order symplectic map for the canonical mixed pair (with the
+mass blocks defining the corresponding pairing).  Unlike implicit midpoint,
+it generally oscillates around the exact quadratic energy rather than
+preserving it exactly.  The routine validates all block and state dimensions,
+solves both mass systems before committing either part of the state, and
+returns a singular status without partially updating the state.
+
+The independent test checks the partitioned oscillator formula and the
+canonical two-state symplectic-form identity.  Dissipation, conductivity,
+viscosity, and PML terms remain separate declared substeps; they must not be
+silently folded into this ideal symplectic update.

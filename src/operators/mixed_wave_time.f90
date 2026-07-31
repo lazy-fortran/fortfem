@@ -17,6 +17,7 @@ module fortfem_mixed_wave_time
     private
 
     public :: advance_mixed_wave_midpoint
+    public :: advance_mixed_wave_symplectic_euler
 
 contains
 
@@ -74,5 +75,64 @@ contains
         v = state_next(nq + 1:total_size)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine advance_mixed_wave_midpoint
+
+    subroutine advance_mixed_wave_symplectic_euler( &
+            mass_q, mass_v, coupling, time_step, q, v, status)
+        !! Advance one partitioned symplectic-Euler wave step.
+        !!
+        !! The velocity/flux block is updated first,
+        !!
+        !!   M_v v_{n+1} = M_v v_n + h C q_n,
+        !!
+        !! followed by the coordinate/pressure block,
+        !!
+        !!   M_q q_{n+1} = M_q q_n - h C^T v_{n+1}.
+        !!
+        !! For compatible canonical blocks this is a symplectic, generally
+        !! energy-non-preserving first-order method.  The state is only
+        !! committed after both mass solves succeed.
+        real(dp), intent(in) :: mass_q(:, :)
+        real(dp), intent(in) :: mass_v(:, :)
+        real(dp), intent(in) :: coupling(:, :)
+        real(dp), intent(in) :: time_step
+        real(dp), intent(inout) :: q(:)
+        real(dp), intent(inout) :: v(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, info
+        real(dp), allocatable :: q_rhs(:), v_rhs(:), q_next(:), v_next(:)
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave symplectic Euler received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq) return
+        if (size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv) return
+        if (size(coupling, 2) /= nq) return
+        if (size(q) /= nq) return
+        if (size(v) /= nv) return
+
+        allocate(q_rhs(nq), v_rhs(nv), q_next(nq), v_next(nv))
+        v_rhs = matmul(mass_v, v) + time_step*matmul(coupling, q)
+        call dense_solve(mass_v, v_rhs, v_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler velocity mass is singular")
+            return
+        end if
+        q_rhs = matmul(mass_q, q) - &
+            time_step*matmul(transpose(coupling), v_next)
+        call dense_solve(mass_q, q_rhs, q_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler coordinate mass is singular")
+            return
+        end if
+        q = q_next
+        v = v_next
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_symplectic_euler
 
 end module fortfem_mixed_wave_time
