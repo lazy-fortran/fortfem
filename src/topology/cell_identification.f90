@@ -18,6 +18,7 @@ module fortfem_cell_identification
     public :: initialize_cell_identification
     public :: validate_cell_identification
     public :: cell_identification_classes
+    public :: identify_boundary_matrix
 
 contains
 
@@ -120,6 +121,80 @@ contains
         end do
         status = 0
     end subroutine cell_identification_classes
+
+    subroutine identify_boundary_matrix( &
+            lower_identification, upper_identification, boundary, &
+            quotient_boundary, status)
+        type(cell_identification_t), intent(in) :: lower_identification
+        type(cell_identification_t), intent(in) :: upper_identification
+        integer, intent(in) :: boundary(:, :)
+        integer, allocatable, intent(out) :: quotient_boundary(:, :)
+        integer, intent(out) :: status
+        integer, allocatable :: lower_classes(:), upper_classes(:)
+        integer, allocatable :: candidate(:)
+        integer :: lower_class_count, upper_class_count
+        integer :: lower_cell, upper_cell, upper_class
+
+        if (allocated(quotient_boundary)) deallocate(quotient_boundary)
+        status = 1
+        call validate_cell_identification(lower_identification, status)
+        if (status /= 0) return
+        call validate_cell_identification(upper_identification, status)
+        if (status /= 0) return
+        if (size(boundary, 1) /= &
+            size(lower_identification%representative)) then
+            status = 2
+            return
+        end if
+        if (size(boundary, 2) /= &
+            size(upper_identification%representative)) then
+            status = 3
+            return
+        end if
+        call cell_identification_classes( &
+            lower_identification, lower_classes, lower_class_count, status)
+        if (status /= 0) return
+        call cell_identification_classes( &
+            upper_identification, upper_classes, upper_class_count, status)
+        if (status /= 0) return
+        allocate(quotient_boundary(lower_class_count, upper_class_count))
+        quotient_boundary = 0
+
+        do upper_cell = 1, size(boundary, 2)
+            upper_class = upper_classes(upper_cell)
+            if (upper_identification%representative(upper_cell) == &
+                upper_cell) then
+                do lower_cell = 1, size(boundary, 1)
+                    quotient_boundary( &
+                        lower_classes(lower_cell), upper_class) = &
+                        quotient_boundary( &
+                        lower_classes(lower_cell), upper_class) + &
+                        lower_identification%orientation(lower_cell)* &
+                        boundary(lower_cell, upper_cell)
+                end do
+            end if
+        end do
+
+        allocate(candidate(lower_class_count))
+        do upper_cell = 1, size(boundary, 2)
+            candidate = 0
+            do lower_cell = 1, size(boundary, 1)
+                candidate(lower_classes(lower_cell)) = &
+                    candidate(lower_classes(lower_cell)) + &
+                    lower_identification%orientation(lower_cell)* &
+                    boundary(lower_cell, upper_cell)
+            end do
+            upper_class = upper_classes(upper_cell)
+            if (any(candidate /= &
+                upper_identification%orientation(upper_cell)* &
+                quotient_boundary(:, upper_class))) then
+                deallocate(quotient_boundary)
+                status = 4
+                return
+            end if
+        end do
+        status = 0
+    end subroutine identify_boundary_matrix
 
     subroutine clear_cell_identification(identification)
         type(cell_identification_t), intent(inout) :: identification

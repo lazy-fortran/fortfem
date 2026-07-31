@@ -41,12 +41,22 @@ call initialize_cell_identification( &
 call validate_cell_identification(identification, status)
 call cell_identification_classes( &
     identification, classes, class_count, status)
+call identify_boundary_matrix( &
+    lower_identification, upper_identification, boundary, &
+    quotient_boundary, status)
 ```
 
 `classes` contains compact class IDs in first-appearance order. The API is
 safe for zero-cell metadata and rejects mismatched arrays, out-of-range
 representatives, zero orientation, representative cycles, and a reversed
 canonical representative.
+
+`identify_boundary_matrix` pushes an oriented boundary map to quotient
+classes. For a lower-cell identification \((r_i,s_i)\), each row contributes
+\(s_i B_{ij}\) to its representative row. The canonical column of every upper
+class defines the quotient column. All other identified upper columns are then
+checked exactly against their declared orientation; inconsistent periodic data
+are rejected instead of being averaged.
 
 ## Scope and next layer
 
@@ -57,4 +67,5 @@ identities. Geometry maps, toroidal mode phases, trace bases, gauges, and
 application-owned periodic boundary laws remain outside this primitive.
 
 `test_cell_identification` supplies independent identity, signed-periodic,
+interval-to-circle, signed-column, inconsistency-rejection,
 cycle-rejection, canonical-orientation, zero-sign, and shape-mismatch oracles.
