@@ -167,6 +167,10 @@ call build_fci_triangle_interpolation_maps_2d_vjp( &
 call apply_fci_plane_two_level_vcycle( &
     fine_operator, coarse_operator, restriction, prolongation, &
     diagonal, residual, correction, status)
+call factor_fci_plane_coarse_operator(coarse_operator, coarse_factor, status)
+call apply_fci_plane_two_level_vcycle_factored( &
+    fine_operator, coarse_operator, coarse_factor, restriction, prolongation, &
+    diagonal, residual, correction, status)
 call apply_fci_plane_two_level_vcycles( &
     fine_operators, coarse_operators, restrictions, prolongations, &
     diagonals, residual, correction, status)
@@ -261,6 +265,10 @@ contract: one fine Jacobi pre-smooth, CSC restriction, a direct coarse solve,
 CSC prolongation, and one post-smooth. The coarse solve is intentionally
 replaceable, so production callers can retain factors or substitute a deeper
 V/W-cycle without changing the FCI line operator.
+`factor_fci_plane_coarse_operator` and
+`apply_fci_plane_two_level_vcycle_factored` make that retained-factor path
+explicit. The factor is owned by the caller and must be rebuilt when the
+coarse matrix changes; repeated right-hand sides reuse it without refactoring.
 `apply_fci_plane_two_level_vcycles` applies that cycle independently to a
 homogeneous stack of poloidal planes stored contiguously. It is the small
 field-split adapter needed to compose independent PARALLAX-style plane
@@ -282,8 +290,8 @@ The nonnegative weights and both positive diagonals are explicit inputs, so a
 caller can cache geometry-dependent values and tune the split without changing
 the FCI action. The focused test compares the weighted result with an
 independent two-plane V-cycle oracle and rejects invalid diagonal and weight
-inputs. This is an additive field-split baseline; coupled Schur complements,
-retained coarse factors, and deeper V/W cycles remain separate work.
+inputs. This is an additive field-split baseline; coupled Schur complements
+and deeper V/W cycles remain separate work.
 
 ## Provenance
 

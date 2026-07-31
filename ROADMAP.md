@@ -993,15 +993,15 @@ gallery example.
   public baselines, while coupled stronger blocks remain planned.
 - A PARALLAX-style anisotropic split action now combines independent per-plane
   CSC elliptic blocks with the conservative FCI parallel operator; tensor
-  coefficient assembly, plane multigrid, and stronger field splitting remain
-  planned. `compute_fci_anisotropic_diffusion_diagonal` now combines the
+  coefficient assembly and coupled stronger field splitting remain planned.
+  `compute_fci_anisotropic_diffusion_diagonal` now combines the
   positive support diagonal with each plane block's oriented diagonal and
   rejects non-positive results, providing an independently tested scalar
   preconditioning oracle. `apply_fci_anisotropic_jacobi_preconditioner` applies
   that diagonal directly for small matrix-free solves; cached diagonal use and
   `apply_fci_plane_two_level_vcycle` now provides the next plane-solver layer;
-  deeper multigrid and retained coarse factors remain active; the new additive
-  field-split composition is tested separately.
+  deeper multigrid remains active; the retained-factor path and additive
+  field-split composition are tested separately.
 - The split action now also has a field-only VJP that composes the conservative
   FCI transpose with an explicit transpose of every plane CSC block. An
   independent nonsymmetric-plane oracle and real dot-product test guard this
@@ -1012,8 +1012,9 @@ gallery example.
   solves and the global FCI line action. A ragged-offset companion now covers
   variable plane sizes without padding. The public additive field-split
   preconditioner combines cached parallel Jacobi and ragged plane cycles with
-  explicit nonnegative weights; deeper retained-factor hierarchies remain
-  active work.
+  explicit nonnegative weights. A public retained coarse-factor path now
+  reuses FortSparse factorizations across right-hand sides; deeper multilevel
+  hierarchies remain active work.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
