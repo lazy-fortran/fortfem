@@ -4,6 +4,7 @@ set -euo pipefail
 codegen_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repository_dir=$(cd "$codegen_dir/../.." && pwd)
 generated_dir=${FORTFEM_CODEGEN_OUTPUT_DIR:-"$repository_dir/src/generated"}
+export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
 
 cd "$codegen_dir"
 ./check_fortsym_revision.sh
@@ -30,6 +31,7 @@ fo exec --no-build gen_laplace_bem_kernel_products
 fo exec --no-build gen_helmholtz_bem_kernel_products
 fo exec --no-build gen_laplace_singular_edge_products
 fo exec --no-build gen_helmholtz_bem_smooth_products
+fo exec --no-build gen_fci_parallel_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -53,3 +55,4 @@ fo fmt "$generated_dir/fortfem_laplace_bem_kernel_products.f90"
 fo fmt "$generated_dir/fortfem_helmholtz_bem_kernel_products.f90"
 fo fmt "$generated_dir/fortfem_laplace_singular_edge_products.f90"
 fo fmt "$generated_dir/fortfem_helmholtz_bem_smooth_products.f90"
+fo fmt "$generated_dir/fortfem_fci_parallel_products.f90"

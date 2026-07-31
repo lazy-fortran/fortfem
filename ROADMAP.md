@@ -518,10 +518,11 @@ residual and oracle interface but are not assumed algebraically identical.
 The first PARALLAX-aligned algebraic slice is now on `main`: mapped upper and
 lower plane interpolation matrices assemble a sparse staggered gradient, and
 the support divergence is constructed as its negative volume-weighted
-adjoint. The independent test covers a linear-field oracle, constants, an
-explicit flux-balance vector, and the weighted pairing identity. Field-line
-tracing, interpolation Jacobians, and anisotropy-aware preconditioning remain
-active work.
+adjoint. A matrix-free gradient action exposes FortSym-generated value, JVP,
+and VJP kernels. The independent test covers a linear-field oracle, constants,
+an explicit flux-balance vector, a central-difference JVP, and the weighted
+adjoint identity. Field-line tracing, interpolation Jacobians, and
+anisotropy-aware preconditioning remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -848,9 +849,10 @@ gallery example.
 
 ### Phase 7a: Field-aligned edge and SOL ingredients: **active**
 
-- FCI support-operator gradient/divergence algebra is public and tested in
-  `fortfem_fci_parallel_operator`; its map construction and geometry services
-  are still separate planned components.
+- FCI support-operator gradient/divergence algebra and the matrix-free action
+  (including FortSym-generated JVP/VJP products) are public and tested in
+  `fortfem_fci_parallel_operator`; map construction and geometry services are
+  still separate planned components.
 - FCI field-line maps, interpolation Jacobians, and parallel derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary

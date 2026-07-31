@@ -174,7 +174,9 @@ module fortfem_api
     use fortfem_api_solvers
     use fortfem_fci_parallel_operator, only: &
         assemble_fci_parallel_gradient_csc, &
-        assemble_fci_parallel_support_divergence_csc
+        assemble_fci_parallel_support_divergence_csc, &
+        apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
+        apply_fci_parallel_gradient_vjp
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
@@ -1410,6 +1412,9 @@ module fortfem_api
     ! Field-coordinate-independent (FCI) support operators
     public :: assemble_fci_parallel_gradient_csc
     public :: assemble_fci_parallel_support_divergence_csc
+    public :: apply_fci_parallel_gradient
+    public :: apply_fci_parallel_gradient_jvp
+    public :: apply_fci_parallel_gradient_vjp
 
     ! Plotting interface
     public :: plot
