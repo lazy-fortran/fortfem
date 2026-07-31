@@ -229,7 +229,9 @@ module fortfem_api
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
-        evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp
+        evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp, &
+        evaluate_cgl_pressure_work, evaluate_cgl_pressure_work_jvp, &
+        evaluate_cgl_pressure_work_vjp
     use fortfem_field_aligned_flux, only: &
         evaluate_field_aligned_flux, evaluate_field_aligned_flux_jvp, &
         evaluate_field_aligned_flux_vjp
@@ -1533,6 +1535,9 @@ module fortfem_api
     public :: evaluate_cgl_pressure_traction
     public :: evaluate_cgl_pressure_traction_jvp
     public :: evaluate_cgl_pressure_traction_vjp
+    public :: evaluate_cgl_pressure_work
+    public :: evaluate_cgl_pressure_work_jvp
+    public :: evaluate_cgl_pressure_work_vjp
     public :: evaluate_field_aligned_flux
     public :: evaluate_field_aligned_flux_jvp
     public :: evaluate_field_aligned_flux_vjp

@@ -939,8 +939,9 @@ gallery example.
 - Tensor-valued pressure and anisotropic constitutive blocks with exact power,
   momentum, and stress-work diagnostics.
 - The generated CGL pressure-tensor and product-rule force-divergence blocks
-  are public and tested; volume assembly, traction, and stress-work coupling
-  remain active follow-up slices.
+  are public and tested. The tensor now also feeds compositional traction and
+  `P:grad(v)` stress-work value/JVP/VJP diagnostics; full volume assembly,
+  Braginskii corrections, and coupled stress-work residuals remain active.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **planned**
 

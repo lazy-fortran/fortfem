@@ -29,6 +29,9 @@ module fortfem_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_traction
     public :: evaluate_cgl_pressure_traction_jvp
     public :: evaluate_cgl_pressure_traction_vjp
+    public :: evaluate_cgl_pressure_work
+    public :: evaluate_cgl_pressure_work_jvp
+    public :: evaluate_cgl_pressure_work_vjp
 
 contains
 
@@ -232,6 +235,111 @@ contains
         if (status%code /= FORTSPARSE_OK) return
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_cgl_pressure_traction_vjp
+
+    subroutine evaluate_cgl_pressure_work( &
+            p_parallel, p_perpendicular, unit_direction, velocity_gradient, &
+            work, status)
+        !! Evaluate the pressure power pairing `P : grad(v)`.  The full
+        !! gradient is accepted because the generated tensor is symmetric; the
+        !! antisymmetric part therefore contributes zero automatically.
+        real(dp), intent(in) :: p_parallel, p_perpendicular
+        real(dp), intent(in) :: unit_direction(:)
+        real(dp), intent(in) :: velocity_gradient(:, :)
+        real(dp), intent(out) :: work
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: pressure_tensor(3, 3)
+
+        work = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "CGL pressure work received incompatible arrays")
+        if (size(velocity_gradient, 1) /= 3 .or. &
+            size(velocity_gradient, 2) /= 3) return
+        if (any(.not. ieee_is_finite(velocity_gradient))) return
+        call evaluate_cgl_pressure_tensor( &
+            p_parallel, p_perpendicular, unit_direction, pressure_tensor, status)
+        if (status%code /= FORTSPARSE_OK) return
+        work = sum(pressure_tensor*velocity_gradient)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_cgl_pressure_work
+
+    subroutine evaluate_cgl_pressure_work_jvp( &
+            p_parallel, p_perpendicular, unit_direction, velocity_gradient, &
+            p_parallel_dot, p_perpendicular_dot, direction_dot, &
+            velocity_gradient_dot, work_dot, status)
+        !! Apply the JVP of the pressure power pairing.
+        real(dp), intent(in) :: p_parallel, p_perpendicular
+        real(dp), intent(in) :: unit_direction(:)
+        real(dp), intent(in) :: velocity_gradient(:, :)
+        real(dp), intent(in) :: p_parallel_dot, p_perpendicular_dot
+        real(dp), intent(in) :: direction_dot(:)
+        real(dp), intent(in) :: velocity_gradient_dot(:, :)
+        real(dp), intent(out) :: work_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: pressure_tensor(3, 3), pressure_tensor_dot(3, 3)
+
+        work_dot = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "CGL pressure work JVP received incompatible arrays")
+        if (size(velocity_gradient, 1) /= 3 .or. &
+            size(velocity_gradient, 2) /= 3) return
+        if (size(velocity_gradient_dot, 1) /= 3 .or. &
+            size(velocity_gradient_dot, 2) /= 3) return
+        if (size(direction_dot) /= 3) return
+        if (any(.not. ieee_is_finite(velocity_gradient)) .or. &
+            any(.not. ieee_is_finite(velocity_gradient_dot))) return
+        call evaluate_cgl_pressure_tensor( &
+            p_parallel, p_perpendicular, unit_direction, pressure_tensor, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call evaluate_cgl_pressure_tensor_jvp( &
+            p_parallel, p_perpendicular, unit_direction, p_parallel_dot, &
+            p_perpendicular_dot, direction_dot, pressure_tensor_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+        work_dot = sum(pressure_tensor_dot*velocity_gradient) + &
+            sum(pressure_tensor*velocity_gradient_dot)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_cgl_pressure_work_jvp
+
+    subroutine evaluate_cgl_pressure_work_vjp( &
+            p_parallel, p_perpendicular, unit_direction, velocity_gradient, &
+            work_bar, p_parallel_bar, p_perpendicular_bar, direction_bar, &
+            velocity_gradient_bar, status)
+        !! Apply the real VJP of the pressure power pairing.
+        real(dp), intent(in) :: p_parallel, p_perpendicular
+        real(dp), intent(in) :: unit_direction(:)
+        real(dp), intent(in) :: velocity_gradient(:, :), work_bar
+        real(dp), intent(out) :: p_parallel_bar, p_perpendicular_bar
+        real(dp), intent(out) :: direction_bar(:)
+        real(dp), intent(out) :: velocity_gradient_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: pressure_tensor(3, 3), tensor_bar(3, 3)
+
+        p_parallel_bar = 0.0_dp
+        p_perpendicular_bar = 0.0_dp
+        direction_bar = 0.0_dp
+        velocity_gradient_bar = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "CGL pressure work VJP received incompatible arrays")
+        if (size(velocity_gradient, 1) /= 3 .or. &
+            size(velocity_gradient, 2) /= 3) return
+        if (size(direction_bar) /= 3) return
+        if (size(velocity_gradient_bar, 1) /= 3 .or. &
+            size(velocity_gradient_bar, 2) /= 3) return
+        if (.not. ieee_is_finite(work_bar)) return
+        if (any(.not. ieee_is_finite(velocity_gradient))) return
+        call evaluate_cgl_pressure_tensor( &
+            p_parallel, p_perpendicular, unit_direction, pressure_tensor, status)
+        if (status%code /= FORTSPARSE_OK) return
+        tensor_bar = work_bar*velocity_gradient
+        velocity_gradient_bar = work_bar*pressure_tensor
+        call evaluate_cgl_pressure_tensor_vjp( &
+            p_parallel, p_perpendicular, unit_direction, tensor_bar, &
+            p_parallel_bar, p_perpendicular_bar, direction_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_cgl_pressure_work_vjp
 
     pure logical function is_unit_direction(direction)
         real(dp), intent(in) :: direction(:)
