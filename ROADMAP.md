@@ -515,14 +515,16 @@ impedance. Required work includes:
 The parallel operator may be represented by a compatible H(curl)/H(div)
 complex, a Fourier derivative, or an FCI field-line map. These choices share a
 residual and oracle interface but are not assumed algebraically identical.
-The first PARALLAX-aligned algebraic slice is now on `main`: mapped upper and
-lower plane interpolation matrices assemble a sparse staggered gradient, and
-the support divergence is constructed as its negative volume-weighted
+The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
+RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
+interpolation matrices assemble a sparse staggered gradient; and the support
+divergence is constructed as its negative volume-weighted
 adjoint. A matrix-free gradient action exposes FortSym-generated value, JVP,
-and VJP kernels. The independent test covers a linear-field oracle, constants,
-an explicit flux-balance vector, a central-difference JVP, and the weighted
-adjoint identity. Field-line tracing, interpolation Jacobians, and
-anisotropy-aware preconditioning remain active work.
+and VJP kernels. Independent tests cover a constant/exponential tracing
+oracle, a linear-field map oracle, constants, an explicit flux-balance vector,
+a central-difference JVP, and the weighted adjoint identity. Interpolation
+Jacobians, support-volume construction, and anisotropy-aware preconditioning
+remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -849,10 +851,10 @@ gallery example.
 
 ### Phase 7a: Field-aligned edge and SOL ingredients: **active**
 
-- FCI support-operator gradient/divergence algebra and the matrix-free action
-  (including FortSym-generated JVP/VJP products) are public and tested in
-  `fortfem_fci_parallel_operator`; map construction and geometry services are
-  still separate planned components.
+- FCI RK4 field-line tracing, support-operator gradient/divergence algebra, and
+  the matrix-free action (including FortSym-generated JVP/VJP products) are
+  public and independently tested; interpolation Jacobians and support-volume
+  map construction are still separate planned components.
 - FCI field-line maps, interpolation Jacobians, and parallel derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
