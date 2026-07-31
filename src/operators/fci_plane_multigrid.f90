@@ -18,6 +18,7 @@ module fortfem_fci_plane_multigrid
 
     public :: apply_fci_plane_two_level_vcycle
     public :: apply_fci_plane_two_level_vcycles
+    public :: apply_fci_plane_two_level_vcycles_ragged
 
 contains
 
@@ -151,5 +152,75 @@ contains
         correction = candidate
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_plane_two_level_vcycles
+
+    subroutine apply_fci_plane_two_level_vcycles_ragged( &
+            fine_operators, coarse_operators, restrictions, prolongations, &
+            plane_offsets, diagonal, residual, correction, status)
+        !! Apply independent cycles to planes with different fine sizes.
+        !!
+        !! `plane_offsets` contains one-based half-open offsets: its first
+        !! entry is one and plane `p` occupies
+        !! `plane_offsets(p):plane_offsets(p+1)-1`.  This mirrors the
+        !! variable-size poloidal meshes permitted by PARALLAX while keeping
+        !! the plane solves independent of the global FCI line action.
+        type(csc_t), intent(in) :: fine_operators(:)
+        type(csc_t), intent(in) :: coarse_operators(:)
+        type(csc_t), intent(in) :: restrictions(:)
+        type(csc_t), intent(in) :: prolongations(:)
+        integer, intent(in) :: plane_offsets(:)
+        real(dp), intent(in) :: diagonal(:)
+        real(dp), intent(in) :: residual(:)
+        real(dp), intent(out) :: correction(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: plane_count, plane, first, last, fine_size
+        real(dp), allocatable :: candidate(:), plane_correction(:)
+        type(fortsparse_status_t) :: plane_status
+
+        correction = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI ragged plane V-cycle received incompatible operators")
+        plane_count = size(fine_operators)
+        if (plane_count < 1) return
+        if (size(coarse_operators) /= plane_count .or. &
+            size(restrictions) /= plane_count .or. &
+            size(prolongations) /= plane_count) return
+        if (size(plane_offsets) /= plane_count + 1) return
+        if (plane_offsets(1) /= 1) return
+        if (any(plane_offsets(2:) <= plane_offsets(:plane_count))) return
+        if (plane_offsets(plane_count + 1) /= size(residual) + 1 .or. &
+            size(correction) /= size(residual) .or. &
+            size(diagonal) /= size(residual)) return
+
+        do plane = 1, plane_count
+            first = plane_offsets(plane)
+            last = plane_offsets(plane + 1)
+            fine_size = last - first
+            if (.not. csc_is_valid(fine_operators(plane))) return
+            if (fine_operators(plane)%nrow /= fine_size .or. &
+                fine_operators(plane)%ncol /= fine_size) return
+        end do
+
+        allocate(candidate(size(correction)))
+        candidate = 0.0_dp
+        do plane = 1, plane_count
+            first = plane_offsets(plane)
+            last = plane_offsets(plane + 1)
+            fine_size = last - first
+            allocate(plane_correction(fine_size))
+            call apply_fci_plane_two_level_vcycle( &
+                fine_operators(plane), coarse_operators(plane), &
+                restrictions(plane), prolongations(plane), diagonal(first:last - 1), &
+                residual(first:last - 1), plane_correction, plane_status)
+            if (plane_status%code /= FORTSPARSE_OK) then
+                call status_set(status, plane_status%code, plane_status%msg)
+                return
+            end if
+            candidate(first:last - 1) = plane_correction
+            deallocate(plane_correction)
+        end do
+        correction = candidate
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_plane_two_level_vcycles_ragged
 
 end module fortfem_fci_plane_multigrid
