@@ -17,7 +17,7 @@ jobs:
     env:
       # Code generation includes a large exact RT solve; keep the compiler
       # graph bounded so hosted runners do not segfault under oversubscription.
-      FO_JOBS: 2
+      FO_JOBS: 1
       FO_BUILD_TIMEOUT: 600
     steps:
     - uses: actions/checkout@v4
