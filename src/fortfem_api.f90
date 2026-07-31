@@ -25,6 +25,8 @@ module fortfem_api
         assemble_triangle_rt_divergence_csc
     use fortfem_assembly_tetra_rt_arbitrary_order_3d, only: &
         assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_div_mass_element, &
+        assemble_tetra_rt_div_mass_element_jvp, &
+        assemble_tetra_rt_div_mass_element_vjp, &
         assemble_tetra_rt_divergence_csc
     use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
         assemble_tetra_lagrange_scalar_load, &
@@ -897,6 +899,8 @@ module fortfem_api
     public :: assemble_triangle_rt_divergence_csc
     public :: assemble_tetra_rt_div_mass_csc
     public :: assemble_tetra_rt_div_mass_element
+    public :: assemble_tetra_rt_div_mass_element_jvp
+    public :: assemble_tetra_rt_div_mass_element_vjp
     public :: assemble_tetra_rt_divergence_csc
     public :: assemble_tetra_lagrange_stiffness_csc
     public :: assemble_tetra_lagrange_stiffness_element
