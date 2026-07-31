@@ -641,6 +641,8 @@ module fortfem_api
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml, &
         solve_tetra_nedelec_weighted_curl_mass
+    use fortfem_tetra_nedelec_pml_state_3d, only: &
+        solve_tetra_nedelec_pml_jvp, solve_tetra_nedelec_pml_vjp
     ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
     use fortfem_tetra_mixed_poisson_3d, only: &
@@ -1023,6 +1025,8 @@ module fortfem_api
     public :: solve_triangle_rt_sampled_state_jvp
     public :: solve_triangle_rt_sampled_state_vjp
     public :: solve_tetra_nedelec_pml
+    public :: solve_tetra_nedelec_pml_jvp
+    public :: solve_tetra_nedelec_pml_vjp
     public :: solve_tetra_nedelec_weighted_curl_mass
     public :: solve_tetra_rt_div_mass
     public :: solve_symbolic_tetra_mixed_poisson_rt

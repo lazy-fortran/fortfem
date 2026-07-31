@@ -533,3 +533,12 @@ once and returns real surface and wave-number cotangents plus a complex
 boundary-data cotangent. Surface panel areas and their products are shared
 geometry primitives rather than duplicated by the Laplace and Helmholtz state
 wrappers.
+
+The global tetrahedral Nedelec curl--curl PML solve now has the same analytical
+state contract. Its JVP differentiates mesh coordinates, element stretches,
+wave number, complex volume forcing, Dirichlet data, and an optional complex
+boundary/DtN form. Its VJP uses the conjugate-transposed sparse solve and maps
+the merged CSC cotangent back to PML element parameters and each boundary-form
+entry. The complex constrained reduction is shared by primal, tangent, and
+reverse paths, so constrained rows and matrix-column elimination receive the
+same derivative treatment as the unconstrained field.

@@ -26,6 +26,21 @@ module fortfem_sparse_direct
         module procedure sparse_direct_solve_csc_complex
     end interface sparse_direct_solve_csc
 
+    interface sparse_direct_solve_constrained
+        module procedure sparse_direct_solve_constrained_real
+        module procedure sparse_direct_solve_constrained_complex
+    end interface sparse_direct_solve_constrained
+
+    interface sparse_direct_solve_constrained_jvp
+        module procedure sparse_direct_solve_constrained_jvp_real
+        module procedure sparse_direct_solve_constrained_jvp_complex
+    end interface sparse_direct_solve_constrained_jvp
+
+    interface sparse_direct_solve_constrained_vjp
+        module procedure sparse_direct_solve_constrained_vjp_real
+        module procedure sparse_direct_solve_constrained_vjp_complex
+    end interface sparse_direct_solve_constrained_vjp
+
     interface sparse_direct_factor_csc
         module procedure sparse_direct_factor_csc_real
         module procedure sparse_direct_factor_csc_complex
@@ -70,7 +85,7 @@ contains
             matrix, rhs, constrained, constrained_values, solution, status)
     end subroutine sparse_direct_solve_zero_constrained
 
-    subroutine sparse_direct_solve_constrained( &
+    subroutine sparse_direct_solve_constrained_real( &
             matrix, rhs, constrained, constrained_values, solution, status)
         type(csc_t), intent(in) :: matrix
         real(dp), intent(in) :: rhs(:)
@@ -150,9 +165,9 @@ contains
             reduced_solution, status)
         if (status /= 0) return
         solution(free_dofs) = reduced_solution
-    end subroutine sparse_direct_solve_constrained
+    end subroutine sparse_direct_solve_constrained_real
 
-    subroutine sparse_direct_solve_constrained_jvp( &
+    subroutine sparse_direct_solve_constrained_jvp_real( &
             matrix, rhs, constrained, constrained_values, matrix_values_dot, &
             rhs_dot, constrained_values_dot, solution_dot, status)
         type(csc_t), intent(in) :: matrix
@@ -223,9 +238,9 @@ contains
         call sparse_direct_free(factor)
         if (status /= 0) return
         solution_dot(free_dofs) = reduced_solution_dot
-    end subroutine sparse_direct_solve_constrained_jvp
+    end subroutine sparse_direct_solve_constrained_jvp_real
 
-    subroutine sparse_direct_solve_constrained_vjp( &
+    subroutine sparse_direct_solve_constrained_vjp_real( &
             matrix, rhs, constrained, constrained_values, solution, &
             solution_bar, matrix_values_bar, rhs_bar, &
             constrained_values_bar, status)
@@ -291,7 +306,302 @@ contains
                     matrix%val(entry)*reduced_rhs_bar(free_index(row))
             end do
         end do
-    end subroutine sparse_direct_solve_constrained_vjp
+    end subroutine sparse_direct_solve_constrained_vjp_real
+
+    subroutine sparse_direct_solve_constrained_complex( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), constrained_values(:)
+        logical, intent(in) :: constrained(:)
+        complex(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: column_pointers(:), free_dofs(:)
+        integer, allocatable :: free_index(:), row_indices(:)
+        complex(dp), allocatable :: reduced_rhs(:), reduced_solution(:)
+        complex(dp), allocatable :: values(:)
+        integer :: column, entry, free_count, reduced_entry, row
+
+        status = -1
+        solution = cmplx(0.0_dp, 0.0_dp, dp)
+        if (matrix%nrow /= matrix%ncol) return
+        if (size(rhs) /= matrix%nrow) return
+        if (size(constrained) /= matrix%nrow) return
+        if (size(constrained_values) /= matrix%nrow) return
+        if (size(solution) /= matrix%nrow) return
+        solution = constrained_values
+        free_count = count(.not. constrained)
+        if (free_count == 0) then
+            status = 0
+            return
+        end if
+        allocate(free_dofs(free_count), free_index(matrix%nrow))
+        free_count = 0
+        do column = 1, matrix%ncol
+            if (constrained(column)) cycle
+            free_count = free_count + 1
+            free_dofs(free_count) = column
+        end do
+        free_index = 0
+        do column = 1, free_count
+            free_index(free_dofs(column)) = column
+        end do
+        allocate(column_pointers(free_count + 1))
+        reduced_entry = 0
+        do column = 1, free_count
+            column_pointers(column) = reduced_entry + 1
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                if (.not. constrained(matrix%row_idx(entry))) then
+                    reduced_entry = reduced_entry + 1
+                end if
+            end do
+        end do
+        column_pointers(free_count + 1) = reduced_entry + 1
+        allocate(row_indices(reduced_entry), values(reduced_entry))
+        reduced_entry = 0
+        do column = 1, free_count
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_entry = reduced_entry + 1
+                row_indices(reduced_entry) = free_index(row)
+                values(reduced_entry) = matrix%val(entry)
+            end do
+        end do
+        allocate(reduced_rhs(free_count), reduced_solution(free_count))
+        reduced_rhs = rhs(free_dofs)
+        do column = 1, matrix%ncol
+            if (.not. constrained(column)) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_rhs(free_index(row)) = &
+                    reduced_rhs(free_index(row)) - &
+                    matrix%val(entry)*constrained_values(column)
+            end do
+        end do
+        call sparse_direct_solve_csc( &
+            free_count, column_pointers, row_indices, values, reduced_rhs, &
+            reduced_solution, status)
+        if (status /= 0) return
+        solution(free_dofs) = reduced_solution
+    end subroutine sparse_direct_solve_constrained_complex
+
+    subroutine sparse_direct_solve_constrained_jvp_complex( &
+            matrix, rhs, constrained, constrained_values, matrix_values_dot, &
+            rhs_dot, constrained_values_dot, solution_dot, status)
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), constrained_values(:)
+        logical, intent(in) :: constrained(:)
+        complex(dp), intent(in) :: matrix_values_dot(:), rhs_dot(:)
+        complex(dp), intent(in) :: constrained_values_dot(:)
+        complex(dp), intent(out) :: solution_dot(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: reduced
+        type(sparse_direct_factor_t) :: factor
+        integer, allocatable :: free_dofs(:), free_index(:)
+        integer, allocatable :: original_entries(:)
+        complex(dp), allocatable :: reduced_rhs_dot(:), reduced_solution(:)
+        complex(dp), allocatable :: reduced_solution_dot(:)
+        complex(dp), allocatable :: reduced_values_dot(:), solution(:)
+        integer :: column, entry, free_count, row
+
+        status = -1
+        solution_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_constrained_shapes_complex( &
+            matrix, rhs, constrained, constrained_values, solution_dot)) return
+        if (size(matrix_values_dot) /= matrix%nnz) return
+        if (size(rhs_dot) /= size(rhs)) return
+        if (size(constrained_values_dot) /= size(constrained_values)) return
+        allocate(solution(matrix%nrow))
+        call sparse_direct_solve_constrained( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+        if (status /= 0) return
+        solution_dot = constrained_values_dot
+        call build_constrained_reduction_complex( &
+            matrix, constrained, reduced, free_dofs, free_index, &
+            original_entries, status)
+        if (status /= 0) return
+        free_count = size(free_dofs)
+        if (free_count == 0) then
+            status = 0
+            return
+        end if
+        allocate(reduced_solution(free_count), reduced_solution_dot(free_count))
+        allocate(reduced_rhs_dot(free_count), reduced_values_dot(reduced%nnz))
+        reduced_solution = solution(free_dofs)
+        reduced_rhs_dot = rhs_dot(free_dofs)
+        reduced_values_dot = matrix_values_dot(original_entries)
+        do column = 1, matrix%ncol
+            if (.not. constrained(column)) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_rhs_dot(free_index(row)) = &
+                    reduced_rhs_dot(free_index(row)) - &
+                    matrix_values_dot(entry)*constrained_values(column) - &
+                    matrix%val(entry)*constrained_values_dot(column)
+            end do
+        end do
+        call sparse_direct_factor_csc( &
+            factor, free_count, reduced%col_ptr, reduced%row_idx, &
+            reduced%val, status)
+        if (status /= 0) return
+        call sparse_direct_solve_factored_jvp( &
+            factor, free_count, reduced%col_ptr, reduced%row_idx, &
+            reduced_values_dot, reduced_solution, reduced_rhs_dot, &
+            reduced_solution_dot, status)
+        call sparse_direct_free(factor)
+        if (status /= 0) return
+        solution_dot(free_dofs) = reduced_solution_dot
+    end subroutine sparse_direct_solve_constrained_jvp_complex
+
+    subroutine sparse_direct_solve_constrained_vjp_complex( &
+            matrix, rhs, constrained, constrained_values, solution, &
+            solution_bar, matrix_values_bar, rhs_bar, &
+            constrained_values_bar, status)
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), constrained_values(:), solution(:)
+        logical, intent(in) :: constrained(:)
+        complex(dp), intent(in) :: solution_bar(:)
+        complex(dp), intent(out) :: matrix_values_bar(:), rhs_bar(:)
+        complex(dp), intent(out) :: constrained_values_bar(:)
+        integer, intent(out) :: status
+
+        type(csc_z_t) :: reduced
+        type(sparse_direct_factor_t) :: adjoint_factor
+        integer, allocatable :: free_dofs(:), free_index(:)
+        integer, allocatable :: original_entries(:)
+        complex(dp), allocatable :: reduced_rhs_bar(:), reduced_values_bar(:)
+        integer :: column, entry, free_count, row
+
+        status = -1
+        matrix_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        rhs_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        constrained_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_constrained_shapes_complex( &
+            matrix, rhs, constrained, constrained_values, solution)) return
+        if (size(solution_bar) /= size(solution)) return
+        if (size(matrix_values_bar) /= matrix%nnz) return
+        if (size(rhs_bar) /= size(rhs)) return
+        if (size(constrained_values_bar) /= size(constrained_values)) return
+        call build_constrained_reduction_complex( &
+            matrix, constrained, reduced, free_dofs, free_index, &
+            original_entries, status)
+        if (status /= 0) return
+        constrained_values_bar = merge(solution_bar, &
+            cmplx(0.0_dp, 0.0_dp, dp), constrained)
+        free_count = size(free_dofs)
+        if (free_count == 0) then
+            status = 0
+            return
+        end if
+        allocate(reduced_rhs_bar(free_count), reduced_values_bar(reduced%nnz))
+        call sparse_direct_factor_adjoint_csc( &
+            adjoint_factor, free_count, reduced%col_ptr, reduced%row_idx, &
+            reduced%val, status)
+        if (status /= 0) return
+        call sparse_direct_solve_factored_vjp( &
+            adjoint_factor, free_count, reduced%col_ptr, reduced%row_idx, &
+            solution(free_dofs), solution_bar(free_dofs), reduced_rhs_bar, &
+            reduced_values_bar, status)
+        call sparse_direct_free(adjoint_factor)
+        if (status /= 0) return
+        rhs_bar(free_dofs) = reduced_rhs_bar
+        matrix_values_bar(original_entries) = reduced_values_bar
+        do column = 1, matrix%ncol
+            if (.not. constrained(column)) cycle
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                matrix_values_bar(entry) = -reduced_rhs_bar(free_index(row))* &
+                    conjg(constrained_values(column))
+                constrained_values_bar(column) = &
+                    constrained_values_bar(column) - &
+                    conjg(matrix%val(entry))*reduced_rhs_bar(free_index(row))
+            end do
+        end do
+    end subroutine sparse_direct_solve_constrained_vjp_complex
+
+    subroutine build_constrained_reduction_complex( &
+            matrix, constrained, reduced, free_dofs, free_index, &
+            original_entries, status)
+        type(csc_z_t), intent(in) :: matrix
+        logical, intent(in) :: constrained(:)
+        type(csc_z_t), intent(out) :: reduced
+        integer, allocatable, intent(out) :: free_dofs(:), free_index(:)
+        integer, allocatable, intent(out) :: original_entries(:)
+        integer, intent(out) :: status
+
+        integer :: column, entry, free_count, reduced_entry, row
+
+        status = -1
+        if (matrix%nrow /= matrix%ncol) return
+        if (size(constrained) /= matrix%nrow) return
+        free_count = count(.not. constrained)
+        allocate(free_dofs(free_count), free_index(matrix%nrow))
+        free_count = 0
+        do column = 1, matrix%ncol
+            if (constrained(column)) cycle
+            free_count = free_count + 1
+            free_dofs(free_count) = column
+        end do
+        free_index = 0
+        do column = 1, free_count
+            free_index(free_dofs(column)) = column
+        end do
+        allocate(reduced%col_ptr(free_count + 1))
+        reduced_entry = 0
+        do column = 1, free_count
+            reduced%col_ptr(column) = reduced_entry + 1
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                if (.not. constrained(matrix%row_idx(entry))) then
+                    reduced_entry = reduced_entry + 1
+                end if
+            end do
+        end do
+        reduced%col_ptr(free_count + 1) = reduced_entry + 1
+        reduced%nrow = free_count
+        reduced%ncol = free_count
+        reduced%nnz = reduced_entry
+        allocate(reduced%row_idx(reduced_entry), reduced%val(reduced_entry))
+        allocate(original_entries(reduced_entry))
+        reduced_entry = 0
+        do column = 1, free_count
+            do entry = matrix%col_ptr(free_dofs(column)), &
+                    matrix%col_ptr(free_dofs(column) + 1) - 1
+                row = matrix%row_idx(entry)
+                if (constrained(row)) cycle
+                reduced_entry = reduced_entry + 1
+                reduced%row_idx(reduced_entry) = free_index(row)
+                reduced%val(reduced_entry) = matrix%val(entry)
+                original_entries(reduced_entry) = entry
+            end do
+        end do
+        status = 0
+    end subroutine build_constrained_reduction_complex
+
+    pure logical function valid_constrained_shapes_complex( &
+            matrix, rhs, constrained, constrained_values, solution) &
+            result(valid)
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), constrained_values(:), solution(:)
+        logical, intent(in) :: constrained(:)
+
+        valid = matrix%nrow == matrix%ncol
+        if (.not. valid) return
+        valid = size(rhs) == matrix%nrow
+        if (.not. valid) return
+        valid = size(constrained) == matrix%nrow
+        if (.not. valid) return
+        valid = size(constrained_values) == matrix%nrow
+        if (.not. valid) return
+        valid = size(solution) == matrix%nrow
+    end function valid_constrained_shapes_complex
 
     subroutine build_constrained_reduction( &
             matrix, constrained, reduced, free_dofs, free_index, &
