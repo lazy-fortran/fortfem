@@ -43,6 +43,22 @@ The sparse builder rejects nonsymmetric or non-positive-pivot CSC inputs and
 does not introduce fill. Factor construction is an inactive solver branch;
 the fixed-factor actions are the differentiable contract.
 
+For nonsymmetric blocks, `fortfem_sparse_incomplete_lu` provides the matching
+ILU(0) contract with strict-lower and upper CSC patterns:
+
+```fortran
+type(sparse_incomplete_lu_factor_t) :: ilu_factor
+call build_sparse_incomplete_lu(csc_matrix, ilu_factor, status)
+call apply_sparse_incomplete_lu(ilu_factor, rhs, solution, status)
+call apply_sparse_incomplete_lu_jvp(ilu_factor, rhs_dot, solution_dot, status)
+call apply_sparse_incomplete_lu_vjp(ilu_factor, solution_bar, rhs_bar, status)
+```
+
+The transpose VJP solves with the fixed `U^T L^T` factors. Zero pivots are
+reported explicitly; the API does not substitute an SPD preconditioner for a
+nonsymmetric response block. Drop tolerances and fill-controlled ILUT remain
+higher-level solver options.
+
 The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
 `ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
@@ -61,7 +77,6 @@ dependency.
 
 ## Independent oracle
 
-The focused test uses a symmetric positive-definite tridiagonal matrix whose
-IC(0) factor is exact and checks the independent triangular-solve oracle plus
-the fixed-factor adjoint identity. Nonsymmetry and an indefinite diagonal are
-rejected independently.
+The focused tests use independent tridiagonal solve oracles for both sparse
+IC(0) and ILU(0), check their fixed-factor adjoint identities, and reject
+nonsymmetry, indefinite diagonals, and zero pivots independently.

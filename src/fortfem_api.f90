@@ -895,6 +895,9 @@ module fortfem_api
         apply_sparse_incomplete_cholesky_jvp, &
         apply_sparse_incomplete_cholesky_vjp, &
         build_sparse_incomplete_cholesky, sparse_incomplete_cholesky_factor_t
+    use fortfem_sparse_incomplete_lu, only: apply_sparse_incomplete_lu, &
+        apply_sparse_incomplete_lu_jvp, apply_sparse_incomplete_lu_vjp, &
+        build_sparse_incomplete_lu, sparse_incomplete_lu_factor_t
     implicit none
 
     private
@@ -975,6 +978,11 @@ module fortfem_api
     public :: apply_sparse_incomplete_cholesky
     public :: apply_sparse_incomplete_cholesky_jvp
     public :: apply_sparse_incomplete_cholesky_vjp
+    public :: sparse_incomplete_lu_factor_t
+    public :: build_sparse_incomplete_lu
+    public :: apply_sparse_incomplete_lu
+    public :: apply_sparse_incomplete_lu_jvp
+    public :: apply_sparse_incomplete_lu_vjp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t

@@ -44,8 +44,9 @@ value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
 maps.
 
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
-explicit SPD IC(0) factor/apply primitive for compatible iterative paths;
-ILU-family options remain the nonsymmetric counterpart.
+explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
+fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
+explicit nonsymmetric counterpart.
 
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
