@@ -1166,8 +1166,9 @@ gallery example.
   trial trace/flux spaces with symmetric, incomplete, or nonsymmetric
   consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC
   consistency, HDG trace blocks, local static condensation, and signed-map
-  sparse CSC accumulation are now public, while compatible flux elimination
-  remains.
+  sparse CSC accumulation are now public. The compatible flux elimination
+  primitive now provides a differentiable local recovery map and condensed
+  state block; global signed sparse flux ownership remains client-owned.
   `assemble_vector_jump_penalty` now supplies the tensor-valued counterpart
   for caller-owned tangential/normal projectors and anisotropic metrics, with
   value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
@@ -1178,6 +1179,9 @@ gallery example.
   `assemble_hdg_static_condensation` now exposes the local Schur complement
   and condensed load with implicit-solve value/JVP/VJP actions, so global
   skeleton assembly can be layered without differentiating pivot choices.
+  `assemble_compatible_flux_elimination` now exposes the corresponding
+  flux-specific recovery map, condensed state block, and full real JVP/VJP;
+  higher-order commuting projection assembly remains client-owned.
   `assemble_scalar_numerical_flux` now provides conservative central, upwind,
   and Lax--Friedrichs choices with a quadratic-entropy diagnostic and complete
   fixed-topology value/JVP/VJP actions; `assemble_vector_numerical_flux` now
@@ -1321,15 +1325,17 @@ gallery example.
   independently discretized skeleton traces. The scalar SIPG interface block
   now has symmetric, incomplete, and nonsymmetric consistency variants with
   value/JVP/VJP actions; vector FEEC consistency, HDG traces, local
-  hybridization, and signed-map sparse CSC accumulation are now public, while
-  compatible flux elimination remains.
+  hybridization, signed-map sparse CSC accumulation, and compatible flux
+  elimination are now public. The latter returns the local compatible flux
+  recovery map plus condensed state system with full real JVP/VJP actions;
+  global sparse flux ownership remains client-owned.
   A tensor-weighted vector jump penalty now covers component-valued traces and
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
   projections are now public with value/JVP/VJP actions; hybridization and
   static condensation now have a local differentiable Schur primitive;
   `assemble_hdg_global_skeleton` now supplies a signed-map dense reference
-  assembler with value/JVP/VJP actions; sparse accumulation and compatible
-  flux elimination remain. `assemble_feec_exact_sequence` now exposes the
+  assembler with value/JVP/VJP actions; sparse accumulation remains.
+  `assemble_feec_exact_sequence` now exposes the
   metric-independent `curl(grad)` and `div(curl)` defects with independent
   value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic maps.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including

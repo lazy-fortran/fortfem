@@ -97,6 +97,11 @@ The [tensor volume work contract](tensor_volume_work.html) assembles the
 caller-owned `stress:grad(test)` residual and its geometry/tensor/weight
 JVP/VJP actions for CGL, Maxwell, anisotropic, and elastic clients.
 
+The [compatible flux elimination contract](compatible_flux_elimination.html)
+provides the differentiable local Schur reduction and recovery map for
+RT/BDM/Nédélec, compatible IGA, and HDG flux blocks without owning a global
+skeleton numbering.
+
 The [interface normal-traction balance](interface_traction_balance.html)
 documents the neutral traction-jump residual that composes tensor pressure,
 elastic stress, or Maxwell-stress blocks without selecting an application law.
