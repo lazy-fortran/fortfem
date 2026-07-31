@@ -21,6 +21,9 @@ module fortfem_fci_interpolation_map
     public :: build_fci_bilinear_interpolation_maps_2d
     public :: build_fci_bilinear_interpolation_maps_2d_jvp
     public :: build_fci_bilinear_interpolation_maps_2d_vjp
+    public :: build_fci_triangle_interpolation_map_2d
+    public :: build_fci_triangle_interpolation_map_2d_jvp
+    public :: build_fci_triangle_interpolation_map_2d_vjp
 
 contains
 
@@ -447,6 +450,328 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_bilinear_interpolation_map_2d_vjp
+
+    subroutine build_fci_triangle_interpolation_map_2d( &
+            vertices, triangles, target_points, target_cells, interpolation_map, &
+            status)
+        !! Build barycentric interpolation weights on a fixed triangle mesh.
+        !!
+        !! `vertices` has shape `(2, n_vertices)`, `triangles` has shape
+        !! `(3, n_triangles)`, and `target_cells(row)` identifies the triangle
+        !! containing `target_points(:, row)`.  Connectivity is deliberately
+        !! discrete; the derivative routines keep it fixed.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: target_points(:, :)
+        integer, intent(in) :: target_cells(:)
+        real(dp), intent(out) :: interpolation_map(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_vertices, n_triangles, target_count, row
+        integer :: vertex_1, vertex_2, vertex_3
+        real(dp) :: determinant, numerator_1, numerator_2
+        real(dp) :: weights(3)
+
+        interpolation_map = 0.0_dp
+        call validate_triangle_map_inputs( &
+            vertices, triangles, target_points, target_cells, interpolation_map, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_vertices = size(vertices, 2)
+        n_triangles = size(triangles, 2)
+        target_count = size(target_points, 2)
+        do row = 1, target_count
+            call triangle_weights( &
+                vertices, triangles, target_points, target_cells, row, vertex_1, &
+                vertex_2, vertex_3, determinant, numerator_1, numerator_2, weights)
+            if (abs(determinant) <= tiny(determinant)) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI triangle interpolation received a degenerate cell")
+                return
+            end if
+            if (minval(weights) < -1.0e-12_dp) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI triangle interpolation received an outside target")
+                return
+            end if
+            interpolation_map(row, vertex_1) = weights(1)
+            interpolation_map(row, vertex_2) = weights(2)
+            interpolation_map(row, vertex_3) = weights(3)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_map_2d
+
+    subroutine build_fci_triangle_interpolation_map_2d_jvp( &
+            vertices, triangles, target_points, target_cells, vertices_dot, &
+            target_points_dot, interpolation_map_dot, status)
+        !! Apply the fixed-cell JVP of barycentric interpolation weights.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: target_points(:, :)
+        integer, intent(in) :: target_cells(:)
+        real(dp), intent(in) :: vertices_dot(:, :)
+        real(dp), intent(in) :: target_points_dot(:, :)
+        real(dp), intent(out) :: interpolation_map_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_vertices, target_count, row
+        integer :: vertex_1, vertex_2, vertex_3
+        real(dp) :: determinant, numerator_1, numerator_2, determinant_dot
+        real(dp) :: numerator_1_dot, numerator_2_dot
+        real(dp) :: weights(3), weights_dot(3)
+        real(dp) :: edge_1(2), edge_2(2), edge_1_dot(2), edge_2_dot(2)
+        real(dp) :: target_edge_1(2), target_edge_2(2)
+        real(dp) :: target_edge_1_dot(2), target_edge_2_dot(2)
+        real(dp), allocatable :: interpolation_map(:, :)
+
+        interpolation_map_dot = 0.0_dp
+        n_vertices = size(vertices, 2)
+        target_count = size(target_points, 2)
+        if (size(vertices_dot, 1) /= 2 .or. size(vertices_dot, 2) /= n_vertices .or. &
+            size(target_points_dot, 1) /= 2 .or. &
+            size(target_points_dot, 2) /= target_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle JVP received incompatible tangents")
+            return
+        end if
+        allocate(interpolation_map(target_count, n_vertices))
+        call build_fci_triangle_interpolation_map_2d( &
+            vertices, triangles, target_points, target_cells, interpolation_map, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(interpolation_map_dot, 1) /= target_count .or. &
+            size(interpolation_map_dot, 2) /= n_vertices) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle JVP received an incompatible output")
+            return
+        end if
+        if (any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(target_points_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle JVP received non-finite tangents")
+            return
+        end if
+
+        do row = 1, target_count
+            call triangle_weights( &
+                vertices, triangles, target_points, target_cells, row, vertex_1, &
+                vertex_2, vertex_3, determinant, numerator_1, numerator_2, weights)
+            if (minval(weights) <= 1.0e-12_dp) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI triangle JVP crosses a cell-boundary topology event")
+                return
+            end if
+            target_edge_1 = vertices(:, vertex_2) - target_points(:, row)
+            target_edge_2 = vertices(:, vertex_3) - target_points(:, row)
+            target_edge_1_dot = vertices_dot(:, vertex_2) - &
+                target_points_dot(:, row)
+            target_edge_2_dot = vertices_dot(:, vertex_3) - &
+                target_points_dot(:, row)
+            numerator_1_dot = cross_2d_dot( &
+                target_edge_1, target_edge_2, target_edge_1_dot, target_edge_2_dot)
+            target_edge_1 = vertices(:, vertex_3) - target_points(:, row)
+            target_edge_2 = vertices(:, vertex_1) - target_points(:, row)
+            target_edge_1_dot = vertices_dot(:, vertex_3) - &
+                target_points_dot(:, row)
+            target_edge_2_dot = vertices_dot(:, vertex_1) - &
+                target_points_dot(:, row)
+            numerator_2_dot = cross_2d_dot( &
+                target_edge_1, target_edge_2, target_edge_1_dot, target_edge_2_dot)
+            edge_1 = vertices(:, vertex_2) - vertices(:, vertex_1)
+            edge_2 = vertices(:, vertex_3) - vertices(:, vertex_1)
+            edge_1_dot = vertices_dot(:, vertex_2) - vertices_dot(:, vertex_1)
+            edge_2_dot = vertices_dot(:, vertex_3) - vertices_dot(:, vertex_1)
+            determinant_dot = cross_2d_dot(edge_1, edge_2, edge_1_dot, edge_2_dot)
+            weights_dot(1) = (numerator_1_dot*determinant - &
+                numerator_1*determinant_dot)/(determinant*determinant)
+            weights_dot(2) = (numerator_2_dot*determinant - &
+                numerator_2*determinant_dot)/(determinant*determinant)
+            weights_dot(3) = -weights_dot(1) - weights_dot(2)
+            interpolation_map_dot(row, vertex_1) = weights_dot(1)
+            interpolation_map_dot(row, vertex_2) = weights_dot(2)
+            interpolation_map_dot(row, vertex_3) = weights_dot(3)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_map_2d_jvp
+
+    subroutine build_fci_triangle_interpolation_map_2d_vjp( &
+            vertices, triangles, target_points, target_cells, interpolation_map_bar, &
+            vertices_bar, target_points_bar, status)
+        !! Apply the fixed-cell VJP of barycentric interpolation weights.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: target_points(:, :)
+        integer, intent(in) :: target_cells(:)
+        real(dp), intent(in) :: interpolation_map_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :)
+        real(dp), intent(out) :: target_points_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_vertices, target_count, row
+        integer :: vertex_1, vertex_2, vertex_3
+        real(dp) :: determinant, numerator_1, numerator_2, determinant_bar
+        real(dp) :: numerator_1_bar, numerator_2_bar
+        real(dp) :: weights(3), weights_bar(3)
+        real(dp) :: edge_1(2), edge_2(2), gradient_1(2), gradient_2(2)
+        real(dp), allocatable :: interpolation_map(:, :)
+
+        vertices_bar = 0.0_dp
+        target_points_bar = 0.0_dp
+        n_vertices = size(vertices, 2)
+        target_count = size(target_points, 2)
+        allocate(interpolation_map(target_count, n_vertices))
+        call build_fci_triangle_interpolation_map_2d( &
+            vertices, triangles, target_points, target_cells, interpolation_map, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(interpolation_map_bar, 1) /= target_count .or. &
+            size(interpolation_map_bar, 2) /= n_vertices .or. &
+            size(vertices_bar, 1) /= 2 .or. size(vertices_bar, 2) /= n_vertices .or. &
+            size(target_points_bar, 1) /= 2 .or. &
+            size(target_points_bar, 2) /= target_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle VJP received incompatible cotangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(interpolation_map_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI triangle VJP received non-finite cotangents")
+            return
+        end if
+
+        do row = 1, target_count
+            call triangle_weights( &
+                vertices, triangles, target_points, target_cells, row, vertex_1, &
+                vertex_2, vertex_3, determinant, numerator_1, numerator_2, weights)
+            if (minval(weights) <= 1.0e-12_dp) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI triangle VJP crosses a cell-boundary topology event")
+                return
+            end if
+            weights_bar = [ &
+                interpolation_map_bar(row, vertex_1), &
+                interpolation_map_bar(row, vertex_2), &
+                interpolation_map_bar(row, vertex_3)]
+            weights_bar(1) = weights_bar(1) - weights_bar(3)
+            weights_bar(2) = weights_bar(2) - weights_bar(3)
+            weights_bar(3) = 0.0_dp
+            numerator_1_bar = weights_bar(1)/determinant
+            numerator_2_bar = weights_bar(2)/determinant
+            determinant_bar = -(weights_bar(1)*numerator_1 + &
+                weights_bar(2)*numerator_2)/(determinant*determinant)
+
+            edge_1 = vertices(:, vertex_2) - target_points(:, row)
+            edge_2 = vertices(:, vertex_3) - target_points(:, row)
+            gradient_1 = [edge_2(2), -edge_2(1)]
+            gradient_2 = [-edge_1(2), edge_1(1)]
+            vertices_bar(:, vertex_2) = vertices_bar(:, vertex_2) + &
+                numerator_1_bar*gradient_1
+            vertices_bar(:, vertex_3) = vertices_bar(:, vertex_3) + &
+                numerator_1_bar*gradient_2
+            target_points_bar(:, row) = target_points_bar(:, row) - &
+                numerator_1_bar*(gradient_1 + gradient_2)
+
+            edge_1 = vertices(:, vertex_3) - target_points(:, row)
+            edge_2 = vertices(:, vertex_1) - target_points(:, row)
+            gradient_1 = [edge_2(2), -edge_2(1)]
+            gradient_2 = [-edge_1(2), edge_1(1)]
+            vertices_bar(:, vertex_3) = vertices_bar(:, vertex_3) + &
+                numerator_2_bar*gradient_1
+            vertices_bar(:, vertex_1) = vertices_bar(:, vertex_1) + &
+                numerator_2_bar*gradient_2
+            target_points_bar(:, row) = target_points_bar(:, row) - &
+                numerator_2_bar*(gradient_1 + gradient_2)
+
+            edge_1 = vertices(:, vertex_2) - vertices(:, vertex_1)
+            edge_2 = vertices(:, vertex_3) - vertices(:, vertex_1)
+            gradient_1 = [edge_2(2), -edge_2(1)]
+            gradient_2 = [-edge_1(2), edge_1(1)]
+            vertices_bar(:, vertex_2) = vertices_bar(:, vertex_2) + &
+                determinant_bar*gradient_1
+            vertices_bar(:, vertex_3) = vertices_bar(:, vertex_3) + &
+                determinant_bar*gradient_2
+            vertices_bar(:, vertex_1) = vertices_bar(:, vertex_1) - &
+                determinant_bar*(gradient_1 + gradient_2)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_triangle_interpolation_map_2d_vjp
+
+    subroutine validate_triangle_map_inputs( &
+            vertices, triangles, target_points, target_cells, interpolation_map, &
+            status)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: target_points(:, :)
+        integer, intent(in) :: target_cells(:)
+        real(dp), intent(in) :: interpolation_map(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_vertices, n_triangles, target_count, row, cell
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI triangle interpolation received incompatible arrays")
+        if (size(vertices, 1) /= 2 .or. size(triangles, 1) /= 3 .or. &
+            size(target_points, 1) /= 2) return
+        n_vertices = size(vertices, 2)
+        n_triangles = size(triangles, 2)
+        target_count = size(target_points, 2)
+        if (n_vertices < 3 .or. n_triangles < 1 .or. target_count < 1) return
+        if (size(target_cells) /= target_count .or. &
+            size(interpolation_map, 1) /= target_count .or. &
+            size(interpolation_map, 2) /= n_vertices) return
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(target_points))) return
+        do row = 1, target_count
+            cell = target_cells(row)
+            if (cell < 1 .or. cell > n_triangles) return
+            if (any(triangles(:, cell) < 1) .or. &
+                any(triangles(:, cell) > n_vertices)) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_triangle_map_inputs
+
+    subroutine triangle_weights( &
+            vertices, triangles, target_points, target_cells, row, vertex_1, &
+            vertex_2, vertex_3, determinant, numerator_1, numerator_2, weights)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: target_points(:, :)
+        integer, intent(in) :: target_cells(:)
+        integer, intent(in) :: row
+        integer, intent(out) :: vertex_1, vertex_2, vertex_3
+        real(dp), intent(out) :: determinant, numerator_1, numerator_2
+        real(dp), intent(out) :: weights(3)
+
+        real(dp) :: edge_1(2), edge_2(2)
+
+        vertex_1 = triangles(1, target_cells(row))
+        vertex_2 = triangles(2, target_cells(row))
+        vertex_3 = triangles(3, target_cells(row))
+        edge_1 = vertices(:, vertex_2) - vertices(:, vertex_1)
+        edge_2 = vertices(:, vertex_3) - vertices(:, vertex_1)
+        determinant = cross_2d(edge_1, edge_2)
+        edge_1 = vertices(:, vertex_2) - target_points(:, row)
+        edge_2 = vertices(:, vertex_3) - target_points(:, row)
+        numerator_1 = cross_2d(edge_1, edge_2)
+        edge_1 = vertices(:, vertex_3) - target_points(:, row)
+        edge_2 = vertices(:, vertex_1) - target_points(:, row)
+        numerator_2 = cross_2d(edge_1, edge_2)
+        weights = [numerator_1/determinant, numerator_2/determinant, &
+            1.0_dp - numerator_1/determinant - numerator_2/determinant]
+    end subroutine triangle_weights
+
+    pure real(dp) function cross_2d(left, right)
+        real(dp), intent(in) :: left(2), right(2)
+
+        cross_2d = left(1)*right(2) - left(2)*right(1)
+    end function cross_2d
+
+    pure real(dp) function cross_2d_dot(left, right, left_dot, right_dot)
+        real(dp), intent(in) :: left(2), right(2), left_dot(2), right_dot(2)
+
+        cross_2d_dot = left_dot(1)*right(2) + left(1)*right_dot(2) - &
+            left_dot(2)*right(1) - left(2)*right_dot(1)
+    end function cross_2d_dot
 
     subroutine build_fci_bilinear_interpolation_maps_2d( &
             source_x, source_y, forward_x, forward_y, backward_x, backward_y, &

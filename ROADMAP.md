@@ -561,6 +561,9 @@ preconditioning remain active work. A batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
 tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
+An unstructured fixed-cell triangle adapter now supplies barycentric maps and
+geometry/target JVP/VJP products with affine and dot-product oracles; higher
+order triangle and moving-cell connectivity remain active.
 The positive diagonal of `-W_c^{-1}Q^TW_sK_\parallel Q` is now public as a
 FortSym-generated per-stencil Jacobi baseline, with an explicit Q-squared
 oracle and a validated matrix-free diagonal apply; plane multigrid and
@@ -949,6 +952,9 @@ gallery example.
   CSC elliptic blocks with the conservative FCI parallel operator; tensor
   coefficient assembly, plane multigrid, and stronger field splitting remain
   planned.
+- A fixed-cell barycentric triangle interpolation path now covers logically
+  unstructured poloidal targets, including geometry and target JVP/VJP actions;
+  moving-cell connectivity and higher-order stencils remain planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
