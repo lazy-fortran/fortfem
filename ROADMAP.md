@@ -232,7 +232,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; model-specific mode operators and torus-harmonic branch data remain | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
-| Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
+| Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus a separate dissipative Cayley block | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
 | Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
 | Verification and delivery | Seeded random tests, external-code adapters, provenance manifests, mesh-completeness checks, and Pages health checks | Repeated seeds, license and revision records, independent samplers, HTTP link checks, and FortPlot image regression |
 
@@ -1380,6 +1380,12 @@ gallery example.
   partitioned first-order symplectic update for the same mixed state. Its
   independent test checks the two-stage mass-solve oracle and the canonical
   two-state symplectic-form identity; dissipative terms remain separate.
+- The public `advance_dissipative_cayley` step now provides the separate
+  `(M+hD/2)^(-1)(M-hD/2)` update for positive-time dissipative blocks. Its
+  JVP/VJP differentiate mass, damping, step size, and state, while an
+  independent two-by-two oracle checks non-increasing SPD-mass energy. It is
+  intentionally not labeled symplectic; splitting and absorbing clients own
+  the composition.
 - Variational/symplectic and Poisson building blocks for ideal terms.
 - Energy-dissipative integrators for resistive and viscous terms.
 - Symmetric splitting, implicit midpoint/Cayley, discrete-gradient or
