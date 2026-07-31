@@ -19,6 +19,7 @@ jobs:
       # graph bounded so hosted runners do not segfault under oversubscription.
       FO_JOBS: 1
       FO_BUILD_TIMEOUT: 600
+      FORTFEM_CODEGEN_RUNNER: fpm
     steps:
     - uses: actions/checkout@v4
 

@@ -12,36 +12,59 @@ export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
 # setting, but use a bounded default for reproducible generation.
 export FO_JOBS="${FO_JOBS:-2}"
 
+# Fo is the normal code-generation runner.  Some hosted runners have
+# exhibited a front-end SIGSEGV while starting `fo build` for this dependency
+# graph; FPM provides an equivalent deterministic fallback for CI without
+# changing the generated kernels.
+codegen_runner=${FORTFEM_CODEGEN_RUNNER:-fo}
+if [[ "$codegen_runner" != "fo" && "$codegen_runner" != "fpm" ]]; then
+    echo "unsupported FORTFEM_CODEGEN_RUNNER=$codegen_runner" >&2
+    exit 2
+fi
+
+run_codegen() {
+    local target=$1
+    if [[ "$codegen_runner" == "fpm" ]]; then
+        fpm run --target "$target" --profile release
+    else
+        fo exec --no-build "$target"
+    fi
+}
+
 cd "$codegen_dir"
 ./check_fortsym_revision.sh
-fo build
-fo exec --no-build gen_tetra_nedelec_candidates
-fo exec --no-build gen_tetra_modal_vector_identities
-fo exec --no-build gen_tetra_rt_candidates
-fo exec --no-build gen_tetra_rt_coefficients
-fo exec --no-build gen_tetra_face_moment_transforms
-fo exec --no-build gen_tetra_nedelec_coefficients
-fo exec --no-build gen_toroidal_coordinates
-fo exec --no-build gen_torus_curved_panel_products
-fo exec --no-build gen_toroidal_poisson_products
-fo exec --no-build gen_sphere_curved_panel_products
-fo exec --no-build gen_interoperability_oracles
-fo exec --no-build gen_tetra_h1_oracle
-fo exec --no-build gen_magnetic_curvilinear_coefficients
-fo exec --no-build gen_nurbs_geometry_products
-fo exec --no-build gen_bspline_h1_geometry_products
-fo exec --no-build gen_cartesian_pml_products
-fo exec --no-build gen_planar_helmholtz_dtn_products
-fo exec --no-build gen_surface_triangle_geometry_products
-fo exec --no-build gen_laplace_bem_kernel_products
-fo exec --no-build gen_helmholtz_bem_kernel_products
-fo exec --no-build gen_laplace_singular_edge_products
-fo exec --no-build gen_helmholtz_bem_smooth_products
-fo exec --no-build gen_fci_parallel_products
-fo exec --no-build gen_cgl_pressure_tensor_products
-fo exec --no-build gen_cgl_pressure_divergence_products
-fo exec --no-build gen_fci_support_volume_products
-fo exec --no-build gen_field_aligned_flux_products
+if [[ "$codegen_runner" == "fpm" ]]; then
+    fpm build --profile release
+else
+    fo build
+fi
+run_codegen gen_tetra_nedelec_candidates
+run_codegen gen_tetra_modal_vector_identities
+run_codegen gen_tetra_rt_candidates
+run_codegen gen_tetra_rt_coefficients
+run_codegen gen_tetra_face_moment_transforms
+run_codegen gen_tetra_nedelec_coefficients
+run_codegen gen_toroidal_coordinates
+run_codegen gen_torus_curved_panel_products
+run_codegen gen_toroidal_poisson_products
+run_codegen gen_sphere_curved_panel_products
+run_codegen gen_interoperability_oracles
+run_codegen gen_tetra_h1_oracle
+run_codegen gen_magnetic_curvilinear_coefficients
+run_codegen gen_nurbs_geometry_products
+run_codegen gen_bspline_h1_geometry_products
+run_codegen gen_cartesian_pml_products
+run_codegen gen_planar_helmholtz_dtn_products
+run_codegen gen_surface_triangle_geometry_products
+run_codegen gen_laplace_bem_kernel_products
+run_codegen gen_helmholtz_bem_kernel_products
+run_codegen gen_laplace_singular_edge_products
+run_codegen gen_helmholtz_bem_smooth_products
+run_codegen gen_fci_parallel_products
+run_codegen gen_cgl_pressure_tensor_products
+run_codegen gen_cgl_pressure_divergence_products
+run_codegen gen_fci_support_volume_products
+run_codegen gen_field_aligned_flux_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
