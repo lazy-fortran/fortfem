@@ -31,7 +31,7 @@ module fortfem_fci_parallel_operator
         generated_fci_parallel_diffusion_vjp
     use fortfem_generated_fci_parallel_diagonal, only: &
         generated_fci_parallel_diffusion_diagonal
-    use fortsparse, only: csc_from_triplet, csc_is_valid, csc_t, &
+    use fortsparse, only: csc_from_triplet, csc_is_valid, csc_matvec, csc_t, &
         fortsparse_status_t, status_set, FORTSPARSE_INVALID_MATRIX, &
         FORTSPARSE_OK
     implicit none
@@ -46,6 +46,7 @@ module fortfem_fci_parallel_operator
     public :: apply_fci_parallel_diffusion_field_vjp
     public :: compute_fci_parallel_diffusion_diagonal
     public :: apply_fci_parallel_jacobi_preconditioner
+    public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
 
@@ -369,6 +370,74 @@ contains
         correction = residual/diagonal
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_parallel_jacobi_preconditioner
+
+    subroutine apply_fci_anisotropic_diffusion( &
+            perpendicular_operators, forward_map, backward_map, line_lengths, &
+            parallel_coefficient, canonical_volumes, staggered_volumes, field, &
+            diffusion_field, status)
+        !! Combine per-plane perpendicular and FCI parallel diffusion actions.
+        !!
+        !! `perpendicular_operators(plane)` is a square CSC action on one
+        !! poloidal plane and is expected to contain the already-oriented
+        !! perpendicular diffusion block.  The FCI support action supplies the
+        !! conservative field-aligned contribution.  This split is the small
+        !! matrix-free contract shared by strongly anisotropic plane/line
+        !! solvers; tensor assembly and multigrid remain higher levels.
+        type(csc_t), intent(in) :: perpendicular_operators(:)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(out) :: diffusion_field(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, plane, offset
+        real(dp), allocatable :: plane_action(:)
+
+        diffusion_field = 0.0_dp
+        call validate_fci_diffusion_shapes( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, field, diffusion_field, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (size(perpendicular_operators) /= n_segment + 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI anisotropic action received the wrong plane count")
+            return
+        end if
+        do plane = 1, n_segment + 1
+            if (.not. csc_is_valid(perpendicular_operators(plane))) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI anisotropic action received an invalid plane matrix")
+                return
+            end if
+            if (perpendicular_operators(plane)%nrow /= n_plane .or. &
+                perpendicular_operators(plane)%ncol /= n_plane) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI anisotropic action received a non-square plane matrix")
+                return
+            end if
+        end do
+
+        call apply_fci_parallel_diffusion( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, field, diffusion_field, status)
+        if (status%code /= FORTSPARSE_OK) return
+        allocate(plane_action(n_plane))
+        do plane = 1, n_segment + 1
+            offset = (plane - 1)*n_plane
+            plane_action = csc_matvec( &
+                perpendicular_operators(plane), field(offset + 1:offset + n_plane))
+            diffusion_field(offset + 1:offset + n_plane) = &
+                diffusion_field(offset + 1:offset + n_plane) + plane_action
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_anisotropic_diffusion
 
     subroutine apply_fci_parallel_diffusion_jvp( &
             forward_map, backward_map, line_lengths, parallel_coefficient, &

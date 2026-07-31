@@ -84,6 +84,10 @@ call compute_fci_parallel_diffusion_diagonal( &
     canonical_volumes, staggered_volumes, diagonal, status)
 call apply_fci_parallel_jacobi_preconditioner( &
     diagonal, residual, correction, status)
+call apply_fci_anisotropic_diffusion( &
+    perpendicular_operators, forward_map, backward_map, line_lengths, &
+    parallel_coefficient, canonical_volumes, staggered_volumes, field, &
+    diffusion_field, status)
 call apply_fci_parallel_diffusion_field_vjp( &
     forward_map, backward_map, line_lengths, parallel_coefficient, &
     canonical_volumes, staggered_volumes, diffusion_field_bar, field_bar, &
@@ -148,6 +152,12 @@ later plane multigrid or field-split preconditioners. Its per-stencil
 `test_fci_parallel_diagonal`.
 `apply_fci_parallel_jacobi_preconditioner` performs the corresponding
 positive diagonal solve and rejects zero or negative entries before division.
+`apply_fci_anisotropic_diffusion` adds one square CSC perpendicular block per
+canonical plane to the parallel support action. Each plane block is validated
+against the FCI plane size, so the split remains explicit and compatible with
+PARALLAX-style independent 2D elliptic solves plus a matrix-free 3D line
+operator. The anisotropic test uses negative symmetric plane blocks and checks
+the combined dissipative energy oracle.
 
 ## Provenance
 

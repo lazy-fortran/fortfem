@@ -565,6 +565,9 @@ The positive diagonal of `-W_c^{-1}Q^TW_sK_\parallel Q` is now public as a
 FortSym-generated per-stencil Jacobi baseline, with an explicit Q-squared
 oracle and a validated matrix-free diagonal apply; plane multigrid and
 field-split preconditioners remain active.
+The split action now also accepts one validated square CSC perpendicular block
+per canonical plane and combines it with the matrix-free FCI parallel term,
+with a negative-energy anisotropic oracle.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -942,6 +945,10 @@ gallery example.
   preconditioner contract, with a matching Jacobi apply and positivity test;
   PARALLAX-compatible plane multigrid and stronger field-split preconditioners
   remain planned.
+- A PARALLAX-style anisotropic split action now combines independent per-plane
+  CSC elliptic blocks with the conservative FCI parallel operator; tensor
+  coefficient assembly, plane multigrid, and stronger field splitting remain
+  planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
