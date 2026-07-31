@@ -580,3 +580,10 @@ input vector are active. The forward product scatters both contributions, and
 the reverse product returns value-array and vector cotangents without densifying
 the matrix. This gives the iterative solver layer a differentiable sparse
 operator building block while preserving the existing FortSparse storage path.
+
+The dense CG interface now provides an implicit-state JVP/VJP for converged
+SPD solves. Rather than differentiating stopping branches and roundoff in the
+Krylov history, the tangent and adjoint each use CG on the corresponding
+linearized system. This keeps the derivative compiler-independent and makes
+the intended inactive-iteration contract explicit; the sparse `spmv` products
+are available for the analogous operator-level path.
