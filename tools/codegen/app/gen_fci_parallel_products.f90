@@ -19,11 +19,13 @@ program gen_fci_parallel_products
     type(expr_t) :: diffusion_outputs(2), diffusion_jvp(2)
     type(expr_t) :: diffusion_vjp(8), diffusion_output_bar(2)
     type(expr_t) :: diagonal_variables(5), diagonal_output(1)
+    type(expr_t) :: quadratic_variables(4), quadratic_outputs(3)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     character(:), allocatable :: diffusion_code, diffusion_jvp_code
     character(:), allocatable :: diffusion_vjp_code
     character(:), allocatable :: diagonal_code
+    character(:), allocatable :: quadratic_code
     integer :: ios, root, unit
 
     call arena%init()
@@ -167,6 +169,32 @@ program gen_fci_parallel_products
     spec%outputs = [str("diagonal_contribution")]
     diagonal_code = chars(emit_kernel(diagonal_output, spec))
 
+    quadratic_variables = [ &
+        sym(arena, "target"), sym(arena, "node_1"), sym(arena, "node_2"), &
+        sym(arena, "node_3")]
+    quadratic_outputs = [ &
+        (quadratic_variables(1) - quadratic_variables(3))* &
+        (quadratic_variables(1) - quadratic_variables(4))/ &
+        ((quadratic_variables(2) - quadratic_variables(3))* &
+        (quadratic_variables(2) - quadratic_variables(4))), &
+        (quadratic_variables(1) - quadratic_variables(2))* &
+        (quadratic_variables(1) - quadratic_variables(4))/ &
+        ((quadratic_variables(3) - quadratic_variables(2))* &
+        (quadratic_variables(3) - quadratic_variables(4))), &
+        (quadratic_variables(1) - quadratic_variables(2))* &
+        (quadratic_variables(1) - quadratic_variables(3))/ &
+        ((quadratic_variables(4) - quadratic_variables(2))* &
+        (quadratic_variables(4) - quadratic_variables(3)))]
+    call simplify_all(quadratic_outputs)
+
+    call initialize_spec( &
+        spec, "generated_fci_quadratic_lagrange_weights", &
+        "fortfem_generated_fci_quadratic_lagrange", 4, 3)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3")]
+    spec%outputs = [str("weight_1"), str("weight_2"), str("weight_3")]
+    quadratic_code = chars(emit_kernel(quadratic_outputs, spec))
+
     open (newunit=unit, &
         file=generated_path("fortfem_fci_parallel_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -178,6 +206,7 @@ program gen_fci_parallel_products
     write (unit, "(a)") diffusion_jvp_code(:len(diffusion_jvp_code) - 1)
     write (unit, "(a)") diffusion_vjp_code(:len(diffusion_vjp_code) - 1)
     write (unit, "(a)") diagonal_code(:len(diagonal_code) - 1)
+    write (unit, "(a)") quadratic_code(:len(quadratic_code) - 1)
     close (unit)
 
 contains
