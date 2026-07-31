@@ -4,7 +4,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   
-  # Run after test workflow completes successfully
+  # Run after test/interoperability workflows complete.  The test workflow
+  # deliberately publishes example artifacts even when verification failures
+  # keep its conclusion red.
   workflow_run:
     workflows: ["test", "interoperability"]
     types:
@@ -27,12 +29,23 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Download latest example plots
+      - name: Download example plots from triggering test run
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'test' }}
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: generated-plots
+          path: ./artifacts/plots/
+          if_no_artifact_found: ignore
+        continue-on-error: true
+
+      - name: Download latest successful example plots
+        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.name != 'test' }}
         uses: dawidd6/action-download-artifact@v3
         with:
           name: generated-plots
