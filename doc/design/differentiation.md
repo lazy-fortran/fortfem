@@ -573,3 +573,10 @@ Bessel equation (DLMF 10.2.1), while the FFT and modal truncation paths use
 FortNum's analytical transform adjoints. The discarded-spectrum norm is
 differentiated as a real scalar, so trace, wave-number, radius, and truncation
 diagnostics all participate in one independently tested JVP/VJP.
+
+The native real CSC matrix-vector primitive now exposes the same low-level
+contract. CSC structure and index arrays are inactive; stored values and the
+input vector are active. The forward product scatters both contributions, and
+the reverse product returns value-array and vector cotangents without densifying
+the matrix. This gives the iterative solver layer a differentiable sparse
+operator building block while preserving the existing FortSparse storage path.
