@@ -1,3 +1,7 @@
+---
+title: Mixed first-order wave time stepping
+---
+
 # Mixed first-order wave time stepping
 
 `advance_mixed_wave_midpoint` advances the compatible semidiscrete state

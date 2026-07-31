@@ -1,3 +1,7 @@
+---
+title: Linear level-set triangle interfaces
+---
+
 # Linear level-set triangle interfaces
 
 `evaluate_level_set_triangle_interface_2d` is the first internal-manifold

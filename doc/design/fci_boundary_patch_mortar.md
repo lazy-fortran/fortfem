@@ -1,3 +1,7 @@
+---
+title: FCI boundary-patch mortar
+---
+
 # FCI boundary-patch mortar
 
 FortFEM provides a neutral transfer contract for coupling an FCI background

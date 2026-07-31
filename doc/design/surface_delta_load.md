@@ -1,3 +1,7 @@
+---
+title: Surface-delta weak loads
+---
+
 # Surface-delta weak loads
 
 `assemble_surface_delta_load` assembles an explicit interface contribution

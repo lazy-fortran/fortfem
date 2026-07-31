@@ -1,3 +1,7 @@
+---
+title: Interface traces, jumps, and averages
+---
+
 # Interface traces, jumps, and averages
 
 `compute_interface_scalar_jump_average` and

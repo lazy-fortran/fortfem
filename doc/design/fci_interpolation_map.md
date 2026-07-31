@@ -1,3 +1,7 @@
+---
+title: FCI interpolation-map construction
+---
+
 # FCI interpolation-map construction
 
 `build_fci_linear_interpolation_map_1d` is the first geometry-side map builder
