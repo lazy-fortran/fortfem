@@ -240,6 +240,11 @@ differentiate vertex geometry, the curl coefficient, and every entry of an
 anisotropic mass tensor. The tensor product is intentionally explicit so
 material and curvilinear-coordinate optimization do not collapse to an
 isotropic scalar parameter.
+The global triangle Nedelec CSC products preserve edge orientations and the
+merged sparse pattern while accumulating shared mesh vertices, the curl
+coefficient, and the full anisotropic mass tensor. As for RT, reverse
+assembly queries participating CSC entries and does not materialize a dense
+global cotangent.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
