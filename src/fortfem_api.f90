@@ -437,6 +437,10 @@ module fortfem_api
         solve_scalar_helmholtz_planar_dtn_p1_vjp
     use fortfem_circular_dtn_2d, only: apply_circular_helmholtz_dtn, &
         circular_helmholtz_dtn_eigenvalue
+    use fortfem_circular_dtn_2d_ad, only: &
+        apply_circular_helmholtz_dtn_jvp, apply_circular_helmholtz_dtn_vjp, &
+        circular_helmholtz_dtn_eigenvalue_jvp, &
+        circular_helmholtz_dtn_eigenvalue_vjp
     use fortfem_spherical_helmholtz_dtn, only: &
         apply_spherical_helmholtz_dtn, apply_spherical_helmholtz_dtn_jvp, &
         apply_spherical_helmholtz_dtn_vjp, &
@@ -1096,7 +1100,11 @@ module fortfem_api
     public :: solve_scalar_helmholtz_planar_dtn_p1_jvp
     public :: solve_scalar_helmholtz_planar_dtn_p1_vjp
     public :: apply_circular_helmholtz_dtn
+    public :: apply_circular_helmholtz_dtn_jvp
+    public :: apply_circular_helmholtz_dtn_vjp
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: circular_helmholtz_dtn_eigenvalue_jvp
+    public :: circular_helmholtz_dtn_eigenvalue_vjp
     public :: apply_spherical_helmholtz_dtn
     public :: apply_spherical_helmholtz_dtn_jvp
     public :: apply_spherical_helmholtz_dtn_vjp
