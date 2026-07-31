@@ -168,6 +168,18 @@ The global CSC products preserve the merged sparse pattern, reverse RT face
 orientation and permutation transforms, and accumulate shared-vertex
 cotangents across adjacent tetrahedra.
 
+The algebraic RT--DG mixed state solve exposes flux-mass, divergence, and load
+JVPs and VJPs. It assembles the saddle system
+`[M, -B^T; B, 0]`, reuses one primal factorization for the tangent solve, and
+uses one transposed factorization for the complete reverse product. The VJP
+returns cotangents aligned with the input CSC patterns, so assembly products
+compose without converting sparse design variables to dense matrices.
+For affine RT elements the divergence block has no mesh derivative:
+`det(J) div(J v_hat/det(J)) = div(v_hat)` exactly. Moving-mesh mixed Poisson
+adjoints therefore propagate geometry through the RT mass block and physical
+load, while the algebraic API still permits an independently active
+divergence operator for non-affine or externally assembled discretizations.
+
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
 vertex coordinates and both material coefficients. A single analytical
