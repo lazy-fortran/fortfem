@@ -1386,6 +1386,11 @@ gallery example.
 - Optional lightweight FEniCSx, FreeFEM, and MFEM runners.
 - Sister-repository data for heavy or licensed references.
 - GitHub Pages generation, link checks, and periodic deployment monitoring.
+- The test workflow now continues through example generation after a failed
+  verification stage, uploads its plot artifact, and reports the failure only
+  after publication. The Pages workflow consumes the triggering test-run
+  artifact even when the test conclusion is red, so known oracle failures do
+  not hide the ordered gallery or its plots.
 - Seeded property tests and a common sampler compare independent codes without
   assuming matching bases, numbering, or mesh topology.
 - FortPlot mesh-bearing examples have a regression fixture that checks element
