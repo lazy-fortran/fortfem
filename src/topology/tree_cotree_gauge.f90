@@ -21,6 +21,7 @@ module fortfem_tree_cotree_gauge
     end type tree_cotree_gauge_t
 
     public :: build_tree_cotree_gauge
+    public :: build_tree_cotree_dof_map
     public :: validate_tree_cotree_gauge
     public :: tree_cotree_gauge_edges
     public :: apply_tree_cotree_restriction
@@ -138,6 +139,62 @@ contains
         if (size(cotree_edges) > 0) cotree_edges = gauge%cotree_edges
         status = 0
     end subroutine tree_cotree_gauge_edges
+
+    subroutine build_tree_cotree_dof_map( &
+            gauge, control_edge_dofs, total_dof_count, constrained, free_dofs, status)
+        !! Lift the graph gauge to a caller-owned high-order or IGA DOF map.
+        !!
+        !! `control_edge_dofs` identifies the global DOF representing each
+        !! lowest-order control edge.  Tree-edge DOFs are constrained; all
+        !! remaining DOFs, including higher-order edge/face/cell moments, are
+        !! retained.  The map is frozen topology and is intended to feed the
+        !! generic sparse constrained/direct solver.
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        integer, intent(in) :: control_edge_dofs(:)
+        integer, intent(in) :: total_dof_count
+        logical, allocatable, intent(out) :: constrained(:)
+        integer, allocatable, intent(out) :: free_dofs(:)
+        integer, intent(out) :: status
+
+        integer :: edge, dof, free_count
+
+        if (allocated(constrained)) deallocate(constrained)
+        if (allocated(free_dofs)) deallocate(free_dofs)
+        call validate_tree_cotree_gauge(gauge, status)
+        if (status /= 0 .or. total_dof_count < 1 .or. &
+            size(control_edge_dofs) /= gauge%edge_count) then
+            status = 2
+            allocate(constrained(0), free_dofs(0))
+            return
+        end if
+        if (any(control_edge_dofs < 1) .or. &
+            any(control_edge_dofs > total_dof_count)) then
+            status = 3
+            allocate(constrained(0), free_dofs(0))
+            return
+        end if
+        do edge = 1, gauge%edge_count
+            if (count(control_edge_dofs == control_edge_dofs(edge)) /= 1) then
+                status = 4
+                allocate(constrained(0), free_dofs(0))
+                return
+            end if
+        end do
+        allocate(constrained(total_dof_count))
+        constrained = .false.
+        do edge = 1, size(gauge%tree_edges)
+            constrained(control_edge_dofs(gauge%tree_edges(edge))) = .true.
+        end do
+        free_count = count(.not. constrained)
+        allocate(free_dofs(free_count))
+        free_count = 0
+        do dof = 1, total_dof_count
+            if (constrained(dof)) cycle
+            free_count = free_count + 1
+            free_dofs(free_count) = dof
+        end do
+        status = 0
+    end subroutine build_tree_cotree_dof_map
 
     subroutine apply_tree_cotree_restriction( &
             gauge, full_vector, reduced_vector, status)

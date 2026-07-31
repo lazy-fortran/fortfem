@@ -2,6 +2,7 @@ program test_tree_cotree_gauge
     use check, only: check_condition, check_summary
     use fortfem_api, only: apply_tree_cotree_prolongation, &
         apply_tree_cotree_restriction, build_tree_cotree_gauge, &
+        build_tree_cotree_dof_map, &
         reduce_tree_cotree_dense_system, reduce_tree_cotree_dense_system_jvp, &
         reduce_tree_cotree_dense_system_vjp, tree_cotree_gauge_edges, &
         tree_cotree_gauge_t, validate_tree_cotree_gauge
@@ -25,6 +26,8 @@ program test_tree_cotree_gauge
     real(dp), allocatable :: reduced_matrix(:, :), reduced_rhs(:)
     real(dp), allocatable :: reduced_matrix_dot(:, :), reduced_rhs_dot(:)
     real(dp), allocatable :: matrix_bar(:, :), rhs_bar(:)
+    logical, allocatable :: constrained_dofs(:)
+    integer, allocatable :: free_dofs(:)
     real(dp) :: lhs, rhs
     integer :: status
 
@@ -65,6 +68,19 @@ program test_tree_cotree_gauge
     call tree_cotree_gauge_edges(disconnected, tree_edges, cotree_edges, status)
     call check_condition(status == 0 .and. size(tree_edges) == 2 .and. &
         size(cotree_edges) == 0, "disconnected graph builds a spanning forest")
+
+    call build_tree_cotree_dof_map( &
+        gauge, [2, 4, 5], 6, constrained_dofs, free_dofs, status)
+    call check_condition(status == 0 .and. size(constrained_dofs) == 6 .and. &
+        all(constrained_dofs .eqv. &
+            [.false., .true., .false., .true., .false., .false.]) &
+        .and. all(free_dofs == [1, 3, 5, 6]), &
+        "tree-cotree map constrains control edges and retains IGA moments")
+
+    call build_tree_cotree_dof_map( &
+        gauge, [2, 2, 5], 6, constrained_dofs, free_dofs, status)
+    call check_condition(status /= 0, &
+        "tree-cotree DOF map rejects ambiguous control-edge numbering")
 
     call build_tree_cotree_gauge(invalid_incidence, invalid, status)
     call check_condition(status /= 0, "tree-cotree gauge rejects invalid incidence")

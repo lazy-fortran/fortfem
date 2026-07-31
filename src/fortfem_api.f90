@@ -61,7 +61,8 @@ module fortfem_api
         evaluate_vector_blending_corrected_enrichment_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
-        build_tree_cotree_gauge, reduce_tree_cotree_dense_system, &
+        build_tree_cotree_dof_map, build_tree_cotree_gauge, &
+        reduce_tree_cotree_dense_system, &
         reduce_tree_cotree_dense_system_jvp, reduce_tree_cotree_dense_system_vjp, &
         tree_cotree_gauge_edges, tree_cotree_gauge_t, &
         validate_tree_cotree_gauge
@@ -953,6 +954,7 @@ module fortfem_api
     public :: evaluate_vector_blending_corrected_enrichment_vjp
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
+    public :: build_tree_cotree_dof_map
     public :: validate_tree_cotree_gauge
     public :: tree_cotree_gauge_edges
     public :: apply_tree_cotree_restriction
