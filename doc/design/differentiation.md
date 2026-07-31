@@ -235,6 +235,11 @@ The global triangle RT CSC products preserve the orientation-aware merged
 sparsity pattern. Reverse assembly looks up only participating CSC entries
 rather than allocating a dense global adjoint, then accumulates shared-vertex
 and material cotangents through the element VJP.
+Arbitrary-order triangle Nedelec curl--curl-plus-mass elements likewise
+differentiate vertex geometry, the curl coefficient, and every entry of an
+anisotropic mass tensor. The tensor product is intentionally explicit so
+material and curvilinear-coordinate optimization do not collapse to an
+isotropic scalar parameter.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.

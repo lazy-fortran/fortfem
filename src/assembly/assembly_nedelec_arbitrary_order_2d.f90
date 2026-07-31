@@ -13,7 +13,11 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
         evaluate_triangle_nedelec_first_kind, &
         initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
         triangle_nedelec_first_kind_t
-    use fortfem_triangle_piola_maps, only: map_triangle_nedelec_covariant
+    use fortfem_triangle_piola_maps, only: &
+        map_triangle_nedelec_covariant, &
+        map_triangle_nedelec_covariant_jvp, &
+        map_triangle_nedelec_covariant_vjp
+    use fortnum_linalg, only: det2_jvp, det2_vjp
     use fortsparse, only: &
         csc_from_triplet, csc_t, FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
@@ -22,6 +26,8 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
     private
 
     public :: assemble_triangle_nedelec_curl_mass_element
+    public :: assemble_triangle_nedelec_curl_mass_element_jvp
+    public :: assemble_triangle_nedelec_curl_mass_element_vjp
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_nedelec_cell_tensor_csc
     public :: assemble_triangle_nedelec_curl_csc
@@ -213,6 +219,172 @@ contains
         end do
         status = 0
     end subroutine assemble_triangle_nedelec_curl_mass_element
+
+    subroutine assemble_triangle_nedelec_curl_mass_element_jvp( &
+            vertices, order, quadrature_degree, curl_coefficient, mass_tensor, &
+            vertices_dot, curl_coefficient_dot, mass_tensor_dot, matrix_dot, &
+            status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_tensor(2, 2)
+        real(dp), intent(in) :: curl_coefficient_dot, mass_tensor_dot(2, 2)
+        real(dp), allocatable, intent(out) :: matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        type(triangle_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:), curls_dot(:), eta(:)
+        real(dp), allocatable :: ref_curls(:), ref_values(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp), allocatable :: zero_curls(:), zero_values(:, :)
+        real(dp) :: curl_energy, determinant, determinant_dot
+        real(dp) :: jacobian(2, 2), jacobian_dot(2, 2)
+        real(dp) :: mass_energy, mass_energy_dot
+        integer :: column, dof_count, point, row
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (order < 1 .or. quadrature_degree < 0) return
+        call initialize_triangle_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        call triangle_jacobian(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call triangle_jacobian_direction(vertices_dot, jacobian_dot)
+        call det2_jvp(jacobian, jacobian_dot, determinant_dot)
+        dof_count = triangle_nedelec_dof_count(basis)
+        allocate(matrix_dot(dof_count, dof_count), source=0.0_dp)
+        allocate(ref_values(2, dof_count), ref_curls(dof_count))
+        allocate(zero_values(2, dof_count), zero_curls(dof_count), &
+            source=0.0_dp)
+        allocate(values(2, dof_count), curls(dof_count))
+        allocate(values_dot(2, dof_count), curls_dot(dof_count))
+        do point = 1, size(weights)
+            call evaluate_triangle_nedelec_first_kind( &
+                basis, xi(point), eta(point), ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_triangle_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            call map_triangle_nedelec_covariant_jvp( &
+                jacobian, ref_values, ref_curls, jacobian_dot, zero_values, &
+                zero_curls, values_dot, curls_dot, status)
+            if (status /= 0) return
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    curl_energy = curls(row)*curls(column)
+                    mass_energy = dot_product( &
+                        values(:, row), matmul(mass_tensor, values(:, column)))
+                    mass_energy_dot = dot_product( &
+                        values_dot(:, row), &
+                        matmul(mass_tensor, values(:, column))) + dot_product( &
+                        values(:, row), &
+                        matmul(mass_tensor_dot, values(:, column)) + &
+                        matmul(mass_tensor, values_dot(:, column)))
+                    matrix_dot(row, column) = matrix_dot(row, column) + &
+                        weights(point)*(determinant_dot*( &
+                        curl_coefficient*curl_energy + mass_energy) + &
+                        determinant*(curl_coefficient_dot*curl_energy + &
+                        curl_coefficient*(curls_dot(row)*curls(column) + &
+                        curls(row)*curls_dot(column)) + mass_energy_dot))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_triangle_nedelec_curl_mass_element_jvp
+
+    subroutine assemble_triangle_nedelec_curl_mass_element_vjp( &
+            vertices, order, quadrature_degree, curl_coefficient, mass_tensor, &
+            matrix_bar, vertices_bar, curl_coefficient_bar, mass_tensor_bar, &
+            status)
+        real(dp), intent(in) :: vertices(2, 3)
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_tensor(2, 2)
+        real(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(2, 3)
+        real(dp), intent(out) :: curl_coefficient_bar, mass_tensor_bar(2, 2)
+        integer, intent(out) :: status
+
+        type(triangle_nedelec_first_kind_t) :: basis
+        real(dp), allocatable :: curls(:), curls_bar(:), eta(:)
+        real(dp), allocatable :: ref_curls(:), ref_curls_bar(:)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: curl_energy, determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(2, 2), jacobian(2, 2)
+        real(dp) :: jacobian_bar(2, 2), local_jacobian_bar(2, 2)
+        real(dp) :: mass_energy, seed
+        integer :: column, dof_count, point, row
+
+        vertices_bar = 0.0_dp
+        curl_coefficient_bar = 0.0_dp
+        mass_tensor_bar = 0.0_dp
+        status = 1
+        if (order < 1 .or. quadrature_degree < 0) return
+        call initialize_triangle_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        dof_count = triangle_nedelec_dof_count(basis)
+        if (size(matrix_bar, 1) /= dof_count .or. &
+            size(matrix_bar, 2) /= dof_count) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        call triangle_jacobian(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        allocate(ref_values(2, dof_count), ref_curls(dof_count))
+        allocate(ref_values_bar(2, dof_count), ref_curls_bar(dof_count))
+        allocate(values(2, dof_count), curls(dof_count))
+        allocate(values_bar(2, dof_count), curls_bar(dof_count))
+        jacobian_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        do point = 1, size(weights)
+            call evaluate_triangle_nedelec_first_kind( &
+                basis, xi(point), eta(point), ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_triangle_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            values_bar = 0.0_dp
+            curls_bar = 0.0_dp
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    seed = weights(point)*matrix_bar(row, column)
+                    curl_energy = curls(row)*curls(column)
+                    mass_energy = dot_product( &
+                        values(:, row), matmul(mass_tensor, values(:, column)))
+                    determinant_bar = determinant_bar + &
+                        seed*(curl_coefficient*curl_energy + mass_energy)
+                    curl_coefficient_bar = curl_coefficient_bar + &
+                        seed*determinant*curl_energy
+                    mass_tensor_bar = mass_tensor_bar + &
+                        seed*determinant*spread(values(:, row), 2, 2)* &
+                        spread(values(:, column), 1, 2)
+                    curls_bar(row) = curls_bar(row) + &
+                        seed*determinant*curl_coefficient*curls(column)
+                    curls_bar(column) = curls_bar(column) + &
+                        seed*determinant*curl_coefficient*curls(row)
+                    values_bar(:, row) = values_bar(:, row) + &
+                        seed*determinant*matmul( &
+                        mass_tensor, values(:, column))
+                    values_bar(:, column) = values_bar(:, column) + &
+                        seed*determinant*matmul( &
+                        transpose(mass_tensor), values(:, row))
+                end do
+            end do
+            call map_triangle_nedelec_covariant_vjp( &
+                jacobian, ref_values, ref_curls, values_bar, curls_bar, &
+                local_jacobian_bar, ref_values_bar, ref_curls_bar, status)
+            if (status /= 0) return
+            jacobian_bar = jacobian_bar + local_jacobian_bar
+        end do
+        call det2_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        call triangle_jacobian_vjp( &
+            jacobian_bar + determinant_jacobian_bar, vertices_bar)
+        status = 0
+    end subroutine assemble_triangle_nedelec_curl_mass_element_vjp
 
     subroutine assemble_triangle_nedelec_curl_mass_csc( &
             mesh, order, quadrature_degree, matrix, status, &
@@ -482,5 +654,37 @@ contains
             scalar_dof_count, nedelec_dof_count, rows, columns, values, &
             matrix, status)
     end subroutine assemble_triangle_nedelec_curl_csc
+
+    pure subroutine triangle_jacobian_direction(vertices, jacobian)
+        real(dp), intent(in) :: vertices(2, 3)
+        real(dp), intent(out) :: jacobian(2, 2)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+    end subroutine triangle_jacobian_direction
+
+    pure subroutine triangle_jacobian( &
+            vertices, jacobian, determinant, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        real(dp), intent(out) :: jacobian(2, 2), determinant
+        integer, intent(out) :: status
+
+        call triangle_jacobian_direction(vertices, jacobian)
+        determinant = jacobian(1, 1)*jacobian(2, 2) - &
+            jacobian(1, 2)*jacobian(2, 1)
+        status = 1
+        if (determinant <= 64.0_dp*epsilon(1.0_dp)* &
+            max(1.0_dp, maxval(abs(jacobian))**2)) return
+        status = 0
+    end subroutine triangle_jacobian
+
+    pure subroutine triangle_jacobian_vjp(jacobian_bar, vertices_bar)
+        real(dp), intent(in) :: jacobian_bar(2, 2)
+        real(dp), intent(out) :: vertices_bar(2, 3)
+
+        vertices_bar(:, 1) = -sum(jacobian_bar, dim=2)
+        vertices_bar(:, 2) = jacobian_bar(:, 1)
+        vertices_bar(:, 3) = jacobian_bar(:, 2)
+    end subroutine triangle_jacobian_vjp
 
 end module fortfem_assembly_nedelec_arbitrary_order_2d
