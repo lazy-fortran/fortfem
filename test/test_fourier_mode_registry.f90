@@ -121,6 +121,11 @@ program test_fourier_mode_registry
         status=status)
     call check_condition(status%code /= 0, &
         "Fourier registry rejects duplicate modes")
+    call initialize_fourier_mode_registry( &
+        registry, [0, 1], [0, 1], field_periods, 0.0_dp, 0.0_dp, .false., &
+        radial_powers=[0], status=status)
+    call check_condition(status%code /= 0, &
+        "Fourier registry rejects a mismatched radial-power array")
 
     call evaluate_fourier_mode( &
         copied, 0, radius, theta, phi, value, radial_derivative, &
