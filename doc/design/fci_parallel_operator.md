@@ -327,6 +327,16 @@ outward flux. Its fixed-owner JVP and real VJP are exposed for moving terminal
 weights, flux laws, and canonical volumes; owner changes remain discrete
 topology events.
 
+For 3D PARALLAX-style traces, `find_fci_first_hit_triangle_3d` applies the same
+contract to an oriented triangular terminal surface. It returns the nearest
+transverse hit, the right-hand triangle normal, and a valid no-hit status, so
+triangulated vessel or divertor surfaces can be used without making the bulk
+FCI planes conform to the external geometry. The fixed-topology
+`find_fci_first_hit_triangle_3d_jvp` differentiates the hit parameter, point,
+and oriented normal with respect to endpoints and surface vertices. This is a
+geometry primitive only; material laws and conservative ownership remain
+separate residual contracts.
+
 ## Provenance
 
 The design follows the FCI trace/interpolation and support-operator

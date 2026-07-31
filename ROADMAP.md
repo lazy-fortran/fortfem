@@ -1038,7 +1038,9 @@ gallery example.
   against central differences. `assemble_fci_terminal_boundary_flux` now
   provides the volume-weighted conservative contribution with fixed-owner JVP
   and VJP dot-product oracles; owner remaps and physical material laws remain
-  separate contracts.
+  separate contracts. The matching 3D triangle search and fixed-topology JVP
+  now cover triangulated toroidal vessel/divertor surfaces without copying a
+  PARALLAX implementation.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
   conditions.
