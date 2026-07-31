@@ -926,6 +926,10 @@ gallery example.
   first-order pressure/velocity, displacement/momentum, and port-Hamiltonian
   Cayley contract. Its independent test checks the oscillator map, energy, and
   signed-step reversibility.
+- The public `advance_mixed_wave_symplectic_euler` step now provides a
+  partitioned first-order symplectic update for the same mixed state. Its
+  independent test checks the two-stage mass-solve oracle and the canonical
+  two-state symplectic-form identity; dissipative terms remain separate.
 - Variational/symplectic and Poisson building blocks for ideal terms.
 - Energy-dissipative integrators for resistive and viscous terms.
 - Symmetric splitting, implicit midpoint/Cayley, discrete-gradient or
