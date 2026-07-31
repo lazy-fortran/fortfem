@@ -1138,7 +1138,10 @@ gallery example.
   trace-basis transpose times positive surface quadrature/source weights,
   providing the fitted δ_\Gamma weak-load contract.
 - `assemble_surface_vector_delta_load` adds the tangential trace/surface-
-  current pairing needed for an explicit Ampère sheet.
+  current pairing needed for an explicit Ampère sheet. Scalar and vector
+  delta-load actions now also expose analytic fixed-topology JVP/VJP products
+  for basis, quadrature weights, and source/current values; this keeps explicit
+  sheet residuals differentiable for fitted, cut, DG, and IGA callers.
 - `assemble_interface_surface_current` now evaluates the oriented Ampere
   jump, its integrated current ledger, and fixed-topology JVP/VJP actions.
   Independent analytical, orientation-reversal, finite-difference, and
