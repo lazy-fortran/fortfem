@@ -17,6 +17,8 @@ module fortfem_level_set_tetra_interface_3d
     public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d
     public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
+    public :: evaluate_level_set_tetra_cut_moments_3d
+    public :: evaluate_level_set_tetra_cut_moments_3d_jvp
 
 contains
 
@@ -275,15 +277,130 @@ contains
             negative_centroid_dot, status)
     end subroutine evaluate_level_set_tetra_cut_quadrature_3d_jvp
 
+    subroutine evaluate_level_set_tetra_cut_moments_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            positive_second_moment, negative_volume, negative_centroid, &
+            negative_second_moment, interface_area, normal, status)
+        !! Return exact degree-two raw moments for a linear tetrahedral cut.
+        !!
+        !! The tensor entries are physical integrals
+        !! \\(M_{ab}=\\int_{\\Omega^\\pm}x_a x_b\\,dV\\).  The same oriented
+        !! face/interface tetrahedral fans as the degree-one primitive are
+        !! used, so positive and negative moments close to the parent moments.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(out) :: positive_volume, positive_centroid(3)
+        real(dp), intent(out) :: positive_second_moment(3, 3)
+        real(dp), intent(out) :: negative_volume, negative_centroid(3)
+        real(dp), intent(out) :: negative_second_moment(3, 3)
+        real(dp), intent(out) :: interface_area, normal(3)
+        integer, intent(out) :: status
+
+        real(dp) :: interface_points(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_count, interface_status
+
+        positive_second_moment = 0.0_dp
+        negative_second_moment = 0.0_dp
+        call evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        if (status /= 0) return
+
+        interface_points = 0.0_dp
+        interface_count = 0
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        if (has_positive .and. has_negative) then
+            call evaluate_level_set_tetra_interface_3d( &
+                vertices, level_values, interface_points, interface_count, &
+                interface_area, normal, interface_status)
+            if (interface_status /= 0) then
+                status = interface_status
+                return
+            end if
+        end if
+        call accumulate_tetra_side( &
+            vertices, level_values, .true., interface_points, interface_count, &
+            positive_volume, positive_centroid, status, positive_second_moment)
+        if (status /= 0) return
+        call accumulate_tetra_side( &
+            vertices, level_values, .false., interface_points, interface_count, &
+            negative_volume, negative_centroid, status, negative_second_moment)
+    end subroutine evaluate_level_set_tetra_cut_moments_3d
+
+    subroutine evaluate_level_set_tetra_cut_moments_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_volume_dot, positive_centroid_dot, positive_second_moment_dot, &
+            negative_volume_dot, negative_centroid_dot, negative_second_moment_dot, &
+            interface_area_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of degree-two tetrahedral moments.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        real(dp), intent(out) :: positive_volume_dot, positive_centroid_dot(3)
+        real(dp), intent(out) :: positive_second_moment_dot(3, 3)
+        real(dp), intent(out) :: negative_volume_dot, negative_centroid_dot(3)
+        real(dp), intent(out) :: negative_second_moment_dot(3, 3)
+        real(dp), intent(out) :: interface_area_dot, normal_dot(3)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_volume, positive_centroid(3)
+        real(dp) :: negative_volume, negative_centroid(3)
+        real(dp) :: interface_area, normal(3)
+        real(dp) :: interface_points(3, 4), interface_points_dot(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_count, interface_status
+
+        positive_second_moment_dot = 0.0_dp
+        negative_second_moment_dot = 0.0_dp
+        call evaluate_level_set_tetra_cut_quadrature_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_volume_dot, positive_centroid_dot, negative_volume_dot, &
+            negative_centroid_dot, interface_area_dot, normal_dot, status)
+        if (status /= 0) return
+        call evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        if (status /= 0) return
+
+        interface_points = 0.0_dp
+        interface_points_dot = 0.0_dp
+        interface_count = 0
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        if (has_positive .and. has_negative) then
+            call evaluate_tetra_interface_geometry_jvp( &
+                vertices, level_values, vertices_dot, level_values_dot, &
+                interface_points, interface_points_dot, interface_count, &
+                interface_area, interface_area_dot, normal, normal_dot, &
+                interface_status)
+            if (interface_status /= 0) then
+                status = interface_status
+                return
+            end if
+        end if
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            interface_points, interface_points_dot, interface_count, &
+            positive_volume, positive_centroid, positive_volume_dot, &
+            positive_centroid_dot, status, positive_second_moment_dot)
+        if (status /= 0) return
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            interface_points, interface_points_dot, interface_count, &
+            negative_volume, negative_centroid, negative_volume_dot, &
+            negative_centroid_dot, status, negative_second_moment_dot)
+    end subroutine evaluate_level_set_tetra_cut_moments_3d_jvp
+
     subroutine accumulate_tetra_side( &
             vertices, level_values, keep_positive, interface_points, &
-            interface_count, volume, centroid, status)
+            interface_count, volume, centroid, status, second_moment)
         real(dp), intent(in) :: vertices(3, 4), level_values(4)
         logical, intent(in) :: keep_positive
         real(dp), intent(in) :: interface_points(3, 4)
         integer, intent(in) :: interface_count
         real(dp), intent(out) :: volume, centroid(3)
         integer, intent(out) :: status
+        real(dp), intent(out), optional :: second_moment(3, 3)
 
         integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
         integer :: face_vertices(3, 4), face, polygon_count
@@ -297,6 +414,7 @@ contains
         face_vertices(:, 4) = [1, 3, 2]
         volume = 0.0_dp
         centroid = 0.0_dp
+        if (present(second_moment)) second_moment = 0.0_dp
         status = 1
         volume_accum = 0.0_dp
         first_moment = 0.0_dp
@@ -308,7 +426,8 @@ contains
                 polygon_count)
             if (polygon_count >= 3) then
                 call accumulate_oriented_polygon( &
-                    polygon, polygon_count, volume_accum, first_moment)
+                    polygon, polygon_count, volume_accum, first_moment, &
+                    second_moment)
             end if
         end do
 
@@ -323,7 +442,8 @@ contains
                     interface_points(:, :interface_count)
             end if
             call accumulate_oriented_polygon( &
-                polygon, interface_count, volume_accum, first_moment)
+                polygon, interface_count, volume_accum, first_moment, &
+                second_moment)
         end if
 
         if (volume_accum <= topology_tolerance) then
@@ -474,7 +594,8 @@ contains
     subroutine accumulate_tetra_side_jvp( &
             vertices, level_values, vertices_dot, level_values_dot, &
             keep_positive, interface_points, interface_points_dot, &
-            interface_count, volume, centroid, volume_dot, centroid_dot, status)
+            interface_count, volume, centroid, volume_dot, centroid_dot, status, &
+            second_moment_dot)
         real(dp), intent(in) :: vertices(3, 4), level_values(4)
         real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
         logical, intent(in) :: keep_positive
@@ -483,6 +604,7 @@ contains
         real(dp), intent(in) :: volume, centroid(3)
         real(dp), intent(out) :: volume_dot, centroid_dot(3)
         integer, intent(out) :: status
+        real(dp), intent(out), optional :: second_moment_dot(3, 3)
 
         integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
         integer :: face_vertices(3, 4), face, polygon_count
@@ -497,6 +619,7 @@ contains
         face_vertices(:, 4) = [1, 3, 2]
         volume_dot = 0.0_dp
         centroid_dot = 0.0_dp
+        if (present(second_moment_dot)) second_moment_dot = 0.0_dp
         status = 1
         volume_accum = 0.0_dp
         volume_accum_dot = 0.0_dp
@@ -510,7 +633,7 @@ contains
             if (polygon_count >= 3) then
                 call accumulate_oriented_polygon_jvp( &
                     polygon, polygon_dot, polygon_count, volume_accum, &
-                    volume_accum_dot, first_moment_dot)
+                    volume_accum_dot, first_moment_dot, second_moment_dot)
             end if
         end do
 
@@ -530,7 +653,7 @@ contains
             end if
             call accumulate_oriented_polygon_jvp( &
                 polygon, polygon_dot, interface_count, volume_accum, &
-                volume_accum_dot, first_moment_dot)
+                volume_accum_dot, first_moment_dot, second_moment_dot)
         end if
 
         if (volume <= topology_tolerance) then
@@ -661,14 +784,18 @@ contains
     end function side_contains
 
     subroutine accumulate_oriented_polygon( &
-            polygon, point_count, volume, first_moment)
+            polygon, point_count, volume, first_moment, second_moment)
         real(dp), intent(in) :: polygon(3, 6)
         integer, intent(in) :: point_count
         real(dp), intent(inout) :: volume, first_moment(3)
+        real(dp), intent(inout), optional :: second_moment(3, 3)
 
         integer :: point
         real(dp) :: signed_tetra_volume, first_point(3)
         real(dp) :: second_point(3), third_point(3)
+        real(dp) :: pair_moment(3, 3)
+
+        if (present(second_moment)) pair_moment = 0.0_dp
 
         first_point = polygon(:, 1)
         do point = 2, point_count - 1
@@ -679,20 +806,40 @@ contains
             volume = volume + signed_tetra_volume
             first_moment = first_moment + signed_tetra_volume*( &
                 first_point + second_point + third_point)/4.0_dp
+            if (present(second_moment)) then
+                pair_moment = (outer_product(first_point, first_point) + &
+                    outer_product(second_point, second_point) + &
+                    outer_product(third_point, third_point))/10.0_dp + &
+                    (outer_product(first_point, second_point) + &
+                    outer_product(second_point, first_point) + &
+                    outer_product(first_point, third_point) + &
+                    outer_product(third_point, first_point) + &
+                    outer_product(second_point, third_point) + &
+                    outer_product(third_point, second_point))/20.0_dp
+                second_moment = second_moment + signed_tetra_volume*pair_moment
+            end if
         end do
     end subroutine accumulate_oriented_polygon
 
     subroutine accumulate_oriented_polygon_jvp( &
-            polygon, polygon_dot, point_count, volume, volume_dot, first_moment_dot)
+            polygon, polygon_dot, point_count, volume, volume_dot, first_moment_dot, &
+            second_moment_dot)
         real(dp), intent(in) :: polygon(3, 6), polygon_dot(3, 6)
         integer, intent(in) :: point_count
         real(dp), intent(inout) :: volume, volume_dot, first_moment_dot(3)
+        real(dp), intent(inout), optional :: second_moment_dot(3, 3)
 
         integer :: point
         real(dp) :: first_point(3), first_point_dot(3)
         real(dp) :: second_point(3), second_point_dot(3)
         real(dp) :: third_point(3), third_point_dot(3)
         real(dp) :: signed_tetra_volume, signed_tetra_volume_dot
+        real(dp) :: pair_moment(3, 3), pair_moment_dot(3, 3)
+
+        if (present(second_moment_dot)) then
+            pair_moment = 0.0_dp
+            pair_moment_dot = 0.0_dp
+        end if
 
         first_point = polygon(:, 1)
         first_point_dot = polygon_dot(:, 1)
@@ -713,8 +860,49 @@ contains
                 (signed_tetra_volume_dot*(first_point + second_point + third_point) + &
                 signed_tetra_volume*(first_point_dot + second_point_dot + &
                 third_point_dot))/4.0_dp
+            if (present(second_moment_dot)) then
+                pair_moment = (outer_product(first_point, first_point) + &
+                    outer_product(second_point, second_point) + &
+                    outer_product(third_point, third_point))/10.0_dp + &
+                    (outer_product(first_point, second_point) + &
+                    outer_product(second_point, first_point) + &
+                    outer_product(first_point, third_point) + &
+                    outer_product(third_point, first_point) + &
+                    outer_product(second_point, third_point) + &
+                    outer_product(third_point, second_point))/20.0_dp
+                pair_moment_dot = (outer_product(first_point_dot, first_point) + &
+                    outer_product(first_point, first_point_dot) + &
+                    outer_product(second_point_dot, second_point) + &
+                    outer_product(second_point, second_point_dot) + &
+                    outer_product(third_point_dot, third_point) + &
+                    outer_product(third_point, third_point_dot))/10.0_dp + &
+                    (outer_product(first_point_dot, second_point) + &
+                    outer_product(first_point, second_point_dot) + &
+                    outer_product(second_point_dot, first_point) + &
+                    outer_product(second_point, first_point_dot) + &
+                    outer_product(first_point_dot, third_point) + &
+                    outer_product(first_point, third_point_dot) + &
+                    outer_product(third_point_dot, first_point) + &
+                    outer_product(third_point, first_point_dot) + &
+                    outer_product(second_point_dot, third_point) + &
+                    outer_product(second_point, third_point_dot) + &
+                    outer_product(third_point_dot, second_point) + &
+                    outer_product(third_point, second_point_dot))/20.0_dp
+                second_moment_dot = second_moment_dot + &
+                    signed_tetra_volume_dot*pair_moment + &
+                    signed_tetra_volume*pair_moment_dot
+            end if
         end do
     end subroutine accumulate_oriented_polygon_jvp
+
+    pure function outer_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3, 3)
+
+        product(1, :) = first(1)*second
+        product(2, :) = first(2)*second
+        product(3, :) = first(3)*second
+    end function outer_product
 
     pure function cross_product(first, second) result(cross)
         real(dp), intent(in) :: first(3), second(3)

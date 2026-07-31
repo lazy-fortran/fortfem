@@ -84,3 +84,16 @@ The JVP is checked against central differences, side-volume/first-moment
 conservation, and the independent interface-JVP contract. The neutral
 internal-manifold graph supplies the topology attachment; geometry-to-graph
 construction remains a client composition layer.
+
+`evaluate_level_set_tetra_cut_moments_3d` extends the same oriented fan with
+the symmetric raw second-moment tensor
+
+\[
+M_{ab}^{\pm}=\int_{\Omega^{\pm}}x_a x_b\,dV.
+\]
+
+The tetrahedral moment identity is exact for quadratic manufactured fields and
+the positive/negative tensors conserve the parent tensor. Its fixed-topology
+JVP differentiates both clipped-face and interface-fan contributions. The
+focused test covers an independent one-corner tetrahedron, conservation, and a
+central-difference derivative oracle.
