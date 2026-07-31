@@ -559,3 +559,9 @@ before entering the generated expressions, while tests cover both map
 directions against re-evaluation and the real adjoint identity. This keeps
 large torus boundary parameterizations differentiable before they reach the
 panel or FEM--BEM assembly layer.
+
+The toroidal orthonormal vector-basis transform is generated alongside the
+point map. Its JVP differentiates both chart coordinates and field components,
+and its VJP returns the corresponding coordinate and component cotangents.
+This is the geometry-level product used by curl--curl/Nédélec paths, so vector
+field sensitivities do not require a finite-difference coordinate transform.
