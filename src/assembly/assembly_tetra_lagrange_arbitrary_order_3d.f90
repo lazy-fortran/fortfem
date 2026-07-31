@@ -22,6 +22,9 @@ module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
     public :: assemble_tetra_lagrange_stiffness_element_jvp
     public :: assemble_tetra_lagrange_stiffness_element_vjp
     public :: assemble_tetra_lagrange_scalar_load
+    public :: assemble_tetra_lagrange_scalar_load_samples
+    public :: assemble_tetra_lagrange_scalar_load_samples_jvp
+    public :: assemble_tetra_lagrange_scalar_load_samples_vjp
     public :: scalar_source_3d
 
     abstract interface
@@ -467,6 +470,238 @@ contains
         end do
     end subroutine assemble_tetra_lagrange_stiffness_csc_vjp
 
+    subroutine assemble_tetra_lagrange_scalar_load_samples( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, right_hand_side, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), source_values(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: right_hand_side(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: gradients(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), vertices(3, 4)
+        integer :: dof, dof_count, global_count, local_status, node, point
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral H1 scalar load failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        call initialize_tetra_lagrange(degree, basis, local_status)
+        if (local_status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (size(source_values, 1) /= size(weights)) return
+        if (size(source_values, 2) /= size(tetrahedra, 2)) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        allocate(right_hand_side(global_count), source=0.0_dp)
+        allocate(values(dof_count), gradients(3, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_jacobian(vertices, jacobian)
+            determinant = det3(jacobian)
+            if (.not. valid_jacobian(jacobian, determinant)) return
+            do point = 1, size(weights)
+                call evaluate_tetra_lagrange( &
+                    basis, [x(point), y(point), z(point)], values, gradients, &
+                    local_status)
+                if (local_status /= 0) return
+                do dof = 1, dof_count
+                    right_hand_side(global_dofs(dof, tetrahedron)) = &
+                        right_hand_side(global_dofs(dof, tetrahedron)) + &
+                        determinant*weights(point)* &
+                        source_values(point, tetrahedron)*values(dof)
+                end do
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_lagrange_scalar_load_samples
+
+    subroutine assemble_tetra_lagrange_scalar_load_samples_jvp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, source_gradients, mesh_vertices_dot, &
+            source_parameter_dot, right_hand_side_dot, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: right_hand_side_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: gradients(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_dot, jacobian(3, 3)
+        real(dp) :: jacobian_dot(3, 3), point_dot(3), reference_point(3)
+        real(dp) :: source_dot, vertices(3, 4), vertices_dot(3, 4)
+        integer :: dof, dof_count, global_count, local_status, node, point
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral H1 scalar load JVP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        call initialize_tetra_lagrange(degree, basis, local_status)
+        if (local_status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (.not. valid_sample_shapes( &
+            source_values, source_gradients, source_parameter_dot, &
+            size(weights), size(tetrahedra, 2))) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        allocate(right_hand_side_dot(global_count), source=0.0_dp)
+        allocate(values(dof_count), gradients(3, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_jacobian(vertices, jacobian)
+            call tetra_jacobian(vertices_dot, jacobian_dot)
+            determinant = det3(jacobian)
+            if (.not. valid_jacobian(jacobian, determinant)) return
+            call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+            do point = 1, size(weights)
+                reference_point = [x(point), y(point), z(point)]
+                call evaluate_tetra_lagrange( &
+                    basis, reference_point, values, gradients, local_status)
+                if (local_status /= 0) return
+                point_dot = vertices_dot(:, 1) + &
+                    matmul(jacobian_dot, reference_point)
+                source_dot = source_parameter_dot(point, tetrahedron) + &
+                    dot_product( &
+                    source_gradients(:, point, tetrahedron), point_dot)
+                do dof = 1, dof_count
+                    right_hand_side_dot(global_dofs(dof, tetrahedron)) = &
+                        right_hand_side_dot( &
+                        global_dofs(dof, tetrahedron)) + weights(point)* &
+                        values(dof)*(determinant_dot* &
+                        source_values(point, tetrahedron) + &
+                        determinant*source_dot)
+                end do
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_lagrange_scalar_load_samples_jvp
+
+    subroutine assemble_tetra_lagrange_scalar_load_samples_vjp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, source_gradients, right_hand_side_bar, &
+            mesh_vertices_bar, source_values_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: right_hand_side_bar(:)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: source_values_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: gradients(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), jacobian(3, 3)
+        real(dp) :: jacobian_bar(3, 3), local_vertices_bar(3, 4)
+        real(dp) :: local_vertices_bar_from_jacobian(3, 4)
+        real(dp) :: point_bar(3), reference_point(3), sample_bar
+        real(dp) :: seed, vertices(3, 4)
+        integer :: dof, dof_count, global_count, local_status, node, point
+        integer :: tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral H1 scalar load VJP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh_vertices))) return
+        call initialize_tetra_lagrange(degree, basis, local_status)
+        if (local_status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_count, local_status)
+        if (local_status /= 0) return
+        if (size(right_hand_side_bar) /= global_count) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (size(source_values, 1) /= size(weights) .or. &
+            size(source_values, 2) /= size(tetrahedra, 2)) return
+        if (size(source_gradients, 1) /= 3) return
+        if (size(source_gradients, 2) /= size(weights) .or. &
+            size(source_gradients, 3) /= size(tetrahedra, 2)) return
+        if (any(shape(source_values_bar) /= shape(source_values))) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        allocate(values(dof_count), gradients(3, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_jacobian(vertices, jacobian)
+            determinant = det3(jacobian)
+            if (.not. valid_jacobian(jacobian, determinant)) return
+            local_vertices_bar = 0.0_dp
+            jacobian_bar = 0.0_dp
+            determinant_bar = 0.0_dp
+            do point = 1, size(weights)
+                reference_point = [x(point), y(point), z(point)]
+                call evaluate_tetra_lagrange( &
+                    basis, reference_point, values, gradients, local_status)
+                if (local_status /= 0) return
+                seed = 0.0_dp
+                do dof = 1, dof_count
+                    seed = seed + right_hand_side_bar( &
+                        global_dofs(dof, tetrahedron))* &
+                        weights(point)*values(dof)
+                end do
+                determinant_bar = determinant_bar + &
+                    seed*source_values(point, tetrahedron)
+                sample_bar = seed*determinant
+                source_values_bar(point, tetrahedron) = sample_bar
+                point_bar = &
+                    sample_bar*source_gradients(:, point, tetrahedron)
+                local_vertices_bar(:, 1) = &
+                    local_vertices_bar(:, 1) + point_bar
+                jacobian_bar = jacobian_bar + &
+                    spread(point_bar, 2, 3)* &
+                    spread(reference_point, 1, 3)
+            end do
+            call det3_vjp( &
+                jacobian, determinant_bar, determinant_jacobian_bar)
+            call tetra_jacobian_vjp( &
+                jacobian_bar + determinant_jacobian_bar, &
+                local_vertices_bar_from_jacobian)
+            local_vertices_bar = local_vertices_bar + &
+                local_vertices_bar_from_jacobian
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_lagrange_scalar_load_samples_vjp
+
     subroutine assemble_tetra_lagrange_scalar_load( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, source, &
             right_hand_side, status)
@@ -577,6 +812,26 @@ contains
         valid = all(tetrahedra >= 1) .and. &
             all(tetrahedra <= size(mesh_vertices, 2))
     end function valid_tetra_mesh
+
+    pure logical function valid_sample_shapes( &
+            source_values, source_gradients, source_parameter_dot, &
+            point_count, tetrahedron_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :)
+        integer, intent(in) :: point_count, tetrahedron_count
+
+        valid = size(source_values, 1) == point_count .and. &
+            size(source_values, 2) == tetrahedron_count
+        if (.not. valid) return
+        valid = size(source_parameter_dot, 1) == point_count .and. &
+            size(source_parameter_dot, 2) == tetrahedron_count
+        if (.not. valid) return
+        valid = size(source_gradients, 1) == 3
+        if (.not. valid) return
+        valid = size(source_gradients, 2) == point_count .and. &
+            size(source_gradients, 3) == tetrahedron_count
+    end function valid_sample_shapes
 
     pure real(dp) function csc_value_bar_at( &
             matrix, values_bar, row, column) result(value_bar)
