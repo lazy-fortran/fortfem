@@ -273,3 +273,6 @@ descriptions in the local PARALLAX checkout at
 material. The published support-operator construction is described by
 [Stegmeir et al.](https://doi.org/10.1016/j.cpc.2016.12.014). No PARALLAX
 source, binary, or license-sensitive benchmark data is included in FortFEM.
+The `fci_parallel_diffusion` gallery fixture also records a local
+matrix-free-action timing in `fci_parallel_benchmark.csv`; timing values are
+runner-specific and are not treated as a checked-in performance claim.

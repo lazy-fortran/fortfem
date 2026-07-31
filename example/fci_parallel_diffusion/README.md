@@ -18,6 +18,8 @@ Outputs:
 - `fci_parallel_profile_1d.png`
 - `fci_parallel_dissipation_1d.png`
 - `fci_parallel_profile.csv`
+- `fci_parallel_benchmark.csv` with the measured matrix-free action time on
+  the local runner.
 
 The implementation follows the support-operator construction described by
 [Stegmeir et al.](https://doi.org/10.1016/j.cpc.2015.09.016). FortFEM does not
