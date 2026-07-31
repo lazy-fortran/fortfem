@@ -1,4 +1,8 @@
 module fortfem_api
+    use fortfem_tetra_mixed_poisson_state_3d, only: &
+        solve_tetra_mixed_poisson_state, &
+        solve_tetra_mixed_poisson_state_jvp, &
+        solve_tetra_mixed_poisson_state_vjp
     use fortfem_mixed_rt_system, only: solve_mixed_rt_system, &
         solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
     use fortfem_assembly_bspline_polar_2d, only: &
@@ -738,6 +742,9 @@ module fortfem_api
     public :: solve_mixed_rt_system
     public :: solve_mixed_rt_system_jvp
     public :: solve_mixed_rt_system_vjp
+    public :: solve_tetra_mixed_poisson_state
+    public :: solve_tetra_mixed_poisson_state_jvp
+    public :: solve_tetra_mixed_poisson_state_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass

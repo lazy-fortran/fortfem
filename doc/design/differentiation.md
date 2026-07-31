@@ -179,6 +179,14 @@ For affine RT elements the divergence block has no mesh derivative:
 adjoints therefore propagate geometry through the RT mass block and physical
 load, while the algebraic API still permits an independently active
 divergence operator for non-affine or externally assembled discretizations.
+The tetrahedral mixed-Poisson state wrapper performs that composition
+end-to-end. Its JVP accepts every mesh-coordinate direction, the flux-mass
+coefficient direction, and an assembled DG load direction. Its VJP returns
+all shared vertex cotangents, the material cotangent, and the load cotangent
+using a single sparse adjoint solve followed by one RT assembly reverse sweep.
+Keeping the load explicit avoids silently assuming derivatives for an opaque
+Fortran source callback; spatially differentiable source representations can
+compose at this boundary.
 
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
