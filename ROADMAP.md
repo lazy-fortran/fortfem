@@ -161,7 +161,7 @@ documentation baseline. The list is intentionally conservative.
 | Scalar FEM | P1/P2/Q1 and arbitrary-order triangular scalar paths, Poisson and diffusion forms, boundary conditions, plotting | General field and coefficient callbacks in the symbolic form compiler |
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
-| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical API is re-exported through `fortfem_api` and checked by an integration oracle | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
+| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths are public | ILUT and fill-controlled ICHOL, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
@@ -630,9 +630,11 @@ and the current moderate-degree limitation. The remaining foundation is
 stable high-order and near-cut continuation, spherical harmonics and products,
 and cross-geometry special-function oracles. Analytical solutions and DtN
 maps are tested on slabs, cylinders, spheres, and exact toroidal surfaces. The
-torus API must state whether a function is a toroidal harmonic, a Fourier mode
-in toroidal coordinates, or a numerical continuation of a special function.
-These are not interchangeable names.
+FortFEM now re-exports the pinned toroidal P/Q values and derivatives through
+`fortfem_toroidal_harmonics`, with an independent branch/derivative/domain
+oracle. The torus API must state whether a function is a toroidal harmonic, a
+Fourier mode in toroidal coordinates, or a numerical continuation of a special
+function. These are not interchangeable names.
 
 ## 8. PDE and boundary-operator ingredients
 
@@ -1390,6 +1392,10 @@ gallery example.
   and invalid-angle tests. Complete the remaining stable high-order and
   near-cut continuation before using these functions as production
   DtN/torus-harmonic building blocks.
+- The FortFEM public API now re-exports the pinned toroidal P/Q values and
+  derivatives through `fortfem_toroidal_harmonics`; an independent adapter
+  oracle covers both Hobson branches, derivative values, and invalid-domain
+  NaN behavior. Stable continuation and mode-coupled toroidal operators remain.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
   operators.
