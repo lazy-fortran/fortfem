@@ -3,6 +3,11 @@ name: Deploy Documentation to GitHub Pages
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: "Completed test run ID whose generated-plots artifact should be reused"
+        required: false
+        type: string
   
   # Run after test/interoperability workflows complete.  The test workflow
   # deliberately publishes example artifacts even when verification failures
@@ -44,8 +49,18 @@ jobs:
           if_no_artifact_found: ignore
         continue-on-error: true
 
+      - name: Download example plots from selected test run
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != '' }}
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ inputs.artifact_run_id }}
+          name: generated-plots
+          path: ./artifacts/plots/
+          if_no_artifact_found: ignore
+        continue-on-error: true
+
       - name: Download latest successful example plots
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.name != 'test' }}
+        if: ${{ (github.event_name != 'workflow_run' && inputs.artifact_run_id == '') || (github.event_name == 'workflow_run' && github.event.workflow_run.name != 'test') }}
         uses: dawidd6/action-download-artifact@v3
         with:
           name: generated-plots

@@ -1,3 +1,7 @@
+---
+title: FCI support-volume geometry
+---
+
 # FCI support-volume geometry
 
 `compute_fci_staggered_flux_box_volumes` is the geometry-side contract for the

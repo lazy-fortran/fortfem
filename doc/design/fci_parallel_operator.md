@@ -1,3 +1,7 @@
+---
+title: FCI parallel support operator
+---
+
 # FCI parallel support operator
 
 FortFEM now has a small, dependency-light algebraic contract for a

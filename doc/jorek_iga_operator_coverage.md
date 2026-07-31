@@ -1,3 +1,7 @@
+---
+title: Structure-preserving IGA coverage for JOREK-type models
+---
+
 # Structure-preserving IGA coverage for JOREK-type models
 
 FortFEM's isogeometric path follows the tensor-product spline de Rham complex
