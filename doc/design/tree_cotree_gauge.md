@@ -25,6 +25,8 @@ is not silently differentiated.
 
 ```fortran
 call build_tree_cotree_gauge(incidence, gauge, status)
+call build_tree_cotree_dof_map( &
+    gauge, control_edge_dofs, total_dof_count, constrained, free_dofs, status)
 call tree_cotree_gauge_edges(gauge, tree_edges, cotree_edges, status)
 call apply_tree_cotree_restriction(gauge, full, reduced, status)
 call apply_tree_cotree_prolongation(gauge, reduced, full, status)
@@ -54,9 +56,12 @@ separate contracts.
 For lowest-order edge elements the graph is the mesh one-skeleton. For
 high-order Nédélec and spline H(curl) spaces, only the gradient/control-mesh
 subspace is selected by the tree; higher-order edge, face, and cell moments
-are retained through a caller-owned DOF map. The same rule applies to the IGA
-control mesh and to nonmatching multipatch mortars. The primitive never
-assumes a plasma geometry or a particular material law.
+are retained through a caller-owned DOF map. `build_tree_cotree_dof_map`
+validates that map, returns the constrained tree-edge DOFs and the ordered
+free-DOF list, and can feed `sparse_direct_solve_constrained` for a direct
+factorization. The same rule applies to the IGA control mesh and to
+nonmatching multipatch mortars. The primitive never assumes a plasma geometry
+or a particular material law.
 
 Tree--cotree gauging is the direct-solve path for curl--curl nullspaces. The
 sparse CSC wrappers compose the same fixed tree selector with the existing

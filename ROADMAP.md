@@ -1149,8 +1149,11 @@ gallery example.
   fixed-gauge dense direct system, and composes with real/complex CSC direct
   solves through the existing constrained reduction. Independent triangle,
   disconnected-forest, reduction, sparse solve, fixed-map derivative, and
-  malformed-incidence tests cover the selector. High-order FEEC/IGA moment
-  maps and period constraints remain composition layers.
+  malformed-incidence tests cover the selector. `build_tree_cotree_dof_map`
+  now lifts the frozen control-edge selector to arbitrary high-order or IGA
+  global DOF numbering, retaining extra edge/face/cell moments for the caller's
+  sparse direct solver; duplicate and out-of-range maps have independent
+  rejection tests. Period constraints remain a separate composition layer.
 - The neutral `internal_manifold_graph_t` contract now records oriented
   plus/minus region sides, open or boundaryless manifold endpoints, periodic
   self-identifications, junction incidence, closed-manifold flags, and
