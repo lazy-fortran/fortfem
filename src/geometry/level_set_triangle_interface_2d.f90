@@ -13,6 +13,7 @@ module fortfem_level_set_triangle_interface_2d
     real(dp), parameter :: topology_tolerance = 64.0_dp*epsilon(1.0_dp)
 
     public :: evaluate_level_set_triangle_interface_2d
+    public :: evaluate_level_set_triangle_cut_areas_2d
 
 contains
 
@@ -79,6 +80,131 @@ contains
         normal = gradient/gradient_norm
         status = 0
     end subroutine evaluate_level_set_triangle_interface_2d
+
+    subroutine evaluate_level_set_triangle_cut_areas_2d( &
+            vertices, level_values, positive_area, negative_area, &
+            interface_length, status)
+        !! Return exact subcell areas for a linearly interpolated level set.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(out) :: positive_area, negative_area
+        real(dp), intent(out) :: interface_length
+        integer, intent(out) :: status
+
+        real(dp) :: points(2, 2), normal(2), determinant
+        integer :: interface_status
+
+        positive_area = 0.0_dp
+        negative_area = 0.0_dp
+        interface_length = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values))) return
+        determinant = (vertices(2, 2) - vertices(2, 1))* &
+            (vertices(1, 3) - vertices(1, 1)) - &
+            (vertices(1, 2) - vertices(1, 1))* &
+            (vertices(2, 3) - vertices(2, 1))
+        if (abs(determinant) <= topology_tolerance) return
+
+        positive_area = level_set_side_area(vertices, level_values, .true.)
+        negative_area = level_set_side_area(vertices, level_values, .false.)
+        call evaluate_level_set_triangle_interface_2d( &
+            vertices, level_values, points, interface_length, normal, &
+            interface_status)
+        if (interface_status /= 0) then
+            if (.not. all(level_values >= -topology_tolerance) .and. &
+                .not. all(level_values <= topology_tolerance)) then
+                positive_area = 0.0_dp
+                negative_area = 0.0_dp
+                return
+            end if
+            interface_length = 0.0_dp
+        end if
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_areas_2d
+
+    pure function level_set_side_area(vertices, level_values, keep_positive) &
+            result(area)
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        logical, intent(in) :: keep_positive
+        real(dp) :: area
+
+        real(dp) :: polygon(2, 6), clipped(2, 6)
+        integer :: point_count, point
+
+        polygon(:, 1:3) = vertices
+        point_count = 3
+        call clip_level_set_polygon( &
+            polygon, point_count, level_values, keep_positive, clipped)
+        if (point_count < 3) then
+            area = 0.0_dp
+            return
+        end if
+        area = 0.0_dp
+        do point = 1, point_count
+            area = area + polygon(1, point)* &
+                polygon(2, 1 + mod(point, point_count)) - &
+                polygon(2, point)* &
+                polygon(1, 1 + mod(point, point_count))
+        end do
+        area = 0.5_dp*abs(area)
+    end function level_set_side_area
+
+    pure subroutine clip_level_set_polygon( &
+            polygon, point_count, level_values, keep_positive, clipped)
+        real(dp), intent(inout) :: polygon(2, 6)
+        integer, intent(inout) :: point_count
+        real(dp), intent(in) :: level_values(3)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(out) :: clipped(2, 6)
+
+        integer :: current, previous, clipped_count
+        logical :: current_inside, previous_inside
+        real(dp) :: current_value, previous_value, fraction
+        real(dp) :: intersection(2)
+
+        clipped = 0.0_dp
+        clipped_count = 0
+        previous = 3
+        previous_value = level_values(previous)
+        previous_inside = side_inside(previous_value, keep_positive)
+        do current = 1, 3
+            current_value = level_values(current)
+            current_inside = side_inside(current_value, keep_positive)
+            if (current_inside .and. .not. previous_inside) then
+                fraction = previous_value/(previous_value - current_value)
+                intersection = polygon(:, previous) + fraction* &
+                    (polygon(:, current) - polygon(:, previous))
+                clipped_count = clipped_count + 1
+                clipped(:, clipped_count) = intersection
+            else if (.not. current_inside .and. previous_inside) then
+                fraction = previous_value/(previous_value - current_value)
+                intersection = polygon(:, previous) + fraction* &
+                    (polygon(:, current) - polygon(:, previous))
+                clipped_count = clipped_count + 1
+                clipped(:, clipped_count) = intersection
+            end if
+            if (current_inside) then
+                clipped_count = clipped_count + 1
+                clipped(:, clipped_count) = polygon(:, current)
+            end if
+            previous = current
+            previous_value = current_value
+            previous_inside = current_inside
+        end do
+        polygon = clipped
+        point_count = clipped_count
+    end subroutine clip_level_set_polygon
+
+    pure logical function side_inside(value, keep_positive) result(inside)
+        real(dp), intent(in) :: value
+        logical, intent(in) :: keep_positive
+
+        if (keep_positive) then
+            inside = value >= -topology_tolerance
+        else
+            inside = value <= topology_tolerance
+        end if
+    end function side_inside
 
     pure subroutine add_unique_point(candidate, points, point_count)
         real(dp), intent(in) :: candidate(2)
