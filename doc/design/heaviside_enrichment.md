@@ -41,6 +41,14 @@ call evaluate_shifted_vector_enriched_basis_jvp( &
 call evaluate_shifted_vector_enriched_basis_vjp( &
     base_values, level_values, anchor_values, enriched_bar, base_bar, &
     level_bar, anchor_bar, status)
+call evaluate_blending_corrected_enrichment( &
+    base_values, enriched_mask, enrichment_values, corrected_values, status)
+call evaluate_blending_corrected_enrichment_jvp( &
+    base_values, enriched_mask, enrichment_values, base_dot, enrichment_dot, &
+    corrected_dot, status)
+call evaluate_blending_corrected_enrichment_vjp( &
+    base_values, enriched_mask, enrichment_values, corrected_bar, base_bar, &
+    enrichment_bar, status)
 ```
 
 The activation sign is a fixed-topology discrete choice. Away from `phi=0`
@@ -63,8 +71,25 @@ or contravariant Piola values from an H(curl) or H(div) space. The JVP uses
 the componentwise product rule and the VJP returns the base-value cotangent;
 the scalar level-set VJP remains zero on a fixed topology.
 
+`evaluate_blending_corrected_enrichment` implements the corrected-XFEM ramp
+without choosing an element or geometry representation. For a fixed logical
+node mask (a_i), it forms
+
+```
+r(x) = sum_i a_i N_i(x),       Psi_corr(x) = r(x) Psi(x).
+```
+
+Thus a standard element has zero enrichment, a fully enriched element
+reproduces `Psi`, and a blending element transitions through the partition of
+unity. Its JVP/VJP differentiate the two products while treating the mask as
+discrete topology. This is the composition described by [Fries' corrected
+XFEM construction](https://doi.org/10.1002/nme.2259); cut-cell activation and
+rank/conditioning diagnostics stay outside this primitive.
+
 `test_heaviside_enrichment` checks the independent sign oracle, fixed-sign
 zero derivative identities, and topology-event rejection. The companion
 `test_shifted_enriched_basis` checks the scalar product oracle and real
 adjoint identity. `test_shifted_vector_enriched_basis` repeats those checks
 for a two-component vector base and rejects a zero-level topology event.
+`test_xfem_blending_correction` checks the ramp, full-enrichment limit, and
+its real adjoint identity.

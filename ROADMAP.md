@@ -1190,8 +1190,11 @@ gallery example.
   scalar product composition `N_i*(H(phi)-H(phi_i))` now has value/JVP/VJP
   actions and a real adjoint oracle. The same activation is now public for
   componentwise vector bases, so H(curl)/H(div) values can be composed while
-  retaining the fixed-topology JVP/VJP contract. Cut-cell geometry, support
-  activation, blending correction, and Piola-aware vector enrichment remain.
+  retaining the fixed-topology JVP/VJP contract. The corrected-XFEM blending
+  ramp `r=sum_i a_i*N_i` and `r*Psi` value/JVP/VJP composition are now public
+  with a full-enrichment reproduction oracle. Cut-cell geometry, support
+  activation, rank/conditioning diagnostics, and Piola-aware vector
+  enrichment remain.
 - Cut-cell classification and high-order quadrature (the exact degree-one
   triangle centroid rule is the current baseline).
 - Heaviside, kink, singular, helical, and resonant enrichments.
