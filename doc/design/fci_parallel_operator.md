@@ -1,0 +1,63 @@
+# FCI parallel support operator
+
+FortFEM now has a small, dependency-light algebraic contract for a
+field-coordinate-independent (FCI) parallel derivative. It is the part of the
+PARALLAX design that belongs in a reusable FEM/operator library: interpolation
+maps are supplied by a geometry or field-line-tracing service, while FortFEM
+assembles the sparse staggered gradient and its conservative support
+divergence.
+
+For segment `k`, let `Q_plus(k)` map the upper poloidal plane to staggered flux
+boxes and `Q_minus(k)` map the lower plane. With line lengths `ell`, the
+gradient is
+
+\[
+  Q_k = \operatorname{diag}(\ell_k^{-1})
+        \left(Q_{+}(k)-Q_{-}(k)\right).
+\]
+
+For canonical-plane volumes `W_c` and staggered volumes `W_s`, the support
+divergence is assembled as
+
+\[
+  P = -W_c^{-1}Q^T W_s.
+\]
+
+Therefore the discrete power/adjoint identity is exact up to floating-point
+roundoff,
+
+\[
+  u^T W_c P f = -(Qu)^T W_s f.
+\]
+
+The public entry points are:
+
+```fortran
+call assemble_fci_parallel_gradient_csc( &
+    forward_map, backward_map, line_lengths, gradient, status)
+call assemble_fci_parallel_support_divergence_csc( &
+    gradient, canonical_volumes, staggered_volumes, divergence, status)
+```
+
+The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
+segment-by-segment. `forward_map` and `backward_map` have shape
+`(n_staggered, n_plane, n_segment)`, and `line_lengths` has shape
+`(n_staggered, n_segment)`. Zero interpolation coefficients are omitted from
+the CSC matrix, so the resulting action is matrix-free at the solver level
+through the existing FortSparse `csc_matvec` interface.
+
+The focused test uses identity maps and an analytically linear field as an
+independent oracle. It also checks the weighted adjoint identity and a flux
+balance vector. Field-line tracing, interpolation stencils, support-volume
+construction, boundary conditions, and multigrid remain separate follow-up
+ingredients; this API deliberately does not copy PARALLAX implementation
+code.
+
+## Provenance
+
+The design follows the FCI trace/interpolation and support-operator
+descriptions in the local PARALLAX checkout at
+`/home/ert/code/genex/parallax`, especially its `pages/description/fci`
+material. The published support-operator construction is described by
+[Stegmeir et al.](https://doi.org/10.1016/j.cpc.2016.12.014). No PARALLAX
+source, binary, or license-sensitive benchmark data is included in FortFEM.

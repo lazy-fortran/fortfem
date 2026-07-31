@@ -19,6 +19,8 @@ operators, sparse solvers, and analytical verification examples.
 - [Design Documentation](design/index.html) - Architecture and design decisions
 - [Differentiation](design/differentiation.html) - JVP/VJP contracts,
   FortSym generation, Enzyme validation, and sparse adjoints
+- [FCI parallel operator](design/fci_parallel_operator.html) - PARALLAX-aligned
+  mapped gradients and conservative support divergences
 - [Roadmap](https://github.com/lazy-fortran/fortfem/blob/main/ROADMAP.md) -
   Structure-preserving FEM, BEM, IGA, Fourier-FEM, and plasma-physics ingredients
 - [API Reference](../lists/modules.html) - Detailed module documentation
