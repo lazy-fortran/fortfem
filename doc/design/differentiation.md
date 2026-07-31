@@ -474,3 +474,13 @@ real-vector convention
 `real(conjg(value_bar)*value_dot)`, returning real vertex and wave-number
 cotangents. This keeps the analytical path compiler-independent while
 retaining the exact zero-wave-number reduction to the Laplace panel product.
+
+The complete dense Laplace P0 single-layer assembler now exposes matching
+mesh-coordinate JVP and VJP entry points. Off-diagonal entries reuse the
+regular panel products. Diagonal entries differentiate the analytical
+edge-logarithm potential used by the primal singular quadrature; FortSym
+generates the edge potential's primal and products. Reverse assembly combines
+the two cotangents of each stored symmetric off-diagonal value and scatters
+both panel gradients into shared surface vertices. Consequently one dense
+matrix cotangent produces the full boundary shape gradient without coordinate
+finite differences, including singular self interactions.
