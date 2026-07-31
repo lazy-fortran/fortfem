@@ -6,8 +6,14 @@ module fortfem_api
         evaluate_tetra_nedelec_interpolant, &
         evaluate_tetra_nedelec_interpolant_jvp, &
         evaluate_tetra_nedelec_interpolant_vjp, &
+        evaluate_tetra_nedelec_interpolant_at_point, &
+        evaluate_tetra_nedelec_interpolant_at_point_jvp, &
+        evaluate_tetra_nedelec_interpolant_at_point_vjp, &
         evaluate_tetra_rt_interpolant, evaluate_tetra_rt_interpolant_jvp, &
-        evaluate_tetra_rt_interpolant_vjp
+        evaluate_tetra_rt_interpolant_vjp, &
+        evaluate_tetra_rt_interpolant_at_point, &
+        evaluate_tetra_rt_interpolant_at_point_jvp, &
+        evaluate_tetra_rt_interpolant_at_point_vjp
     use fortfem_triangle_affine_map, only: &
         invert_triangle_affine_map, invert_triangle_affine_map_jvp, &
         invert_triangle_affine_map_vjp
@@ -892,9 +898,15 @@ module fortfem_api
     public :: evaluate_tetra_nedelec_interpolant
     public :: evaluate_tetra_nedelec_interpolant_jvp
     public :: evaluate_tetra_nedelec_interpolant_vjp
+    public :: evaluate_tetra_nedelec_interpolant_at_point
+    public :: evaluate_tetra_nedelec_interpolant_at_point_jvp
+    public :: evaluate_tetra_nedelec_interpolant_at_point_vjp
     public :: evaluate_tetra_rt_interpolant
     public :: evaluate_tetra_rt_interpolant_jvp
     public :: evaluate_tetra_rt_interpolant_vjp
+    public :: evaluate_tetra_rt_interpolant_at_point
+    public :: evaluate_tetra_rt_interpolant_at_point_jvp
+    public :: evaluate_tetra_rt_interpolant_at_point_vjp
     public :: invert_tetra_affine_map
     public :: invert_tetra_affine_map_jvp
     public :: invert_tetra_affine_map_vjp
