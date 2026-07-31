@@ -836,6 +836,8 @@ gallery example.
 - The explicit `assemble_surface_delta_load` primitive now assembles
   trace-basis transpose times positive surface quadrature/source weights,
   providing the fitted δ_\Gamma weak-load contract.
+- `assemble_surface_vector_delta_load` adds the tangential trace/surface-
+  current pairing needed for an explicit Ampère sheet.
 - Internal manifolds, level sets, surface measures, and vector current
   pairings remain next.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
