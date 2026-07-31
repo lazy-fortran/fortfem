@@ -555,9 +555,11 @@ canonical and staggered volumes, and the field through pinned FortSym local
 contribution kernels; a central-difference and full real dot-product oracle
 guard this contract. The public 1D linear interpolation-map builder now checks
 partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
-and Cartesian bilinear affine reproduction. Higher-order or unstructured
-interpolation Jacobians, curved support-volume measures, and anisotropy-aware
-preconditioning remain active work. A batched Cartesian bilinear adapter now
+and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
+map now accepts explicit three-node stencils and reproduces quadratic fields
+on nonuniform slices; higher-order interpolation Jacobians, curved
+support-volume measures, and anisotropy-aware preconditioning remain active
+work. A batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
 tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
@@ -940,13 +942,15 @@ gallery example.
   mass-conservation and negative-energy profile. A 1D linear map builder and
   its fixed-topology JVP/VJP provide independent partition/affine and
   dot-product oracles, and a 2D Cartesian bilinear builder now covers a
-  genuine poloidal slice. The RK4 tracer also has a tangent callback path with
-  an exponential endpoint oracle. The positive staggered flux-box volume constructor
+  genuine poloidal slice. A generated quadratic Lagrange map covers explicit
+  three-node nonuniform stencils on 1D slices. The RK4 tracer also has a tangent
+  callback path with an exponential endpoint oracle. The positive staggered
+  flux-box volume constructor
   now covers the traced expansion/area/(B_\varphi) product with pinned
-  FortSym-generated value/JVP/VJP kernels. Higher-order or unstructured
-  interpolation, while fixed-cell 2D map JVP/VJP products now cover source
-  and target coordinate motion. Curved support-volume measures remain a
-  separate planned component.
+  FortSym-generated value/JVP/VJP kernels. Fixed-cell 2D map JVP/VJP products
+  now cover source and target coordinate motion; higher-order interpolation
+  derivatives and curved support-volume measures remain separate planned
+  components.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or

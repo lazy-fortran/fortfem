@@ -22,6 +22,10 @@ updates away from stencil-cell crossings. A Cartesian bilinear map builder is
 available for a first 2D poloidal slice, with x-fast source-column ordering.
 Its source-grid and target-point JVP/VJP products are available on a fixed
 cell topology as well.
+`build_fci_quadratic_interpolation_map_1d` accepts an explicit three-node
+stencil per target, uses a FortSym-generated Lagrange kernel, and reproduces
+quadratic fields on nonuniform local slices. It is intentionally primal-only
+for now; fixed-topology higher-order JVP/VJP products remain a separate task.
 `compute_fci_staggered_flux_box_volumes` combines traced forward/backward flux
 expansion with plane-cell area and (B_\varphi) for the support weights.
 
@@ -84,6 +88,13 @@ call compute_fci_parallel_diffusion_diagonal( &
     canonical_volumes, staggered_volumes, diagonal, status)
 call apply_fci_parallel_jacobi_preconditioner( &
     diagonal, residual, correction, status)
+call compute_fci_anisotropic_diffusion_diagonal( &
+    perpendicular_operators, forward_map, backward_map, line_lengths, &
+    parallel_coefficient, canonical_volumes, staggered_volumes, diagonal, status)
+call apply_fci_anisotropic_jacobi_preconditioner( &
+    perpendicular_operators, forward_map, backward_map, line_lengths, &
+    parallel_coefficient, canonical_volumes, staggered_volumes, residual, &
+    correction, status)
 call apply_fci_anisotropic_diffusion( &
     perpendicular_operators, forward_map, backward_map, line_lengths, &
     parallel_coefficient, canonical_volumes, staggered_volumes, field, &
@@ -109,6 +120,9 @@ call build_fci_bilinear_interpolation_maps_2d_vjp( &
     source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
     forward_map_bar, backward_map_bar, source_x_bar, source_y_bar, &
     forward_x_bar, forward_y_bar, backward_x_bar, backward_y_bar, status)
+call build_fci_quadratic_interpolation_map_1d( &
+    source_coordinates, target_coordinates, stencil_indices, &
+    interpolation_map, status)
 call build_fci_triangle_interpolation_map_2d( &
     vertices, triangles, target_points, target_cells, interpolation_map, status)
 call build_fci_triangle_interpolation_map_2d_jvp( &
