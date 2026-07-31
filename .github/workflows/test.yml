@@ -84,6 +84,15 @@ jobs:
         chmod +x fpm-0.12.0-linux-x86_64-gcc-12
         sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
+    - name: Install fo test runner
+      run: |
+        git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+        (
+          cd /tmp/fo
+          fpm install --profile release --prefix "$HOME/.local"
+        )
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
     - name: Build
       run: fpm build --profile release
 
@@ -98,13 +107,13 @@ jobs:
     - name: Run tests
       id: unit_tests
       continue-on-error: true
-      run: fpm test
+      run: fo test
 
     - name: Run tests with coverage
       id: coverage
       continue-on-error: true
       run: |
-        fpm test --flag "--coverage"
+        fo test --flag "--coverage"
         find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
           gcov -o "$dir" src/*.f90 || true
         done

@@ -109,8 +109,10 @@ not only contributor etiquette.
   implementation.
 - Keep focused tests short enough for roughly a ten-second feedback loop.
   Run full `fo` suites and expensive examples asynchronously in CI or a
-  controlled background job. Do not wait for a complete gallery build before
-  making an independent, low-risk progress increment.
+  controlled background job. The build-test workflow uses the same `fo test`
+  runner for its per-test timeout and coverage path, rather than an unbounded
+  serial `fpm test`. Do not wait for a complete gallery build before making an
+  independent, low-risk progress increment.
 - Work directly on FortFEM `main` because it is the upstream library. Work on
   PR branches for downstream repositories such as MEPHIT and FortPlot. Never
   duplicate a fix that has already landed upstream. Rebase downstream work on
