@@ -185,6 +185,8 @@ module fortfem_api
         build_fci_linear_interpolation_map_1d_jvp, &
         build_fci_linear_interpolation_map_1d_vjp, &
         build_fci_bilinear_interpolation_map_2d
+    use fortfem_fci_support_geometry, only: &
+        compute_fci_staggered_flux_box_volumes
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
@@ -1437,6 +1439,7 @@ module fortfem_api
     public :: build_fci_linear_interpolation_map_1d_jvp
     public :: build_fci_linear_interpolation_map_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
+    public :: compute_fci_staggered_flux_box_volumes
     public :: advance_mixed_wave_midpoint
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
