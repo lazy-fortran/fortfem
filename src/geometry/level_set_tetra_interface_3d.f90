@@ -14,6 +14,7 @@ module fortfem_level_set_tetra_interface_3d
     real(dp), parameter :: topology_tolerance = 64.0_dp*epsilon(1.0_dp)
 
     public :: evaluate_level_set_tetra_interface_3d
+    public :: evaluate_level_set_tetra_cut_quadrature_3d
 
 contains
 
@@ -126,6 +127,211 @@ contains
         end if
         status = 0
     end subroutine evaluate_level_set_tetra_interface_3d
+
+    subroutine evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        !! Return exact degree-one quadrature data for a linear tetrahedral cut.
+        !!
+        !! The two side regions are clipped convex polyhedra.  Their volumes and
+        !! first moments are accumulated from the oriented parent faces and the
+        !! interface polygon, so constants and affine fields are integrated
+        !! exactly without a volumetric numerical quadrature rule.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(out) :: positive_volume, positive_centroid(3)
+        real(dp), intent(out) :: negative_volume, negative_centroid(3)
+        real(dp), intent(out) :: interface_area, normal(3)
+        integer, intent(out) :: status
+
+        real(dp) :: jacobian(3, 3), determinant
+        real(dp) :: points(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_status, point_count
+
+        positive_volume = 0.0_dp
+        positive_centroid = 0.0_dp
+        negative_volume = 0.0_dp
+        negative_centroid = 0.0_dp
+        interface_area = 0.0_dp
+        normal = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values))) return
+        if (any(abs(level_values) <= topology_tolerance)) return
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+        determinant = det3(jacobian)
+        if (abs(determinant) <= topology_tolerance* &
+            max(1.0_dp, maxval(abs(jacobian))**3)) return
+
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        point_count = 0
+        if (has_positive .and. has_negative) then
+            call evaluate_level_set_tetra_interface_3d( &
+                vertices, level_values, points, point_count, interface_area, &
+                normal, interface_status)
+            if (interface_status /= 0) return
+        end if
+        call accumulate_tetra_side( &
+            vertices, level_values, .true., points, point_count, positive_volume, &
+            positive_centroid, status)
+        if (status /= 0) return
+        call accumulate_tetra_side( &
+            vertices, level_values, .false., points, point_count, negative_volume, &
+            negative_centroid, status)
+        if (status /= 0) return
+        status = 0
+    end subroutine evaluate_level_set_tetra_cut_quadrature_3d
+
+    subroutine accumulate_tetra_side( &
+            vertices, level_values, keep_positive, interface_points, &
+            interface_count, volume, centroid, status)
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(in) :: interface_points(3, 4)
+        integer, intent(in) :: interface_count
+        real(dp), intent(out) :: volume, centroid(3)
+        integer, intent(out) :: status
+
+        integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
+        integer :: face_vertices(3, 4), face, polygon_count
+        integer :: indices(3), point
+        real(dp) :: polygon(3, 6)
+        real(dp) :: volume_accum, first_moment(3)
+
+        face_vertices(:, 1) = [2, 3, 4]
+        face_vertices(:, 2) = [1, 4, 3]
+        face_vertices(:, 3) = [1, 2, 4]
+        face_vertices(:, 4) = [1, 3, 2]
+        volume = 0.0_dp
+        centroid = 0.0_dp
+        status = 1
+        volume_accum = 0.0_dp
+        first_moment = 0.0_dp
+        do face = 1, 4
+            indices = face_vertices(:, face)
+            call orient_tetra_face(vertices, face_opposite(face), indices)
+            call clip_tetra_face( &
+                vertices, level_values, indices, keep_positive, polygon, &
+                polygon_count)
+            if (polygon_count >= 3) then
+                call accumulate_oriented_polygon( &
+                    polygon, polygon_count, volume_accum, first_moment)
+            end if
+        end do
+
+        if (interface_count > 0) then
+            if (keep_positive) then
+                do point = 1, interface_count
+                    polygon(:, point) = &
+                        interface_points(:, interface_count - point + 1)
+                end do
+            else
+                polygon(:, :interface_count) = &
+                    interface_points(:, :interface_count)
+            end if
+            call accumulate_oriented_polygon( &
+                polygon, interface_count, volume_accum, first_moment)
+        end if
+
+        if (volume_accum <= topology_tolerance) then
+            if (volume_accum < -topology_tolerance) return
+            volume = 0.0_dp
+            centroid = 0.0_dp
+            status = 0
+            return
+        end if
+        volume = volume_accum
+        centroid = first_moment/volume
+        status = 0
+    end subroutine accumulate_tetra_side
+
+    subroutine orient_tetra_face(vertices, opposite, indices)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: opposite
+        integer, intent(inout) :: indices(3)
+
+        real(dp) :: first_edge(3), second_edge(3), face_normal(3)
+        integer :: swap_index
+
+        first_edge = vertices(:, indices(2)) - vertices(:, indices(1))
+        second_edge = vertices(:, indices(3)) - vertices(:, indices(1))
+        face_normal = cross_product(first_edge, second_edge)
+        if (dot_product(face_normal, vertices(:, opposite) - &
+            vertices(:, indices(1))) > 0.0_dp) then
+            swap_index = indices(2)
+            indices(2) = indices(3)
+            indices(3) = swap_index
+        end if
+    end subroutine orient_tetra_face
+
+    subroutine clip_tetra_face( &
+            vertices, level_values, indices, keep_positive, polygon, point_count)
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        integer, intent(in) :: indices(3)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(out) :: polygon(3, 6)
+        integer, intent(out) :: point_count
+
+        integer :: current, previous, vertex
+        real(dp) :: current_value, previous_value, fraction
+        logical :: current_inside, previous_inside
+
+        polygon = 0.0_dp
+        point_count = 0
+        previous = indices(3)
+        previous_value = level_values(previous)
+        previous_inside = side_contains(previous_value, keep_positive)
+        do vertex = 1, 3
+            current = indices(vertex)
+            current_value = level_values(current)
+            current_inside = side_contains(current_value, keep_positive)
+            if (current_inside .neqv. previous_inside) then
+                fraction = previous_value/(previous_value - current_value)
+                point_count = point_count + 1
+                polygon(:, point_count) = vertices(:, previous) + fraction* &
+                    (vertices(:, current) - vertices(:, previous))
+            end if
+            if (current_inside) then
+                point_count = point_count + 1
+                polygon(:, point_count) = vertices(:, current)
+            end if
+            previous = current
+            previous_value = current_value
+            previous_inside = current_inside
+        end do
+    end subroutine clip_tetra_face
+
+    pure logical function side_contains(value, keep_positive)
+        real(dp), intent(in) :: value
+        logical, intent(in) :: keep_positive
+
+        side_contains = merge(value > 0.0_dp, value < 0.0_dp, keep_positive)
+    end function side_contains
+
+    subroutine accumulate_oriented_polygon( &
+            polygon, point_count, volume, first_moment)
+        real(dp), intent(in) :: polygon(3, 6)
+        integer, intent(in) :: point_count
+        real(dp), intent(inout) :: volume, first_moment(3)
+
+        integer :: point
+        real(dp) :: signed_tetra_volume, first_point(3)
+        real(dp) :: second_point(3), third_point(3)
+
+        first_point = polygon(:, 1)
+        do point = 2, point_count - 1
+            second_point = polygon(:, point)
+            third_point = polygon(:, point + 1)
+            signed_tetra_volume = dot_product(first_point, cross_product( &
+                second_point, third_point))/6.0_dp
+            volume = volume + signed_tetra_volume
+            first_moment = first_moment + signed_tetra_volume*( &
+                first_point + second_point + third_point)/4.0_dp
+        end do
+    end subroutine accumulate_oriented_polygon
 
     pure function cross_product(first, second) result(cross)
         real(dp), intent(in) :: first(3), second(3)
