@@ -25,6 +25,7 @@ fo exec --no-build gen_planar_helmholtz_dtn_products
 fo exec --no-build gen_surface_triangle_geometry_products
 fo exec --no-build gen_laplace_bem_kernel_products
 fo exec --no-build gen_helmholtz_bem_kernel_products
+fo exec --no-build gen_laplace_singular_edge_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -43,3 +44,4 @@ fo fmt "$generated_dir/fortfem_planar_helmholtz_dtn_products.f90"
 fo fmt "$generated_dir/fortfem_surface_triangle_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_laplace_bem_kernel_products.f90"
 fo fmt "$generated_dir/fortfem_helmholtz_bem_kernel_products.f90"
+fo fmt "$generated_dir/fortfem_laplace_singular_edge_products.f90"

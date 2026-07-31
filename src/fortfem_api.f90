@@ -268,6 +268,8 @@ module fortfem_api
         assemble_laplace_single_layer_p0_adaptive_3d, &
         solve_laplace_dirichlet_p0_3d
     use fortfem_laplace_panel_pair_3d, only: &
+        assemble_laplace_single_layer_p0_3d_jvp, &
+        assemble_laplace_single_layer_p0_3d_vjp, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
@@ -724,6 +726,8 @@ module fortfem_api
     public :: assemble_laplace_fem_bem_costabel_torus_curved_3d
     public :: solve_laplace_fem_bem_costabel_torus_curved_3d
     public :: assemble_laplace_single_layer_p0_3d
+    public :: assemble_laplace_single_layer_p0_3d_jvp
+    public :: assemble_laplace_single_layer_p0_3d_vjp
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
