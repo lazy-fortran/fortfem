@@ -43,6 +43,13 @@ parameters, including NURBS control points, rational weights, and mesh-motion
 degrees of freedom. Hybrid paths compose analytical local products, sparse
 implicit adjoints, and application-level reverse accumulation.
 
+Fixed-mask Dirichlet elimination has matching analytical products. The
+constraint mask is a discrete, inactive topology choice; CSC values, the
+right-hand side, and prescribed values are active. Both products factor only
+the reduced free system. Reverse mode scatters free--free and
+free--constrained matrix cotangents back into the original CSC pattern and
+returns the direct plus elimination-mediated boundary-value cotangent.
+
 ## H1 geometry tournament
 
 The optional CMake test
