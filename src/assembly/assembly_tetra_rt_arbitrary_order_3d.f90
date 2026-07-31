@@ -26,6 +26,9 @@ module fortfem_assembly_tetra_rt_arbitrary_order_3d
     public :: assemble_tetra_rt_div_mass_element_vjp
     public :: assemble_tetra_rt_divergence_csc
     public :: assemble_tetra_rt_vector_load
+    public :: assemble_tetra_rt_vector_load_samples
+    public :: assemble_tetra_rt_vector_load_samples_jvp
+    public :: assemble_tetra_rt_vector_load_samples_vjp
 
     abstract interface
         pure subroutine vector_source_3d(x, y, z, value)
@@ -136,6 +139,340 @@ contains
         end do
         call status_set(status, 0, "")
     end subroutine assemble_tetra_rt_vector_load
+
+    subroutine assemble_tetra_rt_vector_load_samples( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, vector, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        integer, allocatable :: face_orientations(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_vector(:)
+        real(dp), allocatable :: oriented_vector(:)
+        real(dp), allocatable :: physical_divergences(:)
+        real(dp), allocatable :: physical_values(:, :)
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), point(3), vertices(3, 4)
+        integer :: dof, dof_count, local_status, node, point_index
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral RT vector load failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (.not. valid_vector_sample_shapes( &
+            source_values, size(weights), size(tetrahedra, 2))) return
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = tetra_rt_dof_count(basis)
+        allocate(vector(maxval(global_dofs)), source=0.0_dp)
+        allocate(element_vector(dof_count), oriented_vector(dof_count))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(reference_values(3, dof_count))
+        allocate(reference_divergences(dof_count))
+        allocate(physical_values(3, dof_count))
+        allocate(physical_divergences(dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_geometry(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            element_vector = 0.0_dp
+            do point_index = 1, size(weights)
+                point = [x(point_index), y(point_index), z(point_index)]
+                call evaluate_tetra_rt( &
+                    basis, point, reference_values, reference_divergences, &
+                    local_status)
+                if (local_status /= 0) return
+                call map_tetra_rt_contravariant( &
+                    jacobian, reference_values, reference_divergences, &
+                    physical_values, physical_divergences, local_status)
+                if (local_status /= 0) return
+                do dof = 1, dof_count
+                    element_vector(dof) = element_vector(dof) + &
+                        determinant*weights(point_index)*dot_product( &
+                        source_values(:, point_index, tetrahedron), &
+                        physical_values(:, dof))
+                end do
+            end do
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_vector = &
+                matmul(transpose(basis_transform), element_vector)
+            do dof = 1, dof_count
+                vector(global_dofs(dof, tetrahedron)) = &
+                    vector(global_dofs(dof, tetrahedron)) + &
+                    oriented_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_rt_vector_load_samples
+
+    subroutine assemble_tetra_rt_vector_load_samples_jvp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, source_gradients, mesh_vertices_dot, &
+            source_parameter_dot, vector_dot, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        real(dp), allocatable, intent(out) :: vector_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        integer, allocatable :: face_orientations(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_dot(:)
+        real(dp), allocatable :: oriented_dot(:)
+        real(dp), allocatable :: divergences(:), divergences_dot(:)
+        real(dp), allocatable :: ref_divergences(:), ref_values(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp), allocatable :: zero_divergences(:), zero_values(:, :)
+        real(dp) :: determinant, determinant_dot, jacobian(3, 3)
+        real(dp) :: jacobian_dot(3, 3), point(3), point_dot(3), source_dot(3)
+        real(dp) :: vertices(3, 4), vertices_dot(3, 4)
+        integer :: dof, dof_count, local_status, node, point_index
+        integer :: tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral RT vector load JVP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (.not. valid_vector_sample_product_shapes( &
+            source_values, source_gradients, source_parameter_dot, &
+            size(weights), size(tetrahedra, 2))) return
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = tetra_rt_dof_count(basis)
+        allocate(vector_dot(maxval(global_dofs)), source=0.0_dp)
+        allocate(element_dot(dof_count), oriented_dot(dof_count))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(ref_values(3, dof_count), ref_divergences(dof_count))
+        allocate(values(3, dof_count), divergences(dof_count))
+        allocate(values_dot(3, dof_count), divergences_dot(dof_count))
+        allocate(zero_values(3, dof_count), zero_divergences(dof_count), &
+            source=0.0_dp)
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_geometry(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            call tetra_jacobian(vertices_dot, jacobian_dot)
+            call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+            element_dot = 0.0_dp
+            do point_index = 1, size(weights)
+                point = [x(point_index), y(point_index), z(point_index)]
+                call evaluate_tetra_rt( &
+                    basis, point, ref_values, ref_divergences, local_status)
+                if (local_status /= 0) return
+                call map_tetra_rt_contravariant( &
+                    jacobian, ref_values, ref_divergences, values, &
+                    divergences, local_status)
+                if (local_status /= 0) return
+                call map_tetra_rt_contravariant_jvp( &
+                    jacobian, ref_values, ref_divergences, jacobian_dot, &
+                    zero_values, zero_divergences, values_dot, divergences_dot, &
+                    local_status)
+                if (local_status /= 0) return
+                point_dot = vertices_dot(:, 1) + matmul(jacobian_dot, point)
+                source_dot = source_parameter_dot(:, point_index, tetrahedron) + &
+                    matmul(source_gradients(:, :, point_index, tetrahedron), &
+                    point_dot)
+                do dof = 1, dof_count
+                    element_dot(dof) = element_dot(dof) + &
+                        weights(point_index)*(determinant_dot*dot_product( &
+                        source_values(:, point_index, tetrahedron), &
+                        values(:, dof)) + determinant*(dot_product( &
+                        source_dot, values(:, dof)) + dot_product( &
+                        source_values(:, point_index, tetrahedron), &
+                        values_dot(:, dof))))
+                end do
+            end do
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_dot = matmul(transpose(basis_transform), element_dot)
+            do dof = 1, dof_count
+                vector_dot(global_dofs(dof, tetrahedron)) = &
+                    vector_dot(global_dofs(dof, tetrahedron)) + &
+                    oriented_dot(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_rt_vector_load_samples_jvp
+
+    subroutine assemble_tetra_rt_vector_load_samples_vjp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            source_values, source_gradients, vector_bar, mesh_vertices_bar, &
+            source_values_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :), source_values(:, :, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: source_gradients(:, :, :, :), vector_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: source_values_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        integer, allocatable :: face_orientations(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), element_bar(:)
+        real(dp), allocatable :: oriented_bar(:)
+        real(dp), allocatable :: divergences(:), divergences_bar(:)
+        real(dp), allocatable :: ref_divergences(:), ref_divergences_bar(:)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), jacobian(3, 3)
+        real(dp) :: jacobian_bar(3, 3), local_jacobian_bar(3, 3)
+        real(dp) :: local_vertices_bar(3, 4), point(3), point_bar(3)
+        real(dp) :: local_vertices_from_jacobian(3, 4)
+        real(dp) :: sample_bar(3), seed, vertices(3, 4)
+        integer :: dof, dof_count, local_status, node, point_index
+        integer :: tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled tetrahedral RT vector load VJP failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh_vertices))) return
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, local_status)
+        if (local_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, local_status)
+        if (local_status /= 0) return
+        if (.not. valid_vector_sample_gradient_shapes( &
+            source_values, source_gradients, size(weights), &
+            size(tetrahedra, 2))) return
+        if (any(shape(source_values_bar) /= shape(source_values))) return
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) return
+        if (size(vector_bar) /= maxval(global_dofs)) return
+        dof_count = tetra_rt_dof_count(basis)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(element_bar(dof_count), oriented_bar(dof_count))
+        allocate(ref_values(3, dof_count), ref_divergences(dof_count))
+        allocate(ref_values_bar(3, dof_count), ref_divergences_bar(dof_count))
+        allocate(values(3, dof_count), divergences(dof_count))
+        allocate(values_bar(3, dof_count), divergences_bar(dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call tetra_geometry(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            do dof = 1, dof_count
+                oriented_bar(dof) = vector_bar( &
+                    global_dofs(dof, tetrahedron))
+            end do
+            element_bar = matmul(basis_transform, oriented_bar)
+            local_vertices_bar = 0.0_dp
+            jacobian_bar = 0.0_dp
+            determinant_bar = 0.0_dp
+            do point_index = 1, size(weights)
+                point = [x(point_index), y(point_index), z(point_index)]
+                call evaluate_tetra_rt( &
+                    basis, point, ref_values, ref_divergences, local_status)
+                if (local_status /= 0) return
+                call map_tetra_rt_contravariant( &
+                    jacobian, ref_values, ref_divergences, values, &
+                    divergences, local_status)
+                if (local_status /= 0) return
+                values_bar = 0.0_dp
+                divergences_bar = 0.0_dp
+                sample_bar = 0.0_dp
+                do dof = 1, dof_count
+                    seed = weights(point_index)*element_bar(dof)
+                    determinant_bar = determinant_bar + seed*dot_product( &
+                        source_values(:, point_index, tetrahedron), &
+                        values(:, dof))
+                    sample_bar = sample_bar + &
+                        seed*determinant*values(:, dof)
+                    values_bar(:, dof) = values_bar(:, dof) + &
+                        seed*determinant* &
+                        source_values(:, point_index, tetrahedron)
+                end do
+                source_values_bar(:, point_index, tetrahedron) = sample_bar
+                point_bar = matmul(transpose( &
+                    source_gradients(:, :, point_index, tetrahedron)), &
+                    sample_bar)
+                local_vertices_bar(:, 1) = &
+                    local_vertices_bar(:, 1) + point_bar
+                jacobian_bar = jacobian_bar + spread(point_bar, 2, 3)* &
+                    spread(point, 1, 3)
+                call map_tetra_rt_contravariant_vjp( &
+                    jacobian, ref_values, ref_divergences, values_bar, &
+                    divergences_bar, local_jacobian_bar, ref_values_bar, &
+                    ref_divergences_bar, local_status)
+                if (local_status /= 0) return
+                jacobian_bar = jacobian_bar + local_jacobian_bar
+            end do
+            call det3_vjp( &
+                jacobian, determinant_bar, determinant_jacobian_bar)
+            call tetra_jacobian_vjp( &
+                jacobian_bar + determinant_jacobian_bar, &
+                local_vertices_from_jacobian)
+            local_vertices_bar = &
+                local_vertices_bar + local_vertices_from_jacobian
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_rt_vector_load_samples_vjp
 
     subroutine assemble_tetra_rt_divergence_csc( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
@@ -795,5 +1132,45 @@ contains
         valid = all(tetrahedra >= 1) .and. &
             all(tetrahedra <= size(mesh_vertices, 2))
     end function valid_tetra_mesh
+
+    pure logical function valid_vector_sample_shapes( &
+            source_values, point_count, tetrahedron_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        integer, intent(in) :: point_count, tetrahedron_count
+
+        valid = size(source_values, 1) == 3 .and. &
+            size(source_values, 2) == point_count .and. &
+            size(source_values, 3) == tetrahedron_count
+    end function valid_vector_sample_shapes
+
+    pure logical function valid_vector_sample_gradient_shapes( &
+            source_values, source_gradients, point_count, tetrahedron_count) &
+            result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        integer, intent(in) :: point_count, tetrahedron_count
+
+        valid = valid_vector_sample_shapes( &
+            source_values, point_count, tetrahedron_count)
+        if (.not. valid) return
+        valid = size(source_gradients, 1) == 3 .and. &
+            size(source_gradients, 2) == 3 .and. &
+            size(source_gradients, 3) == point_count .and. &
+            size(source_gradients, 4) == tetrahedron_count
+    end function valid_vector_sample_gradient_shapes
+
+    pure logical function valid_vector_sample_product_shapes( &
+            source_values, source_gradients, source_parameter_dot, &
+            point_count, tetrahedron_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        integer, intent(in) :: point_count, tetrahedron_count
+
+        valid = valid_vector_sample_gradient_shapes( &
+            source_values, source_gradients, point_count, tetrahedron_count)
+        if (.not. valid) return
+        valid = all(shape(source_parameter_dot) == shape(source_values))
+    end function valid_vector_sample_product_shapes
 
 end module fortfem_assembly_tetra_rt_arbitrary_order_3d

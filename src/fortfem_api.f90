@@ -41,7 +41,10 @@ module fortfem_api
         assemble_tetra_rt_div_mass_element, &
         assemble_tetra_rt_div_mass_element_jvp, &
         assemble_tetra_rt_div_mass_element_vjp, &
-        assemble_tetra_rt_divergence_csc
+        assemble_tetra_rt_divergence_csc, &
+        assemble_tetra_rt_vector_load_samples, &
+        assemble_tetra_rt_vector_load_samples_jvp, &
+        assemble_tetra_rt_vector_load_samples_vjp
     use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
         assemble_tetra_lagrange_scalar_load, &
         assemble_tetra_lagrange_scalar_load_samples, &
@@ -939,6 +942,9 @@ module fortfem_api
     public :: assemble_tetra_rt_div_mass_element_jvp
     public :: assemble_tetra_rt_div_mass_element_vjp
     public :: assemble_tetra_rt_divergence_csc
+    public :: assemble_tetra_rt_vector_load_samples
+    public :: assemble_tetra_rt_vector_load_samples_jvp
+    public :: assemble_tetra_rt_vector_load_samples_vjp
     public :: assemble_tetra_lagrange_stiffness_csc
     public :: assemble_tetra_lagrange_stiffness_csc_jvp
     public :: assemble_tetra_lagrange_stiffness_csc_vjp
