@@ -1051,8 +1051,32 @@ gallery example.
   oracles. Sheath, Bohm, recycling, radiation, and material databases remain
   application-layer clients.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
-- Immersed target plates, sheath or wall traces, and open-field-line boundary
-  conditions.
+- Treat material boundaries as explicit geometry rather than only diffuse
+  penalization. [#58](https://github.com/lazy-fortran/fortfem/issues/58)
+  owns exact first-hit FCI terminal segments on oriented wall/target facets;
+  [#59](https://github.com/lazy-fortran/fortfem/issues/59) owns the matching
+  conservative terminal boundary-flux contribution and fixed-topology
+  derivatives.
+- Keep physical boundary laws outside the numerical library while making them
+  first-class residual terms. [#60](https://github.com/lazy-fortran/fortfem/issues/60)
+  owns the generic nonlinear material-surface flux value/JVP/VJP contract;
+  Bohm, sheath, recycling, sputtering, radiation, and heat-transmission models
+  are application-layer clients.
+- Support an optional fitted boundary-layer patch without forcing the bulk FCI
+  mesh to conform to the vessel. [#61](https://github.com/lazy-fortran/fortfem/issues/61)
+  owns conservative mortar/cut ownership between background planes and the
+  patch. General moving Chimera meshes remain out of scope until this smaller
+  contract is independently verified.
+- GORILLA owns reusable characteristic stepping and material events, not
+  FortFEM: [GORILLA #80](https://github.com/itpplasma/GORILLA/issues/80)
+  introduces a common characteristic event contract and
+  [GORILLA #81](https://github.com/itpplasma/GORILLA/issues/81) adds neutral
+  free flight without misusing guiding-centre equations, while
+  [GORILLA #82](https://github.com/itpplasma/GORILLA/issues/82) covers only
+  those fluid-advection characteristics that genuinely admit marker tracing.
+  Marker collisions, weights, and conservative cell/surface tallies belong
+  above the pusher in
+  [GORILLA_APPLETS #47](https://github.com/itpplasma/GORILLA_APPLETS/issues/47).
 - Small MMS and performance cases aligned with PARALLAX, GRILLIX, and BOUT++
   concepts, without copying their implementations. The FCI gallery fixture
   now records the measured matrix-free action cost alongside its conservation
@@ -1072,6 +1096,11 @@ Use the stabilized ingredients to support future research applications that
 may resemble GVEC, VMEC, SPEC, GPEC, MARS, GLISS, or JOREK. Do not start a
 production code in this repository until the corresponding ingredient,
 analytical example, and external oracle have passed the previous phases.
+Steady edge/SOL/divertor transport, Braginskii closures, species and reaction
+networks, neutral backends, impurity charge states, sheath and material laws,
+GORILLA/EIRENE coupling, and target heat-load accounting belong in a separate
+application repository. FortFEM owns only their reusable geometry, trace,
+operator, residual/JVP/VJP, field-solver, and preconditioner foundations.
 
 ## 15. Definition of done
 
