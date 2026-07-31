@@ -18,10 +18,12 @@ program gen_fci_parallel_products
     type(expr_t) :: diffusion_variables(8), diffusion_variables_dot(8)
     type(expr_t) :: diffusion_outputs(2), diffusion_jvp(2)
     type(expr_t) :: diffusion_vjp(8), diffusion_output_bar(2)
+    type(expr_t) :: diagonal_variables(5), diagonal_output(1)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     character(:), allocatable :: diffusion_code, diffusion_jvp_code
     character(:), allocatable :: diffusion_vjp_code
+    character(:), allocatable :: diagonal_code
     integer :: ios, root, unit
 
     call arena%init()
@@ -147,6 +149,24 @@ program gen_fci_parallel_products
         str("canonical_volume_bar"), str("staggered_volume_bar")]
     diffusion_vjp_code = chars(emit_kernel(diffusion_vjp, spec))
 
+    diagonal_variables = [ &
+        sym(arena, "map_value"), sym(arena, "line_length"), &
+        sym(arena, "parallel_coefficient"), sym(arena, "canonical_volume"), &
+        sym(arena, "staggered_volume")]
+    diagonal_output(1) = diagonal_variables(1)*diagonal_variables(1)* &
+        diagonal_variables(3)*diagonal_variables(5)/ &
+        (diagonal_variables(2)*diagonal_variables(2)*diagonal_variables(4))
+    call simplify_all(diagonal_output)
+
+    call initialize_spec( &
+        spec, "generated_fci_parallel_diffusion_diagonal", &
+        "fortfem_generated_fci_parallel_diagonal", 5, 1)
+    spec%args = [ &
+        str("map_value"), str("line_length"), str("parallel_coefficient"), &
+        str("canonical_volume"), str("staggered_volume")]
+    spec%outputs = [str("diagonal_contribution")]
+    diagonal_code = chars(emit_kernel(diagonal_output, spec))
+
     open (newunit=unit, &
         file=generated_path("fortfem_fci_parallel_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -157,6 +177,7 @@ program gen_fci_parallel_products
     write (unit, "(a)") diffusion_code(:len(diffusion_code) - 1)
     write (unit, "(a)") diffusion_jvp_code(:len(diffusion_jvp_code) - 1)
     write (unit, "(a)") diffusion_vjp_code(:len(diffusion_vjp_code) - 1)
+    write (unit, "(a)") diagonal_code(:len(diagonal_code) - 1)
     close (unit)
 
 contains

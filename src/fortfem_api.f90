@@ -178,6 +178,7 @@ module fortfem_api
         apply_fci_parallel_gradient, apply_fci_parallel_diffusion, &
         apply_fci_parallel_diffusion_jvp, apply_fci_parallel_diffusion_vjp, &
         apply_fci_parallel_diffusion_field_vjp, &
+        compute_fci_parallel_diffusion_diagonal, &
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
@@ -1453,6 +1454,7 @@ module fortfem_api
     public :: apply_fci_parallel_diffusion_jvp
     public :: apply_fci_parallel_diffusion_vjp
     public :: apply_fci_parallel_diffusion_field_vjp
+    public :: compute_fci_parallel_diffusion_diagonal
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: trace_fci_field_line_rk4
