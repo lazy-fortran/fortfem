@@ -16,6 +16,7 @@ module fortfem_fci_parallel_operator
     !! operators.  Field-line tracing and interpolation coefficient
     !! construction remain separate geometry services; this module only owns
     !! the algebraic contract and its sparse representation.
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
     use fortfem_generated_fci_parallel_gradient, only: &
         generated_fci_parallel_gradient
@@ -45,6 +46,7 @@ module fortfem_fci_parallel_operator
     public :: apply_fci_parallel_diffusion_vjp
     public :: apply_fci_parallel_diffusion_field_vjp
     public :: compute_fci_parallel_diffusion_diagonal
+    public :: compute_fci_anisotropic_diffusion_diagonal
     public :: apply_fci_parallel_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_parallel_gradient_jvp
@@ -370,6 +372,88 @@ contains
         correction = residual/diagonal
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_parallel_jacobi_preconditioner
+
+    subroutine compute_fci_anisotropic_diffusion_diagonal( &
+            perpendicular_operators, forward_map, backward_map, line_lengths, &
+            parallel_coefficient, canonical_volumes, staggered_volumes, &
+            diagonal, status)
+        !! Compute the positive diagonal of the combined anisotropic action.
+        !!
+        !! The plane operators are the already-oriented perpendicular diffusion
+        !! blocks used by `apply_fci_anisotropic_diffusion`, so their dissipative
+        !! diagonal is non-positive.  The returned diagonal is
+        !!
+        !!   diag(-A_perpendicular - L_parallel),
+        !!
+        !! combining each plane-block diagonal with the support-operator
+        !! parallel diagonal.  This is the PARALLAX-compatible scalar baseline
+        !! for a later plane multigrid or field-split preconditioner.
+        type(csc_t), intent(in) :: perpendicular_operators(:)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(out) :: diagonal(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, plane, column, entry, offset
+        real(dp) :: plane_diagonal
+
+        diagonal = 0.0_dp
+        call compute_fci_parallel_diffusion_diagonal( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, diagonal, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (size(perpendicular_operators) /= n_segment + 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI anisotropic diagonal received the wrong plane count")
+            return
+        end if
+        do plane = 1, n_segment + 1
+            if (.not. csc_is_valid(perpendicular_operators(plane))) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI anisotropic diagonal received an invalid plane matrix")
+                return
+            end if
+            if (perpendicular_operators(plane)%nrow /= n_plane .or. &
+                perpendicular_operators(plane)%ncol /= n_plane) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI anisotropic diagonal received a non-square plane matrix")
+                return
+            end if
+            do entry = 1, perpendicular_operators(plane)%nnz
+                if (.not. ieee_is_finite( &
+                    perpendicular_operators(plane)%val(entry))) then
+                    call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                        "FCI anisotropic diagonal received a non-finite plane value")
+                    return
+                end if
+            end do
+            offset = (plane - 1)*n_plane
+            do column = 1, n_plane
+                plane_diagonal = 0.0_dp
+                do entry = perpendicular_operators(plane)%col_ptr(column), &
+                        perpendicular_operators(plane)%col_ptr(column + 1) - 1
+                    if (perpendicular_operators(plane)%row_idx(entry) == column) &
+                        plane_diagonal = plane_diagonal + &
+                        perpendicular_operators(plane)%val(entry)
+                end do
+                diagonal(offset + column) = diagonal(offset + column) - &
+                    plane_diagonal
+            end do
+        end do
+        if (any(diagonal <= 0.0_dp)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI anisotropic diagonal is not positive")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_anisotropic_diffusion_diagonal
 
     subroutine apply_fci_anisotropic_diffusion( &
             perpendicular_operators, forward_map, backward_map, line_lengths, &

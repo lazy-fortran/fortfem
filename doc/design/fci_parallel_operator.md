@@ -187,7 +187,12 @@ canonical plane to the parallel support action. Each plane block is validated
 against the FCI plane size, so the split remains explicit and compatible with
 PARALLAX-style independent 2D elliptic solves plus a matrix-free 3D line
 operator. The anisotropic test uses negative symmetric plane blocks and checks
-the combined dissipative energy oracle.
+the combined dissipative energy oracle. `compute_fci_anisotropic_diffusion_diagonal`
+combines the positive generated parallel diagonal with the negative diagonal of
+each supplied plane block. It rejects invalid or non-finite CSC values and
+non-positive combined entries, providing a scalar baseline for the next plane
+multigrid or field-split implementation. `test_fci_anisotropic_diagonal`
+checks this against an explicit six-degree-of-freedom oracle.
 
 ## Provenance
 
