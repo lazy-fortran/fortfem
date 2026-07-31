@@ -1102,6 +1102,9 @@ gallery example.
   `assemble_vector_sipg_interface` now adds independent test/trial vector
   average-flux consistency for `theta=1,0,-1`, including metric-aware
   value/JVP/VJP actions; HDG traces and commuting projections remain.
+  `assemble_hdg_static_condensation` now exposes the local Schur complement
+  and condensed load with implicit-solve value/JVP/VJP actions, so global
+  skeleton assembly can be layered without differentiating pivot choices.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent
@@ -1228,7 +1231,8 @@ gallery example.
   A tensor-weighted vector jump penalty now covers component-valued traces and
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
   projections are now public with value/JVP/VJP actions; hybridization and
-  static condensation remain.
+  static condensation now have a local differentiable Schur primitive;
+  global skeleton assembly and compatible flux elimination remain.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind/entropy-aware flux interface.
