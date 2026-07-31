@@ -87,3 +87,8 @@ main = "gen_planar_helmholtz_dtn_products.f90"
 name = "gen_surface_triangle_geometry_products"
 source-dir = "app"
 main = "gen_surface_triangle_geometry_products.f90"
+
+[[executable]]
+name = "gen_laplace_bem_kernel_products"
+source-dir = "app"
+main = "gen_laplace_bem_kernel_products.f90"
