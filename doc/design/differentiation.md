@@ -215,6 +215,12 @@ The constrained sampled-state wrapper composes that forcing with global
 curl--curl-plus-mass assembly and fixed-mask elimination. One sparse adjoint
 solve returns mesh, material, Eulerian source, and prescribed tangential-DOF
 cotangents for Ampere and Maxwell optimization.
+Mixed Poisson has the corresponding sampled discontinuous scalar-load
+contract. Its analytical products include determinant quadrature, physical
+quadrature-point motion, arbitrary-order DG moments, and source parameters.
+The RT--DG sampled-state wrapper composes those products with the saddle
+operator and one transpose solve, returning mesh, flux-mass coefficient, and
+physical-source cotangents without differentiating a sparse factorization.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.

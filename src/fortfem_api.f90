@@ -10,6 +10,9 @@ module fortfem_api
         solve_tetra_lagrange_state, solve_tetra_lagrange_state_jvp, &
         solve_tetra_lagrange_state_vjp
     use fortfem_tetra_mixed_poisson_state_3d, only: &
+        solve_tetra_mixed_poisson_sampled_state, &
+        solve_tetra_mixed_poisson_sampled_state_jvp, &
+        solve_tetra_mixed_poisson_sampled_state_vjp, &
         solve_tetra_mixed_poisson_state, &
         solve_tetra_mixed_poisson_state_jvp, &
         solve_tetra_mixed_poisson_state_vjp
@@ -475,6 +478,9 @@ module fortfem_api
     ! Public arbitrary-order H(div) solve, including optional zero normal trace.
     use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
     use fortfem_tetra_mixed_poisson_3d, only: &
+        assemble_tetra_dg_source_load_samples, &
+        assemble_tetra_dg_source_load_samples_jvp, &
+        assemble_tetra_dg_source_load_samples_vjp, &
         solve_symbolic_tetra_mixed_poisson_rt
     use fortfem_tetra_lagrange_solver_3d, only: &
         assignment(=), evaluate_tetra_lagrange_solution, &
@@ -770,6 +776,9 @@ module fortfem_api
     public :: solve_tetra_mixed_poisson_state
     public :: solve_tetra_mixed_poisson_state_jvp
     public :: solve_tetra_mixed_poisson_state_vjp
+    public :: solve_tetra_mixed_poisson_sampled_state
+    public :: solve_tetra_mixed_poisson_sampled_state_jvp
+    public :: solve_tetra_mixed_poisson_sampled_state_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass
@@ -780,6 +789,9 @@ module fortfem_api
     public :: solve_tetra_nedelec_weighted_curl_mass
     public :: solve_tetra_rt_div_mass
     public :: solve_symbolic_tetra_mixed_poisson_rt
+    public :: assemble_tetra_dg_source_load_samples
+    public :: assemble_tetra_dg_source_load_samples_jvp
+    public :: assemble_tetra_dg_source_load_samples_vjp
     public :: evaluate_tetra_lagrange_solution
     public :: evaluate_tetra_lagrange_solution_prepared
     public :: initialize_tetra_lagrange_solution_evaluator
