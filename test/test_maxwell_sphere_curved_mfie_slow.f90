@@ -1,4 +1,4 @@
-program test_maxwell_sphere_curved_mfie
+program test_maxwell_sphere_curved_mfie_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
@@ -61,4 +61,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_maxwell_sphere_curved_mfie
+end program test_maxwell_sphere_curved_mfie_slow

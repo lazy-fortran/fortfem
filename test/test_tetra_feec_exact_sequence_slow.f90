@@ -1,4 +1,4 @@
-program test_tetra_feec_exact_sequence
+program test_tetra_feec_exact_sequence_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         build_tetra_discrete_curl, build_tetra_discrete_gradient, &
@@ -146,4 +146,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_feec_exact_sequence
+end program test_tetra_feec_exact_sequence_slow

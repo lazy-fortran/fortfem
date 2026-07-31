@@ -1,4 +1,4 @@
-program test_torus_curved_helmholtz_calderon
+program test_torus_curved_helmholtz_calderon_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_helmholtz_torus_curved_calderon_3d, &
@@ -85,4 +85,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_torus_curved_helmholtz_calderon
+end program test_torus_curved_helmholtz_calderon_slow

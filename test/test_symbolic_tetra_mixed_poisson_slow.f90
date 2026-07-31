@@ -1,4 +1,4 @@
-program test_symbolic_tetra_mixed_poisson
+program test_symbolic_tetra_mixed_poisson_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         compile_tetra_mixed_form_csc, div, dx, &
@@ -95,4 +95,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_symbolic_tetra_mixed_poisson
+end program test_symbolic_tetra_mixed_poisson_slow

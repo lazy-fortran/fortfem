@@ -1,4 +1,4 @@
-program test_tetra_lagrange_poisson_h_convergence
+program test_tetra_lagrange_poisson_h_convergence_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_lagrange_solution_prepared, &
         generate_structured_tetra_box_mesh, &
@@ -157,4 +157,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_lagrange_poisson_h_convergence
+end program test_tetra_lagrange_poisson_h_convergence_slow

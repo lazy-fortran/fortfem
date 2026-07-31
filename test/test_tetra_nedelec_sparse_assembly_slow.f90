@@ -1,4 +1,4 @@
-program test_tetra_nedelec_sparse_assembly
+program test_tetra_nedelec_sparse_assembly_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: assemble_tetra_nedelec_curl_mass_csc, &
         build_tetra_edge_dof_map, build_tetra_nedelec_dof_map
@@ -221,4 +221,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_nedelec_sparse_assembly
+end program test_tetra_nedelec_sparse_assembly_slow

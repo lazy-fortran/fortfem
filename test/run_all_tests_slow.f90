@@ -1,4 +1,4 @@
-program run_all_tests
+program run_all_tests_slow
     ! Master test runner for FortFEM
     ! Runs all unit tests and reports results
 
@@ -122,4 +122,4 @@ contains
         end if
     end subroutine update_counts
 
-end program run_all_tests
+end program run_all_tests_slow

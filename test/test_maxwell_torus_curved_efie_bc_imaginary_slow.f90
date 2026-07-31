@@ -1,4 +1,4 @@
-program test_maxwell_torus_curved_efie_bc_imaginary
+program test_maxwell_torus_curved_efie_bc_imaginary_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
@@ -50,4 +50,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_maxwell_torus_curved_efie_bc_imaginary
+end program test_maxwell_torus_curved_efie_bc_imaginary_slow

@@ -1,4 +1,4 @@
-program test_torus_curved_helmholtz_bem_dtn
+program test_torus_curved_helmholtz_bem_dtn_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         evaluate_torus_curved_panel, generate_torus_surface_mesh, &
@@ -85,4 +85,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_torus_curved_helmholtz_bem_dtn
+end program test_torus_curved_helmholtz_bem_dtn_slow

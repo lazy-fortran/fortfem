@@ -1,4 +1,4 @@
-program test_tetra_rt_arbitrary_order_assembly
+program test_tetra_rt_arbitrary_order_assembly_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_div_mass_element, &
@@ -139,4 +139,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_rt_arbitrary_order_assembly
+end program test_tetra_rt_arbitrary_order_assembly_slow

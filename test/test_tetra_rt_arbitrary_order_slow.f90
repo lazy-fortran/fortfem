@@ -1,4 +1,4 @@
-program test_tetra_rt_arbitrary_order
+program test_tetra_rt_arbitrary_order_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_duffy_quadrature, tetra_rt_dof_count, tetra_rt_t
@@ -297,4 +297,4 @@ contains
         all_passed = all_passed .and. condition
         call check_condition(condition, description)
     end subroutine record_condition
-end program test_tetra_rt_arbitrary_order
+end program test_tetra_rt_arbitrary_order_slow

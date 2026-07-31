@@ -1,4 +1,4 @@
-program test_maxwell_cfie_resonance_3d
+program test_maxwell_cfie_resonance_3d_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_maxwell_efie_rwg_3d, &
@@ -124,4 +124,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_maxwell_cfie_resonance_3d
+end program test_maxwell_cfie_resonance_3d_slow

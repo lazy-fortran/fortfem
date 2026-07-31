@@ -1,4 +1,4 @@
-program test_tetra_nedelec_arbitrary_order_assembly
+program test_tetra_nedelec_arbitrary_order_assembly_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: assemble_tetra_nedelec_curl_mass_element, &
         tetra_duffy_quadrature, triangle_duffy_quadrature
@@ -238,4 +238,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_nedelec_arbitrary_order_assembly
+end program test_tetra_nedelec_arbitrary_order_assembly_slow
