@@ -1,4 +1,8 @@
 module fortfem_api
+    use fortfem_tetra_nedelec_sampled_state_3d, only: &
+        solve_tetra_nedelec_sampled_state, &
+        solve_tetra_nedelec_sampled_state_jvp, &
+        solve_tetra_nedelec_sampled_state_vjp
     use fortfem_tetra_lagrange_state_3d, only: &
         solve_tetra_lagrange_sampled_state, &
         solve_tetra_lagrange_sampled_state_jvp, &
@@ -70,6 +74,9 @@ module fortfem_api
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp, &
         assemble_tetra_nedelec_vector_load, &
+        assemble_tetra_nedelec_vector_load_samples, &
+        assemble_tetra_nedelec_vector_load_samples_jvp, &
+        assemble_tetra_nedelec_vector_load_samples_vjp, &
         assemble_tetra_nedelec_weighted_csc
     use fortfem_kinds
     use fortfem_bspline_polar, only: &
@@ -766,6 +773,9 @@ module fortfem_api
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass
+    public :: solve_tetra_nedelec_sampled_state
+    public :: solve_tetra_nedelec_sampled_state_jvp
+    public :: solve_tetra_nedelec_sampled_state_vjp
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_nedelec_weighted_curl_mass
     public :: solve_tetra_rt_div_mass
@@ -969,6 +979,9 @@ module fortfem_api
     public :: assemble_tetra_nedelec_pml_csc_vjp
     public :: assemble_tetra_nedelec_weighted_csc
     public :: assemble_tetra_nedelec_vector_load
+    public :: assemble_tetra_nedelec_vector_load_samples
+    public :: assemble_tetra_nedelec_vector_load_samples_jvp
+    public :: assemble_tetra_nedelec_vector_load_samples_vjp
     public :: assemble_helmholtz_single_layer_linear
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant

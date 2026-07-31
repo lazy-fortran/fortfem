@@ -206,6 +206,15 @@ vertex coordinates and both material coefficients. A single analytical
 reverse quadrature sweep returns the corresponding vertex and coefficient
 cotangents, rather than requiring one forward sweep per design coordinate.
 This is the preferred element path for large moving-mesh design spaces.
+Sampled Nedelec vector loads use the same Eulerian source contract as RT
+loads. Their products reverse covariant Piola values, determinant quadrature,
+arbitrary-order edge and face transforms, and source point motion. This
+closes the differentiable forcing path needed by curl--curl and Ampere state
+adjoints.
+The constrained sampled-state wrapper composes that forcing with global
+curl--curl-plus-mass assembly and fixed-mask elimination. One sparse adjoint
+solve returns mesh, material, Eulerian source, and prescribed tangential-DOF
+cotangents for Ampere and Maxwell optimization.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
