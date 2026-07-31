@@ -205,7 +205,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, topology-only edge-flux balance, and normal-traction jump are public; ownership, tangential surface-current unknowns, geometry-to-edge-flux assembly, constitutive pressure laws, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
-| Cut FEEC spaces | XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts and enrichment activation | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
+| Cut FEEC spaces | The scalar shifted-Heaviside XFEM activation contract is public; vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
 | Fourier and toroidal modes | A mode registry with field-period, phase, normalization, conjugate packing, triad closure, radial regularity, and torus-harmonic branch data | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
@@ -1181,8 +1181,13 @@ gallery example.
   pressure balance, and current-ledger oracles on slab, cylinder, sphere, and
   torus fixtures.
 
-### Phase 2: Cut geometry and XFEM/XIGA: **planned**
+### Phase 2: Cut geometry and XFEM/XIGA: **active**
 
+- The shifted Heaviside partition-of-unity primitive is now public. It
+  returns the sign-shifted enrichment, has fixed-sign zero JVP/VJP actions,
+  and rejects a zero level value as a topology event. Independent sign and
+  derivative oracles cover the piecewise-smooth contract; cut-cell geometry,
+  support activation, blending correction, and vector enrichment remain.
 - Cut-cell classification and high-order quadrature (the exact degree-one
   triangle centroid rule is the current baseline).
 - Heaviside, kink, singular, helical, and resonant enrichments.
