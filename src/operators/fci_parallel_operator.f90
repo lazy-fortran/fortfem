@@ -29,6 +29,8 @@ module fortfem_fci_parallel_operator
         generated_fci_parallel_diffusion_jvp
     use fortfem_generated_fci_parallel_diffusion_vjp, only: &
         generated_fci_parallel_diffusion_vjp
+    use fortfem_generated_fci_parallel_diagonal, only: &
+        generated_fci_parallel_diffusion_diagonal
     use fortsparse, only: csc_from_triplet, csc_is_valid, csc_t, &
         fortsparse_status_t, status_set, FORTSPARSE_INVALID_MATRIX, &
         FORTSPARSE_OK
@@ -42,6 +44,7 @@ module fortfem_fci_parallel_operator
     public :: apply_fci_parallel_diffusion_jvp
     public :: apply_fci_parallel_diffusion_vjp
     public :: apply_fci_parallel_diffusion_field_vjp
+    public :: compute_fci_parallel_diffusion_diagonal
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
 
@@ -290,6 +293,63 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_parallel_diffusion
+
+    subroutine compute_fci_parallel_diffusion_diagonal( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, diagonal, status)
+        !! Compute the positive Jacobi diagonal of `-L_parallel`.
+        !!
+        !! For the support action `L_parallel = -W_c^{-1} Q^T W_s K Q`,
+        !! this is `diag(W_c^{-1} Q^T W_s K Q)`.  It is a geometry-aware
+        !! baseline preconditioner; plane multigrid and field splitting remain
+        !! higher-level solver concerns.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(out) :: diagonal(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        integer :: segment, sample, plane_node, row
+        integer :: lower_column, upper_column
+        real(dp) :: lower_contribution, upper_contribution
+
+        diagonal = 0.0_dp
+        call validate_fci_diffusion_geometry( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, diagonal, status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        do segment = 1, n_segment
+            lower_column = (segment - 1)*n_plane
+            upper_column = segment*n_plane
+            do sample = 1, n_staggered
+                row = sample + (segment - 1)*n_staggered
+                do plane_node = 1, n_plane
+                    call generated_fci_parallel_diffusion_diagonal( &
+                        backward_map(sample, plane_node, segment), &
+                        line_lengths(sample, segment), parallel_coefficient(row), &
+                        canonical_volumes(lower_column + plane_node), &
+                        staggered_volumes(row), lower_contribution)
+                    diagonal(lower_column + plane_node) = &
+                        diagonal(lower_column + plane_node) + lower_contribution
+                    call generated_fci_parallel_diffusion_diagonal( &
+                        forward_map(sample, plane_node, segment), &
+                        line_lengths(sample, segment), parallel_coefficient(row), &
+                        canonical_volumes(upper_column + plane_node), &
+                        staggered_volumes(row), upper_contribution)
+                    diagonal(upper_column + plane_node) = &
+                        diagonal(upper_column + plane_node) + upper_contribution
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_parallel_diffusion_diagonal
 
     subroutine apply_fci_parallel_diffusion_jvp( &
             forward_map, backward_map, line_lengths, parallel_coefficient, &
@@ -817,6 +877,30 @@ contains
         real(dp), intent(in) :: output(:)
         type(fortsparse_status_t), intent(out) :: status
 
+        call validate_fci_diffusion_geometry( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, output, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(field) /= size(output)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI parallel diffusion received an incompatible field")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_fci_diffusion_shapes
+
+    subroutine validate_fci_diffusion_geometry( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, output, status)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(in) :: output(:)
+        type(fortsparse_status_t), intent(out) :: status
+
         integer :: n_plane, n_segment, n_staggered
 
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -831,14 +915,13 @@ contains
         if (size(parallel_coefficient) /= n_staggered*n_segment) return
         if (size(staggered_volumes) /= n_staggered*n_segment) return
         if (size(canonical_volumes) /= n_plane*(n_segment + 1)) return
-        if (size(field) /= n_plane*(n_segment + 1)) return
         if (size(output) /= n_plane*(n_segment + 1)) return
         if (any(line_lengths <= 0.0_dp)) return
         if (any(parallel_coefficient <= 0.0_dp)) return
         if (any(canonical_volumes <= 0.0_dp)) return
         if (any(staggered_volumes <= 0.0_dp)) return
         call status_set(status, FORTSPARSE_OK, "")
-    end subroutine validate_fci_diffusion_shapes
+    end subroutine validate_fci_diffusion_geometry
 
     subroutine validate_fci_action_shapes( &
             forward_map, backward_map, line_lengths, field, output, status)
