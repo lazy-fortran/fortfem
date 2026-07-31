@@ -245,6 +245,10 @@ merged sparse pattern while accumulating shared mesh vertices, the curl
 coefficient, and the full anisotropic mass tensor. As for RT, reverse
 assembly queries participating CSC entries and does not materialize a dense
 global cotangent.
+Triangle RT sampled vector loads follow the Eulerian source convention used
+in three dimensions. Their products include physical quadrature-point motion,
+contravariant Piola values, determinant weights, edge orientation, source
+parameters, and shared mesh vertices.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
