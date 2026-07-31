@@ -295,6 +295,16 @@ with optional gyrotropic and Braginskii corrections. The parallel and
 perpendicular pressure laws, their force divergence, and their work pairing
 are separate residual terms.
 
+The first constitutive slice is now public on `main`: FortSym generates the
+six independent symmetric CGL components and their JVP/VJP, while the
+`fortfem_cgl_pressure_tensor` wrapper validates the unit magnetic direction,
+packs a full symmetric tensor, and combines full-matrix off-diagonal
+cotangents. An independent test covers the closed-form oracle, central
+differences, the adjoint identity, and invalid directions. Force divergence,
+traction traces, Braginskii corrections, and field-aligned assembly remain
+separate active work; this block is not a claim that the full anisotropic MHD
+operator is complete.
+
 The elasticity complex is treated as a structure-preserving extension of the
 de Rham complex. The mixed weak-symmetry construction of
 [Arnold, Falk, and Winther](https://arxiv.org/abs/math/0701506) is the initial
@@ -844,6 +854,8 @@ gallery example.
   electromagnetic wave states with a common port-Hamiltonian interface.
 - Tensor-valued pressure and anisotropic constitutive blocks with exact power,
   momentum, and stress-work diagnostics.
+- The generated CGL pressure-tensor constitutive block is public and tested;
+  force-divergence and traction/work assembly remain active follow-up slices.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **planned**
 

@@ -23,6 +23,8 @@ operators, sparse solvers, and analytical verification examples.
   mapped gradients and conservative support divergences
 - [Mixed wave time step](design/mixed_wave_time.html) - structure-preserving
   first-order pressure/velocity and port-Hamiltonian updates
+- [CGL pressure tensor](design/cgl_pressure_tensor.html) - generated
+  gyrotropic tensor pressure with JVP/VJP actions
 - [Roadmap](https://github.com/lazy-fortran/fortfem/blob/main/ROADMAP.md) -
   Structure-preserving FEM, BEM, IGA, Fourier-FEM, and plasma-physics ingredients
 - [API Reference](../lists/modules.html) - Detailed module documentation
