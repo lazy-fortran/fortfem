@@ -448,6 +448,13 @@ The graph owns the following structure-preserving data:
 - topology-event records when an interface intersects a vertex, an edge, a
   periodic seam, or another interface.
 
+The first quotient-complex slice is now public on `main`: signed vertex,
+edge, face, and volume representative maps are composed with integer chain
+boundaries, and the output is checked with exact boundary-of-boundary
+identities. The interval-to-circle test supplies the independent Betti-number
+oracle. This is still metadata only; quotient coordinates, metric Hodge
+operators, gauges, and application-owned periodic laws remain later layers.
+
 An electromagnetic sheet is a coupled unknown, not only a post-processed
 delta source. The implementation must support equivalent formulations and
 their conversion:

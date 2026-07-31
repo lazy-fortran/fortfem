@@ -38,6 +38,10 @@ The [signed cell-identification contract](cell_identification.html) records
 canonical representatives and orientation signs for quotient or periodic
 metadata without constructing a mesh or interpreting application coordinates.
 
+The [quotient cell-complex contract](quotient_cell_complex.html) composes
+those signed maps with integer boundary matrices and validates the resulting
+periodic or multipatch chain complex before metric assembly.
+
 The [surface-current trace contract](surface_current.html) provides generic
 Ampere jump algebra, an integrated current ledger, and fixed-topology JVP/VJP
 actions without embedding a material or plasma boundary law.

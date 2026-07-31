@@ -1,15 +1,18 @@
 program test_cell_identification
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_identification_classes, &
+    use fortfem_api, only: cell_complex_betti_numbers, &
+        cell_complex_t, cell_identification_classes, &
         identify_boundary_matrix, &
         cell_identification_t, initialize_cell_identification, &
-        validate_cell_identification
+        initialize_cell_complex, quotient_cell_complex, &
+        validate_cell_identification, validate_cell_complex
     implicit none
 
+    type(cell_complex_t) :: interval, quotient, invalid_complex
     type(cell_identification_t) :: identity, periodic, lower, upper, invalid
     integer, allocatable :: representative(:), orientation(:), classes(:)
     integer, allocatable :: boundary(:, :), quotient_boundary(:, :)
-    integer :: class_count, status
+    integer :: betti(4), class_count, status
 
     allocate(representative(3), orientation(3))
     representative = [1, 2, 3]
@@ -109,6 +112,43 @@ program test_cell_identification
         invalid, representative, orientation, status)
     call check_condition(status /= 0, &
         "mismatched identification arrays are rejected")
+
+    allocate(boundary(2, 1))
+    boundary = reshape([-1, 1], [2, 1])
+    call initialize_cell_complex( &
+        interval, 2, boundary, status=status)
+    call check_condition(status == 0, &
+        "interval for quotient-complex test initializes")
+    call initialize_cell_identification( &
+        lower, [1, 1], [1, 1], status)
+    call initialize_cell_identification( &
+        upper, [1], [1], status)
+    call quotient_cell_complex( &
+        interval, lower, upper, quotient=quotient, status=status)
+    call check_condition(status == 0, &
+        "signed endpoint identification builds quotient complex")
+    call validate_cell_complex(quotient, status)
+    call cell_complex_betti_numbers(quotient, betti, status)
+    call check_condition(status == 0 .and. all(betti == [1, 1, 0, 0]), &
+        "interval quotient has the circle homology oracle")
+    deallocate(boundary)
+    if (allocated(quotient_boundary)) deallocate(quotient_boundary)
+    allocate(boundary(1, 2), quotient_boundary(2, 1))
+    boundary = reshape([-1, 1], [1, 2])
+    quotient_boundary = reshape([1, 0], [2, 1])
+    call initialize_cell_complex( &
+        invalid_complex, 1, boundary, quotient_boundary, status=status)
+    call initialize_cell_identification( &
+        lower, [1], [1], status)
+    call initialize_cell_identification( &
+        upper, [1, 2], [1, 1], status)
+    call initialize_cell_identification( &
+        identity, [1], [1], status)
+    call quotient_cell_complex( &
+        invalid_complex, lower, upper, quotient=quotient, status=status, &
+        face_identification=identity)
+    call check_condition(status /= 0, &
+        "malformed source complex is rejected before quotienting")
 
     call check_summary("signed cell identification")
 end program test_cell_identification

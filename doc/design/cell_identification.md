@@ -60,11 +60,11 @@ are rejected instead of being averaged.
 
 ## Scope and next layer
 
-This is a discrete topology contract, not a quotient-mesh builder. A higher
-layer must combine it with oriented cell-complex boundary maps, transform
-incidences, and prove that the quotient still satisfies boundary-of-boundary
-identities. Geometry maps, toroidal mode phases, trace bases, gauges, and
-application-owned periodic boundary laws remain outside this primitive.
+This remains a discrete topology contract, not a quotient-mesh builder. The
+`quotient_cell_complex` layer combines it with oriented boundary maps and
+checks the resulting boundary-of-boundary identities. Geometry maps, toroidal
+mode phases, trace bases, gauges, and application-owned periodic boundary
+laws remain outside both topology primitives.
 
 `test_cell_identification` supplies independent identity, signed-periodic,
 interval-to-circle, signed-column, inconsistency-rejection,
