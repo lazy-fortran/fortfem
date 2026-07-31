@@ -21,6 +21,8 @@ operators, sparse solvers, and analytical verification examples.
   FortSym generation, Enzyme validation, and sparse adjoints
 - [FCI parallel operator](design/fci_parallel_operator.html) - PARALLAX-aligned
   mapped gradients and conservative support divergences
+- [Mixed wave time step](design/mixed_wave_time.html) - structure-preserving
+  first-order pressure/velocity and port-Hamiltonian updates
 - [Roadmap](https://github.com/lazy-fortran/fortfem/blob/main/ROADMAP.md) -
   Structure-preserving FEM, BEM, IGA, Fourier-FEM, and plasma-physics ingredients
 - [API Reference](../lists/modules.html) - Detailed module documentation

@@ -21,6 +21,10 @@ defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
+The [mixed first-order wave step](mixed_wave_time.html) documents the common
+pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
+contract with independent energy and reversibility checks.
+
 ## Architecture
 
 ### Core Components

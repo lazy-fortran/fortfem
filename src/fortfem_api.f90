@@ -178,6 +178,7 @@ module fortfem_api
         apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
+    use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
@@ -1417,6 +1418,7 @@ module fortfem_api
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: trace_fci_field_line_rk4
+    public :: advance_mixed_wave_midpoint
 
     ! Plotting interface
     public :: plot
