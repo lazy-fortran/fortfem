@@ -391,3 +391,10 @@ sensor, all twelve vertex coordinates, and every local degree of freedom
 simultaneously. Their VJPs return the matching sensor, mesh, and coefficient
 cotangents, adding direct Piola geometry sensitivity and indirect
 reference-coordinate sensitivity exactly once.
+Arbitrary-order tetrahedral Lagrange bases provide matching analytical
+reference-coordinate products, including exact second derivatives of their
+cardinal factors for gradient observations. Physical-point H1 observations
+compose these products with affine inversion and the existing inverse-Jacobian
+geometry products. A Poisson objective may therefore move its sensor, mesh,
+and state together, while reverse mode returns all three cotangent classes
+without an AD runtime.
