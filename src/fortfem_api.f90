@@ -52,6 +52,10 @@ module fortfem_api
         evaluate_shifted_vector_enriched_basis, &
         evaluate_shifted_vector_enriched_basis_jvp, &
         evaluate_shifted_vector_enriched_basis_vjp
+    use fortfem_xfem_blending_correction, only: &
+        evaluate_blending_corrected_enrichment, &
+        evaluate_blending_corrected_enrichment_jvp, &
+        evaluate_blending_corrected_enrichment_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_gauge, reduce_tree_cotree_dense_system, &
@@ -905,6 +909,9 @@ module fortfem_api
     public :: evaluate_shifted_vector_enriched_basis
     public :: evaluate_shifted_vector_enriched_basis_jvp
     public :: evaluate_shifted_vector_enriched_basis_vjp
+    public :: evaluate_blending_corrected_enrichment
+    public :: evaluate_blending_corrected_enrichment_jvp
+    public :: evaluate_blending_corrected_enrichment_vjp
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: validate_tree_cotree_gauge
