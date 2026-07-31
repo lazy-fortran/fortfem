@@ -341,6 +341,9 @@ module fortfem_api
         build_fci_quadratic_interpolation_map_1d, &
         build_fci_quadratic_interpolation_map_1d_jvp, &
         build_fci_quadratic_interpolation_map_1d_vjp, &
+        build_fci_cubic_interpolation_map_1d, &
+        build_fci_cubic_interpolation_map_1d_jvp, &
+        build_fci_cubic_interpolation_map_1d_vjp, &
         build_fci_quadratic_interpolation_maps_1d, &
         build_fci_quadratic_interpolation_maps_1d_jvp, &
         build_fci_quadratic_interpolation_maps_1d_vjp, &
@@ -1843,6 +1846,9 @@ module fortfem_api
     public :: build_fci_quadratic_interpolation_map_1d
     public :: build_fci_quadratic_interpolation_map_1d_jvp
     public :: build_fci_quadratic_interpolation_map_1d_vjp
+    public :: build_fci_cubic_interpolation_map_1d
+    public :: build_fci_cubic_interpolation_map_1d_jvp
+    public :: build_fci_cubic_interpolation_map_1d_vjp
     public :: build_fci_quadratic_interpolation_maps_1d
     public :: build_fci_quadratic_interpolation_maps_1d_jvp
     public :: build_fci_quadratic_interpolation_maps_1d_vjp

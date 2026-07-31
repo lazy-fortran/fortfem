@@ -29,6 +29,11 @@ defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
+The [FCI interpolation-map contract](fci_interpolation_map.html) defines
+linear, bilinear, quadratic, and FortSym-generated cubic fixed-stencil maps,
+including their topology-aware JVP/VJP actions and independent polynomial
+oracles.
+
 The [FCI boundary-patch mortar contract](fci_boundary_patch_mortar.html)
 defines conservative cross-mass transfer between an FCI background trace and a
 fitted or cut boundary patch, including constant reproduction, ownership, and

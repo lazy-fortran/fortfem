@@ -1471,9 +1471,11 @@ gallery example.
   flux-box volume constructor
   now covers the traced expansion/area/(B_\varphi) product with pinned
   FortSym-generated value/JVP/VJP kernels. Fixed-cell 2D map JVP/VJP products
-  now cover source and target coordinate motion; higher-order interpolation
-  derivatives and curved support-volume measures remain separate planned
-  components.
+  now cover source and target coordinate motion; generated quadratic and
+  cubic fixed-stencil maps now expose value/JVP/VJP actions with independent
+  polynomial, finite-difference, and real-adjoint oracles. Stencils beyond
+  cubic, higher-order interpolation derivatives, and curved support-volume
+  measures remain separate planned components.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or

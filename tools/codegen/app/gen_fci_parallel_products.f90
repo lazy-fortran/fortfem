@@ -2,7 +2,7 @@ program gen_fci_parallel_products
     use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
+    use fortsym_expr, only: expr_t, operator(*), operator(-), &
         operator(/), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
@@ -22,6 +22,9 @@ program gen_fci_parallel_products
     type(expr_t) :: quadratic_variables(4), quadratic_outputs(3)
     type(expr_t) :: quadratic_variables_dot(4), quadratic_outputs_jvp(3)
     type(expr_t) :: quadratic_output_bar(3), quadratic_outputs_vjp(4)
+    type(expr_t) :: cubic_variables(5), cubic_outputs(4)
+    type(expr_t) :: cubic_variables_dot(5), cubic_outputs_jvp(4)
+    type(expr_t) :: cubic_output_bar(4), cubic_outputs_vjp(5)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     character(:), allocatable :: diffusion_code, diffusion_jvp_code
@@ -29,6 +32,8 @@ program gen_fci_parallel_products
     character(:), allocatable :: diagonal_code
     character(:), allocatable :: quadratic_code
     character(:), allocatable :: quadratic_jvp_code, quadratic_vjp_code
+    character(:), allocatable :: cubic_code
+    character(:), allocatable :: cubic_jvp_code, cubic_vjp_code
     integer :: ios, root, unit
 
     call arena%init()
@@ -232,6 +237,82 @@ program gen_fci_parallel_products
         str("node_3_bar")]
     quadratic_vjp_code = chars(emit_kernel(quadratic_outputs_vjp, spec))
 
+    cubic_variables = [ &
+        sym(arena, "target"), sym(arena, "node_1"), sym(arena, "node_2"), &
+        sym(arena, "node_3"), sym(arena, "node_4")]
+    cubic_outputs = [ &
+        (cubic_variables(1) - cubic_variables(3))* &
+        (cubic_variables(1) - cubic_variables(4))* &
+        (cubic_variables(1) - cubic_variables(5))/ &
+        ((cubic_variables(2) - cubic_variables(3))* &
+        (cubic_variables(2) - cubic_variables(4))* &
+        (cubic_variables(2) - cubic_variables(5))), &
+        (cubic_variables(1) - cubic_variables(2))* &
+        (cubic_variables(1) - cubic_variables(4))* &
+        (cubic_variables(1) - cubic_variables(5))/ &
+        ((cubic_variables(3) - cubic_variables(2))* &
+        (cubic_variables(3) - cubic_variables(4))* &
+        (cubic_variables(3) - cubic_variables(5))), &
+        (cubic_variables(1) - cubic_variables(2))* &
+        (cubic_variables(1) - cubic_variables(3))* &
+        (cubic_variables(1) - cubic_variables(5))/ &
+        ((cubic_variables(4) - cubic_variables(2))* &
+        (cubic_variables(4) - cubic_variables(3))* &
+        (cubic_variables(4) - cubic_variables(5))), &
+        (cubic_variables(1) - cubic_variables(2))* &
+        (cubic_variables(1) - cubic_variables(3))* &
+        (cubic_variables(1) - cubic_variables(4))/ &
+        ((cubic_variables(5) - cubic_variables(2))* &
+        (cubic_variables(5) - cubic_variables(3))* &
+        (cubic_variables(5) - cubic_variables(4)))]
+    call simplify_all(cubic_outputs)
+
+    call initialize_spec( &
+        spec, "generated_fci_cubic_lagrange_weights", &
+        "fortfem_generated_fci_cubic_lagrange", 5, 4)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3"), &
+        str("node_4")]
+    spec%outputs = [str("weight_1"), str("weight_2"), str("weight_3"), &
+        str("weight_4")]
+    cubic_code = chars(emit_kernel(cubic_outputs, spec))
+
+    cubic_variables_dot = [ &
+        sym(arena, "target_dot"), sym(arena, "node_1_dot"), &
+        sym(arena, "node_2_dot"), sym(arena, "node_3_dot"), &
+        sym(arena, "node_4_dot")]
+    cubic_output_bar = [ &
+        sym(arena, "weight_1_bar"), sym(arena, "weight_2_bar"), &
+        sym(arena, "weight_3_bar"), sym(arena, "weight_4_bar")]
+    cubic_outputs_jvp = jvp( &
+        cubic_outputs, cubic_variables, cubic_variables_dot)
+    cubic_outputs_vjp = vjp( &
+        cubic_outputs, cubic_variables, cubic_output_bar)
+    call simplify_all(cubic_outputs_jvp)
+    call simplify_all(cubic_outputs_vjp)
+
+    call initialize_spec( &
+        spec, "generated_fci_cubic_lagrange_weights_jvp", &
+        "fortfem_generated_fci_cubic_lagrange_jvp", 10, 4)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3"), &
+        str("node_4"), str("target_dot"), str("node_1_dot"), &
+        str("node_2_dot"), str("node_3_dot"), str("node_4_dot")]
+    spec%outputs = [str("weight_1_dot"), str("weight_2_dot"), &
+        str("weight_3_dot"), str("weight_4_dot")]
+    cubic_jvp_code = chars(emit_kernel(cubic_outputs_jvp, spec))
+
+    call initialize_spec( &
+        spec, "generated_fci_cubic_lagrange_weights_vjp", &
+        "fortfem_generated_fci_cubic_lagrange_vjp", 9, 5)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3"), &
+        str("node_4"), str("weight_1_bar"), str("weight_2_bar"), &
+        str("weight_3_bar"), str("weight_4_bar")]
+    spec%outputs = [str("target_bar"), str("node_1_bar"), str("node_2_bar"), &
+        str("node_3_bar"), str("node_4_bar")]
+    cubic_vjp_code = chars(emit_kernel(cubic_outputs_vjp, spec))
+
     open (newunit=unit, &
         file=generated_path("fortfem_fci_parallel_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -246,6 +327,9 @@ program gen_fci_parallel_products
     write (unit, "(a)") quadratic_code(:len(quadratic_code) - 1)
     write (unit, "(a)") quadratic_jvp_code(:len(quadratic_jvp_code) - 1)
     write (unit, "(a)") quadratic_vjp_code(:len(quadratic_vjp_code) - 1)
+    write (unit, "(a)") cubic_code(:len(cubic_code) - 1)
+    write (unit, "(a)") cubic_jvp_code(:len(cubic_jvp_code) - 1)
+    write (unit, "(a)") cubic_vjp_code(:len(cubic_vjp_code) - 1)
     close (unit)
 
 contains
