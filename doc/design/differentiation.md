@@ -249,6 +249,10 @@ Triangle RT sampled vector loads follow the Eulerian source convention used
 in three dimensions. Their products include physical quadrature-point motion,
 contravariant Piola values, determinant weights, edge orientation, source
 parameters, and shared mesh vertices.
+Triangle Nedelec sampled loads expose the identical Eulerian source API with
+covariant Piola products. This makes physical vector forcing interchangeable
+between the two-dimensional H(div) and H(curl) state wrappers while retaining
+the correct geometry pullback for each space.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
