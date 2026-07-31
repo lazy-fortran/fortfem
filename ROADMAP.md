@@ -525,6 +525,17 @@ impedance. Required work includes:
 The parallel operator may be represented by a compatible H(curl)/H(div)
 complex, a Fourier derivative, or an FCI field-line map. These choices share a
 residual and oracle interface but are not assumed algebraically identical.
+The generic pointwise field-aligned flux
+
+\[
+  \mathbf F=k_\perp\mathbf g+(k_\parallel-k_\perp)\mathbf b
+  (\mathbf b\cdot\mathbf g)
+\]
+
+is now public with FortSym-generated value/JVP/VJP products and independent
+unit-direction, finite-difference, and dot-product tests. It is the common
+constitutive block for future anisotropic diffusion, conduction, resistivity,
+and wave assemblies.
 The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
 RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
 interpolation matrices assemble a sparse staggered gradient; the support

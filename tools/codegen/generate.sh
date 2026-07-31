@@ -35,6 +35,7 @@ fo exec --no-build gen_fci_parallel_products
 fo exec --no-build gen_cgl_pressure_tensor_products
 fo exec --no-build gen_cgl_pressure_divergence_products
 fo exec --no-build gen_fci_support_volume_products
+fo exec --no-build gen_field_aligned_flux_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -62,3 +63,4 @@ fo fmt "$generated_dir/fortfem_fci_parallel_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_tensor_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_divergence_products.f90"
 fo fmt "$generated_dir/fortfem_fci_support_volume_products.f90"
+fo fmt "$generated_dir/fortfem_field_aligned_flux_products.f90"
