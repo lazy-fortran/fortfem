@@ -19,4 +19,7 @@ silently changing orientation.
 The focused test uses an independent vector oracle, checks tangential
 orthogonality and the rotated-current sign, and rejects a non-unit normal.
 Broken finite-element spaces, surface measures, distributional source terms,
-and Nitsche/mortar coupling will consume this contract in later slices.
+and Nitsche/mortar coupling will consume this contract in later slices.  The
+public `assemble_interface_jump_penalty` routine now assembles the symmetric
+positive-semidefinite \([T^+,-T^-]^T[T^+,-T^-]\) block used by SIPG and the
+penalty portion of Nitsche coupling.
