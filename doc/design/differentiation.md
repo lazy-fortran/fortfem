@@ -215,3 +215,9 @@ reverse pass handles both first-order edge orientation and arbitrary-order
 edge/face/cell basis transforms, then accumulates cotangents from adjacent
 elements at shared vertices. Thus FEM--DtN and PML volume operators expose
 the same geometry-facing contract.
+
+Arbitrary-order tetrahedral H1 stiffness-plus-mass elements expose analytical
+products for all vertex coordinates and both scalar coefficients. They
+compose FortNum's FortSym-generated determinant and inverse products with
+physical-gradient quadrature. One reverse sweep returns the complete element
+shape gradient without forming the coordinate-to-matrix Jacobian.

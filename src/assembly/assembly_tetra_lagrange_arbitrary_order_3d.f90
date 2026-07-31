@@ -6,7 +6,8 @@ module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
         tetra_lagrange_dof_count, tetra_lagrange_t
     use fortfem_tetra_lagrange_global_dof_map, only: &
         build_tetra_lagrange_dof_map
-    use fortnum_linalg, only: det3, inv3
+    use fortnum_linalg, only: det3, det3_jvp, det3_vjp, inv3, inv3_jvp, &
+        inv3_vjp
     use fortsparse, only: &
         csc_from_triplet, csc_t, FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
@@ -16,6 +17,8 @@ module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
 
     public :: assemble_tetra_lagrange_stiffness_csc
     public :: assemble_tetra_lagrange_stiffness_element
+    public :: assemble_tetra_lagrange_stiffness_element_jvp
+    public :: assemble_tetra_lagrange_stiffness_element_vjp
     public :: assemble_tetra_lagrange_scalar_load
     public :: scalar_source_3d
 
@@ -95,6 +98,175 @@ contains
         end do
         status = 0
     end subroutine assemble_tetra_lagrange_stiffness_element
+
+    subroutine assemble_tetra_lagrange_stiffness_element_jvp( &
+            vertices, degree, quadrature_degree, stiffness_coefficient, &
+            mass_coefficient, vertices_dot, stiffness_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: stiffness_coefficient, mass_coefficient
+        real(dp), intent(in) :: stiffness_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        real(dp), allocatable, intent(out) :: matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        real(dp), allocatable :: gradients(:, :), physical_gradients(:, :)
+        real(dp), allocatable :: physical_gradients_dot(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_dot, gradient_energy
+        real(dp) :: inverse_jacobian(3, 3), inverse_jacobian_dot(3, 3)
+        real(dp) :: jacobian(3, 3), jacobian_dot(3, 3), mass_energy
+        integer :: column, dof_count, inverse_status, point, row
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (degree < 1 .or. degree > 4 .or. quadrature_degree < 0) return
+        call tetra_jacobian(vertices, jacobian)
+        call tetra_jacobian(vertices_dot, jacobian_dot)
+        determinant = det3(jacobian)
+        if (.not. valid_jacobian(jacobian, determinant)) return
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+        call inv3_jvp( &
+            jacobian, jacobian_dot, inverse_jacobian, inverse_jacobian_dot, &
+            inverse_status)
+        if (inverse_status /= 0) return
+        call initialize_tetra_lagrange(degree, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        allocate(matrix_dot(dof_count, dof_count), source=0.0_dp)
+        allocate(values(dof_count), gradients(3, dof_count))
+        allocate(physical_gradients(3, dof_count))
+        allocate(physical_gradients_dot(3, dof_count))
+        do point = 1, size(weights)
+            call evaluate_tetra_lagrange( &
+                basis, [x(point), y(point), z(point)], values, gradients, &
+                status)
+            if (status /= 0) return
+            physical_gradients = &
+                matmul(transpose(inverse_jacobian), gradients)
+            physical_gradients_dot = &
+                matmul(transpose(inverse_jacobian_dot), gradients)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    gradient_energy = dot_product( &
+                        physical_gradients(:, row), &
+                        physical_gradients(:, column))
+                    mass_energy = values(row)*values(column)
+                    matrix_dot(row, column) = matrix_dot(row, column) + &
+                        weights(point)*(determinant_dot*( &
+                        stiffness_coefficient*gradient_energy + &
+                        mass_coefficient*mass_energy) + determinant*( &
+                        stiffness_coefficient_dot*gradient_energy + &
+                        stiffness_coefficient*(dot_product( &
+                        physical_gradients_dot(:, row), &
+                        physical_gradients(:, column)) + dot_product( &
+                        physical_gradients(:, row), &
+                        physical_gradients_dot(:, column))) + &
+                        mass_coefficient_dot*mass_energy))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_lagrange_stiffness_element_jvp
+
+    subroutine assemble_tetra_lagrange_stiffness_element_vjp( &
+            vertices, degree, quadrature_degree, stiffness_coefficient, &
+            mass_coefficient, matrix_bar, vertices_bar, &
+            stiffness_coefficient_bar, mass_coefficient_bar, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: stiffness_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+        real(dp), intent(out) :: stiffness_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        integer, intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        real(dp), allocatable :: gradients(:, :), physical_gradients(:, :)
+        real(dp), allocatable :: physical_gradients_bar(:, :), values(:)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), gradient_energy
+        real(dp) :: inverse_jacobian(3, 3), inverse_jacobian_bar(3, 3)
+        real(dp) :: inverse_jacobian_jacobian_bar(3, 3)
+        real(dp) :: jacobian(3, 3), mass_energy, seed
+        integer :: column, dof_count, inverse_status, point, row
+
+        vertices_bar = 0.0_dp
+        stiffness_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        status = 1
+        if (degree < 1 .or. degree > 4 .or. quadrature_degree < 0) return
+        call initialize_tetra_lagrange(degree, basis, status)
+        if (status /= 0) return
+        dof_count = tetra_lagrange_dof_count(basis)
+        if (size(matrix_bar, 1) /= dof_count .or. &
+            size(matrix_bar, 2) /= dof_count) return
+        call tetra_jacobian(vertices, jacobian)
+        determinant = det3(jacobian)
+        if (.not. valid_jacobian(jacobian, determinant)) return
+        call inv3(jacobian, inverse_jacobian, inverse_status)
+        if (inverse_status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        allocate(values(dof_count), gradients(3, dof_count))
+        allocate(physical_gradients(3, dof_count))
+        allocate(physical_gradients_bar(3, dof_count))
+        determinant_bar = 0.0_dp
+        inverse_jacobian_bar = 0.0_dp
+        do point = 1, size(weights)
+            call evaluate_tetra_lagrange( &
+                basis, [x(point), y(point), z(point)], values, gradients, &
+                status)
+            if (status /= 0) return
+            physical_gradients = &
+                matmul(transpose(inverse_jacobian), gradients)
+            physical_gradients_bar = 0.0_dp
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    seed = weights(point)*matrix_bar(row, column)
+                    gradient_energy = dot_product( &
+                        physical_gradients(:, row), &
+                        physical_gradients(:, column))
+                    mass_energy = values(row)*values(column)
+                    determinant_bar = determinant_bar + seed*( &
+                        stiffness_coefficient*gradient_energy + &
+                        mass_coefficient*mass_energy)
+                    stiffness_coefficient_bar = &
+                        stiffness_coefficient_bar + &
+                        seed*determinant*gradient_energy
+                    mass_coefficient_bar = mass_coefficient_bar + &
+                        seed*determinant*mass_energy
+                    physical_gradients_bar(:, row) = &
+                        physical_gradients_bar(:, row) + &
+                        seed*determinant*stiffness_coefficient* &
+                        physical_gradients(:, column)
+                    physical_gradients_bar(:, column) = &
+                        physical_gradients_bar(:, column) + &
+                        seed*determinant*stiffness_coefficient* &
+                        physical_gradients(:, row)
+                end do
+            end do
+            inverse_jacobian_bar = inverse_jacobian_bar + &
+                matmul(gradients, transpose(physical_gradients_bar))
+        end do
+        call inv3_vjp( &
+            jacobian, inverse_jacobian_bar, inverse_jacobian, &
+            inverse_jacobian_jacobian_bar, inverse_status)
+        if (inverse_status /= 0) return
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        call tetra_jacobian_vjp( &
+            inverse_jacobian_jacobian_bar + determinant_jacobian_bar, &
+            vertices_bar)
+        status = 0
+    end subroutine assemble_tetra_lagrange_stiffness_element_vjp
 
     subroutine assemble_tetra_lagrange_stiffness_csc( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
@@ -226,5 +398,32 @@ contains
         end do
         call status_set(status, 0, "")
     end subroutine assemble_tetra_lagrange_scalar_load
+
+    pure subroutine tetra_jacobian(vertices, jacobian)
+        real(dp), intent(in) :: vertices(3, 4)
+        real(dp), intent(out) :: jacobian(3, 3)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+    end subroutine tetra_jacobian
+
+    pure subroutine tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        real(dp), intent(in) :: jacobian_bar(3, 3)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+
+        vertices_bar(:, 1) = -sum(jacobian_bar, dim=2)
+        vertices_bar(:, 2) = jacobian_bar(:, 1)
+        vertices_bar(:, 3) = jacobian_bar(:, 2)
+        vertices_bar(:, 4) = jacobian_bar(:, 3)
+    end subroutine tetra_jacobian_vjp
+
+    pure logical function valid_jacobian( &
+            jacobian, determinant) result(valid)
+        real(dp), intent(in) :: jacobian(3, 3), determinant
+
+        valid = determinant > 64.0_dp*epsilon(1.0_dp)* &
+            max(1.0_dp, maxval(abs(jacobian))**3)
+    end function valid_jacobian
 
 end module fortfem_assembly_tetra_lagrange_arbitrary_order_3d
