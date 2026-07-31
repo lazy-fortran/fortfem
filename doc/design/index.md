@@ -89,6 +89,10 @@ contract with independent energy and reversibility checks.
 The [CGL pressure tensor](cgl_pressure_tensor.html) documents the generated
 gyrotropic tensor constitutive block and its JVP/VJP contract.
 
+The [tensor volume work contract](tensor_volume_work.html) assembles the
+caller-owned `stress:grad(test)` residual and its geometry/tensor/weight
+JVP/VJP actions for CGL, Maxwell, anisotropic, and elastic clients.
+
 The [interface normal-traction balance](interface_traction_balance.html)
 documents the neutral traction-jump residual that composes tensor pressure,
 elastic stress, or Maxwell-stress blocks without selecting an application law.

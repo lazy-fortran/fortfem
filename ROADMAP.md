@@ -228,7 +228,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | The scalar shifted-Heaviside activation and a 3D vector-enrichment curl/divergence product-rule diagnostic are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
-| Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
+| Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; model-specific mode operators and torus-harmonic branch data remain | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
@@ -1391,8 +1391,11 @@ gallery example.
 - The generated CGL-shaped tensor and product-rule force-divergence blocks are
   public and tested as generic constitutive fixtures. The tensor now also
   feeds compositional traction and `P:grad(v)` stress-work value/JVP/VJP
-  diagnostics. Full volume assembly and caller-supplied correction tensors
-  remain active. No plasma closure is implemented.
+  diagnostics. `assemble_tensor_volume_work` now provides the neutral full
+  volume `stress:grad(test)` residual with tensor, geometry, and quadrature
+  JVP/VJP actions and an independent contraction oracle; constitutive laws and
+  caller-supplied correction tensors remain external. No plasma closure is
+  implemented.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **planned**
 
