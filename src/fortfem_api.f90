@@ -11,6 +11,8 @@ module fortfem_api
         assemble_surface_triangle_measures_3d, &
         assemble_surface_triangle_measures_3d_jvp, &
         assemble_surface_triangle_measures_3d_vjp
+    use fortfem_level_set_triangle_interface_2d, only: &
+        evaluate_level_set_triangle_interface_2d
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -933,6 +935,7 @@ module fortfem_api
     public :: assemble_surface_triangle_measures_3d
     public :: assemble_surface_triangle_measures_3d_jvp
     public :: assemble_surface_triangle_measures_3d_vjp
+    public :: evaluate_level_set_triangle_interface_2d
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp

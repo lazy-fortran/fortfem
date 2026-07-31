@@ -875,8 +875,11 @@ gallery example.
   independently discretized trace spaces.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
-  and dot-product oracles. Internal manifolds and level-set topology remain
-  next; the existing vector current pairing consumes this measure contract.
+  and dot-product oracles. A linear 2D triangle level-set cut primitive now
+  returns edge intersections, physical segment length, and gradient normal with
+  an affine independent oracle. Cut-cell quadrature, internal-manifold graphs,
+  and fixed-topology level-set derivatives remain next; the existing vector
+  current pairing consumes the surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.

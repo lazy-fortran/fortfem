@@ -32,3 +32,7 @@ and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
 finite-difference and real dot-product oracles, so current-sheet and delta-load
 primitives can consume one orientation-preserving measure contract.
+`evaluate_level_set_triangle_interface_2d` supplies the corresponding first
+unfitted-manifold primitive: two edge intersections, physical segment length,
+and the level-set-gradient normal for a linear triangle cut. Vertex crossings
+are treated as topology events for future derivative and cut-cell paths.
