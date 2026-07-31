@@ -103,6 +103,17 @@ fpm run --example <example_name>
 <p>This manufactured profile evaluates the gyrotropic CGL pressure tensor</p>
 </div>
 </article>
+<article class="example-card" data-example="fci_parallel_diffusion">
+<a class="example-card-preview" href="generated/fci_parallel_diffusion.html">
+<img class="example-card-image"
+ src="../media/examples/fci_parallel_diffusion/fci_parallel_dissipation_1d.png"
+ alt="Plot preview for fci_parallel_diffusion" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/fci_parallel_diffusion.html">fci_parallel_diffusion</a></h3>
+<p>This small fixture exercises FortFEM's field-coordinate-independent support</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
@@ -409,6 +420,7 @@ fpm run --example <example_name>
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
+- [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
