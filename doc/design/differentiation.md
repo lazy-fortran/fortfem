@@ -287,6 +287,12 @@ physical vector value and divergence or curl with respect to element vertices
 and every local coefficient. They reuse the corresponding Piola products;
 inversion of a fixed physical observation point is deliberately kept as a
 separate geometry operation.
+The affine triangle physical-to-reference inverse now has its own products.
+They differentiate all six vertex coordinates and both physical point
+coordinates by composing FortNum's FortSym-generated two-by-two inverse
+products. Fixed physical sensors can therefore reverse mesh motion through
+reference-coordinate inversion without differentiating point-location
+topology.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.

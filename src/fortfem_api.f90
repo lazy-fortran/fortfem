@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_triangle_affine_map, only: &
+        invert_triangle_affine_map, invert_triangle_affine_map_jvp, &
+        invert_triangle_affine_map_vjp
     use fortfem_triangle_full_vector_sampled_state_2d, only: &
         solve_triangle_bdm_sampled_state, &
         solve_triangle_bdm_sampled_state_jvp, &
@@ -850,6 +853,9 @@ module fortfem_api
     public :: solve_triangle_bdm_sampled_state
     public :: solve_triangle_bdm_sampled_state_jvp
     public :: solve_triangle_bdm_sampled_state_vjp
+    public :: invert_triangle_affine_map
+    public :: invert_triangle_affine_map_jvp
+    public :: invert_triangle_affine_map_vjp
     public :: solve_triangle_rt_sampled_state
     public :: solve_triangle_rt_sampled_state_jvp
     public :: solve_triangle_rt_sampled_state_vjp
