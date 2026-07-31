@@ -73,6 +73,10 @@ The [interface normal-traction balance](interface_traction_balance.html)
 documents the neutral traction-jump residual that composes tensor pressure,
 elastic stress, or Maxwell-stress blocks without selecting an application law.
 
+The [shifted Heaviside enrichment](heaviside_enrichment.html) documents the
+first XFEM/GFEM partition-of-unity enrichment and its explicit topology-event
+differentiation contract.
+
 The [nonlinear material-surface flux contract](nonlinear_surface_flux.html)
 keeps application wall and sheath laws separate from orientation-preserving
 trace assembly and its generated-compatible value/JVP/VJP bookkeeping.
