@@ -562,7 +562,9 @@ module fortfem_api
         solve_symbolic_tetra_mixed_poisson_rt
     use fortfem_tetra_lagrange_solver_3d, only: &
         assignment(=), evaluate_tetra_lagrange_solution, &
+        evaluate_tetra_lagrange_solution_jvp, &
         evaluate_tetra_lagrange_solution_prepared, &
+        evaluate_tetra_lagrange_solution_vjp, &
         initialize_tetra_lagrange_solution_evaluator, &
         solve_tetra_lagrange_diffusion_reaction, &
         solve_tetra_lagrange_poisson, tetra_lagrange_solution_evaluator_t
@@ -886,6 +888,8 @@ module fortfem_api
     public :: assemble_tetra_dg_source_load_samples_jvp
     public :: assemble_tetra_dg_source_load_samples_vjp
     public :: evaluate_tetra_lagrange_solution
+    public :: evaluate_tetra_lagrange_solution_jvp
+    public :: evaluate_tetra_lagrange_solution_vjp
     public :: evaluate_tetra_lagrange_solution_prepared
     public :: initialize_tetra_lagrange_solution_evaluator
     public :: solve_tetra_lagrange_diffusion_reaction

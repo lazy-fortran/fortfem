@@ -355,3 +355,10 @@ The sampled constrained-state wrapper composes this load path with global H1
 assembly and fixed-mask elimination. One call differentiates an Eulerian
 source, material coefficients, prescribed boundary values, and every mesh
 coordinate through the complete Poisson or diffusion-reaction solve.
+Fixed-reference tetrahedral H1 observations now expose the same product
+contract. They differentiate the scalar value and physical gradient with
+respect to every global solution coefficient and all vertices of the active
+tetrahedron. The geometry path composes FortNum's FortSym-generated
+three-by-three inverse products with the reference gradient, so a Poisson
+state adjoint can continue through pointwise objectives without differentiating
+an inverse or factorization numerically.
