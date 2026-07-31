@@ -38,6 +38,10 @@ The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
 fixed-topology direct-solve reduction for curl--curl nullspaces, including the
 control-mesh rule needed by high-order FEEC and IGA/mortar spaces.
 
+The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
+explicit SPD IC(0) factor/apply primitive for compatible iterative paths;
+ILU-family options remain the nonsymmetric counterpart.
+
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.

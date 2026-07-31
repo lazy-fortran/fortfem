@@ -808,6 +808,8 @@ module fortfem_api
         cg_solve_jvp, cg_solve_vjp, pcg_solve_jvp, pcg_solve_vjp,           &
         bicgstab_solve_jvp, bicgstab_solve_vjp, gmres_solve_jvp,            &
         gmres_solve_vjp, jacobi_preconditioner, ilu_preconditioner
+    use fortfem_incomplete_cholesky, only: apply_incomplete_cholesky, &
+        build_incomplete_cholesky, incomplete_cholesky_factor_t
     implicit none
 
     private
@@ -845,6 +847,9 @@ module fortfem_api
     public :: reduce_tree_cotree_dense_system
     public :: reduce_tree_cotree_dense_system_jvp
     public :: reduce_tree_cotree_dense_system_vjp
+    public :: incomplete_cholesky_factor_t
+    public :: build_incomplete_cholesky
+    public :: apply_incomplete_cholesky
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
