@@ -26,11 +26,29 @@ call build_incomplete_cholesky(matrix, factor, status)
 call apply_incomplete_cholesky(factor, rhs, solution, status)
 ```
 
+`fortfem_sparse_incomplete_cholesky` provides the same fixed-pattern contract
+directly on a FortSparse CSC matrix. It keeps only the lower CSC pattern,
+performs sparse triangular application, and exposes right-hand-side JVP/VJP
+actions:
+
+```fortran
+type(sparse_incomplete_cholesky_factor_t) :: sparse_factor
+call build_sparse_incomplete_cholesky(csc_matrix, sparse_factor, status)
+call apply_sparse_incomplete_cholesky(sparse_factor, rhs, solution, status)
+call apply_sparse_incomplete_cholesky_jvp(sparse_factor, rhs_dot, solution_dot, status)
+call apply_sparse_incomplete_cholesky_vjp(sparse_factor, solution_bar, rhs_bar, status)
+```
+
+The sparse builder rejects nonsymmetric or non-positive-pivot CSC inputs and
+does not introduce fill. Factor construction is an inactive solver branch;
+the fixed-factor actions are the differentiable contract.
+
 The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
 `ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
-this keeps the current contract small while a true sparse implementation is
-benchmarked separately. The legacy BiCGSTAB kernel accepts only its ILU
+the standalone sparse IC(0) API above is available for callers that must keep
+the factor sparse. PCG integration and fill-controlled ICHOL remain separate
+benchmark work. The legacy BiCGSTAB kernel accepts only its ILU
 factor contract and therefore reports an explicit unpreconditioned fallback
 if ICHOL is selected there.
 
@@ -44,5 +62,6 @@ dependency.
 ## Independent oracle
 
 The focused test uses a symmetric positive-definite tridiagonal matrix whose
-IC(0) factor is exact and checks the residual after triangular application.
-Nonsymmetry and an indefinite diagonal are rejected independently.
+IC(0) factor is exact and checks the independent triangular-solve oracle plus
+the fixed-factor adjoint identity. Nonsymmetry and an indefinite diagonal are
+rejected independently.

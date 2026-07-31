@@ -890,6 +890,11 @@ module fortfem_api
         ichol_preconditioner
     use fortfem_incomplete_cholesky, only: apply_incomplete_cholesky, &
         build_incomplete_cholesky, incomplete_cholesky_factor_t
+    use fortfem_sparse_incomplete_cholesky, only: &
+        apply_sparse_incomplete_cholesky, &
+        apply_sparse_incomplete_cholesky_jvp, &
+        apply_sparse_incomplete_cholesky_vjp, &
+        build_sparse_incomplete_cholesky, sparse_incomplete_cholesky_factor_t
     implicit none
 
     private
@@ -965,6 +970,11 @@ module fortfem_api
     public :: incomplete_cholesky_factor_t
     public :: build_incomplete_cholesky
     public :: apply_incomplete_cholesky
+    public :: sparse_incomplete_cholesky_factor_t
+    public :: build_sparse_incomplete_cholesky
+    public :: apply_sparse_incomplete_cholesky
+    public :: apply_sparse_incomplete_cholesky_jvp
+    public :: apply_sparse_incomplete_cholesky_vjp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
