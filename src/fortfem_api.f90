@@ -2,6 +2,9 @@ module fortfem_api
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, validate_cell_complex
+    use fortfem_cell_identification, only: cell_identification_classes, &
+        cell_identification_t, initialize_cell_identification, &
+        validate_cell_identification
     use fortfem_region_interface_graph, only: &
         initialize_region_interface_graph, &
         region_interface_graph_components, region_interface_graph_incidence, &
@@ -802,6 +805,10 @@ module fortfem_api
     public :: validate_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
+    public :: cell_identification_t
+    public :: initialize_cell_identification
+    public :: validate_cell_identification
+    public :: cell_identification_classes
     public :: region_interface_graph_t
     public :: initialize_region_interface_graph
     public :: validate_region_interface_graph
