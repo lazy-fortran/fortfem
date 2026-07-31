@@ -24,6 +24,14 @@ call evaluate_cgl_pressure_tensor_jvp( &
 call evaluate_cgl_pressure_tensor_vjp( &
     p_parallel, p_perpendicular, unit_direction, tensor_bar, &
     p_parallel_bar, p_perpendicular_bar, direction_bar, status)
+call evaluate_cgl_pressure_traction( &
+    p_parallel, p_perpendicular, unit_direction, normal, traction, status)
+call evaluate_cgl_pressure_traction_jvp( &
+    p_parallel, p_perpendicular, unit_direction, normal, p_parallel_dot, &
+    p_perpendicular_dot, direction_dot, normal_dot, traction_dot, status)
+call evaluate_cgl_pressure_traction_vjp( &
+    p_parallel, p_perpendicular, unit_direction, normal, traction_bar, &
+    p_parallel_bar, p_perpendicular_bar, direction_bar, normal_bar, status)
 ```
 
 The six independent symmetric components, their JVP, and their real VJP are
@@ -51,14 +59,17 @@ contraction evaluates
 \]
 
 Its JVP and VJP cover the pressures, pressure gradients, magnetic direction,
-and direction gradient. This is a local constitutive/force ingredient; volume
-assembly, traction traces, Braginskii corrections, and a full anisotropic MHD
-residual remain separate contracts.
+and direction gradient. The traction composition is `t=P n`; its JVP and VJP
+are chained through the generated tensor, with `normal_bar=P^T traction_bar`
+and the full tensor cotangent `tensor_bar=traction_bar n^T`. This is a local
+constitutive/force ingredient; volume assembly, Braginskii corrections, and a
+full anisotropic MHD residual remain separate contracts.
 
-Independent tests check the closed-form tensor and force product-rule oracle,
-central-difference JVPs, real adjoint identities, and rejection of a non-unit
-magnetic direction. Future traction and field-aligned transport forms should
-consume these blocks without replacing the tensor by its scalar trace.
+Independent tests check the closed-form tensor, traction, and force
+product-rule oracles, central-difference JVPs, real adjoint identities, and
+rejection of a non-unit magnetic direction. Future field-aligned transport
+forms should consume these blocks without replacing the tensor by its scalar
+trace.
 
 Regenerate the kernels with:
 

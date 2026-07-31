@@ -227,7 +227,8 @@ module fortfem_api
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
-        evaluate_cgl_pressure_tensor_vjp
+        evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
+        evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp
     use fortfem_field_aligned_flux, only: &
         evaluate_field_aligned_flux, evaluate_field_aligned_flux_jvp, &
         evaluate_field_aligned_flux_vjp
@@ -1526,6 +1527,9 @@ module fortfem_api
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp
+    public :: evaluate_cgl_pressure_traction
+    public :: evaluate_cgl_pressure_traction_jvp
+    public :: evaluate_cgl_pressure_traction_vjp
     public :: evaluate_field_aligned_flux
     public :: evaluate_field_aligned_flux_jvp
     public :: evaluate_field_aligned_flux_vjp

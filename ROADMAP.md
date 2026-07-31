@@ -299,11 +299,12 @@ The first constitutive slice is now public on `main`: FortSym generates the
 six independent symmetric CGL components and their JVP/VJP, while the
 `fortfem_cgl_pressure_tensor` wrapper validates the unit magnetic direction,
 packs a full symmetric tensor, and combines full-matrix off-diagonal
-cotangents. An independent test covers the closed-form oracle, central
-differences, the adjoint identity, and invalid directions. Force divergence,
-volume assembly, traction traces, Braginskii corrections, and field-aligned
-assembly remain separate active work; these blocks are not a claim that the
-full anisotropic MHD operator is complete.
+cotangents. The generated tensor now feeds a compositional traction
+`t=P n` with value/JVP/VJP, including the `P^T` normal cotangent; independent
+tests cover the closed-form traction oracle, central differences, adjoint
+identities, and invalid directions. Force volume assembly, Braginskii
+corrections, and field-aligned assembly remain separate active work; these
+blocks are not a claim that the full anisotropic MHD operator is complete.
 
 The elasticity complex is treated as a structure-preserving extension of the
 de Rham complex. The mixed weak-symmetry construction of
