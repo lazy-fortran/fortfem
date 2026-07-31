@@ -19,6 +19,8 @@ module fortfem_assembly_tetra_rt_arbitrary_order_3d
     private
 
     public :: assemble_tetra_rt_div_mass_csc
+    public :: assemble_tetra_rt_div_mass_csc_jvp
+    public :: assemble_tetra_rt_div_mass_csc_vjp
     public :: assemble_tetra_rt_div_mass_element
     public :: assemble_tetra_rt_div_mass_element_jvp
     public :: assemble_tetra_rt_div_mass_element_vjp
@@ -565,6 +567,186 @@ contains
             global_dof_count, global_dof_count, rows, columns, values, &
             matrix, status)
     end subroutine assemble_tetra_rt_div_mass_csc
+
+    subroutine assemble_tetra_rt_div_mass_csc_jvp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            divergence_coefficient, mass_coefficient, mesh_vertices_dot, &
+            divergence_coefficient_dot, mass_coefficient_dot, matrix_dot, &
+            status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: divergence_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), face_orientations(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :), rows(:)
+        real(dp), allocatable :: basis_transform(:, :), element_dot(:, :)
+        real(dp), allocatable :: oriented_dot(:, :), values(:)
+        real(dp) :: vertices(3, 4), vertices_dot(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Tetrahedral RT div-mass JVP assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate( &
+            rows(dof_count*dof_count*size(tetrahedra, 2)), &
+            columns(dof_count*dof_count*size(tetrahedra, 2)), &
+            values(dof_count*dof_count*size(tetrahedra, 2)))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_dot(dof_count, dof_count))
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_rt_div_mass_element_jvp( &
+                vertices, degree, quadrature_degree, divergence_coefficient, &
+                mass_coefficient, vertices_dot, divergence_coefficient_dot, &
+                mass_coefficient_dot, element_dot, local_status)
+            if (local_status /= 0) return
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_dot = matmul( &
+                transpose(basis_transform), &
+                matmul(element_dot, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_dot(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix_dot, status)
+    end subroutine assemble_tetra_rt_div_mass_csc_jvp
+
+    subroutine assemble_tetra_rt_div_mass_csc_vjp( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, &
+            divergence_coefficient, mass_coefficient, matrix_values_bar, &
+            mesh_vertices_bar, divergence_coefficient_bar, &
+            mass_coefficient_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: divergence_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: matrix
+        integer, allocatable :: face_orientations(:, :), faces(:, :)
+        integer, allocatable :: face_permutations(:, :, :)
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_transform(:, :), dense_bar(:, :)
+        real(dp), allocatable :: element_bar(:, :), oriented_bar(:, :)
+        real(dp) :: local_divergence_bar, local_mass_bar
+        real(dp) :: local_vertices_bar(3, 4), vertices(3, 4)
+        integer :: column, dof_count, entry, local_status, node, row
+        integer :: tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        divergence_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        call assemble_tetra_rt_div_mass_csc( &
+            mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
+            status, divergence_coefficient, mass_coefficient)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh_vertices)) .or. &
+            size(matrix_values_bar) /= matrix%nnz) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetrahedral RT div-mass VJP shapes differ")
+            return
+        end if
+        allocate(dense_bar(matrix%nrow, matrix%ncol), source=0.0_dp)
+        do column = 1, matrix%ncol
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                dense_bar(matrix%row_idx(entry), column) = &
+                    matrix_values_bar(entry)
+            end do
+        end do
+        call build_tetra_rt_dof_map( &
+            degree, tetrahedra, faces, global_dofs, face_orientations, &
+            face_permutations, local_status)
+        if (local_status /= 0) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Tetrahedral RT div-mass VJP dof map failed")
+            return
+        end if
+        dof_count = size(global_dofs, 1)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_bar(dof_count, dof_count))
+        allocate(element_bar(dof_count, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    oriented_bar(row, column) = dense_bar( &
+                        global_dofs(row, tetrahedron), &
+                        global_dofs(column, tetrahedron))
+                end do
+            end do
+            call build_tetra_rt_basis_transform( &
+                degree, face_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Tetrahedral RT div-mass VJP orientation failed")
+                return
+            end if
+            element_bar = matmul( &
+                basis_transform, &
+                matmul(oriented_bar, transpose(basis_transform)))
+            call assemble_tetra_rt_div_mass_element_vjp( &
+                vertices, degree, quadrature_degree, divergence_coefficient, &
+                mass_coefficient, element_bar, local_vertices_bar, &
+                local_divergence_bar, local_mass_bar, local_status)
+            if (local_status /= 0) then
+                call status_set( &
+                    status, FORTSPARSE_INVALID_MATRIX, &
+                    "Tetrahedral RT div-mass element VJP failed")
+                return
+            end if
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+            divergence_coefficient_bar = &
+                divergence_coefficient_bar + local_divergence_bar
+            mass_coefficient_bar = mass_coefficient_bar + local_mass_bar
+        end do
+    end subroutine assemble_tetra_rt_div_mass_csc_vjp
 
     pure subroutine tetra_jacobian(vertices, jacobian)
         real(dp), intent(in) :: vertices(3, 4)
