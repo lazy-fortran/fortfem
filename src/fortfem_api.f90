@@ -357,7 +357,10 @@ module fortfem_api
         NUMERICAL_FLUX_CENTRAL, NUMERICAL_FLUX_UPWIND, &
         NUMERICAL_FLUX_LAX_FRIEDRICHS
     use fortfem_vector_numerical_flux, only: assemble_vector_numerical_flux, &
-        assemble_vector_numerical_flux_jvp, assemble_vector_numerical_flux_vjp
+        assemble_vector_numerical_flux_jvp, assemble_vector_numerical_flux_vjp, &
+        assemble_vector_entropy_stable_flux, &
+        assemble_vector_entropy_stable_flux_jvp, &
+        assemble_vector_entropy_stable_flux_vjp
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
@@ -1803,6 +1806,9 @@ module fortfem_api
     public :: assemble_vector_numerical_flux
     public :: assemble_vector_numerical_flux_jvp
     public :: assemble_vector_numerical_flux_vjp
+    public :: assemble_vector_entropy_stable_flux
+    public :: assemble_vector_entropy_stable_flux_jvp
+    public :: assemble_vector_entropy_stable_flux_vjp
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
