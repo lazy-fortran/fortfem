@@ -484,3 +484,13 @@ the two cotangents of each stored symmetric off-diagonal value and scatters
 both panel gradients into shared surface vertices. Consequently one dense
 matrix cotangent produces the full boundary shape gradient without coordinate
 finite differences, including singular self interactions.
+
+The complete Helmholtz single-layer assembly composes that singular Laplace
+path with products of the smooth outgoing-wave remainder. FortSym generates
+the noncoincident cosine/sine remainder products. Coincident quadrature nodes
+use the analytical limit
+\((\exp(ikr)-1)/(4\pi r)\to ik/(4\pi)\), including its Jacobian and
+wave-number derivatives, so neither the primal nor its products divide by
+zero or subtract nearly equal singular kernels. The VJP accepts a complex
+matrix cotangent and returns one real cotangent for every surface coordinate
+and for the wave number.
