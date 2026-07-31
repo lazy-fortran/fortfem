@@ -65,6 +65,17 @@ call assemble_surface_edge_flux_jvp( &
 call assemble_surface_edge_flux_vjp( &
     edge_conormal, edge_weights, surface_current, edge_flux_bar, &
     edge_conormal_bar, edge_weights_bar, surface_current_bar, status)
+call assemble_surface_current_trace_residual( &
+    test_basis, trial_basis, surface_weights, coefficients, target_current, &
+    residual, status)
+call assemble_surface_current_trace_residual_jvp( &
+    test_basis, trial_basis, surface_weights, coefficients, target_current, &
+    test_basis_dot, trial_basis_dot, surface_weights_dot, coefficients_dot, &
+    target_current_dot, residual_dot, status)
+call assemble_surface_current_trace_residual_vjp( &
+    test_basis, trial_basis, surface_weights, coefficients, target_current, &
+    residual_bar, test_basis_bar, trial_basis_bar, surface_weights_bar, &
+    coefficients_bar, target_current_bar, status)
 ```
 
 The primal validates positive quadrature weights, finite three-component
@@ -112,6 +123,24 @@ boundary map and returns the discrete surface divergence ledger. This remains
 a neutral geometry/ledger contract: the physical tangential-current law,
 surface basis ownership, and edge topology construction remain external.
 
+An independent tangential-current trace can be assembled with separate test
+and trial bases:
+
+\[
+  \mathbf K_h(q)=\sum_j \mathbf S_j(q)c_j,\qquad
+  r_i=\sum_q w_q\,\mathbf T_i(q)\mathbin{\cdot}
+       (\mathbf K_h(q)-\mathbf K_{\rm target}(q)).
+\]
+
+`assemble_surface_current_trace_residual` owns this neutral L2 pairing, while
+the caller owns the basis construction, coefficient meaning, target current,
+and any constitutive or pressure/flux closure.  It therefore composes with
+fitted duplicated traces, cut/XFEM or XIGA bases, DG/HDG skeleton spaces, and
+independent IGA patch traces without choosing a discretization.  The JVP
+includes basis, weight, coefficient, and target derivatives; the real VJP is
+the transpose contraction.  Geometry topology and basis ownership are held
+fixed during differentiation.
+
 ## Independent verification
 
 `test_surface_current` checks a two-point analytical jump and weighted ledger,
@@ -127,3 +156,7 @@ global conservation, the fixed-topology JVP/VJP, and malformed incidence.
 `test_surface_edge_flux` checks the independent conormal contraction,
 orientation reversal, central-difference JVP, real-adjoint identity, and
 positive-weight validation.
+`test_surface_current_trace_residual` checks the independent test/trial
+pairing against a direct vector oracle, its full product-rule JVP against
+central differences, the real dot-product VJP identity, and output-shape
+validation.
