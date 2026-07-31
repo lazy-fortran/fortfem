@@ -2,13 +2,16 @@ program test_region_interface_graph
     use check, only: check_condition, check_summary
     use fortfem_api, only: initialize_region_interface_graph, &
         region_interface_graph_components, region_interface_graph_incidence, &
-        region_interface_graph_t, validate_region_interface_graph
+        region_interface_graph_cycle_basis, region_interface_graph_t, &
+        validate_region_interface_graph
     implicit none
 
     type(region_interface_graph_t) :: chain, disconnected, periodic, invalid
     integer, allocatable :: plus_region(:), minus_region(:)
     integer, allocatable :: incidence(:, :), components(:)
+    integer, allocatable :: cycle_basis(:, :)
     integer :: component_count, status
+    integer :: cycle_count
 
     allocate(plus_region(2), minus_region(2))
     plus_region = [2, 3]
@@ -38,6 +41,22 @@ program test_region_interface_graph
         "reversing each interface reverses its incidence column")
 
     deallocate(plus_region, minus_region)
+    allocate(plus_region(3), minus_region(3))
+    plus_region = [2, 3, 1]
+    minus_region = [1, 2, 3]
+    call initialize_region_interface_graph( &
+        chain, 3, plus_region, minus_region, status)
+    call region_interface_graph_cycle_basis( &
+        chain, cycle_basis, cycle_count, status)
+    call check_condition(status == 0 .and. cycle_count == 1 .and. &
+        all(cycle_basis(:, 1) == [1, 1, 1]), &
+        "oriented triangle has the independent fundamental cycle oracle")
+    call region_interface_graph_incidence(chain, incidence, status)
+    call check_condition(status == 0 .and. &
+        all(matmul(incidence, cycle_basis) == 0), &
+        "cycle basis is in the exact integer incidence nullspace")
+
+    deallocate(plus_region, minus_region)
     allocate(plus_region(2), minus_region(2))
     plus_region = [2, 4]
     minus_region = [1, 3]
@@ -58,6 +77,11 @@ program test_region_interface_graph
     call region_interface_graph_incidence(periodic, incidence, status)
     call check_condition(status == 0 .and. all(incidence == 0), &
         "periodic self-interface has zero region boundary")
+    call region_interface_graph_cycle_basis( &
+        periodic, cycle_basis, cycle_count, status)
+    call check_condition(status == 0 .and. cycle_count == 1 .and. &
+        all(cycle_basis(:, 1) == [1]), &
+        "periodic self-interface supplies its unit cycle")
 
     plus_region = 2
     minus_region = 1

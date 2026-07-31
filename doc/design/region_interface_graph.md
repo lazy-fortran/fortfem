@@ -38,6 +38,8 @@ call validate_region_interface_graph(graph, status)
 call region_interface_graph_incidence(graph, incidence, status)
 call region_interface_graph_components( &
     graph, components, component_count, status)
+call region_interface_graph_cycle_basis( &
+    graph, cycle_basis, cycle_count, status)
 ```
 
 `components` contains compact labels starting at one. The component routine
@@ -45,11 +47,23 @@ uses a union-find traversal over the undirected region adjacency; interface
 orientation does not affect connectivity. The incidence matrix retains the
 orientation for later conservative balance laws.
 
+`cycle_basis` has one column per fundamental graph cycle and satisfies
+
+\[
+G\,C=0.
+\]
+
+The basis is built from a spanning forest. A non-tree interface receives unit
+coefficient and its unique forest path receives the signs required by the
+oriented incidence convention. A periodic self-interface is therefore a
+one-edge cycle. The cycle count is \(m-n+c\), with \(m\) interfaces, \(n\)
+regions, and \(c\) connected components.
+
 ## Independent fixtures
 
 `test_region_interface_graph` checks a three-region slab-like chain, two
 disconnected region pairs, a periodic self-interface, reversed plus/minus
-signs through the incidence oracle, and malformed endpoint tables. These are
-topological tests only. Surface quadrature, trace bases, sheet currents,
-pressure balance, and application-owned boundary laws remain separate
-contracts.
+signs through the incidence oracle, the exact triangle-cycle nullspace, and
+malformed endpoint tables. These are topological tests only. Surface
+quadrature, trace bases, sheet currents, pressure balance, and application-
+owned boundary laws remain separate contracts.
