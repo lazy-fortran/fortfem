@@ -174,6 +174,9 @@ call apply_fci_plane_two_level_vcycle_factored( &
 call apply_fci_plane_multilevel_vcycle( &
     plane_operators, restrictions, prolongations, level_offsets, diagonal, &
     residual, correction, status)
+call apply_fci_plane_multilevel_wcycle( &
+    plane_operators, restrictions, prolongations, level_offsets, diagonal, &
+    residual, correction, status)
 call apply_fci_plane_two_level_vcycles( &
     fine_operators, coarse_operators, restrictions, prolongations, &
     diagonals, residual, correction, status)
@@ -277,6 +280,9 @@ arbitrary hierarchy. Its operators are ordered fine-to-coarse and its flat
 `level_offsets` give each level its own positive Jacobi diagonal; the final
 level is solved directly. The focused test covers a three-level hierarchy,
 compares a recursive dense oracle, and rejects inconsistent offsets.
+The W-cycle entry point repeats each coarse correction twice and is checked
+against a separate recursive W-cycle oracle; both paths retain the same
+fixed-level topology and direct coarsest solve.
 `apply_fci_plane_two_level_vcycles` applies that cycle independently to a
 homogeneous stack of poloidal planes stored contiguously. It is the small
 field-split adapter needed to compose independent PARALLAX-style plane
@@ -299,7 +305,7 @@ caller can cache geometry-dependent values and tune the split without changing
 the FCI action. The focused test compares the weighted result with an
 independent two-plane V-cycle oracle and rejects invalid diagonal and weight
 inputs. This is an additive field-split baseline; coupled Schur complements
-and deeper V/W cycles remain separate work.
+and stronger block preconditioners remain separate work.
 
 ## Provenance
 

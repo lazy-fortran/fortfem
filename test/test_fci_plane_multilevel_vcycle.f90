@@ -1,6 +1,7 @@
 program test_fci_plane_multilevel_vcycle
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_plane_multilevel_vcycle
+    use fortfem_api, only: apply_fci_plane_multilevel_vcycle, &
+        apply_fci_plane_multilevel_wcycle
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
     implicit none
@@ -56,6 +57,16 @@ program test_fci_plane_multilevel_vcycle
     call check_condition(maxval(abs(correction - expected)) < 1.0e-13_dp, &
         "FCI multilevel plane V-cycle matches the independent recursive oracle")
 
+    call apply_fci_plane_multilevel_wcycle( &
+        operators, restrictions, prolongations, level_offsets, diagonals, &
+        residual, correction, status)
+    expected = multilevel_w_oracle( &
+        fine, middle, coarse, restriction_fine, prolongation_fine, &
+        restriction_middle, prolongation_middle, diagonals, residual)
+    call check_condition(status%code == 0 .and. &
+        maxval(abs(correction - expected)) < 1.0e-13_dp, &
+        "FCI multilevel plane W-cycle matches the independent recursive oracle")
+
     bad_offsets = [1, 5, 6, 8]
     call apply_fci_plane_multilevel_vcycle( &
         operators, restrictions, prolongations, bad_offsets, diagonals, &
@@ -103,5 +114,35 @@ contains
         fine_residual = rhs - matmul(fine_matrix, solution)
         solution = solution + fine_residual/diagonal(:4)
     end function multilevel_oracle
+
+    pure function multilevel_w_oracle( &
+            fine_matrix, middle_matrix, coarse_matrix, restriction_one, &
+            prolongation_one, restriction_two, prolongation_two, diagonal, rhs) &
+            result(solution)
+        real(dp), intent(in) :: fine_matrix(4, 4), middle_matrix(2, 2)
+        real(dp), intent(in) :: coarse_matrix(1, 1), restriction_one(2, 4)
+        real(dp), intent(in) :: prolongation_one(4, 2), restriction_two(1, 2)
+        real(dp), intent(in) :: prolongation_two(2, 1), diagonal(7), rhs(4)
+        real(dp) :: solution(4), middle_solution(2), coarse_rhs(1)
+        real(dp) :: fine_residual(4), middle_rhs(2), middle_residual(2)
+        integer :: visit
+
+        solution = rhs/diagonal(:4)
+        fine_residual = rhs - matmul(fine_matrix, solution)
+        do visit = 1, 2
+            middle_rhs = matmul(restriction_one, fine_residual)
+            middle_solution = middle_rhs/diagonal(5:6)
+            middle_residual = middle_rhs - matmul(middle_matrix, middle_solution)
+            coarse_rhs = matmul(restriction_two, middle_residual)/coarse_matrix(1, 1)
+            middle_solution = middle_solution + &
+                matmul(prolongation_two, coarse_rhs)
+            middle_residual = middle_rhs - matmul(middle_matrix, middle_solution)
+            middle_solution = middle_solution + middle_residual/diagonal(5:6)
+            solution = solution + matmul(prolongation_one, middle_solution)
+            if (visit < 2) fine_residual = rhs - matmul(fine_matrix, solution)
+        end do
+        fine_residual = rhs - matmul(fine_matrix, solution)
+        solution = solution + fine_residual/diagonal(:4)
+    end function multilevel_w_oracle
 
 end program test_fci_plane_multilevel_vcycle

@@ -1002,7 +1002,8 @@ gallery example.
   `apply_fci_plane_two_level_vcycle` now provides the next plane-solver layer;
   a public recursive multilevel V(1,1) path now covers arbitrary level sizes;
   the retained-factor path and additive field-split composition are tested
-  separately. Stronger W-cycles and coupled blocks remain active.
+  separately. A public recursive W(1,1) variant now repeats coarse visits;
+  coupled blocks remain active.
 - The split action now also has a field-only VJP that composes the conservative
   FCI transpose with an explicit transpose of every plane CSC block. An
   independent nonsymmetric-plane oracle and real dot-product test guard this
@@ -1015,8 +1016,9 @@ gallery example.
   preconditioner combines cached parallel Jacobi and ragged plane cycles with
   explicit nonnegative weights. A public retained coarse-factor path now
   reuses FortSparse factorizations across right-hand sides, and the recursive
-  multilevel V-cycle accepts flat level offsets for nonuniform hierarchies;
-  stronger W-cycles remain active work.
+  multilevel V-cycle accepts flat level offsets for nonuniform hierarchies, and
+  the W-cycle variant repeats coarse corrections; coupled blocks remain active
+  work.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
