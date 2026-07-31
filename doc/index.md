@@ -21,6 +21,8 @@ operators, sparse solvers, and analytical verification examples.
   FortSym generation, Enzyme validation, and sparse adjoints
 - [FCI parallel operator](design/fci_parallel_operator.html) - PARALLAX-aligned
   mapped gradients and conservative support divergences
+- [FCI boundary-patch mortar](design/fci_boundary_patch_mortar.html) -
+  conservative transfer between FCI and fitted or cut boundary traces
 - [Mixed wave time step](design/mixed_wave_time.html) - structure-preserving
   first-order pressure/velocity and port-Hamiltonian updates
 - [CGL pressure tensor](design/cgl_pressure_tensor.html) - generated

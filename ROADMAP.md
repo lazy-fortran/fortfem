@@ -1238,9 +1238,12 @@ gallery example.
   are application-layer clients.
 - Support an optional fitted boundary-layer patch without forcing the bulk FCI
   mesh to conform to the vessel. [#61](https://github.com/lazy-fortran/fortfem/issues/61)
-  owns conservative mortar/cut ownership between background planes and the
-  patch. General moving Chimera meshes remain out of scope until this smaller
-  contract is independently verified.
+  now has the neutral `assemble_fci_boundary_patch_mortar` cross-mass,
+  constant-preserving transfer, weighted-adjoint, overlap-measure, and
+  ownership-multiplicity contract with fixed-topology JVP/VJP products and
+  independent matching, reversed, duplicate, zero-measure, rank-deficiency,
+  finite-difference, and dot-product tests. Geometry construction, general
+  moving Chimera meshes, and application boundary laws remain outside FortFEM.
 - GORILLA owns reusable characteristic stepping and material events, not
   FortFEM: [GORILLA #80](https://github.com/itpplasma/GORILLA/issues/80)
   introduces a common characteristic event contract and
