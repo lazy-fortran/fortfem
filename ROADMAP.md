@@ -133,6 +133,18 @@ not only contributor etiquette.
 - Profile before optimizing. Use Fortran and existing `fortnum` or
   `fortsparse` facilities first. Do not add a new dependency merely to make a
   benchmark table look better.
+- Treat performance as an acceptance criterion. Generated kernels should be
+  allocation-free in their hot path, vectorizable, batchable, and measurable
+  with a roofline or operation-count explanation. FortFEM targets competitive
+  or better performance for each named workload. A claim such as "faster than
+  the competition" is valid only for a declared problem, compiler, hardware,
+  thread count, and reference implementation.
+- Keep the implementation serial-first and distributed-ready. Global IDs,
+  ownership, ghost data, deterministic reductions, local and global index
+  maps, and communicator operations are part of the data model before a full
+  MPI backend is added. Residual and element kernels remain independent of the
+  communicator. This preserves a short single-node feedback loop while
+  avoiding a later rewrite of mesh, trace, and sparse interfaces.
 - Add a deterministic property-testing path to `fo` and the test helpers.
   Every randomized case records its seed, generated topology, and tolerance.
   Seeded random tests provide fast coverage of orientations, geometry
@@ -154,6 +166,7 @@ documentation baseline. The list is intentionally conservative.
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
+| Parallel readiness | Serial local kernels and deterministic focused tests | Owned/ghost mesh and field data, partition-independent numbering, halo exchange, distributed assembly, checkpointing, and MPI-enabled solver backends |
 | Examples | Generated documentation pages for Poisson, Maxwell, Helmholtz, BEM, IGA, torus, PML, and solver examples | Ordered gallery beginning with simple Poisson and adding 1D, 2D, and 3D application-oriented toy models with manufactured or external oracle data |
 
 The aggregate full test suite can expose resource-sensitive failures when many
@@ -1059,6 +1072,37 @@ and update the Pages gallery without committing images. A benchmark result is
 not considered comparable unless hardware, compiler, thread count, source
 revision, and external data revision are recorded.
 
+Performance gates are workload-specific. The benchmark manifest records the
+operator, discretization, order, mesh or mode count, tolerance, thread count,
+and reference implementation. It reports time to assemble, time to apply or
+solve, peak memory, allocation count, iteration count, derivative overhead,
+and error at a common physical sampling set. Reference runs may use MFEM,
+Firedrake, NGSolve, deal.II, PETSc, Bempp-cl, or a small analytical kernel,
+depending on the operator. The target is a measured improvement on the
+declared workload, with accuracy and structure-preservation constraints held
+fixed. The project does not use an unqualified speed claim as a substitute for
+the benchmark record.
+
+The execution plan is staged:
+
+1. Keep all element and residual kernels local, pure where possible, and
+   independent of MPI. Use batched quadrature, generated contractions,
+   static condensation, matrix-free actions, and reusable sparse factors on a
+   single node.
+2. Add the serial ownership and ghost interfaces, deterministic reductions,
+   partition-independent numbering, and a no-op communicator backend to the
+   core data structures.
+3. Add optional MPI halo exchange, distributed assembly, distributed vectors
+   and matrices, checkpoint/restart, and solver adapters after the serial
+   contracts have independent analytical and cross-code oracles.
+4. Add distributed BEM acceleration, domain decomposition, GPU kernels, and
+   large-scale strong and weak scaling only when a representative workload
+   demonstrates the need.
+
+The single-node path remains a complete supported path at every stage. The
+MPI path must reproduce the serial residual, derivative, conservation, and
+structure diagnostics within declared reduction tolerances.
+
 ## 14. Implementation phases
 
 The phases are ordered by dependency. Each phase ends with a public API,
@@ -1076,6 +1120,12 @@ gallery example.
 - Add seeded random generators and shrinking to the `fo` test path. The first
   generators cover oriented cells, positive quadrature weights, tensor
   coefficients, mode sets, and fixed-topology interface data.
+- Define the partitionable data model before implementing a full MPI backend:
+  global entity IDs, owner and ghost metadata, local-to-global maps,
+  deterministic reductions, communicator-free local kernels, and serial
+  no-op implementations of halo and reduction operations. Add MPI assembly,
+  checkpointing, and distributed solver adapters after the serial residual,
+  derivative, and invariant contracts are stable.
 - Keep FortSym revision pins and generated-kernel checks green.
 
 ### Phase 1: Interface calculus: **active**
@@ -1454,6 +1504,16 @@ gallery example.
 
 - Ordered examples with FortPlot plots, numerical data, convergence, and
   performance.
+- Every example carries the smallest applicable complete contract: a
+  manufactured or analytical solution, an independent oracle, primal and
+  derivative checks, a conservation or structure diagnostic, a mesh or
+  geometry view, and a timing and memory record. Examples progress from a
+  one-dimensional Poisson patch test through two-dimensional interfaces and
+  waves to three-dimensional torus, sphere, FEM/BEM/DtN, PML, anisotropic,
+  and mixed structure-preserving cases.
+- Gallery examples use the same generated kernels and public APIs as library
+  clients. The gallery does not contain a faster special implementation that
+  bypasses the tested residual or derivative path.
 - Optional lightweight FEniCSx, FreeFEM, and MFEM runners.
 - Sister-repository data for heavy or licensed references.
 - GitHub Pages generation, link checks, and periodic deployment monitoring.
@@ -1493,6 +1553,9 @@ An ingredient is complete only when all applicable checks below pass:
 - an independent analytical or external oracle agrees within a declared
   tolerance;
 - convergence, conditioning, conservation, and performance are reported;
+- performance is compared with a named reference on a fixed workload, with
+  hardware, compiler, thread count, memory, accuracy, and derivative cost
+  recorded;
 - structure-preserving properties are tested rather than asserted;
 - seeded random properties pass with their seed, generated case, and shrink
   record retained in the test log;
