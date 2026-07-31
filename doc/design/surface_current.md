@@ -49,6 +49,14 @@ call assemble_surface_current_loop_constraints_jvp( &
 call assemble_surface_current_loop_constraints_vjp( &
     loop_basis, manifold_current, target_loop_current, residual_bar, &
     manifold_current_bar, target_loop_current_bar, status)
+call assemble_surface_edge_flux_balance( &
+    edge_boundary, edge_flux, vertex_balance, global_balance, status)
+call assemble_surface_edge_flux_balance_jvp( &
+    edge_boundary, edge_flux, edge_flux_dot, vertex_balance_dot, &
+    global_balance_dot, status)
+call assemble_surface_edge_flux_balance_vjp( &
+    edge_boundary, edge_flux, vertex_balance_bar, global_balance_bar, &
+    edge_flux_bar, status)
 ```
 
 The primal validates positive quadrature weights, finite three-component
@@ -80,6 +88,15 @@ JVP differentiates manifold and target values, while the VJP is the transpose
 of the same integer map. The loop basis is not differentiated across a graph
 rebuild or cycle-basis change.
 
+For a triangulated or spline surface, a caller can first integrate the
+tangential current against each oriented edge conormal and pass the resulting
+scalar `edge_flux` to `assemble_surface_edge_flux_balance`. The routine
+applies the integer vertex-edge boundary map and returns the discrete surface
+divergence ledger. It also returns the global sum, which is zero for every
+conservative edge column. This is deliberately a topology/ledger contract:
+edge geometry, conormal quadrature, and the physical tangential current law
+remain external composition layers.
+
 ## Independent verification
 
 `test_surface_current` checks a two-point analytical jump and weighted ledger,
@@ -90,3 +107,5 @@ conservation at interface edges remain separate geometry contracts.
 global conservation, and the real ledger adjoint identity.
 `test_surface_current_constraints` checks an independent two-cycle residual,
 the fixed-topology JVP, the real adjoint identity, and shape rejection.
+`test_surface_edge_balance` checks an open chain, a closed edge cycle,
+global conservation, the fixed-topology JVP/VJP, and malformed incidence.
