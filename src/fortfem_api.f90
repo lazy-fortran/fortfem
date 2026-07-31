@@ -190,6 +190,10 @@ module fortfem_api
         integrate_laplace_torus_panel_p0_3d, &
         integrate_laplace_torus_panel_p0_3d_jvp, &
         integrate_laplace_torus_panel_p0_3d_vjp
+    use fortfem_laplace_sphere_panel_pair_ad_3d, only: &
+        integrate_laplace_sphere_panel_p0_3d, &
+        integrate_laplace_sphere_panel_p0_3d_jvp, &
+        integrate_laplace_sphere_panel_p0_3d_vjp
     use fortfem_helmholtz_torus_panel_pair_ad_3d, only: &
         integrate_helmholtz_torus_panel_p0_3d, &
         integrate_helmholtz_torus_panel_p0_3d_jvp, &
@@ -685,6 +689,9 @@ module fortfem_api
     public :: integrate_laplace_torus_panel_p0_3d
     public :: integrate_laplace_torus_panel_p0_3d_jvp
     public :: integrate_laplace_torus_panel_p0_3d_vjp
+    public :: integrate_laplace_sphere_panel_p0_3d
+    public :: integrate_laplace_sphere_panel_p0_3d_jvp
+    public :: integrate_laplace_sphere_panel_p0_3d_vjp
     public :: integrate_helmholtz_torus_panel_p0_3d
     public :: integrate_helmholtz_torus_panel_p0_3d_jvp
     public :: integrate_helmholtz_torus_panel_p0_3d_vjp
