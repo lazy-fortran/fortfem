@@ -102,3 +102,8 @@ main = "gen_helmholtz_bem_kernel_products.f90"
 name = "gen_laplace_singular_edge_products"
 source-dir = "app"
 main = "gen_laplace_singular_edge_products.f90"
+
+[[executable]]
+name = "gen_helmholtz_bem_smooth_products"
+source-dir = "app"
+main = "gen_helmholtz_bem_smooth_products.f90"
