@@ -183,6 +183,9 @@ module fortfem_api
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp
+    use fortfem_cgl_pressure_divergence, only: &
+        evaluate_cgl_pressure_divergence, evaluate_cgl_pressure_divergence_jvp, &
+        evaluate_cgl_pressure_divergence_vjp
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
@@ -1427,6 +1430,9 @@ module fortfem_api
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp
+    public :: evaluate_cgl_pressure_divergence
+    public :: evaluate_cgl_pressure_divergence_jvp
+    public :: evaluate_cgl_pressure_divergence_vjp
 
     ! Plotting interface
     public :: plot
