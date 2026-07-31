@@ -840,6 +840,8 @@ gallery example.
   current pairing needed for an explicit Ampère sheet.
 - `assemble_interface_jump_penalty` assembles the symmetric positive-
   semidefinite plus/minus jump block used by SIPG and Nitsche penalty terms.
+- `assemble_symmetric_nitsche_interface` adds the average-flux consistency
+  terms under the same orientation convention.
 - Internal manifolds, level sets, surface measures, and vector current
   pairings remain next.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
