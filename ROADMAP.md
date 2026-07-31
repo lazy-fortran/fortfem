@@ -828,10 +828,12 @@ gallery example.
 - Publish the complex-adjoint and shape-derivative conventions.
 - Keep FortSym revision pins and generated-kernel checks green.
 
-### Phase 1: Interface calculus: **planned**
+### Phase 1: Interface calculus: **active**
 
-- Internal manifolds, level sets, plus/minus traces, jumps, averages, and
-  surface measures.
+- The public orientation-safe scalar/vector trace contract now provides
+  plus/minus averages and jumps, normal/tangential projections, and the
+  rotated Ampere surface-current jump with an independent sign oracle.
+- Internal manifolds, level sets, and surface measures remain next.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
