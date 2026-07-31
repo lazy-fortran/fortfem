@@ -565,3 +565,11 @@ point map. Its JVP differentiates both chart coordinates and field components,
 and its VJP returns the corresponding coordinate and component cotangents.
 This is the geometry-level product used by curl--curl/Nédélec paths, so vector
 field sensitivities do not require a finite-difference coordinate transform.
+
+The circular exterior Helmholtz DtN now has the same product contract. The
+modal multiplier uses the outgoing Hankel ratio
+`k H_n^(1)'(kR)/H_n^(1)(kR)`; its parameter derivative follows the cylindrical
+Bessel equation (DLMF 10.2.1), while the FFT and modal truncation paths use
+FortNum's analytical transform adjoints. The discarded-spectrum norm is
+differentiated as a real scalar, so trace, wave-number, radius, and truncation
+diagnostics all participate in one independently tested JVP/VJP.
