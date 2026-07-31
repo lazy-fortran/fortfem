@@ -16,6 +16,8 @@ module fortfem_fci_interpolation_map
     public :: build_fci_linear_interpolation_map_1d_jvp
     public :: build_fci_linear_interpolation_map_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
+    public :: build_fci_bilinear_interpolation_map_2d_jvp
+    public :: build_fci_bilinear_interpolation_map_2d_vjp
 
 contains
 
@@ -261,6 +263,187 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_bilinear_interpolation_map_2d
+
+    subroutine build_fci_bilinear_interpolation_map_2d_jvp( &
+            source_x, source_y, target_x, target_y, source_x_dot, source_y_dot, &
+            target_x_dot, target_y_dot, interpolation_map_dot, status)
+        !! Differentiate bilinear weights on a fixed Cartesian cell topology.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: target_x(:)
+        real(dp), intent(in) :: target_y(:)
+        real(dp), intent(in) :: source_x_dot(:)
+        real(dp), intent(in) :: source_y_dot(:)
+        real(dp), intent(in) :: target_x_dot(:)
+        real(dp), intent(in) :: target_y_dot(:)
+        real(dp), intent(out) :: interpolation_map_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nx, ny, target_count, row, ix, iy, column
+        real(dp) :: alpha_x, alpha_y, alpha_x_dot, alpha_y_dot
+        real(dp) :: numerator_x, numerator_y, denominator_x, denominator_y
+        real(dp) :: numerator_x_dot, numerator_y_dot
+        real(dp) :: denominator_x_dot, denominator_y_dot
+        real(dp), allocatable :: interpolation_map(:, :)
+        logical :: valid_x, valid_y
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI bilinear JVP received incompatible arrays")
+        interpolation_map_dot = 0.0_dp
+        nx = size(source_x)
+        ny = size(source_y)
+        target_count = size(target_x)
+        if (nx < 2 .or. ny < 2 .or. target_count < 1) return
+        allocate(interpolation_map(target_count, nx*ny))
+        call build_fci_bilinear_interpolation_map_2d( &
+            source_x, source_y, target_x, target_y, interpolation_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(source_x_dot) /= nx .or. size(source_y_dot) /= ny .or. &
+            size(target_x_dot) /= target_count .or. &
+            size(target_y_dot) /= target_count .or. &
+            size(interpolation_map_dot, 1) /= target_count .or. &
+            size(interpolation_map_dot, 2) /= nx*ny) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI bilinear JVP received incompatible tangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(source_x_dot)) .or. &
+            any(.not. ieee_is_finite(source_y_dot)) .or. &
+            any(.not. ieee_is_finite(target_x_dot)) .or. &
+            any(.not. ieee_is_finite(target_y_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI bilinear JVP received non-finite tangents")
+            return
+        end if
+
+        do row = 1, target_count
+            call locate_fixed_interval( &
+                source_x, target_x(row), ix, valid_x)
+            call locate_fixed_interval( &
+                source_y, target_y(row), iy, valid_y)
+            if (.not. valid_x .or. .not. valid_y) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI bilinear JVP crosses a grid-line topology event")
+                return
+            end if
+            numerator_x = target_x(row) - source_x(ix)
+            denominator_x = source_x(ix + 1) - source_x(ix)
+            numerator_x_dot = target_x_dot(row) - source_x_dot(ix)
+            denominator_x_dot = source_x_dot(ix + 1) - source_x_dot(ix)
+            alpha_x = numerator_x/denominator_x
+            alpha_x_dot = (numerator_x_dot*denominator_x - &
+                numerator_x*denominator_x_dot)/(denominator_x*denominator_x)
+            numerator_y = target_y(row) - source_y(iy)
+            denominator_y = source_y(iy + 1) - source_y(iy)
+            numerator_y_dot = target_y_dot(row) - source_y_dot(iy)
+            denominator_y_dot = source_y_dot(iy + 1) - source_y_dot(iy)
+            alpha_y = numerator_y/denominator_y
+            alpha_y_dot = (numerator_y_dot*denominator_y - &
+                numerator_y*denominator_y_dot)/(denominator_y*denominator_y)
+            column = (iy - 1)*nx + ix
+            interpolation_map_dot(row, column) = &
+                -alpha_x_dot*(1.0_dp - alpha_y) - &
+                alpha_y_dot*(1.0_dp - alpha_x)
+            interpolation_map_dot(row, column + 1) = &
+                alpha_x_dot*(1.0_dp - alpha_y) - alpha_x*alpha_y_dot
+            interpolation_map_dot(row, column + nx) = &
+                -alpha_x_dot*alpha_y + (1.0_dp - alpha_x)*alpha_y_dot
+            interpolation_map_dot(row, column + nx + 1) = &
+                alpha_x_dot*alpha_y + alpha_x*alpha_y_dot
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_map_2d_jvp
+
+    subroutine build_fci_bilinear_interpolation_map_2d_vjp( &
+            source_x, source_y, target_x, target_y, interpolation_map_bar, &
+            source_x_bar, source_y_bar, target_x_bar, target_y_bar, status)
+        !! Apply the VJP of fixed-topology bilinear interpolation weights.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: target_x(:)
+        real(dp), intent(in) :: target_y(:)
+        real(dp), intent(in) :: interpolation_map_bar(:, :)
+        real(dp), intent(out) :: source_x_bar(:)
+        real(dp), intent(out) :: source_y_bar(:)
+        real(dp), intent(out) :: target_x_bar(:)
+        real(dp), intent(out) :: target_y_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nx, ny, target_count, row, ix, iy, column
+        real(dp) :: alpha_x, alpha_y, alpha_x_bar, alpha_y_bar
+        real(dp) :: numerator_x, numerator_y, denominator_x, denominator_y
+        real(dp), allocatable :: interpolation_map(:, :)
+        logical :: valid_x, valid_y
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI bilinear VJP received incompatible arrays")
+        source_x_bar = 0.0_dp
+        source_y_bar = 0.0_dp
+        target_x_bar = 0.0_dp
+        target_y_bar = 0.0_dp
+        nx = size(source_x)
+        ny = size(source_y)
+        target_count = size(target_x)
+        if (nx < 2 .or. ny < 2 .or. target_count < 1) return
+        allocate(interpolation_map(target_count, nx*ny))
+        call build_fci_bilinear_interpolation_map_2d( &
+            source_x, source_y, target_x, target_y, interpolation_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(interpolation_map_bar, 1) /= target_count .or. &
+            size(interpolation_map_bar, 2) /= nx*ny .or. &
+            size(source_x_bar) /= nx .or. size(source_y_bar) /= ny .or. &
+            size(target_x_bar) /= target_count .or. &
+            size(target_y_bar) /= target_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI bilinear VJP received incompatible cotangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(interpolation_map_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI bilinear VJP received non-finite cotangents")
+            return
+        end if
+
+        do row = 1, target_count
+            call locate_fixed_interval( &
+                source_x, target_x(row), ix, valid_x)
+            call locate_fixed_interval( &
+                source_y, target_y(row), iy, valid_y)
+            if (.not. valid_x .or. .not. valid_y) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI bilinear VJP crosses a grid-line topology event")
+                return
+            end if
+            numerator_x = target_x(row) - source_x(ix)
+            denominator_x = source_x(ix + 1) - source_x(ix)
+            alpha_x = numerator_x/denominator_x
+            numerator_y = target_y(row) - source_y(iy)
+            denominator_y = source_y(iy + 1) - source_y(iy)
+            alpha_y = numerator_y/denominator_y
+            column = (iy - 1)*nx + ix
+            alpha_x_bar = (interpolation_map_bar(row, column + 1) - &
+                interpolation_map_bar(row, column))*(1.0_dp - alpha_y) + &
+                (interpolation_map_bar(row, column + nx + 1) - &
+                interpolation_map_bar(row, column + nx))*alpha_y
+            alpha_y_bar = (interpolation_map_bar(row, column + nx) - &
+                interpolation_map_bar(row, column))*(1.0_dp - alpha_x) + &
+                (interpolation_map_bar(row, column + nx + 1) - &
+                interpolation_map_bar(row, column + 1))*alpha_x
+            target_x_bar(row) = target_x_bar(row) + &
+                alpha_x_bar/denominator_x
+            source_x_bar(ix) = source_x_bar(ix) + alpha_x_bar* &
+                (numerator_x - denominator_x)/(denominator_x*denominator_x)
+            source_x_bar(ix + 1) = source_x_bar(ix + 1) - alpha_x_bar* &
+                numerator_x/(denominator_x*denominator_x)
+            target_y_bar(row) = target_y_bar(row) + &
+                alpha_y_bar/denominator_y
+            source_y_bar(iy) = source_y_bar(iy) + alpha_y_bar* &
+                (numerator_y - denominator_y)/(denominator_y*denominator_y)
+            source_y_bar(iy + 1) = source_y_bar(iy + 1) - alpha_y_bar* &
+                numerator_y/(denominator_y*denominator_y)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_map_2d_vjp
 
     subroutine locate_fixed_interval( &
             source_coordinates, target_coordinate, left, valid_interval)

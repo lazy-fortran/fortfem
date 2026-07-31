@@ -18,6 +18,8 @@ slices without coupling the operator to a mesh lookup implementation. Its
 fixed-topology JVP and VJP are also available for differentiable geometry
 updates away from stencil-cell crossings. A Cartesian bilinear map builder is
 available for a first 2D poloidal slice, with x-fast source-column ordering.
+Its source-grid and target-point JVP/VJP products are available on a fixed
+cell topology as well.
 `compute_fci_staggered_flux_box_volumes` combines traced forward/backward flux
 expansion with plane-cell area and (B_\varphi) for the support weights.
 
