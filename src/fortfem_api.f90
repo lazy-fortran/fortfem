@@ -1,4 +1,8 @@
 module fortfem_api
+    use fortfem_surface_triangle_geometry_3d, only: &
+        evaluate_surface_triangle_geometry_3d, &
+        evaluate_surface_triangle_geometry_3d_jvp, &
+        evaluate_surface_triangle_geometry_3d_vjp
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -756,6 +760,9 @@ module fortfem_api
     public :: evaluate_nurbs_surface_geometry
     public :: evaluate_nurbs_surface_geometry_jvp
     public :: evaluate_nurbs_surface_geometry_vjp
+    public :: evaluate_surface_triangle_geometry_3d
+    public :: evaluate_surface_triangle_geometry_3d_jvp
+    public :: evaluate_surface_triangle_geometry_3d_vjp
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp

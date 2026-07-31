@@ -446,3 +446,12 @@ machine-independent regression threshold. In particular, one reverse product
 returns cotangents for all twelve vertex coordinates, so its cost should be
 compared with twelve separate forward directions for a complete element shape
 gradient.
+
+For surface BEM, the shared affine-triangle geometry primitive maps three
+vertices and two reference coordinates to a physical point, surface
+Jacobian, and oriented unit normal. FortSym emits its primal, JVP, and VJP
+from one expression graph. The reverse product returns all nine vertex
+cotangents in one call, providing the common moving-boundary layer for
+Laplace, Helmholtz, and Maxwell/RWG panel operators. Degenerate panels are
+rejected before evaluating the generated normalization; mesh connectivity and
+panel orientation remain fixed discrete inputs.

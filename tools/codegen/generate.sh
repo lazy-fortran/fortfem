@@ -22,6 +22,7 @@ fo exec --no-build gen_nurbs_geometry_products
 fo exec --no-build gen_bspline_h1_geometry_products
 fo exec --no-build gen_cartesian_pml_products
 fo exec --no-build gen_planar_helmholtz_dtn_products
+fo exec --no-build gen_surface_triangle_geometry_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -37,3 +38,4 @@ fo fmt "$generated_dir/fortfem_nurbs_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_bspline_h1_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_cartesian_pml_products.f90"
 fo fmt "$generated_dir/fortfem_planar_helmholtz_dtn_products.f90"
+fo fmt "$generated_dir/fortfem_surface_triangle_geometry_products.f90"
