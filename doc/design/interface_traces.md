@@ -22,4 +22,6 @@ Broken finite-element spaces, surface measures, distributional source terms,
 and Nitsche/mortar coupling will consume this contract in later slices.  The
 public `assemble_interface_jump_penalty` routine now assembles the symmetric
 positive-semidefinite \([T^+,-T^-]^T[T^+,-T^-]\) block used by SIPG and the
-penalty portion of Nitsche coupling.
+penalty portion of Nitsche coupling.  The public
+`assemble_symmetric_nitsche_interface` routine adds the common-normal average
+flux consistency terms and is checked against an independent block oracle.

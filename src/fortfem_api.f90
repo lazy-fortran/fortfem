@@ -204,6 +204,7 @@ module fortfem_api
     use fortfem_surface_delta_load, only: &
         assemble_surface_delta_load, assemble_surface_vector_delta_load
     use fortfem_interface_jump_penalty, only: assemble_interface_jump_penalty
+    use fortfem_nitsche_interface, only: assemble_symmetric_nitsche_interface
     use fortfem_cgl_pressure_divergence, only: &
         evaluate_cgl_pressure_divergence, evaluate_cgl_pressure_divergence_jvp, &
         evaluate_cgl_pressure_divergence_vjp
@@ -1470,6 +1471,7 @@ module fortfem_api
     public :: assemble_surface_delta_load
     public :: assemble_surface_vector_delta_load
     public :: assemble_interface_jump_penalty
+    public :: assemble_symmetric_nitsche_interface
     public :: evaluate_cgl_pressure_divergence
     public :: evaluate_cgl_pressure_divergence_jvp
     public :: evaluate_cgl_pressure_divergence_vjp
