@@ -99,6 +99,11 @@ source-dir = "app"
 main = "gen_planar_helmholtz_dtn_products.f90"
 
 [[executable]]
+name = "gen_fci_parallel_products"
+source-dir = "app"
+main = "gen_fci_parallel_products.f90"
+
+[[executable]]
 name = "gen_surface_triangle_geometry_products"
 source-dir = "app"
 main = "gen_surface_triangle_geometry_products.f90"

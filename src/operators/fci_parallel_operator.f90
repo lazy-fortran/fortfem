@@ -17,6 +17,12 @@ module fortfem_fci_parallel_operator
     !! construction remain separate geometry services; this module only owns
     !! the algebraic contract and its sparse representation.
     use fortfem_kinds, only: dp
+    use fortfem_generated_fci_parallel_gradient, only: &
+        generated_fci_parallel_gradient
+    use fortfem_generated_fci_parallel_gradient_jvp, only: &
+        generated_fci_parallel_gradient_jvp
+    use fortfem_generated_fci_parallel_gradient_vjp, only: &
+        generated_fci_parallel_gradient_vjp
     use fortsparse, only: csc_from_triplet, csc_is_valid, csc_t, &
         fortsparse_status_t, status_set, FORTSPARSE_INVALID_MATRIX, &
         FORTSPARSE_OK
@@ -25,6 +31,9 @@ module fortfem_fci_parallel_operator
 
     public :: assemble_fci_parallel_gradient_csc
     public :: assemble_fci_parallel_support_divergence_csc
+    public :: apply_fci_parallel_gradient
+    public :: apply_fci_parallel_gradient_jvp
+    public :: apply_fci_parallel_gradient_vjp
 
 contains
 
@@ -151,5 +160,231 @@ contains
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
             "FCI support divergence CSC construction failed")
     end subroutine assemble_fci_parallel_support_divergence_csc
+
+    subroutine apply_fci_parallel_gradient( &
+            forward_map, backward_map, line_lengths, field, gradient_field, &
+            status)
+        !! Apply the mapped FCI gradient without assembling a global matrix.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(out) :: gradient_field(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        integer :: segment, sample, plane_node, row
+        integer :: lower_column, upper_column
+        real(dp) :: contribution
+
+        call validate_fci_action_shapes( &
+            forward_map, backward_map, line_lengths, field, gradient_field, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        gradient_field = 0.0_dp
+        do segment = 1, n_segment
+            lower_column = (segment - 1)*n_plane
+            upper_column = segment*n_plane
+            do sample = 1, n_staggered
+                row = sample + (segment - 1)*n_staggered
+                do plane_node = 1, n_plane
+                    call generated_fci_parallel_gradient( &
+                        forward_map(sample, plane_node, segment), &
+                        field(upper_column + plane_node), &
+                        backward_map(sample, plane_node, segment), &
+                        field(lower_column + plane_node), &
+                        line_lengths(sample, segment), contribution)
+                    gradient_field(row) = gradient_field(row) + contribution
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_parallel_gradient
+
+    subroutine apply_fci_parallel_gradient_jvp( &
+            forward_map, backward_map, line_lengths, field, forward_map_dot, &
+            backward_map_dot, line_lengths_dot, field_dot, gradient_field_dot, &
+            status)
+        !! Apply the analytical JVP of the mapped FCI gradient action.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(in) :: forward_map_dot(:, :, :)
+        real(dp), intent(in) :: backward_map_dot(:, :, :)
+        real(dp), intent(in) :: line_lengths_dot(:, :)
+        real(dp), intent(in) :: field_dot(:)
+        real(dp), intent(out) :: gradient_field_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        integer :: segment, sample, plane_node, row
+        integer :: lower_column, upper_column
+        real(dp) :: contribution_dot
+
+        call validate_fci_action_shapes( &
+            forward_map, backward_map, line_lengths, field, gradient_field_dot, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (any(shape(forward_map_dot) /= shape(forward_map))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient JVP received an incompatible forward map")
+            return
+        end if
+        if (any(shape(backward_map_dot) /= shape(backward_map))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient JVP received an incompatible backward map")
+            return
+        end if
+        if (any(shape(line_lengths_dot) /= shape(line_lengths))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient JVP received incompatible line lengths")
+            return
+        end if
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (size(field_dot) /= n_plane*(n_segment + 1)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient JVP received an incompatible field tangent")
+            return
+        end if
+        gradient_field_dot = 0.0_dp
+        do segment = 1, n_segment
+            lower_column = (segment - 1)*n_plane
+            upper_column = segment*n_plane
+            do sample = 1, n_staggered
+                row = sample + (segment - 1)*n_staggered
+                do plane_node = 1, n_plane
+                    call generated_fci_parallel_gradient_jvp( &
+                        forward_map(sample, plane_node, segment), &
+                        field(upper_column + plane_node), &
+                        backward_map(sample, plane_node, segment), &
+                        field(lower_column + plane_node), &
+                        line_lengths(sample, segment), &
+                        forward_map_dot(sample, plane_node, segment), &
+                        field_dot(upper_column + plane_node), &
+                        backward_map_dot(sample, plane_node, segment), &
+                        field_dot(lower_column + plane_node), &
+                        line_lengths_dot(sample, segment), contribution_dot)
+                    gradient_field_dot(row) = &
+                        gradient_field_dot(row) + contribution_dot
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_parallel_gradient_jvp
+
+    subroutine apply_fci_parallel_gradient_vjp( &
+            forward_map, backward_map, line_lengths, field, gradient_field_bar, &
+            forward_map_bar, backward_map_bar, line_lengths_bar, field_bar, &
+            status)
+        !! Apply the real VJP of the mapped FCI gradient action.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(in) :: gradient_field_bar(:)
+        real(dp), intent(out) :: forward_map_bar(:, :, :)
+        real(dp), intent(out) :: backward_map_bar(:, :, :)
+        real(dp), intent(out) :: line_lengths_bar(:, :)
+        real(dp), intent(out) :: field_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        integer :: segment, sample, plane_node, row
+        integer :: lower_column, upper_column
+        real(dp) :: forward_bar, upper_bar, backward_bar, lower_bar
+        real(dp) :: length_bar
+
+        call validate_fci_action_shapes( &
+            forward_map, backward_map, line_lengths, field, gradient_field_bar, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (any(shape(forward_map_bar) /= shape(forward_map))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient VJP received an incompatible forward cotangent")
+            return
+        end if
+        if (any(shape(backward_map_bar) /= shape(backward_map))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient VJP received an incompatible backward cotangent")
+            return
+        end if
+        if (any(shape(line_lengths_bar) /= shape(line_lengths))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient VJP received incompatible line-length cotangents")
+            return
+        end if
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (size(field_bar) /= n_plane*(n_segment + 1)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI gradient VJP received an incompatible field cotangent")
+            return
+        end if
+        forward_map_bar = 0.0_dp
+        backward_map_bar = 0.0_dp
+        line_lengths_bar = 0.0_dp
+        field_bar = 0.0_dp
+        do segment = 1, n_segment
+            lower_column = (segment - 1)*n_plane
+            upper_column = segment*n_plane
+            do sample = 1, n_staggered
+                row = sample + (segment - 1)*n_staggered
+                do plane_node = 1, n_plane
+                    call generated_fci_parallel_gradient_vjp( &
+                        forward_map(sample, plane_node, segment), &
+                        field(upper_column + plane_node), &
+                        backward_map(sample, plane_node, segment), &
+                        field(lower_column + plane_node), &
+                        line_lengths(sample, segment), gradient_field_bar(row), &
+                        forward_bar, upper_bar, backward_bar, lower_bar, &
+                        length_bar)
+                    forward_map_bar(sample, plane_node, segment) = &
+                        forward_map_bar(sample, plane_node, segment) + forward_bar
+                    backward_map_bar(sample, plane_node, segment) = &
+                        backward_map_bar(sample, plane_node, segment) + backward_bar
+                    line_lengths_bar(sample, segment) = &
+                        line_lengths_bar(sample, segment) + length_bar
+                    field_bar(upper_column + plane_node) = &
+                        field_bar(upper_column + plane_node) + upper_bar
+                    field_bar(lower_column + plane_node) = &
+                        field_bar(lower_column + plane_node) + lower_bar
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_parallel_gradient_vjp
+
+    subroutine validate_fci_action_shapes( &
+            forward_map, backward_map, line_lengths, field, output, status)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: field(:)
+        real(dp), intent(in) :: output(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI gradient action received incompatible arrays")
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (n_staggered < 1 .or. n_plane < 1 .or. n_segment < 1) return
+        if (any(shape(backward_map) /= shape(forward_map))) return
+        if (size(line_lengths, 1) /= n_staggered) return
+        if (size(line_lengths, 2) /= n_segment) return
+        if (any(line_lengths <= 0.0_dp)) return
+        if (size(field) /= n_plane*(n_segment + 1)) return
+        if (size(output) /= n_staggered*n_segment) return
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_fci_action_shapes
 
 end module fortfem_fci_parallel_operator
