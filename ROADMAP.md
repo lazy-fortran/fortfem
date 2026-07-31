@@ -161,7 +161,7 @@ documentation baseline. The list is intentionally conservative.
 | Scalar FEM | P1/P2/Q1 and arbitrary-order triangular scalar paths, Poisson and diffusion forms, boundary conditions, plotting | General field and coefficient callbacks in the symbolic form compiler |
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
-| Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, toroidal analytical utilities in active development | A documented, independently tested torus-harmonic API and stable half-integer continuation |
+| Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts | A documented, independently tested torus-harmonic API and stable half-integer continuation |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths are public | ILUT and fill-controlled ICHOL, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
@@ -230,7 +230,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Cut FEEC spaces | The scalar shifted-Heaviside XFEM activation contract is public; vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
-| Fourier and toroidal modes | A mode registry with field-period, phase, normalization, conjugate packing, triad closure, radial regularity, and torus-harmonic branch data | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
+| Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, and complex coordinate derivatives; mode-coupled scalar/vector operators and torus-harmonic branch data remain | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
 | Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
 | Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
@@ -1346,6 +1346,13 @@ gallery example.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
 
+- The public `fourier_mode_registry_t` records field-period phase,
+  normalization, real/conjugate packing, retained triads, and caller-selected
+  radial regularity. Its analytical mode value, fixed-topology JVP, and
+  complex real-part VJP are independently tested. This metadata layer is
+  neutral and does not import equilibrium profiles, COCOS/GEQDSK conventions,
+  or plasma closures; mode-coupled operators and torus-harmonic radial
+  branches remain composition work.
 - Stabilize ordinary, associated, and half-integer Legendre and toroidal
   harmonic APIs in FortNum.
 - Define mode normalization, phase, field-period, and real packing.
