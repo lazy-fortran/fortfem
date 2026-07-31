@@ -38,3 +38,11 @@ rebuild the cut stencil after an interface crosses a vertex or an edge-crossing
 pair changes. Its focused test compares an independently derived intersection
 and normal formula with a central-difference oracle while checking that a
 topology event is rejected.
+
+`evaluate_level_set_triangle_cut_quadrature_2d_jvp` extends the same contract
+to the exact degree-one positive/negative subcell areas and centroids. It
+propagates the edge-intersection derivatives through the clipped-polygon
+shoelace moments, and composes the interface JVP for length and normal. It
+supports fixed uncut states as well as proper cuts, rejects nodal zeros, and is
+checked against central differences plus independent total-area and
+first-moment conservation identities.

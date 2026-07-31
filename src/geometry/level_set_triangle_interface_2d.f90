@@ -16,6 +16,7 @@ module fortfem_level_set_triangle_interface_2d
     public :: evaluate_level_set_triangle_interface_2d_jvp
     public :: evaluate_level_set_triangle_cut_areas_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d
+    public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
 
 contains
 
@@ -297,6 +298,66 @@ contains
         status = 0
     end subroutine evaluate_level_set_triangle_cut_quadrature_2d
 
+    subroutine evaluate_level_set_triangle_cut_quadrature_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_area_dot, positive_centroid_dot, negative_area_dot, &
+            negative_centroid_dot, interface_length_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of linear cut-cell quadrature data.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        real(dp), intent(out) :: positive_area_dot
+        real(dp), intent(out) :: positive_centroid_dot(2)
+        real(dp), intent(out) :: negative_area_dot
+        real(dp), intent(out) :: negative_centroid_dot(2)
+        real(dp), intent(out) :: interface_length_dot, normal_dot(2)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_area, positive_centroid(2)
+        real(dp) :: negative_area, negative_centroid(2)
+        real(dp) :: interface_length, normal(2), points_dot(2, 2)
+        integer :: quadrature_status, interface_status
+
+        positive_area_dot = 0.0_dp
+        positive_centroid_dot = 0.0_dp
+        negative_area_dot = 0.0_dp
+        negative_centroid_dot = 0.0_dp
+        interface_length_dot = 0.0_dp
+        normal_dot = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values)) .or. &
+            any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(level_values_dot))) return
+        if (any(abs(level_values) <= topology_tolerance)) return
+        call evaluate_level_set_triangle_cut_quadrature_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            negative_area, negative_centroid, interface_length, normal, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            positive_area_dot, positive_centroid_dot)
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            negative_area_dot, negative_centroid_dot)
+        if (any(level_values > topology_tolerance) .and. &
+            any(level_values < -topology_tolerance)) then
+            call evaluate_level_set_triangle_interface_2d_jvp( &
+                vertices, level_values, vertices_dot, level_values_dot, &
+                points_dot, interface_length_dot, normal_dot, interface_status)
+            if (interface_status /= 0) then
+                positive_area_dot = 0.0_dp
+                positive_centroid_dot = 0.0_dp
+                negative_area_dot = 0.0_dp
+                negative_centroid_dot = 0.0_dp
+                interface_length_dot = 0.0_dp
+                normal_dot = 0.0_dp
+                return
+            end if
+        end if
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_quadrature_2d_jvp
+
     pure function level_set_side_area(vertices, level_values, keep_positive) &
             result(area)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
@@ -339,6 +400,59 @@ contains
         area = abs(signed_area)
         centroid = first_moment/(3.0_dp*signed_area)
     end subroutine level_set_side_moments
+
+    pure subroutine level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, keep_positive, &
+            area_dot, centroid_dot)
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(out) :: area_dot, centroid_dot(2)
+
+        real(dp) :: polygon(2, 6), polygon_dot(2, 6)
+        real(dp) :: signed_area, signed_area_dot, cross, cross_dot
+        real(dp) :: first_moment(2), first_moment_dot(2)
+        real(dp) :: orientation
+        integer :: point_count, point, next_point
+
+        area_dot = 0.0_dp
+        centroid_dot = 0.0_dp
+        polygon = 0.0_dp
+        polygon_dot = 0.0_dp
+        polygon(:, 1:3) = vertices
+        polygon_dot(:, 1:3) = vertices_dot
+        point_count = 3
+        call clip_level_set_polygon_jvp( &
+            polygon, polygon_dot, point_count, level_values, level_values_dot, &
+            keep_positive)
+        if (point_count < 3) return
+
+        signed_area = 0.0_dp
+        signed_area_dot = 0.0_dp
+        first_moment = 0.0_dp
+        first_moment_dot = 0.0_dp
+        do point = 1, point_count
+            next_point = 1 + mod(point, point_count)
+            cross = polygon(1, point)*polygon(2, next_point) - &
+                polygon(2, point)*polygon(1, next_point)
+            cross_dot = polygon_dot(1, point)*polygon(2, next_point) + &
+                polygon(1, point)*polygon_dot(2, next_point) - &
+                polygon_dot(2, point)*polygon(1, next_point) - &
+                polygon(2, point)*polygon_dot(1, next_point)
+            signed_area = signed_area + 0.5_dp*cross
+            signed_area_dot = signed_area_dot + 0.5_dp*cross_dot
+            first_moment = first_moment + 0.5_dp*cross*( &
+                polygon(:, point) + polygon(:, next_point))
+            first_moment_dot = first_moment_dot + 0.5_dp*( &
+                cross_dot*(polygon(:, point) + polygon(:, next_point)) + &
+                cross*(polygon_dot(:, point) + polygon_dot(:, next_point)))
+        end do
+        if (abs(signed_area) <= topology_tolerance) return
+        orientation = sign(1.0_dp, signed_area)
+        area_dot = orientation*signed_area_dot
+        centroid_dot = (first_moment_dot*signed_area - &
+            first_moment*signed_area_dot)/(3.0_dp*signed_area**2)
+    end subroutine level_set_side_moments_jvp
 
     pure subroutine clip_level_set_polygon( &
             polygon, point_count, level_values, keep_positive, clipped)
@@ -385,6 +499,62 @@ contains
         polygon = clipped
         point_count = clipped_count
     end subroutine clip_level_set_polygon
+
+    pure subroutine clip_level_set_polygon_jvp( &
+            polygon, polygon_dot, point_count, level_values, level_values_dot, &
+            keep_positive)
+        real(dp), intent(inout) :: polygon(2, 6), polygon_dot(2, 6)
+        integer, intent(inout) :: point_count
+        real(dp), intent(in) :: level_values(3), level_values_dot(3)
+        logical, intent(in) :: keep_positive
+
+        real(dp) :: clipped(2, 6), clipped_dot(2, 6)
+        real(dp) :: current_value, previous_value, current_value_dot
+        real(dp) :: previous_value_dot, denominator, fraction, fraction_dot
+        real(dp) :: edge(2), edge_dot(2), intersection(2), intersection_dot(2)
+        integer :: current, previous, clipped_count
+        logical :: current_inside, previous_inside
+
+        clipped = 0.0_dp
+        clipped_dot = 0.0_dp
+        clipped_count = 0
+        previous = 3
+        previous_value = level_values(previous)
+        previous_value_dot = level_values_dot(previous)
+        previous_inside = side_inside(previous_value, keep_positive)
+        do current = 1, 3
+            current_value = level_values(current)
+            current_value_dot = level_values_dot(current)
+            current_inside = side_inside(current_value, keep_positive)
+            if (current_inside .neqv. previous_inside) then
+                denominator = previous_value - current_value
+                fraction = previous_value/denominator
+                fraction_dot = (previous_value_dot*denominator - &
+                    previous_value*(previous_value_dot - current_value_dot))/ &
+                    (denominator**2)
+                edge = polygon(:, current) - polygon(:, previous)
+                edge_dot = polygon_dot(:, current) - polygon_dot(:, previous)
+                intersection = polygon(:, previous) + fraction*edge
+                intersection_dot = polygon_dot(:, previous) + fraction_dot*edge + &
+                    fraction*edge_dot
+                clipped_count = clipped_count + 1
+                clipped(:, clipped_count) = intersection
+                clipped_dot(:, clipped_count) = intersection_dot
+            end if
+            if (current_inside) then
+                clipped_count = clipped_count + 1
+                clipped(:, clipped_count) = polygon(:, current)
+                clipped_dot(:, clipped_count) = polygon_dot(:, current)
+            end if
+            previous = current
+            previous_value = current_value
+            previous_value_dot = current_value_dot
+            previous_inside = current_inside
+        end do
+        polygon = clipped
+        polygon_dot = clipped_dot
+        point_count = clipped_count
+    end subroutine clip_level_set_polygon_jvp
 
     pure logical function side_inside(value, keep_positive) result(inside)
         real(dp), intent(in) :: value
