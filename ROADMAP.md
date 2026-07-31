@@ -1209,7 +1209,9 @@ gallery example.
 
 ### Phase 3: DG and HDG: **planned**
 
-- Scalar SIPG and non-symmetric variants.
+- The public mortar trace cross-mass block now has value/JVP/VJP actions for
+  independently discretized skeleton traces; scalar SIPG and non-symmetric
+  variants remain.
 - Conservative/upwind/entropy-aware flux interface.
 - Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
 
