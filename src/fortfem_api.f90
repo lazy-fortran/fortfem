@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_tetra_affine_map, only: &
+        invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
+        invert_tetra_affine_map_vjp
     use fortfem_tetra_vector_evaluation, only: &
         evaluate_tetra_nedelec_interpolant, &
         evaluate_tetra_nedelec_interpolant_jvp, &
@@ -889,6 +892,9 @@ module fortfem_api
     public :: evaluate_tetra_rt_interpolant
     public :: evaluate_tetra_rt_interpolant_jvp
     public :: evaluate_tetra_rt_interpolant_vjp
+    public :: invert_tetra_affine_map
+    public :: invert_tetra_affine_map_jvp
+    public :: invert_tetra_affine_map_vjp
     public :: solve_triangle_rt_sampled_state
     public :: solve_triangle_rt_sampled_state_jvp
     public :: solve_triangle_rt_sampled_state_vjp

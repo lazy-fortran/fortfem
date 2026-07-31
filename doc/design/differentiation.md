@@ -221,6 +221,11 @@ state coefficient and all twelve vertex coordinates by reusing the covariant
 Piola JVP/VJP. Tetrahedral RT observations provide the matching physical value
 and divergence products with the contravariant map, completing local
 H(curl)/H(div) state-to-objective composition without an autodiff compiler.
+The tetrahedral affine physical-to-reference inverse has matching products for
+all vertex and point coordinates. As in two dimensions, it composes
+FortNum's FortSym-generated inverse products and treats cell selection as
+fixed topology. This is the geometry primitive needed to keep a three-
+dimensional sensor fixed in physical space while the optimization mesh moves.
 Mixed Poisson has the corresponding sampled discontinuous scalar-load
 contract. Its analytical products include determinant quadrature, physical
 quadrature-point motion, arbitrary-order DG moments, and source parameters.
