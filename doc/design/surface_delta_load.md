@@ -15,5 +15,6 @@ compatible arrays are required.
 
 The focused test compares against an independent trace-transpose oracle and
 checks incompatible quadrature sizes.  Vector/tangential current pairings and
-parameter derivatives will build on the interface-trace contract in later
-slices.
+`assemble_surface_vector_delta_load` now provides the corresponding
+work-conjugate tangential surface-current pairing.  Parameter derivatives and
+surface measures will build on these contracts in later slices.

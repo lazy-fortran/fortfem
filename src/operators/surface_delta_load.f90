@@ -14,6 +14,7 @@ module fortfem_surface_delta_load
     private
 
     public :: assemble_surface_delta_load
+    public :: assemble_surface_vector_delta_load
 
 contains
 
@@ -52,5 +53,44 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine assemble_surface_delta_load
+
+    subroutine assemble_surface_vector_delta_load( &
+            tangential_trace_basis, surface_weights, surface_current, load, &
+            status)
+        !! Assemble a tangential trace pairing with a surface current.
+        real(dp), intent(in) :: tangential_trace_basis(:, :, :)
+        real(dp), intent(in) :: surface_weights(:)
+        real(dp), intent(in) :: surface_current(:, :)
+        real(dp), intent(out) :: load(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: quadrature_count, dof_count, quadrature, dof
+        real(dp) :: weighted_current
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "surface vector delta load received incompatible arrays")
+        load = 0.0_dp
+        quadrature_count = size(tangential_trace_basis, 1)
+        dof_count = size(tangential_trace_basis, 2)
+        if (quadrature_count < 1 .or. dof_count < 1) return
+        if (size(tangential_trace_basis, 3) /= 3 .or. &
+            size(surface_weights) /= quadrature_count .or. &
+            size(surface_current, 1) /= quadrature_count .or. &
+            size(surface_current, 2) /= 3 .or. size(load) /= dof_count) return
+        if (any(.not. ieee_is_finite(tangential_trace_basis)) .or. &
+            any(.not. ieee_is_finite(surface_weights)) .or. &
+            any(.not. ieee_is_finite(surface_current))) return
+        if (any(surface_weights <= 0.0_dp)) return
+
+        do quadrature = 1, quadrature_count
+            do dof = 1, dof_count
+                weighted_current = dot_product( &
+                    tangential_trace_basis(quadrature, dof, :), &
+                    surface_current(quadrature, :))*surface_weights(quadrature)
+                load(dof) = load(dof) + weighted_current
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine assemble_surface_vector_delta_load
 
 end module fortfem_surface_delta_load

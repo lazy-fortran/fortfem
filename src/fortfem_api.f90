@@ -201,7 +201,8 @@ module fortfem_api
         evaluate_field_aligned_flux_vjp
     use fortfem_interface_traces, only: &
         compute_interface_scalar_jump_average, compute_interface_vector_traces
-    use fortfem_surface_delta_load, only: assemble_surface_delta_load
+    use fortfem_surface_delta_load, only: &
+        assemble_surface_delta_load, assemble_surface_vector_delta_load
     use fortfem_cgl_pressure_divergence, only: &
         evaluate_cgl_pressure_divergence, evaluate_cgl_pressure_divergence_jvp, &
         evaluate_cgl_pressure_divergence_vjp
@@ -1466,6 +1467,7 @@ module fortfem_api
     public :: compute_interface_scalar_jump_average
     public :: compute_interface_vector_traces
     public :: assemble_surface_delta_load
+    public :: assemble_surface_vector_delta_load
     public :: evaluate_cgl_pressure_divergence
     public :: evaluate_cgl_pressure_divergence_jvp
     public :: evaluate_cgl_pressure_divergence_vjp
