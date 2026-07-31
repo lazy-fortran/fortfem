@@ -15,6 +15,7 @@ compatible arrays are required.
 
 The focused test compares against an independent trace-transpose oracle and
 checks incompatible quadrature sizes.  Vector/tangential current pairings and
-`assemble_surface_vector_delta_load` now provides the corresponding
-work-conjugate tangential surface-current pairing.  Parameter derivatives and
-surface measures will build on these contracts in later slices.
+`assemble_surface_vector_delta_load` provide the corresponding work-conjugate
+tangential surface-current pairing. `assemble_surface_triangle_measures_3d`
+supplies oriented triangle areas and normals, including geometry JVP/VJP
+products, for fitted surface quadrature.

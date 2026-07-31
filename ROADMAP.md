@@ -873,8 +873,10 @@ gallery example.
   terms under the same orientation convention.
 - `assemble_mortar_trace_coupling` supplies a weighted cross-mass block for
   independently discretized trace spaces.
-- Internal manifolds, level sets, surface measures, and vector current
-  pairings remain next.
+- Oriented triangle surface measures (area plus unit normal) now have a public
+  JVP/VJP API with shared-vertex accumulation and independent finite-difference
+  and dot-product oracles. Internal manifolds and level-set topology remain
+  next; the existing vector current pairing consumes this measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.

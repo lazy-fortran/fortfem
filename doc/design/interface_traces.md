@@ -27,3 +27,8 @@ penalty portion of Nitsche coupling.  The public
 flux consistency terms and is checked against an independent block oracle.
 `assemble_mortar_trace_coupling` supplies the weighted cross-mass block when
 the test and trial trace spaces have different degree-of-freedom counts.
+`assemble_surface_triangle_measures_3d` supplies the matching oriented area
+and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
+VJP accumulate shared-vertex derivatives and are checked by independent
+finite-difference and real dot-product oracles, so current-sheet and delta-load
+primitives can consume one orientation-preserving measure contract.
