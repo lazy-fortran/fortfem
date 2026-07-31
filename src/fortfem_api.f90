@@ -458,6 +458,8 @@ module fortfem_api
         evaluate_tetra_nedelec_first_order
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         assignment(=), evaluate_tetra_nedelec_first_kind, &
+        evaluate_tetra_nedelec_first_kind_jvp, &
+        evaluate_tetra_nedelec_first_kind_vjp, &
         initialize_tetra_nedelec_first_kind, tetra_nedelec_dof_count, &
         tetra_nedelec_first_kind_t
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
@@ -475,7 +477,8 @@ module fortfem_api
     use fortfem_tetra_feec_operators, only: &
         build_tetra_discrete_curl, build_tetra_discrete_gradient
     use fortfem_tetra_rt_arbitrary_order, only: &
-        assignment(=), evaluate_tetra_rt, initialize_tetra_rt, &
+        assignment(=), evaluate_tetra_rt, evaluate_tetra_rt_jvp, &
+        evaluate_tetra_rt_vjp, initialize_tetra_rt, &
         tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
@@ -1002,6 +1005,8 @@ module fortfem_api
     public :: triangle_nedelec_second_kind_t
     public :: evaluate_tetra_nedelec_first_order
     public :: evaluate_tetra_nedelec_first_kind
+    public :: evaluate_tetra_nedelec_first_kind_jvp
+    public :: evaluate_tetra_nedelec_first_kind_vjp
     public :: initialize_tetra_nedelec_first_kind
     public :: tetra_nedelec_dof_count
     public :: tetra_nedelec_first_kind_t
@@ -1022,6 +1027,8 @@ module fortfem_api
     public :: interpolate_reference_tetra_rt
     public :: interpolate_physical_tetra_rt
     public :: evaluate_tetra_rt
+    public :: evaluate_tetra_rt_jvp
+    public :: evaluate_tetra_rt_vjp
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
     public :: tetra_rt_t

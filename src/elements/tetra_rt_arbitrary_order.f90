@@ -16,7 +16,8 @@ module fortfem_tetra_rt_arbitrary_order
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
     use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
-        tetrahedron_koornwinder_gradient, triangle_dubiner
+        tetrahedron_koornwinder_gradient, tetrahedron_koornwinder_hessian, &
+        triangle_dubiner
     implicit none
     private
 
@@ -32,6 +33,7 @@ module fortfem_tetra_rt_arbitrary_order
 
     public :: assignment(=)
     public :: evaluate_tetra_rt
+    public :: evaluate_tetra_rt_jvp, evaluate_tetra_rt_vjp
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
     public :: tetra_rt_t
@@ -97,6 +99,68 @@ contains
             candidate_divergences, basis%coefficients)
         status = 0
     end subroutine evaluate_tetra_rt
+
+    subroutine evaluate_tetra_rt_jvp( &
+            basis, point, point_dot, values_dot, divergences_dot, status)
+        type(tetra_rt_t), intent(in) :: basis
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(out) :: values_dot(:, :), divergences_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: candidate_divergences_dot(:)
+        real(dp), allocatable :: candidate_values_dot(:, :)
+        real(dp) :: tolerance
+
+        values_dot = 0.0_dp
+        divergences_dot = 0.0_dp
+        status = 1
+        if (basis%degree < 0 .or. basis%dof_count < 1) return
+        if (size(values_dot, 1) /= 3 .or. &
+            size(values_dot, 2) /= basis%dof_count) return
+        if (size(divergences_dot) /= basis%dof_count) return
+        tolerance = 64.0_dp*epsilon(1.0_dp)
+        if (any(point < -tolerance)) return
+        if (sum(point) > 1.0_dp + tolerance) return
+        allocate(candidate_values_dot(3, basis%dof_count))
+        allocate(candidate_divergences_dot(basis%dof_count))
+        call evaluate_runtime_candidates_jvp( &
+            basis%degree, point, point_dot, candidate_values_dot, &
+            candidate_divergences_dot)
+        values_dot = matmul(candidate_values_dot, basis%coefficients)
+        divergences_dot = matmul( &
+            candidate_divergences_dot, basis%coefficients)
+        status = 0
+    end subroutine evaluate_tetra_rt_jvp
+
+    subroutine evaluate_tetra_rt_vjp( &
+            basis, point, values_bar, divergences_bar, point_bar, status)
+        type(tetra_rt_t), intent(in) :: basis
+        real(dp), intent(in) :: point(3)
+        real(dp), intent(in) :: values_bar(:, :), divergences_bar(:)
+        real(dp), intent(out) :: point_bar(3)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: divergences_dot(:), values_dot(:, :)
+        real(dp) :: point_dot(3)
+        integer :: direction
+
+        point_bar = 0.0_dp
+        status = 1
+        if (size(values_bar, 1) /= 3 .or. &
+            size(values_bar, 2) /= basis%dof_count) return
+        if (size(divergences_bar) /= basis%dof_count) return
+        allocate(values_dot(3, basis%dof_count))
+        allocate(divergences_dot(basis%dof_count))
+        do direction = 1, 3
+            point_dot = 0.0_dp
+            point_dot(direction) = 1.0_dp
+            call evaluate_tetra_rt_jvp( &
+                basis, point, point_dot, values_dot, divergences_dot, status)
+            if (status /= 0) return
+            point_bar(direction) = sum(values_bar*values_dot) + &
+                dot_product(divergences_bar, divergences_dot)
+        end do
+    end subroutine evaluate_tetra_rt_vjp
 
     pure integer function tetra_rt_dof_count(basis) result(dof_count)
         type(tetra_rt_t), intent(in) :: basis
@@ -290,6 +354,86 @@ contains
         end do
     end subroutine evaluate_runtime_candidates
 
+    pure subroutine evaluate_runtime_candidates_jvp( &
+            degree, point, point_dot, values_dot, divergences_dot)
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(out) :: values_dot(:, :), divergences_dot(:)
+
+        integer :: candidate, component, powers(3)
+        integer :: total_degree, x_degree, y_degree, z_degree
+        real(dp) :: gradient(3), gradient_dot(3)
+        real(dp) :: value, value_dot
+
+        values_dot = 0.0_dp
+        divergences_dot = 0.0_dp
+        candidate = 0
+        do component = 1, 3
+            do total_degree = 0, degree
+                do x_degree = 0, total_degree
+                    do y_degree = 0, total_degree - x_degree
+                        z_degree = total_degree - x_degree - y_degree
+                        candidate = candidate + 1
+                        powers = [x_degree, y_degree, z_degree]
+                        call scalar_modal_derivatives( &
+                            degree, powers, point, point_dot, value, &
+                            value_dot, gradient, gradient_dot)
+                        values_dot(component, candidate) = value_dot
+                        divergences_dot(candidate) = gradient_dot(component)
+                    end do
+                end do
+            end do
+        end do
+        total_degree = degree
+        do x_degree = 0, total_degree
+            do y_degree = 0, total_degree - x_degree
+                z_degree = total_degree - x_degree - y_degree
+                candidate = candidate + 1
+                powers = [x_degree, y_degree, z_degree]
+                call scalar_modal_derivatives( &
+                    degree, powers, point, point_dot, value, value_dot, &
+                    gradient, gradient_dot)
+                values_dot(:, candidate) = point_dot*value + point*value_dot
+                divergences_dot(candidate) = &
+                    4.0_dp*value_dot + dot_product(point, gradient_dot)
+            end do
+        end do
+    end subroutine evaluate_runtime_candidates_jvp
+
+    pure subroutine scalar_modal_derivatives( &
+            degree, powers, point, point_dot, value, value_dot, gradient, &
+            gradient_dot)
+        integer, intent(in) :: degree, powers(3)
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(out) :: value, value_dot, gradient(3), gradient_dot(3)
+
+        real(dp) :: hessian(3, 3)
+        integer :: column, row
+
+        if (degree <= 5) then
+            value = monomial(point, powers)
+            do row = 1, 3
+                gradient(row) = monomial_derivative(point, powers, row)
+                do column = 1, 3
+                    hessian(row, column) = monomial_second_derivative( &
+                        point, powers, row, column)
+                end do
+            end do
+        else
+            value = tetrahedron_koornwinder( &
+                powers(1), powers(2), powers(3), &
+                point(1), point(2), point(3))
+            call tetrahedron_koornwinder_gradient( &
+                powers(1), powers(2), powers(3), &
+                point(1), point(2), point(3), gradient)
+            call tetrahedron_koornwinder_hessian( &
+                powers(1), powers(2), powers(3), &
+                point(1), point(2), point(3), hessian)
+        end if
+        value_dot = dot_product(gradient, point_dot)
+        gradient_dot = matmul(hessian, point_dot)
+    end subroutine scalar_modal_derivatives
+
     pure real(dp) function moment_value_triangle( &
             degree, first_degree, second_degree, x, y) result(value)
         integer, intent(in) :: degree, first_degree, second_degree
@@ -342,6 +486,28 @@ contains
         reduced(direction) = reduced(direction) - 1
         value = real(powers(direction), dp)*monomial(point, reduced)
     end function monomial_derivative
+
+    pure real(dp) function monomial_second_derivative( &
+            point, powers, first, second) result(value)
+        real(dp), intent(in) :: point(3)
+        integer, intent(in) :: powers(3), first, second
+        integer :: reduced(3), coefficient
+
+        reduced = powers
+        if (reduced(first) == 0) then
+            value = 0.0_dp
+            return
+        end if
+        coefficient = reduced(first)
+        reduced(first) = reduced(first) - 1
+        if (reduced(second) == 0) then
+            value = 0.0_dp
+            return
+        end if
+        coefficient = coefficient*reduced(second)
+        reduced(second) = reduced(second) - 1
+        value = real(coefficient, dp)*monomial(point, reduced)
+    end function monomial_second_derivative
 
     pure subroutine reference_face(face, u, v, point, area_normal)
         integer, intent(in) :: face
