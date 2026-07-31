@@ -271,6 +271,19 @@ topology-changing remaps remain explicit future contracts.
 plane sizes using one-based half-open `plane_offsets`. This matches the local
 PARALLAX description for non-axisymmetric planes without forcing a padded
 global vector; each block still validates and solves independently.
+`apply_fci_additive_field_split_preconditioner` composes a cached positive
+parallel Jacobi block with that ragged plane cycle:
+
+```text
+M^-1 r = w_parallel D_parallel^-1 r + w_plane M_plane^-1 r.
+```
+
+The nonnegative weights and both positive diagonals are explicit inputs, so a
+caller can cache geometry-dependent values and tune the split without changing
+the FCI action. The focused test compares the weighted result with an
+independent two-plane V-cycle oracle and rejects invalid diagonal and weight
+inputs. This is an additive field-split baseline; coupled Schur complements,
+retained coarse factors, and deeper V/W cycles remain separate work.
 
 ## Provenance
 
