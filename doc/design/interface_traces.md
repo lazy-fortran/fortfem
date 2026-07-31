@@ -59,6 +59,12 @@ Lax--Friedrichs scalar interface fluxes. Plus/minus residuals are exactly
 opposite, and a quadratic-entropy production diagnostic is returned. The
 fixed-topology JVP/VJP covers states, speeds, caller dissipation, and weights;
 zero-speed upwind points are rejected as nondifferentiable events.
+`assemble_vector_numerical_flux` lifts the same contract to vector-valued
+states with a caller-supplied component metric. It covers central, upwind,
+and Lax--Friedrichs fluxes, strongly anisotropic constitutive metrics, and the
+metric quadratic-entropy diagnostic. Its value/JVP/VJP actions differentiate
+states, speeds, dissipation, metrics, and surface weights; the upwind
+zero-speed topology event remains explicit.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
