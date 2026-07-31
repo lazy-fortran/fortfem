@@ -183,7 +183,9 @@ module fortfem_api
         pullback_planar_maxwell_dtn_form, &
         pullback_planar_maxwell_dtn_form_jvp, &
         pullback_planar_maxwell_dtn_form_vjp
-    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
+    use fortfem_torus_curved_panel, only: &
+        evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp, &
+        evaluate_torus_curved_panel_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
         evaluate_sphere_curved_panel, invert_sphere_curved_panel
@@ -669,6 +671,8 @@ module fortfem_api
     public :: generate_solid_torus_tetra_mesh
     public :: generate_structured_tetra_box_mesh
     public :: evaluate_torus_curved_panel
+    public :: evaluate_torus_curved_panel_jvp
+    public :: evaluate_torus_curved_panel_vjp
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
     public :: invert_sphere_curved_panel

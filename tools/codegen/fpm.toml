@@ -49,6 +49,11 @@ source-dir = "app"
 main = "gen_toroidal_coordinates.f90"
 
 [[executable]]
+name = "gen_torus_curved_panel_products"
+source-dir = "app"
+main = "gen_torus_curved_panel_products.f90"
+
+[[executable]]
 name = "gen_interoperability_oracles"
 source-dir = "app"
 main = "gen_interoperability_oracles.f90"
