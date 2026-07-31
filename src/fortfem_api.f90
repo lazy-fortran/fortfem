@@ -41,7 +41,10 @@ module fortfem_api
         assemble_triangle_nedelec_curl_mass_csc_vjp, &
         assemble_triangle_nedelec_curl_mass_element, &
         assemble_triangle_nedelec_curl_mass_element_jvp, &
-        assemble_triangle_nedelec_curl_mass_element_vjp
+        assemble_triangle_nedelec_curl_mass_element_vjp, &
+        assemble_triangle_nedelec_vector_load_samples, &
+        assemble_triangle_nedelec_vector_load_samples_jvp, &
+        assemble_triangle_nedelec_vector_load_samples_vjp
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_csc_jvp, &
@@ -978,6 +981,9 @@ module fortfem_api
     public :: assemble_triangle_nedelec_curl_mass_element_jvp
     public :: assemble_triangle_nedelec_curl_mass_element_vjp
     public :: assemble_triangle_nedelec_curl_csc
+    public :: assemble_triangle_nedelec_vector_load_samples
+    public :: assemble_triangle_nedelec_vector_load_samples_jvp
+    public :: assemble_triangle_nedelec_vector_load_samples_vjp
     public :: assemble_triangle_rt_div_mass_element
     public :: assemble_triangle_rt_div_mass_element_jvp
     public :: assemble_triangle_rt_div_mass_element_vjp
