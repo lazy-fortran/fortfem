@@ -431,7 +431,29 @@ end program bem_sphere_3d
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### sphere_capacitance.png
+
+![sphere_capacitance.png](../../media/examples/bem_sphere_3d/sphere_capacitance.png)
+
+### sphere_helmholtz_cfie_resonance.png
+
+![sphere_helmholtz_cfie_resonance.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_cfie_resonance.png)
+
+### sphere_helmholtz_cfie_scaling.png
+
+![sphere_helmholtz_cfie_scaling.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_cfie_scaling.png)
+
+### sphere_helmholtz_hierarchical_action.png
+
+![sphere_helmholtz_hierarchical_action.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_hierarchical_action.png)
+
+### sphere_helmholtz_solve.png
+
+![sphere_helmholtz_solve.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_solve.png)
+
+### sphere_hierarchical_action.png
+
+![sphere_hierarchical_action.png](../../media/examples/bem_sphere_3d/sphere_hierarchical_action.png)
 
 ---
 

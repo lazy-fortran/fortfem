@@ -99,7 +99,17 @@ end program plot_mesh_example
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### mesh_basic.png
+
+![mesh_basic.png](../../media/examples/plot_mesh/mesh_basic.png)
+
+### mesh_coarse.png
+
+![mesh_coarse.png](../../media/examples/plot_mesh/mesh_coarse.png)
+
+### mesh_fine.png
+
+![mesh_fine.png](../../media/examples/plot_mesh/mesh_fine.png)
 
 ---
 

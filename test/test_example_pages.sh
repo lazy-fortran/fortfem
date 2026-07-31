@@ -36,7 +36,7 @@ while IFS= read -r relative_plot; do
     esac
     test -s "$resolved"
 done < <(
-    grep -rho 'src="\.\./\.\./media/examples/[^"]*\.png"' \
+    grep -rho 'src="\.\./\.\./media/examples/[^"]*\.\(png\|svg\)"' \
         "$examples_root/generated"
 )
 

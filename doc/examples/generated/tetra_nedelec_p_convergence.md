@@ -22,14 +22,22 @@ program tetra_nedelec_p_convergence
         interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
+    use fortplot, only: figure, plot, savefig, set_yscale, title, xlabel, ylabel
     implicit none
 
+    character(*), parameter :: output_directory = &
+        "output/example/tetra_nedelec_p_convergence"
     type(tetra_nedelec_first_kind_t) :: basis
-    real(dp) :: errors(4)
-    integer :: order, status
+    real(dp) :: degrees(4), errors(4)
+    integer :: command_status, order, status
+
+    call execute_command_line( &
+        "mkdir -p "//output_directory, exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     print "(a)", "order  L2 error for grad(x^4)"
     do order = 1, 4
+        degrees(order) = real(order, dp)
         call initialize_tetra_nedelec_first_kind(order, basis, status)
         if (status /= 0) error stop "basis initialization failed"
         call interpolation_error(basis, errors(order), status)
@@ -42,6 +50,15 @@ program tetra_nedelec_p_convergence
     if (errors(4) >= 2.0e-11_dp) then
         error stop "order four did not reproduce the cubic field"
     end if
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(degrees, errors, label="Nedelec interpolation error", &
+        marker="o")
+    call set_yscale("log")
+    call xlabel("Nedelec polynomial order")
+    call ylabel("L2 vector error")
+    call title("Tetrahedral Nedelec p-convergence")
+    call savefig(output_directory//"/p_convergence_1d.png")
 
 contains
 
@@ -94,7 +111,9 @@ end program tetra_nedelec_p_convergence
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### p_convergence_1d.png
+
+![p_convergence_1d.png](../../media/examples/tetra_nedelec_p_convergence/p_convergence_1d.png)
 
 ---
 

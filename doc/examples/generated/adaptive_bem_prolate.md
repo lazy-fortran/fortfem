@@ -133,7 +133,9 @@ end program adaptive_bem_prolate
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### adaptive_convergence.png
+
+![adaptive_convergence.png](../../media/examples/adaptive_bem_prolate/adaptive_convergence.png)
 
 ---
 

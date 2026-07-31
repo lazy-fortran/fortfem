@@ -224,7 +224,17 @@ end program iga_jorek_flux
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### jorek_flux_final_2d.png
+
+![jorek_flux_final_2d.png](../../media/examples/iga_jorek_flux/jorek_flux_final_2d.png)
+
+### jorek_flux_initial_2d.png
+
+![jorek_flux_initial_2d.png](../../media/examples/iga_jorek_flux/jorek_flux_initial_2d.png)
+
+### jorek_flux_invariant_1d.png
+
+![jorek_flux_invariant_1d.png](../../media/examples/iga_jorek_flux/jorek_flux_invariant_1d.png)
 
 ---
 

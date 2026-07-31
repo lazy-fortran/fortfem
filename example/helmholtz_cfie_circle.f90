@@ -3,25 +3,47 @@ program helmholtz_cfie_circle
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
+        title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(3) = [16, 32, 64]
     complex(dp), parameter :: exact_scattered = &
         (0.6192993117265686_dp, -0.5636220237912836_dp)
     complex(dp) :: scattered
-    real(dp) :: residual
-    integer :: mesh_id
+    real(dp) :: residual, field_errors(3), residuals(3), mesh_sizes_real(3)
+    integer :: command_status, mesh_id
+
+    call execute_command_line( &
+        "mkdir -p output/example/helmholtz_cfie_circle", &
+        exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     print "(a)", "Sound-soft unit-circle scattering, k = eta = 1.3"
     print "(a)", " panels    field error      LU residual"
     do mesh_id = 1, size(mesh_sizes)
         call solve_circle( &
             mesh_sizes(mesh_id), scattered, residual)
+        mesh_sizes_real(mesh_id) = real(mesh_sizes(mesh_id), dp)
+        field_errors(mesh_id) = abs(scattered - exact_scattered)
+        residuals(mesh_id) = residual
         print "(i7,2es16.6)", mesh_sizes(mesh_id), &
-            abs(scattered - exact_scattered), residual
+            field_errors(mesh_id), residuals(mesh_id)
     end do
     print "(a,2f12.6)", "Mie scattered field at r=2, theta=0.3: ", &
         real(exact_scattered, dp), aimag(exact_scattered)
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(mesh_sizes_real, field_errors, label="scattered-field error", &
+        marker="o")
+    call plot(mesh_sizes_real, residuals, label="CFIE residual", marker="s")
+    call set_xscale("log")
+    call set_yscale("log")
+    call xlabel("circle panels")
+    call ylabel("error / residual")
+    call title("Helmholtz combined-field circle convergence")
+    call legend()
+    call savefig("output/example/helmholtz_cfie_circle/convergence_1d.png")
 
 contains
 

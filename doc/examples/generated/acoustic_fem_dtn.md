@@ -187,7 +187,13 @@ end program acoustic_fem_dtn
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### elastic_dtn_centerline.png
+
+![elastic_dtn_centerline.png](../../media/examples/acoustic_fem_dtn/elastic_dtn_centerline.png)
+
+### elastic_dtn_interface.png
+
+![elastic_dtn_interface.png](../../media/examples/acoustic_fem_dtn/elastic_dtn_interface.png)
 
 ---
 

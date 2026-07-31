@@ -192,6 +192,19 @@ for example_name in "${example_names[@]}"; do
                     -type f -name '*.png' -print |
                     sort
             )
+            # Optional external benchmark runners may have no local numerical
+            # artifact. Keep the provenance-labelled SVG cover visible instead
+            # of publishing an empty page; numerical examples are required to
+            # emit PNGs by the example-doc test.
+            if [[ "$plot_count" -eq 0 && \
+                -f "$artifacts_dir/$example_name/cover.svg" ]]; then
+                printf '%s\n' \
+                    '### cover.svg' \
+                    '' \
+                    "![cover.svg](../../media/examples/$example_name/cover.svg)" \
+                    ''
+                plot_count=1
+            fi
         fi
         if [[ "$plot_count" -eq 0 ]]; then
             printf '%s\n\n' '*No plot artifact is produced by this example.*'

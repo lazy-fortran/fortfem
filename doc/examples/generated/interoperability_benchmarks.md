@@ -221,7 +221,9 @@ end program interoperability_benchmarks
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### cover.svg
+
+![cover.svg](../../media/examples/interoperability_benchmarks/cover.svg)
 
 ---
 

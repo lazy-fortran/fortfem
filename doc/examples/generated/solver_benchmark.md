@@ -22,7 +22,12 @@ program solver_benchmark
         assemble_laplacian_system
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, solve
+    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
+        title, xlabel, ylabel
     implicit none
+
+    character(*), parameter :: output_directory = &
+        "output/example/solver_benchmark"
 
     call run_solver_benchmark()
 
@@ -67,7 +72,59 @@ contains
         call write_benchmark_report(mesh_sizes, dofs, direct_times, &
             pcg_times, pcg_iters, direct_residuals, &
             pcg_residuals)
+
+        call ensure_example_output_directory()
+        call plot_solver_times(mesh_sizes, direct_times, pcg_times)
+        call plot_solver_residuals(mesh_sizes, direct_residuals, pcg_residuals)
     end subroutine run_solver_benchmark
+
+    subroutine plot_solver_times(mesh_sizes, direct_times, pcg_times)
+        integer, intent(in) :: mesh_sizes(:)
+        real(dp), intent(in) :: direct_times(:), pcg_times(:)
+
+        real(dp) :: sizes(size(mesh_sizes)), direct_plot(size(mesh_sizes))
+        real(dp) :: pcg_plot(size(mesh_sizes))
+
+        sizes = real(mesh_sizes, dp)
+        direct_plot = max(direct_times, tiny(1.0_dp))
+        pcg_plot = max(pcg_times, tiny(1.0_dp))
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(sizes, direct_plot, &
+            label="dense direct", marker="o")
+        call plot(sizes, pcg_plot, &
+            label="PCG + ILU", marker="s")
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("mesh resolution")
+        call ylabel("solve time [s]")
+        call title("Poisson solver timing benchmark")
+        call legend()
+        call savefig(output_directory//"/solver_times_1d.png")
+    end subroutine plot_solver_times
+
+    subroutine plot_solver_residuals(mesh_sizes, direct_residuals, pcg_residuals)
+        integer, intent(in) :: mesh_sizes(:)
+        real(dp), intent(in) :: direct_residuals(:), pcg_residuals(:)
+
+        real(dp) :: sizes(size(mesh_sizes)), direct_plot(size(mesh_sizes))
+        real(dp) :: pcg_plot(size(mesh_sizes))
+
+        sizes = real(mesh_sizes, dp)
+        direct_plot = max(direct_residuals, tiny(1.0_dp))
+        pcg_plot = max(pcg_residuals, tiny(1.0_dp))
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(sizes, direct_plot, &
+            label="dense direct", marker="o")
+        call plot(sizes, pcg_plot, &
+            label="PCG + ILU", marker="s")
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("mesh resolution")
+        call ylabel("residual norm")
+        call title("Poisson solver residual benchmark")
+        call legend()
+        call savefig(output_directory//"/solver_residuals_1d.png")
+    end subroutine plot_solver_residuals
 
     subroutine build_laplacian_system(n_mesh, mesh, Vh, bc, K, F, ndof)
         integer, intent(in) :: n_mesh
@@ -184,12 +241,27 @@ contains
         end if
     end subroutine ensure_benchmark_directory
 
+    subroutine ensure_example_output_directory()
+        logical :: exists
+
+        inquire (file=output_directory, exist=exists)
+        if (.not. exists) then
+            call execute_command_line("mkdir -p "//output_directory)
+        end if
+    end subroutine ensure_example_output_directory
+
 end program solver_benchmark
 ```
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### solver_residuals_1d.png
+
+![solver_residuals_1d.png](../../media/examples/solver_benchmark/solver_residuals_1d.png)
+
+### solver_times_1d.png
+
+![solver_times_1d.png](../../media/examples/solver_benchmark/solver_times_1d.png)
 
 ---
 

@@ -199,7 +199,13 @@ end program helmholtz_open_boundary_comparison
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### helmholtz_error_1d.png
+
+![helmholtz_error_1d.png](../../media/examples/helmholtz_open_boundary_comparison/helmholtz_error_1d.png)
+
+### helmholtz_methods_1d.png
+
+![helmholtz_methods_1d.png](../../media/examples/helmholtz_open_boundary_comparison/helmholtz_methods_1d.png)
 
 ---
 

@@ -495,7 +495,29 @@ end program toroidal_analytical
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### toroidal_bem_error_2d.png
+
+![toroidal_bem_error_2d.png](../../media/examples/toroidal_analytical/toroidal_bem_error_2d.png)
+
+### toroidal_fem_bem_1d.png
+
+![toroidal_fem_bem_1d.png](../../media/examples/toroidal_analytical/toroidal_fem_bem_1d.png)
+
+### toroidal_geometry_3d.png
+
+![toroidal_geometry_3d.png](../../media/examples/toroidal_analytical/toroidal_geometry_3d.png)
+
+### toroidal_helmholtz_1d.png
+
+![toroidal_helmholtz_1d.png](../../media/examples/toroidal_analytical/toroidal_helmholtz_1d.png)
+
+### toroidal_surface_2d.png
+
+![toroidal_surface_2d.png](../../media/examples/toroidal_analytical/toroidal_surface_2d.png)
+
+### toroidal_trace_1d.png
+
+![toroidal_trace_1d.png](../../media/examples/toroidal_analytical/toroidal_trace_1d.png)
 
 ---
 
