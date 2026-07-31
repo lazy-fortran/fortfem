@@ -24,6 +24,23 @@ problems, analytical solutions, and independent oracles. A future equilibrium
 or MHD application can then select the appropriate spaces, geometry, weak
 forms, solvers, and time integrator without changing the numerical contracts.
 
+## FortFEM and application boundaries
+
+FortFEM owns numerical foundations. It does not implement plasma applications.
+In particular, the repository will not contain GEQDSK or COCOS readers and
+writers, equilibrium profile models, coil or vessel physics, Braginskii or
+sheath closures, species and reaction networks, neutral or impurity models,
+or production CHEASE, FreeGS, VMEC, GVEC, SPEC, GPEC, MARS, GLISS, JOREK,
+GRILLIX, BOUT++, or PARALLAX algorithms.
+
+External applications may provide those data and laws through documented
+callbacks or adapters. FortFEM supplies the typed geometry, field, trace,
+tensor, Fourier, residual, derivative, solver, and structure-preserving
+contracts that consume them. License-safe examples use manufactured fields,
+small neutral arrays, or data produced by an external adapter. A reference
+code name in this roadmap identifies a parity target or oracle, not a planned
+FortFEM module.
+
 ## How to read this document
 
 The labels below describe the state of a deliverable.
@@ -110,6 +127,11 @@ not only contributor etiquette.
 - Profile before optimizing. Use Fortran and existing `fortnum` or
   `fortsparse` facilities first. Do not add a new dependency merely to make a
   benchmark table look better.
+- Add a deterministic property-testing path to `fo` and the test helpers.
+  Every randomized case records its seed, generated topology, and tolerance.
+  Seeded random tests provide fast coverage of orientations, geometry
+  degeneracies, mode sets, constitutive tensors, and solver dimensions. They
+  complement analytical and manufactured oracles and never replace them.
 
 ## 2. Current baseline
 
@@ -126,7 +148,7 @@ documentation baseline. The list is intentionally conservative.
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
-| Examples | Generated documentation pages for Poisson, Maxwell, Helmholtz, BEM, IGA, torus, PML, and solver examples | Ordered gallery beginning with simple Poisson and adding 1D, 2D, and 3D plasma-oriented toy models |
+| Examples | Generated documentation pages for Poisson, Maxwell, Helmholtz, BEM, IGA, torus, PML, and solver examples | Ordered gallery beginning with simple Poisson and adding 1D, 2D, and 3D application-oriented toy models with manufactured or external oracle data |
 
 The aggregate full test suite can expose resource-sensitive failures when many
 independent numerical targets run in parallel. Focused repetitions are the
@@ -172,6 +194,30 @@ orientation model. Geometry objects provide values, Jacobians, inverse maps,
 surface normals, measures, and derivatives with respect to control parameters.
 The same physical problem can be represented by a fitted interface or by an
 unfitted level set without changing the interface-law API.
+
+### 3.3 Foundation gap register
+
+The current algebraic slices are reusable building blocks. The following
+contracts still have to be composed before FortFEM can serve as the basis for
+an arbitrary-topology three-dimensional MHD or edge application.
+
+| Foundation | Contract still missing | Required independent oracle |
+| --- | --- | --- |
+| Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
+| Sheet-current interface | An open or closed interface graph with junctions, ownership, a tangential surface-current unknown, edge balance, total-pressure balance, and flux or helicity constraints | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
+| Cut FEEC spaces | XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts and enrichment activation | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
+| Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
+| Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
+| Fourier and toroidal modes | A mode registry with field-period, phase, normalization, conjugate packing, triad closure, radial regularity, and torus-harmonic branch data | Recurrences and differential equations for FortNum special functions, symmetry and de-aliasing checks, and independent mode-by-mode energy |
+| Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
+| Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
+| Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
+| Verification and delivery | Seeded random tests, external-code adapters, provenance manifests, mesh-completeness checks, and Pages health checks | Repeated seeds, license and revision records, independent samplers, HTTP link checks, and FortPlot image regression |
+
+Closing a row requires a public API, a focused test, an independent oracle, a
+FortSym or provenance entry, and a gallery fixture when the row affects a
+visible numerical result. A current primitive does not imply that its coupled
+application residual is complete.
 
 ## 4. Structure-preserving numerics
 
@@ -279,21 +325,24 @@ Required capabilities are:
 
 - anisotropic elasticity and nearly incompressible mixed elasticity;
 - Hellinger--Reissner stress-displacement and weak-symmetry formulations;
-- tensor pressure in anisotropic plasma closures and reduced-MHD models;
+- tensor constitutive coefficients with field-aligned, gyrotropic, or
+  caller-defined anisotropy;
 - symmetric and nonsymmetric stress with explicit angular-momentum balance;
 - traction and normal-flux traces on fitted, cut, and BEM interfaces;
 - constitutive tensors with spatial, parameter, and magnetic-field dependence.
 
-For a magnetized fluid, the CGL-style pressure tensor is a first test case,
+For a field-aligned constitutive oracle, the CGL-shaped tensor is a first test
+case,
 
 \[
 \mathbf P=p_\perp I+(p_\parallel-p_\perp)\,\mathbf b\mathbf b^T,
 \qquad \mathbf b=\mathbf B/|\mathbf B|,
 \]
 
-with optional gyrotropic and Braginskii corrections. The parallel and
-perpendicular pressure laws, their force divergence, and their work pairing
-are separate residual terms.
+with optional caller-supplied gyrotropic terms. The parallel and perpendicular
+coefficients, their force divergence, and their work pairing are separate
+residual terms. FortFEM does not provide a plasma closure or a Braginskii
+model.
 
 The first constitutive slice is now public on `main`: FortSym generates the
 six independent symmetric CGL components and their JVP/VJP, while the
@@ -302,9 +351,10 @@ packs a full symmetric tensor, and combines full-matrix off-diagonal
 cotangents. The generated tensor now feeds a compositional traction
 `t=P n` with value/JVP/VJP, including the `P^T` normal cotangent; independent
 tests cover the closed-form traction oracle, central differences, adjoint
-identities, and invalid directions. Force volume assembly, Braginskii
-corrections, and field-aligned assembly remain separate active work; these
-blocks are not a claim that the full anisotropic MHD operator is complete.
+identities, and invalid directions. Generic force-volume assembly, caller-
+supplied correction tensors, and field-aligned assembly remain separate active
+work. These blocks are not a claim that an anisotropic MHD application is
+implemented.
 
 The elasticity complex is treated as a structure-preserving extension of the
 de Rham complex. The mixed weak-symmetry construction of
@@ -375,6 +425,51 @@ surface-current unknowns, Lagrange multipliers, mortar coupling, Nitsche
 coupling, hybridization, cohesive-like jump laws, and regularized-layer
 comparisons. A delta source is not approximated numerically when an explicit
 surface integral is available.
+
+### 5.4 Arbitrary topology and sheet-current composition
+
+The interface contract becomes an application-ready foundation only after the
+geometry and spaces are connected through a topological region graph. The
+graph must represent volume regions, oriented facets, boundary components,
+periodic identifications, open edges, closed loops, and junctions. It assigns
+stable IDs to cells, facets, traces, cycles, and cohomology representatives so
+that a mesh rebuild does not silently change a gauge or a Fourier mode.
+
+The graph owns the following structure-preserving data:
+
+- boundary, coboundary, and metric matrices with separate incidence and Hodge
+  factors;
+- harmonic one- and two-form bases for multiply connected domains and their
+  flux normalization;
+- gauge and nullspace constraints for vector potentials, scalar potentials,
+  and pressure-like multipliers;
+- plus/minus trace ownership for every interface facet, including a single
+  owner for cut or overlapping FCI terminal pieces;
+- topology-event records when an interface intersects a vertex, an edge, a
+  periodic seam, or another interface.
+
+An electromagnetic sheet is a coupled unknown, not only a post-processed
+delta source. The implementation must support equivalent formulations and
+their conversion:
+
+1. a jump in tangential \(\mathbf H\);
+2. an explicit tangential \(\mathbf K\) trace space;
+3. a distributional volume current \(\mathbf K\delta_\Gamma\);
+4. a resolved resistive layer approaching the sheet limit.
+
+Each formulation carries the same orientation, units, edge balance, and
+current-loop normalization. On a closed interface the surface divergence and
+global current constraints are explicit. On an open interface the edge flux is
+owned by a boundary law. For MHD interfaces, the sheet law is coupled to normal
+magnetic-flux continuity, tangential field jumps, total-pressure balance,
+field-line or loop-flux constraints, and optional helicity constraints.
+
+The cut or enriched H(curl) and H(div) spaces must expose whether an
+enrichment preserves the discrete de Rham sequence. A scalar Heaviside basis
+cannot be promoted to a compatible vector space by naming convention alone.
+The compiler and tests therefore record the commuting diagram, the required
+trace regularity, and the exact identity that is intentionally relaxed when a
+physical jump is present.
 
 ## 6. Approximation families and discontinuities
 
@@ -481,17 +576,21 @@ equations.
 
 ### 8.1 Core equations
 
-- Poisson, diffusion-reaction, and Grad-Shafranov operators;
+- Poisson, diffusion-reaction, and generic axisymmetric elliptic/Fourier
+  operators that an external Grad-Shafranov client can instantiate;
 - scalar Helmholtz with FEM, BEM, DtN, and PML boundaries;
 - Ampere, curl-curl, eddy-current, Maxwell, and anisotropic H(curl) forms;
 - H(div) flux, mixed Poisson, magnetic induction, and divergence constraints;
-- linear ideal and resistive MHD blocks, including singular layers and wall
-  response as ingredient problems;
-- reduced-MHD brackets, energy functionals, and compatible time operators.
+- generic linearized field, constitutive, interface, and wall-response blocks
+  that an external ideal or resistive MHD client can compose;
+- generic skew brackets, energy functionals, and compatible time operators for
+  client-supplied state variables.
 
-Pressure and stress are represented as scalar, vector, or tensor fields as
-required by the closure. A tensor-valued pressure is not silently projected to
-its trace. Its symmetry, divergence, traction, and work pairing are tested.
+Pressure-like and stress-like quantities are represented as scalar, vector, or
+tensor fields supplied by the caller. A tensor-valued coefficient is not
+silently projected to its trace. Its symmetry, divergence, traction, and work
+pairing are tested with manufactured data. A CGL-shaped tensor is one generated
+constitutive oracle, not a plasma-closure implementation.
 
 ### 8.2 Strongly anisotropic and field-aligned operators
 
@@ -586,7 +685,56 @@ iterative callers may cache the diagonal for repeated solves. A two-level plane
 V(1,1) cycle now supplies CSC restriction/prolongation and a replaceable direct
 coarse solve; deeper hierarchies and retained coarse factors remain active.
 
-### 8.3 FEM/BEM, DtN, and PML
+### 8.3 Equilibrium, perturbation, and edge equation data
+
+The named application families share interchangeable data and residual
+contracts. FortFEM supplies those contracts and small fixtures. It does not
+ship their production solvers.
+
+#### 2D equilibrium data
+
+An external equilibrium adapter may provide a poloidal mesh or spline,
+coefficient fields, axis or boundary metadata, coil or wall traces, units, and
+normalization. FortFEM consumes this neutral data through a documented schema.
+It does not parse or write GEQDSK, interpret COCOS conventions, or implement
+equilibrium profiles. A generated manufactured field is the FortFEM baseline.
+CHEASE and FreeGS can provide optional numerical oracle data through an
+external, license-safe adapter sampled on the same physical points.
+
+#### Linear ideal and resistive response data
+
+The linear schema must distinguish an eigenproblem from a forced response and
+must carry complex frequency, Fourier mode set, equilibrium coefficients,
+vacuum and wall regions, interface traces, singular-layer matching data,
+normalization, and response-matrix conventions. The residual exposes the
+energy-principle, inertia, resistive, wall, and vacuum blocks separately. A
+response matrix has reciprocity, passivity, and normalization tests. GPEC,
+MARS-F, GLISS, and STARWALL remain versioned oracle or interchange targets.
+
+#### Nonlinear MHD composition
+
+The reusable nonlinear state schema must admit generic scalar, vector, and
+tensor fields, constitutive coefficients, interfaces, and constraint
+multipliers. An external application can map density, velocity, magnetic field,
+pressure, current, or other variables into that schema. FortFEM provides the
+residual composition, energy or power ledger, surface-current coupling, and
+derivative actions. Plasma closures, profile laws, wall physics, and state
+selection remain outside the library. Every optional numerical block has an
+independent manufactured case before an application combines it.
+
+#### Edge and SOL equation data
+
+An edge application can map its fields and coefficients into generic equation,
+source, conservative-flux, boundary-event, and material-ledger callbacks. The
+core owns FCI geometry, anisotropic operators, trace spaces, and residual/JVP/
+VJP composition. Species, Braginskii coefficients, sheath or Bohm laws,
+recycling, radiation, neutral or impurity sources, and target material data
+remain client-owned. The callback ABI records units and signs so that a
+terminal ledger can be compared with the volume balance. This is the
+foundation needed by GRILLIX, BOUT++, and PARALLAX-style clients without
+copying or implementing their models.
+
+### 8.4 FEM/BEM, DtN, and PML
 
 The open-boundary layer must support scalar and vector equations in 2D and 3D,
 including toroidal external surfaces:
@@ -645,25 +793,28 @@ Piola maps, traces, jumps, singular limits, cut-cell moments, Fourier triads,
 special-function products, and geometry derivatives. Transient generated
 files, plots, and compiler output are gitignored.
 
-## 10. Plasma-oriented ingredient matrix
+## 10. External application parity matrix
 
-The following table defines parity targets. It does not authorize copying
-source code or shipping a replacement for the named code.
+The following table defines the generic numerical foundation that an external
+application could exercise. It does not authorize copying source code, adding
+plasma-specific readers or closures, or shipping a replacement for the named
+code. A row is complete when the generic contract and an independent oracle
+work. Input conversion and application physics remain outside FortFEM.
 
 | Reference target | Physics class | FortFEM ingredient parity target |
 | --- | --- | --- |
-| [CHEASE](https://crppwww.epfl.ch/~sauter/chease/), [paper](https://doi.org/10.1016/0010-4655(96)00046-X) | 2D fixed-boundary axisymmetric toroidal equilibrium | Grad-Shafranov residual, bicubic or spline/FEM geometry, axis regularity, profile and boundary constraints, COCOS conversion, convergence and G-EQDSK oracle |
-| [FreeGS](https://freegs.readthedocs.io/en/stable/creating_equilibria.html) | 2D free-boundary Grad-Shafranov equilibrium | Coil and wall geometry, Picard/Newton residual, X/O-point constraints, free-boundary coupling, GEQDSK I/O, analytical Solovev and manufactured profiles |
-| [VMEC/PARVMEC](https://github.com/ORNL-Fusion/PARVMEC), [VMEC++ numerics](https://arxiv.org/abs/2502.04374) | 3D nested-surface variational ideal equilibrium | Fourier angles plus radial FE/IGA, energy functional, flux constraints, axis treatment, free boundary, shape JVP/VJP, VMEC-format comparison |
-| [GVEC](https://gvec.readthedocs.io/develop/index.html), [DESC](https://github.com/PlasmaControl/DESC) | Flexible 3D variational equilibrium and optimization | General coordinate maps, radial B-splines, Fourier modes, multiple interfaces, exact residual derivatives, continuation and optimization fixtures |
-| [SPEC](https://princetonuniversity.github.io/SPEC/) | Multi-region relaxed MHD with ideal interfaces | Region graph, independent fields, Beltrami curl eigenproblem, flux/helicity constraints, total-pressure balance, interface shape derivatives, islands as topology fixtures |
-| [GPEC](https://princetonuniversity.github.io/GPEC/), [references](https://princetonuniversity.github.io/GPEC/references.html) | Linear ideal, kinetic, and resistive perturbed response | Equilibrium import, Fourier coupling, singular outer/inner layer contracts, vacuum and wall response, response matrices, normalization and reciprocity tests |
-| [MARS-F response work](https://doi.org/10.1016/j.cpc.2006.09.003) | Linear toroidal ideal/resistive MHD and wall response | Linearized residual blocks, complex frequency, plasma-vacuum-wall coupling, Fourier-FEM assembly, resistive layer matching, benchmark outputs without MARS source |
-| [GLISS](https://github.com/itpplasma/GLISS) | Global linear ideal-MHD stability in 3D toroidal equilibria | Energy-principle residual, compatible radial spline FE, Fourier mode topology, GVEC/VMEC input adapters, eigenvalue and inertia oracles, Enzyme-compatible kernel boundaries |
+| [CHEASE](https://crppwww.epfl.ch/~sauter/chease/), [paper](https://doi.org/10.1016/0010-4655(96)00046-X) | 2D fixed-boundary axisymmetric toroidal equilibrium | Generic axisymmetric elliptic/Fourier forms, spline/FEM geometry, axis and boundary trace contracts, and a common sampler. No COCOS or GEQDSK implementation |
+| [FreeGS](https://freegs.readthedocs.io/en/stable/creating_equilibria.html) | 2D free-boundary axisymmetric equilibrium | Generic nonlinear residual, external boundary and coil-trace callbacks, X/O-point metadata fields, and manufactured profiles. Coil physics and GEQDSK conversion remain external |
+| [VMEC/PARVMEC](https://github.com/ORNL-Fusion/PARVMEC), [VMEC++ numerics](https://arxiv.org/abs/2502.04374) | 3D nested-surface variational ideal equilibrium | Fourier angles, radial FE/IGA, generic energy and constraint blocks, shape JVP/VJP, and an external-data sampler |
+| [GVEC](https://gvec.readthedocs.io/develop/index.html), [DESC](https://github.com/PlasmaControl/DESC) | Flexible 3D variational equilibrium and optimization | General coordinate maps, radial B-splines, Fourier modes, multiple interfaces, and exact residual derivatives. Input and profile models remain external |
+| [SPEC](https://princetonuniversity.github.io/SPEC/) | Multi-region relaxed MHD with ideal interfaces | Region graph, independent fields, generic curl-eigenproblem and constraint blocks, total-pressure trace law, and interface shape derivatives. Beltrami and profile selection remain client code |
+| [GPEC](https://princetonuniversity.github.io/GPEC/), [references](https://princetonuniversity.github.io/GPEC/references.html) | Linear ideal, kinetic, and resistive perturbed response | Fourier coupling, singular outer/inner layer contracts, vacuum and wall response, response matrices, normalization, and reciprocity. Equilibrium import remains external |
+| [MARS-F response work](https://doi.org/10.1016/j.cpc.2006.09.003) | Linear toroidal ideal/resistive MHD and wall response | Linear block interfaces, complex frequency, generic plasma-vacuum-wall trace coupling, Fourier-FEM assembly, and resistive-layer matching. MARS physics remains external |
+| [GLISS](https://github.com/itpplasma/GLISS) | Global linear ideal-MHD stability in 3D toroidal equilibria | Compatible radial spline FE, Fourier mode topology, generic eigenvalue and inertia contracts, and derivative boundaries. GVEC/VMEC input adapters remain external |
 | [JOREK](https://www.jorek.eu/), [overview paper](https://arxiv.org/abs/2011.09120) | Nonlinear extended and resistive MHD | 2D FE plus toroidal Fourier blocks, coupled residuals, anisotropic transport, implicit structure-aware stepping, wall and free-boundary traces, operator-level parity tests |
 | MEPHIT and STARWALL | Electromagnetic response and resistive-wall coupling | H(curl)/H(div) FEEC, surface traces, FEM/BEM/DtN wall blocks, retained complex factors, interface currents, reciprocity and energy tests |
-| [BOUT++](https://bout-dev.readthedocs.io/en/stable/user_docs/introduction.html) | General 3D curvilinear plasma fluid framework, with reduced edge models and implicit time integration | Equation-as-data residuals, curvilinear metric and boundary contracts, field-aligned operators, mixed conservative fluxes, model-level JVP/VJP, and a small transport benchmark |
-| [GRILLIX](https://physik.uni-greifswald.de/ag-manz/forschung/codes/grillix/), [FCI paper](https://doi.org/10.1088/1361-6587/aaa373) | 3D edge and scrape-off-layer turbulence using flux-coordinate-independent operators and drift-reduced Braginskii physics | FCI field-line tracing and interpolation, parallel/perpendicular operator split, immersed boundaries, anisotropic transport, sheath interfaces, and manufactured MMS fixtures |
+| [BOUT++](https://bout-dev.readthedocs.io/en/stable/user_docs/introduction.html) | General 3D curvilinear fluid framework with model-specific clients | Equation-as-data residuals, curvilinear metric and boundary contracts, field-aligned operators, mixed conservative fluxes, and model-level JVP/VJP. Fluid models remain external |
+| [GRILLIX](https://physik.uni-greifswald.de/ag-manz/forschung/codes/grillix/), [FCI paper](https://doi.org/10.1088/1361-6587/aaa373) | 3D edge and scrape-off-layer use of flux-coordinate-independent operators | FCI field-line tracing and interpolation, parallel/perpendicular operator split, immersed boundaries, anisotropic transport, generic material traces, and manufactured MMS fixtures. Braginskii and sheath laws remain external |
 | [PARALLAX](https://gitlab.mpcdf.mpg.de/phoenix-public/parallax), [elliptic solver paper](https://arxiv.org/abs/2509.11831) | FCI mesh, magnetic-field handling, 2D elliptic solves, matrix-free 3D actions, and multigrid for GRILLIX and GENE-X | A Fortran-compatible geometry and operator adapter, matrix-free sparse products, anisotropy-aware multigrid contracts, and independent Poisson/Ampere timings. PARALLAX is LGPL-3.0, so no source is copied into FortFEM. |
 | Linear elasticity and wave FEM literature | Mixed stress-displacement elasticity and symplectic mixed acoustics | Elasticity-complex spaces, tensor pressure/stress, first-order wave state, port-Hamiltonian pairing, symplectic time step, and cross-physics manufactured tests |
 
@@ -722,28 +873,33 @@ conservation diagnostic when applicable.
 13. **Curl-curl torus scattering.** Nédélec FEM, RWG/BC BEM traces, vector DtN,
     PML, reciprocity, and Ampere performance data.
 
-### Plasma and MHD ingredients
+### Application-oriented numerical ingredients
 
-14. **Cylindrical Grad-Shafranov.** Solovev and CHEASE-style profiles, axis
-    regularity, Fourier-FEM, and FreeGS/CHEASE comparison data.
+14. **Cylindrical axisymmetric elliptic fixture.** Manufactured coefficients,
+    axis regularity, Fourier-FEM, and optional CHEASE/FreeGS comparison data
+    supplied through an external adapter.
 15. **Fourier-FEM slab and cylinder.** Mode diagonal operators, retained
     nonlinear triads, real/conjugate packing, and torus-harmonic diagnostics.
-16. **Multi-region Beltrami equilibrium.** SPEC-like regions, ideal interfaces,
-    flux/helicity constraints, and a pressure-balance residual.
-17. **Linear 3D perturbed equilibrium.** GPEC/MARS-like mode response with
-    vacuum, wall, singular-layer, and response-matrix toy operators.
-18. **GLISS energy-principle toy spectrum.** Radial spline FE, Fourier modes,
-    inertia count, eigenpair derivatives, and GVEC/VMEC-shaped input.
-19. **HKT or resonant shielding sheet.** Ideal current-sheet limit, finite
-    resistive layer, XFEM enrichment, fitted sheet, and convergence to the
-    analytical singular solution.
-20. **Reduced-MHD bracket.** Energy-skew nonlinear bracket, Fourier convolution,
-    analytical JVP, and long-time structure-preserving integration.
+16. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
+    interfaces, generic flux and helicity constraints, and a pressure-balance
+    residual with manufactured coefficients.
+17. **Linear 3D perturbation blocks.** Generic mode response with vacuum, wall,
+    singular-layer, and response-matrix toy operators. GPEC or MARS data enter
+    only through an external sampler.
+18. **Energy-principle toy spectrum.** Radial spline FE, Fourier modes, inertia
+    count, eigenpair derivatives, and external-data interchange tests.
+19. **Resonant interface sheet.** Ideal current-sheet limit, finite resistive
+    layer, XFEM enrichment, fitted sheet, and convergence to a manufactured
+    singular solution.
+20. **Skew bracket fixture.** Energy-skew nonlinear bracket, Fourier convolution,
+    analytical JVP, and long-time structure-preserving integration for a
+    caller-defined state.
 21. **Resistive diffusion and tearing layer.** Explicit layer, adaptive layer,
     asymptotic enrichment, DG, and ideal-limit comparison.
-22. **Ingredient-only JOREK path.** Coupled magnetic flux, vorticity, density,
-    temperature, parallel velocity, and electric-potential residual stubs as
-    separately testable operators. This is not a JOREK implementation.
+22. **Generic coupled-field path.** Independently testable magnetic, scalar,
+    vector, tensor, interface, and constraint residual blocks. A JOREK-style
+    client can map its fields into this path, but FortFEM contains no JOREK
+    state or closure implementation.
 
 ### Waves, elasticity, and anisotropy
 
@@ -756,9 +912,9 @@ conservation diagnostic when applicable.
 25. **Structure-preserving linear elasticity.** Displacement, velocity, and
     tensor stress with weak symmetry, traction interfaces, and a mixed
     Hellinger--Reissner oracle.
-26. **Tensor-pressure plasma wave.** An anisotropic pressure tensor with
+26. **Tensor-pressure wave.** A caller-supplied anisotropic tensor with
     parallel, perpendicular, and gyrotropic parts, including force balance and
-    energy diagnostics.
+    energy diagnostics. The tensor is a generic constitutive fixture.
 The current `cgl_pressure_tensor` gallery example provides the first
 manufactured constitutive/force-divergence profile and CSV/1D FortPlot
 outputs; the coupled wave and higher-dimensional cases remain active.
@@ -768,10 +924,10 @@ full assembled anisotropic diffusion gallery case remains active.
 27. **Field-aligned diffusion.** A slab, cylinder, and torus with extreme
     \(k_\parallel/k_\perp\), comparing aligned coordinates, FCI maps, Fourier-
     FEM, and an isotropic control case.
-28. **Edge/SOL ingredient model.** A small drift-reduced Braginskii or heat
-    conduction system with parallel transport, sheath or wall traces, and a
-    reproducible FCI field-line map. This is a numerical ingredient example,
-    not a GRILLIX or BOUT++ replacement.
+28. **Field-aligned edge operator.** A generic anisotropic transport system
+    with caller-supplied coefficients, material traces, and a reproducible FCI
+    field-line map. This is an operator fixture, not a GRILLIX, BOUT++, or
+    Braginskii implementation.
 
 The gallery must show the same case in 1D, 2D, and 3D where a dimensional
 reduction exists. Plot scripts use FortPlot and must include mesh edges,
@@ -856,6 +1012,9 @@ gallery example.
   adjoint-identity tests. Continue the inventory for remaining public
   operators and block solver compositions.
 - Publish the complex-adjoint and shape-derivative conventions.
+- Add seeded random generators and shrinking to the `fo` test path. The first
+  generators cover oriented cells, positive quadrature weights, tensor
+  coefficients, mode sets, and fixed-topology interface data.
 - Keep FortSym revision pins and generated-kernel checks green.
 
 ### Phase 1: Interface calculus: **active**
@@ -900,6 +1059,11 @@ gallery example.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
+- Build the region and cell-complex graph with periodic identifications,
+  harmonic representatives, gauge constraints, and stable cycle IDs.
+- Add closed-loop and open-edge sheet-current constraints, surface divergence,
+  pressure balance, and current-ledger oracles on slab, cylinder, sphere, and
+  torus fixtures.
 
 ### Phase 2: Cut geometry and XFEM/XIGA: **planned**
 
@@ -909,6 +1073,8 @@ gallery example.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
 - Trimmed B-spline stabilization and cut H(curl)/H(div) extensions.
+- Verify the commuting diagram for every enriched vector space and document
+  the exact sequence identity that a physical jump intentionally changes.
 
 ### Phase 3: DG and HDG: **planned**
 
@@ -930,7 +1096,8 @@ gallery example.
 - Stabilize ordinary, associated, and half-integer Legendre and toroidal
   harmonic APIs in FortNum.
 - Define mode normalization, phase, field-period, and real packing.
-- Add mode-coupled scalar, H(curl), H(div), and reduced-MHD operators.
+- Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
+  operators.
 
 ### Phase 6: Structure-preserving time evolution: **active**
 
@@ -948,20 +1115,27 @@ gallery example.
   average-vector-field options, and long-time invariant tests.
 - Mixed first-order pressure-velocity, displacement-velocity-stress, and
   electromagnetic wave states with a common port-Hamiltonian interface.
-- Tensor-valued pressure and anisotropic constitutive blocks with exact power,
+- Tensor-valued coefficients and anisotropic constitutive blocks with exact power,
   momentum, and stress-work diagnostics.
-- The generated CGL pressure-tensor and product-rule force-divergence blocks
-  are public and tested. The tensor now also feeds compositional traction and
-  `P:grad(v)` stress-work value/JVP/VJP diagnostics; full volume assembly,
-  Braginskii corrections, and coupled stress-work residuals remain active.
+- The generated CGL-shaped tensor and product-rule force-divergence blocks are
+  public and tested as generic constitutive fixtures. The tensor now also
+  feeds compositional traction and `P:grad(v)` stress-work value/JVP/VJP
+  diagnostics. Full volume assembly and caller-supplied correction tensors
+  remain active. No plasma closure is implemented.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **planned**
 
-- CHEASE and FreeGS-style 2D Grad-Shafranov fixtures.
-- VMEC/GVEC/DESC-style Fourier-variational 3D equilibrium fixtures.
-- SPEC-style multi-region Beltrami and interface constraints.
-- GPEC/MARS/GLISS-style linear ideal and resistive perturbation blocks,
-  singular layers, vacuum, conducting wall, and response matrices.
+- Generic axisymmetric elliptic and Fourier variational fixtures that can be
+  sampled by external CHEASE or FreeGS adapters. FortFEM will not implement
+  GEQDSK or COCOS readers, profile laws, coil models, or equilibrium solvers.
+- Generic multi-region curl-eigenproblem, interface, and constraint blocks that
+  external VMEC, GVEC, DESC, or SPEC clients can exercise.
+- Generic linear ideal and resistive response blocks, singular layers, vacuum,
+  conducting-wall traces, and response matrices for external GPEC, MARS, and
+  GLISS oracle data.
+- Compose a small manufactured multi-field state from independently verified
+  field, tensor, surface-current, vacuum, wall, and constraint blocks. Plasma
+  state selection and closure remain outside FortFEM.
 
 ### Phase 7a: Field-aligned edge and SOL ingredients: **active**
 
@@ -1081,6 +1255,10 @@ gallery example.
   concepts, without copying their implementations. The FCI gallery fixture
   now records the measured matrix-free action cost alongside its conservation
   and dissipation diagnostics; larger problem-size scaling remains active.
+- Document the generic equation-as-data callback ABI for caller-owned fields,
+  coefficients, sources, boundary laws, and target ledgers. Keep species,
+  closures, sheath, and material physics in client code while testing units,
+  signs, residuals, and balances through the public callback contract.
 
 ### Phase 8: Cross-code oracles and gallery: **active**
 
@@ -1089,6 +1267,11 @@ gallery example.
 - Optional lightweight FEniCSx, FreeFEM, and MFEM runners.
 - Sister-repository data for heavy or licensed references.
 - GitHub Pages generation, link checks, and periodic deployment monitoring.
+- Seeded property tests and a common sampler compare independent codes without
+  assuming matching bases, numbering, or mesh topology.
+- FortPlot mesh-bearing examples have a regression fixture that checks element
+  count, boundary edges, patch boundaries, and internal surfaces in the
+  rendered output before Pages deployment.
 
 ### Phase 9: Future application layer: **reference only**
 
@@ -1116,6 +1299,10 @@ An ingredient is complete only when all applicable checks below pass:
   tolerance;
 - convergence, conditioning, conservation, and performance are reported;
 - structure-preserving properties are tested rather than asserted;
+- seeded random properties pass with their seed, generated case, and shrink
+  record retained in the test log;
+- external-code comparisons carry a license, executable version, source
+  revision, sampler, tolerance, and data checksum;
 - focused `fo` tests meet the short feedback target;
 - full CI passes on supported compilers;
 - the example and documentation are generated reproducibly;
@@ -1125,6 +1312,10 @@ An ingredient is complete only when all applicable checks below pass:
 
 - No full VMEC, GVEC, SPEC, GPEC, MARS, GLISS, JOREK, CHEASE, or FreeGS
   replacement is planned in FortFEM.
+- No GEQDSK or COCOS parser, equilibrium profile library, coil or vessel
+  physics, plasma closure, species or reaction model, sheath, neutral,
+  impurity, or divertor application is planned in FortFEM. These are external
+  clients of the generic contracts.
 - No C rewrite of numerical kernels is planned.
 - No proprietary source, binary, or license-restricted benchmark data is
   checked into this repository.
