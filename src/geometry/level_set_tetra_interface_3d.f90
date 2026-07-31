@@ -14,7 +14,9 @@ module fortfem_level_set_tetra_interface_3d
     real(dp), parameter :: topology_tolerance = 64.0_dp*epsilon(1.0_dp)
 
     public :: evaluate_level_set_tetra_interface_3d
+    public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d
+    public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
 
 contains
 
@@ -128,6 +130,26 @@ contains
         status = 0
     end subroutine evaluate_level_set_tetra_interface_3d
 
+    subroutine evaluate_level_set_tetra_interface_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, points_dot, &
+            area_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of a tetrahedral level-set interface.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        real(dp), intent(out) :: points_dot(3, 4), area_dot, normal_dot(3)
+        integer, intent(out) :: status
+
+        real(dp) :: points(3, 4), area, normal(3)
+        integer :: point_count
+
+        points_dot = 0.0_dp
+        area_dot = 0.0_dp
+        normal_dot = 0.0_dp
+        call evaluate_tetra_interface_geometry_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, points, &
+            points_dot, point_count, area, area_dot, normal, normal_dot, status)
+    end subroutine evaluate_level_set_tetra_interface_3d_jvp
+
     subroutine evaluate_level_set_tetra_cut_quadrature_3d( &
             vertices, level_values, positive_volume, positive_centroid, &
             negative_volume, negative_centroid, interface_area, normal, status)
@@ -184,6 +206,74 @@ contains
         if (status /= 0) return
         status = 0
     end subroutine evaluate_level_set_tetra_cut_quadrature_3d
+
+    subroutine evaluate_level_set_tetra_cut_quadrature_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_volume_dot, positive_centroid_dot, negative_volume_dot, &
+            negative_centroid_dot, interface_area_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of tetrahedral cut quadrature data.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        real(dp), intent(out) :: positive_volume_dot
+        real(dp), intent(out) :: positive_centroid_dot(3)
+        real(dp), intent(out) :: negative_volume_dot
+        real(dp), intent(out) :: negative_centroid_dot(3)
+        real(dp), intent(out) :: interface_area_dot, normal_dot(3)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_volume, positive_centroid(3)
+        real(dp) :: negative_volume, negative_centroid(3)
+        real(dp) :: interface_area, normal(3)
+        real(dp) :: interface_points(3, 4), interface_points_dot(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_count, interface_status
+
+        positive_volume_dot = 0.0_dp
+        positive_centroid_dot = 0.0_dp
+        negative_volume_dot = 0.0_dp
+        negative_centroid_dot = 0.0_dp
+        interface_area_dot = 0.0_dp
+        normal_dot = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values)) .or. &
+            any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(level_values_dot))) return
+        if (any(abs(level_values) <= topology_tolerance)) return
+        call evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        if (status /= 0) return
+
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        interface_count = 0
+        interface_points = 0.0_dp
+        interface_points_dot = 0.0_dp
+        if (has_positive .and. has_negative) then
+            call evaluate_tetra_interface_geometry_jvp( &
+                vertices, level_values, vertices_dot, level_values_dot, &
+                interface_points, interface_points_dot, interface_count, &
+                interface_area, interface_area_dot, normal, normal_dot, &
+                interface_status)
+            if (interface_status /= 0) then
+                status = interface_status
+                return
+            end if
+        end if
+
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            interface_points, interface_points_dot, interface_count, &
+            positive_volume, positive_centroid, positive_volume_dot, &
+            positive_centroid_dot, status)
+        if (status /= 0) return
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            interface_points, interface_points_dot, interface_count, &
+            negative_volume, negative_centroid, negative_volume_dot, &
+            negative_centroid_dot, status)
+    end subroutine evaluate_level_set_tetra_cut_quadrature_3d_jvp
 
     subroutine accumulate_tetra_side( &
             vertices, level_values, keep_positive, interface_points, &
@@ -248,6 +338,213 @@ contains
         status = 0
     end subroutine accumulate_tetra_side
 
+    subroutine evaluate_tetra_interface_geometry_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, points, &
+            points_dot, point_count, area, area_dot, normal, normal_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        real(dp), intent(out) :: points(3, 4), points_dot(3, 4)
+        integer, intent(out) :: point_count
+        real(dp), intent(out) :: area, area_dot, normal(3), normal_dot(3)
+        integer, intent(out) :: status
+
+        integer, parameter :: edge_start(6) = [1, 1, 1, 2, 2, 3]
+        integer, parameter :: edge_end(6) = [2, 3, 4, 3, 4, 4]
+        integer :: edge, first, second, candidate_count, candidate
+        integer :: point, next_point, best_candidate
+        logical :: used(4)
+        real(dp) :: candidate_points(3, 4), candidate_points_dot(3, 4)
+        real(dp) :: first_value, second_value, fraction, fraction_dot
+        real(dp) :: edge_vector(3), edge_vector_dot(3)
+        real(dp) :: edge_point(3), edge_point_dot(3), distance_squared
+        real(dp) :: best_distance, area_vector(3), area_vector_dot(3)
+        real(dp) :: vector_norm, jacobian(3, 3), jacobian_dot(3, 3)
+        real(dp) :: inverse(3, 3), inverse_dot(3, 3), determinant
+        real(dp) :: gradient_reference(3), gradient_reference_dot(3)
+        real(dp) :: gradient(3), gradient_dot(3), gradient_norm
+        integer :: interface_status, inverse_status
+
+        points = 0.0_dp
+        points_dot = 0.0_dp
+        point_count = 0
+        area = 0.0_dp
+        area_dot = 0.0_dp
+        normal = 0.0_dp
+        normal_dot = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values)) .or. &
+            any(.not. ieee_is_finite(vertices_dot)) .or. &
+            any(.not. ieee_is_finite(level_values_dot))) return
+        if (any(abs(level_values) <= topology_tolerance)) return
+        call evaluate_level_set_tetra_interface_3d( &
+            vertices, level_values, points, point_count, area, normal, &
+            interface_status)
+        if (interface_status /= 0) return
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+        jacobian_dot(:, 1) = vertices_dot(:, 2) - vertices_dot(:, 1)
+        jacobian_dot(:, 2) = vertices_dot(:, 3) - vertices_dot(:, 1)
+        jacobian_dot(:, 3) = vertices_dot(:, 4) - vertices_dot(:, 1)
+        determinant = det3(jacobian)
+        if (abs(determinant) <= topology_tolerance* &
+            max(1.0_dp, maxval(abs(jacobian))**3)) return
+        call inv3(jacobian, inverse, inverse_status)
+        if (inverse_status /= 0) return
+        inverse_dot = -matmul(inverse, matmul(jacobian_dot, inverse))
+        gradient_reference = level_values(2:4) - level_values(1)
+        gradient_reference_dot = level_values_dot(2:4) - level_values_dot(1)
+        gradient = matmul(transpose(inverse), gradient_reference)
+        gradient_dot = matmul(transpose(inverse_dot), gradient_reference) + &
+            matmul(transpose(inverse), gradient_reference_dot)
+        gradient_norm = sqrt(dot_product(gradient, gradient))
+        if (gradient_norm <= topology_tolerance) return
+        normal_dot = (gradient_dot - normal*dot_product(normal, gradient_dot))/ &
+            gradient_norm
+
+        candidate_count = 0
+        do edge = 1, 6
+            first = edge_start(edge)
+            second = edge_end(edge)
+            first_value = level_values(first)
+            second_value = level_values(second)
+            if (first_value*second_value < 0.0_dp) then
+                fraction = first_value/(first_value - second_value)
+                fraction_dot = (level_values_dot(first)*(first_value - second_value) - &
+                    first_value*(level_values_dot(first) - level_values_dot(second)))/ &
+                    (first_value - second_value)**2
+                edge_vector = vertices(:, second) - vertices(:, first)
+                edge_vector_dot = vertices_dot(:, second) - vertices_dot(:, first)
+                edge_point = vertices(:, first) + fraction*edge_vector
+                edge_point_dot = vertices_dot(:, first) + fraction_dot*edge_vector + &
+                    fraction*edge_vector_dot
+                candidate_count = candidate_count + 1
+                candidate_points(:, candidate_count) = edge_point
+                candidate_points_dot(:, candidate_count) = edge_point_dot
+            end if
+        end do
+        if (candidate_count /= point_count) then
+            points_dot = 0.0_dp
+            area_dot = 0.0_dp
+            normal_dot = 0.0_dp
+            return
+        end if
+        used = .false.
+        do point = 1, point_count
+            best_candidate = 0
+            best_distance = huge(1.0_dp)
+            do candidate = 1, candidate_count
+                if (.not. used(candidate)) then
+                    distance_squared = sum((points(:, point) - &
+                        candidate_points(:, candidate))**2)
+                    if (distance_squared < best_distance) then
+                        best_distance = distance_squared
+                        best_candidate = candidate
+                    end if
+                end if
+            end do
+            if (best_candidate == 0) then
+                points_dot = 0.0_dp
+                area_dot = 0.0_dp
+                normal_dot = 0.0_dp
+                return
+            end if
+            used(best_candidate) = .true.
+            points_dot(:, point) = candidate_points_dot(:, best_candidate)
+        end do
+
+        area_vector = 0.0_dp
+        area_vector_dot = 0.0_dp
+        do point = 1, point_count
+            next_point = 1 + mod(point, point_count)
+            area_vector = area_vector + cross_product( &
+                points(:, point), points(:, next_point))
+            area_vector_dot = area_vector_dot + cross_product( &
+                points_dot(:, point), points(:, next_point)) + cross_product( &
+                points(:, point), points_dot(:, next_point))
+        end do
+        vector_norm = sqrt(dot_product(area_vector, area_vector))
+        if (vector_norm <= topology_tolerance) return
+        area_dot = 0.5_dp*dot_product(area_vector, area_vector_dot)/vector_norm
+        status = 0
+    end subroutine evaluate_tetra_interface_geometry_jvp
+
+    subroutine accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            keep_positive, interface_points, interface_points_dot, &
+            interface_count, volume, centroid, volume_dot, centroid_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(in) :: interface_points(3, 4), interface_points_dot(3, 4)
+        integer, intent(in) :: interface_count
+        real(dp), intent(in) :: volume, centroid(3)
+        real(dp), intent(out) :: volume_dot, centroid_dot(3)
+        integer, intent(out) :: status
+
+        integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
+        integer :: face_vertices(3, 4), face, polygon_count
+        integer :: indices(3), point
+        real(dp) :: polygon(3, 6), polygon_dot(3, 6)
+        real(dp) :: volume_accum, volume_accum_dot
+        real(dp) :: first_moment_dot(3)
+
+        face_vertices(:, 1) = [2, 3, 4]
+        face_vertices(:, 2) = [1, 4, 3]
+        face_vertices(:, 3) = [1, 2, 4]
+        face_vertices(:, 4) = [1, 3, 2]
+        volume_dot = 0.0_dp
+        centroid_dot = 0.0_dp
+        status = 1
+        volume_accum = 0.0_dp
+        volume_accum_dot = 0.0_dp
+        first_moment_dot = 0.0_dp
+        do face = 1, 4
+            indices = face_vertices(:, face)
+            call orient_tetra_face(vertices, face_opposite(face), indices)
+            call clip_tetra_face_jvp( &
+                vertices, level_values, vertices_dot, level_values_dot, indices, &
+                keep_positive, polygon, polygon_dot, polygon_count)
+            if (polygon_count >= 3) then
+                call accumulate_oriented_polygon_jvp( &
+                    polygon, polygon_dot, polygon_count, volume_accum, &
+                    volume_accum_dot, first_moment_dot)
+            end if
+        end do
+
+        if (interface_count > 0) then
+            if (keep_positive) then
+                do point = 1, interface_count
+                    polygon(:, point) = &
+                        interface_points(:, interface_count - point + 1)
+                    polygon_dot(:, point) = &
+                        interface_points_dot(:, interface_count - point + 1)
+                end do
+            else
+                polygon(:, :interface_count) = &
+                    interface_points(:, :interface_count)
+                polygon_dot(:, :interface_count) = &
+                    interface_points_dot(:, :interface_count)
+            end if
+            call accumulate_oriented_polygon_jvp( &
+                polygon, polygon_dot, interface_count, volume_accum, &
+                volume_accum_dot, first_moment_dot)
+        end if
+
+        if (volume <= topology_tolerance) then
+            if (abs(volume_accum) > 8.0_dp*topology_tolerance) return
+            volume_dot = 0.0_dp
+            centroid_dot = 0.0_dp
+            status = 0
+            return
+        end if
+        volume_dot = volume_accum_dot
+        centroid_dot = (first_moment_dot - volume_dot*centroid)/volume
+        status = 0
+    end subroutine accumulate_tetra_side_jvp
+
     subroutine orient_tetra_face(vertices, opposite, indices)
         real(dp), intent(in) :: vertices(3, 4)
         integer, intent(in) :: opposite
@@ -304,6 +601,58 @@ contains
         end do
     end subroutine clip_tetra_face
 
+    subroutine clip_tetra_face_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, indices, &
+            keep_positive, polygon, polygon_dot, point_count)
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        integer, intent(in) :: indices(3)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(out) :: polygon(3, 6), polygon_dot(3, 6)
+        integer, intent(out) :: point_count
+
+        integer :: current, previous, vertex
+        real(dp) :: current_value, previous_value, fraction, fraction_dot
+        real(dp) :: current_value_dot, previous_value_dot
+        real(dp) :: edge_vector(3), edge_vector_dot(3)
+        logical :: current_inside, previous_inside
+
+        polygon = 0.0_dp
+        polygon_dot = 0.0_dp
+        point_count = 0
+        previous = indices(3)
+        previous_value = level_values(previous)
+        previous_value_dot = level_values_dot(previous)
+        previous_inside = side_contains(previous_value, keep_positive)
+        do vertex = 1, 3
+            current = indices(vertex)
+            current_value = level_values(current)
+            current_value_dot = level_values_dot(current)
+            current_inside = side_contains(current_value, keep_positive)
+            if (current_inside .neqv. previous_inside) then
+                fraction = previous_value/(previous_value - current_value)
+                fraction_dot = (previous_value_dot*(previous_value - current_value) - &
+                    previous_value*(previous_value_dot - current_value_dot))/ &
+                    (previous_value - current_value)**2
+                edge_vector = vertices(:, current) - vertices(:, previous)
+                edge_vector_dot = vertices_dot(:, current) - vertices_dot(:, previous)
+                point_count = point_count + 1
+                polygon(:, point_count) = vertices(:, previous) + fraction*edge_vector
+                polygon_dot(:, point_count) = vertices_dot(:, previous) + &
+                    fraction_dot*edge_vector + fraction*edge_vector_dot
+            end if
+            if (current_inside) then
+                point_count = point_count + 1
+                polygon(:, point_count) = vertices(:, current)
+                polygon_dot(:, point_count) = vertices_dot(:, current)
+            end if
+            previous = current
+            previous_value = current_value
+            previous_value_dot = current_value_dot
+            previous_inside = current_inside
+        end do
+    end subroutine clip_tetra_face_jvp
+
     pure logical function side_contains(value, keep_positive)
         real(dp), intent(in) :: value
         logical, intent(in) :: keep_positive
@@ -332,6 +681,40 @@ contains
                 first_point + second_point + third_point)/4.0_dp
         end do
     end subroutine accumulate_oriented_polygon
+
+    subroutine accumulate_oriented_polygon_jvp( &
+            polygon, polygon_dot, point_count, volume, volume_dot, first_moment_dot)
+        real(dp), intent(in) :: polygon(3, 6), polygon_dot(3, 6)
+        integer, intent(in) :: point_count
+        real(dp), intent(inout) :: volume, volume_dot, first_moment_dot(3)
+
+        integer :: point
+        real(dp) :: first_point(3), first_point_dot(3)
+        real(dp) :: second_point(3), second_point_dot(3)
+        real(dp) :: third_point(3), third_point_dot(3)
+        real(dp) :: signed_tetra_volume, signed_tetra_volume_dot
+
+        first_point = polygon(:, 1)
+        first_point_dot = polygon_dot(:, 1)
+        do point = 2, point_count - 1
+            second_point = polygon(:, point)
+            second_point_dot = polygon_dot(:, point)
+            third_point = polygon(:, point + 1)
+            third_point_dot = polygon_dot(:, point + 1)
+            signed_tetra_volume = dot_product(first_point, cross_product( &
+                second_point, third_point))/6.0_dp
+            signed_tetra_volume_dot = ( &
+                dot_product(first_point_dot, cross_product(second_point, third_point)) + &
+                dot_product(first_point, cross_product(second_point_dot, third_point)) + &
+                dot_product(first_point, cross_product(second_point, third_point_dot)))/6.0_dp
+            volume = volume + signed_tetra_volume
+            volume_dot = volume_dot + signed_tetra_volume_dot
+            first_moment_dot = first_moment_dot + &
+                (signed_tetra_volume_dot*(first_point + second_point + third_point) + &
+                signed_tetra_volume*(first_point_dot + second_point_dot + &
+                third_point_dot))/4.0_dp
+        end do
+    end subroutine accumulate_oriented_polygon_jvp
 
     pure function cross_product(first, second) result(cross)
         real(dp), intent(in) :: first(3), second(3)

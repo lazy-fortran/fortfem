@@ -19,7 +19,9 @@ module fortfem_api
         evaluate_level_set_triangle_cut_quadrature_2d_jvp
     use fortfem_level_set_tetra_interface_3d, only: &
         evaluate_level_set_tetra_interface_3d, &
-        evaluate_level_set_tetra_cut_quadrature_3d
+        evaluate_level_set_tetra_interface_3d_jvp, &
+        evaluate_level_set_tetra_cut_quadrature_3d, &
+        evaluate_level_set_tetra_cut_quadrature_3d_jvp
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -963,7 +965,9 @@ module fortfem_api
     public :: evaluate_level_set_triangle_cut_quadrature_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
     public :: evaluate_level_set_tetra_interface_3d
+    public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d
+    public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp
