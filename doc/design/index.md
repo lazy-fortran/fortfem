@@ -30,7 +30,8 @@ volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
 The [FCI interpolation-map contract](fci_interpolation_map.html) defines
-linear, bilinear, quadratic, and FortSym-generated cubic fixed-stencil maps,
+linear, bilinear, quadratic, and FortSym-generated cubic and quartic
+fixed-stencil maps,
 including their topology-aware JVP/VJP actions and independent polynomial
 oracles.
 
