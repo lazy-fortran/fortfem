@@ -20,6 +20,10 @@ The [spherical-harmonic contract](spherical_harmonics.html) records the
 FortNum-backed normalization, angular domains, and pole convention used by
 Fourier-FEM and boundary operators.
 
+The [toroidal-harmonic contract](toroidal_harmonics.html) records the
+FortNum-backed Hobson-normalized half-integer P/Q branches used by exact
+toroidal analytical solutions and DtN fixtures.
+
 The [FCI parallel support-operator contract](fci_parallel_operator.html)
 defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line

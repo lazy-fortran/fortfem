@@ -370,6 +370,8 @@ module fortfem_api
         evaluate_field_aligned_flux_vjp
     use fortfem_spherical_harmonics, only: spherical_harmonic, &
         spherical_harmonic_theta_derivative, spherical_harmonic_phi_derivative
+    use fortfem_toroidal_harmonics, only: toroidal_p, toroidal_q, &
+        toroidal_p_derivative, toroidal_q_derivative
     use fortfem_interface_traces, only: &
         compute_interface_scalar_jump_average, compute_interface_vector_traces
     use fortfem_surface_delta_load, only: &
@@ -1873,6 +1875,10 @@ module fortfem_api
     public :: spherical_harmonic
     public :: spherical_harmonic_theta_derivative
     public :: spherical_harmonic_phi_derivative
+    public :: toroidal_p
+    public :: toroidal_q
+    public :: toroidal_p_derivative
+    public :: toroidal_q_derivative
     public :: compute_interface_scalar_jump_average
     public :: compute_interface_vector_traces
     public :: assemble_surface_delta_load
