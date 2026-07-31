@@ -454,6 +454,9 @@ module fortfem_api
         cartesian_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
         solve_scalar_helmholtz_pml_slab_1d
+    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d_jvp, &
+        solve_scalar_helmholtz_pml_slab_1d_vjp
     use fortfem_scalar_helmholtz_pml_2d, only: &
         solve_scalar_helmholtz_pml_p1_2d
     use fortfem_scalar_helmholtz_pml_3d, only: &
@@ -1091,6 +1094,8 @@ module fortfem_api
     public :: build_cartesian_pml_element_stretch_jvp
     public :: build_cartesian_pml_element_stretch_vjp
     public :: solve_scalar_helmholtz_pml_slab_1d
+    public :: solve_scalar_helmholtz_pml_slab_1d_jvp
+    public :: solve_scalar_helmholtz_pml_slab_1d_vjp
     public :: solve_scalar_helmholtz_pml_p1_2d
     public :: solve_scalar_helmholtz_pml_p1_3d
     public :: evaluate_toroidal_harmonic_p

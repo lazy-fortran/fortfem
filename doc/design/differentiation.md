@@ -103,6 +103,18 @@ At the physical/PML interface the active-set branch is intentionally
 piecewise: interior cells have zero stretch derivative, while derivatives in a
 PML layer are valid as long as a perturbation does not cross the interface.
 
+The one-dimensional scalar P1 slab exposes the complete end-to-end version of
+this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
+`solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same
+complex PML matrix as the primal routine, differentiate the element lengths,
+PML width, polynomial attenuation, and wave number analytically, and then use
+FortNum's complex implicit solve products. Dirichlet elimination is part of
+the differentiated map: the reverse product includes the matrix-dependent
+right-hand-side term induced by the prescribed left value. The focused test
+checks the JVP against a two-sided re-solve difference and checks the VJP with
+the real-complex adjoint identity. A perturbation must keep the active PML
+element mask fixed, just like the coefficient-level map above.
+
 The planar Helmholtz DtN trace operator has analytical trace, wave-number, and
 period JVPs and VJPs. FortSym generates the propagating and evanescent modal
 square-root products, while FortNum's FFT adjoint supplies the dense trace
