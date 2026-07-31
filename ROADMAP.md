@@ -1109,7 +1109,9 @@ gallery example.
   skeleton assembly can be layered without differentiating pivot choices.
   `assemble_scalar_numerical_flux` now provides conservative central, upwind,
   and Lax--Friedrichs choices with a quadratic-entropy diagnostic and complete
-  fixed-topology value/JVP/VJP actions; vector fluxes and entropy-stable
+  fixed-topology value/JVP/VJP actions; `assemble_vector_numerical_flux` now
+  lifts this to metric-weighted vector states, including strongly anisotropic
+  constitutive tensors and complete value/JVP/VJP actions. Entropy-stable
   systems remain.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
