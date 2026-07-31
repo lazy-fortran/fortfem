@@ -8,6 +8,7 @@ plotting
 mixed_poisson
 curl_curl
 cgl_pressure_tensor
+field_aligned_flux
 fci_parallel_diffusion
 tetra_h1_poisson
 tetra_mixed_poisson
