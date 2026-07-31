@@ -44,6 +44,9 @@ caller-supplied component metric can be a tangential/normal projector or a
 strongly anisotropic constitutive tensor. It provides value/JVP/VJP actions
 for vector traces, metric entries, surface weights, and penalty parameters,
 without committing the neutral operator to a particular PDE.
+`assemble_vector_sipg_interface` adds the corresponding vector average-flux
+consistency terms for independent test and trial traces, with the same
+`theta=1,0,-1` selector and complete metric-aware value/JVP/VJP coverage.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
