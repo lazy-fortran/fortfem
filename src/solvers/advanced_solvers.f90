@@ -3,6 +3,9 @@ module fortfem_advanced_solvers
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, spmv
     use fortfem_krylov_solvers, only: bicgstab_impl
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
+    use fortfem_incomplete_cholesky, only: &
+        apply_incomplete_cholesky, build_incomplete_cholesky, &
+        incomplete_cholesky_factor_t
     use fortnum_linalg, only: dense_solve
     use fortnum_krylov, only: KRYLOV_OK, real_gmres_operator
     implicit none
@@ -16,7 +19,7 @@ module fortfem_advanced_solvers
     public :: pcg_solve_jvp, pcg_solve_vjp
     public :: bicgstab_solve_jvp, bicgstab_solve_vjp
     public :: gmres_solve_jvp, gmres_solve_vjp
-    public :: jacobi_preconditioner, ilu_preconditioner
+    public :: jacobi_preconditioner, ilu_preconditioner, ichol_preconditioner
 
     ! Solver options type
     type :: solver_options_t
@@ -52,6 +55,7 @@ module fortfem_advanced_solvers
         real(dp), allocatable :: diagonal(:) ! For Jacobi
         real(dp), allocatable :: L(:, :), U(:, :) ! For ILU
         integer, allocatable :: pivot(:) ! For ILU
+        type(incomplete_cholesky_factor_t) :: ichol ! For IC(0)
     end type preconditioner_t
 
     abstract interface
@@ -794,7 +798,14 @@ contains
         type(preconditioner_t) :: precond
         logical :: use_precond
 
-        use_precond = trim(opts%preconditioner) /= "none"
+        ! The legacy BiCGSTAB kernel accepts only the ILU L/U contract.
+        ! Keep SPD-only Jacobi/ICHOL options on CG/PCG and fall back to the
+        ! unpreconditioned kernel here rather than passing unallocated factors.
+        use_precond = trim(opts%preconditioner) == "ilu"
+        if (trim(opts%preconditioner) /= "none" .and. &
+            .not. use_precond .and. opts%verbosity > 0) then
+            write (*, *) "BiCGSTAB: unsupported preconditioner; using none"
+        end if
 
         if (use_precond) then
             call build_preconditioner(A, precond, opts%preconditioner, opts)
@@ -964,6 +975,10 @@ contains
         case ("ilu")
             call build_ilu_preconditioner(A, precond, opts)
 
+        case ("ichol", "ic", "ic0")
+            call build_incomplete_cholesky(A, precond%ichol, i)
+            if (i /= 0) precond%type = "none"
+
         case default
             ! No preconditioning
             precond%type = "none"
@@ -1002,7 +1017,7 @@ contains
                 end if
             end do
 
-        case ("ilu")
+        case ("ilu", "ichol", "ic", "ic0")
             allocate (A_dense(n, n))
             A_dense = 0.0_dp
 
@@ -1013,7 +1028,12 @@ contains
                 end do
             end do
 
-            call build_ilu_preconditioner(A_dense, precond, opts)
+            if (trim(precond_type) == "ilu") then
+                call build_ilu_preconditioner(A_dense, precond, opts)
+            else
+                call build_incomplete_cholesky(A_dense, precond%ichol, i)
+                if (i /= 0) precond%type = "none"
+            end if
 
             deallocate (A_dense)
 
@@ -1028,7 +1048,8 @@ contains
         real(dp), intent(in) :: r(:)
         real(dp), intent(out) :: z(:)
 
-        integer :: n, i
+        integer :: n, i, status
+        real(dp), allocatable :: z_ichol(:)
 
         n = size(r)
 
@@ -1040,6 +1061,14 @@ contains
 
         case ("ilu")
             call solve_ilu(precond, r, z)
+
+        case ("ichol", "ic", "ic0")
+            call apply_incomplete_cholesky(precond%ichol, r, z_ichol, status)
+            if (status == 0) then
+                z = z_ichol
+            else
+                z = r
+            end if
 
         case default
             z = r ! Identity preconditioner
@@ -1288,5 +1317,10 @@ contains
         character(len=32) :: precond_name
         precond_name = "ilu"
     end function ilu_preconditioner
+
+    function ichol_preconditioner() result(precond_name)
+        character(len=32) :: precond_name
+        precond_name = "ichol"
+    end function ichol_preconditioner
 
 end module fortfem_advanced_solvers
