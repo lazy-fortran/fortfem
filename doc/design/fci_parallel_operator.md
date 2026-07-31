@@ -170,6 +170,9 @@ call apply_fci_plane_two_level_vcycle( &
 call apply_fci_plane_two_level_vcycles( &
     fine_operators, coarse_operators, restrictions, prolongations, &
     diagonals, residual, correction, status)
+call apply_fci_plane_two_level_vcycles_ragged( &
+    fine_operators, coarse_operators, restrictions, prolongations, &
+    plane_offsets, diagonal, residual, correction, status)
 ```
 
 The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
@@ -264,6 +267,10 @@ field-split adapter needed to compose independent PARALLAX-style plane
 elliptic solves with the global FCI line action; it introduces no cross-plane
 coupling and copies no PARALLAX implementation. Heterogeneous plane sizes and
 topology-changing remaps remain explicit future contracts.
+`apply_fci_plane_two_level_vcycles_ragged` lifts the same contract to variable
+plane sizes using one-based half-open `plane_offsets`. This matches the local
+PARALLAX description for non-axisymmetric planes without forcing a padded
+global vector; each block still validates and solves independently.
 
 ## Provenance
 
