@@ -204,7 +204,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
-| Sheet-current interface | An open or closed interface graph with junctions, ownership, a tangential surface-current unknown, edge balance, total-pressure balance, and flux or helicity constraints | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
+| Sheet-current interface | Neutral open/closed internal-manifold graph with oriented region and junction incidence is public; ownership, tangential surface-current unknowns, edge balance, total-pressure balance, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts and enrichment activation | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
@@ -1118,6 +1118,13 @@ gallery example.
   disconnected-forest, reduction, sparse solve, fixed-map derivative, and
   malformed-incidence tests cover the selector. High-order FEEC/IGA moment
   maps and period constraints remain composition layers.
+- The neutral `internal_manifold_graph_t` contract now records oriented
+  plus/minus region sides, open or boundaryless manifold endpoints, periodic
+  self-identifications, junction incidence, closed-manifold flags, and
+  manifold connectivity. Independent slab, cylinder, sphere, torus, and
+  malformed-endpoint fixtures cover the metadata; geometry, trace spaces,
+  surface divergence, sheet-current balance, and pressure laws remain later
+  composition layers.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
@@ -1138,9 +1145,11 @@ gallery example.
   volumes and centroids now close the degree-one volume/first-moment contract
   with analytic and conservation oracles. Fixed-topology tetra cut JVPs now
   propagate moving vertices and level values through clipped-face moments and
-  interface area/normal with central-difference and conservation oracles;
-  internal-manifold graphs remain next. The existing vector current pairing
-  consumes the surface-measure contract.
+  interface area/normal with central-difference and conservation oracles. The
+  internal-manifold graph now provides the topology attachment for this
+  surface-measure contract; geometry-to-graph construction remains client
+  composition work. The existing vector current pairing consumes the
+  surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.

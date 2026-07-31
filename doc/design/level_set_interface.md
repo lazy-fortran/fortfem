@@ -24,8 +24,9 @@ passes through a vertex is deduplicated, but derivative paths must still treat
 that event as a connectivity change and rebuild the cut stencil. The focused
 interface test uses the affine level set `x+y-0.4` and an independent
 segment/normal oracle; the quadrature test additionally checks polygon
-centroids and affine integration. Higher-dimensional level sets, higher-order
-cut-cell quadrature, and internal-manifold graphs remain Phase 2 work.
+centroids and affine integration. Higher-dimensional level sets and
+higher-order cut-cell quadrature remain Phase 2 work; the neutral
+internal-manifold graph is documented separately.
 
 `evaluate_level_set_triangle_interface_2d_jvp` provides the fixed-topology
 forward derivative of the same primitive. It differentiates both the physical
@@ -53,8 +54,9 @@ three or four edge intersections, orders the convex polygon in its physical
 plane, and returns its area and gradient-oriented normal. Its test covers both
 triangular and quadrilateral cuts against independent edge points and plane
 geometry, as well as uncut, nodal-topology, and degenerate-tetrahedron
-rejection. Fixed-topology tetrahedral JVPs and internal-manifold graphs remain
-the next 3D geometry layer.
+rejection. Fixed-topology tetrahedral JVPs and the neutral internal-manifold
+graph now form the next 3D geometry attachment layer; geometry-to-graph
+construction remains a client composition concern.
 
 `evaluate_level_set_tetra_cut_quadrature_3d` now supplies that volume layer for
 linear tetrahedra. It clips each oriented parent face, closes the positive and
@@ -65,5 +67,6 @@ quadrilateral cuts, and volume/first-moment conservation. Fixed-topology
 tetrahedral JVPs now propagate moving vertices, level values, clipped-face
 intersections, volumes, centroids, interface area, and gradient-oriented normal.
 The JVP is checked against central differences, side-volume/first-moment
-conservation, and the independent interface-JVP contract. Internal-manifold
-graphs remain a separate follow-up contract.
+conservation, and the independent interface-JVP contract. The neutral
+internal-manifold graph supplies the topology attachment; geometry-to-graph
+construction remains a client composition layer.
