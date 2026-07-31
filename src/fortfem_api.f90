@@ -79,6 +79,10 @@ module fortfem_api
     use fortfem_dissipative_cayley, only: &
         advance_dissipative_cayley, advance_dissipative_cayley_jvp, &
         advance_dissipative_cayley_vjp
+    use fortfem_compatible_flux_elimination, only: &
+        assemble_compatible_flux_elimination, &
+        assemble_compatible_flux_elimination_jvp, &
+        assemble_compatible_flux_elimination_vjp
     use fortfem_xfem_blending_correction, only: &
         evaluate_blending_corrected_enrichment, &
         evaluate_blending_corrected_enrichment_jvp, &
@@ -1011,6 +1015,9 @@ module fortfem_api
     public :: advance_dissipative_cayley
     public :: advance_dissipative_cayley_jvp
     public :: advance_dissipative_cayley_vjp
+    public :: assemble_compatible_flux_elimination
+    public :: assemble_compatible_flux_elimination_jvp
+    public :: assemble_compatible_flux_elimination_vjp
     public :: evaluate_blending_corrected_enrichment
     public :: evaluate_blending_corrected_enrichment_jvp
     public :: evaluate_blending_corrected_enrichment_vjp
