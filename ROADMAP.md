@@ -144,7 +144,7 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, toroidal analytical utilities in active development | A documented, independently tested torus-harmonic API and stable half-integer continuation |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense IC(0) factor/apply and the PCG `ichol` option are public | Tree--cotree direct reductions in sparse paths, true sparse ILU/ILUT and IC(0)/ICHOL where valid, preconditioners with measured scaling, flexible Krylov products, and block solver derivatives |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense IC(0) factor/apply and the PCG `ichol` option are public | True sparse ILU/ILUT and IC(0)/ICHOL where valid, preconditioners with measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
@@ -1112,11 +1112,12 @@ gallery example.
   shape-mismatch tests cover the metadata; quotient geometry remains
   higher-level work.
 - The neutral tree--cotree gauge contract now selects a spanning forest on an
-  oriented graph, exposes cotree restriction/prolongation, and extracts the
-  fixed-gauge dense direct system. Independent triangle, disconnected-forest,
-  reduction, and malformed-incidence tests cover the selector. High-order
-  FEEC/IGA moment maps, period constraints, and sparse reduced assembly remain
-  composition layers.
+  oriented graph, exposes cotree restriction/prolongation, extracts the
+  fixed-gauge dense direct system, and composes with real/complex CSC direct
+  solves through the existing constrained reduction. Independent triangle,
+  disconnected-forest, reduction, sparse solve, fixed-map derivative, and
+  malformed-incidence tests cover the selector. High-order FEEC/IGA moment
+  maps and period constraints remain composition layers.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now

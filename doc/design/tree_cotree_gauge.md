@@ -34,6 +34,12 @@ call reduce_tree_cotree_dense_system_jvp( &
     gauge, matrix_dot, rhs_dot, reduced_matrix_dot, reduced_rhs_dot, status)
 call reduce_tree_cotree_dense_system_vjp( &
     gauge, reduced_matrix_bar, reduced_rhs_bar, matrix_bar, rhs_bar, status)
+call sparse_direct_solve_tree_cotree( &
+    gauge, csc_matrix, rhs, solution, status)
+call sparse_direct_solve_tree_cotree_jvp( &
+    gauge, csc_matrix, rhs, values_dot, rhs_dot, solution_dot, status)
+call sparse_direct_solve_tree_cotree_vjp( &
+    gauge, csc_matrix, rhs, solution, solution_bar, values_bar, rhs_bar, status)
 ```
 
 The graph must have exactly one `+1` and one `-1` per edge column. Parallel
@@ -52,15 +58,19 @@ are retained through a caller-owned DOF map. The same rule applies to the IGA
 control mesh and to nonmatching multipatch mortars. The primitive never
 assumes a plasma geometry or a particular material law.
 
-Tree--cotree gauging is the direct-solve path for curl--curl nullspaces. It is
+Tree--cotree gauging is the direct-solve path for curl--curl nullspaces. The
+sparse CSC wrappers compose the same fixed tree selector with the existing
+constrained reduction and preserve real and complex JVP/VJP contracts. It is
 complementary to compatible nullspace projection and to ILU/IC preconditioners
 for iterative solves; no preconditioner is hidden inside this topology module.
 
 ## Independent oracle and literature
 
 The triangle test checks the exact spanning-tree/cotree split, restriction and
-zero-tree prolongation, and the reduced direct block. A disconnected graph
-checks forest behavior and an invalid incidence column is rejected.
+zero-tree prolongation, and the reduced direct block. The sparse direct test
+checks real and complex CSC solves, fixed-tree JVPs, and the real adjoint
+identity. A disconnected graph checks forest behavior and an invalid
+incidence column is rejected.
 
 The implementation follows the graph-gauge motivation in [Manges and
 Cendes (1995)](https://doi.org/10.1109/20.376275), the magnetostatic and

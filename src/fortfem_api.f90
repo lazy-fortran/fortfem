@@ -774,7 +774,10 @@ module fortfem_api
         sparse_direct_solve_csc, sparse_direct_solve_constrained, &
         sparse_direct_solve_constrained_jvp, &
         sparse_direct_solve_constrained_vjp, sparse_direct_solve_factored, &
-        sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp
+        sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp, &
+        sparse_direct_solve_tree_cotree, &
+        sparse_direct_solve_tree_cotree_jvp, &
+        sparse_direct_solve_tree_cotree_vjp
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
         solve_symbolic_mixed_poisson_rt
@@ -1580,6 +1583,9 @@ module fortfem_api
     public :: sparse_direct_solve_constrained
     public :: sparse_direct_solve_constrained_jvp
     public :: sparse_direct_solve_constrained_vjp
+    public :: sparse_direct_solve_tree_cotree
+    public :: sparse_direct_solve_tree_cotree_jvp
+    public :: sparse_direct_solve_tree_cotree_vjp
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp
     public :: sparse_direct_solve_factored_vjp, sparse_direct_free

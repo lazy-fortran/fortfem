@@ -1,5 +1,7 @@
 module fortfem_sparse_direct
     use fortfem_kinds, only: dp
+    use fortfem_tree_cotree_gauge, only: tree_cotree_gauge_edges, &
+        tree_cotree_gauge_t
     use fortsparse, only: csc_t, csc_z_t, fortsparse_status_t, &
         sparse_direct_factor_t => sparse_solver_t, sparse_destroy, &
         csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_solve, &
@@ -12,6 +14,9 @@ module fortfem_sparse_direct
     public :: sparse_direct_solve_constrained_jvp
     public :: sparse_direct_solve_constrained_vjp
     public :: sparse_direct_solve_zero_constrained
+    public :: sparse_direct_solve_tree_cotree
+    public :: sparse_direct_solve_tree_cotree_jvp
+    public :: sparse_direct_solve_tree_cotree_vjp
     public :: sparse_direct_factor_t
     public :: sparse_direct_factor_csc
     public :: sparse_direct_factor_adjoint_csc
@@ -41,6 +46,21 @@ module fortfem_sparse_direct
         module procedure sparse_direct_solve_constrained_vjp_complex
     end interface sparse_direct_solve_constrained_vjp
 
+    interface sparse_direct_solve_tree_cotree
+        module procedure sparse_direct_solve_tree_cotree_real
+        module procedure sparse_direct_solve_tree_cotree_complex
+    end interface sparse_direct_solve_tree_cotree
+
+    interface sparse_direct_solve_tree_cotree_jvp
+        module procedure sparse_direct_solve_tree_cotree_jvp_real
+        module procedure sparse_direct_solve_tree_cotree_jvp_complex
+    end interface sparse_direct_solve_tree_cotree_jvp
+
+    interface sparse_direct_solve_tree_cotree_vjp
+        module procedure sparse_direct_solve_tree_cotree_vjp_real
+        module procedure sparse_direct_solve_tree_cotree_vjp_complex
+    end interface sparse_direct_solve_tree_cotree_vjp
+
     interface sparse_direct_factor_csc
         module procedure sparse_direct_factor_csc_real
         module procedure sparse_direct_factor_csc_complex
@@ -67,6 +87,162 @@ module fortfem_sparse_direct
     end interface validate_csc_dimensions
 
 contains
+
+    subroutine sparse_direct_solve_tree_cotree_real( &
+            gauge, matrix, rhs, solution, status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:)
+        real(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+
+        solution = 0.0_dp
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        call sparse_direct_solve_zero_constrained( &
+            matrix, rhs, constrained, solution, status)
+    end subroutine sparse_direct_solve_tree_cotree_real
+
+    subroutine sparse_direct_solve_tree_cotree_complex( &
+            gauge, matrix, rhs, solution, status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:)
+        complex(dp), intent(out) :: solution(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+        complex(dp), allocatable :: constrained_values(:)
+
+        solution = cmplx(0.0_dp, 0.0_dp, dp)
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        allocate(constrained_values(matrix%nrow))
+        constrained_values = cmplx(0.0_dp, 0.0_dp, dp)
+        call sparse_direct_solve_constrained( &
+            matrix, rhs, constrained, constrained_values, solution, status)
+    end subroutine sparse_direct_solve_tree_cotree_complex
+
+    subroutine sparse_direct_solve_tree_cotree_jvp_real( &
+            gauge, matrix, rhs, matrix_values_dot, rhs_dot, solution_dot, &
+            status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:), matrix_values_dot(:), rhs_dot(:)
+        real(dp), intent(out) :: solution_dot(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+        real(dp), allocatable :: constrained_values(:)
+
+        solution_dot = 0.0_dp
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        allocate(constrained_values(matrix%nrow))
+        constrained_values = 0.0_dp
+        call sparse_direct_solve_constrained_jvp( &
+            matrix, rhs, constrained, constrained_values, matrix_values_dot, &
+            rhs_dot, constrained_values, solution_dot, status)
+    end subroutine sparse_direct_solve_tree_cotree_jvp_real
+
+    subroutine sparse_direct_solve_tree_cotree_jvp_complex( &
+            gauge, matrix, rhs, matrix_values_dot, rhs_dot, solution_dot, &
+            status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), matrix_values_dot(:), rhs_dot(:)
+        complex(dp), intent(out) :: solution_dot(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+        complex(dp), allocatable :: constrained_values(:)
+
+        solution_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        allocate(constrained_values(matrix%nrow))
+        constrained_values = cmplx(0.0_dp, 0.0_dp, dp)
+        call sparse_direct_solve_constrained_jvp( &
+            matrix, rhs, constrained, constrained_values, matrix_values_dot, &
+            rhs_dot, constrained_values, solution_dot, status)
+    end subroutine sparse_direct_solve_tree_cotree_jvp_complex
+
+    subroutine sparse_direct_solve_tree_cotree_vjp_real( &
+            gauge, matrix, rhs, solution, solution_bar, matrix_values_bar, &
+            rhs_bar, status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:), solution(:), solution_bar(:)
+        real(dp), intent(out) :: matrix_values_bar(:), rhs_bar(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+        real(dp), allocatable :: constrained_values(:), constrained_values_bar(:)
+
+        matrix_values_bar = 0.0_dp
+        rhs_bar = 0.0_dp
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        allocate(constrained_values(matrix%nrow), constrained_values_bar( &
+            matrix%nrow))
+        constrained_values = 0.0_dp
+        call sparse_direct_solve_constrained_vjp( &
+            matrix, rhs, constrained, constrained_values, solution, &
+            solution_bar, matrix_values_bar, rhs_bar, constrained_values_bar, &
+            status)
+    end subroutine sparse_direct_solve_tree_cotree_vjp_real
+
+    subroutine sparse_direct_solve_tree_cotree_vjp_complex( &
+            gauge, matrix, rhs, solution, solution_bar, matrix_values_bar, &
+            rhs_bar, status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:), solution(:), solution_bar(:)
+        complex(dp), intent(out) :: matrix_values_bar(:), rhs_bar(:)
+        integer, intent(out) :: status
+        logical, allocatable :: constrained(:)
+        complex(dp), allocatable :: constrained_values(:), constrained_values_bar(:)
+
+        matrix_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        rhs_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        call tree_cotree_constraints(gauge, matrix%nrow, constrained, status)
+        if (status /= 0) return
+        allocate(constrained_values(matrix%nrow), constrained_values_bar( &
+            matrix%nrow))
+        constrained_values = cmplx(0.0_dp, 0.0_dp, dp)
+        call sparse_direct_solve_constrained_vjp( &
+            matrix, rhs, constrained, constrained_values, solution, &
+            solution_bar, matrix_values_bar, rhs_bar, constrained_values_bar, &
+            status)
+    end subroutine sparse_direct_solve_tree_cotree_vjp_complex
+
+    subroutine tree_cotree_constraints(gauge, edge_count, constrained, status)
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        integer, intent(in) :: edge_count
+        logical, allocatable, intent(out) :: constrained(:)
+        integer, intent(out) :: status
+        integer, allocatable :: tree_edges(:), cotree_edges(:)
+        integer :: edge
+
+        if (allocated(constrained)) deallocate(constrained)
+        status = 1
+        call tree_cotree_gauge_edges( &
+            gauge, tree_edges, cotree_edges, status)
+        if (status /= 0) return
+        if (edge_count < 1 .or. size(tree_edges) + size(cotree_edges) &
+            /= edge_count) then
+            status = 2
+            return
+        end if
+        allocate(constrained(edge_count))
+        constrained = .false.
+        do edge = 1, size(tree_edges)
+            if (tree_edges(edge) < 1 .or. tree_edges(edge) > edge_count) then
+                deallocate(constrained)
+                status = 3
+                return
+            end if
+            constrained(tree_edges(edge)) = .true.
+        end do
+        status = 0
+    end subroutine tree_cotree_constraints
 
     subroutine sparse_direct_solve_zero_constrained( &
             matrix, rhs, constrained, solution, status)
