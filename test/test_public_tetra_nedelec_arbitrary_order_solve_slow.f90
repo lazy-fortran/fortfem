@@ -1,4 +1,4 @@
-program test_public_tetra_nedelec_arbitrary_order_solve
+program test_public_tetra_nedelec_arbitrary_order_solve_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: solve_tetra_nedelec_curl_mass
     use fortfem_kinds, only: dp
@@ -110,4 +110,4 @@ contains
         end do
     end subroutine measure_constant_error
 
-end program test_public_tetra_nedelec_arbitrary_order_solve
+end program test_public_tetra_nedelec_arbitrary_order_solve_slow

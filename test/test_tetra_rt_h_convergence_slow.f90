@@ -1,4 +1,4 @@
-program test_tetra_rt_h_convergence
+program test_tetra_rt_h_convergence_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_rt, &
         generate_structured_tetra_box_mesh, initialize_tetra_rt, &
@@ -131,4 +131,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_rt_h_convergence
+end program test_tetra_rt_h_convergence_slow

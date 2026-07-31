@@ -1,4 +1,4 @@
-program test_maxwell_pec_sphere_mie
+program test_maxwell_pec_sphere_mie_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         evaluate_maxwell_efie_far_field_rwg_3d, &
@@ -186,4 +186,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_maxwell_pec_sphere_mie
+end program test_maxwell_pec_sphere_mie_slow

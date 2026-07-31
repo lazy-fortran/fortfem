@@ -1,4 +1,4 @@
-program test_tetra_nedelec_arbitrary_order
+program test_tetra_nedelec_arbitrary_order_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_order, &
@@ -508,4 +508,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_tetra_nedelec_arbitrary_order
+end program test_tetra_nedelec_arbitrary_order_slow

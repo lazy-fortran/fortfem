@@ -108,11 +108,15 @@ not only contributor etiquette.
 - Make the smallest complete change. Add the test and oracle before the
   implementation.
 - Keep focused tests short enough for roughly a ten-second feedback loop.
-  Run full `fo` suites and expensive examples asynchronously in CI or a
-  controlled background job. The build-test workflow uses the same `fo test`
-  runner for its per-test timeout and coverage path, rather than an unbounded
-  serial `fpm test`. Do not wait for a complete gallery build before making an
-  independent, low-risk progress increment.
+  `fo test` therefore keeps a ten-second per-target wall-clock limit. Tests
+  that intentionally exercise large tetrahedral systems, high-order
+  convergence, or curved torus operators carry a `_slow` suffix and are run
+  explicitly with `fo test --all`; they are not silently allowed to consume the
+  fast-suite budget. Run full `fo` suites and expensive examples asynchronously
+  in CI or a controlled background job. The build-test workflow uses the same
+  `fo test` runner for its per-test timeout and coverage path, rather than an
+  unbounded serial `fpm test`. Do not wait for a complete gallery build before
+  making an independent, low-risk progress increment.
 - Work directly on FortFEM `main` because it is the upstream library. Work on
   PR branches for downstream repositories such as MEPHIT and FortPlot. Never
   duplicate a fix that has already landed upstream. Rebase downstream work on
@@ -155,7 +159,10 @@ documentation baseline. The list is intentionally conservative.
 The aggregate full test suite can expose resource-sensitive failures when many
 independent numerical targets run in parallel. Focused repetitions are the
 first diagnostic and remain the merge gate for a local increment. CI remains
-the final cross-platform gate.
+the final cross-platform gate. The current fast suite has 430 targets; 25
+deliberately long regression targets are classified as `_slow` and retain a
+separate explicit run path. A result formatter truncation is never treated as
+a pass: batch or named runs are used when a report exceeds the display limit.
 
 ## 3. Stable contracts before physics applications
 
@@ -1096,14 +1103,16 @@ gallery example.
   independently discretized trace spaces.
   `assemble_scalar_sipg_interface` now composes independently sized test and
   trial trace/flux spaces with symmetric, incomplete, or nonsymmetric
-  consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC and
-  hybridized skeleton blocks remain.
+  consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC
+  consistency, HDG trace blocks, and local static condensation are now public,
+  while sparse global accumulation and compatible flux elimination remain.
   `assemble_vector_jump_penalty` now supplies the tensor-valued counterpart
   for caller-owned tangential/normal projectors and anisotropic metrics, with
   value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
   `assemble_vector_sipg_interface` now adds independent test/trial vector
   average-flux consistency for `theta=1,0,-1`, including metric-aware
-  value/JVP/VJP actions; HDG traces and commuting projections remain.
+  value/JVP/VJP actions; higher-order HDG trace composition and commuting
+  projection assembly remain.
   `assemble_hdg_static_condensation` now exposes the local Schur complement
   and condensed load with implicit-solve value/JVP/VJP actions, so global
   skeleton assembly can be layered without differentiating pivot choices.
@@ -1235,7 +1244,9 @@ gallery example.
 - The public mortar trace cross-mass block now has value/JVP/VJP actions for
   independently discretized skeleton traces. The scalar SIPG interface block
   now has symmetric, incomplete, and nonsymmetric consistency variants with
-  value/JVP/VJP actions; vector FEEC and hybridized skeleton blocks remain.
+  value/JVP/VJP actions; vector FEEC consistency, HDG traces, and local
+  hybridization are now public, while sparse global accumulation and
+  compatible flux elimination remain.
   A tensor-weighted vector jump penalty now covers component-valued traces and
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
   projections are now public with value/JVP/VJP actions; hybridization and
