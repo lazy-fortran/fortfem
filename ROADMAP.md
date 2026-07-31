@@ -563,7 +563,8 @@ tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
 The positive diagonal of `-W_c^{-1}Q^TW_sK_\parallel Q` is now public as a
 FortSym-generated per-stencil Jacobi baseline, with an explicit Q-squared
-oracle; plane multigrid and field-split preconditioners remain active.
+oracle and a validated matrix-free diagonal apply; plane multigrid and
+field-split preconditioners remain active.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -938,8 +939,9 @@ gallery example.
   unstructured plane cells and stencil rebuilds at topology events remain
   planned.
 - A positive FCI diffusion diagonal is public as the first anisotropy-aware
-  preconditioner contract; PARALLAX-compatible plane multigrid and stronger
-  field-split preconditioners remain planned.
+  preconditioner contract, with a matching Jacobi apply and positivity test;
+  PARALLAX-compatible plane multigrid and stronger field-split preconditioners
+  remain planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
