@@ -1,6 +1,6 @@
 module fortfem_api
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
-        cell_complex_cycle_basis, &
+        cell_complex_cocycle_basis, cell_complex_cycle_basis, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, quotient_cell_complex, &
         validate_cell_complex
@@ -812,6 +812,7 @@ module fortfem_api
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
     public :: cell_complex_cycle_basis
+    public :: cell_complex_cocycle_basis
     public :: quotient_cell_complex
     public :: cell_identification_t
     public :: initialize_cell_identification
