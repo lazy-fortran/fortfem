@@ -551,3 +551,11 @@ associated-Legendre differential equation for the second radial derivative.
 Thus scale, toroidal coordinates, field components, DtN value, and normal
 trace all support independent re-evaluation and adjoint tests without a
 finite-difference derivative in the production path.
+
+The toroidal coordinate chart itself follows the same contract. FortSym emits
+forward and reverse products for the scale/angle-to-Cartesian map and for its
+Cartesian inverse. The public wrappers reject the coordinate singularities
+before entering the generated expressions, while tests cover both map
+directions against re-evaluation and the real adjoint identity. This keeps
+large torus boundary parameterizations differentiable before they reach the
+panel or FEM--BEM assembly layer.
