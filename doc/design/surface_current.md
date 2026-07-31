@@ -32,6 +32,15 @@ call assemble_interface_surface_current_vjp( &
     plus_field, minus_field, normals, surface_weights, surface_current_bar, &
     integrated_current_bar, plus_bar, minus_bar, normals_bar, &
     surface_weights_bar, status)
+call assemble_surface_current_junction_balance( &
+    junction_incidence, manifold_current, junction_balance, &
+    global_balance, status)
+call assemble_surface_current_junction_balance_jvp( &
+    junction_incidence, manifold_current, manifold_current_dot, &
+    junction_balance_dot, global_balance_dot, status)
+call assemble_surface_current_junction_balance_vjp( &
+    junction_incidence, manifold_current, junction_balance_bar, &
+    global_balance_bar, manifold_current_bar, status)
 ```
 
 The primal validates positive quadrature weights, finite three-component
@@ -43,9 +52,18 @@ Reversing the interface convention (swap the two traces and negate the normal)
 leaves the physical \(\mathbf K\) unchanged. This is an independent sign
 oracle, not a property inferred from a caller's boundary law.
 
+The junction ledger consumes the integer boundary incidence supplied by the
+neutral internal-manifold graph and an integrated current per manifold. It
+returns a vector balance at every open junction and the global sum. Closed or
+boundaryless manifolds have zero incidence columns and therefore cannot create
+a spurious net current. Its topology is fixed for differentiation; the JVP
+and VJP act on the manifold-current values only.
+
 ## Independent verification
 
 `test_surface_current` checks a two-point analytical jump and weighted ledger,
 orientation reversal, central-difference JVP, real dot-product VJP, and
 malformed normal/weight rejection. Surface quadrature geometry and current
-conservation at interface edges remain separate topology contracts.
+conservation at interface edges remain separate geometry contracts.
+`test_surface_current_balance` checks open, closed, and malformed incidence,
+global conservation, and the real ledger adjoint identity.
