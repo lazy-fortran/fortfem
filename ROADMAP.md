@@ -162,7 +162,7 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, toroidal analytical utilities in active development | A documented, independently tested torus-harmonic API and stable half-integer continuation |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0) factor/apply paths are public | True sparse ILU/ILUT, fill-controlled ICHOL, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths are public | ILUT and fill-controlled ICHOL, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
@@ -828,10 +828,11 @@ replacement (for example ILU rather than ICHOL), with factor breakdown and
 loss of positive definiteness reported rather than hidden.
 
 The dense IC(0) factor/apply primitive and the PCG `ichol`/`ic0` option are now
-public and independently tested. A standalone sparse IC(0) path now consumes
-FortSparse CSC directly, preserves the lower pattern without fill, and exposes
-fixed-factor right-hand-side JVP/VJP actions. PCG integration, fill-controlled
-ICHOL, sparse ILU/ILUT, and scaling benchmarks remain active solver work. The
+public and independently tested. Standalone sparse IC(0) and ILU(0) paths now
+consume FortSparse CSC directly, preserve the input lower/upper patterns
+without fill, and expose fixed-factor right-hand-side JVP/VJP actions,
+including the transpose solve for ILU. PCG integration, ILUT/fill-controlled
+ICHOL, and scaling benchmarks remain active solver work. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
