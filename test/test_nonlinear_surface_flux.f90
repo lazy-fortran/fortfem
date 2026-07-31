@@ -21,12 +21,17 @@ program test_nonlinear_surface_flux
     real(dp) :: surface_weights_dot(quadrature_count)
     real(dp) :: surface_normals_dot(3, quadrature_count)
     real(dp) :: trace_state_dot(quadrature_count, component_count)
-    real(dp) :: residual_dot(dof_count, component_count), ledger_dot(tag_count, component_count)
-    real(dp) :: residual_plus(dof_count, component_count), ledger_plus(tag_count, component_count)
-    real(dp) :: residual_minus(dof_count, component_count), ledger_minus(tag_count, component_count)
-    real(dp) :: residual_bar(dof_count, component_count), ledger_bar(tag_count, component_count)
+    real(dp) :: residual_dot(dof_count, component_count)
+    real(dp) :: ledger_dot(tag_count, component_count)
+    real(dp) :: residual_plus(dof_count, component_count)
+    real(dp) :: ledger_plus(tag_count, component_count)
+    real(dp) :: residual_minus(dof_count, component_count)
+    real(dp) :: ledger_minus(tag_count, component_count)
+    real(dp) :: residual_bar(dof_count, component_count)
+    real(dp) :: ledger_bar(tag_count, component_count)
     real(dp) :: trace_basis_bar(quadrature_count, dof_count, component_count)
-    real(dp) :: surface_weights_bar(quadrature_count), surface_normals_bar(3, quadrature_count)
+    real(dp) :: surface_weights_bar(quadrature_count)
+    real(dp) :: surface_normals_bar(3, quadrature_count)
     real(dp) :: trace_state_bar(quadrature_count, component_count)
     real(dp) :: lhs, rhs
     integer :: status, status_plus, status_minus
@@ -67,7 +72,8 @@ program test_nonlinear_surface_flux
     call independent_value_oracle( &
         trace_basis, surface_weights, surface_normals, surface_tags, trace_state, &
         residual_expected, ledger_expected)
-    call check_condition(status == 0, "nonlinear surface flux value accepts tagged traces")
+    call check_condition(status == 0, &
+        "nonlinear surface flux value accepts tagged traces")
     call check_condition(maxval(abs(residual - residual_expected)) < 1.0e-14_dp .and. &
         maxval(abs(ledger - ledger_expected)) < 1.0e-14_dp, &
         "nonlinear surface flux value matches an independent ledger oracle")
@@ -77,12 +83,14 @@ program test_nonlinear_surface_flux
         trace_basis_dot, surface_weights_dot, surface_normals_dot, trace_state_dot, &
         residual_dot, ledger_dot, nonlinear_flux_value, nonlinear_flux_jvp, status)
     call assemble_nonlinear_surface_flux( &
-        trace_basis + step*trace_basis_dot, surface_weights + step*surface_weights_dot, &
+        trace_basis + step*trace_basis_dot, &
+        surface_weights + step*surface_weights_dot, &
         surface_normals + step*surface_normals_dot, surface_tags, &
         trace_state + step*trace_state_dot, residual_plus, ledger_plus, &
         nonlinear_flux_value, status_plus)
     call assemble_nonlinear_surface_flux( &
-        trace_basis - step*trace_basis_dot, surface_weights - step*surface_weights_dot, &
+        trace_basis - step*trace_basis_dot, &
+        surface_weights - step*surface_weights_dot, &
         surface_normals - step*surface_normals_dot, surface_tags, &
         trace_state - step*trace_state_dot, residual_minus, ledger_minus, &
         nonlinear_flux_value, status_minus)
@@ -99,8 +107,10 @@ program test_nonlinear_surface_flux
         surface_normals_bar, trace_state_bar, nonlinear_flux_value, &
         nonlinear_flux_vjp, status)
     lhs = sum(residual_bar*residual_dot) + sum(ledger_bar*ledger_dot)
-    rhs = sum(trace_basis_bar*trace_basis_dot) + sum(surface_weights_bar*surface_weights_dot) + &
-        sum(surface_normals_bar*surface_normals_dot) + sum(trace_state_bar*trace_state_dot)
+    rhs = sum(trace_basis_bar*trace_basis_dot) + &
+        sum(surface_weights_bar*surface_weights_dot) + &
+        sum(surface_normals_bar*surface_normals_dot) + &
+        sum(trace_state_bar*trace_state_dot)
     call check_condition(status == 0 .and. abs(lhs - rhs) < 1.0e-13_dp, &
         "nonlinear surface flux VJP satisfies the full dot-product identity")
 
@@ -108,7 +118,8 @@ program test_nonlinear_surface_flux
     call assemble_nonlinear_surface_flux( &
         trace_basis, surface_weights, surface_normals, surface_tags, trace_state, &
         residual, ledger, nonlinear_flux_value, status)
-    call check_condition(status /= 0, "nonlinear surface flux rejects non-positive weights")
+    call check_condition(status /= 0, &
+        "nonlinear surface flux rejects non-positive weights")
     surface_weights(1) = 2.0_dp
     surface_tags(1) = tag_count + 1
     call assemble_nonlinear_surface_flux( &
@@ -151,7 +162,8 @@ contains
 
         flux_dot = 0.0_dp
         status = 1
-        if (size(state) /= component_count .or. size(state_dot) /= component_count .or. &
+        if (size(state) /= component_count .or. &
+            size(state_dot) /= component_count .or. &
             size(flux_dot) /= component_count .or. tag < 1 .or. tag > tag_count) return
         flux_dot(1) = 2.0_dp*coefficient(1, tag)*state(1)*state_dot(1) + &
             0.1_dp*normal_dot(1) + 0.2_dp*normal_dot(2)
@@ -205,7 +217,8 @@ contains
                 do dof = 1, dof_count
                     residual_oracle(dof, component) = &
                         residual_oracle(dof, component) + &
-                        basis(quadrature, dof, component)*weights(quadrature)*flux(component)
+                        basis(quadrature, dof, component)*weights(quadrature)* &
+                        flux(component)
                 end do
             end do
         end do
