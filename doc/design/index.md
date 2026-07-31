@@ -43,6 +43,11 @@ metric-independent `curl(grad)` and `div(curl)` composition defects with
 value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
 maps.
 
+The [Fourier mode registry](fourier_mode_registry.html) defines fixed-topology
+field-period phase, normalization, conjugate packing, triad lookup, radial
+regularity, and complex-coordinate derivative conventions for Fourier-FEM and
+IGA clients.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the

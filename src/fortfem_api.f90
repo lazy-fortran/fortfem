@@ -43,6 +43,12 @@ module fortfem_api
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
         assemble_surface_current_trace_residual_vjp
+    use fortfem_fourier_mode_registry, only: &
+        evaluate_fourier_mode, evaluate_fourier_mode_jvp, &
+        evaluate_fourier_mode_vjp, find_fourier_mode, &
+        fourier_mode_conjugate_index, fourier_mode_registry_t, &
+        fourier_mode_triad_closed, initialize_fourier_mode_registry, &
+        validate_fourier_mode_registry
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -958,6 +964,15 @@ module fortfem_api
     public :: assemble_surface_current_trace_residual
     public :: assemble_surface_current_trace_residual_jvp
     public :: assemble_surface_current_trace_residual_vjp
+    public :: fourier_mode_registry_t
+    public :: initialize_fourier_mode_registry
+    public :: validate_fourier_mode_registry
+    public :: find_fourier_mode
+    public :: fourier_mode_conjugate_index
+    public :: fourier_mode_triad_closed
+    public :: evaluate_fourier_mode
+    public :: evaluate_fourier_mode_jvp
+    public :: evaluate_fourier_mode_vjp
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
