@@ -185,6 +185,8 @@ module fortfem_api
         apply_fci_anisotropic_diffusion, &
         apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
+    use fortfem_fci_plane_multigrid, only: &
+        apply_fci_plane_two_level_vcycle
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4_jvp
     use fortfem_fci_interpolation_map, only: &
@@ -1474,6 +1476,7 @@ module fortfem_api
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
+    public :: apply_fci_plane_two_level_vcycle
     public :: trace_fci_field_line_rk4
     public :: trace_fci_field_line_rk4_jvp
     public :: build_fci_linear_interpolation_map_1d
