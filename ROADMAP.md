@@ -1192,9 +1192,11 @@ gallery example.
   componentwise vector bases, so H(curl)/H(div) values can be composed while
   retaining the fixed-topology JVP/VJP contract. The corrected-XFEM blending
   ramp `r=sum_i a_i*N_i` and `r*Psi` value/JVP/VJP composition are now public
-  with a full-enrichment reproduction oracle. Cut-cell geometry, support
-  activation, rank/conditioning diagnostics, and Piola-aware vector
-  enrichment remain.
+  with a full-enrichment reproduction oracle. The same ramp and reverse
+  contraction are public for vector enrichment arrays, ready for covariant or
+  contravariant Piola values and IGA coefficient blocks. Cut-cell geometry,
+  support activation, rank/conditioning diagnostics, and Piola-aware vector
+  differential operators remain.
 - Cut-cell classification and high-order quadrature (the exact degree-one
   triangle centroid rule is the current baseline).
 - Heaviside, kink, singular, helical, and resonant enrichments.

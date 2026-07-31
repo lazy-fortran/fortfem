@@ -15,6 +15,9 @@ module fortfem_xfem_blending_correction
     public :: evaluate_blending_corrected_enrichment
     public :: evaluate_blending_corrected_enrichment_jvp
     public :: evaluate_blending_corrected_enrichment_vjp
+    public :: evaluate_vector_blending_corrected_enrichment
+    public :: evaluate_vector_blending_corrected_enrichment_jvp
+    public :: evaluate_vector_blending_corrected_enrichment_vjp
 
 contains
 
@@ -101,6 +104,104 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_blending_corrected_enrichment_vjp
 
+    subroutine evaluate_vector_blending_corrected_enrichment( &
+            base_values, enriched_mask, enrichment_values, corrected_values, &
+            status)
+        real(dp), intent(in) :: base_values(:, :), enrichment_values(:, :)
+        logical, intent(in) :: enriched_mask(:)
+        real(dp), intent(out) :: corrected_values(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), allocatable :: ramp(:)
+        integer :: component
+
+        corrected_values = 0.0_dp
+        call validate_vector_blending_inputs( &
+            base_values, enriched_mask, enrichment_values, corrected_values, status)
+        if (status%code /= FORTSPARSE_OK) return
+        allocate(ramp(size(enrichment_values, 2)))
+        call blending_ramp(base_values, enriched_mask, ramp)
+        do component = 1, size(enrichment_values, 1)
+            corrected_values(component, :) = ramp*enrichment_values(component, :)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_vector_blending_corrected_enrichment
+
+    subroutine evaluate_vector_blending_corrected_enrichment_jvp( &
+            base_values, enriched_mask, enrichment_values, base_dot, &
+            enrichment_dot, corrected_dot, status)
+        real(dp), intent(in) :: base_values(:, :), enrichment_values(:, :)
+        logical, intent(in) :: enriched_mask(:)
+        real(dp), intent(in) :: base_dot(:, :), enrichment_dot(:, :)
+        real(dp), intent(out) :: corrected_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), allocatable :: ramp(:), ramp_dot(:)
+        integer :: component
+
+        corrected_dot = 0.0_dp
+        call validate_vector_blending_inputs( &
+            base_values, enriched_mask, enrichment_values, corrected_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(base_dot, 1) /= size(base_values, 1) .or. &
+            size(base_dot, 2) /= size(base_values, 2) .or. &
+            size(enrichment_dot, 1) /= size(enrichment_values, 1) .or. &
+            size(enrichment_dot, 2) /= size(enrichment_values, 2) .or. &
+            any(.not. ieee_is_finite(base_dot)) .or. &
+            any(.not. ieee_is_finite(enrichment_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "vector corrected enrichment JVP has incompatible increments")
+            return
+        end if
+        allocate(ramp(size(enrichment_values, 2)), &
+            ramp_dot(size(enrichment_values, 2)))
+        call blending_ramp(base_values, enriched_mask, ramp)
+        call blending_ramp(base_dot, enriched_mask, ramp_dot)
+        do component = 1, size(enrichment_values, 1)
+            corrected_dot(component, :) = ramp_dot*enrichment_values(component, :) + &
+                ramp*enrichment_dot(component, :)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_vector_blending_corrected_enrichment_jvp
+
+    subroutine evaluate_vector_blending_corrected_enrichment_vjp( &
+            base_values, enriched_mask, enrichment_values, corrected_bar, &
+            base_bar, enrichment_bar, status)
+        real(dp), intent(in) :: base_values(:, :), enrichment_values(:, :)
+        logical, intent(in) :: enriched_mask(:)
+        real(dp), intent(in) :: corrected_bar(:, :)
+        real(dp), intent(out) :: base_bar(:, :), enrichment_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp), allocatable :: ramp(:)
+        integer :: component, node
+
+        base_bar = 0.0_dp
+        enrichment_bar = 0.0_dp
+        call validate_vector_blending_inputs( &
+            base_values, enriched_mask, enrichment_values, corrected_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(base_bar, 1) /= size(base_values, 1) .or. &
+            size(base_bar, 2) /= size(base_values, 2) .or. &
+            size(enrichment_bar, 1) /= size(enrichment_values, 1) .or. &
+            size(enrichment_bar, 2) /= size(enrichment_values, 2)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "vector corrected enrichment VJP has incompatible cotangents")
+            return
+        end if
+        allocate(ramp(size(enrichment_values, 2)))
+        call blending_ramp(base_values, enriched_mask, ramp)
+        do node = 1, size(base_values, 1)
+            if (enriched_mask(node)) then
+                do component = 1, size(enrichment_values, 1)
+                    base_bar(node, :) = base_bar(node, :) + &
+                        corrected_bar(component, :)*enrichment_values(component, :)
+                end do
+            end if
+        end do
+        do component = 1, size(enrichment_values, 1)
+            enrichment_bar(component, :) = corrected_bar(component, :)*ramp
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_vector_blending_corrected_enrichment_vjp
+
     subroutine validate_blending_inputs( &
             base_values, enriched_mask, enrichment_values, corrected_values, status)
         real(dp), intent(in) :: base_values(:, :), enrichment_values(:)
@@ -123,6 +224,31 @@ contains
         end if
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine validate_blending_inputs
+
+    subroutine validate_vector_blending_inputs( &
+            base_values, enriched_mask, enrichment_values, corrected_values, status)
+        real(dp), intent(in) :: base_values(:, :), enrichment_values(:, :)
+        logical, intent(in) :: enriched_mask(:)
+        real(dp), intent(in) :: corrected_values(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "vector corrected enrichment has incompatible arrays")
+        if (size(base_values, 1) < 1 .or. size(base_values, 2) < 1 .or. &
+            size(enriched_mask) /= size(base_values, 1) .or. &
+            size(enrichment_values, 1) < 1 .or. &
+            size(enrichment_values, 2) /= size(base_values, 2) .or. &
+            size(corrected_values, 1) /= size(enrichment_values, 1) .or. &
+            size(corrected_values, 2) /= size(base_values, 2)) return
+        if (any(.not. ieee_is_finite(base_values)) .or. &
+            any(.not. ieee_is_finite(enrichment_values)) .or. &
+            any(.not. ieee_is_finite(corrected_values))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "vector corrected enrichment received non-finite data")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_vector_blending_inputs
 
     pure subroutine blending_ramp(base_values, enriched_mask, ramp)
         real(dp), intent(in) :: base_values(:, :)
