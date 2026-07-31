@@ -475,7 +475,8 @@ module fortfem_api
     use fortfem_tetra_discontinuous_projection, only: &
         project_physical_tetra_discontinuous
     use fortfem_tetra_lagrange_arbitrary_order, only: &
-        assignment(=), evaluate_tetra_lagrange, initialize_tetra_lagrange, &
+        assignment(=), evaluate_tetra_lagrange, evaluate_tetra_lagrange_jvp, &
+        evaluate_tetra_lagrange_vjp, initialize_tetra_lagrange, &
         tetra_lagrange_barycentric_indices, tetra_lagrange_dof_count, &
         tetra_lagrange_nodes, tetra_lagrange_t
     use fortfem_tetra_lagrange_global_dof_map, only: &
@@ -580,6 +581,9 @@ module fortfem_api
         solve_symbolic_tetra_mixed_poisson_rt
     use fortfem_tetra_lagrange_solver_3d, only: &
         assignment(=), evaluate_tetra_lagrange_solution, &
+        evaluate_tetra_lagrange_solution_at_point, &
+        evaluate_tetra_lagrange_solution_at_point_jvp, &
+        evaluate_tetra_lagrange_solution_at_point_vjp, &
         evaluate_tetra_lagrange_solution_jvp, &
         evaluate_tetra_lagrange_solution_prepared, &
         evaluate_tetra_lagrange_solution_vjp, &
@@ -921,6 +925,9 @@ module fortfem_api
     public :: assemble_tetra_dg_source_load_samples_jvp
     public :: assemble_tetra_dg_source_load_samples_vjp
     public :: evaluate_tetra_lagrange_solution
+    public :: evaluate_tetra_lagrange_solution_at_point
+    public :: evaluate_tetra_lagrange_solution_at_point_jvp
+    public :: evaluate_tetra_lagrange_solution_at_point_vjp
     public :: evaluate_tetra_lagrange_solution_jvp
     public :: evaluate_tetra_lagrange_solution_vjp
     public :: evaluate_tetra_lagrange_solution_prepared
@@ -1028,6 +1035,8 @@ module fortfem_api
     public :: tetra_discontinuous_t
     public :: project_physical_tetra_discontinuous
     public :: evaluate_tetra_lagrange
+    public :: evaluate_tetra_lagrange_jvp
+    public :: evaluate_tetra_lagrange_vjp
     public :: initialize_tetra_lagrange
     public :: tetra_lagrange_dof_count
     public :: tetra_lagrange_barycentric_indices
