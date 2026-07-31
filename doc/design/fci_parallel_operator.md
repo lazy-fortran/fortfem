@@ -320,7 +320,12 @@ facets, zero-length traces, invalid indices, and non-finite geometry are
 rejected before any intersection is accepted. The primitive deliberately stops
 at the geometry event: sheath, Bohm, recycling, and material laws remain
 application-layer residuals, while the conservative terminal flux is a
-separate contract.
+separate contract. `assemble_fci_terminal_boundary_flux` is that algebraic
+contract: it accumulates signed terminal measures into canonical cells divided
+by their positive volumes, so the volume-weighted sum is exactly the integrated
+outward flux. Its fixed-owner JVP and real VJP are exposed for moving terminal
+weights, flux laws, and canonical volumes; owner changes remain discrete
+topology events.
 
 ## Provenance
 
