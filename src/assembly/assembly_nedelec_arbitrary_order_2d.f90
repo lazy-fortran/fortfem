@@ -29,6 +29,8 @@ module fortfem_assembly_nedelec_arbitrary_order_2d
     public :: assemble_triangle_nedelec_curl_mass_element_jvp
     public :: assemble_triangle_nedelec_curl_mass_element_vjp
     public :: assemble_triangle_nedelec_curl_mass_csc
+    public :: assemble_triangle_nedelec_curl_mass_csc_jvp
+    public :: assemble_triangle_nedelec_curl_mass_csc_vjp
     public :: assemble_triangle_nedelec_cell_tensor_csc
     public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_nedelec_cell_vector_load
@@ -460,6 +462,132 @@ contains
             matrix, status)
     end subroutine assemble_triangle_nedelec_curl_mass_csc
 
+    subroutine assemble_triangle_nedelec_curl_mass_csc_jvp( &
+            mesh, order, quadrature_degree, curl_coefficient, mass_tensor, &
+            mesh_vertices_dot, curl_coefficient_dot, mass_tensor_dot, &
+            matrix_dot, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_tensor(2, 2)
+        real(dp), intent(in) :: mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: curl_coefficient_dot, mass_tensor_dot(2, 2)
+        type(csc_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), global_dofs(:, :), rows(:)
+        integer, allocatable :: transforms(:, :)
+        real(dp), allocatable :: element_dot(:, :), values(:)
+        real(dp) :: vertices(2, 3), vertices_dot(2, 3)
+        integer :: column, entry, global_dof_count, local_dof_count
+        integer :: local_status, row, triangle
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Triangle Nedelec curl-mass JVP assembly failed")
+        if (order < 1 .or. quadrature_degree < 0) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh%vertices))) return
+        call build_triangle_trimmed_dof_map( &
+            mesh, order, global_dofs, transforms, global_dof_count, &
+            local_status)
+        if (local_status /= 0) return
+        local_dof_count = size(global_dofs, 1)
+        allocate(rows(mesh%n_triangles*local_dof_count**2))
+        allocate(columns(size(rows)), values(size(rows)))
+        entry = 0
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            vertices_dot = &
+                mesh_vertices_dot(:, mesh%triangles(:, triangle))
+            call assemble_triangle_nedelec_curl_mass_element_jvp( &
+                vertices, order, quadrature_degree, curl_coefficient, &
+                mass_tensor, vertices_dot, curl_coefficient_dot, &
+                mass_tensor_dot, element_dot, local_status)
+            if (local_status /= 0) return
+            do column = 1, local_dof_count
+                do row = 1, local_dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, triangle)
+                    columns(entry) = global_dofs(column, triangle)
+                    values(entry) = real( &
+                        transforms(row, triangle)* &
+                        transforms(column, triangle), dp)* &
+                        element_dot(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix_dot, status)
+    end subroutine assemble_triangle_nedelec_curl_mass_csc_jvp
+
+    subroutine assemble_triangle_nedelec_curl_mass_csc_vjp( &
+            mesh, order, quadrature_degree, curl_coefficient, mass_tensor, &
+            matrix_values_bar, mesh_vertices_bar, curl_coefficient_bar, &
+            mass_tensor_bar, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: order, quadrature_degree
+        real(dp), intent(in) :: curl_coefficient, mass_tensor(2, 2)
+        real(dp), intent(in) :: matrix_values_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: curl_coefficient_bar, mass_tensor_bar(2, 2)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_t) :: matrix
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: element_bar(:, :)
+        real(dp) :: local_curl_bar, local_tensor_bar(2, 2)
+        real(dp) :: local_vertices_bar(2, 3), vertices(2, 3)
+        integer :: column, global_dof_count, local_dof_count, local_status
+        integer :: node, row, triangle
+
+        mesh_vertices_bar = 0.0_dp
+        curl_coefficient_bar = 0.0_dp
+        mass_tensor_bar = 0.0_dp
+        call assemble_triangle_nedelec_curl_mass_csc( &
+            mesh, order, quadrature_degree, matrix, status, curl_coefficient, &
+            mass_tensor=mass_tensor)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh%vertices)) .or. &
+            size(matrix_values_bar) /= matrix%nnz) then
+            call status_set( &
+                status, FORTSPARSE_INVALID_MATRIX, &
+                "Triangle Nedelec curl-mass VJP shapes differ")
+            return
+        end if
+        call build_triangle_trimmed_dof_map( &
+            mesh, order, global_dofs, transforms, global_dof_count, &
+            local_status)
+        if (local_status /= 0) return
+        local_dof_count = size(global_dofs, 1)
+        allocate(element_bar(local_dof_count, local_dof_count))
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            do column = 1, local_dof_count
+                do row = 1, local_dof_count
+                    element_bar(row, column) = real( &
+                        transforms(row, triangle)* &
+                        transforms(column, triangle), dp)*csc_bar_at( &
+                        matrix, matrix_values_bar, &
+                        global_dofs(row, triangle), &
+                        global_dofs(column, triangle))
+                end do
+            end do
+            call assemble_triangle_nedelec_curl_mass_element_vjp( &
+                vertices, order, quadrature_degree, curl_coefficient, &
+                mass_tensor, element_bar, local_vertices_bar, local_curl_bar, &
+                local_tensor_bar, local_status)
+            if (local_status /= 0) return
+            do node = 1, 3
+                mesh_vertices_bar(:, mesh%triangles(node, triangle)) = &
+                    mesh_vertices_bar(:, mesh%triangles(node, triangle)) + &
+                    local_vertices_bar(:, node)
+            end do
+            curl_coefficient_bar = curl_coefficient_bar + local_curl_bar
+            mass_tensor_bar = mass_tensor_bar + local_tensor_bar
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_nedelec_curl_mass_csc_vjp
+
     subroutine assemble_triangle_nedelec_cell_tensor_csc( &
             mesh, order, quadrature_degree, curl_values, mass_tensors, &
             matrix, status)
@@ -686,5 +814,22 @@ contains
         vertices_bar(:, 2) = jacobian_bar(:, 1)
         vertices_bar(:, 3) = jacobian_bar(:, 2)
     end subroutine triangle_jacobian_vjp
+
+    pure real(dp) function csc_bar_at( &
+            matrix, values_bar, row, column) result(value_bar)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: values_bar(:)
+        integer, intent(in) :: row, column
+
+        integer :: entry
+
+        value_bar = 0.0_dp
+        do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+            if (matrix%row_idx(entry) == row) then
+                value_bar = values_bar(entry)
+                return
+            end if
+        end do
+    end function csc_bar_at
 
 end module fortfem_assembly_nedelec_arbitrary_order_2d
