@@ -624,7 +624,7 @@ half-integer toroidal `P/Q` API. It also provides standard orthonormal complex
 `spherical_harmonic` values and analytical theta/phi derivatives on the closed
 polar interval (with derivative evaluation intentionally undefined at its
 poles). The [pinned FortNum API
-revision](https://github.com/lazy-fortran/fortnum/blob/c6489c6/docs/api.md)
+revision](https://github.com/lazy-fortran/fortnum/blob/b5afac7/docs/api.md)
 records the domains, normalization, derivative convention, DLMF provenance,
 and the current moderate-degree limitation. The remaining foundation is
 stable high-order and near-cut continuation, spherical harmonics and products,
@@ -1679,7 +1679,7 @@ official documentation, or official repositories where possible.
 - [DLMF 14.3: definitions and hypergeometric forms](https://dlmf.nist.gov/14.3)
 - [DLMF 14.10: Legendre recurrences and derivatives](https://dlmf.nist.gov/14.10)
 - [DLMF 14.19: toroidal (half-integer) specialization](https://dlmf.nist.gov/14.19)
-- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/c6489c6/docs/api.md)
+- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/b5afac7/docs/api.md)
 
 ### MHD, equilibria, and linear response
 
