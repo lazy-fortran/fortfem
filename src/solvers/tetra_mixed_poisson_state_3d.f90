@@ -7,6 +7,10 @@ module fortfem_tetra_mixed_poisson_state_3d
     use fortfem_kinds, only: dp
     use fortfem_mixed_rt_system, only: solve_mixed_rt_system, &
         solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
+    use fortfem_tetra_mixed_poisson_3d, only: &
+        assemble_tetra_dg_source_load_samples, &
+        assemble_tetra_dg_source_load_samples_jvp, &
+        assemble_tetra_dg_source_load_samples_vjp
     use fortsparse, only: csc_t, fortsparse_status_t
     implicit none
 
@@ -15,8 +19,111 @@ module fortfem_tetra_mixed_poisson_state_3d
     public :: solve_tetra_mixed_poisson_state
     public :: solve_tetra_mixed_poisson_state_jvp
     public :: solve_tetra_mixed_poisson_state_vjp
+    public :: solve_tetra_mixed_poisson_sampled_state
+    public :: solve_tetra_mixed_poisson_sampled_state_jvp
+    public :: solve_tetra_mixed_poisson_sampled_state_vjp
 
 contains
+
+    subroutine solve_tetra_mixed_poisson_sampled_state( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, source_values, flux, pressure, status)
+        real(dp), intent(in) :: vertices(:, :), mass_coefficient
+        real(dp), intent(in) :: source_values(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: flux(:), pressure(:)
+        integer, intent(out) :: status
+
+        type(fortsparse_status_t) :: sparse_status
+        real(dp), allocatable :: load(:)
+
+        status = 1
+        call assemble_tetra_dg_source_load_samples( &
+            vertices, tetrahedra, degree, quadrature_degree, source_values, &
+            load, sparse_status)
+        if (sparse_status%code /= 0) return
+        call solve_tetra_mixed_poisson_state( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, load, flux, pressure, status)
+    end subroutine solve_tetra_mixed_poisson_sampled_state
+
+    subroutine solve_tetra_mixed_poisson_sampled_state_jvp( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, source_values, source_gradients, vertices_dot, &
+            mass_coefficient_dot, source_parameter_dot, flux_dot, &
+            pressure_dot, status)
+        real(dp), intent(in) :: vertices(:, :), vertices_dot(:, :)
+        real(dp), intent(in) :: mass_coefficient, mass_coefficient_dot
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), allocatable, intent(out) :: flux_dot(:), pressure_dot(:)
+        integer, intent(out) :: status
+
+        type(fortsparse_status_t) :: sparse_status
+        real(dp), allocatable :: load(:), load_dot(:)
+
+        status = 1
+        call assemble_tetra_dg_source_load_samples( &
+            vertices, tetrahedra, degree, quadrature_degree, source_values, &
+            load, sparse_status)
+        if (sparse_status%code /= 0) return
+        call assemble_tetra_dg_source_load_samples_jvp( &
+            vertices, tetrahedra, degree, quadrature_degree, source_values, &
+            source_gradients, vertices_dot, source_parameter_dot, load_dot, &
+            sparse_status)
+        if (sparse_status%code /= 0) return
+        call solve_tetra_mixed_poisson_state_jvp( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, load, vertices_dot, mass_coefficient_dot, &
+            load_dot, flux_dot, pressure_dot, status)
+    end subroutine solve_tetra_mixed_poisson_sampled_state_jvp
+
+    subroutine solve_tetra_mixed_poisson_sampled_state_vjp( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, source_values, source_gradients, flux, &
+            pressure, flux_bar, pressure_bar, vertices_bar, &
+            mass_coefficient_bar, source_values_bar, status)
+        real(dp), intent(in) :: vertices(:, :), mass_coefficient
+        real(dp), intent(in) :: source_values(:, :)
+        real(dp), intent(in) :: source_gradients(:, :, :)
+        real(dp), intent(in) :: flux(:), pressure(:), flux_bar(:)
+        real(dp), intent(in) :: pressure_bar(:)
+        integer, intent(in) :: tetrahedra(:, :), degree, quadrature_degree
+        real(dp), intent(out) :: vertices_bar(:, :)
+        real(dp), intent(out) :: mass_coefficient_bar
+        real(dp), intent(out) :: source_values_bar(:, :)
+        integer, intent(out) :: status
+
+        type(fortsparse_status_t) :: sparse_status
+        real(dp), allocatable :: load(:), load_bar(:)
+        real(dp) :: load_vertices_bar(size(vertices, 1), size(vertices, 2))
+
+        vertices_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        status = 1
+        call assemble_tetra_dg_source_load_samples( &
+            vertices, tetrahedra, degree, quadrature_degree, source_values, &
+            load, sparse_status)
+        if (sparse_status%code /= 0) return
+        allocate(load_bar(size(load)))
+        call solve_tetra_mixed_poisson_state_vjp( &
+            vertices, tetrahedra, degree, quadrature_degree, &
+            mass_coefficient, load, flux, pressure, flux_bar, pressure_bar, &
+            vertices_bar, mass_coefficient_bar, load_bar, status)
+        if (status /= 0) return
+        call assemble_tetra_dg_source_load_samples_vjp( &
+            vertices, tetrahedra, degree, quadrature_degree, source_values, &
+            source_gradients, load_bar, load_vertices_bar, source_values_bar, &
+            sparse_status)
+        if (sparse_status%code /= 0) then
+            status = sparse_status%code
+            return
+        end if
+        vertices_bar = vertices_bar + load_vertices_bar
+    end subroutine solve_tetra_mixed_poisson_sampled_state_vjp
 
     subroutine solve_tetra_mixed_poisson_state( &
             vertices, tetrahedra, degree, quadrature_degree, &
