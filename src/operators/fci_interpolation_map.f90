@@ -8,6 +8,10 @@ module fortfem_fci_interpolation_map
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_generated_fci_quadratic_lagrange, only: &
         generated_fci_quadratic_lagrange_weights
+    use fortfem_generated_fci_quadratic_lagrange_jvp, only: &
+        generated_fci_quadratic_lagrange_weights_jvp
+    use fortfem_generated_fci_quadratic_lagrange_vjp, only: &
+        generated_fci_quadratic_lagrange_weights_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
@@ -18,6 +22,8 @@ module fortfem_fci_interpolation_map
     public :: build_fci_linear_interpolation_map_1d_jvp
     public :: build_fci_linear_interpolation_map_1d_vjp
     public :: build_fci_quadratic_interpolation_map_1d
+    public :: build_fci_quadratic_interpolation_map_1d_jvp
+    public :: build_fci_quadratic_interpolation_map_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
     public :: build_fci_bilinear_interpolation_map_2d_jvp
     public :: build_fci_bilinear_interpolation_map_2d_vjp
@@ -273,6 +279,143 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_quadratic_interpolation_map_1d
+
+    subroutine build_fci_quadratic_interpolation_map_1d_jvp( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            source_coordinates_dot, target_coordinates_dot, &
+            interpolation_map_dot, status)
+        !! Apply the fixed-stencil JVP of the quadratic map.
+        real(dp), intent(in) :: source_coordinates(:)
+        real(dp), intent(in) :: target_coordinates(:)
+        integer, intent(in) :: stencil_indices(:, :)
+        real(dp), intent(in) :: source_coordinates_dot(:)
+        real(dp), intent(in) :: target_coordinates_dot(:)
+        real(dp), intent(out) :: interpolation_map_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: source_count, target_count, row
+        integer :: first_node, second_node, third_node
+        real(dp) :: nodes(3), nodes_dot(3)
+        real(dp) :: weight_1_dot, weight_2_dot, weight_3_dot
+        real(dp), allocatable :: interpolation_map(:, :)
+
+        interpolation_map_dot = 0.0_dp
+        source_count = size(source_coordinates)
+        target_count = size(target_coordinates)
+        if (source_count < 3 .or. target_count < 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic JVP received incompatible coordinates")
+            return
+        end if
+        allocate(interpolation_map(target_count, source_count))
+        call build_fci_quadratic_interpolation_map_1d( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(source_coordinates_dot) /= source_count .or. &
+            size(target_coordinates_dot) /= target_count .or. &
+            size(interpolation_map_dot, 1) /= target_count .or. &
+            size(interpolation_map_dot, 2) /= source_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic JVP received incompatible tangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(source_coordinates_dot)) .or. &
+            any(.not. ieee_is_finite(target_coordinates_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic JVP received non-finite tangents")
+            return
+        end if
+
+        do row = 1, target_count
+            first_node = stencil_indices(1, row)
+            second_node = stencil_indices(2, row)
+            third_node = stencil_indices(3, row)
+            nodes = source_coordinates([first_node, second_node, third_node])
+            nodes_dot = source_coordinates_dot( &
+                [first_node, second_node, third_node])
+            call generated_fci_quadratic_lagrange_weights_jvp( &
+                target_coordinates(row), nodes(1), nodes(2), nodes(3), &
+                target_coordinates_dot(row), nodes_dot(1), nodes_dot(2), &
+                nodes_dot(3), weight_1_dot, weight_2_dot, weight_3_dot)
+            interpolation_map_dot(row, first_node) = weight_1_dot
+            interpolation_map_dot(row, second_node) = weight_2_dot
+            interpolation_map_dot(row, third_node) = weight_3_dot
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_quadratic_interpolation_map_1d_jvp
+
+    subroutine build_fci_quadratic_interpolation_map_1d_vjp( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_map_bar, source_coordinates_bar, &
+            target_coordinates_bar, status)
+        !! Apply the real VJP of the fixed-stencil quadratic map.
+        real(dp), intent(in) :: source_coordinates(:)
+        real(dp), intent(in) :: target_coordinates(:)
+        integer, intent(in) :: stencil_indices(:, :)
+        real(dp), intent(in) :: interpolation_map_bar(:, :)
+        real(dp), intent(out) :: source_coordinates_bar(:)
+        real(dp), intent(out) :: target_coordinates_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: source_count, target_count, row
+        integer :: first_node, second_node, third_node
+        real(dp) :: nodes(3), weight_bar(3)
+        real(dp) :: target_bar, node_1_bar, node_2_bar, node_3_bar
+        real(dp), allocatable :: interpolation_map(:, :)
+
+        source_coordinates_bar = 0.0_dp
+        target_coordinates_bar = 0.0_dp
+        source_count = size(source_coordinates)
+        target_count = size(target_coordinates)
+        if (source_count < 3 .or. target_count < 1) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic VJP received incompatible coordinates")
+            return
+        end if
+        allocate(interpolation_map(target_count, source_count))
+        call build_fci_quadratic_interpolation_map_1d( &
+            source_coordinates, target_coordinates, stencil_indices, &
+            interpolation_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(interpolation_map_bar, 1) /= target_count .or. &
+            size(interpolation_map_bar, 2) /= source_count .or. &
+            size(source_coordinates_bar) /= source_count .or. &
+            size(target_coordinates_bar) /= target_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic VJP received incompatible cotangents")
+            return
+        end if
+        if (any(.not. ieee_is_finite(interpolation_map_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI quadratic VJP received non-finite cotangents")
+            return
+        end if
+
+        do row = 1, target_count
+            first_node = stencil_indices(1, row)
+            second_node = stencil_indices(2, row)
+            third_node = stencil_indices(3, row)
+            nodes = source_coordinates([first_node, second_node, third_node])
+            weight_bar = [ &
+                interpolation_map_bar(row, first_node), &
+                interpolation_map_bar(row, second_node), &
+                interpolation_map_bar(row, third_node)]
+            call generated_fci_quadratic_lagrange_weights_vjp( &
+                target_coordinates(row), nodes(1), nodes(2), nodes(3), &
+                weight_bar(1), weight_bar(2), weight_bar(3), target_bar, &
+                node_1_bar, node_2_bar, node_3_bar)
+            target_coordinates_bar(row) = target_coordinates_bar(row) + &
+                target_bar
+            source_coordinates_bar(first_node) = &
+                source_coordinates_bar(first_node) + node_1_bar
+            source_coordinates_bar(second_node) = &
+                source_coordinates_bar(second_node) + node_2_bar
+            source_coordinates_bar(third_node) = &
+                source_coordinates_bar(third_node) + node_3_bar
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_quadratic_interpolation_map_1d_vjp
 
     subroutine build_fci_bilinear_interpolation_map_2d( &
             source_x, source_y, target_x, target_y, interpolation_map, status)

@@ -557,7 +557,8 @@ guard this contract. The public 1D linear interpolation-map builder now checks
 partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
 and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
 map now accepts explicit three-node stencils and reproduces quadratic fields
-on nonuniform slices; higher-order interpolation Jacobians, curved
+on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
+finite-difference oracles. Higher-order interpolation Jacobians, curved
 support-volume measures, and anisotropy-aware preconditioning remain active
 work. A batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
@@ -943,8 +944,9 @@ gallery example.
   its fixed-topology JVP/VJP provide independent partition/affine and
   dot-product oracles, and a 2D Cartesian bilinear builder now covers a
   genuine poloidal slice. A generated quadratic Lagrange map covers explicit
-  three-node nonuniform stencils on 1D slices. The RK4 tracer also has a tangent
-  callback path with an exponential endpoint oracle. The positive staggered
+  three-node nonuniform stencils on 1D slices, including fixed-stencil JVP/VJP
+  products. The RK4 tracer also has a tangent callback path with an exponential
+  endpoint oracle. The positive staggered
   flux-box volume constructor
   now covers the traced expansion/area/(B_\varphi) product with pinned
   FortSym-generated value/JVP/VJP kernels. Fixed-cell 2D map JVP/VJP products

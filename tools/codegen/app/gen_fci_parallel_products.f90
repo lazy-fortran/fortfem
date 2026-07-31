@@ -20,12 +20,15 @@ program gen_fci_parallel_products
     type(expr_t) :: diffusion_vjp(8), diffusion_output_bar(2)
     type(expr_t) :: diagonal_variables(5), diagonal_output(1)
     type(expr_t) :: quadratic_variables(4), quadratic_outputs(3)
+    type(expr_t) :: quadratic_variables_dot(4), quadratic_outputs_jvp(3)
+    type(expr_t) :: quadratic_output_bar(3), quadratic_outputs_vjp(4)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     character(:), allocatable :: diffusion_code, diffusion_jvp_code
     character(:), allocatable :: diffusion_vjp_code
     character(:), allocatable :: diagonal_code
     character(:), allocatable :: quadratic_code
+    character(:), allocatable :: quadratic_jvp_code, quadratic_vjp_code
     integer :: ios, root, unit
 
     call arena%init()
@@ -195,6 +198,40 @@ program gen_fci_parallel_products
     spec%outputs = [str("weight_1"), str("weight_2"), str("weight_3")]
     quadratic_code = chars(emit_kernel(quadratic_outputs, spec))
 
+    quadratic_variables_dot = [ &
+        sym(arena, "target_dot"), sym(arena, "node_1_dot"), &
+        sym(arena, "node_2_dot"), sym(arena, "node_3_dot")]
+    quadratic_output_bar = [ &
+        sym(arena, "weight_1_bar"), sym(arena, "weight_2_bar"), &
+        sym(arena, "weight_3_bar")]
+    quadratic_outputs_jvp = jvp( &
+        quadratic_outputs, quadratic_variables, quadratic_variables_dot)
+    quadratic_outputs_vjp = vjp( &
+        quadratic_outputs, quadratic_variables, quadratic_output_bar)
+    call simplify_all(quadratic_outputs_jvp)
+    call simplify_all(quadratic_outputs_vjp)
+
+    call initialize_spec( &
+        spec, "generated_fci_quadratic_lagrange_weights_jvp", &
+        "fortfem_generated_fci_quadratic_lagrange_jvp", 8, 3)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3"), &
+        str("target_dot"), str("node_1_dot"), str("node_2_dot"), &
+        str("node_3_dot")]
+    spec%outputs = [str("weight_1_dot"), str("weight_2_dot"), &
+        str("weight_3_dot")]
+    quadratic_jvp_code = chars(emit_kernel(quadratic_outputs_jvp, spec))
+
+    call initialize_spec( &
+        spec, "generated_fci_quadratic_lagrange_weights_vjp", &
+        "fortfem_generated_fci_quadratic_lagrange_vjp", 7, 4)
+    spec%args = [ &
+        str("target"), str("node_1"), str("node_2"), str("node_3"), &
+        str("weight_1_bar"), str("weight_2_bar"), str("weight_3_bar")]
+    spec%outputs = [str("target_bar"), str("node_1_bar"), str("node_2_bar"), &
+        str("node_3_bar")]
+    quadratic_vjp_code = chars(emit_kernel(quadratic_outputs_vjp, spec))
+
     open (newunit=unit, &
         file=generated_path("fortfem_fci_parallel_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -207,6 +244,8 @@ program gen_fci_parallel_products
     write (unit, "(a)") diffusion_vjp_code(:len(diffusion_vjp_code) - 1)
     write (unit, "(a)") diagonal_code(:len(diagonal_code) - 1)
     write (unit, "(a)") quadratic_code(:len(quadratic_code) - 1)
+    write (unit, "(a)") quadratic_jvp_code(:len(quadratic_jvp_code) - 1)
+    write (unit, "(a)") quadratic_vjp_code(:len(quadratic_vjp_code) - 1)
     close (unit)
 
 contains
