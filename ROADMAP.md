@@ -830,8 +830,12 @@ gallery example.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and reduced-MHD operators.
 
-### Phase 6: Structure-preserving time evolution: **planned**
+### Phase 6: Structure-preserving time evolution: **active**
 
+- The public `advance_mixed_wave_midpoint` step now provides the common
+  first-order pressure/velocity, displacement/momentum, and port-Hamiltonian
+  Cayley contract. Its independent test checks the oscillator map, energy, and
+  signed-step reversibility.
 - Variational/symplectic and Poisson building blocks for ideal terms.
 - Energy-dissipative integrators for resistive and viscous terms.
 - Symmetric splitting, implicit midpoint/Cayley, discrete-gradient or
