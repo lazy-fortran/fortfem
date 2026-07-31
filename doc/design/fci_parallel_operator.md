@@ -7,6 +7,12 @@ maps are supplied by a geometry or field-line-tracing service, while FortFEM
 assembles the sparse staggered gradient and its conservative support
 divergence.
 
+The geometry side now also exposes `trace_fci_field_line_rk4`, a fixed-step
+classical RK4 service with a callback for `d(point)/dphi`. It is intentionally
+agnostic about magnetic-field storage and mesh lookup. A constant-velocity
+oracle is exact, and an exponential test checks fourth-order refinement before
+the resulting points are passed to a separate interpolation/map builder.
+
 For segment `k`, let `Q_plus(k)` map the upper poloidal plane to staggered flux
 boxes and `Q_minus(k)` map the lower plane. With line lengths `ell`, the
 gradient is
