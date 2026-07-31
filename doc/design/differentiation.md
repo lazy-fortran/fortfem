@@ -503,3 +503,11 @@ state without entering LAPACK. A tangent solve propagates simultaneous
 boundary-value and surface motion. One transposed adjoint solve returns the
 boundary-value cotangent and the complete surface shape gradient for arbitrary
 density and capacity objectives.
+
+The Helmholtz Dirichlet BEM state uses the analogous complex implicit boundary
+added in FortNum. Its JVP differentiates surface motion, complex boundary data,
+and wave number together. Its VJP solves the conjugate-transposed dense system
+once and returns real surface and wave-number cotangents plus a complex
+boundary-data cotangent. Surface panel areas and their products are shared
+geometry primitives rather than duplicated by the Laplace and Helmholtz state
+wrappers.
