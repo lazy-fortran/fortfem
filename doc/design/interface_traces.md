@@ -54,6 +54,11 @@ consistency terms for independent test and trial traces, with the same
 `assemble_hdg_static_condensation` provides the local Schur complement
 `S=D-C A^{-1}B` and condensed load `g-C A^{-1}f`; its JVP/VJP differentiate
 the implicit interior solve and are suitable for global skeleton assembly.
+`assemble_scalar_numerical_flux` supplies conservative central, upwind, and
+Lax--Friedrichs scalar interface fluxes. Plus/minus residuals are exactly
+opposite, and a quadratic-entropy production diagnostic is returned. The
+fixed-topology JVP/VJP covers states, speeds, caller dissipation, and weights;
+zero-speed upwind points are rejected as nondifferentiable events.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
