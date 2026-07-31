@@ -40,19 +40,20 @@ differentiate both source-grid and target-point coordinates, rejecting a
 target on a source grid line.  A higher-order or unstructured stencil builder
 can adopt the same map/oracle interface later.
 
-`build_fci_quadratic_interpolation_map_1d` and
-`build_fci_cubic_interpolation_map_1d` provide fixed three- and four-node
-Lagrange stencils for nonuniform source slices.  Their generated FortSym
-value, JVP, and VJP kernels are exposed through the neutral API.  The cubic
-map reproduces every polynomial through degree three, preserves partition of
-unity, and rejects repeated local nodes before evaluating a denominator.  The
-JVP and VJP are fixed-topology operations: changing stencil connectivity or
-crossing a source node requires rebuilding the map.
+`build_fci_quadratic_interpolation_map_1d`,
+`build_fci_cubic_interpolation_map_1d`, and
+`build_fci_quartic_interpolation_map_1d` provide fixed three-, four-, and
+five-node Lagrange stencils for nonuniform source slices.  Their generated
+FortSym value, JVP, and VJP kernels are exposed through the neutral API.  The
+quartic map reproduces every polynomial through degree four, preserves
+partition of unity, and rejects repeated local nodes before evaluating a
+denominator.  The JVP and VJP are fixed-topology operations: changing stencil
+connectivity or crossing a source node requires rebuilding the map.
 
-The focused tests check the exact affine and cubic polynomial oracles,
-partition of unity, endpoint handling, fixed-topology 1D and bilinear JVP/VJP
-identities, cubic finite-difference/JVP and real-adjoint identities, and
-invalid-input paths.  Stencils beyond cubic, curved-cell quadrature, and
+The focused tests check the exact affine, cubic, and quartic polynomial
+oracles, partition of unity, endpoint handling, fixed-topology 1D and
+bilinear JVP/VJP identities, cubic and quartic finite-difference/JVP and
+real-adjoint identities, and invalid-input paths.  Curved-cell quadrature and
 connectivity rebuilds remain separate roadmap items.
 
 ## Provenance
