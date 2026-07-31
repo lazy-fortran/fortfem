@@ -24,6 +24,8 @@ module fortfem_api
         evaluate_level_set_tetra_cut_quadrature_3d_jvp
     use fortfem_fci_terminal_segment_2d, only: &
         find_fci_first_hit_segment_2d, find_fci_first_hit_segment_2d_jvp
+    use fortfem_fci_terminal_triangle_3d, only: &
+        find_fci_first_hit_triangle_3d, find_fci_first_hit_triangle_3d_jvp
     use fortfem_fci_terminal_boundary_flux, only: &
         assemble_fci_terminal_boundary_flux, &
         assemble_fci_terminal_boundary_flux_jvp, &
@@ -976,6 +978,8 @@ module fortfem_api
     public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
     public :: find_fci_first_hit_segment_2d
     public :: find_fci_first_hit_segment_2d_jvp
+    public :: find_fci_first_hit_triangle_3d
+    public :: find_fci_first_hit_triangle_3d_jvp
     public :: assemble_fci_terminal_boundary_flux
     public :: assemble_fci_terminal_boundary_flux_jvp
     public :: assemble_fci_terminal_boundary_flux_vjp
