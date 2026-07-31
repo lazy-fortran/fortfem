@@ -38,6 +38,11 @@ The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
 fixed-topology direct-solve reduction for curl--curl nullspaces, including the
 control-mesh rule needed by high-order FEEC and IGA/mortar spaces.
 
+The [FEEC exact-sequence diagnostic](feec_exact_sequence.html) exposes the
+metric-independent `curl(grad)` and `div(curl)` composition defects with
+value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
+maps.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths;
 ILU-family options remain the nonsymmetric counterpart.

@@ -1242,7 +1242,9 @@ gallery example.
   static condensation now have a local differentiable Schur primitive;
   `assemble_hdg_global_skeleton` now supplies a signed-map dense reference
   assembler with value/JVP/VJP actions; sparse accumulation and compatible
-  flux elimination remain.
+  flux elimination remain. `assemble_feec_exact_sequence` now exposes the
+  metric-independent `curl(grad)` and `div(curl)` defects with independent
+  value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic maps.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind vector flux interfaces now include scalar and

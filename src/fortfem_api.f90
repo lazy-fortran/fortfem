@@ -352,6 +352,8 @@ module fortfem_api
         assemble_hdg_static_condensation_jvp, assemble_hdg_static_condensation_vjp
     use fortfem_hdg_global_skeleton, only: assemble_hdg_global_skeleton, &
         assemble_hdg_global_skeleton_jvp, assemble_hdg_global_skeleton_vjp
+    use fortfem_feec_exact_sequence, only: assemble_feec_exact_sequence, &
+        assemble_feec_exact_sequence_jvp, assemble_feec_exact_sequence_vjp
     use fortfem_scalar_numerical_flux, only: assemble_scalar_numerical_flux, &
         assemble_scalar_numerical_flux_jvp, assemble_scalar_numerical_flux_vjp, &
         NUMERICAL_FLUX_CENTRAL, NUMERICAL_FLUX_UPWIND, &
@@ -1797,6 +1799,9 @@ module fortfem_api
     public :: assemble_hdg_global_skeleton
     public :: assemble_hdg_global_skeleton_jvp
     public :: assemble_hdg_global_skeleton_vjp
+    public :: assemble_feec_exact_sequence
+    public :: assemble_feec_exact_sequence_jvp
+    public :: assemble_feec_exact_sequence_vjp
     public :: assemble_scalar_numerical_flux
     public :: assemble_scalar_numerical_flux_jvp
     public :: assemble_scalar_numerical_flux_vjp
