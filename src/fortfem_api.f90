@@ -267,6 +267,9 @@ module fortfem_api
         assemble_laplace_single_layer_p0_3d, &
         assemble_laplace_single_layer_p0_adaptive_3d, &
         solve_laplace_dirichlet_p0_3d
+    use fortfem_laplace_bem_state_ad_3d, only: &
+        solve_laplace_dirichlet_p0_3d_jvp, &
+        solve_laplace_dirichlet_p0_3d_vjp
     use fortfem_laplace_panel_pair_3d, only: &
         assemble_laplace_single_layer_p0_3d_jvp, &
         assemble_laplace_single_layer_p0_3d_vjp, &
@@ -736,6 +739,8 @@ module fortfem_api
     public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_calderon_p1_p0_3d
     public :: solve_laplace_dirichlet_p0_3d
+    public :: solve_laplace_dirichlet_p0_3d_jvp
+    public :: solve_laplace_dirichlet_p0_3d_vjp
     public :: estimate_helmholtz_p0_two_level_residual_3d
     public :: estimate_laplace_p0_two_level_residual_3d
     public :: mark_bem_dorfler
