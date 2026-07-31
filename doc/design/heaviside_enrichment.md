@@ -33,6 +33,14 @@ call evaluate_shifted_enriched_basis_jvp( &
 call evaluate_shifted_enriched_basis_vjp( &
     base_values, level_values, anchor_values, enriched_bar, base_bar, &
     level_bar, anchor_bar, status)
+call evaluate_shifted_vector_enriched_basis( &
+    base_values, level_values, anchor_values, enriched_values, status)
+call evaluate_shifted_vector_enriched_basis_jvp( &
+    base_values, level_values, anchor_values, base_dot, level_dot, anchor_dot, &
+    enriched_dot, status)
+call evaluate_shifted_vector_enriched_basis_vjp( &
+    base_values, level_values, anchor_values, enriched_bar, base_bar, &
+    level_bar, anchor_bar, status)
 ```
 
 The activation sign is a fixed-topology discrete choice. Away from `phi=0`
@@ -48,7 +56,15 @@ the level-set cotangents remain zero on a fixed sign pattern. This keeps
 partition-of-unity composition explicit without pretending that enrichment
 activation or cut connectivity is differentiable across a topology event.
 
+`evaluate_shifted_vector_enriched_basis` applies the same scalar activation
+componentwise to a rank-two array of vector basis values. It is deliberately
+agnostic about the vector representation, so the caller can supply covariant
+or contravariant Piola values from an H(curl) or H(div) space. The JVP uses
+the componentwise product rule and the VJP returns the base-value cotangent;
+the scalar level-set VJP remains zero on a fixed topology.
+
 `test_heaviside_enrichment` checks the independent sign oracle, fixed-sign
 zero derivative identities, and topology-event rejection. The companion
-`test_shifted_enriched_basis` checks the product oracle and real adjoint
-identity.
+`test_shifted_enriched_basis` checks the scalar product oracle and real
+adjoint identity. `test_shifted_vector_enriched_basis` repeats those checks
+for a two-component vector base and rejects a zero-level topology event.

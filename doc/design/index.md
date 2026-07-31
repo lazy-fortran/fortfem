@@ -75,7 +75,8 @@ elastic stress, or Maxwell-stress blocks without selecting an application law.
 
 The [shifted Heaviside enrichment](heaviside_enrichment.html) documents the
 first XFEM/GFEM partition-of-unity enrichment and its explicit topology-event
-differentiation contract.
+differentiation contract, including scalar and componentwise vector bases for
+H(curl)/H(div) composition.
 
 The [nonlinear material-surface flux contract](nonlinear_surface_flux.html)
 keeps application wall and sheath laws separate from orientation-preserving
