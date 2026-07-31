@@ -53,5 +53,14 @@ three or four edge intersections, orders the convex polygon in its physical
 plane, and returns its area and gradient-oriented normal. Its test covers both
 triangular and quadrilateral cuts against independent edge points and plane
 geometry, as well as uncut, nodal-topology, and degenerate-tetrahedron
-rejection. Tetrahedral cut volumes, centroids, and their fixed-topology JVPs
-remain the next 3D geometry layer.
+rejection. Fixed-topology tetrahedral JVPs and internal-manifold graphs remain
+the next 3D geometry layer.
+
+`evaluate_level_set_tetra_cut_quadrature_3d` now supplies that volume layer for
+linear tetrahedra. It clips each oriented parent face, closes the positive and
+negative polyhedra with the interface polygon, and accumulates exact volumes
+and first moments from oriented tetrahedral fans. The resulting degree-one
+quadrature data is checked against analytic one-corner cuts, uncut limits,
+quadrilateral cuts, and volume/first-moment conservation. Fixed-topology
+tetrahedral JVPs and internal-manifold graphs remain separate follow-up
+contracts.

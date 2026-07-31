@@ -890,7 +890,9 @@ gallery example.
   derivative, with central-difference and area/first-moment conservation
   oracles. A 3D tetrahedral level-set interface now returns ordered triangular
   or quadrilateral cut polygons, area, and gradient-oriented normal with
-  independent plane/intersection tests. Tetra cut volumes, JVPs, and
+  independent plane/intersection tests. Exact positive/negative tetra cut
+  volumes and centroids now close the degree-one volume/first-moment contract
+  with analytic and conservation oracles. Fixed-topology tetra JVPs and
   internal-manifold graphs remain next; the existing vector current pairing
   consumes the surface-measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
