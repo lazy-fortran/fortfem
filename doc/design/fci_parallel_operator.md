@@ -12,6 +12,9 @@ classical RK4 service with a callback for `d(point)/dphi`. It is intentionally
 agnostic about magnetic-field storage and mesh lookup. A constant-velocity
 oracle is exact, and an exponential test checks fourth-order refinement before
 the resulting points are passed to a separate interpolation/map builder.
+The first such builder is `build_fci_linear_interpolation_map_1d`, which
+provides partition-of-unity and affine-reproduction contracts for coordinate
+slices without coupling the operator to a mesh lookup implementation.
 
 For segment `k`, let `Q_plus(k)` map the upper poloidal plane to staggered flux
 boxes and `Q_minus(k)` map the lower plane. With line lengths `ell`, the
