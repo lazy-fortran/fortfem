@@ -231,6 +231,10 @@ products with determinant quadrature and material coefficients. Their reverse
 product accumulates both vertex coordinates and coefficients in one element
 sweep, preparing the global two-dimensional H(div) assembly for shape
 adjoints.
+The global triangle RT CSC products preserve the orientation-aware merged
+sparsity pattern. Reverse assembly looks up only participating CSC entries
+rather than allocating a dense global adjoint, then accumulates shared-vertex
+and material cotangents through the element VJP.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
