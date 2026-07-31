@@ -270,7 +270,9 @@ module fortfem_api
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
-        toroidal_point_to_cartesian, toroidal_vector_to_cartesian
+        cartesian_to_toroidal_jvp, cartesian_to_toroidal_vjp, &
+        toroidal_point_to_cartesian, toroidal_point_to_cartesian_jvp, &
+        toroidal_point_to_cartesian_vjp, toroidal_vector_to_cartesian
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
@@ -780,7 +782,11 @@ module fortfem_api
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     public :: cartesian_to_toroidal
+    public :: cartesian_to_toroidal_jvp
+    public :: cartesian_to_toroidal_vjp
     public :: toroidal_point_to_cartesian
+    public :: toroidal_point_to_cartesian_jvp
+    public :: toroidal_point_to_cartesian_vjp
     public :: toroidal_vector_to_cartesian
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
