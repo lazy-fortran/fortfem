@@ -122,10 +122,10 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, toroidal analytical utilities in active development | A documented, independently tested torus-harmonic API and stable half-integer continuation |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, CG and preconditioned CG state derivatives | GMRES and BiCGSTAB implicit derivative contracts and preconditioners with measured scaling |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts | Preconditioners with measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
-| Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public solvers, and shape derivatives |
+| Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
 | Examples | Generated documentation pages for Poisson, Maxwell, Helmholtz, BEM, IGA, torus, PML, and solver examples | Ordered gallery beginning with simple Poisson and adding 1D, 2D, and 3D plasma-oriented toy models |
 
 The aggregate full test suite can expose resource-sensitive failures when many
@@ -776,7 +776,9 @@ gallery example.
 
 - Complete the primal/JVP/VJP inventory for FEM, BEM, DtN, PML, geometry,
   Fourier, special functions, sparse products, and all iterative solvers.
-- Finish GMRES and BiCGSTAB implicit state derivatives and dot-product tests.
+- GMRES and BiCGSTAB implicit state derivatives now pass finite-difference and
+  adjoint-identity tests. Continue the inventory for remaining public
+  operators and block solver compositions.
 - Publish the complex-adjoint and shape-derivative conventions.
 - Keep FortSym revision pins and generated-kernel checks green.
 

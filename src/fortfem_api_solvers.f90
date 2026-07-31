@@ -9,6 +9,8 @@ module fortfem_api_solvers
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve, &
         cg_solve_jvp, cg_solve_vjp, pcg_solve_jvp, pcg_solve_vjp, &
+        bicgstab_solve_jvp, bicgstab_solve_vjp, gmres_solve_jvp, &
+        gmres_solve_vjp, &
         jacobi_preconditioner, ilu_preconditioner
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
         spmv, spmv_jvp, spmv_vjp
@@ -26,6 +28,8 @@ module fortfem_api_solvers
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
     public :: cg_solve_jvp, cg_solve_vjp
     public :: pcg_solve_jvp, pcg_solve_vjp
+    public :: bicgstab_solve_jvp, bicgstab_solve_vjp
+    public :: gmres_solve_jvp, gmres_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
     public :: sparse_matrix_t, sparse_from_dense, spmv, spmv_jvp, spmv_vjp
     public :: sparse_direct_factor_t

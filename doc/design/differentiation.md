@@ -592,3 +592,20 @@ Preconditioned CG exposes the same JVP/VJP while retaining the selected
 Jacobi/ILU preconditioner for the tangent and adjoint solves. The preconditioner
 construction is an inactive solver detail under the converged-state contract;
 the returned derivatives are those of the underlying SPD linear system.
+
+The nonsymmetric BiCGSTAB and restarted GMRES interfaces now expose matching
+`*_solve_jvp` and `*_solve_vjp` products. For a converged state (A x=b), the
+tangent solves
+
+\[
+A\,\dot{x}=\dot{b}-\dot{A}x,
+\]
+
+and the reverse product solves (A^T\lambda=\bar{x}), returning
+\(\bar{b}=\lambda\) and \(\bar{A}=-\lambda x^T\). Krylov basis vectors,
+restart decisions, preconditioner construction, and stopping branches are
+inactive. The independent `test_krylov_solver_ad` target compares JVPs with
+central re-evaluation and checks the VJP dot-product identity for a
+nonsymmetric dense system. This is an implicit derivative of the converged
+linear solve, not a derivative through one particular finite-precision
+iteration history.
