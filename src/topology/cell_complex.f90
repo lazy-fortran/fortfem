@@ -30,6 +30,7 @@ module fortfem_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
     public :: cell_complex_cycle_basis
+    public :: cell_complex_cocycle_basis
     public :: quotient_cell_complex
 
 contains
@@ -187,6 +188,28 @@ contains
         call matrix_nullspace(complex%boundary_1, cycles, cycle_count)
         status = 0
     end subroutine cell_complex_cycle_basis
+
+    subroutine cell_complex_cocycle_basis( &
+            complex, cocycles, cocycle_count, status)
+        !! Return a real basis of the one-cocycle space ker(boundary_2^T).
+        !!
+        !! The columns are coefficient vectors on oriented edges and
+        !! annihilate every oriented face boundary. They are not quotient
+        !! representatives modulo exact cochains and do not include metric
+        !! harmonic normalization.
+        type(cell_complex_t), intent(in) :: complex
+        real(dp), allocatable, intent(out) :: cocycles(:, :)
+        integer, intent(out) :: cocycle_count
+        integer, intent(out) :: status
+
+        if (allocated(cocycles)) deallocate(cocycles)
+        cocycle_count = 0
+        call validate_cell_complex(complex, status)
+        if (status /= 0) return
+        call matrix_nullspace( &
+            transpose(complex%boundary_2), cocycles, cocycle_count)
+        status = 0
+    end subroutine cell_complex_cocycle_basis
 
     subroutine quotient_cell_complex( &
             complex, vertex_identification, edge_identification, quotient, &

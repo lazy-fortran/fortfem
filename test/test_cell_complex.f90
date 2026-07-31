@@ -1,6 +1,7 @@
 program test_cell_complex
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_complex_betti_numbers, cell_complex_cycle_basis, &
+    use fortfem_api, only: cell_complex_betti_numbers, cell_complex_cocycle_basis, &
+        cell_complex_cycle_basis, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, validate_cell_complex
     use fortfem_kinds, only: dp
@@ -10,7 +11,7 @@ program test_cell_complex
     real(dp), allocatable :: cycles(:, :)
     integer, allocatable :: boundary_1(:, :), boundary_2(:, :)
     integer :: betti(4), euler, status
-    integer :: cycle_count
+    integer :: cocycle_count, cycle_count
 
     allocate(boundary_1(2, 1))
     boundary_1 = reshape([-1, 1], shape(boundary_1))
@@ -45,6 +46,9 @@ program test_cell_complex
         size(cycles, 1) == 1 .and. abs(abs(cycles(1, 1)) - 1.0_dp) < 1.0e-14_dp .and. &
         maxval(abs(matmul(real(boundary_1, dp), cycles))) < 1.0e-14_dp, &
         "circle cycle basis spans the exact integer kernel")
+    call cell_complex_cocycle_basis(circle, cycles, cocycle_count, status)
+    call check_condition(status == 0 .and. cocycle_count == 1 .and. &
+        size(cycles, 1) == 1, "circle has one independent one-cocycle")
 
     deallocate(boundary_1)
     allocate(boundary_1(1, 0), boundary_2(0, 1))
@@ -73,6 +77,10 @@ program test_cell_complex
     call check_condition(status == 0 .and. cycle_count == 2 .and. &
         maxval(abs(matmul(real(boundary_1, dp), cycles))) < 1.0e-14_dp, &
         "torus cycle basis has two independent closed one-forms")
+    call cell_complex_cocycle_basis(torus, cycles, cocycle_count, status)
+    call check_condition(status == 0 .and. cocycle_count == 2 .and. &
+        maxval(abs(matmul(real(transpose(boundary_2), dp), cycles))) < &
+        1.0e-14_dp, "torus cocycle basis annihilates the face boundary")
 
     boundary_1 = reshape([-1, 1], [1, 2])
     boundary_2 = reshape([1, 0], [2, 1])
