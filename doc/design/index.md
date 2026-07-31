@@ -34,6 +34,10 @@ The [cell-complex cycle-space contract](cell_cycle_basis.html) exposes the
 real cycle and cocycle kernels while keeping face quotients, metric harmonic
 representatives, and gauges in higher layers.
 
+The [harmonic period normalization contract](harmonic_period_normalization.html)
+maps a fixed metric-harmonic basis to caller-selected cycle periods or flux
+units, with dense-solve JVP/VJP actions and no application-specific labels.
+
 The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
 fixed-topology direct-solve reduction for curl--curl nullspaces, including the
 control-mesh rule needed by high-order FEEC and IGA/mortar spaces.

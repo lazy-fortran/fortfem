@@ -225,7 +225,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
-| Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
+| Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; metric-harmonic one-forms now have a fixed-topology cycle-period normalization map with JVP/VJP | Chain-complex identities, Euler characteristic, cycle and flux integrals, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | The scalar shifted-Heaviside activation and a 3D vector-enrichment curl/divergence product-rule diagnostic are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
@@ -484,9 +484,11 @@ does not label those cycles or cocycles as harmonic forms or physical fluxes
 until metric Hodge data and application constraints are supplied.
 
 The metric-harmonic one-form slice is public as well. Given a positive edge
-metric it returns the closed and co-closed kernel, while leaving period
-normalization and gauge ownership to the caller. The fixed-topology
-tree--cotree gauge slice supplies a spanning-forest split,
+metric it returns the closed and co-closed kernel. The fixed-topology
+`normalize_harmonic_one_forms` slice now maps that basis to caller-selected
+cycle periods or flux units with dense-solve JVP/VJP actions, while leaving
+cycle labels, physical units, and gauge ownership to the caller. The
+fixed-topology tree--cotree gauge slice supplies a spanning-forest split,
 cotree restriction/prolongation, direct dense-system reduction, and fixed-map
 JVP/VJP actions. Its selector is frozen for differentiation; graph rebuilds
 are topology events.
@@ -1193,7 +1195,9 @@ gallery example.
   reports Euler characteristic and compact Betti diagnostics. Independent
   interval, loop, sphere-CW, torus-CW, and malformed-orientation tests cover
   the primitive; quotient boundary maps, cycle/cocycle kernels, and metric
-  harmonic one-forms are now public. Period normalization, gauge constraints,
+  harmonic one-forms are now public. `normalize_harmonic_one_forms` now
+  supplies fixed-topology period/flux normalization with a central-difference
+  JVP and real-adjoint oracle; cycle labels, physical units, gauge constraints,
   and cycle ledgers remain higher graph layers.
 - The neutral `region_interface_graph_t` contract now adds oriented plus/minus
   region incidence, periodic self-identifications, and compact connectivity
