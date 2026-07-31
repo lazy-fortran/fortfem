@@ -4,7 +4,7 @@ module fortfem_spherical_harmonics
     !! FortNum owns normalization, phase, angular domains, and the pole
     !! convention.  This adapter makes that dependency part of FortFEM's
     !! public numerical API.
-    use fortnum_special, only: &
+    use fortnum_special_spherical, only: &
         spherical_harmonic, spherical_harmonic_theta_derivative, &
         spherical_harmonic_phi_derivative
     implicit none
