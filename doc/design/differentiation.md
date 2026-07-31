@@ -115,6 +115,16 @@ checks the JVP against a two-sided re-solve difference and checks the VJP with
 the real-complex adjoint identity. A perturbation must keep the active PML
 element mask fixed, just like the coefficient-level map above.
 
+The P1 triangular and tetrahedral scalar PML solvers provide the same
+end-to-end products for moving vertices, complex element stretches, wave
+number, complex volume loads, and prescribed Dirichlet data. Their assembly
+uses a topology-fixed CSC pattern, so a retained FortSparse factorization is
+reused for the tangent solve and a conjugate-transpose factorization supplies
+the reverse solve. Reverse assembly scatters duplicate element contributions
+back to the shared mesh vertices and includes the matrix-dependent
+Dirichlet-elimination term. The tests independently re-solve perturbed
+meshes and check the real-complex adjoint identity in both dimensions.
+
 The planar Helmholtz DtN trace operator has analytical trace, wave-number, and
 period JVPs and VJPs. FortSym generates the propagating and evanescent modal
 square-root products, while FortNum's FFT adjoint supplies the dense trace
