@@ -181,7 +181,9 @@ module fortfem_api
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
     use fortfem_fci_interpolation_map, only: &
-        build_fci_linear_interpolation_map_1d
+        build_fci_linear_interpolation_map_1d, &
+        build_fci_linear_interpolation_map_1d_jvp, &
+        build_fci_linear_interpolation_map_1d_vjp
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
@@ -1431,6 +1433,8 @@ module fortfem_api
     public :: apply_fci_parallel_gradient_vjp
     public :: trace_fci_field_line_rk4
     public :: build_fci_linear_interpolation_map_1d
+    public :: build_fci_linear_interpolation_map_1d_jvp
+    public :: build_fci_linear_interpolation_map_1d_vjp
     public :: advance_mixed_wave_midpoint
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp

@@ -14,7 +14,9 @@ oracle is exact, and an exponential test checks fourth-order refinement before
 the resulting points are passed to a separate interpolation/map builder.
 The first such builder is `build_fci_linear_interpolation_map_1d`, which
 provides partition-of-unity and affine-reproduction contracts for coordinate
-slices without coupling the operator to a mesh lookup implementation.
+slices without coupling the operator to a mesh lookup implementation. Its
+fixed-topology JVP and VJP are also available for differentiable geometry
+updates away from stencil-cell crossings.
 
 For segment `k`, let `Q_plus(k)` map the upper poloidal plane to staggered flux
 boxes and `Q_minus(k)` map the lower plane. With line lengths `ell`, the

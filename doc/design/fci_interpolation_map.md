@@ -20,10 +20,18 @@ a future 2D/3D stencil builder can be verified against the same partition and
 affine-reproduction contracts.  It does not copy PARALLAX geometry or lookup
 code.
 
-The focused test checks the exact affine oracle, partition of unity, endpoint
-handling, and invalid-input paths.  Higher-dimensional interpolation,
-geometry/map JVPs, and support-volume construction remain separate roadmap
-items.
+The fixed-topology products
+`build_fci_linear_interpolation_map_1d_jvp` and
+`build_fci_linear_interpolation_map_1d_vjp` differentiate the weights with
+respect to source and target coordinates.  They reject a target exactly on a
+source node, where the active interpolation cell changes and a classical
+derivative is not defined.  The JVP uses the quotient rule; the VJP is checked
+by a real dot-product identity.
+
+The focused tests check the exact affine oracle, partition of unity, endpoint
+handling, fixed-topology JVP/VJP identities, and invalid-input paths.
+Higher-dimensional interpolation and support-volume construction remain
+separate roadmap items.
 
 ## Provenance
 
