@@ -1045,6 +1045,11 @@ gallery example.
   incidence nullspace. Independent chain, disconnected, reversed, periodic,
   triangle-cycle, and malformed-endpoint tests cover the graph. Surface laws,
   sheet-current balances, and region physics remain application-owned.
+- The neutral `cell_identification_t` contract now validates idempotent
+  canonical representatives and signed orientations and reports compact
+  quotient classes. Independent identity, signed-periodic, cycle-rejection,
+  canonical-sign, zero-sign, and shape-mismatch tests cover the metadata;
+  quotient incidence transformation and geometry remain higher-level work.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
