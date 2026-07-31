@@ -73,6 +73,9 @@ module fortfem_api
         evaluate_vector_enrichment_differential_3d, &
         evaluate_vector_enrichment_differential_3d_jvp, &
         evaluate_vector_enrichment_differential_3d_vjp
+    use fortfem_tensor_volume_work, only: &
+        assemble_tensor_volume_work, assemble_tensor_volume_work_jvp, &
+        assemble_tensor_volume_work_vjp
     use fortfem_xfem_blending_correction, only: &
         evaluate_blending_corrected_enrichment, &
         evaluate_blending_corrected_enrichment_jvp, &
@@ -999,6 +1002,9 @@ module fortfem_api
     public :: evaluate_vector_enrichment_differential_3d
     public :: evaluate_vector_enrichment_differential_3d_jvp
     public :: evaluate_vector_enrichment_differential_3d_vjp
+    public :: assemble_tensor_volume_work
+    public :: assemble_tensor_volume_work_jvp
+    public :: assemble_tensor_volume_work_vjp
     public :: evaluate_blending_corrected_enrichment
     public :: evaluate_blending_corrected_enrichment_jvp
     public :: evaluate_blending_corrected_enrichment_vjp
