@@ -31,6 +31,9 @@ module fortfem_assembly_rt_arbitrary_order_2d
     public :: assemble_triangle_rt_div_mass_csc_vjp
     public :: assemble_triangle_rt_divergence_csc
     public :: assemble_triangle_rt_cell_vector_load
+    public :: assemble_triangle_rt_vector_load_samples
+    public :: assemble_triangle_rt_vector_load_samples_jvp
+    public :: assemble_triangle_rt_vector_load_samples_vjp
 
 contains
 
@@ -126,6 +129,251 @@ contains
         end do
         call status_set(status, 0, "")
     end subroutine assemble_triangle_rt_cell_vector_load
+
+    subroutine assemble_triangle_rt_vector_load_samples( &
+            mesh, degree, quadrature_degree, source_values, vector, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), allocatable, intent(out) :: vector(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(triangle_rt_basis_t) :: basis
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: eta(:), local_vector(:)
+        real(dp), allocatable :: divergences(:), values(:, :)
+        real(dp), allocatable :: ref_divergences(:), ref_values(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: determinant, jacobian(2, 2), vertices(2, 3)
+        integer :: dof, dof_count, global_count, local_status, point, triangle
+
+        call initialize_sampled_rt_load( &
+            mesh, degree, quadrature_degree, source_values, basis, &
+            global_dofs, transforms, global_count, xi, eta, weights, status)
+        if (status%code /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(vector(global_count), source=0.0_dp)
+        allocate(local_vector(dof_count))
+        allocate(ref_values(2, dof_count), ref_divergences(dof_count))
+        allocate(values(2, dof_count), divergences(dof_count))
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            call triangle_jacobian(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            local_vector = 0.0_dp
+            do point = 1, size(weights)
+                call evaluate_triangle_raviart_thomas( &
+                    basis, xi(point), eta(point), ref_values, &
+                    ref_divergences, local_status)
+                if (local_status /= 0) return
+                call map_triangle_rt_contravariant( &
+                    jacobian, ref_values, ref_divergences, values, &
+                    divergences, local_status)
+                if (local_status /= 0) return
+                do dof = 1, dof_count
+                    local_vector(dof) = local_vector(dof) + &
+                        determinant*weights(point)*dot_product( &
+                        source_values(:, point, triangle), values(:, dof))
+                end do
+            end do
+            do dof = 1, dof_count
+                vector(global_dofs(dof, triangle)) = &
+                    vector(global_dofs(dof, triangle)) + &
+                    real(transforms(dof, triangle), dp)*local_vector(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_rt_vector_load_samples
+
+    subroutine assemble_triangle_rt_vector_load_samples_jvp( &
+            mesh, degree, quadrature_degree, source_values, source_gradients, &
+            mesh_vertices_dot, source_parameter_dot, vector_dot, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: mesh_vertices_dot(:, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        real(dp), allocatable, intent(out) :: vector_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(triangle_rt_basis_t) :: basis
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: divergences(:), divergences_dot(:), eta(:)
+        real(dp), allocatable :: local_dot(:), ref_divergences(:)
+        real(dp), allocatable :: ref_values(:, :), values(:, :)
+        real(dp), allocatable :: values_dot(:, :), weights(:), xi(:)
+        real(dp), allocatable :: zero_divergences(:), zero_values(:, :)
+        real(dp) :: determinant, determinant_dot, jacobian(2, 2)
+        real(dp) :: jacobian_dot(2, 2), point_dot(2), reference_point(2)
+        real(dp) :: source_dot(2), vertices(2, 3), vertices_dot(2, 3)
+        integer :: dof, dof_count, global_count, local_status, point, triangle
+
+        call initialize_sampled_rt_load( &
+            mesh, degree, quadrature_degree, source_values, basis, &
+            global_dofs, transforms, global_count, xi, eta, weights, status)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh%vertices))) return
+        if (.not. valid_vector_sample_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            size(weights), mesh%n_triangles)) return
+        dof_count = size(global_dofs, 1)
+        allocate(vector_dot(global_count), source=0.0_dp)
+        allocate(local_dot(dof_count))
+        allocate(ref_values(2, dof_count), ref_divergences(dof_count))
+        allocate(values(2, dof_count), divergences(dof_count))
+        allocate(values_dot(2, dof_count), divergences_dot(dof_count))
+        allocate(zero_values(2, dof_count), zero_divergences(dof_count), &
+            source=0.0_dp)
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            vertices_dot = &
+                mesh_vertices_dot(:, mesh%triangles(:, triangle))
+            call triangle_jacobian(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            call triangle_jacobian_direction(vertices_dot, jacobian_dot)
+            call det2_jvp(jacobian, jacobian_dot, determinant_dot)
+            local_dot = 0.0_dp
+            do point = 1, size(weights)
+                reference_point = [xi(point), eta(point)]
+                call evaluate_triangle_raviart_thomas( &
+                    basis, xi(point), eta(point), ref_values, &
+                    ref_divergences, local_status)
+                if (local_status /= 0) return
+                call map_triangle_rt_contravariant( &
+                    jacobian, ref_values, ref_divergences, values, &
+                    divergences, local_status)
+                if (local_status /= 0) return
+                call map_triangle_rt_contravariant_jvp( &
+                    jacobian, ref_values, ref_divergences, jacobian_dot, &
+                    zero_values, zero_divergences, values_dot, divergences_dot, &
+                    local_status)
+                if (local_status /= 0) return
+                point_dot = vertices_dot(:, 1) + &
+                    matmul(jacobian_dot, reference_point)
+                source_dot = source_parameter_dot(:, point, triangle) + &
+                    matmul(source_gradients(:, :, point, triangle), point_dot)
+                do dof = 1, dof_count
+                    local_dot(dof) = local_dot(dof) + weights(point)*( &
+                        determinant_dot*dot_product( &
+                        source_values(:, point, triangle), values(:, dof)) + &
+                        determinant*(dot_product(source_dot, values(:, dof)) + &
+                        dot_product(source_values(:, point, triangle), &
+                        values_dot(:, dof))))
+                end do
+            end do
+            do dof = 1, dof_count
+                vector_dot(global_dofs(dof, triangle)) = &
+                    vector_dot(global_dofs(dof, triangle)) + &
+                    real(transforms(dof, triangle), dp)*local_dot(dof)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_rt_vector_load_samples_jvp
+
+    subroutine assemble_triangle_rt_vector_load_samples_vjp( &
+            mesh, degree, quadrature_degree, source_values, source_gradients, &
+            vector_bar, mesh_vertices_bar, source_values_bar, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :), vector_bar(:)
+        real(dp), intent(out) :: mesh_vertices_bar(:, :)
+        real(dp), intent(out) :: source_values_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(triangle_rt_basis_t) :: basis
+        integer, allocatable :: global_dofs(:, :), transforms(:, :)
+        real(dp), allocatable :: divergences(:), divergences_bar(:), eta(:)
+        real(dp), allocatable :: local_bar(:), ref_divergences(:)
+        real(dp), allocatable :: ref_divergences_bar(:), ref_values(:, :)
+        real(dp), allocatable :: ref_values_bar(:, :), values(:, :)
+        real(dp), allocatable :: values_bar(:, :), weights(:), xi(:)
+        real(dp) :: determinant, determinant_bar, determinant_jacobian_bar(2, 2)
+        real(dp) :: jacobian(2, 2), jacobian_bar(2, 2)
+        real(dp) :: local_jacobian_bar(2, 2), local_vertices_bar(2, 3)
+        real(dp) :: point_bar(2), reference_point(2), sample_bar(2), seed
+        real(dp) :: vertices(2, 3)
+        integer :: dof, dof_count, global_count, local_status, node
+        integer :: point, triangle
+
+        mesh_vertices_bar = 0.0_dp
+        source_values_bar = 0.0_dp
+        call initialize_sampled_rt_load( &
+            mesh, degree, quadrature_degree, source_values, basis, &
+            global_dofs, transforms, global_count, xi, eta, weights, status)
+        if (status%code /= 0) return
+        if (any(shape(mesh_vertices_bar) /= shape(mesh%vertices))) return
+        if (any(shape(source_values_bar) /= shape(source_values))) return
+        if (.not. valid_vector_sample_gradients( &
+            source_values, source_gradients, size(weights), &
+            mesh%n_triangles)) return
+        if (size(vector_bar) /= global_count) return
+        dof_count = size(global_dofs, 1)
+        allocate(local_bar(dof_count))
+        allocate(ref_values(2, dof_count), ref_divergences(dof_count))
+        allocate(ref_values_bar(2, dof_count))
+        allocate(ref_divergences_bar(dof_count))
+        allocate(values(2, dof_count), divergences(dof_count))
+        allocate(values_bar(2, dof_count), divergences_bar(dof_count))
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            call triangle_jacobian(vertices, jacobian, determinant, local_status)
+            if (local_status /= 0) return
+            do dof = 1, dof_count
+                local_bar(dof) = real(transforms(dof, triangle), dp)* &
+                    vector_bar(global_dofs(dof, triangle))
+            end do
+            local_vertices_bar = 0.0_dp
+            jacobian_bar = 0.0_dp
+            determinant_bar = 0.0_dp
+            do point = 1, size(weights)
+                reference_point = [xi(point), eta(point)]
+                call evaluate_triangle_raviart_thomas( &
+                    basis, xi(point), eta(point), ref_values, &
+                    ref_divergences, local_status)
+                if (local_status /= 0) return
+                call map_triangle_rt_contravariant( &
+                    jacobian, ref_values, ref_divergences, values, &
+                    divergences, local_status)
+                if (local_status /= 0) return
+                values_bar = 0.0_dp
+                divergences_bar = 0.0_dp
+                sample_bar = 0.0_dp
+                do dof = 1, dof_count
+                    seed = weights(point)*local_bar(dof)
+                    determinant_bar = determinant_bar + seed*dot_product( &
+                        source_values(:, point, triangle), values(:, dof))
+                    sample_bar = sample_bar + seed*determinant*values(:, dof)
+                    values_bar(:, dof) = values_bar(:, dof) + &
+                        seed*determinant*source_values(:, point, triangle)
+                end do
+                source_values_bar(:, point, triangle) = sample_bar
+                point_bar = matmul(transpose( &
+                    source_gradients(:, :, point, triangle)), sample_bar)
+                local_vertices_bar(:, 1) = &
+                    local_vertices_bar(:, 1) + point_bar
+                jacobian_bar = jacobian_bar + spread(point_bar, 2, 2)* &
+                    spread(reference_point, 1, 2)
+                call map_triangle_rt_contravariant_vjp( &
+                    jacobian, ref_values, ref_divergences, values_bar, &
+                    divergences_bar, local_jacobian_bar, ref_values_bar, &
+                    ref_divergences_bar, local_status)
+                if (local_status /= 0) return
+                jacobian_bar = jacobian_bar + local_jacobian_bar
+            end do
+            call det2_vjp( &
+                jacobian, determinant_bar, determinant_jacobian_bar)
+            call triangle_jacobian_vjp_add( &
+                jacobian_bar + determinant_jacobian_bar, local_vertices_bar)
+            do node = 1, 3
+                mesh_vertices_bar(:, mesh%triangles(node, triangle)) = &
+                    mesh_vertices_bar(:, mesh%triangles(node, triangle)) + &
+                    local_vertices_bar(:, node)
+            end do
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_triangle_rt_vector_load_samples_vjp
 
     subroutine assemble_triangle_rt_div_mass_element( &
             vertices, degree, quadrature_degree, matrix, status, &
@@ -724,6 +972,89 @@ contains
         vertices_bar(:, 2) = jacobian_bar(:, 1)
         vertices_bar(:, 3) = jacobian_bar(:, 2)
     end subroutine triangle_jacobian_vjp
+
+    pure subroutine triangle_jacobian_vjp_add(jacobian_bar, vertices_bar)
+        real(dp), intent(in) :: jacobian_bar(2, 2)
+        real(dp), intent(inout) :: vertices_bar(2, 3)
+
+        vertices_bar(:, 1) = vertices_bar(:, 1) - &
+            sum(jacobian_bar, dim=2)
+        vertices_bar(:, 2) = vertices_bar(:, 2) + jacobian_bar(:, 1)
+        vertices_bar(:, 3) = vertices_bar(:, 3) + jacobian_bar(:, 2)
+    end subroutine triangle_jacobian_vjp_add
+
+    subroutine initialize_sampled_rt_load( &
+            mesh, degree, quadrature_degree, source_values, basis, &
+            global_dofs, transforms, global_count, xi, eta, weights, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: source_values(:, :, :)
+        type(triangle_rt_basis_t), intent(out) :: basis
+        integer, allocatable, intent(out) :: global_dofs(:, :), transforms(:, :)
+        integer, intent(out) :: global_count
+        real(dp), allocatable, intent(out) :: xi(:), eta(:), weights(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: local_status
+
+        global_count = 0
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Sampled triangle RT vector load failed")
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call build_triangle_trimmed_dof_map( &
+            mesh, degree + 1, global_dofs, transforms, global_count, &
+            local_status)
+        if (local_status /= 0) return
+        call initialize_triangle_raviart_thomas(degree, basis, local_status)
+        if (local_status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, local_status)
+        if (local_status /= 0) return
+        if (.not. valid_vector_samples( &
+            source_values, size(weights), mesh%n_triangles)) return
+        call status_set(status, 0, "")
+    end subroutine initialize_sampled_rt_load
+
+    pure logical function valid_vector_samples( &
+            source_values, point_count, triangle_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        integer, intent(in) :: point_count, triangle_count
+
+        valid = size(source_values, 1) == 2 .and. &
+            size(source_values, 2) == point_count .and. &
+            size(source_values, 3) == triangle_count
+    end function valid_vector_samples
+
+    pure logical function valid_vector_sample_gradients( &
+            source_values, source_gradients, point_count, triangle_count) &
+            result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        integer, intent(in) :: point_count, triangle_count
+
+        valid = valid_vector_samples( &
+            source_values, point_count, triangle_count)
+        if (.not. valid) return
+        valid = size(source_gradients, 1) == 2 .and. &
+            size(source_gradients, 2) == 2 .and. &
+            size(source_gradients, 3) == point_count .and. &
+            size(source_gradients, 4) == triangle_count
+    end function valid_vector_sample_gradients
+
+    pure logical function valid_vector_sample_products( &
+            source_values, source_gradients, source_parameter_dot, &
+            point_count, triangle_count) result(valid)
+        real(dp), intent(in) :: source_values(:, :, :)
+        real(dp), intent(in) :: source_gradients(:, :, :, :)
+        real(dp), intent(in) :: source_parameter_dot(:, :, :)
+        integer, intent(in) :: point_count, triangle_count
+
+        valid = valid_vector_sample_gradients( &
+            source_values, source_gradients, point_count, triangle_count)
+        if (.not. valid) return
+        valid = all(shape(source_parameter_dot) == shape(source_values))
+    end function valid_vector_sample_products
 
     pure real(dp) function csc_bar_at( &
             matrix, values_bar, row, column) result(value_bar)
