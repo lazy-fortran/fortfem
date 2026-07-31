@@ -247,3 +247,7 @@ an independent source-parameter tangent; the VJP returns both shared vertex
 cotangents and source-sample cotangents. This makes source parameters
 composable without attempting to differentiate an opaque Fortran procedure
 callback.
+The sampled constrained-state wrapper composes this load path with global H1
+assembly and fixed-mask elimination. One call differentiates an Eulerian
+source, material coefficients, prescribed boundary values, and every mesh
+coordinate through the complete Poisson or diffusion-reaction solve.
