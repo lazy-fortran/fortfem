@@ -221,6 +221,11 @@ quadrature-point motion, arbitrary-order DG moments, and source parameters.
 The RT--DG sampled-state wrapper composes those products with the saddle
 operator and one transpose solve, returning mesh, flux-mass coefficient, and
 physical-source cotangents without differentiating a sparse factorization.
+The two-dimensional FEEC foundation uses the same contract: covariant
+Nedelec and contravariant RT triangle Piola maps expose analytical JVPs and
+VJPs. Their determinant and inverse products reuse FortNum's
+FortSym-generated kernels, so GCC builds retain the fast analytical path
+without requiring an autodiff compiler.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
