@@ -272,7 +272,8 @@ module fortfem_api
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         cartesian_to_toroidal_jvp, cartesian_to_toroidal_vjp, &
         toroidal_point_to_cartesian, toroidal_point_to_cartesian_jvp, &
-        toroidal_point_to_cartesian_vjp, toroidal_vector_to_cartesian
+        toroidal_point_to_cartesian_vjp, toroidal_vector_to_cartesian, &
+        toroidal_vector_to_cartesian_jvp, toroidal_vector_to_cartesian_vjp
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
@@ -788,6 +789,8 @@ module fortfem_api
     public :: toroidal_point_to_cartesian_jvp
     public :: toroidal_point_to_cartesian_vjp
     public :: toroidal_vector_to_cartesian
+    public :: toroidal_vector_to_cartesian_jvp
+    public :: toroidal_vector_to_cartesian_vjp
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
     public :: assemble_laplace_torus_curved_calderon_3d

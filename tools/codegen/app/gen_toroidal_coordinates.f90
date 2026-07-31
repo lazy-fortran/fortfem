@@ -1,8 +1,9 @@
 program gen_toroidal_coordinates
     use fortsym_arena, only: arena_t
     use fortsym_chart, only: chart_t
-    use fortsym_expr, only: atan2, cosh, expr_t, log, operator(*), operator(+), &
-        operator(-), operator(/), operator(**), real_expr, sin, sinh, sqrt, sym
+    use fortsym_expr, only: atan2, cos, cosh, expr_t, log, operator(*), &
+        operator(+), operator(-), operator(/), operator(**), real_expr, sin, &
+        sinh, sqrt, sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
     use fortsym_string, only: chars, str
@@ -18,14 +19,21 @@ program gen_toroidal_coordinates
     type(expr_t) :: inverse_outputs(3), inverse_output_bars(3)
     type(expr_t) :: forward_jvp(3), forward_vjp(4)
     type(expr_t) :: inverse_jvp(3), inverse_vjp(4)
+    type(expr_t) :: vector_variables(6), vector_directions(6)
+    type(expr_t) :: vector_outputs(3), vector_output_bars(3)
+    type(expr_t) :: vector_jvp(3), vector_vjp(6)
     type(expr_t) :: eta, phi, scale, theta, cylindrical_radius
     type(expr_t) :: point_x, point_y, point_z, eta_expression
     type(expr_t) :: theta_expression, phi_expression
+    type(expr_t) :: denominator, eta_radial, eta_vertical
+    type(expr_t) :: theta_radial, theta_vertical
+    type(expr_t) :: component_1, component_2, component_3
     type(expr_t) :: half, two
     type(kernel_spec_t) :: spec
     character(:), allocatable :: forward_code, forward_jvp_code
     character(:), allocatable :: forward_vjp_code, inverse_code
     character(:), allocatable :: inverse_jvp_code, inverse_vjp_code
+    character(:), allocatable :: vector_code, vector_jvp_code, vector_vjp_code
     integer :: ios, unit
 
     call arena%init()
@@ -67,6 +75,31 @@ program gen_toroidal_coordinates
         sym(arena, "eta_bar"), sym(arena, "theta_bar"), sym(arena, "phi_bar")]
     inverse_jvp = jvp(inverse_outputs, inverse_variables, inverse_directions)
     inverse_vjp = vjp(inverse_outputs, inverse_variables, inverse_output_bars)
+
+    component_1 = sym(arena, "component_1")
+    component_2 = sym(arena, "component_2")
+    component_3 = sym(arena, "component_3")
+    vector_variables = [eta, theta, phi, component_1, component_2, component_3]
+    vector_directions = [ &
+        sym(arena, "eta_dot"), sym(arena, "theta_dot"), sym(arena, "phi_dot"), &
+        sym(arena, "component_1_dot"), sym(arena, "component_2_dot"), &
+        sym(arena, "component_3_dot")]
+    denominator = cosh(eta) - cos(theta)
+    eta_radial = (real_expr(arena, 1.0d0) - cosh(eta)*cos(theta))/denominator
+    eta_vertical = -sinh(eta)*sin(theta)/denominator
+    theta_radial = eta_vertical
+    theta_vertical = -eta_radial
+    vector_outputs = [ &
+        component_1*eta_radial*cos(phi) + component_2*theta_radial*cos(phi) - &
+        component_3*sin(phi), &
+        component_1*eta_radial*sin(phi) + component_2*theta_radial*sin(phi) + &
+        component_3*cos(phi), &
+        component_1*eta_vertical + component_2*theta_vertical]
+    vector_output_bars = [ &
+        sym(arena, "cartesian_1_bar"), sym(arena, "cartesian_2_bar"), &
+        sym(arena, "cartesian_3_bar")]
+    vector_jvp = jvp(vector_outputs, vector_variables, vector_directions)
+    vector_vjp = vjp(vector_outputs, vector_variables, vector_output_bars)
 
     call initialize_spec( &
         spec, "generated_toroidal_point_to_cartesian", &
@@ -128,6 +161,41 @@ program gen_toroidal_coordinates
         str("scale_bar")]
     inverse_vjp_code = chars(emit_kernel(inverse_vjp, spec))
 
+    call initialize_spec( &
+        spec, "generated_toroidal_vector_to_cartesian", &
+        "fortfem_generated_toroidal_vector_to_cartesian", 6, 3)
+    spec%args = [ &
+        str("eta"), str("theta"), str("phi"), str("component_1"), &
+        str("component_2"), str("component_3")]
+    spec%outputs = [str("cartesian_1"), str("cartesian_2"), str("cartesian_3")]
+    vector_code = chars(emit_kernel(vector_outputs, spec))
+
+    call initialize_spec( &
+        spec, "generated_toroidal_vector_to_cartesian_jvp", &
+        "fortfem_generated_toroidal_vector_to_cartesian_jvp", 12, 3)
+    spec%args = [ &
+        str("eta"), str("theta"), str("phi"), str("component_1"), &
+        str("component_2"), str("component_3"), str("eta_dot"), &
+        str("theta_dot"), str("phi_dot"), str("component_1_dot"), &
+        str("component_2_dot"), str("component_3_dot")]
+    spec%outputs = [ &
+        str("cartesian_1_dot"), str("cartesian_2_dot"), &
+        str("cartesian_3_dot")]
+    vector_jvp_code = chars(emit_kernel(vector_jvp, spec))
+
+    call initialize_spec( &
+        spec, "generated_toroidal_vector_to_cartesian_vjp", &
+        "fortfem_generated_toroidal_vector_to_cartesian_vjp", 9, 6)
+    spec%args = [ &
+        str("eta"), str("theta"), str("phi"), str("component_1"), &
+        str("component_2"), str("component_3"), str("cartesian_1_bar"), &
+        str("cartesian_2_bar"), str("cartesian_3_bar")]
+    spec%outputs = [ &
+        str("eta_bar"), str("theta_bar"), str("phi_bar"), &
+        str("component_1_bar"), str("component_2_bar"), &
+        str("component_3_bar")]
+    vector_vjp_code = chars(emit_kernel(vector_vjp, spec))
+
     open (newunit=unit, &
         file=generated_path("fortfem_toroidal_coordinates.f90"), &
         status="replace", action="write", iostat=ios)
@@ -138,6 +206,9 @@ program gen_toroidal_coordinates
     write (unit, "(a)") inverse_code(:len(inverse_code) - 1)
     write (unit, "(a)") inverse_jvp_code(:len(inverse_jvp_code) - 1)
     write (unit, "(a)") inverse_vjp_code(:len(inverse_vjp_code) - 1)
+    write (unit, "(a)") vector_code(:len(vector_code) - 1)
+    write (unit, "(a)") vector_jvp_code(:len(vector_jvp_code) - 1)
+    write (unit, "(a)") vector_vjp_code(:len(vector_vjp_code) - 1)
     close (unit)
 
 contains
