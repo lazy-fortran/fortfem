@@ -337,6 +337,17 @@ and oriented normal with respect to endpoints and surface vertices. This is a
 geometry primitive only; material laws and conservative ownership remain
 separate residual contracts.
 
+`find_fci_first_hit_polyline_3d` lifts the segment primitive to the traced
+polyline supplied by a field-line integrator. It scans segments in order and
+returns the first triangle id, segment id, physical connection length, hit
+point, and oriented normal. A valid no-hit path returns the final polyline
+endpoint and total traced length with zero ids. Its
+`find_fci_first_hit_polyline_3d_jvp` companion differentiates the selected
+fixed event, including the length of all preceding segments; a no-hit JVP
+reduces to the endpoint and total-polyline-length derivative. Zero-length
+segments, malformed triangles, non-finite data, and topology changes remain
+explicit status failures rather than being silently regularized.
+
 ## Provenance
 
 The design follows the FCI trace/interpolation and support-operator

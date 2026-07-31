@@ -1040,7 +1040,10 @@ gallery example.
   and VJP dot-product oracles; owner remaps and physical material laws remain
   separate contracts. The matching 3D triangle search and fixed-topology JVP
   now cover triangulated toroidal vessel/divertor surfaces without copying a
-  PARALLAX implementation.
+  PARALLAX implementation. A traced-polyline wrapper now scans those facets in
+  field-line order and returns the first segment/triangle, endpoint, oriented
+  normal, connection length, and fixed-event JVP; no-hit paths return their
+  final endpoint and total length.
 - The generic nonlinear material-surface flux contract is now public: an
   application callback supplies the local tagged law while FortFEM assembles
   the oriented trace residual, integrated per-tag ledger, and fixed-tag
