@@ -989,8 +989,8 @@ gallery example.
   connectivity remains a topology-rebuild concern.
 - A positive FCI diffusion diagonal is public as the first anisotropy-aware
   preconditioner contract, with a matching Jacobi apply and positivity test;
-  PARALLAX-compatible plane multigrid and stronger field-split preconditioners
-  remain planned.
+  PARALLAX-compatible plane multigrid and additive field splitting are now
+  public baselines, while coupled stronger blocks remain planned.
 - A PARALLAX-style anisotropic split action now combines independent per-plane
   CSC elliptic blocks with the conservative FCI parallel operator; tensor
   coefficient assembly, plane multigrid, and stronger field splitting remain
@@ -1000,7 +1000,8 @@ gallery example.
   preconditioning oracle. `apply_fci_anisotropic_jacobi_preconditioner` applies
   that diagonal directly for small matrix-free solves; cached diagonal use and
   `apply_fci_plane_two_level_vcycle` now provides the next plane-solver layer;
-  deeper multigrid, retained coarse factors, and field splitting remain active.
+  deeper multigrid and retained coarse factors remain active; the new additive
+  field-split composition is tested separately.
 - The split action now also has a field-only VJP that composes the conservative
   FCI transpose with an explicit transpose of every plane CSC block. An
   independent nonsymmetric-plane oracle and real dot-product test guard this
@@ -1009,8 +1010,10 @@ gallery example.
   independently tested two-level plane cycle to a homogeneous plane stack,
   preserving the PARALLAX field-split boundary between per-plane elliptic
   solves and the global FCI line action. A ragged-offset companion now covers
-  variable plane sizes without padding; deeper retained-factor hierarchies
-  remain active work.
+  variable plane sizes without padding. The public additive field-split
+  preconditioner combines cached parallel Jacobi and ragged plane cycles with
+  explicit nonnegative weights; deeper retained-factor hierarchies remain
+  active work.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
