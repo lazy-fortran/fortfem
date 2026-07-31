@@ -563,7 +563,9 @@ tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
 An unstructured fixed-cell triangle adapter now supplies barycentric maps and
 geometry/target JVP/VJP products with affine and dot-product oracles; higher
-order triangle and moving-cell connectivity remain active.
+order triangle and moving-cell connectivity remain active. Its batched
+forward/backward endpoint adapter now emits the per-segment tensors consumed
+by the support operator and accumulates shared-vertex cotangents.
 The positive diagonal of `-W_c^{-1}Q^TW_sK_\parallel Q` is now public as a
 FortSym-generated per-stencil Jacobi baseline, with an explicit Q-squared
 oracle and a validated matrix-free diagonal apply; plane multigrid and
@@ -954,7 +956,8 @@ gallery example.
   planned.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
-  moving-cell connectivity and higher-order stencils remain planned.
+  its batched endpoint-to-map path now feeds the support-operator tensor
+  contract; moving-cell connectivity and higher-order stencils remain planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
