@@ -41,6 +41,8 @@ module fortfem_api
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_div_mass_csc, &
         assemble_triangle_rt_div_mass_element, &
+        assemble_triangle_rt_div_mass_element_jvp, &
+        assemble_triangle_rt_div_mass_element_vjp, &
         assemble_triangle_rt_divergence_csc
     use fortfem_assembly_tetra_rt_arbitrary_order_3d, only: &
         assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_div_mass_csc_jvp, &
@@ -964,6 +966,8 @@ module fortfem_api
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_rt_div_mass_element
+    public :: assemble_triangle_rt_div_mass_element_jvp
+    public :: assemble_triangle_rt_div_mass_element_vjp
     public :: assemble_triangle_rt_div_mass_csc
     public :: assemble_triangle_rt_divergence_csc
     public :: assemble_tetra_rt_div_mass_csc

@@ -226,6 +226,11 @@ Nedelec and contravariant RT triangle Piola maps expose analytical JVPs and
 VJPs. Their determinant and inverse products reuse FortNum's
 FortSym-generated kernels, so GCC builds retain the fast analytical path
 without requiring an autodiff compiler.
+Arbitrary-order triangle RT div--div-plus-mass elements compose those map
+products with determinant quadrature and material coefficients. Their reverse
+product accumulates both vertex coordinates and coefficients in one element
+sweep, preparing the global two-dimensional H(div) assembly for shape
+adjoints.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
