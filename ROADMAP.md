@@ -455,6 +455,12 @@ identities. The interval-to-circle test supplies the independent Betti-number
 oracle. This is still metadata only; quotient coordinates, metric Hodge
 operators, gauges, and application-owned periodic laws remain later layers.
 
+The cell-complex cycle-space slice is also public: a scale-aware real kernel
+of the oriented edge boundary is available for subsequent cuts, flux
+normalization, and gauge construction. It intentionally does not label those
+cycles as harmonic forms or physical fluxes until metric Hodge data and
+application constraints are supplied.
+
 An electromagnetic sheet is a coupled unknown, not only a post-processed
 delta source. The implementation must support equivalent formulations and
 their conversion:

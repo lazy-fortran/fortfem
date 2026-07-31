@@ -30,6 +30,10 @@ The [oriented cell-complex contract](cell_complex.html) defines integer chain
 boundary maps, exact boundary-of-boundary validation, Euler characteristic, and
 small homology diagnostics for later FEEC, gauge, cut, and interface graphs.
 
+The [cell-complex cycle-space contract](cell_cycle_basis.html) exposes the
+real kernel of the edge boundary map while keeping face boundaries, metric
+harmonic representatives, and gauges in higher layers.
+
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.

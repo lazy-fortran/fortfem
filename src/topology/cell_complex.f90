@@ -29,6 +29,7 @@ module fortfem_cell_complex
     public :: validate_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
+    public :: cell_complex_cycle_basis
     public :: quotient_cell_complex
 
 contains
@@ -164,6 +165,28 @@ contains
             size(complex%boundary_3, 2) - rank_3]
         if (any(betti < 0)) status = 7
     end subroutine cell_complex_betti_numbers
+
+    subroutine cell_complex_cycle_basis( &
+            complex, cycles, cycle_count, status)
+        !! Return a real basis of the one-cycle space ker(boundary_1).
+        !!
+        !! The columns are coefficient vectors on oriented edges and satisfy
+        !! boundary_1*cycles = 0 up to the scale-aware elimination tolerance.
+        !! These are cycles, not yet homology or metric-harmonic
+        !! representatives: boundaries of faces and Hodge factors remain
+        !! explicit in higher layers.
+        type(cell_complex_t), intent(in) :: complex
+        real(dp), allocatable, intent(out) :: cycles(:, :)
+        integer, intent(out) :: cycle_count
+        integer, intent(out) :: status
+
+        if (allocated(cycles)) deallocate(cycles)
+        cycle_count = 0
+        call validate_cell_complex(complex, status)
+        if (status /= 0) return
+        call matrix_nullspace(complex%boundary_1, cycles, cycle_count)
+        status = 0
+    end subroutine cell_complex_cycle_basis
 
     subroutine quotient_cell_complex( &
             complex, vertex_identification, edge_identification, quotient, &
@@ -309,5 +332,82 @@ contains
             pivot_row = pivot_row + 1
         end do
     end subroutine matrix_rank
+
+    subroutine matrix_nullspace(matrix, basis, nullity)
+        integer, intent(in) :: matrix(:, :)
+        real(dp), allocatable, intent(out) :: basis(:, :)
+        integer, intent(out) :: nullity
+        real(dp), allocatable :: work(:, :)
+        real(dp) :: scale, tolerance, pivot_value, factor, value
+        integer, allocatable :: pivot_columns(:)
+        integer :: row, column, pivot_row, pivot, rows, columns
+        integer :: free_column, free_index
+
+        if (allocated(basis)) deallocate(basis)
+        rows = size(matrix, 1)
+        columns = size(matrix, 2)
+        nullity = columns
+        allocate(basis(columns, columns))
+        basis = 0.0_dp
+        if (columns == 0) then
+            deallocate(basis)
+            allocate(basis(0, 0))
+            nullity = 0
+            return
+        end if
+
+        allocate(work(rows, columns), pivot_columns(rows))
+        work = real(matrix, dp)
+        pivot_columns = 0
+        pivot_row = 0
+        scale = 1.0_dp
+        if (rows > 0) scale = max(scale, maxval(abs(work)))
+        tolerance = 128.0_dp*epsilon(1.0_dp)*scale* &
+            real(max(rows, columns), dp)
+        do column = 1, columns
+            if (pivot_row >= rows) exit
+            pivot = pivot_row + 1
+            pivot_value = abs(work(pivot, column))
+            do row = pivot + 1, rows
+                value = abs(work(row, column))
+                if (value > pivot_value) then
+                    pivot = row
+                    pivot_value = value
+                end if
+            end do
+            if (pivot_value <= tolerance) cycle
+            pivot_row = pivot_row + 1
+            if (pivot /= pivot_row) then
+                work([pivot, pivot_row], :) = work([pivot_row, pivot], :)
+            end if
+            pivot_value = work(pivot_row, column)
+            work(pivot_row, :) = work(pivot_row, :)/pivot_value
+            do row = 1, rows
+                if (row == pivot_row) cycle
+                factor = work(row, column)
+                if (abs(factor) > tolerance) then
+                    work(row, :) = work(row, :) - &
+                        factor*work(pivot_row, :)
+                end if
+            end do
+            pivot_columns(pivot_row) = column
+        end do
+
+        nullity = columns - pivot_row
+        deallocate(basis)
+        allocate(basis(columns, nullity))
+        basis = 0.0_dp
+        free_index = 0
+        do free_column = 1, columns
+            if (pivot_row > 0) then
+                if (any(pivot_columns(:pivot_row) == free_column)) cycle
+            end if
+            free_index = free_index + 1
+            basis(free_column, free_index) = 1.0_dp
+            do row = 1, pivot_row
+                basis(pivot_columns(row), free_index) = -work(row, free_column)
+            end do
+        end do
+    end subroutine matrix_nullspace
 
 end module fortfem_cell_complex
