@@ -1,4 +1,6 @@
 module fortfem_api
+    use fortfem_mixed_rt_system, only: solve_mixed_rt_system, &
+        solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
     use fortfem_assembly_bspline_polar_2d, only: &
         assemble_bspline_polar_hcurl_operator_csc, &
         assemble_bspline_polar_h1_operator_csc, &
@@ -733,6 +735,9 @@ module fortfem_api
     public :: solve
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
+    public :: solve_mixed_rt_system
+    public :: solve_mixed_rt_system_jvp
+    public :: solve_mixed_rt_system_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_magnetic_box_3d
     public :: solve_tetra_nedelec_curl_mass
