@@ -14,6 +14,7 @@ module fortfem_level_set_triangle_interface_2d
 
     public :: evaluate_level_set_triangle_interface_2d
     public :: evaluate_level_set_triangle_cut_areas_2d
+    public :: evaluate_level_set_triangle_cut_quadrature_2d
 
 contains
 
@@ -122,32 +123,103 @@ contains
         status = 0
     end subroutine evaluate_level_set_triangle_cut_areas_2d
 
+    subroutine evaluate_level_set_triangle_cut_quadrature_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            negative_area, negative_centroid, interface_length, normal, status)
+        !! Return exact degree-one quadrature data for a linear level-set cut.
+        !!
+        !! The positive and negative regions are clipped polygons.  Their
+        !! areas and centroids therefore integrate constants and affine fields
+        !! exactly.  A zero-area side has a zero centroid.  The interface
+        !! normal follows the same physical-gradient orientation as the
+        !! interface primitive; no normal is returned for an uncut triangle.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(out) :: positive_area, positive_centroid(2)
+        real(dp), intent(out) :: negative_area, negative_centroid(2)
+        real(dp), intent(out) :: interface_length, normal(2)
+        integer, intent(out) :: status
+
+        real(dp) :: determinant, points(2, 2)
+        integer :: interface_status
+
+        positive_area = 0.0_dp
+        positive_centroid = 0.0_dp
+        negative_area = 0.0_dp
+        negative_centroid = 0.0_dp
+        interface_length = 0.0_dp
+        normal = 0.0_dp
+        status = 1
+        if (any(.not. ieee_is_finite(vertices)) .or. &
+            any(.not. ieee_is_finite(level_values))) return
+        if (all(abs(level_values) <= topology_tolerance)) return
+        determinant = (vertices(2, 2) - vertices(2, 1))* &
+            (vertices(1, 3) - vertices(1, 1)) - &
+            (vertices(1, 2) - vertices(1, 1))* &
+            (vertices(2, 3) - vertices(2, 1))
+        if (abs(determinant) <= topology_tolerance) return
+
+        call level_set_side_moments( &
+            vertices, level_values, .true., positive_area, positive_centroid)
+        call level_set_side_moments( &
+            vertices, level_values, .false., negative_area, negative_centroid)
+        call evaluate_level_set_triangle_interface_2d( &
+            vertices, level_values, points, interface_length, normal, &
+            interface_status)
+        if (interface_status /= 0) then
+            if (.not. all(level_values >= -topology_tolerance) .and. &
+                .not. all(level_values <= topology_tolerance)) then
+                positive_area = 0.0_dp
+                positive_centroid = 0.0_dp
+                negative_area = 0.0_dp
+                negative_centroid = 0.0_dp
+                return
+            end if
+        end if
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_quadrature_2d
+
     pure function level_set_side_area(vertices, level_values, keep_positive) &
             result(area)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         logical, intent(in) :: keep_positive
         real(dp) :: area
+        real(dp) :: centroid(2)
+
+        call level_set_side_moments( &
+            vertices, level_values, keep_positive, area, centroid)
+    end function level_set_side_area
+
+    pure subroutine level_set_side_moments( &
+            vertices, level_values, keep_positive, area, centroid)
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        logical, intent(in) :: keep_positive
+        real(dp), intent(out) :: area, centroid(2)
 
         real(dp) :: polygon(2, 6), clipped(2, 6)
-        integer :: point_count, point
+        real(dp) :: signed_area, cross, first_moment(2)
+        integer :: point_count, point, next_point
 
+        area = 0.0_dp
+        centroid = 0.0_dp
         polygon(:, 1:3) = vertices
         point_count = 3
         call clip_level_set_polygon( &
             polygon, point_count, level_values, keep_positive, clipped)
-        if (point_count < 3) then
-            area = 0.0_dp
-            return
-        end if
-        area = 0.0_dp
+        if (point_count < 3) return
+        signed_area = 0.0_dp
+        first_moment = 0.0_dp
         do point = 1, point_count
-            area = area + polygon(1, point)* &
-                polygon(2, 1 + mod(point, point_count)) - &
-                polygon(2, point)* &
-                polygon(1, 1 + mod(point, point_count))
+            next_point = 1 + mod(point, point_count)
+            cross = polygon(1, point)*polygon(2, next_point) - &
+                polygon(2, point)*polygon(1, next_point)
+            signed_area = signed_area + 0.5_dp*cross
+            first_moment = first_moment + 0.5_dp*cross*( &
+                polygon(:, point) + polygon(:, next_point))
         end do
-        area = 0.5_dp*abs(area)
-    end function level_set_side_area
+        if (abs(signed_area) <= topology_tolerance) return
+        area = abs(signed_area)
+        centroid = first_moment/(3.0_dp*signed_area)
+    end subroutine level_set_side_moments
 
     pure subroutine clip_level_set_polygon( &
             polygon, point_count, level_values, keep_positive, clipped)
