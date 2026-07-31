@@ -1099,6 +1099,9 @@ gallery example.
   `assemble_vector_jump_penalty` now supplies the tensor-valued counterpart
   for caller-owned tangential/normal projectors and anisotropic metrics, with
   value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
+  `assemble_vector_sipg_interface` now adds independent test/trial vector
+  average-flux consistency for `theta=1,0,-1`, including metric-aware
+  value/JVP/VJP actions; HDG traces and commuting projections remain.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent
@@ -1224,7 +1227,8 @@ gallery example.
   value/JVP/VJP actions; vector FEEC and hybridized skeleton blocks remain.
   A tensor-weighted vector jump penalty now covers component-valued traces and
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
-  projections remain.
+  projections are now public with value/JVP/VJP actions; hybridization and
+  static condensation remain.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind/entropy-aware flux interface.

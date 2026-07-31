@@ -345,7 +345,9 @@ module fortfem_api
     use fortfem_scalar_sipg_interface, only: assemble_scalar_sipg_interface, &
         assemble_scalar_sipg_interface_jvp, assemble_scalar_sipg_interface_vjp
     use fortfem_vector_jump_penalty, only: assemble_vector_jump_penalty, &
-        assemble_vector_jump_penalty_jvp, assemble_vector_jump_penalty_vjp
+        assemble_vector_jump_penalty_jvp, assemble_vector_jump_penalty_vjp, &
+        assemble_vector_sipg_interface, assemble_vector_sipg_interface_jvp, &
+        assemble_vector_sipg_interface_vjp
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
@@ -1773,6 +1775,9 @@ module fortfem_api
     public :: assemble_vector_jump_penalty
     public :: assemble_vector_jump_penalty_jvp
     public :: assemble_vector_jump_penalty_vjp
+    public :: assemble_vector_sipg_interface
+    public :: assemble_vector_sipg_interface_jvp
+    public :: assemble_vector_sipg_interface_vjp
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
