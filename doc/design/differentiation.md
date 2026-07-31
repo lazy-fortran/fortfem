@@ -275,6 +275,12 @@ BDM and second-kind Nedelec sampled vector loads also share one Eulerian
 forcing implementation. The family switch changes only the Piola map; source
 motion, determinant quadrature, orientation transforms, source cotangents,
 and shared-vertex accumulation are common.
+Their constrained sampled-state wrappers likewise share one end-to-end
+primal/JVP/VJP pipeline. The products compose full-vector CSC assembly,
+Eulerian sampled forcing, and the implicit sparse-solve adjoint, returning
+cotangents for every shared mesh vertex, both scalar coefficients, source
+samples, and prescribed boundary degrees of freedom without forming a state
+Jacobian.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
