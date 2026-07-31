@@ -5,6 +5,9 @@ module fortfem_api
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, quotient_cell_complex, &
         validate_cell_complex
+    use fortfem_harmonic_period_normalization, only: &
+        normalize_harmonic_one_forms, normalize_harmonic_one_forms_jvp, &
+        normalize_harmonic_one_forms_vjp
     use fortfem_cell_identification, only: cell_identification_classes, &
         cell_identification_t, identify_boundary_matrix, &
         initialize_cell_identification, validate_cell_identification
@@ -946,6 +949,9 @@ module fortfem_api
     public :: cell_complex_cocycle_basis
     public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
+    public :: normalize_harmonic_one_forms
+    public :: normalize_harmonic_one_forms_jvp
+    public :: normalize_harmonic_one_forms_vjp
     public :: cell_identification_t
     public :: initialize_cell_identification
     public :: validate_cell_identification
