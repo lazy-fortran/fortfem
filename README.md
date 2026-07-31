@@ -160,6 +160,7 @@ Explore the [examples/](https://github.com/lazy-fortran/fortfem/tree/main/exampl
 - [Source Files](https://lazy-fortran.github.io/fortfem/lists/files.html) - Browse the source code
 - [Program Structure](https://lazy-fortran.github.io/fortfem/lists/procedures.html) - Main programs and procedures
 - [Design Documentation](https://lazy-fortran.github.io/fortfem/page/design/index.html) - Architecture and design decisions
+- [Roadmap](ROADMAP.md) - Structure-preserving FEM, BEM, IGA, Fourier-FEM, and plasma-physics ingredients
 
 ## Quick Links
 
