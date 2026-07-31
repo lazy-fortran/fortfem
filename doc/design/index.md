@@ -86,6 +86,10 @@ The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
 
+The [dissipative Cayley step](dissipative_cayley.html) provides the separate
+energy-contracting mass/damping update and its analytic JVP/VJP actions for
+resistive, viscous, thermal, and absorbing clients.
+
 The [CGL pressure tensor](cgl_pressure_tensor.html) documents the generated
 gyrotropic tensor constitutive block and its JVP/VJP contract.
 
