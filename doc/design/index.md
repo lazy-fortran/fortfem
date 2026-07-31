@@ -16,6 +16,10 @@ The [differentiation strategy](differentiation.html) defines the common
 primal/JVP/VJP API, analytical FortSym path, optional Enzyme tournament, and
 implicit sparse-solve adjoints.
 
+The [spherical-harmonic contract](spherical_harmonics.html) records the
+FortNum-backed normalization, angular domains, and pole convention used by
+Fourier-FEM and boundary operators.
+
 The [FCI parallel support-operator contract](fci_parallel_operator.html)
 defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
