@@ -144,7 +144,7 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, Legendre and spherical functions, Bessel/Hankel paths, toroidal analytical utilities in active development | A documented, independently tested torus-harmonic API and stable half-integer continuation |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts | Preconditioners with measured scaling, flexible Krylov products, and block solver derivatives |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts | Tree--cotree direct reductions, ILU/ILUT and IC(0)/ICHOL where valid, preconditioners with measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
@@ -461,6 +461,26 @@ subsequent cuts, flux normalization, and gauge construction. It intentionally
 does not label those cycles or cocycles as harmonic forms or physical fluxes
 until metric Hodge data and application constraints are supplied.
 
+The metric-harmonic one-form slice is public as well. Given a positive edge
+metric it returns the closed and co-closed kernel, while leaving period
+normalization and gauge ownership to the caller. The fixed-topology
+tree--cotree gauge slice supplies a spanning-forest split,
+cotree restriction/prolongation, direct dense-system reduction, and fixed-map
+JVP/VJP actions. Its selector is frozen for differentiation; graph rebuilds
+are topology events.
+For high-order FEEC and IGA, the tree is built on the lowest-order
+mesh/control graph and higher-order moments are retained by an external DOF
+map.
+
+The direct-gauge design follows [Manges and Cendes
+(1995)](https://doi.org/10.1109/20.376275), [Bíró, Preis, and Richter
+(1996)](https://ieeexplore.ieee.org/document/558631), and the high-order
+tree-gauge analysis in [the tree-gauge review](https://doi.org/10.3390/j5010004).
+The mortared IGA extension is tracked against [Kapidani et al.
+(2022)](https://doi.org/10.1016/j.cma.2022.114654) and its
+[preprint](https://arxiv.org/abs/2110.15860). These are literature and oracle
+references, not imported source code.
+
 An electromagnetic sheet is a coupled unknown, not only a post-processed
 delta source. The implementation must support equivalent formulations and
 their conversion:
@@ -775,6 +795,16 @@ condensation, matrix-free actions, field splits, and retained factorizations.
 Each converged-state solver has an implicit JVP/VJP. Iteration counts and
 stopping decisions are inactive in that derivative contract.
 
+For curl--curl and other gauge-singular systems, direct solves must use an
+explicit tree--cotree or equivalent compatible nullspace reduction before
+factorization. The selector is topology metadata and is not differentiated
+through. Iterative paths must expose compatible nullspace projection and
+measured ILU/ILUT, incomplete Cholesky (IC(0)), or incomplete Cholesky with
+level/fill control (ICHOL) options where the matrix symmetry and definiteness
+permit them. Complex or nonsymmetric blocks use an explicitly declared
+replacement (for example ILU rather than ICHOL), with factor breakdown and
+loss of positive definiteness reported rather than hidden.
+
 Nonlinear infrastructure includes Newton, damped Newton, Newton-Krylov,
 pseudo-transient continuation, trust regions, deflation, parameter
 continuation, bifurcation diagnostics, and explicit failure reasons.
@@ -1055,8 +1085,9 @@ gallery example.
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent
   interval, loop, sphere-CW, torus-CW, and malformed-orientation tests cover
-  the primitive; periodic quotient maps, region adjacency, harmonic bases,
-  gauge constraints, and cycle ledgers remain planned graph layers.
+  the primitive; quotient boundary maps, cycle/cocycle kernels, and metric
+  harmonic one-forms are now public. Period normalization, gauge constraints,
+  and cycle ledgers remain higher graph layers.
 - The neutral `region_interface_graph_t` contract now adds oriented plus/minus
   region incidence, periodic self-identifications, and compact connectivity
   labels plus a spanning-forest cycle basis satisfying the exact integer
@@ -1071,6 +1102,12 @@ gallery example.
   inconsistency-rejection, cycle-rejection, canonical-sign, zero-sign, and
   shape-mismatch tests cover the metadata; quotient geometry remains
   higher-level work.
+- The neutral tree--cotree gauge contract now selects a spanning forest on an
+  oriented graph, exposes cotree restriction/prolongation, and extracts the
+  fixed-gauge dense direct system. Independent triangle, disconnected-forest,
+  reduction, and malformed-incidence tests cover the selector. High-order
+  FEEC/IGA moment maps, period constraints, and sparse reduced assembly remain
+  composition layers.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now

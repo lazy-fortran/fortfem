@@ -1,17 +1,17 @@
 program test_cell_complex
     use check, only: check_condition, check_summary
     use fortfem_api, only: cell_complex_betti_numbers, cell_complex_cocycle_basis, &
-        cell_complex_cycle_basis, &
+        cell_complex_cycle_basis, cell_complex_harmonic_one_forms, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, validate_cell_complex
     use fortfem_kinds, only: dp
     implicit none
 
     type(cell_complex_t) :: interval, circle, sphere, torus, invalid
-    real(dp), allocatable :: cycles(:, :)
+    real(dp), allocatable :: cycles(:, :), harmonic(:, :), edge_metric(:, :)
     integer, allocatable :: boundary_1(:, :), boundary_2(:, :)
     integer :: betti(4), euler, status
-    integer :: cocycle_count, cycle_count
+    integer :: cocycle_count, cycle_count, harmonic_count
 
     allocate(boundary_1(2, 1))
     boundary_1 = reshape([-1, 1], shape(boundary_1))
@@ -30,6 +30,13 @@ program test_cell_complex
     call check_condition(status == 0 .and. cycle_count == 0 .and. &
         size(cycles, 1) == 1, &
         "interval has no nontrivial one-cycle")
+    allocate(edge_metric(1, 1))
+    edge_metric = 1.0_dp
+    call cell_complex_harmonic_one_forms( &
+        interval, edge_metric, harmonic, harmonic_count, status)
+    call check_condition(status == 0 .and. harmonic_count == 0, &
+        "interval has no metric harmonic one-form")
+    deallocate(edge_metric)
 
     deallocate(boundary_1)
     allocate(boundary_1(1, 1))
@@ -49,6 +56,13 @@ program test_cell_complex
     call cell_complex_cocycle_basis(circle, cycles, cocycle_count, status)
     call check_condition(status == 0 .and. cocycle_count == 1 .and. &
         size(cycles, 1) == 1, "circle has one independent one-cocycle")
+    allocate(edge_metric(1, 1))
+    edge_metric = 2.0_dp
+    call cell_complex_harmonic_one_forms( &
+        circle, edge_metric, harmonic, harmonic_count, status)
+    call check_condition(status == 0 .and. harmonic_count == 1 .and. &
+        size(harmonic, 1) == 1, "circle has one metric harmonic one-form")
+    deallocate(edge_metric)
 
     deallocate(boundary_1)
     allocate(boundary_1(1, 0), boundary_2(0, 1))
@@ -81,6 +95,17 @@ program test_cell_complex
     call check_condition(status == 0 .and. cocycle_count == 2 .and. &
         maxval(abs(matmul(real(transpose(boundary_2), dp), cycles))) < &
         1.0e-14_dp, "torus cocycle basis annihilates the face boundary")
+    allocate(edge_metric(2, 2))
+    edge_metric = reshape([2.0_dp, 0.5_dp, 0.5_dp, 3.0_dp], [2, 2])
+    call cell_complex_harmonic_one_forms( &
+        torus, edge_metric, harmonic, harmonic_count, status)
+    call check_condition(status == 0 .and. harmonic_count == 2 .and. &
+        maxval(abs(matmul(real(boundary_1, dp), matmul(edge_metric, harmonic)))) < &
+        1.0e-14_dp, "torus metric harmonic basis satisfies the co-closed oracle")
+    edge_metric(2, 2) = -1.0_dp
+    call cell_complex_harmonic_one_forms( &
+        torus, edge_metric, harmonic, harmonic_count, status)
+    call check_condition(status /= 0, "harmonic basis rejects a non-positive metric")
 
     boundary_1 = reshape([-1, 1], [1, 2])
     boundary_2 = reshape([1, 0], [2, 1])

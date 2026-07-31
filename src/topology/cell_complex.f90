@@ -31,6 +31,7 @@ module fortfem_cell_complex
     public :: cell_complex_betti_numbers
     public :: cell_complex_cycle_basis
     public :: cell_complex_cocycle_basis
+    public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
 
 contains
@@ -185,7 +186,8 @@ contains
         cycle_count = 0
         call validate_cell_complex(complex, status)
         if (status /= 0) return
-        call matrix_nullspace(complex%boundary_1, cycles, cycle_count)
+        call matrix_nullspace( &
+            real(complex%boundary_1, dp), cycles, cycle_count)
         status = 0
     end subroutine cell_complex_cycle_basis
 
@@ -207,9 +209,61 @@ contains
         call validate_cell_complex(complex, status)
         if (status /= 0) return
         call matrix_nullspace( &
-            transpose(complex%boundary_2), cocycles, cocycle_count)
+            real(transpose(complex%boundary_2), dp), cocycles, cocycle_count)
         status = 0
     end subroutine cell_complex_cocycle_basis
+
+    subroutine cell_complex_harmonic_one_forms( &
+            complex, edge_metric, harmonic_forms, form_count, status)
+        !! Return metric-harmonic one-cochains for a positive edge metric.
+        !!
+        !! The returned columns satisfy both
+        !!
+        !!   boundary_2^T h = 0,
+        !!   boundary_1 edge_metric h = 0.
+        !!
+        !! The first relation is closedness and the second is metric
+        !! co-closedness. This is a topology/metric primitive only: it does
+        !! not choose a gauge, period normalization, or physical flux.
+        type(cell_complex_t), intent(in) :: complex
+        real(dp), intent(in) :: edge_metric(:, :)
+        real(dp), allocatable, intent(out) :: harmonic_forms(:, :)
+        integer, intent(out) :: form_count
+        integer, intent(out) :: status
+        real(dp), allocatable :: constraint_matrix(:, :)
+        integer :: edge_count, face_count, vertex_count
+
+        if (allocated(harmonic_forms)) deallocate(harmonic_forms)
+        form_count = 0
+        call validate_cell_complex(complex, status)
+        if (status /= 0) return
+        vertex_count = complex%vertex_count
+        edge_count = size(complex%boundary_1, 2)
+        face_count = size(complex%boundary_2, 2)
+        if (size(edge_metric, 1) /= edge_count .or. &
+            size(edge_metric, 2) /= edge_count) then
+            status = 2
+            return
+        end if
+        if (.not. positive_definite_metric(edge_metric)) then
+            status = 3
+            return
+        end if
+
+        allocate(constraint_matrix(vertex_count + face_count, edge_count))
+        constraint_matrix = 0.0_dp
+        if (face_count > 0) then
+            constraint_matrix(:face_count, :) = &
+                real(transpose(complex%boundary_2), dp)
+        end if
+        if (vertex_count > 0) then
+            constraint_matrix(face_count + 1:, :) = matmul( &
+                real(complex%boundary_1, dp), edge_metric)
+        end if
+        call matrix_nullspace( &
+            constraint_matrix, harmonic_forms, form_count)
+        status = 0
+    end subroutine cell_complex_harmonic_one_forms
 
     subroutine quotient_cell_complex( &
             complex, vertex_identification, edge_identification, quotient, &
@@ -357,7 +411,7 @@ contains
     end subroutine matrix_rank
 
     subroutine matrix_nullspace(matrix, basis, nullity)
-        integer, intent(in) :: matrix(:, :)
+        real(dp), intent(in) :: matrix(:, :)
         real(dp), allocatable, intent(out) :: basis(:, :)
         integer, intent(out) :: nullity
         real(dp), allocatable :: work(:, :)
@@ -380,7 +434,7 @@ contains
         end if
 
         allocate(work(rows, columns), pivot_columns(rows))
-        work = real(matrix, dp)
+        work = matrix
         pivot_columns = 0
         pivot_row = 0
         scale = 1.0_dp
@@ -432,5 +486,65 @@ contains
             end do
         end do
     end subroutine matrix_nullspace
+
+    pure logical function positive_definite_metric(metric)
+        real(dp), intent(in) :: metric(:, :)
+        real(dp), allocatable :: factor(:, :)
+        real(dp) :: scale, tolerance, value
+        integer :: row, column, inner, count
+
+        count = size(metric, 1)
+        positive_definite_metric = size(metric, 2) == count
+        if (.not. positive_definite_metric) return
+        if (count == 0) return
+        if (.not. finite_values(metric)) then
+            positive_definite_metric = .false.
+            return
+        end if
+        scale = max(1.0_dp, maxval(abs(metric)))
+        tolerance = 128.0_dp*epsilon(1.0_dp)*scale*real(count, dp)
+        if (maxval(abs(metric - transpose(metric))) > tolerance) then
+            positive_definite_metric = .false.
+            return
+        end if
+        allocate(factor(count, count))
+        factor = 0.0_dp
+        do row = 1, count
+            do column = 1, row
+                value = metric(row, column)
+                do inner = 1, column - 1
+                    value = value - factor(row, inner)*factor(column, inner)
+                end do
+                if (row == column) then
+                    if (value <= tolerance) then
+                        positive_definite_metric = .false.
+                        return
+                    end if
+                    factor(row, column) = sqrt(value)
+                else
+                    factor(row, column) = value/factor(column, column)
+                end if
+            end do
+        end do
+    end function positive_definite_metric
+
+    pure logical function finite_values(values)
+        real(dp), intent(in) :: values(:, :)
+        integer :: row, column
+
+        finite_values = .true.
+        do column = 1, size(values, 2)
+            do row = 1, size(values, 1)
+                if (.not. (values(row, column) == values(row, column))) then
+                    finite_values = .false.
+                    return
+                end if
+                if (abs(values(row, column)) > huge(1.0_dp)) then
+                    finite_values = .false.
+                    return
+                end if
+            end do
+        end do
+    end function finite_values
 
 end module fortfem_cell_complex

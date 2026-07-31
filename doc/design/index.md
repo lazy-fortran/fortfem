@@ -34,6 +34,10 @@ The [cell-complex cycle-space contract](cell_cycle_basis.html) exposes the
 real cycle and cocycle kernels while keeping face quotients, metric harmonic
 representatives, and gauges in higher layers.
 
+The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
+fixed-topology direct-solve reduction for curl--curl nullspaces, including the
+control-mesh rule needed by high-order FEEC and IGA/mortar spaces.
+
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.

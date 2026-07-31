@@ -1,6 +1,7 @@
 module fortfem_api
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cycle_basis, &
+        cell_complex_harmonic_one_forms, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, quotient_cell_complex, &
         validate_cell_complex
@@ -16,6 +17,12 @@ module fortfem_api
         assemble_interface_surface_current, &
         assemble_interface_surface_current_jvp, &
         assemble_interface_surface_current_vjp
+    use fortfem_tree_cotree_gauge, only: &
+        apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
+        build_tree_cotree_gauge, reduce_tree_cotree_dense_system, &
+        reduce_tree_cotree_dense_system_jvp, reduce_tree_cotree_dense_system_vjp, &
+        tree_cotree_gauge_edges, tree_cotree_gauge_t, &
+        validate_tree_cotree_gauge
     use fortfem_surface_triangle_geometry_3d, only: &
         evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
@@ -813,6 +820,7 @@ module fortfem_api
     public :: cell_complex_betti_numbers
     public :: cell_complex_cycle_basis
     public :: cell_complex_cocycle_basis
+    public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
     public :: cell_identification_t
     public :: initialize_cell_identification
@@ -828,6 +836,15 @@ module fortfem_api
     public :: assemble_interface_surface_current
     public :: assemble_interface_surface_current_jvp
     public :: assemble_interface_surface_current_vjp
+    public :: tree_cotree_gauge_t
+    public :: build_tree_cotree_gauge
+    public :: validate_tree_cotree_gauge
+    public :: tree_cotree_gauge_edges
+    public :: apply_tree_cotree_restriction
+    public :: apply_tree_cotree_prolongation
+    public :: reduce_tree_cotree_dense_system
+    public :: reduce_tree_cotree_dense_system_jvp
+    public :: reduce_tree_cotree_dense_system_vjp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
