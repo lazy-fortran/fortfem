@@ -15,6 +15,7 @@ module fortfem_fci_interpolation_map
     public :: build_fci_linear_interpolation_map_1d
     public :: build_fci_linear_interpolation_map_1d_jvp
     public :: build_fci_linear_interpolation_map_1d_vjp
+    public :: build_fci_bilinear_interpolation_map_2d
 
 contains
 
@@ -203,6 +204,64 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_linear_interpolation_map_1d_vjp
 
+    subroutine build_fci_bilinear_interpolation_map_2d( &
+            source_x, source_y, target_x, target_y, interpolation_map, status)
+        !! Build tensor-product bilinear map rows on a Cartesian source grid.
+        !!
+        !! Source columns use x as the fastest index:
+        !! `column = (y_index - 1)*size(source_x) + x_index`.
+        !! Targets on source grid lines are represented exactly; all valid
+        !! rows have at most four nonzero weights and sum to one.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: target_x(:)
+        real(dp), intent(in) :: target_y(:)
+        real(dp), intent(out) :: interpolation_map(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nx, ny, target_count, row, ix, iy, column
+        real(dp) :: alpha_x, alpha_y
+        logical :: valid_x, valid_y
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI bilinear interpolation received incompatible arrays")
+        interpolation_map = 0.0_dp
+        nx = size(source_x)
+        ny = size(source_y)
+        target_count = size(target_x)
+        if (nx < 2 .or. ny < 2 .or. target_count < 1) return
+        if (size(target_y) /= target_count) return
+        if (size(interpolation_map, 1) /= target_count .or. &
+            size(interpolation_map, 2) /= nx*ny) return
+        if (any(.not. ieee_is_finite(source_x)) .or. &
+            any(.not. ieee_is_finite(source_y)) .or. &
+            any(.not. ieee_is_finite(target_x)) .or. &
+            any(.not. ieee_is_finite(target_y))) return
+        if (.not. strictly_increasing(source_x) .or. &
+            .not. strictly_increasing(source_y)) return
+
+        do row = 1, target_count
+            call find_linear_bracket( &
+                source_x, target_x(row), ix, alpha_x, valid_x)
+            call find_linear_bracket( &
+                source_y, target_y(row), iy, alpha_y, valid_y)
+            if (.not. valid_x .or. .not. valid_y) return
+            column = (iy - 1)*nx + ix
+            interpolation_map(row, column) = &
+                interpolation_map(row, column) + (1.0_dp - alpha_x)* &
+                (1.0_dp - alpha_y)
+            interpolation_map(row, column + 1) = &
+                interpolation_map(row, column + 1) + alpha_x* &
+                (1.0_dp - alpha_y)
+            interpolation_map(row, column + nx) = &
+                interpolation_map(row, column + nx) + (1.0_dp - alpha_x)* &
+                alpha_y
+            interpolation_map(row, column + nx + 1) = &
+                interpolation_map(row, column + nx + 1) + alpha_x*alpha_y
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_map_2d
+
     subroutine locate_fixed_interval( &
             source_coordinates, target_coordinate, left, valid_interval)
         real(dp), intent(in) :: source_coordinates(:)
@@ -221,5 +280,49 @@ contains
         end do
         left = 0
     end subroutine locate_fixed_interval
+
+    logical function strictly_increasing(coordinates)
+        real(dp), intent(in) :: coordinates(:)
+        integer :: index
+
+        strictly_increasing = size(coordinates) >= 2
+        if (.not. strictly_increasing) return
+        do index = 1, size(coordinates) - 1
+            if (coordinates(index + 1) <= coordinates(index)) then
+                strictly_increasing = .false.
+                return
+            end if
+        end do
+    end function strictly_increasing
+
+    subroutine find_linear_bracket( &
+            coordinates, coordinate, left, alpha, valid)
+        real(dp), intent(in) :: coordinates(:)
+        real(dp), intent(in) :: coordinate
+        integer, intent(out) :: left
+        real(dp), intent(out) :: alpha
+        logical, intent(out) :: valid
+
+        left = 0
+        alpha = 0.0_dp
+        valid = .false.
+        if (coordinate < coordinates(1) .or. &
+            coordinate > coordinates(size(coordinates))) return
+        if (coordinate == coordinates(size(coordinates))) then
+            left = size(coordinates) - 1
+            alpha = 1.0_dp
+        else
+            do left = 1, size(coordinates) - 1
+                if (coordinate <= coordinates(left + 1)) exit
+            end do
+            if (left < 1 .or. left >= size(coordinates)) then
+                left = 0
+                return
+            end if
+            alpha = (coordinate - coordinates(left))/ &
+                (coordinates(left + 1) - coordinates(left))
+        end if
+        valid = .true.
+    end subroutine find_linear_bracket
 
 end module fortfem_fci_interpolation_map

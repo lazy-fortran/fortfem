@@ -540,10 +540,10 @@ profiles plus CSV values for the mass-rate and dissipation oracles.
 The field-only VJP of this diffusion action is also public and is checked by
 an independent dot-product identity; map/coefficient/volume sensitivities
 remain separate follow-up contracts. The public 1D linear interpolation-map
-builder now checks partition of unity, affine reproduction, and fixed-topology
-JVP/VJP dot products, while higher-dimensional interpolation Jacobians,
-support-volume construction, and anisotropy-aware preconditioning remain
-active work.
+builder now checks partition of unity, affine reproduction, fixed-topology
+JVP/VJP dot products, and Cartesian bilinear affine reproduction. Higher-order
+or unstructured interpolation Jacobians, support-volume construction, and
+anisotropy-aware preconditioning remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -886,8 +886,9 @@ gallery example.
   `fci_parallel_diffusion` gallery fixture provides a reproducible open-line
   mass-conservation and negative-energy profile. A 1D linear map builder and
   its fixed-topology JVP/VJP provide independent partition/affine and
-  dot-product oracles; higher-dimensional interpolation Jacobians and
-  support-volume map construction are still separate planned components.
+  dot-product oracles, and a 2D Cartesian bilinear builder now covers a
+  genuine poloidal slice. Higher-order/unstructured interpolation Jacobians
+  and support-volume map construction are still separate planned components.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
