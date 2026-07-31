@@ -1,4 +1,8 @@
 module fortfem_api
+    use fortfem_triangle_nedelec_sampled_state_2d, only: &
+        solve_triangle_nedelec_sampled_state, &
+        solve_triangle_nedelec_sampled_state_jvp, &
+        solve_triangle_nedelec_sampled_state_vjp
     use fortfem_tetra_nedelec_sampled_state_3d, only: &
         solve_tetra_nedelec_sampled_state, &
         solve_tetra_nedelec_sampled_state_jvp, &
@@ -804,6 +808,9 @@ module fortfem_api
     public :: solve_tetra_nedelec_sampled_state
     public :: solve_tetra_nedelec_sampled_state_jvp
     public :: solve_tetra_nedelec_sampled_state_vjp
+    public :: solve_triangle_nedelec_sampled_state
+    public :: solve_triangle_nedelec_sampled_state_jvp
+    public :: solve_triangle_nedelec_sampled_state_vjp
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_nedelec_weighted_curl_mass
     public :: solve_tetra_rt_div_mass
