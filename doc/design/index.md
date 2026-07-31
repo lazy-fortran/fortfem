@@ -16,6 +16,11 @@ The [differentiation strategy](differentiation.html) defines the common
 primal/JVP/VJP API, analytical FortSym path, optional Enzyme tournament, and
 implicit sparse-solve adjoints.
 
+The [FCI parallel support-operator contract](fci_parallel_operator.html)
+defines the PARALLAX-aligned mapped gradient and its conservative
+volume-weighted adjoint without coupling FortFEM to a particular field-line
+tracer.
+
 ## Architecture
 
 ### Core Components

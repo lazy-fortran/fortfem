@@ -172,6 +172,9 @@ module fortfem_api
     use fortfem_api_spaces
     use fortfem_api_forms
     use fortfem_api_solvers
+    use fortfem_fci_parallel_operator, only: &
+        assemble_fci_parallel_gradient_csc, &
+        assemble_fci_parallel_support_divergence_csc
     use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
@@ -1403,6 +1406,10 @@ module fortfem_api
     public :: bicgstab_solve_jvp, bicgstab_solve_vjp
     public :: gmres_solve_jvp, gmres_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
+
+    ! Field-coordinate-independent (FCI) support operators
+    public :: assemble_fci_parallel_gradient_csc
+    public :: assemble_fci_parallel_support_divergence_csc
 
     ! Plotting interface
     public :: plot

@@ -515,6 +515,13 @@ impedance. Required work includes:
 The parallel operator may be represented by a compatible H(curl)/H(div)
 complex, a Fourier derivative, or an FCI field-line map. These choices share a
 residual and oracle interface but are not assumed algebraically identical.
+The first PARALLAX-aligned algebraic slice is now on `main`: mapped upper and
+lower plane interpolation matrices assemble a sparse staggered gradient, and
+the support divergence is constructed as its negative volume-weighted
+adjoint. The independent test covers a linear-field oracle, constants, an
+explicit flux-balance vector, and the weighted pairing identity. Field-line
+tracing, interpolation Jacobians, and anisotropy-aware preconditioning remain
+active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -839,8 +846,11 @@ gallery example.
 - GPEC/MARS/GLISS-style linear ideal and resistive perturbation blocks,
   singular layers, vacuum, conducting wall, and response matrices.
 
-### Phase 7a: Field-aligned edge and SOL ingredients: **planned**
+### Phase 7a: Field-aligned edge and SOL ingredients: **active**
 
+- FCI support-operator gradient/divergence algebra is public and tested in
+  `fortfem_fci_parallel_operator`; its map construction and geometry services
+  are still separate planned components.
 - FCI field-line maps, interpolation Jacobians, and parallel derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
