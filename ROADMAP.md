@@ -998,6 +998,11 @@ gallery example.
   FCI transpose with an explicit transpose of every plane CSC block. An
   independent nonsymmetric-plane oracle and real dot-product test guard this
   adjoint contract; coefficient and geometry derivatives remain separate.
+- A batched `apply_fci_plane_two_level_vcycles` adapter now applies the
+  independently tested two-level plane cycle to a homogeneous plane stack,
+  preserving the PARALLAX field-split boundary between per-plane elliptic
+  solves and the global FCI line action. Heterogeneous plane sizes and deeper
+  retained-factor hierarchies remain active work.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
