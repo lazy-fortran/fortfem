@@ -159,6 +159,12 @@ FortSym-generated determinant products with the closed H(div) value and
 divergence transformations, providing the geometry primitive required by
 mixed Poisson and flux-conservative Ampere discretizations.
 
+Arbitrary-order tetrahedral RT div--div-plus-mass element matrices compose
+that map with quadrature. Their JVPs cover all twelve vertex coordinates and
+both operator coefficients. Their VJPs use one reverse quadrature sweep to
+return the complete geometry and coefficient cotangents, making reverse mode
+independent of the number of active mesh coordinates.
+
 Arbitrary-order tetrahedral Nedelec curl--curl-plus-mass element matrices
 compose those Piola products with quadrature. Their JVPs cover all twelve
 vertex coordinates and both material coefficients. A single analytical

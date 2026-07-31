@@ -4,12 +4,13 @@ module fortfem_assembly_tetra_rt_arbitrary_order_3d
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
         evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
         tetra_discontinuous_dof_count, tetra_discontinuous_t
-    use fortfem_tetra_piola_maps, only: map_tetra_rt_contravariant
+    use fortfem_tetra_piola_maps, only: map_tetra_rt_contravariant, &
+        map_tetra_rt_contravariant_jvp, map_tetra_rt_contravariant_vjp
     use fortfem_tetra_rt_arbitrary_order, only: &
         evaluate_tetra_rt, initialize_tetra_rt, tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
-    use fortnum_linalg, only: det3
+    use fortnum_linalg, only: det3, det3_jvp, det3_vjp
     use fortsparse, only: &
         csc_from_triplet, csc_t, FORTSPARSE_INVALID_MATRIX, &
         fortsparse_status_t, status_set
@@ -19,6 +20,8 @@ module fortfem_assembly_tetra_rt_arbitrary_order_3d
 
     public :: assemble_tetra_rt_div_mass_csc
     public :: assemble_tetra_rt_div_mass_element
+    public :: assemble_tetra_rt_div_mass_element_jvp
+    public :: assemble_tetra_rt_div_mass_element_vjp
     public :: assemble_tetra_rt_divergence_csc
     public :: assemble_tetra_rt_vector_load
 
@@ -316,6 +319,175 @@ contains
         status = 0
     end subroutine assemble_tetra_rt_div_mass_element
 
+    subroutine assemble_tetra_rt_div_mass_element_jvp( &
+            vertices, degree, quadrature_degree, divergence_coefficient, &
+            mass_coefficient, vertices_dot, divergence_coefficient_dot, &
+            mass_coefficient_dot, matrix_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: divergence_coefficient_dot
+        real(dp), intent(in) :: mass_coefficient_dot
+        real(dp), allocatable, intent(out) :: matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        real(dp), allocatable :: divergences(:), divergences_dot(:)
+        real(dp), allocatable :: ref_divergences(:), ref_values(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp), allocatable :: zero_divergences(:), zero_values(:, :)
+        real(dp) :: determinant, determinant_dot, divergence_energy
+        real(dp) :: jacobian(3, 3), jacobian_dot(3, 3), mass_energy, point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_jacobian(vertices_dot, jacobian_dot)
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+        dof_count = tetra_rt_dof_count(basis)
+        allocate(matrix_dot(dof_count, dof_count), source=0.0_dp)
+        allocate(ref_values(3, dof_count), ref_divergences(dof_count))
+        allocate(zero_values(3, dof_count), zero_divergences(dof_count), &
+            source=0.0_dp)
+        allocate(values(3, dof_count), divergences(dof_count))
+        allocate(values_dot(3, dof_count), divergences_dot(dof_count))
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_rt( &
+                basis, point, ref_values, ref_divergences, status)
+            if (status /= 0) return
+            call map_tetra_rt_contravariant( &
+                jacobian, ref_values, ref_divergences, values, divergences, &
+                status)
+            if (status /= 0) return
+            call map_tetra_rt_contravariant_jvp( &
+                jacobian, ref_values, ref_divergences, jacobian_dot, &
+                zero_values, zero_divergences, values_dot, divergences_dot, &
+                status)
+            if (status /= 0) return
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    divergence_energy = divergences(row)*divergences(column)
+                    mass_energy = dot_product(values(:, row), values(:, column))
+                    matrix_dot(row, column) = matrix_dot(row, column) + &
+                        weights(point_index)*(determinant_dot*( &
+                        divergence_coefficient*divergence_energy + &
+                        mass_coefficient*mass_energy) + determinant*( &
+                        divergence_coefficient_dot*divergence_energy + &
+                        divergence_coefficient*( &
+                        divergences_dot(row)*divergences(column) + &
+                        divergences(row)*divergences_dot(column)) + &
+                        mass_coefficient_dot*mass_energy + mass_coefficient*( &
+                        dot_product(values_dot(:, row), values(:, column)) + &
+                        dot_product(values(:, row), values_dot(:, column)))))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_rt_div_mass_element_jvp
+
+    subroutine assemble_tetra_rt_div_mass_element_vjp( &
+            vertices, degree, quadrature_degree, divergence_coefficient, &
+            mass_coefficient, matrix_bar, vertices_bar, &
+            divergence_coefficient_bar, mass_coefficient_bar, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: degree, quadrature_degree
+        real(dp), intent(in) :: divergence_coefficient, mass_coefficient
+        real(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+        real(dp), intent(out) :: divergence_coefficient_bar
+        real(dp), intent(out) :: mass_coefficient_bar
+        integer, intent(out) :: status
+
+        type(tetra_rt_t) :: basis
+        real(dp), allocatable :: divergences(:), divergences_bar(:)
+        real(dp), allocatable :: ref_divergences(:), ref_divergences_bar(:)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar, determinant_jacobian_bar(3, 3)
+        real(dp) :: divergence_energy, jacobian(3, 3), jacobian_bar(3, 3)
+        real(dp) :: local_jacobian_bar(3, 3), mass_energy, point(3), seed
+        integer :: column, dof_count, point_index, row
+
+        vertices_bar = 0.0_dp
+        divergence_coefficient_bar = 0.0_dp
+        mass_coefficient_bar = 0.0_dp
+        status = 1
+        if (degree < 0 .or. quadrature_degree < 0) return
+        call initialize_tetra_rt(degree, basis, status)
+        if (status /= 0) return
+        dof_count = tetra_rt_dof_count(basis)
+        if (size(matrix_bar, 1) /= dof_count .or. &
+            size(matrix_bar, 2) /= dof_count) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        allocate(ref_values(3, dof_count), ref_divergences(dof_count))
+        allocate(ref_values_bar(3, dof_count), ref_divergences_bar(dof_count))
+        allocate(values(3, dof_count), divergences(dof_count))
+        allocate(values_bar(3, dof_count), divergences_bar(dof_count))
+        jacobian_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_rt( &
+                basis, point, ref_values, ref_divergences, status)
+            if (status /= 0) return
+            call map_tetra_rt_contravariant( &
+                jacobian, ref_values, ref_divergences, values, divergences, &
+                status)
+            if (status /= 0) return
+            values_bar = 0.0_dp
+            divergences_bar = 0.0_dp
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    seed = weights(point_index)*matrix_bar(row, column)
+                    divergence_energy = divergences(row)*divergences(column)
+                    mass_energy = dot_product(values(:, row), values(:, column))
+                    determinant_bar = determinant_bar + seed*( &
+                        divergence_coefficient*divergence_energy + &
+                        mass_coefficient*mass_energy)
+                    divergence_coefficient_bar = &
+                        divergence_coefficient_bar + &
+                        seed*determinant*divergence_energy
+                    mass_coefficient_bar = mass_coefficient_bar + &
+                        seed*determinant*mass_energy
+                    divergences_bar(row) = divergences_bar(row) + &
+                        seed*determinant*divergence_coefficient* &
+                        divergences(column)
+                    divergences_bar(column) = divergences_bar(column) + &
+                        seed*determinant*divergence_coefficient*divergences(row)
+                    values_bar(:, row) = values_bar(:, row) + &
+                        seed*determinant*mass_coefficient*values(:, column)
+                    values_bar(:, column) = values_bar(:, column) + &
+                        seed*determinant*mass_coefficient*values(:, row)
+                end do
+            end do
+            call map_tetra_rt_contravariant_vjp( &
+                jacobian, ref_values, ref_divergences, values_bar, &
+                divergences_bar, local_jacobian_bar, ref_values_bar, &
+                ref_divergences_bar, status)
+            if (status /= 0) return
+            jacobian_bar = jacobian_bar + local_jacobian_bar
+        end do
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        jacobian_bar = jacobian_bar + determinant_jacobian_bar
+        call tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        status = 0
+    end subroutine assemble_tetra_rt_div_mass_element_vjp
+
     subroutine assemble_tetra_rt_div_mass_csc( &
             mesh_vertices, tetrahedra, degree, quadrature_degree, matrix, &
             status, divergence_coefficient, mass_coefficient)
@@ -393,6 +565,25 @@ contains
             global_dof_count, global_dof_count, rows, columns, values, &
             matrix, status)
     end subroutine assemble_tetra_rt_div_mass_csc
+
+    pure subroutine tetra_jacobian(vertices, jacobian)
+        real(dp), intent(in) :: vertices(3, 4)
+        real(dp), intent(out) :: jacobian(3, 3)
+
+        jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
+        jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
+        jacobian(:, 3) = vertices(:, 4) - vertices(:, 1)
+    end subroutine tetra_jacobian
+
+    pure subroutine tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        real(dp), intent(in) :: jacobian_bar(3, 3)
+        real(dp), intent(out) :: vertices_bar(3, 4)
+
+        vertices_bar(:, 1) = -sum(jacobian_bar, dim=2)
+        vertices_bar(:, 2) = jacobian_bar(:, 1)
+        vertices_bar(:, 3) = jacobian_bar(:, 2)
+        vertices_bar(:, 4) = jacobian_bar(:, 3)
+    end subroutine tetra_jacobian_vjp
 
     pure subroutine tetra_geometry( &
             vertices, jacobian, determinant, status)
