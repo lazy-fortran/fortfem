@@ -1,13 +1,18 @@
 module fortfem_tetra_vector_evaluation
     !! Differentiable fixed-reference observations of tetrahedral vector fields.
     use fortfem_kinds, only: dp
+    use fortfem_tetra_affine_map, only: invert_tetra_affine_map, &
+        invert_tetra_affine_map_jvp, invert_tetra_affine_map_vjp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
-        evaluate_tetra_nedelec_first_kind, tetra_nedelec_first_kind_t
+        evaluate_tetra_nedelec_first_kind, &
+        evaluate_tetra_nedelec_first_kind_jvp, &
+        evaluate_tetra_nedelec_first_kind_vjp, tetra_nedelec_first_kind_t
     use fortfem_tetra_piola_maps, only: &
         map_tetra_nedelec_covariant, map_tetra_nedelec_covariant_jvp, &
         map_tetra_nedelec_covariant_vjp, map_tetra_rt_contravariant, &
         map_tetra_rt_contravariant_jvp, map_tetra_rt_contravariant_vjp
-    use fortfem_tetra_rt_arbitrary_order, only: evaluate_tetra_rt, tetra_rt_t
+    use fortfem_tetra_rt_arbitrary_order, only: evaluate_tetra_rt, &
+        evaluate_tetra_rt_jvp, evaluate_tetra_rt_vjp, tetra_rt_t
     implicit none
 
     private
@@ -15,9 +20,15 @@ module fortfem_tetra_vector_evaluation
     public :: evaluate_tetra_nedelec_interpolant
     public :: evaluate_tetra_nedelec_interpolant_jvp
     public :: evaluate_tetra_nedelec_interpolant_vjp
+    public :: evaluate_tetra_nedelec_interpolant_at_point
+    public :: evaluate_tetra_nedelec_interpolant_at_point_jvp
+    public :: evaluate_tetra_nedelec_interpolant_at_point_vjp
     public :: evaluate_tetra_rt_interpolant
     public :: evaluate_tetra_rt_interpolant_jvp
     public :: evaluate_tetra_rt_interpolant_vjp
+    public :: evaluate_tetra_rt_interpolant_at_point
+    public :: evaluate_tetra_rt_interpolant_at_point_jvp
+    public :: evaluate_tetra_rt_interpolant_at_point_vjp
 
 contains
 
@@ -54,10 +65,11 @@ contains
 
     subroutine evaluate_tetra_nedelec_interpolant_jvp( &
             vertices, basis, dofs, reference_point, vertices_dot, dofs_dot, &
-            value_dot, curl_dot, status)
+            value_dot, curl_dot, status, reference_point_dot)
         real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
         real(dp), intent(in) :: dofs(:), dofs_dot(:), reference_point(3)
+        real(dp), intent(in), optional :: reference_point_dot(3)
         real(dp), intent(out) :: value_dot(3), curl_dot(3)
         integer, intent(out) :: status
 
@@ -87,6 +99,12 @@ contains
         call evaluate_tetra_nedelec_first_kind( &
             basis, reference_point, reference_values, reference_curls, status)
         if (status /= 0) return
+        if (present(reference_point_dot)) then
+            call evaluate_tetra_nedelec_first_kind_jvp( &
+                basis, reference_point, reference_point_dot, &
+                reference_values_dot, reference_curls_dot, status)
+            if (status /= 0) return
+        end if
         call tetrahedron_jacobian(vertices, jacobian)
         call tetrahedron_jacobian(vertices_dot, jacobian_dot)
         call map_tetra_nedelec_covariant( &
@@ -106,11 +124,12 @@ contains
 
     subroutine evaluate_tetra_nedelec_interpolant_vjp( &
             vertices, basis, dofs, reference_point, value_bar, curl_bar, &
-            vertices_bar, dofs_bar, status)
+            vertices_bar, dofs_bar, status, reference_point_bar)
         real(dp), intent(in) :: vertices(3, 4), dofs(:), reference_point(3)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
         real(dp), intent(in) :: value_bar(3), curl_bar(3)
         real(dp), intent(out) :: vertices_bar(3, 4), dofs_bar(:)
+        real(dp), intent(out), optional :: reference_point_bar(3)
         integer, intent(out) :: status
 
         real(dp), allocatable :: physical_curls(:, :)
@@ -157,6 +176,11 @@ contains
             reference_curls_bar, status)
         if (status /= 0) return
         call scatter_jacobian_bar(jacobian_bar, vertices_bar)
+        if (present(reference_point_bar)) then
+            call evaluate_tetra_nedelec_first_kind_vjp( &
+                basis, reference_point, reference_values_bar, &
+                reference_curls_bar, reference_point_bar, status)
+        end if
     end subroutine evaluate_tetra_nedelec_interpolant_vjp
 
     subroutine evaluate_tetra_rt_interpolant( &
@@ -195,10 +219,11 @@ contains
 
     subroutine evaluate_tetra_rt_interpolant_jvp( &
             vertices, basis, dofs, reference_point, vertices_dot, dofs_dot, &
-            value_dot, divergence_dot, status)
+            value_dot, divergence_dot, status, reference_point_dot)
         real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
         type(tetra_rt_t), intent(in) :: basis
         real(dp), intent(in) :: dofs(:), dofs_dot(:), reference_point(3)
+        real(dp), intent(in), optional :: reference_point_dot(3)
         real(dp), intent(out) :: value_dot(3), divergence_dot
         integer, intent(out) :: status
 
@@ -229,6 +254,12 @@ contains
             basis, reference_point, reference_values, reference_divergences, &
             status)
         if (status /= 0) return
+        if (present(reference_point_dot)) then
+            call evaluate_tetra_rt_jvp( &
+                basis, reference_point, reference_point_dot, &
+                reference_values_dot, reference_divergences_dot, status)
+            if (status /= 0) return
+        end if
         call tetrahedron_jacobian(vertices, jacobian)
         call tetrahedron_jacobian(vertices_dot, jacobian_dot)
         call map_tetra_rt_contravariant( &
@@ -248,11 +279,12 @@ contains
 
     subroutine evaluate_tetra_rt_interpolant_vjp( &
             vertices, basis, dofs, reference_point, value_bar, divergence_bar, &
-            vertices_bar, dofs_bar, status)
+            vertices_bar, dofs_bar, status, reference_point_bar)
         real(dp), intent(in) :: vertices(3, 4), dofs(:), reference_point(3)
         type(tetra_rt_t), intent(in) :: basis
         real(dp), intent(in) :: value_bar(3), divergence_bar
         real(dp), intent(out) :: vertices_bar(3, 4), dofs_bar(:)
+        real(dp), intent(out), optional :: reference_point_bar(3)
         integer, intent(out) :: status
 
         real(dp), allocatable :: physical_divergences(:)
@@ -300,7 +332,142 @@ contains
             reference_values_bar, reference_divergences_bar, status)
         if (status /= 0) return
         call scatter_jacobian_bar(jacobian_bar, vertices_bar)
+        if (present(reference_point_bar)) then
+            call evaluate_tetra_rt_vjp( &
+                basis, reference_point, reference_values_bar, &
+                reference_divergences_bar, reference_point_bar, status)
+        end if
     end subroutine evaluate_tetra_rt_interpolant_vjp
+
+    subroutine evaluate_tetra_nedelec_interpolant_at_point( &
+            vertices, basis, dofs, point, value, curl, status)
+        real(dp), intent(in) :: vertices(3, 4), dofs(:), point(3)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(out) :: value(3), curl(3)
+        integer, intent(out) :: status
+
+        real(dp) :: reference_point(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call evaluate_tetra_nedelec_interpolant( &
+            vertices, basis, dofs, reference_point, value, curl, status)
+    end subroutine evaluate_tetra_nedelec_interpolant_at_point
+
+    subroutine evaluate_tetra_nedelec_interpolant_at_point_jvp( &
+            vertices, basis, dofs, point, vertices_dot, dofs_dot, point_dot, &
+            value_dot, curl_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), point(3), point_dot(3)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(out) :: value_dot(3), curl_dot(3)
+        integer, intent(out) :: status
+
+        real(dp) :: reference_point(3), reference_point_dot(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call invert_tetra_affine_map_jvp( &
+            vertices, point, vertices_dot, point_dot, reference_point_dot, &
+            status)
+        if (status /= 0) return
+        call evaluate_tetra_nedelec_interpolant_jvp( &
+            vertices, basis, dofs, reference_point, vertices_dot, dofs_dot, &
+            value_dot, curl_dot, status, reference_point_dot)
+    end subroutine evaluate_tetra_nedelec_interpolant_at_point_jvp
+
+    subroutine evaluate_tetra_nedelec_interpolant_at_point_vjp( &
+            vertices, basis, dofs, point, value_bar, curl_bar, vertices_bar, &
+            dofs_bar, point_bar, status)
+        real(dp), intent(in) :: vertices(3, 4), dofs(:), point(3)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: value_bar(3), curl_bar(3)
+        real(dp), intent(out) :: vertices_bar(3, 4), dofs_bar(:), point_bar(3)
+        integer, intent(out) :: status
+
+        real(dp) :: inverse_vertices_bar(3, 4), reference_point(3)
+        real(dp) :: reference_point_bar(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call evaluate_tetra_nedelec_interpolant_vjp( &
+            vertices, basis, dofs, reference_point, value_bar, curl_bar, &
+            vertices_bar, dofs_bar, status, reference_point_bar)
+        if (status /= 0) return
+        call invert_tetra_affine_map_vjp( &
+            vertices, point, reference_point_bar, inverse_vertices_bar, &
+            point_bar, status)
+        if (status /= 0) return
+        vertices_bar = vertices_bar + inverse_vertices_bar
+    end subroutine evaluate_tetra_nedelec_interpolant_at_point_vjp
+
+    subroutine evaluate_tetra_rt_interpolant_at_point( &
+            vertices, basis, dofs, point, value, divergence, status)
+        real(dp), intent(in) :: vertices(3, 4), dofs(:), point(3)
+        type(tetra_rt_t), intent(in) :: basis
+        real(dp), intent(out) :: value(3), divergence
+        integer, intent(out) :: status
+
+        real(dp) :: reference_point(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call evaluate_tetra_rt_interpolant( &
+            vertices, basis, dofs, reference_point, value, divergence, status)
+    end subroutine evaluate_tetra_rt_interpolant_at_point
+
+    subroutine evaluate_tetra_rt_interpolant_at_point_jvp( &
+            vertices, basis, dofs, point, vertices_dot, dofs_dot, point_dot, &
+            value_dot, divergence_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), point(3), point_dot(3)
+        type(tetra_rt_t), intent(in) :: basis
+        real(dp), intent(out) :: value_dot(3), divergence_dot
+        integer, intent(out) :: status
+
+        real(dp) :: reference_point(3), reference_point_dot(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call invert_tetra_affine_map_jvp( &
+            vertices, point, vertices_dot, point_dot, reference_point_dot, &
+            status)
+        if (status /= 0) return
+        call evaluate_tetra_rt_interpolant_jvp( &
+            vertices, basis, dofs, reference_point, vertices_dot, dofs_dot, &
+            value_dot, divergence_dot, status, reference_point_dot)
+    end subroutine evaluate_tetra_rt_interpolant_at_point_jvp
+
+    subroutine evaluate_tetra_rt_interpolant_at_point_vjp( &
+            vertices, basis, dofs, point, value_bar, divergence_bar, &
+            vertices_bar, dofs_bar, point_bar, status)
+        real(dp), intent(in) :: vertices(3, 4), dofs(:), point(3)
+        type(tetra_rt_t), intent(in) :: basis
+        real(dp), intent(in) :: value_bar(3), divergence_bar
+        real(dp), intent(out) :: vertices_bar(3, 4), dofs_bar(:), point_bar(3)
+        integer, intent(out) :: status
+
+        real(dp) :: inverse_vertices_bar(3, 4), reference_point(3)
+        real(dp) :: reference_point_bar(3)
+
+        call invert_tetra_affine_map( &
+            vertices, point, reference_point, status)
+        if (status /= 0) return
+        call evaluate_tetra_rt_interpolant_vjp( &
+            vertices, basis, dofs, reference_point, value_bar, divergence_bar, &
+            vertices_bar, dofs_bar, status, reference_point_bar)
+        if (status /= 0) return
+        call invert_tetra_affine_map_vjp( &
+            vertices, point, reference_point_bar, inverse_vertices_bar, &
+            point_bar, status)
+        if (status /= 0) return
+        vertices_bar = vertices_bar + inverse_vertices_bar
+    end subroutine evaluate_tetra_rt_interpolant_at_point_vjp
 
     pure subroutine tetrahedron_jacobian(vertices, jacobian)
         real(dp), intent(in) :: vertices(3, 4)

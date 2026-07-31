@@ -384,3 +384,10 @@ three active coordinates, the VJP is implemented as three analytical
 directional sweeps. Its cost is independent of the number of objective
 outputs in the usual scalar-objective use case, requires no AD tape, and is
 available with standard GCC builds.
+Tetrahedral Nedelec and RT physical-point observations compose those basis
+products with affine physical-to-reference inversion, covariant or
+contravariant Piola products, and local coefficients. Their JVPs move the
+sensor, all twelve vertex coordinates, and every local degree of freedom
+simultaneously. Their VJPs return the matching sensor, mesh, and coefficient
+cotangents, adding direct Piola geometry sensitivity and indirect
+reference-coordinate sensitivity exactly once.
