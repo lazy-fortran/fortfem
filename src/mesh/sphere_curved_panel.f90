@@ -1,11 +1,19 @@
 module fortfem_sphere_curved_panel
     !! Exact radial map from an affine surface triangle to a sphere.
+    use fortfem_generated_sphere_curved_panel, only: &
+        generated_sphere_curved_panel
+    use fortfem_generated_sphere_curved_panel_jvp, only: &
+        generated_sphere_curved_panel_jvp
+    use fortfem_generated_sphere_curved_panel_vjp, only: &
+        generated_sphere_curved_panel_vjp
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: inv3
     implicit none
     private
 
     public :: evaluate_sphere_curved_panel
+    public :: evaluate_sphere_curved_panel_jvp
+    public :: evaluate_sphere_curved_panel_vjp
     public :: invert_sphere_curved_panel
 
 contains
@@ -48,8 +56,7 @@ contains
         real(dp), intent(out) :: surface_jacobian
         integer, intent(out) :: status
 
-        real(dp) :: affine_point(3), derivative_eta(3), derivative_xi(3)
-        real(dp) :: norm_affine
+        real(dp) :: affine_point(3)
 
         point = 0.0_dp
         tangent_xi = 0.0_dp
@@ -57,33 +64,88 @@ contains
         surface_jacobian = 0.0_dp
         status = 1
         if (radius <= 0.0_dp) return
-        if (xi < 0.0_dp .or. eta < 0.0_dp .or. xi + eta > 1.0_dp) return
-        derivative_xi = vertices(:, 2) - vertices(:, 1)
-        derivative_eta = vertices(:, 3) - vertices(:, 1)
+        if (xi < 0.0_dp) return
+        if (eta < 0.0_dp) return
+        if (xi + eta > 1.0_dp) return
         affine_point = vertices(:, 1) + &
-            xi*derivative_xi + eta*derivative_eta
-        norm_affine = norm2(affine_point)
-        if (norm_affine <= tiny(1.0_dp)) return
-        point = radius*affine_point/norm_affine
-        tangent_xi = radius*( &
-            derivative_xi/norm_affine - affine_point* &
-            dot_product(affine_point, derivative_xi)/norm_affine**3)
-        tangent_eta = radius*( &
-            derivative_eta/norm_affine - affine_point* &
-            dot_product(affine_point, derivative_eta)/norm_affine**3)
-        surface_jacobian = norm2(cross_product(tangent_xi, tangent_eta))
+            xi*(vertices(:, 2) - vertices(:, 1)) + &
+            eta*(vertices(:, 3) - vertices(:, 1))
+        if (norm2(affine_point) <= tiny(1.0_dp)) return
+        call generated_sphere_curved_panel( &
+            vertices(1, 1), vertices(2, 1), vertices(3, 1), &
+            vertices(1, 2), vertices(2, 2), vertices(3, 2), &
+            vertices(1, 3), vertices(2, 3), vertices(3, 3), radius, xi, eta, &
+            point(1), point(2), point(3), tangent_xi(1), tangent_xi(2), &
+            tangent_xi(3), tangent_eta(1), tangent_eta(2), tangent_eta(3), &
+            surface_jacobian)
         if (surface_jacobian <= tiny(1.0_dp)) return
         status = 0
     end subroutine evaluate_sphere_curved_panel
 
-    pure function cross_product(first, second) result(product)
-        real(dp), intent(in) :: first(3), second(3)
-        real(dp) :: product(3)
+    pure subroutine evaluate_sphere_curved_panel_jvp( &
+            vertices, radius, xi, eta, vertices_dot, radius_dot, xi_dot, &
+            eta_dot, point_dot, tangent_xi_dot, tangent_eta_dot, &
+            surface_jacobian_dot, status)
+        real(dp), intent(in) :: vertices(3, 3), radius, xi, eta
+        real(dp), intent(in) :: vertices_dot(3, 3), radius_dot, xi_dot, eta_dot
+        real(dp), intent(out) :: point_dot(3), tangent_xi_dot(3)
+        real(dp), intent(out) :: tangent_eta_dot(3), surface_jacobian_dot
+        integer, intent(out) :: status
 
-        product = [ &
-            first(2)*second(3) - first(3)*second(2), &
-            first(3)*second(1) - first(1)*second(3), &
-            first(1)*second(2) - first(2)*second(1)]
-    end function cross_product
+        real(dp) :: point(3), tangent_xi(3), tangent_eta(3), jacobian
+
+        point_dot = 0.0_dp
+        tangent_xi_dot = 0.0_dp
+        tangent_eta_dot = 0.0_dp
+        surface_jacobian_dot = 0.0_dp
+        call evaluate_sphere_curved_panel( &
+            vertices, radius, xi, eta, point, tangent_xi, tangent_eta, &
+            jacobian, status)
+        if (status /= 0) return
+        call generated_sphere_curved_panel_jvp( &
+            vertices(1, 1), vertices(2, 1), vertices(3, 1), &
+            vertices(1, 2), vertices(2, 2), vertices(3, 2), &
+            vertices(1, 3), vertices(2, 3), vertices(3, 3), radius, xi, eta, &
+            vertices_dot(1, 1), vertices_dot(2, 1), vertices_dot(3, 1), &
+            vertices_dot(1, 2), vertices_dot(2, 2), vertices_dot(3, 2), &
+            vertices_dot(1, 3), vertices_dot(2, 3), vertices_dot(3, 3), &
+            radius_dot, xi_dot, eta_dot, point_dot(1), point_dot(2), &
+            point_dot(3), tangent_xi_dot(1), tangent_xi_dot(2), &
+            tangent_xi_dot(3), tangent_eta_dot(1), tangent_eta_dot(2), &
+            tangent_eta_dot(3), surface_jacobian_dot)
+    end subroutine evaluate_sphere_curved_panel_jvp
+
+    pure subroutine evaluate_sphere_curved_panel_vjp( &
+            vertices, radius, xi, eta, point_bar, tangent_xi_bar, &
+            tangent_eta_bar, surface_jacobian_bar, vertices_bar, radius_bar, &
+            xi_bar, eta_bar, status)
+        real(dp), intent(in) :: vertices(3, 3), radius, xi, eta
+        real(dp), intent(in) :: point_bar(3), tangent_xi_bar(3)
+        real(dp), intent(in) :: tangent_eta_bar(3), surface_jacobian_bar
+        real(dp), intent(out) :: vertices_bar(3, 3), radius_bar, xi_bar, eta_bar
+        integer, intent(out) :: status
+
+        real(dp) :: point(3), tangent_xi(3), tangent_eta(3), jacobian
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        xi_bar = 0.0_dp
+        eta_bar = 0.0_dp
+        call evaluate_sphere_curved_panel( &
+            vertices, radius, xi, eta, point, tangent_xi, tangent_eta, &
+            jacobian, status)
+        if (status /= 0) return
+        call generated_sphere_curved_panel_vjp( &
+            vertices(1, 1), vertices(2, 1), vertices(3, 1), &
+            vertices(1, 2), vertices(2, 2), vertices(3, 2), &
+            vertices(1, 3), vertices(2, 3), vertices(3, 3), radius, xi, eta, &
+            point_bar(1), point_bar(2), point_bar(3), tangent_xi_bar(1), &
+            tangent_xi_bar(2), tangent_xi_bar(3), tangent_eta_bar(1), &
+            tangent_eta_bar(2), tangent_eta_bar(3), surface_jacobian_bar, &
+            vertices_bar(1, 1), vertices_bar(2, 1), vertices_bar(3, 1), &
+            vertices_bar(1, 2), vertices_bar(2, 2), vertices_bar(3, 2), &
+            vertices_bar(1, 3), vertices_bar(2, 3), vertices_bar(3, 3), &
+            radius_bar, xi_bar, eta_bar)
+    end subroutine evaluate_sphere_curved_panel_vjp
 
 end module fortfem_sphere_curved_panel

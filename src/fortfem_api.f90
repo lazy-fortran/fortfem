@@ -196,7 +196,8 @@ module fortfem_api
         integrate_helmholtz_torus_panel_p0_3d_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
-        evaluate_sphere_curved_panel, invert_sphere_curved_panel
+        evaluate_sphere_curved_panel, evaluate_sphere_curved_panel_jvp, &
+        evaluate_sphere_curved_panel_vjp, invert_sphere_curved_panel
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
@@ -689,6 +690,8 @@ module fortfem_api
     public :: integrate_helmholtz_torus_panel_p0_3d_vjp
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
+    public :: evaluate_sphere_curved_panel_jvp
+    public :: evaluate_sphere_curved_panel_vjp
     public :: invert_sphere_curved_panel
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
