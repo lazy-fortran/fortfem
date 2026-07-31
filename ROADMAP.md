@@ -1107,6 +1107,10 @@ gallery example.
   `assemble_hdg_static_condensation` now exposes the local Schur complement
   and condensed load with implicit-solve value/JVP/VJP actions, so global
   skeleton assembly can be layered without differentiating pivot choices.
+  `assemble_scalar_numerical_flux` now provides conservative central, upwind,
+  and Lax--Friedrichs choices with a quadratic-entropy diagnostic and complete
+  fixed-topology value/JVP/VJP actions; vector fluxes and entropy-stable
+  systems remain.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent

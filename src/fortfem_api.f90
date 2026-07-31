@@ -350,6 +350,10 @@ module fortfem_api
         assemble_vector_sipg_interface_vjp
     use fortfem_hdg_static_condensation, only: assemble_hdg_static_condensation, &
         assemble_hdg_static_condensation_jvp, assemble_hdg_static_condensation_vjp
+    use fortfem_scalar_numerical_flux, only: assemble_scalar_numerical_flux, &
+        assemble_scalar_numerical_flux_jvp, assemble_scalar_numerical_flux_vjp, &
+        NUMERICAL_FLUX_CENTRAL, NUMERICAL_FLUX_UPWIND, &
+        NUMERICAL_FLUX_LAX_FRIEDRICHS
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
@@ -1783,6 +1787,12 @@ module fortfem_api
     public :: assemble_hdg_static_condensation
     public :: assemble_hdg_static_condensation_jvp
     public :: assemble_hdg_static_condensation_vjp
+    public :: assemble_scalar_numerical_flux
+    public :: assemble_scalar_numerical_flux_jvp
+    public :: assemble_scalar_numerical_flux_vjp
+    public :: NUMERICAL_FLUX_CENTRAL
+    public :: NUMERICAL_FLUX_UPWIND
+    public :: NUMERICAL_FLUX_LAX_FRIEDRICHS
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
