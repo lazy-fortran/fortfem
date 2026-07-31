@@ -502,9 +502,20 @@ module fortfem_api
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_physical_tetra_nedelec, &
-        interpolate_reference_tetra_nedelec
+        interpolate_reference_tetra_nedelec, &
+        interpolate_sampled_physical_tetra_nedelec, &
+        interpolate_sampled_physical_tetra_nedelec_jvp, &
+        interpolate_sampled_physical_tetra_nedelec_vjp, &
+        tetra_nedelec_interpolation_points
+    use fortfem_tetra_vector_samples, only: &
+        assignment(=), tetra_vector_sample_gradients_t, &
+        tetra_vector_samples_t, zero_tetra_vector_samples_like
     use fortfem_tetra_rt_interpolation, only: &
-        interpolate_physical_tetra_rt, interpolate_reference_tetra_rt
+        interpolate_physical_tetra_rt, interpolate_reference_tetra_rt, &
+        interpolate_sampled_physical_tetra_rt, &
+        interpolate_sampled_physical_tetra_rt_jvp, &
+        interpolate_sampled_physical_tetra_rt_vjp, &
+        tetra_rt_interpolation_points
     use fortfem_triangle_rt_arbitrary_order, only: &
         assignment(=), evaluate_triangle_raviart_thomas, &
         evaluate_triangle_raviart_thomas_jvp, &
@@ -1056,6 +1067,10 @@ module fortfem_api
     public :: build_tetra_discrete_curl
     public :: interpolate_reference_tetra_rt
     public :: interpolate_physical_tetra_rt
+    public :: interpolate_sampled_physical_tetra_rt
+    public :: interpolate_sampled_physical_tetra_rt_jvp
+    public :: interpolate_sampled_physical_tetra_rt_vjp
+    public :: tetra_rt_interpolation_points
     public :: evaluate_tetra_rt
     public :: evaluate_tetra_rt_jvp
     public :: evaluate_tetra_rt_vjp
@@ -1075,6 +1090,13 @@ module fortfem_api
     public :: build_tetra_nedelec_dof_map
     public :: interpolate_reference_tetra_nedelec
     public :: interpolate_physical_tetra_nedelec
+    public :: interpolate_sampled_physical_tetra_nedelec
+    public :: interpolate_sampled_physical_tetra_nedelec_jvp
+    public :: interpolate_sampled_physical_tetra_nedelec_vjp
+    public :: tetra_nedelec_interpolation_points
+    public :: tetra_vector_sample_gradients_t
+    public :: tetra_vector_samples_t
+    public :: zero_tetra_vector_samples_like
     public :: evaluate_triangle_bdm
     public :: evaluate_triangle_bdm_jvp
     public :: evaluate_triangle_bdm_vjp
