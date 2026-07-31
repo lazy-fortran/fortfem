@@ -339,7 +339,9 @@ module fortfem_api
         assemble_surface_delta_load, assemble_surface_vector_delta_load
     use fortfem_interface_jump_penalty, only: assemble_interface_jump_penalty, &
         assemble_interface_jump_penalty_jvp, assemble_interface_jump_penalty_vjp
-    use fortfem_nitsche_interface, only: assemble_symmetric_nitsche_interface
+    use fortfem_nitsche_interface, only: assemble_symmetric_nitsche_interface, &
+        assemble_symmetric_nitsche_interface_jvp, &
+        assemble_symmetric_nitsche_interface_vjp
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
@@ -1759,6 +1761,8 @@ module fortfem_api
     public :: assemble_interface_jump_penalty_jvp
     public :: assemble_interface_jump_penalty_vjp
     public :: assemble_symmetric_nitsche_interface
+    public :: assemble_symmetric_nitsche_interface_jvp
+    public :: assemble_symmetric_nitsche_interface_vjp
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp

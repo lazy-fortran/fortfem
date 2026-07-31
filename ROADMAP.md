@@ -1087,7 +1087,9 @@ gallery example.
 - `assemble_interface_jump_penalty` assembles the symmetric positive-
   semidefinite plus/minus jump block used by SIPG and Nitsche penalty terms.
 - `assemble_symmetric_nitsche_interface` adds the average-flux consistency
-  terms under the same orientation convention.
+  terms under the same orientation convention. Its value/JVP/VJP actions
+  differentiate traces, fluxes, surface weights, and penalty parameters;
+  scalar SIPG and non-symmetric consistency variants remain.
 - `assemble_mortar_trace_coupling` supplies a weighted cross-mass block for
   independently discretized trace spaces.
 - The neutral `cell_complex_t` contract now stores oriented integer chain

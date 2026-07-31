@@ -26,7 +26,10 @@ penalty portion of Nitsche coupling. Its JVP propagates plus/minus traces,
 surface weights, and penalty directions; its VJP returns all corresponding
 cotangents while retaining the fixed orientation. The public
 `assemble_symmetric_nitsche_interface` routine adds the common-normal average
-flux consistency terms and is checked against an independent block oracle.
+flux consistency terms and is checked against an independent block oracle. Its
+product-rule JVP propagates trace, flux, surface-weight, and penalty
+directions; its VJP returns the corresponding cotangents for arbitrary real
+matrix seeds, so fitted and cut interface geometry can remain differentiable.
 `assemble_mortar_trace_coupling` supplies the weighted cross-mass block when
 the test and trial trace spaces have different degree-of-freedom counts. Its
 JVP propagates trace and surface-weight directions, while its VJP returns the
