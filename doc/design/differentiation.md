@@ -455,3 +455,13 @@ cotangents in one call, providing the common moving-boundary layer for
 Laplace, Helmholtz, and Maxwell/RWG panel operators. Degenerate panels are
 rejected before evaluating the generated normalization; mesh connectivity and
 panel orientation remain fixed discrete inputs.
+
+The regular three-dimensional Laplace P0 single-layer panel-pair integral
+composes that geometry primitive with a second FortSym-generated kernel
+product. Its JVP moves both panels simultaneously. Its VJP reverses all
+quadrature interactions first and then accumulates the complete cotangents of
+both triangles, so a scalar boundary objective needs one reverse panel-pair
+sweep rather than eighteen coordinate sweeps. The regular primitive rejects
+coincident quadrature points; singular self and touching-panel shape products
+use separate singularity-aware paths rather than differentiating through an
+invalid `1/r` evaluation.
