@@ -109,6 +109,14 @@ call build_fci_bilinear_interpolation_maps_2d_vjp( &
     source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
     forward_map_bar, backward_map_bar, source_x_bar, source_y_bar, &
     forward_x_bar, forward_y_bar, backward_x_bar, backward_y_bar, status)
+call build_fci_triangle_interpolation_map_2d( &
+    vertices, triangles, target_points, target_cells, interpolation_map, status)
+call build_fci_triangle_interpolation_map_2d_jvp( &
+    vertices, triangles, target_points, target_cells, vertices_dot, &
+    target_points_dot, interpolation_map_dot, status)
+call build_fci_triangle_interpolation_map_2d_vjp( &
+    vertices, triangles, target_points, target_cells, interpolation_map_bar, &
+    vertices_bar, target_points_bar, status)
 ```
 
 The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
@@ -127,6 +135,12 @@ fixed-cell single-slice contracts and accumulate source-grid cotangents over
 all segments. The topology rule is deliberate: a traced endpoint on a grid
 line is valid for the primal map but is rejected by the derivative paths until
 the stencil cell is rebuilt.
+
+For logically unstructured poloidal planes, the triangle adapter accepts a
+fixed containing-cell id per target and emits barycentric weights over the
+global vertex vector. It reproduces affine fields and provides geometry/target
+JVP/VJP products. The primal path permits edge targets, while derivative paths
+reject zero barycentric weights as cell-boundary topology events.
 
 The focused test uses identity maps and an analytically linear field as an
 independent oracle. It also checks the weighted adjoint identity and a flux
