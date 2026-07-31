@@ -26,6 +26,8 @@ module fortfem_api
         find_fci_first_hit_segment_2d, find_fci_first_hit_segment_2d_jvp
     use fortfem_fci_terminal_triangle_3d, only: &
         find_fci_first_hit_triangle_3d, find_fci_first_hit_triangle_3d_jvp
+    use fortfem_fci_terminal_polyline_3d, only: &
+        find_fci_first_hit_polyline_3d, find_fci_first_hit_polyline_3d_jvp
     use fortfem_fci_terminal_boundary_flux, only: &
         assemble_fci_terminal_boundary_flux, &
         assemble_fci_terminal_boundary_flux_jvp, &
@@ -984,6 +986,8 @@ module fortfem_api
     public :: find_fci_first_hit_segment_2d_jvp
     public :: find_fci_first_hit_triangle_3d
     public :: find_fci_first_hit_triangle_3d_jvp
+    public :: find_fci_first_hit_polyline_3d
+    public :: find_fci_first_hit_polyline_3d_jvp
     public :: assemble_fci_terminal_boundary_flux
     public :: assemble_fci_terminal_boundary_flux_jvp
     public :: assemble_fci_terminal_boundary_flux_vjp
