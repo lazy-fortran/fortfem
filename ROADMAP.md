@@ -572,7 +572,11 @@ oracle and a validated matrix-free diagonal apply; plane multigrid and
 field-split preconditioners remain active.
 The split action now also accepts one validated square CSC perpendicular block
 per canonical plane and combines it with the matrix-free FCI parallel term,
-with a negative-energy anisotropic oracle.
+with a negative-energy anisotropic oracle. Its combined positive diagonal is
+also public: the generated support diagonal is combined with the negative
+diagonal of each oriented plane block and checked against an independent
+oracle, giving a reproducible scalar preconditioner baseline while plane
+multigrid and stronger field splitting remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -953,7 +957,10 @@ gallery example.
 - A PARALLAX-style anisotropic split action now combines independent per-plane
   CSC elliptic blocks with the conservative FCI parallel operator; tensor
   coefficient assembly, plane multigrid, and stronger field splitting remain
-  planned.
+  planned. `compute_fci_anisotropic_diffusion_diagonal` now combines the
+  positive support diagonal with each plane block's oriented diagonal and
+  rejects non-positive results, providing an independently tested scalar
+  preconditioning oracle.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
