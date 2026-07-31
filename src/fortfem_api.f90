@@ -28,6 +28,10 @@ module fortfem_api
         assemble_surface_current_junction_balance, &
         assemble_surface_current_junction_balance_jvp, &
         assemble_surface_current_junction_balance_vjp
+    use fortfem_surface_current_constraints, only: &
+        assemble_surface_current_loop_constraints, &
+        assemble_surface_current_loop_constraints_jvp, &
+        assemble_surface_current_loop_constraints_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_gauge, reduce_tree_cotree_dense_system, &
@@ -863,6 +867,9 @@ module fortfem_api
     public :: assemble_surface_current_junction_balance
     public :: assemble_surface_current_junction_balance_jvp
     public :: assemble_surface_current_junction_balance_vjp
+    public :: assemble_surface_current_loop_constraints
+    public :: assemble_surface_current_loop_constraints_jvp
+    public :: assemble_surface_current_loop_constraints_vjp
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: validate_tree_cotree_gauge
