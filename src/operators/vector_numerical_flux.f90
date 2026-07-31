@@ -19,8 +19,106 @@ module fortfem_vector_numerical_flux
     public :: assemble_vector_numerical_flux
     public :: assemble_vector_numerical_flux_jvp
     public :: assemble_vector_numerical_flux_vjp
+    public :: assemble_vector_entropy_stable_flux
+    public :: assemble_vector_entropy_stable_flux_jvp
+    public :: assemble_vector_entropy_stable_flux_vjp
 
 contains
+
+    subroutine assemble_vector_entropy_stable_flux( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_residual, minus_residual, &
+            entropy_production, status)
+        !! Assemble a vector flux with an SPD entropy metric.
+        real(dp), intent(in) :: plus_state(:, :), minus_state(:, :)
+        real(dp), intent(in) :: normal_speed(:), dissipation(:)
+        real(dp), intent(in) :: component_metric(:, :, :), surface_weights(:)
+        integer, intent(in) :: flux_kind
+        real(dp), intent(out) :: plus_residual(:, :), minus_residual(:, :)
+        real(dp), intent(out) :: entropy_production(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call validate_entropy_metric(component_metric, status)
+        if (status%code /= FORTSPARSE_OK) then
+            plus_residual = 0.0_dp
+            minus_residual = 0.0_dp
+            entropy_production = 0.0_dp
+            return
+        end if
+        call assemble_vector_numerical_flux( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_residual, minus_residual, &
+            entropy_production, status)
+    end subroutine assemble_vector_entropy_stable_flux
+
+    subroutine assemble_vector_entropy_stable_flux_jvp( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_state_dot, minus_state_dot, &
+            normal_speed_dot, dissipation_dot, component_metric_dot, &
+            surface_weights_dot, plus_residual_dot, minus_residual_dot, &
+            entropy_production_dot, status)
+        !! Apply the fixed-SPD-topology JVP of the entropy-stable flux.
+        real(dp), intent(in) :: plus_state(:, :), minus_state(:, :)
+        real(dp), intent(in) :: normal_speed(:), dissipation(:)
+        real(dp), intent(in) :: component_metric(:, :, :), surface_weights(:)
+        integer, intent(in) :: flux_kind
+        real(dp), intent(in) :: plus_state_dot(:, :), minus_state_dot(:, :)
+        real(dp), intent(in) :: normal_speed_dot(:), dissipation_dot(:)
+        real(dp), intent(in) :: component_metric_dot(:, :, :)
+        real(dp), intent(in) :: surface_weights_dot(:)
+        real(dp), intent(out) :: plus_residual_dot(:, :), minus_residual_dot(:, :)
+        real(dp), intent(out) :: entropy_production_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call validate_entropy_metric(component_metric, status)
+        if (status%code /= FORTSPARSE_OK) then
+            plus_residual_dot = 0.0_dp
+            minus_residual_dot = 0.0_dp
+            entropy_production_dot = 0.0_dp
+            return
+        end if
+        call assemble_vector_numerical_flux_jvp( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_state_dot, minus_state_dot, &
+            normal_speed_dot, dissipation_dot, component_metric_dot, &
+            surface_weights_dot, plus_residual_dot, minus_residual_dot, &
+            entropy_production_dot, status)
+    end subroutine assemble_vector_entropy_stable_flux_jvp
+
+    subroutine assemble_vector_entropy_stable_flux_vjp( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_residual_bar, minus_residual_bar, &
+            entropy_bar, plus_state_bar, minus_state_bar, normal_speed_bar, &
+            dissipation_bar, component_metric_bar, surface_weights_bar, status)
+        !! Apply the fixed-SPD-topology VJP of the entropy-stable flux.
+        real(dp), intent(in) :: plus_state(:, :), minus_state(:, :)
+        real(dp), intent(in) :: normal_speed(:), dissipation(:)
+        real(dp), intent(in) :: component_metric(:, :, :), surface_weights(:)
+        integer, intent(in) :: flux_kind
+        real(dp), intent(in) :: plus_residual_bar(:, :), minus_residual_bar(:, :)
+        real(dp), intent(in) :: entropy_bar(:)
+        real(dp), intent(out) :: plus_state_bar(:, :), minus_state_bar(:, :)
+        real(dp), intent(out) :: normal_speed_bar(:), dissipation_bar(:)
+        real(dp), intent(out) :: component_metric_bar(:, :, :)
+        real(dp), intent(out) :: surface_weights_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call validate_entropy_metric(component_metric, status)
+        if (status%code /= FORTSPARSE_OK) then
+            plus_state_bar = 0.0_dp
+            minus_state_bar = 0.0_dp
+            normal_speed_bar = 0.0_dp
+            dissipation_bar = 0.0_dp
+            component_metric_bar = 0.0_dp
+            surface_weights_bar = 0.0_dp
+            return
+        end if
+        call assemble_vector_numerical_flux_vjp( &
+            plus_state, minus_state, normal_speed, dissipation, component_metric, &
+            surface_weights, flux_kind, plus_residual_bar, minus_residual_bar, &
+            entropy_bar, plus_state_bar, minus_state_bar, normal_speed_bar, &
+            dissipation_bar, component_metric_bar, surface_weights_bar, status)
+    end subroutine assemble_vector_entropy_stable_flux_vjp
 
     subroutine assemble_vector_numerical_flux( &
             plus_state, minus_state, normal_speed, dissipation, component_metric, &
@@ -286,6 +384,53 @@ contains
             end do
         end do
     end function matvec
+
+    subroutine validate_entropy_metric(component_metric, status)
+        !! Validate the fixed SPD topology required by the entropy contract.
+        real(dp), intent(in) :: component_metric(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: quadrature_count, component_count, q, a, b, k
+        real(dp), allocatable :: factor(:, :)
+        real(dp) :: value, accumulation, scale
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "entropy-stable vector flux requires an SPD component metric")
+        quadrature_count = size(component_metric, 1)
+        component_count = size(component_metric, 2)
+        if (quadrature_count < 1 .or. component_count < 1 .or. &
+            size(component_metric, 3) /= component_count .or. &
+            any(.not. ieee_is_finite(component_metric))) return
+        allocate(factor(component_count, component_count))
+        do q = 1, quadrature_count
+            do a = 1, component_count
+                do b = a + 1, component_count
+                    scale = max(1.0_dp, abs(component_metric(q, a, b)), &
+                        abs(component_metric(q, b, a)))
+                    if (abs(component_metric(q, a, b) - &
+                        component_metric(q, b, a)) > 1.0e-12_dp*scale) return
+                end do
+            end do
+            factor = 0.0_dp
+            do a = 1, component_count
+                do b = 1, a
+                    accumulation = 0.0_dp
+                    do k = 1, b - 1
+                        accumulation = accumulation + factor(a, k)*factor(b, k)
+                    end do
+                    value = component_metric(q, a, b) - accumulation
+                    if (a == b) then
+                        if (value <= 0.0_dp) return
+                        factor(a, b) = sqrt(value)
+                    else
+                        if (factor(b, b) <= 0.0_dp) return
+                        factor(a, b) = value/factor(b, b)
+                    end if
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_entropy_metric
 
     subroutine select_dissipation(flux_kind, speed, supplied, alpha, status)
         integer, intent(in) :: flux_kind

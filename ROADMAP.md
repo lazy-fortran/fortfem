@@ -1247,7 +1247,9 @@ gallery example.
   penalty and surface-weight directions.
 - Conservative/upwind vector flux interfaces now include scalar and
   metric-weighted vector value/JVP/VJP paths; entropy-stable system fluxes
-  remain.
+  now have an explicit SPD-metric wrapper with fixed-topology value/JVP/VJP
+  actions; nonlinear system entropy variables and characteristic HLL/HLLC
+  laws remain application-owned.
 - Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
 
 ### Phase 4: Open boundaries and vector operators: **active**

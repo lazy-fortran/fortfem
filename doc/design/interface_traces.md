@@ -69,6 +69,11 @@ and Lax--Friedrichs fluxes, strongly anisotropic constitutive metrics, and the
 metric quadratic-entropy diagnostic. Its value/JVP/VJP actions differentiate
 states, speeds, dissipation, metrics, and surface weights; the upwind
 zero-speed topology event remains explicit.
+`assemble_vector_entropy_stable_flux` adds the declared entropy contract: the
+component metric must remain symmetric positive definite on the fixed topology,
+so nonnegative dissipation follows from the independent quadratic oracle. The
+same value/JVP/VJP actions are exposed; loss of positive definiteness is
+reported as a topology/validity event rather than differentiated through.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
