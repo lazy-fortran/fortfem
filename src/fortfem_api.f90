@@ -36,6 +36,10 @@ module fortfem_api
         assemble_surface_edge_flux_balance, &
         assemble_surface_edge_flux_balance_jvp, &
         assemble_surface_edge_flux_balance_vjp
+    use fortfem_interface_traction_balance, only: &
+        assemble_normal_traction_jump, &
+        assemble_normal_traction_jump_jvp, &
+        assemble_normal_traction_jump_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_gauge, reduce_tree_cotree_dense_system, &
@@ -877,6 +881,9 @@ module fortfem_api
     public :: assemble_surface_edge_flux_balance
     public :: assemble_surface_edge_flux_balance_jvp
     public :: assemble_surface_edge_flux_balance_vjp
+    public :: assemble_normal_traction_jump
+    public :: assemble_normal_traction_jump_jvp
+    public :: assemble_normal_traction_jump_vjp
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: validate_tree_cotree_gauge

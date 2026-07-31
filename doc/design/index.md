@@ -69,6 +69,10 @@ contract with independent energy and reversibility checks.
 The [CGL pressure tensor](cgl_pressure_tensor.html) documents the generated
 gyrotropic tensor constitutive block and its JVP/VJP contract.
 
+The [interface normal-traction balance](interface_traction_balance.html)
+documents the neutral traction-jump residual that composes tensor pressure,
+elastic stress, or Maxwell-stress blocks without selecting an application law.
+
 The [nonlinear material-surface flux contract](nonlinear_surface_flux.html)
 keeps application wall and sheath laws separate from orientation-preserving
 trace assembly and its generated-compatible value/JVP/VJP bookkeeping.
