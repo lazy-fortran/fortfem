@@ -1,7 +1,8 @@
 module fortfem_api
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_euler_characteristic, cell_complex_t, &
-        initialize_cell_complex, validate_cell_complex
+        initialize_cell_complex, quotient_cell_complex, &
+        validate_cell_complex
     use fortfem_cell_identification, only: cell_identification_classes, &
         cell_identification_t, identify_boundary_matrix, &
         initialize_cell_identification, validate_cell_identification
@@ -809,6 +810,7 @@ module fortfem_api
     public :: validate_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
+    public :: quotient_cell_complex
     public :: cell_identification_t
     public :: initialize_cell_identification
     public :: validate_cell_identification

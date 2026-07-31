@@ -12,6 +12,8 @@ module fortfem_cell_complex
     !! gauges, cuts, and interface graphs.
     use iso_fortran_env, only: int64
     use fortfem_kinds, only: dp
+    use fortfem_cell_identification, only: cell_identification_t, &
+        identify_boundary_matrix
     implicit none
     private
 
@@ -27,6 +29,7 @@ module fortfem_cell_complex
     public :: validate_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
+    public :: quotient_cell_complex
 
 contains
 
@@ -161,6 +164,95 @@ contains
             size(complex%boundary_3, 2) - rank_3]
         if (any(betti < 0)) status = 7
     end subroutine cell_complex_betti_numbers
+
+    subroutine quotient_cell_complex( &
+            complex, vertex_identification, edge_identification, quotient, &
+            status, face_identification, volume_identification)
+        !! Build a quotient complex from signed representative maps.
+        !!
+        !! Each supplied identification is a chain-level map: the lower
+        !! boundary of every identified upper cell must agree with the
+        !! declared orientation of its representative.  This routine only
+        !! composes those maps; geometry, metric Hodge factors, and mesh
+        !! ownership remain outside the topology module.
+        type(cell_complex_t), intent(in) :: complex
+        type(cell_identification_t), intent(in) :: vertex_identification
+        type(cell_identification_t), intent(in) :: edge_identification
+        type(cell_complex_t), intent(inout) :: quotient
+        integer, intent(out) :: status
+        type(cell_identification_t), intent(in), optional :: face_identification
+        type(cell_identification_t), intent(in), optional :: volume_identification
+        integer, allocatable :: quotient_boundary_1(:, :)
+        integer, allocatable :: quotient_boundary_2(:, :)
+        integer, allocatable :: quotient_boundary_3(:, :)
+        integer :: face_count, volume_count, validation_status
+
+        call clear_cell_complex(quotient)
+        status = 1
+        call validate_cell_complex(complex, validation_status)
+        if (validation_status /= 0) then
+            status = 2
+            return
+        end if
+
+        call identify_boundary_matrix( &
+            vertex_identification, edge_identification, &
+            complex%boundary_1, quotient_boundary_1, status)
+        if (status /= 0) then
+            status = 3
+            return
+        end if
+
+        face_count = size(complex%boundary_2, 2)
+        if (face_count > 0) then
+            if (.not. present(face_identification)) then
+                status = 4
+                return
+            end if
+            call identify_boundary_matrix( &
+                edge_identification, face_identification, &
+                complex%boundary_2, quotient_boundary_2, status)
+            if (status /= 0) then
+                status = 5
+                return
+            end if
+        else
+            allocate(quotient_boundary_2(size(quotient_boundary_1, 1), 0))
+        end if
+
+        volume_count = size(complex%boundary_3, 2)
+        if (volume_count > 0) then
+            if (.not. present(face_identification) .or. &
+                .not. present(volume_identification)) then
+                status = 6
+                return
+            end if
+            call identify_boundary_matrix( &
+                face_identification, volume_identification, &
+                complex%boundary_3, quotient_boundary_3, status)
+            if (status /= 0) then
+                status = 7
+                return
+            end if
+        else
+            allocate(quotient_boundary_3(size(quotient_boundary_2, 2), 0))
+        end if
+
+        call initialize_cell_complex(quotient, size(quotient_boundary_1, 1), &
+            quotient_boundary_1, quotient_boundary_2, quotient_boundary_3, &
+            status)
+        if (status /= 0) then
+            status = 8
+            return
+        end if
+        call validate_cell_complex(quotient, validation_status)
+        if (validation_status /= 0) then
+            call clear_cell_complex(quotient)
+            status = 9
+            return
+        end if
+        status = 0
+    end subroutine quotient_cell_complex
 
     subroutine clear_cell_complex(complex)
         type(cell_complex_t), intent(inout) :: complex
