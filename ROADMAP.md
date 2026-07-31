@@ -729,9 +729,12 @@ conservation diagnostic when applicable.
 26. **Tensor-pressure plasma wave.** An anisotropic pressure tensor with
     parallel, perpendicular, and gyrotropic parts, including force balance and
     energy diagnostics.
-    The current `cgl_pressure_tensor` gallery example provides the first
-    manufactured constitutive/force-divergence profile and CSV/1D FortPlot
-    outputs; the coupled wave and higher-dimensional cases remain active.
+The current `cgl_pressure_tensor` gallery example provides the first
+manufactured constitutive/force-divergence profile and CSV/1D FortPlot
+outputs; the coupled wave and higher-dimensional cases remain active.
+The `field_aligned_flux` gallery example now provides a generated
+parallel/perpendicular profile and (k_\parallel/k_\perp=100) flux plot; a
+full assembled anisotropic diffusion gallery case remains active.
 27. **Field-aligned diffusion.** A slab, cylinder, and torus with extreme
     \(k_\parallel/k_\perp\), comparing aligned coordinates, FCI maps, Fourier-
     FEM, and an isotropic control case.
