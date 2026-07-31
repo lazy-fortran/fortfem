@@ -48,6 +48,7 @@ module fortfem_fci_parallel_operator
     public :: compute_fci_parallel_diffusion_diagonal
     public :: compute_fci_anisotropic_diffusion_diagonal
     public :: apply_fci_parallel_jacobi_preconditioner
+    public :: apply_fci_anisotropic_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
@@ -454,6 +455,45 @@ contains
         end if
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine compute_fci_anisotropic_diffusion_diagonal
+
+    subroutine apply_fci_anisotropic_jacobi_preconditioner( &
+            perpendicular_operators, forward_map, backward_map, line_lengths, &
+            parallel_coefficient, canonical_volumes, staggered_volumes, &
+            residual, correction, status)
+        !! Apply the combined anisotropic scalar Jacobi preconditioner.
+        !!
+        !! The positive diagonal is assembled from the oriented plane blocks and
+        !! FCI support data on every call.  Iterative solvers that reuse the
+        !! geometry should cache that diagonal and call
+        !! `apply_fci_parallel_jacobi_preconditioner` directly; this convenience
+        !! entry point keeps the PARALLAX contract self-contained for small
+        !! matrix-free solves and tests.
+        type(csc_t), intent(in) :: perpendicular_operators(:)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(in) :: residual(:)
+        real(dp), intent(out) :: correction(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: diagonal(:)
+
+        correction = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI anisotropic Jacobi received incompatible arrays")
+        if (size(residual) < 1 .or. size(correction) /= size(residual)) return
+        allocate(diagonal(size(residual)))
+        call compute_fci_anisotropic_diffusion_diagonal( &
+            perpendicular_operators, forward_map, backward_map, line_lengths, &
+            parallel_coefficient, canonical_volumes, staggered_volumes, diagonal, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        call apply_fci_parallel_jacobi_preconditioner( &
+            diagonal, residual, correction, status)
+    end subroutine apply_fci_anisotropic_jacobi_preconditioner
 
     subroutine apply_fci_anisotropic_diffusion( &
             perpendicular_operators, forward_map, backward_map, line_lengths, &

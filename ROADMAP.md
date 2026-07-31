@@ -576,7 +576,9 @@ with a negative-energy anisotropic oracle. Its combined positive diagonal is
 also public: the generated support diagonal is combined with the negative
 diagonal of each oriented plane block and checked against an independent
 oracle, giving a reproducible scalar preconditioner baseline while plane
-multigrid and stronger field splitting remain active work.
+multigrid and stronger field splitting remain active work. A convenience
+matrix-free anisotropic Jacobi apply now uses the same combined diagonal;
+iterative callers may cache the diagonal for repeated solves.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -960,7 +962,9 @@ gallery example.
   planned. `compute_fci_anisotropic_diffusion_diagonal` now combines the
   positive support diagonal with each plane block's oriented diagonal and
   rejects non-positive results, providing an independently tested scalar
-  preconditioning oracle.
+  preconditioning oracle. `apply_fci_anisotropic_jacobi_preconditioner` applies
+  that diagonal directly for small matrix-free solves; cached diagonal use and
+  plane multigrid remain the next performance steps.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor

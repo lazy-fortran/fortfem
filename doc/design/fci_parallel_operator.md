@@ -193,6 +193,9 @@ each supplied plane block. It rejects invalid or non-finite CSC values and
 non-positive combined entries, providing a scalar baseline for the next plane
 multigrid or field-split implementation. `test_fci_anisotropic_diagonal`
 checks this against an explicit six-degree-of-freedom oracle.
+`apply_fci_anisotropic_jacobi_preconditioner` is the convenience matrix-free
+apply of that combined diagonal; repeated solves can cache the diagonal and use
+the lower-level Jacobi routine directly.
 
 ## Provenance
 
