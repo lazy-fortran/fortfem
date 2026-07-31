@@ -884,9 +884,13 @@ gallery example.
   negative centroids, oriented normal data, and an affine-integration oracle.
   The fixed-topology 2D level-set interface JVP now differentiates edge
   intersections, segment length, and the normalized physical normal with an
-  independent central-difference and topology-event oracle. Higher-order
-  cut-cell quadrature and internal-manifold graphs remain next; the existing
-  vector current pairing consumes the surface-measure contract.
+  independent central-difference and topology-event oracle. The matching
+  fixed-topology cut-quadrature JVP propagates edge intersections through
+  positive/negative areas and centroids and composes the length/normal
+  derivative, with central-difference and area/first-moment conservation
+  oracles. Higher-order cut-cell quadrature and internal-manifold graphs
+  remain next; the existing vector current pairing consumes the surface-
+  measure contract.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
