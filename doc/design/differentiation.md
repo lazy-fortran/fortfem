@@ -494,3 +494,12 @@ wave-number derivatives, so neither the primal nor its products divide by
 zero or subtract nearly equal singular kernels. The VJP accepts a complex
 matrix cotangent and returns one real cotangent for every surface coordinate
 and for the wave number.
+
+The Laplace Dirichlet BEM state and capacitance expose the same end-to-end
+contract. Panel areas use the generated surface-geometry products, the dense
+single-layer matrix uses the analytical assembly products, and FortNum's
+implicit `linear_solve_jvp`/`linear_solve_vjp` contract differentiates the
+state without entering LAPACK. A tangent solve propagates simultaneous
+boundary-value and surface motion. One transposed adjoint solve returns the
+boundary-value cotangent and the complete surface shape gradient for arbitrary
+density and capacity objectives.
