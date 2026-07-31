@@ -542,3 +542,12 @@ the merged CSC cotangent back to PML element parameters and each boundary-form
 entry. The complex constrained reduction is shared by primal, tangent, and
 reverse paths, so constrained rows and matrix-column elimination receive the
 same derivative treatment as the unconstrained field.
+
+The toroidal analytical boundary path is also product-complete. FortSym emits
+the shared harmonic, Ampere-field, and Poisson-DtN expressions and their
+contracted JVP/VJP products. FortNum supplies the half-integer Hobson
+function and its first derivative; the wrapper closes the eta chain with the
+associated-Legendre differential equation for the second radial derivative.
+Thus scale, toroidal coordinates, field components, DtN value, and normal
+trace all support independent re-evaluation and adjoint tests without a
+finite-difference derivative in the production path.

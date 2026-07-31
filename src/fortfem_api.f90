@@ -470,6 +470,12 @@ module fortfem_api
     use fortfem_toroidal_poisson_dtn, only: &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
         toroidal_poisson_exterior_dtn_p
+    use fortfem_toroidal_poisson_dtn_ad, only: &
+        evaluate_toroidal_harmonic_p_jvp, evaluate_toroidal_harmonic_p_vjp, &
+        evaluate_toroidal_ampere_field_p_jvp, &
+        evaluate_toroidal_ampere_field_p_vjp, &
+        toroidal_poisson_exterior_dtn_p_jvp, &
+        toroidal_poisson_exterior_dtn_p_vjp
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_adjoint_double_layer_constant, &
         assemble_laplace_double_layer_constant, &
@@ -1113,8 +1119,14 @@ module fortfem_api
     public :: solve_scalar_helmholtz_pml_p1_3d_jvp
     public :: solve_scalar_helmholtz_pml_p1_3d_vjp
     public :: evaluate_toroidal_harmonic_p
+    public :: evaluate_toroidal_harmonic_p_jvp
+    public :: evaluate_toroidal_harmonic_p_vjp
     public :: evaluate_toroidal_ampere_field_p
+    public :: evaluate_toroidal_ampere_field_p_jvp
+    public :: evaluate_toroidal_ampere_field_p_vjp
     public :: toroidal_poisson_exterior_dtn_p
+    public :: toroidal_poisson_exterior_dtn_p_jvp
+    public :: toroidal_poisson_exterior_dtn_p_vjp
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
