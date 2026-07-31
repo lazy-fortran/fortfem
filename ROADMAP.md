@@ -1096,6 +1096,9 @@ gallery example.
   trial trace/flux spaces with symmetric, incomplete, or nonsymmetric
   consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC and
   hybridized skeleton blocks remain.
+  `assemble_vector_jump_penalty` now supplies the tensor-valued counterpart
+  for caller-owned tangential/normal projectors and anisotropic metrics, with
+  value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
 - The neutral `cell_complex_t` contract now stores oriented integer chain
   boundary maps, checks both boundary-of-boundary identities exactly, and
   reports Euler characteristic and compact Betti diagnostics. Independent
@@ -1219,6 +1222,9 @@ gallery example.
   independently discretized skeleton traces. The scalar SIPG interface block
   now has symmetric, incomplete, and nonsymmetric consistency variants with
   value/JVP/VJP actions; vector FEEC and hybridized skeleton blocks remain.
+  A tensor-weighted vector jump penalty now covers component-valued traces and
+  anisotropic metric directions; vector consistency fluxes and FEEC commuting
+  projections remain.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind/entropy-aware flux interface.

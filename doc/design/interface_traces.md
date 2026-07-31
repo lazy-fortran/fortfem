@@ -39,6 +39,11 @@ checks the real dot-product identity and rejects incompatible directions.
 test and trial traces. The consistency selector `theta=1,0,-1` gives symmetric,
 incomplete, and nonsymmetric interior-penalty blocks, with value/JVP/VJP
 actions for all trace, flux, weight, and penalty inputs.
+`assemble_vector_jump_penalty` is the tensor-valued counterpart: its
+caller-supplied component metric can be a tangential/normal projector or a
+strongly anisotropic constitutive tensor. It provides value/JVP/VJP actions
+for vector traces, metric entries, surface weights, and penalty parameters,
+without committing the neutral operator to a particular PDE.
 `assemble_surface_triangle_measures_3d` supplies the matching oriented area
 and unit-normal arrays for a triangular fitted surface. Its geometry JVP and
 VJP accumulate shared-vertex derivatives and are checked by independent
