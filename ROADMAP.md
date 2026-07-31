@@ -161,7 +161,7 @@ documentation baseline. The list is intentionally conservative.
 | Scalar FEM | P1/P2/Q1 and arbitrary-order triangular scalar paths, Poisson and diffusion forms, boundary conditions, plotting | General field and coefficient callbacks in the symbolic form compiler |
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
-| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, spherical functions, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
+| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths are public | ILUT and fill-controlled ICHOL, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
@@ -230,7 +230,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Cut FEEC spaces | The scalar shifted-Heaviside activation and a 3D vector-enrichment curl/divergence product-rule diagnostic are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
-| Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
+| Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
 | Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus a separate dissipative Cayley block | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
 | Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
@@ -620,8 +620,11 @@ the same formulation.
 FortNum now provides the real ordinary Legendre second-kind contract
 `legendre_q`/`legendre_q_derivative` for x > 1, in addition to Ferrers
 associated `P_l^m`, and its independently tested Hobson-normalized
-half-integer toroidal `P/Q` API. The [pinned FortNum API
-revision](https://github.com/lazy-fortran/fortnum/blob/565d8ce/docs/api.md)
+half-integer toroidal `P/Q` API. It also provides standard orthonormal complex
+`spherical_harmonic` values and analytical theta/phi derivatives on the closed
+polar interval (with derivative evaluation intentionally undefined at its
+poles). The [pinned FortNum API
+revision](https://github.com/lazy-fortran/fortnum/blob/c6489c6/docs/api.md)
 records the domains, normalization, derivative convention, DLMF provenance,
 and the current moderate-degree limitation. The remaining foundation is
 stable high-order and near-cut continuation, spherical harmonics and products,
@@ -1381,9 +1384,11 @@ gallery example.
   oracle; truncated triads and de-aliasing remain explicit caller policy.
 - FortNum `legendre_q` and `legendre_q_derivative` are now public on `main`,
   with closed-form Q0--Q3, centered-difference derivative, and invalid-domain
-  tests. Its toroidal P/Q branch is likewise covered by
-  independent value and ODE checks. Complete the remaining stable high-order
-  and near-cut continuation before using these functions as production
+  tests. Its toroidal P/Q branch is likewise covered by independent value and
+  ODE checks. Standard orthonormal complex spherical harmonics and angular
+  derivatives are now public with closed-form degree-one, conjugacy, pole,
+  and invalid-angle tests. Complete the remaining stable high-order and
+  near-cut continuation before using these functions as production
   DtN/torus-harmonic building blocks.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
@@ -1674,7 +1679,7 @@ official documentation, or official repositories where possible.
 - [DLMF 14.3: definitions and hypergeometric forms](https://dlmf.nist.gov/14.3)
 - [DLMF 14.10: Legendre recurrences and derivatives](https://dlmf.nist.gov/14.10)
 - [DLMF 14.19: toroidal (half-integer) specialization](https://dlmf.nist.gov/14.19)
-- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/565d8ce/docs/api.md)
+- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/c6489c6/docs/api.md)
 
 ### MHD, equilibria, and linear response
 
