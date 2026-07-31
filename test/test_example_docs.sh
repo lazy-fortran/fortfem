@@ -58,6 +58,14 @@ for example_name in "${expected[@]}"; do
     grep -Fq "fpm run --example $example_name" "$page"
     grep -Fq '```fortran' "$page"
     grep -Fq "program $example_name" "$page"
+    if grep -Fq '*No plot artifact is produced by this example.*' "$page"; then
+        echo "example page has no generated plot: $example_name" >&2
+        exit 1
+    fi
+    if ! grep -Eq '\.(png|svg)\)' "$page"; then
+        echo "example page has no generated plot or cover link: $example_name" >&2
+        exit 1
+    fi
 done
 
 if grep -n '[[:blank:]]$' "$index_file" "$generated_dir/index.md"; then

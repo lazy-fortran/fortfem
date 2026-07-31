@@ -132,7 +132,9 @@ end program adaptive_helmholtz_bem_sphere
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### adaptive_convergence.png
+
+![adaptive_convergence.png](../../media/examples/adaptive_helmholtz_bem_sphere/adaptive_convergence.png)
 
 ---
 

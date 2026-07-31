@@ -19,11 +19,20 @@ program laplace_bem_circle_spectrum
     use fortfem_api, only: assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
+        title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(4) = [12, 24, 48, 96]
     real(dp) :: single_layer_eigenvalue, hypersingular_eigenvalue
-    integer :: mesh_id
+    real(dp) :: single_errors(4), hypersingular_errors(4)
+    real(dp) :: mesh_sizes_real(4)
+    integer :: command_status, mesh_id
+
+    call execute_command_line( &
+        "mkdir -p output/example/laplace_bem_circle_spectrum", &
+        exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     print "(a)", "Unit-circle Laplace BEM spectrum for cos(theta)"
     print "(a)", " panels       V_h       error       W_h       error"
@@ -31,12 +40,30 @@ program laplace_bem_circle_spectrum
         call circle_mode_eigenvalues( &
             mesh_sizes(mesh_id), single_layer_eigenvalue, &
             hypersingular_eigenvalue)
-        print "(i7,4f12.6)", mesh_sizes(mesh_id), &
-            single_layer_eigenvalue, abs(single_layer_eigenvalue - 0.5_dp), &
-            hypersingular_eigenvalue, &
+        mesh_sizes_real(mesh_id) = real(mesh_sizes(mesh_id), dp)
+        single_errors(mesh_id) = abs(single_layer_eigenvalue - 0.5_dp)
+        hypersingular_errors(mesh_id) = &
             abs(hypersingular_eigenvalue - 0.5_dp)
+        print "(i7,4f12.6)", mesh_sizes(mesh_id), &
+            single_layer_eigenvalue, single_errors(mesh_id), &
+            hypersingular_eigenvalue, &
+            hypersingular_errors(mesh_id)
     end do
     print "(a)", "Exact eigenvalues: V_1 = W_1 = 1/2"
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(mesh_sizes_real, single_errors, label="single-layer error", &
+        marker="o")
+    call plot(mesh_sizes_real, hypersingular_errors, &
+        label="hypersingular error", marker="s")
+    call set_xscale("log")
+    call set_yscale("log")
+    call xlabel("circle panels")
+    call ylabel("absolute eigenvalue error")
+    call title("Laplace circle BEM spectral convergence")
+    call legend()
+    call savefig( &
+        "output/example/laplace_bem_circle_spectrum/convergence_1d.png")
 
 contains
 
@@ -125,7 +152,9 @@ end program laplace_bem_circle_spectrum
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### convergence_1d.png
+
+![convergence_1d.png](../../media/examples/laplace_bem_circle_spectrum/convergence_1d.png)
 
 ---
 

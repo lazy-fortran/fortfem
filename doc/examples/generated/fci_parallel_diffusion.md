@@ -24,6 +24,8 @@ Outputs:
 - `fci_parallel_profile_1d.png`
 - `fci_parallel_dissipation_1d.png`
 - `fci_parallel_profile.csv`
+- `fci_parallel_benchmark.csv` with the measured matrix-free action time on
+  the local runner.
 
 The implementation follows the support-operator construction described by
 [Stegmeir et al.](https://doi.org/10.1016/j.cpc.2015.09.016). FortFEM does not
@@ -51,6 +53,7 @@ program fci_parallel_diffusion
     implicit none
 
     integer, parameter :: segment_count = 64
+    integer, parameter :: benchmark_repetitions = 1000
     real(dp), parameter :: pi = acos(-1.0_dp)
     character(*), parameter :: output_directory = &
         "output/example/fci_parallel_diffusion"
@@ -63,7 +66,8 @@ program fci_parallel_diffusion
     real(dp) :: coordinate(segment_count + 1), field(segment_count + 1)
     real(dp) :: diffusion_field(segment_count + 1)
     real(dp) :: total_mass_rate, dissipation
-    integer :: point, unit
+    integer :: point, unit, repetition, clock_rate, start_count, end_count
+    real(dp) :: action_seconds
     type(fortsparse_status_t) :: status
 
     call execute_command_line("mkdir -p "//output_directory)
@@ -88,6 +92,23 @@ program fci_parallel_diffusion
         error stop "FCI support operator lost total mass"
     if (dissipation > 2.0e-13_dp) &
         error stop "FCI support operator gained energy"
+
+    call system_clock(count_rate=clock_rate)
+    if (clock_rate > 0) then
+        call system_clock(start_count)
+        do repetition = 1, benchmark_repetitions
+            call apply_fci_parallel_diffusion( &
+                forward_map, backward_map, line_lengths, parallel_coefficient, &
+                canonical_volumes, staggered_volumes, field, diffusion_field, &
+                status)
+            if (status%code /= 0) error stop "FCI benchmark action failed"
+        end do
+        call system_clock(end_count)
+        action_seconds = real(end_count - start_count, dp) / &
+            real(clock_rate, dp) / real(benchmark_repetitions, dp)
+    else
+        action_seconds = -1.0_dp
+    end if
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(coordinate, field, label="field u")
@@ -115,6 +136,15 @@ program fci_parallel_diffusion
     end do
     write (unit, "(a,es24.16)") "total_mass_rate,", total_mass_rate
     write (unit, "(a,es24.16)") "dissipation,", dissipation
+    write (unit, "(a,es24.16)") "action_seconds,", action_seconds
+    write (unit, "(a,i0)") "action_repetitions,", benchmark_repetitions
+    close (unit)
+
+    open (newunit=unit, file=output_directory//"/fci_parallel_benchmark.csv", &
+        status="replace", action="write")
+    write (unit, "(a)") "segment_count,staggered_rows,repetitions,action_seconds"
+    write (unit, "(i0,',',i0,',',i0,',',es24.16)") segment_count, &
+        size(staggered_volumes), benchmark_repetitions, action_seconds
     close (unit)
 end program fci_parallel_diffusion
 ```

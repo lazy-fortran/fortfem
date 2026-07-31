@@ -2,10 +2,18 @@ program minimal_mesh_example
     ! Minimal working example of FortFEM mesh generation
     use fortfem_api
     use fortfem_kinds
+    use fortplot, only: plot
     implicit none
 
+    character(*), parameter :: output_directory = &
+        "output/example/minimal_mesh_example"
     type(mesh_t) :: mesh
     type(boundary_t) :: boundary
+    integer :: command_status
+
+    call execute_command_line( &
+        "mkdir -p "//output_directory, exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     write(*,*) "=== FortFEM Minimal Mesh Example ==="
     write(*,*) ""
@@ -13,6 +21,9 @@ program minimal_mesh_example
     ! Example 1: Simple unit square mesh
     write(*,*) "1. Unit Square Mesh (5x5 grid)"
     mesh = unit_square_mesh(5)
+
+    call plot(mesh, filename=output_directory//"/unit_square_mesh.png", &
+        title="Minimal unit-square mesh")
 
     write(*,'(A,I0)') "   Vertices: ", mesh%data%n_vertices
     write(*,'(A,I0)') "   Triangles: ", mesh%data%n_triangles
@@ -22,6 +33,9 @@ program minimal_mesh_example
     ! Example 2: Rectangle mesh
     write(*,*) "2. Rectangle Mesh (3x4 grid on [0,2]×[0,1])"
     mesh = rectangle_mesh(3, 4, [0.0_dp, 2.0_dp, 0.0_dp, 1.0_dp])
+
+    call plot(mesh, filename=output_directory//"/rectangle_mesh.png", &
+        title="Minimal rectangle mesh")
 
     write(*,'(A,I0)') "   Vertices: ", mesh%data%n_vertices
     write(*,'(A,I0)') "   Triangles: ", mesh%data%n_triangles
@@ -58,7 +72,7 @@ program minimal_mesh_example
     write(*,*) ""
     write(*,*) "Next steps:"
     write(*,*) "- Fix edge validation for complex boundaries"
-    write(*,*) "- Add plotting support: call plot(mesh)"
+    write(*,*) "- Mesh plots written to "//output_directory
     write(*,*) "- Benchmark against FreeFEM"
 
 end program minimal_mesh_example

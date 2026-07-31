@@ -280,7 +280,21 @@ end program curved_acoustic_ntd
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### curved_acoustic_convergence.png
+
+![curved_acoustic_convergence.png](../../media/examples/curved_acoustic_ntd/curved_acoustic_convergence.png)
+
+### curved_acoustic_pressure.png
+
+![curved_acoustic_pressure.png](../../media/examples/curved_acoustic_ntd/curved_acoustic_pressure.png)
+
+### curved_elastic_convergence.png
+
+![curved_elastic_convergence.png](../../media/examples/curved_acoustic_ntd/curved_elastic_convergence.png)
+
+### curved_elastic_displacement.png
+
+![curved_elastic_displacement.png](../../media/examples/curved_acoustic_ntd/curved_elastic_displacement.png)
 
 ---
 

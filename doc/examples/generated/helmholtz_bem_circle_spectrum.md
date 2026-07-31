@@ -20,6 +20,8 @@ program helmholtz_bem_circle_spectrum
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
+        title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(3) = [12, 24, 48]
@@ -30,18 +32,43 @@ program helmholtz_bem_circle_spectrum
     complex(dp), parameter :: exact_hypersingular = &
         (0.41099886362254484_dp, -0.1267731564473764_dp)
     complex(dp) :: double_layer, hypersingular, single_layer
-    integer :: mesh_id
+    real(dp) :: single_errors(3), double_errors(3), hypersingular_errors(3)
+    real(dp) :: mesh_sizes_real(3)
+    integer :: command_status, mesh_id
+
+    call execute_command_line( &
+        "mkdir -p output/example/helmholtz_bem_circle_spectrum", &
+        exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     print "(a)", "Unit-circle outgoing Helmholtz BEM spectrum, k = 1.3, mode 1"
     print "(a)", " panels     rel(V)      rel(K)      rel(W)"
     do mesh_id = 1, size(mesh_sizes)
         call circle_mode_eigenvalues( &
             mesh_sizes(mesh_id), single_layer, double_layer, hypersingular)
-        print "(i7,3es12.3)", mesh_sizes(mesh_id), &
-            relative_error(single_layer, exact_single_layer), &
-            relative_error(double_layer, exact_double_layer), &
+        mesh_sizes_real(mesh_id) = real(mesh_sizes(mesh_id), dp)
+        single_errors(mesh_id) = relative_error(single_layer, exact_single_layer)
+        double_errors(mesh_id) = relative_error(double_layer, exact_double_layer)
+        hypersingular_errors(mesh_id) = &
             relative_error(hypersingular, exact_hypersingular)
+        print "(i7,3es12.3)", mesh_sizes(mesh_id), &
+            single_errors(mesh_id), double_errors(mesh_id), &
+            hypersingular_errors(mesh_id)
     end do
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(mesh_sizes_real, single_errors, label="single layer", marker="o")
+    call plot(mesh_sizes_real, double_errors, label="double layer", marker="s")
+    call plot(mesh_sizes_real, hypersingular_errors, label="hypersingular", &
+        marker="^")
+    call set_xscale("log")
+    call set_yscale("log")
+    call xlabel("circle panels")
+    call ylabel("relative spectral error")
+    call title("Helmholtz circle BEM spectral convergence")
+    call legend()
+    call savefig( &
+        "output/example/helmholtz_bem_circle_spectrum/convergence_1d.png")
 
 contains
 
@@ -151,7 +178,9 @@ end program helmholtz_bem_circle_spectrum
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### convergence_1d.png
+
+![convergence_1d.png](../../media/examples/helmholtz_bem_circle_spectrum/convergence_1d.png)
 
 ---
 

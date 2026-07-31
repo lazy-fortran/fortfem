@@ -1532,6 +1532,14 @@ gallery example.
   not hide the ordered gallery or its plots.
 - Seeded property tests and a common sampler compare independent codes without
   assuming matching bases, numbering, or mesh topology.
+- The gallery now requires every generated example page to embed a real PNG
+  plot; the optional interoperability page retains an explicit SVG provenance
+  cover until its external FEniCSx/FreeFEM/MFEM artifact is available. The
+  formerly empty circular DtN, circle BEM/CFIE, transmission, mesh, solver,
+  and tetrahedral Nédélec pages now emit numerical convergence, response,
+  mesh, or performance plots. The test workflow uses the valid
+  `fpm run --example --list` compile gate rather than the unsupported
+  `fpm build --example` spelling.
 - FortPlot mesh-bearing examples have a regression fixture that checks element
   count, boundary edges, patch boundaries, and internal surfaces in the
   rendered output before Pages deployment.

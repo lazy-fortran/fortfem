@@ -137,7 +137,9 @@ jobs:
       id: build_examples
       continue-on-error: true
       run: |
-        fpm build --example
+        # fpm has no `build --example` option. Listing example targets also
+        # rebuilds stale candidates and gives us a valid compile-only gate.
+        fpm run --example --list
 
     - name: Run all examples
       id: examples

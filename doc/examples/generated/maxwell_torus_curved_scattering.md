@@ -250,7 +250,17 @@ end program maxwell_torus_curved_scattering
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### maxwell_torus_rcs_1d.png
+
+![maxwell_torus_rcs_1d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_1d.png)
+
+### maxwell_torus_rcs_2d.png
+
+![maxwell_torus_rcs_2d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_2d.png)
+
+### maxwell_torus_rcs_3d.png
+
+![maxwell_torus_rcs_3d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_3d.png)
 
 ---
 

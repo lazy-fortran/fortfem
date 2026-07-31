@@ -278,7 +278,17 @@ end program maxwell_mesh_adjoint
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### adjoint_accuracy_1d.png
+
+![adjoint_accuracy_1d.png](../../media/examples/maxwell_mesh_adjoint/adjoint_accuracy_1d.png)
+
+### derivative_timing_1d.png
+
+![derivative_timing_1d.png](../../media/examples/maxwell_mesh_adjoint/derivative_timing_1d.png)
+
+### mesh_gradient_2d.png
+
+![mesh_gradient_2d.png](../../media/examples/maxwell_mesh_adjoint/mesh_gradient_2d.png)
 
 ---
 

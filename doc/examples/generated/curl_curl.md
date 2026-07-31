@@ -256,7 +256,9 @@ end program curl_curl_example
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### curl_curl_p_convergence.png
+
+![curl_curl_p_convergence.png](../../media/examples/curl_curl/curl_curl_p_convergence.png)
 
 ---
 

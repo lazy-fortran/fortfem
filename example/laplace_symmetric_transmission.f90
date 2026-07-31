@@ -1,6 +1,7 @@
 program laplace_symmetric_transmission
     use fortfem_api, only: solve_laplace_symmetric_coupling_p1_p0
     use fortfem_kinds, only: dp
+    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: points_per_side = 5
@@ -15,8 +16,13 @@ program laplace_symmetric_transmission
     real(dp) :: panel_end(2, panel_count), panel_start(2, panel_count)
     real(dp) :: vertices(2, vertex_count), volume_load(vertex_count)
     integer :: panel_nodes(2, panel_count), triangles(3, triangle_count)
-    integer :: panel, status
+    integer :: command_status, panel, status
     real(dp) :: error_flux, error_interior, length, normal(2)
+
+    call execute_command_line( &
+        "mkdir -p output/example/laplace_symmetric_transmission", &
+        exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     call build_square_mesh(vertices, triangles)
     call build_square_boundary(vertices, panel_nodes, panel_start, panel_end)
@@ -45,6 +51,27 @@ program laplace_symmetric_transmission
     if (error_interior > 2.0e-11_dp .or. error_flux > 2.0e-11_dp) then
         error stop "Manufactured transmission solution was not recovered"
     end if
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(real([(panel, panel=1, vertex_count)], dp), &
+        interior_solution, label="interior solution", marker="o")
+    call plot(real([(panel, panel=1, vertex_count)], dp), &
+        dirichlet_jump, label="manufactured solution", linestyle="--")
+    call xlabel("vertex index")
+    call ylabel("solution value")
+    call title("Laplace symmetric FEM-BEM transmission solution")
+    call legend()
+    call savefig( &
+        "output/example/laplace_symmetric_transmission/solution_1d.png")
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call plot(real([(panel, panel=1, panel_count)], dp), exterior_flux, &
+        label="exterior flux jump", marker="s")
+    call xlabel("boundary panel index")
+    call ylabel("flux jump")
+    call title("Manufactured transmission flux residual")
+    call savefig( &
+        "output/example/laplace_symmetric_transmission/flux_1d.png")
 
 contains
 

@@ -181,7 +181,17 @@ end program tetra_h1_poisson
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### tetra_h1_poisson_axis_gray_zoom.png
+
+![tetra_h1_poisson_axis_gray_zoom.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_axis_gray_zoom.png)
+
+### tetra_h1_poisson_convergence.png
+
+![tetra_h1_poisson_convergence.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_convergence.png)
+
+### tetra_h1_poisson_convergence_gray.png
+
+![tetra_h1_poisson_convergence_gray.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_convergence_gray.png)
 
 ---
 

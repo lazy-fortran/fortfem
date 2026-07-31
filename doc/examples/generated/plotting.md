@@ -170,7 +170,17 @@ end program plotting_demo
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### solution_constant.png
+
+![solution_constant.png](../../media/examples/plotting/solution_constant.png)
+
+### solution_coolwarm.png
+
+![solution_coolwarm.png](../../media/examples/plotting/solution_coolwarm.png)
+
+### solution_point.png
+
+![solution_point.png](../../media/examples/plotting/solution_point.png)
 
 ---
 

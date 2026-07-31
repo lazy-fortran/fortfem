@@ -193,7 +193,13 @@ end program iga_polar_feec
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### polar_control_mesh_2d.png
+
+![polar_control_mesh_2d.png](../../media/examples/iga_polar_feec/polar_control_mesh_2d.png)
+
+### polar_feec_energy_1d.png
+
+![polar_feec_energy_1d.png](../../media/examples/iga_polar_feec/polar_feec_energy_1d.png)
 
 ---
 

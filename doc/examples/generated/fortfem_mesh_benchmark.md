@@ -36,16 +36,26 @@ program fortfem_mesh_benchmark
     ! FortFEM mesh generation benchmark to compare with FreeFEM
     use fortfem_api
     use fortfem_kinds
+    use fortplot, only: figure, legend, fortplot_plot => plot, savefig, &
+        set_xscale, set_yscale, title, xlabel, ylabel
     implicit none
 
+    character(*), parameter :: output_directory = &
+        "output/example/fortfem_mesh_benchmark"
     integer, parameter :: n_sizes = 6
     integer :: mesh_sizes(n_sizes) = [5, 10, 15, 20, 25, 30]
     real(dp) :: fortfem_times(n_sizes)
     integer :: fortfem_vertices(n_sizes), fortfem_triangles(n_sizes)
+    real(dp) :: mesh_sizes_real(n_sizes), time_plot(n_sizes)
+    real(dp) :: vertices_plot(n_sizes), triangles_plot(n_sizes)
 
     type(mesh_t) :: mesh
     real(dp) :: start_time, end_time
-    integer :: i, n
+    integer :: command_status, i, n
+
+    call execute_command_line( &
+        "mkdir -p "//output_directory, exitstat=command_status)
+    if (command_status /= 0) error stop "cannot create example output directory"
 
     write(*,*) "=== FortFEM Mesh Generation Benchmark ==="
     write(*,*) ""
@@ -64,6 +74,7 @@ program fortfem_mesh_benchmark
         fortfem_times(i) = end_time - start_time
         fortfem_vertices(i) = mesh%data%n_vertices
         fortfem_triangles(i) = mesh%data%n_triangles
+        mesh_sizes_real(i) = real(n, dp)
 
         write(*,'(A,I0,A,I0,A,ES10.3,A)') "  FortFEM: ", fortfem_vertices(i), &
             " vertices, ", fortfem_triangles(i), " triangles, ", fortfem_times(i), "s"
@@ -80,6 +91,33 @@ program fortfem_mesh_benchmark
 
     ! Save results for comparison
     call save_benchmark_results()
+
+    time_plot = max(fortfem_times, tiny(1.0_dp))
+    vertices_plot = real(fortfem_vertices, dp)
+    triangles_plot = real(fortfem_triangles, dp)
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call fortplot_plot(mesh_sizes_real, time_plot, &
+        label="FortFEM mesh generation", marker="o")
+    call set_xscale("log")
+    call set_yscale("log")
+    call xlabel("mesh resolution n")
+    call ylabel("generation time [s]")
+    call title("FortFEM mesh-generation scaling")
+    call legend()
+    call savefig(output_directory//"/generation_time_1d.png")
+
+    call figure(figsize=[9.0_dp, 5.5_dp])
+    call fortplot_plot(mesh_sizes_real, vertices_plot, &
+        label="vertices", marker="o")
+    call fortplot_plot(mesh_sizes_real, triangles_plot, &
+        label="triangles", marker="s")
+    call set_xscale("log")
+    call set_yscale("log")
+    call xlabel("mesh resolution n")
+    call ylabel("entity count")
+    call title("FortFEM mesh-size growth")
+    call legend()
+    call savefig(output_directory//"/entity_counts_1d.png")
 
     write(*,*) ""
     write(*,*) "FortFEM benchmark completed."
@@ -117,7 +155,13 @@ end program fortfem_mesh_benchmark
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### entity_counts_1d.png
+
+![entity_counts_1d.png](../../media/examples/fortfem_mesh_benchmark/entity_counts_1d.png)
+
+### generation_time_1d.png
+
+![generation_time_1d.png](../../media/examples/fortfem_mesh_benchmark/generation_time_1d.png)
 
 ---
 

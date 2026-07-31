@@ -123,7 +123,13 @@ end program magnetic_curvilinear_metrics
 
 ## Generated Plots
 
-*No plot artifact is produced by this example.*
+### cylindrical_coefficients_1d.png
+
+![cylindrical_coefficients_1d.png](../../media/examples/magnetic_curvilinear_metrics/cylindrical_coefficients_1d.png)
+
+### spherical_coefficients_1d.png
+
+![spherical_coefficients_1d.png](../../media/examples/magnetic_curvilinear_metrics/spherical_coefficients_1d.png)
 
 ---
 
