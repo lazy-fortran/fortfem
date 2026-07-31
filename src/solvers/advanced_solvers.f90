@@ -12,6 +12,7 @@ module fortfem_advanced_solvers
     public :: solver_options_t, solver_stats_t
     public :: solve, solve_sparse, solver_options
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
+    public :: cg_solve_jvp, cg_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
 
     ! Solver options type
@@ -239,6 +240,119 @@ contains
         end subroutine dense_matvec
 
     end subroutine cg_solve
+
+    subroutine cg_solve_jvp( &
+            A, b, x, opts, A_dot, b_dot, x_dot, status)
+        !! Implicit forward product for a converged SPD CG state.
+        !!
+        !! The iteration path and stopping branch are inactive.  The tangent
+        !! solves A*x_dot = b_dot - A_dot*x with the same CG implementation,
+        !! which avoids differentiating the finite-precision iteration history.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: x_dot(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: tangent_rhs(:)
+        type(solver_stats_t) :: tangent_stats
+        integer :: n
+
+        x_dot = 0.0_dp
+        status = 1
+        n = size(x)
+        if (.not. valid_cg_product_inputs( &
+            A, b, x, A_dot, b_dot, x_dot, n)) return
+        if (.not. valid_cg_matrix(A)) return
+        if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
+        allocate(tangent_rhs(n))
+        tangent_rhs = b_dot - matmul(A_dot, x)
+        x_dot = 0.0_dp
+        call cg_solve(A, tangent_rhs, x_dot, opts, tangent_stats)
+        if (.not. tangent_stats%converged) then
+            status = 2
+            return
+        end if
+        status = 0
+    end subroutine cg_solve_jvp
+
+    subroutine cg_solve_vjp( &
+            A, b, x, opts, x_bar, A_bar, b_bar, status)
+        !! Implicit reverse product for a converged SPD CG state.
+        !!
+        !! The adjoint solves A^T*lambda = x_bar.  For x=A^{-1}b, the
+        !! resulting real cotangents are b_bar=lambda and
+        !! A_bar=-lambda*x^T.  The primal right-hand side is retained in the
+        !! interface to make the converged-state contract explicit.
+        real(dp), intent(in) :: A(:, :), b(:), x(:), x_bar(:)
+        type(solver_options_t), intent(in) :: opts
+        real(dp), intent(out) :: A_bar(:, :), b_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: adjoint(:)
+        type(solver_stats_t) :: adjoint_stats
+        integer :: n
+
+        A_bar = 0.0_dp
+        b_bar = 0.0_dp
+        status = 1
+        n = size(x)
+        if (size(A_bar, 1) /= n .or. size(A_bar, 2) /= n .or. &
+            size(b_bar) /= n .or. size(x_bar) /= n) return
+        if (size(A, 1) /= n .or. size(A, 2) /= n .or. size(b) /= n) return
+        if (.not. valid_cg_matrix(A)) return
+        if (opts%max_iterations < 1 .or. opts%tolerance <= 0.0_dp) return
+        allocate(adjoint(n))
+        adjoint = 0.0_dp
+        call cg_solve(transpose(A), x_bar, adjoint, opts, adjoint_stats)
+        if (.not. adjoint_stats%converged) then
+            status = 2
+            return
+        end if
+        b_bar = adjoint
+        A_bar = -spread(adjoint, 2, n)*spread(x, 1, n)
+        status = 0
+    end subroutine cg_solve_vjp
+
+    pure logical function valid_cg_product_inputs( &
+            A, b, x, A_dot, b_dot, x_dot, n) result(valid)
+        real(dp), intent(in) :: A(:, :), b(:), x(:), A_dot(:, :), b_dot(:)
+        real(dp), intent(in) :: x_dot(:)
+        integer, intent(in) :: n
+
+        valid = n > 0
+        if (.not. valid) return
+        if (size(A, 1) /= n .or. size(A, 2) /= n) then
+            valid = .false.
+            return
+        end if
+        if (size(b) /= n .or. size(x) /= n .or. size(b_dot) /= n .or. &
+            size(x_dot) /= n) then
+            valid = .false.
+            return
+        end if
+        if (size(A_dot, 1) /= n .or. size(A_dot, 2) /= n) valid = .false.
+    end function valid_cg_product_inputs
+
+    pure logical function valid_cg_matrix(A) result(valid)
+        real(dp), intent(in) :: A(:, :)
+        real(dp) :: scale
+        integer :: index
+
+        valid = size(A, 1) > 0 .and. size(A, 1) == size(A, 2)
+        if (.not. valid) return
+        scale = max(1.0_dp, maxval(abs(A)))
+        if (maxval(abs(A - transpose(A))) > &
+            256.0_dp*epsilon(1.0_dp)*scale) then
+            valid = .false.
+            return
+        end if
+        do index = 1, size(A, 1)
+            if (A(index, index) <= 0.0_dp) then
+                valid = .false.
+                return
+            end if
+        end do
+    end function valid_cg_matrix
 
     subroutine cg_solve_operator(matvec, b, x, opts, stats)
         procedure(matvec_proc) :: matvec

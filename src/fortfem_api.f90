@@ -1396,6 +1396,7 @@ module fortfem_api
     public :: solver_options_t, solver_stats_t
     public :: solver_options
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
+    public :: cg_solve_jvp, cg_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner
 
     ! Plotting interface
