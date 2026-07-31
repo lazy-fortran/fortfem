@@ -549,12 +549,15 @@ The `fci_parallel_diffusion` gallery example now runs the same matrix-free
 action on a manufactured open-line cosine profile and publishes 1D FortPlot
 profiles plus CSV values for the mass-rate and dissipation oracles.
 The field-only VJP of this diffusion action is also public and is checked by
-an independent dot-product identity; map/coefficient/volume sensitivities
-remain separate follow-up contracts. The public 1D linear interpolation-map
-builder now checks partition of unity, affine reproduction, fixed-topology
-JVP/VJP dot products, and Cartesian bilinear affine reproduction. Higher-order
-or unstructured interpolation Jacobians, support-volume construction, and
-anisotropy-aware preconditioning remain active work.
+an independent dot-product identity. The complete fixed-topology diffusion
+JVP/VJP now covers interpolation maps, line lengths, parallel coefficients,
+canonical and staggered volumes, and the field through pinned FortSym local
+contribution kernels; a central-difference and full real dot-product oracle
+guard this contract. The public 1D linear interpolation-map builder now checks
+partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
+and Cartesian bilinear affine reproduction. Higher-order or unstructured
+interpolation Jacobians, curved support-volume measures, and anisotropy-aware
+preconditioning remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -910,7 +913,8 @@ gallery example.
 
 - FCI RK4 field-line tracing, support-operator gradient/divergence algebra, and
   matrix-free (P K_\parallel Q) diffusion (including FortSym-generated
-  gradient JVP/VJP products) are public and independently tested. The
+  gradient and full diffusion JVP/VJP products) are public and independently
+  tested. The
   `fci_parallel_diffusion` gallery fixture provides a reproducible open-line
   mass-conservation and negative-energy profile. A 1D linear map builder and
   its fixed-topology JVP/VJP provide independent partition/affine and
