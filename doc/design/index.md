@@ -30,6 +30,10 @@ The [oriented cell-complex contract](cell_complex.html) defines integer chain
 boundary maps, exact boundary-of-boundary validation, Euler characteristic, and
 small homology diagnostics for later FEEC, gauge, cut, and interface graphs.
 
+The [region/interface graph contract](region_interface_graph.html) adds
+oriented plus/minus region incidence, periodic self-identifications, and
+connectivity labels without importing an application-specific interface law.
+
 The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.

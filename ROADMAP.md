@@ -1039,6 +1039,11 @@ gallery example.
   interval, loop, sphere-CW, torus-CW, and malformed-orientation tests cover
   the primitive; periodic quotient maps, region adjacency, harmonic bases,
   gauge constraints, and cycle ledgers remain planned graph layers.
+- The neutral `region_interface_graph_t` contract now adds oriented plus/minus
+  region incidence, periodic self-identifications, and compact connectivity
+  labels with independent chain, disconnected, reversed, periodic, and
+  malformed-endpoint tests. Surface laws, sheet-current balances, and region
+  physics remain application-owned.
 - Oriented triangle surface measures (area plus unit normal) now have a public
   JVP/VJP API with shared-vertex accumulation and independent finite-difference
   and dot-product oracles. A linear 2D triangle level-set cut primitive now
