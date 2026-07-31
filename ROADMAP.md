@@ -537,9 +537,10 @@ JVP, the weighted adjoint identity, and the weighted negative-energy identity.
 The `fci_parallel_diffusion` gallery example now runs the same matrix-free
 action on a manufactured open-line cosine profile and publishes 1D FortPlot
 profiles plus CSV values for the mass-rate and dissipation oracles.
-Interpolation
-Jacobians, support-volume construction, and anisotropy-aware preconditioning
-remain active work.
+The field-only VJP of this diffusion action is also public and is checked by
+an independent dot-product identity; map/coefficient/volume sensitivities
+remain separate follow-up contracts. Interpolation Jacobians, support-volume
+construction, and anisotropy-aware preconditioning remain active work.
 
 ### 8.3 FEM/BEM, DtN, and PML
 

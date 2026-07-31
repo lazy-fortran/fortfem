@@ -55,6 +55,10 @@ call assemble_fci_parallel_support_divergence_csc( &
 call apply_fci_parallel_diffusion( &
     forward_map, backward_map, line_lengths, parallel_coefficient, &
     canonical_volumes, staggered_volumes, field, diffusion_field, status)
+call apply_fci_parallel_diffusion_field_vjp( &
+    forward_map, backward_map, line_lengths, parallel_coefficient, &
+    canonical_volumes, staggered_volumes, diffusion_field_bar, field_bar, &
+    status)
 call apply_fci_parallel_gradient_jvp( &
     forward_map, backward_map, line_lengths, field, forward_map_dot, &
     backward_map_dot, line_lengths_dot, field_dot, gradient_dot, status)
@@ -73,7 +77,8 @@ through the existing FortSparse `csc_matvec` interface.
 The focused test uses identity maps and an analytically linear field as an
 independent oracle. It also checks the weighted adjoint identity and a flux
 balance vector. A separate diffusion test checks the explicit `P K_parallel Q`
-oracle and the weighted negative-energy identity. Field-line tracing,
+oracle, the weighted negative-energy identity, and the diffusion field VJP
+against an independent dot-product identity. Field-line tracing,
 interpolation stencils, support-volume construction, perpendicular terms,
 boundary conditions, and multigrid remain separate follow-up ingredients. The
 pointwise gradient value, JVP, and VJP used by the matrix-free action are

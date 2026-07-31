@@ -33,6 +33,7 @@ module fortfem_fci_parallel_operator
     public :: assemble_fci_parallel_support_divergence_csc
     public :: apply_fci_parallel_gradient
     public :: apply_fci_parallel_diffusion
+    public :: apply_fci_parallel_diffusion_field_vjp
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
 
@@ -288,6 +289,76 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_parallel_diffusion
+
+    subroutine apply_fci_parallel_diffusion_field_vjp( &
+            forward_map, backward_map, line_lengths, parallel_coefficient, &
+            canonical_volumes, staggered_volumes, diffusion_field_bar, &
+            field_bar, status)
+        !! Apply the VJP with respect to the input field of the FCI action.
+        !!
+        !! For fixed maps, coefficients, and volumes, the action is
+        !!
+        !!   L = -W_c^{-1} Q^T W_s K_parallel Q,
+        !!
+        !! so its Euclidean transpose is evaluated by first applying Q to
+        !! W_c^{-1} times the output cotangent and then using the generated
+        !! gradient VJP.  Keeping this composition explicit preserves the
+        !! same FortSym-generated scalar product as the primal gradient.
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        real(dp), intent(in) :: line_lengths(:, :)
+        real(dp), intent(in) :: parallel_coefficient(:)
+        real(dp), intent(in) :: canonical_volumes(:)
+        real(dp), intent(in) :: staggered_volumes(:)
+        real(dp), intent(in) :: diffusion_field_bar(:)
+        real(dp), intent(out) :: field_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: n_plane, n_segment, n_staggered
+        real(dp), allocatable :: scaled_bar(:), gradient_bar(:)
+        real(dp), allocatable :: zero_field(:)
+        real(dp), allocatable :: forward_map_bar(:, :, :)
+        real(dp), allocatable :: backward_map_bar(:, :, :)
+        real(dp), allocatable :: line_lengths_bar(:, :)
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI diffusion VJP received incompatible arrays")
+        field_bar = 0.0_dp
+        n_staggered = size(forward_map, 1)
+        n_plane = size(forward_map, 2)
+        n_segment = size(forward_map, 3)
+        if (n_staggered < 1 .or. n_plane < 1 .or. n_segment < 1) return
+        if (any(shape(backward_map) /= shape(forward_map))) return
+        if (size(line_lengths, 1) /= n_staggered) return
+        if (size(line_lengths, 2) /= n_segment) return
+        if (size(parallel_coefficient) /= n_staggered*n_segment) return
+        if (size(staggered_volumes) /= n_staggered*n_segment) return
+        if (size(canonical_volumes) /= n_plane*(n_segment + 1)) return
+        if (size(diffusion_field_bar) /= n_plane*(n_segment + 1)) return
+        if (size(field_bar) /= n_plane*(n_segment + 1)) return
+        if (any(line_lengths <= 0.0_dp)) return
+        if (any(parallel_coefficient <= 0.0_dp)) return
+        if (any(canonical_volumes <= 0.0_dp)) return
+        if (any(staggered_volumes <= 0.0_dp)) return
+
+        allocate(scaled_bar(size(diffusion_field_bar)))
+        allocate(gradient_bar(n_staggered*n_segment))
+        allocate(zero_field(size(diffusion_field_bar)))
+        allocate(forward_map_bar(n_staggered, n_plane, n_segment))
+        allocate(backward_map_bar(n_staggered, n_plane, n_segment))
+        allocate(line_lengths_bar(n_staggered, n_segment))
+        scaled_bar = diffusion_field_bar/canonical_volumes
+        call apply_fci_parallel_gradient( &
+            forward_map, backward_map, line_lengths, scaled_bar, gradient_bar, &
+            status)
+        if (status%code /= FORTSPARSE_OK) return
+        gradient_bar = -staggered_volumes*parallel_coefficient*gradient_bar
+        zero_field = 0.0_dp
+        call apply_fci_parallel_gradient_vjp( &
+            forward_map, backward_map, line_lengths, zero_field, gradient_bar, &
+            forward_map_bar, backward_map_bar, line_lengths_bar, field_bar, &
+            status)
+    end subroutine apply_fci_parallel_diffusion_field_vjp
 
     subroutine apply_fci_parallel_gradient_jvp( &
             forward_map, backward_map, line_lengths, field, forward_map_dot, &
