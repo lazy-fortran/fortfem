@@ -262,6 +262,11 @@ The constrained triangle RT sampled-state wrapper provides the matching
 H(div) path. It differentiates the SPD div--div-plus-mass system with respect
 to shared mesh vertices, both material coefficients, physical source samples,
 and prescribed normal-flux degrees of freedom.
+The full polynomial triangle sequence is covered at element level as well:
+second-kind Nedelec and BDM curl/div-plus-mass elements share one analytical
+product implementation, selecting the appropriate covariant or
+contravariant Piola pullback. This avoids duplicating the quadrature reverse
+sweep while exposing family-specific public JVP/VJP names.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
