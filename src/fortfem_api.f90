@@ -30,6 +30,10 @@ module fortfem_api
         assemble_fci_terminal_boundary_flux, &
         assemble_fci_terminal_boundary_flux_jvp, &
         assemble_fci_terminal_boundary_flux_vjp
+    use fortfem_nonlinear_surface_flux, only: &
+        assemble_nonlinear_surface_flux, &
+        assemble_nonlinear_surface_flux_jvp, &
+        assemble_nonlinear_surface_flux_vjp
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -983,6 +987,9 @@ module fortfem_api
     public :: assemble_fci_terminal_boundary_flux
     public :: assemble_fci_terminal_boundary_flux_jvp
     public :: assemble_fci_terminal_boundary_flux_vjp
+    public :: assemble_nonlinear_surface_flux
+    public :: assemble_nonlinear_surface_flux_jvp
+    public :: assemble_nonlinear_surface_flux_vjp
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp

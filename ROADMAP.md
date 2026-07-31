@@ -1041,6 +1041,12 @@ gallery example.
   separate contracts. The matching 3D triangle search and fixed-topology JVP
   now cover triangulated toroidal vessel/divertor surfaces without copying a
   PARALLAX implementation.
+- The generic nonlinear material-surface flux contract is now public: an
+  application callback supplies the local tagged law while FortFEM assembles
+  the oriented trace residual, integrated per-tag ledger, and fixed-tag
+  value/JVP/VJP products with independent central-difference and dot-product
+  oracles. Sheath, Bohm, recycling, radiation, and material databases remain
+  application-layer clients.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
   conditions.
