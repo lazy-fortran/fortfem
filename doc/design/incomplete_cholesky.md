@@ -26,13 +26,23 @@ call build_incomplete_cholesky(matrix, factor, status)
 call apply_incomplete_cholesky(factor, rhs, solution, status)
 ```
 
+The same factor is selectable in the public PCG path with
+`solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
+`ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
+this keeps the current contract small while a true sparse implementation is
+benchmarked separately. The legacy BiCGSTAB kernel accepts only its ILU
+factor contract and therefore reports an explicit unpreconditioned fallback
+if ICHOL is selected there.
+
 The builder rejects nonsymmetric, non-finite, non-square, and non-positive
 pivot inputs. Factorization branches and sparsity patterns are fixed for
-derivative calculations; a breakdown is a reported solver event.
+derivative calculations; a breakdown is a reported solver event. The
+converged-state PCG JVP/VJP differentiates the exact linear solve, so the
+inactive preconditioner iteration does not introduce a hidden derivative
+dependency.
 
 ## Independent oracle
 
 The focused test uses a symmetric positive-definite tridiagonal matrix whose
 IC(0) factor is exact and checks the residual after triangular application.
 Nonsymmetry and an indefinite diagonal are rejected independently.
-

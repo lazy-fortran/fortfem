@@ -807,7 +807,8 @@ module fortfem_api
         solver_options, cg_solve, pcg_solve, bicgstab_solve, gmres_solve,   &
         cg_solve_jvp, cg_solve_vjp, pcg_solve_jvp, pcg_solve_vjp,           &
         bicgstab_solve_jvp, bicgstab_solve_vjp, gmres_solve_jvp,            &
-        gmres_solve_vjp, jacobi_preconditioner, ilu_preconditioner
+        gmres_solve_vjp, jacobi_preconditioner, ilu_preconditioner, &
+        ichol_preconditioner
     use fortfem_incomplete_cholesky, only: apply_incomplete_cholesky, &
         build_incomplete_cholesky, incomplete_cholesky_factor_t
     implicit none
@@ -1592,7 +1593,7 @@ module fortfem_api
     public :: pcg_solve_jvp, pcg_solve_vjp
     public :: bicgstab_solve_jvp, bicgstab_solve_vjp
     public :: gmres_solve_jvp, gmres_solve_vjp
-    public :: jacobi_preconditioner, ilu_preconditioner
+    public :: jacobi_preconditioner, ilu_preconditioner, ichol_preconditioner
 
     ! Field-coordinate-independent (FCI) support operators
     public :: assemble_fci_parallel_gradient_csc
