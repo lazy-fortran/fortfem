@@ -46,3 +46,12 @@ shoelace moments, and composes the interface JVP for length and normal. It
 supports fixed uncut states as well as proper cuts, rejects nodal zeros, and is
 checked against central differences plus independent total-area and
 first-moment conservation identities.
+
+`evaluate_level_set_tetra_interface_3d` is the first higher-dimensional cut
+primitive. It computes the affine physical level-set gradient, collects the
+three or four edge intersections, orders the convex polygon in its physical
+plane, and returns its area and gradient-oriented normal. Its test covers both
+triangular and quadrilateral cuts against independent edge points and plane
+geometry, as well as uncut, nodal-topology, and degenerate-tetrahedron
+rejection. Tetrahedral cut volumes, centroids, and their fixed-topology JVPs
+remain the next 3D geometry layer.
