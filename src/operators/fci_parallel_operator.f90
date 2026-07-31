@@ -45,6 +45,7 @@ module fortfem_fci_parallel_operator
     public :: apply_fci_parallel_diffusion_vjp
     public :: apply_fci_parallel_diffusion_field_vjp
     public :: compute_fci_parallel_diffusion_diagonal
+    public :: apply_fci_parallel_jacobi_preconditioner
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
 
@@ -350,6 +351,24 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine compute_fci_parallel_diffusion_diagonal
+
+    subroutine apply_fci_parallel_jacobi_preconditioner( &
+            diagonal, residual, correction, status)
+        !! Apply the positive FCI diffusion Jacobi preconditioner.
+        real(dp), intent(in) :: diagonal(:)
+        real(dp), intent(in) :: residual(:)
+        real(dp), intent(out) :: correction(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI Jacobi preconditioner received incompatible arrays")
+        correction = 0.0_dp
+        if (size(diagonal) /= size(residual)) return
+        if (size(correction) /= size(diagonal)) return
+        if (any(diagonal <= 0.0_dp)) return
+        correction = residual/diagonal
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_parallel_jacobi_preconditioner
 
     subroutine apply_fci_parallel_diffusion_jvp( &
             forward_map, backward_map, line_lengths, parallel_coefficient, &
