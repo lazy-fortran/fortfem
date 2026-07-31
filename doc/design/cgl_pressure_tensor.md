@@ -33,12 +33,32 @@ the three-dimensional unit-direction contract and packs the generated
 components into a full symmetric tensor. For a full-matrix cotangent, the two
 off-diagonal entries are combined before the generated VJP is called.
 
-This is deliberately a constitutive building block, not yet a complete CGL
-force-divergence or anisotropic MHD solver. The independent test checks the
-closed-form tensor, a central-difference JVP, the real adjoint identity, and
-rejection of a non-unit magnetic direction. Future force, traction, and
-field-aligned transport forms should consume this tensor without replacing it
-by its scalar trace.
+The corresponding product-rule force contraction is also public:
+
+```fortran
+call evaluate_cgl_pressure_divergence( &
+    p_parallel, p_perpendicular, unit_direction, parallel_gradient, &
+    perpendicular_gradient, direction_gradient, force_divergence, status)
+```
+
+Here `direction_gradient(i,j)` denotes \(\partial_j b_i\), and the generated
+contraction evaluates
+
+\[
+ (\nabla\!\cdot\mathbf P)_i
+ = \partial_i p_\perp
+ + \partial_j\left[(p_\parallel-p_\perp)b_i b_j\right].
+\]
+
+Its JVP and VJP cover the pressures, pressure gradients, magnetic direction,
+and direction gradient. This is a local constitutive/force ingredient; volume
+assembly, traction traces, Braginskii corrections, and a full anisotropic MHD
+residual remain separate contracts.
+
+Independent tests check the closed-form tensor and force product-rule oracle,
+central-difference JVPs, real adjoint identities, and rejection of a non-unit
+magnetic direction. Future traction and field-aligned transport forms should
+consume these blocks without replacing the tensor by its scalar trace.
 
 Regenerate the kernels with:
 
