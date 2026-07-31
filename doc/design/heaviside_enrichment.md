@@ -25,6 +25,14 @@ call evaluate_shifted_heaviside_enrichment_jvp( &
     level_values, anchor_values, level_dot, anchor_dot, values_dot, status)
 call evaluate_shifted_heaviside_enrichment_vjp( &
     level_values, anchor_values, values_bar, level_bar, anchor_bar, status)
+call evaluate_shifted_enriched_basis( &
+    base_values, level_values, anchor_values, enriched_values, status)
+call evaluate_shifted_enriched_basis_jvp( &
+    base_values, level_values, anchor_values, base_dot, level_dot, anchor_dot, &
+    enriched_dot, status)
+call evaluate_shifted_enriched_basis_vjp( &
+    base_values, level_values, anchor_values, enriched_bar, base_bar, &
+    level_bar, anchor_bar, status)
 ```
 
 The activation sign is a fixed-topology discrete choice. Away from `phi=0`
@@ -33,5 +41,14 @@ a topology event instead of being assigned an arbitrary derivative. This
 makes the piecewise-smooth differentiation contract explicit before cut
 geometry and enrichment activation are composed.
 
+`evaluate_shifted_enriched_basis` applies the product rule
+`N_i*(H(phi)-H(phi_i))` to a caller-supplied base value. Its JVP propagates
+base-value increments and its VJP returns the corresponding base cotangent;
+the level-set cotangents remain zero on a fixed sign pattern. This keeps
+partition-of-unity composition explicit without pretending that enrichment
+activation or cut connectivity is differentiable across a topology event.
+
 `test_heaviside_enrichment` checks the independent sign oracle, fixed-sign
-zero derivative identities, and topology-event rejection.
+zero derivative identities, and topology-event rejection. The companion
+`test_shifted_enriched_basis` checks the product oracle and real adjoint
+identity.
