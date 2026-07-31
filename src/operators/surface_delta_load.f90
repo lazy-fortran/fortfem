@@ -37,7 +37,12 @@ contains
         call validate_scalar_delta_inputs( &
             trace_basis, surface_weights, surface_source, &
             quadrature_count, dof_count, status)
-        if (status%code /= FORTSPARSE_OK .or. size(load) /= dof_count) return
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(load) /= dof_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "surface delta load output has incompatible size")
+            return
+        end if
 
         do quadrature = 1, quadrature_count
             weighted_source = surface_weights(quadrature)* &
@@ -162,7 +167,12 @@ contains
         call validate_vector_delta_inputs( &
             tangential_trace_basis, surface_weights, surface_current, &
             quadrature_count, dof_count, status)
-        if (status%code /= FORTSPARSE_OK .or. size(load) /= dof_count) return
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(load) /= dof_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "surface vector delta load output has incompatible size")
+            return
+        end if
 
         do quadrature = 1, quadrature_count
             do dof = 1, dof_count
