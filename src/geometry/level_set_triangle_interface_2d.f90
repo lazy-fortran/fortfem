@@ -17,6 +17,8 @@ module fortfem_level_set_triangle_interface_2d
     public :: evaluate_level_set_triangle_cut_areas_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
+    public :: evaluate_level_set_triangle_cut_moments_2d
+    public :: evaluate_level_set_triangle_cut_moments_2d_jvp
 
 contains
 
@@ -358,6 +360,91 @@ contains
         status = 0
     end subroutine evaluate_level_set_triangle_cut_quadrature_2d_jvp
 
+    subroutine evaluate_level_set_triangle_cut_moments_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            positive_second_moment, negative_area, negative_centroid, &
+            negative_second_moment, interface_length, normal, status)
+        !! Return exact degree-two raw moments for a linear level-set cut.
+        !!
+        !! The second-moment tensor contains the physical integrals
+        !! \\(M_{ab}=\\int_{\\Omega_\\pm}x_a x_b\\,dA\\).  It is accumulated from
+        !! the same clipped polygons as the degree-one quadrature primitive,
+        !! so constants, affine fields, and quadratic manufactured fields can
+        !! be integrated without introducing a second clipping convention.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(out) :: positive_area, positive_centroid(2)
+        real(dp), intent(out) :: positive_second_moment(2, 2)
+        real(dp), intent(out) :: negative_area, negative_centroid(2)
+        real(dp), intent(out) :: negative_second_moment(2, 2)
+        real(dp), intent(out) :: interface_length, normal(2)
+        integer, intent(out) :: status
+
+        integer :: quadrature_status
+
+        positive_area = 0.0_dp
+        positive_centroid = 0.0_dp
+        positive_second_moment = 0.0_dp
+        negative_area = 0.0_dp
+        negative_centroid = 0.0_dp
+        negative_second_moment = 0.0_dp
+        interface_length = 0.0_dp
+        normal = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            negative_area, negative_centroid, interface_length, normal, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments( &
+            vertices, level_values, .true., positive_area, positive_centroid, &
+            positive_second_moment)
+        call level_set_side_moments( &
+            vertices, level_values, .false., negative_area, negative_centroid, &
+            negative_second_moment)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_moments_2d
+
+    subroutine evaluate_level_set_triangle_cut_moments_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_area_dot, positive_centroid_dot, positive_second_moment_dot, &
+            negative_area_dot, negative_centroid_dot, negative_second_moment_dot, &
+            interface_length_dot, normal_dot, status)
+        !! Apply the fixed-topology JVP of degree-two cut moments.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        real(dp), intent(out) :: positive_area_dot, positive_centroid_dot(2)
+        real(dp), intent(out) :: positive_second_moment_dot(2, 2)
+        real(dp), intent(out) :: negative_area_dot, negative_centroid_dot(2)
+        real(dp), intent(out) :: negative_second_moment_dot(2, 2)
+        real(dp), intent(out) :: interface_length_dot, normal_dot(2)
+        integer, intent(out) :: status
+
+        integer :: quadrature_status
+
+        positive_area_dot = 0.0_dp
+        positive_centroid_dot = 0.0_dp
+        positive_second_moment_dot = 0.0_dp
+        negative_area_dot = 0.0_dp
+        negative_centroid_dot = 0.0_dp
+        negative_second_moment_dot = 0.0_dp
+        interface_length_dot = 0.0_dp
+        normal_dot = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_area_dot, positive_centroid_dot, negative_area_dot, &
+            negative_centroid_dot, interface_length_dot, normal_dot, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            positive_area_dot, positive_centroid_dot, positive_second_moment_dot)
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            negative_area_dot, negative_centroid_dot, negative_second_moment_dot)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_moments_2d_jvp
+
     pure function level_set_side_area(vertices, level_values, keep_positive) &
             result(area)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
@@ -370,17 +457,20 @@ contains
     end function level_set_side_area
 
     pure subroutine level_set_side_moments( &
-            vertices, level_values, keep_positive, area, centroid)
+            vertices, level_values, keep_positive, area, centroid, second_moment)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area, centroid(2)
+        real(dp), intent(out), optional :: second_moment(2, 2)
 
         real(dp) :: polygon(2, 6), clipped(2, 6)
-        real(dp) :: signed_area, cross, first_moment(2)
+        real(dp) :: signed_area, cross, first_moment(2), second_moment_signed(2, 2)
+        real(dp) :: point_x, point_y, next_x, next_y
         integer :: point_count, point, next_point
 
         area = 0.0_dp
         centroid = 0.0_dp
+        if (present(second_moment)) second_moment = 0.0_dp
         polygon(:, 1:3) = vertices
         point_count = 3
         call clip_level_set_polygon( &
@@ -388,35 +478,62 @@ contains
         if (point_count < 3) return
         signed_area = 0.0_dp
         first_moment = 0.0_dp
+        second_moment_signed = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
+            point_x = polygon(1, point)
+            point_y = polygon(2, point)
+            next_x = polygon(1, next_point)
+            next_y = polygon(2, next_point)
             cross = polygon(1, point)*polygon(2, next_point) - &
                 polygon(2, point)*polygon(1, next_point)
             signed_area = signed_area + 0.5_dp*cross
             first_moment = first_moment + 0.5_dp*cross*( &
                 polygon(:, point) + polygon(:, next_point))
+            second_moment_signed(1, 1) = second_moment_signed(1, 1) + &
+                cross*(point_x**2 + point_x*next_x + next_x**2)/12.0_dp
+            second_moment_signed(2, 2) = second_moment_signed(2, 2) + &
+                cross*(point_y**2 + point_y*next_y + next_y**2)/12.0_dp
+            second_moment_signed(1, 2) = second_moment_signed(1, 2) + &
+                cross*(2.0_dp*point_x*point_y + point_x*next_y + &
+                next_x*point_y + 2.0_dp*next_x*next_y)/24.0_dp
         end do
         if (abs(signed_area) <= topology_tolerance) return
         area = abs(signed_area)
         centroid = first_moment/(3.0_dp*signed_area)
+        if (present(second_moment)) then
+            second_moment(1, 1) = sign(1.0_dp, signed_area)* &
+                second_moment_signed(1, 1)
+            second_moment(2, 2) = sign(1.0_dp, signed_area)* &
+                second_moment_signed(2, 2)
+            second_moment(1, 2) = sign(1.0_dp, signed_area)* &
+                second_moment_signed(1, 2)
+            second_moment(2, 1) = second_moment(1, 2)
+        end if
     end subroutine level_set_side_moments
 
     pure subroutine level_set_side_moments_jvp( &
             vertices, level_values, vertices_dot, level_values_dot, keep_positive, &
-            area_dot, centroid_dot)
+            area_dot, centroid_dot, second_moment_dot)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area_dot, centroid_dot(2)
+        real(dp), intent(out), optional :: second_moment_dot(2, 2)
 
         real(dp) :: polygon(2, 6), polygon_dot(2, 6)
         real(dp) :: signed_area, signed_area_dot, cross, cross_dot
         real(dp) :: first_moment(2), first_moment_dot(2)
+        real(dp) :: second_moment_signed(2, 2), second_moment_signed_dot(2, 2)
+        real(dp) :: point_x, point_y, next_x, next_y
+        real(dp) :: point_x_dot, point_y_dot, next_x_dot, next_y_dot
+        real(dp) :: term, term_dot
         real(dp) :: orientation
         integer :: point_count, point, next_point
 
         area_dot = 0.0_dp
         centroid_dot = 0.0_dp
+        if (present(second_moment_dot)) second_moment_dot = 0.0_dp
         polygon = 0.0_dp
         polygon_dot = 0.0_dp
         polygon(:, 1:3) = vertices
@@ -431,8 +548,18 @@ contains
         signed_area_dot = 0.0_dp
         first_moment = 0.0_dp
         first_moment_dot = 0.0_dp
+        second_moment_signed = 0.0_dp
+        second_moment_signed_dot = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
+            point_x = polygon(1, point)
+            point_y = polygon(2, point)
+            next_x = polygon(1, next_point)
+            next_y = polygon(2, next_point)
+            point_x_dot = polygon_dot(1, point)
+            point_y_dot = polygon_dot(2, point)
+            next_x_dot = polygon_dot(1, next_point)
+            next_y_dot = polygon_dot(2, next_point)
             cross = polygon(1, point)*polygon(2, next_point) - &
                 polygon(2, point)*polygon(1, next_point)
             cross_dot = polygon_dot(1, point)*polygon(2, next_point) + &
@@ -446,12 +573,44 @@ contains
             first_moment_dot = first_moment_dot + 0.5_dp*( &
                 cross_dot*(polygon(:, point) + polygon(:, next_point)) + &
                 cross*(polygon_dot(:, point) + polygon_dot(:, next_point)))
+            term = point_x**2 + point_x*next_x + next_x**2
+            term_dot = 2.0_dp*point_x*point_x_dot + &
+                point_x_dot*next_x + point_x*next_x_dot + &
+                2.0_dp*next_x*next_x_dot
+            second_moment_signed(1, 1) = second_moment_signed(1, 1) + &
+                cross*term/12.0_dp
+            second_moment_signed_dot(1, 1) = second_moment_signed_dot(1, 1) + &
+                (cross_dot*term + cross*term_dot)/12.0_dp
+            term = point_y**2 + point_y*next_y + next_y**2
+            term_dot = 2.0_dp*point_y*point_y_dot + &
+                point_y_dot*next_y + point_y*next_y_dot + &
+                2.0_dp*next_y*next_y_dot
+            second_moment_signed(2, 2) = second_moment_signed(2, 2) + &
+                cross*term/12.0_dp
+            second_moment_signed_dot(2, 2) = second_moment_signed_dot(2, 2) + &
+                (cross_dot*term + cross*term_dot)/12.0_dp
+            term = 2.0_dp*point_x*point_y + point_x*next_y + &
+                next_x*point_y + 2.0_dp*next_x*next_y
+            term_dot = 2.0_dp*(point_x_dot*point_y + point_x*point_y_dot) + &
+                point_x_dot*next_y + point_x*next_y_dot + &
+                next_x_dot*point_y + next_x*point_y_dot + &
+                2.0_dp*(next_x_dot*next_y + next_x*next_y_dot)
+            second_moment_signed(1, 2) = second_moment_signed(1, 2) + &
+                cross*term/24.0_dp
+            second_moment_signed_dot(1, 2) = second_moment_signed_dot(1, 2) + &
+                (cross_dot*term + cross*term_dot)/24.0_dp
         end do
         if (abs(signed_area) <= topology_tolerance) return
         orientation = sign(1.0_dp, signed_area)
         area_dot = orientation*signed_area_dot
         centroid_dot = (first_moment_dot*signed_area - &
             first_moment*signed_area_dot)/(3.0_dp*signed_area**2)
+        if (present(second_moment_dot)) then
+            second_moment_dot(1, 1) = orientation*second_moment_signed_dot(1, 1)
+            second_moment_dot(2, 2) = orientation*second_moment_signed_dot(2, 2)
+            second_moment_dot(1, 2) = orientation*second_moment_signed_dot(1, 2)
+            second_moment_dot(2, 1) = second_moment_dot(1, 2)
+        end if
     end subroutine level_set_side_moments_jvp
 
     pure subroutine clip_level_set_polygon( &

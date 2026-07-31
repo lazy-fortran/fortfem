@@ -18,14 +18,28 @@ affine manufactured fields integrate without an additional approximation. The
 zero-area side is returned with a zero centroid, and an identically zero level
 set is rejected because it has no defined positive/negative partition.
 
+`evaluate_level_set_triangle_cut_moments_2d` adds the symmetric raw tensor
+
+\[
+M_{ab}^{\pm}=\int_{\Omega^{\pm}}x_a x_b\,dA,
+\]
+
+using the same clipped polygon and orientation. This is an exact degree-two
+moment contract: the positive and negative tensors sum to the parent triangle
+moment, including for a cut cell. Its fixed-topology JVP differentiates the
+edge intersections and polygon moments directly, so quadratic manufactured
+loads can use the cut geometry without a finite-difference kernel.
+
 The edge topology is intentionally explicit: a triangle with no proper cut, a
 degenerate physical map, or a zero-gradient level set is rejected. A cut that
 passes through a vertex is deduplicated, but derivative paths must still treat
 that event as a connectivity change and rebuild the cut stencil. The focused
 interface test uses the affine level set `x+y-0.4` and an independent
-segment/normal oracle; the quadrature test additionally checks polygon
-centroids and affine integration. Higher-dimensional level sets and
-higher-order cut-cell quadrature remain Phase 2 work; the neutral
+ segment/normal oracle; the quadrature test additionally checks polygon
+centroids and affine integration. The cut-moment test checks an independent
+one-corner quadratic oracle, parent-moment conservation, and a central-
+difference JVP oracle. Higher-dimensional higher-order cut-cell quadrature
+remains Phase 2 work; the neutral
 internal-manifold graph is documented separately.
 
 `evaluate_level_set_triangle_interface_2d_jvp` provides the fixed-topology
