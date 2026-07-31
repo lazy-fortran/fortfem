@@ -21,6 +21,7 @@ module fortfem_fci_plane_multigrid
     public :: apply_fci_plane_two_level_vcycle
     public :: factor_fci_plane_coarse_operator
     public :: apply_fci_plane_two_level_vcycle_factored
+    public :: apply_fci_plane_multilevel_vcycle
     public :: apply_fci_plane_two_level_vcycles
     public :: apply_fci_plane_two_level_vcycles_ragged
 
@@ -180,6 +181,116 @@ contains
         correction = correction + fine_residual/diagonal
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine apply_fci_plane_two_level_vcycle_factored
+
+    subroutine apply_fci_plane_multilevel_vcycle( &
+            operators, restrictions, prolongations, level_offsets, diagonal, &
+            residual, correction, status)
+        !! Apply one recursive V(1,1) cycle over a plane hierarchy.
+        !!
+        !! `operators(1)` is the fine level and the final operator is solved
+        !! directly.  `level_offsets` indexes the flat positive smoother
+        !! diagonal with one-based half-open ranges, allowing every level to
+        !! have a different number of unknowns.
+        type(csc_t), intent(in) :: operators(:)
+        type(csc_t), intent(in) :: restrictions(:), prolongations(:)
+        integer, intent(in) :: level_offsets(:)
+        real(dp), intent(in) :: diagonal(:), residual(:)
+        real(dp), intent(out) :: correction(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: level_count, level, level_size, next_size
+
+        correction = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI multilevel V-cycle received incompatible hierarchy")
+        level_count = size(operators)
+        if (level_count < 2) return
+        if (size(restrictions) /= level_count - 1 .or. &
+            size(prolongations) /= level_count - 1 .or. &
+            size(level_offsets) /= level_count + 1) return
+        if (level_offsets(1) /= 1 .or. &
+            any(level_offsets(2:) <= level_offsets(:level_count))) return
+        if (level_offsets(level_count + 1) /= size(diagonal) + 1) return
+        if (.not. csc_is_valid(operators(1))) return
+        if (size(residual) /= operators(1)%nrow .or. &
+            size(correction) /= size(residual)) return
+        if (any(.not. ieee_is_finite(diagonal)) .or. &
+            any(diagonal <= 0.0_dp) .or. &
+            any(.not. ieee_is_finite(residual))) return
+
+        do level = 1, level_count
+            if (.not. csc_is_valid(operators(level))) return
+            if (operators(level)%nrow /= operators(level)%ncol) return
+            if (any(.not. ieee_is_finite(operators(level)%val))) return
+            level_size = level_offsets(level + 1) - level_offsets(level)
+            if (operators(level)%nrow /= level_size) return
+            if (level < level_count) then
+                next_size = operators(level + 1)%nrow
+                if (.not. csc_is_valid(restrictions(level)) .or. &
+                    .not. csc_is_valid(prolongations(level))) return
+                if (restrictions(level)%nrow /= next_size .or. &
+                    restrictions(level)%ncol /= level_size .or. &
+                    prolongations(level)%nrow /= level_size .or. &
+                    prolongations(level)%ncol /= next_size) return
+                if (any(.not. ieee_is_finite(restrictions(level)%val)) .or. &
+                    any(.not. ieee_is_finite(prolongations(level)%val))) return
+            end if
+        end do
+
+        call apply_fci_multilevel_level( &
+            1, operators, restrictions, prolongations, level_offsets, diagonal, &
+            residual, correction, status)
+    end subroutine apply_fci_plane_multilevel_vcycle
+
+    recursive subroutine apply_fci_multilevel_level( &
+            level, operators, restrictions, prolongations, level_offsets, &
+            diagonal, residual, correction, status)
+        integer, intent(in) :: level
+        type(csc_t), intent(in) :: operators(:)
+        type(csc_t), intent(in) :: restrictions(:), prolongations(:)
+        integer, intent(in) :: level_offsets(:)
+        real(dp), intent(in) :: diagonal(:), residual(:)
+        real(dp), intent(out) :: correction(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: level_count, fine_size, coarse_size, solve_status
+        real(dp), allocatable :: fine_residual(:), coarse_rhs(:)
+        real(dp), allocatable :: coarse_correction(:)
+
+        level_count = size(operators)
+        fine_size = operators(level)%nrow
+        correction = 0.0_dp
+        if (level == level_count) then
+            call sparse_direct_solve_csc( &
+                fine_size, operators(level)%col_ptr, operators(level)%row_idx, &
+                operators(level)%val, residual, correction, solve_status)
+            if (solve_status /= 0) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI multilevel V-cycle coarsest solve failed")
+                return
+            end if
+            call status_set(status, FORTSPARSE_OK, "")
+            return
+        end if
+
+        coarse_size = operators(level + 1)%nrow
+        allocate(fine_residual(fine_size), coarse_rhs(coarse_size))
+        allocate(coarse_correction(coarse_size))
+        correction = residual/ &
+            diagonal(level_offsets(level):level_offsets(level + 1) - 1)
+        fine_residual = residual - csc_matvec(operators(level), correction)
+        coarse_rhs = csc_matvec(restrictions(level), fine_residual)
+        call apply_fci_multilevel_level( &
+            level + 1, operators, restrictions, prolongations, level_offsets, &
+            diagonal, coarse_rhs, coarse_correction, status)
+        if (status%code /= FORTSPARSE_OK) return
+        correction = correction + csc_matvec( &
+            prolongations(level), coarse_correction)
+        fine_residual = residual - csc_matvec(operators(level), correction)
+        correction = correction + &
+            fine_residual/diagonal(level_offsets(level):level_offsets(level + 1) - 1)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine apply_fci_multilevel_level
 
     subroutine apply_fci_plane_two_level_vcycles( &
             fine_operators, coarse_operators, restrictions, prolongations, &

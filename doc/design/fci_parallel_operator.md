@@ -171,6 +171,9 @@ call factor_fci_plane_coarse_operator(coarse_operator, coarse_factor, status)
 call apply_fci_plane_two_level_vcycle_factored( &
     fine_operator, coarse_operator, coarse_factor, restriction, prolongation, &
     diagonal, residual, correction, status)
+call apply_fci_plane_multilevel_vcycle( &
+    plane_operators, restrictions, prolongations, level_offsets, diagonal, &
+    residual, correction, status)
 call apply_fci_plane_two_level_vcycles( &
     fine_operators, coarse_operators, restrictions, prolongations, &
     diagonals, residual, correction, status)
@@ -269,6 +272,11 @@ V/W-cycle without changing the FCI line operator.
 `apply_fci_plane_two_level_vcycle_factored` make that retained-factor path
 explicit. The factor is owned by the caller and must be rebuilt when the
 coarse matrix changes; repeated right-hand sides reuse it without refactoring.
+`apply_fci_plane_multilevel_vcycle` generalizes the same V(1,1) pattern to an
+arbitrary hierarchy. Its operators are ordered fine-to-coarse and its flat
+`level_offsets` give each level its own positive Jacobi diagonal; the final
+level is solved directly. The focused test covers a three-level hierarchy,
+compares a recursive dense oracle, and rejects inconsistent offsets.
 `apply_fci_plane_two_level_vcycles` applies that cycle independently to a
 homogeneous stack of poloidal planes stored contiguously. It is the small
 field-split adapter needed to compose independent PARALLAX-style plane
