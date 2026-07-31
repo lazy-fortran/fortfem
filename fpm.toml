@@ -24,6 +24,11 @@ test = false
 source-dir = "src"
 include-dir = "include"
 
+[[executable]]
+name = "benchmark_tetra_vector_interpolation_ad"
+source-dir = "benchmark"
+main = "fortfem_tetra_vector_interpolation_ad.f90"
+
 [fortran]
 implicit-typing = false
 implicit-external = false

@@ -1,7 +1,7 @@
 # FortFEM Benchmark Comparison System
 # Compare FortFEM implementations against FreeFEM reference
 
-.PHONY: all poisson-1d poisson-2d curl-curl clean
+.PHONY: all poisson-1d poisson-2d curl-curl vector-interpolation-ad clean
 
 # Default target
 all: poisson-1d poisson-2d curl-curl
@@ -48,6 +48,10 @@ curl-curl:
 	@echo "FreeFEM Results:"
 	@cd freefem/curl-curl && grep -v "^#" freefem_convergence.dat | awk '{printf "%.6f    %.6E    %.6E    %d\n", $$1, $$2, $$3, $$4}' || echo "No results found"
 
+# Tetrahedral vector interpolation derivative cost
+vector-interpolation-ad:
+	@cd .. && fpm run benchmark_tetra_vector_interpolation_ad --profile release
+
 # Clean generated files
 clean:
 	@echo "Cleaning benchmark output files..."
@@ -65,5 +69,6 @@ help:
 	@echo "  poisson-1d - Compare Poisson 1D implementations"
 	@echo "  poisson-2d - Compare Poisson 2D implementations"
 	@echo "  curl-curl  - Compare curl-curl implementations"
+	@echo "  vector-interpolation-ad - Time tetrahedral interpolation products"
 	@echo "  clean      - Remove generated files"
 	@echo "  help       - Show this help message"
