@@ -833,7 +833,11 @@ gallery example.
 - The public orientation-safe scalar/vector trace contract now provides
   plus/minus averages and jumps, normal/tangential projections, and the
   rotated Ampere surface-current jump with an independent sign oracle.
-- Internal manifolds, level sets, and surface measures remain next.
+- The explicit `assemble_surface_delta_load` primitive now assembles
+  trace-basis transpose times positive surface quadrature/source weights,
+  providing the fitted δ_\Gamma weak-load contract.
+- Internal manifolds, level sets, surface measures, and vector current
+  pairings remain next.
 - Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
