@@ -890,8 +890,9 @@ gallery example.
   genuine poloidal slice. The positive staggered flux-box volume constructor
   now covers the traced expansion/area/(B_\varphi) product with pinned
   FortSym-generated value/JVP/VJP kernels. Higher-order or unstructured
-  interpolation Jacobians and curved support-volume measures remain separate
-  planned components.
+  interpolation, while fixed-cell 2D map JVP/VJP products now cover source
+  and target coordinate motion. Curved support-volume measures remain a
+  separate planned component.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.

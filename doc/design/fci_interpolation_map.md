@@ -31,13 +31,15 @@ by a real dot-product identity.
 `build_fci_bilinear_interpolation_map_2d` is the corresponding Cartesian
 tensor-product map used for a first genuine poloidal FCI slice.  It uses x as
 the fastest source-column index, preserves affine fields, and supports targets
-on grid lines and at the rectangle boundary.  A higher-order or unstructured
-stencil builder can adopt the same map/oracle interface later.
+on grid lines and at the rectangle boundary.  Its fixed-topology JVP and VJP
+differentiate both source-grid and target-point coordinates, rejecting a
+target on a source grid line.  A higher-order or unstructured stencil builder
+can adopt the same map/oracle interface later.
 
 The focused tests check the exact affine oracle, partition of unity, endpoint
-handling, fixed-topology JVP/VJP identities, bilinear affine reproduction, and
-invalid-input paths.  Higher-order/unstructured interpolation and support-
-volume construction remain separate roadmap items.
+handling, fixed-topology 1D and bilinear JVP/VJP identities, bilinear affine
+reproduction, and invalid-input paths.  Higher-order/unstructured
+interpolation and support-volume construction remain separate roadmap items.
 
 ## Provenance
 
