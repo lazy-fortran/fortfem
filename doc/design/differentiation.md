@@ -299,6 +299,12 @@ then transformed by the stored moment inverse. Because the active reference
 coordinate has dimension two, each VJP uses exactly two analytical directional
 evaluations; this avoids a tape and remains independent of polynomial-space
 dimension in its number of sweeps.
+BDM and second-kind Nedelec physical-point observation wrappers compose these
+basis products with affine inversion, Piola geometry, and local coefficients.
+Their JVPs can move the sensor, element, and state simultaneously. Their VJPs
+return sensor-position, element-vertex, and state-coefficient cotangents, with
+the direct Piola shape term and inverse-coordinate shape term accumulated
+exactly once.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
