@@ -1031,6 +1031,9 @@ gallery example.
   contract; moving-cell connectivity and higher-order stencils remain planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
+- A geometry-only 2D FCI first-hit search now returns the nearest transverse
+  oriented wall/target segment, exact hit parameter/point, and facet normal;
+  valid no-hit traces and malformed facets have explicit status contracts.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.
 - Immersed target plates, sheath or wall traces, and open-field-line boundary
   conditions.

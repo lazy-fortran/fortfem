@@ -307,6 +307,19 @@ independent two-plane V-cycle oracle and rejects invalid diagonal and weight
 inputs. This is an additive field-split baseline; coupled Schur complements
 and stronger block preconditioners remain separate work.
 
+### Terminal material facets
+
+`find_fci_first_hit_segment_2d` provides the geometry-only terminal event used
+when a traced FCI segment leaves an immersed poloidal domain. It searches the
+oriented wall/target segments for the smallest transverse trace parameter,
+returns the intersection point and the facet's right-hand normal, and reports a
+valid no-hit search with `hit_segment=0`. Degenerate facets, zero-length traces,
+invalid indices, and non-finite geometry are rejected before any intersection
+is accepted. The primitive deliberately stops at the geometry event: sheath,
+Bohm, recycling, and material laws remain application-layer residuals, while
+the conservative terminal flux and its fixed-topology derivatives are separate
+contracts.
+
 ## Provenance
 
 The design follows the FCI trace/interpolation and support-operator
