@@ -96,9 +96,13 @@ jobs:
           python test/reference/nutils_iga_oracle.py
 
     - name: Run tests
+      id: unit_tests
+      continue-on-error: true
       run: fpm test
 
     - name: Run tests with coverage
+      id: coverage
+      continue-on-error: true
       run: |
         fpm test --flag "--coverage"
         find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
@@ -115,10 +119,14 @@ jobs:
         fail_ci_if_error: false
 
     - name: Build examples
+      id: build_examples
+      continue-on-error: true
       run: |
         fpm build --example
 
     - name: Run all examples
+      id: examples
+      continue-on-error: true
       run: |
         set -euo pipefail
         echo "Running all examples..."
@@ -139,6 +147,8 @@ jobs:
         done
 
     - name: Run all benchmarks  
+      id: benchmarks
+      continue-on-error: true
       run: |
         echo "Running FortFEM benchmarks..."
         fpm run --example plotting || echo "Plotting demo completed"
@@ -147,6 +157,7 @@ jobs:
         fpm test run_convergence_tests || echo "Convergence tests completed"
 
     - name: Collect generated plots
+      if: always()
       run: |
         set -euo pipefail
         mkdir -p ci-artifacts/plots/examples
@@ -170,6 +181,12 @@ jobs:
         name: generated-plots
         path: ci-artifacts/plots/
         retention-days: 30
+
+    - name: Report verification failures after publishing artifacts
+      if: always() && (steps.unit_tests.outcome == 'failure' || steps.coverage.outcome == 'failure' || steps.build_examples.outcome == 'failure' || steps.examples.outcome == 'failure' || steps.benchmarks.outcome == 'failure')
+      run: |
+        echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
+        exit 1
 
   enzyme:
     name: released Flang 22 + pinned Enzyme
