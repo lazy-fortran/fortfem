@@ -73,6 +73,10 @@ geometry-to-edge-flux contraction and its analytic JVP/VJP, which composes
 caller-owned fitted, cut, DG, or IGA edge quadrature with the topology-only
 surface-edge balance.
 
+The surface-current trace contract also exposes a neutral residual for an
+independent tangential-current test/trial basis, with analytic JVP/VJP actions
+for fitted, cut, DG/HDG, and IGA trace ownership.
+
 The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.

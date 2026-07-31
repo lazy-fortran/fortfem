@@ -226,7 +226,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges | Chain-complex identities, Euler characteristic, cycle and flux integrals, and nullspace dimension on slab, cylinder, sphere, and torus cells |
-| Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, and normal-traction jump are public; ownership, tangential surface-current unknowns, constitutive pressure laws, and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
+| Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | The scalar shifted-Heaviside XFEM activation contract is public; vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
@@ -1147,6 +1147,13 @@ gallery example.
   Independent analytical, orientation-reversal, finite-difference, and
   real-adjoint tests cover the generic trace algebra; conservation at
   interface edges and material laws remain higher-level contracts.
+- `assemble_surface_current_trace_residual` now pairs caller-owned,
+  independently sized test and trial tangential trace bases with a target
+  current. Its full product-rule JVP and real VJP cover basis, quadrature,
+  coefficients, and target data, with a direct vector oracle. This is the
+  neutral ownership block for fitted duplicated traces, cut/XFEM or XIGA,
+  DG/HDG skeletons, and IGA patches; constitutive pressure laws and
+  flux/helicity constraints remain client composition.
 - `assemble_interface_jump_penalty` assembles the symmetric positive-
   semidefinite plus/minus jump block used by SIPG and Nitsche penalty terms.
 - `assemble_symmetric_nitsche_interface` adds the average-flux consistency
@@ -1218,13 +1225,13 @@ gallery example.
 - The integrated surface-current junction ledger now consumes the fixed
   manifold boundary incidence and distributes each manifold current to open
   junctions, with a zero global balance oracle for conservative columns and
-  fixed-topology JVP/VJP actions. Geometric edge flux, tangential current
-  unknowns, and physical pressure/flux laws remain application composition.
+  fixed-topology JVP/VJP actions. Geometric edge flux, constitutive current
+  laws, and physical pressure/flux laws remain application composition.
 - The fixed-topology loop-current constraint now applies an integer cycle basis
   to integrated manifold currents and subtracts caller-owned target values.
   Its residual, JVP, and VJP have an independent cycle oracle. Open-edge
   junction balance and closed-loop constraints are therefore separate linear
-  ledgers; geometric surface divergence, tangential current unknowns, and
+  ledgers; geometric surface divergence, constitutive current laws, and
   physical pressure/flux laws remain composition layers.
 - The topology-only surface edge-flux ledger now applies an oriented
   vertex-edge boundary map to caller-integrated tangential edge fluxes. It
@@ -1235,7 +1242,8 @@ gallery example.
   geometry-to-edge contraction from oriented conormal quadrature and surface
   current, with product-rule JVP/VJP actions and independent orientation,
   finite-difference, and adjoint tests. Surface-basis ownership and physical
-  current laws remain composition layers.
+  current laws remain composition layers; the neutral test/trial trace
+  residual is now public for that ownership layer.
 - The neutral normal-traction jump now projects caller-supplied plus/minus
   traction vectors onto a validated unit normal and subtracts a caller-owned
   target. Its product-rule JVP/VJP oracle composes generated CGL, elastic, or
