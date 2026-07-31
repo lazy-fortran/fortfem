@@ -3,6 +3,10 @@ module fortfem_api
         evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
         evaluate_surface_triangle_geometry_3d_vjp
+    use fortfem_surface_triangle_areas_3d, only: &
+        assemble_surface_triangle_areas_3d, &
+        assemble_surface_triangle_areas_3d_jvp, &
+        assemble_surface_triangle_areas_3d_vjp
     use fortfem_tetra_affine_map, only: &
         invert_tetra_affine_map, invert_tetra_affine_map_jvp, &
         invert_tetra_affine_map_vjp
@@ -304,6 +308,9 @@ module fortfem_api
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d
+    use fortfem_helmholtz_bem_state_ad_3d, only: &
+        solve_helmholtz_dirichlet_p0_3d_jvp, &
+        solve_helmholtz_dirichlet_p0_3d_vjp
     use fortfem_helmholtz_panel_pair_3d, only: &
         assemble_helmholtz_single_layer_p0_3d_jvp, &
         assemble_helmholtz_single_layer_p0_3d_vjp, &
@@ -773,6 +780,8 @@ module fortfem_api
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_dirichlet_p0_3d
+    public :: solve_helmholtz_dirichlet_p0_3d_jvp
+    public :: solve_helmholtz_dirichlet_p0_3d_vjp
     public :: solve_helmholtz_fem_bem_costabel_3d
     public :: build_maxwell_rwg_surface_space
     public :: assemble_maxwell_rwg_mass_matrix
@@ -790,6 +799,9 @@ module fortfem_api
     public :: evaluate_surface_triangle_geometry_3d
     public :: evaluate_surface_triangle_geometry_3d_jvp
     public :: evaluate_surface_triangle_geometry_3d_vjp
+    public :: assemble_surface_triangle_areas_3d
+    public :: assemble_surface_triangle_areas_3d_jvp
+    public :: assemble_surface_triangle_areas_3d_vjp
     public :: evaluate_nurbs_volume_geometry
     public :: evaluate_nurbs_volume_geometry_jvp
     public :: evaluate_nurbs_volume_geometry_vjp
