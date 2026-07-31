@@ -131,6 +131,16 @@ call build_fci_quadratic_interpolation_map_1d_jvp( &
 call build_fci_quadratic_interpolation_map_1d_vjp( &
     source_coordinates, target_coordinates, stencil_indices, interpolation_map_bar, &
     source_coordinates_bar, target_coordinates_bar, status)
+call build_fci_quadratic_interpolation_maps_1d( &
+    source_coordinates, target_coordinates_by_segment, stencil_indices_by_segment, &
+    interpolation_maps, status)
+call build_fci_quadratic_interpolation_maps_1d_jvp( &
+    source_coordinates, target_coordinates_by_segment, stencil_indices_by_segment, &
+    source_coordinates_dot, target_coordinates_dot_by_segment, interpolation_maps_dot, &
+    status)
+call build_fci_quadratic_interpolation_maps_1d_vjp( &
+    source_coordinates, target_coordinates_by_segment, stencil_indices_by_segment, &
+    interpolation_maps_bar, source_coordinates_bar, target_coordinates_bar, status)
 call build_fci_triangle_interpolation_map_2d( &
     vertices, triangles, target_points, target_cells, interpolation_map, status)
 call build_fci_triangle_interpolation_map_2d_jvp( &
@@ -179,6 +189,16 @@ The batched triangle adapter applies this contract to traced forward and
 backward endpoints with shape `(2, n_staggered, n_segment)` and accumulates
 shared vertex cotangents over all segments. It is the unstructured counterpart
 of the Cartesian bilinear endpoint adapter.
+
+The batched quadratic adapter uses
+`target_coordinates_by_segment(:, k)` and
+`stencil_indices_by_segment(:, :, k)` for each fixed-topology toroidal segment,
+and returns `(n_target, n_source, n_segment)` maps. Its JVP and VJP reuse the
+FortSym-generated three-node Lagrange products and accumulate source-grid
+cotangents over segments. Repeated source coordinates are rejected before the
+generated kernel is evaluated, avoiding a silent zero denominator. The
+quadratic batch test checks an independent polynomial oracle, central
+differences, and the real dot-product identity.
 
 The focused test uses identity maps and an analytically linear field as an
 independent oracle. It also checks the weighted adjoint identity and a flux
