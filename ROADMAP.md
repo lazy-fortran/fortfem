@@ -1104,8 +1104,9 @@ gallery example.
   `assemble_scalar_sipg_interface` now composes independently sized test and
   trial trace/flux spaces with symmetric, incomplete, or nonsymmetric
   consistency (`theta=1,0,-1`) and value/JVP/VJP actions; vector FEEC
-  consistency, HDG trace blocks, and local static condensation are now public,
-  while sparse global accumulation and compatible flux elimination remain.
+  consistency, HDG trace blocks, local static condensation, and signed-map
+  sparse CSC accumulation are now public, while compatible flux elimination
+  remains.
   `assemble_vector_jump_penalty` now supplies the tensor-valued counterpart
   for caller-owned tangential/normal projectors and anisotropic metrics, with
   value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
@@ -1244,9 +1245,9 @@ gallery example.
 - The public mortar trace cross-mass block now has value/JVP/VJP actions for
   independently discretized skeleton traces. The scalar SIPG interface block
   now has symmetric, incomplete, and nonsymmetric consistency variants with
-  value/JVP/VJP actions; vector FEEC consistency, HDG traces, and local
-  hybridization are now public, while sparse global accumulation and
-  compatible flux elimination remain.
+  value/JVP/VJP actions; vector FEEC consistency, HDG traces, local
+  hybridization, and signed-map sparse CSC accumulation are now public, while
+  compatible flux elimination remains.
   A tensor-weighted vector jump penalty now covers component-valued traces and
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
   projections are now public with value/JVP/VJP actions; hybridization and

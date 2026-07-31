@@ -57,7 +57,14 @@ the implicit interior solve and are suitable for global skeleton assembly.
 `assemble_hdg_global_skeleton` is the matching dense reference assembler for
 local condensed blocks. Its frozen integer local-to-global map and orientation
 signs support shared scalar, H(curl), H(div), and IGA trace degrees of freedom;
-value/JVP/VJP actions are covered before sparse accumulation is introduced.
+value/JVP/VJP actions provide the independent dense oracle for the sparse path.
+`assemble_hdg_global_skeleton_csc` is the sparse counterpart: it sends signed
+local triplets through FortSparse's duplicate-compressing CSC constructor, so
+shared trace entries have one canonical column pattern suitable for retained
+factorizations and tree--cotree-reduced direct solves. Its fixed-topology JVP
+and real VJP use the same map and are checked against an independent triplet
+oracle and CSC dot-product identity. Invalid trace indices, signs, dimensions,
+and non-finite cotangents return a status instead of producing a partial matrix.
 `assemble_scalar_numerical_flux` supplies conservative central, upwind, and
 Lax--Friedrichs scalar interface fluxes. Plus/minus residuals are exactly
 opposite, and a quadratic-entropy production diagnostic is returned. The
