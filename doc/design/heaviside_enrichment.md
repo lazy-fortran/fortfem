@@ -41,6 +41,17 @@ call evaluate_shifted_vector_enriched_basis_jvp( &
 call evaluate_shifted_vector_enriched_basis_vjp( &
     base_values, level_values, anchor_values, enriched_bar, base_bar, &
     level_bar, anchor_bar, status)
+call evaluate_vector_enrichment_differential_3d( &
+    base_values, base_gradient, activation, activation_gradient, &
+    enriched_values, curl_values, divergence, status)
+call evaluate_vector_enrichment_differential_3d_jvp( &
+    base_values, base_gradient, activation, activation_gradient, &
+    base_values_dot, base_gradient_dot, activation_dot, activation_gradient_dot, &
+    enriched_values_dot, curl_values_dot, divergence_dot, status)
+call evaluate_vector_enrichment_differential_3d_vjp( &
+    base_values, base_gradient, activation, activation_gradient, &
+    enriched_values_bar, curl_values_bar, divergence_bar, base_values_bar, &
+    base_gradient_bar, activation_bar, activation_gradient_bar, status)
 call evaluate_blending_corrected_enrichment( &
     base_values, enriched_mask, enrichment_values, corrected_values, status)
 call evaluate_blending_corrected_enrichment_jvp( &
@@ -79,6 +90,23 @@ or contravariant Piola values from an H(curl) or H(div) space. The JVP uses
 the componentwise product rule and the VJP returns the base-value cotangent;
 the scalar level-set VJP remains zero on a fixed topology.
 
+For a three-dimensional vector basis, the differential companion makes the
+de Rham product terms explicit:
+
+```
+curl(psi*b) = psi*curl(b) + grad(psi) x b
+ div(psi*b) = psi*div(b)  + grad(psi) . b
+```
+
+`evaluate_vector_enrichment_differential_3d` accepts caller-owned base values,
+gradients, activation, and activation gradients. Its JVP differentiates all
+four inputs and its VJP returns all four cotangents. This is a diagnostic and
+assembly primitive for covariant/contravariant Piola values, H(curl), H(div),
+and IGA callers; it does not claim that an arbitrary enrichment preserves an
+exact sequence. The explicit correction terms are the independent quantity
+that a commuting-space implementation must reproduce or intentionally report
+as a jump contribution.
+
 `evaluate_blending_corrected_enrichment` implements the corrected-XFEM ramp
 without choosing an element or geometry representation. For a fixed logical
 node mask (a_i), it forms
@@ -105,6 +133,9 @@ zero derivative identities, and topology-event rejection. The companion
 `test_shifted_enriched_basis` checks the scalar product oracle and real
 adjoint identity. `test_shifted_vector_enriched_basis` repeats those checks
 for a two-component vector base and rejects a zero-level topology event.
+`test_vector_enrichment_differential_3d` checks the independent curl/divergence
+product formulas, central-difference JVP, real adjoint identity, and output
+shape validation.
 `test_xfem_blending_correction` checks the ramp, full-enrichment limit, and
 its real adjoint identity. `test_xfem_vector_blending_correction` checks the
 componentwise ramp and vector reverse contraction.

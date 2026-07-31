@@ -69,6 +69,10 @@ module fortfem_api
         evaluate_shifted_vector_enriched_basis, &
         evaluate_shifted_vector_enriched_basis_jvp, &
         evaluate_shifted_vector_enriched_basis_vjp
+    use fortfem_vector_enrichment_differential_3d, only: &
+        evaluate_vector_enrichment_differential_3d, &
+        evaluate_vector_enrichment_differential_3d_jvp, &
+        evaluate_vector_enrichment_differential_3d_vjp
     use fortfem_xfem_blending_correction, only: &
         evaluate_blending_corrected_enrichment, &
         evaluate_blending_corrected_enrichment_jvp, &
@@ -992,6 +996,9 @@ module fortfem_api
     public :: evaluate_shifted_vector_enriched_basis
     public :: evaluate_shifted_vector_enriched_basis_jvp
     public :: evaluate_shifted_vector_enriched_basis_vjp
+    public :: evaluate_vector_enrichment_differential_3d
+    public :: evaluate_vector_enrichment_differential_3d_jvp
+    public :: evaluate_vector_enrichment_differential_3d_vjp
     public :: evaluate_blending_corrected_enrichment
     public :: evaluate_blending_corrected_enrichment_jvp
     public :: evaluate_blending_corrected_enrichment_vjp
