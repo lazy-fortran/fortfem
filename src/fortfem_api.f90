@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_tetra_lagrange_state_3d, only: &
+        solve_tetra_lagrange_state, solve_tetra_lagrange_state_jvp, &
+        solve_tetra_lagrange_state_vjp
     use fortfem_tetra_mixed_poisson_state_3d, only: &
         solve_tetra_mixed_poisson_state, &
         solve_tetra_mixed_poisson_state_jvp, &
@@ -763,6 +766,9 @@ module fortfem_api
     public :: initialize_tetra_lagrange_solution_evaluator
     public :: solve_tetra_lagrange_diffusion_reaction
     public :: solve_tetra_lagrange_poisson
+    public :: solve_tetra_lagrange_state
+    public :: solve_tetra_lagrange_state_jvp
+    public :: solve_tetra_lagrange_state_vjp
     public :: tetra_lagrange_solution_evaluator_t
     public :: solve_mixed_bc
     public :: solve_neumann

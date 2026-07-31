@@ -232,3 +232,10 @@ The corresponding global CSC products preserve the merged arbitrary-order
 DOF pattern. Reverse assembly gathers each sparse value cotangent directly
 from CSC storage and accumulates element shape gradients at shared mesh
 vertices, avoiding a dense global cotangent matrix.
+The constrained tetrahedral H1 state API composes these products with fixed
+Dirichlet elimination and an implicit sparse solve. Its JVP and VJP cover all
+mesh coordinates, stiffness and mass coefficients, assembled volume loads,
+and prescribed boundary values. The boundary mask remains an explicit
+inactive topology input, while one reduced adjoint solve returns every active
+cotangent needed by Poisson, diffusion-reaction, and scalar Helmholtz
+optimization loops.
