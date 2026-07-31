@@ -101,6 +101,10 @@ call apply_fci_anisotropic_diffusion( &
     perpendicular_operators, forward_map, backward_map, line_lengths, &
     parallel_coefficient, canonical_volumes, staggered_volumes, field, &
     diffusion_field, status)
+call apply_fci_anisotropic_diffusion_field_vjp( &
+    perpendicular_operators, forward_map, backward_map, line_lengths, &
+    parallel_coefficient, canonical_volumes, staggered_volumes, &
+    diffusion_field_bar, field_bar, status)
 call apply_fci_parallel_diffusion_field_vjp( &
     forward_map, backward_map, line_lengths, parallel_coefficient, &
     canonical_volumes, staggered_volumes, diffusion_field_bar, field_bar, &
@@ -239,6 +243,10 @@ checks this against an explicit six-degree-of-freedom oracle.
 `apply_fci_anisotropic_jacobi_preconditioner` is the convenience matrix-free
 apply of that combined diagonal; repeated solves can cache the diagonal and use
 the lower-level Jacobi routine directly.
+`apply_fci_anisotropic_diffusion_field_vjp` provides the corresponding
+field-only adjoint for the split action. It applies the conservative FCI
+transpose and explicitly transposes each plane CSC block, so nonsymmetric
+perpendicular discretizations retain a correct real dot-product contract.
 `apply_fci_plane_two_level_vcycle` provides a solver-level plane hierarchy
 contract: one fine Jacobi pre-smooth, CSC restriction, a direct coarse solve,
 CSC prolongation, and one post-smooth. The coarse solve is intentionally

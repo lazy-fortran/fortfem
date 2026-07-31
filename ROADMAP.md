@@ -986,6 +986,10 @@ gallery example.
   that diagonal directly for small matrix-free solves; cached diagonal use and
   `apply_fci_plane_two_level_vcycle` now provides the next plane-solver layer;
   deeper multigrid, retained coarse factors, and field splitting remain active.
+- The split action now also has a field-only VJP that composes the conservative
+  FCI transpose with an explicit transpose of every plane CSC block. An
+  independent nonsymmetric-plane oracle and real dot-product test guard this
+  adjoint contract; coefficient and geometry derivatives remain separate.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
