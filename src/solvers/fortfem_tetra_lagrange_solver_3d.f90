@@ -11,7 +11,7 @@ module fortfem_tetra_lagrange_solver_3d
         tetra_lagrange_nodes, tetra_lagrange_t
     use fortfem_tetra_lagrange_global_dof_map, only: &
         build_tetra_lagrange_dof_map
-    use fortnum_linalg, only: det3, inv3
+    use fortnum_linalg, only: det3, inv3, inv3_jvp, inv3_vjp
     use fortsparse, only: csc_t, FORTSPARSE_INTERNAL_ERROR, &
         FORTSPARSE_INVALID_MATRIX, fortsparse_status_t, status_set
     implicit none
@@ -31,6 +31,8 @@ module fortfem_tetra_lagrange_solver_3d
 
     public :: assignment(=)
     public :: evaluate_tetra_lagrange_solution
+    public :: evaluate_tetra_lagrange_solution_jvp
+    public :: evaluate_tetra_lagrange_solution_vjp
     public :: evaluate_tetra_lagrange_solution_prepared
     public :: initialize_tetra_lagrange_solution_evaluator
     public :: solve_tetra_lagrange_diffusion_reaction
@@ -140,6 +142,164 @@ contains
             evaluator, solution, tetrahedron, reference_point, value, &
             gradient, status)
     end subroutine evaluate_tetra_lagrange_solution
+
+    subroutine evaluate_tetra_lagrange_solution_jvp( &
+            vertices, tetrahedra, degree, solution, tetrahedron, &
+            reference_point, vertices_dot, solution_dot, value_dot, &
+            gradient_dot, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:)
+        integer, intent(in) :: tetrahedra(:, :), degree, tetrahedron
+        real(dp), intent(in) :: reference_point(3)
+        real(dp), intent(in) :: vertices_dot(:, :), solution_dot(:)
+        real(dp), intent(out) :: value_dot, gradient_dot(3)
+        integer, intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_gradients(:, :), basis_values(:)
+        real(dp) :: inverse(3, 3), inverse_dot(3, 3)
+        real(dp) :: jacobian(3, 3), jacobian_dot(3, 3)
+        real(dp) :: reference_gradient(3), reference_gradient_dot(3)
+        integer :: dof, global_dof_count
+
+        value_dot = 0.0_dp
+        gradient_dot = 0.0_dp
+        status = 1
+        if (.not. valid_observation_inputs( &
+            vertices, tetrahedra, solution, tetrahedron)) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (size(solution_dot) /= size(solution)) return
+        call initialize_tetra_lagrange(degree, basis, status)
+        if (status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_dof_count, status)
+        if (status /= 0) return
+        if (size(solution) /= global_dof_count) return
+        allocate(basis_values(tetra_lagrange_dof_count(basis)))
+        allocate(basis_gradients(3, size(basis_values)))
+        call evaluate_tetra_lagrange( &
+            basis, reference_point, basis_values, basis_gradients, status)
+        if (status /= 0) return
+        call tetrahedron_jacobian( &
+            vertices, tetrahedra(:, tetrahedron), jacobian)
+        call tetrahedron_jacobian( &
+            vertices_dot, tetrahedra(:, tetrahedron), jacobian_dot)
+        call inv3_jvp( &
+            jacobian, jacobian_dot, inverse, inverse_dot, status)
+        if (status /= 0) return
+        reference_gradient = 0.0_dp
+        reference_gradient_dot = 0.0_dp
+        do dof = 1, size(basis_values)
+            value_dot = value_dot + &
+                solution_dot(global_dofs(dof, tetrahedron))*basis_values(dof)
+            reference_gradient = reference_gradient + &
+                solution(global_dofs(dof, tetrahedron))* &
+                basis_gradients(:, dof)
+            reference_gradient_dot = reference_gradient_dot + &
+                solution_dot(global_dofs(dof, tetrahedron))* &
+                basis_gradients(:, dof)
+        end do
+        gradient_dot = matmul(transpose(inverse_dot), reference_gradient) + &
+            matmul(transpose(inverse), reference_gradient_dot)
+    end subroutine evaluate_tetra_lagrange_solution_jvp
+
+    subroutine evaluate_tetra_lagrange_solution_vjp( &
+            vertices, tetrahedra, degree, solution, tetrahedron, &
+            reference_point, value_bar, gradient_bar, vertices_bar, &
+            solution_bar, status)
+        real(dp), intent(in) :: vertices(:, :), solution(:)
+        integer, intent(in) :: tetrahedra(:, :), degree, tetrahedron
+        real(dp), intent(in) :: reference_point(3), value_bar, gradient_bar(3)
+        real(dp), intent(out) :: vertices_bar(:, :), solution_bar(:)
+        integer, intent(out) :: status
+
+        type(tetra_lagrange_t) :: basis
+        integer, allocatable :: global_dofs(:, :)
+        real(dp), allocatable :: basis_gradients(:, :), basis_values(:)
+        real(dp) :: inverse(3, 3), inverse_bar(3, 3)
+        real(dp) :: jacobian(3, 3), jacobian_bar(3, 3)
+        real(dp) :: reference_gradient(3), reference_gradient_bar(3)
+        integer :: dof, global_dof_count, vertex_ids(4)
+
+        vertices_bar = 0.0_dp
+        solution_bar = 0.0_dp
+        status = 1
+        if (.not. valid_observation_inputs( &
+            vertices, tetrahedra, solution, tetrahedron)) return
+        if (any(shape(vertices_bar) /= shape(vertices))) return
+        if (size(solution_bar) /= size(solution)) return
+        call initialize_tetra_lagrange(degree, basis, status)
+        if (status /= 0) return
+        call build_tetra_lagrange_dof_map( &
+            degree, tetrahedra, global_dofs, global_dof_count, status)
+        if (status /= 0) return
+        if (size(solution) /= global_dof_count) return
+        allocate(basis_values(tetra_lagrange_dof_count(basis)))
+        allocate(basis_gradients(3, size(basis_values)))
+        call evaluate_tetra_lagrange( &
+            basis, reference_point, basis_values, basis_gradients, status)
+        if (status /= 0) return
+        vertex_ids = tetrahedra(:, tetrahedron)
+        call tetrahedron_jacobian(vertices, vertex_ids, jacobian)
+        reference_gradient = 0.0_dp
+        do dof = 1, size(basis_values)
+            reference_gradient = reference_gradient + &
+                solution(global_dofs(dof, tetrahedron))* &
+                basis_gradients(:, dof)
+        end do
+        call inv3(jacobian, inverse, status)
+        if (status /= 0) return
+        inverse_bar = spread(reference_gradient, 2, 3)* &
+            spread(gradient_bar, 1, 3)
+        call inv3_vjp( &
+            jacobian, inverse_bar, inverse, jacobian_bar, status)
+        if (status /= 0) return
+        reference_gradient_bar = matmul(inverse, gradient_bar)
+        do dof = 1, size(basis_values)
+            solution_bar(global_dofs(dof, tetrahedron)) = &
+                solution_bar(global_dofs(dof, tetrahedron)) + &
+                value_bar*basis_values(dof) + &
+                dot_product(reference_gradient_bar, basis_gradients(:, dof))
+        end do
+        vertices_bar(:, vertex_ids(1)) = &
+            -jacobian_bar(:, 1) - jacobian_bar(:, 2) - jacobian_bar(:, 3)
+        vertices_bar(:, vertex_ids(2)) = jacobian_bar(:, 1)
+        vertices_bar(:, vertex_ids(3)) = jacobian_bar(:, 2)
+        vertices_bar(:, vertex_ids(4)) = jacobian_bar(:, 3)
+    end subroutine evaluate_tetra_lagrange_solution_vjp
+
+    pure logical function valid_observation_inputs( &
+            vertices, tetrahedra, solution, tetrahedron) result(valid)
+        real(dp), intent(in) :: vertices(:, :), solution(:)
+        integer, intent(in) :: tetrahedra(:, :), tetrahedron
+
+        valid = size(vertices, 1) == 3
+        if (.not. valid) return
+        valid = size(tetrahedra, 1) == 4
+        if (.not. valid) return
+        valid = tetrahedron >= 1
+        if (.not. valid) return
+        valid = tetrahedron <= size(tetrahedra, 2)
+        if (.not. valid) return
+        valid = size(solution) >= 1
+        if (.not. valid) return
+        valid = all(tetrahedra >= 1)
+        if (.not. valid) return
+        valid = all(tetrahedra <= size(vertices, 2))
+    end function valid_observation_inputs
+
+    pure subroutine tetrahedron_jacobian(coordinates, vertex_ids, jacobian)
+        real(dp), intent(in) :: coordinates(:, :)
+        integer, intent(in) :: vertex_ids(4)
+        real(dp), intent(out) :: jacobian(3, 3)
+
+        jacobian(:, 1) = &
+            coordinates(:, vertex_ids(2)) - coordinates(:, vertex_ids(1))
+        jacobian(:, 2) = &
+            coordinates(:, vertex_ids(3)) - coordinates(:, vertex_ids(1))
+        jacobian(:, 3) = &
+            coordinates(:, vertex_ids(4)) - coordinates(:, vertex_ids(1))
+    end subroutine tetrahedron_jacobian
 
     subroutine initialize_tetra_lagrange_solution_evaluator( &
             vertices, tetrahedra, degree, evaluator, status)
