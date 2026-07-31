@@ -1,6 +1,8 @@
 module fortfem_tetra_nedelec_arbitrary_order
     use fortfem_generated_tetra_modal_vector_identities, only: &
         evaluate_tetra_modal_vector_identities
+    use fortfem_generated_tetra_modal_vector_identities_jvp, only: &
+        evaluate_tetra_modal_vector_identities_jvp
     use fortfem_generated_tetra_nedelec_candidates_order_1, only: &
         evaluate_candidates_order_1
     use fortfem_generated_tetra_nedelec_candidates_order_2, only: &
@@ -17,13 +19,16 @@ module fortfem_tetra_nedelec_arbitrary_order
     use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortnum_special_jacobi, only: tetrahedron_koornwinder, &
-        tetrahedron_koornwinder_gradient, triangle_dubiner
+        tetrahedron_koornwinder_gradient, tetrahedron_koornwinder_hessian, &
+        triangle_dubiner
     implicit none
 
     private
 
     public :: assignment(=)
     public :: evaluate_tetra_nedelec_first_kind
+    public :: evaluate_tetra_nedelec_first_kind_jvp
+    public :: evaluate_tetra_nedelec_first_kind_vjp
     public :: initialize_tetra_nedelec_first_kind
     public :: tetra_nedelec_dof_count
     public :: tetra_nedelec_first_kind_t
@@ -99,6 +104,69 @@ contains
         curls = matmul(candidate_curls, basis%coefficients)
         status = 0
     end subroutine evaluate_tetra_nedelec_first_kind
+
+    subroutine evaluate_tetra_nedelec_first_kind_jvp( &
+            basis, point, point_dot, values_dot, curls_dot, status)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(out) :: values_dot(:, :), curls_dot(:, :)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: candidate_curls_dot(:, :)
+        real(dp), allocatable :: candidate_values_dot(:, :)
+        real(dp) :: tolerance
+
+        values_dot = 0.0_dp
+        curls_dot = 0.0_dp
+        status = 1
+        if (basis%order < 1 .or. basis%dof_count < 1) return
+        if (size(values_dot, 1) /= 3 .or. &
+            size(values_dot, 2) /= basis%dof_count) return
+        if (size(curls_dot, 1) /= 3 .or. &
+            size(curls_dot, 2) /= basis%dof_count) return
+        tolerance = 64.0_dp*epsilon(1.0_dp)
+        if (any(point < -tolerance)) return
+        if (sum(point) > 1.0_dp + tolerance) return
+        allocate(candidate_values_dot(3, basis%dof_count))
+        allocate(candidate_curls_dot(3, basis%dof_count))
+        call evaluate_runtime_candidates_jvp( &
+            basis%order, point, point_dot, candidate_values_dot, &
+            candidate_curls_dot)
+        values_dot = matmul(candidate_values_dot, basis%coefficients)
+        curls_dot = matmul(candidate_curls_dot, basis%coefficients)
+        status = 0
+    end subroutine evaluate_tetra_nedelec_first_kind_jvp
+
+    subroutine evaluate_tetra_nedelec_first_kind_vjp( &
+            basis, point, values_bar, curls_bar, point_bar, status)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: point(3)
+        real(dp), intent(in) :: values_bar(:, :), curls_bar(:, :)
+        real(dp), intent(out) :: point_bar(3)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: curls_dot(:, :), values_dot(:, :)
+        real(dp) :: point_dot(3)
+        integer :: direction
+
+        point_bar = 0.0_dp
+        status = 1
+        if (size(values_bar, 1) /= 3 .or. &
+            size(values_bar, 2) /= basis%dof_count) return
+        if (size(curls_bar, 1) /= 3 .or. &
+            size(curls_bar, 2) /= basis%dof_count) return
+        allocate(values_dot(3, basis%dof_count))
+        allocate(curls_dot(3, basis%dof_count))
+        do direction = 1, 3
+            point_dot = 0.0_dp
+            point_dot(direction) = 1.0_dp
+            call evaluate_tetra_nedelec_first_kind_jvp( &
+                basis, point, point_dot, values_dot, curls_dot, status)
+            if (status /= 0) return
+            point_bar(direction) = &
+                sum(values_bar*values_dot) + sum(curls_bar*curls_dot)
+        end do
+    end subroutine evaluate_tetra_nedelec_first_kind_vjp
 
     pure function tetra_nedelec_dof_count(basis) result(dof_count)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
@@ -328,6 +396,197 @@ contains
         end do
     end subroutine evaluate_runtime_candidates
 
+    pure subroutine evaluate_runtime_candidates_jvp( &
+            order, point, point_dot, values_dot, curls_dot)
+        integer, intent(in) :: order
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(out) :: values_dot(:, :), curls_dot(:, :)
+
+        integer :: candidate, component, total_degree
+        integer :: x_degree, y_degree, z_degree
+
+        values_dot = 0.0_dp
+        curls_dot = 0.0_dp
+        candidate = 0
+        do component = 1, 3
+            do total_degree = 0, order - 1
+                do x_degree = 0, total_degree
+                    do y_degree = 0, total_degree - x_degree
+                        z_degree = total_degree - x_degree - y_degree
+                        candidate = candidate + 1
+                        if (order <= 5) then
+                            call add_candidate_term_jvp( &
+                                candidate, component, 1.0_dp, &
+                                [x_degree, y_degree, z_degree], point, &
+                                point_dot, values_dot, curls_dot)
+                        else
+                            call add_modal_component_candidate_jvp( &
+                                candidate, component, x_degree, y_degree, &
+                                z_degree, point, point_dot, values_dot, &
+                                curls_dot)
+                        end if
+                    end do
+                end do
+            end do
+        end do
+        total_degree = order - 1
+        do component = 4, 5
+            do x_degree = 0, total_degree
+                do y_degree = 0, total_degree - x_degree
+                    z_degree = total_degree - x_degree - y_degree
+                    candidate = candidate + 1
+                    if (order > 5) then
+                        call add_modal_cross_candidate_jvp( &
+                            candidate, component, x_degree, y_degree, &
+                            z_degree, point, point_dot, values_dot, curls_dot)
+                    else if (component == 4) then
+                        call add_candidate_term_jvp( &
+                            candidate, 1, -1.0_dp, &
+                            [x_degree, y_degree + 1, z_degree], point, &
+                            point_dot, values_dot, curls_dot)
+                        call add_candidate_term_jvp( &
+                            candidate, 2, 1.0_dp, &
+                            [x_degree + 1, y_degree, z_degree], point, &
+                            point_dot, values_dot, curls_dot)
+                    else
+                        call add_candidate_term_jvp( &
+                            candidate, 1, -1.0_dp, &
+                            [x_degree, y_degree, z_degree + 1], point, &
+                            point_dot, values_dot, curls_dot)
+                        call add_candidate_term_jvp( &
+                            candidate, 3, 1.0_dp, &
+                            [x_degree + 1, y_degree, z_degree], point, &
+                            point_dot, values_dot, curls_dot)
+                    end if
+                end do
+            end do
+        end do
+        do y_degree = 0, total_degree
+            z_degree = total_degree - y_degree
+            candidate = candidate + 1
+            if (order > 5) then
+                call add_modal_cross_candidate_jvp( &
+                    candidate, 6, 0, y_degree, z_degree, point, point_dot, &
+                    values_dot, curls_dot)
+            else
+                call add_candidate_term_jvp( &
+                    candidate, 2, -1.0_dp, [0, y_degree, z_degree + 1], &
+                    point, point_dot, values_dot, curls_dot)
+                call add_candidate_term_jvp( &
+                    candidate, 3, 1.0_dp, [0, y_degree + 1, z_degree], &
+                    point, point_dot, values_dot, curls_dot)
+            end if
+        end do
+    end subroutine evaluate_runtime_candidates_jvp
+
+    pure subroutine add_candidate_term_jvp( &
+            candidate, component, coefficient, powers, point, point_dot, &
+            values_dot, curls_dot)
+        integer, intent(in) :: candidate, component, powers(3)
+        real(dp), intent(in) :: coefficient, point(3), point_dot(3)
+        real(dp), intent(inout) :: values_dot(:, :), curls_dot(:, :)
+
+        real(dp) :: derivative_dot(3), gradient(3)
+        integer :: first, second
+
+        do first = 1, 3
+            gradient(first) = coefficient* &
+                monomial_derivative(point, powers, first)
+            derivative_dot(first) = 0.0_dp
+            do second = 1, 3
+                derivative_dot(first) = derivative_dot(first) + &
+                    coefficient*monomial_second_derivative( &
+                    point, powers, first, second)*point_dot(second)
+            end do
+        end do
+        values_dot(component, candidate) = &
+            values_dot(component, candidate) + dot_product(gradient, point_dot)
+        select case (component)
+        case (1)
+            curls_dot(2, candidate) = &
+                curls_dot(2, candidate) + derivative_dot(3)
+            curls_dot(3, candidate) = &
+                curls_dot(3, candidate) - derivative_dot(2)
+        case (2)
+            curls_dot(1, candidate) = &
+                curls_dot(1, candidate) - derivative_dot(3)
+            curls_dot(3, candidate) = &
+                curls_dot(3, candidate) + derivative_dot(1)
+        case (3)
+            curls_dot(1, candidate) = &
+                curls_dot(1, candidate) + derivative_dot(2)
+            curls_dot(2, candidate) = &
+                curls_dot(2, candidate) - derivative_dot(1)
+        end select
+    end subroutine add_candidate_term_jvp
+
+    pure subroutine add_modal_component_candidate_jvp( &
+            candidate, component, first_degree, second_degree, third_degree, &
+            point, point_dot, values_dot, curls_dot)
+        integer, intent(in) :: candidate, component
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(inout) :: values_dot(:, :), curls_dot(:, :)
+
+        real(dp) :: gradient(3), gradient_dot(3), hessian(3, 3), value_dot
+
+        call tetrahedron_koornwinder_gradient( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3), gradient)
+        call tetrahedron_koornwinder_hessian( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3), hessian)
+        value_dot = dot_product(gradient, point_dot)
+        gradient_dot = matmul(hessian, point_dot)
+        values_dot(component, candidate) = value_dot
+        select case (component)
+        case (1)
+            curls_dot(:, candidate) = &
+                [0.0_dp, gradient_dot(3), -gradient_dot(2)]
+        case (2)
+            curls_dot(:, candidate) = &
+                [-gradient_dot(3), 0.0_dp, gradient_dot(1)]
+        case (3)
+            curls_dot(:, candidate) = &
+                [gradient_dot(2), -gradient_dot(1), 0.0_dp]
+        end select
+    end subroutine add_modal_component_candidate_jvp
+
+    pure subroutine add_modal_cross_candidate_jvp( &
+            candidate, family, first_degree, second_degree, third_degree, &
+            point, point_dot, values_dot, curls_dot)
+        integer, intent(in) :: candidate, family
+        integer, intent(in) :: first_degree, second_degree, third_degree
+        real(dp), intent(in) :: point(3), point_dot(3)
+        real(dp), intent(inout) :: values_dot(:, :), curls_dot(:, :)
+
+        real(dp) :: cross_curls_dot(3, 3), cross_values_dot(3, 3)
+        real(dp) :: gradient(3), gradient_dot(3), hessian(3, 3)
+        real(dp) :: value, value_dot
+        integer :: family_index
+
+        value = tetrahedron_koornwinder( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3))
+        call tetrahedron_koornwinder_gradient( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3), gradient)
+        call tetrahedron_koornwinder_hessian( &
+            first_degree, second_degree, third_degree, &
+            point(1), point(2), point(3), hessian)
+        value_dot = dot_product(gradient, point_dot)
+        gradient_dot = matmul(hessian, point_dot)
+        call evaluate_tetra_modal_vector_identities_jvp( &
+            point(1), point(2), point(3), value, &
+            gradient(1), gradient(2), gradient(3), &
+            point_dot(1), point_dot(2), point_dot(3), value_dot, &
+            gradient_dot(1), gradient_dot(2), gradient_dot(3), &
+            cross_values_dot, cross_curls_dot)
+        family_index = family - 3
+        values_dot(:, candidate) = cross_values_dot(:, family_index)
+        curls_dot(:, candidate) = cross_curls_dot(:, family_index)
+    end subroutine add_modal_cross_candidate_jvp
+
     pure subroutine add_modal_component_candidate( &
             candidate, component, first_degree, second_degree, third_degree, &
             point, values, curls)
@@ -459,6 +718,28 @@ contains
         reduced(direction) = reduced(direction) - 1
         value = real(powers(direction), dp)*monomial(point, reduced)
     end function monomial_derivative
+
+    pure real(dp) function monomial_second_derivative( &
+            point, powers, first, second) result(value)
+        real(dp), intent(in) :: point(3)
+        integer, intent(in) :: powers(3), first, second
+        integer :: coefficient, reduced(3)
+
+        reduced = powers
+        if (reduced(first) == 0) then
+            value = 0.0_dp
+            return
+        end if
+        coefficient = reduced(first)
+        reduced(first) = reduced(first) - 1
+        if (reduced(second) == 0) then
+            value = 0.0_dp
+            return
+        end if
+        coefficient = coefficient*reduced(second)
+        reduced(second) = reduced(second) - 1
+        value = real(coefficient, dp)*monomial(point, reduced)
+    end function monomial_second_derivative
 
     pure function shifted_legendre(degree, parameter) result(value)
         integer, intent(in) :: degree

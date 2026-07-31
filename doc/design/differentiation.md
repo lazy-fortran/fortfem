@@ -373,3 +373,14 @@ tetrahedron. The geometry path composes FortNum's FortSym-generated
 three-by-three inverse products with the reference gradient, so a Poisson
 state adjoint can continue through pointwise objectives without differentiating
 an inverse or factorization numerically.
+
+Arbitrary-order tetrahedral Nedelec and Raviart--Thomas bases expose the same
+`foo`/`foo_jvp`/`foo_vjp` reference-coordinate contract. Low-order polynomial
+branches use exact monomial first and second derivatives. Modal branches use
+FortNum's analytical Koornwinder gradient and Hessian recurrences; the
+coordinate, modal-value, and modal-gradient chain rule for Nedelec cross
+families is emitted by FortSym. Since a tetrahedral reference point has only
+three active coordinates, the VJP is implemented as three analytical
+directional sweeps. Its cost is independent of the number of objective
+outputs in the usual scalar-objective use case, requires no AD tape, and is
+available with standard GCC builds.
