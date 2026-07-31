@@ -465,3 +465,12 @@ sweep rather than eighteen coordinate sweeps. The regular primitive rejects
 coincident quadrature points; singular self and touching-panel shape products
 use separate singularity-aware paths rather than differentiating through an
 invalid `1/r` evaluation.
+
+The matching Helmholtz panel-pair primitive differentiates both moving
+triangles and the real wave number. FortSym represents the outgoing complex
+kernel as paired cosine and sine outputs, then generates their joint JVP and
+VJP. The public wrapper reconstructs complex values and applies the
+real-vector convention
+`real(conjg(value_bar)*value_dot)`, returning real vertex and wave-number
+cotangents. This keeps the analytical path compiler-independent while
+retaining the exact zero-wave-number reduction to the Laplace panel product.
