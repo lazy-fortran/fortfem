@@ -10,6 +10,10 @@ module fortfem_api
         region_interface_graph_components, region_interface_graph_incidence, &
         region_interface_graph_cycle_basis, region_interface_graph_t, &
         validate_region_interface_graph
+    use fortfem_surface_current, only: &
+        assemble_interface_surface_current, &
+        assemble_interface_surface_current_jvp, &
+        assemble_interface_surface_current_vjp
     use fortfem_surface_triangle_geometry_3d, only: &
         evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
@@ -816,6 +820,9 @@ module fortfem_api
     public :: region_interface_graph_incidence
     public :: region_interface_graph_components
     public :: region_interface_graph_cycle_basis
+    public :: assemble_interface_surface_current
+    public :: assemble_interface_surface_current_jvp
+    public :: assemble_interface_surface_current_vjp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t

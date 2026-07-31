@@ -1027,6 +1027,11 @@ gallery example.
   providing the fitted δ_\Gamma weak-load contract.
 - `assemble_surface_vector_delta_load` adds the tangential trace/surface-
   current pairing needed for an explicit Ampère sheet.
+- `assemble_interface_surface_current` now evaluates the oriented Ampere
+  jump, its integrated current ledger, and fixed-topology JVP/VJP actions.
+  Independent analytical, orientation-reversal, finite-difference, and
+  real-adjoint tests cover the generic trace algebra; conservation at
+  interface edges and material laws remain higher-level contracts.
 - `assemble_interface_jump_penalty` assembles the symmetric positive-
   semidefinite plus/minus jump block used by SIPG and Nitsche penalty terms.
 - `assemble_symmetric_nitsche_interface` adds the average-flux consistency
