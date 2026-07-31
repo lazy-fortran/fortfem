@@ -25,7 +25,11 @@ module fortfem_triangle_vector_interpolation
 
     public :: interpolate_triangle_nedelec
     public :: evaluate_triangle_nedelec_interpolant
+    public :: evaluate_triangle_nedelec_interpolant_jvp
+    public :: evaluate_triangle_nedelec_interpolant_vjp
     public :: evaluate_triangle_rt_interpolant
+    public :: evaluate_triangle_rt_interpolant_jvp
+    public :: evaluate_triangle_rt_interpolant_vjp
     public :: interpolate_triangle_rt
     public :: evaluate_triangle_bdm_interpolant
     public :: evaluate_triangle_bdm_interpolant_jvp
@@ -349,6 +353,106 @@ contains
         jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
         jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
     end subroutine triangle_jacobian
+
+    subroutine evaluate_triangle_nedelec_interpolant_jvp( &
+            vertices, basis, dofs, xi, eta, vertices_dot, dofs_dot, &
+            value_dot, curl_dot, status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        type(triangle_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), xi, eta
+        real(dp), intent(out) :: value_dot(2), curl_dot
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_curls(:), reference_values(:, :)
+
+        value_dot = 0.0_dp
+        curl_dot = 0.0_dp
+        status = 1
+        if (size(dofs_dot) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)), reference_curls(size(dofs)))
+        call evaluate_triangle_nedelec_first_kind( &
+            basis, xi, eta, reference_values, reference_curls, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_jvp( &
+            vertices, dofs, vertices_dot, dofs_dot, reference_values, &
+            reference_curls, .false., value_dot, curl_dot, status)
+    end subroutine evaluate_triangle_nedelec_interpolant_jvp
+
+    subroutine evaluate_triangle_nedelec_interpolant_vjp( &
+            vertices, basis, dofs, xi, eta, value_bar, curl_bar, vertices_bar, &
+            dofs_bar, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        type(triangle_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), xi, eta, value_bar(2), curl_bar
+        real(dp), intent(out) :: vertices_bar(2, 3), dofs_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_curls(:), reference_values(:, :)
+
+        vertices_bar = 0.0_dp
+        dofs_bar = 0.0_dp
+        status = 1
+        if (size(dofs_bar) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)), reference_curls(size(dofs)))
+        call evaluate_triangle_nedelec_first_kind( &
+            basis, xi, eta, reference_values, reference_curls, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_vjp( &
+            vertices, dofs, reference_values, reference_curls, .false., &
+            value_bar, curl_bar, vertices_bar, dofs_bar, status)
+    end subroutine evaluate_triangle_nedelec_interpolant_vjp
+
+    subroutine evaluate_triangle_rt_interpolant_jvp( &
+            vertices, basis, dofs, xi, eta, vertices_dot, dofs_dot, &
+            value_dot, divergence_dot, status)
+        real(dp), intent(in) :: vertices(2, 3), vertices_dot(2, 3)
+        type(triangle_rt_basis_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), dofs_dot(:), xi, eta
+        real(dp), intent(out) :: value_dot(2), divergence_dot
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+
+        value_dot = 0.0_dp
+        divergence_dot = 0.0_dp
+        status = 1
+        if (size(dofs_dot) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)))
+        allocate(reference_divergences(size(dofs)))
+        call evaluate_triangle_raviart_thomas( &
+            basis, xi, eta, reference_values, reference_divergences, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_jvp( &
+            vertices, dofs, vertices_dot, dofs_dot, reference_values, &
+            reference_divergences, .true., value_dot, divergence_dot, status)
+    end subroutine evaluate_triangle_rt_interpolant_jvp
+
+    subroutine evaluate_triangle_rt_interpolant_vjp( &
+            vertices, basis, dofs, xi, eta, value_bar, divergence_bar, &
+            vertices_bar, dofs_bar, status)
+        real(dp), intent(in) :: vertices(2, 3)
+        type(triangle_rt_basis_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:), xi, eta, value_bar(2), divergence_bar
+        real(dp), intent(out) :: vertices_bar(2, 3), dofs_bar(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: reference_divergences(:)
+        real(dp), allocatable :: reference_values(:, :)
+
+        vertices_bar = 0.0_dp
+        dofs_bar = 0.0_dp
+        status = 1
+        if (size(dofs_bar) /= size(dofs)) return
+        allocate(reference_values(2, size(dofs)))
+        allocate(reference_divergences(size(dofs)))
+        call evaluate_triangle_raviart_thomas( &
+            basis, xi, eta, reference_values, reference_divergences, status)
+        if (status /= 0) return
+        call evaluate_full_vector_interpolant_vjp( &
+            vertices, dofs, reference_values, reference_divergences, .true., &
+            value_bar, divergence_bar, vertices_bar, dofs_bar, status)
+    end subroutine evaluate_triangle_rt_interpolant_vjp
 
     subroutine evaluate_triangle_nedelec_interpolant( &
             vertices, basis, dofs, xi, eta, value, curl, status)

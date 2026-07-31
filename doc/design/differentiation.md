@@ -281,12 +281,12 @@ Eulerian sampled forcing, and the implicit sparse-solve adjoint, returning
 cotangents for every shared mesh vertex, both scalar coefficients, source
 samples, and prescribed boundary degrees of freedom without forming a state
 Jacobian.
-Fixed-reference-point BDM and second-kind Nedelec observations complete the
-state-to-objective path. Their products differentiate the physical vector
-value and divergence or curl with respect to element vertices and every local
-coefficient. They reuse the corresponding Piola products; inversion of a
-fixed physical observation point is deliberately kept as a separate geometry
-operation.
+Fixed-reference-point RT, BDM, and first- and second-kind Nedelec observations
+complete the state-to-objective path. Their shared products differentiate the
+physical vector value and divergence or curl with respect to element vertices
+and every local coefficient. They reuse the corresponding Piola products;
+inversion of a fixed physical observation point is deliberately kept as a
+separate geometry operation.
 
 Complex tetrahedral Nedelec PML elements expose the same geometry products
 for all vertex coordinates, the complex Cartesian stretch, and wave number.
