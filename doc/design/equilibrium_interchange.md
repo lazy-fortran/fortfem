@@ -28,7 +28,8 @@ call initialize_equilibrium_interchange( &
     data, mapped_coordinates, physical_coordinates, coefficient_names, &
     coefficient_values, profile_coordinates, profile_names, profile_values, &
     boundary_offsets, boundary_names, boundary_coordinates, normalization, &
-    status)
+    status, coefficient_ranks, coefficient_offsets, &
+    coefficient_component_names)
 valid = validate_equilibrium_interchange(data, status)
 ```
 
@@ -36,9 +37,15 @@ Coordinate arrays have shape `(spatial_dimension, sample_count)` and use the
 same active dimension for mapped, physical, and boundary points.  A boundary
 is a contiguous point range; `boundary_offsets` has one more entry than
 `boundary_names`, starts at one, ends at `size(boundary_coordinates,2)+1`, and
-is nondecreasing.  Coefficients are `(coefficient_count, sample_count)` and
+is nondecreasing.  Coefficient storage is
+`(coefficient_component_count, sample_count)` and
 profiles are `(profile_count, profile_sample_count)`, with unique nonempty
-labels.
+labels.  For vector- and tensor-valued coefficients, the optional component
+metadata makes the flattened storage unambiguous: rank zero has one component,
+rank one has `spatial_dimension`, and rank two has
+`spatial_dimension**2`; `coefficient_offsets` partitions the rows of
+`coefficient_values`, and `coefficient_component_names` labels those rows.
+Omitting the metadata retains the scalar convention.
 
 Normalization stores unit labels and positive scale factors for length,
 magnetic field, pressure, and current.  These are metadata, not hidden unit

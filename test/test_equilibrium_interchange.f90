@@ -11,6 +11,9 @@ program test_equilibrium_interchange
     integer, parameter :: sample_count = 4, profile_sample_count = 3
     integer, parameter :: coefficient_count = 2, profile_count = 2
     integer, parameter :: boundary_point_count = 6, boundary_count = 2
+    integer, parameter :: typed_sample_count = 3, typed_coefficient_count = 3
+    integer, parameter :: typed_component_count = 7
+    integer, parameter :: typed_boundary_point_count = 4
     real(dp) :: mapped_coordinates(3, sample_count)
     real(dp) :: physical_coordinates(3, sample_count)
     real(dp) :: coefficient_values(coefficient_count, sample_count)
@@ -21,8 +24,16 @@ program test_equilibrium_interchange
     character(len=32) :: coefficient_names(coefficient_count)
     character(len=32) :: profile_names(profile_count)
     character(len=32) :: boundary_names(boundary_count)
+    real(dp) :: typed_mapped(2, typed_sample_count)
+    real(dp) :: typed_physical(2, typed_sample_count)
+    real(dp) :: typed_values(typed_component_count, typed_sample_count)
+    real(dp) :: typed_boundary(2, typed_boundary_point_count)
+    integer :: typed_offsets(typed_coefficient_count + 1)
+    integer :: typed_ranks(typed_coefficient_count)
+    character(len=32) :: typed_names(typed_coefficient_count)
+    character(len=32) :: typed_component_names(typed_component_count)
     type(equilibrium_normalization_t) :: normalization
-    type(equilibrium_interchange_t) :: data, copy, invalid
+    type(equilibrium_interchange_t) :: data, copy, invalid, typed
     integer :: status
     logical :: all_passed
 
@@ -93,6 +104,45 @@ program test_equilibrium_interchange
     invalid%normalization%pressure_scale = 0.0_dp
     call record_condition(.not. validate_equilibrium_interchange(invalid, status), &
         "nonpositive normalization scales are rejected")
+
+    typed_mapped = reshape([ &
+        0.1_dp, 0.2_dp, 0.3_dp, &
+        -0.2_dp, 0.0_dp, 0.4_dp], shape(typed_mapped))
+    typed_physical = typed_mapped
+    typed_values(1, :) = [1.0_dp, 1.1_dp, 1.2_dp]
+    typed_values(2:3, :) = reshape([ &
+        2.0_dp, 2.1_dp, 2.2_dp, 3.0_dp, 3.1_dp, 3.2_dp], &
+        shape(typed_values(2:3, :)))
+    typed_values(4:7, :) = reshape([ &
+        4.0_dp, 4.1_dp, 4.2_dp, 5.0_dp, 5.1_dp, 5.2_dp, &
+        6.0_dp, 6.1_dp, 6.2_dp, 7.0_dp, 7.1_dp, 7.2_dp], &
+        shape(typed_values(4:7, :)))
+    typed_boundary(:, 1:2) = typed_physical(:, 1:2)
+    typed_boundary(:, 3:4) = typed_physical(:, 2:3)
+    typed_offsets = [1, 2, 4, 8]
+    typed_ranks = [0, 1, 2]
+    typed_names = [character(len=32) :: "pressure", "magnetic_field", "stress"]
+    typed_component_names = [character(len=32) :: &
+        "pressure", "Bx", "By", "stress_xx", "stress_xy", "stress_yx", &
+        "stress_yy"]
+    call initialize_equilibrium_interchange( &
+        typed, typed_mapped, typed_physical, typed_names, typed_values, &
+        profile_coordinates, profile_names, profile_values, [1, 3, 5], &
+        [character(len=32) :: "inner", "outer"], typed_boundary, normalization, &
+        status, coefficient_ranks=typed_ranks, coefficient_offsets=typed_offsets, &
+        coefficient_component_names=typed_component_names)
+    call record_condition(status == 0, "vector/tensor interchange initializes")
+    call record_condition(validate_equilibrium_interchange(typed, status), &
+        "vector/tensor interchange validates")
+    call record_condition(typed%coefficient_component_count == typed_component_count, &
+        "vector/tensor component count is retained")
+    call record_condition(all(typed%coefficient_ranks == typed_ranks) .and. &
+        all(typed%coefficient_offsets == typed_offsets), &
+        "vector/tensor rank and offsets are retained")
+    invalid = typed
+    invalid%coefficient_offsets(3) = invalid%coefficient_offsets(2) + 1
+    call record_condition(.not. validate_equilibrium_interchange(invalid, status), &
+        "component offsets that disagree with rank are rejected")
 
     call check_summary("equilibrium interchange")
     if (.not. all_passed) error stop 1
