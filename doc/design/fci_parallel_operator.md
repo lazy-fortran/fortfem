@@ -164,6 +164,12 @@ call build_fci_triangle_interpolation_maps_2d_vjp( &
     vertices, triangles, forward_points, forward_cells, backward_points, &
     backward_cells, forward_map_bar, backward_map_bar, vertices_bar, &
     forward_points_bar, backward_points_bar, status)
+call apply_fci_plane_two_level_vcycle( &
+    fine_operator, coarse_operator, restriction, prolongation, &
+    diagonal, residual, correction, status)
+call apply_fci_plane_two_level_vcycles( &
+    fine_operators, coarse_operators, restrictions, prolongations, &
+    diagonals, residual, correction, status)
 ```
 
 The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
@@ -252,6 +258,12 @@ contract: one fine Jacobi pre-smooth, CSC restriction, a direct coarse solve,
 CSC prolongation, and one post-smooth. The coarse solve is intentionally
 replaceable, so production callers can retain factors or substitute a deeper
 V/W-cycle without changing the FCI line operator.
+`apply_fci_plane_two_level_vcycles` applies that cycle independently to a
+homogeneous stack of poloidal planes stored contiguously. It is the small
+field-split adapter needed to compose independent PARALLAX-style plane
+elliptic solves with the global FCI line action; it introduces no cross-plane
+coupling and copies no PARALLAX implementation. Heterogeneous plane sizes and
+topology-changing remaps remain explicit future contracts.
 
 ## Provenance
 
