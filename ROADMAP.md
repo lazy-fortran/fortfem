@@ -557,7 +557,10 @@ guard this contract. The public 1D linear interpolation-map builder now checks
 partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
 and Cartesian bilinear affine reproduction. Higher-order or unstructured
 interpolation Jacobians, curved support-volume measures, and anisotropy-aware
-preconditioning remain active work.
+preconditioning remain active work. A batched Cartesian bilinear adapter now
+turns traced forward/backward endpoint arrays into the per-segment FCI map
+tensors used by the support operator, with source-grid accumulation in its
+fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
 
 ### 8.3 FEM/BEM, DtN, and PML
 
@@ -926,6 +929,11 @@ gallery example.
   interpolation, while fixed-cell 2D map JVP/VJP products now cover source
   and target coordinate motion. Curved support-volume measures remain a
   separate planned component.
+- The batched 2D bilinear endpoint-to-map adapter now connects traced
+  forward/backward endpoints to the support-operator tensor contract and
+  carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or
+  unstructured plane cells and stencil rebuilds at topology events remain
+  planned.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.

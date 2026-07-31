@@ -18,6 +18,9 @@ module fortfem_fci_interpolation_map
     public :: build_fci_bilinear_interpolation_map_2d
     public :: build_fci_bilinear_interpolation_map_2d_jvp
     public :: build_fci_bilinear_interpolation_map_2d_vjp
+    public :: build_fci_bilinear_interpolation_maps_2d
+    public :: build_fci_bilinear_interpolation_maps_2d_jvp
+    public :: build_fci_bilinear_interpolation_maps_2d_vjp
 
 contains
 
@@ -444,6 +447,205 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fci_bilinear_interpolation_map_2d_vjp
+
+    subroutine build_fci_bilinear_interpolation_maps_2d( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map, backward_map, status)
+        !! Build per-segment bilinear maps from traced FCI endpoints.
+        !!
+        !! Endpoint arrays use shape `(n_staggered, n_segment)`.  The map
+        !! tensors use shape `(n_staggered, size(source_x)*size(source_y),
+        !! n_segment)`, with the same x-fast source-column ordering as the
+        !! single-slice builder.  Every segment is checked independently, so
+        !! an out-of-domain endpoint cannot silently contaminate the operator.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: forward_x(:, :)
+        real(dp), intent(in) :: forward_y(:, :)
+        real(dp), intent(in) :: backward_x(:, :)
+        real(dp), intent(in) :: backward_y(:, :)
+        real(dp), intent(out) :: forward_map(:, :, :)
+        real(dp), intent(out) :: backward_map(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment, n_segment
+
+        forward_map = 0.0_dp
+        backward_map = 0.0_dp
+        call validate_fci_bilinear_batch_shapes( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map, backward_map, status)
+        if (status%code /= FORTSPARSE_OK) return
+        n_segment = size(forward_x, 2)
+        do segment = 1, n_segment
+            call build_fci_bilinear_interpolation_map_2d( &
+                source_x, source_y, forward_x(:, segment), forward_y(:, segment), &
+                forward_map(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            call build_fci_bilinear_interpolation_map_2d( &
+                source_x, source_y, backward_x(:, segment), &
+                backward_y(:, segment), backward_map(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_maps_2d
+
+    subroutine build_fci_bilinear_interpolation_maps_2d_jvp( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            source_x_dot, source_y_dot, forward_x_dot, forward_y_dot, &
+            backward_x_dot, backward_y_dot, forward_map_dot, backward_map_dot, &
+            status)
+        !! Apply the fixed-topology JVP of the batched FCI map builder.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: forward_x(:, :)
+        real(dp), intent(in) :: forward_y(:, :)
+        real(dp), intent(in) :: backward_x(:, :)
+        real(dp), intent(in) :: backward_y(:, :)
+        real(dp), intent(in) :: source_x_dot(:)
+        real(dp), intent(in) :: source_y_dot(:)
+        real(dp), intent(in) :: forward_x_dot(:, :)
+        real(dp), intent(in) :: forward_y_dot(:, :)
+        real(dp), intent(in) :: backward_x_dot(:, :)
+        real(dp), intent(in) :: backward_y_dot(:, :)
+        real(dp), intent(out) :: forward_map_dot(:, :, :)
+        real(dp), intent(out) :: backward_map_dot(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment, nx, ny, n_segment
+
+        forward_map_dot = 0.0_dp
+        backward_map_dot = 0.0_dp
+        call validate_fci_bilinear_batch_shapes( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map_dot, backward_map_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+        nx = size(source_x)
+        ny = size(source_y)
+        n_segment = size(forward_x, 2)
+        if (size(source_x_dot) /= nx .or. size(source_y_dot) /= ny .or. &
+            any(shape(forward_x_dot) /= shape(forward_x)) .or. &
+            any(shape(forward_y_dot) /= shape(forward_y)) .or. &
+            any(shape(backward_x_dot) /= shape(backward_x)) .or. &
+            any(shape(backward_y_dot) /= shape(backward_y))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched-map JVP received incompatible tangents")
+            return
+        end if
+        do segment = 1, n_segment
+            call build_fci_bilinear_interpolation_map_2d_jvp( &
+                source_x, source_y, forward_x(:, segment), forward_y(:, segment), &
+                source_x_dot, source_y_dot, forward_x_dot(:, segment), &
+                forward_y_dot(:, segment), forward_map_dot(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            call build_fci_bilinear_interpolation_map_2d_jvp( &
+                source_x, source_y, backward_x(:, segment), &
+                backward_y(:, segment), source_x_dot, source_y_dot, &
+                backward_x_dot(:, segment), backward_y_dot(:, segment), &
+                backward_map_dot(:, :, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_maps_2d_jvp
+
+    subroutine build_fci_bilinear_interpolation_maps_2d_vjp( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map_bar, backward_map_bar, source_x_bar, source_y_bar, &
+            forward_x_bar, forward_y_bar, backward_x_bar, backward_y_bar, status)
+        !! Apply the fixed-topology VJP of the batched FCI map builder.
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: forward_x(:, :)
+        real(dp), intent(in) :: forward_y(:, :)
+        real(dp), intent(in) :: backward_x(:, :)
+        real(dp), intent(in) :: backward_y(:, :)
+        real(dp), intent(in) :: forward_map_bar(:, :, :)
+        real(dp), intent(in) :: backward_map_bar(:, :, :)
+        real(dp), intent(out) :: source_x_bar(:)
+        real(dp), intent(out) :: source_y_bar(:)
+        real(dp), intent(out) :: forward_x_bar(:, :)
+        real(dp), intent(out) :: forward_y_bar(:, :)
+        real(dp), intent(out) :: backward_x_bar(:, :)
+        real(dp), intent(out) :: backward_y_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: segment, nx, ny, n_segment
+        real(dp), allocatable :: source_x_bar_local(:), source_y_bar_local(:)
+
+        source_x_bar = 0.0_dp
+        source_y_bar = 0.0_dp
+        forward_x_bar = 0.0_dp
+        forward_y_bar = 0.0_dp
+        backward_x_bar = 0.0_dp
+        backward_y_bar = 0.0_dp
+        call validate_fci_bilinear_batch_shapes( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map_bar, backward_map_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+        nx = size(source_x)
+        ny = size(source_y)
+        n_segment = size(forward_x, 2)
+        if (size(source_x_bar) /= nx .or. size(source_y_bar) /= ny .or. &
+            any(shape(forward_x_bar) /= shape(forward_x)) .or. &
+            any(shape(forward_y_bar) /= shape(forward_y)) .or. &
+            any(shape(backward_x_bar) /= shape(backward_x)) .or. &
+            any(shape(backward_y_bar) /= shape(backward_y))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI batched-map VJP received incompatible cotangents")
+            return
+        end if
+        allocate( &
+            source_x_bar_local(nx), source_y_bar_local(ny))
+        do segment = 1, n_segment
+            call build_fci_bilinear_interpolation_map_2d_vjp( &
+                source_x, source_y, forward_x(:, segment), forward_y(:, segment), &
+                forward_map_bar(:, :, segment), source_x_bar_local, &
+                source_y_bar_local, forward_x_bar(:, segment), &
+                forward_y_bar(:, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            source_x_bar = source_x_bar + source_x_bar_local
+            source_y_bar = source_y_bar + source_y_bar_local
+            call build_fci_bilinear_interpolation_map_2d_vjp( &
+                source_x, source_y, backward_x(:, segment), &
+                backward_y(:, segment), backward_map_bar(:, :, segment), &
+                source_x_bar_local, source_y_bar_local, &
+                backward_x_bar(:, segment), backward_y_bar(:, segment), status)
+            if (status%code /= FORTSPARSE_OK) return
+            source_x_bar = source_x_bar + source_x_bar_local
+            source_y_bar = source_y_bar + source_y_bar_local
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fci_bilinear_interpolation_maps_2d_vjp
+
+    subroutine validate_fci_bilinear_batch_shapes( &
+            source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+            forward_map, backward_map, status)
+        real(dp), intent(in) :: source_x(:)
+        real(dp), intent(in) :: source_y(:)
+        real(dp), intent(in) :: forward_x(:, :)
+        real(dp), intent(in) :: forward_y(:, :)
+        real(dp), intent(in) :: backward_x(:, :)
+        real(dp), intent(in) :: backward_y(:, :)
+        real(dp), intent(in) :: forward_map(:, :, :)
+        real(dp), intent(in) :: backward_map(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nx, ny, n_staggered, n_segment
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI batched bilinear map received incompatible arrays")
+        nx = size(source_x)
+        ny = size(source_y)
+        n_staggered = size(forward_x, 1)
+        n_segment = size(forward_x, 2)
+        if (nx < 2 .or. ny < 2 .or. n_staggered < 1 .or. n_segment < 1) return
+        if (any(shape(forward_y) /= shape(forward_x)) .or. &
+            any(shape(backward_x) /= shape(forward_x)) .or. &
+            any(shape(backward_y) /= shape(forward_x))) return
+        if (any(shape(forward_map) /= [n_staggered, nx*ny, n_segment])) return
+        if (any(shape(backward_map) /= [n_staggered, nx*ny, n_segment])) return
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_fci_bilinear_batch_shapes
 
     subroutine locate_fixed_interval( &
             source_coordinates, target_coordinate, left, valid_interval)

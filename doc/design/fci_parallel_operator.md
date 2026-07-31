@@ -89,6 +89,17 @@ call apply_fci_parallel_gradient_jvp( &
 call apply_fci_parallel_gradient_vjp( &
     forward_map, backward_map, line_lengths, field, gradient_bar, &
     forward_bar, backward_bar, line_bar, field_bar, status)
+call build_fci_bilinear_interpolation_maps_2d( &
+    source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+    forward_map, backward_map, status)
+call build_fci_bilinear_interpolation_maps_2d_jvp( &
+    source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+    source_x_dot, source_y_dot, forward_x_dot, forward_y_dot, &
+    backward_x_dot, backward_y_dot, forward_map_dot, backward_map_dot, status)
+call build_fci_bilinear_interpolation_maps_2d_vjp( &
+    source_x, source_y, forward_x, forward_y, backward_x, backward_y, &
+    forward_map_bar, backward_map_bar, source_x_bar, source_y_bar, &
+    forward_x_bar, forward_y_bar, backward_x_bar, backward_y_bar, status)
 ```
 
 The canonical unknowns are ordered plane-by-plane. Staggered rows are ordered
@@ -97,6 +108,16 @@ segment-by-segment. `forward_map` and `backward_map` have shape
 `(n_staggered, n_segment)`. Zero interpolation coefficients are omitted from
 the CSC matrix, so the resulting action is matrix-free at the solver level
 through the existing FortSparse `csc_matvec` interface.
+
+The batched bilinear adapter turns traced endpoint coordinates with shape
+`(n_staggered, n_segment)` into the forward and backward map tensors consumed
+by the support operator. It applies the single-slice builder independently to
+each toroidal segment, preserving the x-fast source-column ordering and
+rejecting any segment that leaves the source box. Its JVP/VJP paths reuse the
+fixed-cell single-slice contracts and accumulate source-grid cotangents over
+all segments. The topology rule is deliberate: a traced endpoint on a grid
+line is valid for the primal map but is rejected by the derivative paths until
+the stencil cell is rebuilt.
 
 The focused test uses identity maps and an analytically linear field as an
 independent oracle. It also checks the weighted adjoint identity and a flux
