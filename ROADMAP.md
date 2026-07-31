@@ -888,9 +888,10 @@ gallery example.
   its fixed-topology JVP/VJP provide independent partition/affine and
   dot-product oracles, and a 2D Cartesian bilinear builder now covers a
   genuine poloidal slice. The positive staggered flux-box volume constructor
-  now covers the traced expansion/area/(B_\varphi) product. Higher-order or
-  unstructured interpolation Jacobians, geometry-factor derivatives, and
-  curved support-volume measures remain separate planned components.
+  now covers the traced expansion/area/(B_\varphi) product with pinned
+  FortSym-generated value/JVP/VJP kernels. Higher-order or unstructured
+  interpolation Jacobians and curved support-volume measures remain separate
+  planned components.
 - FCI field-line maps, higher-dimensional interpolation Jacobians, and parallel
   derivative JVPs.
 - Strongly anisotropic diffusion, conduction, resistivity, and viscosity.

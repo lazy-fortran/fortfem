@@ -14,9 +14,10 @@ the equilibrium, mesh, or MPI layout, and it rejects non-finite, non-positive,
 or mismatched inputs.  This keeps the volume construction reusable by the
 matrix-free and assembled support-operator paths.
 
-The focused test compares against the pointwise flux-expansion oracle and
-checks shape rejection.  Derivatives with respect to traced geometry factors
-and curved/unstructured plane-cell measures remain planned extensions.
+The value, JVP, and VJP products are emitted by the pinned FortSym generator
+`gen_fci_support_volume_products`; the focused test compares the value and JVP
+against independent product-rule oracles and checks the VJP dot-product
+identity.  Curved/unstructured plane-cell measures remain planned extensions.
 
 ## Provenance
 

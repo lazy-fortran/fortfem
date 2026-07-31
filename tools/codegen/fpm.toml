@@ -114,6 +114,11 @@ source-dir = "app"
 main = "gen_cgl_pressure_divergence_products.f90"
 
 [[executable]]
+name = "gen_fci_support_volume_products"
+source-dir = "app"
+main = "gen_fci_support_volume_products.f90"
+
+[[executable]]
 name = "gen_surface_triangle_geometry_products"
 source-dir = "app"
 main = "gen_surface_triangle_geometry_products.f90"
