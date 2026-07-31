@@ -54,6 +54,10 @@ consistency terms for independent test and trial traces, with the same
 `assemble_hdg_static_condensation` provides the local Schur complement
 `S=D-C A^{-1}B` and condensed load `g-C A^{-1}f`; its JVP/VJP differentiate
 the implicit interior solve and are suitable for global skeleton assembly.
+`assemble_hdg_global_skeleton` is the matching dense reference assembler for
+local condensed blocks. Its frozen integer local-to-global map and orientation
+signs support shared scalar, H(curl), H(div), and IGA trace degrees of freedom;
+value/JVP/VJP actions are covered before sparse accumulation is introduced.
 `assemble_scalar_numerical_flux` supplies conservative central, upwind, and
 Lax--Friedrichs scalar interface fluxes. Plus/minus residuals are exactly
 opposite, and a quadratic-entropy production diagnostic is returned. The
