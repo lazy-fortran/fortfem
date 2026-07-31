@@ -198,6 +198,10 @@ module fortfem_api
         integrate_helmholtz_torus_panel_p0_3d, &
         integrate_helmholtz_torus_panel_p0_3d_jvp, &
         integrate_helmholtz_torus_panel_p0_3d_vjp
+    use fortfem_helmholtz_sphere_panel_pair_ad_3d, only: &
+        integrate_helmholtz_sphere_panel_p0_3d, &
+        integrate_helmholtz_sphere_panel_p0_3d_jvp, &
+        integrate_helmholtz_sphere_panel_p0_3d_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_sphere_curved_panel, only: &
         evaluate_sphere_curved_panel, evaluate_sphere_curved_panel_jvp, &
@@ -695,6 +699,9 @@ module fortfem_api
     public :: integrate_helmholtz_torus_panel_p0_3d
     public :: integrate_helmholtz_torus_panel_p0_3d_jvp
     public :: integrate_helmholtz_torus_panel_p0_3d_vjp
+    public :: integrate_helmholtz_sphere_panel_p0_3d
+    public :: integrate_helmholtz_sphere_panel_p0_3d_jvp
+    public :: integrate_helmholtz_sphere_panel_p0_3d_vjp
     public :: generate_sphere_surface_mesh
     public :: evaluate_sphere_curved_panel
     public :: evaluate_sphere_curved_panel_jvp
