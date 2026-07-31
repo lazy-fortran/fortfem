@@ -1240,10 +1240,14 @@ gallery example.
   anisotropic metric directions; vector consistency fluxes and FEEC commuting
   projections are now public with value/JVP/VJP actions; hybridization and
   static condensation now have a local differentiable Schur primitive;
-  global skeleton assembly and compatible flux elimination remain.
+  `assemble_hdg_global_skeleton` now supplies a signed-map dense reference
+  assembler with value/JVP/VJP actions; sparse accumulation and compatible
+  flux elimination remain.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
-- Conservative/upwind/entropy-aware flux interface.
+- Conservative/upwind vector flux interfaces now include scalar and
+  metric-weighted vector value/JVP/VJP paths; entropy-stable system fluxes
+  remain.
 - Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
 
 ### Phase 4: Open boundaries and vector operators: **active**
