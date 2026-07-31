@@ -175,7 +175,8 @@ module fortfem_api
     use fortfem_fci_parallel_operator, only: &
         assemble_fci_parallel_gradient_csc, &
         assemble_fci_parallel_support_divergence_csc, &
-        apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
+        apply_fci_parallel_gradient, apply_fci_parallel_diffusion, &
+        apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
@@ -1418,6 +1419,7 @@ module fortfem_api
     public :: assemble_fci_parallel_gradient_csc
     public :: assemble_fci_parallel_support_divergence_csc
     public :: apply_fci_parallel_gradient
+    public :: apply_fci_parallel_diffusion
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: trace_fci_field_line_rk4

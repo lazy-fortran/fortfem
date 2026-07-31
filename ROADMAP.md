@@ -527,12 +527,14 @@ complex, a Fourier derivative, or an FCI field-line map. These choices share a
 residual and oracle interface but are not assumed algebraically identical.
 The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
 RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
-interpolation matrices assemble a sparse staggered gradient; and the support
-divergence is constructed as its negative volume-weighted
-adjoint. A matrix-free gradient action exposes FortSym-generated value, JVP,
-and VJP kernels. Independent tests cover a constant/exponential tracing
-oracle, a linear-field map oracle, constants, an explicit flux-balance vector,
-a central-difference JVP, and the weighted adjoint identity. Interpolation
+interpolation matrices assemble a sparse staggered gradient; the support
+divergence is constructed as its negative volume-weighted adjoint; and a
+matrix-free (P K_\parallel Q) diffusion action is public. The matrix-free
+gradient action exposes FortSym-generated value, JVP, and VJP kernels.
+Independent tests cover a constant/exponential tracing oracle, a linear-field
+map oracle, constants, an explicit flux-balance vector, a central-difference
+JVP, the weighted adjoint identity, and the weighted negative-energy identity.
+Interpolation
 Jacobians, support-volume construction, and anisotropy-aware preconditioning
 remain active work.
 
@@ -868,7 +870,8 @@ gallery example.
 ### Phase 7a: Field-aligned edge and SOL ingredients: **active**
 
 - FCI RK4 field-line tracing, support-operator gradient/divergence algebra, and
-  the matrix-free action (including FortSym-generated JVP/VJP products) are
+  matrix-free (P K_\parallel Q) diffusion (including FortSym-generated
+  gradient JVP/VJP products) are
   public and independently tested; interpolation Jacobians and support-volume
   map construction are still separate planned components.
 - FCI field-line maps, interpolation Jacobians, and parallel derivative JVPs.
