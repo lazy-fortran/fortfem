@@ -229,7 +229,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | The scalar shifted-Heaviside activation and a 3D vector-enrichment curl/divergence product-rule diagnostic are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
-| Equilibrium interchange | A neutral external-adapter schema for mapped coordinates, coefficients, profiles, boundaries, units, and normalization. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data plus license-safe CHEASE and FreeGS outputs sampled on a common physical grid |
+| Equilibrium interchange | The neutral external-adapter schema for mapped coordinates, physical samples, named coefficients/profiles, segmented boundaries, provenance, units, and normalization is public and validated. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data now covers toroidal mapped samples, named fields, segmented boundaries, copy semantics, and rejection; license-safe CHEASE and FreeGS outputs sampled on a common physical grid remain |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
 | Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus a separate dissipative Cayley block | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
@@ -1433,8 +1433,14 @@ gallery example.
   caller-supplied correction tensors remain external. No plasma closure is
   implemented.
 
-### Phase 7: Equilibrium and linear-response ingredients: **planned**
+### Phase 7: Equilibrium and linear-response ingredients: **active**
 
+- The neutral `equilibrium_interchange_t` record now defines the external
+  adapter boundary for mapped/physical samples, named coefficient and profile
+  arrays, segmented boundaries, provenance, units, and normalization. It is
+  validated with an analytical toroidal manufactured fixture and deep-copy and
+  rejection checks. FortFEM still does not implement GEQDSK, COCOS, or any
+  plasma-specific reader, profile law, coil model, or equilibrium solver.
 - Generic axisymmetric elliptic and Fourier variational fixtures that can be
   sampled by external CHEASE or FreeGS adapters. FortFEM will not implement
   GEQDSK or COCOS readers, profile laws, coil models, or equilibrium solvers.

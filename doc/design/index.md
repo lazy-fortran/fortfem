@@ -60,6 +60,10 @@ field-period phase, normalization, conjugate packing, triad lookup, radial
 regularity, and complex-coordinate derivative conventions for Fourier-FEM and
 IGA clients.
 
+The [neutral equilibrium interchange contract](equilibrium_interchange.html)
+defines the sample/provenance boundary for external equilibrium adapters
+without implementing GEQDSK, COCOS, or plasma-specific readers and closures.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
