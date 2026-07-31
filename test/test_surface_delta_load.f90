@@ -17,7 +17,7 @@ program test_surface_delta_load
     real(dp), parameter :: surface_source_dot(3) = [-0.1_dp, 0.2_dp, 0.3_dp]
     real(dp), parameter :: load_bar(2) = [0.7_dp, -0.4_dp]
     real(dp), parameter :: eps = 1.0e-6_dp
-    real(dp) :: load(2), load_dot(2), load_plus(2), load_minus(2)
+    real(dp) :: load(2), load_bad(1), load_dot(2), load_plus(2), load_minus(2)
     real(dp) :: trace_basis_bar(3, 2), surface_weights_bar(3)
     real(dp) :: surface_source_bar(3), lhs, rhs, oracle_load_dot(2)
     real(dp), parameter :: bad_weights(2) = [1.0_dp, 2.0_dp]
@@ -65,5 +65,9 @@ program test_surface_delta_load
         trace_basis, bad_weights, surface_source, load, status)
     call check_condition(status%code /= 0, &
         "surface delta load rejects incompatible quadrature sizes")
+    call assemble_surface_delta_load( &
+        trace_basis, surface_weights, surface_source, load_bad, status)
+    call check_condition(status%code /= 0, &
+        "surface delta load rejects incompatible output size")
     call check_summary("surface delta load")
 end program test_surface_delta_load

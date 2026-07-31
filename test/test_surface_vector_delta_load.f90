@@ -23,7 +23,7 @@ program test_surface_vector_delta_load
         -0.1_dp, 0.2_dp, -0.3_dp, 0.4_dp, -0.5_dp, 0.6_dp], [2, 3])
     real(dp), parameter :: load_bar(2) = [0.8_dp, -0.7_dp]
     real(dp), parameter :: eps = 1.0e-6_dp
-    real(dp) :: load(2), load_dot(2), load_plus(2), load_minus(2)
+    real(dp) :: load(2), load_bad(1), load_dot(2), load_plus(2), load_minus(2)
     real(dp) :: trace_basis_bar(2, 2, 3), surface_weights_bar(2)
     real(dp) :: surface_current_bar(2, 3), lhs, rhs, oracle_load_dot(2)
     real(dp), parameter :: bad_weights(1) = [1.0_dp]
@@ -83,5 +83,9 @@ program test_surface_vector_delta_load
         tangential_trace_basis, bad_weights, surface_current, load, status)
     call check_condition(status%code /= 0, &
         "surface vector delta load rejects incompatible quadrature sizes")
+    call assemble_surface_vector_delta_load( &
+        tangential_trace_basis, surface_weights, surface_current, load_bad, status)
+    call check_condition(status%code /= 0, &
+        "surface vector delta load rejects incompatible output size")
     call check_summary("surface vector delta load")
 end program test_surface_vector_delta_load
