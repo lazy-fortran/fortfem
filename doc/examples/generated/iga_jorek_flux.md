@@ -58,7 +58,7 @@ fpm run --example iga_jorek_flux
 program iga_jorek_flux
     use fortfem_api, only: &
         advance_bspline_jorek_poloidal_flux_midpoint_steps, &
-        assemble_bspline_h1_operator_csc
+        assemble_bspline_h1_operator_csc, evaluate_bspline_basis
     use fortfem_kinds, only: dp
     use fortplot, only: &
         colorbar, figure, plot, pcolormesh, savefig, set_yscale, title, &
@@ -91,8 +91,11 @@ program iga_jorek_flux
     call execute_command_line("mkdir -p "//output_directory)
     r = greville_abscissae(knots_r, degree)
     z = greville_abscissae(knots_z, degree)
-    r_edges = cell_edges(r)
-    z_edges = cell_edges(z)
+    allocate(r_edges(41), z_edges(41))
+    do ix = 1, size(r_edges)
+        r_edges(ix) = real(ix - 1, dp)/real(size(r_edges) - 1, dp)
+        z_edges(ix) = r_edges(ix)
+    end do
     allocate( &
         control_points(2, size(r), size(z)), &
         weights(size(r), size(z)), &
@@ -142,10 +145,9 @@ program iga_jorek_flux
     if (reversibility_error > 5.0e-11_dp) &
         error stop "JOREK gallery reversibility regression"
 
-    initial_map = transpose(reshape( &
-        flux_history(:, 1), [size(r), size(z)]))
-    final_map = transpose(reshape( &
-        flux_history(:, step_count + 1), [size(r), size(z)]))
+    allocate(initial_map(40, 40), final_map(40, 40))
+    call sample_flux_map(flux_history(:, 1), initial_map)
+    call sample_flux_map(flux_history(:, step_count + 1), final_map)
     call render_plots()
     call write_benchmark()
 
@@ -177,6 +179,43 @@ contains
         call savefig(output_directory//"/jorek_flux_final_2d.png")
     end subroutine render_plots
 
+    subroutine sample_flux_map(coefficients, map)
+        real(dp), intent(in) :: coefficients(:)
+        real(dp), intent(out) :: map(:, :)
+
+        real(dp), allocatable :: basis_r(:), basis_z(:)
+        real(dp), allocatable :: derivative_r(:), derivative_z(:)
+        real(dp) :: coordinate_r, coordinate_z
+        integer :: basis_r_count, basis_z_count, ir, ix, iz, j, status
+
+        basis_r_count = size(r)
+        basis_z_count = size(z)
+        if (size(coefficients) /= basis_r_count*basis_z_count) then
+            error stop "JOREK plot coefficient shape mismatch"
+        end if
+        do ix = 1, size(map, 2)
+            coordinate_r = (real(ix, dp) - 0.5_dp)/real(size(map, 2), dp)
+            call evaluate_bspline_basis( &
+                knots_r, degree, coordinate_r, basis_r, derivative_r, status)
+            if (status /= 0) error stop "JOREK radial plot basis failed"
+            do j = 1, size(map, 1)
+                coordinate_z = (real(j, dp) - 0.5_dp)/real(size(map, 1), dp)
+                call evaluate_bspline_basis( &
+                    knots_z, degree, coordinate_z, basis_z, derivative_z, &
+                    status)
+                if (status /= 0) error stop "JOREK vertical plot basis failed"
+                map(j, ix) = 0.0_dp
+                do iz = 1, basis_z_count
+                    do ir = 1, size(r)
+                        map(j, ix) = map(j, ix) + basis_r(ir) * &
+                            basis_z(iz)*coefficients( &
+                            ir + (iz - 1)*size(r))
+                    end do
+                end do
+            end do
+        end do
+    end subroutine sample_flux_map
+
     subroutine write_benchmark()
         open (newunit=unit, file=output_directory//"/benchmark.txt", &
             status="replace", action="write")
@@ -205,19 +244,6 @@ contains
                 real(polynomial_degree, dp)
         end do
     end function greville_abscissae
-
-    pure function cell_edges(points) result(edges)
-        real(dp), intent(in) :: points(:)
-        real(dp), allocatable :: edges(:)
-        integer :: point
-
-        allocate(edges(size(points) + 1))
-        edges(1) = points(1)
-        edges(size(edges)) = points(size(points))
-        do point = 2, size(points)
-            edges(point) = 0.5_dp*(points(point - 1) + points(point))
-        end do
-    end function cell_edges
 
 end program iga_jorek_flux
 ```

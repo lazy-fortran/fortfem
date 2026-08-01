@@ -4,8 +4,11 @@ program maxwell_open_boundary_comparison
         assemble_planar_nedelec_maxwell_dtn_form, &
         build_tetra_edge_dof_map, &
         build_planar_nedelec_trace_sampling, &
+        evaluate_tetra_nedelec_interpolant_at_point, &
+        invert_tetra_affine_map, &
         generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass, &
-        solve_tetra_nedelec_pml
+        solve_tetra_nedelec_pml, initialize_tetra_nedelec_first_kind, &
+        tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
         title, xlabel, ylabel
@@ -238,13 +241,15 @@ program maxwell_open_boundary_comparison
 contains
 
     subroutine render_pml_field_slice()
-        integer, parameter :: slice_nx = 8, slice_ny = 8
-        integer :: sample_count(slice_nx, slice_ny)
+        integer, parameter :: slice_nx = 40, slice_ny = 40
         real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
         real(dp) :: values(slice_nx, slice_ny)
-        real(dp) :: midpoint(3), edge_vector(3), edge_length
-        real(dp) :: edge_value
-        integer :: edge, index_x, index_y
+        real(dp) :: point(3), reference_point(3), real_value(3), real_curl(3)
+        real(dp) :: imaginary_value(3), imaginary_curl(3)
+        real(dp) :: local_vertices(3, 4), local_dofs(6)
+        type(tetra_nedelec_first_kind_t) :: basis
+        integer :: basis_status, index_x, index_y, local_edge, local_status
+        integer :: map_status, tetrahedron
 
         do index_x = 1, slice_nx + 1
             x_edges(index_x) = real(index_x - 1, dp)/real(slice_nx, dp)
@@ -252,39 +257,53 @@ contains
         do index_y = 1, slice_ny + 1
             y_edges(index_y) = real(index_y - 1, dp)/real(slice_ny, dp)
         end do
+        call initialize_tetra_nedelec_first_kind(1, basis, basis_status)
+        if (basis_status /= 0) error stop "Maxwell PML plot basis failed"
         values = 0.0_dp
-        sample_count = 0
-        do edge = 1, size(edges, 2)
-            midpoint = 0.5_dp*(vertices(:, edges(1, edge)) + &
-                vertices(:, edges(2, edge)))
-            if (abs(midpoint(3) - 0.5_dp) > 0.13_dp) cycle
-            edge_vector = vertices(:, edges(2, edge)) - &
-                vertices(:, edges(1, edge))
-            edge_length = sqrt(sum(edge_vector**2))
-            edge_value = abs(pml_solution(edge))/max( &
-                edge_length, tiny(1.0_dp))
-            index_x = min(slice_nx, max(1, int(midpoint(1)*slice_nx) + 1))
-            index_y = min(slice_ny, max(1, int(midpoint(2)*slice_ny) + 1))
-            values(index_x, index_y) = values(index_x, index_y) + edge_value
-            sample_count(index_x, index_y) = &
-                sample_count(index_x, index_y) + 1
-        end do
-        if (sum(sample_count) == 0) error stop "Maxwell PML slice is empty"
         do index_y = 1, slice_ny
             do index_x = 1, slice_nx
-                if (sample_count(index_x, index_y) > 0) then
-                    values(index_x, index_y) = values(index_x, index_y)/ &
-                        real(sample_count(index_x, index_y), dp)
-                end if
+                point = [ &
+                    (real(index_x, dp) - 0.5_dp)/real(slice_nx, dp), &
+                    (real(index_y, dp) - 0.5_dp)/real(slice_ny, dp), 0.5_dp]
+                do tetrahedron = 1, size(tetrahedra, 2)
+                    local_vertices = vertices(:, tetrahedra(:, tetrahedron))
+                    call invert_tetra_affine_map( &
+                        local_vertices, point, reference_point, map_status)
+                    if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) &
+                        .or. sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
+                    do local_edge = 1, 6
+                        local_dofs(local_edge) = &
+                            real(orientations(local_edge, tetrahedron), dp) * &
+                            real(pml_solution( &
+                            global_dofs(local_edge, tetrahedron)), dp)
+                    end do
+                    call evaluate_tetra_nedelec_interpolant_at_point( &
+                        local_vertices, basis, local_dofs, point, real_value, &
+                        real_curl, local_status)
+                    if (local_status /= 0) cycle
+                    do local_edge = 1, 6
+                        local_dofs(local_edge) = &
+                            real(orientations(local_edge, tetrahedron), dp) * &
+                            aimag(pml_solution( &
+                            global_dofs(local_edge, tetrahedron)))
+                    end do
+                    call evaluate_tetra_nedelec_interpolant_at_point( &
+                        local_vertices, basis, local_dofs, point, &
+                        imaginary_value, imaginary_curl, local_status)
+                    if (local_status /= 0) cycle
+                    values(index_x, index_y) = sqrt(sum(real_value**2 + &
+                        imaginary_value**2))
+                    exit
+                end do
             end do
         end do
 
         call figure(figsize=[8.0_dp, 6.5_dp])
         call pcolormesh(x_edges, y_edges, values, cmap="viridis")
-        call colorbar(label="edge-integrated field magnitude / length")
+        call colorbar(label="reconstructed Nedelec field magnitude")
         call xlabel("x")
         call ylabel("y")
-        call title("Maxwell PML field magnitude slice near z = 0.5")
+        call title("Order-1 Maxwell PML solution slice near z = 0.5")
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
 

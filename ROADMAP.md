@@ -1762,6 +1762,23 @@ gallery example.
   interior solution, and curved-torus Maxwell scattering uses its 2-D RCS
   surface map. Their trace, spectrum, convergence, and geometry plots remain
   available as secondary diagnostics.
+- The public vector-plot API now reconstructs lowest-order Nédélec and
+  Raviart--Thomas fields from their edge degrees of freedom, and interpolates
+  nodal vector fields barycentrically; it no longer fabricates a synthetic
+  vector field for a gallery preview. An independent constant-field oracle
+  covers this path. FortPlot `main` was checked at the pinned revision for
+  mesh separators, dynamic storage, and per-sample 3-D colours, so no
+  downstream copy of an upstream FortPlot fix is maintained here.
+- The gallery's physical previews now sample the computed fields rather than
+  plotting coefficient vectors or manufactured vertex labels: JOREK's
+  B-spline flux is reconstructed on a regular cell-centre grid, the Maxwell
+  PML preview reconstructs the complex order-1 Nédélec solution in a physical
+  slice, and the tetrahedral H1, mixed RT--DG, and Nédélec previews sample
+  their solved finite-element fields in the cells. The torus geometry preview
+  draws periodic parameter lines instead of projected triangle diagonals, so
+  the curved surface is readable without concealing the coarse solver mesh.
+  These are visualization contracts and do not replace convergence,
+  conservation, or independent manufactured-solution tests.
 
 ### Phase 9: Future application layer: **reference only**
 

@@ -13,6 +13,7 @@ program maxwell_torus_curved_scattering
     implicit none
 
     integer, parameter :: azimuth_cells = 36, polar_cells = 18
+    integer, parameter :: mesh_polar_nodes = 3, mesh_azimuth_nodes = 3
     integer, parameter :: trace_points = 73
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp
     real(dp), parameter :: wave_number = 0.45_dp, impedance = 1.7_dp
@@ -41,7 +42,8 @@ program maxwell_torus_curved_scattering
 
     call execute_command_line("mkdir -p "//output_directory)
     call generate_torus_surface_mesh( &
-        major_radius, minor_radius, 3, 3, vertices, triangles, parameters)
+        major_radius, minor_radius, mesh_polar_nodes, mesh_azimuth_nodes, &
+        vertices, triangles, parameters)
     call cpu_time(start_time)
     call solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d( &
         vertices, triangles, parameters, major_radius, minor_radius, reshape([ &
@@ -165,10 +167,14 @@ contains
         real(dp) :: curve_x(visual_azimuth + 1)
         real(dp) :: curve_y(visual_azimuth + 1)
         real(dp) :: curve_z(visual_azimuth + 1)
-        real(dp) :: edge_x(4), edge_y(4), edge_z(4)
+        real(dp) :: mesh_curve_x(mesh_polar_nodes + 1)
+        real(dp) :: mesh_curve_y(mesh_polar_nodes + 1)
+        real(dp) :: mesh_curve_z(mesh_polar_nodes + 1)
+        real(dp) :: mesh_ring_x(mesh_azimuth_nodes + 1)
+        real(dp) :: mesh_ring_y(mesh_azimuth_nodes + 1)
+        real(dp) :: mesh_ring_z(mesh_azimuth_nodes + 1)
         real(dp) :: curve_azimuth, curve_polar, curve_radius
-        integer :: coefficient, curve_index, local_vertex, point_index
-        integer :: triangle, vertex
+        integer :: coefficient, curve_index, mesh_vertex, point_index
 
         call figure(figsize=[7.5_dp, 6.5_dp])
         call add_scatter( &
@@ -203,26 +209,38 @@ contains
                 curve_y(:visual_polar + 1), curve_z(:visual_polar + 1), &
                 color="teal", linewidth=0.7_dp)
         end do
-        do triangle = 1, size(triangles, 2)
-            do local_vertex = 1, 3
-                vertex = triangles(local_vertex, triangle)
-                edge_x(local_vertex) = vertices(1, vertex)
-                edge_y(local_vertex) = vertices(2, vertex)
-                edge_z(local_vertex) = vertices(3, vertex)
+        ! Draw the coarse solver mesh along its parameter lines.  Drawing
+        ! every triangle edge projects hidden diagonals through the torus and
+        ! makes a valid periodic mesh look self-intersecting.
+        do curve_index = 0, mesh_azimuth_nodes - 1
+            do point_index = 0, mesh_polar_nodes
+                mesh_vertex = curve_index*mesh_polar_nodes + &
+                    modulo(point_index, mesh_polar_nodes) + 1
+                mesh_curve_x(point_index + 1) = vertices(1, mesh_vertex)
+                mesh_curve_y(point_index + 1) = vertices(2, mesh_vertex)
+                mesh_curve_z(point_index + 1) = vertices(3, mesh_vertex)
             end do
-            edge_x(4) = edge_x(1)
-            edge_y(4) = edge_y(1)
-            edge_z(4) = edge_z(1)
-            if (triangle == 1) then
-                call add_3d_plot(edge_x, edge_y, edge_z, &
-                    label="curved torus triangle edges", color="navy", &
-                    linewidth=1.0_dp)
+            if (curve_index == 0) then
+                call add_3d_plot(mesh_curve_x, mesh_curve_y, mesh_curve_z, &
+                    label="coarse CFIE mesh parameter lines", color="gray", &
+                    linewidth=0.7_dp)
             else
-                call add_3d_plot(edge_x, edge_y, edge_z, color="navy", &
-                    linewidth=1.0_dp)
+                call add_3d_plot(mesh_curve_x, mesh_curve_y, mesh_curve_z, &
+                    color="gray", linewidth=0.7_dp)
             end if
         end do
-        call title("Exact-curved torus surface mesh used by Maxwell CFIE")
+        do curve_index = 0, mesh_polar_nodes - 1
+            do point_index = 0, mesh_azimuth_nodes
+                mesh_vertex = modulo(point_index, mesh_azimuth_nodes) * &
+                    mesh_polar_nodes + curve_index + 1
+                mesh_ring_x(point_index + 1) = vertices(1, mesh_vertex)
+                mesh_ring_y(point_index + 1) = vertices(2, mesh_vertex)
+                mesh_ring_z(point_index + 1) = vertices(3, mesh_vertex)
+            end do
+            call add_3d_plot(mesh_ring_x, mesh_ring_y, mesh_ring_z, &
+                color="gray", linewidth=0.7_dp)
+        end do
+        call title("Exact-curved torus with periodic CFIE mesh lines")
         call savefig(output_directory//"/torus_geometry_3d.png")
 
         call figure(figsize=[9.0_dp, 5.5_dp])

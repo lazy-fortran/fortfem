@@ -35,9 +35,11 @@ fpm run --example tetra_mixed_poisson
 program tetra_mixed_poisson
     use fortfem_api, only: &
         compile_tetra_mixed_form_csc, div, dx, &
+        evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
         generate_structured_tetra_box_mesh, init_measures, inner, operator(*), &
         solve_symbolic_tetra_mixed_poisson_rt, test_function_t, &
-        trial_function_t, vector_test_function_t, vector_trial_function_t
+        tetra_discontinuous_t, trial_function_t, vector_test_function_t, &
+        vector_trial_function_t
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
     use fortplot, only: add_scatter, figure, legend, plot, savefig, set_yscale, &
@@ -55,6 +57,7 @@ program tetra_mixed_poisson
     type(vector_trial_function_t) :: flux_trial
     integer, allocatable :: tetrahedra(:, :)
     real(dp), allocatable :: balance(:), flux(:), pressure(:), vertices(:, :)
+    real(dp), allocatable :: pressure_plot(:)
     real(dp) :: balance_error(6), bounds(3, 2), cell_balance
     real(dp) :: dofs(6), jacobian(3, 3), orders(6), volume
     integer :: degree, dg_count, local_status, tetrahedron
@@ -101,10 +104,14 @@ program tetra_mixed_poisson
         dofs(degree + 1) = real(size(flux) + size(pressure), dp)
         if (balance_error(degree + 1) >= 2.0e-9_dp) &
             error stop "tetrahedral cell balance regression"
+        if (degree == 5) then
+            allocate(pressure_plot(size(pressure)))
+            pressure_plot = pressure
+        end if
         deallocate(balance, flux, pressure)
     end do
 
-    call render_solution()
+    call render_solution(pressure_plot)
 
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(orders, max(balance_error, epsilon(1.0_dp)), &
@@ -126,29 +133,69 @@ program tetra_mixed_poisson
 
 contains
 
-    subroutine render_solution()
-        real(dp) :: pressure_values(size(vertices, 2))
-        integer :: vertex
+    subroutine render_solution(pressure_coefficients)
+        real(dp), intent(in) :: pressure_coefficients(:)
 
-        do vertex = 1, size(vertices, 2)
-            pressure_values(vertex) = manufactured_pressure(vertices(:, vertex))
+        integer, parameter :: sample_side = 16
+        type(tetra_discontinuous_t) :: basis
+        real(dp), allocatable :: x_plot(:), y_plot(:), z_plot(:), values(:)
+        real(dp), allocatable :: basis_values(:)
+        real(dp) :: point(3), reference_point(3), value
+        integer :: cell, count, i, j, k, local_status
+
+        call initialize_tetra_discontinuous(5, basis, local_status)
+        if (local_status /= 0) error stop "tetrahedral plot basis failed"
+        if (size(pressure_coefficients) /= &
+            size(tetrahedra, 2)*size(basis%exponents, 2)) then
+            error stop "tetrahedral pressure plot shape mismatch"
+        end if
+        allocate( &
+            x_plot(size(tetrahedra, 2)*(sample_side + 1)**3), &
+            y_plot(size(tetrahedra, 2)*(sample_side + 1)**3), &
+            z_plot(size(tetrahedra, 2)*(sample_side + 1)**3), &
+            values(size(tetrahedra, 2)*(sample_side + 1)**3), &
+            basis_values(size(basis%exponents, 2)))
+        count = 0
+        do cell = 1, size(tetrahedra, 2)
+            do k = 0, sample_side
+                do j = 0, sample_side
+                    do i = 0, sample_side
+                        if (i + j + k > sample_side) cycle
+                        reference_point = [ &
+                            real(i, dp)/real(sample_side, dp), &
+                            real(j, dp)/real(sample_side, dp), &
+                            real(k, dp)/real(sample_side, dp)]
+                        call evaluate_tetra_discontinuous( &
+                            basis, reference_point(1), reference_point(2), &
+                            reference_point(3), basis_values, local_status)
+                        if (local_status /= 0) cycle
+                        value = dot_product(basis_values, pressure_coefficients( &
+                            (cell - 1)*size(basis%exponents, 2) + 1: &
+                            cell*size(basis%exponents, 2)))
+                        point = vertices(:, tetrahedra(1, cell)) + &
+                            reference_point(1)*(vertices(:, tetrahedra(2, cell)) &
+                            - vertices(:, tetrahedra(1, cell))) + &
+                            reference_point(2)*(vertices(:, tetrahedra(3, cell)) &
+                            - vertices(:, tetrahedra(1, cell))) + &
+                            reference_point(3)*(vertices(:, tetrahedra(4, cell)) &
+                            - vertices(:, tetrahedra(1, cell)))
+                        count = count + 1
+                        x_plot(count) = point(1)
+                        y_plot(count) = point(2)
+                        z_plot(count) = point(3)
+                        values(count) = value
+                    end do
+                end do
+            end do
         end do
         call figure(figsize=[7.5_dp, 6.0_dp])
         call add_scatter( &
-            vertices(1, :), vertices(2, :), vertices(3, :), &
-            c=pressure_values, cmap="viridis", marker="o", &
-            markersize=9.0_dp, label="manufactured pressure samples")
-        call title("RT-DG mixed Poisson pressure in the tetrahedral box")
+            x_plot(:count), y_plot(:count), z_plot(:count), &
+            c=values(:count), cmap="viridis", marker=".", &
+            markersize=4.0_dp, label="computed DG pressure samples")
+        call title("RT-DG mixed Poisson computed pressure")
         call savefig(output_directory//"/tetra_mixed_solution_3d.png")
     end subroutine render_solution
-
-    pure real(dp) function manufactured_pressure(point) result(value)
-        real(dp), intent(in) :: point(3)
-
-        value = (point(1)*(1.0_dp - point(1)) + &
-            point(2)*(1.0_dp - point(2)) + &
-            point(3)*(1.0_dp - point(3)))/6.0_dp
-    end function manufactured_pressure
 
     pure real(dp) function unit_source(x, y, z) result(value)
         real(dp), intent(in) :: x, y, z
