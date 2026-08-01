@@ -1487,6 +1487,9 @@ gallery example.
   `solve_maxwell_fem_bem_linear_state` value map and its analytical JVP/VJP
   now provide the common implicit solve layer for those future products; an
   independent complex central-difference/adjoint test guards the contract.
+  The actual curved-torus block also has an independent nonzero manufactured
+  RWG-current state test, so the coupling gate is not limited to the
+  zero-current constant-field example.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
