@@ -100,6 +100,12 @@ defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and
 wall response adapters without importing their application physics.
 
+The [generalized complex eigen-residual](generalized_eigen_residual.html)
+provides the neutral `K u - lambda M u` modal residual and analytic JVP/VJP
+actions for Fourier-FEM, curl--curl, GLISS-like, and other linear-response
+clients without owning an eigensolver or application-specific interchange
+format.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
