@@ -39,6 +39,9 @@ program stops with an error if that independent convergence oracle fails.
 
 ## Output
 
+- `curl_curl_field_slice_2d.png`: the order-five solved Nédélec field
+  magnitude with the reconstructed in-plane `curl(E_h)` arrows on a physical
+  mid-plane; this is the primary visual result.
 - `curl_curl_p_convergence.png`: field and curl errors by polynomial order;
 - `convergence.csv`: the numerical values used to generate the plot.
 
@@ -57,6 +60,8 @@ fpm run --example curl_curl
 program curl_curl_example
     !! Verified arbitrary-order tetrahedral Nedelec curl-curl solve.
     use fortfem_api, only: solve_tetra_nedelec_curl_mass
+    use fortfem_api, only: evaluate_tetra_nedelec_interpolant_at_point, &
+        invert_tetra_affine_map
     use fortfem_kinds, only: dp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
@@ -65,8 +70,8 @@ program curl_curl_example
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortnum_linalg, only: det3
-    use fortplot, only: figure, legend, plot, quiver, savefig, title, xlabel, &
-        ylabel
+    use fortplot, only: add_scatter, colorbar, figure, legend, plot, quiver, &
+        savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -90,12 +95,13 @@ program curl_curl_example
         orders(order) = real(order, dp)
         write (*, "(a,i0,a,2(es12.4,1x))") &
             "Nedelec order ", order, " field/curl errors ", errors(:, order)
-        deallocate(solution)
+        if (order < maximum_order) deallocate(solution)
     end do
     if (.not. all(errors(:, 2:) < errors(:, :maximum_order - 1))) &
         error stop "curl-curl p-convergence regression"
 
-    call render_field_slice()
+    call render_field_slice(solution)
+    deallocate(solution)
 
     call figure(figsize=[8.0_dp, 5.0_dp])
     call plot(orders, errors(1, :), label="field error", marker="o")
@@ -116,12 +122,30 @@ program curl_curl_example
 
 contains
 
-    subroutine render_field_slice()
+    subroutine render_field_slice(coefficients)
         integer, parameter :: nx = 17, ny = 17
+        real(dp), intent(in) :: coefficients(:)
         real(dp) :: x_grid(nx), y_grid(ny), u_grid(nx, ny), v_grid(nx, ny)
         real(dp) :: x_flat(nx*ny), y_flat(nx*ny), u_flat(nx*ny), v_flat(nx*ny)
-        real(dp) :: value(3), point(3)
+        real(dp) :: magnitude(nx*ny), point(3), value(3), curl_value(3)
+        real(dp), allocatable :: basis_transform(:, :), local_dofs(:)
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        type(tetra_nedelec_first_kind_t) :: basis
+        integer :: dof_count, local_status
         integer :: i, j, index
+
+        call initialize_tetra_nedelec_first_kind( &
+            maximum_order, basis, local_status)
+        if (local_status /= 0) error stop "Nedelec plot basis failed"
+        call build_tetra_nedelec_dof_map( &
+            maximum_order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) error stop "Nedelec plot DOF map failed"
+        dof_count = size(global_dofs, 1)
+        allocate( &
+            basis_transform(dof_count, dof_count), local_dofs(dof_count))
 
         do i = 1, nx
             x_grid(i) = real(i - 1, dp)/real(nx - 1, dp)
@@ -132,9 +156,14 @@ contains
         do j = 1, ny
             do i = 1, nx
                 point = [x_grid(i), y_grid(j), 0.5_dp]
-                value = exact_curl(point)
-                u_grid(i, j) = value(1)
-                v_grid(i, j) = value(2)
+                call evaluate_global_field( &
+                    point, coefficients, basis, global_dofs, &
+                    edge_orientations, face_permutations, basis_transform, &
+                    local_dofs, value, curl_value, local_status)
+                if (local_status /= 0) error stop "Nedelec plot field failed"
+                magnitude(index_point(i, j, nx)) = norm2(value)
+                u_grid(i, j) = curl_value(1)
+                v_grid(i, j) = curl_value(2)
             end do
         end do
 
@@ -149,13 +178,62 @@ contains
             end do
         end do
         call figure(figsize=[7.5_dp, 6.0_dp])
-        call quiver(x_flat, y_flat, u_flat, v_flat, scale=1.0_dp, &
-            color="navy")
+        call add_scatter( &
+            x_flat, y_flat, c=magnitude, cmap="viridis", marker=".", &
+            markersize=8.0_dp, label="solved Nedelec field magnitude")
+        call quiver( &
+            x_flat, y_flat, u_flat, v_flat, scale=1.5_dp, &
+            color="black", width=0.0035_dp)
+        call colorbar(label="|E_h|")
         call xlabel("x")
         call ylabel("y")
-        call title("Manufactured curl(E) slice at z = 0.5")
+        call title("Solved curl-curl field and curl(E_h) at z = 0.5")
         call savefig(output_directory//"/curl_curl_field_slice_2d.png")
     end subroutine render_field_slice
+
+    subroutine evaluate_global_field( &
+            point, coefficients, basis, global_dofs, edge_orientations, &
+            face_permutations, basis_transform, local_dofs, value, curl_value, &
+            local_status)
+        real(dp), intent(in) :: point(3), coefficients(:)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        integer, intent(in) :: global_dofs(:, :), edge_orientations(:, :)
+        integer, intent(in) :: face_permutations(:, :, :)
+        real(dp), intent(inout) :: basis_transform(:, :), local_dofs(:)
+        real(dp), intent(out) :: value(3), curl_value(3)
+        integer, intent(out) :: local_status
+
+        real(dp) :: reference(3)
+        integer :: cell
+
+        value = 0.0_dp
+        curl_value = 0.0_dp
+        local_status = 1
+        do cell = 1, size(tetrahedra, 2)
+            call invert_tetra_affine_map( &
+                vertices(:, tetrahedra(:, cell)), point, reference, &
+                local_status)
+            if (local_status /= 0) cycle
+            if (minval(reference) < -1.0e-10_dp .or. &
+                sum(reference) > 1.0_dp + 1.0e-10_dp) cycle
+            call build_tetra_nedelec_basis_transform( &
+                maximum_order, edge_orientations(:, cell), &
+                face_permutations(:, :, cell), basis_transform, local_status)
+            if (local_status /= 0) return
+            local_dofs = matmul( &
+                basis_transform, coefficients(global_dofs(:, cell)))
+            call evaluate_tetra_nedelec_interpolant_at_point( &
+                vertices(:, tetrahedra(:, cell)), basis, local_dofs, point, &
+                value, curl_value, local_status)
+            return
+        end do
+    end subroutine evaluate_global_field
+
+    pure integer function index_point(i, j, width) result(index)
+        integer, intent(in) :: i, j, width
+
+        index = (j - 1)*width + i
+    end function index_point
 
     pure subroutine manufactured_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z
