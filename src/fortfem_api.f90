@@ -469,6 +469,7 @@ module fortfem_api
         evaluate_field_aligned_flux, evaluate_field_aligned_flux_jvp, &
         evaluate_field_aligned_flux_vjp
     use fortfem_spherical_harmonics, only: spherical_harmonic, &
+        spherical_harmonic_product_coefficient, &
         spherical_harmonic_theta_derivative, spherical_harmonic_phi_derivative
     use fortfem_toroidal_harmonics, only: toroidal_p, toroidal_q, &
         toroidal_p_derivative, toroidal_q_derivative
@@ -2155,6 +2156,7 @@ module fortfem_api
     public :: spherical_harmonic
     public :: spherical_harmonic_theta_derivative
     public :: spherical_harmonic_phi_derivative
+    public :: spherical_harmonic_product_coefficient
     public :: toroidal_p
     public :: toroidal_q
     public :: toroidal_p_derivative
