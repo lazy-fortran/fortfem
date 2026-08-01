@@ -6,6 +6,10 @@ module fortfem_advanced_solvers
     use fortfem_incomplete_cholesky, only: &
         apply_incomplete_cholesky, build_incomplete_cholesky, &
         incomplete_cholesky_factor_t
+    use fortfem_sparse_incomplete_cholesky, only: &
+        apply_sparse_incomplete_cholesky, build_sparse_ichol, &
+        sparse_incomplete_cholesky_factor_t
+    use fortsparse, only: fortsparse_status_t
     use fortnum_linalg, only: dense_solve
     use fortnum_krylov, only: KRYLOV_OK, real_gmres_operator
     implicit none
@@ -20,6 +24,7 @@ module fortfem_advanced_solvers
     public :: bicgstab_solve_jvp, bicgstab_solve_vjp
     public :: gmres_solve_jvp, gmres_solve_vjp
     public :: jacobi_preconditioner, ilu_preconditioner, ichol_preconditioner
+    public :: ichol_controlled_preconditioner
 
     ! Solver options type
     type :: solver_options_t
@@ -56,6 +61,7 @@ module fortfem_advanced_solvers
         real(dp), allocatable :: L(:, :), U(:, :) ! For ILU
         integer, allocatable :: pivot(:) ! For ILU
         type(incomplete_cholesky_factor_t) :: ichol ! For IC(0)
+        type(sparse_incomplete_cholesky_factor_t) :: sparse_ichol
     end type preconditioner_t
 
     abstract interface
@@ -975,7 +981,7 @@ contains
         case ("ilu")
             call build_ilu_preconditioner(A, precond, opts)
 
-        case ("ichol", "ic", "ic0")
+        case ("ichol", "ic", "ic0", "ichol_controlled")
             call build_incomplete_cholesky(A, precond%ichol, i)
             if (i /= 0) precond%type = "none"
 
@@ -995,6 +1001,7 @@ contains
         integer :: n, i, j, k
         real(dp) :: a_ii
         real(dp), allocatable :: A_dense(:, :)
+        type(fortsparse_status_t) :: sparse_status
 
         n = A_sparse%nrow
         precond%type = precond_type
@@ -1016,6 +1023,11 @@ contains
                     precond%diagonal(i) = 1.0_dp
                 end if
             end do
+
+        case ("ichol_controlled", "sparse_ichol")
+            call build_sparse_ichol(A_sparse, opts%drop_tolerance, &
+                opts%fill_level, precond%sparse_ichol, sparse_status)
+            if (sparse_status%code /= 0) precond%type = "none"
 
         case ("ilu", "ichol", "ic", "ic0")
             allocate (A_dense(n, n))
@@ -1050,6 +1062,8 @@ contains
 
         integer :: n, i, status
         real(dp), allocatable :: z_ichol(:)
+        real(dp), allocatable :: z_sparse_ichol(:)
+        type(fortsparse_status_t) :: sparse_status
 
         n = size(r)
 
@@ -1061,6 +1075,15 @@ contains
 
         case ("ilu")
             call solve_ilu(precond, r, z)
+
+        case ("ichol_controlled", "sparse_ichol")
+            call apply_sparse_incomplete_cholesky( &
+                precond%sparse_ichol, r, z_sparse_ichol, sparse_status)
+            if (sparse_status%code == 0) then
+                z = z_sparse_ichol
+            else
+                z = r
+            end if
 
         case ("ichol", "ic", "ic0")
             call apply_incomplete_cholesky(precond%ichol, r, z_ichol, status)
@@ -1322,5 +1345,10 @@ contains
         character(len=32) :: precond_name
         precond_name = "ichol"
     end function ichol_preconditioner
+
+    function ichol_controlled_preconditioner() result(precond_name)
+        character(len=32) :: precond_name
+        precond_name = "ichol_controlled"
+    end function ichol_controlled_preconditioner
 
 end module fortfem_advanced_solvers

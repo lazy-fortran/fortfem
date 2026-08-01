@@ -856,8 +856,9 @@ ICHOL, and scaling benchmarks remain active solver work. The deterministic
 `build_sparse_ilut`/`apply_sparse_ilut` path now supplies drop tolerance,
 per-column fill selection, fixed-factor JVP/VJP, and explicit pivot status;
 `build_sparse_ichol` supplies the matching SPD drop/fill path on the existing
-sparse IC apply/JVP/VJP contract; scalable row-oriented construction, PCG
-integration, and scaling remain. The
+sparse IC apply/JVP/VJP contract; `solve_sparse` now accepts the
+`ichol_controlled` preconditioner with an exact full-fill one-step PCG oracle.
+Scalable row-oriented construction and measured scaling remain. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
