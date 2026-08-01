@@ -106,6 +106,11 @@ actions for Fourier-FEM, curl--curl, GLISS-like, and other linear-response
 clients without owning an eigensolver or application-specific interchange
 format.
 
+The [coupled field residual](coupled_field_residual.html) composes a
+caller-owned rectangular field operator and constraint operator into one
+residual with exact real JVP/VJP actions. It is the neutral assembly boundary
+for multi-field FEM, BEM, DtN, PML, tensor, and interface clients.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
