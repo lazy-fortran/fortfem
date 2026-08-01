@@ -2,6 +2,8 @@ program test_maxwell_torus_curved_rwg_mass
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
+        assemble_maxwell_torus_curved_rwg_mass_matrix_jvp, &
+        assemble_maxwell_torus_curved_rwg_mass_matrix_vjp, &
         evaluate_maxwell_torus_curved_rwg_basis, generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
@@ -14,9 +16,16 @@ program test_maxwell_torus_curved_rwg_mass
     real(dp), allocatable :: eta(:), matrix(:, :), parameters(:, :)
     real(dp), allocatable :: scaled_matrix(:, :), scaled_vertices(:, :)
     real(dp), allocatable :: values(:), vertices(:, :), weights(:), xi(:)
+    real(dp), allocatable :: matrix_dot(:, :), matrix_bar(:, :)
+    real(dp), allocatable :: matrix_plus(:, :), matrix_minus(:, :)
+    real(dp), allocatable :: vertices_dot(:, :), parameters_dot(:, :)
+    real(dp), allocatable :: vertices_bar(:, :), parameters_bar(:, :)
     real(dp) :: divergence, divergence_integral, energy, jacobian
     real(dp) :: normal(3), point(3), relative_scaling_error, tangency_error
     real(dp) :: value(3)
+    real(dp) :: major_radius_dot, minor_radius_dot, major_radius_bar
+    real(dp) :: minor_radius_bar, step, jvp_error, lhs, rhs, adjoint_error
+    integer, parameter :: derivative_quadrature_degree = 4
     integer :: basis, node, panel, status
     logical :: all_passed
 
@@ -63,10 +72,66 @@ program test_maxwell_torus_curved_rwg_mass
     call record_condition(energy > 0.0_dp, &
         "curved-torus RWG mass has positive field energy")
 
+    allocate( &
+        vertices_dot(size(vertices, 1), size(vertices, 2)), &
+        parameters_dot(size(parameters, 1), size(parameters, 2)))
+    do basis = 1, size(vertices_dot, 2)
+        vertices_dot(:, basis) = [ &
+            0.013_dp*sin(real(2*basis, dp)), &
+            -0.009_dp*cos(real(3*basis, dp)), &
+            0.011_dp*sin(real(5*basis, dp))]
+        parameters_dot(:, basis) = [ &
+            0.007_dp*cos(real(basis + 1, dp)), &
+            -0.005_dp*sin(real(2*basis + 1, dp))]
+    end do
+    major_radius_dot = 0.021_dp
+    minor_radius_dot = -0.013_dp
+    call assemble_maxwell_torus_curved_rwg_mass_matrix_jvp( &
+        vertices, triangles, parameters, major_radius, minor_radius, &
+        derivative_quadrature_degree, &
+        vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+        matrix, matrix_dot, status)
+    step = 2.0e-6_dp
+    call assemble_maxwell_torus_curved_rwg_mass_matrix( &
+        vertices + step*vertices_dot, triangles, parameters + step*parameters_dot, &
+        major_radius + step*major_radius_dot, minor_radius + step*minor_radius_dot, &
+        derivative_quadrature_degree, matrix_plus, status)
+    call assemble_maxwell_torus_curved_rwg_mass_matrix( &
+        vertices - step*vertices_dot, triangles, parameters - step*parameters_dot, &
+        major_radius - step*major_radius_dot, minor_radius - step*minor_radius_dot, &
+        derivative_quadrature_degree, matrix_minus, status)
+    jvp_error = maxval(abs(matrix_dot - (matrix_plus - matrix_minus)/(2.0_dp*step)))
+    call record_condition(status == 0 .and. jvp_error < 2.0e-7_dp, &
+        "curved-torus RWG mass geometry JVP matches reassembly")
+
+    allocate(matrix_bar(size(matrix, 1), size(matrix, 2)))
+    do basis = 1, size(matrix_bar, 2)
+        do panel = 1, size(matrix_bar, 1)
+            matrix_bar(panel, basis) = sin(real(2*panel + 3*basis, dp))
+        end do
+    end do
+    allocate( &
+        vertices_bar(size(vertices, 1), size(vertices, 2)), &
+        parameters_bar(size(parameters, 1), size(parameters, 2)))
+    call assemble_maxwell_torus_curved_rwg_mass_matrix_vjp( &
+        vertices, triangles, parameters, major_radius, minor_radius, &
+        derivative_quadrature_degree, matrix_bar, &
+        vertices_bar, parameters_bar, major_radius_bar, minor_radius_bar, status)
+    lhs = sum(matrix_bar*matrix_dot)
+    rhs = sum(vertices_bar*vertices_dot) + sum(parameters_bar*parameters_dot) + &
+        major_radius_bar*major_radius_dot + minor_radius_bar*minor_radius_dot
+    adjoint_error = abs(lhs - rhs)
+    call record_condition(status == 0 .and. adjoint_error < &
+        5.0e-9_dp*max(1.0_dp, abs(lhs), abs(rhs)), &
+        "curved-torus RWG mass geometry VJP satisfies the adjoint identity")
+
     scaled_vertices = 3.0_dp*vertices
     call assemble_maxwell_torus_curved_rwg_mass_matrix( &
         scaled_vertices, triangles, parameters, 3.0_dp*major_radius, &
         3.0_dp*minor_radius, 12, scaled_matrix, status)
+    call assemble_maxwell_torus_curved_rwg_mass_matrix( &
+        vertices, triangles, parameters, major_radius, minor_radius, 12, &
+        matrix, status)
     relative_scaling_error = maxval(abs(scaled_matrix - 9.0_dp*matrix))/ &
         maxval(abs(scaled_matrix))
     call record_condition(status == 0 .and. relative_scaling_error < &
