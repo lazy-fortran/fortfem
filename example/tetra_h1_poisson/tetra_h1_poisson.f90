@@ -1,5 +1,6 @@
 program tetra_h1_poisson
     use fortfem_api, only: evaluate_tetra_lagrange_solution, &
+        evaluate_tetra_lagrange_solution_at_point, &
         solve_tetra_lagrange_poisson, tetra_duffy_quadrature
     use fortfem_generated_tetra_h1_oracle, only: generated_tetra_h1_oracle
     use fortfem_kinds, only: dp
@@ -21,6 +22,8 @@ program tetra_h1_poisson
         0.25_dp, 0.25_dp, 0.25_dp], [3, 5])
 
     real(dp) :: degrees(4), h1_errors(4), l2_errors(4)
+    real(dp), allocatable :: plot_solution(:)
+    type(fortsparse_status_t) :: plot_status
     integer :: command_status, degree, unit
 
     call execute_command_line( &
@@ -52,7 +55,11 @@ program tetra_h1_poisson
     end do
     close (unit)
 
-    call render_solution()
+    call solve_tetra_lagrange_poisson( &
+        vertices, tetrahedra, 4, bubble_source, zero_boundary, &
+        plot_solution, plot_status)
+    if (plot_status%code /= 0) error stop "tetrahedral plot solve failed"
+    call render_solution(plot_solution)
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot( &
@@ -68,23 +75,53 @@ program tetra_h1_poisson
 
 contains
 
-    subroutine render_solution()
-        real(dp) :: vertex_values(size(vertices, 2)), oracle(5)
-        integer :: vertex
+    subroutine render_solution(solution)
+        real(dp), intent(in) :: solution(:)
 
-        do vertex = 1, size(vertices, 2)
-            call generated_tetra_h1_oracle( &
-                vertices(1, vertex), vertices(2, vertex), vertices(3, vertex), &
-                oracle)
-            vertex_values(vertex) = oracle(1)
+        integer, parameter :: sample_side = 12
+        real(dp), allocatable :: x_plot(:), y_plot(:), z_plot(:), values(:)
+        real(dp) :: point(3), value, gradient(3)
+        integer :: cell, count, i, j, k, local_status
+
+        allocate( &
+            x_plot(4*sample_side**3), y_plot(4*sample_side**3), &
+            z_plot(4*sample_side**3), values(4*sample_side**3))
+        count = 0
+        do cell = 1, size(tetrahedra, 2)
+            do k = 0, sample_side
+                do j = 0, sample_side
+                    do i = 0, sample_side
+                        if (i + j + k > sample_side) cycle
+                        point = vertices(:, tetrahedra(1, cell)) + &
+                            real(i, dp)/real(sample_side, dp)* &
+                            (vertices(:, tetrahedra(2, cell)) - &
+                            vertices(:, tetrahedra(1, cell))) + &
+                            real(j, dp)/real(sample_side, dp)* &
+                            (vertices(:, tetrahedra(3, cell)) - &
+                            vertices(:, tetrahedra(1, cell))) + &
+                            real(k, dp)/real(sample_side, dp)* &
+                            (vertices(:, tetrahedra(4, cell)) - &
+                            vertices(:, tetrahedra(1, cell)))
+                        call evaluate_tetra_lagrange_solution_at_point( &
+                            vertices, tetrahedra, 4, solution, cell, point, &
+                            value, gradient, local_status)
+                        if (local_status /= 0) cycle
+                        count = count + 1
+                        x_plot(count) = point(1)
+                        y_plot(count) = point(2)
+                        z_plot(count) = point(3)
+                        values(count) = value
+                    end do
+                end do
+            end do
         end do
 
         call figure(figsize=[7.5_dp, 6.0_dp])
         call add_scatter( &
-            vertices(1, :), vertices(2, :), vertices(3, :), &
-            c=vertex_values, cmap="viridis", marker="o", &
-            markersize=8.0_dp, label="tetrahedral solution samples")
-        call title("Tetrahedral H1 Poisson solution samples")
+            x_plot(:count), y_plot(:count), z_plot(:count), &
+            c=values(:count), cmap="viridis", marker=".", &
+            markersize=4.0_dp, label="computed quartic solution samples")
+        call title("Tetrahedral H1 Poisson computed solution")
         call savefig(output_directory//"/tetra_h1_poisson_solution_3d.png")
     end subroutine render_solution
 

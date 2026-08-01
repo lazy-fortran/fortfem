@@ -49,24 +49,49 @@ program tetra_nedelec_p_convergence
 contains
 
     subroutine render_field()
-        real(dp), parameter :: vertices(3, 8) = reshape([ &
-            0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, &
-            0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 0.0_dp, &
-            0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 0.0_dp, 1.0_dp, &
-            0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, 1.0_dp], [3, 8])
-        real(dp) :: field_magnitude(size(vertices, 2))
-        integer :: vertex
+        integer, parameter :: sample_side = 12
+        real(dp), allocatable :: dofs(:), x_plot(:), y_plot(:), z_plot(:)
+        real(dp), allocatable :: field_magnitude(:), basis_values(:, :)
+        real(dp), allocatable :: basis_curls(:, :)
+        real(dp) :: point(3), field_value(3)
+        integer :: count, i, j, k, local_status
 
-        do vertex = 1, size(vertices, 2)
-            field_magnitude(vertex) = &
-                norm2(cubic_gradient_value(vertices(:, vertex)))
+        call interpolate_reference_tetra_nedelec( &
+            basis, cubic_gradient, dofs, local_status)
+        if (local_status /= 0) error stop "plot interpolation failed"
+        allocate( &
+            x_plot((sample_side + 1)**3), &
+            y_plot((sample_side + 1)**3), &
+            z_plot((sample_side + 1)**3), &
+            field_magnitude((sample_side + 1)**3), &
+            basis_values(3, size(dofs)), basis_curls(3, size(dofs)))
+        count = 0
+        do k = 0, sample_side
+            do j = 0, sample_side
+                do i = 0, sample_side
+                    if (i + j + k > sample_side) cycle
+                    point = [ &
+                        real(i, dp)/real(sample_side, dp), &
+                        real(j, dp)/real(sample_side, dp), &
+                        real(k, dp)/real(sample_side, dp)]
+                    call evaluate_tetra_nedelec_first_kind( &
+                        basis, point, basis_values, basis_curls, local_status)
+                    if (local_status /= 0) cycle
+                    field_value = matmul(basis_values, dofs)
+                    count = count + 1
+                    x_plot(count) = point(1)
+                    y_plot(count) = point(2)
+                    z_plot(count) = point(3)
+                    field_magnitude(count) = norm2(field_value)
+                end do
+            end do
         end do
         call figure(figsize=[7.5_dp, 6.0_dp])
         call add_scatter( &
-            vertices(1, :), vertices(2, :), vertices(3, :), &
-            c=field_magnitude, cmap="viridis", marker="o", &
-            markersize=9.0_dp, label="|grad(x^4)| samples")
-        call title("Tetrahedral Nedelec vector field")
+            x_plot(:count), y_plot(:count), z_plot(:count), &
+            c=field_magnitude(:count), cmap="viridis", marker=".", &
+            markersize=4.0_dp, label="computed Nedelec field magnitude")
+        call title("Tetrahedral Nedelec computed vector field")
         call savefig(output_directory//"/nedelec_field_3d.png")
     end subroutine render_field
 

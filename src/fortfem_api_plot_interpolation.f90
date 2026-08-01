@@ -1,6 +1,8 @@
 module fortfem_api_plot_interpolation
     use fortfem_kinds, only: dp
     use fortfem_api_types, only: function_t, vector_function_t
+    use fortfem_nedelec_field_2d, only: evaluate_nedelec_field_2d
+    use fortfem_rt_field_2d, only: evaluate_rt_field_2d
     implicit none
 
     private
@@ -151,24 +153,141 @@ contains
         real(dp), intent(in) :: x_grid(:), y_grid(:)
         real(dp), intent(out) :: u_grid(:, :), v_grid(:, :)
 
-        integer :: i, j
-        real(dp) :: x, y
+        complex(dp), allocatable :: dofs(:)
+        complex(dp) :: complex_value(2)
+        real(dp) :: value(2)
+        integer :: i, j, triangle
+        logical :: is_nedelec, is_rt, is_nodal
 
+        is_nedelec = trim(Eh%space%element_family) == "Nedelec" .or. &
+            trim(Eh%space%element_family) == "Nedelec1" .or. &
+            trim(Eh%space%element_family) == "Edge"
+        is_rt = trim(Eh%space%element_family) == "RT" .or. &
+            trim(Eh%space%element_family) == "Raviart-Thomas"
+        is_nodal = size(Eh%values, 1) == Eh%space%mesh%data%n_vertices
+
+        if (.not. is_nedelec .and. .not. is_rt .and. .not. is_nodal) then
+            error stop "vector plotting cannot reconstruct this FE space"
+        end if
+        if (is_nedelec .or. is_rt) then
+            if (size(Eh%values, 1) /= Eh%space%mesh%data%n_edges) then
+                error stop "vector plotting needs lowest-order edge DOFs"
+            end if
+            allocate(dofs(size(Eh%values, 1)))
+            ! The solver stores the real FE coefficient vector in column one;
+            ! column two is reserved for the second source component.
+            dofs = cmplx(Eh%values(:, 1), 0.0_dp, dp)
+        end if
+
+        u_grid = 0.0_dp
+        v_grid = 0.0_dp
         do i = 1, size(x_grid)
             do j = 1, size(y_grid)
-                x = x_grid(i)
-                y = y_grid(j)
-
-                if (i <= size(x_grid)/2 .and. j <= size(y_grid)/2) then
-                    u_grid(i, j) = x*y
-                    v_grid(i, j) = x*x
-                else
-                    u_grid(i, j) = 0.1_dp*x
-                    v_grid(i, j) = 0.1_dp*y
+                call locate_triangle(Eh%space%mesh%data, x_grid(i), &
+                    y_grid(j), triangle)
+                if (triangle > 0) then
+                    if (is_nedelec) then
+                        call evaluate_nedelec_field_2d( &
+                            Eh%space%mesh%data, triangle, x_grid(i), &
+                            y_grid(j), dofs, complex_value)
+                        value = real(complex_value, dp)
+                    else if (is_rt) then
+                        call evaluate_rt_field_2d( &
+                            Eh%space%mesh%data, triangle, x_grid(i), &
+                            y_grid(j), dofs, complex_value)
+                        value = real(complex_value, dp)
+                    else
+                        call interpolate_nodal_vector( &
+                            Eh, triangle, x_grid(i), y_grid(j), value)
+                    end if
+                    u_grid(i, j) = value(1)
+                    v_grid(i, j) = value(2)
+                else if (is_nodal) then
+                    call nearest_nodal_vector(Eh, x_grid(i), y_grid(j), value)
+                    u_grid(i, j) = value(1)
+                    v_grid(i, j) = value(2)
                 end if
             end do
         end do
+
+        if (allocated(dofs)) deallocate(dofs)
     end subroutine interpolate_vector_to_grid
+
+    subroutine locate_triangle(mesh, x, y, triangle)
+        use fortfem_mesh_2d, only: mesh_2d_t
+        type(mesh_2d_t), intent(in) :: mesh
+        real(dp), intent(in) :: x, y
+        integer, intent(out) :: triangle
+
+        real(dp) :: lambda1, lambda2, lambda3
+        integer :: candidate, v1, v2, v3
+
+        triangle = 0
+        do candidate = 1, mesh%n_triangles
+            v1 = mesh%triangles(1, candidate)
+            v2 = mesh%triangles(2, candidate)
+            v3 = mesh%triangles(3, candidate)
+            call barycentric_coordinates( &
+                x, y, mesh%vertices(1, v1), mesh%vertices(2, v1), &
+                mesh%vertices(1, v2), mesh%vertices(2, v2), &
+                mesh%vertices(1, v3), mesh%vertices(2, v3), &
+                lambda1, lambda2, lambda3)
+            if (lambda1 >= -1.0e-10_dp .and. &
+                lambda2 >= -1.0e-10_dp .and. &
+                lambda3 >= -1.0e-10_dp) then
+                triangle = candidate
+                return
+            end if
+        end do
+    end subroutine locate_triangle
+
+    subroutine interpolate_nodal_vector(Eh, triangle, x, y, value)
+        type(vector_function_t), intent(in) :: Eh
+        integer, intent(in) :: triangle
+        real(dp), intent(in) :: x, y
+        real(dp), intent(out) :: value(2)
+
+        integer :: vertex(3), component
+        real(dp) :: lambda(3)
+
+        vertex = Eh%space%mesh%data%triangles(:, triangle)
+        call barycentric_coordinates( &
+            x, y, Eh%space%mesh%data%vertices(1, vertex(1)), &
+            Eh%space%mesh%data%vertices(2, vertex(1)), &
+            Eh%space%mesh%data%vertices(1, vertex(2)), &
+            Eh%space%mesh%data%vertices(2, vertex(2)), &
+            Eh%space%mesh%data%vertices(1, vertex(3)), &
+            Eh%space%mesh%data%vertices(2, vertex(3)), &
+            lambda(1), lambda(2), lambda(3))
+        do component = 1, 2
+            value(component) = dot_product(lambda, &
+                Eh%values(vertex, component))
+        end do
+    end subroutine interpolate_nodal_vector
+
+    subroutine nearest_nodal_vector(Eh, x, y, value)
+        type(vector_function_t), intent(in) :: Eh
+        real(dp), intent(in) :: x, y
+        real(dp), intent(out) :: value(2)
+
+        integer :: component, vertex, nearest
+        real(dp) :: distance, minimum, dx, dy
+
+        nearest = 1
+        minimum = huge(1.0_dp)
+        do vertex = 1, Eh%space%mesh%data%n_vertices
+            dx = x - Eh%space%mesh%data%vertices(1, vertex)
+            dy = y - Eh%space%mesh%data%vertices(2, vertex)
+            distance = dx*dx + dy*dy
+            if (distance < minimum) then
+                minimum = distance
+                nearest = vertex
+            end if
+        end do
+        do component = 1, 2
+            value(component) = Eh%values(nearest, component)
+        end do
+    end subroutine nearest_nodal_vector
 
     subroutine barycentric_coordinates(x, y, x1, y1, x2, y2, x3, y3, &
             lambda1, lambda2, lambda3)
