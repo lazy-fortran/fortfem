@@ -33,6 +33,9 @@ program stops with an error if that independent convergence oracle fails.
 
 ## Output
 
+- `curl_curl_field_slice_2d.png`: the order-five solved Nédélec field
+  magnitude with the reconstructed in-plane `curl(E_h)` arrows on a physical
+  mid-plane; this is the primary visual result.
 - `curl_curl_p_convergence.png`: field and curl errors by polynomial order;
 - `convergence.csv`: the numerical values used to generate the plot.
 
