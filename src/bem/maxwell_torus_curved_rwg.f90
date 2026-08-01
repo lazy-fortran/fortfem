@@ -4,7 +4,8 @@ module fortfem_maxwell_torus_curved_rwg
     use fortfem_maxwell_bc_surface, only: build_maxwell_bc_transformation
     use fortfem_maxwell_efie_bc_3d, only: build_maxwell_bc_to_refined_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
-    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
+    use fortfem_torus_curved_panel, only: &
+        evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
@@ -25,7 +26,9 @@ module fortfem_maxwell_torus_curved_rwg
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_torus_magnetic_geometry_jvp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
+    public :: evaluate_maxwell_torus_curved_rwg_basis_jvp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
@@ -80,6 +83,59 @@ contains
             magnetic_field_dot, status)
     end subroutine &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+
+    subroutine evaluate_maxwell_torus_magnetic_geometry_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            coefficients, observation, wave_number, quadrature_degree, &
+            vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+            coefficients_dot, observation_dot, wave_number_dot, &
+            magnetic_field_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, observation(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(in) :: observation_dot(3), wave_number_dot
+        complex(dp), intent(out) :: magnetic_field_dot(3)
+        complex(dp), allocatable :: basis_fields(:, :), basis_fields_dot(:, :)
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        integer :: status
+
+        magnetic_field_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (any(shape(parameters_dot) /= shape(parameters))) return
+        if (size(coefficients_dot) /= size(coefficients)) return
+        if (major_radius <= minor_radius .or. minor_radius <= 0.0_dp) return
+        if (wave_number < 0.0_dp .or. quadrature_degree < 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(edge_vertices, 2) == 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            basis_fields(3, size(edge_vertices, 2)), &
+            basis_fields_dot(3, size(edge_vertices, 2)))
+        call evaluate_all_torus_curved_rwg_magnetic_fields_jvp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            major_radius, minor_radius, observation, wave_number, xi, eta, &
+            weights, vertices_dot, parameters_dot, major_radius_dot, &
+            minor_radius_dot, observation_dot, wave_number_dot, basis_fields, &
+            basis_fields_dot, status)
+        if (status /= 0) return
+        magnetic_field_dot = matmul(basis_fields_dot, coefficients) + &
+            matmul(basis_fields, coefficients_dot)
+        status = 0
+    end subroutine &
+        evaluate_maxwell_torus_magnetic_geometry_jvp
 
     subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -593,6 +649,83 @@ contains
         end do
         status = 0
     end subroutine evaluate_all_torus_curved_rwg_magnetic_fields
+
+    subroutine evaluate_all_torus_curved_rwg_magnetic_fields_jvp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            major_radius, minor_radius, target, wave_number, xi, eta, weights, &
+            vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+            target_dot, wave_number_dot, magnetic_fields, magnetic_fields_dot, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, target(3)
+        real(dp), intent(in) :: wave_number, xi(:), eta(:), weights(:)
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(in) :: target_dot(3), wave_number_dot
+        complex(dp), intent(out) :: magnetic_fields(:, :), magnetic_fields_dot(:, :)
+        real(dp) :: basis_value(3), basis_value_dot(3)
+        real(dp) :: displacement(3), displacement_dot(3), distance
+        real(dp) :: distance_dot, divergence, divergence_dot, jacobian
+        real(dp) :: jacobian_dot, point(3), point_dot(3), unit(3), unit_dot(3)
+        complex(dp) :: curl_integrand(3), curl_integrand_dot(3)
+        complex(dp) :: gradient_green(3), gradient_green_dot(3), green, green_dot
+        complex(dp) :: q, q_dot
+        integer :: basis, node, panel, status
+
+        magnetic_fields = cmplx(0.0_dp, 0.0_dp, dp)
+        magnetic_fields_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_torus_curved_rwg_basis_jvp( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, panel, major_radius, minor_radius, &
+                        xi(node), eta(node), vertices_dot, parameters_dot, &
+                        major_radius_dot, minor_radius_dot, point, basis_value, &
+                        divergence, jacobian, point_dot, basis_value_dot, &
+                        divergence_dot, jacobian_dot, status)
+                    if (status /= 0) return
+                    displacement = target - point
+                    displacement_dot = target_dot - point_dot
+                    distance = norm2(displacement)
+                    if (distance <= &
+                        128.0_dp*epsilon(1.0_dp)*minor_radius) return
+                    distance_dot = dot_product(displacement, displacement_dot)/ &
+                        distance
+                    green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                        (4.0_dp*acos(-1.0_dp)*distance)
+                    green_dot = green*(cmplx( &
+                        0.0_dp, wave_number_dot*distance + &
+                        wave_number*distance_dot, dp) - distance_dot/distance)
+                    unit = displacement/distance
+                    unit_dot = (displacement_dot - unit*distance_dot)/distance
+                    q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance
+                    q_dot = cmplx(0.0_dp, wave_number_dot, dp) + &
+                        distance_dot/distance**2
+                    gradient_green = green*q*unit
+                    gradient_green_dot = (green_dot*q + green*q_dot)*unit + &
+                        green*q*unit_dot
+                    curl_integrand = complex_cross_product( &
+                        gradient_green, cmplx(basis_value, 0.0_dp, dp))
+                    curl_integrand_dot = complex_cross_product( &
+                        gradient_green_dot, cmplx(basis_value, 0.0_dp, dp)) + &
+                        complex_cross_product( &
+                        gradient_green, cmplx(basis_value_dot, 0.0_dp, dp))
+                    magnetic_fields(:, basis) = magnetic_fields(:, basis) + &
+                        weights(node)*jacobian*curl_integrand
+                    magnetic_fields_dot(:, basis) = &
+                        magnetic_fields_dot(:, basis) + weights(node)*( &
+                        jacobian_dot*curl_integrand + &
+                        jacobian*curl_integrand_dot)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_all_torus_curved_rwg_magnetic_fields_jvp
 
     subroutine assemble_maxwell_torus_curved_rwg_rbc_pairing( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -1416,6 +1549,111 @@ contains
             2.0_dp*real(orientation, dp)*edge_length/surface_jacobian
         status = 0
     end subroutine evaluate_maxwell_torus_curved_rwg_basis
+
+    pure subroutine evaluate_maxwell_torus_curved_rwg_basis_jvp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            basis, panel, major_radius, minor_radius, xi, eta, vertices_dot, &
+            parameters_dot, major_radius_dot, minor_radius_dot, point, value, &
+            surface_divergence, surface_jacobian, point_dot, value_dot, &
+            surface_divergence_dot, surface_jacobian_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, xi, eta
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :), basis, panel
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(out) :: point(3), value(3), surface_divergence
+        real(dp), intent(out) :: surface_jacobian, point_dot(3), value_dot(3)
+        real(dp), intent(out) :: surface_divergence_dot, surface_jacobian_dot
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_dot(3), edge_length, edge_length_dot
+        real(dp) :: panel_parameters(2, 3), panel_parameters_dot(2, 3)
+        real(dp) :: tangent_eta(3), tangent_eta_dot(3)
+        real(dp) :: tangent_xi(3), tangent_xi_dot(3)
+        real(dp) :: vector(3), vector_dot(3), coefficient, coefficient_dot
+        real(dp) :: opposite_coordinates(2), jacobian
+        integer :: local, next, opposite, orientation
+
+        point = 0.0_dp
+        value = 0.0_dp
+        surface_divergence = 0.0_dp
+        surface_jacobian = 0.0_dp
+        point_dot = 0.0_dp
+        value_dot = 0.0_dp
+        surface_divergence_dot = 0.0_dp
+        surface_jacobian_dot = 0.0_dp
+        status = 1
+        call evaluate_maxwell_torus_curved_rwg_basis( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            basis, panel, major_radius, minor_radius, xi, eta, point, value, &
+            surface_divergence, surface_jacobian, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (any(shape(parameters_dot) /= shape(parameters))) return
+        orientation = 0
+        opposite = 0
+        do local = 1, 3
+            next = modulo(local, 3) + 1
+            if (triangles(local, panel) == edge_vertices(1, basis) .and. &
+                triangles(next, panel) == edge_vertices(2, basis)) then
+                orientation = 1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+            if (triangles(local, panel) == edge_vertices(2, basis) .and. &
+                triangles(next, panel) == edge_vertices(1, basis)) then
+                orientation = -1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+        end do
+        if (orientation == 0) return
+        do local = 1, 3
+            panel_parameters(:, local) = parameters(:, triangles(local, panel))
+            panel_parameters_dot(:, local) = &
+                parameters_dot(:, triangles(local, panel))
+        end do
+        call evaluate_torus_curved_panel( &
+            panel_parameters, major_radius, minor_radius, xi, eta, point, &
+            tangent_xi, tangent_eta, surface_jacobian, status)
+        if (status /= 0) return
+        call evaluate_torus_curved_panel_jvp( &
+            panel_parameters, major_radius, minor_radius, xi, eta, &
+            panel_parameters_dot, major_radius_dot, minor_radius_dot, 0.0_dp, &
+            0.0_dp, point_dot, tangent_xi_dot, tangent_eta_dot, &
+            surface_jacobian_dot, status)
+        if (status /= 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge = vertices(:, edge_vertices(2, basis)) - &
+            vertices(:, edge_vertices(1, basis))
+        edge_dot = vertices_dot(:, edge_vertices(2, basis)) - &
+            vertices_dot(:, edge_vertices(1, basis))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp)) return
+        edge_length_dot = dot_product(edge, edge_dot)/edge_length
+        vector = (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta
+        vector_dot = (xi - opposite_coordinates(1))*tangent_xi_dot + &
+            (eta - opposite_coordinates(2))*tangent_eta_dot
+        jacobian = surface_jacobian
+        coefficient = real(orientation, dp)*edge_length/jacobian
+        coefficient_dot = real(orientation, dp)*( &
+            edge_length_dot/jacobian - &
+            edge_length*surface_jacobian_dot/jacobian**2)
+        value_dot = coefficient_dot*vector + coefficient*vector_dot
+        surface_divergence_dot = 2.0_dp*real(orientation, dp)*( &
+            edge_length_dot/jacobian - &
+            edge_length*surface_jacobian_dot/jacobian**2)
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_rwg_basis_jvp
 
     pure logical function torus_reference_children_touch( &
             parameters, triangles, first_panel, second_panel, major_radius, &

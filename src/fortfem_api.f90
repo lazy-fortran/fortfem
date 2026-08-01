@@ -675,9 +675,11 @@ module fortfem_api
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_torus_magnetic_geometry_jvp, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
         evaluate_maxwell_torus_curved_localized_rwg_basis, &
         evaluate_maxwell_torus_curved_rwg_basis, &
+        evaluate_maxwell_torus_curved_rwg_basis_jvp, &
         integrate_maxwell_torus_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_torus_curved_coincident_rwg_pair_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d, &
@@ -1442,9 +1444,11 @@ module fortfem_api
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_torus_magnetic_geometry_jvp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
+    public :: evaluate_maxwell_torus_curved_rwg_basis_jvp
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
