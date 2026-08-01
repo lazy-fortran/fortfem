@@ -147,6 +147,22 @@ fpm run --example <example_name>
 <p>This fixture computes fixed-topology straight and quadratic Bezier-edge areas</p>
 </div>
 </article>
+</div>
+
+### Structure-preserving dynamics
+
+<div class="example-gallery">
+<article class="example-card" data-example="mixed_acoustic_wave">
+<a class="example-card-preview" href="generated/mixed_acoustic_wave.html">
+<img class="example-card-image"
+ src="../media/examples/mixed_acoustic_wave/primary.png"
+ alt="Plot preview for mixed_acoustic_wave" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/mixed_acoustic_wave.html">mixed_acoustic_wave</a></h3>
+<p>This fixture is a small physical wave problem for the common mixed</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
@@ -468,6 +484,7 @@ fpm run --example <example_name>
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [fci_quadrilateral_geometry](generated/fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
 - [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
+- [mixed_acoustic_wave](generated/mixed_acoustic_wave.html) - This fixture is a small physical wave problem for the common mixed
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - A short V-shaped head makes direction readable in the
