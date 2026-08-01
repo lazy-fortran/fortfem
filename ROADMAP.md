@@ -1654,7 +1654,10 @@ gallery example.
   it before convergence, timing, conditioning, or other diagnostic plots. The
   contract is checked independently by `test/test_example_docs.sh`; FortPlot's
   3-D scatter path must preserve per-sample colour maps so solution samples
-  remain physically interpretable.
+  remain physically interpretable. CI collects nested per-example output with
+  an independent media validator and keeps the short ten-second limit for
+  focused tests while allowing the more expensive physical 3-D gallery
+  products a bounded execution window.
 
 ### Phase 9: Future application layer: **reference only**
 
