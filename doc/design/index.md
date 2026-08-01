@@ -91,6 +91,11 @@ The [neutral equilibrium interchange contract](equilibrium_interchange.html)
 defines the sample/provenance boundary for external equilibrium adapters
 without implementing GEQDSK, COCOS, or plasma-specific readers and closures.
 
+The [linear-response interchange contract](linear_response_interchange.html)
+defines the modal metadata, complex block composition, provenance, and
+real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and
+wall response adapters without importing their application physics.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
