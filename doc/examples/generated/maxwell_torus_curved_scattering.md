@@ -71,8 +71,8 @@ program maxwell_torus_curved_scattering
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_kinds, only: dp
     use fortplot, only: &
-        add_3d_plot, add_scatter, colorbar, figure, legend, pcolormesh, plot, &
-        savefig, title, xlabel, ylabel
+        add_parametric_surface, add_scatter, colorbar, figure, legend, pcolormesh, &
+        plot, savefig, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: azimuth_cells = 36, polar_cells = 18
@@ -265,17 +265,11 @@ contains
 
     subroutine render_plots()
         integer, parameter :: visual_azimuth = 36, visual_polar = 18
-        real(dp) :: curve_x(visual_azimuth + 1)
-        real(dp) :: curve_y(visual_azimuth + 1)
-        real(dp) :: curve_z(visual_azimuth + 1)
-        real(dp) :: mesh_curve_x(mesh_polar_nodes + 1)
-        real(dp) :: mesh_curve_y(mesh_polar_nodes + 1)
-        real(dp) :: mesh_curve_z(mesh_polar_nodes + 1)
-        real(dp) :: mesh_ring_x(mesh_azimuth_nodes + 1)
-        real(dp) :: mesh_ring_y(mesh_azimuth_nodes + 1)
-        real(dp) :: mesh_ring_z(mesh_azimuth_nodes + 1)
+        real(dp) :: surface_x(visual_polar + 1, visual_azimuth + 1)
+        real(dp) :: surface_y(visual_polar + 1, visual_azimuth + 1)
+        real(dp) :: surface_z(visual_polar + 1, visual_azimuth + 1)
         real(dp) :: curve_azimuth, curve_polar, curve_radius
-        integer :: coefficient, curve_index, mesh_vertex, point_index
+        integer :: coefficient, curve_index, point_index
 
         call figure(figsize=[8.5_dp, 6.5_dp])
         call pcolormesh( &
@@ -287,9 +281,6 @@ contains
         call savefig(output_directory//"/maxwell_torus_solution_2d.png")
 
         call figure(figsize=[7.5_dp, 6.5_dp])
-        call add_scatter( &
-            vertices(1, :), vertices(2, :), vertices(3, :), &
-            label="curved torus mesh vertices", marker=".", markersize=5.0_dp)
         do curve_index = 0, visual_polar
             curve_polar = 2.0_dp*pi*real(curve_index, dp)/ &
                 real(visual_polar, dp)
@@ -297,60 +288,21 @@ contains
                 curve_azimuth = 2.0_dp*pi*real(point_index, dp)/ &
                     real(visual_azimuth, dp)
                 curve_radius = major_radius + minor_radius*cos(curve_polar)
-                curve_x(point_index + 1) = curve_radius*cos(curve_azimuth)
-                curve_y(point_index + 1) = curve_radius*sin(curve_azimuth)
-                curve_z(point_index + 1) = minor_radius*sin(curve_polar)
+                surface_x(curve_index + 1, point_index + 1) = &
+                    curve_radius*cos(curve_azimuth)
+                surface_y(curve_index + 1, point_index + 1) = &
+                    curve_radius*sin(curve_azimuth)
+                surface_z(curve_index + 1, point_index + 1) = &
+                    minor_radius*sin(curve_polar)
             end do
-            call add_3d_plot(curve_x, curve_y, curve_z, &
-                label="exact torus geometry", color="teal", linewidth=0.7_dp)
         end do
-        do curve_index = 0, visual_azimuth
-            curve_azimuth = 2.0_dp*pi*real(curve_index, dp)/ &
-                real(visual_azimuth, dp)
-            do point_index = 0, visual_polar
-                curve_polar = 2.0_dp*pi*real(point_index, dp)/ &
-                    real(visual_polar, dp)
-                curve_radius = major_radius + minor_radius*cos(curve_polar)
-                curve_x(point_index + 1) = curve_radius*cos(curve_azimuth)
-                curve_y(point_index + 1) = curve_radius*sin(curve_azimuth)
-                curve_z(point_index + 1) = minor_radius*sin(curve_polar)
-            end do
-            call add_3d_plot(curve_x(:visual_polar + 1), &
-                curve_y(:visual_polar + 1), curve_z(:visual_polar + 1), &
-                color="teal", linewidth=0.7_dp)
-        end do
-        ! Draw the coarse solver mesh along its parameter lines.  Drawing
-        ! every triangle edge projects hidden diagonals through the torus and
-        ! makes a valid periodic mesh look self-intersecting.
-        do curve_index = 0, mesh_azimuth_nodes - 1
-            do point_index = 0, mesh_polar_nodes
-                mesh_vertex = curve_index*mesh_polar_nodes + &
-                    modulo(point_index, mesh_polar_nodes) + 1
-                mesh_curve_x(point_index + 1) = vertices(1, mesh_vertex)
-                mesh_curve_y(point_index + 1) = vertices(2, mesh_vertex)
-                mesh_curve_z(point_index + 1) = vertices(3, mesh_vertex)
-            end do
-            if (curve_index == 0) then
-                call add_3d_plot(mesh_curve_x, mesh_curve_y, mesh_curve_z, &
-                    label="coarse CFIE mesh parameter lines", color="gray", &
-                    linewidth=0.7_dp)
-            else
-                call add_3d_plot(mesh_curve_x, mesh_curve_y, mesh_curve_z, &
-                    color="gray", linewidth=0.7_dp)
-            end if
-        end do
-        do curve_index = 0, mesh_polar_nodes - 1
-            do point_index = 0, mesh_azimuth_nodes
-                mesh_vertex = modulo(point_index, mesh_azimuth_nodes) * &
-                    mesh_polar_nodes + curve_index + 1
-                mesh_ring_x(point_index + 1) = vertices(1, mesh_vertex)
-                mesh_ring_y(point_index + 1) = vertices(2, mesh_vertex)
-                mesh_ring_z(point_index + 1) = vertices(3, mesh_vertex)
-            end do
-            call add_3d_plot(mesh_ring_x, mesh_ring_y, mesh_ring_z, &
-                color="gray", linewidth=0.7_dp)
-        end do
-        call title("Exact-curved torus with periodic CFIE mesh lines")
+        call add_parametric_surface( &
+            surface_x, surface_y, surface_z, color="lightsteelblue", alpha=0.55_dp, &
+            linewidth=0.0_dp, filled=.true., label="PEC torus surface")
+        call add_scatter( &
+            vertices(1, :), vertices(2, :), vertices(3, :), &
+            label="curved CFIE mesh vertices", marker=".", markersize=5.0_dp)
+        call title("Exact-curved PEC torus and CFIE mesh")
         call savefig(output_directory//"/torus_geometry_3d.png")
 
         call figure(figsize=[9.0_dp, 5.5_dp])

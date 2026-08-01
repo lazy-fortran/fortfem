@@ -327,7 +327,7 @@ contains
                 larger_orientations, larger_solution, point, large_field)
             exact_field = [cmplx(0.0_dp, 0.0_dp, dp), &
                 exp(cmplx(0.0_dp, pml_wave_number*point(1), dp)* &
-                    cmplx(1.0_dp, 0.35_dp, dp)), cmplx(0.0_dp, 0.0_dp, dp)]
+                cmplx(1.0_dp, 0.35_dp, dp)), cmplx(0.0_dp, 0.0_dp, dp)]
             domain_small_magnitude(sample) = sqrt(sum(abs(small_field)**2))
             domain_large_magnitude(sample) = sqrt(sum(abs(large_field)**2))
             domain_exact_magnitude(sample) = sqrt(sum(abs(exact_field)**2))
@@ -405,7 +405,7 @@ contains
 
     subroutine render_pml_field_slice()
         integer, parameter :: slice_nx = 40, slice_ny = 40
-        integer, parameter :: sample_offset_count = 4
+        integer, parameter :: sample_offset_count = 9
         real(dp), parameter :: mesh_spacing = &
             1.0_dp/real(pml_mesh_count(1), dp)
         real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
@@ -421,8 +421,10 @@ contains
             y_edges(index_y) = real(index_y - 1, dp)/real(slice_ny, dp)
         end do
         sample_offsets = reshape([ &
-            -0.2_dp, -0.2_dp, 0.2_dp, -0.2_dp, &
-            -0.2_dp, 0.2_dp, 0.2_dp, 0.2_dp], [2, sample_offset_count])
+            -0.35_dp, -0.35_dp, 0.0_dp, -0.35_dp, 0.35_dp, -0.35_dp, &
+            -0.35_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.35_dp, 0.0_dp, &
+            -0.35_dp, 0.35_dp, 0.0_dp, 0.35_dp, 0.35_dp, 0.35_dp], &
+            [2, sample_offset_count])
         values = 0.0_dp
         do index_y = 1, slice_ny
             do index_x = 1, slice_nx
@@ -456,7 +458,10 @@ contains
         end do
 
         call figure(figsize=[8.0_dp, 6.5_dp])
-        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        ! pcolormesh uses z(y, x), whereas the reconstruction loop is
+        ! naturally indexed as values(x, y).  Transpose here so a plane wave
+        ! varying in x is not displayed as a spurious y-directed stripe.
+        call pcolormesh(x_edges, y_edges, transpose(values), cmap="viridis")
         call colorbar(label="reconstructed Nedelec field magnitude")
         call xlabel("x")
         call ylabel("y")
@@ -537,10 +542,10 @@ contains
         do local_edge = 1, size(edges, 2)
             do coordinate = 1, 3
                 if (all(abs(vertices(coordinate, edges(:, local_edge)) - &
-                        bounds(coordinate, 1)) < 1.0e-14_dp)) &
+                    bounds(coordinate, 1)) < 1.0e-14_dp)) &
                     boundary(local_edge) = .true.
                 if (all(abs(vertices(coordinate, edges(:, local_edge)) - &
-                        bounds(coordinate, 2)) < 1.0e-14_dp)) &
+                    bounds(coordinate, 2)) < 1.0e-14_dp)) &
                     boundary(local_edge) = .true.
             end do
         end do
