@@ -17,6 +17,8 @@ module fortfem_mixed_wave_time
     private
 
     public :: advance_mixed_wave_midpoint
+    public :: advance_mixed_wave_midpoint_jvp
+    public :: advance_mixed_wave_midpoint_vjp
     public :: advance_mixed_wave_symplectic_euler
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp
@@ -77,6 +79,125 @@ contains
         v = state_next(nq + 1:total_size)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine advance_mixed_wave_midpoint
+
+    subroutine advance_mixed_wave_midpoint_jvp( &
+            mass_q, mass_v, coupling, time_step, q, v, time_step_dot, q_dot, &
+            v_dot, q_next_dot, v_next_dot, status)
+        !! Apply the tangent of one implicit-midpoint wave step.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :), coupling(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:), time_step_dot
+        real(dp), intent(in) :: q_dot(:), v_dot(:)
+        real(dp), intent(out) :: q_next_dot(:), v_next_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, total_size, info
+        real(dp), allocatable :: matrix_a(:, :), rhs(:), state_next(:)
+        real(dp), allocatable :: rhs_dot(:), state_next_dot(:)
+
+        q_next_dot = 0.0_dp
+        v_next_dot = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave midpoint JVP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv .or. size(coupling, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_dot) /= nq .or. size(v_dot) /= nv) return
+        if (size(q_next_dot) /= nq .or. size(v_next_dot) /= nv) return
+
+        total_size = nq + nv
+        allocate(matrix_a(total_size, total_size), rhs(total_size), &
+            state_next(total_size), rhs_dot(total_size), &
+            state_next_dot(total_size))
+        call assemble_midpoint_system( &
+            mass_q, mass_v, coupling, time_step, q, v, matrix_a, rhs)
+        call dense_solve(matrix_a, rhs, state_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave midpoint JVP block is singular")
+            return
+        end if
+        rhs_dot(:nq) = matmul(mass_q, q_dot) - &
+            0.5_dp*time_step*matmul(transpose(coupling), v_dot) - &
+            0.5_dp*time_step_dot*matmul(transpose(coupling), v) - &
+            0.5_dp*time_step_dot*matmul(transpose(coupling), &
+            state_next(nq + 1:total_size))
+        rhs_dot(nq + 1:total_size) = matmul(mass_v, v_dot) + &
+            0.5_dp*time_step*matmul(coupling, q_dot) + &
+            0.5_dp*time_step_dot*matmul(coupling, q) + &
+            0.5_dp*time_step_dot*matmul(coupling, state_next(:nq))
+        call dense_solve(matrix_a, rhs_dot, state_next_dot, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave midpoint JVP block is singular")
+            return
+        end if
+        q_next_dot = state_next_dot(:nq)
+        v_next_dot = state_next_dot(nq + 1:total_size)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_midpoint_jvp
+
+    subroutine advance_mixed_wave_midpoint_vjp( &
+            mass_q, mass_v, coupling, time_step, q, v, q_next_bar, v_next_bar, &
+            q_bar, v_bar, time_step_bar, status)
+        !! Apply the real adjoint of one implicit-midpoint wave step.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :), coupling(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:)
+        real(dp), intent(in) :: q_next_bar(:), v_next_bar(:)
+        real(dp), intent(out) :: q_bar(:), v_bar(:), time_step_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, total_size, info
+        real(dp), allocatable :: matrix_a(:, :), rhs(:), state_next(:)
+        real(dp), allocatable :: state_next_bar(:), state_bar(:)
+
+        q_bar = 0.0_dp
+        v_bar = 0.0_dp
+        time_step_bar = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave midpoint VJP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv .or. size(coupling, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_next_bar) /= nq .or. size(v_next_bar) /= nv) return
+        if (size(q_bar) /= nq .or. size(v_bar) /= nv) return
+
+        total_size = nq + nv
+        allocate(matrix_a(total_size, total_size), rhs(total_size), &
+            state_next(total_size), state_next_bar(total_size), &
+            state_bar(total_size))
+        call assemble_midpoint_system( &
+            mass_q, mass_v, coupling, time_step, q, v, matrix_a, rhs)
+        call dense_solve(matrix_a, rhs, state_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave midpoint VJP block is singular")
+            return
+        end if
+        state_next_bar(:nq) = q_next_bar
+        state_next_bar(nq + 1:total_size) = v_next_bar
+        call dense_solve(transpose(matrix_a), state_next_bar, state_bar, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave midpoint VJP transpose block is singular")
+            return
+        end if
+        q_bar = matmul(transpose(mass_q), state_bar(:nq)) + &
+            0.5_dp*time_step*matmul(transpose(coupling), &
+            state_bar(nq + 1:total_size))
+        v_bar = matmul(transpose(mass_v), state_bar(nq + 1:total_size)) - &
+            0.5_dp*time_step*matmul(coupling, state_bar(:nq))
+        time_step_bar = -0.5_dp*dot_product(state_bar(:nq), &
+            matmul(transpose(coupling), v + state_next(nq + 1:total_size))) + &
+            0.5_dp*dot_product(state_bar(nq + 1:total_size), &
+            matmul(coupling, q + state_next(:nq)))
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_midpoint_vjp
 
     subroutine advance_mixed_wave_symplectic_euler( &
             mass_q, mass_v, coupling, time_step, q, v, status)
@@ -257,5 +378,29 @@ contains
             dot_product(v_rhs_bar, matmul(coupling, q))
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine advance_mixed_wave_symplectic_euler_vjp
+
+    subroutine assemble_midpoint_system( &
+            mass_q, mass_v, coupling, time_step, q, v, matrix_a, rhs)
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :), coupling(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:)
+        real(dp), intent(out) :: matrix_a(:, :), rhs(:)
+
+        integer :: nq, nv, total_size
+
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        total_size = nq + nv
+        matrix_a = 0.0_dp
+        matrix_a(:nq, :nq) = mass_q
+        matrix_a(:nq, nq + 1:total_size) = &
+            0.5_dp*time_step*transpose(coupling)
+        matrix_a(nq + 1:total_size, :nq) = &
+            -0.5_dp*time_step*coupling
+        matrix_a(nq + 1:total_size, nq + 1:total_size) = mass_v
+        rhs(:nq) = matmul(mass_q, q) - &
+            0.5_dp*time_step*matmul(transpose(coupling), v)
+        rhs(nq + 1:total_size) = matmul(mass_v, v) + &
+            0.5_dp*time_step*matmul(coupling, q)
+    end subroutine assemble_midpoint_system
 
 end module fortfem_mixed_wave_time

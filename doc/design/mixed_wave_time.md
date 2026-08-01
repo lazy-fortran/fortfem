@@ -40,6 +40,21 @@ oscillator test checks the independent Cayley formula, energy preservation,
 and reversibility. Dissipative terms are intentionally not hidden in this
 routine; they belong in a declared split or metriplectic substep.
 
+The midpoint map also exposes analytical `advance_mixed_wave_midpoint_jvp`
+and `advance_mixed_wave_midpoint_vjp` products.  For the block system
+`A(h) z_next = B(h) z`, the tangent is formed as
+
+\[
+ A\dot z^+ = B\dot z + \dot B z - \dot A z^+,
+\]
+
+and the real adjoint solves `A^T lambda = z_next_bar`, returning
+`B^T lambda` for the input state and
+`lambda^T (B_h z - A_h z_next)` for the time-step cotangent.  The focused
+test uses nonidentity mass and coupling blocks, a central-difference oracle,
+and the real dot-product identity.  Geometry and constitutive derivatives of
+the blocks remain caller-owned and compose with this map-level product.
+
 The same contract is suitable for tensor-valued pressure, mixed elasticity,
 Maxwell, and acoustic-elastic coupling once their compatible mass and
 interconnection blocks are assembled.
