@@ -61,6 +61,11 @@ metric-independent `curl(grad)` and `div(curl)` composition defects with
 value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
 maps.
 
+The [FEEC commuting-projection diagnostic](feec_commuting_projection.html)
+compares discrete differentials with projected continuous differentials and
+provides complete value/JVP/VJP actions for fitted, cut, enriched, IGA, and
+periodic maps.
+
 The [Fourier mode registry](fourier_mode_registry.html) defines fixed-topology
 field-period phase, normalization, conjugate packing, triad lookup, radial
 regularity, and complex-coordinate derivative conventions for Fourier-FEM and
