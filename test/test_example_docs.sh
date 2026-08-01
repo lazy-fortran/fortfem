@@ -80,12 +80,21 @@ for example_name in "${expected[@]}"; do
         exit 1
     fi
     primary_name=$(awk -v name="$example_name" '$1 == name {print $2}' "$primary_file")
-    if [[ -f "$artifacts_dir/$example_name/primary.png" ]]; then
-        first_plot=$(sed -n 's/^!\[[^]]*\](\([^)]*\)).*$/\1/p' "$page" | sed -n '1p')
-        test "$first_plot" = "../../media/examples/$example_name/primary.png"
-        test -s "$artifacts_dir/$example_name/primary.png"
-        test -n "$primary_name"
-    fi
+    test -n "$primary_name"
+    case "$primary_name" in
+        *convergence*|*error*|*timing*|*residual*|*accuracy*|*dofs*)
+            echo "diagnostic plot cannot be the first gallery view: $example_name/$primary_name" >&2
+            exit 1
+            ;;
+    esac
+    # A generated cover is not a substitute for the physical first view.  A
+    # mapped source artifact must be present and non-empty for every example;
+    # otherwise the gallery can silently fall back to an alphabetical
+    # convergence or timing plot.
+    test -s "$artifacts_dir/$example_name/$primary_name"
+    test -s "$artifacts_dir/$example_name/primary.png"
+    first_plot=$(sed -n 's/^!\[[^]]*\](\([^)]*\)).*$/\1/p' "$page" | sed -n '1p')
+    test "$first_plot" = "../../media/examples/$example_name/primary.png"
 done
 
 if grep -n '[[:blank:]]$' "$index_file" "$generated_dir/index.md"; then
