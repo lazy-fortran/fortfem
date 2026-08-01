@@ -1,6 +1,7 @@
 program test_mixed_wave_midpoint
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_mixed_wave_midpoint
+    use fortfem_api, only: advance_mixed_wave_midpoint, &
+        advance_mixed_wave_midpoint_jvp, advance_mixed_wave_midpoint_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -9,12 +10,24 @@ program test_mixed_wave_midpoint
         1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], [2, 2])
     real(dp), parameter :: mass_v(2, 2) = mass_q
     real(dp), parameter :: coupling(2, 2) = mass_q
+    real(dp), parameter :: mass_q_deriv(2, 2) = reshape([ &
+        2.0_dp, 0.0_dp, 0.0_dp, 3.0_dp], [2, 2])
+    real(dp), parameter :: mass_v_deriv(2, 2) = reshape([ &
+        4.0_dp, 0.0_dp, 0.0_dp, 5.0_dp], [2, 2])
+    real(dp), parameter :: coupling_deriv(2, 2) = reshape([ &
+        1.0_dp, -0.5_dp, 2.0_dp, 1.5_dp], [2, 2])
     real(dp), parameter :: time_step = 0.2_dp
     real(dp), parameter :: initial_q(2) = [1.0_dp, 0.0_dp]
     real(dp), parameter :: initial_v(2) = [0.0_dp, 1.0_dp]
     real(dp), parameter :: cayley_cosine = 0.9801980198019802_dp
     real(dp), parameter :: cayley_sine = 0.1980198019801980_dp
     real(dp) :: q(2), v(2), energy_initial, energy_final
+    real(dp) :: q_dot(2), v_dot(2), q_next_dot(2), v_next_dot(2)
+    real(dp) :: q_plus(2), v_plus(2), q_minus(2), v_minus(2)
+    real(dp) :: q_bar(2), v_bar(2), time_step_bar
+    real(dp) :: q_next_bar(2), v_next_bar(2), vjp_left, vjp_right
+    real(dp), parameter :: time_step_dot = -0.07_dp
+    real(dp), parameter :: finite_difference_step = 1.0e-7_dp
     type(fortsparse_status_t) :: status
 
     q = initial_q
@@ -39,6 +52,41 @@ program test_mixed_wave_midpoint
     call check_condition(maxval(abs(q - initial_q)) < 2.0e-14_dp .and. &
         maxval(abs(v - initial_v)) < 2.0e-14_dp, &
         "mixed midpoint is exactly time reversible to roundoff")
+
+    q = initial_q
+    v = initial_v
+    q_dot = [0.25_dp, -0.4_dp]
+    v_dot = [-0.3_dp, 0.15_dp]
+    call advance_mixed_wave_midpoint_jvp( &
+        mass_q_deriv, mass_v_deriv, coupling_deriv, time_step, q, v, &
+        time_step_dot, q_dot, v_dot, q_next_dot, v_next_dot, status)
+    q_plus = initial_q + finite_difference_step*q_dot
+    v_plus = initial_v + finite_difference_step*v_dot
+    call advance_mixed_wave_midpoint( &
+        mass_q_deriv, mass_v_deriv, coupling_deriv, &
+        time_step + finite_difference_step*time_step_dot, q_plus, v_plus, status)
+    q_minus = initial_q - finite_difference_step*q_dot
+    v_minus = initial_v - finite_difference_step*v_dot
+    call advance_mixed_wave_midpoint( &
+        mass_q_deriv, mass_v_deriv, coupling_deriv, &
+        time_step - finite_difference_step*time_step_dot, q_minus, v_minus, status)
+    call check_condition(maxval(abs((q_plus - q_minus)/(2.0_dp* &
+        finite_difference_step) - q_next_dot)) < 2.0e-8_dp .and. &
+        maxval(abs((v_plus - v_minus)/(2.0_dp*finite_difference_step) - &
+        v_next_dot)) < 2.0e-8_dp, &
+        "mixed midpoint JVP matches an independent central difference")
+
+    q_next_bar = [0.6_dp, -0.2_dp]
+    v_next_bar = [-0.5_dp, 0.8_dp]
+    call advance_mixed_wave_midpoint_vjp( &
+        mass_q_deriv, mass_v_deriv, coupling_deriv, time_step, initial_q, &
+        initial_v, q_next_bar, v_next_bar, q_bar, v_bar, time_step_bar, status)
+    vjp_left = dot_product(q_next_bar, q_next_dot) + &
+        dot_product(v_next_bar, v_next_dot)
+    vjp_right = dot_product(q_bar, q_dot) + dot_product(v_bar, v_dot) + &
+        time_step_bar*time_step_dot
+    call check_condition(abs(vjp_left - vjp_right) < 2.0e-13_dp, &
+        "mixed midpoint VJP satisfies the real adjoint identity")
 
     call check_summary("Structure-preserving mixed first-order wave")
 end program test_mixed_wave_midpoint

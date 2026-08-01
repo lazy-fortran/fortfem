@@ -404,6 +404,7 @@ module fortfem_api
         compute_fci_curved_quadrilateral_cell_areas_2d_jvp, &
         compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint, &
+        advance_mixed_wave_midpoint_jvp, advance_mixed_wave_midpoint_vjp, &
         advance_mixed_wave_symplectic_euler, &
         advance_mixed_wave_symplectic_euler_jvp, &
         advance_mixed_wave_symplectic_euler_vjp
@@ -1988,6 +1989,8 @@ module fortfem_api
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     public :: advance_mixed_wave_midpoint
+    public :: advance_mixed_wave_midpoint_jvp
+    public :: advance_mixed_wave_midpoint_vjp
     public :: advance_mixed_wave_symplectic_euler
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp

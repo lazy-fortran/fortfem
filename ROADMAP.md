@@ -1468,8 +1468,10 @@ gallery example.
 
 - The public `advance_mixed_wave_midpoint` step now provides the common
   first-order pressure/velocity, displacement/momentum, and port-Hamiltonian
-  Cayley contract. Its independent test checks the oscillator map, energy, and
-  signed-step reversibility.
+  Cayley contract. Its analytical JVP/VJP now differentiate the complete
+  block map and time-step product; an independent nonidentity-block test
+  checks central differences and the real adjoint identity in addition to the
+  oscillator map, energy, and signed-step reversibility.
 - The public `advance_mixed_wave_symplectic_euler` step now provides a
   partitioned first-order symplectic update for the same mixed state. Its
   independent test checks the two-stage mass-solve oracle and the canonical
