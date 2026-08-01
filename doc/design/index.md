@@ -154,6 +154,10 @@ The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
 
+The [shifted enriched space](shifted_enriched_space.html) builds a complete
+scalar XFEM/GFEM basis-value matrix from base values and fixed level-set anchor
+signs, with topology-event rejection and exact JVP/VJP actions.
+
 The [dissipative Cayley step](dissipative_cayley.html) provides the separate
 energy-contracting mass/damping update and its analytic JVP/VJP actions for
 resistive, viscous, thermal, and absorbing clients.
