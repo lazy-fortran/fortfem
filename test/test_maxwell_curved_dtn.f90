@@ -3,7 +3,11 @@ program test_maxwell_curved_dtn
     use fortfem_api, only: &
         apply_maxwell_trace_to_flux, apply_maxwell_trace_to_flux_jvp, &
         apply_maxwell_trace_to_flux_map, apply_maxwell_trace_to_flux_vjp, &
+        apply_maxwell_weak_trace_reconstruction, &
+        apply_maxwell_weak_trace_reconstruction_jvp, &
+        apply_maxwell_weak_trace_reconstruction_vjp, &
         assemble_maxwell_trace_to_flux_map, &
+        assemble_maxwell_weak_trace_reconstruction, &
         assemble_maxwell_torus_curved_dtn_rwg_3d, generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
@@ -17,6 +21,13 @@ program test_maxwell_curved_dtn
     complex(dp) :: flux_bar(2), trace_seed(2)
     complex(dp), allocatable :: generic_map(:, :)
     complex(dp), allocatable :: torus_map(:, :), torus_trace(:), torus_flux(:)
+    complex(dp) :: weak_mass(2, 2), point_basis(3, 2), weak_trace(2)
+    complex(dp) :: weak_mass_dot(2, 2), point_basis_dot(3, 2)
+    complex(dp) :: weak_trace_dot(2), point_values(3), point_values_dot(3)
+    complex(dp) :: point_values_plus(3), point_values_minus(3)
+    complex(dp) :: weak_trace_bar(2), weak_mass_bar(2, 2)
+    complex(dp) :: point_basis_bar(3, 2), point_values_bar(3)
+    complex(dp), allocatable :: reconstruction(:, :)
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: parameters(:, :), vertices(:, :)
     real(dp) :: lhs, rhs, epsilon, finite_difference_error
@@ -100,6 +111,64 @@ program test_maxwell_curved_dtn
         sum(conjg(trace_bar)*trace_seed), dp)
     call record_condition(abs(lhs - rhs) < 2.0e-10_dp, &
         "curved Maxwell trace-to-flux products satisfy the complex adjoint identity")
+
+    weak_mass = reshape([ &
+        cmplx(1.7_dp, 0.1_dp, dp), cmplx(0.2_dp, -0.05_dp, dp), &
+        cmplx(-0.15_dp, 0.08_dp, dp), cmplx(1.3_dp, -0.12_dp, dp)], [2, 2])
+    point_basis = reshape([ &
+        cmplx(1.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
+        cmplx(0.35_dp, -0.1_dp, dp), cmplx(0.8_dp, 0.05_dp, dp), &
+        cmplx(-0.2_dp, 0.15_dp, dp), cmplx(1.1_dp, 0.0_dp, dp)], [3, 2])
+    weak_trace = [cmplx(0.6_dp, -0.2_dp, dp), cmplx(-0.3_dp, 0.45_dp, dp)]
+    weak_mass_dot = reshape([ &
+        cmplx(0.03_dp, -0.02_dp, dp), cmplx(-0.01_dp, 0.04_dp, dp), &
+        cmplx(0.02_dp, 0.01_dp, dp), cmplx(-0.02_dp, 0.03_dp, dp)], [2, 2])
+    point_basis_dot = reshape([ &
+        cmplx(-0.02_dp, 0.01_dp, dp), cmplx(0.03_dp, -0.04_dp, dp), &
+        cmplx(0.01_dp, 0.02_dp, dp), cmplx(0.04_dp, 0.01_dp, dp), &
+        cmplx(-0.03_dp, 0.02_dp, dp), cmplx(0.01_dp, -0.01_dp, dp)], [3, 2])
+    weak_trace_dot = [cmplx(-0.15_dp, 0.1_dp, dp), cmplx(0.2_dp, -0.12_dp, dp)]
+    call assemble_maxwell_weak_trace_reconstruction( &
+        weak_mass, point_basis, reconstruction, status)
+    call record_condition(status == 0, &
+        "weak Maxwell trace reconstruction assembles a point map")
+    call apply_maxwell_weak_trace_reconstruction( &
+        weak_mass, point_basis, weak_trace, point_values, status)
+    call record_condition(status == 0 .and. maxval(abs( &
+        point_values - matmul(reconstruction, weak_trace))) < 2.0e-12_dp, &
+        "weak Maxwell trace reconstruction agrees with its assembled map")
+    call apply_maxwell_weak_trace_reconstruction_jvp( &
+        weak_mass, point_basis, weak_trace, weak_mass_dot, point_basis_dot, &
+        weak_trace_dot, point_values_dot, status)
+    call record_condition(status == 0, &
+        "weak Maxwell trace reconstruction JVP succeeds")
+    epsilon = 2.0e-6_dp
+    call apply_maxwell_weak_trace_reconstruction( &
+        weak_mass + epsilon*weak_mass_dot, point_basis + epsilon*point_basis_dot, &
+        weak_trace + epsilon*weak_trace_dot, point_values_plus, status)
+    call apply_maxwell_weak_trace_reconstruction( &
+        weak_mass - epsilon*weak_mass_dot, point_basis - epsilon*point_basis_dot, &
+        weak_trace - epsilon*weak_trace_dot, point_values_minus, status)
+    call record_condition(maxval(abs(point_values_dot - &
+        (point_values_plus - point_values_minus)/(2.0_dp*epsilon))) < 2.0e-9_dp, &
+        "weak Maxwell trace reconstruction JVP matches a complete difference")
+    point_values_bar = [ &
+        cmplx(0.2_dp, -0.15_dp, dp), cmplx(-0.35_dp, 0.1_dp, dp), &
+        cmplx(0.18_dp, 0.22_dp, dp)]
+    call apply_maxwell_weak_trace_reconstruction_vjp( &
+        weak_mass, point_basis, weak_trace, point_values_bar, weak_trace_bar, &
+        weak_mass_bar, point_basis_bar, status)
+    call record_condition(status == 0, &
+        "weak Maxwell trace reconstruction VJP succeeds")
+    call apply_maxwell_weak_trace_reconstruction_jvp( &
+        weak_mass, point_basis, weak_trace, 0.7_dp*weak_mass_dot, &
+        0.7_dp*point_basis_dot, trace_seed, point_values_dot, status)
+    lhs = real(sum(conjg(point_values_bar)*point_values_dot), dp)
+    rhs = real(sum(conjg(weak_mass_bar)*(0.7_dp*weak_mass_dot)) + &
+        sum(conjg(point_basis_bar)*(0.7_dp*point_basis_dot)) + &
+        sum(conjg(weak_trace_bar)*trace_seed), dp)
+    call record_condition(abs(lhs - rhs) < 2.0e-10_dp, &
+        "weak Maxwell reconstruction products satisfy the complex adjoint identity")
 
     call generate_torus_surface_mesh(2.0_dp, 0.6_dp, 3, 3, vertices, &
         triangles, parameters)

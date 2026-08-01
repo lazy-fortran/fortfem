@@ -27,7 +27,8 @@ toroidal analytical solutions and DtN fixtures.
 The [curved Maxwell trace-to-flux contract](maxwell_curved_dtn.html) composes
 EFIE, MFIE/RBC, and a primal trace mass matrix into a weak curved-surface DtN
 map with matrix-free, JVP, and VJP actions. Its exact-curved torus wrapper
-keeps the RWG and RBC trace conventions explicit.
+keeps the RWG and RBC trace conventions explicit; the same contract includes
+caller-owned weak-to-point trace reconstruction for physical field evaluation.
 
 The [FCI parallel support-operator contract](fci_parallel_operator.html)
 defines the PARALLAX-aligned mapped gradient and its conservative

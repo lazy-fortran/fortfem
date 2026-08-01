@@ -1417,7 +1417,10 @@ gallery example.
   JVP, and VJP products. `assemble_maxwell_torus_curved_dtn_rwg_3d` wires the
   map to the exact-curved torus EFIE, one-sided MFIE, and RWG mass operators;
   independent algebraic and torus assembly tests cover the fixed-topology
-  contract. Pointwise trace reconstruction, geometry derivatives, and
+  contract. Caller-owned weak-to-point trace reconstruction now returns
+  `B*A^{-1}` from a supplied weak mass `A` and point-evaluation basis `B`, with
+  matrix-free, JVP, and VJP products; it is covered by an independent complex
+  adjoint and central-difference oracle. Geometry derivatives and
   resonance-safe regularization remain active.
 - Add larger-domain, BEM, DtN, and PML comparisons for Poisson, Ampere, and
   Helmholtz.
