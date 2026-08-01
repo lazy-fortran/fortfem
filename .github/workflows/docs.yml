@@ -124,22 +124,26 @@ jobs:
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
           test "$(find "$source_dir/interoperability_benchmarks" \
             -maxdepth 1 -name '*.png' | wc -l)" -eq 5
-          mkdir -p build/doc/page/media/examples build/doc/media/examples
-          cp -r "$source_dir"/. build/doc/page/media/examples/
-          cp -r "$source_dir"/. build/doc/media/examples/
-          while IFS= read -r source; do
-            relative=${source#"$source_dir"/}
-            case "$source" in
-              *.png|*.svg)
-                page_target="build/doc/page/media/examples/$relative"
-                media_target="build/doc/media/examples/$relative"
-                if [[ ! -s "$page_target" || ! -s "$media_target" ]]; then
-                  echo "::error::gallery media was not staged: $relative"
-                  exit 1
-                fi
-                ;;
-            esac
-          done < <(find "$source_dir" -type f)
+          stage_gallery_media() {
+            destination=$1
+            mkdir -p "$destination"
+            while IFS= read -r -d '' source; do
+              relative=${source#"$source_dir"/}
+              target="$destination/$relative"
+              mkdir -p "$(dirname "$target")"
+              cp -f "$source" "$target"
+              case "$source" in
+                *.png|*.svg)
+                  if [[ ! -s "$target" ]]; then
+                    echo "::error::gallery media was not staged: $relative"
+                    return 1
+                  fi
+                  ;;
+              esac
+            done < <(find "$source_dir" -type f -print0)
+          }
+          stage_gallery_media build/doc/page/media/examples
+          stage_gallery_media build/doc/media/examples
 
       - name: Validate complete examples page
         run: bash test/test_example_pages.sh
