@@ -1339,7 +1339,12 @@ gallery example.
   and central-difference oracle. The matching 3-D tetrahedral path now exposes
   exact degree-three raw-moment tensors and fixed-topology JVPs through its
   oriented tetrahedral fan, with an independent simplex-moment and
-  central-difference oracle; higher-order cut rules remain.
+  central-difference oracle; higher-order cut rules remain. A weighted
+  enrichment-support Gram contract now exposes value/JVP/VJP actions with a
+  fixed activation mask, and a symmetric-Jacobi rank/condition diagnostic
+  reports the active enrichment rank and singularity with an independent
+  weighted, finite-difference, and real-adjoint oracle; support activation maps
+  and Piola-aware conditioning remain.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.

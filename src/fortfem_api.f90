@@ -96,6 +96,11 @@ module fortfem_api
         evaluate_vector_blending_corrected_enrichment, &
         evaluate_vector_blending_corrected_enrichment_jvp, &
         evaluate_vector_blending_corrected_enrichment_vjp
+    use fortfem_enrichment_support_diagnostics, only: &
+        evaluate_enrichment_support_gram, &
+        evaluate_enrichment_support_gram_jvp, &
+        evaluate_enrichment_support_gram_vjp, &
+        evaluate_enrichment_support_rank_condition
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_dof_map, build_tree_cotree_gauge, &
@@ -1062,6 +1067,10 @@ module fortfem_api
     public :: evaluate_vector_blending_corrected_enrichment
     public :: evaluate_vector_blending_corrected_enrichment_jvp
     public :: evaluate_vector_blending_corrected_enrichment_vjp
+    public :: evaluate_enrichment_support_gram
+    public :: evaluate_enrichment_support_gram_jvp
+    public :: evaluate_enrichment_support_gram_vjp
+    public :: evaluate_enrichment_support_rank_condition
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: build_tree_cotree_dof_map
