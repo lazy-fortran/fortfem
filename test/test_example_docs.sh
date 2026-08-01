@@ -64,6 +64,8 @@ test "${gallery_cards[0]}" = simple_poisson
 test "$(grep -c '<img class="example-card-image"' "$index_file")" \
     -eq "${#expected[@]}"
 grep -Fq "classic Poisson equation" "$index_file"
+test "$(awk '$1 == "maxwell_open_boundary_comparison" {print $2}' \
+    "$primary_file")" = "maxwell_pml_field_slice_2d.png"
 
 for example_name in "${expected[@]}"; do
     page="$generated_dir/$example_name.md"
