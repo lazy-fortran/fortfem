@@ -35,13 +35,19 @@ FortSym generator.  The independent test uses a separately written shoelace
 oracle, central differences, and the real dot-product identity; the gallery
 fixture renders the polygons and their areas.
 
-Higher-order polygonal cells, moving connectivity, and genuinely curved
-support-volume measures remain planned extensions.  The curved quadrilateral
-map is a fixed-topology quadratic Bezier-edge contract: its vertex ordering
-and finite control data are validated, while callers remain responsible for
-keeping the curved boundary non-self-intersecting.  Neither straight nor
-curved FCI topology is differentiable across a connectivity or orientation
-event.
+The generic `compute_fci_polygon_cell_areas_2d` contract now accepts
+`cell_vertices(2,nvertex,ncell)` with any fixed `nvertex >= 3`.  It sums a
+FortSym-generated per-edge Green contribution, validates repeated vertices
+and non-adjacent edge intersections, and exposes matching `_jvp` and `_vjp`
+actions.  Shared endpoint cotangents are accumulated across the two incident
+edges.  The pentagon test and gallery fixture use independent shoelace
+oracles, central differences, and a real dot-product identity.  Moving
+connectivity and genuinely curved support-volume measures remain planned
+extensions.  The curved quadrilateral map is a fixed-topology quadratic
+Bezier-edge contract: its vertex ordering and finite control data are
+validated, while callers remain responsible for keeping the curved boundary
+non-self-intersecting.  Neither straight nor curved FCI topology is
+differentiable across a connectivity or orientation event.
 
 For edge `e`, with endpoints `p_e`, `p_{e+1}` and control point `c_e`, the
 boundary is
