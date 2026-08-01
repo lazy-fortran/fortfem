@@ -154,8 +154,8 @@ contains
                 other = find_fourier_mode(registry, &
                     -registry%poloidal_modes(mode), &
                     -registry%toroidal_modes(mode))
-                if (other == 0 .or. &
-                    abs(registry%normalization(other) - &
+                if (other == 0) return
+                if (abs(registry%normalization(other) - &
                     registry%normalization(mode)) > 1.0e-12_dp) return
             end do
         end if

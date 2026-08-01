@@ -1,4 +1,4 @@
-program test_tetra_rt_zero_normal_p_convergence
+program test_tetra_rt_zero_normal_p_convergence_slow
     use check, only: check_condition, check_summary
     use fortfem_api, only: solve_tetra_rt_div_mass
     use fortfem_kinds, only: dp
@@ -173,4 +173,4 @@ contains
         end do
     end subroutine measure_error
 
-end program test_tetra_rt_zero_normal_p_convergence
+end program test_tetra_rt_zero_normal_p_convergence_slow
