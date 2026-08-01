@@ -33,6 +33,8 @@ valid = validate_fourier_mode_registry(registry, status)
 index = find_fourier_mode(registry, poloidal_mode, toroidal_mode)
 conjugate = fourier_mode_conjugate_index(registry, index, status)
 closed = fourier_mode_triad_closed(registry, first, second, output, status)
+call build_fourier_mode_triad_map( &
+    registry, triad_map, missing_count, status)
 call evaluate_fourier_mode( &
     registry, index, radius, theta, phi, value, radial_derivative, &
     theta_derivative, phi_derivative, status)
@@ -56,6 +58,11 @@ call assemble_fourier_vector_product_vjp( &
 partner with the same normalization. This is metadata validation only; the
 caller still owns the real cosine/sine coefficient packing. Triad closure is
 queried explicitly rather than silently padding a truncated mode set.
+`build_fourier_mode_triad_map` returns the retained output index for every
+ordered input pair and counts omitted sums. A caller can therefore reject an
+aliasing-prone set, build a padded/dealiased work registry, or deliberately
+project omitted modes; the neutral product kernel never makes that policy
+implicitly.
 
 The value, fixed-topology JVP, and real-coordinate VJP use the complex
 real-part convention
@@ -82,8 +89,11 @@ It is a pointwise algebraic primitive rather than a model-specific bracket.
 Consequently the component counts can represent scalar, vector, tensor,
 H(curl), or H(div) coefficients, and a FortSym-generated constitutive block
 can supply `C`. Truncated triads are explicit omissions; de-aliasing and
-coefficient symmetry remain caller-owned. Its JVP differentiates all three
-factors and its complex VJP uses the same real-part inner product.
+coefficient symmetry remain caller-owned. `build_fourier_mode_triad_map`
+returns the output index for every ordered input pair and an omission count,
+so a caller can choose padding, projection, or rejection explicitly. Its JVP
+differentiates all three factors and its complex VJP uses the same real-part
+inner product.
 
 ## Independent verification
 
@@ -91,6 +101,7 @@ factors and its complex VJP uses the same real-part inner product.
 conjugate lookup, retained and absent triads, the phase/radial analytical
 formula, central-difference JVP, complex real-part VJP identity, and malformed
 real-packed, duplicate, and index inputs.
-`test_fourier_vector_product` checks an independent retained-triad contraction,
+`test_fourier_vector_product` checks an independent retained-triad map and
+contraction,
 the full three-factor product-rule JVP and central differences, the complex
 real-part VJP identity, and incompatible output-shape rejection.
