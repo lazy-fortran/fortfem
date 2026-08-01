@@ -727,7 +727,10 @@ map now accepts explicit three-node stencils and reproduces quadratic fields
 on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
 finite-difference oracles. Higher-order interpolation Jacobians, curved
 support-volume measures, and anisotropy-aware preconditioning remain active
-work. A batched Cartesian bilinear adapter now
+work. A generated fixed-topology quadrilateral area map now supplies positive
+unstructured plane-cell measures with value/JVP/VJP actions, independent
+shoelace/finite-difference/adjoint oracles, and a FortPlot gallery fixture. A
+batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
 tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
@@ -1476,13 +1479,18 @@ gallery example.
   independent polynomial, finite-difference, and real-adjoint oracles. A
   generated quintic fixed-stencil map now exposes the same value/JVP/VJP
   actions with independent quintic, finite-difference, and real-adjoint
-  oracles. Higher interpolation derivatives beyond quintic and curved
-  support-volume measures remain separate planned components.
+  oracles. A generated fixed-topology quadrilateral area map now supplies
+  positive unstructured plane-cell measures with independent shoelace,
+  finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
+  interpolation derivatives beyond quintic, polygonal cells with more than
+  four vertices, and curved support-volume measures remain separate planned
+  components.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or
-  unstructured plane cells and stencil rebuilds at topology events remain
-  planned.
+  higher-order polygonal plane cells, curved measures, and stencil rebuilds at
+  topology events remain planned; the fixed-topology quadrilateral area
+  adapter is now the unstructured-cell baseline.
 - The fixed-stencil quadratic 1D map now has a batched segment adapter with
   generated-kernel-backed JVP/VJP accumulation and independent polynomial,
   finite-difference, and adjoint tests. Degenerate local source coordinates
