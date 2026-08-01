@@ -122,7 +122,9 @@ module fortfem_api
         evaluate_level_set_triangle_cut_quadrature_2d, &
         evaluate_level_set_triangle_cut_quadrature_2d_jvp, &
         evaluate_level_set_triangle_cut_moments_2d, &
-        evaluate_level_set_triangle_cut_moments_2d_jvp
+        evaluate_level_set_triangle_cut_moments_2d_jvp, &
+        evaluate_level_set_triangle_cut_third_moments_2d, &
+        evaluate_level_set_triangle_cut_third_moments_2d_jvp
     use fortfem_level_set_tetra_interface_3d, only: &
         evaluate_level_set_tetra_interface_3d, &
         evaluate_level_set_tetra_interface_3d_jvp, &
@@ -1276,6 +1278,8 @@ module fortfem_api
     public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
     public :: evaluate_level_set_triangle_cut_moments_2d
     public :: evaluate_level_set_triangle_cut_moments_2d_jvp
+    public :: evaluate_level_set_triangle_cut_third_moments_2d
+    public :: evaluate_level_set_triangle_cut_third_moments_2d_jvp
     public :: evaluate_level_set_tetra_interface_3d
     public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d

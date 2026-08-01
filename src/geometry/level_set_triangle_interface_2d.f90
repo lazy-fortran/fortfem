@@ -19,6 +19,8 @@ module fortfem_level_set_triangle_interface_2d
     public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
     public :: evaluate_level_set_triangle_cut_moments_2d
     public :: evaluate_level_set_triangle_cut_moments_2d_jvp
+    public :: evaluate_level_set_triangle_cut_third_moments_2d
+    public :: evaluate_level_set_triangle_cut_third_moments_2d_jvp
 
 contains
 
@@ -445,6 +447,76 @@ contains
         status = 0
     end subroutine evaluate_level_set_triangle_cut_moments_2d_jvp
 
+    subroutine evaluate_level_set_triangle_cut_third_moments_2d( &
+            vertices, level_values, positive_third_moment, &
+            negative_third_moment, status)
+        !! Return exact degree-three raw moments for a linear level-set cut.
+        !!
+        !! The symmetric tensor contains the physical integrals
+        !! \(M_{abc}=\int_{\Omega_\pm}x_a x_b x_c\,dA\).  It is a separate
+        !! entry point so existing degree-two callers retain their ABI.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(out) :: positive_third_moment(2, 2, 2)
+        real(dp), intent(out) :: negative_third_moment(2, 2, 2)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_area, positive_centroid(2)
+        real(dp) :: negative_area, negative_centroid(2)
+        real(dp) :: interface_length, normal(2)
+        integer :: quadrature_status
+
+        positive_third_moment = 0.0_dp
+        negative_third_moment = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            negative_area, negative_centroid, interface_length, normal, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments( &
+            vertices, level_values, .true., positive_area, positive_centroid, &
+            third_moment=positive_third_moment)
+        call level_set_side_moments( &
+            vertices, level_values, .false., negative_area, negative_centroid, &
+            third_moment=negative_third_moment)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_third_moments_2d
+
+    subroutine evaluate_level_set_triangle_cut_third_moments_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_third_moment_dot, negative_third_moment_dot, status)
+        !! Apply the fixed-topology JVP of degree-three cut moments.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        real(dp), intent(out) :: positive_third_moment_dot(2, 2, 2)
+        real(dp), intent(out) :: negative_third_moment_dot(2, 2, 2)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_area_dot, positive_centroid_dot(2)
+        real(dp) :: negative_area_dot, negative_centroid_dot(2)
+        real(dp) :: interface_length_dot, normal_dot(2)
+        integer :: quadrature_status
+
+        positive_third_moment_dot = 0.0_dp
+        negative_third_moment_dot = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_area_dot, positive_centroid_dot, negative_area_dot, &
+            negative_centroid_dot, interface_length_dot, normal_dot, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            positive_area_dot, positive_centroid_dot, &
+            third_moment_dot=positive_third_moment_dot)
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            negative_area_dot, negative_centroid_dot, &
+            third_moment_dot=negative_third_moment_dot)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_third_moments_2d_jvp
+
     pure function level_set_side_area(vertices, level_values, keep_positive) &
             result(area)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
@@ -457,20 +529,24 @@ contains
     end function level_set_side_area
 
     pure subroutine level_set_side_moments( &
-            vertices, level_values, keep_positive, area, centroid, second_moment)
+            vertices, level_values, keep_positive, area, centroid, second_moment, &
+            third_moment)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area, centroid(2)
         real(dp), intent(out), optional :: second_moment(2, 2)
+        real(dp), intent(out), optional :: third_moment(2, 2, 2)
 
         real(dp) :: polygon(2, 6), clipped(2, 6)
         real(dp) :: signed_area, cross, first_moment(2), second_moment_signed(2, 2)
+        real(dp) :: third_moment_signed(2, 2, 2)
         real(dp) :: point_x, point_y, next_x, next_y
         integer :: point_count, point, next_point
 
         area = 0.0_dp
         centroid = 0.0_dp
         if (present(second_moment)) second_moment = 0.0_dp
+        if (present(third_moment)) third_moment = 0.0_dp
         polygon(:, 1:3) = vertices
         point_count = 3
         call clip_level_set_polygon( &
@@ -479,6 +555,7 @@ contains
         signed_area = 0.0_dp
         first_moment = 0.0_dp
         second_moment_signed = 0.0_dp
+        third_moment_signed = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
             point_x = polygon(1, point)
@@ -497,6 +574,11 @@ contains
             second_moment_signed(1, 2) = second_moment_signed(1, 2) + &
                 cross*(2.0_dp*point_x*point_y + point_x*next_y + &
                 next_x*point_y + 2.0_dp*next_x*next_y)/24.0_dp
+            if (present(third_moment)) then
+                call add_polygon_third_moment( &
+                    polygon(:, point), polygon(:, next_point), cross, &
+                    third_moment_signed)
+            end if
         end do
         if (abs(signed_area) <= topology_tolerance) return
         area = abs(signed_area)
@@ -510,21 +592,27 @@ contains
                 second_moment_signed(1, 2)
             second_moment(2, 1) = second_moment(1, 2)
         end if
+        if (present(third_moment)) then
+            third_moment = sign(1.0_dp, signed_area)*third_moment_signed
+        end if
     end subroutine level_set_side_moments
 
     pure subroutine level_set_side_moments_jvp( &
             vertices, level_values, vertices_dot, level_values_dot, keep_positive, &
-            area_dot, centroid_dot, second_moment_dot)
+            area_dot, centroid_dot, second_moment_dot, third_moment_dot)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area_dot, centroid_dot(2)
         real(dp), intent(out), optional :: second_moment_dot(2, 2)
+        real(dp), intent(out), optional :: third_moment_dot(2, 2, 2)
 
         real(dp) :: polygon(2, 6), polygon_dot(2, 6)
         real(dp) :: signed_area, signed_area_dot, cross, cross_dot
         real(dp) :: first_moment(2), first_moment_dot(2)
         real(dp) :: second_moment_signed(2, 2), second_moment_signed_dot(2, 2)
+        real(dp) :: third_moment_signed(2, 2, 2)
+        real(dp) :: third_moment_signed_dot(2, 2, 2)
         real(dp) :: point_x, point_y, next_x, next_y
         real(dp) :: point_x_dot, point_y_dot, next_x_dot, next_y_dot
         real(dp) :: term, term_dot
@@ -534,6 +622,7 @@ contains
         area_dot = 0.0_dp
         centroid_dot = 0.0_dp
         if (present(second_moment_dot)) second_moment_dot = 0.0_dp
+        if (present(third_moment_dot)) third_moment_dot = 0.0_dp
         polygon = 0.0_dp
         polygon_dot = 0.0_dp
         polygon(:, 1:3) = vertices
@@ -550,6 +639,8 @@ contains
         first_moment_dot = 0.0_dp
         second_moment_signed = 0.0_dp
         second_moment_signed_dot = 0.0_dp
+        third_moment_signed = 0.0_dp
+        third_moment_signed_dot = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
             point_x = polygon(1, point)
@@ -599,6 +690,12 @@ contains
                 cross*term/24.0_dp
             second_moment_signed_dot(1, 2) = second_moment_signed_dot(1, 2) + &
                 (cross_dot*term + cross*term_dot)/24.0_dp
+            if (present(third_moment_dot)) then
+                call add_polygon_third_moment_jvp( &
+                    polygon(:, point), polygon(:, next_point), &
+                    polygon_dot(:, point), polygon_dot(:, next_point), cross, &
+                    cross_dot, third_moment_signed, third_moment_signed_dot)
+            end if
         end do
         if (abs(signed_area) <= topology_tolerance) return
         orientation = sign(1.0_dp, signed_area)
@@ -611,7 +708,121 @@ contains
             second_moment_dot(1, 2) = orientation*second_moment_signed_dot(1, 2)
             second_moment_dot(2, 1) = second_moment_dot(1, 2)
         end if
+        if (present(third_moment_dot)) then
+            third_moment_dot = orientation*third_moment_signed_dot
+        end if
     end subroutine level_set_side_moments_jvp
+
+    pure subroutine add_polygon_third_moment(point, next_point, cross, moment)
+        real(dp), intent(in) :: point(2), next_point(2), cross
+        real(dp), intent(inout) :: moment(2, 2, 2)
+
+        real(dp) :: ax, ay, bx, by
+
+        ax = point(1)
+        ay = point(2)
+        bx = next_point(1)
+        by = next_point(2)
+        moment(1, 1, 1) = moment(1, 1, 1) + cross*(ax**3 + ax**2*bx + &
+            ax*bx**2 + bx**3)/20.0_dp
+        moment(2, 2, 2) = moment(2, 2, 2) + cross*(ay**3 + ay**2*by + &
+            ay*by**2 + by**3)/20.0_dp
+        moment(1, 1, 2) = moment(1, 1, 2) + cross*(3.0_dp*ax**2*ay + &
+            ax**2*by + 2.0_dp*ax*bx*ay + 2.0_dp*ax*bx*by + &
+            bx**2*ay + 3.0_dp*bx**2*by)/60.0_dp
+        moment(1, 2, 1) = moment(1, 2, 1) + cross*(3.0_dp*ax**2*ay + &
+            ax**2*by + 2.0_dp*ax*bx*ay + 2.0_dp*ax*bx*by + &
+            bx**2*ay + 3.0_dp*bx**2*by)/60.0_dp
+        moment(2, 1, 1) = moment(2, 1, 1) + cross*(3.0_dp*ax**2*ay + &
+            ax**2*by + 2.0_dp*ax*bx*ay + 2.0_dp*ax*bx*by + &
+            bx**2*ay + 3.0_dp*bx**2*by)/60.0_dp
+        moment(1, 2, 2) = moment(1, 2, 2) + cross*(3.0_dp*ax*ay**2 + &
+            2.0_dp*ax*ay*by + bx*ay**2 + ax*by**2 + &
+            2.0_dp*bx*ay*by + 3.0_dp*bx*by**2)/60.0_dp
+        moment(2, 1, 2) = moment(2, 1, 2) + cross*(3.0_dp*ax*ay**2 + &
+            2.0_dp*ax*ay*by + bx*ay**2 + ax*by**2 + &
+            2.0_dp*bx*ay*by + 3.0_dp*bx*by**2)/60.0_dp
+        moment(2, 2, 1) = moment(2, 2, 1) + cross*(3.0_dp*ax*ay**2 + &
+            2.0_dp*ax*ay*by + bx*ay**2 + ax*by**2 + &
+            2.0_dp*bx*ay*by + 3.0_dp*bx*by**2)/60.0_dp
+    end subroutine add_polygon_third_moment
+
+    pure subroutine add_polygon_third_moment_jvp( &
+            point, next_point, point_dot, next_point_dot, cross, cross_dot, &
+            moment, moment_dot)
+        real(dp), intent(in) :: point(2), next_point(2), point_dot(2)
+        real(dp), intent(in) :: next_point_dot(2), cross, cross_dot
+        real(dp), intent(inout) :: moment(2, 2, 2), moment_dot(2, 2, 2)
+
+        real(dp) :: ax, ay, bx, by, ax_dot, ay_dot, bx_dot, by_dot
+        real(dp) :: term, term_dot
+
+        ax = point(1)
+        ay = point(2)
+        bx = next_point(1)
+        by = next_point(2)
+        ax_dot = point_dot(1)
+        ay_dot = point_dot(2)
+        bx_dot = next_point_dot(1)
+        by_dot = next_point_dot(2)
+
+        term = ax**3 + ax**2*bx + ax*bx**2 + bx**3
+        term_dot = 3.0_dp*ax**2*ax_dot + 2.0_dp*ax*ax_dot*bx + &
+            ax**2*bx_dot + ax_dot*bx**2 + 2.0_dp*ax*bx*bx_dot + &
+            3.0_dp*bx**2*bx_dot
+        call accumulate_third_component( &
+            1, 1, 1, term, term_dot, cross, cross_dot, moment, moment_dot, 20.0_dp)
+
+        term = ay**3 + ay**2*by + ay*by**2 + by**3
+        term_dot = 3.0_dp*ay**2*ay_dot + 2.0_dp*ay*ay_dot*by + &
+            ay**2*by_dot + ay_dot*by**2 + 2.0_dp*ay*by*by_dot + &
+            3.0_dp*by**2*by_dot
+        call accumulate_third_component( &
+            2, 2, 2, term, term_dot, cross, cross_dot, moment, moment_dot, 20.0_dp)
+
+        term = 3.0_dp*ax**2*ay + ax**2*by + 2.0_dp*ax*bx*ay + &
+            2.0_dp*ax*bx*by + bx**2*ay + 3.0_dp*bx**2*by
+        term_dot = 6.0_dp*ax*ax_dot*ay + 3.0_dp*ax**2*ay_dot + &
+            2.0_dp*ax*ax_dot*by + ax**2*by_dot + &
+            2.0_dp*(ax_dot*bx*ay + ax*bx_dot*ay + ax*bx*ay_dot) + &
+            2.0_dp*(ax_dot*bx*by + ax*bx_dot*by + ax*bx*by_dot) + &
+            2.0_dp*bx*bx_dot*ay + bx**2*ay_dot + &
+            6.0_dp*bx*bx_dot*by + 3.0_dp*bx**2*by_dot
+        call accumulate_third_component( &
+            1, 1, 2, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+        call accumulate_third_component( &
+            1, 2, 1, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+        call accumulate_third_component( &
+            2, 1, 1, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+
+        term = 3.0_dp*ax*ay**2 + 2.0_dp*ax*ay*by + bx*ay**2 + &
+            ax*by**2 + 2.0_dp*bx*ay*by + 3.0_dp*bx*by**2
+        term_dot = 3.0_dp*ax_dot*ay**2 + 6.0_dp*ax*ay*ay_dot + &
+            2.0_dp*(ax_dot*ay*by + ax*ay_dot*by + ax*ay*by_dot) + &
+            bx_dot*ay**2 + 2.0_dp*bx*ay*ay_dot + &
+            ax_dot*by**2 + 2.0_dp*ax*by*by_dot + &
+            2.0_dp*(bx_dot*ay*by + bx*ay_dot*by + bx*ay*by_dot) + &
+            3.0_dp*bx_dot*by**2 + 6.0_dp*bx*by*by_dot
+        call accumulate_third_component( &
+            1, 2, 2, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+        call accumulate_third_component( &
+            2, 1, 2, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+        call accumulate_third_component( &
+            2, 2, 1, term, term_dot, cross, cross_dot, moment, moment_dot, 60.0_dp)
+    end subroutine add_polygon_third_moment_jvp
+
+    pure subroutine accumulate_third_component( &
+            first, second, third, term, term_dot, cross, cross_dot, moment, &
+            moment_dot, denominator)
+        integer, intent(in) :: first, second, third
+        real(dp), intent(in) :: term, term_dot, cross, cross_dot, denominator
+        real(dp), intent(inout) :: moment(2, 2, 2), moment_dot(2, 2, 2)
+
+        moment(first, second, third) = moment(first, second, third) + &
+            cross*term/denominator
+        moment_dot(first, second, third) = moment_dot(first, second, third) + &
+            (cross_dot*term + cross*term_dot)/denominator
+    end subroutine accumulate_third_component
 
     pure subroutine clip_level_set_polygon( &
             polygon, point_count, level_values, keep_positive, clipped)

@@ -1333,7 +1333,10 @@ gallery example.
   or intentional jump reporting remains a higher-level space contract.
 - Cut-cell classification and high-order quadrature. Exact degree-one triangle
   and tetrahedron rules plus exact degree-two raw-moment tensors with
-  fixed-topology JVPs are now public; higher-order cut rules remain.
+  fixed-topology JVPs are now public. The 2-D linear level-set path now also
+  exposes exact degree-three raw-moment tensors and fixed-topology JVPs for
+  positive and negative clipped polygons, with an independent simplex-moment
+  and central-difference oracle; higher-order cut rules remain.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
