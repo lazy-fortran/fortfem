@@ -162,7 +162,7 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, and controlled ICHOL paths are public | Measured scaling, flexible Krylov products, and block solver derivatives |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
@@ -852,7 +852,7 @@ public and independently tested. Standalone sparse IC(0) and ILU(0) paths now
 consume FortSparse CSC directly, preserve the input lower/upper patterns
 without fill, and expose fixed-factor right-hand-side JVP/VJP actions,
 including the transpose solve for ILU. PCG integration, ILUT/fill-controlled
-ICHOL, and scaling benchmarks remain active solver work. The deterministic
+ICHOL and production-size scaling remain active solver work. The deterministic
 `build_sparse_ilut`/`apply_sparse_ilut` path now supplies drop tolerance,
 per-column fill selection, fixed-factor JVP/VJP, and explicit pivot status;
 `build_sparse_ichol` supplies the matching SPD drop/fill path on the existing
@@ -864,7 +864,9 @@ independent no-fill diagonal oracle; it exports the same sparse CSC apply and
 fixed-factor derivative contract as the dense reference builder. Controlled
 row-oriented ICHOL now performs the matching symmetric row sweep with a
 Cholesky diagonal oracle and the same sparse CSC apply/JVP/VJP contract.
-Measured scaling remains. The
+The `solver_benchmark` gallery fixture now records row-ILUT and row-ICHOL
+construction times on a shifted symmetric Poisson matrix and emits a log-log
+timing plot; production-size memory and accuracy scaling remain. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
@@ -1643,6 +1645,9 @@ gallery example.
 
 - Ordered examples with FortPlot plots, numerical data, convergence, and
   performance.
+- The solver benchmark now publishes row-oriented ILUT/ICHOL construction
+  timings alongside the physical Poisson solution, direct/PCG timings, and
+  residual diagnostics.
 - Every example carries the smallest applicable complete contract: a
   manufactured or analytical solution, an independent oracle, primal and
   derivative checks, a conservation or structure diagnostic, a mesh or
