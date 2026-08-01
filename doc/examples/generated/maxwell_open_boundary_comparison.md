@@ -19,6 +19,12 @@ against the exact complex-stretched plane wave; no hard-coded far-wall value
 is used. The comparison follows the transparent boundary formulation of Jiang
 et al., arXiv:1811.12449.
 
+The first generated image is the solution itself: the colour field is the
+reconstructed Nédélec magnitude on an interior `z` slice, and the overlaid
+arrows are the real in-plane components reconstructed from the solved edge
+degrees of freedom. The arrows therefore show the computed vector field rather
+than a source or convergence diagnostic.
+
 The volume-boundary example additionally constructs a tetrahedral box,
 reproduces a constant field with first-kind Nédélec elements of orders one
 through four, samples its tangential trace on the FFT grid, and pulls the
@@ -52,8 +58,8 @@ program maxwell_open_boundary_comparison
         solve_tetra_nedelec_pml, initialize_tetra_nedelec_first_kind, &
         tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
-    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
-        title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, quiver, &
+        savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -447,14 +453,18 @@ contains
 
     subroutine render_pml_field_slice()
         integer, parameter :: slice_nx = 40, slice_ny = 40
+        integer, parameter :: arrow_nx = 7, arrow_ny = 7
         integer, parameter :: sample_offset_count = 9
         real(dp), parameter :: mesh_spacing = &
             1.0_dp/real(pml_mesh_count(1), dp)
         real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
         real(dp) :: values(slice_nx, slice_ny)
         real(dp) :: point(3), sample_point(3), sample_value
+        real(dp) :: arrow_x(arrow_nx*arrow_ny), arrow_y(arrow_nx*arrow_ny)
+        real(dp) :: arrow_u(arrow_nx*arrow_ny), arrow_v(arrow_nx*arrow_ny)
+        complex(dp) :: vector_value(3)
         real(dp) :: sample_offsets(2, sample_offset_count)
-        integer :: index_x, index_y, sample_offset, local_status
+        integer :: arrow, index_x, index_y, sample_offset, local_status
 
         do index_x = 1, slice_nx + 1
             x_edges(index_x) = real(index_x - 1, dp)/real(slice_nx, dp)
@@ -504,10 +514,25 @@ contains
         ! naturally indexed as values(x, y).  Transpose here so a plane wave
         ! varying in x is not displayed as a spurious y-directed stripe.
         call pcolormesh(x_edges, y_edges, transpose(values), cmap="viridis")
+        arrow = 0
+        do index_y = 1, arrow_ny
+            do index_x = 1, arrow_nx
+                arrow = arrow + 1
+                arrow_x(arrow) = (real(index_x, dp) - 0.5_dp)/real(arrow_nx, dp)
+                arrow_y(arrow) = (real(index_y, dp) - 0.5_dp)/real(arrow_ny, dp)
+                call evaluate_pml_field( &
+                    vertices, tetrahedra, global_dofs, orientations, pml_solution, &
+                    [arrow_x(arrow), arrow_y(arrow), 0.503_dp], vector_value)
+                arrow_u(arrow) = real(vector_value(1), dp)
+                arrow_v(arrow) = real(vector_value(2), dp)
+            end do
+        end do
+        call quiver(arrow_x, arrow_y, arrow_u, arrow_v, color="white", &
+            angles="xy", scale_units="xy", scale=0.5_dp, width=0.0025_dp)
         call colorbar(label="reconstructed Nedelec field magnitude")
         call xlabel("x")
         call ylabel("y")
-        call title("Element-averaged Maxwell PML solution near z = 0.503")
+        call title("Maxwell PML solution near z = 0.503")
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
 
