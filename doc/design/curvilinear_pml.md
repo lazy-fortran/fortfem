@@ -63,6 +63,16 @@ approximation. `test_curvilinear_helmholtz_pml` independently checks the
 closed-form values, two-sided directional differences, the real complex
 adjoint identities, diagonal reduction, and singular-input rejection.
 
+The same tensors are now consumed by the tetrahedral first-kind Nédélec local
+form. The public
+`assemble_tetra_nedelec_curvilinear_pml_element`, `_jvp`, and `_vjp` routines
+differentiate the physical covariant Piola map, determinant quadrature,
+wave-number term, and every stretch entry together. A diagonal stretch is
+checked against the established Cartesian element assembly, while a full
+shear stretch is checked by reassembly finite differences and the real complex
+adjoint identity in
+`test_tetra_nedelec_curvilinear_pml_element_ad`.
+
 The module is a coefficient contract, not a complete curved-object PML
 assembler. Layer geometry, active-cell topology, quadrature, and reflection
 diagnostics remain caller-owned and are tracked in the open-boundary roadmap.

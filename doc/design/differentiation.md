@@ -115,6 +115,15 @@ cell selection and curved-layer assembly remain fixed-topology caller
 operations, so geometry derivatives are valid away from a cell entering or
 leaving the layer.
 
+The tetrahedral first-kind Nédélec PML element consumes those full tensors and
+exposes local matrix JVP/VJP products. The reverse sweep separates the
+real-valued covariant Piola and determinant geometry adjoint from the complex
+stretch adjoint, so mesh motion and curved-layer design parameters can be
+optimized in one contract. Its independent test compares a complete
+reassembly under simultaneous mesh, stretch, and wave-number perturbations,
+checks the real complex dot identity, and verifies exact reduction to the
+Cartesian element for diagonal stretches.
+
 The one-dimensional scalar P1 slab exposes the complete end-to-end version of
 this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
 `solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same
