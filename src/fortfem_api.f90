@@ -600,6 +600,9 @@ module fortfem_api
         assemble_laplace_torus_curved_calderon_3d, &
         assemble_laplace_torus_curved_dtn_3d, &
         solve_laplace_bem_dtn_torus_curved_3d
+    use fortfem_laplace_torus_curved_bem_ad_3d, only: &
+        assemble_laplace_torus_curved_dtn_3d_geometry_jvp, &
+        assemble_laplace_torus_curved_dtn_3d_geometry_vjp
     use fortfem_laplace_torus_curved_fem_bem_coupling_3d, only: &
         assemble_laplace_fem_bem_costabel_torus_curved_3d, &
         solve_laplace_fem_bem_costabel_torus_curved_3d
@@ -1289,6 +1292,8 @@ module fortfem_api
     public :: evaluate_laplace_representation_torus_curved_3d_geometry_vjp
     public :: assemble_laplace_torus_curved_calderon_3d
     public :: assemble_laplace_torus_curved_dtn_3d
+    public :: assemble_laplace_torus_curved_dtn_3d_geometry_jvp
+    public :: assemble_laplace_torus_curved_dtn_3d_geometry_vjp
     public :: solve_laplace_bem_dtn_torus_curved_3d
     public :: assemble_laplace_fem_bem_costabel_torus_curved_3d
     public :: solve_laplace_fem_bem_costabel_torus_curved_3d
