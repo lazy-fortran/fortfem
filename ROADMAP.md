@@ -1716,6 +1716,11 @@ gallery example.
   one-dimensional Poisson patch test through two-dimensional interfaces and
   waves to three-dimensional torus, sphere, FEM/BEM/DtN, PML, anisotropic,
   and mixed structure-preserving cases.
+- The `mixed_acoustic_wave` gallery fixture now exercises the public
+  structure-preserving midpoint step against independent two-mode acoustic
+  solutions, with physical state, phase-space, energy, error, and timing
+  plots. The same neutral block contract remains reusable for elasticity,
+  electromagnetic, and tensor-pressure clients.
 - Gallery examples use the same generated kernels and public APIs as library
   clients. The gallery does not contain a faster special implementation that
   bypasses the tested residual or derivative path.

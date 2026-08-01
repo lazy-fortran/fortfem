@@ -12,6 +12,10 @@ field_aligned_flux
 fci_parallel_diffusion
 fci_quadrilateral_geometry
 fci_polygon_geometry
+
+# Structure-preserving dynamics
+mixed_acoustic_wave
+
 tetra_h1_poisson
 tetra_mixed_poisson
 tetra_nedelec_p_convergence
