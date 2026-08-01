@@ -76,6 +76,11 @@ The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
 fixed-topology direct-solve reduction for curl--curl nullspaces, including the
 control-mesh rule needed by high-order FEEC and IGA/mortar spaces.
 
+The [broken and skeleton space layout contract](broken_skeleton_spaces.html)
+provides deterministic ownership maps for broken H¹/H(curl)/H(div)/L² spaces
+and shared scalar, tangential, or normal facet traces. Basis evaluation,
+metric maps, and physical interface laws remain caller-owned.
+
 The [FEEC exact-sequence diagnostic](feec_exact_sequence.html) exposes the
 metric-independent `curl(grad)` and `div(curl)` composition defects with
 value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
