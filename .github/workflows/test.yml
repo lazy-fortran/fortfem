@@ -128,13 +128,21 @@ jobs:
         # compile tree; otherwise the hosted dependency scan can select a
         # stale build/gfortran_* module while tests are compiled.
         fpm clean --skip
-        fo test
+        if ! fo test; then
+          echo "Fo test build failed; retrying the same suite through FPM"
+          fpm clean --skip
+          fpm test
+        fi
 
     - name: Run tests with coverage
       id: coverage
       continue-on-error: true
       run: |
-        fo test --flag "--coverage"
+        if ! fo test --flag "--coverage"; then
+          echo "Fo coverage build failed; retrying coverage through FPM"
+          fpm clean --skip
+          fpm test --flag "--coverage"
+        fi
         find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
           gcov -o "$dir" src/*.f90 || true
         done
