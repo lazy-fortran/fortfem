@@ -5,7 +5,8 @@ module fortfem_maxwell_torus_curved_rwg
     use fortfem_maxwell_efie_bc_3d, only: build_maxwell_bc_to_refined_rwg
     use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     use fortfem_torus_curved_panel, only: &
-        evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp
+        evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp, &
+        evaluate_torus_curved_panel_vjp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
@@ -27,8 +28,10 @@ module fortfem_maxwell_torus_curved_rwg
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_magnetic_geometry_jvp
+    public :: evaluate_maxwell_torus_magnetic_geometry_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_rwg_basis_jvp
+    public :: evaluate_maxwell_torus_curved_rwg_basis_vjp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
@@ -136,6 +139,64 @@ contains
         status = 0
     end subroutine &
         evaluate_maxwell_torus_magnetic_geometry_jvp
+
+    subroutine evaluate_maxwell_torus_magnetic_geometry_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            coefficients, observation, wave_number, quadrature_degree, &
+            magnetic_field_bar, vertices_bar, parameters_bar, &
+            major_radius_bar, minor_radius_bar, coefficients_bar, &
+            observation_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, observation(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), magnetic_field_bar(3)
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        real(dp), intent(out) :: observation_bar(3), wave_number_bar
+        complex(dp), allocatable :: magnetic_fields(:, :)
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        integer :: status
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        observation_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (size(vertices_bar, 1) /= size(vertices, 1)) return
+        if (size(vertices_bar, 2) /= size(vertices, 2)) return
+        if (size(parameters_bar, 1) /= size(parameters, 1)) return
+        if (size(parameters_bar, 2) /= size(parameters, 2)) return
+        if (major_radius <= minor_radius .or. minor_radius <= 0.0_dp) return
+        if (wave_number < 0.0_dp .or. quadrature_degree < 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(edge_vertices, 2) == 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(edge_vertices, 2)))
+        allocate(magnetic_fields(3, size(edge_vertices, 2)))
+        call evaluate_all_torus_curved_rwg_magnetic_fields_vjp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            major_radius, minor_radius, observation, wave_number, xi, eta, &
+            weights, coefficients, magnetic_field_bar, vertices_bar, parameters_bar, &
+            major_radius_bar, minor_radius_bar, observation_bar, &
+            wave_number_bar, magnetic_fields, status)
+        if (status /= 0) return
+        coefficients_bar = matmul( &
+            conjg(transpose(magnetic_fields)), magnetic_field_bar)
+        status = 0
+    end subroutine evaluate_maxwell_torus_magnetic_geometry_vjp
 
     subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -726,6 +787,114 @@ contains
         end do
         status = 0
     end subroutine evaluate_all_torus_curved_rwg_magnetic_fields_jvp
+
+    subroutine evaluate_all_torus_curved_rwg_magnetic_fields_vjp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            major_radius, minor_radius, target, wave_number, xi, eta, weights, &
+            coefficients, magnetic_field_bar, vertices_bar, parameters_bar, &
+            major_radius_bar, &
+            minor_radius_bar, target_bar, wave_number_bar, magnetic_fields, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, target(3)
+        real(dp), intent(in) :: wave_number, xi(:), eta(:), weights(:)
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :)
+        complex(dp), intent(in) :: coefficients(:), magnetic_field_bar(3)
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        real(dp), intent(out) :: target_bar(3), wave_number_bar
+        complex(dp), intent(out) :: magnetic_fields(:, :)
+        real(dp) :: basis_value(3), displacement(3), distance, divergence
+        real(dp) :: jacobian, point(3), unit(3), unit_bar(3)
+        real(dp) :: distance_bar, displacement_bar(3)
+        real(dp) :: point_bar(3), value_bar(3), jacobian_bar
+        real(dp) :: local_major_bar, local_minor_bar
+        real(dp) :: local_vertices_bar(3, 2), local_parameters_bar(2, 3)
+        complex(dp) :: curl_integrand(3), curl_bar(3), gradient_green(3)
+        complex(dp) :: green, q, factor
+        complex(dp) :: gradient_bar(3), wave_factor, unit_factor
+        complex(dp) :: seed(3)
+        integer :: basis, local, node, panel, status_local
+        integer :: vertex, status
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        target_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        magnetic_fields = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_torus_curved_rwg_basis( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, panel, major_radius, minor_radius, &
+                        xi(node), eta(node), point, basis_value, divergence, &
+                        jacobian, status_local)
+                    if (status_local /= 0) return
+                    displacement = target - point
+                    distance = norm2(displacement)
+                    if (distance <= &
+                        128.0_dp*epsilon(1.0_dp)*minor_radius) return
+                    unit = displacement/distance
+                    green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                        (4.0_dp*acos(-1.0_dp)*distance)
+                    q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance
+                    factor = green*q
+                    gradient_green = factor*unit
+                    curl_integrand = complex_cross_product( &
+                        gradient_green, cmplx(basis_value, 0.0_dp, dp))
+                    magnetic_fields(:, basis) = magnetic_fields(:, basis) + &
+                        weights(node)*jacobian*curl_integrand
+
+                    seed = magnetic_field_bar*conjg(coefficients(basis))
+                    curl_bar = weights(node)*jacobian*seed
+                    jacobian_bar = weights(node)*real(sum(conjg( &
+                        seed)*curl_integrand), dp)
+                    gradient_bar = complex_cross_product( &
+                        cmplx(basis_value, 0.0_dp, dp), curl_bar)
+                    value_bar = real(complex_cross_product( &
+                        curl_bar, conjg(gradient_green)), dp)
+                    unit_bar = real(conjg(gradient_bar)*factor, dp)
+                    wave_factor = cmplx(0.0_dp, 1.0_dp, dp)
+                    unit_factor = green*(q**2 + 1.0_dp/distance**2)
+                    distance_bar = real(sum(conjg(gradient_bar)* &
+                        unit_factor*unit), dp)
+                    wave_number_bar = wave_number_bar + real(sum( &
+                        conjg(gradient_bar)*green*wave_factor*( &
+                        distance*q + 1.0_dp)*unit), dp)
+                    displacement_bar = distance_bar*unit + &
+                        (unit_bar - unit*dot_product(unit, unit_bar))/distance
+                    target_bar = target_bar + displacement_bar
+                    point_bar = -displacement_bar
+                    call evaluate_maxwell_torus_curved_rwg_basis_vjp( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, panel, major_radius, minor_radius, &
+                        xi(node), eta(node), point_bar, value_bar, 0.0_dp, &
+                        jacobian_bar, local_vertices_bar, local_parameters_bar, &
+                        local_major_bar, local_minor_bar, status_local)
+                    if (status_local /= 0) return
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        parameters_bar(:, triangles(local, panel)) = &
+                            parameters_bar(:, triangles(local, panel)) + &
+                            local_parameters_bar(:, local)
+                    end do
+                    major_radius_bar = major_radius_bar + local_major_bar
+                    minor_radius_bar = minor_radius_bar + local_minor_bar
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_all_torus_curved_rwg_magnetic_fields_vjp
 
     subroutine assemble_maxwell_torus_curved_rwg_rbc_pairing( &
             vertices, triangles, parameters, major_radius, minor_radius, &
@@ -1654,6 +1823,109 @@ contains
             edge_length*surface_jacobian_dot/jacobian**2)
         status = 0
     end subroutine evaluate_maxwell_torus_curved_rwg_basis_jvp
+
+    pure subroutine evaluate_maxwell_torus_curved_rwg_basis_vjp( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            basis, panel, major_radius, minor_radius, xi, eta, point_bar, &
+            value_bar, surface_divergence_bar, surface_jacobian_bar, &
+            edge_vertices_bar, panel_parameters_bar, major_radius_bar, &
+            minor_radius_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, xi, eta
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_triangles(:, :), basis, panel
+        real(dp), intent(in) :: point_bar(3), value_bar(3)
+        real(dp), intent(in) :: surface_divergence_bar, surface_jacobian_bar
+        real(dp), intent(out) :: edge_vertices_bar(3, 2)
+        real(dp), intent(out) :: panel_parameters_bar(2, 3)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_bar(3), edge_length, edge_length_bar
+        real(dp) :: dummy_point(3), dummy_value(3), dummy_divergence
+        real(dp) :: panel_parameters(2, 3), tangent_eta(3), tangent_eta_bar(3)
+        real(dp) :: tangent_xi(3), tangent_xi_bar(3)
+        real(dp) :: vector(3), vector_bar(3), coefficient, coefficient_bar
+        real(dp) :: jacobian, jacobian_bar, local_major_bar, local_minor_bar
+        real(dp) :: opposite_coordinates(2)
+        real(dp) :: dummy_xi_bar, dummy_eta_bar
+        integer :: local, next, opposite, orientation
+
+        edge_vertices_bar = 0.0_dp
+        panel_parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        status = 1
+        call evaluate_maxwell_torus_curved_rwg_basis( &
+            vertices, triangles, parameters, edge_vertices, edge_triangles, &
+            basis, panel, major_radius, minor_radius, xi, eta, dummy_point, &
+            dummy_value, dummy_divergence, jacobian, status)
+        if (status /= 0) return
+        ! The call above only supplies the public basis outputs in their
+        ! declared order; evaluate the panel tangents explicitly below.
+        do local = 1, 3
+            panel_parameters(:, local) = parameters(:, triangles(local, panel))
+        end do
+        call evaluate_torus_curved_panel( &
+            panel_parameters, major_radius, minor_radius, xi, eta, vector, &
+            tangent_xi, tangent_eta, jacobian, status)
+        if (status /= 0) return
+        orientation = 0
+        opposite = 0
+        do local = 1, 3
+            next = modulo(local, 3) + 1
+            if (triangles(local, panel) == edge_vertices(1, basis) .and. &
+                triangles(next, panel) == edge_vertices(2, basis)) then
+                orientation = 1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+            if (triangles(local, panel) == edge_vertices(2, basis) .and. &
+                triangles(next, panel) == edge_vertices(1, basis)) then
+                orientation = -1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+        end do
+        if (orientation == 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge = vertices(:, edge_vertices(2, basis)) - &
+            vertices(:, edge_vertices(1, basis))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp)) return
+        vector = (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta
+        coefficient = real(orientation, dp)*edge_length/jacobian
+        coefficient_bar = dot_product(value_bar, vector)
+        vector_bar = coefficient*value_bar
+        edge_length_bar = real(orientation, dp)*coefficient_bar/jacobian + &
+            2.0_dp*real(orientation, dp)*surface_divergence_bar/jacobian
+        jacobian_bar = surface_jacobian_bar - &
+            real(orientation, dp)*edge_length*coefficient_bar/jacobian**2 - &
+            2.0_dp*real(orientation, dp)*edge_length* &
+            surface_divergence_bar/jacobian**2
+        edge_bar = edge_length_bar*edge/edge_length
+        edge_vertices_bar(:, 1) = -edge_bar
+        edge_vertices_bar(:, 2) = edge_bar
+        tangent_xi_bar = (xi - opposite_coordinates(1))*vector_bar
+        tangent_eta_bar = (eta - opposite_coordinates(2))*vector_bar
+        call evaluate_torus_curved_panel_vjp( &
+            panel_parameters, major_radius, minor_radius, xi, eta, point_bar, &
+            tangent_xi_bar, tangent_eta_bar, jacobian_bar, &
+            panel_parameters_bar, local_major_bar, local_minor_bar, &
+            dummy_xi_bar, dummy_eta_bar, status)
+        if (status /= 0) return
+        major_radius_bar = local_major_bar
+        minor_radius_bar = local_minor_bar
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_rwg_basis_vjp
 
     pure logical function torus_reference_children_touch( &
             parameters, triangles, first_panel, second_panel, major_radius, &
