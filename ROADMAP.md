@@ -234,7 +234,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Linear response interchange | The neutral external-adapter record now carries modal `(m,n)` metadata, complex frequency, provenance, normalization, response channels, and caller-owned equilibrium, inertia, resistive, vacuum, and wall blocks. The composed operator, forced residual, complex JVP/VJP, normalized reciprocity error, conservative Hermitian passivity lower bound, and neutral generalized eigen-residual `K u - lambda M u` with analytic JVP/VJP are public; no GPEC/MARS/GLISS/STARWALL reader or closure is included | Assembly-specific FEM/BEM/DtN/PML response matrices, singular-layer matching, reciprocity/passivity normalization, and external sampler fixtures |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, and target ledgers. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and a reproducible FCI map |
-| Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus a separate dissipative Cayley block | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
+| Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus a separate dissipative Cayley block; a neutral mixed `C sigma - E u`, `D sigma - f` elasticity residual with complete JVP/VJP is now public | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
 | Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
 | Verification and delivery | Seeded random tests, external-code adapters, provenance manifests, mesh-completeness checks, and Pages health checks | Repeated seeds, license and revision records, independent samplers, HTTP link checks, and FortPlot image regression |
 
@@ -1571,6 +1571,12 @@ gallery example.
   geometry, weight, JVP, and real VJP actions. A hand-evaluated anisotropic
   matrix, central-difference, adjoint, and positivity oracle cover the public
   block; global numbering and constitutive laws remain client-owned.
+- The neutral mixed elasticity residual now exposes caller-owned compliance,
+  strain, and equilibrium maps as explicit constitutive and force-balance
+  blocks with complete value/JVP/VJP actions. Its independent matrix,
+  finite-difference, and adjoint oracles make it the reusable algebraic core
+  for Hellinger--Reissner, weak-symmetry, TDNNS, and anisotropic clients; the
+  elasticity complex, symmetry constraints, and boundary laws remain external.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **active**
 

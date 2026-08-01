@@ -164,6 +164,11 @@ The [tensor diffusion matrix contract](tensor_diffusion_matrix.html) provides
 the analogous tensor-weighted gradient pairing for anisotropic scalar,
 elastic, and compatible field blocks, with analytic JVP/VJP actions.
 
+The [mixed elasticity residual](mixed_elasticity_residual.html) provides the
+neutral first-order `C sigma - E u` constitutive block and `D sigma - f`
+equilibrium block, including complete analytic JVP/VJP actions for compatible,
+TDNNS, Hellinger--Reissner, and anisotropic elasticity clients.
+
 The [compatible flux elimination contract](compatible_flux_elimination.html)
 provides the differentiable local Schur reduction and recovery map for
 RT/BDM/Nédélec, compatible IGA, and HDG flux blocks without owning a global
