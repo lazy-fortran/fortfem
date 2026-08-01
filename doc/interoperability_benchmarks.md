@@ -48,6 +48,12 @@ The published result records, for every mesh level:
 - peak resident memory and a description of the runner hardware;
 - a fixed probe-grid trace used for solution-difference plots.
 
+Adapters should use FortFEM's neutral `interchange_sample_set_t` contract for
+that probe grid. It validates the common physical coordinates, positive
+weights, component shape, and provenance before reporting weighted absolute,
+relative, and (L^\infty) differences. This keeps comparisons between
+different bases or mesh numberings independent of any plasma-specific reader.
+
 Correctness plots show errors and observed convergence rates. Performance plots
 are separate and never imply that timings from different hardware are
 comparable.

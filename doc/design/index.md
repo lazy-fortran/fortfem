@@ -117,6 +117,10 @@ The [neutral equilibrium interchange contract](equilibrium_interchange.html)
 defines the sample/provenance boundary for external equilibrium adapters
 without implementing GEQDSK, COCOS, or plasma-specific readers and closures.
 
+The [physical interchange sample-set contract](interchange_samples.html)
+provides a common coordinate/value/weight set and weighted scalar, vector, or
+tensor comparison for license-safe external samplers.
+
 The [linear-response interchange contract](linear_response_interchange.html)
 defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and

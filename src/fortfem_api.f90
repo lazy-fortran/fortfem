@@ -1,4 +1,7 @@
 module fortfem_api
+    use fortfem_interchange_samples, only: &
+        compare_interchange_samples, initialize_interchange_samples, &
+        interchange_sample_set_t, validate_interchange_samples
     use fortfem_equilibrium_interchange, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
@@ -2247,6 +2250,10 @@ module fortfem_api
     public :: evaluate_cgl_pressure_divergence
     public :: evaluate_cgl_pressure_divergence_jvp
     public :: evaluate_cgl_pressure_divergence_vjp
+    public :: interchange_sample_set_t
+    public :: initialize_interchange_samples
+    public :: validate_interchange_samples
+    public :: compare_interchange_samples
     public :: equilibrium_interchange_t
     public :: equilibrium_normalization_t
     public :: initialize_equilibrium_interchange
