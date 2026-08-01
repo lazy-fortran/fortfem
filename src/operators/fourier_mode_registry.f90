@@ -38,6 +38,7 @@ module fortfem_fourier_mode_registry
     public :: find_fourier_mode
     public :: fourier_mode_conjugate_index
     public :: fourier_mode_triad_closed
+    public :: build_fourier_mode_triad_map
     public :: initialize_fourier_mode_registry
     public :: validate_fourier_mode_registry
 
@@ -224,6 +225,45 @@ contains
             registry%toroidal_modes(output_index) == expected_toroidal
         call status_set(status, FORTSPARSE_OK, "")
     end function fourier_mode_triad_closed
+
+    subroutine build_fourier_mode_triad_map( &
+            registry, triad_map, missing_count, status)
+        !! Map every retained input pair to its retained output mode.
+        !!
+        !! `triad_map(first,second)` is the output index for the sum of the
+        !! two input mode labels, or zero when that sum is not retained.
+        !! `missing_count` is therefore an explicit de-aliasing diagnostic;
+        !! callers may reject the registry, pad it, or intentionally project
+        !! the omitted sums according to their nonlinear policy.
+        type(fourier_mode_registry_t), intent(in) :: registry
+        integer, allocatable, intent(out) :: triad_map(:, :)
+        integer, intent(out) :: missing_count
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: first_mode, second_mode, mode_count
+
+        if (allocated(triad_map)) deallocate(triad_map)
+        missing_count = 0
+        if (.not. validate_fourier_mode_registry(registry, status)) then
+            allocate(triad_map(0, 0))
+            return
+        end if
+        mode_count = size(registry%poloidal_modes)
+        allocate(triad_map(mode_count, mode_count))
+        triad_map = 0
+        do first_mode = 1, mode_count
+            do second_mode = 1, mode_count
+                triad_map(first_mode, second_mode) = find_fourier_mode( &
+                    registry, registry%poloidal_modes(first_mode) + &
+                    registry%poloidal_modes(second_mode), &
+                    registry%toroidal_modes(first_mode) + &
+                    registry%toroidal_modes(second_mode))
+                if (triad_map(first_mode, second_mode) == 0) then
+                    missing_count = missing_count + 1
+                end if
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fourier_mode_triad_map
 
     subroutine evaluate_fourier_mode( &
             registry, mode_index, radius, theta, phi, value, radial_derivative, &
