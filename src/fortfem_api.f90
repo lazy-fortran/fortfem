@@ -499,6 +499,9 @@ module fortfem_api
         assemble_hdg_global_skeleton_csc_vjp
     use fortfem_feec_exact_sequence, only: assemble_feec_exact_sequence, &
         assemble_feec_exact_sequence_jvp, assemble_feec_exact_sequence_vjp
+    use fortfem_broken_feec_sequence, only: &
+        assemble_broken_feec_sequence, assemble_broken_feec_sequence_jvp, &
+        assemble_broken_feec_sequence_vjp
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -2167,6 +2170,9 @@ module fortfem_api
     public :: assemble_feec_exact_sequence
     public :: assemble_feec_exact_sequence_jvp
     public :: assemble_feec_exact_sequence_vjp
+    public :: assemble_broken_feec_sequence
+    public :: assemble_broken_feec_sequence_jvp
+    public :: assemble_broken_feec_sequence_vjp
     public :: assemble_feec_commuting_projection
     public :: assemble_feec_commuting_projection_jvp
     public :: assemble_feec_commuting_projection_vjp
