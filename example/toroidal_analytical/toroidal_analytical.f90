@@ -10,8 +10,8 @@ program toroidal_analytical
         solve_laplace_fem_bem_costabel_torus_curved_3d, &
         solve_laplace_bem_dtn_torus_curved_3d, toroidal_point_to_cartesian
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, plot, pcolormesh, add_scatter, &
-        xlabel, ylabel, title, legend, savefig
+    use fortplot, only: add_parametric_surface, add_scatter, figure, plot, &
+        pcolormesh, xlabel, ylabel, title, legend, savefig
     implicit none
 
     integer, parameter :: trace_points = 61
@@ -36,6 +36,9 @@ program toroidal_analytical
     real(dp) :: surface_value(phi_cells, theta_cells)
     real(dp) :: bem_error(phi_cells, theta_cells)
     real(dp) :: x(surface_points), y(surface_points), z(surface_points)
+    real(dp) :: surface_x(theta_cells + 1, phi_cells + 1)
+    real(dp) :: surface_y(theta_cells + 1, phi_cells + 1)
+    real(dp) :: surface_z(theta_cells + 1, phi_cells + 1)
     real(dp), allocatable :: boundary_trace(:), boundary_flux(:)
     real(dp), allocatable :: parameters(:, :)
     complex(dp), allocatable :: helmholtz_trace(:), helmholtz_flux(:)
@@ -193,8 +196,24 @@ contains
             end do
         end do
 
+        do j = 1, phi_cells + 1
+            phi_value = 2.0_dp*pi*real(j - 1, dp)/real(phi_cells, dp)
+            do i = 1, theta_cells + 1
+                theta_value = 2.0_dp*pi*real(i - 1, dp)/real(theta_cells, dp)
+                denominator = cosh(eta) - cos(theta_value)
+                surface_x(i, j) = scale*sinh(eta)*cos(phi_value)/denominator
+                surface_y(i, j) = scale*sinh(eta)*sin(phi_value)/denominator
+                surface_z(i, j) = scale*sin(theta_value)/denominator
+            end do
+        end do
+
         call figure(figsize=[7.5_dp, 6.5_dp])
-        call add_scatter(x, y, z, label="eta=acosh(2) torus", marker=".")
+        call add_parametric_surface( &
+            surface_x, surface_y, surface_z, color="lightsteelblue", &
+            alpha=0.60_dp, linewidth=0.25_dp, filled=.true., &
+            label="eta=acosh(2) torus surface")
+        call add_scatter(x, y, z, label="surface samples", marker=".", &
+            markersize=2.0_dp)
         call title("Toroidal exterior interface")
         call savefig(output_directory//"/toroidal_geometry_3d.png")
     end subroutine generate_geometry
