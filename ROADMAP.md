@@ -1333,7 +1333,12 @@ gallery example.
   surface-measure contract; geometry-to-graph construction remains client
   composition work. The existing vector current pairing consumes the
   surface-measure contract.
-- Broken H1, H(curl), H(div), and L2 spaces plus skeleton spaces.
+- The public `broken_space_layout_t` and `skeleton_space_layout_t` now provide
+  deterministic cell/facet ownership maps for broken H1, H(curl), H(div), and
+  L2 spaces plus scalar, tangential, and normal skeleton traces. Frozen
+  edge/face signs and explicit zero-sign boundary sides are validated before
+  maps are exported to caller-owned HDG, DG, Nitsche, cut, or IGA assembly.
+  Basis evaluation, metric maps, and physical interface laws remain separate.
 - Explicit delta-source and surface-current weak terms.
 - Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
 - Build the region and cell-complex graph around the validated chain maps,

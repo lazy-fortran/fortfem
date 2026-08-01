@@ -78,6 +78,15 @@ module fortfem_api
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
         assemble_surface_current_trace_residual_vjp
+    use fortfem_broken_skeleton_spaces, only: &
+        BROKEN_SPACE_H1, BROKEN_SPACE_HCURL, BROKEN_SPACE_HDIV, &
+        BROKEN_SPACE_L2, SKELETON_SPACE_SCALAR, &
+        SKELETON_SPACE_TANGENTIAL, SKELETON_SPACE_NORMAL, &
+        broken_space_layout_t, skeleton_space_layout_t, &
+        initialize_broken_space_layout, validate_broken_space_layout, &
+        broken_space_layout_maps, broken_space_layout_global_count, &
+        initialize_skeleton_space_layout, validate_skeleton_space_layout, &
+        skeleton_space_layout_maps, skeleton_space_layout_global_count
     use fortfem_fourier_mode_registry, only: &
         evaluate_fourier_mode, evaluate_fourier_mode_jvp, &
         evaluate_fourier_mode_vjp, find_fourier_mode, &
@@ -1126,6 +1135,23 @@ module fortfem_api
     public :: assemble_surface_current_trace_residual
     public :: assemble_surface_current_trace_residual_jvp
     public :: assemble_surface_current_trace_residual_vjp
+    public :: BROKEN_SPACE_H1
+    public :: BROKEN_SPACE_HCURL
+    public :: BROKEN_SPACE_HDIV
+    public :: BROKEN_SPACE_L2
+    public :: SKELETON_SPACE_SCALAR
+    public :: SKELETON_SPACE_TANGENTIAL
+    public :: SKELETON_SPACE_NORMAL
+    public :: broken_space_layout_t
+    public :: skeleton_space_layout_t
+    public :: initialize_broken_space_layout
+    public :: validate_broken_space_layout
+    public :: broken_space_layout_maps
+    public :: broken_space_layout_global_count
+    public :: initialize_skeleton_space_layout
+    public :: validate_skeleton_space_layout
+    public :: skeleton_space_layout_maps
+    public :: skeleton_space_layout_global_count
     public :: fourier_mode_registry_t
     public :: initialize_fourier_mode_registry
     public :: validate_fourier_mode_registry
