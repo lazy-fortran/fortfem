@@ -26,7 +26,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [acoustic_fem_dtn](acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
 - [maxwell_open_boundary_comparison](maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
-- [solver_benchmark](solver_benchmark.html) - Executable FortFEM solver_benchmark.f90 example.
+- [solver_benchmark](solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [laplace_bem_circle_spectrum](laplace_bem_circle_spectrum.html) - Executable FortFEM laplace_bem_circle_spectrum.f90 example.
 - [helmholtz_bem_circle_spectrum](helmholtz_bem_circle_spectrum.html) - Executable FortFEM helmholtz_bem_circle_spectrum.f90 example.
