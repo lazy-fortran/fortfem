@@ -1,0 +1,68 @@
+---
+title: Curvilinear PML coefficient contract
+---
+
+# Curvilinear PML coefficient contract
+
+`fortfem_curvilinear_helmholtz_pml` is the local coefficient boundary for a
+complex, nonsingular three-dimensional coordinate stretch. It is neutral: the
+caller supplies the stretch produced by a mesh, an IGA map, or a curved-layer
+construction; FortFEM does not choose a PML geometry or an application wave
+number.
+
+For a complex stretch matrix \(S\), the scalar Helmholtz weak coefficients are
+
+\[
+ G = \det(S)S^{-1}S^{-T},\qquad M=\det(S).
+\]
+
+The curl--curl Maxwell coefficients use the covariant pullback
+
+\[
+ C=\det(S)^{-1}S^TS,\qquad
+ M_c=\det(S)S^{-1}S^{-T}.
+\]
+
+The transpose is deliberately not a Hermitian transpose. A coordinate stretch
+is differentiated holomorphically; complex conjugation enters only the
+real-vector reverse product. The public primal, JVP, and VJP routines are:
+
+```fortran
+call curvilinear_scalar_helmholtz_pml_coefficients( &
+    stretch, gradient_coefficient, mass_coefficient, status)
+call curvilinear_scalar_helmholtz_pml_coefficients_jvp( &
+    stretch, stretch_dot, gradient_dot, mass_dot, status)
+call curvilinear_scalar_helmholtz_pml_coefficients_vjp( &
+    stretch, gradient_bar, mass_bar, stretch_bar, status)
+
+call curvilinear_curl_curl_pml_coefficients( &
+    stretch, curl_coefficient, mass_tensor, status)
+call curvilinear_curl_curl_pml_coefficients_jvp( &
+    stretch, stretch_dot, curl_dot, mass_tensor_dot, status)
+call curvilinear_curl_curl_pml_coefficients_vjp( &
+    stretch, curl_bar, mass_tensor_bar, stretch_bar, status)
+```
+
+The reverse routines use
+
+\[
+ \operatorname{Re}\sum_i\overline{y_{\!bar,i}}\,\dot y_i
+ =
+ \operatorname{Re}\sum_i\overline{S_{\!bar,i}}\,\dot S_i,
+\]
+
+so they are suitable for real and imaginary geometry-design parameters. A
+nonfinite or numerically singular stretch is rejected with a nonzero status;
+the output arrays are initialized to zero on failure. The singularity guard is
+scale-aware and uses the determinant relative to the largest matrix entry.
+
+The diagonal case is exactly the existing Cartesian tensor path, while the
+off-diagonal entries retain shear and curvilinear metric coupling. This keeps
+IGA and geometry-generated layers from being forced into a diagonal
+approximation. `test_curvilinear_helmholtz_pml` independently checks the
+closed-form values, two-sided directional differences, the real complex
+adjoint identities, diagonal reduction, and singular-input rejection.
+
+The module is a coefficient contract, not a complete curved-object PML
+assembler. Layer geometry, active-cell topology, quadrature, and reflection
+diagnostics remain caller-owned and are tracked in the open-boundary roadmap.
