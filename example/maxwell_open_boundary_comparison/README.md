@@ -13,6 +13,12 @@ against the exact complex-stretched plane wave; no hard-coded far-wall value
 is used. The comparison follows the transparent boundary formulation of Jiang
 et al., arXiv:1811.12449.
 
+The first generated image is the solution itself: the colour field is the
+reconstructed Nédélec magnitude on an interior `z` slice, and the overlaid
+arrows are the real in-plane components reconstructed from the solved edge
+degrees of freedom. The arrows therefore show the computed vector field rather
+than a source or convergence diagnostic.
+
 The volume-boundary example additionally constructs a tetrahedral box,
 reproduces a constant field with first-kind Nédélec elements of orders one
 through four, samples its tangential trace on the FFT grid, and pulls the
