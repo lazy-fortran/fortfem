@@ -18,6 +18,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
@@ -1587,6 +1589,205 @@ contains
         end do
         status = 0
     end subroutine assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+
+    subroutine assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            direction, polarization, wave_number, quadrature_degree, &
+            vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+            direction_dot, polarization_dot, wave_number_dot, right_hand_side, &
+            right_hand_side_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(in) :: direction_dot(3), wave_number_dot
+        complex(dp), intent(in) :: polarization_dot(3)
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        complex(dp), allocatable, intent(out) :: right_hand_side_dot(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), basis_value_dot(3)
+        real(dp) :: divergence, divergence_dot, jacobian, jacobian_dot
+        real(dp) :: point(3), point_dot(3), phase_argument_dot
+        complex(dp) :: incident_field(3), incident_field_dot(3)
+        complex(dp) :: phase, phase_dot, contraction, contraction_dot
+        integer :: basis, node, panel
+
+        if (allocated(right_hand_side_dot)) deallocate(right_hand_side_dot)
+        call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, direction, &
+            polarization, wave_number, quadrature_degree, right_hand_side, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        if (any(shape(parameters_dot) /= shape(parameters))) then
+            status = 1
+            return
+        end if
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(right_hand_side_dot(size(edge_vertices, 2)))
+        right_hand_side_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do basis = 1, size(edge_vertices, 2)
+            do panel = 1, 2
+                do node = 1, size(weights)
+                    call evaluate_maxwell_torus_curved_rwg_basis_jvp( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, edge_triangles(panel, basis), &
+                        major_radius, minor_radius, xi(node), eta(node), &
+                        vertices_dot, parameters_dot, major_radius_dot, &
+                        minor_radius_dot, point, basis_value, divergence, jacobian, &
+                        point_dot, basis_value_dot, divergence_dot, jacobian_dot, &
+                        status)
+                    if (status /= 0) return
+                    phase_argument_dot = wave_number_dot*dot_product( &
+                        direction, point) + wave_number*( &
+                        dot_product(direction_dot, point) + &
+                        dot_product(direction, point_dot))
+                    phase = exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    phase_dot = cmplx(0.0_dp, phase_argument_dot, dp)*phase
+                    incident_field = polarization*phase
+                    incident_field_dot = polarization_dot*phase + &
+                        polarization*phase_dot
+                    contraction = sum(cmplx(basis_value, 0.0_dp, dp)* &
+                        incident_field)
+                    contraction_dot = sum(cmplx(basis_value_dot, 0.0_dp, dp)* &
+                        incident_field + cmplx(basis_value, 0.0_dp, dp)* &
+                        incident_field_dot)
+                    right_hand_side_dot(basis) = right_hand_side_dot(basis) - &
+                        weights(node)*(jacobian_dot*contraction + jacobian* &
+                        contraction_dot)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
+
+    subroutine assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            direction, polarization, wave_number, quadrature_degree, &
+            right_hand_side_bar, vertices_bar, parameters_bar, major_radius_bar, &
+            minor_radius_bar, direction_bar, polarization_bar, wave_number_bar, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, direction(3)
+        complex(dp), intent(in) :: polarization(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: right_hand_side_bar(:)
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        real(dp), intent(out) :: direction_bar(3), wave_number_bar
+        complex(dp), allocatable, intent(out) :: polarization_bar(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), divergence, jacobian, point(3)
+        real(dp) :: point_bar(3), value_bar(3), jacobian_bar
+        real(dp) :: phase_argument_bar, local_major_bar, local_minor_bar
+        real(dp) :: local_vertices_bar(3, 2), local_parameters_bar(2, 3)
+        complex(dp) :: contraction, phase, phase_bar, seed
+        integer :: basis, local, node, panel, status_local, vertex
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        direction_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(polarization_bar)) deallocate(polarization_bar)
+        status = 1
+        if (size(vertices, 1) /= 3) return
+        if (size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (size(vertices_bar, 1) /= size(vertices, 1)) return
+        if (size(vertices_bar, 2) /= size(vertices, 2)) return
+        if (size(parameters_bar, 1) /= size(parameters, 1)) return
+        if (size(parameters_bar, 2) /= size(parameters, 2)) return
+        if (major_radius <= minor_radius) return
+        if (minor_radius <= 0.0_dp) return
+        if (wave_number < 0.0_dp) return
+        if (abs(norm2(direction) - 1.0_dp) > &
+            128.0_dp*epsilon(1.0_dp)) return
+        if (abs(sum(polarization*direction)) > &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+            sqrt(sum(abs(polarization)**2)))) return
+        if (sqrt(sum(abs(polarization)**2)) <= tiny(1.0_dp)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(right_hand_side_bar) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(polarization_bar(3))
+        polarization_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do basis = 1, size(edge_vertices, 2)
+            do panel = 1, 2
+                do node = 1, size(weights)
+                    call evaluate_maxwell_torus_curved_rwg_basis( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, edge_triangles(panel, basis), &
+                        major_radius, minor_radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) return
+                    phase = exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    contraction = sum(cmplx(basis_value, 0.0_dp, dp)*polarization)
+                    seed = -weights(node)*jacobian*conjg(phase)* &
+                        right_hand_side_bar(basis)
+                    phase_bar = -weights(node)*jacobian*conjg(contraction)* &
+                        right_hand_side_bar(basis)
+                    jacobian_bar = real(conjg(right_hand_side_bar(basis))* &
+                        (-weights(node)*phase*contraction), dp)
+                    value_bar = real(conjg(seed)*polarization, dp)
+                    polarization_bar = polarization_bar + &
+                        seed*cmplx(basis_value, 0.0_dp, dp)
+                    phase_argument_bar = real(conjg(phase_bar)* &
+                        cmplx(0.0_dp, 1.0_dp, dp)*phase, dp)
+                    wave_number_bar = wave_number_bar + phase_argument_bar* &
+                        dot_product(direction, point)
+                    direction_bar = direction_bar + phase_argument_bar* &
+                        wave_number*point
+                    point_bar = phase_argument_bar*wave_number*direction
+                    call evaluate_maxwell_torus_curved_rwg_basis_vjp( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, basis, edge_triangles(panel, basis), &
+                        major_radius, minor_radius, xi(node), eta(node), point_bar, &
+                        value_bar, 0.0_dp, jacobian_bar, local_vertices_bar, &
+                        local_parameters_bar, local_major_bar, local_minor_bar, &
+                        status_local)
+                    if (status_local /= 0) return
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        parameters_bar(:, triangles(local, edge_triangles(panel, basis))) = &
+                            parameters_bar(:, triangles(local, edge_triangles(panel, basis))) + &
+                            local_parameters_bar(:, local)
+                    end do
+                    major_radius_bar = major_radius_bar + local_major_bar
+                    minor_radius_bar = minor_radius_bar + local_minor_bar
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
 
     subroutine assemble_maxwell_torus_curved_rwg_mass_matrix( &
             vertices, triangles, parameters, major_radius, minor_radius, &

@@ -1560,7 +1560,10 @@ gallery example.
   adjoint fixture covers the complete directional chain. Full assembled
   torus-block derivatives remain active follow-up work; the assembled curved-
   torus RWG mass block now has analytical geometry JVP/VJP products with an
-  independent reassembly and real adjoint oracle. The
+  independent reassembly and real adjoint oracle. The exact-curved plane-wave
+  RWG load now has matching geometry, direction, polarization, and wave-number
+  JVP/VJP products with independent reassembly and complex real-part adjoint
+  checks. The
   `maxwell_torus_fem_bem_solution` fixture now closes the neutral vector
   FEM--BEM solved-state gap with exact edge-integral data, a complex coupled
   solve oracle, and a physical H(curl) slice with arrows. Nonzero-scattering
