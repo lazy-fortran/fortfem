@@ -87,9 +87,10 @@ the Cartesian PML state path, but retains the full per-cell stretch tensor.
 `test_tetra_nedelec_curvilinear_pml_state_ad` checks the manufactured solve,
 independent re-solves for the state JVP, and the real-complex state adjoint.
 
-The module is a coefficient contract, not a complete curved-object PML
-assembler. Layer geometry, active-cell topology, quadrature, and reflection
-diagnostics remain caller-owned. The solver-neutral weighted reflection and
-error metrics used to compare those samples are documented in
-`wave_reflection_diagnostics.md`; geometry and layer-topology chains remain
-caller-owned and are tracked in the open-boundary roadmap.
+The separate `fortfem_curvilinear_pml_geometry` contract supplies a minimal
+caller-owned normal-frame layer map. It creates full per-cell stretches from
+layer points and unit normals, and differentiates the centroid distance,
+normal frame, width, wave number, and attenuation strength. Closest-point
+searches, active-cell topology, quadrature, and surface representation remain
+caller-owned. The solver-neutral weighted reflection and error metrics used to
+compare those samples are documented in `wave_reflection_diagnostics.md`.

@@ -21,6 +21,10 @@ three-by-three scalar Helmholtz and curl--curl Maxwell stretch tensors with
 analytical JVP/VJP actions, scale-aware singularity rejection, and diagonal
 reduction to the Cartesian path.
 
+The [curvilinear PML geometry builder](curvilinear_pml_geometry.html) turns
+caller-owned curved-layer points and unit normals into full per-cell normal
+frame stretches, with generated attenuation and geometry JVP/VJP products.
+
 The [spherical-harmonic contract](spherical_harmonics.html) records the
 FortNum-backed normalization, angular domains, and pole convention used by
 Fourier-FEM and boundary operators.

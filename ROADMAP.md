@@ -1472,10 +1472,13 @@ gallery example.
 - The public curvilinear PML coefficient contract now accepts a full complex
   three-by-three stretch for scalar Helmholtz and curl--curl Maxwell forms.
   It provides closed-form primal/JVP/VJP products, scale-aware singular-input
-  rejection, and a diagonal reduction oracle. This is the metric layer needed
-  by curved meshes and IGA; curved-object layer assembly, active-cell
-  geometry products, and reflection diagnostics remain separate follow-up
-  fixtures.
+  rejection, and a diagonal reduction oracle. The neutral curvilinear
+  normal-frame geometry builder now turns caller-owned layer points and unit
+  normals into full per-cell stretches and differentiates centroid, normal,
+  width, wave-number, and attenuation parameters with generated products. This
+  is the metric and local-layer layer needed by curved meshes and IGA; closest-
+  point searches, active-cell topology, and complete curved-object assembly
+  remain client-owned follow-up fixtures.
 - The tetrahedral first-kind Nédélec local PML form now consumes those full
   tensors. Its value/JVP/VJP products cover covariant Piola geometry,
   determinant quadrature, wave number, and all stretch entries; independent

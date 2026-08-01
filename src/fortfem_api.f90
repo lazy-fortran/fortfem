@@ -304,6 +304,10 @@ module fortfem_api
         build_cartesian_pml_element_stretch, &
         build_cartesian_pml_element_stretch_jvp, &
         build_cartesian_pml_element_stretch_vjp
+    use fortfem_curvilinear_pml_geometry, only: &
+        build_curvilinear_normal_pml_element_stretch, &
+        build_curvilinear_normal_pml_element_stretch_jvp, &
+        build_curvilinear_normal_pml_element_stretch_vjp
     use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
         assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_bdm_div_mass_csc_jvp, &
@@ -1840,6 +1844,9 @@ module fortfem_api
     public :: build_cartesian_pml_element_stretch
     public :: build_cartesian_pml_element_stretch_jvp
     public :: build_cartesian_pml_element_stretch_vjp
+    public :: build_curvilinear_normal_pml_element_stretch
+    public :: build_curvilinear_normal_pml_element_stretch_jvp
+    public :: build_curvilinear_normal_pml_element_stretch_vjp
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_slab_1d_jvp
     public :: solve_scalar_helmholtz_pml_slab_1d_vjp
