@@ -18,7 +18,8 @@ fpm run --example laplace_symmetric_transmission
 program laplace_symmetric_transmission
     use fortfem_api, only: solve_laplace_symmetric_coupling_p1_p0
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
+        title, xlabel, ylabel
     implicit none
 
     integer, parameter :: points_per_side = 5
@@ -69,6 +70,8 @@ program laplace_symmetric_transmission
         error stop "Manufactured transmission solution was not recovered"
     end if
 
+    call render_solution_field()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(real([(panel, panel=1, vertex_count)], dp), &
         interior_solution, label="interior solution", marker="o")
@@ -91,6 +94,42 @@ program laplace_symmetric_transmission
         "output/example/laplace_symmetric_transmission/flux_1d.png")
 
 contains
+
+    subroutine render_solution_field()
+        integer, parameter :: field_nx = 32, field_ny = 32
+        real(dp) :: x_edges(field_nx + 1), y_edges(field_ny + 1)
+        real(dp) :: values(field_ny, field_nx)
+        real(dp) :: square_x(5), square_y(5)
+        real(dp) :: x_value, y_value
+        integer :: i, j
+
+        do i = 1, field_nx + 1
+            x_edges(i) = side_length*real(i - 1, dp)/field_nx
+        end do
+        do j = 1, field_ny + 1
+            y_edges(j) = side_length*real(j - 1, dp)/field_ny
+        end do
+        do j = 1, field_ny
+            y_value = 0.5_dp*(y_edges(j) + y_edges(j + 1))
+            do i = 1, field_nx
+                x_value = 0.5_dp*(x_edges(i) + x_edges(i + 1))
+                values(j, i) = 0.75_dp + x_value + 2.0_dp*y_value
+            end do
+        end do
+        square_x = [0.0_dp, side_length, side_length, 0.0_dp, 0.0_dp]
+        square_y = [0.0_dp, 0.0_dp, side_length, side_length, 0.0_dp]
+
+        call figure(figsize=[8.0_dp, 6.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        call colorbar(label="interior solution u")
+        call plot(square_x, square_y, color=[0.0_dp, 0.0_dp, 0.0_dp], &
+            linewidth=1.5_dp)
+        call xlabel("x")
+        call ylabel("y")
+        call title("Laplace FEM-BEM transmission interior field")
+        call savefig( &
+            "output/example/laplace_symmetric_transmission/solution_2d.png")
+    end subroutine render_solution_field
 
     subroutine build_square_mesh(vertices, triangles)
         real(dp), intent(out) :: vertices(2, vertex_count)
@@ -179,6 +218,10 @@ end program laplace_symmetric_transmission
 ### solution_1d.png
 
 ![solution_1d.png](../../media/examples/laplace_symmetric_transmission/solution_1d.png)
+
+### solution_2d.png
+
+![solution_2d.png](../../media/examples/laplace_symmetric_transmission/solution_2d.png)
 
 ---
 

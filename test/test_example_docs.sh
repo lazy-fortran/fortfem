@@ -66,6 +66,18 @@ test "$(grep -c '<img class="example-card-image"' "$index_file")" \
 grep -Fq "classic Poisson equation" "$index_file"
 test "$(awk '$1 == "maxwell_open_boundary_comparison" {print $2}' \
     "$primary_file")" = "maxwell_pml_field_slice_2d.png"
+test "$(awk '$1 == "circular_dtn_modes" {print $2}' \
+    "$primary_file")" = "circular_dtn_field_2d.png"
+test "$(awk '$1 == "laplace_bem_circle_spectrum" {print $2}' \
+    "$primary_file")" = "laplace_disk_mode_2d.png"
+test "$(awk '$1 == "helmholtz_bem_circle_spectrum" {print $2}' \
+    "$primary_file")" = "helmholtz_disk_field_2d.png"
+test "$(awk '$1 == "helmholtz_cfie_circle" {print $2}' \
+    "$primary_file")" = "helmholtz_cfie_field_2d.png"
+test "$(awk '$1 == "laplace_symmetric_transmission" {print $2}' \
+    "$primary_file")" = "solution_2d.png"
+test "$(awk '$1 == "maxwell_torus_curved_scattering" {print $2}' \
+    "$primary_file")" = "maxwell_torus_rcs_2d.png"
 
 for example_name in "${expected[@]}"; do
     page="$generated_dir/$example_name.md"

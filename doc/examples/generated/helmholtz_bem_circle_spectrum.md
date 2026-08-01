@@ -20,8 +20,8 @@ program helmholtz_bem_circle_spectrum
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_kinds, only: dp
-    use fortplot, only: add_scatter, figure, legend, plot, savefig, set_xscale, &
-        set_yscale, title, xlabel, ylabel
+    use fortplot, only: add_scatter, colorbar, figure, legend, pcolormesh, plot, &
+        savefig, set_xscale, set_yscale, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(3) = [12, 24, 48]
@@ -56,6 +56,7 @@ program helmholtz_bem_circle_spectrum
             hypersingular_errors(mesh_id)
     end do
 
+    call render_disk_field()
     call render_boundary_mode()
 
     call figure(figsize=[9.0_dp, 5.5_dp])
@@ -73,6 +74,46 @@ program helmholtz_bem_circle_spectrum
         "output/example/helmholtz_bem_circle_spectrum/convergence_1d.png")
 
 contains
+
+    subroutine render_disk_field()
+        integer, parameter :: field_nx = 64, field_ny = 64
+        real(dp), parameter :: wave_number = 1.3_dp
+        real(dp) :: x_edges(field_nx + 1), y_edges(field_ny + 1)
+        real(dp) :: values(field_ny, field_nx)
+        real(dp) :: circle_x(field_nx + 1), circle_y(field_nx + 1)
+        real(dp) :: x_value, y_value, radius
+        integer :: i, j
+
+        do i = 1, field_nx + 1
+            x_edges(i) = -1.0_dp + 2.0_dp*real(i - 1, dp)/field_nx
+            circle_x(i) = cos(2.0_dp*acos(-1.0_dp)*real(i - 1, dp)/field_nx)
+            circle_y(i) = sin(2.0_dp*acos(-1.0_dp)*real(i - 1, dp)/field_nx)
+        end do
+        y_edges = x_edges
+        do j = 1, field_ny
+            y_value = 0.5_dp*(y_edges(j) + y_edges(j + 1))
+            do i = 1, field_nx
+                x_value = 0.5_dp*(x_edges(i) + x_edges(i + 1))
+                radius = sqrt(x_value*x_value + y_value*y_value)
+                if (radius <= 1.0_dp) then
+                    values(j, i) = cos(wave_number*x_value)
+                else
+                    values(j, i) = 0.0_dp
+                end if
+            end do
+        end do
+
+        call figure(figsize=[8.0_dp, 6.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="coolwarm")
+        call colorbar(label="Re(exp(i k x))")
+        call plot(circle_x, circle_y, color=[0.0_dp, 0.0_dp, 0.0_dp], &
+            linewidth=1.5_dp)
+        call xlabel("x")
+        call ylabel("y")
+        call title("Helmholtz BEM incident field inside the circle")
+        call savefig( &
+            "output/example/helmholtz_bem_circle_spectrum/helmholtz_disk_field_2d.png")
+    end subroutine render_disk_field
 
     subroutine render_boundary_mode()
         integer, parameter :: point_count = 128
@@ -212,6 +253,10 @@ end program helmholtz_bem_circle_spectrum
 ### convergence_1d.png
 
 ![convergence_1d.png](../../media/examples/helmholtz_bem_circle_spectrum/convergence_1d.png)
+
+### helmholtz_disk_field_2d.png
+
+![helmholtz_disk_field_2d.png](../../media/examples/helmholtz_bem_circle_spectrum/helmholtz_disk_field_2d.png)
 
 ---
 
