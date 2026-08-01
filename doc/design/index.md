@@ -86,6 +86,10 @@ cell-local gradient, curl, and divergence maps without introducing
 inter-cell continuity, and exposes their exact-sequence compositions together
 with value/JVP/VJP actions for DG, HDG, cut, and IGA composition.
 
+The [fitted trace constraint contract](fitted_trace_constraint.html) assembles
+the signed multiplier block for independently discretized plus/minus traces,
+with complete value/JVP/VJP actions and no embedded constitutive jump law.
+
 The [FEEC exact-sequence diagnostic](feec_exact_sequence.html) exposes the
 metric-independent `curl(grad)` and `div(curl)` composition defects with
 value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence

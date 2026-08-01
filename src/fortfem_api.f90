@@ -502,6 +502,10 @@ module fortfem_api
     use fortfem_broken_feec_sequence, only: &
         assemble_broken_feec_sequence, assemble_broken_feec_sequence_jvp, &
         assemble_broken_feec_sequence_vjp
+    use fortfem_fitted_trace_constraint, only: &
+        assemble_fitted_trace_constraint, &
+        assemble_fitted_trace_constraint_jvp, &
+        assemble_fitted_trace_constraint_vjp
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -2173,6 +2177,9 @@ module fortfem_api
     public :: assemble_broken_feec_sequence
     public :: assemble_broken_feec_sequence_jvp
     public :: assemble_broken_feec_sequence_vjp
+    public :: assemble_fitted_trace_constraint
+    public :: assemble_fitted_trace_constraint_jvp
+    public :: assemble_fitted_trace_constraint_vjp
     public :: assemble_feec_commuting_projection
     public :: assemble_feec_commuting_projection_jvp
     public :: assemble_feec_commuting_projection_vjp
