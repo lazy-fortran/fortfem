@@ -25,6 +25,12 @@ module fortfem_fci_support_geometry
         generated_fci_curved_quadrilateral_cell_area_jvp
     use fortfem_generated_fci_curved_quadrilateral_area_vjp, only: &
         generated_fci_curved_quadrilateral_cell_area_vjp
+    use fortfem_generated_fci_polygon_edge_area, only: &
+        generated_fci_polygon_edge_area
+    use fortfem_generated_fci_polygon_edge_area_jvp, only: &
+        generated_fci_polygon_edge_area_jvp
+    use fortfem_generated_fci_polygon_edge_area_vjp, only: &
+        generated_fci_polygon_edge_area_vjp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
@@ -36,6 +42,9 @@ module fortfem_fci_support_geometry
     public :: compute_fci_quadrilateral_cell_areas_2d
     public :: compute_fci_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_quadrilateral_cell_areas_2d_vjp
+    public :: compute_fci_polygon_cell_areas_2d
+    public :: compute_fci_polygon_cell_areas_2d_jvp
+    public :: compute_fci_polygon_cell_areas_2d_vjp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
@@ -185,6 +194,175 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine compute_fci_quadrilateral_cell_areas_2d_vjp
+
+    subroutine compute_fci_polygon_cell_areas_2d( &
+            cell_vertices, areas, status)
+        !! Compute positive areas for arbitrary boundary-ordered polygons.
+        !!
+        !! `cell_vertices(:, :, cell)` stores at least three vertices in
+        !! counter-clockwise boundary order.  The topology and orientation
+        !! are fixed while differentiating the returned measure.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(out) :: areas(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: edge_area
+
+        areas = 0.0_dp
+        call validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon areas have an incompatible output")
+            return
+        end if
+        do cell = 1, cell_count
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_polygon_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                areas(cell) = areas(cell) + edge_area
+            end do
+            if (.not. ieee_is_finite(areas(cell)) .or. &
+                areas(cell) <= 0.0_dp) then
+                areas = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI polygon cells must be counter-clockwise and "// &
+                    "nondegenerate")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_polygon_cell_areas_2d
+
+    subroutine compute_fci_polygon_cell_areas_2d_jvp( &
+            cell_vertices, cell_vertices_dot, areas_dot, status)
+        !! Apply the fixed-topology JVP of arbitrary polygon areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: cell_vertices_dot(:, :, :)
+        real(dp), intent(out) :: areas_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: area, edge_area, edge_area_dot
+
+        areas_dot = 0.0_dp
+        call validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(cell_vertices_dot, 1) /= 2 .or. &
+            size(cell_vertices_dot, 2) /= vertex_count .or. &
+            size(cell_vertices_dot, 3) /= cell_count .or. &
+            size(areas_dot) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon area JVP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(cell_vertices_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon area JVP has non-finite tangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_polygon_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                area = area + edge_area
+                call generated_fci_polygon_edge_area_jvp( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), &
+                    cell_vertices_dot(1, vertex, cell), &
+                    cell_vertices_dot(2, vertex, cell), &
+                    cell_vertices_dot(1, next_vertex, cell), &
+                    cell_vertices_dot(2, next_vertex, cell), edge_area_dot)
+                areas_dot(cell) = areas_dot(cell) + edge_area_dot
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp .or. &
+                .not. ieee_is_finite(areas_dot(cell))) then
+                areas_dot = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI polygon area JVP crosses an orientation event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_polygon_cell_areas_2d_jvp
+
+    subroutine compute_fci_polygon_cell_areas_2d_vjp( &
+            cell_vertices, areas_bar, cell_vertices_bar, status)
+        !! Apply the real VJP of fixed-topology polygon areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: areas_bar(:)
+        real(dp), intent(out) :: cell_vertices_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: area, edge_area
+        real(dp) :: x_start_bar, y_start_bar, x_end_bar, y_end_bar
+
+        cell_vertices_bar = 0.0_dp
+        call validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas_bar) /= cell_count .or. &
+            size(cell_vertices_bar, 1) /= 2 .or. &
+            size(cell_vertices_bar, 2) /= vertex_count .or. &
+            size(cell_vertices_bar, 3) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon area VJP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(areas_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon area VJP has non-finite cotangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_polygon_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                area = area + edge_area
+                call generated_fci_polygon_edge_area_vjp( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), areas_bar(cell), &
+                    x_start_bar, y_start_bar, x_end_bar, y_end_bar)
+                cell_vertices_bar(1, vertex, cell) = &
+                    cell_vertices_bar(1, vertex, cell) + x_start_bar
+                cell_vertices_bar(2, vertex, cell) = &
+                    cell_vertices_bar(2, vertex, cell) + y_start_bar
+                cell_vertices_bar(1, next_vertex, cell) = &
+                    cell_vertices_bar(1, next_vertex, cell) + x_end_bar
+                cell_vertices_bar(2, next_vertex, cell) = &
+                    cell_vertices_bar(2, next_vertex, cell) + y_end_bar
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp) then
+                cell_vertices_bar = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI polygon area VJP crosses an orientation event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_polygon_cell_areas_2d_vjp
 
     subroutine compute_fci_curved_quadrilateral_cell_areas_2d( &
             cell_vertices, edge_controls, areas, status)
@@ -594,6 +772,61 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine validate_quadrilateral_vertices
+
+    subroutine validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        integer, intent(out) :: vertex_count, cell_count
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: cell, edge, next_edge, other, other_next, vertex
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "FCI polygon vertices have incompatible shape")
+        vertex_count = size(cell_vertices, 2)
+        cell_count = size(cell_vertices, 3)
+        if (size(cell_vertices, 1) /= 2) return
+        if (vertex_count < 3) return
+        if (cell_count < 1) return
+        if (any(.not. ieee_is_finite(cell_vertices))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI polygon vertices contain non-finite values")
+            return
+        end if
+        do cell = 1, cell_count
+            do vertex = 1, vertex_count
+                do other = vertex + 1, vertex_count
+                    if (all(cell_vertices(:, vertex, cell) == &
+                        cell_vertices(:, other, cell))) then
+                        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                            "FCI polygon cells contain repeated vertices")
+                        return
+                    end if
+                end do
+            end do
+            do edge = 1, vertex_count
+                next_edge = mod(edge, vertex_count) + 1
+                do other = edge + 1, vertex_count
+                    other_next = mod(other, vertex_count) + 1
+                    if (other == next_edge) cycle
+                    if (other_next == edge) cycle
+                    if (segments_intersect( &
+                        cell_vertices(1, edge, cell), &
+                        cell_vertices(2, edge, cell), &
+                        cell_vertices(1, next_edge, cell), &
+                        cell_vertices(2, next_edge, cell), &
+                        cell_vertices(1, other, cell), &
+                        cell_vertices(2, other, cell), &
+                        cell_vertices(1, other_next, cell), &
+                        cell_vertices(2, other_next, cell))) then
+                        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                            "FCI polygon cells are self-intersecting")
+                        return
+                    end if
+                end do
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_polygon_vertices
 
     subroutine validate_curved_quadrilateral_vertices( &
             cell_vertices, edge_controls, cell_count, status)
