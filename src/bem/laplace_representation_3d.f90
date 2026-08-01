@@ -13,7 +13,7 @@ contains
     subroutine evaluate_laplace_representation_torus_curved_3d( &
             parameters, triangles, major_radius, minor_radius, &
             dirichlet_values, neumann_values, target, quadrature_degree, &
-            value, status)
+            value, status, gradient)
         real(dp), intent(in) :: parameters(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), intent(in) :: major_radius, minor_radius
@@ -22,14 +22,18 @@ contains
         integer, intent(in) :: quadrature_degree
         real(dp), intent(out) :: value
         integer, intent(out) :: status
+        real(dp), intent(out), optional :: gradient(3)
 
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: barycentric(3), displacement(3), green
-        real(dp) :: green_normal_derivative, jacobian, normal(3), point(3)
+        real(dp) :: green_gradient(3), green_normal_derivative, jacobian
+        real(dp) :: normal(3), normal_gradient(3), point(3)
         real(dp) :: tangent_eta(3), tangent_xi(3), trace_value
+        real(dp) :: neumann_value
         integer :: element, node, quadrature_status
 
         value = 0.0_dp
+        if (present(gradient)) gradient = 0.0_dp
         status = 1
         if (size(parameters, 1) /= 2 .or. size(parameters, 2) < 3) return
         if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
@@ -57,17 +61,30 @@ contains
                 green = 1.0_dp/(4.0_dp*acos(-1.0_dp)*norm2(displacement))
                 green_normal_derivative = dot_product(displacement, normal)/ &
                     (4.0_dp*acos(-1.0_dp)*norm2(displacement)**3)
+                green_gradient = -displacement/( &
+                    4.0_dp*acos(-1.0_dp)*norm2(displacement)**3)
+                normal_gradient = normal/( &
+                    4.0_dp*acos(-1.0_dp)*norm2(displacement)**3) - &
+                    3.0_dp*dot_product(displacement, normal)*displacement/( &
+                    4.0_dp*acos(-1.0_dp)*norm2(displacement)**5)
                 trace_value = dot_product( &
                     dirichlet_values(triangles(:, element)), barycentric)
                 if (size(neumann_values) == size(parameters, 2)) then
+                    neumann_value = dot_product( &
+                        neumann_values(triangles(:, element)), barycentric)
                     value = value + jacobian*weights(node)*( &
                         trace_value*green_normal_derivative - green* &
-                        dot_product( &
-                        neumann_values(triangles(:, element)), barycentric))
+                        neumann_value)
                 else
+                    neumann_value = neumann_values(element)
                     value = value + jacobian*weights(node)*( &
                         trace_value*green_normal_derivative - &
-                        green*neumann_values(element))
+                        green*neumann_value)
+                end if
+                if (present(gradient)) then
+                    gradient = gradient + jacobian*weights(node)*( &
+                        trace_value*normal_gradient - &
+                        neumann_value*green_gradient)
                 end if
             end do
         end do
