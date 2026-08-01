@@ -631,6 +631,9 @@ module fortfem_api
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_representation_torus_curved_3d
+    use fortfem_helmholtz_representation_ad_3d, only: &
+        evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp, &
+        evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
     use fortfem_helmholtz_torus_curved_bem_3d, only: &
         assemble_helmholtz_torus_curved_calderon_3d, &
         assemble_helmholtz_torus_curved_dtn_3d, &
@@ -1314,6 +1317,8 @@ module fortfem_api
     public :: solve_helmholtz_cfie_p0_hierarchical_3d
     public :: evaluate_helmholtz_representation_triangles_3d
     public :: evaluate_helmholtz_representation_torus_curved_3d
+    public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp
+    public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
     public :: assemble_helmholtz_torus_curved_calderon_3d
     public :: assemble_helmholtz_torus_curved_dtn_3d
     public :: solve_helmholtz_bem_dtn_torus_curved_3d
