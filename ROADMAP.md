@@ -1172,8 +1172,10 @@ gallery example.
   per-case xorshift seeds, bounded real/integer generators, callback-based
   property execution, and deterministic integer shrinking with failure-seed
   reporting. The first property test covers reproducibility and bounds;
-  geometry, tensor, mode-set, and fixed-topology interface generators can
-  build on this helper without global random state.
+  the Fourier mode-set property now exercises 20 generated conjugate-packed
+  registries and one-product padded closure with the same helper. Geometry,
+  tensor, and fixed-topology interface generators can build on this path
+  without global random state.
 - The public `partition_layout_t` now defines the communicator-free
   partitionable data boundary: unique local-to-global IDs, owner rank,
   explicit owned/ghost masks, deterministic local reductions, and linear JVP/
@@ -1566,6 +1568,10 @@ gallery example.
   registry; subsequent rounds retain every prior-work-set pair sum. The
   bounded growth policy is checked independently and does not claim unbounded
   nonlinear closure.
+- The seeded `test_fourier_mode_properties` fixture now generates bounded
+  conjugate-packed mode sets, validates them, and checks every input-pair sum
+  by direct label lookup. It records deterministic seeds through the shared
+  property helper without importing any plasma-specific mode convention.
 - FortNum `legendre_q` and `legendre_q_derivative` are now public on `main`,
   with closed-form Q0--Q3, centered-difference derivative, and invalid-domain
   tests. Its toroidal P/Q branch is likewise covered by independent value and

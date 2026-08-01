@@ -145,3 +145,7 @@ rejection.
 `test_fourier_mode_closure` checks one-round equivalence, two-round pair-sum
 closure against direct label lookup, metadata preservation, and rejection of a
 non-positive round count.
+`test_fourier_mode_properties` runs 20 deterministic xorshift-generated
+conjugate-packed mode sets and independently checks validation plus every
+input-pair sum in the padded registry; a failing case reports its original and
+shrunk seed through `check_property`.
