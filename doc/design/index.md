@@ -176,6 +176,11 @@ The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
 
+The [symmetric mixed-wave split](mixed_wave_strang.html) composes ideal
+midpoint/Cayley factors as A(Δt/2)-B(Δt)-A(Δt/2), with analytical JVP/VJP
+actions and independent energy, reversibility, finite-difference, and adjoint
+checks.
+
 The [shifted enriched space](shifted_enriched_space.html) builds a complete
 scalar XFEM/GFEM basis-value matrix from base values and fixed level-set anchor
 signs, with topology-event rejection and exact JVP/VJP actions.

@@ -1584,8 +1584,13 @@ gallery example.
   the composition.
 - Variational/symplectic and Poisson building blocks for ideal terms.
 - Energy-dissipative integrators for resistive and viscous terms.
-- Symmetric splitting, implicit midpoint/Cayley, discrete-gradient or
-  average-vector-field options, and long-time invariant tests.
+- The public `advance_mixed_wave_strang` step now composes caller-owned ideal
+  mixed-wave Cayley factors as A(Δt/2)-B(Δt)-A(Δt/2). Its analytical JVP/VJP
+  propagate state and signed-step products through all three factors, and an
+  independent nonidentity-block test checks energy preservation, reversibility,
+  central differences, and the real adjoint identity. Dissipative splitting
+  remains separate; discrete-gradient/average-vector-field options and broad
+  long-time invariant campaigns remain active work.
 - Mixed first-order pressure-velocity, displacement-velocity-stress, and
   electromagnetic wave states with a common port-Hamiltonian interface.
 - Tensor-valued coefficients and anisotropic constitutive blocks with exact power,

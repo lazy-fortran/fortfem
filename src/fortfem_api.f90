@@ -457,7 +457,8 @@ module fortfem_api
         advance_mixed_wave_midpoint_jvp, advance_mixed_wave_midpoint_vjp, &
         advance_mixed_wave_symplectic_euler, &
         advance_mixed_wave_symplectic_euler_jvp, &
-        advance_mixed_wave_symplectic_euler_vjp
+        advance_mixed_wave_symplectic_euler_vjp, advance_mixed_wave_strang, &
+        advance_mixed_wave_strang_jvp, advance_mixed_wave_strang_vjp
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -2136,6 +2137,9 @@ module fortfem_api
     public :: advance_mixed_wave_symplectic_euler
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp
+    public :: advance_mixed_wave_strang
+    public :: advance_mixed_wave_strang_jvp
+    public :: advance_mixed_wave_strang_vjp
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp
