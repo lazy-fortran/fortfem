@@ -1885,6 +1885,14 @@ gallery example.
   a curved torus geometry view. Its independent test solves the same assembled
   complex block system from a manufactured right-hand side, so the gallery
   image cannot be mistaken for a coefficient or source-field preview.
+- The `xfem_interface_solution` fixture now gives the shifted scalar and
+  componentwise vector enrichment a physical-first two-dimensional preview:
+  the scalar solution is primary, the vector magnitude carries explicit
+  normalized arrows, and the signed enrichment contribution is secondary.
+  Independent scalar and vector sign reconstructions remain executable
+  oracles; this is a space-construction foundation, not an interface PDE
+  solver. Cut-cell integration, Piola-compatible FEEC numbering, and sparse
+  assembly stay caller-owned as specified above.
 
 ### Phase 9: Future application layer: **reference only**
 

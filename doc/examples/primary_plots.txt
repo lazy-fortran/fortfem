@@ -7,6 +7,7 @@ plot_mesh mesh_basic.png
 plotting solution_constant.png
 mixed_poisson mixed_poisson_solution_2d.png
 anisotropic_tensor_diffusion anisotropic_solution_2d.png
+xfem_interface_solution xfem_interface_solution_2d.png
 curl_curl curl_curl_field_slice_2d.png
 cgl_pressure_tensor cgl_pressure_components_1d.png
 field_aligned_flux field_aligned_flux_1d.png
