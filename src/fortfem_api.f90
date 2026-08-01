@@ -370,6 +370,13 @@ module fortfem_api
         assemble_tetra_lagrange_stiffness_element, &
         assemble_tetra_lagrange_stiffness_element_jvp, &
         assemble_tetra_lagrange_stiffness_element_vjp
+    use fortfem_assembly_tetra_lagrange_curvilinear_pml_3d, only: &
+        assemble_tetra_lagrange_curvilinear_pml_element, &
+        assemble_tetra_lagrange_curvilinear_pml_element_jvp, &
+        assemble_tetra_lagrange_curvilinear_pml_element_vjp, &
+        assemble_tetra_lagrange_curvilinear_pml_csc, &
+        assemble_tetra_lagrange_curvilinear_pml_csc_jvp, &
+        assemble_tetra_lagrange_curvilinear_pml_csc_vjp
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_curl_mass_element_jvp, &
@@ -2057,6 +2064,12 @@ module fortfem_api
     public :: assemble_tetra_lagrange_stiffness_element
     public :: assemble_tetra_lagrange_stiffness_element_jvp
     public :: assemble_tetra_lagrange_stiffness_element_vjp
+    public :: assemble_tetra_lagrange_curvilinear_pml_element
+    public :: assemble_tetra_lagrange_curvilinear_pml_element_jvp
+    public :: assemble_tetra_lagrange_curvilinear_pml_element_vjp
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc_jvp
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc_vjp
     public :: assemble_tetra_lagrange_scalar_load
     public :: assemble_tetra_lagrange_scalar_load_samples
     public :: assemble_tetra_lagrange_scalar_load_samples_jvp
