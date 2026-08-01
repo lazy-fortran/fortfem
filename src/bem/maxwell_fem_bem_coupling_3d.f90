@@ -21,6 +21,8 @@ module fortfem_maxwell_fem_bem_coupling_3d
         build_maxwell_rwg_surface_space, &
         evaluate_maxwell_rwg_basis, &
         map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_maxwell_fem_bem_state_ad, only: &
+        solve_maxwell_fem_bem_linear_state
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortnum_linalg, only: dense_solve, inv3
@@ -57,7 +59,7 @@ contains
         integer, allocatable :: edge_orientations(:, :), edges(:, :)
         integer, allocatable :: face_permutations(:, :, :), faces(:, :)
         integer, allocatable :: global_dofs(:, :)
-        integer :: field_count, info, requested_order
+        integer :: field_count, requested_order
 
         status = 1
         requested_order = 1
@@ -69,11 +71,9 @@ contains
             matrix, status, requested_order)
         if (status /= 0 .or. size(right_hand_side) /= size(matrix, 1)) return
         allocate(solution(size(matrix, 1)))
-        call dense_solve(matrix, right_hand_side, solution, info)
-        if (info /= 0) then
-            status = 2
-            return
-        end if
+        call solve_maxwell_fem_bem_linear_state( &
+            matrix, right_hand_side, solution, status)
+        if (status /= 0) return
         call build_tetra_nedelec_dof_map( &
             requested_order, tetrahedra, edges, faces, global_dofs, &
             edge_orientations, face_permutations, status)

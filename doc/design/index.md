@@ -35,6 +35,11 @@ composes the same curved RWG trace with a volume Nédélec solve and checks the
 coupled field/current state against a constant analytical (H(\mathrm{curl}))
 field.
 
+The [Maxwell FEM--BEM state differentiation contract](maxwell_fem_bem_state_ad.html)
+provides the reusable complex implicit value/JVP/VJP map for concatenated
+volume and surface unknowns. Assembly-specific geometry products compose into
+this layer rather than differentiating through a factorization.
+
 The [FCI parallel support-operator contract](fci_parallel_operator.html)
 defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line

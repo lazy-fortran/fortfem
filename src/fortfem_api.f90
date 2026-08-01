@@ -741,6 +741,10 @@ module fortfem_api
         assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d, &
         solve_maxwell_fem_bem_system_3d, &
         solve_maxwell_fem_bem_torus_curved_system_3d
+    use fortfem_maxwell_fem_bem_state_ad, only: &
+        solve_maxwell_fem_bem_linear_state, &
+        solve_maxwell_fem_bem_linear_state_jvp, &
+        solve_maxwell_fem_bem_linear_state_vjp
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, apply_planar_helmholtz_dtn_jvp, &
         apply_planar_helmholtz_dtn_vjp, assemble_planar_helmholtz_dtn_form, &
@@ -1488,6 +1492,9 @@ module fortfem_api
     public :: assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d
     public :: solve_maxwell_fem_bem_system_3d
     public :: solve_maxwell_fem_bem_torus_curved_system_3d
+    public :: solve_maxwell_fem_bem_linear_state
+    public :: solve_maxwell_fem_bem_linear_state_jvp
+    public :: solve_maxwell_fem_bem_linear_state_vjp
     public :: circle_boundary
     public :: rectangle_boundary
     public :: line_segment
