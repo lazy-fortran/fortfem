@@ -64,6 +64,10 @@ The [partition layout contract](partition_layout.html) records fixed
 local-to-global IDs, owner/ghost metadata, and deterministic communicator-free
 reductions as the serial boundary for future distributed assembly.
 
+The [deterministic property-testing contract](property_testing.html) provides
+per-case seeds, bounded samples, and a reproducible integer shrinker through
+the ordinary `fo test` helper path.
+
 The [cell-complex cycle-space contract](cell_cycle_basis.html) exposes the
 real cycle and cocycle kernels while keeping face quotients, metric harmonic
 representatives, and gauges in higher layers.
