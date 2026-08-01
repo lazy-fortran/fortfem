@@ -18,7 +18,7 @@ contains
     subroutine evaluate_helmholtz_representation_torus_curved_3d( &
             parameters, triangles, major_radius, minor_radius, &
             dirichlet_values, neumann_values, target, wave_number, &
-            quadrature_degree, value, status)
+            quadrature_degree, value, status, gradient)
         real(dp), intent(in) :: parameters(:, :)
         integer, intent(in) :: triangles(:, :)
         real(dp), intent(in) :: major_radius, minor_radius, target(3)
@@ -27,15 +27,18 @@ contains
         integer, intent(in) :: quadrature_degree
         complex(dp), intent(out) :: value
         integer, intent(out) :: status
+        complex(dp), intent(out), optional :: gradient(3)
 
         real(dp), allocatable :: eta(:), weights(:), xi(:)
         real(dp) :: barycentric(3), displacement(3), jacobian, normal(3)
         real(dp) :: point(3), radius, tangent_eta(3), tangent_xi(3)
-        complex(dp) :: green, green_normal_derivative, neumann_value
+        complex(dp) :: green, green_gradient(3), green_normal_derivative
+        complex(dp) :: neumann_value, normal_gradient(3), normal_factor
         complex(dp) :: trace_value
         integer :: element, node, quadrature_status
 
         value = cmplx(0.0_dp, 0.0_dp, dp)
+        if (present(gradient)) gradient = cmplx(0.0_dp, 0.0_dp, dp)
         status = 1
         if (size(parameters, 1) /= 2 .or. size(parameters, 2) < 3) return
         if (size(triangles, 1) /= 3 .or. size(triangles, 2) < 1) return
@@ -66,6 +69,14 @@ contains
                 green_normal_derivative = green* &
                     cmplx(1.0_dp, -wave_number*radius, dp)* &
                     dot_product(displacement, normal)/radius**2
+                green_gradient = green*cmplx( &
+                    -1.0_dp/radius, wave_number, dp)*displacement/radius
+                normal_factor = green*cmplx( &
+                    1.0_dp, -wave_number*radius, dp)/radius**2
+                normal_gradient = normal_factor*normal + green*( &
+                    cmplx(wave_number**2/radius**2, 0.0_dp, dp) - &
+                    3.0_dp*cmplx(1.0_dp, -wave_number*radius, dp)/ &
+                    radius**4)*dot_product(displacement, normal)*displacement
                 trace_value = dot_product( &
                     dirichlet_values(triangles(:, element)), barycentric)
                 if (size(neumann_values) == size(parameters, 2)) then
@@ -77,6 +88,11 @@ contains
                 value = value + jacobian*weights(node)*( &
                     trace_value*green_normal_derivative - &
                     green*neumann_value)
+                if (present(gradient)) then
+                    gradient = gradient + jacobian*weights(node)*( &
+                        trace_value*normal_gradient - &
+                        neumann_value*green_gradient)
+                end if
             end do
         end do
         status = 0
