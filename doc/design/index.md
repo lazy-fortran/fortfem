@@ -16,6 +16,11 @@ The [differentiation strategy](differentiation.html) defines the common
 primal/JVP/VJP API, analytical FortSym path, optional Enzyme tournament, and
 implicit sparse-solve adjoints.
 
+The [curvilinear PML contract](curvilinear_pml.html) defines full complex
+three-by-three scalar Helmholtz and curl--curl Maxwell stretch tensors with
+analytical JVP/VJP actions, scale-aware singularity rejection, and diagonal
+reduction to the Cartesian path.
+
 The [spherical-harmonic contract](spherical_harmonics.html) records the
 FortNum-backed normalization, angular domains, and pole convention used by
 Fourier-FEM and boundary operators.

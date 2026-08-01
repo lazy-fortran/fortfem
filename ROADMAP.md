@@ -165,7 +165,7 @@ documentation baseline. The list is intentionally conservative.
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
 | Linear response interchange | Neutral modal `(m,n)` metadata, provenance, complex equilibrium/inertia/resistive/vacuum/wall blocks, response channels, the (K-omega^2M+iomega R+V+W) operator and forced residual with complex JVP/VJP products, reciprocity/passivity diagnostics, a common weighted physical sample-set contract, and a weighted inner/outer singular-layer trace-matching block are public and independently tested | FEM/BEM/DtN/PML assembly-specific response matrices, singular-layer asymptotic models, and external-code sampler fixtures |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels, a manufactured toroidal Maxwell FEM--BEM solved-state/field-reconstruction fixture, and a neutral complex implicit value/JVP/VJP solve map for concatenated volume/surface states | Maxwell/PML geometry products, assembly-specific matrix/solver derivatives, larger-domain toroidal Maxwell/PML comparisons, nonzero-scattering vector FEM/BEM/DtN parity, and robust vector field reconstruction fixtures |
-| PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
+| PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples, plus full complex 3-by-3 curvilinear scalar and curl-curl coefficient maps with JVP/VJP and diagonal-reduction oracles | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
 | Parallel readiness | Serial local kernels and deterministic focused tests | Owned/ghost mesh and field data, partition-independent numbering, halo exchange, distributed assembly, checkpointing, and MPI-enabled solver backends |
 | Examples | Generated documentation pages for Poisson, Maxwell, Helmholtz, BEM, IGA, torus, PML, and solver examples | Ordered gallery beginning with simple Poisson and adding 1D, 2D, and 3D application-oriented toy models with manufactured or external oracle data |
@@ -1469,6 +1469,13 @@ gallery example.
 
 - Complete scalar and Maxwell FEM/BEM, DtN, and PML parity on slab, circle,
   sphere, cylinder, and torus.
+- The public curvilinear PML coefficient contract now accepts a full complex
+  three-by-three stretch for scalar Helmholtz and curl--curl Maxwell forms.
+  It provides closed-form primal/JVP/VJP products, scale-aware singular-input
+  rejection, and a diagonal reduction oracle. This is the metric layer needed
+  by curved meshes and IGA; curved-object layer assembly, active-cell
+  geometry products, and reflection diagnostics remain separate follow-up
+  fixtures.
 - The public `fortfem_maxwell_curved_dtn` contract now composes weak electric
   and magnetic trace forms into a mixed RWG/RBC map with matrix-free action,
   JVP, and VJP products. `assemble_maxwell_torus_curved_dtn_rwg_3d` wires the

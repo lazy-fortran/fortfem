@@ -873,6 +873,13 @@ module fortfem_api
         cartesian_scalar_helmholtz_pml_coefficients, &
         cartesian_scalar_helmholtz_pml_coefficients_jvp, &
         cartesian_scalar_helmholtz_pml_coefficients_vjp
+    use fortfem_curvilinear_helmholtz_pml, only: &
+        curvilinear_curl_curl_pml_coefficients, &
+        curvilinear_curl_curl_pml_coefficients_jvp, &
+        curvilinear_curl_curl_pml_coefficients_vjp, &
+        curvilinear_scalar_helmholtz_pml_coefficients, &
+        curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
+        curvilinear_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
         solve_scalar_helmholtz_pml_slab_1d
     use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
@@ -1805,6 +1812,12 @@ module fortfem_api
     public :: cartesian_scalar_helmholtz_pml_coefficients
     public :: cartesian_scalar_helmholtz_pml_coefficients_jvp
     public :: cartesian_scalar_helmholtz_pml_coefficients_vjp
+    public :: curvilinear_curl_curl_pml_coefficients
+    public :: curvilinear_curl_curl_pml_coefficients_jvp
+    public :: curvilinear_curl_curl_pml_coefficients_vjp
+    public :: curvilinear_scalar_helmholtz_pml_coefficients
+    public :: curvilinear_scalar_helmholtz_pml_coefficients_jvp
+    public :: curvilinear_scalar_helmholtz_pml_coefficients_vjp
     public :: build_cartesian_pml_element_stretch
     public :: build_cartesian_pml_element_stretch_jvp
     public :: build_cartesian_pml_element_stretch_vjp

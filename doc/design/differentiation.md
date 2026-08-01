@@ -103,6 +103,18 @@ At the physical/PML interface the active-set branch is intentionally
 piecewise: interior cells have zero stretch derivative, while derivatives in a
 PML layer are valid as long as a perturbation does not cross the interface.
 
+The curvilinear coefficient maps extend the same contract from three diagonal
+stretch entries to a full complex \(3\times3\) stretch matrix. Their closed
+tensor products retain off-diagonal metric coupling for curved meshes and IGA
+maps. The JVPs differentiate determinant and inverse products directly; the
+VJPs reverse those products with the real-part complex adjoint convention.
+Finite and scale-aware nonsingularity checks make failure explicit instead of
+returning a nonphysical layer tensor. The focused behavioral oracle checks
+both maps independently with central differences and dot identities. Active
+cell selection and curved-layer assembly remain fixed-topology caller
+operations, so geometry derivatives are valid away from a cell entering or
+leaving the layer.
+
 The one-dimensional scalar P1 slab exposes the complete end-to-end version of
 this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
 `solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same
