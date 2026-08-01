@@ -641,6 +641,9 @@ module fortfem_api
         assemble_helmholtz_torus_curved_calderon_3d, &
         assemble_helmholtz_torus_curved_dtn_3d, &
         solve_helmholtz_bem_dtn_torus_curved_3d
+    use fortfem_helmholtz_torus_curved_bem_ad_3d, only: &
+        assemble_helmholtz_torus_curved_dtn_3d_geometry_jvp, &
+        assemble_helmholtz_torus_curved_dtn_3d_geometry_vjp
     use fortfem_helmholtz_torus_curved_fem_bem_coupling_3d, only: &
         assemble_helmholtz_fem_bem_costabel_torus_curved_3d, &
         solve_helmholtz_fem_bem_costabel_torus_curved_3d
@@ -1326,6 +1329,8 @@ module fortfem_api
     public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
     public :: assemble_helmholtz_torus_curved_calderon_3d
     public :: assemble_helmholtz_torus_curved_dtn_3d
+    public :: assemble_helmholtz_torus_curved_dtn_3d_geometry_jvp
+    public :: assemble_helmholtz_torus_curved_dtn_3d_geometry_vjp
     public :: solve_helmholtz_bem_dtn_torus_curved_3d
     public :: assemble_helmholtz_fem_bem_costabel_torus_curved_3d
     public :: solve_helmholtz_fem_bem_costabel_torus_curved_3d
