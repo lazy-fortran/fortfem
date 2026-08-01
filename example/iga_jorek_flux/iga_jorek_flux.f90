@@ -4,8 +4,8 @@ program iga_jorek_flux
         assemble_bspline_h1_operator_csc, evaluate_bspline_basis
     use fortfem_kinds, only: dp
     use fortplot, only: &
-        colorbar, figure, plot, pcolormesh, savefig, set_yscale, title, &
-        xlabel, ylabel
+        colorbar, figure, plot, pcolormesh, quiver, savefig, set_yscale, &
+        title, xlabel, ylabel
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
 
@@ -26,6 +26,7 @@ program iga_jorek_flux
     real(dp), allocatable :: norm_drift(:), potential(:), r(:), z(:)
     real(dp), allocatable :: r_edges(:), z_edges(:), weights(:, :)
     real(dp), allocatable :: initial_map(:, :), final_map(:, :), time(:)
+    real(dp), allocatable :: initial_br(:, :), initial_bz(:, :)
     type(csc_t) :: mass
     type(fortsparse_status_t) :: status
     real(dp) :: elapsed, initial_norm, start_time, reversibility_error
@@ -88,8 +89,11 @@ program iga_jorek_flux
     if (reversibility_error > 5.0e-11_dp) &
         error stop "JOREK gallery reversibility regression"
 
-    allocate(initial_map(40, 40), final_map(40, 40))
-    call sample_flux_map(flux_history(:, 1), initial_map)
+    allocate( &
+        initial_map(40, 40), final_map(40, 40), &
+        initial_br(40, 40), initial_bz(40, 40))
+    call sample_flux_field( &
+        flux_history(:, 1), initial_map, initial_br, initial_bz)
     call sample_flux_map(flux_history(:, step_count + 1), final_map)
     call render_plots()
     call write_benchmark()
@@ -97,12 +101,34 @@ program iga_jorek_flux
 contains
 
     subroutine render_plots()
+        integer, parameter :: vector_stride = 4
+        real(dp) :: arrow_r(10*10), arrow_z(10*10)
+        real(dp) :: arrow_br(10*10), arrow_bz(10*10)
+        integer :: arrow_count, ix, iz
+
+        arrow_count = 0
+        do ix = 1, size(initial_map, 2), vector_stride
+            do iz = 1, size(initial_map, 1), vector_stride
+                arrow_count = arrow_count + 1
+                arrow_r(arrow_count) = 1.0_dp + &
+                    (real(ix, dp) - 0.5_dp)/real(size(initial_map, 2), dp)
+                arrow_z(arrow_count) = &
+                    (real(iz, dp) - 0.5_dp)/real(size(initial_map, 1), dp)
+                arrow_br(arrow_count) = initial_br(iz, ix)
+                arrow_bz(arrow_count) = initial_bz(iz, ix)
+            end do
+        end do
         call figure(figsize=[8.0_dp, 5.5_dp])
-        call pcolormesh(r_edges, z_edges, initial_map, cmap="coolwarm")
+        call pcolormesh(1.0_dp + r_edges, z_edges, initial_map, cmap="coolwarm")
+        call quiver( &
+            arrow_r(:arrow_count), arrow_z(:arrow_count), &
+            arrow_br(:arrow_count), arrow_bz(:arrow_count), &
+            scale=3.5_dp, scale_units="xy", angles="xy", color="black", &
+            width=0.0025_dp)
         call colorbar(label="poloidal magnetic flux psi")
-        call xlabel("minor radial coordinate")
+        call xlabel("major-radius coordinate R")
         call ylabel("vertical coordinate")
-        call title("JOREK ideal flux subflow: initial state")
+        call title("JOREK ideal flux subflow: flux solution and poloidal field")
         call savefig(output_directory//"/jorek_flux_initial_2d.png")
 
         call figure(figsize=[9.0_dp, 5.5_dp])
@@ -114,13 +140,60 @@ contains
         call savefig(output_directory//"/jorek_flux_invariant_1d.png")
 
         call figure(figsize=[8.0_dp, 5.5_dp])
-        call pcolormesh(r_edges, z_edges, final_map, cmap="coolwarm")
+        call pcolormesh(1.0_dp + r_edges, z_edges, final_map, cmap="coolwarm")
         call colorbar(label="poloidal magnetic flux psi")
-        call xlabel("minor radial coordinate")
+        call xlabel("major-radius coordinate R")
         call ylabel("vertical coordinate")
         call title("JOREK ideal flux subflow: final state")
         call savefig(output_directory//"/jorek_flux_final_2d.png")
     end subroutine render_plots
+
+    subroutine sample_flux_field(coefficients, map, br, bz)
+        real(dp), intent(in) :: coefficients(:)
+        real(dp), intent(out) :: map(:, :), br(:, :), bz(:, :)
+
+        real(dp), allocatable :: basis_r(:), basis_z(:)
+        real(dp), allocatable :: derivative_r(:), derivative_z(:)
+        real(dp) :: coordinate_r, coordinate_z, flux_value
+        real(dp) :: flux_r, flux_z, major_radius
+        integer :: basis_r_count, basis_z_count, ir, ix, iz, j, status
+
+        basis_r_count = size(r)
+        basis_z_count = size(z)
+        if (size(coefficients) /= basis_r_count*basis_z_count) then
+            error stop "JOREK field coefficient shape mismatch"
+        end if
+        do ix = 1, size(map, 2)
+            coordinate_r = (real(ix, dp) - 0.5_dp)/real(size(map, 2), dp)
+            call evaluate_bspline_basis( &
+                knots_r, degree, coordinate_r, basis_r, derivative_r, status)
+            if (status /= 0) error stop "JOREK radial field basis failed"
+            do j = 1, size(map, 1)
+                coordinate_z = (real(j, dp) - 0.5_dp)/real(size(map, 1), dp)
+                call evaluate_bspline_basis( &
+                    knots_z, degree, coordinate_z, basis_z, derivative_z, &
+                    status)
+                if (status /= 0) error stop "JOREK vertical field basis failed"
+                flux_value = 0.0_dp
+                flux_r = 0.0_dp
+                flux_z = 0.0_dp
+                do iz = 1, basis_z_count
+                    do ir = 1, basis_r_count
+                        flux_value = flux_value + basis_r(ir)*basis_z(iz)* &
+                            coefficients(ir + (iz - 1)*basis_r_count)
+                        flux_r = flux_r + derivative_r(ir)*basis_z(iz)* &
+                            coefficients(ir + (iz - 1)*basis_r_count)
+                        flux_z = flux_z + basis_r(ir)*derivative_z(iz)* &
+                            coefficients(ir + (iz - 1)*basis_r_count)
+                    end do
+                end do
+                major_radius = 1.0_dp + coordinate_r
+                map(j, ix) = flux_value
+                br(j, ix) = flux_z/major_radius
+                bz(j, ix) = -flux_r/major_radius
+            end do
+        end do
+    end subroutine sample_flux_field
 
     subroutine sample_flux_map(coefficients, map)
         real(dp), intent(in) :: coefficients(:)

@@ -55,8 +55,8 @@ program adaptive_bem_prolate
         generate_sphere_surface_mesh, mark_bem_dorfler, &
         refine_surface_mesh_marked, solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: add_scatter, figure, legend, plot, savefig, title, &
-        xlabel, ylabel, yscale
+    use fortplot, only: add_parametric_surface, add_scatter, figure, legend, &
+        plot, savefig, title, xlabel, ylabel, yscale
     implicit none
 
     integer, parameter :: step_count = 5
@@ -68,10 +68,12 @@ program adaptive_bem_prolate
     real(dp), allocatable :: density(:), indicators(:)
     real(dp), allocatable :: refined_vertices(:, :), vertices(:, :)
     real(dp), allocatable :: panel_centers(:, :)
+    real(dp), allocatable :: surface_x(:, :), surface_y(:, :), surface_z(:, :)
     logical, allocatable :: marked(:)
     real(dp) :: capacity, exact_capacity, error(step_count)
     real(dp) :: estimator(step_count), panels(step_count)
-    integer :: status, step
+    integer :: status, step, surface_i, surface_j
+    integer, parameter :: surface_theta_count = 13, surface_phi_count = 25
 
     call execute_command_line("mkdir -p "//output_directory)
     call generate_sphere_surface_mesh(1.0_dp, 0, vertices, triangles)
@@ -109,7 +111,31 @@ program adaptive_bem_prolate
         panel_centers(:, step) = sum( &
             vertices(:, triangles(:, step)), dim=2)/3.0_dp
     end do
+    allocate( &
+        surface_x(surface_theta_count, surface_phi_count), &
+        surface_y(surface_theta_count, surface_phi_count), &
+        surface_z(surface_theta_count, surface_phi_count))
+    do surface_j = 1, surface_phi_count
+        do surface_i = 1, surface_theta_count
+            surface_x(surface_i, surface_j) = minor_axis* &
+                sin(acos(-1.0_dp)*real(surface_i - 1, dp)/ &
+                real(surface_theta_count - 1, dp))* &
+                cos(2.0_dp*acos(-1.0_dp)*real(surface_j - 1, dp)/ &
+                real(surface_phi_count - 1, dp))
+            surface_y(surface_i, surface_j) = minor_axis* &
+                sin(acos(-1.0_dp)*real(surface_i - 1, dp)/ &
+                real(surface_theta_count - 1, dp))* &
+                sin(2.0_dp*acos(-1.0_dp)*real(surface_j - 1, dp)/ &
+                real(surface_phi_count - 1, dp))
+            surface_z(surface_i, surface_j) = major_axis* &
+                cos(acos(-1.0_dp)*real(surface_i - 1, dp)/ &
+                real(surface_theta_count - 1, dp))
+        end do
+    end do
     call figure(figsize=[7.5_dp, 6.0_dp])
+    call add_parametric_surface( &
+        surface_x, surface_y, surface_z, color="black", linewidth=0.45_dp, &
+        row_stride=2, column_stride=2, label="prolate surface")
     call add_scatter( &
         panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
         c=density, &

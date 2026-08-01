@@ -5,8 +5,8 @@ program tetra_nedelec_p_convergence
         interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
-    use fortplot, only: add_scatter, figure, plot, savefig, set_yscale, title, &
-        xlabel, ylabel
+    use fortplot, only: add_3d_plot, add_scatter, colorbar, figure, plot, &
+        quiver, savefig, set_yscale, title, xlabel, ylabel
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -53,7 +53,8 @@ contains
         real(dp), allocatable :: dofs(:), x_plot(:), y_plot(:), z_plot(:)
         real(dp), allocatable :: field_magnitude(:), basis_values(:, :)
         real(dp), allocatable :: basis_curls(:, :)
-        real(dp) :: point(3), field_value(3)
+        real(dp) :: point(3), field_value(3), arrow_end(3), arrow_side(3)
+        real(dp) :: field_scale, arrow_length
         integer :: count, i, j, k, local_status
 
         call interpolate_reference_tetra_nedelec( &
@@ -91,9 +92,111 @@ contains
             x_plot(:count), y_plot(:count), z_plot(:count), &
             c=field_magnitude(:count), cmap="viridis", marker=".", &
             markersize=4.0_dp, label="computed Nedelec field magnitude")
-        call title("Tetrahedral Nedelec computed vector field")
+        field_scale = maxval(field_magnitude(:count))
+        field_scale = max(field_scale, epsilon(1.0_dp))
+        do k = 0, sample_side, 3
+            do j = 0, sample_side, 3
+                do i = 0, sample_side, 3
+                    if (i + j + k > sample_side) cycle
+                    point = [ &
+                        real(i, dp)/real(sample_side, dp), &
+                        real(j, dp)/real(sample_side, dp), &
+                        real(k, dp)/real(sample_side, dp)]
+                    call evaluate_tetra_nedelec_first_kind( &
+                        basis, point, basis_values, basis_curls, local_status)
+                    if (local_status /= 0) cycle
+                    field_value = matmul(basis_values, dofs)
+                    arrow_length = 0.16_dp*norm2(field_value)/field_scale
+                    if (arrow_length <= 1.0e-12_dp) cycle
+                    arrow_end = point + arrow_length*field_value/ &
+                        max(norm2(field_value), epsilon(1.0_dp))
+                    arrow_side = arrow_end - point
+                    call add_3d_plot( &
+                        [point(1), arrow_end(1)], [point(2), arrow_end(2)], &
+                        [point(3), arrow_end(3)], color="black", linewidth=1.2_dp)
+                    ! A short V-shaped head makes direction readable in the
+                    ! projected 3-D renderer without adding a second API.
+                    call add_3d_plot( &
+                        [arrow_end(1), arrow_end(1) - 0.25_dp*arrow_side(1) + &
+                        0.08_dp, arrow_end(1)], &
+                        [arrow_end(2), arrow_end(2) - 0.25_dp*arrow_side(2), &
+                        arrow_end(2) + 0.08_dp], &
+                        [arrow_end(3), arrow_end(3) - 0.25_dp*arrow_side(3), &
+                        arrow_end(3)], color="black", linewidth=1.0_dp)
+                end do
+            end do
+        end do
+        call title("Tetrahedral Nedelec solution: magnitude and direction")
         call savefig(output_directory//"/nedelec_field_3d.png")
+        call render_field_slice(basis, dofs)
     end subroutine render_field
+
+    subroutine render_field_slice(basis, dofs)
+        type(tetra_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: dofs(:)
+
+        integer, parameter :: slice_side = 24, vector_stride = 3
+        real(dp), allocatable :: x(:), y(:), magnitude(:)
+        real(dp), allocatable :: arrow_x(:), arrow_y(:), arrow_u(:), arrow_v(:)
+        real(dp), allocatable :: basis_values(:, :), basis_curls(:, :)
+        real(dp) :: point(3), field_value(3), field_norm
+        integer :: count, arrow_count, i, j, local_status
+
+        allocate( &
+            x(slice_side**2), y(slice_side**2), magnitude(slice_side**2), &
+            arrow_x((slice_side/vector_stride + 1)**2), &
+            arrow_y((slice_side/vector_stride + 1)**2), &
+            arrow_u((slice_side/vector_stride + 1)**2), &
+            arrow_v((slice_side/vector_stride + 1)**2), &
+            basis_values(3, size(dofs)), basis_curls(3, size(dofs)))
+        count = 0
+        arrow_count = 0
+        do j = 1, slice_side
+            do i = 1, slice_side
+                point = [ &
+                    (real(i, dp) - 0.5_dp)/real(slice_side, dp), &
+                    (real(j, dp) - 0.5_dp)/real(slice_side, dp), 0.25_dp]
+                if (point(1) + point(2) + point(3) > 1.0_dp) cycle
+                call evaluate_tetra_nedelec_first_kind( &
+                    basis, point, basis_values, basis_curls, local_status)
+                if (local_status /= 0) cycle
+                field_value = matmul(basis_values, dofs)
+                count = count + 1
+                x(count) = point(1)
+                y(count) = point(2)
+                magnitude(count) = norm2(field_value)
+                if (mod(i - 1, vector_stride) == 0 .and. &
+                    mod(j - 1, vector_stride) == 0) then
+                    arrow_count = arrow_count + 1
+                    arrow_x(arrow_count) = point(1)
+                    arrow_y(arrow_count) = point(2)
+                    arrow_u(arrow_count) = field_value(1)
+                    arrow_v(arrow_count) = field_value(2)
+                end if
+            end do
+        end do
+        do i = 1, arrow_count
+            field_norm = sqrt(arrow_u(i)**2 + arrow_v(i)**2)
+            if (field_norm > epsilon(1.0_dp)) then
+                arrow_u(i) = 0.07_dp*arrow_u(i)/field_norm
+                arrow_v(i) = 0.07_dp*arrow_v(i)/field_norm
+            end if
+        end do
+        call figure(figsize=[8.0_dp, 6.5_dp])
+        call add_scatter(x(:count), y(:count), c=magnitude(:count), &
+            cmap="viridis", marker=".", markersize=9.0_dp, &
+            label="computed field magnitude at z=0.25")
+        call quiver( &
+            arrow_x(:arrow_count), arrow_y(:arrow_count), &
+            arrow_u(:arrow_count), arrow_v(:arrow_count), scale=1.0_dp, &
+            scale_units="xy", angles="xy", color="black", width=0.003_dp, &
+            headwidth=3.0_dp)
+        call colorbar(label="|E_h|")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Tetrahedral Nedelec solution on the z=0.25 slice")
+        call savefig(output_directory//"/nedelec_field_slice_2d.png")
+    end subroutine render_field_slice
 
     subroutine interpolation_error(basis, error, status)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis

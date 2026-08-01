@@ -29,6 +29,7 @@ interoperability_benchmarks
 
 # Boundary elements and coupling
 laplace_bem_circle_spectrum
+laplace_exterior_bem_circle
 helmholtz_bem_circle_spectrum
 helmholtz_cfie_circle
 laplace_symmetric_transmission

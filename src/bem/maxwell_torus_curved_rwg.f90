@@ -24,6 +24,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
@@ -45,11 +47,80 @@ contains
         complex(dp), intent(out) :: magnetic_field(3)
         integer, intent(out) :: status
 
-        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
-        real(dp), allocatable :: eta(:), weights(:), xi(:)
         complex(dp), allocatable :: basis_fields(:, :)
 
-        magnetic_field = cmplx(0.0_dp, 0.0_dp, dp)
+        call evaluate_torus_curved_magnetic_basis( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            observation, wave_number, quadrature_degree, basis_fields, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(basis_fields, 2)) then
+            status = 1
+            magnetic_field = cmplx(0.0_dp, 0.0_dp, dp)
+            return
+        end if
+        magnetic_field = matmul(basis_fields, coefficients)
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
+
+    subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            coefficients_dot, observation, wave_number, quadrature_degree, &
+            magnetic_field_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, observation(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients_dot(:)
+        complex(dp), intent(out) :: magnetic_field_dot(3)
+        integer, intent(out) :: status
+
+        call evaluate_maxwell_torus_curved_magnetic_field_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            coefficients_dot, observation, wave_number, quadrature_degree, &
+            magnetic_field_dot, status)
+    end subroutine &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+
+    subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            observation, wave_number, quadrature_degree, magnetic_field_bar, &
+            coefficients_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, observation(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: magnetic_field_bar(3)
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: basis_fields(:, :)
+
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        call evaluate_torus_curved_magnetic_basis( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            observation, wave_number, quadrature_degree, basis_fields, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(basis_fields, 2)))
+        coefficients_bar = matmul(conjg(transpose(basis_fields)), &
+            magnetic_field_bar)
+        status = 0
+    end subroutine &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
+
+    subroutine evaluate_torus_curved_magnetic_basis( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            observation, wave_number, quadrature_degree, basis_fields, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, observation(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), allocatable, intent(out) :: basis_fields(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+
+        if (allocated(basis_fields)) deallocate(basis_fields)
         status = 1
         if (size(vertices, 1) /= 3 .or. size(parameters, 1) /= 2) return
         if (size(parameters, 2) /= size(vertices, 2)) return
@@ -58,10 +129,6 @@ contains
         call build_maxwell_rwg_surface_space( &
             vertices, triangles, edge_vertices, edge_triangles, status)
         if (status /= 0) return
-        if (size(coefficients) /= size(edge_vertices, 2)) then
-            status = 1
-            return
-        end if
         call triangle_duffy_quadrature( &
             quadrature_degree, xi, eta, weights, status)
         if (status /= 0) return
@@ -70,10 +137,7 @@ contains
             vertices, triangles, parameters, edge_vertices, edge_triangles, &
             major_radius, minor_radius, observation, wave_number, xi, eta, &
             weights, basis_fields, status)
-        if (status /= 0) return
-        magnetic_field = matmul(basis_fields, coefficients)
-        status = 0
-    end subroutine evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
+    end subroutine evaluate_torus_curved_magnetic_basis
 
     subroutine solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
