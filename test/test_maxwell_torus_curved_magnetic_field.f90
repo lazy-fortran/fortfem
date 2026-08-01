@@ -5,6 +5,7 @@ program test_maxwell_torus_curved_magnetic_field
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_torus_magnetic_geometry_jvp, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
         generate_torus_surface_mesh
     use fortfem_kinds, only: dp
@@ -13,12 +14,17 @@ program test_maxwell_torus_curved_magnetic_field
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp
     real(dp), parameter :: observation(3) = [0.25_dp, 0.10_dp, 0.15_dp]
     real(dp), allocatable :: vertices(:, :), parameters(:, :), mass(:, :)
+    real(dp), allocatable :: vertices_dot(:, :), parameters_dot(:, :)
     integer, allocatable :: triangles(:, :)
     complex(dp), allocatable :: coefficients(:), coefficients_dot(:)
     complex(dp), allocatable :: coefficients_bar(:), doubled(:)
     complex(dp) :: field(3), doubled_field(3), zero_field(3)
     complex(dp) :: field_dot(3), field_bar(3), field_plus(3), field_minus(3)
-    real(dp) :: scaling_error, derivative_error, adjoint_error, step
+    complex(dp) :: geometry_dot(3), geometry_plus(3), geometry_minus(3)
+    real(dp) :: scaling_error, derivative_error, adjoint_error, geometry_error
+    real(dp) :: step
+    real(dp) :: major_radius_dot, minor_radius_dot, wave_number_dot
+    real(dp) :: observation_dot(3), wave_number
     integer :: i, status
     logical :: all_passed
 
@@ -88,6 +94,39 @@ program test_maxwell_torus_curved_magnetic_field
         real(sum(conjg(coefficients_bar)*coefficients_dot)))
     call record_condition(status == 0 .and. adjoint_error < 2.0e-11_dp, &
         'curved torus magnetic-field VJP satisfies the dot-product identity')
+
+    allocate(vertices_dot(size(vertices, 1), size(vertices, 2)))
+    allocate(parameters_dot(size(parameters, 1), size(parameters, 2)))
+    vertices_dot = 0.0_dp
+    parameters_dot = 0.0_dp
+    do i = 1, size(vertices, 2)
+        vertices_dot(:, i) = [0.003_dp*i, -0.002_dp*i, 0.001_dp*i]
+        parameters_dot(:, i) = [0.0007_dp*i, -0.0004_dp*i]
+    end do
+    major_radius_dot = 0.002_dp
+    minor_radius_dot = -0.001_dp
+    observation_dot = [0.004_dp, -0.003_dp, 0.002_dp]
+    wave_number = 0.45_dp
+    wave_number_dot = 0.017_dp
+    call evaluate_maxwell_torus_magnetic_geometry_jvp( &
+        vertices, triangles, parameters, major_radius, minor_radius, &
+        coefficients, observation, wave_number, 2, vertices_dot, &
+        parameters_dot, major_radius_dot, minor_radius_dot, coefficients_dot, &
+        observation_dot, wave_number_dot, geometry_dot, status)
+    call evaluate_maxwell_torus_curved_magnetic_field_rwg_3d( &
+        vertices + step*vertices_dot, triangles, parameters + step*parameters_dot, &
+        major_radius + step*major_radius_dot, minor_radius + step*minor_radius_dot, &
+        coefficients + step*coefficients_dot, observation + step*observation_dot, &
+        wave_number + step*wave_number_dot, 2, geometry_plus, status)
+    call evaluate_maxwell_torus_curved_magnetic_field_rwg_3d( &
+        vertices - step*vertices_dot, triangles, parameters - step*parameters_dot, &
+        major_radius - step*major_radius_dot, minor_radius - step*minor_radius_dot, &
+        coefficients - step*coefficients_dot, observation - step*observation_dot, &
+        wave_number - step*wave_number_dot, 2, geometry_minus, status)
+    geometry_error = maxval(abs(geometry_dot - &
+        (geometry_plus - geometry_minus)/(2.0_dp*step)))
+    call record_condition(status == 0 .and. geometry_error < 2.0e-7_dp, &
+        'curved torus magnetic-field geometry JVP matches reassembly')
 
     call check_summary('Exact-curved torus RWG magnetic field')
     if (.not. all_passed) error stop 1
