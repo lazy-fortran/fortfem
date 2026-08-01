@@ -78,8 +78,11 @@ The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
 `ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
 the standalone sparse IC(0) API above is available for callers that must keep
-the factor sparse. PCG integration and measured scaling remain separate
-benchmark work. The legacy BiCGSTAB kernel accepts only its ILU
+the factor sparse. `solver_options(preconditioner=ichol_controlled_preconditioner(),
+drop_tolerance=..., fill_level=...)` selects the sparse controlled path in
+`solve_sparse`; the exact full-fill one-step PCG fixture is independently
+tested. Measured scaling and a row-oriented construction remain benchmark
+work. The legacy BiCGSTAB kernel accepts only its ILU
 factor contract and therefore reports an explicit unpreconditioned fallback
 if ICHOL is selected there.
 
