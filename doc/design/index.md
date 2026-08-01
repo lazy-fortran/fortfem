@@ -158,6 +158,11 @@ The [shifted enriched space](shifted_enriched_space.html) builds a complete
 scalar XFEM/GFEM basis-value matrix from base values and fixed level-set anchor
 signs, with topology-event rejection and exact JVP/VJP actions.
 
+The [shifted vector enriched space](shifted_vector_enriched_space.html) lifts
+that constructor to component-by-basis-by-point vector values while leaving
+Piola choice and the de Rham sequence policy explicit for H(curl), H(div), IGA,
+or DG clients.
+
 The [dissipative Cayley step](dissipative_cayley.html) provides the separate
 energy-contracting mass/damping update and its analytic JVP/VJP actions for
 resistive, viscous, thermal, and absorbing clients.

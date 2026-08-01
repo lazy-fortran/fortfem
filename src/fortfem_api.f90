@@ -105,6 +105,10 @@ module fortfem_api
         evaluate_shifted_enriched_space, &
         evaluate_shifted_enriched_space_jvp, &
         evaluate_shifted_enriched_space_vjp
+    use fortfem_shifted_vector_enriched_space, only: &
+        evaluate_shifted_vector_enriched_space, &
+        evaluate_shifted_vector_enriched_space_jvp, &
+        evaluate_shifted_vector_enriched_space_vjp
     use fortfem_shifted_vector_enriched_basis, only: &
         evaluate_shifted_vector_enriched_basis, &
         evaluate_shifted_vector_enriched_basis_jvp, &
@@ -1149,6 +1153,9 @@ module fortfem_api
     public :: evaluate_shifted_enriched_space
     public :: evaluate_shifted_enriched_space_jvp
     public :: evaluate_shifted_enriched_space_vjp
+    public :: evaluate_shifted_vector_enriched_space
+    public :: evaluate_shifted_vector_enriched_space_jvp
+    public :: evaluate_shifted_vector_enriched_space_vjp
     public :: evaluate_shifted_vector_enriched_basis
     public :: evaluate_shifted_vector_enriched_basis_jvp
     public :: evaluate_shifted_vector_enriched_basis_vjp
