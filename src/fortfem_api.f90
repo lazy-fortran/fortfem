@@ -62,7 +62,8 @@ module fortfem_api
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
-        assemble_normal_traction_jump_vjp
+        assemble_normal_traction_jump_vjp, assemble_traction_jump, &
+        assemble_traction_jump_jvp, assemble_traction_jump_vjp
     use fortfem_heaviside_enrichment, only: &
         evaluate_shifted_heaviside_enrichment, &
         evaluate_shifted_heaviside_enrichment_jvp, &
@@ -1093,6 +1094,9 @@ module fortfem_api
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
+    public :: assemble_traction_jump
+    public :: assemble_traction_jump_jvp
+    public :: assemble_traction_jump_vjp
     public :: evaluate_shifted_heaviside_enrichment
     public :: evaluate_shifted_heaviside_enrichment_jvp
     public :: evaluate_shifted_heaviside_enrichment_vjp
