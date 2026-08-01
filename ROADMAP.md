@@ -1631,6 +1631,9 @@ gallery example.
   central differences, and the real adjoint identity. A separate 2000-step
   campaign now checks the quadratic Hamiltonian against an independent
   mass-matrix oracle and recovers the initial state under signed reversal.
+  A seeded 16-case property campaign now repeats the energy and signed-step
+  checks for diagonal SPD masses and random coupling blocks, covering both
+  midpoint and Strang without global random state.
   Dissipative splitting remains separate; discrete-gradient/average-vector-
   field options and broader problem-size campaigns remain active work.
 - Mixed first-order pressure-velocity, displacement-velocity-stress, and
