@@ -30,6 +30,11 @@ map with matrix-free, JVP, and VJP actions. Its exact-curved torus wrapper
 keeps the RWG and RBC trace conventions explicit; the same contract includes
 caller-owned weak-to-point trace reconstruction for physical field evaluation.
 
+The [manufactured toroidal Maxwell FEM--BEM solution](maxwell_torus_fem_bem_solution.html)
+composes the same curved RWG trace with a volume Nédélec solve and checks the
+coupled field/current state against a constant analytical (H(\mathrm{curl}))
+field.
+
 The [FCI parallel support-operator contract](fci_parallel_operator.html)
 defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line

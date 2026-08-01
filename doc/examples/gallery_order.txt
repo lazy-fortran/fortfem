@@ -51,3 +51,4 @@ maxwell_mesh_adjoint
 iga_polar_feec
 iga_jorek_flux
 maxwell_torus_curved_scattering
+maxwell_torus_fem_bem_solution

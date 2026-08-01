@@ -163,7 +163,7 @@ documentation baseline. The list is intentionally conservative.
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
-| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, and assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels | Maxwell/PML geometry products, larger-domain toroidal Maxwell/PML comparisons, solver-state derivatives, and robust vector field reconstruction fixtures |
+| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels, and a manufactured toroidal Maxwell FEM--BEM solved-state/field-reconstruction fixture | Maxwell/PML geometry products, larger-domain toroidal Maxwell/PML comparisons, solver-state derivatives, nonzero-scattering vector FEM/BEM/DtN parity, and robust vector field reconstruction fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
 | Parallel readiness | Serial local kernels and deterministic focused tests | Owned/ghost mesh and field data, partition-independent numbering, halo exchange, distributed assembly, checkpointing, and MPI-enabled solver backends |
@@ -986,44 +986,49 @@ conservation diagnostic when applicable.
 
 ### Application-oriented numerical ingredients
 
-14. **Cylindrical axisymmetric elliptic fixture.** Manufactured coefficients,
+14. **Toroidal Maxwell FEM--BEM manufactured solution.** A constant physical
+    H(curl) field, exact edge-integral coefficients, curved RWG trace coupling,
+    solved-state oracle, physical cross-section, vector arrows, and curved
+    three-dimensional geometry. This is the neutral vector FEM--BEM baseline;
+    nonzero scattering remains in the curl-curl fixture above.
+15. **Cylindrical axisymmetric elliptic fixture.** Manufactured coefficients,
     axis regularity, Fourier-FEM, and optional CHEASE/FreeGS comparison data
     supplied through an external adapter.
-15. **Fourier-FEM slab and cylinder.** Mode diagonal operators, retained
+16. **Fourier-FEM slab and cylinder.** Mode diagonal operators, retained
     nonlinear triads, real/conjugate packing, and torus-harmonic diagnostics.
-16. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
+17. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
     interfaces, generic flux and helicity constraints, and a pressure-balance
     residual with manufactured coefficients.
-17. **Linear 3D perturbation blocks.** Generic mode response with vacuum, wall,
+18. **Linear 3D perturbation blocks.** Generic mode response with vacuum, wall,
     singular-layer, and response-matrix toy operators. GPEC or MARS data enter
     only through an external sampler.
-18. **Energy-principle toy spectrum.** Radial spline FE, Fourier modes, inertia
+19. **Energy-principle toy spectrum.** Radial spline FE, Fourier modes, inertia
     count, eigenpair derivatives, and external-data interchange tests.
-19. **Resonant interface sheet.** Ideal current-sheet limit, finite resistive
+20. **Resonant interface sheet.** Ideal current-sheet limit, finite resistive
     layer, XFEM enrichment, fitted sheet, and convergence to a manufactured
     singular solution.
-20. **Skew bracket fixture.** Energy-skew nonlinear bracket, Fourier convolution,
+21. **Skew bracket fixture.** Energy-skew nonlinear bracket, Fourier convolution,
     analytical JVP, and long-time structure-preserving integration for a
     caller-defined state.
-21. **Resistive diffusion and tearing layer.** Explicit layer, adaptive layer,
+22. **Resistive diffusion and tearing layer.** Explicit layer, adaptive layer,
     asymptotic enrichment, DG, and ideal-limit comparison.
-22. **Generic coupled-field path.** Independently testable magnetic, scalar,
+23. **Generic coupled-field path.** Independently testable magnetic, scalar,
     vector, tensor, interface, and constraint residual blocks. A JOREK-style
     client can map its fields into this path, but FortFEM contains no JOREK
     state or closure implementation.
 
 ### Waves, elasticity, and anisotropy
 
-23. **Mixed symplectic acoustics.** Pressure and particle velocity in a first-
+24. **Mixed symplectic acoustics.** Pressure and particle velocity in a first-
     order compatible pair, with energy-preserving symplectic stepping and a
     comparison against the second-order pressure reduction.
-24. **General wave family.** The same mixed residual for acoustics, Maxwell,
+25. **General wave family.** The same mixed residual for acoustics, Maxwell,
     elastodynamics, and a scalar wave, with common energy, dispersion, and
     boundary-port plots.
-25. **Structure-preserving linear elasticity.** Displacement, velocity, and
+26. **Structure-preserving linear elasticity.** Displacement, velocity, and
     tensor stress with weak symmetry, traction interfaces, and a mixed
     Hellinger--Reissner oracle.
-26. **Tensor-pressure wave.** A caller-supplied anisotropic tensor with
+27. **Tensor-pressure wave.** A caller-supplied anisotropic tensor with
     parallel, perpendicular, and gyrotropic parts, including force balance and
     energy diagnostics. The tensor is a generic constitutive fixture.
 The current `cgl_pressure_tensor` gallery example provides the first
@@ -1035,10 +1040,10 @@ parallel/perpendicular profile and \(k_\parallel/k_\perp=100\) flux plot. The
 solution for a \(k_\parallel/k_\perp=1000\) tensor, with a solution contour as
 its first plot, a centerline oracle, mesh view, error/energy, and timing data.
 Three-dimensional curvilinear and FCI/Fourier parity cases remain active.
-27. **Field-aligned diffusion.** A slab, cylinder, and torus with extreme
+28. **Field-aligned diffusion.** A slab, cylinder, and torus with extreme
     \(k_\parallel/k_\perp\), comparing aligned coordinates, FCI maps, Fourier-
     FEM, and an isotropic control case.
-28. **Field-aligned edge operator.** A generic anisotropic transport system
+29. **Field-aligned edge operator.** A generic anisotropic transport system
     with caller-supplied coefficients, material traces, and a reproducible FCI
     field-line map. This is an operator fixture, not a GRILLIX, BOUT++, or
     Braginskii implementation.
@@ -1474,8 +1479,11 @@ gallery example.
   placeholder is gone. Exact-curved torus RWG currents now also have a public
   off-surface magnetic-field reconstruction path with a coefficient-linearity
   oracle, so the torus Maxwell gallery can show a computed field slice. The
-  remaining vector toroidal BEM/DtN parity and Ampere FEM parity are still
-  separate follow-up fixtures.
+  `maxwell_torus_fem_bem_solution` fixture now closes the neutral vector
+  FEM--BEM solved-state gap with exact edge-integral data, a complex coupled
+  solve oracle, and a physical H(curl) slice with arrows. Nonzero-scattering
+  vector FEM/BEM/DtN/PML parity, solver-state derivatives, and larger-domain
+  Maxwell controls remain active follow-up work.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
@@ -1812,6 +1820,12 @@ gallery example.
 - The curved-torus Maxwell gallery now leads with a reconstructed scattered
   magnetic-field slice; the RCS surface, trace, weak-DtN response, and exact
   geometry remain secondary diagnostics.
+- The toroidal Maxwell FEM--BEM manufactured fixture now leads with its
+  reconstructed solved field magnitude, followed by visible H(curl) arrows,
+  a log-scale round-off error map, a one-dimensional cross-section oracle, and
+  a curved torus geometry view. Its independent test solves the same assembled
+  complex block system from a manufactured right-hand side, so the gallery
+  image cannot be mistaken for a coefficient or source-field preview.
 
 ### Phase 9: Future application layer: **reference only**
 

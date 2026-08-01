@@ -480,6 +480,17 @@ fpm run --example <example_name>
 <p>This example solves time-harmonic perfect-electric-conductor scattering on an</p>
 </div>
 </article>
+<article class="example-card" data-example="maxwell_torus_fem_bem_solution">
+<a class="example-card-preview" href="generated/maxwell_torus_fem_bem_solution.html">
+<img class="example-card-image"
+ src="../media/examples/maxwell_torus_fem_bem_solution/primary.png"
+ alt="Plot preview for maxwell_torus_fem_bem_solution" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/maxwell_torus_fem_bem_solution.html">maxwell_torus_fem_bem_solution</a></h3>
+<p>This fixture solves the neutral curl--curl FEM--BEM system on a small exact</p>
+</div>
+</article>
 </div>
 
 ## Complete Example Index
@@ -523,5 +534,6 @@ fpm run --example <example_name>
 - [iga_polar_feec](generated/iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence
 - [iga_jorek_flux](generated/iga_jorek_flux.html) - This advanced example evolves the ideal poloidal magnetic-flux subflow
 - [maxwell_torus_curved_scattering](generated/maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
+- [maxwell_torus_fem_bem_solution](generated/maxwell_torus_fem_bem_solution.html) - This fixture solves the neutral curl--curl FEM--BEM system on a small exact
 
 [← Back to FortFEM documentation](../index.html)
