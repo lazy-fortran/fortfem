@@ -1588,9 +1588,11 @@ gallery example.
   mixed-wave Cayley factors as A(Δt/2)-B(Δt)-A(Δt/2). Its analytical JVP/VJP
   propagate state and signed-step products through all three factors, and an
   independent nonidentity-block test checks energy preservation, reversibility,
-  central differences, and the real adjoint identity. Dissipative splitting
-  remains separate; discrete-gradient/average-vector-field options and broad
-  long-time invariant campaigns remain active work.
+  central differences, and the real adjoint identity. A separate 2000-step
+  campaign now checks the quadratic Hamiltonian against an independent
+  mass-matrix oracle and recovers the initial state under signed reversal.
+  Dissipative splitting remains separate; discrete-gradient/average-vector-
+  field options and broader problem-size campaigns remain active work.
 - Mixed first-order pressure-velocity, displacement-velocity-stress, and
   electromagnetic wave states with a common port-Hamiltonian interface.
 - Tensor-valued coefficients and anisotropic constitutive blocks with exact power,

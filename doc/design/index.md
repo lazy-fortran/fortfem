@@ -181,6 +181,11 @@ midpoint/Cayley factors as A(Δt/2)-B(Δt)-A(Δt/2), with analytical JVP/VJP
 actions and independent energy, reversibility, finite-difference, and adjoint
 checks.
 
+The [long-time mixed-wave invariant campaign](mixed_wave_long_time.html)
+repeats that split for 2000 steps, checks the quadratic Hamiltonian from an
+independent mass-matrix oracle, and verifies signed-step recovery of the
+initial state.
+
 The [shifted enriched space](shifted_enriched_space.html) builds a complete
 scalar XFEM/GFEM basis-value matrix from base values and fixed level-set anchor
 signs, with topology-event rejection and exact JVP/VJP actions.
