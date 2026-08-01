@@ -20,6 +20,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [fci_quadrilateral_geometry](fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
 - [fci_polygon_geometry](fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
 - [mixed_acoustic_wave](mixed_acoustic_wave.html) - This fixture is a small physical wave problem for the common mixed
+- [mixed_elasticity_wave](mixed_elasticity_wave.html) - This example is a manufactured one-dimensional elastic-bar modal problem. It
 - [tetra_h1_poisson](tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](tetra_nedelec_p_convergence.html) - A short V-shaped head makes direction readable in the

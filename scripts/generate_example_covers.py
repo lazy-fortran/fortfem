@@ -13,6 +13,7 @@ COVERS = ROOT / "artifacts" / "plots" / "examples"
 PALETTES = {
     "Getting started": ("#0b3c5d", "#328cc1", "#d9eef7"),
     "Finite elements": ("#284b63", "#3c6e71", "#d9e7e8"),
+    "Structure-preserving dynamics": ("#124559", "#598392", "#d9f0f7"),
     "Open boundaries": ("#3d348b", "#7678ed", "#e7e6fa"),
     "Verification and performance": ("#7f4f24", "#f28e2b", "#f9e7d2"),
     "Boundary elements and coupling": ("#5f0f40", "#9a348e", "#f1deee"),
@@ -34,6 +35,12 @@ def motif(group: str, accent: str) -> str:
   <path d="M130 245 L170 190 M170 190 L160 215 M170 190 L145 198
            M240 230 L300 165 M300 165 L286 196 M300 165 L270 176"
         fill="none" stroke="#f28e2b" stroke-width="8"/>"""
+    if group == "Structure-preserving dynamics":
+        return f"""
+  <path d="M55 215 C95 120 135 310 175 215 S255 120 295 215 S335 310 375 215"
+      fill="none" stroke="{accent}" stroke-width="9"/>
+  <path d="M55 215 H375 M205 70 V360" fill="none"
+      stroke="{accent}" stroke-width="4" stroke-dasharray="10 9"/>"""
     if group == "Open boundaries":
         return f"""
   <circle cx="205" cy="205" r="72" fill="none"
