@@ -35,7 +35,10 @@ connectivity fixed while source and target coordinates move.
 The corresponding `build_fci_cubic_interpolation_map_1d` and
 `build_fci_quartic_interpolation_map_1d` contracts extend this to four- and
 five-node fixed stencils, with generated value/JVP/VJP products and independent
-polynomial and adjoint oracles.
+polynomial and adjoint oracles.  `build_fci_quintic_interpolation_map_1d`
+extends the same contract to six-node stencils, including FortSym-generated
+value/JVP/VJP kernels and independent quintic, finite-difference, and
+real-adjoint tests.
 `compute_fci_staggered_flux_box_volumes` combines traced forward/backward flux
 expansion with plane-cell area and (B_\varphi) for the support weights.
 

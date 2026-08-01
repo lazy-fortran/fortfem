@@ -1,6 +1,6 @@
 # FortFEM roadmap
 
-Status: living architecture and verification plan, 2026-07-31
+Status: living architecture and verification plan, 2026-08-01
 
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
@@ -1473,9 +1473,11 @@ gallery example.
   FortSym-generated value/JVP/VJP kernels. Fixed-cell 2D map JVP/VJP products
   now cover source and target coordinate motion; generated quadratic and
   cubic and quartic fixed-stencil maps now expose value/JVP/VJP actions with
-  independent polynomial, finite-difference, and real-adjoint oracles. Higher
-  interpolation derivatives beyond quartic and curved support-volume measures
-  remain separate planned components.
+  independent polynomial, finite-difference, and real-adjoint oracles. A
+  generated quintic fixed-stencil map now exposes the same value/JVP/VJP
+  actions with independent quintic, finite-difference, and real-adjoint
+  oracles. Higher interpolation derivatives beyond quintic and curved
+  support-volume measures remain separate planned components.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Curved or
