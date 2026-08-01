@@ -131,6 +131,13 @@ stretch cotangent to the shared mesh and cell arrays. A two-tetrahedron test
 checks the merged pattern, complete reassembly finite difference, and the
 real-complex adjoint independently.
 
+The curvilinear solved-state wrapper now composes the global CSC products with
+the constrained sparse direct implicit derivative. Its JVP reuses the fixed
+merged pattern and its VJP sends the state adjoint through the boundary
+elimination, global assembly, shared mesh, and full stretch tensor. A
+manufactured two-tetrahedron test independently checks re-solves and the
+state-level real-complex dot identity.
+
 The one-dimensional scalar P1 slab exposes the complete end-to-end version of
 this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
 `solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same

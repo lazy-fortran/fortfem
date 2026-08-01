@@ -80,6 +80,13 @@ shared-vertex and per-cell stretch cotangents. The global behavioral oracle
 `test_tetra_nedelec_curvilinear_pml_csc_ad` checks pattern preservation,
 complete reassembly differences, and the shared-geometry complex adjoint.
 
+The solved-state contract is exposed as
+`solve_tetra_nedelec_curvilinear_pml`, `_jvp`, and `_vjp`. It applies the same
+fixed-topology constrained direct solve and optional boundary-form coupling as
+the Cartesian PML state path, but retains the full per-cell stretch tensor.
+`test_tetra_nedelec_curvilinear_pml_state_ad` checks the manufactured solve,
+independent re-solves for the state JVP, and the real-complex state adjoint.
+
 The module is a coefficient contract, not a complete curved-object PML
 assembler. Layer geometry, active-cell topology, quadrature, and reflection
 diagnostics remain caller-owned and are tracked in the open-boundary roadmap.
