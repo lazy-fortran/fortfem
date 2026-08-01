@@ -1777,6 +1777,12 @@ gallery example.
   solutions, with physical state, phase-space, energy, error, and timing
   plots. The same neutral block contract remains reusable for elasticity,
   electromagnetic, and tensor-pressure clients.
+- The `mixed_elasticity_wave` gallery fixture now exercises the mixed
+  displacement/velocity and constitutive/equilibrium contracts on a
+  manufactured one-dimensional elastic bar. Its first plot reconstructs the
+  physical displacement and stress fields; analytical modal, reversibility,
+  energy, residual, and timing oracles remain secondary diagnostics. This is
+  a foundation fixture, not a production elasticity solver.
 - Gallery examples use the same generated kernels and public APIs as library
   clients. The gallery does not contain a faster special implementation that
   bypasses the tested residual or derivative path.
