@@ -17,12 +17,15 @@ module fortfem_sparse_incomplete_cholesky
     type, public :: sparse_incomplete_cholesky_factor_t
         private
         integer :: dimension = 0
+        integer :: max_fill_per_column = 0
+        real(dp) :: drop_tolerance = 0.0_dp
         integer, allocatable :: col_ptr(:)
         integer, allocatable :: row_idx(:)
         real(dp), allocatable :: lower(:)
     end type sparse_incomplete_cholesky_factor_t
 
     public :: build_sparse_incomplete_cholesky
+    public :: build_sparse_ichol
     public :: apply_sparse_incomplete_cholesky
     public :: apply_sparse_incomplete_cholesky_jvp
     public :: apply_sparse_incomplete_cholesky_vjp
@@ -111,6 +114,106 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_sparse_incomplete_cholesky
 
+    subroutine build_sparse_ichol( &
+            matrix, drop_tolerance, max_fill_per_column, factor, status)
+        !! Build a drop- and fill-controlled incomplete Cholesky factor.
+        !!
+        !! The dense numeric phase is a deterministic reference construction;
+        !! the retained lower factor and all apply paths remain sparse CSC.
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: drop_tolerance
+        integer, intent(in) :: max_fill_per_column
+        type(sparse_incomplete_cholesky_factor_t), intent(inout) :: factor
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: work(:, :)
+        logical, allocatable :: keep(:, :)
+        real(dp) :: scale, tolerance, value, diagonal
+        integer :: dimension, column, entry, row, inner, lower_nnz, position
+
+        call clear_factor(factor)
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "controlled sparse ICHOL received an invalid matrix or policy")
+        if (.not. csc_is_valid(matrix) .or. matrix%nrow /= matrix%ncol) return
+        if (.not. ieee_is_finite(drop_tolerance) .or. &
+            drop_tolerance < 0.0_dp .or. max_fill_per_column < 0) return
+        if (matrix%nnz > 0) then
+            if (.not. all(ieee_is_finite(matrix%val))) return
+        end if
+        dimension = matrix%nrow
+        if (dimension < 1) return
+        scale = 1.0_dp
+        if (matrix%nnz > 0) scale = max(scale, maxval(abs(matrix%val)))
+        tolerance = 128.0_dp*epsilon(1.0_dp)*scale*real(dimension, dp)
+        allocate(work(dimension, dimension))
+        work = 0.0_dp
+        do column = 1, dimension
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                work(row, column) = matrix%val(entry)
+            end do
+        end do
+        if (maxval(abs(work - transpose(work))) > tolerance) then
+            deallocate(work)
+            return
+        end if
+
+        ! Complete lower Cholesky numeric phase.
+        do column = 1, dimension
+            diagonal = work(column, column)
+            do inner = 1, column - 1
+                diagonal = diagonal - work(column, inner)**2
+            end do
+            if (.not. ieee_is_finite(diagonal) .or. diagonal <= tolerance) then
+                deallocate(work)
+                call status_set(status, FORTSPARSE_SINGULAR, &
+                    "controlled sparse ICHOL encountered a non-positive pivot")
+                return
+            end if
+            work(column, column) = sqrt(diagonal)
+            do row = column + 1, dimension
+                value = work(row, column)
+                do inner = 1, column - 1
+                    value = value - work(row, inner)*work(column, inner)
+                end do
+                work(row, column) = value/work(column, column)
+                if (.not. ieee_is_finite(work(row, column))) then
+                    deallocate(work)
+                    call status_set(status, FORTSPARSE_SINGULAR, &
+                        "controlled sparse ICHOL produced a non-finite entry")
+                    return
+                end if
+            end do
+        end do
+
+        allocate(keep(dimension, dimension))
+        keep = .false.
+        do column = 1, dimension
+            call select_lower_entries(work, column, column + 1, dimension, &
+                drop_tolerance*scale, max_fill_per_column, keep)
+            keep(column, column) = .true.
+        end do
+        lower_nnz = count(keep)
+        factor%dimension = dimension
+        factor%max_fill_per_column = max_fill_per_column
+        factor%drop_tolerance = drop_tolerance
+        allocate(factor%col_ptr(dimension + 1), factor%row_idx(lower_nnz), &
+            factor%lower(lower_nnz))
+        factor%col_ptr(1) = 1
+        position = 0
+        do column = 1, dimension
+            do row = column, dimension
+                if (.not. keep(row, column)) cycle
+                position = position + 1
+                factor%row_idx(position) = row
+                factor%lower(position) = work(row, column)
+            end do
+            factor%col_ptr(column + 1) = position + 1
+        end do
+        deallocate(work, keep)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_sparse_ichol
+
     subroutine apply_sparse_incomplete_cholesky( &
             factor, right_hand_side, solution, status)
         !! Apply `(L L^T)^(-1)` with the fixed sparse factor.
@@ -187,12 +290,61 @@ contains
             factor, solution_bar, right_hand_side_bar, status)
     end subroutine apply_sparse_incomplete_cholesky_vjp
 
+    subroutine select_lower_entries( &
+            work, column, first_row, last_row, threshold, max_fill, keep)
+        real(dp), intent(in) :: work(:, :)
+        integer, intent(in) :: column, first_row, last_row, max_fill
+        real(dp), intent(in) :: threshold
+        logical, intent(inout) :: keep(:, :)
+
+        logical, allocatable :: selected(:)
+        integer :: row, candidate_count, target_count, selected_count, best_row
+        real(dp) :: best_value, value
+
+        if (first_row > last_row .or. max_fill == 0) return
+        candidate_count = 0
+        do row = first_row, last_row
+            if (abs(work(row, column)) > threshold) candidate_count = &
+                candidate_count + 1
+        end do
+        if (candidate_count == 0) return
+        target_count = min(max_fill, candidate_count)
+        allocate(selected(size(work, 1)))
+        selected = .false.
+        if (target_count == candidate_count) then
+            do row = first_row, last_row
+                if (abs(work(row, column)) > threshold) keep(row, column) = .true.
+            end do
+            deallocate(selected)
+            return
+        end if
+        do selected_count = 1, target_count
+            best_row = 0
+            best_value = -1.0_dp
+            do row = first_row, last_row
+                value = abs(work(row, column))
+                if (.not. selected(row) .and. value > threshold .and. &
+                    value > best_value) then
+                    best_row = row
+                    best_value = value
+                end if
+            end do
+            if (best_row == 0) exit
+            selected(best_row) = .true.
+            keep(best_row, column) = .true.
+        end do
+        deallocate(selected)
+    end subroutine select_lower_entries
+
     pure logical function valid_factor(factor) result(valid)
         type(sparse_incomplete_cholesky_factor_t), intent(in) :: factor
         integer :: column, entry
 
         valid = .false.
         if (factor%dimension < 1) return
+        if (factor%max_fill_per_column < 0 .or. &
+            .not. ieee_is_finite(factor%drop_tolerance) .or. &
+            factor%drop_tolerance < 0.0_dp) return
         if (.not. allocated(factor%col_ptr) .or. &
             .not. allocated(factor%row_idx) .or. .not. allocated(factor%lower)) return
         if (size(factor%col_ptr) /= factor%dimension + 1 .or. &
@@ -262,6 +414,8 @@ contains
         if (allocated(factor%row_idx)) deallocate(factor%row_idx)
         if (allocated(factor%lower)) deallocate(factor%lower)
         factor%dimension = 0
+        factor%max_fill_per_column = 0
+        factor%drop_tolerance = 0.0_dp
     end subroutine clear_factor
 
 end module fortfem_sparse_incomplete_cholesky

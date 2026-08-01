@@ -43,6 +43,21 @@ The sparse builder rejects nonsymmetric or non-positive-pivot CSC inputs and
 does not introduce fill. Factor construction is an inactive solver branch;
 the fixed-factor actions are the differentiable contract.
 
+`build_sparse_ichol` adds a deterministic drop tolerance and maximum number
+of retained strict lower entries per column while reusing the same sparse
+fixed-factor apply/JVP/VJP path:
+
+```fortran
+call build_sparse_ichol(csc_matrix, drop_tolerance, max_fill_per_column, &
+    sparse_factor, status)
+```
+
+The reference builder performs its numeric Cholesky phase in a dense work
+array, then stores only the selected lower CSC entries. The dense phase fixes
+the semantics for an eventual scalable row-oriented implementation; the
+preconditioner application itself remains sparse. The diagonal is always
+retained, and non-positive or non-finite pivots are reported explicitly.
+
 For nonsymmetric blocks, `fortfem_sparse_incomplete_lu` provides the matching
 ILU(0) contract with strict-lower and upper CSC patterns:
 
@@ -63,7 +78,7 @@ The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
 `ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
 the standalone sparse IC(0) API above is available for callers that must keep
-the factor sparse. PCG integration and fill-controlled ICHOL remain separate
+the factor sparse. PCG integration and measured scaling remain separate
 benchmark work. The legacy BiCGSTAB kernel accepts only its ILU
 factor contract and therefore reports an explicit unpreconditioned fallback
 if ICHOL is selected there.
@@ -77,6 +92,7 @@ dependency.
 
 ## Independent oracle
 
-The focused tests use independent tridiagonal solve oracles for both sparse
-IC(0) and ILU(0), check their fixed-factor adjoint identities, and reject
-nonsymmetry, indefinite diagonals, and zero pivots independently.
+The focused tests use independent tridiagonal solve oracles for sparse IC(0),
+controlled ICHOL, and ILU(0), check their fixed-factor adjoint identities, and
+reject nonsymmetry, indefinite diagonals, invalid policies, and zero pivots
+independently.
