@@ -292,9 +292,9 @@ jobs:
             benchmark-results/normalized \
             output/example/interoperability_benchmarks
           test "$(find output/example/interoperability_benchmarks \
-            -name '*.png' | wc -l)" -eq 4
+            -name '*.png' | wc -l)" -eq 5
           test "$(find output/example/interoperability_benchmarks \
-            -name '*.svg' | wc -l)" -eq 4
+            -name '*.svg' | wc -l)" -eq 5
 
       - name: Upload generated benchmark gallery
         uses: actions/upload-artifact@v4
