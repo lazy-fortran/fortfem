@@ -26,7 +26,11 @@ module fortfem_maxwell_curved_dtn
     public :: apply_maxwell_trace_to_flux_jvp
     public :: apply_maxwell_trace_to_flux_map
     public :: apply_maxwell_trace_to_flux_vjp
+    public :: apply_maxwell_weak_trace_reconstruction
+    public :: apply_maxwell_weak_trace_reconstruction_jvp
+    public :: apply_maxwell_weak_trace_reconstruction_vjp
     public :: assemble_maxwell_trace_to_flux_map
+    public :: assemble_maxwell_weak_trace_reconstruction
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
 
 contains
@@ -73,6 +77,122 @@ contains
         flux = matmul(flux_form, current)
         status = 0
     end subroutine apply_maxwell_trace_to_flux
+
+    subroutine assemble_maxwell_weak_trace_reconstruction( &
+            weak_mass, point_basis, reconstruction, status)
+        !! Build point values from weak dual coefficients.
+        !!
+        !! If `A` is the caller-owned weak test/primal mass and `B` evaluates
+        !! the primal trace basis at points, the returned map is `B A^{-1}`.
+        !! The point basis and mass remain caller-owned so this composition is
+        !! valid for RWG/RBC, scalar traces, IGA patches, and cut spaces.
+        complex(dp), intent(in) :: weak_mass(:, :), point_basis(:, :)
+        complex(dp), allocatable, intent(out) :: reconstruction(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: transposed_solution(:, :)
+
+        status = 1
+        if (allocated(reconstruction)) deallocate(reconstruction)
+        if (.not. valid_reconstruction_inputs(weak_mass, point_basis)) return
+        call solve_left_matrix( &
+            transpose(weak_mass), transpose(point_basis), &
+            transposed_solution, status)
+        if (status /= 0) return
+        allocate(reconstruction(size(point_basis, 1), size(point_basis, 2)))
+        reconstruction = transpose(transposed_solution)
+        status = 0
+    end subroutine assemble_maxwell_weak_trace_reconstruction
+
+    subroutine apply_maxwell_weak_trace_reconstruction( &
+            weak_mass, point_basis, weak_trace, point_values, status)
+        complex(dp), intent(in) :: weak_mass(:, :), point_basis(:, :)
+        complex(dp), intent(in) :: weak_trace(:)
+        complex(dp), intent(out) :: point_values(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: coefficients(:)
+
+        point_values = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_reconstruction_inputs(weak_mass, point_basis)) return
+        if (size(weak_trace) /= size(weak_mass, 1)) return
+        if (size(point_values) /= size(point_basis, 1)) return
+        call solve_left_vector(weak_mass, weak_trace, coefficients, status)
+        if (status /= 0) return
+        point_values = matmul(point_basis, coefficients)
+        status = 0
+    end subroutine apply_maxwell_weak_trace_reconstruction
+
+    subroutine apply_maxwell_weak_trace_reconstruction_jvp( &
+            weak_mass, point_basis, weak_trace, weak_mass_dot, point_basis_dot, &
+            weak_trace_dot, point_values_dot, status)
+        complex(dp), intent(in) :: weak_mass(:, :), point_basis(:, :)
+        complex(dp), intent(in) :: weak_trace(:)
+        complex(dp), intent(in) :: weak_mass_dot(:, :), point_basis_dot(:, :)
+        complex(dp), intent(in) :: weak_trace_dot(:)
+        complex(dp), intent(out) :: point_values_dot(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: coefficients(:), coefficients_dot(:)
+        complex(dp), allocatable :: right_hand_side(:)
+
+        point_values_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_reconstruction_inputs(weak_mass, point_basis)) return
+        if (.not. same_shape(weak_mass, weak_mass_dot)) return
+        if (.not. same_shape(point_basis, point_basis_dot)) return
+        if (size(weak_trace) /= size(weak_mass, 1) .or. &
+            size(weak_trace_dot) /= size(weak_trace)) return
+        if (size(point_values_dot) /= size(point_basis, 1)) return
+        call solve_left_vector(weak_mass, weak_trace, coefficients, status)
+        if (status /= 0) return
+        allocate(right_hand_side(size(weak_trace)), coefficients_dot(size(weak_trace)))
+        right_hand_side = weak_trace_dot - matmul(weak_mass_dot, coefficients)
+        call solve_left_vector( &
+            weak_mass, right_hand_side, coefficients_dot, status)
+        if (status /= 0) return
+        point_values_dot = matmul(point_basis_dot, coefficients) + &
+            matmul(point_basis, coefficients_dot)
+        status = 0
+    end subroutine apply_maxwell_weak_trace_reconstruction_jvp
+
+    subroutine apply_maxwell_weak_trace_reconstruction_vjp( &
+            weak_mass, point_basis, weak_trace, point_values_bar, &
+            weak_trace_bar, weak_mass_bar, point_basis_bar, status)
+        complex(dp), intent(in) :: weak_mass(:, :), point_basis(:, :)
+        complex(dp), intent(in) :: weak_trace(:), point_values_bar(:)
+        complex(dp), intent(out) :: weak_trace_bar(:)
+        complex(dp), intent(out) :: weak_mass_bar(:, :), point_basis_bar(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: coefficients(:), coefficients_bar(:)
+        complex(dp), allocatable :: lambda(:)
+
+        weak_trace_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        weak_mass_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        point_basis_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_reconstruction_inputs(weak_mass, point_basis)) return
+        if (size(weak_trace) /= size(weak_mass, 1)) return
+        if (size(point_values_bar) /= size(point_basis, 1)) return
+        if (size(weak_trace_bar) /= size(weak_trace)) return
+        if (.not. same_shape(weak_mass, weak_mass_bar)) return
+        if (.not. same_shape(point_basis, point_basis_bar)) return
+        call solve_left_vector(weak_mass, weak_trace, coefficients, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(coefficients)), lambda(size(coefficients)))
+        coefficients_bar = matmul( &
+            conjg(transpose(point_basis)), point_values_bar)
+        call solve_left_vector( &
+            conjg(transpose(weak_mass)), coefficients_bar, lambda, status)
+        if (status /= 0) return
+        weak_trace_bar = lambda
+        call rank_one_product(point_basis_bar, point_values_bar, coefficients)
+        call rank_one_product(weak_mass_bar, lambda, coefficients)
+        weak_mass_bar = -weak_mass_bar
+        status = 0
+    end subroutine apply_maxwell_weak_trace_reconstruction_vjp
 
     subroutine apply_maxwell_trace_to_flux_map(map, trace, flux, status)
         complex(dp), intent(in) :: map(:, :), trace(:)
@@ -220,6 +340,17 @@ contains
         if (size(electric_form, 1) == 0) return
         valid = .true.
     end function valid_square_forms
+
+    logical pure function valid_reconstruction_inputs( &
+            weak_mass, point_basis) result(valid)
+        complex(dp), intent(in) :: weak_mass(:, :), point_basis(:, :)
+
+        valid = .false.
+        if (size(weak_mass, 1) /= size(weak_mass, 2)) return
+        if (size(point_basis, 2) /= size(weak_mass, 1)) return
+        if (size(weak_mass, 1) == 0 .or. size(point_basis, 1) == 0) return
+        valid = .true.
+    end function valid_reconstruction_inputs
 
     logical pure function same_shape(first, second) result(same)
         complex(dp), intent(in) :: first(:, :), second(:, :)

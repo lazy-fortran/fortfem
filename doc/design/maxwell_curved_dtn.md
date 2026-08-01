@@ -45,6 +45,10 @@ apply_maxwell_trace_to_flux(Z_E, Z_H, M_E, e, h, status)
 apply_maxwell_trace_to_flux_map(D, e, h, status)
 apply_maxwell_trace_to_flux_jvp(...)
 apply_maxwell_trace_to_flux_vjp(...)
+assemble_maxwell_weak_trace_reconstruction(A, B, R, status)
+apply_maxwell_weak_trace_reconstruction(A, B, h, values, status)
+apply_maxwell_weak_trace_reconstruction_jvp(...)
+apply_maxwell_weak_trace_reconstruction_vjp(...)
 ```
 
 The matrix-free action solves `Z_E j = M_E e` and then evaluates `Z_H j`.
@@ -57,6 +61,31 @@ The JVP solves the tangent equation
 The VJP uses the conjugate-transpose solve for the adjoint current. All
 complex reverse products use
 `real(sum(conjg(output_bar)*output_dot))`.
+
+## Pointwise reconstruction
+
+The weak map deliberately does not pretend that RBC coefficients are point
+values. For a caller-owned primal evaluation matrix `B` and weak mass matrix
+`A`, where
+
+\[
+ A c = h, \qquad u_{\rm points}=B c,
+\]
+
+the reconstruction layer returns `R = B A^{-1}` and applies it to a weak
+flux vector. `B` may evaluate an RWG, scalar, cut, or IGA trace basis at any
+requested points; FortFEM does not choose those points or the basis. The
+reconstruction JVP solves the tangent mass system
+
+\[
+ A\dot c=\dot h-\dot A c,
+ \qquad
+ \dot u=\dot Bc+B\dot c,
+\]
+
+and the VJP uses the conjugate-transpose mass solve. This makes a physical
+field/slice plot or a client FEM coupling explicit without changing the weak
+DtN convention.
 
 ## Exact-curved torus composition
 
@@ -90,6 +119,6 @@ existing RWG, RBC, EFIE, MFIE, and mass operators have compatible dimensions.
 
 The map requires a fixed surface topology and a nonsingular electric form.
 Resonance handling, regularization, and topology changes remain explicit
-client responsibilities. A pointwise curved-surface DtN representation would
-require a separate trace reconstruction and is outside this weak-map
-contract.
+client responsibilities. The pointwise reconstruction layer also requires a
+fixed basis topology and nonsingular weak mass; it does not regularize a
+resonant BEM form or differentiate topology changes.
