@@ -38,6 +38,21 @@ and exposes its value, JVP, and VJP without owning a linear solver or a
 stopping criterion.  This is the composition point for an external forced
 response, eigen-residual linearization, or FEM/BEM/DtN/PML client.
 
+The `assemble_singular_layer_matching` block is the neutral inner/outer trace
+composition used by singular-layer clients:
+
+\[
+  r_\Gamma = w\left(T_\mathrm{outer}u_\mathrm{outer}
+      -T_\mathrm{inner}u_\mathrm{inner}-j\right).
+\]
+
+It supports independently sized inner and outer state spaces, positive trace
+weights, complex JVP products, and the matching real-part complex VJP. The
+block records no asymptotic exponent, equilibrium profile, or jump law; those
+remain caller-owned. `test_singular_layer_matching` checks the value against a
+direct trace calculation, central differences, the real adjoint identity, and
+invalid-weight rejection.
+
 `test_linear_response_interchange` is an independent manufactured oracle: it
 checks the block signs, central differences, deep-copy semantics, duplicate
 mode rejection, and the complex adjoint identity.  The contract is intended
