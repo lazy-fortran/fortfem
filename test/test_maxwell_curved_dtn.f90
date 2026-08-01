@@ -7,6 +7,8 @@ program test_maxwell_curved_dtn
         apply_maxwell_weak_trace_reconstruction_jvp, &
         apply_maxwell_weak_trace_reconstruction_vjp, &
         assemble_maxwell_trace_to_flux_map, &
+        assemble_maxwell_trace_to_flux_map_jvp, &
+        assemble_maxwell_trace_to_flux_map_vjp, &
         assemble_maxwell_weak_trace_reconstruction, &
         assemble_maxwell_torus_curved_dtn_rwg_3d, generate_torus_surface_mesh
     use fortfem_kinds, only: dp
@@ -19,7 +21,9 @@ program test_maxwell_curved_dtn
     complex(dp) :: trace_bar(2), electric_form_bar(2, 2)
     complex(dp) :: flux_form_bar(2, 2), trace_mass_bar(2, 2)
     complex(dp) :: flux_bar(2), trace_seed(2)
-    complex(dp), allocatable :: generic_map(:, :)
+    complex(dp), allocatable :: generic_map(:, :), generic_map_dot(:, :)
+    complex(dp), allocatable :: generic_map_plus(:, :), generic_map_minus(:, :)
+    complex(dp) :: generic_map_bar(2, 2)
     complex(dp), allocatable :: torus_map(:, :), torus_trace(:), torus_flux(:)
     complex(dp) :: weak_mass(2, 2), point_basis(3, 2), weak_trace(2)
     complex(dp) :: weak_mass_dot(2, 2), point_basis_dot(3, 2)
@@ -70,6 +74,40 @@ program test_maxwell_curved_dtn
             maxval(abs(flux_plus - flux)) < 2.0e-12_dp, &
             "assembled and matrix-free trace maps agree")
     end if
+    call assemble_maxwell_trace_to_flux_map_jvp( &
+        electric_form, flux_form, trace_mass, electric_form_dot, &
+        flux_form_dot, trace_mass_dot, generic_map_dot, status)
+    call record_condition(status == 0, &
+        "assembled curved Maxwell trace map JVP succeeds")
+    epsilon = 2.0e-6_dp
+    call assemble_maxwell_trace_to_flux_map( &
+        electric_form + epsilon*electric_form_dot, &
+        flux_form + epsilon*flux_form_dot, &
+        trace_mass + epsilon*trace_mass_dot, generic_map_plus, status)
+    call assemble_maxwell_trace_to_flux_map( &
+        electric_form - epsilon*electric_form_dot, &
+        flux_form - epsilon*flux_form_dot, &
+        trace_mass - epsilon*trace_mass_dot, generic_map_minus, status)
+    call record_condition(status == 0 .and. maxval(abs(generic_map_dot - &
+        (generic_map_plus - generic_map_minus)/(2.0_dp*epsilon))) < 2.0e-8_dp, &
+        "assembled curved Maxwell trace map JVP matches a central difference")
+    generic_map_bar = reshape([ &
+        cmplx(0.21_dp, -0.13_dp, dp), cmplx(-0.17_dp, 0.08_dp, dp), &
+        cmplx(0.09_dp, 0.16_dp, dp), cmplx(-0.26_dp, -0.04_dp, dp)], [2, 2])
+    call assemble_maxwell_trace_to_flux_map_vjp( &
+        electric_form, flux_form, trace_mass, generic_map_bar, &
+        electric_form_bar, flux_form_bar, trace_mass_bar, status)
+    call record_condition(status == 0, &
+        "assembled curved Maxwell trace map VJP succeeds")
+    call assemble_maxwell_trace_to_flux_map_jvp( &
+        electric_form, flux_form, trace_mass, 0.7_dp*electric_form_dot, &
+        0.7_dp*flux_form_dot, 0.7_dp*trace_mass_dot, generic_map_dot, status)
+    lhs = real(sum(conjg(generic_map_bar)*generic_map_dot), dp)
+    rhs = real(sum(conjg(electric_form_bar)*(0.7_dp*electric_form_dot)) + &
+        sum(conjg(flux_form_bar)*(0.7_dp*flux_form_dot)) + &
+        sum(conjg(trace_mass_bar)*(0.7_dp*trace_mass_dot)), dp)
+    call record_condition(abs(lhs - rhs) < 2.0e-10_dp, &
+        "assembled curved Maxwell trace products satisfy the complex adjoint identity")
     call apply_maxwell_trace_to_flux_jvp( &
         electric_form, flux_form, trace_mass, trace, electric_form_dot, &
         flux_form_dot, trace_mass_dot, trace_dot, flux_dot, status)

@@ -30,6 +30,8 @@ module fortfem_maxwell_curved_dtn
     public :: apply_maxwell_weak_trace_reconstruction_jvp
     public :: apply_maxwell_weak_trace_reconstruction_vjp
     public :: assemble_maxwell_trace_to_flux_map
+    public :: assemble_maxwell_trace_to_flux_map_jvp
+    public :: assemble_maxwell_trace_to_flux_map_vjp
     public :: assemble_maxwell_weak_trace_reconstruction
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
 
@@ -54,6 +56,90 @@ contains
         map = matmul(flux_form, current_map)
         status = 0
     end subroutine assemble_maxwell_trace_to_flux_map
+
+    subroutine assemble_maxwell_trace_to_flux_map_jvp( &
+            electric_form, flux_form, trace_mass, electric_form_dot, &
+            flux_form_dot, trace_mass_dot, map_dot, status)
+        !! Differentiate the assembled mixed-trace map.
+        !!
+        !! For D = Z_H Z_E^{-1} M, this computes
+        !! D_dot = Z_H_dot X + Z_H X_dot, with
+        !! Z_E X = M and Z_E X_dot = M_dot - Z_E_dot X.
+        complex(dp), intent(in) :: electric_form(:, :), flux_form(:, :)
+        complex(dp), intent(in) :: trace_mass(:, :)
+        complex(dp), intent(in) :: electric_form_dot(:, :)
+        complex(dp), intent(in) :: flux_form_dot(:, :)
+        complex(dp), intent(in) :: trace_mass_dot(:, :)
+        complex(dp), allocatable, intent(out) :: map_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: current_map(:, :), current_map_dot(:, :)
+        complex(dp), allocatable :: right_hand_side(:, :)
+
+        status = 1
+        if (allocated(map_dot)) deallocate(map_dot)
+        if (.not. valid_square_forms( &
+            electric_form, flux_form, trace_mass)) return
+        if (.not. same_shape(electric_form, electric_form_dot)) return
+        if (.not. same_shape(flux_form, flux_form_dot)) return
+        if (.not. same_shape(trace_mass, trace_mass_dot)) return
+        call solve_left_matrix(electric_form, trace_mass, current_map, status)
+        if (status /= 0) return
+        allocate(right_hand_side(size(trace_mass, 1), size(trace_mass, 2)))
+        right_hand_side = trace_mass_dot - matmul( &
+            electric_form_dot, current_map)
+        call solve_left_matrix( &
+            electric_form, right_hand_side, current_map_dot, status)
+        if (status /= 0) return
+        allocate(map_dot(size(flux_form, 1), size(trace_mass, 2)))
+        map_dot = matmul(flux_form_dot, current_map) + &
+            matmul(flux_form, current_map_dot)
+        status = 0
+    end subroutine assemble_maxwell_trace_to_flux_map_jvp
+
+    subroutine assemble_maxwell_trace_to_flux_map_vjp( &
+            electric_form, flux_form, trace_mass, map_bar, electric_form_bar, &
+            flux_form_bar, trace_mass_bar, status)
+        !! Reverse product for the assembled mixed-trace map.
+        !!
+        !! The complex reverse convention is
+        !! real(sum(conjg(map_bar)*map_dot)).  The returned products therefore
+        !! use the conjugate-transpose solve for the electric form.
+        complex(dp), intent(in) :: electric_form(:, :), flux_form(:, :)
+        complex(dp), intent(in) :: trace_mass(:, :), map_bar(:, :)
+        complex(dp), intent(out) :: electric_form_bar(:, :)
+        complex(dp), intent(out) :: flux_form_bar(:, :)
+        complex(dp), intent(out) :: trace_mass_bar(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: current_map(:, :), current_bar(:, :)
+        complex(dp), allocatable :: lambda(:, :)
+
+        electric_form_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        flux_form_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        trace_mass_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_square_forms( &
+            electric_form, flux_form, trace_mass)) return
+        if (size(map_bar, 1) /= size(flux_form, 1)) return
+        if (size(map_bar, 2) /= size(trace_mass, 2)) return
+        if (.not. same_shape(electric_form, electric_form_bar)) return
+        if (.not. same_shape(flux_form, flux_form_bar)) return
+        if (.not. same_shape(trace_mass, trace_mass_bar)) return
+        call solve_left_matrix(electric_form, trace_mass, current_map, status)
+        if (status /= 0) return
+        flux_form_bar = matmul( &
+            map_bar, conjg(transpose(current_map)))
+        allocate(current_bar(size(electric_form, 1), size(map_bar, 2)))
+        current_bar = matmul(conjg(transpose(flux_form)), map_bar)
+        call solve_left_matrix( &
+            conjg(transpose(electric_form)), current_bar, lambda, status)
+        if (status /= 0) return
+        trace_mass_bar = lambda
+        electric_form_bar = -matmul( &
+            lambda, conjg(transpose(current_map)))
+        status = 0
+    end subroutine assemble_maxwell_trace_to_flux_map_vjp
 
     subroutine apply_maxwell_trace_to_flux( &
             electric_form, flux_form, trace_mass, trace, flux, status)

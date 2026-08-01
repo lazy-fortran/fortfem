@@ -1420,8 +1420,11 @@ gallery example.
   contract. Caller-owned weak-to-point trace reconstruction now returns
   `B*A^{-1}` from a supplied weak mass `A` and point-evaluation basis `B`, with
   matrix-free, JVP, and VJP products; it is covered by an independent complex
-  adjoint and central-difference oracle. Geometry derivatives and
-  resonance-safe regularization remain active.
+  adjoint and central-difference oracle. The assembled weak map now also has
+  form-level JVP/VJP products, so caller-owned EFIE, MFIE, and mass geometry
+  derivatives can be composed without differentiating the map implementation.
+  Geometry derivatives of those curved forms and resonance-safe regularization
+  remain active.
 - Add larger-domain, BEM, DtN, and PML comparisons for Poisson, Ampere, and
   Helmholtz.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
