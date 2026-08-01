@@ -144,7 +144,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/fci_polygon_geometry.html">fci_polygon_geometry</a></h3>
-<p>This fixture computes fixed-topology areas for boundary-ordered pentagonal FCI</p>
+<p>This fixture computes fixed-topology straight and quadratic Bezier-edge areas</p>
 </div>
 </article>
 <article class="example-card" data-example="tetra_h1_poisson">
@@ -456,7 +456,7 @@ fpm run --example <example_name>
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [fci_quadrilateral_geometry](generated/fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
-- [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology areas for boundary-ordered pentagonal FCI
+- [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.

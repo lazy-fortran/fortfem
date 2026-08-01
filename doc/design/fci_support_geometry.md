@@ -42,12 +42,18 @@ and non-adjacent edge intersections, and exposes matching `_jvp` and `_vjp`
 actions.  Shared endpoint cotangents are accumulated across the two incident
 edges.  The pentagon test and gallery fixture use independent shoelace
 oracles, central differences, and a real dot-product identity.  Moving
-connectivity and genuinely curved support-volume measures remain planned
-extensions.  The curved quadrilateral map is a fixed-topology quadratic
-Bezier-edge contract: its vertex ordering and finite control data are
-validated, while callers remain responsible for keeping the curved boundary
-non-self-intersecting.  Neither straight nor curved FCI topology is
-differentiable across a connectivity or orientation event.
+connectivity and genuinely higher-order curved support-volume measures remain
+planned extensions.  The generic
+`compute_fci_curved_polygon_cell_areas_2d` contract now accepts one quadratic
+Bezier control point per edge for the same arbitrary polygon topology.  Its
+generated edge value/JVP/VJP products are accumulated over shared vertices and
+controls; the test and gallery use independent three-point Gauss--Green
+oracles, central differences, and a real dot-product identity.  The existing
+curved quadrilateral map remains a specialized fixed-topology baseline.  For
+all curved maps, vertex ordering and finite controls are validated, while
+callers remain responsible for keeping the curved boundary non-self-
+intersecting.  Neither straight nor curved FCI topology is differentiable
+across a connectivity or orientation event.
 
 For edge `e`, with endpoints `p_e`, `p_{e+1}` and control point `c_e`, the
 boundary is
