@@ -109,6 +109,11 @@ module fortfem_api
         evaluate_enrichment_support_vector_gram, &
         evaluate_enrichment_support_vector_gram_jvp, &
         evaluate_enrichment_support_vector_gram_vjp
+    use fortfem_piola_enriched_vector, only: &
+        evaluate_piola_enriched_vector_values, &
+        evaluate_piola_enriched_vector_values_jvp, &
+        evaluate_piola_enriched_vector_values_vjp, PIOLA_COVARIANT, &
+        PIOLA_CONTRAVARIANT
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_dof_map, build_tree_cotree_gauge, &
@@ -1085,6 +1090,10 @@ module fortfem_api
     public :: evaluate_enrichment_support_vector_gram
     public :: evaluate_enrichment_support_vector_gram_jvp
     public :: evaluate_enrichment_support_vector_gram_vjp
+    public :: evaluate_piola_enriched_vector_values
+    public :: evaluate_piola_enriched_vector_values_jvp
+    public :: evaluate_piola_enriched_vector_values_vjp
+    public :: PIOLA_COVARIANT, PIOLA_CONTRAVARIANT
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: build_tree_cotree_dof_map
