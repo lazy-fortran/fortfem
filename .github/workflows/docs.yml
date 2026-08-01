@@ -123,7 +123,7 @@ jobs:
           test -d "$source_dir"
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
           test "$(find "$source_dir/interoperability_benchmarks" \
-            -maxdepth 1 -name '*.png' | wc -l)" -eq 4
+            -maxdepth 1 -name '*.png' | wc -l)" -eq 5
           mkdir -p build/doc/page/media/examples build/doc/media/examples
           cp -r "$source_dir"/. build/doc/page/media/examples/
           cp -r "$source_dir"/. build/doc/media/examples/
