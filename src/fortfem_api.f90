@@ -101,6 +101,10 @@ module fortfem_api
         evaluate_enrichment_support_gram_jvp, &
         evaluate_enrichment_support_gram_vjp, &
         evaluate_enrichment_support_rank_condition
+    use fortfem_enrichment_support_activation, only: &
+        evaluate_enrichment_support_activation, &
+        evaluate_enrichment_support_activation_jvp, &
+        evaluate_enrichment_support_activation_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
         build_tree_cotree_dof_map, build_tree_cotree_gauge, &
@@ -1071,6 +1075,9 @@ module fortfem_api
     public :: evaluate_enrichment_support_gram_jvp
     public :: evaluate_enrichment_support_gram_vjp
     public :: evaluate_enrichment_support_rank_condition
+    public :: evaluate_enrichment_support_activation
+    public :: evaluate_enrichment_support_activation_jvp
+    public :: evaluate_enrichment_support_activation_vjp
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
     public :: build_tree_cotree_dof_map

@@ -133,6 +133,10 @@ first XFEM/GFEM partition-of-unity enrichment and its explicit topology-event
 differentiation contract, including scalar and componentwise vector bases for
 H(curl)/H(div) composition and the corrected-XFEM blending ramp.
 
+The [enrichment-support activation contract](enrichment_support_activation.html)
+defines CSR support sign activation, unique extrema and signed margins, with
+fixed-topology JVP/VJP actions and explicit topology-event rejection.
+
 The [nonlinear material-surface flux contract](nonlinear_surface_flux.html)
 keeps application wall and sheath laws separate from orientation-preserving
 trace assembly and its generated-compatible value/JVP/VJP bookkeeping.
