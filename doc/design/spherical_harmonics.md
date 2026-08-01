@@ -20,5 +20,5 @@ independent contract test checks the closed-form \(Y_0^0\) value through
 `fortfem_api`, rather than checking repository wiring or a generated file.
 
 The provenance and current degree/continuation limitations are recorded in
-the [FortNum API](https://github.com/lazy-fortran/fortnum/blob/b5afac7/docs/api.md)
+the [FortNum API](https://github.com/lazy-fortran/fortnum/blob/d8be030/docs/api.md)
 and the [DLMF spherical-harmonic definitions](https://dlmf.nist.gov/14.30).
