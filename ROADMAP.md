@@ -1554,12 +1554,12 @@ gallery example.
   placeholder is gone. Exact-curved torus RWG currents now also have a public
   off-surface magnetic-field reconstruction path with a coefficient-linearity
   oracle, so the torus Maxwell gallery can show a computed field slice. That
-  reconstruction now also has an analytical geometry JVP through straight-edge
-  lengths, generated torus-panel geometry, radii, target, wave number, and
-  coefficients; an independent central-difference fixture covers the complete
-  directional chain. Geometry VJPs and full assembled torus-block derivatives
-  remain active follow-up work. The `maxwell_torus_fem_bem_solution` fixture
-  now closes the neutral vector
+  reconstruction now also has analytical geometry JVP and VJP products through
+  straight-edge lengths, generated torus-panel geometry, radii, target, wave
+  number, and coefficients; an independent central-difference and complex
+  adjoint fixture covers the complete directional chain. Full assembled
+  torus-block derivatives remain active follow-up work. The
+  `maxwell_torus_fem_bem_solution` fixture now closes the neutral vector
   FEM--BEM solved-state gap with exact edge-integral data, a complex coupled
   solve oracle, and a physical H(curl) slice with arrows. Nonzero-scattering
   vector FEM/BEM/DtN/PML parity, assembly-specific matrix/geometry derivatives,

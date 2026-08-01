@@ -6,6 +6,7 @@ program test_maxwell_torus_curved_magnetic_field
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp, &
         evaluate_maxwell_torus_magnetic_geometry_jvp, &
+        evaluate_maxwell_torus_magnetic_geometry_vjp, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
         generate_torus_surface_mesh
     use fortfem_kinds, only: dp
@@ -25,6 +26,10 @@ program test_maxwell_torus_curved_magnetic_field
     real(dp) :: step
     real(dp) :: major_radius_dot, minor_radius_dot, wave_number_dot
     real(dp) :: observation_dot(3), wave_number
+    real(dp), allocatable :: vertices_bar(:, :), parameters_bar(:, :)
+    real(dp) :: major_radius_bar, minor_radius_bar, wave_number_bar
+    real(dp) :: observation_bar(3), geometry_adjoint_error, lhs, rhs
+    complex(dp), allocatable :: coefficients_geometry_bar(:)
     integer :: i, status
     logical :: all_passed
 
@@ -127,6 +132,26 @@ program test_maxwell_torus_curved_magnetic_field
         (geometry_plus - geometry_minus)/(2.0_dp*step)))
     call record_condition(status == 0 .and. geometry_error < 2.0e-7_dp, &
         'curved torus magnetic-field geometry JVP matches reassembly')
+    allocate( &
+        vertices_bar(size(vertices, 1), size(vertices, 2)), &
+        parameters_bar(size(parameters, 1), size(parameters, 2)))
+    call evaluate_maxwell_torus_magnetic_geometry_vjp( &
+        vertices, triangles, parameters, major_radius, minor_radius, &
+        coefficients, observation, wave_number, 2, field_bar, vertices_bar, &
+        parameters_bar, major_radius_bar, minor_radius_bar, &
+        coefficients_geometry_bar, observation_bar, wave_number_bar, status)
+    lhs = real(sum(conjg(field_bar)*geometry_dot), dp)
+    rhs = sum(vertices_bar*vertices_dot) + sum(parameters_bar*parameters_dot) + &
+        major_radius_bar*major_radius_dot + minor_radius_bar*minor_radius_dot + &
+        real(sum(conjg(coefficients_geometry_bar)*coefficients_dot), dp) + &
+        dot_product(observation_bar, observation_dot) + wave_number_bar* &
+        wave_number_dot
+    geometry_adjoint_error = abs(lhs - rhs)
+    call record_condition(status == 0, &
+        'curved torus magnetic-field geometry VJP succeeds')
+    call record_condition(geometry_adjoint_error < &
+        5.0e-9_dp*max(1.0_dp, abs(lhs), abs(rhs)), &
+        'curved torus magnetic-field geometry VJP satisfies the adjoint identity')
 
     call check_summary('Exact-curved torus RWG magnetic field')
     if (.not. all_passed) error stop 1
