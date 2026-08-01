@@ -125,6 +125,17 @@ fpm run --example <example_name>
 <p>This small fixture exercises FortFEM's field-coordinate-independent support</p>
 </div>
 </article>
+<article class="example-card" data-example="fci_quadrilateral_geometry">
+<a class="example-card-preview" href="generated/fci_quadrilateral_geometry.html">
+<img class="example-card-image"
+ src="../media/examples/fci_quadrilateral_geometry/cover.svg"
+ alt="Plot preview for fci_quadrilateral_geometry" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/fci_quadrilateral_geometry.html">fci_quadrilateral_geometry</a></h3>
+<p>This small geometry fixture computes positive, fixed-topology areas for three</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
@@ -433,6 +444,7 @@ fpm run --example <example_name>
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
+- [fci_quadrilateral_geometry](generated/fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.

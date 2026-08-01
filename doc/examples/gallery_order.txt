@@ -10,6 +10,7 @@ curl_curl
 cgl_pressure_tensor
 field_aligned_flux
 fci_parallel_diffusion
+fci_quadrilateral_geometry
 tetra_h1_poisson
 tetra_mixed_poisson
 tetra_nedelec_p_convergence

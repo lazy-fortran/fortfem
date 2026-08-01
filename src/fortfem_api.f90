@@ -368,7 +368,10 @@ module fortfem_api
     use fortfem_fci_support_geometry, only: &
         compute_fci_staggered_flux_box_volumes, &
         compute_fci_staggered_flux_box_volumes_jvp, &
-        compute_fci_staggered_flux_box_volumes_vjp
+        compute_fci_staggered_flux_box_volumes_vjp, &
+        compute_fci_quadrilateral_cell_areas_2d, &
+        compute_fci_quadrilateral_cell_areas_2d_jvp, &
+        compute_fci_quadrilateral_cell_areas_2d_vjp
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint, &
         advance_mixed_wave_symplectic_euler
     use fortfem_cgl_pressure_tensor, only: &
@@ -1879,6 +1882,9 @@ module fortfem_api
     public :: compute_fci_staggered_flux_box_volumes
     public :: compute_fci_staggered_flux_box_volumes_jvp
     public :: compute_fci_staggered_flux_box_volumes_vjp
+    public :: compute_fci_quadrilateral_cell_areas_2d
+    public :: compute_fci_quadrilateral_cell_areas_2d_jvp
+    public :: compute_fci_quadrilateral_cell_areas_2d_vjp
     public :: advance_mixed_wave_midpoint
     public :: advance_mixed_wave_symplectic_euler
     public :: evaluate_cgl_pressure_tensor
