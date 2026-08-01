@@ -2,6 +2,12 @@ module fortfem_api
     use fortfem_equilibrium_interchange, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
+    use fortfem_linear_response_interchange, only: &
+        assemble_linear_response_operator, &
+        assemble_linear_response_operator_jvp, &
+        assemble_linear_response_operator_vjp, &
+        initialize_linear_response_interchange, &
+        linear_response_interchange_t, validate_linear_response_interchange
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cycle_basis, &
         cell_complex_harmonic_one_forms, &
@@ -2123,6 +2129,12 @@ module fortfem_api
     public :: equilibrium_normalization_t
     public :: initialize_equilibrium_interchange
     public :: validate_equilibrium_interchange
+    public :: linear_response_interchange_t
+    public :: initialize_linear_response_interchange
+    public :: validate_linear_response_interchange
+    public :: assemble_linear_response_operator
+    public :: assemble_linear_response_operator_jvp
+    public :: assemble_linear_response_operator_vjp
 
     ! Plotting interface
     public :: plot
