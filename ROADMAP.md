@@ -227,7 +227,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; metric-harmonic one-forms now have a fixed-topology cycle-period normalization map with JVP/VJP | Chain-complex identities, Euler characteristic, cycle and flux integrals, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
-| Cut FEEC spaces | The scalar shifted-Heaviside activation and a 3D vector-enrichment curl/divergence product-rule diagnostic are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
+| Cut FEEC spaces | The scalar shifted-Heaviside activation, a 3D vector-enrichment curl/divergence product-rule diagnostic, and the physical vector/metric support Gram contraction are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | The neutral external-adapter schema for mapped coordinates, physical samples, named scalar/vector/tensor coefficients and scalar profiles, segmented boundaries, provenance, units, and normalization is public and validated. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data now covers toroidal mapped samples, named fields, segmented boundaries, vector/tensor component offsets, copy semantics, and rejection; license-safe CHEASE and FreeGS outputs sampled on a common physical grid remain |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
@@ -1346,7 +1346,10 @@ gallery example.
   weighted, finite-difference, and real-adjoint oracle; support activation maps
   now expose CSR sign activation, unique extrema, signed margins, and
   fixed-topology JVP/VJP actions with explicit owner/tie/topology rejection;
-  Piola-aware conditioning remains.
+  the physical vector/metric support Gram contraction now composes with
+  covariant or contravariant Piola and IGA values and exposes value/JVP/VJP
+  actions with SPD-metric rejection; cut-space Piola maps and commuting
+  conditioning remain.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.

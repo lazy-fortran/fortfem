@@ -137,6 +137,10 @@ The [enrichment-support activation contract](enrichment_support_activation.html)
 defines CSR support sign activation, unique extrema and signed margins, with
 fixed-topology JVP/VJP actions and explicit topology-event rejection.
 
+The [vector enrichment-support conditioning contract](enrichment_vector_support_diagnostics.html)
+defines the physical vector/metric Gram contraction for Piola-mapped FEEC and
+IGA enrichments, with geometry-compatible JVP/VJP actions and SPD rejection.
+
 The [nonlinear material-surface flux contract](nonlinear_surface_flux.html)
 keeps application wall and sheath laws separate from orientation-preserving
 trace assembly and its generated-compatible value/JVP/VJP bookkeeping.
