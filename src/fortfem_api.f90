@@ -12,6 +12,10 @@ module fortfem_api
         assemble_linear_response_residual_vjp, &
         initialize_linear_response_interchange, &
         linear_response_interchange_t, validate_linear_response_interchange
+    use fortfem_generalized_eigen_residual, only: &
+        assemble_generalized_eigen_residual, &
+        assemble_generalized_eigen_residual_jvp, &
+        assemble_generalized_eigen_residual_vjp
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cycle_basis, &
         cell_complex_harmonic_one_forms, &
@@ -2149,6 +2153,9 @@ module fortfem_api
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
+    public :: assemble_generalized_eigen_residual
+    public :: assemble_generalized_eigen_residual_jvp
+    public :: assemble_generalized_eigen_residual_vjp
 
     ! Plotting interface
     public :: plot
