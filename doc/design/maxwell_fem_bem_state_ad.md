@@ -36,4 +36,7 @@ client cannot accidentally use a different solve convention.
 `test_maxwell_fem_bem_state_ad` checks the independent central-difference and
 real-complex adjoint identities on a nontrivial complex block. Geometry and
 coefficient derivatives of the toroidal assembly remain separate roadmap
-work; this is the reusable implicit-solve foundation for them.
+work; this is the reusable implicit-solve foundation for them. The companion
+`test_maxwell_torus_fem_bem_nonzero_state` drives the actual curved torus
+volume/trace matrix with a nonzero manufactured RWG current and verifies both
+parts of the recovered state.
