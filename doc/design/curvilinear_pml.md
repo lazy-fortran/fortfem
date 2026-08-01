@@ -73,6 +73,13 @@ shear stretch is checked by reassembly finite differences and the real complex
 adjoint identity in
 `test_tetra_nedelec_curvilinear_pml_element_ad`.
 
+For a mesh with one full stretch per tetrahedron, the corresponding CSC
+assembly routines are `assemble_tetra_nedelec_curvilinear_pml_csc`, `_jvp`,
+and `_vjp`. They preserve the existing merged sparsity pattern and accumulate
+shared-vertex and per-cell stretch cotangents. The global behavioral oracle
+`test_tetra_nedelec_curvilinear_pml_csc_ad` checks pattern preservation,
+complete reassembly differences, and the shared-geometry complex adjoint.
+
 The module is a coefficient contract, not a complete curved-object PML
 assembler. Layer geometry, active-cell topology, quadrature, and reflection
 diagnostics remain caller-owned and are tracked in the open-boundary roadmap.

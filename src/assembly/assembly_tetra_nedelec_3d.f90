@@ -39,6 +39,9 @@ module fortfem_assembly_tetra_nedelec_3d
     public :: assemble_tetra_nedelec_curvilinear_pml_element
     public :: assemble_tetra_nedelec_curvilinear_pml_element_jvp
     public :: assemble_tetra_nedelec_curvilinear_pml_element_vjp
+    public :: assemble_tetra_nedelec_curvilinear_pml_csc
+    public :: assemble_tetra_nedelec_curvilinear_pml_csc_jvp
+    public :: assemble_tetra_nedelec_curvilinear_pml_csc_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
@@ -1365,6 +1368,247 @@ contains
             stretch, curl_coefficient_bar, mass_coefficient_bar, stretch_bar, &
             status)
     end subroutine assemble_tetra_nedelec_curvilinear_pml_element_vjp
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_csc( &
+            mesh_vertices, tetrahedra, order, stretch, wave_number, matrix, &
+            status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        complex(dp), intent(in) :: stretch(:, :, :)
+        real(dp), intent(in) :: wave_number
+        type(csc_z_t), intent(out) :: matrix
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edge_orientations(:, :)
+        integer, allocatable :: edges(:, :), face_permutations(:, :, :)
+        integer, allocatable :: faces(:, :), global_dofs(:, :), rows(:)
+        complex(dp), allocatable :: element_matrix(:, :)
+        complex(dp), allocatable :: oriented_matrix(:, :), values(:)
+        real(dp), allocatable :: basis_transform(:, :)
+        real(dp) :: vertices(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Curvilinear tetrahedral Nedelec PML assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (order < 1 .or. wave_number <= 0.0_dp) return
+        if (size(stretch, 1) /= 3) return
+        if (size(stretch, 2) /= 3) return
+        if (size(stretch, 3) /= size(tetrahedra, 2)) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate( &
+            rows(dof_count*dof_count*size(tetrahedra, 2)), &
+            columns(dof_count*dof_count*size(tetrahedra, 2)), &
+            values(dof_count*dof_count*size(tetrahedra, 2)))
+        allocate( &
+            basis_transform(dof_count, dof_count), &
+            oriented_matrix(dof_count, dof_count))
+
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_curvilinear_pml_element( &
+                vertices, order, 2*order + 2, stretch(:, :, tetrahedron), &
+                wave_number, element_matrix, local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_matrix = matmul( &
+                transpose(basis_transform), &
+                matmul(element_matrix, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_matrix(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix, status)
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_csc
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_csc_jvp( &
+            mesh_vertices, tetrahedra, order, stretch, wave_number, &
+            mesh_vertices_dot, stretch_dot, wave_number_dot, matrix_dot, &
+            status)
+        real(dp), intent(in) :: mesh_vertices(:, :), mesh_vertices_dot(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        complex(dp), intent(in) :: stretch(:, :, :), stretch_dot(:, :, :)
+        real(dp), intent(in) :: wave_number, wave_number_dot
+        type(csc_z_t), intent(out) :: matrix_dot
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer, allocatable :: columns(:), edge_orientations(:, :)
+        integer, allocatable :: edges(:, :), face_permutations(:, :, :)
+        integer, allocatable :: faces(:, :), global_dofs(:, :), rows(:)
+        complex(dp), allocatable :: element_dot(:, :), oriented_dot(:, :)
+        complex(dp), allocatable :: values(:)
+        real(dp), allocatable :: basis_transform(:, :)
+        real(dp) :: vertices(3, 4), vertices_dot(3, 4)
+        integer :: column, dof_count, entry, global_dof_count
+        integer :: local_status, node, row, tetrahedron
+
+        call status_set( &
+            status, FORTSPARSE_INVALID_MATRIX, &
+            "Curvilinear tetrahedral Nedelec PML JVP assembly failed")
+        if (.not. valid_tetra_mesh(mesh_vertices, tetrahedra)) return
+        if (any(shape(mesh_vertices_dot) /= shape(mesh_vertices))) return
+        if (order < 1 .or. wave_number <= 0.0_dp) return
+        if (size(stretch, 1) /= 3 .or. size(stretch, 2) /= 3) return
+        if (size(stretch, 3) /= size(tetrahedra, 2)) return
+        if (any(shape(stretch_dot) /= shape(stretch))) return
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        global_dof_count = maxval(global_dofs)
+        allocate( &
+            rows(dof_count*dof_count*size(tetrahedra, 2)), &
+            columns(dof_count*dof_count*size(tetrahedra, 2)), &
+            values(dof_count*dof_count*size(tetrahedra, 2)))
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_dot(dof_count, dof_count))
+        entry = 0
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+                vertices_dot(:, node) = &
+                    mesh_vertices_dot(:, tetrahedra(node, tetrahedron))
+            end do
+            call assemble_tetra_nedelec_curvilinear_pml_element_jvp( &
+                vertices, order, 2*order + 2, stretch(:, :, tetrahedron), &
+                wave_number, vertices_dot, stretch_dot(:, :, tetrahedron), &
+                wave_number_dot, element_dot, local_status)
+            if (local_status /= 0) return
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            oriented_dot = matmul( &
+                transpose(basis_transform), &
+                matmul(element_dot, basis_transform))
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    entry = entry + 1
+                    rows(entry) = global_dofs(row, tetrahedron)
+                    columns(entry) = global_dofs(column, tetrahedron)
+                    values(entry) = oriented_dot(row, column)
+                end do
+            end do
+        end do
+        call csc_from_triplet( &
+            global_dof_count, global_dof_count, rows, columns, values, &
+            matrix_dot, status)
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_csc_jvp
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_csc_vjp( &
+            mesh_vertices, tetrahedra, order, stretch, wave_number, &
+            matrix_values_bar, mesh_vertices_bar, stretch_bar, &
+            wave_number_bar, status)
+        real(dp), intent(in) :: mesh_vertices(:, :)
+        integer, intent(in) :: tetrahedra(:, :), order
+        complex(dp), intent(in) :: stretch(:, :, :), matrix_values_bar(:)
+        real(dp), intent(in) :: wave_number
+        real(dp), intent(out) :: mesh_vertices_bar(:, :), wave_number_bar
+        complex(dp), intent(out) :: stretch_bar(:, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(csc_z_t) :: matrix
+        integer, allocatable :: edge_orientations(:, :), edges(:, :)
+        integer, allocatable :: face_permutations(:, :, :), faces(:, :)
+        integer, allocatable :: global_dofs(:, :)
+        complex(dp), allocatable :: dense_bar(:, :), element_bar(:, :)
+        complex(dp), allocatable :: oriented_bar(:, :)
+        complex(dp) :: local_stretch_bar(3, 3)
+        real(dp), allocatable :: basis_transform(:, :)
+        real(dp) :: local_vertices_bar(3, 4), local_wave_number_bar
+        real(dp) :: vertices(3, 4)
+        integer :: column, dof_count, entry, local_status, node, row
+        integer :: tetrahedron
+
+        mesh_vertices_bar = 0.0_dp
+        stretch_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        wave_number_bar = 0.0_dp
+        call assemble_tetra_nedelec_curvilinear_pml_csc( &
+            mesh_vertices, tetrahedra, order, stretch, wave_number, matrix, &
+            status)
+        if (status%code /= 0) return
+        if (size(mesh_vertices_bar, 1) /= size(mesh_vertices, 1)) return
+        if (size(mesh_vertices_bar, 2) /= size(mesh_vertices, 2)) return
+        if (size(stretch_bar, 1) /= 3) return
+        if (size(stretch_bar, 2) /= 3) return
+        if (size(stretch_bar, 3) /= size(tetrahedra, 2)) return
+        if (size(matrix_values_bar) /= matrix%nnz) return
+        allocate(dense_bar(matrix%nrow, matrix%ncol), &
+            source=cmplx(0.0_dp, 0.0_dp, dp))
+        do column = 1, matrix%ncol
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                dense_bar(matrix%row_idx(entry), column) = &
+                    matrix_values_bar(entry)
+            end do
+        end do
+        call build_tetra_nedelec_dof_map( &
+            order, tetrahedra, edges, faces, global_dofs, &
+            edge_orientations, face_permutations, local_status)
+        if (local_status /= 0) return
+        dof_count = size(global_dofs, 1)
+        allocate(basis_transform(dof_count, dof_count))
+        allocate(oriented_bar(dof_count, dof_count))
+        allocate(element_bar(dof_count, dof_count))
+        do tetrahedron = 1, size(tetrahedra, 2)
+            do node = 1, 4
+                vertices(:, node) = &
+                    mesh_vertices(:, tetrahedra(node, tetrahedron))
+            end do
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    oriented_bar(row, column) = dense_bar( &
+                        global_dofs(row, tetrahedron), &
+                        global_dofs(column, tetrahedron))
+                end do
+            end do
+            call build_tetra_nedelec_basis_transform( &
+                order, edge_orientations(:, tetrahedron), &
+                face_permutations(:, :, tetrahedron), basis_transform, &
+                local_status)
+            if (local_status /= 0) return
+            element_bar = matmul( &
+                basis_transform, &
+                matmul(oriented_bar, transpose(basis_transform)))
+            call assemble_tetra_nedelec_curvilinear_pml_element_vjp( &
+                vertices, order, 2*order + 2, stretch(:, :, tetrahedron), &
+                wave_number, element_bar, local_vertices_bar, &
+                local_stretch_bar, local_wave_number_bar, local_status)
+            if (local_status /= 0) return
+            do node = 1, 4
+                mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) = &
+                    mesh_vertices_bar(:, tetrahedra(node, tetrahedron)) + &
+                    local_vertices_bar(:, node)
+            end do
+            stretch_bar(:, :, tetrahedron) = local_stretch_bar
+            wave_number_bar = wave_number_bar + local_wave_number_bar
+        end do
+        call status_set(status, 0, "")
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_csc_vjp
 
     subroutine assemble_tetra_nedelec_pml_csc( &
             mesh_vertices, tetrahedra, order, stretch, wave_number, matrix, &
