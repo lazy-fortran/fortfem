@@ -506,6 +506,12 @@ module fortfem_api
         assemble_fitted_trace_constraint, &
         assemble_fitted_trace_constraint_jvp, &
         assemble_fitted_trace_constraint_vjp
+    use fortfem_partition_layout, only: &
+        partition_layout_t, initialize_partition_layout, &
+        validate_partition_layout, partition_layout_maps, &
+        partition_layout_global_count, partition_layout_owned_count, &
+        partition_layout_ghost_count, assemble_partitioned_sum, &
+        assemble_partitioned_sum_jvp, assemble_partitioned_sum_vjp
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -1100,6 +1106,16 @@ module fortfem_api
     public :: cell_complex_cocycle_basis
     public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
+    public :: partition_layout_t
+    public :: initialize_partition_layout
+    public :: validate_partition_layout
+    public :: partition_layout_maps
+    public :: partition_layout_global_count
+    public :: partition_layout_owned_count
+    public :: partition_layout_ghost_count
+    public :: assemble_partitioned_sum
+    public :: assemble_partitioned_sum_jvp
+    public :: assemble_partitioned_sum_vjp
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp

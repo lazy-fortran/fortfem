@@ -60,6 +60,10 @@ The [oriented cell-complex contract](cell_complex.html) defines integer chain
 boundary maps, exact boundary-of-boundary validation, Euler characteristic, and
 small homology diagnostics for later FEEC, gauge, cut, and interface graphs.
 
+The [partition layout contract](partition_layout.html) records fixed
+local-to-global IDs, owner/ghost metadata, and deterministic communicator-free
+reductions as the serial boundary for future distributed assembly.
+
 The [cell-complex cycle-space contract](cell_cycle_basis.html) exposes the
 real cycle and cocycle kernels while keeping face quotients, metric harmonic
 representatives, and gauges in higher layers.

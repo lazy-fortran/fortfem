@@ -1167,12 +1167,13 @@ gallery example.
 - Add seeded random generators and shrinking to the `fo` test path. The first
   generators cover oriented cells, positive quadrature weights, tensor
   coefficients, mode sets, and fixed-topology interface data.
-- Define the partitionable data model before implementing a full MPI backend:
-  global entity IDs, owner and ghost metadata, local-to-global maps,
-  deterministic reductions, communicator-free local kernels, and serial
-  no-op implementations of halo and reduction operations. Add MPI assembly,
-  checkpointing, and distributed solver adapters after the serial residual,
-  derivative, and invariant contracts are stable.
+- The public `partition_layout_t` now defines the communicator-free
+  partitionable data boundary: unique local-to-global IDs, owner rank,
+  explicit owned/ghost masks, deterministic local reductions, and linear JVP/
+  VJP actions. It is the serial no-op implementation that future halo and
+  all-reduce backends can replace without changing local kernels. MPI
+  assembly, checkpointing, and distributed solver adapters remain deferred
+  until the serial residual and invariant contracts are stable.
 - Keep FortSym revision pins and generated-kernel checks green.
 
 ### Phase 1: Interface calculus: **active**
