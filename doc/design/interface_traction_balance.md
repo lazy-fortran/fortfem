@@ -1,8 +1,8 @@
 ---
-title: Interface normal-traction balance
+title: Interface traction balance
 ---
 
-# Interface normal-traction balance
+# Interface traction balance
 
 `fortfem_interface_traction_balance` provides the neutral scalar interface
 residual
@@ -37,3 +37,33 @@ orientation rebuild.
 JVP, real dot-product VJP, and rejection of a non-unit normal. It is an
 independent interface oracle rather than a check that merely mirrors the
 implementation loops.
+
+## Full vector traction jump
+
+For a law that constrains all traction components, the neutral vector residual
+is
+
+\[
+\mathbf r=\mathbf t^+-\mathbf t^- -\mathbf t_{\rm target}.
+\]
+
+`assemble_traction_jump` and its JVP/VJP companions expose this residual
+without assuming whether the traction is CGL pressure, Maxwell stress, or
+elastic stress. The target vector can therefore represent a prescribed
+surface force, a multiplier contribution, or a caller-owned jump law.
+
+```fortran
+call assemble_traction_jump( &
+    plus_traction, minus_traction, target, residual, status)
+call assemble_traction_jump_jvp( &
+    plus_traction, minus_traction, target, plus_dot, minus_dot, target_dot, &
+    residual_dot, status)
+call assemble_traction_jump_vjp( &
+    plus_traction, minus_traction, target, residual_bar, plus_bar, &
+    minus_bar, target_bar, status)
+```
+
+`test_interface_vector_traction_balance` checks the componentwise analytical
+oracle, the product-rule JVP, the real dot-product VJP, and shape rejection.
+Normal projection remains a separate scalar contract so callers can choose
+normal, tangential, or full-vector interface laws explicitly.
