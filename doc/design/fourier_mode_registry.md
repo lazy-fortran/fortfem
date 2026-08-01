@@ -65,6 +65,17 @@ call apply_fourier_bilinear_product_jvp( &
 call apply_fourier_bilinear_product_vjp( &
     input_registry, output_registry, coupling, left_values, right_values, &
     product_values_bar, left_values_bar, right_values_bar, coupling_bar, status)
+call assemble_fourier_mode_energy( &
+    registry, coefficients, point_weights, mode_weights, mode_energy, &
+    total_energy, status)
+call assemble_fourier_mode_energy_jvp( &
+    registry, coefficients, coefficients_dot, point_weights, point_weights_dot, &
+    mode_weights, mode_weights_dot, mode_energy_dot, total_energy_dot, status)
+call assemble_fourier_mode_energy_vjp( &
+    registry, coefficients, point_weights, mode_weights, mode_energy_bar, &
+    total_energy_bar, coefficients_bar, point_weights_bar, mode_weights_bar, status)
+symmetric = fourier_coefficients_conjugate_symmetric( &
+    registry, coefficients, tolerance, residual, status)
 ```
 
 `real_packed=.true.` requires every retained `(m,n)` to have its `(-m,-n)`
@@ -119,6 +130,21 @@ nonlinear truncation rule. Its JVP
 differentiates all three factors and its complex VJP uses the same real-part
 inner product.
 
+The neutral modal-energy block uses positive caller-owned point and mode
+weights,
+
+\[
+ E_k=\frac12\sum_{x,c} \alpha_k w_x |c_{x,c,k}|^2,
+ \qquad E=\sum_k E_k.
+\]
+
+It does not infer a metric, normalization, or plasma closure from the mode
+registry. Its JVP/VJP differentiate coefficients and both weight arrays. For a
+`real_packed` registry, `fourier_coefficients_conjugate_symmetric` checks every
+coefficient pair (including reality of self-conjugate modes) and returns the
+maximum mismatch; non-real-packed registries are accepted without imposing a
+conjugacy law.
+
 `apply_fourier_bilinear_product` is the de-aliased application form. Its input
 arrays use `input_registry`, while the output array uses `output_registry`; the
 pair label is looked up only in the output set. Thus a padded work registry can
@@ -149,3 +175,6 @@ non-positive round count.
 conjugate-packed mode sets and independently checks validation plus every
 input-pair sum in the padded registry; a failing case reports its original and
 shrunk seed through `check_property`.
+`test_fourier_mode_energy` checks the weighted modal-energy contraction,
+product-rule JVP and central differences, the real-part VJP identity, and the
+real-packed symmetry residual against direct coefficient arithmetic.
