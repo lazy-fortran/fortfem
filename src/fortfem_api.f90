@@ -565,6 +565,11 @@ module fortfem_api
         integrate_maxwell_torus_curved_coincident_rwg_pair_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    use fortfem_maxwell_curved_dtn, only: &
+        apply_maxwell_trace_to_flux, apply_maxwell_trace_to_flux_jvp, &
+        apply_maxwell_trace_to_flux_map, apply_maxwell_trace_to_flux_vjp, &
+        assemble_maxwell_trace_to_flux_map, &
+        assemble_maxwell_torus_curved_dtn_rwg_3d
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
         cartesian_to_toroidal_jvp, cartesian_to_toroidal_vjp, &
         toroidal_point_to_cartesian, toroidal_point_to_cartesian_jvp, &
@@ -1238,6 +1243,12 @@ module fortfem_api
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    public :: apply_maxwell_trace_to_flux
+    public :: apply_maxwell_trace_to_flux_jvp
+    public :: apply_maxwell_trace_to_flux_map
+    public :: apply_maxwell_trace_to_flux_vjp
+    public :: assemble_maxwell_trace_to_flux_map
+    public :: assemble_maxwell_torus_curved_dtn_rwg_3d
     public :: cartesian_to_toroidal
     public :: cartesian_to_toroidal_jvp
     public :: cartesian_to_toroidal_vjp

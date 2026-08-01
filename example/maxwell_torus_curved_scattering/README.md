@@ -33,9 +33,11 @@ Generated, uncommitted artifacts are:
 - `maxwell_torus_rcs_1d.png`: equatorial bistatic radar-cross-section cut;
 - `maxwell_torus_rcs_2d.png`: angular radar-cross-section map;
 - `maxwell_torus_rcs_3d.png`: normalized three-dimensional radiation surface;
+- `maxwell_torus_dtn_1d.png`: weak RWG/RBC Maxwell DtN response on the same
+  exact-curved torus surface;
 - `rcs_trace.csv`: reproducible equatorial samples;
-- `benchmark.txt`: unknown counts, timings, quadrature, reciprocity error, and
-  peak radar cross section.
+- `benchmark.txt`: unknown counts, CFIE and weak-DtN timings, quadrature,
+  reciprocity error, DtN response norm, and peak radar cross section.
 
 GitHub Actions generates these files and publishes them in the example
 gallery. No rendered image is checked into the repository.
