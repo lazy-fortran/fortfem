@@ -404,7 +404,9 @@ module fortfem_api
         compute_fci_curved_quadrilateral_cell_areas_2d_jvp, &
         compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint, &
-        advance_mixed_wave_symplectic_euler
+        advance_mixed_wave_symplectic_euler, &
+        advance_mixed_wave_symplectic_euler_jvp, &
+        advance_mixed_wave_symplectic_euler_vjp
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -1987,6 +1989,8 @@ module fortfem_api
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     public :: advance_mixed_wave_midpoint
     public :: advance_mixed_wave_symplectic_euler
+    public :: advance_mixed_wave_symplectic_euler_jvp
+    public :: advance_mixed_wave_symplectic_euler_vjp
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp

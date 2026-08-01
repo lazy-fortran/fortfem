@@ -70,3 +70,21 @@ The independent test checks the partitioned oscillator formula and the
 canonical two-state symplectic-form identity.  Dissipation, conductivity,
 viscosity, and PML terms remain separate declared substeps; they must not be
 silently folded into this ideal symplectic update.
+
+The same step exposes analytical derivative products.  Given increments
+`(q_dot, v_dot, time_step_dot)`,
+`advance_mixed_wave_symplectic_euler_jvp` differentiates the two mass solves
+in sequence:
+
+\[
+ M_v\dot v^+ = M_v\dot v+hC\dot q+\dot h Cq,
+ \qquad
+ M_q\dot q^+ = M_q\dot q-hC^T\dot v^+-\dot h C^Tv^+.
+\]
+
+`advance_mixed_wave_symplectic_euler_vjp` applies the corresponding real
+transpose solves and returns cotangents for `q`, `v`, and `h`.  The focused
+test checks the JVP against a central difference of the complete update and
+checks the VJP dot-product identity.  Mass and coupling blocks are held fixed
+by this contract; a caller differentiating geometry or constitutive data
+should differentiate those blocks in its surrounding residual.

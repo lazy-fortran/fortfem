@@ -18,6 +18,8 @@ module fortfem_mixed_wave_time
 
     public :: advance_mixed_wave_midpoint
     public :: advance_mixed_wave_symplectic_euler
+    public :: advance_mixed_wave_symplectic_euler_jvp
+    public :: advance_mixed_wave_symplectic_euler_vjp
 
 contains
 
@@ -134,5 +136,126 @@ contains
         v = v_next
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine advance_mixed_wave_symplectic_euler
+
+    subroutine advance_mixed_wave_symplectic_euler_jvp( &
+            mass_q, mass_v, coupling, time_step, q, v, time_step_dot, q_dot, &
+            v_dot, q_next_dot, v_next_dot, status)
+        !! Apply the tangent of one partitioned symplectic-Euler step.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :), coupling(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:), time_step_dot
+        real(dp), intent(in) :: q_dot(:), v_dot(:)
+        real(dp), intent(out) :: q_next_dot(:), v_next_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, info
+        real(dp), allocatable :: v_rhs(:), v_next(:), v_rhs_dot(:)
+        real(dp), allocatable :: q_rhs_dot(:)
+
+        q_next_dot = 0.0_dp
+        v_next_dot = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave symplectic Euler JVP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv .or. size(coupling, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_dot) /= nq .or. size(v_dot) /= nv) return
+        if (size(q_next_dot) /= nq .or. size(v_next_dot) /= nv) return
+
+        allocate(v_rhs(nv), v_next(nv), v_rhs_dot(nv), q_rhs_dot(nq))
+        v_rhs = matmul(mass_v, v) + time_step*matmul(coupling, q)
+        call dense_solve(mass_v, v_rhs, v_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler JVP velocity mass is singular")
+            return
+        end if
+        v_rhs_dot = matmul(mass_v, v_dot) + &
+            time_step*matmul(coupling, q_dot) + &
+            time_step_dot*matmul(coupling, q)
+        call dense_solve(mass_v, v_rhs_dot, v_next_dot, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler JVP velocity mass is singular")
+            return
+        end if
+        q_rhs_dot = matmul(mass_q, q_dot) - &
+            time_step*matmul(transpose(coupling), v_next_dot) - &
+            time_step_dot*matmul(transpose(coupling), v_next)
+        call dense_solve(mass_q, q_rhs_dot, q_next_dot, info)
+        if (info /= 0) then
+            q_next_dot = 0.0_dp
+            v_next_dot = 0.0_dp
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler JVP coordinate mass is singular")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_symplectic_euler_jvp
+
+    subroutine advance_mixed_wave_symplectic_euler_vjp( &
+            mass_q, mass_v, coupling, time_step, q, v, q_next_bar, v_next_bar, &
+            q_bar, v_bar, time_step_bar, status)
+        !! Apply the real adjoint of one partitioned symplectic-Euler step.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :), coupling(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:)
+        real(dp), intent(in) :: q_next_bar(:), v_next_bar(:)
+        real(dp), intent(out) :: q_bar(:), v_bar(:), time_step_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, info
+        real(dp), allocatable :: v_rhs(:), v_next(:), q_rhs_bar(:)
+        real(dp), allocatable :: v_next_bar_work(:), v_rhs_bar(:)
+
+        q_bar = 0.0_dp
+        v_bar = 0.0_dp
+        time_step_bar = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave symplectic Euler VJP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv .or. size(coupling, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_next_bar) /= nq .or. size(v_next_bar) /= nv) return
+        if (size(q_bar) /= nq .or. size(v_bar) /= nv) return
+
+        allocate(v_rhs(nv), v_next(nv), q_rhs_bar(nq), &
+            v_next_bar_work(nv), v_rhs_bar(nv))
+        v_rhs = matmul(mass_v, v) + time_step*matmul(coupling, q)
+        call dense_solve(mass_v, v_rhs, v_next, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler VJP velocity mass is singular")
+            return
+        end if
+        call dense_solve(transpose(mass_q), q_next_bar, q_rhs_bar, info)
+        if (info /= 0) then
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler VJP coordinate mass is singular")
+            return
+        end if
+        q_bar = matmul(transpose(mass_q), q_rhs_bar)
+        v_next_bar_work = v_next_bar - &
+            time_step*matmul(coupling, q_rhs_bar)
+        time_step_bar = -dot_product(q_rhs_bar, matmul(transpose(coupling), v_next))
+
+        call dense_solve(transpose(mass_v), v_next_bar_work, v_rhs_bar, info)
+        if (info /= 0) then
+            q_bar = 0.0_dp
+            time_step_bar = 0.0_dp
+            call status_set(status, FORTSPARSE_SINGULAR, &
+                "mixed wave symplectic Euler VJP velocity mass is singular")
+            return
+        end if
+        q_bar = q_bar + time_step*matmul(transpose(coupling), v_rhs_bar)
+        v_bar = matmul(transpose(mass_v), v_rhs_bar)
+        time_step_bar = time_step_bar + &
+            dot_product(v_rhs_bar, matmul(coupling, q))
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_symplectic_euler_vjp
 
 end module fortfem_mixed_wave_time

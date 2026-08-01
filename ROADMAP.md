@@ -1468,7 +1468,9 @@ gallery example.
 - The public `advance_mixed_wave_symplectic_euler` step now provides a
   partitioned first-order symplectic update for the same mixed state. Its
   independent test checks the two-stage mass-solve oracle and the canonical
-  two-state symplectic-form identity; dissipative terms remain separate.
+  two-state symplectic-form identity; its analytical JVP/VJP now cover the
+  complete two-stage map and time-step product, with an independent central
+  difference and real adjoint oracle. Dissipative terms remain separate.
 - The public `advance_dissipative_cayley` step now provides the separate
   `(M+hD/2)^(-1)(M-hD/2)` update for positive-time dissipative blocks. Its
   JVP/VJP differentiate mass, damping, step size, and state, while an
