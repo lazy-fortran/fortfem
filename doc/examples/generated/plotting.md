@@ -170,6 +170,10 @@ end program plotting_demo
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/plotting/primary.png)
+
 ### solution_constant.png
 
 ![solution_constant.png](../../media/examples/plotting/solution_constant.png)

@@ -89,6 +89,9 @@ program fortfem_mesh_benchmark
             "		", fortfem_triangles(i), "		", fortfem_times(i)
     end do
 
+    call plot(mesh, filename=output_directory//"/representative_mesh_2d.png", &
+        title="Representative FortFEM benchmark mesh")
+
     ! Save results for comparison
     call save_benchmark_results()
 
@@ -155,6 +158,10 @@ end program fortfem_mesh_benchmark
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/fortfem_mesh_benchmark/primary.png)
+
 ### entity_counts_1d.png
 
 ![entity_counts_1d.png](../../media/examples/fortfem_mesh_benchmark/entity_counts_1d.png)
@@ -162,6 +169,10 @@ end program fortfem_mesh_benchmark
 ### generation_time_1d.png
 
 ![generation_time_1d.png](../../media/examples/fortfem_mesh_benchmark/generation_time_1d.png)
+
+### representative_mesh_2d.png
+
+![representative_mesh_2d.png](../../media/examples/fortfem_mesh_benchmark/representative_mesh_2d.png)
 
 ---
 

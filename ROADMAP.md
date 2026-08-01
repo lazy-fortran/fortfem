@@ -1637,6 +1637,13 @@ gallery example.
 - FortPlot mesh-bearing examples have a regression fixture that checks element
   count, boundary edges, patch boundaries, and internal surfaces in the
   rendered output before Pages deployment.
+- `doc/examples/primary_plots.txt` is the gallery's explicit visual contract:
+  each example names its physical solution, field, geometry, or mesh artifact.
+  The documentation generator copies that artifact to `primary.png` and emits
+  it before convergence, timing, conditioning, or other diagnostic plots. The
+  contract is checked independently by `test/test_example_docs.sh`; FortPlot's
+  3-D scatter path must preserve per-sample colour maps so solution samples
+  remain physically interpretable.
 
 ### Phase 9: Future application layer: **reference only**
 

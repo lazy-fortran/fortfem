@@ -14,14 +14,15 @@ program bem_sphere_3d
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, xscale, &
-        ylabel, yscale
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, title, &
+        xlabel, xscale, ylabel, yscale
     implicit none
 
     character(*), parameter :: output_directory = &
         "output/example/bem_sphere_3d"
     real(dp), allocatable :: dense_action(:), density(:), fast_action(:)
     real(dp), allocatable :: matrix(:, :), vertices(:, :)
+    real(dp), allocatable :: panel_centers(:, :)
     complex(dp), allocatable :: complex_density(:), helmholtz_dense(:)
     complex(dp), allocatable :: helmholtz_dense_density(:)
     complex(dp), allocatable :: helmholtz_dirichlet(:)
@@ -177,6 +178,20 @@ program bem_sphere_3d
         maxval(abs(cfie_dense_field - cfie_analytical_field))
     cfie_fast_field_error = &
         maxval(abs(cfie_fast_field - cfie_analytical_field))
+
+    allocate(panel_centers(3, size(triangles, 2)))
+    do field_point = 1, size(triangles, 2)
+        panel_centers(:, field_point) = sum( &
+            vertices(:, triangles(:, field_point)), dim=2)/3.0_dp
+    end do
+    call figure(figsize=[7.5_dp, 6.0_dp])
+    call add_scatter( &
+        panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
+        c=density, &
+        cmap="viridis", marker=".", markersize=5.0_dp, &
+        label="Laplace P0 surface density")
+    call title("Three-dimensional Laplace BEM density on the sphere")
+    call savefig(output_directory//"/sphere_density_3d.png")
 
     call figure(figsize=[8.0_dp, 5.0_dp])
     call plot(panel_axis, exact, label="analytical 4 pi", linestyle="-")

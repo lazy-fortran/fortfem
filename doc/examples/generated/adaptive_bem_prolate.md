@@ -55,8 +55,8 @@ program adaptive_bem_prolate
         generate_sphere_surface_mesh, mark_bem_dorfler, &
         refine_surface_mesh_marked, solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, &
-        ylabel, yscale
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, title, &
+        xlabel, ylabel, yscale
     implicit none
 
     integer, parameter :: step_count = 5
@@ -67,6 +67,7 @@ program adaptive_bem_prolate
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: density(:), indicators(:)
     real(dp), allocatable :: refined_vertices(:, :), vertices(:, :)
+    real(dp), allocatable :: panel_centers(:, :)
     logical, allocatable :: marked(:)
     real(dp) :: capacity, exact_capacity, error(step_count)
     real(dp) :: estimator(step_count), panels(step_count)
@@ -103,6 +104,20 @@ program adaptive_bem_prolate
         call move_alloc(refined_triangles, triangles)
     end do
 
+    allocate(panel_centers(3, size(triangles, 2)))
+    do step = 1, size(triangles, 2)
+        panel_centers(:, step) = sum( &
+            vertices(:, triangles(:, step)), dim=2)/3.0_dp
+    end do
+    call figure(figsize=[7.5_dp, 6.0_dp])
+    call add_scatter( &
+        panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
+        c=density, &
+        cmap="viridis", marker=".", markersize=5.0_dp, &
+        label="P0 surface density")
+    call title("Adaptive Laplace BEM density on a prolate spheroid")
+    call savefig(output_directory//"/prolate_density_3d.png")
+
     call figure()
     call plot(panels, error, label="capacity error")
     call plot(panels, estimator, label="residual estimator")
@@ -133,9 +148,17 @@ end program adaptive_bem_prolate
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/adaptive_bem_prolate/primary.png)
+
 ### adaptive_convergence.png
 
 ![adaptive_convergence.png](../../media/examples/adaptive_bem_prolate/adaptive_convergence.png)
+
+### prolate_density_3d.png
+
+![prolate_density_3d.png](../../media/examples/adaptive_bem_prolate/prolate_density_3d.png)
 
 ---
 

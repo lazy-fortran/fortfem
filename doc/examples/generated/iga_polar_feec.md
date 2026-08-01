@@ -193,6 +193,10 @@ end program iga_polar_feec
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/iga_polar_feec/primary.png)
+
 ### polar_control_mesh_2d.png
 
 ![polar_control_mesh_2d.png](../../media/examples/iga_polar_feec/polar_control_mesh_2d.png)

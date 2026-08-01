@@ -95,14 +95,6 @@ program iga_jorek_flux
 contains
 
     subroutine render_plots()
-        call figure(figsize=[9.0_dp, 5.5_dp])
-        call plot(time, max(norm_drift, epsilon(1.0_dp)))
-        call set_yscale("log")
-        call xlabel("time")
-        call ylabel("relative spline mass-norm drift")
-        call title("JOREK ideal flux subflow: geometric invariant")
-        call savefig(output_directory//"/jorek_flux_invariant_1d.png")
-
         call figure(figsize=[8.0_dp, 5.5_dp])
         call pcolormesh(r_edges, z_edges, initial_map, cmap="coolwarm")
         call colorbar(label="poloidal magnetic flux psi")
@@ -110,6 +102,14 @@ contains
         call ylabel("vertical coordinate")
         call title("JOREK ideal flux subflow: initial state")
         call savefig(output_directory//"/jorek_flux_initial_2d.png")
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(time, max(norm_drift, epsilon(1.0_dp)))
+        call set_yscale("log")
+        call xlabel("time")
+        call ylabel("relative spline mass-norm drift")
+        call title("JOREK ideal flux subflow: geometric invariant")
+        call savefig(output_directory//"/jorek_flux_invariant_1d.png")
 
         call figure(figsize=[8.0_dp, 5.5_dp])
         call pcolormesh(r_edges, z_edges, final_map, cmap="coolwarm")

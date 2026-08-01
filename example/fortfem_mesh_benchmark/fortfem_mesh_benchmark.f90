@@ -55,6 +55,9 @@ program fortfem_mesh_benchmark
             "		", fortfem_triangles(i), "		", fortfem_times(i)
     end do
 
+    call plot(mesh, filename=output_directory//"/representative_mesh_2d.png", &
+        title="Representative FortFEM benchmark mesh")
+
     ! Save results for comparison
     call save_benchmark_results()
 

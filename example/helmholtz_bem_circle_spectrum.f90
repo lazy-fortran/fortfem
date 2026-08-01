@@ -3,8 +3,8 @@ program helmholtz_bem_circle_spectrum
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
-        title, xlabel, ylabel
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, set_xscale, &
+        set_yscale, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(3) = [12, 24, 48]
@@ -39,6 +39,8 @@ program helmholtz_bem_circle_spectrum
             hypersingular_errors(mesh_id)
     end do
 
+    call render_boundary_mode()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(mesh_sizes_real, single_errors, label="single layer", marker="o")
     call plot(mesh_sizes_real, double_errors, label="double layer", marker="s")
@@ -54,6 +56,27 @@ program helmholtz_bem_circle_spectrum
         "output/example/helmholtz_bem_circle_spectrum/convergence_1d.png")
 
 contains
+
+    subroutine render_boundary_mode()
+        integer, parameter :: point_count = 128
+        real(dp) :: angle, mode(point_count)
+        real(dp) :: x(point_count), y(point_count)
+        integer :: point
+
+        do point = 1, point_count
+            angle = 2.0_dp*acos(-1.0_dp)*real(point - 1, dp)/ &
+                real(point_count, dp)
+            x(point) = cos(angle)
+            y(point) = sin(angle)
+            mode(point) = cos(angle)
+        end do
+        call figure(figsize=[7.0_dp, 6.5_dp])
+        call add_scatter(x, y, c=mode, cmap="coolwarm", marker=".", &
+            markersize=5.0_dp, label="cos(theta) spectral mode")
+        call title("Helmholtz circle BEM boundary mode")
+        call savefig( &
+            "output/example/helmholtz_bem_circle_spectrum/boundary_mode_2d.png")
+    end subroutine render_boundary_mode
 
     subroutine circle_mode_eigenvalues( &
             panel_count, single_layer_eigenvalue, double_layer_eigenvalue, &

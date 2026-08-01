@@ -6,6 +6,8 @@ index_file="$repository_dir/doc/examples/index.md"
 generated_dir="$repository_dir/doc/examples/generated"
 readme_file="$repository_dir/README.md"
 order_file="$repository_dir/doc/examples/gallery_order.txt"
+primary_file="$repository_dir/doc/examples/primary_plots.txt"
+artifacts_dir="$repository_dir/artifacts/plots/examples"
 
 mapfile -t expected < <(
     find "$repository_dir/example" -mindepth 1 -maxdepth 2 \
@@ -24,6 +26,9 @@ mapfile -t gallery_cards < <(
 )
 mapfile -t ordered < <(
     sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$order_file"
+)
+mapfile -t primary_entries < <(
+    sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$primary_file"
 )
 
 if ! diff -u \
@@ -47,6 +52,14 @@ if ! diff -u \
     exit 1
 fi
 
+mapfile -t primary_names < <(printf '%s\n' "${primary_entries[@]}" | awk '{print $1}' | sort -u)
+if ! diff -u \
+        <(printf '%s\n' "${expected[@]}") \
+        <(printf '%s\n' "${primary_names[@]}"); then
+    echo "primary plot map does not cover every Fortran example" >&2
+    exit 1
+fi
+
 test "${gallery_cards[0]}" = simple_poisson
 test "$(grep -c '<img class="example-card-image"' "$index_file")" \
     -eq "${#expected[@]}"
@@ -66,6 +79,13 @@ for example_name in "${expected[@]}"; do
         echo "example page has no generated plot or cover link: $example_name" >&2
         exit 1
     fi
+    primary_name=$(awk -v name="$example_name" '$1 == name {print $2}' "$primary_file")
+    if [[ -f "$artifacts_dir/$example_name/primary.png" ]]; then
+        first_plot=$(sed -n 's/^!\[[^]]*\](\([^)]*\)).*$/\1/p' "$page" | sed -n '1p')
+        test "$first_plot" = "../../media/examples/$example_name/primary.png"
+        test -s "$artifacts_dir/$example_name/primary.png"
+        test -n "$primary_name"
+    fi
 done
 
 if grep -n '[[:blank:]]$' "$index_file" "$generated_dir/index.md"; then
@@ -81,7 +101,6 @@ grep -Fq \
     'https://lazy-fortran.github.io/fortfem/page/examples/index.html' \
     "$readme_file"
 
-artifacts_dir="$repository_dir/artifacts/plots/examples"
 if [[ -d "$artifacts_dir" ]]; then
     while IFS= read -r plot; do
         example_name=$(basename "$(dirname "$plot")")

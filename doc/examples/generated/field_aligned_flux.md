@@ -105,6 +105,10 @@ end program field_aligned_flux
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/field_aligned_flux/primary.png)
+
 ### field_aligned_flux_1d.png
 
 ![field_aligned_flux_1d.png](../../media/examples/field_aligned_flux/field_aligned_flux_1d.png)

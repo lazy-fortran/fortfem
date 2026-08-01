@@ -65,7 +65,8 @@ program curl_curl_example
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortnum_linalg, only: det3
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
+    use fortplot, only: figure, legend, plot, quiver, savefig, title, xlabel, &
+        ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -94,6 +95,8 @@ program curl_curl_example
     if (.not. all(errors(:, 2:) < errors(:, :maximum_order - 1))) &
         error stop "curl-curl p-convergence regression"
 
+    call render_field_slice()
+
     call figure(figsize=[8.0_dp, 5.0_dp])
     call plot(orders, errors(1, :), label="field error", marker="o")
     call plot(orders, errors(2, :), label="curl error", marker="s")
@@ -112,6 +115,47 @@ program curl_curl_example
     close (unit)
 
 contains
+
+    subroutine render_field_slice()
+        integer, parameter :: nx = 17, ny = 17
+        real(dp) :: x_grid(nx), y_grid(ny), u_grid(nx, ny), v_grid(nx, ny)
+        real(dp) :: x_flat(nx*ny), y_flat(nx*ny), u_flat(nx*ny), v_flat(nx*ny)
+        real(dp) :: value(3), point(3)
+        integer :: i, j, index
+
+        do i = 1, nx
+            x_grid(i) = real(i - 1, dp)/real(nx - 1, dp)
+        end do
+        do j = 1, ny
+            y_grid(j) = real(j - 1, dp)/real(ny - 1, dp)
+        end do
+        do j = 1, ny
+            do i = 1, nx
+                point = [x_grid(i), y_grid(j), 0.5_dp]
+                value = exact_curl(point)
+                u_grid(i, j) = value(1)
+                v_grid(i, j) = value(2)
+            end do
+        end do
+
+        index = 0
+        do j = 1, ny
+            do i = 1, nx
+                index = index + 1
+                x_flat(index) = x_grid(i)
+                y_flat(index) = y_grid(j)
+                u_flat(index) = u_grid(i, j)
+                v_flat(index) = v_grid(i, j)
+            end do
+        end do
+        call figure(figsize=[7.5_dp, 6.0_dp])
+        call quiver(x_flat, y_flat, u_flat, v_flat, scale=1.0_dp, &
+            color="navy")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Manufactured curl(E) slice at z = 0.5")
+        call savefig(output_directory//"/curl_curl_field_slice_2d.png")
+    end subroutine render_field_slice
 
     pure subroutine manufactured_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z
@@ -255,6 +299,14 @@ end program curl_curl_example
 ```
 
 ## Generated Plots
+
+### primary.png
+
+![primary.png](../../media/examples/curl_curl/primary.png)
+
+### curl_curl_field_slice_2d.png
+
+![curl_curl_field_slice_2d.png](../../media/examples/curl_curl/curl_curl_field_slice_2d.png)
 
 ### curl_curl_p_convergence.png
 

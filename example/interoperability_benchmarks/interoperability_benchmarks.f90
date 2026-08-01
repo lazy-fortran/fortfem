@@ -2,8 +2,8 @@ program interoperability_benchmarks
     use fortfem_interoperability_records, only: interoperability_record_t, &
         read_interoperability_records
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, set_xscale, &
-        set_yscale, title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
+        set_xscale, set_yscale, title, xlabel, ylabel
     implicit none
 
     character(len=512) :: output_directory, records_root
@@ -18,12 +18,43 @@ program interoperability_benchmarks
         "mkdir -p '"//trim(output_directory)//"'", exitstat=command_status)
     if (command_status /= 0) error stop "cannot create plot output directory"
 
+    call reference_solution_figure()
     call accuracy_figure("poisson", "Poisson", "H1")
     call accuracy_figure("ampere", "Ampere curl-curl", "H(curl)")
     call timing_figure("poisson", "Poisson")
     call timing_figure("ampere", "Ampere curl-curl")
 
 contains
+
+    subroutine reference_solution_figure()
+        integer, parameter :: nx = 32, ny = 32
+        real(dp) :: x_edges(nx + 1), y_edges(ny + 1), values(nx, ny)
+        real(dp) :: x, y
+        integer :: i, j
+
+        do i = 1, nx + 1
+            x_edges(i) = real(i - 1, dp)/real(nx, dp)
+        end do
+        do j = 1, ny + 1
+            y_edges(j) = real(j - 1, dp)/real(ny, dp)
+        end do
+        do j = 1, ny
+            y = 0.5_dp*(y_edges(j) + y_edges(j + 1))
+            do i = 1, nx
+                x = 0.5_dp*(x_edges(i) + x_edges(i + 1))
+                values(i, j) = sin(acos(-1.0_dp)*x)* &
+                    sin(acos(-1.0_dp)*y)
+            end do
+        end do
+
+        call figure(figsize=[8.5_dp, 5.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        call colorbar(label="shared manufactured Poisson solution u")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Common solution used by FEniCSx, FreeFEM, and MFEM")
+        call save_pair("manufactured_poisson_solution_2d")
+    end subroutine reference_solution_figure
 
     subroutine accuracy_figure(case_name, display_name, graph_name)
         character(len=*), intent(in) :: case_name, display_name, graph_name

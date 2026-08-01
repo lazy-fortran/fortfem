@@ -13,8 +13,8 @@ program mixed_poisson
         vector_test_function_t, vector_trial_function, vector_trial_function_t
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
-    use fortplot, only: figure, legend, plot, savefig, set_xscale, &
-        set_yscale, title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
+        set_xscale, set_yscale, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -37,6 +37,8 @@ program mixed_poisson
     flux_errors = errors(1, :)
     pressure_errors = errors(2, :)
 
+    call render_solution()
+
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(h, flux_errors, label="RT1 flux L2 error", marker="o")
     call plot(h, pressure_errors, label="DG1 pressure L2 error", marker="s")
@@ -49,6 +51,34 @@ program mixed_poisson
     call savefig(output_directory//"/mixed_poisson_convergence_1d.png")
 
 contains
+
+    subroutine render_solution()
+        integer, parameter :: nx = 32, ny = 32
+        real(dp) :: x_edges(nx + 1), y_edges(ny + 1), values(nx, ny)
+        integer :: i, j
+
+        do i = 1, nx + 1
+            x_edges(i) = real(i - 1, dp)/real(nx, dp)
+        end do
+        do j = 1, ny + 1
+            y_edges(j) = real(j - 1, dp)/real(ny, dp)
+        end do
+        do j = 1, ny
+            do i = 1, nx
+                values(i, j) = exact_pressure([ &
+                    0.5_dp*(x_edges(i) + x_edges(i + 1)), &
+                    0.5_dp*(y_edges(j) + y_edges(j + 1))])
+            end do
+        end do
+
+        call figure(figsize=[8.5_dp, 5.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        call colorbar(label="manufactured pressure p")
+        call xlabel("x")
+        call ylabel("y")
+        call title("RT-DG mixed Poisson pressure field")
+        call savefig(output_directory//"/mixed_poisson_solution_2d.png")
+    end subroutine render_solution
 
     subroutine solve_and_measure(vertex_count, errors)
         integer, intent(in) :: vertex_count

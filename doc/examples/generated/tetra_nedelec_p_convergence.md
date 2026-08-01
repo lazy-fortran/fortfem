@@ -22,7 +22,8 @@ program tetra_nedelec_p_convergence
         interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, plot, savefig, set_yscale, title, xlabel, ylabel
+    use fortplot, only: add_scatter, figure, plot, savefig, set_yscale, title, &
+        xlabel, ylabel
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -51,6 +52,8 @@ program tetra_nedelec_p_convergence
         error stop "order four did not reproduce the cubic field"
     end if
 
+    call render_field()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(degrees, errors, label="Nedelec interpolation error", &
         marker="o")
@@ -61,6 +64,28 @@ program tetra_nedelec_p_convergence
     call savefig(output_directory//"/p_convergence_1d.png")
 
 contains
+
+    subroutine render_field()
+        real(dp), parameter :: vertices(3, 8) = reshape([ &
+            0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, &
+            0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 0.0_dp, &
+            0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 0.0_dp, 1.0_dp, &
+            0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, 1.0_dp], [3, 8])
+        real(dp) :: field_magnitude(size(vertices, 2))
+        integer :: vertex
+
+        do vertex = 1, size(vertices, 2)
+            field_magnitude(vertex) = &
+                norm2(cubic_gradient_value(vertices(:, vertex)))
+        end do
+        call figure(figsize=[7.5_dp, 6.0_dp])
+        call add_scatter( &
+            vertices(1, :), vertices(2, :), vertices(3, :), &
+            c=field_magnitude, cmap="viridis", marker="o", &
+            markersize=9.0_dp, label="|grad(x^4)| samples")
+        call title("Tetrahedral Nedelec vector field")
+        call savefig(output_directory//"/nedelec_field_3d.png")
+    end subroutine render_field
 
     subroutine interpolation_error(basis, error, status)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
@@ -110,6 +135,14 @@ end program tetra_nedelec_p_convergence
 ```
 
 ## Generated Plots
+
+### primary.png
+
+![primary.png](../../media/examples/tetra_nedelec_p_convergence/primary.png)
+
+### nedelec_field_3d.png
+
+![nedelec_field_3d.png](../../media/examples/tetra_nedelec_p_convergence/nedelec_field_3d.png)
 
 ### p_convergence_1d.png
 

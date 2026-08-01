@@ -360,6 +360,10 @@ end program iga_shape_sensitivity
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/iga_shape_sensitivity/primary.png)
+
 ### geometry_gradient_1d.png
 
 ![geometry_gradient_1d.png](../../media/examples/iga_shape_sensitivity/geometry_gradient_1d.png)

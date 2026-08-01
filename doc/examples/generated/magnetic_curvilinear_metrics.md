@@ -123,6 +123,10 @@ end program magnetic_curvilinear_metrics
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/magnetic_curvilinear_metrics/primary.png)
+
 ### cylindrical_coefficients_1d.png
 
 ![cylindrical_coefficients_1d.png](../../media/examples/magnetic_curvilinear_metrics/cylindrical_coefficients_1d.png)
