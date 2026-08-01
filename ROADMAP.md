@@ -1344,7 +1344,9 @@ gallery example.
   fixed activation mask, and a symmetric-Jacobi rank/condition diagnostic
   reports the active enrichment rank and singularity with an independent
   weighted, finite-difference, and real-adjoint oracle; support activation maps
-  and Piola-aware conditioning remain.
+  now expose CSR sign activation, unique extrema, signed margins, and
+  fixed-topology JVP/VJP actions with explicit owner/tie/topology rejection;
+  Piola-aware conditioning remains.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
