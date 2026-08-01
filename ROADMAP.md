@@ -1164,9 +1164,12 @@ gallery example.
   adjoint-identity tests. Continue the inventory for remaining public
   operators and block solver compositions.
 - Publish the complex-adjoint and shape-derivative conventions.
-- Add seeded random generators and shrinking to the `fo` test path. The first
-  generators cover oriented cells, positive quadrature weights, tensor
-  coefficients, mode sets, and fixed-topology interface data.
+- The `check` helper used by the normal `fo test` path now provides explicit
+  per-case xorshift seeds, bounded real/integer generators, callback-based
+  property execution, and deterministic integer shrinking with failure-seed
+  reporting. The first property test covers reproducibility and bounds;
+  geometry, tensor, mode-set, and fixed-topology interface generators can
+  build on this helper without global random state.
 - The public `partition_layout_t` now defines the communicator-free
   partitionable data boundary: unique local-to-global IDs, owner rank,
   explicit owned/ghost masks, deterministic local reductions, and linear JVP/
