@@ -46,5 +46,6 @@ Pages contain the complete source, usage command, and generated plots.
 - [iga_polar_feec](iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence
 - [iga_jorek_flux](iga_jorek_flux.html) - This advanced example evolves the ideal poloidal magnetic-flux subflow
 - [maxwell_torus_curved_scattering](maxwell_torus_curved_scattering.html) - This example solves time-harmonic perfect-electric-conductor scattering on an
+- [maxwell_torus_fem_bem_solution](maxwell_torus_fem_bem_solution.html) - This fixture solves the neutral curl--curl FEM--BEM system on a small exact
 
 [← Back to examples](../index.html)
