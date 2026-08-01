@@ -1708,6 +1708,12 @@ gallery example.
   of its solved Nédélec/PML edge field as the primary preview; the TE/TM DtN
   spectrum remains a secondary operator diagnostic rather than the gallery
   cover.
+- Boundary examples now lead with physical fields rather than abstract spectra:
+  circular DtN uses a filled disk mode, circle Laplace/Helmholtz BEM and CFIE
+  use incident or harmonic disk fields, symmetric transmission uses a filled
+  interior solution, and curved-torus Maxwell scattering uses its 2-D RCS
+  surface map. Their trace, spectrum, convergence, and geometry plots remain
+  available as secondary diagnostics.
 
 ### Phase 9: Future application layer: **reference only**
 
