@@ -129,6 +129,11 @@ source-dir = "app"
 main = "gen_fci_polygon_edge_area_products.f90"
 
 [[executable]]
+name = "gen_fci_quadratic_bezier_edge_area_products"
+source-dir = "app"
+main = "gen_fci_quadratic_bezier_edge_area_products.f90"
+
+[[executable]]
 name = "gen_cgl_pressure_tensor_products"
 source-dir = "app"
 main = "gen_cgl_pressure_tensor_products.f90"

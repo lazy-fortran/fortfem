@@ -733,7 +733,9 @@ shoelace/finite-difference/adjoint oracles, and a FortPlot gallery fixture. A
 generic fixed-topology polygon map now accepts boundary-ordered cells with
 any number of vertices at least three, with a generated per-edge contribution,
 shared-vertex JVP/VJP accumulation, independent pentagon oracle, and gallery
-fixture. A batched Cartesian bilinear adapter now
+fixture. Its quadratic Bezier-edge extension now supplies arbitrary curved
+polygon value/JVP/VJP measures with independent Gauss--Green and gallery
+oracles. A batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
 tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
@@ -1485,16 +1487,17 @@ gallery example.
   oracles. A generated fixed-topology quadrilateral area map now supplies
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
-  interpolation derivatives beyond quintic and higher-order curved
-  support-volume measures remain separate planned components. The generic
-  polygon map covers fixed-topology cells with more than four vertices. A
+  interpolation derivatives beyond quintic and curved support-volume measures
+  beyond quadratic remain separate planned components. The generic polygon map
+  covers fixed-topology cells with more than four vertices, and its generated
+  quadratic Bezier-edge extension covers arbitrary curved polygon boundaries. A
   generated quadratic Bezier-edge area map now
   supplies a fixed-topology curved-cell value/JVP/VJP contract with an
   independent Gauss--Green oracle and sampled-boundary gallery output.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
-  connectivity, higher-order curved measures, and stencil rebuilds at
+  connectivity, higher-order curved measures beyond quadratic, and stencil rebuilds at
   topology events remain planned; the generic straight polygon map and
   quadratic Bezier-edge quadrilateral map are now the unstructured-cell
   baselines.
