@@ -72,10 +72,11 @@ jobs:
       # Keep the ten-second per-target contract reliable on large runners;
       # unconstrained host-wide parallelism makes independent numerical tests
       # contend for memory and spuriously cross the wall-clock limit.
-      # Four workers keep module-producing targets ordered reliably on the
-      # hosted runner while retaining enough parallelism for the ten-second
-      # per-target contract.
-      FO_JOBS: 4
+      # The hosted gfortran front end can emit a module before all of its
+      # dependency diagnostics are settled; serialize Fo's test build so
+      # consumers never read a partial .mod file.  The ten-second timeout is
+      # per test target, independent of this build ordering.
+      FO_JOBS: 1
       FO_TEST_TIMEOUT: 10
     strategy:
       fail-fast: false
