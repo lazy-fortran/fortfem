@@ -1464,8 +1464,11 @@ gallery example.
   open-boundary gallery now solves a second, physically larger tetrahedral PML
   box, reconstructs the same interior field at shared targets, and reports the
   measured domain difference and solve time; its previous hard-coded far-wall
-  placeholder is gone. The remaining vector toroidal BEM/DtN and Ampere FEM
-  parity are still separate follow-up fixtures.
+  placeholder is gone. Exact-curved torus RWG currents now also have a public
+  off-surface magnetic-field reconstruction path with a coefficient-linearity
+  oracle, so the torus Maxwell gallery can show a computed field slice. The
+  remaining vector toroidal BEM/DtN parity and Ampere FEM parity are still
+  separate follow-up fixtures.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
@@ -1788,6 +1791,9 @@ gallery example.
   wave and reconstructed fields from both the reference and larger PML boxes;
   an independent test guards the shared-target field and domain-difference
   values before publication.
+- The curved-torus Maxwell gallery now leads with a reconstructed scattered
+  magnetic-field slice; the RCS surface, trace, weak-DtN response, and exact
+  geometry remain secondary diagnostics.
 
 ### Phase 9: Future application layer: **reference only**
 
