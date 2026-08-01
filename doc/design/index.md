@@ -169,6 +169,10 @@ neutral first-order `C sigma - E u` constitutive block and `D sigma - f`
 equilibrium block, including complete analytic JVP/VJP actions for compatible,
 TDNNS, Hellinger--Reissner, and anisotropic elasticity clients.
 
+The [elasticity weak-symmetry constraint](elasticity_symmetry_constraint.html)
+adds the independent `W sigma - g` multiplier/trace block with complete
+fixed-topology JVP/VJP actions.
+
 The [compatible flux elimination contract](compatible_flux_elimination.html)
 provides the differentiable local Schur reduction and recovery map for
 RT/BDM/Nédélec, compatible IGA, and HDG flux blocks without owning a global

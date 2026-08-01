@@ -20,6 +20,10 @@ module fortfem_api
         assemble_mixed_elasticity_residual, &
         assemble_mixed_elasticity_residual_jvp, &
         assemble_mixed_elasticity_residual_vjp
+    use fortfem_elasticity_symmetry_constraint, only: &
+        assemble_elasticity_symmetry_constraint, &
+        assemble_elasticity_symmetry_constraint_jvp, &
+        assemble_elasticity_symmetry_constraint_vjp
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cycle_basis, &
         cell_complex_harmonic_one_forms, &
@@ -2163,6 +2167,9 @@ module fortfem_api
     public :: assemble_mixed_elasticity_residual
     public :: assemble_mixed_elasticity_residual_jvp
     public :: assemble_mixed_elasticity_residual_vjp
+    public :: assemble_elasticity_symmetry_constraint
+    public :: assemble_elasticity_symmetry_constraint_jvp
+    public :: assemble_elasticity_symmetry_constraint_vjp
 
     ! Plotting interface
     public :: plot
