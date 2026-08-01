@@ -39,6 +39,7 @@ module fortfem_fourier_mode_registry
     public :: fourier_mode_conjugate_index
     public :: fourier_mode_triad_closed
     public :: build_fourier_mode_triad_map
+    public :: build_fourier_mode_padded_registry
     public :: initialize_fourier_mode_registry
     public :: validate_fourier_mode_registry
 
@@ -264,6 +265,85 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_fourier_mode_triad_map
+
+    subroutine build_fourier_mode_padded_registry( &
+            registry, padded_registry, status)
+        !! Build a deterministic work registry closed under one bilinear sum.
+        !!
+        !! Original modes are retained first, followed by unique sums of all
+        !! ordered input pairs. Original radial powers and normalizations are
+        !! preserved; new modes use the regularity default `abs(m)` and unit
+        !! normalization. This is a one-product padding primitive, not a
+        !! promise of closure under arbitrarily many nonlinear products.
+        type(fourier_mode_registry_t), intent(in) :: registry
+        type(fourier_mode_registry_t), intent(out) :: padded_registry
+        type(fortsparse_status_t), intent(out) :: status
+        integer, allocatable :: poloidal_buffer(:), toroidal_buffer(:)
+        integer, allocatable :: radial_buffer(:)
+        real(dp), allocatable :: normalization_buffer(:)
+        integer :: mode_count, maximum_count, mode_total
+        integer :: first_mode, second_mode
+
+        call clear_registry(padded_registry)
+        if (.not. validate_fourier_mode_registry(registry, status)) return
+        mode_count = size(registry%poloidal_modes)
+        maximum_count = mode_count + mode_count*mode_count
+        allocate(poloidal_buffer(maximum_count), toroidal_buffer(maximum_count), &
+            radial_buffer(maximum_count), normalization_buffer(maximum_count))
+        mode_total = 0
+        do first_mode = 1, mode_count
+            call append_padded_mode( &
+                registry, registry%poloidal_modes(first_mode), &
+                registry%toroidal_modes(first_mode), mode_total, poloidal_buffer, &
+                toroidal_buffer, radial_buffer, normalization_buffer)
+        end do
+        do first_mode = 1, mode_count
+            do second_mode = 1, mode_count
+                call append_padded_mode( &
+                    registry, registry%poloidal_modes(first_mode) + &
+                    registry%poloidal_modes(second_mode), &
+                    registry%toroidal_modes(first_mode) + &
+                    registry%toroidal_modes(second_mode), mode_total, &
+                    poloidal_buffer, toroidal_buffer, radial_buffer, &
+                    normalization_buffer)
+            end do
+        end do
+        call initialize_fourier_mode_registry( &
+            padded_registry, poloidal_buffer(:mode_total), &
+            toroidal_buffer(:mode_total), registry%field_periods, &
+            registry%poloidal_phase, registry%toroidal_phase, registry%real_packed, &
+            radial_powers=radial_buffer(:mode_total), &
+            normalization=normalization_buffer(:mode_total), status=status)
+    end subroutine build_fourier_mode_padded_registry
+
+    subroutine append_padded_mode( &
+            registry, poloidal_mode, toroidal_mode, mode_total, poloidal_buffer, &
+            toroidal_buffer, radial_buffer, normalization_buffer)
+        type(fourier_mode_registry_t), intent(in) :: registry
+        integer, intent(in) :: poloidal_mode, toroidal_mode
+        integer, intent(inout) :: mode_total
+        integer, intent(inout) :: poloidal_buffer(:), toroidal_buffer(:)
+        integer, intent(inout) :: radial_buffer(:)
+        real(dp), intent(inout) :: normalization_buffer(:)
+        integer :: existing_mode, source_mode
+
+        do existing_mode = 1, mode_total
+            if (poloidal_buffer(existing_mode) /= poloidal_mode .or. &
+                toroidal_buffer(existing_mode) /= toroidal_mode) cycle
+            return
+        end do
+        mode_total = mode_total + 1
+        poloidal_buffer(mode_total) = poloidal_mode
+        toroidal_buffer(mode_total) = toroidal_mode
+        source_mode = find_fourier_mode(registry, poloidal_mode, toroidal_mode)
+        if (source_mode > 0) then
+            radial_buffer(mode_total) = registry%radial_powers(source_mode)
+            normalization_buffer(mode_total) = registry%normalization(source_mode)
+        else
+            radial_buffer(mode_total) = abs(poloidal_mode)
+            normalization_buffer(mode_total) = 1.0_dp
+        end if
+    end subroutine append_padded_mode
 
     subroutine evaluate_fourier_mode( &
             registry, mode_index, radius, theta, phi, value, radial_derivative, &

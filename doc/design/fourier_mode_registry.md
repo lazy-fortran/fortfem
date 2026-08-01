@@ -35,6 +35,8 @@ conjugate = fourier_mode_conjugate_index(registry, index, status)
 closed = fourier_mode_triad_closed(registry, first, second, output, status)
 call build_fourier_mode_triad_map( &
     registry, triad_map, missing_count, status)
+call build_fourier_mode_padded_registry( &
+    registry, padded_registry, status)
 call evaluate_fourier_mode( &
     registry, index, radius, theta, phi, value, radial_derivative, &
     theta_derivative, phi_derivative, status)
@@ -60,9 +62,13 @@ caller still owns the real cosine/sine coefficient packing. Triad closure is
 queried explicitly rather than silently padding a truncated mode set.
 `build_fourier_mode_triad_map` returns the retained output index for every
 ordered input pair and counts omitted sums. A caller can therefore reject an
-aliasing-prone set, build a padded/dealiased work registry, or deliberately
-project omitted modes; the neutral product kernel never makes that policy
-implicitly.
+aliasing-prone set, use `build_fourier_mode_padded_registry` for a deterministic
+one-product work set, or deliberately project omitted modes; the neutral
+product kernel never makes that policy implicitly. The padded constructor keeps
+the original modes first, appends unique ordered pair sums, preserves field
+periods, phases, real/conjugate packing, radial powers, and normalizations for
+retained modes, and uses `abs(m)` plus unit normalization for newly introduced
+modes. It intentionally does not promise closure under repeated products.
 
 The value, fixed-topology JVP, and real-coordinate VJP use the complex
 real-part convention
@@ -91,16 +97,19 @@ H(curl), or H(div) coefficients, and a FortSym-generated constitutive block
 can supply `C`. Truncated triads are explicit omissions; de-aliasing and
 coefficient symmetry remain caller-owned. `build_fourier_mode_triad_map`
 returns the output index for every ordered input pair and an omission count,
-so a caller can choose padding, projection, or rejection explicitly. Its JVP
+so a caller can choose padding, projection, or rejection explicitly. The
+one-product padded registry is therefore a work-set constructor, not a hidden
+nonlinear truncation rule. Its JVP
 differentiates all three factors and its complex VJP uses the same real-part
 inner product.
 
 ## Independent verification
 
 `test_fourier_mode_registry` checks deep-copy assignment, metadata validation,
-conjugate lookup, retained and absent triads, the phase/radial analytical
-formula, central-difference JVP, complex real-part VJP identity, and malformed
-real-packed, duplicate, and index inputs.
+conjugate lookup, retained and absent triads, one-product padded closure and
+the explicit next-product omission policy, metadata preservation, the
+phase/radial analytical formula, central-difference JVP, complex real-part VJP
+identity, and malformed real-packed, duplicate, and index inputs.
 `test_fourier_vector_product` checks an independent retained-triad map and
 contraction,
 the full three-factor product-rule JVP and central differences, the complex
