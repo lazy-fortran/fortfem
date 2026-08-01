@@ -20,6 +20,8 @@ every element. The source is evaluated from the exact solution, and the
 program checks the resulting numerical field, energy positivity, and
 manufactured error before writing plots. The first plot is the computed
 solution; the centerline and mesh views are secondary diagnostics.
+An absolute-error map is included alongside the centerline and benchmark
+values.
 
 ## Usage
 
@@ -60,6 +62,7 @@ program anisotropic_tensor_diffusion
     real(dp) :: tensor_at_quadrature(1, 2, 2), quadrature_weight(1)
     real(dp) :: grid(nodes_per_side), solution_map(nodes_per_side, nodes_per_side)
     real(dp) :: exact_map(nodes_per_side, nodes_per_side)
+    real(dp) :: error_map(nodes_per_side, nodes_per_side)
     real(dp) :: centerline(nodes_per_side), exact_centerline(nodes_per_side)
     real(dp) :: x, y, centroid_x, centroid_y, determinant, area
     real(dp) :: maximum_error, energy, start_time, elapsed
@@ -120,6 +123,8 @@ program anisotropic_tensor_diffusion
             node = node_index(ix, iy)
             solution_map(ix + 1, iy + 1) = solution(node)
             exact_map(ix + 1, iy + 1) = exact_solution(node)
+            error_map(ix + 1, iy + 1) = abs( &
+                solution(node) - exact_solution(node))
             maximum_error = max(maximum_error, abs( &
                 solution(node) - exact_solution(node)))
         end do
@@ -234,6 +239,15 @@ contains
         call legend()
         call savefig(output_directory//"/anisotropic_centerline_1d.png")
 
+        call figure(figsize=[8.0_dp, 6.0_dp])
+        call contourf(grid, grid, error_map, cmap="magma", &
+            show_colorbar=.true.)
+        call colorbar(label="absolute nodal error")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Anisotropic diffusion absolute error")
+        call savefig(output_directory//"/anisotropic_error_2d.png")
+
         call figure(figsize=[7.0_dp, 6.0_dp])
         do line = 1, nodes_per_side
             line_x = grid
@@ -261,6 +275,10 @@ end program anisotropic_tensor_diffusion
 ### anisotropic_centerline_1d.png
 
 ![anisotropic_centerline_1d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_centerline_1d.png)
+
+### anisotropic_error_2d.png
+
+![anisotropic_error_2d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_error_2d.png)
 
 ### anisotropic_mesh_2d.png
 

@@ -14,3 +14,5 @@ every element. The source is evaluated from the exact solution, and the
 program checks the resulting numerical field, energy positivity, and
 manufactured error before writing plots. The first plot is the computed
 solution; the centerline and mesh views are secondary diagnostics.
+An absolute-error map is included alongside the centerline and benchmark
+values.
