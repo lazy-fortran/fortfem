@@ -22,6 +22,9 @@ module fortfem_mixed_wave_time
     public :: advance_mixed_wave_symplectic_euler
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp
+    public :: advance_mixed_wave_strang
+    public :: advance_mixed_wave_strang_jvp
+    public :: advance_mixed_wave_strang_vjp
 
 contains
 
@@ -378,6 +381,184 @@ contains
             dot_product(v_rhs_bar, matmul(coupling, q))
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine advance_mixed_wave_symplectic_euler_vjp
+
+    subroutine advance_mixed_wave_strang( &
+            mass_q, mass_v, coupling_a, coupling_b, time_step, q, v, status)
+        !! Advance a symmetric A(h/2)-B(h)-A(h/2) Cayley split.
+        !!
+        !! Each substep is an implicit midpoint map for a separately
+        !! caller-owned mixed Hamiltonian block.  The composition is symmetric
+        !! and reversible for signed time steps; dissipative operators must be
+        !! composed outside this routine.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :)
+        real(dp), intent(in) :: coupling_a(:, :), coupling_b(:, :)
+        real(dp), intent(in) :: time_step
+        real(dp), intent(inout) :: q(:), v(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: q_one(:), v_one(:), q_two(:), v_two(:)
+        integer :: nq, nv
+
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave Strang split received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling_a, 1) /= nv .or. size(coupling_a, 2) /= nq) return
+        if (size(coupling_b, 1) /= nv .or. size(coupling_b, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+
+        allocate(q_one(nq), v_one(nv), q_two(nq), v_two(nv))
+        q_one = q
+        v_one = v
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_one, v_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        q_two = q_one
+        v_two = v_one
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_b, time_step, q_two, v_two, status)
+        if (status%code /= FORTSPARSE_OK) return
+        q_one = q_two
+        v_one = v_two
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_one, v_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        q = q_one
+        v = v_one
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine advance_mixed_wave_strang
+
+    subroutine advance_mixed_wave_strang_jvp( &
+            mass_q, mass_v, coupling_a, coupling_b, time_step, q, v, &
+            time_step_dot, q_dot, v_dot, q_next_dot, v_next_dot, status)
+        !! Apply the tangent of the symmetric mixed-wave Strang split.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :)
+        real(dp), intent(in) :: coupling_a(:, :), coupling_b(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:), time_step_dot
+        real(dp), intent(in) :: q_dot(:), v_dot(:)
+        real(dp), intent(out) :: q_next_dot(:), v_next_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: q_one(:), v_one(:), q_two(:), v_two(:)
+        real(dp), allocatable :: q_one_dot(:), v_one_dot(:), q_two_dot(:), v_two_dot(:)
+        integer :: nq, nv
+
+        q_next_dot = 0.0_dp
+        v_next_dot = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave Strang JVP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling_a, 1) /= nv .or. size(coupling_a, 2) /= nq) return
+        if (size(coupling_b, 1) /= nv .or. size(coupling_b, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_dot) /= nq .or. size(v_dot) /= nv) return
+        if (size(q_next_dot) /= nq .or. size(v_next_dot) /= nv) return
+
+        allocate(q_one(nq), v_one(nv), q_two(nq), v_two(nv), &
+            q_one_dot(nq), v_one_dot(nv), q_two_dot(nq), v_two_dot(nv))
+        q_one = q
+        v_one = v
+        q_one_dot = q_dot
+        v_one_dot = v_dot
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_one, v_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call advance_mixed_wave_midpoint_jvp( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q, v, &
+            0.5_dp*time_step_dot, q_dot, v_dot, q_one_dot, v_one_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        q_two = q_one
+        v_two = v_one
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_b, time_step, q_two, v_two, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call advance_mixed_wave_midpoint_jvp( &
+            mass_q, mass_v, coupling_b, time_step, q_one, v_one, time_step_dot, &
+            q_one_dot, v_one_dot, q_two_dot, v_two_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        q_one = q_two
+        v_one = v_two
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_one, v_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call advance_mixed_wave_midpoint_jvp( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_two, v_two, &
+            0.5_dp*time_step_dot, q_two_dot, v_two_dot, q_next_dot, &
+            v_next_dot, status)
+    end subroutine advance_mixed_wave_strang_jvp
+
+    subroutine advance_mixed_wave_strang_vjp( &
+            mass_q, mass_v, coupling_a, coupling_b, time_step, q, v, &
+            q_next_bar, v_next_bar, q_bar, v_bar, time_step_bar, status)
+        !! Apply the real adjoint of the symmetric mixed-wave Strang split.
+        real(dp), intent(in) :: mass_q(:, :), mass_v(:, :)
+        real(dp), intent(in) :: coupling_a(:, :), coupling_b(:, :)
+        real(dp), intent(in) :: time_step, q(:), v(:)
+        real(dp), intent(in) :: q_next_bar(:), v_next_bar(:)
+        real(dp), intent(out) :: q_bar(:), v_bar(:), time_step_bar
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: q_one(:), v_one(:), q_two(:), v_two(:)
+        real(dp), allocatable :: q_bar_stage_three(:), v_bar_stage_three(:)
+        real(dp), allocatable :: q_bar_stage_two(:), v_bar_stage_two(:)
+        real(dp) :: time_step_bar_one, time_step_bar_two, time_step_bar_three
+        integer :: nq, nv
+
+        q_bar = 0.0_dp
+        v_bar = 0.0_dp
+        time_step_bar = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave Strang VJP received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling_a, 1) /= nv .or. size(coupling_a, 2) /= nq) return
+        if (size(coupling_b, 1) /= nv .or. size(coupling_b, 2) /= nq) return
+        if (size(q) /= nq .or. size(v) /= nv) return
+        if (size(q_next_bar) /= nq .or. size(v_next_bar) /= nv) return
+        if (size(q_bar) /= nq .or. size(v_bar) /= nv) return
+
+        allocate(q_one(nq), v_one(nv), q_two(nq), v_two(nv), &
+            q_bar_stage_three(nq), v_bar_stage_three(nv), &
+            q_bar_stage_two(nq), v_bar_stage_two(nv))
+        q_one = q
+        v_one = v
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_one, v_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        q_two = q_one
+        v_two = v_one
+        call advance_mixed_wave_midpoint( &
+            mass_q, mass_v, coupling_b, time_step, q_two, v_two, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        call advance_mixed_wave_midpoint_vjp( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q_two, v_two, &
+            q_next_bar, v_next_bar, q_bar_stage_three, v_bar_stage_three, &
+            time_step_bar_three, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call advance_mixed_wave_midpoint_vjp( &
+            mass_q, mass_v, coupling_b, time_step, q_one, v_one, &
+            q_bar_stage_three, v_bar_stage_three, q_bar_stage_two, &
+            v_bar_stage_two, &
+            time_step_bar_two, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call advance_mixed_wave_midpoint_vjp( &
+            mass_q, mass_v, coupling_a, 0.5_dp*time_step, q, v, &
+            q_bar_stage_two, v_bar_stage_two, q_bar, v_bar, &
+            time_step_bar_one, status)
+        if (status%code /= FORTSPARSE_OK) return
+        time_step_bar = 0.5_dp*time_step_bar_one + time_step_bar_two + &
+            0.5_dp*time_step_bar_three
+    end subroutine advance_mixed_wave_strang_vjp
 
     subroutine assemble_midpoint_system( &
             mass_q, mass_v, coupling, time_step, q, v, matrix_a, rhs)
