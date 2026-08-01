@@ -64,6 +64,7 @@ run_codegen gen_fci_parallel_products
 run_codegen gen_fci_quartic_lagrange
 run_codegen gen_fci_quintic_lagrange
 run_codegen gen_fci_quadrilateral_area_products
+run_codegen gen_fci_curved_quadrilateral_area_products
 run_codegen gen_cgl_pressure_tensor_products
 run_codegen gen_cgl_pressure_divergence_products
 run_codegen gen_fci_support_volume_products
@@ -95,6 +96,7 @@ fo fmt "$generated_dir/fortfem_fci_parallel_products.f90"
 fo fmt "$generated_dir/fortfem_fci_quartic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_quintic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_quadrilateral_area_products.f90"
+fo fmt "$generated_dir/fortfem_fci_curved_quadrilateral_area_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_tensor_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_divergence_products.f90"
 fo fmt "$generated_dir/fortfem_fci_support_volume_products.f90"

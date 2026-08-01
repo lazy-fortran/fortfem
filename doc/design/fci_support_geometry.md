@@ -36,9 +36,26 @@ oracle, central differences, and the real dot-product identity; the gallery
 fixture renders the polygons and their areas.
 
 Higher-order polygonal cells, moving connectivity, and genuinely curved
-support-volume measures remain planned extensions.  The quadrilateral map is
-the first reusable unstructured plane-cell contract and does not imply that a
-cut or curved FCI topology is differentiable across an event.
+support-volume measures remain planned extensions.  The curved quadrilateral
+map is a fixed-topology quadratic Bezier-edge contract: its vertex ordering
+and finite control data are validated, while callers remain responsible for
+keeping the curved boundary non-self-intersecting.  Neither straight nor
+curved FCI topology is differentiable across a connectivity or orientation
+event.
+
+For edge `e`, with endpoints `p_e`, `p_{e+1}` and control point `c_e`, the
+boundary is
+
+\[
+  r_e(t)=(1-t)^2p_e+2(1-t)t c_e+t^2p_{e+1},\qquad 0\leq t\leq1,
+\]
+
+and the generated measure evaluates the Green line integral
+`1/2 integral (x dy - y dx)` exactly for these quadratic edges.  The
+independent test evaluates the same line integral with three-point Gauss
+quadrature, then checks central differences and the real VJP dot-product
+identity.  The gallery samples the actual Bezier boundaries rather than
+replacing them by a polygonal preview.
 
 ## Provenance
 
