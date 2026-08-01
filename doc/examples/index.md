@@ -92,6 +92,17 @@ fpm run --example <example_name>
 <p>This example solves a manufactured two-dimensional diffusion problem with a</p>
 </div>
 </article>
+<article class="example-card" data-example="xfem_interface_solution">
+<a class="example-card-preview" href="generated/xfem_interface_solution.html">
+<img class="example-card-image"
+ src="../media/examples/xfem_interface_solution/primary.png"
+ alt="Plot preview for xfem_interface_solution" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/xfem_interface_solution.html">xfem_interface_solution</a></h3>
+<p>This physical-first gallery fixture constructs a manufactured scalar and</p>
+</div>
+</article>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
@@ -512,6 +523,7 @@ fpm run --example <example_name>
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [anisotropic_tensor_diffusion](generated/anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
+- [xfem_interface_solution](generated/xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive

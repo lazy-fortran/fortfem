@@ -13,6 +13,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [plotting](plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [anisotropic_tensor_diffusion](anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
+- [xfem_interface_solution](xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [curl_curl](curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [field_aligned_flux](field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive

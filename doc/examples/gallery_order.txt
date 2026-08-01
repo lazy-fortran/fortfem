@@ -7,6 +7,7 @@ plotting
 # Finite elements
 mixed_poisson
 anisotropic_tensor_diffusion
+xfem_interface_solution
 curl_curl
 cgl_pressure_tensor
 field_aligned_flux
