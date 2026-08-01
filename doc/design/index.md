@@ -126,6 +126,10 @@ The [physical interchange sample-set contract](interchange_samples.html)
 provides a common coordinate/value/weight set and weighted scalar, vector, or
 tensor comparison for license-safe external samplers.
 
+The [weighted wave reflection diagnostics](wave_reflection_diagnostics.html)
+provide solver-neutral complex error and reflection coefficients with analytic
+JVP/VJP actions for FEM, BEM, DtN, PML, and external-code sample comparisons.
+
 The [linear-response interchange contract](linear_response_interchange.html)
 defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and

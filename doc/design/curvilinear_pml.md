@@ -89,4 +89,7 @@ independent re-solves for the state JVP, and the real-complex state adjoint.
 
 The module is a coefficient contract, not a complete curved-object PML
 assembler. Layer geometry, active-cell topology, quadrature, and reflection
-diagnostics remain caller-owned and are tracked in the open-boundary roadmap.
+diagnostics remain caller-owned. The solver-neutral weighted reflection and
+error metrics used to compare those samples are documented in
+`wave_reflection_diagnostics.md`; geometry and layer-topology chains remain
+caller-owned and are tracked in the open-boundary roadmap.
