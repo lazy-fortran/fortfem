@@ -572,6 +572,8 @@ module fortfem_api
         apply_maxwell_weak_trace_reconstruction_jvp, &
         apply_maxwell_weak_trace_reconstruction_vjp, &
         assemble_maxwell_trace_to_flux_map, &
+        assemble_maxwell_trace_to_flux_map_jvp, &
+        assemble_maxwell_trace_to_flux_map_vjp, &
         assemble_maxwell_weak_trace_reconstruction, &
         assemble_maxwell_torus_curved_dtn_rwg_3d
     use fortfem_toroidal_coordinates, only: cartesian_to_toroidal, &
@@ -1255,6 +1257,8 @@ module fortfem_api
     public :: apply_maxwell_weak_trace_reconstruction_jvp
     public :: apply_maxwell_weak_trace_reconstruction_vjp
     public :: assemble_maxwell_trace_to_flux_map
+    public :: assemble_maxwell_trace_to_flux_map_jvp
+    public :: assemble_maxwell_trace_to_flux_map_vjp
     public :: assemble_maxwell_weak_trace_reconstruction
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
     public :: cartesian_to_toroidal

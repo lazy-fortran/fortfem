@@ -41,6 +41,8 @@ The public routines are:
 
 ```text
 assemble_maxwell_trace_to_flux_map(Z_E, Z_H, M_E, D, status)
+assemble_maxwell_trace_to_flux_map_jvp(...)
+assemble_maxwell_trace_to_flux_map_vjp(...)
 apply_maxwell_trace_to_flux(Z_E, Z_H, M_E, e, h, status)
 apply_maxwell_trace_to_flux_map(D, e, h, status)
 apply_maxwell_trace_to_flux_jvp(...)
@@ -61,6 +63,28 @@ The JVP solves the tangent equation
 The VJP uses the conjugate-transpose solve for the adjoint current. All
 complex reverse products use
 `real(sum(conjg(output_bar)*output_dot))`.
+
+The assembled-map derivative routines expose the same products without a
+right-hand-side trace. With (X=Z_E^{-1}M_E), they use
+
+\[
+ Z_E\dot X=\dot M_E-\dot Z_E X,
+ \qquad
+ \dot D=\dot Z_H X+Z_H\dot X.
+\]
+
+Their VJP returns the three form products by solving
+\(Z_E^H\Lambda=Z_H^H\bar D\):
+
+\[
+ \bar Z_H=\bar D X^H,\qquad
+ \bar M_E=\Lambda,\qquad
+ \bar Z_E=-\Lambda X^H.
+\]
+
+This is the fixed-topology geometry-derivative composition layer: curved
+EFIE, MFIE, and mass assemblers supply their own form derivatives, while the
+map composition remains independent of their quadrature implementation.
 
 ## Pointwise reconstruction
 
@@ -111,11 +135,12 @@ curved torus Maxwell example.
 ## Verification boundary
 
 `test_maxwell_curved_dtn` checks the matrix-free action against an assembled
-map, the complete JVP against a central difference, and the VJP against the
-complex adjoint identity on independent nonsymmetric complex matrices. It
-also assembles and applies the exact-curved torus map. The algebraic test is
-independent of the torus quadrature, while the torus call verifies that the
-existing RWG, RBC, EFIE, MFIE, and mass operators have compatible dimensions.
+map, both assembled-map and matrix-free JVPs against central differences, and
+both VJPs against complex adjoint identities on independent nonsymmetric
+complex matrices. It also assembles and applies the exact-curved torus map.
+The algebraic test is independent of the torus quadrature, while the torus
+call verifies that the existing RWG, RBC, EFIE, MFIE, and mass operators have
+compatible dimensions.
 
 The map requires a fixed surface topology and a nonsingular electric form.
 Resonance handling, regularization, and topology changes remain explicit
