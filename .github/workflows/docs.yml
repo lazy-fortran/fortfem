@@ -112,6 +112,7 @@ jobs:
           chmod +x scripts/generate_example_docs.sh
           ./scripts/generate_example_docs.sh
           bash test/test_example_docs.sh
+          bash test/test_gallery_media_staging.sh
         
       - name: Build documentation
         run: make doc
@@ -124,26 +125,11 @@ jobs:
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
           test "$(find "$source_dir/interoperability_benchmarks" \
             -maxdepth 1 -name '*.png' | wc -l)" -eq 5
-          stage_gallery_media() {
-            destination=$1
-            mkdir -p "$destination"
-            while IFS= read -r -d '' source; do
-              relative=${source#"$source_dir"/}
-              target="$destination/$relative"
-              mkdir -p "$(dirname "$target")"
-              cp -f "$source" "$target"
-              case "$source" in
-                *.png|*.svg)
-                  if [[ ! -s "$target" ]]; then
-                    echo "::error::gallery media was not staged: $relative"
-                    return 1
-                  fi
-                  ;;
-              esac
-            done < <(find "$source_dir" -type f -print0)
-          }
-          stage_gallery_media build/doc/page/media/examples
-          stage_gallery_media build/doc/media/examples
+          chmod +x scripts/stage_gallery_media.sh
+          scripts/stage_gallery_media.sh \
+            "$source_dir" build/doc/page/media/examples
+          scripts/stage_gallery_media.sh \
+            "$source_dir" build/doc/media/examples
 
       - name: Validate complete examples page
         run: bash test/test_example_pages.sh
