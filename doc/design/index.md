@@ -135,6 +135,10 @@ The [tensor volume work contract](tensor_volume_work.html) assembles the
 caller-owned `stress:grad(test)` residual and its geometry/tensor/weight
 JVP/VJP actions for CGL, Maxwell, anisotropic, and elastic clients.
 
+The [tensor diffusion matrix contract](tensor_diffusion_matrix.html) provides
+the analogous tensor-weighted gradient pairing for anisotropic scalar,
+elastic, and compatible field blocks, with analytic JVP/VJP actions.
+
 The [compatible flux elimination contract](compatible_flux_elimination.html)
 provides the differentiable local Schur reduction and recovery map for
 RT/BDM/Nédélec, compatible IGA, and HDG flux blocks without owning a global
