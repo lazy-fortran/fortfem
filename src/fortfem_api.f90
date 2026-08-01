@@ -103,6 +103,11 @@ module fortfem_api
         assemble_fourier_vector_product, &
         assemble_fourier_vector_product_jvp, &
         assemble_fourier_vector_product_vjp
+    use fortfem_fourier_mode_energy, only: &
+        assemble_fourier_mode_energy, &
+        assemble_fourier_mode_energy_jvp, &
+        assemble_fourier_mode_energy_vjp, &
+        fourier_coefficients_conjugate_symmetric
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -1201,6 +1206,10 @@ module fortfem_api
     public :: apply_fourier_bilinear_product
     public :: apply_fourier_bilinear_product_jvp
     public :: apply_fourier_bilinear_product_vjp
+    public :: assemble_fourier_mode_energy
+    public :: assemble_fourier_mode_energy_jvp
+    public :: assemble_fourier_mode_energy_vjp
+    public :: fourier_coefficients_conjugate_symmetric
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
