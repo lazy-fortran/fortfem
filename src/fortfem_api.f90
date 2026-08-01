@@ -96,6 +96,9 @@ module fortfem_api
         initialize_fourier_mode_registry, &
         validate_fourier_mode_registry
     use fortfem_fourier_vector_product, only: &
+        apply_fourier_bilinear_product, &
+        apply_fourier_bilinear_product_jvp, &
+        apply_fourier_bilinear_product_vjp, &
         assemble_fourier_vector_product, &
         assemble_fourier_vector_product_jvp, &
         assemble_fourier_vector_product_vjp
@@ -1193,6 +1196,9 @@ module fortfem_api
     public :: assemble_fourier_vector_product
     public :: assemble_fourier_vector_product_jvp
     public :: assemble_fourier_vector_product_vjp
+    public :: apply_fourier_bilinear_product
+    public :: apply_fourier_bilinear_product_jvp
+    public :: apply_fourier_bilinear_product_vjp
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp

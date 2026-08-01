@@ -54,6 +54,15 @@ call assemble_fourier_vector_product_jvp( &
 call assemble_fourier_vector_product_vjp( &
     registry, coupling, left_values, right_values, product_values_bar, &
     left_values_bar, right_values_bar, coupling_bar, status)
+call apply_fourier_bilinear_product( &
+    input_registry, output_registry, coupling, left_values, right_values, &
+    product_values, status)
+call apply_fourier_bilinear_product_jvp( &
+    input_registry, output_registry, coupling, left_values, right_values, &
+    coupling_dot, left_values_dot, right_values_dot, product_values_dot, status)
+call apply_fourier_bilinear_product_vjp( &
+    input_registry, output_registry, coupling, left_values, right_values, &
+    product_values_bar, left_values_bar, right_values_bar, coupling_bar, status)
 ```
 
 `real_packed=.true.` requires every retained `(m,n)` to have its `(-m,-n)`
@@ -103,6 +112,14 @@ nonlinear truncation rule. Its JVP
 differentiates all three factors and its complex VJP uses the same real-part
 inner product.
 
+`apply_fourier_bilinear_product` is the de-aliased application form. Its input
+arrays use `input_registry`, while the output array uses `output_registry`; the
+pair label is looked up only in the output set. Thus a padded work registry can
+receive one product without pretending that input modes occupy every padded
+slot. Omitted output labels are zero by the explicit projection policy. The
+JVP and VJP expose the same distinct-registry map and use the real-part complex
+adjoint convention above.
+
 ## Independent verification
 
 `test_fourier_mode_registry` checks deep-copy assignment, metadata validation,
@@ -114,3 +131,7 @@ identity, and malformed real-packed, duplicate, and index inputs.
 contraction,
 the full three-factor product-rule JVP and central differences, the complex
 real-part VJP identity, and incompatible output-shape rejection.
+`test_fourier_bilinear_product` checks the distinct input/output registry
+contraction against an independent padded oracle, product-rule JVP and central
+differences, the complex real-part VJP identity, and incompatible output-shape
+rejection.
