@@ -68,6 +68,10 @@ The [harmonic period normalization contract](harmonic_period_normalization.html)
 maps a fixed metric-harmonic basis to caller-selected cycle periods or flux
 units, with dense-solve JVP/VJP actions and no application-specific labels.
 
+The [complex cycle-period constraint](period_constraints.html) contracts a
+fixed oriented cycle basis with a complex edge field and provides the matching
+JVP/VJP block for tree--cotree, harmonic, FEM/BEM, and IGA compositions.
+
 The [tree-cotree gauge contract](tree_cotree_gauge.html) provides a
 fixed-topology direct-solve reduction for curl--curl nullspaces, including the
 control-mesh rule needed by high-order FEEC and IGA/mortar spaces.
