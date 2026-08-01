@@ -78,6 +78,7 @@ jobs:
       # per test target, independent of this build ordering.
       FO_JOBS: 1
       FO_TEST_TIMEOUT: 10
+      EXAMPLE_TIMEOUT: 60
     strategy:
       fail-fast: false
       matrix:
@@ -181,6 +182,7 @@ jobs:
       run: |
         set -euo pipefail
         echo "Running all examples..."
+        example_failures=0
         mapfile -t example_sources < <(
           find example -mindepth 1 -maxdepth 2 -type f -name '*.f90' | sort
         )
@@ -191,11 +193,17 @@ jobs:
             continue
           fi
           echo "Running example: $example_name"
-          fpm run --example "$example_name"
+          if ! timeout --foreground "${EXAMPLE_TIMEOUT}s" \
+              fpm run --example "$example_name"; then
+            echo "::error::example timed out or failed: $example_name"
+            example_failures=1
+            continue
+          fi
           mkdir -p "output/example/$example_name"
           find . -maxdepth 1 -type f -name '*.png' \
             -exec mv {} "output/example/$example_name/" \;
         done
+        exit "$example_failures"
 
     - name: Run all benchmarks  
       id: benchmarks
