@@ -38,6 +38,7 @@ module fortfem_linear_response_interchange
 
     public :: initialize_linear_response_interchange
     public :: validate_linear_response_interchange
+    public :: evaluate_linear_response_diagnostics
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
@@ -139,6 +140,38 @@ contains
         valid = .true.
         status = 0
     end function validate_linear_response_interchange
+
+    subroutine evaluate_linear_response_diagnostics( &
+            response_matrix, reciprocity_error, passivity_lower_bound, status)
+        complex(dp), intent(in) :: response_matrix(:, :)
+        real(dp), intent(out) :: reciprocity_error, passivity_lower_bound
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: hermitian_part(:, :)
+        real(dp) :: scale, radius
+        integer :: row
+
+        reciprocity_error = huge(1.0_dp)
+        passivity_lower_bound = -huge(1.0_dp)
+        status = 1
+        if (size(response_matrix, 1) < 1 .or. &
+            size(response_matrix, 1) /= size(response_matrix, 2) .or. &
+            .not. finite_complex(response_matrix)) return
+        scale = max(1.0_dp, maxval(abs(response_matrix)))
+        reciprocity_error = maxval(abs( &
+            response_matrix - transpose(response_matrix)))/scale
+        allocate(hermitian_part(size(response_matrix, 1), size(response_matrix, 2)))
+        hermitian_part = 0.5_dp*(response_matrix + &
+            conjg(transpose(response_matrix)))
+        passivity_lower_bound = huge(1.0_dp)
+        do row = 1, size(response_matrix, 1)
+            radius = sum(abs(hermitian_part(row, :))) - &
+                abs(hermitian_part(row, row))
+            passivity_lower_bound = min(passivity_lower_bound, &
+                real(hermitian_part(row, row), dp) - radius)
+        end do
+        status = 0
+    end subroutine evaluate_linear_response_diagnostics
 
     subroutine assemble_linear_response_operator( &
             equilibrium, inertia, resistive, vacuum, wall, frequency, &

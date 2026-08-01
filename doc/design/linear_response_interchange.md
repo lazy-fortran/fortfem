@@ -34,6 +34,13 @@ mode rejection, and the complex adjoint identity.  The contract is intended
 to be composed with FEM, BEM, DtN, PML, Fourier, and tree--cotree blocks by an
 external application.
 
+`evaluate_linear_response_diagnostics` reports a normalized transpose
+reciprocity defect and a conservative lower bound for the Hermitian part of a
+response matrix.  A nonnegative bound certifies passivity for this Gershgorin
+test; a negative bound is reported as inconclusive rather than being promoted
+to a physical instability claim.  Exact reciprocity, passivity, and
+normalization conventions remain properties of the external response model.
+
 ## Provenance
 
 The block split follows the generic forced-response decomposition used by

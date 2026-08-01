@@ -2,6 +2,7 @@ program test_linear_response_interchange
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
+        evaluate_linear_response_diagnostics, &
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
         assemble_linear_response_operator_vjp, &
@@ -25,6 +26,7 @@ program test_linear_response_interchange
     character(len=32) :: mode_labels(mode_count), response_labels(response_count)
     type(linear_response_interchange_t) :: data, copy, invalid
     real(dp) :: epsilon, finite_difference_error, lhs, rhs
+    real(dp) :: reciprocity_error, passivity_bound
     logical :: all_passed
 
     all_passed = .true.
@@ -42,6 +44,12 @@ program test_linear_response_interchange
     call record_condition(data%state_count == n .and. &
         data%mode_count == mode_count .and. &
         data%response_count == response_count, "response dimensions are retained")
+    call evaluate_linear_response_diagnostics( &
+        data%response_matrix, reciprocity_error, passivity_bound, status)
+    call record_condition(status == 0 .and. reciprocity_error > 1.0e-2_dp, &
+        "response reciprocity defect is reported")
+    call record_condition(passivity_bound > 0.4_dp, &
+        "response Hermitian passivity lower bound is positive")
 
     copy = data
     call record_condition(validate_linear_response_interchange(copy, status), &
