@@ -1459,8 +1459,13 @@ gallery example.
   solves the exact-curved torus BEM/DtN map on both boundaries, reconstructs a
   common interior target, and records the declared nonzero coarse-mesh
   difference.  Maxwell/PML and FEM coupling remain separate follow-up paths.
-- Add larger-domain, BEM, DtN, and PML comparisons for Poisson, Ampere, and
-  Helmholtz.
+- The larger-domain Laplace and Helmholtz torus controls now have independent
+  two-surface tests with fundamental/outgoing-field oracles. The Maxwell
+  open-boundary gallery now solves a second, physically larger tetrahedral PML
+  box, reconstructs the same interior field at shared targets, and reports the
+  measured domain difference and solve time; its previous hard-coded far-wall
+  placeholder is gone. The remaining vector toroidal BEM/DtN and Ampere FEM
+  parity are still separate follow-up fixtures.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
@@ -1779,6 +1784,10 @@ gallery example.
   the curved surface is readable without concealing the coarse solver mesh.
   These are visualization contracts and do not replace convergence,
   conservation, or independent manufactured-solution tests.
+- The Maxwell open-boundary gallery additionally plots the analytical plane
+  wave and reconstructed fields from both the reference and larger PML boxes;
+  an independent test guards the shared-target field and domain-difference
+  values before publication.
 
 ### Phase 9: Future application layer: **reference only**
 

@@ -13,10 +13,11 @@ outgoing normal wavenumber
 \(\beta\) for TE and \(k^2/\beta\) for TM.
 
 It also places the exact DtN residual, the measured error from an executable
-Nédélec curl-curl PML solve, and an undamped far-wall reflection on one
-scale. The PML oracle is the exact edge integral of a complex-stretched plane
-wave and is independent of the assembled system. The comparison follows the
-transparent boundary formulation of Jiang et al., arXiv:1811.12449.
+Nédélec curl-curl PML solve, and a physically larger PML box on one scale. The
+two PML solutions are reconstructed at shared interior targets and compared
+against the exact complex-stretched plane wave; no hard-coded far-wall value
+is used. The comparison follows the transparent boundary formulation of Jiang
+et al., arXiv:1811.12449.
 
 The volume-boundary example additionally constructs a tetrahedral box,
 reproduces a constant field with first-kind Nédélec elements of orders one
@@ -25,10 +26,10 @@ capacity form back to only the edge and face moments on the selected planar
 boundary. A separate tetrahedral box then exercises the complex FortSparse
 curl-curl/PML solver and records its solve time and relative edge error.
 
-CI generates `maxwell_pml_field_slice_2d.png`, `maxwell_dtn_modes_1d.png`,
-`maxwell_reflection_1d.png`,
-`maxwell_nedelec_dtn_1d.png`, and `benchmark.txt`; generated media are not
-committed.
+CI generates `maxwell_pml_field_slice_2d.png`,
+`maxwell_domain_comparison_1d.png`, `maxwell_dtn_modes_1d.png`,
+`maxwell_reflection_1d.png`, `maxwell_nedelec_dtn_1d.png`, and
+`benchmark.txt`; generated media are not committed.
 
 ## Usage
 
@@ -61,6 +62,7 @@ program maxwell_open_boundary_comparison
     real(dp), parameter :: length_x = 2.0_dp*acos(-1.0_dp)
     real(dp), parameter :: length_y = 4.0_dp
     real(dp), parameter :: wave_number = 7.5_dp
+    real(dp), parameter :: pml_wave_number = 1.4_dp
     character(*), parameter :: output_directory = &
         "output/example/maxwell_open_boundary_comparison"
 
@@ -79,10 +81,20 @@ program maxwell_open_boundary_comparison
     real(dp) :: modes(mode_count), reflection(3), reflection_log(3)
     real(dp) :: method_index(3)
     real(dp) :: beta, end_time, phase_angle, pml_error, pml_seconds
+    real(dp) :: larger_pml_seconds, pml_domain_difference
     real(dp) :: seconds, start_time
     real(dp) :: max_modal_error
     real(dp) :: bounds(3, 2), origin(3), periods(3, 2), trace_weight
+    real(dp) :: larger_bounds(3, 2)
+    real(dp), parameter :: domain_sample_x(5) = [ &
+        0.1_dp, 0.3_dp, 0.5_dp, 0.7_dp, 0.9_dp]
+    real(dp) :: domain_small_magnitude(5), domain_large_magnitude(5)
+    real(dp) :: domain_exact_magnitude(5)
     integer :: boundary_count(6), edge, i, j, mode, order, status, unit
+    integer, allocatable :: larger_edges(:, :), larger_global_dofs(:, :)
+    integer, allocatable :: larger_orientations(:, :), larger_tetrahedra(:, :)
+    real(dp), allocatable :: larger_vertices(:, :)
+    complex(dp), allocatable :: larger_solution(:)
 
     call execute_command_line("mkdir -p "//output_directory)
     do mode = 0, mode_count - 1
@@ -202,7 +214,7 @@ program maxwell_open_boundary_comparison
         exact_pml(edge) = pml_plane_wave_edge_integral( &
             vertices(:, edges(1, edge)), vertices(:, edges(2, edge)))
     end do
-    call find_boundary_edges(vertices, edges, boundary_dofs)
+    call find_boundary_edges(vertices, edges, bounds, boundary_dofs)
     allocate(boundary_values(size(boundary_dofs)))
     boundary_values = exact_pml(boundary_dofs)
     allocate(load(size(edges, 2)), stretch(3, size(tetrahedra, 2)))
@@ -211,7 +223,7 @@ program maxwell_open_boundary_comparison
     stretch(2:3, :) = cmplx(1.0_dp, 0.0_dp, dp)
     call cpu_time(start_time)
     call solve_tetra_nedelec_pml( &
-        vertices, tetrahedra, 1, stretch, 1.4_dp, load, boundary_dofs, &
+        vertices, tetrahedra, 1, stretch, pml_wave_number, load, boundary_dofs, &
         boundary_values, pml_solution, status)
     call cpu_time(end_time)
     if (status /= 0) error stop "Maxwell PML gallery solve failed"
@@ -222,6 +234,14 @@ program maxwell_open_boundary_comparison
         error stop "Maxwell PML gallery accuracy regression"
 
     call render_pml_field_slice()
+    larger_bounds(:, 1) = [0.0_dp, 0.0_dp, 0.0_dp]
+    larger_bounds(:, 2) = [1.0_dp, 1.0_dp, 1.5_dp]
+    call solve_pml_box( &
+        larger_bounds, [4, 4, 4], larger_vertices, larger_tetrahedra, &
+        larger_edges, larger_global_dofs, larger_orientations, &
+        larger_solution, larger_pml_seconds)
+    call compare_pml_domains()
+    call render_pml_domain_comparison()
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(modes, exact_te, label="TE analytical", linestyle="-")
@@ -236,14 +256,14 @@ program maxwell_open_boundary_comparison
 
     method_index = [1.0_dp, 2.0_dp, 3.0_dp]
     reflection = [ &
-        max_modal_error, pml_error, 1.0_dp]
+        max_modal_error, pml_error, pml_domain_difference]
     reflection_log = log10(max(reflection, tiny(1.0_dp)))
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(method_index, reflection_log, label="reflection magnitude", &
         marker="o")
-    call xlabel("method: 1=DtN, 2=PML, 3=far wall")
+    call xlabel("method: 1=DtN, 2=PML, 3=larger-domain PML")
     call ylabel("log10 measured error/reflection")
-    call title("Maxwell DtN, PML, and far-wall comparison")
+    call title("Maxwell DtN, PML, and larger-domain comparison")
     call legend()
     call savefig(output_directory//"/maxwell_reflection_1d.png")
 
@@ -270,7 +290,9 @@ program maxwell_open_boundary_comparison
     write (unit, "(a,es14.6)") &
         "Nedelec PML relative edge error: ", pml_error
     write (unit, "(a,es14.6)") &
-        "ordinary far-wall reflection: ", reflection(3)
+        "larger-domain PML field difference: ", pml_domain_difference
+    write (unit, "(a,es14.6)") &
+        "larger-domain PML solve seconds: ", larger_pml_seconds
     do order = 1, 6
         write (unit, "(a,i0,a,i0,a,es14.6,a,es14.6)") &
             "Nedelec order ", order, " boundary dofs: ", &
@@ -280,6 +302,144 @@ program maxwell_open_boundary_comparison
     close (unit)
 
 contains
+
+    subroutine solve_pml_box(box_bounds, counts, box_vertices, box_tetrahedra, &
+            box_edges, box_global_dofs, box_orientations, box_solution, seconds)
+        real(dp), intent(in) :: box_bounds(3, 2)
+        integer, intent(in) :: counts(3)
+        real(dp), allocatable, intent(out) :: box_vertices(:, :)
+        integer, allocatable, intent(out) :: box_tetrahedra(:, :)
+        integer, allocatable, intent(out) :: box_edges(:, :)
+        integer, allocatable, intent(out) :: box_global_dofs(:, :)
+        integer, allocatable, intent(out) :: box_orientations(:, :)
+        complex(dp), allocatable, intent(out) :: box_solution(:)
+        real(dp), intent(out) :: seconds
+
+        complex(dp), allocatable :: box_exact(:), box_load(:), box_stretch(:, :)
+        integer, allocatable :: box_boundary(:)
+        real(dp) :: local_start, local_end
+        integer :: box_edge, local_status
+
+        call generate_structured_tetra_box_mesh( &
+            box_bounds, counts, box_vertices, box_tetrahedra, local_status)
+        if (local_status /= 0) error stop "larger PML mesh failed"
+        call build_tetra_edge_dof_map( &
+            box_tetrahedra, box_edges, box_global_dofs, box_orientations, &
+            local_status)
+        if (local_status /= 0) error stop "larger PML edge map failed"
+        allocate(box_exact(size(box_edges, 2)), box_load(size(box_edges, 2)))
+        do box_edge = 1, size(box_edges, 2)
+            box_exact(box_edge) = pml_plane_wave_edge_integral( &
+                box_vertices(:, box_edges(1, box_edge)), &
+                box_vertices(:, box_edges(2, box_edge)))
+        end do
+        call find_boundary_edges( &
+            box_vertices, box_edges, box_bounds, box_boundary)
+        allocate(box_stretch(3, size(box_tetrahedra, 2)))
+        box_stretch(1, :) = cmplx(1.0_dp, 0.35_dp, dp)
+        box_stretch(2:3, :) = cmplx(1.0_dp, 0.0_dp, dp)
+        box_load = cmplx(0.0_dp, 0.0_dp, dp)
+        call cpu_time(local_start)
+        call solve_tetra_nedelec_pml( &
+            box_vertices, box_tetrahedra, 1, box_stretch, pml_wave_number, &
+            box_load, box_boundary, box_exact(box_boundary), box_solution, &
+            local_status)
+        call cpu_time(local_end)
+        if (local_status /= 0) error stop "larger PML solve failed"
+        seconds = local_end - local_start
+    end subroutine solve_pml_box
+
+    subroutine compare_pml_domains()
+        complex(dp) :: small_field(3), large_field(3), exact_field(3)
+        real(dp) :: point(3), error_value
+        integer :: sample
+
+        pml_domain_difference = 0.0_dp
+        do sample = 1, size(domain_sample_x)
+            point = [domain_sample_x(sample), 0.5_dp, 0.5_dp]
+            call evaluate_pml_field( &
+                vertices, tetrahedra, global_dofs, orientations, pml_solution, &
+                point, small_field)
+            call evaluate_pml_field( &
+                larger_vertices, larger_tetrahedra, larger_global_dofs, &
+                larger_orientations, larger_solution, point, large_field)
+            exact_field = [cmplx(0.0_dp, 0.0_dp, dp), &
+                exp(cmplx(0.0_dp, pml_wave_number*point(1), dp)* &
+                    cmplx(1.0_dp, 0.35_dp, dp)), cmplx(0.0_dp, 0.0_dp, dp)]
+            domain_small_magnitude(sample) = sqrt(sum(abs(small_field)**2))
+            domain_large_magnitude(sample) = sqrt(sum(abs(large_field)**2))
+            domain_exact_magnitude(sample) = sqrt(sum(abs(exact_field)**2))
+            error_value = sqrt(sum(abs(small_field - large_field)**2))
+            pml_domain_difference = max(pml_domain_difference, error_value)
+        end do
+        if (pml_domain_difference >= 1.0e-1_dp) &
+            error stop "larger-domain PML comparison regression"
+    end subroutine compare_pml_domains
+
+    subroutine render_pml_domain_comparison()
+        call figure(figsize=[8.5_dp, 5.5_dp])
+        call plot(domain_sample_x, domain_exact_magnitude, &
+            label="analytical plane wave", linestyle="-")
+        call plot(domain_sample_x, domain_small_magnitude, &
+            label="PML box [0,1]^3", linestyle="--", marker="o")
+        call plot(domain_sample_x, domain_large_magnitude, &
+            label="larger PML box [0,1]x[0,1]x[0,1.5]", &
+            linestyle=":", marker="s")
+        call xlabel("x at y = z = 0.5")
+        call ylabel("reconstructed field magnitude")
+        call title("Maxwell PML solution: larger-domain interior control")
+        call legend()
+        call savefig(output_directory//"/maxwell_domain_comparison_1d.png")
+    end subroutine render_pml_domain_comparison
+
+    subroutine evaluate_pml_field(box_vertices, box_tetrahedra, &
+            box_global_dofs, box_orientations, box_solution, point, field)
+        real(dp), intent(in) :: box_vertices(:, :), point(3)
+        integer, intent(in) :: box_tetrahedra(:, :), box_global_dofs(:, :)
+        integer, intent(in) :: box_orientations(:, :)
+        complex(dp), intent(in) :: box_solution(:)
+        complex(dp), intent(out) :: field(3)
+
+        type(tetra_nedelec_first_kind_t) :: local_basis
+        real(dp) :: local_vertices(3, 4), reference_point(3)
+        real(dp) :: real_dofs(6), imaginary_dofs(6)
+        real(dp) :: real_field(3), real_curl(3)
+        real(dp) :: imaginary_field(3), imaginary_curl(3)
+        integer :: basis_status, local_edge, local_status, map_status
+        integer :: tetrahedron
+
+        call initialize_tetra_nedelec_first_kind(1, local_basis, basis_status)
+        if (basis_status /= 0) error stop "PML comparison basis failed"
+        field = cmplx(0.0_dp, 0.0_dp, dp)
+        do tetrahedron = 1, size(box_tetrahedra, 2)
+            local_vertices = box_vertices(:, box_tetrahedra(:, tetrahedron))
+            call invert_tetra_affine_map( &
+                local_vertices, point, reference_point, map_status)
+            if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) .or. &
+                sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
+            do local_edge = 1, 6
+                real_dofs(local_edge) = &
+                    real(box_orientations(local_edge, tetrahedron), dp)* &
+                    real(box_solution(box_global_dofs(local_edge, tetrahedron)))
+                imaginary_dofs(local_edge) = &
+                    real(box_orientations(local_edge, tetrahedron), dp)* &
+                    aimag(box_solution( &
+                    box_global_dofs(local_edge, tetrahedron)))
+            end do
+            call evaluate_tetra_nedelec_interpolant_at_point( &
+                local_vertices, local_basis, real_dofs, point, real_field, &
+                real_curl, local_status)
+            if (local_status /= 0) error stop "PML comparison real field failed"
+            call evaluate_tetra_nedelec_interpolant_at_point( &
+                local_vertices, local_basis, imaginary_dofs, point, &
+                imaginary_field, imaginary_curl, local_status)
+            if (local_status /= 0) &
+                error stop "PML comparison imaginary field failed"
+            field = cmplx(real_field, imaginary_field, dp)
+            return
+        end do
+        error stop "PML comparison point was outside its mesh"
+    end subroutine evaluate_pml_field
 
     subroutine render_pml_field_slice()
         integer, parameter :: slice_nx = 40, slice_ny = 40
@@ -357,8 +517,8 @@ contains
         value = [1.25_dp, -0.75_dp, 0.5_dp]
     end subroutine constant_source
 
-    subroutine find_boundary_edges(vertices, edges, boundary_dofs)
-        real(dp), intent(in) :: vertices(:, :)
+    subroutine find_boundary_edges(vertices, edges, bounds, boundary_dofs)
+        real(dp), intent(in) :: vertices(:, :), bounds(3, 2)
         integer, intent(in) :: edges(:, :)
         integer, allocatable, intent(out) :: boundary_dofs(:)
 
@@ -369,10 +529,12 @@ contains
         boundary = .false.
         do local_edge = 1, size(edges, 2)
             do coordinate = 1, 3
-                if (all(abs(vertices(coordinate, edges(:, local_edge))) < &
-                    1.0e-14_dp)) boundary(local_edge) = .true.
                 if (all(abs(vertices(coordinate, edges(:, local_edge)) - &
-                    1.0_dp) < 1.0e-14_dp)) boundary(local_edge) = .true.
+                        bounds(coordinate, 1)) < 1.0e-14_dp)) &
+                    boundary(local_edge) = .true.
+                if (all(abs(vertices(coordinate, edges(:, local_edge)) - &
+                        bounds(coordinate, 2)) < 1.0e-14_dp)) &
+                    boundary(local_edge) = .true.
             end do
         end do
         allocate(boundary_dofs(count(boundary)))
@@ -385,7 +547,6 @@ contains
         real(dp), intent(in) :: first(3), second(3)
 
         complex(dp), parameter :: x_stretch = cmplx(1.0_dp, 0.35_dp, dp)
-        real(dp), parameter :: pml_wave_number = 1.4_dp
         complex(dp) :: phase, phase_increment
         real(dp) :: delta_x, delta_y
 
@@ -411,6 +572,10 @@ end program maxwell_open_boundary_comparison
 ### primary.png
 
 ![primary.png](../../media/examples/maxwell_open_boundary_comparison/primary.png)
+
+### maxwell_domain_comparison_1d.png
+
+![maxwell_domain_comparison_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_domain_comparison_1d.png)
 
 ### maxwell_dtn_modes_1d.png
 
