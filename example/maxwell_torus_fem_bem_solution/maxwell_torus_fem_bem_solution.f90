@@ -10,8 +10,8 @@ program maxwell_torus_fem_bem_solution
         tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
     use fortplot, only: &
-        add_3d_plot, add_scatter, colorbar, figure, legend, pcolormesh, &
-        plot, quiver, savefig, title, xlabel, ylabel
+        add_parametric_surface, add_scatter, colorbar, figure, legend, &
+        pcolormesh, plot, quiver, savefig, title, xlabel, ylabel
     implicit none
 
     real(dp), parameter :: major_radius = 2.0_dp
@@ -209,9 +209,9 @@ contains
     end subroutine evaluate_vector
 
     subroutine render_plots()
-        real(dp) :: curve_x(geometry_toroidal + 1)
-        real(dp) :: curve_y(geometry_toroidal + 1)
-        real(dp) :: curve_z(geometry_toroidal + 1)
+        real(dp) :: surface_x(geometry_polar + 1, geometry_toroidal + 1)
+        real(dp) :: surface_y(geometry_polar + 1, geometry_toroidal + 1)
+        real(dp) :: surface_z(geometry_polar + 1, geometry_toroidal + 1)
         real(dp) :: section_x(129), section_z(129)
         real(dp) :: sample_x(slice_nx*slice_nz)
         real(dp) :: sample_z(slice_nx*slice_nz)
@@ -282,21 +282,22 @@ contains
         call savefig(output_directory//"/maxwell_torus_fem_bem_centerline_1d.png")
 
         call figure(figsize=[7.5_dp, 6.5_dp])
-        call add_scatter(vertices(1, :), vertices(2, :), vertices(3, :), &
-            label="solid-torus volume vertices", marker=".", markersize=4.0_dp)
         do curve = 0, geometry_polar
             theta = 2.0_dp*acos(-1.0_dp)*real(curve, dp)/real(geometry_polar, dp)
             do point_index = 0, geometry_toroidal
                 phi = 2.0_dp*acos(-1.0_dp)*real(point_index, dp)/ &
                     real(geometry_toroidal, dp)
                 radius = major_radius + minor_radius*cos(theta)
-                curve_x(point_index + 1) = radius*cos(phi)
-                curve_y(point_index + 1) = radius*sin(phi)
-                curve_z(point_index + 1) = minor_radius*sin(theta)
+                surface_x(curve + 1, point_index + 1) = radius*cos(phi)
+                surface_y(curve + 1, point_index + 1) = radius*sin(phi)
+                surface_z(curve + 1, point_index + 1) = minor_radius*sin(theta)
             end do
-            call add_3d_plot(curve_x, curve_y, curve_z, &
-                label="exact curved torus", color="teal", linewidth=0.7_dp)
         end do
+        call add_parametric_surface( &
+            surface_x, surface_y, surface_z, color="lightsteelblue", alpha=0.55_dp, &
+            linewidth=0.0_dp, filled=.true., label="curved torus boundary")
+        call add_scatter(vertices(1, :), vertices(2, :), vertices(3, :), &
+            label="solid-torus volume vertices", marker=".", markersize=4.0_dp)
         call title("Curved torus volume and FEM--BEM boundary geometry")
         call savefig(output_directory//"/maxwell_torus_fem_bem_geometry_3d.png")
     end subroutine render_plots

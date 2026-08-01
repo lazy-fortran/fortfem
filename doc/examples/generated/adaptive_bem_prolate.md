@@ -134,8 +134,9 @@ program adaptive_bem_prolate
     end do
     call figure(figsize=[7.5_dp, 6.0_dp])
     call add_parametric_surface( &
-        surface_x, surface_y, surface_z, color="black", linewidth=0.45_dp, &
-        row_stride=2, column_stride=2, label="prolate surface")
+        surface_x, surface_y, surface_z, color="lightgray", alpha=0.45_dp, &
+        linewidth=0.0_dp, filled=.true., row_stride=2, column_stride=2, &
+        label="prolate surface")
     call add_scatter( &
         panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
         c=density, &
