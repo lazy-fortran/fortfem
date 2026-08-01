@@ -45,6 +45,9 @@ module fortfem_api
         assemble_surface_current_loop_constraints, &
         assemble_surface_current_loop_constraints_jvp, &
         assemble_surface_current_loop_constraints_vjp
+    use fortfem_period_constraints, only: &
+        assemble_period_constraints, assemble_period_constraints_jvp, &
+        assemble_period_constraints_vjp
     use fortfem_surface_edge_balance, only: &
         assemble_surface_edge_flux_balance, &
         assemble_surface_edge_flux_balance_jvp, &
@@ -1084,6 +1087,9 @@ module fortfem_api
     public :: assemble_surface_current_loop_constraints
     public :: assemble_surface_current_loop_constraints_jvp
     public :: assemble_surface_current_loop_constraints_vjp
+    public :: assemble_period_constraints
+    public :: assemble_period_constraints_jvp
+    public :: assemble_period_constraints_vjp
     public :: assemble_surface_edge_flux_balance
     public :: assemble_surface_edge_flux_balance_jvp
     public :: assemble_surface_edge_flux_balance_vjp
