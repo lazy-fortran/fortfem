@@ -1441,7 +1441,14 @@ gallery example.
   now have an explicit SPD-metric wrapper with fixed-topology value/JVP/VJP
   actions; nonlinear system entropy variables and characteristic HLL/HLLC
   laws remain application-owned.
-- Broken vector FEEC, hybridization, static condensation, and mixed CG-DG.
+- The public `assemble_broken_feec_sequence` contract now embeds caller-owned
+  cell-local gradient, curl, and divergence maps in independent cell-major
+  blocks, reports both exact-sequence compositions, and differentiates the
+  maps and composition diagnostics with complete value/JVP/VJP actions. It
+  preserves cell-local `curl(grad)=0` and `div(curl)=0` without introducing
+  inter-cell continuity, so DG, HDG, cut/XFEM, and IGA clients can add their
+  own trace laws. General mixed CG-DG coupling, higher-order local map
+  construction, and global signed sparse ownership remain active work.
 
 ### Phase 4: Open boundaries and vector operators: **active**
 

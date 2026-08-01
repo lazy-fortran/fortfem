@@ -81,6 +81,11 @@ provides deterministic ownership maps for broken H¹/H(curl)/H(div)/L² spaces
 and shared scalar, tangential, or normal facet traces. Basis evaluation,
 metric maps, and physical interface laws remain caller-owned.
 
+The [broken FEEC sequence contract](broken_feec_sequence.html) embeds
+cell-local gradient, curl, and divergence maps without introducing
+inter-cell continuity, and exposes their exact-sequence compositions together
+with value/JVP/VJP actions for DG, HDG, cut, and IGA composition.
+
 The [FEEC exact-sequence diagnostic](feec_exact_sequence.html) exposes the
 metric-independent `curl(grad)` and `div(curl)` composition defects with
 value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic incidence
