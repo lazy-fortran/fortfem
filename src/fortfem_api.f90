@@ -2,6 +2,13 @@ module fortfem_api
     use fortfem_interchange_samples, only: &
         compare_interchange_samples, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
+    use fortfem_wave_reflection_diagnostics, only: &
+        evaluate_weighted_complex_error, &
+        evaluate_weighted_complex_error_jvp, &
+        evaluate_weighted_complex_error_vjp, &
+        evaluate_weighted_reflection_coefficient, &
+        evaluate_weighted_reflection_coefficient_jvp, &
+        evaluate_weighted_reflection_coefficient_vjp
     use fortfem_singular_layer_matching, only: &
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp, &
@@ -2289,6 +2296,12 @@ module fortfem_api
     public :: initialize_interchange_samples
     public :: validate_interchange_samples
     public :: compare_interchange_samples
+    public :: evaluate_weighted_complex_error
+    public :: evaluate_weighted_complex_error_jvp
+    public :: evaluate_weighted_complex_error_vjp
+    public :: evaluate_weighted_reflection_coefficient
+    public :: evaluate_weighted_reflection_coefficient_jvp
+    public :: evaluate_weighted_reflection_coefficient_vjp
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
     public :: assemble_singular_layer_matching_vjp
