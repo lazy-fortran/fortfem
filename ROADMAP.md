@@ -1340,7 +1340,12 @@ gallery example.
   maps are exported to caller-owned HDG, DG, Nitsche, cut, or IGA assembly.
   Basis evaluation, metric maps, and physical interface laws remain separate.
 - Explicit delta-source and surface-current weak terms.
-- Fitted duplicated spaces, Nitsche, mortar, multipliers, and block constraints.
+- The public `assemble_fitted_trace_constraint` block now assembles the
+  oriented multiplier pairing `\int_\Gamma lambda (u^+ - u^-) dS` for
+  independently sized plus/minus and multiplier traces, with complete
+  value/JVP/VJP actions and positive-weight validation. Fitted duplicated
+  space numbering, constitutive jump targets, and global block constraints
+  remain caller composition.
 - Build the region and cell-complex graph around the validated chain maps,
   adding periodic identifications, harmonic representatives, gauge constraints,
   and stable cycle IDs.
