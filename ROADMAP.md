@@ -163,7 +163,7 @@ documentation baseline. The list is intentionally conservative.
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
-| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products with finite-difference and adjoint tests, and two-surface toroidal Laplace/Helmholtz BEM/DtN larger-domain controls | Curved-map JVP/VJP geometry products, larger-domain toroidal Maxwell/PML comparisons, and robust vector field reconstruction fixtures |
+| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace geometry JVP/VJP products with finite-difference and adjoint tests, and two-surface toroidal Laplace/Helmholtz BEM/DtN larger-domain controls | Curved Helmholtz/Maxwell and BEM/DtN geometry products, larger-domain toroidal Maxwell/PML comparisons, and robust vector field reconstruction fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
 | Parallel readiness | Serial local kernels and deterministic focused tests | Owned/ghost mesh and field data, partition-independent numbering, halo exchange, distributed assembly, checkpointing, and MPI-enabled solver backends |
@@ -1430,11 +1430,14 @@ gallery example.
 - The curved-torus Laplace and Helmholtz representation APIs now optionally
   return the reconstructed target gradient.  Independent tests sample a
   fundamental or outgoing solution and its normal trace on two meshes, check
-  field convergence and the off-surface gradient, and keep the larger-domain
-  and geometry-derivative comparisons as explicit follow-up work.  The Laplace
+  field convergence and the off-surface gradient; Helmholtz and BEM/DtN
+  geometry-derivative comparisons remain explicit follow-up work.  The Laplace
   representation also exposes fixed-geometry data/target JVP and VJP products
   for both nodal and panel Neumann data; central differences and a real
-  adjoint identity independently guard that contract.
+  adjoint identity independently guard that contract.  Its fixed-topology
+  geometry JVP and VJP now propagate torus parameter, major/minor radius, and
+  target variations through the FortSym-generated curved-panel map; an
+  independent central-difference and real adjoint oracle guards that chain.
 - A fast two-surface toroidal Laplace fixture moves the artificial boundary
   while keeping a common interior target.  It solves the curved BEM/DtN map on
   both surfaces, reconstructs the interior field, and checks both against an
