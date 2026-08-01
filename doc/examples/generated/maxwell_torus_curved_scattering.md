@@ -36,14 +36,17 @@ benchmark output.
 
 Generated, uncommitted artifacts are:
 
+- `maxwell_torus_solution_2d.png`: reconstructed scattered magnetic-field
+  magnitude in a physical (x)-(z) slice through the torus hole;
 - `maxwell_torus_rcs_1d.png`: equatorial bistatic radar-cross-section cut;
 - `maxwell_torus_rcs_2d.png`: angular radar-cross-section map;
 - `maxwell_torus_rcs_3d.png`: normalized three-dimensional radiation surface;
 - `maxwell_torus_dtn_1d.png`: weak RWG/RBC Maxwell DtN response on the same
   exact-curved torus surface;
 - `rcs_trace.csv`: reproducible equatorial samples;
-- `benchmark.txt`: unknown counts, CFIE and weak-DtN timings, quadrature,
-  reciprocity error, DtN response norm, and peak radar cross section.
+- `benchmark.txt`: unknown counts, CFIE, weak-DtN, and field-reconstruction
+  timings, quadrature, reciprocity error, DtN response norm, and peak radar
+  cross section.
 
 GitHub Actions generates these files and publishes them in the example
 gallery. No rendered image is checked into the repository.
@@ -61,6 +64,7 @@ program maxwell_torus_curved_scattering
     !! Exact-curved torus PEC scattering with a regularized Maxwell CFIE.
     use fortfem_api, only: &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         generate_torus_surface_mesh, &
         assemble_maxwell_torus_curved_dtn_rwg_3d, &
         apply_maxwell_trace_to_flux_map, &
@@ -72,6 +76,7 @@ program maxwell_torus_curved_scattering
     implicit none
 
     integer, parameter :: azimuth_cells = 36, polar_cells = 18
+    integer, parameter :: field_cells = 20
     integer, parameter :: mesh_polar_nodes = 3, mesh_azimuth_nodes = 3
     integer, parameter :: trace_points = 73
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp
@@ -88,11 +93,15 @@ program maxwell_torus_curved_scattering
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: parameters(:, :), vertices(:, :)
     real(dp) :: azimuth, direction(3), end_time, far_field_seconds
+    real(dp) :: magnetic_seconds
     real(dp) :: first_amplitude, polar, radius, reciprocity_error
     real(dp) :: dtn_seconds, solve_seconds, start_time
     real(dp) :: azimuth_edges(azimuth_cells + 1)
     real(dp) :: polar_edges(polar_cells + 1)
+    real(dp) :: field_x_edges(field_cells + 1)
+    real(dp) :: field_z_edges(field_cells + 1)
     real(dp) :: rcs_map(azimuth_cells, polar_cells)
+    real(dp) :: magnetic_map(field_cells, field_cells)
     real(dp) :: trace_azimuth(trace_points), trace_rcs(trace_points)
     real(dp) :: x(azimuth_cells*polar_cells)
     real(dp) :: y(azimuth_cells*polar_cells)
@@ -119,6 +128,7 @@ program maxwell_torus_curved_scattering
     dtn_seconds = end_time - start_time
     call cpu_time(start_time)
     call build_far_field_map()
+    call build_magnetic_field_map()
     call build_trace()
     call evaluate_reciprocity()
     call cpu_time(end_time)
@@ -186,6 +196,38 @@ contains
         z = z/radius
     end subroutine build_far_field_map
 
+    subroutine build_magnetic_field_map()
+        integer :: x_index, z_index
+        real(dp) :: x_value, z_value, target(3)
+        complex(dp) :: magnetic_field(3)
+
+        call cpu_time(start_time)
+        do x_index = 1, field_cells + 1
+            field_x_edges(x_index) = -1.0_dp + 2.0_dp*real(x_index - 1, dp)/ &
+                real(field_cells, dp)
+            field_z_edges(x_index) = field_x_edges(x_index)
+        end do
+        do z_index = 1, field_cells
+            z_value = 0.5_dp*(field_z_edges(z_index) + &
+                field_z_edges(z_index + 1))
+            do x_index = 1, field_cells
+                x_value = 0.5_dp*(field_x_edges(x_index) + &
+                    field_x_edges(x_index + 1))
+                target = [x_value, 0.0_dp, z_value]
+                call evaluate_maxwell_torus_curved_magnetic_field_rwg_3d( &
+                    vertices, triangles, parameters, major_radius, minor_radius, &
+                    currents(:, 1), target, wave_number, 4, magnetic_field, &
+                    status)
+                if (status /= 0) &
+                    error stop "curved torus magnetic field evaluation failed"
+                magnetic_map(x_index, z_index) = &
+                    sqrt(sum(abs(magnetic_field)**2))
+            end do
+        end do
+        call cpu_time(end_time)
+        magnetic_seconds = end_time - start_time
+    end subroutine build_magnetic_field_map
+
     subroutine build_trace()
         integer :: sample
 
@@ -234,6 +276,15 @@ contains
         real(dp) :: mesh_ring_z(mesh_azimuth_nodes + 1)
         real(dp) :: curve_azimuth, curve_polar, curve_radius
         integer :: coefficient, curve_index, mesh_vertex, point_index
+
+        call figure(figsize=[8.5_dp, 6.5_dp])
+        call pcolormesh( &
+            field_x_edges, field_z_edges, magnetic_map, cmap="inferno")
+        call colorbar(label="|H_scattered|")
+        call xlabel("x at y = 0")
+        call ylabel("z")
+        call title("Computed torus Maxwell scattered magnetic field slice")
+        call savefig(output_directory//"/maxwell_torus_solution_2d.png")
 
         call figure(figsize=[7.5_dp, 6.5_dp])
         call add_scatter( &
@@ -359,6 +410,10 @@ contains
         write (unit, "(a,es14.6)") &
             "far-field sampling seconds: ", far_field_seconds
         write (unit, "(a,es14.6)") &
+            "curved magnetic-field slice seconds: ", magnetic_seconds
+        write (unit, "(a,es14.6)") &
+            "maximum scattered magnetic-field magnitude: ", maxval(magnetic_map)
+        write (unit, "(a,es14.6)") &
             "Lorentz reciprocity relative error: ", reciprocity_error
         write (unit, "(a,es14.6)") "maximum bistatic RCS: ", maxval(rcs_map)
         close (unit)
@@ -390,6 +445,10 @@ end program maxwell_torus_curved_scattering
 ### maxwell_torus_rcs_3d.png
 
 ![maxwell_torus_rcs_3d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_3d.png)
+
+### maxwell_torus_solution_2d.png
+
+![maxwell_torus_solution_2d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_solution_2d.png)
 
 ### torus_geometry_3d.png
 

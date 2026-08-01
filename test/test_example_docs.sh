@@ -77,7 +77,7 @@ test "$(awk '$1 == "helmholtz_cfie_circle" {print $2}' \
 test "$(awk '$1 == "laplace_symmetric_transmission" {print $2}' \
     "$primary_file")" = "solution_2d.png"
 test "$(awk '$1 == "maxwell_torus_curved_scattering" {print $2}' \
-    "$primary_file")" = "maxwell_torus_rcs_2d.png"
+    "$primary_file")" = "maxwell_torus_solution_2d.png"
 
 for example_name in "${expected[@]}"; do
     page="$generated_dir/$example_name.md"
