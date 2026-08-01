@@ -465,7 +465,7 @@ contains
         call colorbar(label="reconstructed Nedelec field magnitude")
         call xlabel("x")
         call ylabel("y")
-        call title("Element-averaged Maxwell PML solution near z = 0.503")
+        call title("Maxwell PML solution near z = 0.503")
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
 
