@@ -162,7 +162,7 @@ documentation baseline. The list is intentionally conservative.
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
-| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT and controlled ICHOL paths are public | Scalable row-oriented ILUT/ICHOL construction, PCG integration and measured scaling, flexible Krylov products, and block solver derivatives |
+| Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT, and controlled ICHOL paths are public | Scalable row-oriented ICHOL construction, measured scaling, flexible Krylov products, and block solver derivatives |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components | General curved Maxwell DtN, toroidal exterior maps, and robust FEM/BEM/DtN comparison fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples | Automated curved-object layers, reflection/error metrics, and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
@@ -858,7 +858,11 @@ per-column fill selection, fixed-factor JVP/VJP, and explicit pivot status;
 `build_sparse_ichol` supplies the matching SPD drop/fill path on the existing
 sparse IC apply/JVP/VJP contract; `solve_sparse` now accepts the
 `ichol_controlled` preconditioner with an exact full-fill one-step PCG oracle.
-Scalable row-oriented construction and measured scaling remain. The
+The public `build_sparse_ilut_row` constructor now performs no-pivot ILUT
+against retained row factors with O(n + nnz) temporary work storage and an
+independent no-fill diagonal oracle; it exports the same sparse CSC apply and
+fixed-factor derivative contract as the dense reference builder. Controlled
+row-oriented ICHOL and measured scaling remain. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
