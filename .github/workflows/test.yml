@@ -122,7 +122,12 @@ jobs:
     - name: Run tests
       id: unit_tests
       continue-on-error: true
-      run: fo test
+      run: |
+        # Keep Fo's native module graph separate from the preceding FPM
+        # compile tree; otherwise the hosted dependency scan can select a
+        # stale build/gfortran_* module while tests are compiled.
+        fpm clean --skip
+        fo test
 
     - name: Run tests with coverage
       id: coverage
