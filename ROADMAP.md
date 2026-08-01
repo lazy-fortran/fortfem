@@ -161,7 +161,7 @@ documentation baseline. The list is intentionally conservative.
 | Scalar FEM | P1/P2/Q1 and arbitrary-order triangular scalar paths, Poisson and diffusion forms, boundary conditions, plotting | General field and coefficient callbacks in the symbolic form compiler |
 | FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson | General multi-field block composition and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
-| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Stable high-order and near-cut half-integer continuation, spherical-harmonic products, and cross-geometry special-function oracles |
+| Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives, Hobson-normalized toroidal P/Q branches, stable high-degree half-integer continuation, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Uniform asymptotics for arbitrarily large degree/order, spherical-harmonic products, and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
 | Linear response interchange | Neutral modal `(m,n)` metadata, provenance, complex equilibrium/inertia/resistive/vacuum/wall blocks, response channels, the (K-omega^2M+iomega R+V+W) operator and forced residual with complex JVP/VJP products, and reciprocity/passivity diagnostics are public and independently tested | FEM/BEM/DtN/PML assembly-specific response matrices, singular-layer matching, and external-code samplers |
 | Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels, a manufactured toroidal Maxwell FEM--BEM solved-state/field-reconstruction fixture, and a neutral complex implicit value/JVP/VJP solve map for concatenated volume/surface states | Maxwell/PML geometry products, assembly-specific matrix/solver derivatives, larger-domain toroidal Maxwell/PML comparisons, nonzero-scattering vector FEM/BEM/DtN parity, and robust vector field reconstruction fixtures |
@@ -626,13 +626,16 @@ half-integer toroidal `P/Q` API. It also provides standard orthonormal complex
 `spherical_harmonic` values and analytical theta/phi derivatives on the closed
 polar interval (with derivative evaluation intentionally undefined at its
 poles). The [pinned FortNum API
-revision](https://github.com/lazy-fortran/fortnum/blob/d8be030/docs/api.md)
+revision](https://github.com/lazy-fortran/fortnum/blob/5af4a7d/docs/api.md)
 records the domains, normalization, derivative convention, DLMF provenance,
-and the current moderate-degree limitation. FortNum's zero-order toroidal Q
+and the current continuation scope. FortNum's zero-order toroidal Q
 branch now uses the DLMF zero-balanced continuation near x=1 and generates
-associated orders from its analytical derivative; the remaining limitation is
-stable large-degree/large-order continuation, spherical harmonics and products,
-and cross-geometry special-function oracles. Analytical solutions and DtN
+associated orders from its analytical derivative; half-integer toroidal P uses
+an upward degree recurrence and the recessive Q branch uses scaled Miller
+continuation at ordinary aspect ratios, with independent degree-80 references
+and recurrence checks. The remaining limitation is uniform asymptotics for
+arbitrarily large degree/order, spherical harmonics and products, and
+cross-geometry special-function oracles. Analytical solutions and DtN
 maps are tested on slabs, cylinders, spheres, and exact toroidal surfaces. The
 FortFEM now re-exports the pinned toroidal P/Q values and derivatives through
 `fortfem_toroidal_harmonics`, with an independent branch/derivative/domain
@@ -1550,14 +1553,18 @@ gallery example.
   derivatives are now public with closed-form degree-one, conjugacy, pole,
   and invalid-angle tests. Complete the remaining stable high-order and
   near-cut continuation for moderate orders is now covered by a DLMF
-  zero-balanced/Euler continuation; stable large-order continuation remains
-  before using these functions as production DtN/torus-harmonic building
-  blocks.
+  zero-balanced/Euler continuation. Stable degree-80 half-integer continuation
+  is now on FortNum `main`: P uses generated upward recurrence and Q uses
+  scaled Miller backward recurrence away from the cut, with independent
+  50-digit value and three-term-recurrence checks. Uniform asymptotics for
+  arbitrarily large degree/order remain before calling this a complete
+  production DtN/torus-harmonic envelope.
 - The FortFEM public API now re-exports the pinned toroidal P/Q values and
   derivatives through `fortfem_toroidal_harmonics`; an independent adapter
   oracle covers both Hobson branches, derivative values, invalid-domain NaN,
-  and the upstream near-cut continuation. Stable large-order continuation
-  and mode-coupled toroidal operators remain.
+  and the upstream near-cut continuation. Stable degree-80 continuation is
+  pinned to FortNum `5af4a7d`; mode-coupled toroidal operators and uniform
+  asymptotic envelopes remain.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
   operators.
