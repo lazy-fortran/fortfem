@@ -55,6 +55,10 @@ program circular_dtn_modes
     write(*, '(a, 2es14.5)') &
         "normal derivative at theta=0: ", normal_derivative(1)
 
+    ! Render the physical field before one-dimensional diagnostics.  This is
+    ! also the gallery's primary view of the example.
+    call render_field()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(theta, real(trace), label="Re(trace)", linestyle="-")
     call plot(theta, aimag(trace), label="Im(trace)", linestyle="--")
@@ -63,8 +67,6 @@ program circular_dtn_modes
     call title("Circular Helmholtz DtN input trace")
     call legend()
     call savefig(output_directory//"/circular_dtn_trace_1d.png")
-
-    call render_field()
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(theta, real(normal_derivative), label="Re(DtN trace)", &
