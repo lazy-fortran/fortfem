@@ -75,8 +75,8 @@ program bem_sphere_3d
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: add_scatter, figure, legend, plot, savefig, title, &
-        xlabel, xscale, ylabel, yscale
+    use fortplot, only: add_parametric_surface, add_scatter, figure, legend, &
+        plot, savefig, title, xlabel, xscale, ylabel, yscale
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -84,6 +84,7 @@ program bem_sphere_3d
     real(dp), allocatable :: dense_action(:), density(:), fast_action(:)
     real(dp), allocatable :: matrix(:, :), vertices(:, :)
     real(dp), allocatable :: panel_centers(:, :)
+    real(dp), allocatable :: surface_x(:, :), surface_y(:, :), surface_z(:, :)
     complex(dp), allocatable :: complex_density(:), helmholtz_dense(:)
     complex(dp), allocatable :: helmholtz_dense_density(:)
     complex(dp), allocatable :: helmholtz_dirichlet(:)
@@ -113,6 +114,7 @@ program bem_sphere_3d
     real(dp) :: scaling_seconds(3)
     integer :: field_point, helmholtz_interactions, laplace_interactions
     integer :: level, solve_interactions, solve_iterations, status, unit
+    integer, parameter :: surface_theta_count = 13, surface_phi_count = 25
 
     call execute_command_line("mkdir -p "//output_directory)
     do level = 0, 2
@@ -245,7 +247,26 @@ program bem_sphere_3d
         panel_centers(:, field_point) = sum( &
             vertices(:, triangles(:, field_point)), dim=2)/3.0_dp
     end do
+    allocate( &
+        surface_x(surface_theta_count, surface_phi_count), &
+        surface_y(surface_theta_count, surface_phi_count), &
+        surface_z(surface_theta_count, surface_phi_count))
+    do field_point = 1, surface_phi_count
+        do level = 1, surface_theta_count
+            surface_x(level, field_point) = sin(acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp))*cos(2.0_dp*acos(-1.0_dp)* &
+                real(field_point - 1, dp)/real(surface_phi_count - 1, dp))
+            surface_y(level, field_point) = sin(acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp))*sin(2.0_dp*acos(-1.0_dp)* &
+                real(field_point - 1, dp)/real(surface_phi_count - 1, dp))
+            surface_z(level, field_point) = cos(acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp))
+        end do
+    end do
     call figure(figsize=[7.5_dp, 6.0_dp])
+    call add_parametric_surface( &
+        surface_x, surface_y, surface_z, color="black", linewidth=0.45_dp, &
+        row_stride=2, column_stride=2, label="unit sphere")
     call add_scatter( &
         panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
         c=density, &

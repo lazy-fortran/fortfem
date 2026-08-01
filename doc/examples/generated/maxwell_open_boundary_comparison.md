@@ -21,7 +21,7 @@ et al., arXiv:1811.12449.
 
 The volume-boundary example additionally constructs a tetrahedral box,
 reproduces a constant field with first-kind Nédélec elements of orders one
-through six, samples its tangential trace on the FFT grid, and pulls the
+through four, samples its tangential trace on the FFT grid, and pulls the
 capacity form back to only the edge and face moments on the selected planar
 boundary. A separate tetrahedral box then exercises the complex FortSparse
 curl-curl/PML solver and records its solve time and relative edge error.
@@ -58,6 +58,8 @@ program maxwell_open_boundary_comparison
     implicit none
 
     integer, parameter :: nx = 24, ny = 16, mode_count = 7
+    integer, parameter :: tested_order_count = 4
+    integer, parameter :: pml_mesh_count(3) = [8, 8, 8]
     integer, parameter :: trace_nx = 5, trace_ny = 5
     real(dp), parameter :: length_x = 2.0_dp*acos(-1.0_dp)
     real(dp), parameter :: length_y = 4.0_dp
@@ -77,7 +79,8 @@ program maxwell_open_boundary_comparison
     type(fortsparse_status_t) :: sparse_status
     real(dp) :: exact_te(mode_count), exact_tm(mode_count)
     real(dp) :: numerical_te(mode_count), numerical_tm(mode_count)
-    real(dp) :: coupling_error(6), orders(6), trace_error(6)
+    real(dp) :: coupling_error(tested_order_count)
+    real(dp) :: orders(tested_order_count), trace_error(tested_order_count)
     real(dp) :: modes(mode_count), reflection(3), reflection_log(3)
     real(dp) :: method_index(3)
     real(dp) :: beta, end_time, phase_angle, pml_error, pml_seconds
@@ -90,7 +93,8 @@ program maxwell_open_boundary_comparison
         0.1_dp, 0.3_dp, 0.5_dp, 0.7_dp, 0.9_dp]
     real(dp) :: domain_small_magnitude(5), domain_large_magnitude(5)
     real(dp) :: domain_exact_magnitude(5)
-    integer :: boundary_count(6), edge, i, j, mode, order, status, unit
+    integer :: boundary_count(tested_order_count)
+    integer :: edge, i, j, mode, order, status, unit
     integer, allocatable :: larger_edges(:, :), larger_global_dofs(:, :)
     integer, allocatable :: larger_orientations(:, :), larger_tetrahedra(:, :)
     real(dp), allocatable :: larger_vertices(:, :)
@@ -160,7 +164,7 @@ program maxwell_open_boundary_comparison
     call generate_structured_tetra_box_mesh( &
         bounds, [1, 1, 1], vertices, tetrahedra, status)
     if (status /= 0) error stop "Maxwell trace mesh failed"
-    do order = 1, 6
+    do order = 1, tested_order_count
         orders(order) = real(order, dp)
         call solve_tetra_nedelec_curl_mass( &
             vertices, tetrahedra, order, constant_source, 1.0_dp, 1.0_dp, &
@@ -204,7 +208,7 @@ program maxwell_open_boundary_comparison
     bounds(:, 1) = [0.0_dp, 0.0_dp, 0.0_dp]
     bounds(:, 2) = [1.0_dp, 1.0_dp, 1.0_dp]
     call generate_structured_tetra_box_mesh( &
-        bounds, [4, 4, 4], vertices, tetrahedra, status)
+        bounds, pml_mesh_count, vertices, tetrahedra, status)
     if (status /= 0) error stop "Maxwell PML mesh failed"
     call build_tetra_edge_dof_map( &
         tetrahedra, edges, global_dofs, orientations, status)
@@ -237,7 +241,7 @@ program maxwell_open_boundary_comparison
     larger_bounds(:, 1) = [0.0_dp, 0.0_dp, 0.0_dp]
     larger_bounds(:, 2) = [1.0_dp, 1.0_dp, 1.5_dp]
     call solve_pml_box( &
-        larger_bounds, [4, 4, 4], larger_vertices, larger_tetrahedra, &
+        larger_bounds, pml_mesh_count, larger_vertices, larger_tetrahedra, &
         larger_edges, larger_global_dofs, larger_orientations, &
         larger_solution, larger_pml_seconds)
     call compare_pml_domains()
@@ -293,7 +297,7 @@ program maxwell_open_boundary_comparison
         "larger-domain PML field difference: ", pml_domain_difference
     write (unit, "(a,es14.6)") &
         "larger-domain PML solve seconds: ", larger_pml_seconds
-    do order = 1, 6
+    do order = 1, tested_order_count
         write (unit, "(a,i0,a,i0,a,es14.6,a,es14.6)") &
             "Nedelec order ", order, " boundary dofs: ", &
             boundary_count(order), " trace error: ", trace_error(order), &
@@ -443,14 +447,14 @@ contains
 
     subroutine render_pml_field_slice()
         integer, parameter :: slice_nx = 40, slice_ny = 40
+        integer, parameter :: sample_offset_count = 4
+        real(dp), parameter :: mesh_spacing = &
+            1.0_dp/real(pml_mesh_count(1), dp)
         real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
         real(dp) :: values(slice_nx, slice_ny)
-        real(dp) :: point(3), reference_point(3), real_value(3), real_curl(3)
-        real(dp) :: imaginary_value(3), imaginary_curl(3)
-        real(dp) :: local_vertices(3, 4), local_dofs(6)
-        type(tetra_nedelec_first_kind_t) :: basis
-        integer :: basis_status, index_x, index_y, local_edge, local_status
-        integer :: map_status, tetrahedron
+        real(dp) :: point(3), sample_point(3), sample_value
+        real(dp) :: sample_offsets(2, sample_offset_count)
+        integer :: index_x, index_y, sample_offset, local_status
 
         do index_x = 1, slice_nx + 1
             x_edges(index_x) = real(index_x - 1, dp)/real(slice_nx, dp)
@@ -458,43 +462,37 @@ contains
         do index_y = 1, slice_ny + 1
             y_edges(index_y) = real(index_y - 1, dp)/real(slice_ny, dp)
         end do
-        call initialize_tetra_nedelec_first_kind(1, basis, basis_status)
-        if (basis_status /= 0) error stop "Maxwell PML plot basis failed"
+        sample_offsets = reshape([ &
+            -0.2_dp, -0.2_dp, 0.2_dp, -0.2_dp, &
+            -0.2_dp, 0.2_dp, 0.2_dp, 0.2_dp], [2, sample_offset_count])
         values = 0.0_dp
         do index_y = 1, slice_ny
             do index_x = 1, slice_nx
+                ! Avoid sampling exactly on an internal tetrahedral face.  The
+                ! Nedelec interpolant is single-valued in the element interior,
+                ! while choosing the first matching tetrahedron on a face can
+                ! expose an arbitrary side.  Averaging over one element-sized
+                ! footprint gives a stable visualization of this broken H(curl)
+                ! magnitude instead of displaying tetrahedron stripes.
                 point = [ &
                     (real(index_x, dp) - 0.5_dp)/real(slice_nx, dp), &
-                    (real(index_y, dp) - 0.5_dp)/real(slice_ny, dp), 0.5_dp]
-                do tetrahedron = 1, size(tetrahedra, 2)
-                    local_vertices = vertices(:, tetrahedra(:, tetrahedron))
-                    call invert_tetra_affine_map( &
-                        local_vertices, point, reference_point, map_status)
-                    if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) &
-                        .or. sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
-                    do local_edge = 1, 6
-                        local_dofs(local_edge) = &
-                            real(orientations(local_edge, tetrahedron), dp) * &
-                            real(pml_solution( &
-                            global_dofs(local_edge, tetrahedron)), dp)
-                    end do
-                    call evaluate_tetra_nedelec_interpolant_at_point( &
-                        local_vertices, basis, local_dofs, point, real_value, &
-                        real_curl, local_status)
-                    if (local_status /= 0) cycle
-                    do local_edge = 1, 6
-                        local_dofs(local_edge) = &
-                            real(orientations(local_edge, tetrahedron), dp) * &
-                            aimag(pml_solution( &
-                            global_dofs(local_edge, tetrahedron)))
-                    end do
-                    call evaluate_tetra_nedelec_interpolant_at_point( &
-                        local_vertices, basis, local_dofs, point, &
-                        imaginary_value, imaginary_curl, local_status)
-                    if (local_status /= 0) cycle
-                    values(index_x, index_y) = sqrt(sum(real_value**2 + &
-                        imaginary_value**2))
-                    exit
+                    (real(index_y, dp) - 0.5_dp)/real(slice_ny, dp), &
+                    0.503_dp]
+                do sample_offset = 1, sample_offset_count
+                    sample_point = point
+                    sample_point(1) = min(1.0_dp, max(0.0_dp, &
+                        sample_point(1) + sample_offsets(1, sample_offset)* &
+                        mesh_spacing))
+                    sample_point(2) = min(1.0_dp, max(0.0_dp, &
+                        sample_point(2) + sample_offsets(2, sample_offset)* &
+                        mesh_spacing))
+                    call evaluate_pml_magnitude_at_point( &
+                        sample_point, sample_value, local_status)
+                    if (local_status /= 0) error stop &
+                        "Maxwell PML plot sample failed"
+                    values(index_x, index_y) = &
+                        values(index_x, index_y) + sample_value/ &
+                        real(sample_offset_count, dp)
                 end do
             end do
         end do
@@ -504,9 +502,60 @@ contains
         call colorbar(label="reconstructed Nedelec field magnitude")
         call xlabel("x")
         call ylabel("y")
-        call title("Order-1 Maxwell PML solution slice near z = 0.5")
+        call title("Element-averaged Maxwell PML solution near z = 0.503")
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
+
+    subroutine evaluate_pml_magnitude_at_point(point, magnitude, local_status)
+        real(dp), intent(in) :: point(3)
+        real(dp), intent(out) :: magnitude
+        integer, intent(out) :: local_status
+
+        real(dp) :: reference_point(3), real_value(3), real_curl(3)
+        real(dp) :: imaginary_value(3), imaginary_curl(3)
+        real(dp) :: local_vertices(3, 4), local_dofs(6)
+        type(tetra_nedelec_first_kind_t) :: basis
+        integer :: basis_status, local_edge, map_status, tetrahedron
+
+        call initialize_tetra_nedelec_first_kind(1, basis, basis_status)
+        if (basis_status /= 0) then
+            local_status = 1
+            magnitude = 0.0_dp
+            return
+        end if
+        do tetrahedron = 1, size(tetrahedra, 2)
+            local_vertices = vertices(:, tetrahedra(:, tetrahedron))
+            call invert_tetra_affine_map( &
+                local_vertices, point, reference_point, map_status)
+            if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) .or. &
+                sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
+            do local_edge = 1, 6
+                local_dofs(local_edge) = &
+                    real(orientations(local_edge, tetrahedron), dp)* &
+                    real(pml_solution( &
+                    global_dofs(local_edge, tetrahedron)), dp)
+            end do
+            call evaluate_tetra_nedelec_interpolant_at_point( &
+                local_vertices, basis, local_dofs, point, real_value, &
+                real_curl, local_status)
+            if (local_status /= 0) cycle
+            do local_edge = 1, 6
+                local_dofs(local_edge) = &
+                    real(orientations(local_edge, tetrahedron), dp)* &
+                    aimag(pml_solution( &
+                    global_dofs(local_edge, tetrahedron)))
+            end do
+            call evaluate_tetra_nedelec_interpolant_at_point( &
+                local_vertices, basis, local_dofs, point, imaginary_value, &
+                imaginary_curl, local_status)
+            if (local_status /= 0) cycle
+            magnitude = sqrt(sum(real_value**2 + imaginary_value**2))
+            local_status = 0
+            return
+        end do
+        magnitude = 0.0_dp
+        local_status = 1
+    end subroutine evaluate_pml_magnitude_at_point
 
     pure subroutine constant_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z

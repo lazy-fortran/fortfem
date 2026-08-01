@@ -177,7 +177,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/tetra_nedelec_p_convergence.html">tetra_nedelec_p_convergence</a></h3>
-<p>Executable FortFEM tetra_nedelec_p_convergence.f90 example.</p>
+<p>A short V-shaped head makes direction readable in the</p>
 </div>
 </article>
 </div>
@@ -281,6 +281,17 @@ fpm run --example <example_name>
 <div class="example-card-body">
 <h3><a href="generated/laplace_bem_circle_spectrum.html">laplace_bem_circle_spectrum</a></h3>
 <p>Executable FortFEM laplace_bem_circle_spectrum.f90 example.</p>
+</div>
+</article>
+<article class="example-card" data-example="laplace_exterior_bem_circle">
+<a class="example-card-preview" href="generated/laplace_exterior_bem_circle.html">
+<img class="example-card-image"
+ src="../media/examples/laplace_exterior_bem_circle/primary.png"
+ alt="Plot preview for laplace_exterior_bem_circle" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/laplace_exterior_bem_circle.html">laplace_exterior_bem_circle</a></h3>
+<p>This example solves the unbounded exterior Dirichlet problem on the unit</p>
 </div>
 </article>
 <article class="example-card" data-example="helmholtz_bem_circle_spectrum">
@@ -459,7 +470,7 @@ fpm run --example <example_name>
 - [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
-- [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - Executable FortFEM tetra_nedelec_p_convergence.f90 example.
+- [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - A short V-shaped head makes direction readable in the
 - [circular_dtn_modes](generated/circular_dtn_modes.html) - Boundary data on the unit circle:
 - [helmholtz_open_boundary_comparison](generated/helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing
 - [acoustic_fem_dtn](generated/acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
@@ -468,6 +479,7 @@ fpm run --example <example_name>
 - [solver_benchmark](generated/solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
 - [interoperability_benchmarks](generated/interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [laplace_bem_circle_spectrum](generated/laplace_bem_circle_spectrum.html) - Executable FortFEM laplace_bem_circle_spectrum.f90 example.
+- [laplace_exterior_bem_circle](generated/laplace_exterior_bem_circle.html) - This example solves the unbounded exterior Dirichlet problem on the unit
 - [helmholtz_bem_circle_spectrum](generated/helmholtz_bem_circle_spectrum.html) - Executable FortFEM helmholtz_bem_circle_spectrum.f90 example.
 - [helmholtz_cfie_circle](generated/helmholtz_cfie_circle.html) - Executable FortFEM helmholtz_cfie_circle.f90 example.
 - [laplace_symmetric_transmission](generated/laplace_symmetric_transmission.html) - Manufactured transmission pair:
