@@ -37,6 +37,8 @@ call build_fourier_mode_triad_map( &
     registry, triad_map, missing_count, status)
 call build_fourier_mode_padded_registry( &
     registry, padded_registry, status)
+call build_fourier_mode_closure_registry( &
+    registry, closure_rounds, closure_registry, status)
 call evaluate_fourier_mode( &
     registry, index, radius, theta, phi, value, radial_derivative, &
     theta_derivative, phi_derivative, status)
@@ -78,6 +80,11 @@ the original modes first, appends unique ordered pair sums, preserves field
 periods, phases, real/conjugate packing, radial powers, and normalizations for
 retained modes, and uses `abs(m)` plus unit normalization for newly introduced
 modes. It intentionally does not promise closure under repeated products.
+`build_fourier_mode_closure_registry` applies that same constructor for a
+positive, caller-selected number of rounds. Round one is exactly the padded
+registry; later rounds retain every pair sum from the previous work set. This
+bounded policy makes the growth of repeated products explicit instead of
+silently allocating an unbounded algebraic closure.
 
 The value, fixed-topology JVP, and real-coordinate VJP use the complex
 real-part convention
@@ -135,3 +142,6 @@ real-part VJP identity, and incompatible output-shape rejection.
 contraction against an independent padded oracle, product-rule JVP and central
 differences, the complex real-part VJP identity, and incompatible output-shape
 rejection.
+`test_fourier_mode_closure` checks one-round equivalence, two-round pair-sum
+closure against direct label lookup, metadata preservation, and rejection of a
+non-positive round count.
