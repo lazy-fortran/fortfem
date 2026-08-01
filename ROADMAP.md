@@ -227,7 +227,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | --- | --- | --- |
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; metric-harmonic one-forms now have a fixed-topology cycle-period normalization map with JVP/VJP | Chain-complex identities, Euler characteristic, cycle and flux integrals, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, normal-traction jump, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
-| Cut FEEC spaces | The scalar shifted-Heaviside activation, a 3D vector-enrichment curl/divergence product-rule diagnostic, the physical vector/metric support Gram contraction, and batched 2D/3D covariant/contravariant Piola-enrichment composition are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Independent commuting projections, curl-gradient and divergence-curl identities, and fitted versus unfitted convergence |
+| Cut FEEC spaces | The scalar shifted-Heaviside activation, a 3D vector-enrichment curl/divergence product-rule diagnostic, the physical vector/metric support Gram contraction, batched 2D/3D covariant/contravariant Piola-enrichment composition, and a rectangular commuting-projection audit with value/JVP/VJP actions are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Actual enriched-space construction, curl-gradient and divergence-curl identities on every generated space, and fitted versus unfitted convergence |
 | Coupled field residuals | Generic composable blocks for vector fields, tensor constitutive laws, interfaces, constraints, and boundary operators; the neutral tensor volume-work contraction is public. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | The neutral external-adapter schema for mapped coordinates, physical samples, named scalar/vector/tensor coefficients and scalar profiles, segmented boundaries, provenance, units, and normalization is public and validated. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data now covers toroidal mapped samples, named fields, segmented boundaries, vector/tensor component offsets, copy semantics, and rejection; license-safe CHEASE and FreeGS outputs sampled on a common physical grid remain |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, radial regularity, complex coordinate derivatives, and a generic three-factor vector/tensor Fourier product with JVP/VJP; FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Stable high-order recurrences/continuation, symmetry and de-aliasing checks, and independent mode-by-mode energy |
@@ -1194,14 +1194,16 @@ gallery example.
   value/JVP/VJP actions for vector traces, metrics, weights, and penalties.
   `assemble_vector_sipg_interface` now adds independent test/trial vector
   average-flux consistency for `theta=1,0,-1`, including metric-aware
-  value/JVP/VJP actions; higher-order HDG trace composition and commuting
-  projection assembly remain.
+  value/JVP/VJP actions; higher-order HDG trace composition and concrete
+  enriched-space construction remain.
   `assemble_hdg_static_condensation` now exposes the local Schur complement
   and condensed load with implicit-solve value/JVP/VJP actions, so global
   skeleton assembly can be layered without differentiating pivot choices.
   `assemble_compatible_flux_elimination` now exposes the corresponding
   flux-specific recovery map, condensed state block, and full real JVP/VJP;
-  higher-order commuting projection assembly remains client-owned.
+  `assemble_feec_commuting_projection` now audits all three projected
+  differentials with complete value/JVP/VJP actions; actual higher-order
+  enriched-space construction and client-owned projection maps remain.
   `assemble_scalar_numerical_flux` now provides conservative central, upwind,
   and Lax--Friedrichs choices with a quadratic-entropy diagnostic and complete
   fixed-topology value/JVP/VJP actions; `assemble_vector_numerical_flux` now
@@ -1379,6 +1381,10 @@ gallery example.
   `assemble_feec_exact_sequence` now exposes the
   metric-independent `curl(grad)` and `div(curl)` defects with independent
   value/JVP/VJP actions for simplicial, IGA, multipatch, and periodic maps.
+  `assemble_feec_commuting_projection` now checks projected discrete and
+  continuous differentials, including all projection directions in its
+  JVP/VJP; concrete generated enriched-space constructors remain a later
+  layer.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind vector flux interfaces now include scalar and
