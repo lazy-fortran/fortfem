@@ -587,6 +587,9 @@ module fortfem_api
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
+    use fortfem_laplace_representation_ad_3d, only: &
+        evaluate_laplace_representation_torus_curved_3d_jvp, &
+        evaluate_laplace_representation_torus_curved_3d_vjp
     use fortfem_adaptive_surface_bem, only: &
         estimate_helmholtz_p0_two_level_residual_3d, &
         estimate_laplace_p0_two_level_residual_3d, mark_bem_dorfler, &
@@ -1275,6 +1278,8 @@ module fortfem_api
     public :: toroidal_vector_to_cartesian_vjp
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
+    public :: evaluate_laplace_representation_torus_curved_3d_jvp
+    public :: evaluate_laplace_representation_torus_curved_3d_vjp
     public :: assemble_laplace_torus_curved_calderon_3d
     public :: assemble_laplace_torus_curved_dtn_3d
     public :: solve_laplace_bem_dtn_torus_curved_3d
