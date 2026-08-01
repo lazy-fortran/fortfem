@@ -81,6 +81,17 @@ fpm run --example <example_name>
 <p>This example is the first vector finite-element problem after the scalar</p>
 </div>
 </article>
+<article class="example-card" data-example="anisotropic_tensor_diffusion">
+<a class="example-card-preview" href="generated/anisotropic_tensor_diffusion.html">
+<img class="example-card-image"
+ src="../media/examples/anisotropic_tensor_diffusion/primary.png"
+ alt="Plot preview for anisotropic_tensor_diffusion" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/anisotropic_tensor_diffusion.html">anisotropic_tensor_diffusion</a></h3>
+<p>This example solves a manufactured two-dimensional diffusion problem with a</p>
+</div>
+</article>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
@@ -478,6 +489,7 @@ fpm run --example <example_name>
 - [plot_mesh](generated/plot_mesh.html) - This example demonstrates FortFEM's mesh visualization capabilities, showing how to create and plot finite element meshes at different refinement levels.
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
+- [anisotropic_tensor_diffusion](generated/anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive

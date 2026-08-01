@@ -1030,8 +1030,11 @@ The current `cgl_pressure_tensor` gallery example provides the first
 manufactured constitutive/force-divergence profile and CSV/1D FortPlot
 outputs; the coupled wave and higher-dimensional cases remain active.
 The `field_aligned_flux` gallery example now provides a generated
-parallel/perpendicular profile and (k_\parallel/k_\perp=100) flux plot; a
-full assembled anisotropic diffusion gallery case remains active.
+parallel/perpendicular profile and \(k_\parallel/k_\perp=100\) flux plot. The
+`anisotropic_tensor_diffusion` gallery fixture now adds a physical 2D P1
+solution for a \(k_\parallel/k_\perp=1000\) tensor, with a solution contour as
+its first plot, a centerline oracle, mesh view, error/energy, and timing data.
+Three-dimensional curvilinear and FCI/Fourier parity cases remain active.
 27. **Field-aligned diffusion.** A slab, cylinder, and torus with extreme
     \(k_\parallel/k_\perp\), comparing aligned coordinates, FCI maps, Fourier-
     FEM, and an isotropic control case.
