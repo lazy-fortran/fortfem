@@ -1336,7 +1336,10 @@ gallery example.
   fixed-topology JVPs are now public. The 2-D linear level-set path now also
   exposes exact degree-three raw-moment tensors and fixed-topology JVPs for
   positive and negative clipped polygons, with an independent simplex-moment
-  and central-difference oracle; higher-order cut rules remain.
+  and central-difference oracle. The matching 3-D tetrahedral path now exposes
+  exact degree-three raw-moment tensors and fixed-topology JVPs through its
+  oriented tetrahedral fan, with an independent simplex-moment and
+  central-difference oracle; higher-order cut rules remain.
 - Heaviside, kink, singular, helical, and resonant enrichments.
 - Shifted bases, corrected blending elements, pruning, conditioning, and
   connected-component activation.
