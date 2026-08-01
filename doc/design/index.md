@@ -82,7 +82,8 @@ explicit nonsymmetric counterpart.
 
 The [sparse ILUT contract](sparse_ilut.html) adds deterministic drop and
 per-column fill control for nonsymmetric response blocks, with sparse fixed-
-factor apply and value/JVP/VJP actions.
+factor apply and value/JVP/VJP actions. Its row-oriented companion provides
+the same CSC factor contract with O(n + nnz) construction work storage.
 
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
