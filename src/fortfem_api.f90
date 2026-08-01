@@ -989,6 +989,8 @@ module fortfem_api
     use fortfem_sparse_incomplete_lu, only: apply_sparse_incomplete_lu, &
         apply_sparse_incomplete_lu_jvp, apply_sparse_incomplete_lu_vjp, &
         build_sparse_incomplete_lu, sparse_incomplete_lu_factor_t
+    use fortfem_sparse_ilut, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
+        apply_sparse_ilut_vjp, build_sparse_ilut, sparse_ilut_factor_t
     implicit none
 
     private
@@ -1121,6 +1123,11 @@ module fortfem_api
     public :: apply_sparse_incomplete_lu
     public :: apply_sparse_incomplete_lu_jvp
     public :: apply_sparse_incomplete_lu_vjp
+    public :: sparse_ilut_factor_t
+    public :: build_sparse_ilut
+    public :: apply_sparse_ilut
+    public :: apply_sparse_ilut_jvp
+    public :: apply_sparse_ilut_vjp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t

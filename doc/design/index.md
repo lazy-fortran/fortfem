@@ -80,6 +80,10 @@ explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
 explicit nonsymmetric counterpart.
 
+The [sparse ILUT contract](sparse_ilut.html) adds deterministic drop and
+per-column fill control for nonsymmetric response blocks, with sparse fixed-
+factor apply and value/JVP/VJP actions.
+
 The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.
