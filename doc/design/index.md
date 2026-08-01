@@ -25,6 +25,10 @@ The [curvilinear PML geometry builder](curvilinear_pml_geometry.html) turns
 caller-owned curved-layer points and unit normals into full per-cell normal
 frame stretches, with generated attenuation and geometry JVP/VJP products.
 
+The [tetrahedral scalar curvilinear PML assembly](tetra_scalar_curvilinear_pml.html)
+provides the P1 Helmholtz element and CSC value/JVP/VJP paths that consume
+those full tensors.
+
 The [spherical-harmonic contract](spherical_harmonics.html) records the
 FortNum-backed normalization, angular domains, and pole convention used by
 Fourier-FEM and boundary operators.
