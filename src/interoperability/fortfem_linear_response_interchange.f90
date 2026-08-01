@@ -42,9 +42,13 @@ module fortfem_linear_response_interchange
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
+    public :: assemble_linear_response_residual
+    public :: assemble_linear_response_residual_jvp
+    public :: assemble_linear_response_residual_vjp
 
     interface finite_complex
         module procedure finite_complex_scalar
+        module procedure finite_complex_vector
         module procedure finite_complex_matrix
     end interface finite_complex
 
@@ -172,6 +176,66 @@ contains
         end do
         status = 0
     end subroutine evaluate_linear_response_diagnostics
+
+    subroutine assemble_linear_response_residual( &
+            operator, state, source, residual, status)
+        complex(dp), intent(in) :: operator(:, :), state(:), source(:)
+        complex(dp), intent(out) :: residual(:)
+        integer, intent(out) :: status
+
+        status = 1
+        if (.not. valid_operator_state(operator, state, source, residual)) return
+        residual = matmul(operator, state) - source
+        status = 0
+    end subroutine assemble_linear_response_residual
+
+    subroutine assemble_linear_response_residual_jvp( &
+            operator, state, source, operator_dot, state_dot, source_dot, &
+            residual_dot, status)
+        complex(dp), intent(in) :: operator(:, :), state(:), source(:)
+        complex(dp), intent(in) :: operator_dot(:, :), state_dot(:), source_dot(:)
+        complex(dp), intent(out) :: residual_dot(:)
+        integer, intent(out) :: status
+
+        status = 1
+        if (.not. valid_operator_state(operator, state, source, residual_dot) .or. &
+            any(shape(operator_dot) /= shape(operator)) .or. &
+            size(state_dot) /= size(state) .or. size(source_dot) /= size(source) .or. &
+            .not. finite_complex(operator_dot) .or. &
+            .not. finite_complex(state_dot) .or. &
+            .not. finite_complex(source_dot)) return
+        residual_dot = matmul(operator_dot, state) + &
+            matmul(operator, state_dot) - source_dot
+        status = 0
+    end subroutine assemble_linear_response_residual_jvp
+
+    subroutine assemble_linear_response_residual_vjp( &
+            operator, state, source, residual_bar, operator_bar, state_bar, &
+            source_bar, status)
+        complex(dp), intent(in) :: operator(:, :), state(:), source(:)
+        complex(dp), intent(in) :: residual_bar(:)
+        complex(dp), intent(out) :: operator_bar(:, :), state_bar(:), source_bar(:)
+        integer, intent(out) :: status
+
+        integer :: column, row
+
+        operator_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        state_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        source_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_operator_state(operator, state, source, residual_bar) .or. &
+            any(shape(operator_bar) /= shape(operator)) .or. &
+            size(state_bar) /= size(state) .or. size(source_bar) /= size(source) .or. &
+            .not. finite_complex(residual_bar)) return
+        do row = 1, size(operator, 1)
+            do column = 1, size(operator, 2)
+                operator_bar(row, column) = residual_bar(row)*conjg(state(column))
+            end do
+        end do
+        state_bar = matmul(conjg(transpose(operator)), residual_bar)
+        source_bar = -residual_bar
+        status = 0
+    end subroutine assemble_linear_response_residual_vjp
 
     subroutine assemble_linear_response_operator( &
             equilibrium, inertia, resistive, vacuum, wall, frequency, &
@@ -365,6 +429,13 @@ contains
         valid = ieee_is_finite(real(value, dp)) .and. ieee_is_finite(aimag(value))
     end function finite_complex_scalar
 
+    logical function finite_complex_vector(value) result(valid)
+        complex(dp), intent(in) :: value(:)
+
+        valid = all(ieee_is_finite(real(value, dp))) .and. &
+            all(ieee_is_finite(aimag(value)))
+    end function finite_complex_vector
+
     logical function finite_complex_matrix(value) result(valid)
         complex(dp), intent(in) :: value(:, :)
 
@@ -381,6 +452,16 @@ contains
         valid = state_count > 0 .and. size(equilibrium, 1) == state_count .and. &
             compatible_blocks(equilibrium, inertia, resistive, vacuum, wall)
     end function all_square_blocks
+
+    logical function valid_operator_state(operator, state, source, result) &
+            result(valid)
+        complex(dp), intent(in) :: operator(:, :), state(:), source(:), result(:)
+
+        valid = size(operator, 1) > 0 .and. size(operator, 1) == size(operator, 2) .and. &
+            size(state) == size(operator, 1) .and. size(source) == size(state) .and. &
+            size(result) == size(state) .and. finite_complex(operator) .and. &
+            finite_complex(state) .and. finite_complex(source)
+    end function valid_operator_state
 
     logical function unique_integer_pairs(values) result(unique)
         integer, intent(in) :: values(:, :)

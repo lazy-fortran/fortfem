@@ -28,6 +28,16 @@ real part of the complex inner product,
 which is the convention used by the other complex FortFEM operators.  The
 frequency adjoint is returned as a complex scalar under that convention.
 
+The residual layer accepts a caller-owned state and source,
+
+\[
+  r(u) = L(\omega)u-b,
+\]
+
+and exposes its value, JVP, and VJP without owning a linear solver or a
+stopping criterion.  This is the composition point for an external forced
+response, eigen-residual linearization, or FEM/BEM/DtN/PML client.
+
 `test_linear_response_interchange` is an independent manufactured oracle: it
 checks the block signs, central differences, deep-copy semantics, duplicate
 mode rejection, and the complex adjoint identity.  The contract is intended

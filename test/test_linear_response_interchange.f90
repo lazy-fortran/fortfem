@@ -6,6 +6,9 @@ program test_linear_response_interchange
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
         assemble_linear_response_operator_vjp, &
+        assemble_linear_response_residual, &
+        assemble_linear_response_residual_jvp, &
+        assemble_linear_response_residual_vjp, &
         initialize_linear_response_interchange, &
         linear_response_interchange_t, validate_linear_response_interchange
     implicit none
@@ -16,6 +19,10 @@ program test_linear_response_interchange
     complex(dp) :: equilibrium(n, n), inertia(n, n), resistive(n, n)
     complex(dp) :: vacuum(n, n), wall(n, n), response(response_count, response_count)
     complex(dp) :: operator(n, n), operator_dot(n, n), operator_bar(n, n)
+    complex(dp) :: state(n), state_dot(n), state_bar(n)
+    complex(dp) :: source(n), source_dot(n), source_bar(n)
+    complex(dp) :: residual(n), residual_dot(n), residual_bar(n)
+    complex(dp) :: residual_plus(n), operator_bar_residual(n, n)
     complex(dp) :: equilibrium_dot(n, n), inertia_dot(n, n)
     complex(dp) :: resistive_dot(n, n), vacuum_dot(n, n), wall_dot(n, n)
     complex(dp) :: operator_plus(n, n), operator_minus(n, n)
@@ -65,6 +72,18 @@ program test_linear_response_interchange
         equilibrium, inertia, resistive, vacuum, wall, frequency))) < 1.0e-14_dp, &
         "linear response block signs and frequency factors are correct")
 
+    state = [ &
+        cmplx(0.3_dp, -0.4_dp, dp), cmplx(-0.2_dp, 0.1_dp, dp), &
+        cmplx(0.5_dp, 0.2_dp, dp)]
+    source = [ &
+        cmplx(0.7_dp, 0.3_dp, dp), cmplx(-0.1_dp, 0.6_dp, dp), &
+        cmplx(0.2_dp, -0.5_dp, dp)]
+    call assemble_linear_response_residual( &
+        operator, state, source, residual, status)
+    call record_condition(status == 0 .and. maxval(abs(residual - &
+        (matmul(operator, state) - source))) < 1.0e-14_dp, &
+        "linear response residual matches the matrix action")
+
     equilibrium_dot = cmplx(0.0_dp, 0.0_dp, dp)
     inertia_dot = cmplx(0.0_dp, 0.0_dp, dp)
     resistive_dot = cmplx(0.0_dp, 0.0_dp, dp)
@@ -96,6 +115,37 @@ program test_linear_response_interchange
         (operator_plus - operator_minus)/(2.0_dp*epsilon)))
     call record_condition(finite_difference_error < 2.0e-8_dp, &
         "linear response operator JVP matches central differences")
+
+    state_dot = [ &
+        cmplx(-0.02_dp, 0.07_dp, dp), cmplx(0.06_dp, -0.01_dp, dp), &
+        cmplx(0.03_dp, 0.04_dp, dp)]
+    source_dot = [ &
+        cmplx(0.01_dp, -0.03_dp, dp), cmplx(-0.05_dp, 0.02_dp, dp), &
+        cmplx(0.04_dp, 0.01_dp, dp)]
+    call assemble_linear_response_residual_jvp( &
+        operator, state, source, operator_dot, state_dot, source_dot, &
+        residual_dot, status)
+    call record_condition(status == 0, "linear response residual JVP assembles")
+    call assemble_linear_response_residual( &
+        operator + epsilon*operator_dot, state + epsilon*state_dot, &
+        source + epsilon*source_dot, residual_plus, status)
+    finite_difference_error = maxval(abs(residual_dot - &
+        (residual_plus - residual)/epsilon))
+    call record_condition(finite_difference_error < 2.0e-8_dp, &
+        "linear response residual JVP matches a forward difference")
+
+    residual_bar = [ &
+        cmplx(0.2_dp, -0.4_dp, dp), cmplx(-0.3_dp, 0.1_dp, dp), &
+        cmplx(0.5_dp, 0.2_dp, dp)]
+    call assemble_linear_response_residual_vjp( &
+        operator, state, source, residual_bar, operator_bar_residual, &
+        state_bar, source_bar, status)
+    call record_condition(status == 0, "linear response residual VJP assembles")
+    lhs = real(sum(conjg(residual_bar)*residual_dot), dp)
+    rhs = real(sum(conjg(operator_bar_residual)*operator_dot) + &
+        sum(conjg(state_bar)*state_dot) + sum(conjg(source_bar)*source_dot), dp)
+    call record_condition(abs(lhs - rhs) < 2.0e-13_dp, &
+        "linear response residual VJP satisfies the real complex adjoint identity")
 
     operator_bar = reshape([ &
         cmplx(0.2_dp, -0.1_dp, dp), cmplx(-0.3_dp, 0.4_dp, dp), &
