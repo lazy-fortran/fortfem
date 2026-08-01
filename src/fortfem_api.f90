@@ -90,7 +90,8 @@ module fortfem_api
     use fortfem_fourier_mode_registry, only: &
         evaluate_fourier_mode, evaluate_fourier_mode_jvp, &
         evaluate_fourier_mode_vjp, find_fourier_mode, &
-        build_fourier_mode_triad_map, fourier_mode_conjugate_index, &
+        build_fourier_mode_padded_registry, build_fourier_mode_triad_map, &
+        fourier_mode_conjugate_index, &
         fourier_mode_registry_t, fourier_mode_triad_closed, &
         initialize_fourier_mode_registry, &
         validate_fourier_mode_registry
@@ -1185,6 +1186,7 @@ module fortfem_api
     public :: fourier_mode_conjugate_index
     public :: fourier_mode_triad_closed
     public :: build_fourier_mode_triad_map
+    public :: build_fourier_mode_padded_registry
     public :: evaluate_fourier_mode
     public :: evaluate_fourier_mode_jvp
     public :: evaluate_fourier_mode_vjp
