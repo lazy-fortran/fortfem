@@ -142,6 +142,10 @@ program laplace_exterior_bem_circle
         exact_trace(i) = 1.0_dp/radial(i)
     end do
     trace_error = maxval(abs(bem_trace - exact_trace))
+    if (matrix_residual >= 1.0e-10_dp .or. field_error >= 1.0e-3_dp .or. &
+        trace_error >= 1.0e-3_dp) then
+        error stop "exterior circle BEM manufactured-solution regression"
+    end if
 
     allocate(circle_x(257), circle_y(257))
     do i = 1, size(circle_x)
