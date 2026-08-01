@@ -126,6 +126,10 @@ defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and
 wall response adapters without importing their application physics.
 
+Its [singular-layer matching block](linear_response_interchange.html)
+composes independently sized inner and outer complex trace spaces with
+weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
+
 The [generalized complex eigen-residual](generalized_eigen_residual.html)
 provides the neutral `K u - lambda M u` modal residual and analytic JVP/VJP
 actions for Fourier-FEM, curl--curl, GLISS-like, and other linear-response

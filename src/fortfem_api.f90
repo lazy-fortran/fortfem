@@ -2,6 +2,10 @@ module fortfem_api
     use fortfem_interchange_samples, only: &
         compare_interchange_samples, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
+    use fortfem_singular_layer_matching, only: &
+        assemble_singular_layer_matching, &
+        assemble_singular_layer_matching_jvp, &
+        assemble_singular_layer_matching_vjp
     use fortfem_equilibrium_interchange, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
@@ -2254,6 +2258,9 @@ module fortfem_api
     public :: initialize_interchange_samples
     public :: validate_interchange_samples
     public :: compare_interchange_samples
+    public :: assemble_singular_layer_matching
+    public :: assemble_singular_layer_matching_jvp
+    public :: assemble_singular_layer_matching_vjp
     public :: equilibrium_interchange_t
     public :: equilibrium_normalization_t
     public :: initialize_equilibrium_interchange
