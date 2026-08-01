@@ -124,7 +124,8 @@ jobs:
           test -d "$source_dir"
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
           test "$(find "$source_dir/interoperability_benchmarks" \
-            -maxdepth 1 -name '*.png' | wc -l)" -eq 5
+            -maxdepth 1 -name '*.png' | wc -l)" -ge 5
+          test -s "$source_dir/interoperability_benchmarks/primary.png"
           chmod +x scripts/stage_gallery_media.sh
           scripts/stage_gallery_media.sh \
             "$source_dir" build/doc/page/media/examples
