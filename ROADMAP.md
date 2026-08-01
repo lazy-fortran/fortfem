@@ -624,10 +624,12 @@ half-integer toroidal `P/Q` API. It also provides standard orthonormal complex
 `spherical_harmonic` values and analytical theta/phi derivatives on the closed
 polar interval (with derivative evaluation intentionally undefined at its
 poles). The [pinned FortNum API
-revision](https://github.com/lazy-fortran/fortnum/blob/b5afac7/docs/api.md)
+revision](https://github.com/lazy-fortran/fortnum/blob/d8be030/docs/api.md)
 records the domains, normalization, derivative convention, DLMF provenance,
-and the current moderate-degree limitation. The remaining foundation is
-stable high-order and near-cut continuation, spherical harmonics and products,
+and the current moderate-degree limitation. FortNum's zero-order toroidal Q
+branch now uses the DLMF zero-balanced continuation near x=1 and generates
+associated orders from its analytical derivative; the remaining limitation is
+stable large-degree/large-order continuation, spherical harmonics and products,
 and cross-geometry special-function oracles. Analytical solutions and DtN
 maps are tested on slabs, cylinders, spheres, and exact toroidal surfaces. The
 FortFEM now re-exports the pinned toroidal P/Q values and derivatives through
@@ -1449,12 +1451,15 @@ gallery example.
   ODE checks. Standard orthonormal complex spherical harmonics and angular
   derivatives are now public with closed-form degree-one, conjugacy, pole,
   and invalid-angle tests. Complete the remaining stable high-order and
-  near-cut continuation before using these functions as production
-  DtN/torus-harmonic building blocks.
+  near-cut continuation for moderate orders is now covered by a DLMF
+  zero-balanced/Euler continuation; stable large-order continuation remains
+  before using these functions as production DtN/torus-harmonic building
+  blocks.
 - The FortFEM public API now re-exports the pinned toroidal P/Q values and
   derivatives through `fortfem_toroidal_harmonics`; an independent adapter
-  oracle covers both Hobson branches, derivative values, and invalid-domain
-  NaN behavior. Stable continuation and mode-coupled toroidal operators remain.
+  oracle covers both Hobson branches, derivative values, invalid-domain NaN,
+  and the upstream near-cut continuation. Stable large-order continuation
+  and mode-coupled toroidal operators remain.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
   operators.
@@ -1796,7 +1801,7 @@ official documentation, or official repositories where possible.
 - [DLMF 14.3: definitions and hypergeometric forms](https://dlmf.nist.gov/14.3)
 - [DLMF 14.10: Legendre recurrences and derivatives](https://dlmf.nist.gov/14.10)
 - [DLMF 14.19: toroidal (half-integer) specialization](https://dlmf.nist.gov/14.19)
-- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/b5afac7/docs/api.md)
+- [FortNum special-function API at the pinned revision](https://github.com/lazy-fortran/fortnum/blob/d8be030/docs/api.md)
 
 ### MHD, equilibria, and linear response
 
