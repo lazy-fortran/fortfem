@@ -3,6 +3,10 @@ module fortfem_assembly_tetra_nedelec_3d
         cartesian_curl_curl_pml_coefficients, &
         cartesian_curl_curl_pml_coefficients_jvp, &
         cartesian_curl_curl_pml_coefficients_vjp
+    use fortfem_curvilinear_helmholtz_pml, only: &
+        curvilinear_curl_curl_pml_coefficients, &
+        curvilinear_curl_curl_pml_coefficients_jvp, &
+        curvilinear_curl_curl_pml_coefficients_vjp
     use fortfem_kinds, only: dp
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_nedelec_first_order, only: &
@@ -32,6 +36,9 @@ module fortfem_assembly_tetra_nedelec_3d
     public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_element_jvp
     public :: assemble_tetra_nedelec_pml_element_vjp
+    public :: assemble_tetra_nedelec_curvilinear_pml_element
+    public :: assemble_tetra_nedelec_curvilinear_pml_element_jvp
+    public :: assemble_tetra_nedelec_curvilinear_pml_element_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
@@ -1078,6 +1085,286 @@ contains
             stretch, curl_coefficient_bar, mass_coefficient_bar, stretch_bar, &
             status)
     end subroutine assemble_tetra_nedelec_pml_element_vjp
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_element( &
+            vertices, order, quadrature_degree, stretch, wave_number, matrix, &
+            status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        complex(dp), intent(in) :: stretch(3, 3)
+        real(dp), intent(in) :: wave_number
+        complex(dp), allocatable, intent(out) :: matrix(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        complex(dp) :: curl_coefficient(3, 3), mass_coefficient(3, 3)
+        real(dp), allocatable :: physical_curls(:, :), physical_values(:, :)
+        real(dp), allocatable :: reference_curls(:, :), reference_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, jacobian(3, 3), physical_weight, point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (order < 1 .or. quadrature_degree < 0 .or. wave_number <= 0.0_dp) &
+            return
+        call curvilinear_curl_curl_pml_coefficients( &
+            stretch, curl_coefficient, mass_coefficient, status)
+        if (status /= 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(matrix(dof_count, dof_count))
+        allocate( &
+            reference_values(3, dof_count), reference_curls(3, dof_count), &
+            physical_values(3, dof_count), physical_curls(3, dof_count))
+        matrix = cmplx(0.0_dp, 0.0_dp, dp)
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, reference_values, reference_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, reference_values, reference_curls, physical_values, &
+                physical_curls, status)
+            if (status /= 0) return
+            physical_weight = determinant*weights(point_index)
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    matrix(row, column) = matrix(row, column) + &
+                        physical_weight*( &
+                        sum(physical_curls(:, row)*matmul( &
+                        curl_coefficient, physical_curls(:, column))) - &
+                        wave_number**2*sum(physical_values(:, row)*matmul( &
+                        mass_coefficient, physical_values(:, column))))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_element
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_element_jvp( &
+            vertices, order, quadrature_degree, stretch, wave_number, &
+            vertices_dot, stretch_dot, wave_number_dot, matrix_dot, status)
+        real(dp), intent(in) :: vertices(3, 4), vertices_dot(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        complex(dp), intent(in) :: stretch(3, 3), stretch_dot(3, 3)
+        real(dp), intent(in) :: wave_number, wave_number_dot
+        complex(dp), allocatable, intent(out) :: matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        complex(dp) :: curl_coefficient(3, 3), curl_coefficient_dot(3, 3)
+        complex(dp) :: mass_coefficient(3, 3), mass_coefficient_dot(3, 3)
+        complex(dp) :: curl_energy, curl_energy_dot
+        complex(dp) :: mass_energy, mass_energy_dot
+        real(dp), allocatable :: curls(:, :), curls_dot(:, :)
+        real(dp), allocatable :: values(:, :), values_dot(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_values(:, :)
+        real(dp), allocatable :: zero_curls(:, :), zero_values(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_dot
+        real(dp) :: jacobian(3, 3), jacobian_dot(3, 3), point(3)
+        integer :: column, dof_count, point_index, row
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (order < 1 .or. quadrature_degree < 0 .or. wave_number <= 0.0_dp) &
+            return
+        call curvilinear_curl_curl_pml_coefficients( &
+            stretch, curl_coefficient, mass_coefficient, status)
+        if (status /= 0) return
+        call curvilinear_curl_curl_pml_coefficients_jvp( &
+            stretch, stretch_dot, curl_coefficient_dot, &
+            mass_coefficient_dot, status)
+        if (status /= 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        call tetra_jacobian(vertices_dot, jacobian_dot)
+        call det3_jvp(jacobian, jacobian_dot, determinant_dot)
+
+        dof_count = tetra_nedelec_dof_count(basis)
+        allocate(matrix_dot(dof_count, dof_count), &
+            source=cmplx(0.0_dp, 0.0_dp, dp))
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(zero_values(3, dof_count), zero_curls(3, dof_count), &
+            source=0.0_dp)
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_dot(3, dof_count), curls_dot(3, dof_count))
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant_jvp( &
+                jacobian, ref_values, ref_curls, jacobian_dot, zero_values, &
+                zero_curls, values_dot, curls_dot, status)
+            if (status /= 0) return
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    curl_energy = sum(curls(:, row)*matmul( &
+                        curl_coefficient, curls(:, column)))
+                    curl_energy_dot = sum(curls_dot(:, row)*matmul( &
+                        curl_coefficient, curls(:, column))) + &
+                        sum(curls(:, row)*matmul( &
+                        curl_coefficient, curls_dot(:, column))) + &
+                        sum(curls(:, row)*matmul( &
+                        curl_coefficient_dot, curls(:, column)))
+                    mass_energy = sum(values(:, row)*matmul( &
+                        mass_coefficient, values(:, column)))
+                    mass_energy_dot = sum(values_dot(:, row)*matmul( &
+                        mass_coefficient, values(:, column))) + &
+                        sum(values(:, row)*matmul( &
+                        mass_coefficient, values_dot(:, column))) + &
+                        sum(values(:, row)*matmul( &
+                        mass_coefficient_dot, values(:, column)))
+                    matrix_dot(row, column) = matrix_dot(row, column) + &
+                        weights(point_index)*(determinant_dot*( &
+                        curl_energy - wave_number**2*mass_energy) + &
+                        determinant*(curl_energy_dot - &
+                        2.0_dp*wave_number*wave_number_dot*mass_energy - &
+                        wave_number**2*mass_energy_dot))
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_element_jvp
+
+    subroutine assemble_tetra_nedelec_curvilinear_pml_element_vjp( &
+            vertices, order, quadrature_degree, stretch, wave_number, &
+            matrix_bar, vertices_bar, stretch_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(3, 4)
+        integer, intent(in) :: order, quadrature_degree
+        complex(dp), intent(in) :: stretch(3, 3), matrix_bar(:, :)
+        real(dp), intent(in) :: wave_number
+        real(dp), intent(out) :: vertices_bar(3, 4), wave_number_bar
+        complex(dp), intent(out) :: stretch_bar(3, 3)
+        integer, intent(out) :: status
+
+        type(tetra_nedelec_first_kind_t) :: basis
+        complex(dp) :: curl_coefficient(3, 3), curl_coefficient_bar(3, 3)
+        complex(dp) :: mass_coefficient(3, 3), mass_coefficient_bar(3, 3)
+        complex(dp) :: curl_energy, mass_energy, seed
+        complex(dp) :: curl_forward(3), curl_transpose(3)
+        complex(dp) :: mass_forward(3), mass_transpose(3)
+        real(dp), allocatable :: curls(:, :), curls_bar(:, :)
+        real(dp), allocatable :: values(:, :), values_bar(:, :)
+        real(dp), allocatable :: ref_curls(:, :), ref_curls_bar(:, :)
+        real(dp), allocatable :: ref_values(:, :), ref_values_bar(:, :)
+        real(dp), allocatable :: weights(:), x(:), y(:), z(:)
+        real(dp) :: determinant, determinant_bar
+        real(dp) :: determinant_jacobian_bar(3, 3), jacobian(3, 3)
+        real(dp) :: jacobian_bar(3, 3), local_jacobian_bar(3, 3), point(3)
+        integer :: column, component, component_2, dof_count, point_index, row
+
+        vertices_bar = 0.0_dp
+        stretch_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        wave_number_bar = 0.0_dp
+        status = 1
+        if (order < 1 .or. quadrature_degree < 0 .or. wave_number <= 0.0_dp) &
+            return
+        call curvilinear_curl_curl_pml_coefficients( &
+            stretch, curl_coefficient, mass_coefficient, status)
+        if (status /= 0) return
+        call initialize_tetra_nedelec_first_kind(order, basis, status)
+        if (status /= 0) return
+        dof_count = tetra_nedelec_dof_count(basis)
+        if (size(matrix_bar, 1) /= dof_count .or. &
+            size(matrix_bar, 2) /= dof_count) return
+        call tetra_duffy_quadrature( &
+            quadrature_degree, x, y, z, weights, status)
+        if (status /= 0) return
+        call tetra_geometry(vertices, jacobian, determinant, status)
+        if (status /= 0) return
+        allocate(ref_values(3, dof_count), ref_curls(3, dof_count))
+        allocate(ref_values_bar(3, dof_count), ref_curls_bar(3, dof_count))
+        allocate(values(3, dof_count), curls(3, dof_count))
+        allocate(values_bar(3, dof_count), curls_bar(3, dof_count))
+        jacobian_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        curl_coefficient_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        mass_coefficient_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do point_index = 1, size(weights)
+            point = [x(point_index), y(point_index), z(point_index)]
+            call evaluate_tetra_nedelec_first_kind( &
+                basis, point, ref_values, ref_curls, status)
+            if (status /= 0) return
+            call map_tetra_nedelec_covariant( &
+                jacobian, ref_values, ref_curls, values, curls, status)
+            if (status /= 0) return
+            values_bar = 0.0_dp
+            curls_bar = 0.0_dp
+            do column = 1, dof_count
+                do row = 1, dof_count
+                    seed = weights(point_index)*matrix_bar(row, column)
+                    curl_energy = sum(curls(:, row)*matmul( &
+                        curl_coefficient, curls(:, column)))
+                    mass_energy = sum(values(:, row)*matmul( &
+                        mass_coefficient, values(:, column)))
+                    curl_forward = matmul(curl_coefficient, curls(:, column))
+                    curl_transpose = matmul( &
+                        transpose(curl_coefficient), curls(:, row))
+                    mass_forward = matmul(mass_coefficient, values(:, column))
+                    mass_transpose = matmul( &
+                        transpose(mass_coefficient), values(:, row))
+                    determinant_bar = determinant_bar + real(conjg(seed)*( &
+                        curl_energy - wave_number**2*mass_energy), dp)
+                    wave_number_bar = wave_number_bar + real(conjg(seed)* &
+                        determinant*(-2.0_dp*wave_number)*mass_energy, dp)
+                    do component = 1, 3
+                        do component_2 = 1, 3
+                            curl_coefficient_bar(component, component_2) = &
+                                curl_coefficient_bar(component, component_2) + &
+                                determinant*curls(component, row)* &
+                                curls(component_2, column)*seed
+                            mass_coefficient_bar(component, component_2) = &
+                                mass_coefficient_bar(component, component_2) - &
+                                determinant*wave_number**2* &
+                                values(component, row)*values(component_2, column)*seed
+                        end do
+                        curls_bar(component, row) = curls_bar(component, row) + &
+                            real(conjg(seed)*determinant* &
+                            curl_forward(component), dp)
+                        curls_bar(component, column) = &
+                            curls_bar(component, column) + real(conjg(seed)* &
+                            determinant*curl_transpose(component), dp)
+                        values_bar(component, row) = values_bar(component, row) + &
+                            real(conjg(seed)*(-determinant*wave_number**2)* &
+                            mass_forward(component), dp)
+                        values_bar(component, column) = &
+                            values_bar(component, column) + real(conjg(seed)* &
+                            (-determinant*wave_number**2)* &
+                            mass_transpose(component), dp)
+                    end do
+                end do
+            end do
+            call map_tetra_nedelec_covariant_vjp( &
+                jacobian, ref_values, ref_curls, values_bar, curls_bar, &
+                local_jacobian_bar, ref_values_bar, ref_curls_bar, status)
+            if (status /= 0) return
+            jacobian_bar = jacobian_bar + local_jacobian_bar
+        end do
+        call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
+        jacobian_bar = jacobian_bar + determinant_jacobian_bar
+        call tetra_jacobian_vjp(jacobian_bar, vertices_bar)
+        call curvilinear_curl_curl_pml_coefficients_vjp( &
+            stretch, curl_coefficient_bar, mass_coefficient_bar, stretch_bar, &
+            status)
+    end subroutine assemble_tetra_nedelec_curvilinear_pml_element_vjp
 
     subroutine assemble_tetra_nedelec_pml_csc( &
             mesh_vertices, tetrahedra, order, stretch, wave_number, matrix, &
