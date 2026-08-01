@@ -124,6 +124,13 @@ reassembly under simultaneous mesh, stretch, and wave-number perturbations,
 checks the real complex dot identity, and verifies exact reduction to the
 Cartesian element for diagonal stretches.
 
+The global curvilinear tetrahedral PML CSC assembly now composes the same local
+products with orientation transforms and merged sparse ownership. Its JVP
+keeps the CSC pattern fixed, while its VJP scatters each local geometry and
+stretch cotangent to the shared mesh and cell arrays. A two-tetrahedron test
+checks the merged pattern, complete reassembly finite difference, and the
+real-complex adjoint independently.
+
 The one-dimensional scalar P1 slab exposes the complete end-to-end version of
 this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
 `solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same
