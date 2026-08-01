@@ -24,8 +24,15 @@ module fortfem_sparse_incomplete_cholesky
         real(dp), allocatable :: lower(:)
     end type sparse_incomplete_cholesky_factor_t
 
+    type :: ichol_row_entries_t
+        integer :: count = 0
+        integer, allocatable :: index(:)
+        real(dp), allocatable :: value(:)
+    end type ichol_row_entries_t
+
     public :: build_sparse_incomplete_cholesky
     public :: build_sparse_ichol
+    public :: build_sparse_ichol_row
     public :: apply_sparse_incomplete_cholesky
     public :: apply_sparse_incomplete_cholesky_jvp
     public :: apply_sparse_incomplete_cholesky_vjp
@@ -214,6 +221,177 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine build_sparse_ichol
 
+    subroutine build_sparse_ichol_row( &
+            matrix, drop_tolerance, max_fill_per_row, factor, status)
+        !! Build ICHOL with row-oriented O(n + nnz) work storage.
+        !!
+        !! Each row computes its lower factors from previously retained lower
+        !! rows.  The diagonal is evaluated before strict lower entries are
+        !! dropped, so the zero-fill limit remains an independent Cholesky
+        !! diagonal oracle.  The final row factors are converted to the same
+        !! sparse CSC representation used by the existing apply path.
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: drop_tolerance
+        integer, intent(in) :: max_fill_per_row
+        type(sparse_incomplete_cholesky_factor_t), intent(inout) :: factor
+        type(fortsparse_status_t), intent(out) :: status
+
+        type(ichol_row_entries_t), allocatable :: lower_rows(:)
+        integer, allocatable :: row_ptr(:), row_cursor(:), row_columns(:)
+        integer, allocatable :: lower_counts(:), lower_next(:)
+        integer :: dimension, row, column, entry, pivot_column, position
+        integer :: lower_nnz, diagonal_position
+        real(dp), allocatable :: row_values(:), work(:), diagonal_values(:)
+        real(dp) :: scale, threshold, pivot_tolerance, value, diagonal
+
+        call clear_factor(factor)
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "row-oriented ICHOL received an invalid matrix or policy")
+        if (.not. csc_is_valid(matrix) .or. matrix%nrow /= matrix%ncol) return
+        if (.not. ieee_is_finite(drop_tolerance) .or. &
+            drop_tolerance < 0.0_dp .or. max_fill_per_row < 0) return
+        if (matrix%nnz > 0) then
+            if (.not. all(ieee_is_finite(matrix%val))) return
+        end if
+
+        dimension = matrix%nrow
+        if (dimension < 1) return
+        scale = 1.0_dp
+        if (matrix%nnz > 0) scale = max(scale, maxval(abs(matrix%val)))
+        threshold = drop_tolerance*scale
+        pivot_tolerance = 128.0_dp*epsilon(1.0_dp)*scale* &
+            real(dimension, dp)
+
+        allocate(row_ptr(dimension + 1), row_cursor(dimension), &
+            row_columns(matrix%nnz), row_values(matrix%nnz))
+        row_ptr = 1
+        do column = 1, dimension
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                row_ptr(row + 1) = row_ptr(row + 1) + 1
+            end do
+        end do
+        row_ptr(1) = 1
+        do row = 1, dimension
+            row_ptr(row + 1) = row_ptr(row + 1) + row_ptr(row) - 1
+        end do
+        row_cursor = row_ptr(1:dimension)
+        do column = 1, dimension
+            do entry = matrix%col_ptr(column), matrix%col_ptr(column + 1) - 1
+                row = matrix%row_idx(entry)
+                position = row_cursor(row)
+                row_columns(position) = column
+                row_values(position) = matrix%val(entry)
+                row_cursor(row) = position + 1
+            end do
+        end do
+
+        do row = 1, dimension
+            do entry = row_ptr(row), row_ptr(row + 1) - 1
+                column = row_columns(entry)
+                value = row_values(entry) - row_value( &
+                    column, row, row_ptr, row_columns, row_values)
+                if (abs(value) > pivot_tolerance) then
+                    call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                        "row-oriented ICHOL received a nonsymmetric matrix")
+                    return
+                end if
+            end do
+        end do
+
+        allocate(lower_rows(dimension), work(dimension), &
+            diagonal_values(dimension), lower_counts(dimension), &
+            lower_next(dimension))
+        diagonal_values = 0.0_dp
+        do row = 1, dimension
+            work = 0.0_dp
+            do entry = row_ptr(row), row_ptr(row + 1) - 1
+                column = row_columns(entry)
+                work(column) = work(column) + row_values(entry)
+            end do
+
+            do pivot_column = 1, row - 1
+                value = work(pivot_column)
+                do entry = 1, lower_rows(pivot_column)%count
+                    column = lower_rows(pivot_column)%index(entry)
+                    if (column >= pivot_column) cycle
+                    value = value - work(column)* &
+                        lower_rows(pivot_column)%value(entry)
+                end do
+                if (.not. ieee_is_finite(value) .or. &
+                    abs(diagonal_values(pivot_column)) <= pivot_tolerance) then
+                    call clear_factor(factor)
+                    call status_set(status, FORTSPARSE_SINGULAR, &
+                        "row-oriented ICHOL encountered a zero pivot")
+                    return
+                end if
+                work(pivot_column) = value/diagonal_values(pivot_column)
+            end do
+
+            diagonal = work(row)
+            do pivot_column = 1, row - 1
+                diagonal = diagonal - work(pivot_column)**2
+            end do
+            if (.not. ieee_is_finite(diagonal) .or. &
+                diagonal <= pivot_tolerance) then
+                call clear_factor(factor)
+                call status_set(status, FORTSPARSE_SINGULAR, &
+                    "row-oriented ICHOL encountered a non-positive pivot")
+                return
+            end if
+            diagonal_values(row) = sqrt(diagonal)
+            call retain_ichol_row_entries(work, row - 1, threshold, &
+                max_fill_per_row, lower_rows(row))
+            call append_ichol_diagonal(lower_rows(row), row, diagonal_values(row))
+        end do
+
+        lower_counts = 0
+        do row = 1, dimension
+            do entry = 1, lower_rows(row)%count
+                column = lower_rows(row)%index(entry)
+                lower_counts(column) = lower_counts(column) + 1
+            end do
+        end do
+        lower_nnz = sum(lower_counts)
+        factor%dimension = dimension
+        factor%max_fill_per_column = max_fill_per_row
+        factor%drop_tolerance = drop_tolerance
+        allocate(factor%col_ptr(dimension + 1), &
+            factor%row_idx(lower_nnz), factor%lower(lower_nnz))
+        factor%col_ptr(1) = 1
+        do column = 1, dimension
+            factor%col_ptr(column + 1) = factor%col_ptr(column) + &
+                lower_counts(column)
+        end do
+        lower_next = factor%col_ptr(1:dimension)
+        do row = 1, dimension
+            do entry = 1, lower_rows(row)%count
+                column = lower_rows(row)%index(entry)
+                position = lower_next(column)
+                factor%row_idx(position) = row
+                factor%lower(position) = lower_rows(row)%value(entry)
+                lower_next(column) = position + 1
+            end do
+        end do
+
+        do column = 1, dimension
+            diagonal_position = lower_position(factor, column, column)
+            if (diagonal_position == 0) then
+                call clear_factor(factor)
+                call status_set(status, FORTSPARSE_SINGULAR, &
+                    "row-oriented ICHOL retained a zero diagonal")
+                return
+            end if
+            if (factor%lower(diagonal_position) <= pivot_tolerance) then
+                call clear_factor(factor)
+                call status_set(status, FORTSPARSE_SINGULAR, &
+                    "row-oriented ICHOL retained a zero diagonal")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_sparse_ichol_row
+
     subroutine apply_sparse_incomplete_cholesky( &
             factor, right_hand_side, solution, status)
         !! Apply `(L L^T)^(-1)` with the fixed sparse factor.
@@ -289,6 +467,105 @@ contains
         call apply_sparse_incomplete_cholesky( &
             factor, solution_bar, right_hand_side_bar, status)
     end subroutine apply_sparse_incomplete_cholesky_vjp
+
+    subroutine retain_ichol_row_entries( &
+            work, last_column, threshold, max_fill, entries)
+        real(dp), intent(in) :: work(:)
+        integer, intent(in) :: last_column, max_fill
+        real(dp), intent(in) :: threshold
+        type(ichol_row_entries_t), intent(inout) :: entries
+
+        logical, allocatable :: selected(:)
+        integer :: candidate_count, target_count, selected_count
+        integer :: column, best_column
+        real(dp) :: best_value, value
+
+        call clear_ichol_row_entries(entries)
+        if (last_column < 1 .or. max_fill == 0) return
+        candidate_count = 0
+        do column = 1, last_column
+            if (abs(work(column)) > threshold) candidate_count = &
+                candidate_count + 1
+        end do
+        if (candidate_count == 0) return
+        target_count = min(max_fill, candidate_count)
+        allocate(entries%index(target_count), entries%value(target_count))
+        entries%count = target_count
+        if (target_count == candidate_count) then
+            selected_count = 0
+            do column = 1, last_column
+                if (abs(work(column)) <= threshold) cycle
+                selected_count = selected_count + 1
+                entries%index(selected_count) = column
+                entries%value(selected_count) = work(column)
+            end do
+            return
+        end if
+
+        allocate(selected(size(work)))
+        selected = .false.
+        do selected_count = 1, target_count
+            best_column = 0
+            best_value = -1.0_dp
+            do column = 1, last_column
+                value = abs(work(column))
+                if (selected(column)) cycle
+                if (value <= threshold .or. value <= best_value) cycle
+                best_column = column
+                best_value = value
+            end do
+            if (best_column == 0) exit
+            selected(best_column) = .true.
+            entries%index(selected_count) = best_column
+            entries%value(selected_count) = work(best_column)
+        end do
+        deallocate(selected)
+    end subroutine retain_ichol_row_entries
+
+    subroutine append_ichol_diagonal(entries, row, value)
+        type(ichol_row_entries_t), intent(inout) :: entries
+        integer, intent(in) :: row
+        real(dp), intent(in) :: value
+
+        integer, allocatable :: index(:)
+        real(dp), allocatable :: values(:)
+        integer :: entry, old_count
+
+        old_count = entries%count
+        allocate(index(old_count + 1), values(old_count + 1))
+        do entry = 1, old_count
+            index(entry) = entries%index(entry)
+            values(entry) = entries%value(entry)
+        end do
+        index(old_count + 1) = row
+        values(old_count + 1) = value
+        if (allocated(entries%index)) deallocate(entries%index)
+        if (allocated(entries%value)) deallocate(entries%value)
+        call move_alloc(index, entries%index)
+        call move_alloc(values, entries%value)
+        entries%count = old_count + 1
+    end subroutine append_ichol_diagonal
+
+    subroutine clear_ichol_row_entries(entries)
+        type(ichol_row_entries_t), intent(inout) :: entries
+
+        if (allocated(entries%index)) deallocate(entries%index)
+        if (allocated(entries%value)) deallocate(entries%value)
+        entries%count = 0
+    end subroutine clear_ichol_row_entries
+
+    pure real(dp) function row_value( &
+            row, column, row_ptr, row_columns, row_values) result(value)
+        integer, intent(in) :: row, column
+        integer, intent(in) :: row_ptr(:), row_columns(:)
+        real(dp), intent(in) :: row_values(:)
+        integer :: entry
+
+        value = 0.0_dp
+        do entry = row_ptr(row), row_ptr(row + 1) - 1
+            if (row_columns(entry) == column) value = value + row_values(entry)
+        end do
+    end function row_value
 
     subroutine select_lower_entries( &
             work, column, first_row, last_row, threshold, max_fill, keep)
