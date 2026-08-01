@@ -284,6 +284,10 @@ module fortfem_api
         solve_tetra_lagrange_sampled_state_vjp, &
         solve_tetra_lagrange_state, solve_tetra_lagrange_state_jvp, &
         solve_tetra_lagrange_state_vjp
+    use fortfem_tetra_lagrange_curvilinear_pml_state_3d, only: &
+        solve_tetra_lagrange_curvilinear_pml, &
+        solve_tetra_lagrange_curvilinear_pml_jvp, &
+        solve_tetra_lagrange_curvilinear_pml_vjp
     use fortfem_tetra_mixed_poisson_state_3d, only: &
         solve_tetra_mixed_poisson_sampled_state, &
         solve_tetra_mixed_poisson_sampled_state_jvp, &
@@ -1784,6 +1788,9 @@ module fortfem_api
     public :: solve_tetra_lagrange_state
     public :: solve_tetra_lagrange_state_jvp
     public :: solve_tetra_lagrange_state_vjp
+    public :: solve_tetra_lagrange_curvilinear_pml
+    public :: solve_tetra_lagrange_curvilinear_pml_jvp
+    public :: solve_tetra_lagrange_curvilinear_pml_vjp
     public :: solve_tetra_lagrange_sampled_state
     public :: solve_tetra_lagrange_sampled_state_jvp
     public :: solve_tetra_lagrange_sampled_state_vjp
