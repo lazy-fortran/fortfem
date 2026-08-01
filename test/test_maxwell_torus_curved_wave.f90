@@ -2,6 +2,8 @@ program test_maxwell_torus_curved_wave
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         generate_torus_surface_mesh
     use fortfem_kinds, only: dp
@@ -11,11 +13,22 @@ program test_maxwell_torus_curved_wave
     real(dp), parameter :: impedance = 1.7_dp, wave_number = 0.45_dp
     complex(dp), allocatable :: coefficients(:), right_hand_side(:)
     complex(dp), allocatable :: scaled_right_hand_side(:)
+    complex(dp), allocatable :: right_hand_side_dot(:), right_hand_side_bar(:)
+    complex(dp), allocatable :: right_hand_side_plus(:), right_hand_side_minus(:)
+    complex(dp), allocatable :: polarization_bar(:)
     complex(dp) :: far_field(3), polarization(3), received, transmitted
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: parameters(:, :), vertices(:, :)
     real(dp), allocatable :: scaled_vertices(:, :)
+    real(dp), allocatable :: vertices_dot(:, :), parameters_dot(:, :)
+    real(dp), allocatable :: vertices_bar(:, :), parameters_bar(:, :)
     real(dp) :: direction(3), relative_scaling_error
+    real(dp) :: direction_dot(3), direction_axis(3), major_radius_dot
+    real(dp) :: minor_radius_dot, major_radius_bar, minor_radius_bar
+    real(dp) :: direction_bar(3), wave_number_bar, wave_number_dot
+    real(dp) :: step, jvp_error, lhs, rhs, adjoint_error
+    complex(dp) :: polarization_dot(3)
+    integer, parameter :: derivative_quadrature_degree = 4
     integer :: basis, status
     logical :: all_passed
 
@@ -59,10 +72,98 @@ program test_maxwell_torus_curved_wave
     call record_condition(status == 0 .and. relative_scaling_error < &
         5.0e-14_dp, "constant-field trace load obeys analytical area scaling")
 
+    allocate( &
+        vertices_dot(size(vertices, 1), size(vertices, 2)), &
+        parameters_dot(size(parameters, 1), size(parameters, 2)))
+    do basis = 1, size(vertices_dot, 2)
+        vertices_dot(:, basis) = [ &
+            0.011_dp*sin(real(2*basis, dp)), &
+            -0.008_dp*cos(real(3*basis, dp)), &
+            0.009_dp*sin(real(5*basis, dp))]
+        parameters_dot(:, basis) = [ &
+            0.006_dp*cos(real(basis + 1, dp)), &
+            -0.004_dp*sin(real(2*basis + 1, dp))]
+    end do
+    direction_axis = [0.3_dp, -0.4_dp, 0.5_dp]
+    direction_axis = direction_axis - &
+        direction*dot_product(direction, direction_axis)
+    direction_axis = direction_axis/norm2(direction_axis)
+    direction_dot = real_cross_product(direction_axis, direction)
+    polarization_dot = cmplx(real_cross_product( &
+        direction_axis, real(polarization, dp)), 0.0_dp, dp)
+    major_radius_dot = 0.017_dp
+    minor_radius_dot = -0.009_dp
+    wave_number_dot = 0.031_dp
+    step = 2.0e-6_dp
+    call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp( &
+        vertices, triangles, parameters, major_radius, minor_radius, direction, &
+        polarization, wave_number, derivative_quadrature_degree, &
+        vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+        direction_dot, polarization_dot, wave_number_dot, right_hand_side, &
+        right_hand_side_dot, status)
+    call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d( &
+        vertices + step*vertices_dot, triangles, parameters + step*parameters_dot, &
+        major_radius + step*major_radius_dot, minor_radius + step*minor_radius_dot, &
+        rotate_vector(direction, direction_axis, step), polarization + &
+        step*polarization_dot, wave_number + step*wave_number_dot, &
+        derivative_quadrature_degree, right_hand_side_plus, status)
+    call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d( &
+        vertices - step*vertices_dot, triangles, parameters - step*parameters_dot, &
+        major_radius - step*major_radius_dot, minor_radius - step*minor_radius_dot, &
+        rotate_vector(direction, direction_axis, -step), polarization - &
+        step*polarization_dot, wave_number - step*wave_number_dot, &
+        derivative_quadrature_degree, right_hand_side_minus, status)
+    jvp_error = maxval(abs(right_hand_side_dot - &
+        (right_hand_side_plus - right_hand_side_minus)/(2.0_dp*step)))
+    call record_condition(status == 0 .and. jvp_error < 2.0e-7_dp, &
+        "exact-torus plane-wave RHS geometry/data JVP matches reassembly")
+
+    allocate( &
+        right_hand_side_bar(size(right_hand_side)), &
+        vertices_bar(size(vertices, 1), size(vertices, 2)), &
+        parameters_bar(size(parameters, 1), size(parameters, 2)))
+    do basis = 1, size(right_hand_side_bar)
+        right_hand_side_bar(basis) = cmplx( &
+            sin(real(2*basis, dp)), cos(real(3*basis, dp)), dp)
+    end do
+    call assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp( &
+        vertices, triangles, parameters, major_radius, minor_radius, direction, &
+        polarization, wave_number, derivative_quadrature_degree, &
+        right_hand_side_bar, vertices_bar, parameters_bar, major_radius_bar, &
+        minor_radius_bar, direction_bar, polarization_bar, wave_number_bar, status)
+    lhs = real(sum(conjg(right_hand_side_bar)*right_hand_side_dot), dp)
+    rhs = sum(vertices_bar*vertices_dot) + sum(parameters_bar*parameters_dot) + &
+        major_radius_bar*major_radius_dot + minor_radius_bar*minor_radius_dot + &
+        dot_product(direction_bar, direction_dot) + &
+        real(sum(conjg(polarization_bar)*polarization_dot), dp) + &
+        wave_number_bar*wave_number_dot
+    adjoint_error = abs(lhs - rhs)
+    call record_condition(status == 0 .and. adjoint_error < &
+        5.0e-9_dp*max(1.0_dp, abs(lhs), abs(rhs)), &
+        "exact-torus plane-wave RHS geometry/data VJP satisfies the adjoint identity")
+
     call check_summary("Exact-curved torus Maxwell wave traces")
     if (.not. all_passed) error stop 1
 
 contains
+
+    pure function real_cross_product(first, second) result(product)
+        real(dp), intent(in) :: first(3), second(3)
+        real(dp) :: product(3)
+
+        product = [ &
+            first(2)*second(3) - first(3)*second(2), &
+            first(3)*second(1) - first(1)*second(3), &
+            first(1)*second(2) - first(2)*second(1)]
+    end function real_cross_product
+
+    pure function rotate_vector(vector, axis, angle) result(rotated)
+        real(dp), intent(in) :: vector(3), axis(3), angle
+        real(dp) :: rotated(3)
+
+        rotated = cos(angle)*vector + sin(angle)*real_cross_product(axis, vector) + &
+            (1.0_dp - cos(angle))*axis*dot_product(axis, vector)
+    end function rotate_vector
 
     subroutine record_condition(condition, description)
         logical, intent(in) :: condition
