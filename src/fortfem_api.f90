@@ -6,6 +6,7 @@ module fortfem_api
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
         assemble_linear_response_operator_vjp, &
+        evaluate_linear_response_diagnostics, &
         initialize_linear_response_interchange, &
         linear_response_interchange_t, validate_linear_response_interchange
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
@@ -2132,6 +2133,7 @@ module fortfem_api
     public :: linear_response_interchange_t
     public :: initialize_linear_response_interchange
     public :: validate_linear_response_interchange
+    public :: evaluate_linear_response_diagnostics
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
