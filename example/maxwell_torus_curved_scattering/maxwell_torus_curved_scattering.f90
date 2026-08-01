@@ -3,6 +3,8 @@ program maxwell_torus_curved_scattering
     use fortfem_api, only: &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         generate_torus_surface_mesh, &
+        assemble_maxwell_torus_curved_dtn_rwg_3d, &
+        apply_maxwell_trace_to_flux_map, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_kinds, only: dp
     use fortplot, only: &
@@ -18,6 +20,7 @@ program maxwell_torus_curved_scattering
     character(*), parameter :: output_directory = &
         "output/example/maxwell_torus_curved_scattering"
     complex(dp), allocatable :: currents(:, :)
+    complex(dp), allocatable :: dtn_map(:, :), dtn_trace(:), dtn_flux(:)
     complex(dp) :: far_field(3), first_reciprocal(3), second_reciprocal(3)
     complex(dp), parameter :: z_polarization(3) = [ &
         cmplx(0.0_dp, 0.0_dp, dp), cmplx(0.0_dp, 0.0_dp, dp), &
@@ -26,7 +29,7 @@ program maxwell_torus_curved_scattering
     real(dp), allocatable :: parameters(:, :), vertices(:, :)
     real(dp) :: azimuth, direction(3), end_time, far_field_seconds
     real(dp) :: first_amplitude, polar, radius, reciprocity_error
-    real(dp) :: solve_seconds, start_time
+    real(dp) :: dtn_seconds, solve_seconds, start_time
     real(dp) :: azimuth_edges(azimuth_cells + 1)
     real(dp) :: polar_edges(polar_cells + 1)
     real(dp) :: rcs_map(azimuth_cells, polar_cells)
@@ -50,6 +53,10 @@ program maxwell_torus_curved_scattering
     solve_seconds = end_time - start_time
 
     call cpu_time(start_time)
+    call build_dtn_trace()
+    call cpu_time(end_time)
+    dtn_seconds = end_time - start_time
+    call cpu_time(start_time)
     call build_far_field_map()
     call build_trace()
     call evaluate_reciprocity()
@@ -59,6 +66,24 @@ program maxwell_torus_curved_scattering
     call write_outputs()
 
 contains
+
+    subroutine build_dtn_trace()
+        integer :: coefficient
+
+        call assemble_maxwell_torus_curved_dtn_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, 3, 3.0e-4_dp, 1, 0.12_dp, dtn_map, status)
+        if (status /= 0) error stop "curved torus Maxwell DtN assembly failed"
+        allocate(dtn_trace(size(dtn_map, 2)), dtn_flux(size(dtn_map, 1)))
+        do coefficient = 1, size(dtn_trace)
+            dtn_trace(coefficient) = cmplx( &
+                cos(0.17_dp*real(coefficient, dp)), &
+                sin(0.11_dp*real(coefficient, dp)), dp)
+        end do
+        call apply_maxwell_trace_to_flux_map( &
+            dtn_map, dtn_trace, dtn_flux, status)
+        if (status /= 0) error stop "curved torus Maxwell DtN action failed"
+    end subroutine build_dtn_trace
 
     subroutine build_far_field_map()
         point = 0
@@ -142,7 +167,8 @@ contains
         real(dp) :: curve_z(visual_azimuth + 1)
         real(dp) :: edge_x(4), edge_y(4), edge_z(4)
         real(dp) :: curve_azimuth, curve_polar, curve_radius
-        integer :: curve_index, local_vertex, point_index, triangle, vertex
+        integer :: coefficient, curve_index, local_vertex, point_index
+        integer :: triangle, vertex
 
         call figure(figsize=[7.5_dp, 6.5_dp])
         call add_scatter( &
@@ -221,6 +247,15 @@ contains
         call add_scatter(x, y, z, label="normalized RCS surface", marker=".")
         call title("PEC torus Maxwell three-dimensional radiation pattern")
         call savefig(output_directory//"/maxwell_torus_rcs_3d.png")
+
+        call figure(figsize=[9.0_dp, 5.5_dp])
+        call plot(real([(coefficient, coefficient=1, size(dtn_flux))], dp), &
+            abs(dtn_flux), label="RWG/RBC weak DtN response")
+        call xlabel("RBC flux degree of freedom")
+        call ylabel("absolute weak tangential flux")
+        call title("Exact-curved torus Maxwell weak DtN response")
+        call legend()
+        call savefig(output_directory//"/maxwell_torus_dtn_1d.png")
     end subroutine render_plots
 
     subroutine write_outputs()
@@ -241,6 +276,9 @@ contains
         write (unit, "(a,i0)") "incident fields: ", size(currents, 2)
         write (unit, "(a,i0)") "CFIE quadrature degree: ", 3
         write (unit, "(a,es14.6)") "batched CFIE solve seconds: ", solve_seconds
+        write (unit, "(a,es14.6)") "weak DtN assembly seconds: ", dtn_seconds
+        write (unit, "(a,es14.6)") "weak DtN response norm: ", &
+            sqrt(sum(abs(dtn_flux)**2))
         write (unit, "(a,es14.6)") &
             "far-field sampling seconds: ", far_field_seconds
         write (unit, "(a,es14.6)") &
