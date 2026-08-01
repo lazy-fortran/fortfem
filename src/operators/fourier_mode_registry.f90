@@ -40,6 +40,7 @@ module fortfem_fourier_mode_registry
     public :: fourier_mode_triad_closed
     public :: build_fourier_mode_triad_map
     public :: build_fourier_mode_padded_registry
+    public :: build_fourier_mode_closure_registry
     public :: initialize_fourier_mode_registry
     public :: validate_fourier_mode_registry
 
@@ -315,6 +316,40 @@ contains
             radial_powers=radial_buffer(:mode_total), &
             normalization=normalization_buffer(:mode_total), status=status)
     end subroutine build_fourier_mode_padded_registry
+
+    subroutine build_fourier_mode_closure_registry( &
+            registry, closure_rounds, closure_registry, status)
+        !! Apply the one-product padding primitive for a bounded number of rounds.
+        !!
+        !! One round is exactly `build_fourier_mode_padded_registry`. Each later
+        !! round closes the preceding work set under another bilinear sum. This
+        !! makes repeated-product growth explicit and caller-controlled; it is
+        !! not an unbounded algebraic closure.
+        type(fourier_mode_registry_t), intent(in) :: registry
+        integer, intent(in) :: closure_rounds
+        type(fourier_mode_registry_t), intent(out) :: closure_registry
+        type(fortsparse_status_t), intent(out) :: status
+        type(fourier_mode_registry_t) :: current_registry, next_registry
+        integer :: round
+
+        call clear_registry(closure_registry)
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "Fourier closure requires a positive round count")
+        if (closure_rounds < 1) return
+        if (.not. validate_fourier_mode_registry(registry, status)) return
+        current_registry = registry
+        do round = 1, closure_rounds
+            call build_fourier_mode_padded_registry( &
+                current_registry, next_registry, status)
+            if (status%code /= FORTSPARSE_OK) then
+                call clear_registry(closure_registry)
+                return
+            end if
+            current_registry = next_registry
+        end do
+        closure_registry = current_registry
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine build_fourier_mode_closure_registry
 
     subroutine append_padded_mode( &
             registry, poloidal_mode, toroidal_mode, mode_total, poloidal_buffer, &
