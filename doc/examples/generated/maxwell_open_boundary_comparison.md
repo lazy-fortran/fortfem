@@ -25,7 +25,8 @@ capacity form back to only the edge and face moments on the selected planar
 boundary. A separate tetrahedral box then exercises the complex FortSparse
 curl-curl/PML solver and records its solve time and relative edge error.
 
-CI generates `maxwell_dtn_modes_1d.png`, `maxwell_reflection_1d.png`,
+CI generates `maxwell_pml_field_slice_2d.png`, `maxwell_dtn_modes_1d.png`,
+`maxwell_reflection_1d.png`,
 `maxwell_nedelec_dtn_1d.png`, and `benchmark.txt`; generated media are not
 committed.
 
@@ -47,7 +48,8 @@ program maxwell_open_boundary_comparison
         generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass, &
         solve_tetra_nedelec_pml
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
+        title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -216,6 +218,8 @@ program maxwell_open_boundary_comparison
     if (pml_error >= 2.0e-2_dp) &
         error stop "Maxwell PML gallery accuracy regression"
 
+    call render_pml_field_slice()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(modes, exact_te, label="TE analytical", linestyle="-")
     call plot(modes, numerical_te, label="TE DtN", linestyle="--")
@@ -273,6 +277,57 @@ program maxwell_open_boundary_comparison
     close (unit)
 
 contains
+
+    subroutine render_pml_field_slice()
+        integer, parameter :: slice_nx = 8, slice_ny = 8
+        integer :: sample_count(slice_nx, slice_ny)
+        real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
+        real(dp) :: values(slice_nx, slice_ny)
+        real(dp) :: midpoint(3), edge_vector(3), edge_length
+        real(dp) :: edge_value
+        integer :: edge, index_x, index_y
+
+        do index_x = 1, slice_nx + 1
+            x_edges(index_x) = real(index_x - 1, dp)/real(slice_nx, dp)
+        end do
+        do index_y = 1, slice_ny + 1
+            y_edges(index_y) = real(index_y - 1, dp)/real(slice_ny, dp)
+        end do
+        values = 0.0_dp
+        sample_count = 0
+        do edge = 1, size(edges, 2)
+            midpoint = 0.5_dp*(vertices(:, edges(1, edge)) + &
+                vertices(:, edges(2, edge)))
+            if (abs(midpoint(3) - 0.5_dp) > 0.13_dp) cycle
+            edge_vector = vertices(:, edges(2, edge)) - &
+                vertices(:, edges(1, edge))
+            edge_length = sqrt(sum(edge_vector**2))
+            edge_value = abs(pml_solution(edge))/max( &
+                edge_length, tiny(1.0_dp))
+            index_x = min(slice_nx, max(1, int(midpoint(1)*slice_nx) + 1))
+            index_y = min(slice_ny, max(1, int(midpoint(2)*slice_ny) + 1))
+            values(index_x, index_y) = values(index_x, index_y) + edge_value
+            sample_count(index_x, index_y) = &
+                sample_count(index_x, index_y) + 1
+        end do
+        if (sum(sample_count) == 0) error stop "Maxwell PML slice is empty"
+        do index_y = 1, slice_ny
+            do index_x = 1, slice_nx
+                if (sample_count(index_x, index_y) > 0) then
+                    values(index_x, index_y) = values(index_x, index_y)/ &
+                        real(sample_count(index_x, index_y), dp)
+                end if
+            end do
+        end do
+
+        call figure(figsize=[8.0_dp, 6.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        call colorbar(label="edge-integrated field magnitude / length")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Maxwell PML field magnitude slice near z = 0.5")
+        call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
+    end subroutine render_pml_field_slice
 
     pure subroutine constant_source(x, y, z, value)
         real(dp), intent(in) :: x, y, z
@@ -345,6 +400,10 @@ end program maxwell_open_boundary_comparison
 ### maxwell_nedelec_dtn_1d.png
 
 ![maxwell_nedelec_dtn_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_nedelec_dtn_1d.png)
+
+### maxwell_pml_field_slice_2d.png
+
+![maxwell_pml_field_slice_2d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_pml_field_slice_2d.png)
 
 ### maxwell_reflection_1d.png
 

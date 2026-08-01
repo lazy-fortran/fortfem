@@ -1701,6 +1701,10 @@ gallery example.
   per-example output with an independent media validator and keeps the short
   ten-second limit for focused tests while allowing the more expensive
   physical 3-D gallery products a bounded execution window.
+- The Maxwell open-boundary example now uses a filled mid-plane magnitude slice
+  of its solved Nédélec/PML edge field as the primary preview; the TE/TM DtN
+  spectrum remains a secondary operator diagnostic rather than the gallery
+  cover.
 
 ### Phase 9: Future application layer: **reference only**
 

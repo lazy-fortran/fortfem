@@ -19,6 +19,7 @@ capacity form back to only the edge and face moments on the selected planar
 boundary. A separate tetrahedral box then exercises the complex FortSparse
 curl-curl/PML solver and records its solve time and relative edge error.
 
-CI generates `maxwell_dtn_modes_1d.png`, `maxwell_reflection_1d.png`,
+CI generates `maxwell_pml_field_slice_2d.png`, `maxwell_dtn_modes_1d.png`,
+`maxwell_reflection_1d.png`,
 `maxwell_nedelec_dtn_1d.png`, and `benchmark.txt`; generated media are not
 committed.
