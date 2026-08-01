@@ -1577,6 +1577,11 @@ gallery example.
   finite-difference, and adjoint oracles make it the reusable algebraic core
   for Hellinger--Reissner, weak-symmetry, TDNNS, and anisotropic clients; the
   elasticity complex, symmetry constraints, and boundary laws remain external.
+- The matching neutral weak-symmetry constraint now exposes `W sigma - g`
+  with independent matrix, finite-difference, and adjoint oracles. This is
+  the reusable multiplier/trace block for Arnold--Falk--Winther and TDNNS
+  compositions; stress-space construction and physical symmetry laws remain
+  client-owned.
 
 ### Phase 7: Equilibrium and linear-response ingredients: **active**
 
