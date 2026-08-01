@@ -1744,6 +1744,10 @@ gallery example.
   per-example output with an independent media validator and keeps the short
   ten-second limit for focused tests while allowing the more expensive
   physical 3-D gallery products a bounded execution window.
+- The executable examples follow the same physical-first order at runtime as
+  the Pages gallery.  The circular DtN fixture now emits its filled disk field
+  before the boundary-trace and response curves, so running an example
+  directly presents the solution before diagnostics as well.
 - The Maxwell open-boundary example now uses a filled mid-plane magnitude slice
   of its solved Nédélec/PML edge field as the primary preview; the TE/TM DtN
   spectrum remains a secondary operator diagnostic rather than the gallery
