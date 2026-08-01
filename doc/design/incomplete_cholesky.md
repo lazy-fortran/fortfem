@@ -53,10 +53,13 @@ call build_sparse_ichol(csc_matrix, drop_tolerance, max_fill_per_column, &
 ```
 
 The reference builder performs its numeric Cholesky phase in a dense work
-array, then stores only the selected lower CSC entries. The dense phase fixes
-the semantics for an eventual scalable row-oriented implementation; the
-preconditioner application itself remains sparse. The diagonal is always
-retained, and non-positive or non-finite pivots are reported explicitly.
+array, then stores only the selected lower CSC entries. The public
+`build_sparse_ichol_row` companion computes each row from previously retained
+lower rows and uses O(n + nnz + nnz(L)) temporary storage; its final factor
+has the same CSC apply/JVP/VJP contract. The row path evaluates each diagonal
+before dropping strict lower entries, so its zero-fill limit is an independent
+Cholesky diagonal oracle. The diagonal is always retained, and non-positive or
+non-finite pivots are reported explicitly.
 
 For nonsymmetric blocks, `fortfem_sparse_incomplete_lu` provides the matching
 ILU(0) contract with strict-lower and upper CSC patterns:
@@ -72,7 +75,8 @@ call apply_sparse_incomplete_lu_vjp(ilu_factor, solution_bar, rhs_bar, status)
 The transpose VJP solves with the fixed `U^T L^T` factors. Zero pivots are
 reported explicitly; the API does not substitute an SPD preconditioner for a
 nonsymmetric response block. Drop tolerances and fill-controlled ILUT remain
-higher-level solver options.
+higher-level solver options; the sparse ILUT module also exposes a
+memory-scalable row-oriented builder.
 
 The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
@@ -81,7 +85,8 @@ the standalone sparse IC(0) API above is available for callers that must keep
 the factor sparse. `solver_options(preconditioner=ichol_controlled_preconditioner(),
 drop_tolerance=..., fill_level=...)` selects the sparse controlled path in
 `solve_sparse`; the exact full-fill one-step PCG fixture is independently
-tested. Measured scaling and a row-oriented construction remain benchmark
+tested. The row-oriented ICHOL constructor has an independent tridiagonal
+oracle and fixed-factor adjoint check. Measured scaling remains benchmark
 work. The legacy BiCGSTAB kernel accepts only its ILU
 factor contract and therefore reports an explicit unpreconditioned fallback
 if ICHOL is selected there.
