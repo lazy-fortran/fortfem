@@ -49,3 +49,10 @@ tetrahedral determinant and inverse maps.  The independent
 `test_tetra_lagrange_curvilinear_pml_ad` test checks the closed-form P1 oracle,
 central differences, local and global complex adjoint identities, and CSC
 pattern preservation.
+
+The constrained solved-state wrapper is
+`solve_tetra_lagrange_curvilinear_pml`, with `_jvp` and `_vjp` variants.  It
+uses the same fixed CSC pattern and the complex implicit direct-solve contract
+as the vector PML path.  The state test independently re-solves perturbed
+systems for the JVP and checks the real-part complex adjoint identity for
+volume load, constrained values, geometry, stretch, and wave number.
