@@ -252,9 +252,29 @@ end program interoperability_benchmarks
 
 ## Generated Plots
 
-### cover.svg
+### primary.png
 
-![cover.svg](../../media/examples/interoperability_benchmarks/cover.svg)
+![primary.png](../../media/examples/interoperability_benchmarks/primary.png)
+
+### ampere_accuracy.png
+
+![ampere_accuracy.png](../../media/examples/interoperability_benchmarks/ampere_accuracy.png)
+
+### ampere_timing.png
+
+![ampere_timing.png](../../media/examples/interoperability_benchmarks/ampere_timing.png)
+
+### manufactured_poisson_solution_2d.png
+
+![manufactured_poisson_solution_2d.png](../../media/examples/interoperability_benchmarks/manufactured_poisson_solution_2d.png)
+
+### poisson_accuracy.png
+
+![poisson_accuracy.png](../../media/examples/interoperability_benchmarks/poisson_accuracy.png)
+
+### poisson_timing.png
+
+![poisson_timing.png](../../media/examples/interoperability_benchmarks/poisson_timing.png)
 
 ---
 

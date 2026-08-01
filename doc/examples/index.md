@@ -259,7 +259,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="interoperability_benchmarks">
 <a class="example-card-preview" href="generated/interoperability_benchmarks.html">
 <img class="example-card-image"
- src="../media/examples/interoperability_benchmarks/cover.svg"
+ src="../media/examples/interoperability_benchmarks/primary.png"
  alt="Plot preview for interoperability_benchmarks" loading="lazy">
 </a>
 <div class="example-card-body">
