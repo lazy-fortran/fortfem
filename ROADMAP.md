@@ -1558,7 +1558,9 @@ gallery example.
   straight-edge lengths, generated torus-panel geometry, radii, target, wave
   number, and coefficients; an independent central-difference and complex
   adjoint fixture covers the complete directional chain. Full assembled
-  torus-block derivatives remain active follow-up work. The
+  torus-block derivatives remain active follow-up work; the assembled curved-
+  torus RWG mass block now has analytical geometry JVP/VJP products with an
+  independent reassembly and real adjoint oracle. The
   `maxwell_torus_fem_bem_solution` fixture now closes the neutral vector
   FEM--BEM solved-state gap with exact edge-integral data, a complex coupled
   solve oracle, and a physical H(curl) slice with arrows. Nonzero-scattering
