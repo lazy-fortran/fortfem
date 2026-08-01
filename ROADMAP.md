@@ -1685,6 +1685,10 @@ gallery example.
 - FortPlot mesh-bearing examples have a regression fixture that checks element
   count, boundary edges, patch boundaries, and internal surfaces in the
   rendered output before Pages deployment.
+- The paper-magnetic three-dimensional oracle truncates its independently
+  converged odd membrane series at mode 399, keeping the reference and curl
+  checks while bringing that fast-suite target below the short feedback
+  budget. Higher truncation studies remain an explicit benchmark concern.
 - `doc/examples/primary_plots.txt` is the gallery's explicit visual contract:
   each example names its physical solution, field, geometry, or mesh artifact.
   The documentation generator copies that artifact to `primary.png` and emits

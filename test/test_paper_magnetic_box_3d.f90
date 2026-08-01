@@ -70,7 +70,7 @@ contains
         real(dp) :: field(3)
 
         real(dp), parameter :: pi = acos(-1.0_dp)
-        integer, parameter :: maximum_mode = 799
+        integer, parameter :: maximum_mode = 399
         real(dp) :: denominator
         integer :: m, n
 
