@@ -97,9 +97,11 @@ python3 "$script_dir/generate_example_covers.py"
 for example_name in "${example_names[@]}"; do
     primary_name=${primary_for_name[$example_name]}
     primary_source="$artifacts_dir/$example_name/$primary_name"
-    if [[ -f "$primary_source" ]]; then
-        cp -f "$primary_source" "$artifacts_dir/$example_name/primary.png"
+    if [[ ! -s "$primary_source" ]]; then
+        echo "missing physical primary plot for $example_name: $primary_source" >&2
+        exit 1
     fi
+    cp -f "$primary_source" "$artifacts_dir/$example_name/primary.png"
 done
 
 description_for()

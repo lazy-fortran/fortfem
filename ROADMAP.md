@@ -1660,12 +1660,14 @@ gallery example.
   each example names its physical solution, field, geometry, or mesh artifact.
   The documentation generator copies that artifact to `primary.png` and emits
   it before convergence, timing, conditioning, or other diagnostic plots. The
-  contract is checked independently by `test/test_example_docs.sh`; FortPlot's
-  3-D scatter path must preserve per-sample colour maps so solution samples
-  remain physically interpretable. CI collects nested per-example output with
-  an independent media validator and keeps the short ten-second limit for
-  focused tests while allowing the more expensive physical 3-D gallery
-  products a bounded execution window.
+  generator now fails when a mapped artifact is absent instead of silently
+  substituting a generated cover, and the docs test rejects diagnostic names
+  such as convergence, error, timing, residual, accuracy, or DOF plots as the
+  first view. FortPlot's 3-D scatter path must preserve per-sample colour maps
+  so solution samples remain physically interpretable. CI collects nested
+  per-example output with an independent media validator and keeps the short
+  ten-second limit for focused tests while allowing the more expensive
+  physical 3-D gallery products a bounded execution window.
 
 ### Phase 9: Future application layer: **reference only**
 
