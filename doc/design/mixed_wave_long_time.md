@@ -14,5 +14,9 @@ initial state.
 This is a regression oracle for long-time energy drift and reversibility.  It
 does not claim that a nonlinear or dissipative model is symplectic: damping,
 resistivity, viscosity, and PML factors remain separate declared substeps.
-Discrete-gradient/average-vector-field methods and broader problem-size
-campaigns remain future extensions of the same port-Hamiltonian contract.
+`test_mixed_wave_properties` complements the long run with 16 deterministic
+xorshift-generated diagonal SPD mass pairs and random coupling blocks. It
+checks the independent quadratic-energy oracle and signed-step reversal for
+both midpoint and the three-factor Strang composition. Discrete-gradient/
+average-vector-field methods and broader non-diagonal problem-size campaigns
+remain future extensions of the same port-Hamiltonian contract.
