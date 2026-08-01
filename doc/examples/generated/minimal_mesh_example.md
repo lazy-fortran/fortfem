@@ -115,6 +115,10 @@ end program minimal_mesh_example
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/minimal_mesh_example/primary.png)
+
 ### rectangle_mesh.png
 
 ![rectangle_mesh.png](../../media/examples/minimal_mesh_example/rectangle_mesh.png)

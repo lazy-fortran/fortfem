@@ -53,8 +53,8 @@ program adaptive_helmholtz_bem_sphere
         generate_sphere_surface_mesh, mark_bem_dorfler, &
         refine_surface_mesh_marked, solve_helmholtz_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, title, xlabel, &
-        ylabel, yscale
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, title, &
+        xlabel, ylabel, yscale
     implicit none
 
     integer, parameter :: step_count = 5
@@ -66,6 +66,7 @@ program adaptive_helmholtz_bem_sphere
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: indicators(:), refined_vertices(:, :)
     real(dp), allocatable :: vertices(:, :)
+    real(dp), allocatable :: panel_centers(:, :)
     logical, allocatable :: marked(:)
     complex(dp) :: exact_field, numerical_field
     real(dp) :: error(step_count), estimator(step_count), panels(step_count)
@@ -106,6 +107,19 @@ program adaptive_helmholtz_bem_sphere
         call move_alloc(refined_triangles, triangles)
     end do
 
+    allocate(panel_centers(3, size(triangles, 2)))
+    do step = 1, size(triangles, 2)
+        panel_centers(:, step) = sum( &
+            vertices(:, triangles(:, step)), dim=2)/3.0_dp
+    end do
+    call figure(figsize=[7.5_dp, 6.0_dp])
+    call add_scatter( &
+        panel_centers(1, :), panel_centers(2, :), panel_centers(3, :), &
+        c=real(density, dp), cmap="coolwarm", marker=".", &
+        markersize=5.0_dp, label="real P0 Helmholtz density")
+    call title("Adaptive Helmholtz BEM density on the sphere")
+    call savefig(output_directory//"/sphere_density_3d.png")
+
     call figure()
     call plot(panels, error, label="field error at r=2")
     call plot(panels, estimator, label="residual estimator")
@@ -132,9 +146,17 @@ end program adaptive_helmholtz_bem_sphere
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/adaptive_helmholtz_bem_sphere/primary.png)
+
 ### adaptive_convergence.png
 
 ![adaptive_convergence.png](../../media/examples/adaptive_helmholtz_bem_sphere/adaptive_convergence.png)
+
+### sphere_density_3d.png
+
+![sphere_density_3d.png](../../media/examples/adaptive_helmholtz_bem_sphere/sphere_density_3d.png)
 
 ---
 

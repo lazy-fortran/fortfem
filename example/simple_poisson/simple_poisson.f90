@@ -26,14 +26,15 @@ program simple_poisson
 
     call solve(a == L, uh, bc)
 
-    ! Plot mesh
-    call plot(mesh, filename="poisson_mesh.png", title="Poisson Mesh (20x20)")
-
-    ! Plot solution
+    ! Put the solved field first so the gallery opens on the physical result.
     call plot(uh, filename="poisson_solution.png", &
         title="Poisson Solution: -Δu = 1", &
         colormap="viridis")
+    call plot(uh, filename="primary.png", &
+        title="Poisson solution: -Δu = 1", colormap="viridis")
 
+    ! Mesh and diagnostic views follow the solution.
+    call plot(mesh, filename="poisson_mesh.png", title="Poisson Mesh (20x20)")
     write(*,*) "Simple Poisson example completed!"
     write(*,*) "Generated files:"
     write(*,*) "  - Mesh: poisson_mesh.png"

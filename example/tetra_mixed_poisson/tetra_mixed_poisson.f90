@@ -6,8 +6,8 @@ program tetra_mixed_poisson
         trial_function_t, vector_test_function_t, vector_trial_function_t
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
-    use fortplot, only: figure, legend, plot, savefig, set_yscale, title, &
-        xlabel, ylabel
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, set_yscale, &
+        title, xlabel, ylabel
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
 
@@ -70,6 +70,8 @@ program tetra_mixed_poisson
         deallocate(balance, flux, pressure)
     end do
 
+    call render_solution()
+
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(orders, max(balance_error, epsilon(1.0_dp)), &
         label="maximum cell balance error", marker="o")
@@ -89,6 +91,30 @@ program tetra_mixed_poisson
     call savefig(output_directory//"/tetra_mixed_dofs_1d.png")
 
 contains
+
+    subroutine render_solution()
+        real(dp) :: pressure_values(size(vertices, 2))
+        integer :: vertex
+
+        do vertex = 1, size(vertices, 2)
+            pressure_values(vertex) = manufactured_pressure(vertices(:, vertex))
+        end do
+        call figure(figsize=[7.5_dp, 6.0_dp])
+        call add_scatter( &
+            vertices(1, :), vertices(2, :), vertices(3, :), &
+            c=pressure_values, cmap="viridis", marker="o", &
+            markersize=9.0_dp, label="manufactured pressure samples")
+        call title("RT-DG mixed Poisson pressure in the tetrahedral box")
+        call savefig(output_directory//"/tetra_mixed_solution_3d.png")
+    end subroutine render_solution
+
+    pure real(dp) function manufactured_pressure(point) result(value)
+        real(dp), intent(in) :: point(3)
+
+        value = (point(1)*(1.0_dp - point(1)) + &
+            point(2)*(1.0_dp - point(2)) + &
+            point(3)*(1.0_dp - point(3)))/6.0_dp
+    end function manufactured_pressure
 
     pure real(dp) function unit_source(x, y, z) result(value)
         real(dp), intent(in) :: x, y, z

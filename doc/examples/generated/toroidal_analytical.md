@@ -135,11 +135,11 @@ program toroidal_analytical
         boundary_trace, 7, boundary_flux, status)
     call cpu_time(end_time)
     if (status /= 0) error stop "Toroidal Laplace DtN solve failed"
+    call generate_surface_map()
     poisson_solve_seconds = end_time - start_time
     call generate_trace()
     call generate_helmholtz_trace()
     call generate_fem_bem_comparison()
-    call generate_surface_map()
     call generate_geometry()
     call write_trace_data()
 
@@ -494,6 +494,10 @@ end program toroidal_analytical
 ```
 
 ## Generated Plots
+
+### primary.png
+
+![primary.png](../../media/examples/toroidal_analytical/primary.png)
 
 ### toroidal_bem_error_2d.png
 

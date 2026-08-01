@@ -199,6 +199,10 @@ end program helmholtz_open_boundary_comparison
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/helmholtz_open_boundary_comparison/primary.png)
+
 ### helmholtz_error_1d.png
 
 ![helmholtz_error_1d.png](../../media/examples/helmholtz_open_boundary_comparison/helmholtz_error_1d.png)

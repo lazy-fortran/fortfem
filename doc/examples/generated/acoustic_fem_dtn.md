@@ -187,6 +187,10 @@ end program acoustic_fem_dtn
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/acoustic_fem_dtn/primary.png)
+
 ### elastic_dtn_centerline.png
 
 ![elastic_dtn_centerline.png](../../media/examples/acoustic_fem_dtn/elastic_dtn_centerline.png)

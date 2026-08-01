@@ -24,7 +24,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="simple_poisson">
 <a class="example-card-preview" href="generated/simple_poisson.html">
 <img class="example-card-image"
- src="../media/examples/simple_poisson/cover.svg"
+ src="../media/examples/simple_poisson/primary.png"
  alt="Plot preview for simple_poisson" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -35,7 +35,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="minimal_mesh_example">
 <a class="example-card-preview" href="generated/minimal_mesh_example.html">
 <img class="example-card-image"
- src="../media/examples/minimal_mesh_example/rectangle_mesh.png"
+ src="../media/examples/minimal_mesh_example/primary.png"
  alt="Plot preview for minimal_mesh_example" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -46,7 +46,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="plot_mesh">
 <a class="example-card-preview" href="generated/plot_mesh.html">
 <img class="example-card-image"
- src="../media/examples/plot_mesh/mesh_basic.png"
+ src="../media/examples/plot_mesh/primary.png"
  alt="Plot preview for plot_mesh" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -57,7 +57,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="plotting">
 <a class="example-card-preview" href="generated/plotting.html">
 <img class="example-card-image"
- src="../media/examples/plotting/solution_constant.png"
+ src="../media/examples/plotting/primary.png"
  alt="Plot preview for plotting" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -73,7 +73,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="mixed_poisson">
 <a class="example-card-preview" href="generated/mixed_poisson.html">
 <img class="example-card-image"
- src="../media/examples/mixed_poisson/mixed_poisson_convergence_1d.png"
+ src="../media/examples/mixed_poisson/primary.png"
  alt="Plot preview for mixed_poisson" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -84,7 +84,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
- src="../media/examples/curl_curl/curl_curl_p_convergence.png"
+ src="../media/examples/curl_curl/primary.png"
  alt="Plot preview for curl_curl" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -95,7 +95,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="cgl_pressure_tensor">
 <a class="example-card-preview" href="generated/cgl_pressure_tensor.html">
 <img class="example-card-image"
- src="../media/examples/cgl_pressure_tensor/cgl_force_divergence_1d.png"
+ src="../media/examples/cgl_pressure_tensor/primary.png"
  alt="Plot preview for cgl_pressure_tensor" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -106,7 +106,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="field_aligned_flux">
 <a class="example-card-preview" href="generated/field_aligned_flux.html">
 <img class="example-card-image"
- src="../media/examples/field_aligned_flux/field_aligned_flux_1d.png"
+ src="../media/examples/field_aligned_flux/primary.png"
  alt="Plot preview for field_aligned_flux" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -117,7 +117,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="fci_parallel_diffusion">
 <a class="example-card-preview" href="generated/fci_parallel_diffusion.html">
 <img class="example-card-image"
- src="../media/examples/fci_parallel_diffusion/fci_parallel_dissipation_1d.png"
+ src="../media/examples/fci_parallel_diffusion/primary.png"
  alt="Plot preview for fci_parallel_diffusion" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -128,7 +128,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="fci_quadrilateral_geometry">
 <a class="example-card-preview" href="generated/fci_quadrilateral_geometry.html">
 <img class="example-card-image"
- src="../media/examples/fci_quadrilateral_geometry/cover.svg"
+ src="../media/examples/fci_quadrilateral_geometry/primary.png"
  alt="Plot preview for fci_quadrilateral_geometry" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -139,7 +139,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="fci_polygon_geometry">
 <a class="example-card-preview" href="generated/fci_polygon_geometry.html">
 <img class="example-card-image"
- src="../media/examples/fci_polygon_geometry/cover.svg"
+ src="../media/examples/fci_polygon_geometry/primary.png"
  alt="Plot preview for fci_polygon_geometry" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -150,7 +150,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
- src="../media/examples/tetra_h1_poisson/tetra_h1_poisson_axis_gray_zoom.png"
+ src="../media/examples/tetra_h1_poisson/primary.png"
  alt="Plot preview for tetra_h1_poisson" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -161,7 +161,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="tetra_mixed_poisson">
 <a class="example-card-preview" href="generated/tetra_mixed_poisson.html">
 <img class="example-card-image"
- src="../media/examples/tetra_mixed_poisson/tetra_mixed_conservation_1d.png"
+ src="../media/examples/tetra_mixed_poisson/primary.png"
  alt="Plot preview for tetra_mixed_poisson" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -172,7 +172,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="tetra_nedelec_p_convergence">
 <a class="example-card-preview" href="generated/tetra_nedelec_p_convergence.html">
 <img class="example-card-image"
- src="../media/examples/tetra_nedelec_p_convergence/p_convergence_1d.png"
+ src="../media/examples/tetra_nedelec_p_convergence/primary.png"
  alt="Plot preview for tetra_nedelec_p_convergence" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -188,7 +188,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="circular_dtn_modes">
 <a class="example-card-preview" href="generated/circular_dtn_modes.html">
 <img class="example-card-image"
- src="../media/examples/circular_dtn_modes/circular_dtn_response_1d.png"
+ src="../media/examples/circular_dtn_modes/primary.png"
  alt="Plot preview for circular_dtn_modes" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -199,7 +199,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="helmholtz_open_boundary_comparison">
 <a class="example-card-preview" href="generated/helmholtz_open_boundary_comparison.html">
 <img class="example-card-image"
- src="../media/examples/helmholtz_open_boundary_comparison/helmholtz_error_1d.png"
+ src="../media/examples/helmholtz_open_boundary_comparison/primary.png"
  alt="Plot preview for helmholtz_open_boundary_comparison" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -210,7 +210,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="acoustic_fem_dtn">
 <a class="example-card-preview" href="generated/acoustic_fem_dtn.html">
 <img class="example-card-image"
- src="../media/examples/acoustic_fem_dtn/elastic_dtn_centerline.png"
+ src="../media/examples/acoustic_fem_dtn/primary.png"
  alt="Plot preview for acoustic_fem_dtn" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -221,7 +221,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="maxwell_open_boundary_comparison">
 <a class="example-card-preview" href="generated/maxwell_open_boundary_comparison.html">
 <img class="example-card-image"
- src="../media/examples/maxwell_open_boundary_comparison/maxwell_dtn_modes_1d.png"
+ src="../media/examples/maxwell_open_boundary_comparison/primary.png"
  alt="Plot preview for maxwell_open_boundary_comparison" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -237,7 +237,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="fortfem_mesh_benchmark">
 <a class="example-card-preview" href="generated/fortfem_mesh_benchmark.html">
 <img class="example-card-image"
- src="../media/examples/fortfem_mesh_benchmark/entity_counts_1d.png"
+ src="../media/examples/fortfem_mesh_benchmark/primary.png"
  alt="Plot preview for fortfem_mesh_benchmark" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -248,7 +248,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="solver_benchmark">
 <a class="example-card-preview" href="generated/solver_benchmark.html">
 <img class="example-card-image"
- src="../media/examples/solver_benchmark/solver_residuals_1d.png"
+ src="../media/examples/solver_benchmark/primary.png"
  alt="Plot preview for solver_benchmark" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -275,7 +275,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="laplace_bem_circle_spectrum">
 <a class="example-card-preview" href="generated/laplace_bem_circle_spectrum.html">
 <img class="example-card-image"
- src="../media/examples/laplace_bem_circle_spectrum/convergence_1d.png"
+ src="../media/examples/laplace_bem_circle_spectrum/primary.png"
  alt="Plot preview for laplace_bem_circle_spectrum" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -286,7 +286,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="helmholtz_bem_circle_spectrum">
 <a class="example-card-preview" href="generated/helmholtz_bem_circle_spectrum.html">
 <img class="example-card-image"
- src="../media/examples/helmholtz_bem_circle_spectrum/convergence_1d.png"
+ src="../media/examples/helmholtz_bem_circle_spectrum/primary.png"
  alt="Plot preview for helmholtz_bem_circle_spectrum" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -297,7 +297,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="helmholtz_cfie_circle">
 <a class="example-card-preview" href="generated/helmholtz_cfie_circle.html">
 <img class="example-card-image"
- src="../media/examples/helmholtz_cfie_circle/convergence_1d.png"
+ src="../media/examples/helmholtz_cfie_circle/primary.png"
  alt="Plot preview for helmholtz_cfie_circle" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -308,7 +308,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="laplace_symmetric_transmission">
 <a class="example-card-preview" href="generated/laplace_symmetric_transmission.html">
 <img class="example-card-image"
- src="../media/examples/laplace_symmetric_transmission/flux_1d.png"
+ src="../media/examples/laplace_symmetric_transmission/primary.png"
  alt="Plot preview for laplace_symmetric_transmission" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -319,7 +319,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="curved_acoustic_ntd">
 <a class="example-card-preview" href="generated/curved_acoustic_ntd.html">
 <img class="example-card-image"
- src="../media/examples/curved_acoustic_ntd/curved_acoustic_convergence.png"
+ src="../media/examples/curved_acoustic_ntd/primary.png"
  alt="Plot preview for curved_acoustic_ntd" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -330,7 +330,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="bem_sphere_3d">
 <a class="example-card-preview" href="generated/bem_sphere_3d.html">
 <img class="example-card-image"
- src="../media/examples/bem_sphere_3d/sphere_capacitance.png"
+ src="../media/examples/bem_sphere_3d/primary.png"
  alt="Plot preview for bem_sphere_3d" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -341,7 +341,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="adaptive_bem_prolate">
 <a class="example-card-preview" href="generated/adaptive_bem_prolate.html">
 <img class="example-card-image"
- src="../media/examples/adaptive_bem_prolate/adaptive_convergence.png"
+ src="../media/examples/adaptive_bem_prolate/primary.png"
  alt="Plot preview for adaptive_bem_prolate" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -352,7 +352,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="adaptive_helmholtz_bem_sphere">
 <a class="example-card-preview" href="generated/adaptive_helmholtz_bem_sphere.html">
 <img class="example-card-image"
- src="../media/examples/adaptive_helmholtz_bem_sphere/adaptive_convergence.png"
+ src="../media/examples/adaptive_helmholtz_bem_sphere/primary.png"
  alt="Plot preview for adaptive_helmholtz_bem_sphere" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -368,7 +368,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="magnetic_curvilinear_metrics">
 <a class="example-card-preview" href="generated/magnetic_curvilinear_metrics.html">
 <img class="example-card-image"
- src="../media/examples/magnetic_curvilinear_metrics/cylindrical_coefficients_1d.png"
+ src="../media/examples/magnetic_curvilinear_metrics/primary.png"
  alt="Plot preview for magnetic_curvilinear_metrics" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -379,7 +379,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="toroidal_analytical">
 <a class="example-card-preview" href="generated/toroidal_analytical.html">
 <img class="example-card-image"
- src="../media/examples/toroidal_analytical/toroidal_bem_error_2d.png"
+ src="../media/examples/toroidal_analytical/primary.png"
  alt="Plot preview for toroidal_analytical" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -390,7 +390,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="iga_shape_sensitivity">
 <a class="example-card-preview" href="generated/iga_shape_sensitivity.html">
 <img class="example-card-image"
- src="../media/examples/iga_shape_sensitivity/geometry_gradient_1d.png"
+ src="../media/examples/iga_shape_sensitivity/primary.png"
  alt="Plot preview for iga_shape_sensitivity" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -401,7 +401,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="maxwell_mesh_adjoint">
 <a class="example-card-preview" href="generated/maxwell_mesh_adjoint.html">
 <img class="example-card-image"
- src="../media/examples/maxwell_mesh_adjoint/adjoint_accuracy_1d.png"
+ src="../media/examples/maxwell_mesh_adjoint/primary.png"
  alt="Plot preview for maxwell_mesh_adjoint" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -412,7 +412,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="iga_polar_feec">
 <a class="example-card-preview" href="generated/iga_polar_feec.html">
 <img class="example-card-image"
- src="../media/examples/iga_polar_feec/polar_control_mesh_2d.png"
+ src="../media/examples/iga_polar_feec/primary.png"
  alt="Plot preview for iga_polar_feec" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -423,7 +423,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="iga_jorek_flux">
 <a class="example-card-preview" href="generated/iga_jorek_flux.html">
 <img class="example-card-image"
- src="../media/examples/iga_jorek_flux/jorek_flux_final_2d.png"
+ src="../media/examples/iga_jorek_flux/primary.png"
  alt="Plot preview for iga_jorek_flux" loading="lazy">
 </a>
 <div class="example-card-body">
@@ -434,7 +434,7 @@ fpm run --example <example_name>
 <article class="example-card" data-example="maxwell_torus_curved_scattering">
 <a class="example-card-preview" href="generated/maxwell_torus_curved_scattering.html">
 <img class="example-card-image"
- src="../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_1d.png"
+ src="../media/examples/maxwell_torus_curved_scattering/primary.png"
  alt="Plot preview for maxwell_torus_curved_scattering" loading="lazy">
 </a>
 <div class="example-card-body">

@@ -334,6 +334,10 @@ end program maxwell_open_boundary_comparison
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/maxwell_open_boundary_comparison/primary.png)
+
 ### maxwell_dtn_modes_1d.png
 
 ![maxwell_dtn_modes_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_dtn_modes_1d.png)

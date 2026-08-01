@@ -168,6 +168,10 @@ end program laplace_symmetric_transmission
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/laplace_symmetric_transmission/primary.png)
+
 ### flux_1d.png
 
 ![flux_1d.png](../../media/examples/laplace_symmetric_transmission/flux_1d.png)

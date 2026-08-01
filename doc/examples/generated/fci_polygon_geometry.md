@@ -215,9 +215,21 @@ end program fci_polygon_geometry
 
 ## Generated Plots
 
-### cover.svg
+### primary.png
 
-![cover.svg](../../media/examples/fci_polygon_geometry/cover.svg)
+![primary.png](../../media/examples/fci_polygon_geometry/primary.png)
+
+### fci_curved_polygon_cells_2d.png
+
+![fci_curved_polygon_cells_2d.png](../../media/examples/fci_polygon_geometry/fci_curved_polygon_cells_2d.png)
+
+### fci_polygon_areas_1d.png
+
+![fci_polygon_areas_1d.png](../../media/examples/fci_polygon_geometry/fci_polygon_areas_1d.png)
+
+### fci_polygon_cells_2d.png
+
+![fci_polygon_cells_2d.png](../../media/examples/fci_polygon_geometry/fci_polygon_cells_2d.png)
 
 ---
 

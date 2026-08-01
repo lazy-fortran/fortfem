@@ -8,6 +8,7 @@ doc_examples_dir="$repository_dir/doc/examples"
 generated_dir="$doc_examples_dir/generated"
 artifacts_dir="$repository_dir/artifacts/plots/examples"
 order_file="$doc_examples_dir/gallery_order.txt"
+primary_file="$doc_examples_dir/primary_plots.txt"
 
 mkdir -p "$generated_dir"
 
@@ -30,6 +31,30 @@ for source in "${example_sources[@]}"; do
     fi
     source_for_name[$example_name]=$source
 done
+
+declare -A primary_for_name
+while IFS=' ' read -r example_name primary_name extra; do
+    [[ -z "$example_name" || "${example_name:0:1}" == "#" ]] && continue
+    if [[ -n "$extra" || -z "$primary_name" ]]; then
+        echo "invalid primary plot entry: $example_name $primary_name $extra" >&2
+        exit 1
+    fi
+    if [[ -n "${primary_for_name[$example_name]:-}" ]]; then
+        echo "primary plot repeats example: $example_name" >&2
+        exit 1
+    fi
+    if [[ -z "${source_for_name[$example_name]:-}" ]]; then
+        echo "primary plot names an unknown example: $example_name" >&2
+        exit 1
+    fi
+    primary_for_name[$example_name]=$primary_name
+done < "$primary_file"
+if ! diff -q \
+        <(printf '%s\n' "${!source_for_name[@]}" | sort) \
+        <(printf '%s\n' "${!primary_for_name[@]}" | sort) >/dev/null; then
+    echo "primary plot map must cover every executable example exactly once" >&2
+    exit 1
+fi
 
 declare -A group_for_name
 example_names=()
@@ -65,6 +90,17 @@ if ! diff -q \
 fi
 
 python3 "$script_dir/generate_example_covers.py"
+
+# Keep the gallery cover independent of filename sorting.  The producing
+# example writes the physical field/geometry plot named by primary_plots.txt;
+# this stable alias is ignored with the other generated artifacts.
+for example_name in "${example_names[@]}"; do
+    primary_name=${primary_for_name[$example_name]}
+    primary_source="$artifacts_dir/$example_name/$primary_name"
+    if [[ -f "$primary_source" ]]; then
+        cp -f "$primary_source" "$artifacts_dir/$example_name/primary.png"
+    fi
+done
 
 description_for()
 {
@@ -179,7 +215,25 @@ for example_name in "${example_names[@]}"; do
 
         plot_count=0
         if [[ -d "$artifacts_dir/$example_name" ]]; then
-            while IFS= read -r plot; do
+            primary_plot="$artifacts_dir/$example_name/primary.png"
+            if [[ -f "$primary_plot" ]]; then
+                plots=("$primary_plot")
+                while IFS= read -r plot; do
+                    [[ "$plot" == "$primary_plot" ]] && continue
+                    plots+=("$plot")
+                done < <(
+                    find "$artifacts_dir/$example_name" -maxdepth 1 \
+                        -type f -name '*.png' -print |
+                        sort
+                )
+            else
+                mapfile -t plots < <(
+                    find "$artifacts_dir/$example_name" -maxdepth 1 \
+                        -type f -name '*.png' -print |
+                        sort
+                )
+            fi
+            for plot in "${plots[@]}"; do
                 plot_name=$(basename "$plot")
                 printf '%s\n' \
                     "### $plot_name" \
@@ -187,11 +241,7 @@ for example_name in "${example_names[@]}"; do
                     "![$plot_name](../../media/examples/$example_name/$plot_name)" \
                     ''
                 plot_count=$((plot_count + 1))
-            done < <(
-                find "$artifacts_dir/$example_name" -maxdepth 1 \
-                    -type f -name '*.png' -print |
-                    sort
-            )
+            done
             # Optional external benchmark runners may have no local numerical
             # artifact. Keep the provenance-labelled SVG cover visible instead
             # of publishing an empty page; numerical examples are required to
@@ -231,8 +281,11 @@ for example_name in "${example_names[@]}"; do
         "<article class=\"example-card\" data-example=\"$example_name\">" \
         "<a class=\"example-card-preview\" href=\"generated/$example_name.html\">" \
         >> "$doc_examples_dir/index.md"
-    preview=$(find "$artifacts_dir/$example_name" -maxdepth 1 \
-        -type f -name '*.png' -print | sort | sed -n '1p')
+    preview="$artifacts_dir/$example_name/primary.png"
+    if [[ ! -f "$preview" ]]; then
+        preview=$(find "$artifacts_dir/$example_name" -maxdepth 1 \
+            -type f -name '*.png' -print | sort | sed -n '1p')
+    fi
     if [[ -z "$preview" ]]; then
         preview=$(find "$artifacts_dir/$example_name" -maxdepth 1 \
             -type f -name '*.svg' -print | sort | sed -n '1p')

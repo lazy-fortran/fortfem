@@ -20,8 +20,8 @@ program helmholtz_cfie_circle
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
-        title, xlabel, ylabel
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, set_xscale, &
+        set_yscale, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: mesh_sizes(3) = [16, 32, 64]
@@ -50,6 +50,8 @@ program helmholtz_cfie_circle
     print "(a,2f12.6)", "Mie scattered field at r=2, theta=0.3: ", &
         real(exact_scattered, dp), aimag(exact_scattered)
 
+    call render_incident_boundary()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(mesh_sizes_real, field_errors, label="scattered-field error", &
         marker="o")
@@ -63,6 +65,27 @@ program helmholtz_cfie_circle
     call savefig("output/example/helmholtz_cfie_circle/convergence_1d.png")
 
 contains
+
+    subroutine render_incident_boundary()
+        integer, parameter :: point_count = 128
+        real(dp) :: angle, x(point_count), y(point_count), mode(point_count)
+        integer :: point
+
+        do point = 1, point_count
+            angle = 2.0_dp*acos(-1.0_dp)*real(point - 1, dp)/ &
+                real(point_count, dp)
+            x(point) = cos(angle)
+            y(point) = sin(angle)
+            mode(point) = real( &
+                exp(cmplx(0.0_dp, 1.3_dp*x(point), dp)), dp)
+        end do
+        call figure(figsize=[7.0_dp, 6.5_dp])
+        call add_scatter(x, y, c=mode, cmap="coolwarm", marker=".", &
+            markersize=5.0_dp, label="Re incident trace")
+        call title("Helmholtz CFIE incident field on the circle")
+        call savefig( &
+            "output/example/helmholtz_cfie_circle/incident_boundary_2d.png")
+    end subroutine render_incident_boundary
 
     subroutine solve_circle(panel_count, scattered, residual)
         integer, intent(in) :: panel_count
@@ -109,9 +132,17 @@ end program helmholtz_cfie_circle
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/helmholtz_cfie_circle/primary.png)
+
 ### convergence_1d.png
 
 ![convergence_1d.png](../../media/examples/helmholtz_cfie_circle/convergence_1d.png)
+
+### incident_boundary_2d.png
+
+![incident_boundary_2d.png](../../media/examples/helmholtz_cfie_circle/incident_boundary_2d.png)
 
 ---
 

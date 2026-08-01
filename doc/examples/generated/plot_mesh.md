@@ -99,6 +99,10 @@ end program plot_mesh_example
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/plot_mesh/primary.png)
+
 ### mesh_basic.png
 
 ![mesh_basic.png](../../media/examples/plot_mesh/mesh_basic.png)

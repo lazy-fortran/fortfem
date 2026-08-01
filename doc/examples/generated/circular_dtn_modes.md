@@ -77,6 +77,10 @@ end program circular_dtn_modes
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/circular_dtn_modes/primary.png)
+
 ### circular_dtn_response_1d.png
 
 ![circular_dtn_response_1d.png](../../media/examples/circular_dtn_modes/circular_dtn_response_1d.png)

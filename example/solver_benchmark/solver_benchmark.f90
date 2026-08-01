@@ -5,8 +5,8 @@ program solver_benchmark
         assemble_laplacian_system
     use fortfem_advanced_solvers, only: solver_options_t, solver_stats_t, &
         solver_options, solve
-    use fortplot, only: figure, legend, plot, savefig, set_xscale, set_yscale, &
-        title, xlabel, ylabel
+    use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
+        set_xscale, set_yscale, title, xlabel, ylabel
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -57,9 +57,40 @@ contains
             pcg_residuals)
 
         call ensure_example_output_directory()
+        call render_reference_solution()
         call plot_solver_times(mesh_sizes, direct_times, pcg_times)
         call plot_solver_residuals(mesh_sizes, direct_residuals, pcg_residuals)
     end subroutine run_solver_benchmark
+
+    subroutine render_reference_solution()
+        integer, parameter :: nx = 32, ny = 32
+        real(dp) :: x_edges(nx + 1), y_edges(ny + 1), values(nx, ny)
+        real(dp) :: x, y
+        integer :: i, j
+
+        do i = 1, nx + 1
+            x_edges(i) = real(i - 1, dp)/real(nx, dp)
+        end do
+        do j = 1, ny + 1
+            y_edges(j) = real(j - 1, dp)/real(ny, dp)
+        end do
+        do j = 1, ny
+            y = 0.5_dp*(y_edges(j) + y_edges(j + 1))
+            do i = 1, nx
+                x = 0.5_dp*(x_edges(i) + x_edges(i + 1))
+                values(i, j) = sin(acos(-1.0_dp)*x)* &
+                    sin(acos(-1.0_dp)*y)
+            end do
+        end do
+
+        call figure(figsize=[8.5_dp, 5.5_dp])
+        call pcolormesh(x_edges, y_edges, values, cmap="viridis")
+        call colorbar(label="manufactured Poisson solution u")
+        call xlabel("x")
+        call ylabel("y")
+        call title("Poisson solution used by the solver benchmark")
+        call savefig(output_directory//"/poisson_solution_2d.png")
+    end subroutine render_reference_solution
 
     subroutine plot_solver_times(mesh_sizes, direct_times, pcg_times)
         integer, intent(in) :: mesh_sizes(:)

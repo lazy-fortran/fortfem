@@ -131,6 +131,10 @@ end program cgl_pressure_tensor
 
 ## Generated Plots
 
+### primary.png
+
+![primary.png](../../media/examples/cgl_pressure_tensor/primary.png)
+
 ### cgl_force_divergence_1d.png
 
 ![cgl_force_divergence_1d.png](../../media/examples/cgl_pressure_tensor/cgl_force_divergence_1d.png)

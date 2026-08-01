@@ -4,8 +4,8 @@ program tetra_h1_poisson
     use fortfem_generated_tetra_h1_oracle, only: generated_tetra_h1_oracle
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
-    use fortplot, only: figure, legend, plot, savefig, set_yscale, title, &
-        xlabel, ylabel
+    use fortplot, only: add_scatter, figure, legend, plot, savefig, &
+        set_yscale, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -52,6 +52,8 @@ program tetra_h1_poisson
     end do
     close (unit)
 
+    call render_solution()
+
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot( &
         degrees, l2_errors, label="L2 value error", linestyle="-", marker="o")
@@ -65,6 +67,26 @@ program tetra_h1_poisson
     call savefig(output_directory//"/tetra_h1_poisson_convergence.png")
 
 contains
+
+    subroutine render_solution()
+        real(dp) :: vertex_values(size(vertices, 2)), oracle(5)
+        integer :: vertex
+
+        do vertex = 1, size(vertices, 2)
+            call generated_tetra_h1_oracle( &
+                vertices(1, vertex), vertices(2, vertex), vertices(3, vertex), &
+                oracle)
+            vertex_values(vertex) = oracle(1)
+        end do
+
+        call figure(figsize=[7.5_dp, 6.0_dp])
+        call add_scatter( &
+            vertices(1, :), vertices(2, :), vertices(3, :), &
+            c=vertex_values, cmap="viridis", marker="o", &
+            markersize=8.0_dp, label="tetrahedral solution samples")
+        call title("Tetrahedral H1 Poisson solution samples")
+        call savefig(output_directory//"/tetra_h1_poisson_solution_3d.png")
+    end subroutine render_solution
 
     subroutine solve_and_measure(degree, l2_error, h1_error)
         integer, intent(in) :: degree

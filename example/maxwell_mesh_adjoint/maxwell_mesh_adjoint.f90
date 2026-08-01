@@ -161,33 +161,6 @@ contains
         real(dp) :: segment_x(2), segment_y(2)
         integer :: vertex
 
-        call figure(figsize=[8.0_dp, 5.5_dp])
-        call plot(design_variables, jvp_seconds, label="analytical JVP", &
-            marker="o", color=blue)
-        call plot(design_variables, vjp_seconds, label="analytical VJP", &
-            marker="s", color=orange)
-        call plot(design_variables, finite_difference_seconds, &
-            label="measured directional FD", marker="^", color=green)
-        call plot(design_variables, full_gradient_fd_seconds, &
-            label="estimated coordinate FD gradient", linestyle="--")
-        call set_xscale("log")
-        call set_yscale("log")
-        call xlabel("geometry and PML design variables")
-        call ylabel("assembly derivative time (s)")
-        call title("Maxwell PML mesh derivatives: forward, reverse, and FD")
-        call legend()
-        call savefig(output_directory//"/derivative_timing_1d.png")
-
-        call figure(figsize=[7.5_dp, 5.0_dp])
-        call plot(design_variables, max(directional_error, epsilon(1.0_dp)), &
-            marker="o", color=blue)
-        call set_xscale("log")
-        call set_yscale("log")
-        call xlabel("geometry and PML design variables")
-        call ylabel("relative adjoint/central-difference error")
-        call title("Maxwell mesh-adjoint verification")
-        call savefig(output_directory//"/adjoint_accuracy_1d.png")
-
         scale = 0.12_dp/max(maxval(abs(finest_vertices_bar(1:2, :))), &
             tiny(1.0_dp))
         allocate(display_vertices, mold=finest_vertices)
@@ -215,6 +188,34 @@ contains
         call title("Projected Maxwell adjoint descent directions")
         call legend()
         call savefig(output_directory//"/mesh_gradient_2d.png")
+
+        call figure(figsize=[8.0_dp, 5.5_dp])
+        call plot(design_variables, jvp_seconds, label="analytical JVP", &
+            marker="o", color=blue)
+        call plot(design_variables, vjp_seconds, label="analytical VJP", &
+            marker="s", color=orange)
+        call plot(design_variables, finite_difference_seconds, &
+            label="measured directional FD", marker="^", color=green)
+        call plot(design_variables, full_gradient_fd_seconds, &
+            label="estimated coordinate FD gradient", linestyle="--")
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("geometry and PML design variables")
+        call ylabel("assembly derivative time (s)")
+        call title("Maxwell PML mesh derivatives: forward, reverse, and FD")
+        call legend()
+        call savefig(output_directory//"/derivative_timing_1d.png")
+
+        call figure(figsize=[7.5_dp, 5.0_dp])
+        call plot(design_variables, max(directional_error, epsilon(1.0_dp)), &
+            marker="o", color=blue)
+        call set_xscale("log")
+        call set_yscale("log")
+        call xlabel("geometry and PML design variables")
+        call ylabel("relative adjoint/central-difference error")
+        call title("Maxwell mesh-adjoint verification")
+        call savefig(output_directory//"/adjoint_accuracy_1d.png")
+
     end subroutine make_plots
 
 end program maxwell_mesh_adjoint

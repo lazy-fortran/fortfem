@@ -6,8 +6,8 @@ program maxwell_torus_curved_scattering
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_kinds, only: dp
     use fortplot, only: &
-        add_scatter, colorbar, figure, legend, pcolormesh, plot, savefig, title, &
-        xlabel, ylabel
+        add_3d_plot, add_scatter, colorbar, figure, legend, pcolormesh, plot, &
+        savefig, title, xlabel, ylabel
     implicit none
 
     integer, parameter :: azimuth_cells = 36, polar_cells = 18
@@ -136,6 +136,69 @@ contains
     end subroutine evaluate_reciprocity
 
     subroutine render_plots()
+        integer, parameter :: visual_azimuth = 36, visual_polar = 18
+        real(dp) :: curve_x(visual_azimuth + 1)
+        real(dp) :: curve_y(visual_azimuth + 1)
+        real(dp) :: curve_z(visual_azimuth + 1)
+        real(dp) :: edge_x(4), edge_y(4), edge_z(4)
+        real(dp) :: curve_azimuth, curve_polar, curve_radius
+        integer :: curve_index, local_vertex, point_index, triangle, vertex
+
+        call figure(figsize=[7.5_dp, 6.5_dp])
+        call add_scatter( &
+            vertices(1, :), vertices(2, :), vertices(3, :), &
+            label="curved torus mesh vertices", marker=".", markersize=5.0_dp)
+        do curve_index = 0, visual_polar
+            curve_polar = 2.0_dp*pi*real(curve_index, dp)/ &
+                real(visual_polar, dp)
+            do point_index = 0, visual_azimuth
+                curve_azimuth = 2.0_dp*pi*real(point_index, dp)/ &
+                    real(visual_azimuth, dp)
+                curve_radius = major_radius + minor_radius*cos(curve_polar)
+                curve_x(point_index + 1) = curve_radius*cos(curve_azimuth)
+                curve_y(point_index + 1) = curve_radius*sin(curve_azimuth)
+                curve_z(point_index + 1) = minor_radius*sin(curve_polar)
+            end do
+            call add_3d_plot(curve_x, curve_y, curve_z, &
+                label="exact torus geometry", color="teal", linewidth=0.7_dp)
+        end do
+        do curve_index = 0, visual_azimuth
+            curve_azimuth = 2.0_dp*pi*real(curve_index, dp)/ &
+                real(visual_azimuth, dp)
+            do point_index = 0, visual_polar
+                curve_polar = 2.0_dp*pi*real(point_index, dp)/ &
+                    real(visual_polar, dp)
+                curve_radius = major_radius + minor_radius*cos(curve_polar)
+                curve_x(point_index + 1) = curve_radius*cos(curve_azimuth)
+                curve_y(point_index + 1) = curve_radius*sin(curve_azimuth)
+                curve_z(point_index + 1) = minor_radius*sin(curve_polar)
+            end do
+            call add_3d_plot(curve_x(:visual_polar + 1), &
+                curve_y(:visual_polar + 1), curve_z(:visual_polar + 1), &
+                color="teal", linewidth=0.7_dp)
+        end do
+        do triangle = 1, size(triangles, 2)
+            do local_vertex = 1, 3
+                vertex = triangles(local_vertex, triangle)
+                edge_x(local_vertex) = vertices(1, vertex)
+                edge_y(local_vertex) = vertices(2, vertex)
+                edge_z(local_vertex) = vertices(3, vertex)
+            end do
+            edge_x(4) = edge_x(1)
+            edge_y(4) = edge_y(1)
+            edge_z(4) = edge_z(1)
+            if (triangle == 1) then
+                call add_3d_plot(edge_x, edge_y, edge_z, &
+                    label="curved torus triangle edges", color="navy", &
+                    linewidth=1.0_dp)
+            else
+                call add_3d_plot(edge_x, edge_y, edge_z, color="navy", &
+                    linewidth=1.0_dp)
+            end if
+        end do
+        call title("Exact-curved torus surface mesh used by Maxwell CFIE")
+        call savefig(output_directory//"/torus_geometry_3d.png")
+
         call figure(figsize=[9.0_dp, 5.5_dp])
         call plot(trace_azimuth, trace_rcs, &
             label="exact-curved CFIE bistatic RCS", linestyle="-")
