@@ -17,6 +17,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 API_FILES = sorted((ROOT / "src").glob("fortfem_api*.f90"))
+# Canonical facades are part of the public inventory once they exist.  Keep
+# this list explicit so implementation modules are not accidentally treated
+# as public just because they happen to contain a ``public ::`` statement.
+CANONICAL_FACADE_NAMES = (
+    "fortfem_core.f90",
+    "fortfem_feec.f90",
+    "fortfem_fourier.f90",
+    "fortfem_boundary.f90",
+    "fortfem_time.f90",
+    "fortfem_interop.f90",
+    "fortfem_plot.f90",
+)
+API_FILES.extend(
+    path for name in CANONICAL_FACADE_NAMES
+    if (path := ROOT / "src" / name).is_file()
+)
+API_FILES = sorted(set(API_FILES))
 
 
 @dataclass(frozen=True)
@@ -258,8 +275,8 @@ def main() -> None:
         "# Public Fortran API inventory",
         "",
         "This deterministic API-00 inventory is derived from the `public ::` and",
-        "`use ... only:` declarations in `src/fortfem_api.f90` and the existing",
-        "`src/fortfem_api_*.f90` wrappers. It records the current exported spelling",
+        "`use ... only:` declarations in `src/fortfem_api.f90`, existing",
+        "`src/fortfem_api_*.f90` wrappers, and canonical facades. It records the current exported spelling",
         "before any facade migration; it does not rename symbols or infer numerical",
         "semantics.",
         "",
