@@ -2829,6 +2829,19 @@ gallery example.
   oracles; this is a space-construction foundation, not an interface PDE
   solver. Cut-cell integration, Piola-compatible FEEC numbering, and sparse
   assembly stay caller-owned as specified above.
+- The regularized surface-current gallery now leads with the resolved
+  three-component Gaussian sheet profile and independent oracle markers;
+  integrated-current convergence and a bounded per-profile timing record are
+  secondary. The linear perturbation gallery similarly leads with the
+  physical complex Fourier response before reciprocity, passivity, and
+  residual diagnostics. Both pages retain ignored generated media and
+  machine-readable CSV/JSON provenance.
+- The nested-surface gallery now leads with a colored, parameter-lined 3-D
+  torus solution and follows it with parameter-space and axis-regular radial
+  diagnostics. The exterior sphere BEM gallery now leads with the computed
+  Laplace field on a 3-D observation shell, using the parametric-surface
+  renderer plus per-sample colors and an independent (1/r) oracle; density
+  and solver diagnostics remain secondary.
 
 ### Phase 9: Future application layer: **reference only**
 
