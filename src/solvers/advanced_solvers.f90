@@ -176,7 +176,8 @@ contains
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
                 precond)
         case ("gmres")
-            call gmres_solve_sparse_impl(A_sparse, b, x, local_opts, stats)
+            call gmres_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
+                precond)
         case ("bicgstab")
             call bicgstab_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
                 precond)
@@ -242,14 +243,16 @@ contains
 
     end subroutine pcg_solve_sparse_impl
 
-    subroutine gmres_solve_sparse_impl(A_sparse, b, x, opts, stats)
+    subroutine gmres_solve_sparse_impl(A_sparse, b, x, opts, stats, precond)
         type(sparse_matrix_t), intent(in) :: A_sparse
         real(dp), intent(in) :: b(:)
         real(dp), intent(inout) :: x(:)
         type(solver_options_t), intent(in) :: opts
         type(solver_stats_t), intent(out) :: stats
+        type(preconditioner_t), intent(in) :: precond
 
         real(dp) :: tolerance
+        real(dp), allocatable :: preconditioned_rhs(:), raw_product(:), product(:)
         integer :: info, restart
 
         tolerance = opts%tolerance
@@ -257,12 +260,16 @@ contains
             tolerance = tolerance/max(norm2(b), 1.0_dp)
         end if
         restart = min(max(opts%restart, 1), opts%max_iterations)
+        allocate(preconditioned_rhs(size(b)), raw_product(size(b)), product(size(b)))
+        call apply_preconditioner(precond, b, preconditioned_rhs)
         call real_gmres_operator( &
-            sparse_matvec, b, x, tolerance, opts%max_iterations, restart, &
+            sparse_matvec, preconditioned_rhs, x, tolerance, &
+            opts%max_iterations, restart, &
             info, stats%iterations, stats%final_residual)
         stats%converged = info == KRYLOV_OK
         stats%restarts = max(0, (stats%iterations - 1)/restart)
         stats%method_used = "gmres"
+        deallocate(preconditioned_rhs, raw_product, product)
 
     contains
 
@@ -270,7 +277,9 @@ contains
             real(dp), intent(in) :: v_in(:)
             real(dp), intent(out) :: v_out(:)
 
-            call spmv(A_sparse, v_in, v_out)
+            call spmv(A_sparse, v_in, raw_product)
+            call apply_preconditioner(precond, raw_product, product)
+            v_out = product
         end subroutine sparse_matvec
 
     end subroutine gmres_solve_sparse_impl

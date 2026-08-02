@@ -51,9 +51,9 @@ positive inner product.
 The sparse `"ichol"`, `"ic"`, and `"ic0"` aliases likewise use the CSC
 incomplete-Cholesky builder directly; the dense IC path remains available only
 through the dense solver interface.
-Sparse `gmres` and `bicgstab` method selections use CSC callback matvecs, and
-the latter composes the same fixed ILUT action without materializing a dense
-matrix.
+Sparse `gmres` and `bicgstab` method selections use CSC callback matvecs;
+GMRES applies the selected factor on the left and BiCGSTAB composes the same
+fixed ILUT action without materializing a dense matrix.
 
 The focused behavioral tests check a hand-derived four-by-four LU solution,
 the dense-reference zero-fill diagonal limit, the row-builder no-fill
