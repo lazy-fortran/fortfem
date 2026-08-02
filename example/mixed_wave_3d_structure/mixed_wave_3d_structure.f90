@@ -4,7 +4,7 @@ program mixed_wave_3d_structure
     !! The three components are independent manufactured Cartesian oscillator
     !! modes.  The midpoint update is the ideal, energy-preserving block; no
     !! damping or absorbing term is hidden in this example.
-    use fortfem_api, only: advance_mixed_wave_midpoint
+    use fortfem_time, only: advance_mixed_wave_midpoint
     use fortfem_kinds, only: dp
     use fortplot, only: add_3d_plot, figure, legend, plot, savefig, &
         set_yscale, title, xlabel, ylabel
