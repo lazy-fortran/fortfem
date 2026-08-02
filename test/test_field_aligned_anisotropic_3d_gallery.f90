@@ -1,7 +1,7 @@
 program test_field_aligned_anisotropic_3d_gallery
     !! Independent constitutive and manufactured-PDE oracle for the gallery.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_field_aligned_constitutive_tensor
+    use fortfem_feec, only: evaluate_field_aligned_constitutive_tensor
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

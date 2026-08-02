@@ -6,7 +6,7 @@ output_directory="$repository_dir/output/example/field_aligned_anisotropic_3d_ga
 rm -rf -- "$output_directory"
 (
     cd "$repository_dir"
-    timeout --foreground 10s fpm run --example field_aligned_anisotropic_3d_gallery \
+    timeout --foreground 10s fo exec --no-build field_aligned_anisotropic_3d_gallery \
         >/tmp/fortfem-field-aligned-anisotropic-3d.log
 )
 

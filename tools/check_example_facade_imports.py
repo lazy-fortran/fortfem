@@ -97,6 +97,11 @@ CASES = (
         "fortfem_feec",
     ),
     ExampleCase(
+        "field-aligned anisotropic 3-D solution",
+        "example/field_aligned_anisotropic_3d_gallery/field_aligned_anisotropic_3d_gallery.f90",
+        "fortfem_feec",
+    ),
+    ExampleCase(
         "polar IGA FEEC solution",
         "example/iga_polar_feec/iga_polar_feec.f90",
         "fortfem_feec",

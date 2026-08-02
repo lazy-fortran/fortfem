@@ -34,6 +34,14 @@ module fortfem_feec
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_feec_2d_extractions, &
         build_bspline_polar_h1_extraction, evaluate_periodic_bspline_basis
+    use fortfem_field_aligned_constitutive_tensor, only: &
+        evaluate_field_aligned_constitutive_tensor, &
+        evaluate_field_aligned_constitutive_tensor_jvp, &
+        evaluate_field_aligned_constitutive_tensor_vjp
+    use fortfem_tensor_diffusion_matrix, only: &
+        assemble_tensor_diffusion_matrix_3d, &
+        assemble_tensor_diffusion_matrix_3d_jvp, &
+        assemble_tensor_diffusion_matrix_3d_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, &
         apply_tree_cotree_restriction, &
@@ -73,6 +81,9 @@ module fortfem_feec
     public :: build_bspline_polar_h1_extraction
     public :: diagnose_tree_cotree_iga_invariance
     public :: evaluate_bspline_basis
+    public :: evaluate_field_aligned_constitutive_tensor
+    public :: evaluate_field_aligned_constitutive_tensor_jvp
+    public :: evaluate_field_aligned_constitutive_tensor_vjp
     public :: evaluate_periodic_bspline_basis
     public :: evaluate_tetra_nedelec_first_kind
     public :: evaluate_tetra_nedelec_first_kind_jvp
@@ -94,6 +105,9 @@ module fortfem_feec
     public :: assemble_bspline_polar_hcurl_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc
     public :: restrict_bspline_polar_operator_csc
+    public :: assemble_tensor_diffusion_matrix_3d
+    public :: assemble_tensor_diffusion_matrix_3d_jvp
+    public :: assemble_tensor_diffusion_matrix_3d_vjp
     public :: validate_tree_cotree_gauge
     public :: beltrami_parity_t
     public :: compare_beltrami_two_region_residual
