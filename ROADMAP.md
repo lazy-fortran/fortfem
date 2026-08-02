@@ -341,6 +341,15 @@ documentation gates above pass.
   `test/test_api05_example_facades.f90` provide import and behavioral gates;
   the remaining gallery still needs a complete smallest-facade audit and a
   solution-first visual oracle for every page.
+  The 2026-08-03 migration wave extended this work without changing numerical
+  implementations: scalar/core and anisotropic/FCI consumers landed in
+  `999d08b`, six boundary BEM/DtN/PML consumers in `0e8fb7d`, six IGA/Fourier/
+  toroidal consumers plus a dedicated consumer oracle in `900f7cd`, and seven
+  wave/tensor/elasticity/response consumers in `03b511b`. The representative
+  checker now covers 25 cases (one deliberate umbrella smoke), while the
+  broader migrated examples are guarded by their focused behavioral tests and
+  module-layer audit. The remaining gallery still needs the same smallest-
+  facade treatment; these commits do not close API-05 globally.
 - **API-06 — complete first gate:**
   `scripts/check_api_release_gate.py` and
   `test/test_api_release_gate.sh` compose byte-current inventory, module-layer,
@@ -409,6 +418,11 @@ slice.
 | `migrate_boundary_gallery_facades` | Adaptive BEM, acoustic DtN/NtD, Helmholtz/PML, Maxwell open-boundary, and boundary solver examples/tests; own the representative facade checker updates | FEM/BEM/DtN/PML physical-solution oracle, derivative/trace parity, checker negative fixture, and focused `fo test` |
 | `migrate_iga_fourier_facades` | IGA, Fourier-FEM, toroidal, special-function, and field-aligned examples/tests; expose missing symbols through `fortfem_feec` or `fortfem_fourier` only | Geometry/mode/toroidal analytical oracle, physical-first plot-data gate, no-umbrella compile, and focused `fo test` |
 | `migrate_wave_tensor_facades` | Mixed acoustics/waves, elasticity, wall, tensor-pressure, sheet-current, and linear-response consumers; use `fortfem_time`, `fortfem_feec`, `fortfem_boundary`, `fortfem_interop`, and `fortfem_plot` as applicable | Independent energy/symplectic, constitutive, response, or trace oracle; no-umbrella compile, physical-first plot-data gate, and focused `fo test` |
+
+All four 2026-08-03 dispatches have now handed off clean branches. Their
+commits are recorded above and the integrator has regenerated the API
+inventory at `0fabd83`; future agents must take the next disjoint example
+batch rather than reopening these files or duplicating their exports.
 
 This dispatch is a consumer migration, not permission to mass-rename public
 procedures. Verb-first renames remain coordinated API-03 work: an agent may
