@@ -1,0 +1,19 @@
+{
+  "fixture": "team3_neutral_benchmark",
+  "benchmark_family": "TEAM",
+  "shape_target": "TEAM-3 C-core and air-gap magnetostatic layout",
+  "exact_reproduction": false,
+  "data_status": "manufactured arrays; no TEAM reader or reference measurements",
+  "source_arrays_redistributed": false,
+  "references": [
+    {
+      "title": "Electromagnetic Test Problems",
+      "url": "https://www.osti.gov/biblio/7179128"
+    },
+    {
+      "title": "TEAM workshop report",
+      "url": "https://www.osti.gov/servlets/purl/7179128"
+    }
+  ],
+  "license_note": "Exact TEAM geometry, material curves, and measurements remain external and require separate provenance and redistribution review."
+}
