@@ -7,15 +7,15 @@ program test_block_graph_csc
 
     integer, parameter :: dp = real64
     integer, parameter :: field_sizes(2) = [2, 1]
-    integer, parameter :: edge_rows(3) = [1, 2, 1]
-    integer, parameter :: edge_columns(3) = [1, 2, 2]
-    integer, parameter :: block_offsets(4) = [1, 5, 6, 8]
-    real(dp), parameter :: block_values(7) = [1.0_dp, 2.0_dp, 3.0_dp, 4.0_dp, &
-        2.0_dp, 0.5_dp, -0.25_dp]
+    integer, parameter :: edge_rows(4) = [1, 2, 1, 1]
+    integer, parameter :: edge_columns(4) = [1, 2, 2, 2]
+    integer, parameter :: block_offsets(5) = [1, 5, 6, 8, 10]
+    real(dp), parameter :: block_values(9) = [1.0_dp, 2.0_dp, 3.0_dp, 4.0_dp, &
+        2.0_dp, 0.5_dp, -0.25_dp, -0.1_dp, 0.3_dp]
     real(dp), parameter :: state(3) = [0.5_dp, -0.2_dp, 0.7_dp]
     real(dp), parameter :: complex_state(3) = [0.5_dp, -0.2_dp, 0.7_dp]
     real(dp) :: expected(3), dense_matrix(3, 3), applied(3)
-    complex(dp) :: complex_values(7), complex_applied(3), complex_expected(3)
+    complex(dp) :: complex_values(9), complex_applied(3), complex_expected(3)
     type(csc_t) :: matrix
     type(csc_z_t) :: complex_matrix
     type(fortsparse_status_t) :: status
@@ -27,6 +27,8 @@ program test_block_graph_csc
     dense_matrix(3, 3) = block_values(5)
     dense_matrix(1, 3) = dense_matrix(1, 3) + block_values(6)
     dense_matrix(2, 3) = dense_matrix(2, 3) + block_values(7)
+    dense_matrix(1, 3) = dense_matrix(1, 3) + block_values(8)
+    dense_matrix(2, 3) = dense_matrix(2, 3) + block_values(9)
     expected = matmul(dense_matrix, state)
     call assemble_block_graph_csc( &
         field_sizes, edge_rows, edge_columns, block_offsets, block_values, matrix, status)
@@ -37,12 +39,12 @@ program test_block_graph_csc
         "real CSC graph matvec matches the independent dense oracle")
 
     complex_values = cmplx(block_values, [0.1_dp, -0.2_dp, 0.3_dp, -0.4_dp, &
-        0.2_dp, 0.05_dp, -0.15_dp], dp)
+        0.2_dp, 0.05_dp, -0.15_dp, 0.04_dp, -0.06_dp], dp)
     complex_expected(1:2) = [ &
         complex_values(1)*complex_state(1) + complex_values(3)*complex_state(2) + &
-        complex_values(6)*complex_state(3), &
+        (complex_values(6) + complex_values(8))*complex_state(3), &
         complex_values(2)*complex_state(1) + complex_values(4)*complex_state(2) + &
-        complex_values(7)*complex_state(3)]
+        (complex_values(7) + complex_values(9))*complex_state(3)]
     complex_expected(3) = complex_values(5)*complex_state(3)
     call assemble_block_graph_csc( &
         field_sizes, edge_rows, edge_columns, block_offsets, complex_values, complex_matrix, status)
@@ -54,7 +56,7 @@ program test_block_graph_csc
         "complex CSC graph matvec matches the independent oracle")
 
     call assemble_block_graph_csc( &
-        field_sizes, edge_rows, edge_columns, [1, 5, 6, 7], block_values, matrix, status)
+        field_sizes, edge_rows, edge_columns, [1, 5, 6, 8, 9], block_values, matrix, status)
     call record_condition(status%code /= 0 .and. matrix%nrow == 0, &
         "inconsistent packed graph offsets are rejected")
     call check_summary("packed block graph CSC adapter")
