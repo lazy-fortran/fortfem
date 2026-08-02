@@ -2640,6 +2640,12 @@ gallery example.
   branches with complex toroidal Fourier phases and outward normal traces;
   its analytical coefficient/geometry JVP/VJP products are independently
   checked against the existing harmonic/DtN mode and central/adjoint oracles.
+- The seeded `test_toroidal_spectral_trace_properties` fixture now samples
+  valid degree-at-least-one, order-bounded P/Q mode sets, finite complex
+  coefficients, and toroidal angles with the check RNG. It compares scalar
+  and grid values with an independent separated modal sum, checks grid and
+  pointwise JVPs by central re-evaluation, and exercises negative-index and
+  nonpositive-scale/eta rejection without selecting a toroidal convention.
 - The independent `test_toroidal_harmonic_parity` fixture now checks both
   P/Q branches against the separated trace normalization, angular-period and
   conjugate-reflection parity, the outward-normal sign, linear modal
