@@ -1301,6 +1301,42 @@ NESTOR-like Fourier BIE is preferred for smooth periodic toroidal surfaces and
    backends, not competing replacements. Each choice must be benchmarked
    against at least one independent method and a manufactured solution.
 
+#### 8.5.9 MHD foundation task ledger
+
+This ledger is the authoritative MHD-specific work breakdown. It translates
+the generic contracts above into dependencies that an external equilibrium,
+linear-response, edge, or time-dependent client can consume. A status applies
+to the reusable ingredient only; it never means that FortFEM implements the
+named application or its plasma closure.
+
+| ID | Status | Foundation task | Acceptance gate and oracle |
+| --- | --- | --- | --- |
+| MHD-00 | **done** | Keep the application boundary explicit: no GEQDSK/COCOS readers, equilibrium profiles, coil or vessel models, Braginskii/sheath closures, species, or production VMEC/GVEC/SPEC/GPEC/MARS/GLISS/JOREK algorithms | A neutral-array example and provenance check show that an external client owns the physics and file conversion |
+| MHD-01 | **active** | Stabilize one equation-as-data ABI for scalar, vector, tensor, complex-frequency, and multiplier fields, including units, normalization, constraints, traces, residual/JVP/VJP, and converged-state derivatives | Manufactured mixed-field residual with independent matrix, finite-difference, real-adjoint, and invalid-shape tests; no plasma state vector is hard-coded |
+| MHD-02 | **active** | Finish the compatible spatial core: H1--H(curl)--H(div)--L2, Fourier-FEM, IGA patch graphs, orientation/periodic maps, harmonic forms, and tree--cotree direct gauge reduction for curl--curl systems | Slab, cylinder, sphere, and torus complexes satisfy incidence identities, divergence/curl defects, loop periods, gauge reduction, and direct-solve parity; fixed selectors are not differentiated |
+| MHD-03 | **active** | Compose tensor-valued pressure/stress and Maxwell traction blocks, including CGL-shaped parallel/perpendicular terms, gyrotropic/nonsymmetric terms, stress work, force divergence, and interface jumps | Independent tensor contraction, traction, force-volume, normal-flux, tangential-jump, power, and real/complex JVP/VJP oracles; angular-momentum and energy defects are reported |
+| MHD-04 | **planned** | Add a generic force-balance residual composition for supplied magnetic, pressure/stress, inertial, and body-force blocks, with explicit volume, boundary, and sheet-current terms | A manufactured equilibrium-like field on slab/cylinder/torus has zero residual under the supplied data; fitted, cut, DG, and IGA forms agree on common samples |
+| MHD-05 | **planned** | Add the nested-surface variational composition used by VMEC/GVEC/DESC-like clients: toroidal embedding, radial FE/IGA, Fourier modes, flux/constraint blocks, shape derivatives, and NESTOR-like vacuum trace | A supplied nested toroidal embedding reproduces manufactured fluxes and force residuals; physical surface plots, mode energies, conditioning, and shape-derivative checks are published |
+| MHD-06 | **planned** | Add the multi-region relaxed composition used by SPEC/SPECTRE-like clients: independent region fields, Beltrami/curl-eigen blocks, ideal interfaces, pressure balance, flux/helicity constraints, and harmonic loop data | Two-region slab and toroidal-shell manufactured states compare BIEST-like and compatible H(curl) paths, reject resonant gauges, and close flux/helicity/energy ledgers |
+| MHD-07 | **planned** | Add the Eulerian non-nested composition used by SIESTA-like clients: fixed-domain compatible fields, supplied force/divergence residuals, pseudo-transient hooks, topology events, and free-boundary traces | An island-forming manufactured perturbation reports field topology, divergence, force residual, event status, and fixed-topology derivative validity without selecting a relaxation closure |
+| MHD-08 | **planned** | Add linear ideal/resistive perturbation composition used by GPEC/MARS/GLISS-like clients: inertia, Lorentz, pressure/stress, vacuum, wall, resistive, singular-layer, and complex-frequency blocks | Forced and generalized-eigen manufactured cases satisfy reciprocity/passivity where declared; ideal shielding, penetrated resonant field, layer matching, normalization, and response matrices have independent oracles |
+| MHD-09 | **active** | Finish the sheet-current and resonant-layer bridge: tangential \(\mathbf K\) trace, Ampere jump, normal-flux continuity, total-pressure jump, explicit \(\mathbf K\delta_\Gamma\), fitted/cut/DG/IGA representations, and resolved resistive-layer limit | Slab HKT-style, cylinder, sphere, and torus fixtures compare all four representations, conserve integrated current, and show the declared non-differentiability at topology events |
+| MHD-10 | **active** | Compose vacuum/free-boundary and conductor blocks: physical BEM, DtN, NESTOR-like Fourier, virtual casing, BIEST-like vector maps, PML, wall response, and retained Schur/field-split factors | Common interior target fields agree across methods within declared discretization error; larger-domain, reciprocity, far-field, passivity, memory, and performance controls are recorded |
+| MHD-11 | **active** | Complete strongly anisotropic and field-aligned operators for magnetic diffusion, resistivity, viscosity, heat/conduction, pressure, and wave impedance, including FCI, Fourier, curvilinear, and IGA pullbacks | Limits \(k_\parallel/k_\perp\to1,0,\infty\) and Hall/gyrotropic skew parts pass energy/dissipation, convergence, conditioning, and tensor/geometry derivative tests |
+| MHD-12 | **active** | Keep ideal and dissipative time structure separate: mixed pressure/velocity, displacement/momentum/stress, Maxwell, wall RL, and nonlinear client-owned state blocks with midpoint, Cayley, symplectic Euler, Strang, and dissipative splits | Energy, helicity, cross-helicity, mass, divergence, charge, reversibility, symplectic-form, and wall-dissipation ledgers are checked on 1D/2D/3D manufactured waves; no dissipative step is called symplectic |
+| MHD-13 | **active** | Provide generic edge/SOL foundations for GRILLIX/BOUT++/PARALLAX-like clients: FCI tracing, parallel/perpendicular split, conservative fluxes, material traces, terminal events, and vector ledgers | MMS source/terminal balances, anisotropic negative-energy tests, boundary-event ownership, reproducibility seeds, and 1D/2D/3D solution plots pass without species or sheath physics |
+| MHD-14 | **planned** | Compose a bounded nonlinear resistive-MHD operator family: Faraday/Ampere-compatible blocks, supplied momentum/pressure/tensor terms, anisotropic transport, wall/free-boundary ports, continuation, and branch/event diagnostics | A reduced manufactured island/wall continuation case reports residual, input, dissipation, branch multiplicity, hysteresis, and derivative validity; it is not a JOREK replacement |
+| MHD-15 | **planned** | Build the external oracle ladder and neutral data path for CHEASE, FreeGS, VMEC/PARVMEC, GVEC/DESC, SPEC/SIESTA, GPEC/MARS, GLISS, STARWALL, JOREK, FreeFEM, MFEM, and FEniCSx | Common physical sampling, checksums, licenses, executable revisions, tolerances, performance metadata, and optional sister-repository data; no external source or reader enters FortFEM |
+| MHD-16 | **planned** | Finish the MHD gallery and benchmark contract in increasing complexity, with physical solution first: 1D slab, 2D circle/cylinder, 3D sphere/torus, vector arrows/surfaces/field lines, mesh completeness, convergence, invariants, and timings | Every page has a solution preview before diagnostics, generated FortPlot media, CSV/JSON provenance, no checked-in images, and a bounded memory/timeout record |
+
+Dependency order is MHD-00/01 → MHD-02/03 → MHD-04/09 → MHD-05/06/07 →
+MHD-08/10 → MHD-11/12/13 → MHD-14/15/16. In particular, a generic
+coupled Schur layer is an MHD-01/02 solver dependency, not an equilibrium
+implementation; its off-diagonal blocks remain caller-owned. A gallery or
+oracle may use a name such as “HKT”, “VMEC-like”, or “JOREK-like” only to
+identify the mathematical benchmark and provenance, never to imply that the
+corresponding production code is being reimplemented here.
+
 ## 9. Solver, constraints, and differentiation roadmap
 
 ### 9.1 Sparse and nonlinear solvers
