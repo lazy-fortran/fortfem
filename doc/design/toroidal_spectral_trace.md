@@ -33,5 +33,10 @@ fixed-topology analytical products.  The test compares the P branch against
 the existing single toroidal harmonic and DtN oracle, and checks central
 reassembly and the real-part complex adjoint identity.  Q modes require the
 valid FortNum degree/order region; zero-mode handling, periodic sampling,
-convolution, and truncation estimates belong to the higher-level spectral
 operator and remain caller policy.
+
+`evaluate_toroidal_spectral_trace_grid` applies the same contract to a
+caller-owned list of periodic sample points and accumulates the shared modal
+coefficient and scale cotangents.  It is intentionally a sampler, not an
+implicit FFT or convolution plan; a later NESTOR-like layer can choose its
+quadrature and mode truncation while retaining this trace ABI.

@@ -886,7 +886,8 @@ all geometries:
    derivative on a constant-eta surface, with analytical modal coefficient,
    coordinate, and scale JVP/VJP actions. It is checked against the analytical
    toroidal harmonic/DtN mode and central/adjoint oracles; periodic surface
-   sampling, convolution, zero-mode policy, and truncation estimates remain.
+   sampling is now available through a batched grid wrapper; convolution,
+   zero-mode policy, and truncation estimates remain.
 3. **BIEST-like generalized-Debye-source operator.** Provide a second-kind
    surface formulation for Beltrami/Taylor/force-free fields, with explicit
    harmonic representatives for each handle and a resonance/status contract.
