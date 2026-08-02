@@ -1581,7 +1581,11 @@ gallery example.
   used by the RBC pairing now also exposes analytical geometry JVP/VJP
   products, with an independent reassembly and real adjoint oracle; this is
   the local derivative layer needed before differentiating the assembled
-  refined-to-coarse pairing itself.
+  refined-to-coarse pairing itself. The torus barycentric refinement map now
+  also exposes fixed-topology analytical JVP/VJP products for refined angles,
+  embedded vertices, and major/minor radii, with a central-difference and
+  real-adjoint oracle; coarse-to-refined geometry can therefore be composed
+  without finite-differencing the refinement routine.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
