@@ -25,6 +25,8 @@ operators, sparse solvers, and analytical verification examples.
   conservative transfer between FCI and fitted or cut boundary traces
 - [Mixed wave time step](design/mixed_wave_time.html) - structure-preserving
   first-order pressure/velocity and port-Hamiltonian updates
+- [Quadratic average-vector-field step](design/quadratic_average_vector_field.html)
+  - energy-preserving ideal update with analytical JVP/VJP actions
 - [CGL pressure tensor](design/cgl_pressure_tensor.html) - generated
   gyrotropic tensor pressure with JVP/VJP actions
 - [Material-surface flux](design/nonlinear_surface_flux.html) - application

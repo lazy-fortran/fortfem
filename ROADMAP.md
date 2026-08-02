@@ -2455,8 +2455,16 @@ gallery example.
   A seeded 16-case property campaign now repeats the energy and signed-step
   checks for diagonal SPD masses and random coupling blocks, covering both
   midpoint and Strang without global random state.
+  The neutral `advance_quadratic_avf` primitive now supplies the
+  caller-owned quadratic Hamiltonian average-vector-field/discrete-gradient
+  update, with analytical JVP/VJP products in state, Hamiltonian, skew
+  interconnection, linear term, and step size.  An independent three-mode
+  oracle checks the linear solve, Hamiltonian preservation, signed-step
+  reversibility, central-difference JVP, and real-adjoint VJP; dissipative
+  terms remain separate.
   Dissipative splitting remains separate; discrete-gradient/average-vector-
-  field options and broader problem-size campaigns remain active work.
+  field options are now covered by this neutral quadratic slice, while
+  broader problem-size campaigns remain active work.
 - Mixed first-order pressure-velocity, displacement-velocity-stress, and
   electromagnetic wave states with a common port-Hamiltonian interface.
 - Tensor-valued coefficients and anisotropic constitutive blocks with exact power,

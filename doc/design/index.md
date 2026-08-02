@@ -403,6 +403,11 @@ repeats that split for 2000 steps, checks the quadratic Hamiltonian from an
 independent mass-matrix oracle, and verifies signed-step recovery of the
 initial state.
 
+The [quadratic average-vector-field step](quadratic_average_vector_field.html)
+provides a caller-owned quadratic Hamiltonian/discrete-gradient update with
+exact JVP/VJP products, energy preservation, and signed-step reversibility.
+It keeps dissipative terms in separate, explicitly labelled integrators.
+
 The [shifted enriched space](shifted_enriched_space.html) builds a complete
 scalar XFEM/GFEM basis-value matrix from base values and fixed level-set anchor
 signs, with topology-event rejection and exact JVP/VJP actions.
