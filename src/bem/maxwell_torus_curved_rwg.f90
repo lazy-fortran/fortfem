@@ -1003,13 +1003,14 @@ contains
     subroutine assemble_maxwell_torus_mfie_offset_jvp( &
             vertices, triangles, parameters, major_radius, minor_radius, &
             wave_number, quadrature_degree, relative_offset, relative_offset_dot, &
-            matrix, matrix_dot, status)
+            matrix, matrix_dot, status, wave_number_dot)
         real(dp), intent(in) :: vertices(:, :), parameters(:, :)
         real(dp), intent(in) :: major_radius, minor_radius, wave_number
         real(dp), intent(in) :: relative_offset, relative_offset_dot
         integer, intent(in) :: triangles(:, :), quadrature_degree
         complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
         integer, intent(out) :: status
+        real(dp), optional, intent(in) :: wave_number_dot
 
         integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
         integer, allocatable :: refined_triangles(:, :)
@@ -1021,6 +1022,7 @@ contains
         complex(dp), allocatable :: magnetic_fields(:, :), magnetic_fields_dot(:, :)
         real(dp) :: divergence, jacobian, local_value(3), normal(3), point(3)
         real(dp) :: target(3), target_dot(3)
+        real(dp) :: local_wave_number_dot
         integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
 
         status = 1
@@ -1051,6 +1053,8 @@ contains
         vertices_dot = 0.0_dp
         parameters_dot = 0.0_dp
         matrix_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        local_wave_number_dot = 0.0_dp
+        if (present(wave_number_dot)) local_wave_number_dot = wave_number_dot
         do refined_panel = 1, size(refined_triangles, 2)
             do node = 1, size(weights)
                 bc_values = 0.0_dp
@@ -1075,7 +1079,8 @@ contains
                     vertices, triangles, parameters, edge_vertices, &
                     edge_triangles, major_radius, minor_radius, target, &
                     wave_number, xi, eta, weights, vertices_dot, &
-                    parameters_dot, 0.0_dp, 0.0_dp, target_dot, 0.0_dp, &
+                    parameters_dot, 0.0_dp, 0.0_dp, target_dot, &
+                    local_wave_number_dot, &
                     magnetic_fields, magnetic_fields_dot, status)
                 if (status /= 0) return
                 do test_basis = 1, size(edge_vertices, 2)
@@ -1095,7 +1100,7 @@ contains
     subroutine assemble_maxwell_torus_mfie_offset_vjp( &
             vertices, triangles, parameters, major_radius, minor_radius, &
             wave_number, quadrature_degree, relative_offset, matrix_bar, &
-            relative_offset_bar, status)
+            relative_offset_bar, status, wave_number_bar)
         real(dp), intent(in) :: vertices(:, :), parameters(:, :)
         real(dp), intent(in) :: major_radius, minor_radius, wave_number
         real(dp), intent(in) :: relative_offset
@@ -1103,6 +1108,7 @@ contains
         complex(dp), intent(in) :: matrix_bar(:, :)
         real(dp), intent(out) :: relative_offset_bar
         integer, intent(out) :: status
+        real(dp), optional, intent(out) :: wave_number_bar
 
         integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
         integer, allocatable :: refined_triangles(:, :)
@@ -1115,10 +1121,11 @@ contains
         complex(dp) :: magnetic_field_bar(3)
         real(dp) :: divergence, jacobian, local_value(3), normal(3), point(3)
         real(dp) :: target(3), target_bar(3)
-        real(dp) :: major_radius_bar, minor_radius_bar, wave_number_bar
+        real(dp) :: major_radius_bar, minor_radius_bar, local_wave_number_bar
         integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
 
         relative_offset_bar = 0.0_dp
+        if (present(wave_number_bar)) wave_number_bar = 0.0_dp
         status = 1
         call build_maxwell_bc_transformation( &
             vertices, triangles, refined_vertices, refined_triangles, &
@@ -1176,10 +1183,12 @@ contains
                         wave_number, xi, eta, weights, coefficients, &
                         magnetic_field_bar, vertices_bar, parameters_bar, &
                         major_radius_bar, minor_radius_bar, target_bar, &
-                        wave_number_bar, magnetic_fields, status)
+                        local_wave_number_bar, magnetic_fields, status)
                     if (status /= 0) return
                     relative_offset_bar = relative_offset_bar + dot_product( &
                         target_bar, minor_radius*normal)
+                    if (present(wave_number_bar)) wave_number_bar = &
+                        wave_number_bar + local_wave_number_bar
                 end do
             end do
         end do

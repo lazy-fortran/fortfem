@@ -675,6 +675,8 @@ module fortfem_api
         assemble_maxwell_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
+    ! The offset-trace derivative actions optionally expose wave-number
+    ! directions and cotangents in addition to the offset parameter.
     use fortfem_maxwell_torus_curved_rwg, only: &
         assemble_maxwell_torus_curved_efie_rwg_3d, &
         assemble_maxwell_torus_curved_efie_imaginary_rwg_3d, &
