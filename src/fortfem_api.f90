@@ -151,9 +151,9 @@ module fortfem_api
         assemble_beltrami_residual_jvp, &
         assemble_beltrami_residual_vjp
     use fortfem_beltrami_parity, only: &
-        beltrami_parity_t, evaluate_beltrami_two_region_parity, &
+        beltrami_parity_t, compare_beltrami_two_region_residual, &
         validate_beltrami_parity, validate_beltrami_resonance, &
-        beltrami_shell_parity_t, evaluate_beltrami_shell_parity, &
+        beltrami_shell_parity_t, compare_beltrami_shell_residual, &
         validate_beltrami_shell_parity
     use fortfem_coupled_field_residual, only: &
         assemble_coupled_field_residual, &
@@ -3298,11 +3298,11 @@ module fortfem_api
     public :: assemble_beltrami_residual_jvp
     public :: assemble_beltrami_residual_vjp
     public :: beltrami_parity_t
-    public :: evaluate_beltrami_two_region_parity
+    public :: compare_beltrami_two_region_residual
     public :: validate_beltrami_parity
     public :: validate_beltrami_resonance
     public :: beltrami_shell_parity_t
-    public :: evaluate_beltrami_shell_parity
+    public :: compare_beltrami_shell_residual
     public :: validate_beltrami_shell_parity
     public :: assemble_coupled_field_residual
     public :: assemble_coupled_field_residual_jvp
