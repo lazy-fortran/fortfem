@@ -2,7 +2,7 @@
 title: FCI polygon geometry
 ---
 
-This fixture computes fixed-topology straight, quadratic, cubic, quartic, and quintic
+This fixture computes fixed-topology straight, quadratic, cubic, quartic, quintic, and sextic
 Bezier-edge areas for boundary-ordered pentagonal FCI plane cells with
 FortSym-generated edge contributions.  It compares the generated values with
 independent shoelace and Gauss--Green oracles and writes actual curved 2D
