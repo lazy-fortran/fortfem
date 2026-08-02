@@ -165,6 +165,10 @@ module fortfem_api
         validate_boundary_operator_parity
     use fortfem_boundary_response_diagnostics, only: &
         evaluate_weighted_boundary_response_diagnostics
+    use fortfem_source_trace_map, only: &
+        evaluate_source_trace_map, evaluate_source_trace_map_jvp, &
+        evaluate_source_trace_map_vjp, &
+        evaluate_weighted_source_trace_reciprocity_defect
     use fortfem_larger_domain_parity, only: &
         larger_domain_parity_t, evaluate_larger_domain_parity, &
         validate_larger_domain_parity
@@ -3128,6 +3132,10 @@ module fortfem_api
     public :: evaluate_boundary_operator_parity
     public :: validate_boundary_operator_parity
     public :: evaluate_weighted_boundary_response_diagnostics
+    public :: evaluate_source_trace_map
+    public :: evaluate_source_trace_map_jvp
+    public :: evaluate_source_trace_map_vjp
+    public :: evaluate_weighted_source_trace_reciprocity_defect
     public :: larger_domain_parity_t
     public :: evaluate_larger_domain_parity
     public :: validate_larger_domain_parity
