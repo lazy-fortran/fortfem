@@ -86,7 +86,8 @@ module fortfem_api
         assemble_elasticity_symmetry_constraint_jvp, &
         assemble_elasticity_symmetry_constraint_vjp
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
-        cell_complex_cocycle_basis, cell_complex_cycle_basis, &
+        cell_complex_cocycle_basis, cell_complex_cohomology_cocycle_basis, &
+        cell_complex_cycle_basis, &
         cell_complex_homology_cycle_basis, &
         cell_complex_harmonic_one_forms, &
         cell_complex_euler_characteristic, cell_complex_t, &
@@ -1339,6 +1340,7 @@ module fortfem_api
     public :: cell_complex_cycle_basis
     public :: cell_complex_homology_cycle_basis
     public :: cell_complex_cocycle_basis
+    public :: cell_complex_cohomology_cocycle_basis
     public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
     public :: partition_layout_t
