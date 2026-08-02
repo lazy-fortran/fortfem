@@ -9,6 +9,12 @@ module fortfem_surface_shape_objective
     !! This is deliberately a geometry-only contract: topology, parameter
     !! maps, profiles, and free-boundary laws remain external to FortFEM.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    use fortfem_generated_surface_shape_objective_contribution, only: &
+        generated_surface_shape_objective_contribution
+    use fortfem_generated_surface_shape_objective_contribution_jvp, only: &
+        generated_surface_shape_objective_contribution_jvp
+    use fortfem_generated_surface_shape_objective_contribution_vjp, only: &
+        generated_surface_shape_objective_contribution_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t, status_set
@@ -30,16 +36,18 @@ contains
         real(dp), intent(out) :: objective
         type(fortsparse_status_t), intent(out) :: status
         integer :: component, point
-        real(dp) :: difference
+        real(dp) :: contribution
 
         objective = 0.0_dp
         if (.not. validate_surface_samples( &
             candidate_coordinates, target_coordinates, weights, status)) return
         do point = 1, size(weights)
             do component = 1, size(candidate_coordinates, 1)
-                difference = candidate_coordinates(component, point) - &
-                    target_coordinates(component, point)
-                objective = objective + 0.5_dp*weights(point)*difference**2
+                call generated_surface_shape_objective_contribution( &
+                    candidate_coordinates(component, point), &
+                    target_coordinates(component, point), weights(point), &
+                    contribution)
+                objective = objective + contribution
             end do
         end do
         if (.not. ieee_is_finite(objective)) then
@@ -63,7 +71,7 @@ contains
         real(dp), intent(out) :: objective_dot
         type(fortsparse_status_t), intent(out) :: status
         integer :: component, point
-        real(dp) :: difference, difference_dot
+        real(dp) :: contribution_dot
 
         objective_dot = 0.0_dp
         if (.not. validate_surface_samples( &
@@ -100,12 +108,12 @@ contains
         end if
         do point = 1, size(weights)
             do component = 1, size(candidate_coordinates, 1)
-                difference = candidate_coordinates(component, point) - &
-                    target_coordinates(component, point)
-                difference_dot = candidate_dot(component, point) - &
-                    target_dot(component, point)
-                objective_dot = objective_dot + weights(point)*difference* &
-                    difference_dot + 0.5_dp*weights_dot(point)*difference**2
+                call generated_surface_shape_objective_contribution_jvp( &
+                    candidate_coordinates(component, point), &
+                    target_coordinates(component, point), weights(point), &
+                    candidate_dot(component, point), target_dot(component, point), &
+                    weights_dot(point), contribution_dot)
+                objective_dot = objective_dot + contribution_dot
             end do
         end do
         if (.not. ieee_is_finite(objective_dot)) then
@@ -129,7 +137,8 @@ contains
         real(dp), intent(out) :: weights_bar(:)
         type(fortsparse_status_t), intent(out) :: status
         integer :: component, point
-        real(dp) :: difference, squared_norm
+        real(dp) :: candidate_component_bar, target_component_bar
+        real(dp) :: weight_component_bar
 
         candidate_bar = 0.0_dp
         target_bar = 0.0_dp
@@ -157,16 +166,16 @@ contains
             return
         end if
         do point = 1, size(weights)
-            squared_norm = 0.0_dp
             do component = 1, size(candidate_coordinates, 1)
-                difference = candidate_coordinates(component, point) - &
-                    target_coordinates(component, point)
-                candidate_bar(component, point) = objective_bar*weights(point)* &
-                    difference
-                target_bar(component, point) = -candidate_bar(component, point)
-                squared_norm = squared_norm + difference**2
+                call generated_surface_shape_objective_contribution_vjp( &
+                    candidate_coordinates(component, point), &
+                    target_coordinates(component, point), weights(point), &
+                    objective_bar, candidate_component_bar, &
+                    target_component_bar, weight_component_bar)
+                candidate_bar(component, point) = candidate_component_bar
+                target_bar(component, point) = target_component_bar
+                weights_bar(point) = weights_bar(point) + weight_component_bar
             end do
-            weights_bar(point) = 0.5_dp*objective_bar*squared_norm
         end do
         if (.not. all(ieee_is_finite(candidate_bar))) then
             candidate_bar = 0.0_dp
