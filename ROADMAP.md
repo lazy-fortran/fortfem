@@ -1564,6 +1564,10 @@ Since this audit, the neutral implementation now includes:
   caller-owned scalar surface ledger with a target residual. Positive weights,
   samples, units, quadrature, topology, and target selection remain external;
   the primitive is reusable for area, flux, volume, loop, and shape constraints.
+  Its pointwise weighted product, JVP, and VJP now come from the pinned FortSym
+  generator `gen_surface_integral_products`; `check_generated.sh` compares the
+  committed kernel byte-for-byte whenever the locked FortSym revision is
+  available.
 
 These are interchange and diagnostic foundations only. They do not implement
 DESC profiles, optimization, equilibrium readers, coil models, or plasma

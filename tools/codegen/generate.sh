@@ -65,6 +65,7 @@ run_codegen gen_fci_power_flux_products
 run_codegen gen_fci_quartic_lagrange
 run_codegen gen_fci_quintic_lagrange
 run_codegen gen_fci_sextic_lagrange
+run_codegen gen_surface_integral_products
 run_codegen gen_fci_quadrilateral_area_products
 run_codegen gen_fci_curved_quadrilateral_area_products
 run_codegen gen_fci_polygon_edge_area_products
@@ -109,6 +110,7 @@ fo fmt "$generated_dir/fortfem_fci_power_flux_products.f90"
 fo fmt "$generated_dir/fortfem_fci_quartic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_quintic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_sextic_lagrange.f90"
+fo fmt "$generated_dir/fortfem_surface_integral_products.f90"
 fo fmt "$generated_dir/fortfem_fci_quadrilateral_area_products.f90"
 fo fmt "$generated_dir/fortfem_fci_curved_quadrilateral_area_products.f90"
 fo fmt "$generated_dir/fortfem_fci_polygon_edge_area_products.f90"

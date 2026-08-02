@@ -10,6 +10,12 @@ module fortfem_surface_integral_constraint
     !! external.  The same contract can therefore serve area, flux, volume,
     !! loop, or shape ledgers without selecting a physical model.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    use fortfem_generated_surface_integral_contribution, only: &
+        generated_surface_integral_contribution
+    use fortfem_generated_surface_integral_contribution_jvp, only: &
+        generated_surface_integral_contribution_jvp
+    use fortfem_generated_surface_integral_contribution_vjp, only: &
+        generated_surface_integral_contribution_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t, status_set
@@ -27,10 +33,17 @@ contains
         real(dp), intent(in) :: samples(:), weights(:), target
         real(dp), intent(out) :: constraint
         type(fortsparse_status_t), intent(out) :: status
+        integer :: sample_index
+        real(dp) :: contribution
 
         constraint = 0.0_dp
         if (.not. validate_inputs(samples, weights, target, status)) return
-        constraint = dot_product(samples, weights) - target
+        do sample_index = 1, size(samples)
+            call generated_surface_integral_contribution( &
+                samples(sample_index), weights(sample_index), contribution)
+            constraint = constraint + contribution
+        end do
+        constraint = constraint - target
         if (.not. ieee_is_finite(constraint)) then
             constraint = 0.0_dp
             call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -47,6 +60,8 @@ contains
         real(dp), intent(in) :: samples_dot(:), weights_dot(:), target_dot
         real(dp), intent(out) :: constraint_dot
         type(fortsparse_status_t), intent(out) :: status
+        integer :: sample_index
+        real(dp) :: contribution_dot
 
         constraint_dot = 0.0_dp
         if (.not. validate_inputs(samples, weights, target, status)) return
@@ -75,8 +90,14 @@ contains
                 "surface-integral JVP weight tangent is non-finite")
             return
         end if
-        constraint_dot = dot_product(samples_dot, weights) + &
-            dot_product(samples, weights_dot) - target_dot
+        do sample_index = 1, size(samples)
+            call generated_surface_integral_contribution_jvp( &
+                samples(sample_index), weights(sample_index), &
+                samples_dot(sample_index), weights_dot(sample_index), &
+                contribution_dot)
+            constraint_dot = constraint_dot + contribution_dot
+        end do
+        constraint_dot = constraint_dot - target_dot
         if (.not. ieee_is_finite(constraint_dot)) then
             constraint_dot = 0.0_dp
             call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -92,6 +113,8 @@ contains
         real(dp), intent(in) :: samples(:), weights(:), target, constraint_bar
         real(dp), intent(out) :: samples_bar(:), weights_bar(:), target_bar
         type(fortsparse_status_t), intent(out) :: status
+        integer :: sample_index
+        real(dp) :: sample_bar, weight_bar
 
         samples_bar = 0.0_dp
         weights_bar = 0.0_dp
@@ -112,8 +135,13 @@ contains
                 "surface-integral VJP constraint cotangent is non-finite")
             return
         end if
-        samples_bar = constraint_bar*weights
-        weights_bar = constraint_bar*samples
+        do sample_index = 1, size(samples)
+            call generated_surface_integral_contribution_vjp( &
+                samples(sample_index), weights(sample_index), constraint_bar, &
+                sample_bar, weight_bar)
+            samples_bar(sample_index) = sample_bar
+            weights_bar(sample_index) = weight_bar
+        end do
         target_bar = -constraint_bar
         if (.not. all(ieee_is_finite(samples_bar))) then
             samples_bar = 0.0_dp
