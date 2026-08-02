@@ -22,8 +22,8 @@ program test_field_aligned_constitutive_tensor
         1.72_dp, 0.96_dp, -0.4_dp, 0.96_dp, 2.28_dp, 0.3_dp, &
         0.4_dp, -0.3_dp, 1.0_dp], [3, 3])
     real(dp), parameter :: tensor_bar(3, 3) = reshape([ &
-        0.3_dp, -0.2_dp, 0.4_dp, -0.2_dp, 0.5_dp, -0.6_dp, &
-        0.4_dp, -0.6_dp, 0.7_dp], [3, 3])
+        0.3_dp, -0.1_dp, 0.4_dp, 0.2_dp, 0.5_dp, -0.6_dp, &
+        -0.7_dp, 0.8_dp, 0.7_dp], [3, 3])
     real(dp) :: tensor(3, 3), tensor_dot(3, 3), tensor_plus(3, 3)
     real(dp) :: tensor_minus(3, 3), no_hall_tensor(3, 3)
     real(dp) :: parallel_bar, perpendicular_bar, hall_bar, direction_bar(3)
@@ -72,6 +72,8 @@ program test_field_aligned_constitutive_tensor
         hall_bar*hall_dot + dot_product(direction_bar, direction_dot)
     call check_condition(status%code == 0 .and. abs(left - right) < 2.0e-13_dp, &
         "constitutive tensor VJP satisfies the real transpose oracle")
+    call check_condition(abs(hall_bar + 1.72_dp) < 1.0e-14_dp, &
+        "Hall VJP matches the independent skew-matrix contraction")
 
     call evaluate_field_aligned_constitutive_tensor( &
         ieee_value(0.0_dp, ieee_quiet_nan), perpendicular_coefficient, &

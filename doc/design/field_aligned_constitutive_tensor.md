@@ -28,15 +28,19 @@ call evaluate_field_aligned_constitutive_tensor_vjp( &
     k_perpendicular_bar, b_bar, status, hall_coefficient, hall_bar)
 ```
 
-The symmetric projector part composes with the generated CGL tensor.  The
-cross-product matrix is assembled explicitly so that its Hall coefficient and
-direction derivatives are visible in the JVP/VJP.  The wrapper rejects
+The symmetric projector part composes with the generated CGL tensor. A second,
+nonduplicating FortSym kernel generates the three products `k_H b_i` and their
+JVP/VJP; the wrapper only packs their fixed signs into the skew matrix. Thus the
+projector and Hall algebra are generated without repeating the six CGL
+components. The committed source records the pinned FortSym revision and the
+code-generation check regenerates and byte-compares it. The wrapper rejects
 non-finite coefficients, cotangents, or increments, non-three-dimensional
 arrays, and directions whose norm differs from one by more than the fixed
 unit-direction tolerance.  Direction increments are ambient derivatives; a
 caller imposing a unit-vector chart should supply its tangent projection.
 
-The focused test has an independent matrix oracle, central-difference JVP,
-real transpose identity including the Hall coefficient, optional-Hall limit,
-and invalid-input cases.  Geometry, quadrature, and constitutive laws remain
+The focused tests have independent scalar-product and matrix oracles,
+central-difference JVPs, real transpose identities with a nonsymmetric
+cotangent, an explicit Hall-coefficient reverse oracle, an optional-Hall limit,
+and invalid-input cases. Geometry, quadrature, and constitutive laws remain
 outside this pointwise contract.
