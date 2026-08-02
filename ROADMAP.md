@@ -1573,8 +1573,10 @@ gallery example.
   derivatives remain explicit follow-up work. The curved-sphere propagating
   and decaying EFIE blocks now expose matching fixed-geometry impedance
   JVP/VJP products, independently checked by central reassembly and complex
-  real-part adjoint identities. The assembled toroidal MFIE offset trace now
-  exposes a
+  real-part adjoint identities. Their wave-number and decay-rate JVP/VJP
+  products now also propagate through the regular, coincident, and adaptive
+  sphere panel quadrature with independent reassembly and complex adjoint
+  checks. The assembled toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus
