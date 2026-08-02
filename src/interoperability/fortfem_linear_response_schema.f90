@@ -104,8 +104,8 @@ contains
         read(unit, '(A)', iostat=ios) schema_version
         read(unit, '(A)', iostat=ios) producer
         read(unit, '(A)', iostat=ios) provenance
-        if (ios /= 0 .or. len_trim(schema_version) > len(schema_version) .or. &
-            len_trim(producer) > len(producer) .or. len_trim(provenance) > len(provenance)) then
+        if (ios /= 0 .or. len_trim(schema_version) > 32 .or. &
+            len_trim(producer) > 64 .or. len_trim(provenance) > 128) then
             call close_after_read(unit, status, 3)
             return
         end if
