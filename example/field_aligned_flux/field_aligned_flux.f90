@@ -1,6 +1,6 @@
 program field_aligned_flux
     ! Manufactured pointwise field-aligned constitutive profile.
-    use fortfem_api, only: evaluate_field_aligned_flux
+    use fortfem_feec, only: evaluate_field_aligned_flux
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t

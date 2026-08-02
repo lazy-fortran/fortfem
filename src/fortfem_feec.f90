@@ -39,9 +39,18 @@ module fortfem_feec
         evaluate_field_aligned_constitutive_tensor_jvp, &
         evaluate_field_aligned_constitutive_tensor_vjp
     use fortfem_tensor_diffusion_matrix, only: &
+        assemble_tensor_diffusion_matrix, &
+        assemble_tensor_diffusion_matrix_jvp, &
+        assemble_tensor_diffusion_matrix_vjp, &
         assemble_tensor_diffusion_matrix_3d, &
         assemble_tensor_diffusion_matrix_3d_jvp, &
         assemble_tensor_diffusion_matrix_3d_vjp
+    use fortfem_field_aligned_flux, only: &
+        evaluate_field_aligned_flux, evaluate_field_aligned_flux_jvp, &
+        evaluate_field_aligned_flux_vjp
+    use fortfem_fci_parallel_operator, only: &
+        apply_fci_parallel_diffusion, apply_fci_parallel_diffusion_jvp, &
+        apply_fci_parallel_diffusion_vjp, apply_fci_parallel_diffusion_field_vjp
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -117,6 +126,16 @@ module fortfem_feec
     public :: assemble_tensor_diffusion_matrix_3d
     public :: assemble_tensor_diffusion_matrix_3d_jvp
     public :: assemble_tensor_diffusion_matrix_3d_vjp
+    public :: assemble_tensor_diffusion_matrix
+    public :: assemble_tensor_diffusion_matrix_jvp
+    public :: assemble_tensor_diffusion_matrix_vjp
+    public :: evaluate_field_aligned_flux
+    public :: evaluate_field_aligned_flux_jvp
+    public :: evaluate_field_aligned_flux_vjp
+    public :: apply_fci_parallel_diffusion
+    public :: apply_fci_parallel_diffusion_field_vjp
+    public :: apply_fci_parallel_diffusion_jvp
+    public :: apply_fci_parallel_diffusion_vjp
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp

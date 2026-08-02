@@ -1,6 +1,6 @@
 program test_fci_parallel_diffusion
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_parallel_diffusion, &
+    use fortfem_feec, only: apply_fci_parallel_diffusion, &
         apply_fci_parallel_diffusion_field_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

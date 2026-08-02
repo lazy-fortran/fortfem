@@ -1,7 +1,8 @@
 program plot_mesh_example
     ! Example demonstrating mesh plotting functionality in FortFEM
 
-    use fortfem_api
+    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
+    use fortfem_plot, only: plot
     implicit none
 
     type(mesh_t) :: mesh
