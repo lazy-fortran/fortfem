@@ -22,11 +22,11 @@ module fortfem_tree_cotree_iga_parity
         real(dp) :: period_value = 0.0_dp
     end type tree_cotree_iga_parity_t
 
-    public :: evaluate_tree_cotree_iga_parity
+    public :: diagnose_tree_cotree_iga_invariance
 
 contains
 
-    subroutine evaluate_tree_cotree_iga_parity( &
+    subroutine diagnose_tree_cotree_iga_invariance( &
             incidence, control_edge_local, signed_map_a, signed_map_b, &
             local_matrix, local_rhs, period_weights, diagnostics, status)
         integer, intent(in) :: incidence(:, :), control_edge_local(:)
@@ -179,7 +179,7 @@ contains
         diagnostics%period_value = period_a
         diagnostics%period_error = abs(period_b - period_a)
         status = 0
-    end subroutine evaluate_tree_cotree_iga_parity
+    end subroutine diagnose_tree_cotree_iga_invariance
 
     pure integer function sign_of(value) result(sign)
         integer, intent(in) :: value

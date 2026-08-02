@@ -1,6 +1,6 @@
 program test_tree_cotree_iga_parity
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tree_cotree_iga_parity, &
+    use fortfem_feec, only: diagnose_tree_cotree_iga_invariance, &
         tree_cotree_iga_parity_t
     use fortfem_kinds, only: dp
     implicit none
@@ -21,7 +21,7 @@ program test_tree_cotree_iga_parity
     type(tree_cotree_iga_parity_t) :: diagnostics
     integer :: status
 
-    call evaluate_tree_cotree_iga_parity(incidence, control_edge_local, &
+    call diagnose_tree_cotree_iga_invariance(incidence, control_edge_local, &
         signed_map_a, signed_map_b, local_matrix, local_rhs, period_weights, &
         diagnostics, status)
     call check_condition(status == 0, &
@@ -36,7 +36,7 @@ program test_tree_cotree_iga_parity
         abs(diagnostics%period_value - 2.0_dp) < 1.0e-14_dp, &
         "tree-cotree solve and oriented period are invariant under IGA signs")
 
-    call evaluate_tree_cotree_iga_parity(incidence, control_edge_local, &
+    call diagnose_tree_cotree_iga_invariance(incidence, control_edge_local, &
         signed_map_a, [1, 2, 3, 2, -4], local_matrix, local_rhs, &
         period_weights, diagnostics, status)
     call check_condition(status /= 0, &
