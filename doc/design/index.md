@@ -239,6 +239,12 @@ same primal, JVP, and VJP contract. It is the small reference composition
 primitive for mixed FEM/BEM/DtN/PML systems; global sparse storage and Schur
 choices remain caller-owned.
 
+The [packed N-field block graph residual](block_graph_residual.html) extends
+that contract to arbitrary fixed field graphs and duplicate rectangular edges
+without materializing a monolithic matrix. It is the bounded-memory reference
+path for element, interface, FEM/BEM/DtN/PML, tensor, and Fourier block
+contributions.
+
 The [complex coupled field residual](complex_coupled_field_residual.html) is
 the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall
