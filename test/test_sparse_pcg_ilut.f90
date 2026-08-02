@@ -39,6 +39,12 @@ program test_sparse_pcg_ilut
     call record_condition(stats%converged .and. stats%iterations <= 1 .and. &
         maxval(abs(solution - expected_solution)) < 1.0e-12_dp, &
         "sparse PCG ILU alias keeps the bounded sparse path")
+    options%preconditioner = "ichol"
+    solution = 0.0_dp
+    call solve_sparse(matrix, right_hand_side, solution, options, stats)
+    call record_condition(stats%converged .and. stats%iterations <= 1 .and. &
+        maxval(abs(solution - expected_solution)) < 1.0e-12_dp, &
+        "sparse PCG ICHOL alias keeps the bounded sparse path")
     call check_summary("sparse PCG ILUT integration")
     if (.not. all_passed) error stop 1
 

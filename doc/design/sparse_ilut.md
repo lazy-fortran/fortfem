@@ -48,6 +48,10 @@ intended for explicitly selected nonsymmetric or complex-response-compatible
 client blocks; PCG still requires the caller to establish an appropriate
 positive inner product.
 
+The sparse `"ichol"`, `"ic"`, and `"ic0"` aliases likewise use the CSC
+incomplete-Cholesky builder directly; the dense IC path remains available only
+through the dense solver interface.
+
 The focused behavioral tests check a hand-derived four-by-four LU solution,
 the dense-reference zero-fill diagonal limit, the row-builder no-fill
 diagonal oracle, finite fill-controlled application, the real JVP/VJP
