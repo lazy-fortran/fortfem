@@ -1690,6 +1690,13 @@ gallery example.
   independent curl/divergence and adjoint oracles. It is a neutral diagnostic
   for H(curl), H(div), Piola, and IGA composition; exact-sequence preservation
   or intentional jump reporting remains a higher-level space contract.
+- The public `evaluate_batched_vector_enrichment_differential_3d` primitive
+  now composes all vector basis functions and quadrature points with the exact
+  product rules for enriched values, curl, and divergence. Its full JVP/VJP
+  actions have independent central-difference and real-adjoint oracles. This
+  closes the batched vector differential layer before Piola-aware cut
+  integration; global numbering, continuity, and exact-sequence policy remain
+  caller-owned.
 - Cut-cell classification and high-order quadrature. Exact degree-one triangle
   and tetrahedron rules plus exact degree-two raw-moment tensors with
   fixed-topology JVPs are now public. The 2-D linear level-set path now also
