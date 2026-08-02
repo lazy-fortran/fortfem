@@ -245,6 +245,12 @@ precomputed pseudo-transient stabilization, and reports fixed-topology event
 metadata with complete residual JVP/VJP actions.  It contains no relaxation or
 plasma closure.
 
+The [resistive-MHD branch-history contract](resistive_mhd_branch_history.html)
+validates caller-owned strictly monotone continuation samples, reports
+deterministic branch multiplicity and hysteresis between fixed parameter paths,
+and supplies a neutral path metric with parameter/state/residual/energy
+JVP/VJP actions.  Branch selection and nonlinear solve policy remain external.
+
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP
