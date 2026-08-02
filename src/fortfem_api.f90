@@ -57,6 +57,9 @@ module fortfem_api
         assemble_pseudo_transient_residual, &
         assemble_pseudo_transient_residual_jvp, &
         assemble_pseudo_transient_residual_vjp
+    use fortfem_step_reduction, only: &
+        evaluate_step_reduction, evaluate_step_reduction_jvp, &
+        evaluate_step_reduction_vjp
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -1408,6 +1411,9 @@ module fortfem_api
     public :: assemble_pseudo_transient_residual
     public :: assemble_pseudo_transient_residual_jvp
     public :: assemble_pseudo_transient_residual_vjp
+    public :: evaluate_step_reduction
+    public :: evaluate_step_reduction_jvp
+    public :: evaluate_step_reduction_vjp
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp

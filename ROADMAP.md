@@ -1097,6 +1097,10 @@ The `assemble_pseudo_transient_residual` primitive now supplies the separate
 positive-step (R+M(u-u_{old})/\Delta t) continuation stabilizer with complete
 matrix/state/time JVP/VJP products; it is explicitly not a symplectic time
 integrator.
+The `evaluate_step_reduction` primitive now supplies smooth actual and
+actual/predicted reduction diagnostics with complete JVP/VJP products;
+backtracking, trust-region radii, and acceptance thresholds remain explicit
+client policy.
 The `classify_continuation_event` primitive now reports deterministic
 sign-crossing and near-zero margins with the global minimum margin. It is the
 explicit topology-event boundary for cuts, separatrices, resonances, and
