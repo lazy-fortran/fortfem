@@ -684,6 +684,8 @@ module fortfem_api
         assemble_maxwell_torus_efie_imaginary_impedance_vjp, &
         assemble_maxwell_torus_efie_imaginary_decay_jvp, &
         assemble_maxwell_torus_efie_imaginary_decay_vjp, &
+        assemble_maxwell_torus_efie_wave_number_jvp, &
+        assemble_maxwell_torus_efie_wave_number_vjp, &
         assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
         assemble_maxwell_torus_mfie_offset_jvp, &
@@ -1496,6 +1498,8 @@ module fortfem_api
     public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_torus_efie_imaginary_decay_jvp
     public :: assemble_maxwell_torus_efie_imaginary_decay_vjp
+    public :: assemble_maxwell_torus_efie_wave_number_jvp
+    public :: assemble_maxwell_torus_efie_wave_number_vjp
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_mfie_offset_jvp
