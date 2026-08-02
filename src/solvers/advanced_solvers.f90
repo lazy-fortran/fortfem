@@ -175,6 +175,8 @@ contains
         case ("pcg")
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
                 precond)
+        case ("gmres")
+            call gmres_solve_sparse_impl(A_sparse, b, x, local_opts, stats)
         case default
             local_opts%method = "pcg"
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
@@ -236,6 +238,39 @@ contains
         end subroutine sparse_apply_precond
 
     end subroutine pcg_solve_sparse_impl
+
+    subroutine gmres_solve_sparse_impl(A_sparse, b, x, opts, stats)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+
+        real(dp) :: tolerance
+        integer :: info, restart
+
+        tolerance = opts%tolerance
+        if (trim(opts%tolerance_type) == "absolute") then
+            tolerance = tolerance/max(norm2(b), 1.0_dp)
+        end if
+        restart = min(max(opts%restart, 1), opts%max_iterations)
+        call real_gmres_operator( &
+            sparse_matvec, b, x, tolerance, opts%max_iterations, restart, &
+            info, stats%iterations, stats%final_residual)
+        stats%converged = info == KRYLOV_OK
+        stats%restarts = max(0, (stats%iterations - 1)/restart)
+        stats%method_used = "gmres"
+
+    contains
+
+        subroutine sparse_matvec(v_in, v_out)
+            real(dp), intent(in) :: v_in(:)
+            real(dp), intent(out) :: v_out(:)
+
+            call spmv(A_sparse, v_in, v_out)
+        end subroutine sparse_matvec
+
+    end subroutine gmres_solve_sparse_impl
 
     ! Conjugate Gradient solver (dense interface)
     subroutine cg_solve(A, b, x, opts, stats)
