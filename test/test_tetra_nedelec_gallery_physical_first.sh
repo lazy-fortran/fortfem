@@ -7,7 +7,7 @@ output_directory="$repository_dir/output/example/tetra_nedelec_p_convergence"
 rm -rf -- "$output_directory"
 (
     cd "$repository_dir"
-    timeout --foreground 10s fpm run --example tetra_nedelec_p_convergence \
+    timeout --foreground 10s fo exec --no-build tetra_nedelec_p_convergence \
         >/tmp/fortfem-tetra-nedelec-gallery.log
 )
 
