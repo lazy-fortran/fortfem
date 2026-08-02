@@ -733,7 +733,7 @@ partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
 and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
 map now accepts explicit three-node stencils and reproduces quadratic fields
 on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
-finite-difference oracles. Higher-order interpolation Jacobians, degree-five-
+finite-difference oracles. Higher-order interpolation Jacobians, degree-six-
 and-higher curved support-volume measures, and anisotropy-aware preconditioning
 remain active work. A generated fixed-topology quadrilateral area map now supplies
 positive unstructured plane-cell measures with value/JVP/VJP actions, independent
@@ -749,7 +749,9 @@ independent degree-five Gauss--Green oracle, central differences, and the real
 VJP dot-product identity. The quartic Bezier-edge extension now supplies
 three-control-point curved polygon value/JVP/VJP measures with an independent
 degree-seven Gauss--Green oracle. Degree-five-and-higher curved measures and
-moving-cell connectivity remain active. A batched Cartesian bilinear adapter now
+moving-cell connectivity remain active. The quintic Bezier-edge extension now
+supplies four-control-point value/JVP/VJP measures with an independent
+degree-nine Gauss--Green oracle. A batched Cartesian bilinear adapter now
 turns traced forward/backward endpoint arrays into the per-segment FCI map
 tensors used by the support operator, with source-grid accumulation in its
 fixed-topology JVP/VJP and independent finite-difference/dot-product oracles.
@@ -2212,16 +2214,17 @@ gallery example.
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
   interpolation derivatives beyond quintic and curved support-volume measures
-  beyond quartic remain separate planned components. The generic polygon map
+  beyond quintic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
-  Generated quadratic, cubic, and quartic Bezier-edge area maps now supply
-  fixed-topology curved-cell value/JVP/VJP contracts with independent
-  Gauss--Green oracles and sampled-boundary gallery output.
+  Generated quadratic, cubic, quartic, and quintic Bezier-edge area maps now
+  supply fixed-topology curved-cell value/JVP/VJP contracts with independent
+  Gauss--Green oracles; quadratic through quartic are also sampled in the
+  boundary gallery.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
-  connectivity, higher-order curved measures beyond quartic, and stencil
+  connectivity, higher-order curved measures beyond quintic, and stencil
   rebuilds at topology events remain planned; the generic straight polygon map and
   quadratic Bezier-edge quadrilateral map are now the unstructured-cell
   baselines.

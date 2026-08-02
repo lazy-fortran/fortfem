@@ -123,6 +123,10 @@ filename="fortfem_fci_quartic_bezier_edge_area_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_fci_quintic_bezier_edge_area_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_cgl_pressure_tensor_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
