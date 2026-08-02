@@ -11,7 +11,7 @@ The routine performs no assembly, solve, mesh import, or application-specific
 normalization:
 
 ```fortran
-call evaluate_boundary_operator_parity(reference, candidates, weights, &
+call compare_boundary_operator_parity(reference, candidates, weights, &
     contracts, absolute_tolerance, relative_tolerance, report, status)
 ```
 

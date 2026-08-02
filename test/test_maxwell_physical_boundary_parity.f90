@@ -9,7 +9,7 @@ program test_maxwell_physical_boundary_parity
         BOUNDARY_OPERATOR_BACKEND_PML, &
         boundary_operator_contract_t, &
         boundary_operator_parity_t, &
-        evaluate_boundary_operator_parity, &
+        compare_boundary_operator_parity, &
         initialize_boundary_operator_contract, &
         validate_boundary_operator_parity
     implicit none
@@ -29,7 +29,7 @@ program test_maxwell_physical_boundary_parity
 
     all_passed = .true.
     backend_kind = [BOUNDARY_OPERATOR_BACKEND_FEM, BOUNDARY_OPERATOR_BACKEND_BEM, &
-                    BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_PML]
+        BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_PML]
     weights = [1.0_dp, 1.5_dp, 2.0_dp, 1.25_dp, 0.75_dp, 1.1_dp]
 
     ! A divergence-free manufactured trace: the first two components are a
@@ -37,9 +37,9 @@ program test_maxwell_physical_boundary_parity
     do sample = 1, sample_count
         reference(:, sample) = [ &
             cmplx(cos(2.0_dp*pi*real(sample - 1, dp)/sample_count), &
-                sin(2.0_dp*pi*real(sample - 1, dp)/sample_count), dp), &
+            sin(2.0_dp*pi*real(sample - 1, dp)/sample_count), dp), &
             cmplx(-sin(2.0_dp*pi*real(sample - 1, dp)/sample_count), &
-                cos(2.0_dp*pi*real(sample - 1, dp)/sample_count), dp), &
+            cos(2.0_dp*pi*real(sample - 1, dp)/sample_count), dp), &
             cmplx(0.25_dp, -0.1_dp, dp)]
     end do
     candidates = 0.0_dp
@@ -59,14 +59,14 @@ program test_maxwell_physical_boundary_parity
         call record_condition(status == 0, "physical parity metadata initializes")
     end do
 
-    call evaluate_boundary_operator_parity(reference, candidates, weights, contracts, &
+    call compare_boundary_operator_parity(reference, candidates, weights, contracts, &
         0.06_dp, 0.12_dp, report, status)
     call record_condition(status == 0, "physical Maxwell parity evaluates")
     call record_condition(validate_boundary_operator_parity(report, status), &
         "physical Maxwell parity validates")
     expected_error = [0.0_dp, sqrt(0.08_dp**2 + 0.03_dp**2)*sqrt(weights(2)), &
-                      sqrt(0.05_dp**2 + 0.04_dp**2)*sqrt(weights(4)), &
-                      sqrt(0.8_dp**2 + 0.6_dp**2)*sqrt(weights(5))]
+        sqrt(0.05_dp**2 + 0.04_dp**2)*sqrt(weights(4)), &
+        sqrt(0.8_dp**2 + 0.6_dp**2)*sqrt(weights(5))]
     do backend = 1, backend_count
         call record_condition(abs(report%absolute_error(backend) - &
             expected_error(backend)) < 1.0e-12_dp, &
@@ -78,7 +78,7 @@ program test_maxwell_physical_boundary_parity
         "physical parity distinguishes FEM/BEM/DtN/PML tolerances")
 
     contracts(3)%space = "H1-scalar"
-    call evaluate_boundary_operator_parity(reference, candidates, weights, contracts, &
+    call compare_boundary_operator_parity(reference, candidates, weights, contracts, &
         0.06_dp, 0.12_dp, invalid, status)
     call record_condition(status /= 0, "physical parity rejects mixed trace spaces")
     call check_summary("physical Maxwell boundary parity")

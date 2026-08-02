@@ -30,14 +30,14 @@ module fortfem_boundary_operator_parity
         logical, allocatable :: within_tolerance(:)
     end type boundary_operator_parity_t
 
-    public :: evaluate_boundary_operator_parity
-    public :: evaluate_boundary_operator_parity_jvp
-    public :: evaluate_boundary_operator_parity_vjp
+    public :: compare_boundary_operator_parity
+    public :: compare_boundary_operator_parity_jvp
+    public :: compare_boundary_operator_parity_vjp
     public :: validate_boundary_operator_parity
 
 contains
 
-    subroutine evaluate_boundary_operator_parity( &
+    subroutine compare_boundary_operator_parity( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, report, status)
         complex(dp), intent(in) :: reference(:, :), candidates(:, :, :)
@@ -89,9 +89,9 @@ contains
         report%topology_id = contracts(1)%topology_id
         report%provenance = contracts(1)%provenance
         allocate(report%backend_kind(report%backend_count), &
-                 report%absolute_error(report%backend_count), &
-                 report%relative_error(report%backend_count), &
-                 report%within_tolerance(report%backend_count))
+            report%absolute_error(report%backend_count), &
+            report%relative_error(report%backend_count), &
+            report%within_tolerance(report%backend_count))
         do backend = 1, report%backend_count
             report%backend_kind(backend) = contracts(backend)%backend_kind
         end do
@@ -121,9 +121,9 @@ contains
                 report%relative_error(backend) <= relative_tolerance
         end do
         status = 0
-    end subroutine evaluate_boundary_operator_parity
+    end subroutine compare_boundary_operator_parity
 
-    subroutine evaluate_boundary_operator_parity_jvp( &
+    subroutine compare_boundary_operator_parity_jvp( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_dot, candidates_dot, weights_dot, &
             reference_norm_dot, absolute_error_dot, relative_error_dot, status)
@@ -151,13 +151,13 @@ contains
         reference_norm_dot = 0.0_dp
         absolute_error_dot = 0.0_dp
         relative_error_dot = 0.0_dp
-        call evaluate_boundary_operator_parity( &
+        call compare_boundary_operator_parity( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, report, status)
         if (status /= 0) return
         if (.not. valid_jvp_directions( &
-                reference, candidates, weights, reference_dot, candidates_dot, &
-                weights_dot, absolute_error_dot, relative_error_dot)) then
+            reference, candidates, weights, reference_dot, candidates_dot, &
+            weights_dot, absolute_error_dot, relative_error_dot)) then
             status = 1
             return
         end if
@@ -206,9 +206,9 @@ contains
             return
         end if
         status = 0
-    end subroutine evaluate_boundary_operator_parity_jvp
+    end subroutine compare_boundary_operator_parity_jvp
 
-    subroutine evaluate_boundary_operator_parity_vjp( &
+    subroutine compare_boundary_operator_parity_vjp( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_norm_bar, absolute_error_bar, &
             relative_error_bar, reference_bar, candidates_bar, weights_bar, status)
@@ -231,14 +231,14 @@ contains
         reference_bar = cmplx(0.0_dp, 0.0_dp, dp)
         candidates_bar = cmplx(0.0_dp, 0.0_dp, dp)
         weights_bar = 0.0_dp
-        call evaluate_boundary_operator_parity( &
+        call compare_boundary_operator_parity( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, report, status)
         if (status /= 0) return
         if (.not. valid_vjp_inputs( &
-                reference, candidates, weights, reference_norm_bar, &
-                absolute_error_bar, relative_error_bar, reference_bar, &
-                candidates_bar, weights_bar)) then
+            reference, candidates, weights, reference_norm_bar, &
+            absolute_error_bar, relative_error_bar, reference_bar, &
+            candidates_bar, weights_bar)) then
             status = 1
             return
         end if
@@ -292,7 +292,7 @@ contains
             return
         end if
         status = 0
-    end subroutine evaluate_boundary_operator_parity_vjp
+    end subroutine compare_boundary_operator_parity_vjp
 
     logical function validate_boundary_operator_parity(report, status) result(valid)
         type(boundary_operator_parity_t), intent(in) :: report

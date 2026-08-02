@@ -12,7 +12,7 @@ call evaluate_larger_domain_parity(inner_field, outer_field, weights, &
 ```
 
 The routine validates the same equation-space, units, normalization, topology,
-and complex-field metadata as `evaluate_boundary_operator_parity`, while
+and complex-field metadata as `compare_boundary_operator_parity`, while
 allowing the backend kind to be the same at both distances. It reports the
 positive weighted absolute field difference and a symmetric relative
 difference, whose denominator is the larger of the two weighted field norms.

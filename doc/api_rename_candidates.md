@@ -36,7 +36,7 @@ procedure aliases.
 
 | Current public symbol | Proposed canonical symbol | Defining module | Source / test / docs matches | Derivative companions | Classification and migration note |
 | --- | --- | --- | ---: | --- | --- |
-| `evaluate_boundary_operator_parity` | `compare_boundary_operator_parity` | `fortfem_boundary_operator_parity` | 7 / 12 / 2 | `_jvp`, `_vjp` -> same suffix on `compare_` | Compare a reference with FEM/BEM/DtN/PML candidates. Keep the report type and `fortfem-boundary-parity-1` schema in phase one. |
+| `compare_boundary_operator_parity` | `compare_boundary_operator_parity` | `fortfem_boundary_operator_parity` | 7 / 12 / 2 | `_jvp`, `_vjp` | Implemented as the canonical pre-release spelling; the report type and `fortfem-boundary-parity-1` schema remain unchanged. |
 | `evaluate_larger_domain_parity` | `compare_larger_domain_solution` | `fortfem_larger_domain_parity` | 6 / 5 / 1 | `_jvp` -> `compare_larger_domain_solution_jvp` | The operation compares two truncation solutions, not a parity operation. The report type remains `larger_domain_parity_t` until a data-schema migration is approved. |
 | `evaluate_beltrami_two_region_parity` | `compare_beltrami_two_region_residual` | `fortfem_beltrami_parity` | 6 / 3 / 1 | none | Compares assembled H(curl) residual with the independent oracle residual. `validate_beltrami_parity` stays a validator. |
 | `evaluate_beltrami_shell_parity` | `compare_beltrami_shell_residual` | `fortfem_beltrami_parity` | 5 / 5 / 1 | none | Same as the two-region path, with an energy/conservation ledger. |

@@ -8,9 +8,9 @@ program test_boundary_operator_parity
         BOUNDARY_OPERATOR_BACKEND_PML, &
         boundary_operator_contract_t, &
         boundary_operator_parity_t, &
-        evaluate_boundary_operator_parity, &
-        evaluate_boundary_operator_parity_jvp, &
-        evaluate_boundary_operator_parity_vjp, &
+        compare_boundary_operator_parity, &
+        compare_boundary_operator_parity_jvp, &
+        compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity, &
         initialize_boundary_operator_contract
     implicit none
@@ -44,9 +44,9 @@ program test_boundary_operator_parity
 
     all_passed = .true.
     backend_kind = [BOUNDARY_OPERATOR_BACKEND_FEM, BOUNDARY_OPERATOR_BACKEND_BEM, &
-                    BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_PML]
+        BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_PML]
     reference = reshape([cmplx(1.0_dp, 0.0_dp, dp), cmplx(2.0_dp, 0.0_dp, dp), &
-                         cmplx(-1.0_dp, 0.0_dp, dp)], shape(reference))
+        cmplx(-1.0_dp, 0.0_dp, dp)], shape(reference))
     candidates(:, :, 1) = reference
     candidates(1, 3, 1) = reference(1, 3) + cmplx(0.02_dp, -0.01_dp, dp)
     candidates(:, :, 2) = reference
@@ -78,11 +78,15 @@ program test_boundary_operator_parity
         call record_condition(status == 0, "parity metadata initializes")
     end do
 
-    call evaluate_boundary_operator_parity(reference, candidates, weights, contracts, &
+    call compare_boundary_operator_parity(reference, candidates, weights, contracts, &
         0.05_dp, 0.10_dp, report, status)
     call record_condition(status == 0, "boundary operator parity evaluates")
     call record_condition(validate_boundary_operator_parity(report, status), &
         "boundary operator parity validates")
+    call record_condition(report%schema_version == "fortfem-boundary-parity-1" .and. &
+        trim(report%topology_id) == "circle-fixed-1" .and. &
+        trim(report%provenance) == "parity oracle", &
+        "canonical compare name preserves parity metadata")
     call record_condition(report%backend_count == backend_count .and. &
         report%sample_count == sample_count .and. report%component_count == 1 .and. &
         abs(report%reference_norm - sqrt(10.0_dp)) < 1.0e-12_dp, &
@@ -95,7 +99,7 @@ program test_boundary_operator_parity
         abs(report%absolute_error(4) - sqrt(0.18_dp)) < 1.0e-12_dp, &
         "parity errors match an independent weighted oracle")
 
-    call evaluate_boundary_operator_parity_jvp( &
+    call compare_boundary_operator_parity_jvp( &
         reference, candidates, weights, contracts, 0.05_dp, 0.10_dp, &
         reference_dot, candidates_dot, weights_dot, reference_norm_dot, &
         absolute_error_dot, relative_error_dot, status)
@@ -107,10 +111,10 @@ program test_boundary_operator_parity
     candidates_minus = candidates - epsilon_fd*candidates_dot
     weights_plus = weights + epsilon_fd*weights_dot
     weights_minus = weights - epsilon_fd*weights_dot
-    call evaluate_boundary_operator_parity( &
+    call compare_boundary_operator_parity( &
         reference_plus, candidates_plus, weights_plus, contracts, 0.05_dp, 0.10_dp, &
         report_plus, status)
-    call evaluate_boundary_operator_parity( &
+    call compare_boundary_operator_parity( &
         reference_minus, candidates_minus, weights_minus, contracts, 0.05_dp, 0.10_dp, &
         report_minus, status)
     reference_norm_plus = report_plus%reference_norm
@@ -126,12 +130,12 @@ program test_boundary_operator_parity
         (2.0_dp*epsilon_fd))) < 1.0e-7_dp .and. &
         maxval(abs(relative_error_dot - (relative_error_plus - relative_error_minus)/ &
         (2.0_dp*epsilon_fd))) < 1.0e-7_dp, &
-        "parity JVP matches central re-evaluation for all backends")
+        "canonical compare JVP matches central re-evaluation for all backends")
 
     reference_norm_bar = -0.4_dp
     absolute_error_bar = [0.2_dp, -0.3_dp, 0.5_dp, -0.1_dp]
     relative_error_bar = [-0.6_dp, 0.7_dp, -0.2_dp, 0.4_dp]
-    call evaluate_boundary_operator_parity_vjp( &
+    call compare_boundary_operator_parity_vjp( &
         reference, candidates, weights, contracts, 0.05_dp, 0.10_dp, &
         reference_norm_bar, absolute_error_bar, relative_error_bar, &
         reference_bar, candidates_bar, weights_bar, status)
@@ -142,10 +146,10 @@ program test_boundary_operator_parity
         real(sum(conjg(candidates_bar)*candidates_dot), dp) + &
         dot_product(weights_bar, weights_dot)
     call record_condition(status == 0 .and. abs(lhs - rhs) < 1.0e-7_dp, &
-        "parity VJP satisfies the complex real-part adjoint oracle")
+        "canonical compare VJP satisfies the complex real-part adjoint oracle")
 
     contracts(2)%topology_id = "different-topology"
-    call evaluate_boundary_operator_parity(reference, candidates, weights, contracts, &
+    call compare_boundary_operator_parity(reference, candidates, weights, contracts, &
         0.05_dp, 0.10_dp, invalid, status)
     call record_condition(status /= 0, "parity rejects mixed physical topologies")
 
