@@ -26,6 +26,12 @@ module fortfem_api
         initialize_equilibrium_interchange, validate_equilibrium_interchange
     use fortfem_equilibrium_sample_adapter, only: &
         build_equilibrium_interchange_sample_set
+    use fortfem_oracle_manifest, only: &
+        oracle_manifest_schema_magic, oracle_manifest_schema_version, &
+        oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
+        oracle_tolerance_t, initialize_oracle_manifest, &
+        validate_oracle_manifest, read_oracle_manifest, &
+        write_oracle_manifest
     use fortfem_linear_response_interchange, only: &
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
@@ -2939,6 +2945,16 @@ module fortfem_api
     public :: initialize_equilibrium_interchange
     public :: validate_equilibrium_interchange
     public :: build_equilibrium_interchange_sample_set
+    public :: oracle_manifest_schema_magic
+    public :: oracle_manifest_schema_version
+    public :: oracle_manifest_t
+    public :: oracle_normalization_t
+    public :: oracle_tolerance_t
+    public :: oracle_timing_t
+    public :: initialize_oracle_manifest
+    public :: validate_oracle_manifest
+    public :: read_oracle_manifest
+    public :: write_oracle_manifest
     public :: linear_response_interchange_t
     public :: initialize_linear_response_interchange
     public :: validate_linear_response_interchange
