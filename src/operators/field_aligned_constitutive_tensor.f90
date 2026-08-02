@@ -13,6 +13,12 @@ module fortfem_field_aligned_constitutive_tensor
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp
+    use fortfem_generated_field_aligned_hall, only: &
+        generated_field_aligned_hall
+    use fortfem_generated_field_aligned_hall_jvp, only: &
+        generated_field_aligned_hall_jvp
+    use fortfem_generated_field_aligned_hall_vjp, only: &
+        generated_field_aligned_hall_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
@@ -36,7 +42,7 @@ contains
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: hall_coefficient
 
-        real(dp) :: hall, symmetric(3, 3), cross(3, 3)
+        real(dp) :: hall, symmetric(3, 3), hall_direction(3), skew(3, 3)
 
         tensor = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -49,8 +55,11 @@ contains
             parallel_coefficient, perpendicular_coefficient, unit_direction, &
             symmetric, status)
         if (status%code /= FORTSPARSE_OK) return
-        call cross_product_matrix(unit_direction, cross)
-        tensor = symmetric + hall*cross
+        call generated_field_aligned_hall( &
+            hall, unit_direction(1), unit_direction(2), unit_direction(3), &
+            hall_direction(1), hall_direction(2), hall_direction(3))
+        call pack_skew_tensor(hall_direction, skew)
+        tensor = symmetric + skew
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_field_aligned_constitutive_tensor
 
@@ -68,8 +77,8 @@ contains
         type(fortsparse_status_t), intent(out) :: status
         real(dp), intent(in), optional :: hall_coefficient, hall_coefficient_dot
 
-        real(dp) :: hall, hall_dot, symmetric_dot(3, 3), cross(3, 3)
-        real(dp) :: cross_dot(3, 3)
+        real(dp) :: hall, hall_dot, symmetric_dot(3, 3)
+        real(dp) :: hall_direction_dot(3), skew_dot(3, 3)
 
         tensor_dot = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -90,9 +99,13 @@ contains
             parallel_coefficient_dot, perpendicular_coefficient_dot, &
             direction_dot, symmetric_dot, status)
         if (status%code /= FORTSPARSE_OK) return
-        call cross_product_matrix(unit_direction, cross)
-        call cross_product_matrix(direction_dot, cross_dot)
-        tensor_dot = symmetric_dot + hall_dot*cross + hall*cross_dot
+        call generated_field_aligned_hall_jvp( &
+            hall, unit_direction(1), unit_direction(2), unit_direction(3), &
+            hall_dot, direction_dot(1), direction_dot(2), direction_dot(3), &
+            hall_direction_dot(1), hall_direction_dot(2), &
+            hall_direction_dot(3))
+        call pack_skew_tensor(hall_direction_dot, skew_dot)
+        tensor_dot = symmetric_dot + skew_dot
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_field_aligned_constitutive_tensor_jvp
 
@@ -109,7 +122,8 @@ contains
         real(dp), intent(in), optional :: hall_coefficient
         real(dp), intent(out), optional :: hall_coefficient_bar
 
-        real(dp) :: hall, symmetric_direction_bar(3), cross(3, 3)
+        real(dp) :: hall, symmetric_direction_bar(3), hall_direction_bar(3)
+        real(dp) :: hall_direction_cotangent(3), hall_bar
 
         parallel_coefficient_bar = 0.0_dp
         perpendicular_coefficient_bar = 0.0_dp
@@ -129,17 +143,17 @@ contains
             tensor_bar, parallel_coefficient_bar, perpendicular_coefficient_bar, &
             symmetric_direction_bar, status)
         if (status%code /= FORTSPARSE_OK) return
-        direction_bar = symmetric_direction_bar
-        call cross_product_matrix(unit_direction, cross)
-        if (present(hall_coefficient_bar)) then
-            hall_coefficient_bar = sum(tensor_bar*cross)
-        end if
-        direction_bar(1) = direction_bar(1) + hall*(tensor_bar(3, 2) - &
-            tensor_bar(2, 3))
-        direction_bar(2) = direction_bar(2) + hall*(tensor_bar(1, 3) - &
-            tensor_bar(3, 1))
-        direction_bar(3) = direction_bar(3) + hall*(tensor_bar(2, 1) - &
-            tensor_bar(1, 2))
+        hall_direction_cotangent = [ &
+            tensor_bar(3, 2) - tensor_bar(2, 3), &
+            tensor_bar(1, 3) - tensor_bar(3, 1), &
+            tensor_bar(2, 1) - tensor_bar(1, 2)]
+        call generated_field_aligned_hall_vjp( &
+            hall, unit_direction(1), unit_direction(2), unit_direction(3), &
+            hall_direction_cotangent(1), hall_direction_cotangent(2), &
+            hall_direction_cotangent(3), hall_bar, hall_direction_bar(1), &
+            hall_direction_bar(2), hall_direction_bar(3))
+        direction_bar = symmetric_direction_bar + hall_direction_bar
+        if (present(hall_coefficient_bar)) hall_coefficient_bar = hall_bar
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_field_aligned_constitutive_tensor_vjp
 
@@ -158,17 +172,17 @@ contains
             unit_tolerance
     end function valid_inputs
 
-    pure subroutine cross_product_matrix(direction, matrix)
-        real(dp), intent(in) :: direction(3)
+    pure subroutine pack_skew_tensor(hall_direction, matrix)
+        real(dp), intent(in) :: hall_direction(3)
         real(dp), intent(out) :: matrix(3, 3)
 
         matrix = 0.0_dp
-        matrix(1, 2) = -direction(3)
-        matrix(1, 3) = direction(2)
-        matrix(2, 1) = direction(3)
-        matrix(2, 3) = -direction(1)
-        matrix(3, 1) = -direction(2)
-        matrix(3, 2) = direction(1)
-    end subroutine cross_product_matrix
+        matrix(1, 2) = -hall_direction(3)
+        matrix(1, 3) = hall_direction(2)
+        matrix(2, 1) = hall_direction(3)
+        matrix(2, 3) = -hall_direction(1)
+        matrix(3, 1) = -hall_direction(2)
+        matrix(3, 2) = hall_direction(1)
+    end subroutine pack_skew_tensor
 
 end module fortfem_field_aligned_constitutive_tensor
