@@ -2652,6 +2652,11 @@ gallery example.
   and grid values with an independent separated modal sum, checks grid and
   pointwise JVPs by central re-evaluation, and exercises negative-index and
   nonpositive-scale/eta rejection without selecting a toroidal convention.
+- The seeded `test_toroidal_spectral_neumann_properties` fixture now samples
+  the same FortNum-valid nonzero P/Q modes and finite normal data, compares
+  modal division with an independent outward-normal factor, checks central
+  JVP and real-complex VJP identities, and verifies explicit zero-mode and
+  resonance-tolerance rejection.
 - The independent `test_toroidal_harmonic_parity` fixture now checks both
   P/Q branches against the separated trace normalization, angular-period and
   conjugate-reflection parity, the outward-normal sign, linear modal
