@@ -7,6 +7,7 @@ program bem_sphere_3d
         assemble_laplace_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
+        evaluate_laplace_representation_triangles_3d, &
         generate_sphere_surface_mesh, &
         solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_cfie_p0_hierarchical_3d, &
@@ -14,8 +15,8 @@ program bem_sphere_3d
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
     use fortfem_kinds, only: dp
-    use fortplot, only: add_parametric_surface, add_scatter, figure, legend, &
-        plot, savefig, title, xlabel, xscale, ylabel, yscale
+    use fortplot, only: add_parametric_surface, add_scatter, colorbar, figure, &
+        legend, plot, savefig, title, xlabel, xscale, ylabel, yscale
     implicit none
 
     character(*), parameter :: output_directory = &
@@ -24,6 +25,11 @@ program bem_sphere_3d
     real(dp), allocatable :: matrix(:, :), vertices(:, :)
     real(dp), allocatable :: panel_centers(:, :)
     real(dp), allocatable :: surface_x(:, :), surface_y(:, :), surface_z(:, :)
+    real(dp), allocatable :: solution_surface_x(:, :), solution_surface_y(:, :)
+    real(dp), allocatable :: solution_surface_z(:, :), surface_solution(:, :)
+    real(dp), allocatable :: solution_points_x(:), solution_points_y(:)
+    real(dp), allocatable :: solution_points_z(:), solution_point_values(:)
+    real(dp), allocatable :: laplace_dirichlet(:)
     complex(dp), allocatable :: complex_density(:), helmholtz_dense(:)
     complex(dp), allocatable :: helmholtz_dense_density(:)
     complex(dp), allocatable :: helmholtz_dirichlet(:)
@@ -54,6 +60,8 @@ program bem_sphere_3d
     integer :: field_point, helmholtz_interactions, laplace_interactions
     integer :: level, solve_interactions, solve_iterations, status, unit
     integer, parameter :: surface_theta_count = 13, surface_phi_count = 25
+    real(dp) :: observation_radius, surface_theta, surface_phi, surface_value
+    real(dp) :: surface_solution_error
 
     call execute_command_line("mkdir -p "//output_directory)
     do level = 0, 2
@@ -192,16 +200,80 @@ program bem_sphere_3d
         surface_z(surface_theta_count, surface_phi_count))
     do field_point = 1, surface_phi_count
         do level = 1, surface_theta_count
-            surface_x(level, field_point) = sin(acos(-1.0_dp)*real(level - 1, dp)/ &
-                real(surface_theta_count - 1, dp))*cos(2.0_dp*acos(-1.0_dp)* &
-                real(field_point - 1, dp)/real(surface_phi_count - 1, dp))
-            surface_y(level, field_point) = sin(acos(-1.0_dp)*real(level - 1, dp)/ &
-                real(surface_theta_count - 1, dp))*sin(2.0_dp*acos(-1.0_dp)* &
-                real(field_point - 1, dp)/real(surface_phi_count - 1, dp))
-            surface_z(level, field_point) = cos(acos(-1.0_dp)*real(level - 1, dp)/ &
-                real(surface_theta_count - 1, dp))
+            surface_theta = acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp)
+            surface_phi = 2.0_dp*acos(-1.0_dp)*real(field_point - 1, dp)/ &
+                real(surface_phi_count - 1, dp)
+            surface_x(level, field_point) = sin(surface_theta)*cos(surface_phi)
+            surface_y(level, field_point) = sin(surface_theta)*sin(surface_phi)
+            surface_z(level, field_point) = cos(surface_theta)
         end do
     end do
+
+    ! Sample the computed exterior field on a smooth observation shell.  The
+    ! shell is intentionally radially modulated so that the decaying monopole
+    ! is visible in a single physical 3-D view rather than only as a density.
+    allocate( &
+        solution_surface_x(surface_theta_count, surface_phi_count), &
+        solution_surface_y(surface_theta_count, surface_phi_count), &
+        solution_surface_z(surface_theta_count, surface_phi_count), &
+        surface_solution(surface_theta_count, surface_phi_count), &
+        laplace_dirichlet(size(vertices, 2)))
+    laplace_dirichlet = 1.0_dp
+    surface_solution_error = 0.0_dp
+    do field_point = 1, surface_phi_count
+        do level = 1, surface_theta_count
+            surface_theta = acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp)
+            surface_phi = 2.0_dp*acos(-1.0_dp)*real(field_point - 1, dp)/ &
+                real(surface_phi_count - 1, dp)
+            observation_radius = 1.12_dp + &
+                0.55_dp*(0.5_dp + 0.5_dp*cos(surface_theta))
+            solution_surface_x(level, field_point) = &
+                observation_radius*sin(surface_theta)*cos(surface_phi)
+            solution_surface_y(level, field_point) = &
+                observation_radius*sin(surface_theta)*sin(surface_phi)
+            solution_surface_z(level, field_point) = &
+                observation_radius*cos(surface_theta)
+            call evaluate_laplace_representation_triangles_3d( &
+                vertices, triangles, laplace_dirichlet, -density, &
+                [solution_surface_x(level, field_point), &
+                 solution_surface_y(level, field_point), &
+                 solution_surface_z(level, field_point)], 8, surface_value, status)
+            if (status /= 0) error stop "sphere exterior field evaluation failed"
+            surface_solution(level, field_point) = surface_value
+            surface_solution_error = max(surface_solution_error, abs( &
+                surface_value - 1.0_dp/observation_radius))
+        end do
+    end do
+    if (surface_solution_error >= 4.0e-2_dp) then
+        error stop "sphere exterior field misses the analytical monopole"
+    end if
+    allocate( &
+        solution_points_x(size(surface_solution)), &
+        solution_points_y(size(surface_solution)), &
+        solution_points_z(size(surface_solution)), &
+        solution_point_values(size(surface_solution)))
+    solution_points_x = reshape(solution_surface_x, [size(surface_solution)])
+    solution_points_y = reshape(solution_surface_y, [size(surface_solution)])
+    solution_points_z = reshape(solution_surface_z, [size(surface_solution)])
+    solution_point_values = reshape(surface_solution, [size(surface_solution)])
+
+    call figure(figsize=[8.0_dp, 6.5_dp])
+    call add_parametric_surface( &
+        solution_surface_x, solution_surface_y, solution_surface_z, &
+        color="lightgray", alpha=0.28_dp, linewidth=0.0_dp, filled=.true., &
+        label="exterior observation shell")
+    call add_scatter( &
+        solution_points_x, solution_points_y, solution_points_z, &
+        c=solution_point_values, cmap="viridis", marker=".", markersize=12.0_dp, &
+        label="computed exterior Laplace field")
+    call colorbar(label="u_h on observation shell")
+    call title("Computed exterior Laplace solution around a sphere")
+    call xlabel("x")
+    call ylabel("y")
+    call savefig(output_directory//"/sphere_exterior_solution_3d.png")
+
     call figure(figsize=[7.5_dp, 6.0_dp])
     call add_parametric_surface( &
         surface_x, surface_y, surface_z, color="lightgray", alpha=0.45_dp, &
@@ -212,7 +284,8 @@ program bem_sphere_3d
         c=density, &
         cmap="viridis", marker=".", markersize=5.0_dp, &
         label="Laplace P0 surface density")
-    call title("Three-dimensional Laplace BEM density on the sphere")
+    call colorbar(label="single-layer density")
+    call title("Three-dimensional Laplace BEM boundary density")
     call savefig(output_directory//"/sphere_density_3d.png")
 
     call figure(figsize=[8.0_dp, 5.0_dp])
@@ -392,6 +465,8 @@ program bem_sphere_3d
         "helmholtz_cfie_dense_field_max_error=", cfie_dense_field_error
     write (unit, '(A,ES14.6)') &
         "helmholtz_cfie_hierarchical_field_max_error=", cfie_fast_field_error
+    write (unit, '(A,ES14.6)') &
+        "laplace_surface_solution_max_error=", surface_solution_error
     do level = 1, 3
         write (unit, '(A,I0,A,I0,A,ES14.6)') &
             "helmholtz_cfie_scaling_panels=", nint(scaling_panels(level)), &

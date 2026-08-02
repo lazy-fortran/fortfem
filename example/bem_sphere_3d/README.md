@@ -11,8 +11,16 @@ At the interior Dirichlet resonance \(k=\pi\), dense and retained-tree
 combined-field solves are compared with the exact radial field
 \(\exp(i\pi(r-1))/r\).
 
+The gallery leads with `sphere_exterior_solution_3d.png`, a physical field
+sampled on a smooth observation shell outside the sphere.  The shell is
+slightly radially modulated so the decaying monopole (u=1/r) is visible in
+one 3-D view; colored points are direct evaluations of the BEM representation,
+not source data or an abstract convergence quantity.
+
 Generated outputs:
 
+- `sphere_exterior_solution_3d.png`: computed exterior (1/r) field on the
+  observation shell;
 - `sphere_capacitance.png`: Galerkin capacitance convergence;
 - `sphere_hierarchical_action.png`: dense and hierarchical operator actions;
 - `sphere_helmholtz_hierarchical_action.png`: real and imaginary outgoing
