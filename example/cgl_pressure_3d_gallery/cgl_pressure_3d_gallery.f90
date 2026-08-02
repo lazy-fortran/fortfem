@@ -6,7 +6,7 @@ program cgl_pressure_3d_gallery
     !! contractions on an oblique, spatially varying unit direction.  No
     !! equilibrium closure, plasma reader, or application-specific geometry is
     !! assumed.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
         evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp, &

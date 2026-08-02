@@ -1,7 +1,7 @@
 program test_cgl_pressure_3d_gallery
     !! Independent oracle for the 3-D tensor-pressure gallery contract.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
         evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp, &
@@ -81,8 +81,6 @@ program test_cgl_pressure_3d_gallery
 
     call evaluate_cgl_pressure_traction( &
         p_parallel, p_perpendicular, direction, normal, traction, status)
-    traction_expected = matmul(tensor_expected + &
-        (p_parallel_dot*0.0_dp)*identity, normal)
     call check_condition(status%code == 0, &
         "3-D CGL traction accepts an oblique unit direction")
     call check_condition(maxval(abs(traction - matmul(tensor, normal))) < &

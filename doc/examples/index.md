@@ -158,6 +158,17 @@ fpm run --example <example_name>
 <p>This manufactured profile evaluates the gyrotropic CGL pressure tensor</p>
 </div>
 </article>
+<article class="example-card" data-example="cgl_pressure_3d_gallery">
+<a class="example-card-preview" href="generated/cgl_pressure_3d_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/cgl_pressure_3d_gallery/primary.png"
+ alt="Plot preview for cgl_pressure_3d_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/cgl_pressure_3d_gallery.html">cgl_pressure_3d_gallery</a></h3>
+<p>This neutral manufactured gallery is the physical-first 3-D fixture for a</p>
+</div>
+</article>
 <article class="example-card" data-example="field_aligned_flux">
 <a class="example-card-preview" href="generated/field_aligned_flux.html">
 <img class="example-card-image"
@@ -732,6 +743,7 @@ fpm run --example <example_name>
 - [sheet_current_parity](generated/sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
+- [cgl_pressure_3d_gallery](generated/cgl_pressure_3d_gallery.html) - This neutral manufactured gallery is the physical-first 3-D fixture for a
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [fci_sol_gallery](generated/fci_sol_gallery.html) - This neutral FCI/SOL fixture traces three helical field lines on a toroidal

@@ -8,8 +8,10 @@ log_file="${TMPDIR:-/tmp}/fortfem-cgl-pressure-3d-gallery.log"
 rm -rf -- "$output_directory"
 (
     cd "$repository_dir"
+    # Build is a separate CI step; this timeout covers only execution and
+    # output validation for the gallery.
     timeout --foreground "${EXAMPLE_TIMEOUT:-10}s" \
-        fpm run --example cgl_pressure_3d_gallery >"$log_file"
+        fo exec --no-build cgl_pressure_3d_gallery >"$log_file"
 )
 
 test -s "$output_directory/solution.png"
