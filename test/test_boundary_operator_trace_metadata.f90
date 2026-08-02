@@ -35,6 +35,14 @@ program test_boundary_operator_trace_metadata
         "trace metadata records channel and work pairing")
 
     invalid = contract
+    call initialize_boundary_operator_trace_metadata( &
+        invalid, BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL, "surface-normal-work", status)
+    call record_condition(status == 0 .and. &
+        validate_boundary_operator_contract(invalid, status) .and. &
+        invalid%trace_channel == BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL .and. &
+        invalid%trace_channel /= contract%trace_channel, &
+        "normal and tangential ports remain distinguishable")
+
     invalid%trace_channel = BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL
     invalid%work_pairing = ""
     call record_condition( &
