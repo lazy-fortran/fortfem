@@ -24,6 +24,10 @@ The [differentiation strategy](differentiation.html) defines the common
 primal/JVP/VJP API, analytical FortSym path, optional Enzyme tournament, and
 implicit sparse-solve adjoints.
 
+The [equation/objective callback dispatch](equation_objective_callbacks.html)
+composes caller-owned profile, force, objective, and constraint callbacks with
+the deterministic registry and packed JVP/VJP actions.
+
 The [curvilinear PML contract](curvilinear_pml.html) defines full complex
 three-by-three scalar Helmholtz and curl--curl Maxwell stretch tensors with
 analytical JVP/VJP actions, scale-aware singularity rejection, and diagonal
