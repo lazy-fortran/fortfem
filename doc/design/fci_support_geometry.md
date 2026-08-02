@@ -87,6 +87,11 @@ three controls per edge.  Its FortSym-generated value/JVP/VJP products are
 checked independently with four-point Gauss--Green quadrature; the quartic
 edge Green integrand has degree seven, so that quadrature is exact.
 
+The public `compute_fci_quintic_curved_polygon_cell_areas_2d` contract adds
+four controls per edge.  Its generated value/JVP/VJP kernels are guarded by an
+independent five-point Gauss--Green oracle; the quintic-edge integrand has
+degree nine, so the rule is exact on the fixed topology.
+
 ## Provenance
 
 The factorization follows the support-operator construction described in the
