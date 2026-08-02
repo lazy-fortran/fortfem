@@ -141,7 +141,7 @@ def facade(module: str, api_module: str) -> str:
         return "fortfem_plot"
     if any(word in name for word in (
         "interop", "oracle", "equilibrium", "external", "schema",
-        "diagnostic", "comparison", "response_interchange",
+        "diagnostic", "comparison", "interchange", "response_interchange",
     )):
         return "fortfem_interop"
     if any(word in name for word in (
