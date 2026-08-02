@@ -37,6 +37,9 @@ OBSOLETE_NAMES = (
     "evaluate_boundary_operator_parity_vjp",
     "evaluate_larger_domain_parity",
     "evaluate_larger_domain_parity_jvp",
+    "evaluate_sheet_current_parity",
+    "evaluate_sheet_current_surface_parity",
+    "evaluate_sheet_current_surface_parity_jvp",
 )
 
 
