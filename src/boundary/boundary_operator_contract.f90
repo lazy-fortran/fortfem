@@ -17,6 +17,11 @@ module fortfem_boundary_operator_contract
     integer, parameter, public :: BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING = 7
     integer, parameter, public :: BOUNDARY_OPERATOR_BACKEND_USER = 8
 
+    integer, parameter, public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR = 1
+    integer, parameter, public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL = 2
+    integer, parameter, public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_TANGENTIAL = 3
+    integer, parameter, public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_MIXED = 4
+
     type, public :: boundary_operator_contract_t
         character(len=32) :: schema_version = "fortfem-boundary-operator-1"
         integer :: backend_kind = 0
@@ -35,9 +40,12 @@ module fortfem_boundary_operator_contract
         character(len=64) :: normalization = "1"
         character(len=128) :: provenance = ""
         character(len=64) :: topology_id = ""
+        integer :: trace_channel = BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR
+        character(len=64) :: work_pairing = "scalar-l2"
     end type boundary_operator_contract_t
 
     public :: initialize_boundary_operator_contract
+    public :: initialize_boundary_operator_trace_metadata
     public :: validate_boundary_operator_contract
 
 contains
@@ -70,15 +78,20 @@ contains
         contract%normalization = ""
         contract%provenance = ""
         contract%topology_id = ""
+        contract%trace_channel = BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR
+        contract%work_pairing = "scalar-l2"
         if (len_trim(equation) <= len(contract%equation)) contract%equation = equation
         if (len_trim(space) <= len(contract%space)) contract%space = space
         if (len_trim(units) <= len(contract%units)) contract%units = units
         if (len_trim(normalization) <= len(contract%normalization)) &
             contract%normalization = normalization
-        if (len_trim(provenance) <= len(contract%provenance)) contract%provenance = provenance
-        if (len_trim(topology_id) <= len(contract%topology_id)) contract%topology_id = topology_id
+        if (len_trim(provenance) <= len(contract%provenance)) &
+            contract%provenance = provenance
+        if (len_trim(topology_id) <= len(contract%topology_id)) &
+            contract%topology_id = topology_id
         if (len_trim(equation) > len(contract%equation) .or. &
-            len_trim(space) > len(contract%space) .or. len_trim(units) > len(contract%units) .or. &
+            len_trim(space) > len(contract%space) .or. &
+            len_trim(units) > len(contract%units) .or. &
             len_trim(normalization) > len(contract%normalization) .or. &
             len_trim(provenance) > len(contract%provenance) .or. &
             len_trim(topology_id) > len(contract%topology_id)) then
@@ -91,6 +104,26 @@ contains
         end if
     end subroutine initialize_boundary_operator_contract
 
+    subroutine initialize_boundary_operator_trace_metadata( &
+            contract, trace_channel, work_pairing, status)
+        type(boundary_operator_contract_t), intent(inout) :: contract
+        integer, intent(in) :: trace_channel
+        character(len=*), intent(in) :: work_pairing
+        integer, intent(out) :: status
+        type(boundary_operator_contract_t) :: candidate
+
+        status = 1
+        if (.not. valid_trace_channel(trace_channel)) return
+        if (len_trim(work_pairing) < 1 .or. &
+            len_trim(work_pairing) > len(contract%work_pairing)) return
+
+        candidate = contract
+        candidate%trace_channel = trace_channel
+        candidate%work_pairing = trim(work_pairing)
+        if (.not. validate_boundary_operator_contract(candidate, status)) return
+        contract = candidate
+    end subroutine initialize_boundary_operator_trace_metadata
+
     logical function validate_boundary_operator_contract(contract, status) result(valid)
         type(boundary_operator_contract_t), intent(in) :: contract
         integer, intent(out) :: status
@@ -102,8 +135,12 @@ contains
             contract%backend_kind > BOUNDARY_OPERATOR_BACKEND_USER) return
         if (len_trim(contract%backend_name) == 0 .or. &
             len_trim(contract%equation) == 0 .or. len_trim(contract%space) == 0 .or. &
-            len_trim(contract%units) == 0 .or. len_trim(contract%normalization) == 0 .or. &
-            len_trim(contract%provenance) == 0 .or. len_trim(contract%topology_id) == 0) return
+            len_trim(contract%units) == 0 .or. &
+            len_trim(contract%normalization) == 0 .or. &
+            len_trim(contract%provenance) == 0 .or. &
+            len_trim(contract%topology_id) == 0 .or. &
+            len_trim(contract%work_pairing) == 0) return
+        if (.not. valid_trace_channel(contract%trace_channel)) return
         if (contract%row_count < 1 .or. contract%column_count < 1) return
         if (.not. contract%matrix_free .and. .not. contract%assembled) return
         if (.not. contract%has_jvp .or. .not. contract%has_vjp .or. &
@@ -111,6 +148,14 @@ contains
         status = 0
         valid = .true.
     end function validate_boundary_operator_contract
+
+    pure logical function valid_trace_channel(trace_channel)
+        integer, intent(in) :: trace_channel
+
+        valid_trace_channel = &
+            trace_channel >= BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR .and. &
+            trace_channel <= BOUNDARY_OPERATOR_TRACE_CHANNEL_MIXED
+    end function valid_trace_channel
 
     character(len=32) function backend_name_for_kind(backend_kind) result(name)
         integer, intent(in) :: backend_kind

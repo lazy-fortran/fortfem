@@ -158,7 +158,12 @@ module fortfem_api
         BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_FEM, &
         BOUNDARY_OPERATOR_BACKEND_NESTOR, BOUNDARY_OPERATOR_BACKEND_PML, &
         BOUNDARY_OPERATOR_BACKEND_USER, BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING, &
+        BOUNDARY_OPERATOR_TRACE_CHANNEL_MIXED, &
+        BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL, &
+        BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR, &
+        BOUNDARY_OPERATOR_TRACE_CHANNEL_TANGENTIAL, &
         boundary_operator_contract_t, initialize_boundary_operator_contract, &
+        initialize_boundary_operator_trace_metadata, &
         validate_boundary_operator_contract
     use fortfem_boundary_operator_parity, only: &
         boundary_operator_parity_t, evaluate_boundary_operator_parity, &
@@ -3141,6 +3146,7 @@ module fortfem_api
     public :: assemble_complex_block_graph_residual_vjp
     public :: boundary_operator_contract_t
     public :: initialize_boundary_operator_contract
+    public :: initialize_boundary_operator_trace_metadata
     public :: validate_boundary_operator_contract
     public :: boundary_operator_parity_t
     public :: evaluate_boundary_operator_parity
@@ -3161,6 +3167,10 @@ module fortfem_api
     public :: BOUNDARY_OPERATOR_BACKEND_BIEST
     public :: BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING
     public :: BOUNDARY_OPERATOR_BACKEND_USER
+    public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_SCALAR
+    public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL
+    public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_TANGENTIAL
+    public :: BOUNDARY_OPERATOR_TRACE_CHANNEL_MIXED
     public :: assemble_boundary_trace_residual
     public :: assemble_boundary_trace_residual_jvp
     public :: assemble_boundary_trace_residual_vjp
