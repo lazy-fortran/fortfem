@@ -763,6 +763,16 @@ module fortfem_api
         partition_layout_global_count, partition_layout_owned_count, &
         partition_layout_ghost_count, assemble_partitioned_sum, &
         assemble_partitioned_sum_jvp, assemble_partitioned_sum_vjp
+    use fortfem_distributed_trace_ownership, only: &
+        distributed_trace_layout_t, initialize_distributed_trace_layout, &
+        validate_distributed_trace_layout, &
+        distributed_trace_layout_partition_count, &
+        distributed_trace_layout_global_count, &
+        distributed_trace_layout_local_count, &
+        distributed_trace_layout_component_count, &
+        assemble_distributed_trace_reduction, &
+        assemble_distributed_trace_reduction_jvp, &
+        assemble_distributed_trace_reduction_vjp
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -1481,6 +1491,16 @@ module fortfem_api
     public :: assemble_partitioned_sum
     public :: assemble_partitioned_sum_jvp
     public :: assemble_partitioned_sum_vjp
+    public :: distributed_trace_layout_t
+    public :: initialize_distributed_trace_layout
+    public :: validate_distributed_trace_layout
+    public :: distributed_trace_layout_partition_count
+    public :: distributed_trace_layout_global_count
+    public :: distributed_trace_layout_local_count
+    public :: distributed_trace_layout_component_count
+    public :: assemble_distributed_trace_reduction
+    public :: assemble_distributed_trace_reduction_jvp
+    public :: assemble_distributed_trace_reduction_vjp
     public :: assemble_pseudo_arclength_residual
     public :: assemble_pseudo_arclength_residual_jvp
     public :: assemble_pseudo_arclength_residual_vjp
