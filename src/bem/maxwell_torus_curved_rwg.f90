@@ -38,6 +38,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_mfie_offset_jvp
     public :: assemble_maxwell_torus_mfie_offset_vjp
+    public :: assemble_maxwell_torus_mfie_offset_geometry_jvp
+    public :: assemble_maxwell_torus_mfie_offset_geometry_vjp
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
@@ -1194,6 +1196,347 @@ contains
         end do
         status = 0
     end subroutine assemble_maxwell_torus_mfie_offset_vjp
+
+    subroutine assemble_maxwell_torus_mfie_offset_geometry_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, vertices_dot, &
+            parameters_dot, major_radius_dot, minor_radius_dot, wave_number_dot, &
+            relative_offset_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(in) :: wave_number_dot, relative_offset_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :), refined_triangles_dot(:, :)
+        real(dp), allocatable :: eta(:), refined_parameters(:, :)
+        real(dp), allocatable :: refined_parameters_dot(:, :)
+        real(dp), allocatable :: refined_vertices(:, :), refined_vertices_dot(:, :)
+        real(dp), allocatable :: transformation(:, :), transformation_dot(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :), bc_values_dot(:, :)
+        complex(dp), allocatable :: magnetic_fields(:, :), magnetic_fields_dot(:, :)
+        real(dp) :: divergence, divergence_dot, jacobian, jacobian_dot
+        real(dp) :: local_value(3), local_value_dot(3)
+        real(dp) :: normal(3), normal_dot(3), point(3), point_dot(3)
+        real(dp) :: target(3), target_dot(3)
+        real(dp) :: surface_divergence, surface_divergence_dot
+        integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (any(shape(parameters_dot) /= shape(parameters))) return
+        call assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, matrix, status)
+        if (status /= 0) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call barycentric_refine_torus_surface_mesh_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+            refined_vertices_dot, refined_triangles_dot, refined_parameters_dot, &
+            status)
+        if (status /= 0) return
+        if (any(refined_triangles_dot /= refined_triangles)) return
+        call differentiate_maxwell_bc_transformation_jvp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            refined_vertices_dot, transformation_dot, status)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix_dot(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            bc_values_dot(3, size(edge_vertices, 2)), &
+            magnetic_fields(3, size(edge_vertices, 2)), &
+            magnetic_fields_dot(3, size(edge_vertices, 2)))
+        matrix_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do refined_panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                bc_values_dot = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis_jvp( &
+                        refined_vertices, refined_triangles, refined_parameters, &
+                        refined_panel, local_edge, major_radius, minor_radius, &
+                        xi(node), eta(node), refined_vertices_dot, &
+                        refined_parameters_dot, major_radius_dot, minor_radius_dot, &
+                        point, local_value, surface_divergence, jacobian, &
+                        point_dot, local_value_dot, surface_divergence_dot, &
+                        jacobian_dot, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                        bc_values_dot(:, test_basis) = &
+                            bc_values_dot(:, test_basis) + &
+                            transformation_dot(row, test_basis)*local_value + &
+                            transformation(row, test_basis)*local_value_dot
+                    end do
+                end do
+                call torus_unit_normal_jvp( &
+                    point, major_radius, point_dot, major_radius_dot, normal_dot)
+                normal = torus_unit_normal(point, major_radius)
+                target = point + relative_offset*minor_radius*normal
+                target_dot = point_dot + relative_offset_dot*minor_radius*normal + &
+                    relative_offset*minor_radius_dot*normal + &
+                    relative_offset*minor_radius*normal_dot
+                call evaluate_all_torus_curved_rwg_magnetic_fields_jvp( &
+                    vertices, triangles, parameters, edge_vertices, &
+                    edge_triangles, major_radius, minor_radius, target, &
+                    wave_number, xi, eta, weights, vertices_dot, &
+                    parameters_dot, major_radius_dot, minor_radius_dot, &
+                    target_dot, wave_number_dot, magnetic_fields, &
+                    magnetic_fields_dot, status)
+                if (status /= 0) return
+                do test_basis = 1, size(edge_vertices, 2)
+                    do trial_basis = 1, size(edge_vertices, 2)
+                        matrix_dot(test_basis, trial_basis) = &
+                            matrix_dot(test_basis, trial_basis) - weights(node)*( &
+                            jacobian_dot*sum(bc_values(:, test_basis)* &
+                            magnetic_fields(:, trial_basis)) + &
+                            jacobian*sum(bc_values_dot(:, test_basis)* &
+                            magnetic_fields(:, trial_basis)) + &
+                            jacobian*sum(bc_values(:, test_basis)* &
+                            magnetic_fields_dot(:, trial_basis)))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_torus_mfie_offset_geometry_jvp
+
+    subroutine assemble_maxwell_torus_mfie_offset_geometry_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, relative_offset, matrix_bar, &
+            vertices_bar, parameters_bar, major_radius_bar, minor_radius_bar, &
+            wave_number_bar, relative_offset_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: relative_offset
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        real(dp), intent(out) :: wave_number_bar, relative_offset_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_parameters(:, :)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), transformation_bar(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp), allocatable :: bc_values(:, :), bc_bar(:, :)
+        real(dp), allocatable :: refined_vertices_bar(:, :)
+        real(dp), allocatable :: refined_parameters_bar(:, :)
+        real(dp), allocatable :: local_vertices_bar(:, :), local_parameters_bar(:, :)
+        real(dp), allocatable :: source_vertices_bar(:, :), source_parameters_bar(:, :)
+        real(dp), allocatable :: magnetic_vertices_bar(:, :), magnetic_parameters_bar(:, :)
+        real(dp), allocatable :: coarse_vertices_bar(:, :), coarse_parameters_bar(:, :)
+        complex(dp), allocatable :: magnetic_fields(:, :), coefficients(:)
+        complex(dp) :: magnetic_field_bar(3)
+        real(dp) :: divergence, jacobian, local_value(3), normal(3), point(3)
+        real(dp) :: target(3), target_bar(3), point_bar(3), normal_bar(3)
+        real(dp) :: normal_point_bar(3), local_value_bar(3)
+        real(dp) :: jacobian_bar, local_major_bar, local_minor_bar
+        real(dp) :: source_major_bar, source_minor_bar, source_wave_bar
+        real(dp) :: coarse_major_bar, coarse_minor_bar
+        real(dp) :: matrix_entry_bar, weight
+        integer :: local_edge, node, refined_panel, row, test_basis, trial_basis
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        relative_offset_bar = 0.0_dp
+        status = 1
+        if (wave_number < 0.0_dp .or. abs(relative_offset) <= &
+            tiny(1.0_dp)) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, torus_parameters=parameters, &
+            torus_major_radius=major_radius, torus_minor_radius=minor_radius, &
+            refined_torus_parameters=refined_parameters)
+        if (status /= 0) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= [size(edge_vertices, 2), &
+            size(edge_vertices, 2)])) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            transformation_bar(size(transformation, 1), size(transformation, 2)), &
+            bc_values(3, size(edge_vertices, 2)), &
+            bc_bar(3, size(edge_vertices, 2)), &
+            magnetic_fields(3, size(edge_vertices, 2)), &
+            coefficients(size(edge_vertices, 2)), &
+            refined_vertices_bar(size(refined_vertices, 1), &
+            size(refined_vertices, 2)), &
+            refined_parameters_bar(size(refined_parameters, 1), &
+            size(refined_parameters, 2)), &
+            local_vertices_bar(size(refined_vertices, 1), &
+            size(refined_vertices, 2)), &
+            local_parameters_bar(size(refined_parameters, 1), &
+            size(refined_parameters, 2)), &
+            source_vertices_bar(size(vertices, 1), size(vertices, 2)), &
+            source_parameters_bar(size(parameters, 1), size(parameters, 2)), &
+            magnetic_vertices_bar(size(vertices, 1), size(vertices, 2)), &
+            magnetic_parameters_bar(size(parameters, 1), size(parameters, 2)), &
+            coarse_vertices_bar(size(vertices, 1), size(vertices, 2)), &
+            coarse_parameters_bar(size(parameters, 1), size(parameters, 2)))
+        transformation_bar = 0.0_dp
+        refined_vertices_bar = 0.0_dp
+        refined_parameters_bar = 0.0_dp
+        source_vertices_bar = 0.0_dp
+        source_parameters_bar = 0.0_dp
+        do refined_panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                bc_values = 0.0_dp
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, refined_parameters, &
+                        refined_panel, local_edge, major_radius, minor_radius, &
+                        xi(node), eta(node), point, local_value, divergence, &
+                        jacobian, status)
+                    if (status /= 0) return
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        bc_values(:, test_basis) = &
+                            bc_values(:, test_basis) + &
+                            transformation(row, test_basis)*local_value
+                    end do
+                end do
+                normal = torus_unit_normal(point, major_radius)
+                target = point + relative_offset*minor_radius*normal
+                call evaluate_all_torus_curved_rwg_magnetic_fields( &
+                    vertices, triangles, parameters, edge_vertices, &
+                    edge_triangles, major_radius, minor_radius, target, &
+                    wave_number, xi, eta, weights, magnetic_fields, status)
+                if (status /= 0) return
+                bc_bar = 0.0_dp
+                jacobian_bar = 0.0_dp
+                point_bar = 0.0_dp
+                normal_bar = 0.0_dp
+                do trial_basis = 1, size(edge_vertices, 2)
+                    magnetic_field_bar = cmplx(0.0_dp, 0.0_dp, dp)
+                    do test_basis = 1, size(edge_vertices, 2)
+                        weight = weights(node)
+                        magnetic_field_bar = magnetic_field_bar - weight*jacobian* &
+                            matrix_bar(test_basis, trial_basis)* &
+                            bc_values(:, test_basis)
+                        bc_bar(:, test_basis) = bc_bar(:, test_basis) - &
+                            weight*jacobian*real(conjg(matrix_bar(test_basis, &
+                            trial_basis))*magnetic_fields(:, trial_basis), dp)
+                        matrix_entry_bar = real(conjg(matrix_bar(test_basis, &
+                            trial_basis))*(-weight*sum(bc_values(:, test_basis)* &
+                            magnetic_fields(:, trial_basis))), dp)
+                        jacobian_bar = jacobian_bar + matrix_entry_bar
+                    end do
+                    coefficients = cmplx(0.0_dp, 0.0_dp, dp)
+                    coefficients(trial_basis) = cmplx(1.0_dp, 0.0_dp, dp)
+                    call evaluate_all_torus_curved_rwg_magnetic_fields_vjp( &
+                        vertices, triangles, parameters, edge_vertices, &
+                        edge_triangles, major_radius, minor_radius, target, &
+                        wave_number, xi, eta, weights, coefficients, &
+                        magnetic_field_bar, magnetic_vertices_bar, &
+                        magnetic_parameters_bar, source_major_bar, source_minor_bar, &
+                        target_bar, source_wave_bar, magnetic_fields, status)
+                    if (status /= 0) return
+                    source_vertices_bar = source_vertices_bar + magnetic_vertices_bar
+                    source_parameters_bar = source_parameters_bar + magnetic_parameters_bar
+                    major_radius_bar = major_radius_bar + source_major_bar
+                    minor_radius_bar = minor_radius_bar + source_minor_bar
+                    wave_number_bar = wave_number_bar + source_wave_bar
+                    point_bar = point_bar + target_bar
+                    normal_bar = normal_bar + relative_offset*minor_radius*target_bar
+                    minor_radius_bar = minor_radius_bar + relative_offset* &
+                        dot_product(target_bar, normal)
+                    relative_offset_bar = relative_offset_bar + minor_radius* &
+                        dot_product(target_bar, normal)
+                end do
+                call torus_unit_normal_vjp( &
+                    point, major_radius, normal_bar, normal_point_bar, &
+                    local_major_bar)
+                point_bar = point_bar + normal_point_bar
+                major_radius_bar = major_radius_bar + local_major_bar
+                do local_edge = 1, 3
+                    call evaluate_maxwell_torus_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, refined_parameters, &
+                        refined_panel, local_edge, major_radius, minor_radius, &
+                        xi(node), eta(node), point, local_value, divergence, &
+                        jacobian, status)
+                    if (status /= 0) return
+                    local_value_bar = 0.0_dp
+                    row = 3*(refined_panel - 1) + local_edge
+                    do test_basis = 1, size(edge_vertices, 2)
+                        transformation_bar(row, test_basis) = &
+                            transformation_bar(row, test_basis) + &
+                            dot_product(bc_bar(:, test_basis), local_value)
+                        local_value_bar = local_value_bar + &
+                            transformation(row, test_basis)*bc_bar(:, test_basis)
+                    end do
+                    if (local_edge == 3) then
+                        call evaluate_maxwell_torus_curved_localized_rwg_basis_vjp( &
+                            refined_vertices, refined_triangles, refined_parameters, &
+                            refined_panel, local_edge, major_radius, minor_radius, &
+                            xi(node), eta(node), point_bar, local_value_bar, &
+                            0.0_dp, jacobian_bar, local_vertices_bar, &
+                            local_parameters_bar, local_major_bar, local_minor_bar, &
+                            status)
+                    else
+                        call evaluate_maxwell_torus_curved_localized_rwg_basis_vjp( &
+                            refined_vertices, refined_triangles, refined_parameters, &
+                            refined_panel, local_edge, major_radius, minor_radius, &
+                            xi(node), eta(node), [0.0_dp, 0.0_dp, 0.0_dp], &
+                            local_value_bar, 0.0_dp, 0.0_dp, local_vertices_bar, &
+                            local_parameters_bar, local_major_bar, local_minor_bar, &
+                            status)
+                    end if
+                    if (status /= 0) return
+                    refined_vertices_bar = refined_vertices_bar + local_vertices_bar
+                    refined_parameters_bar = refined_parameters_bar + local_parameters_bar
+                    major_radius_bar = major_radius_bar + local_major_bar
+                    minor_radius_bar = minor_radius_bar + local_minor_bar
+                end do
+            end do
+        end do
+        call differentiate_maxwell_bc_transformation_vjp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation_bar, local_vertices_bar, status)
+        if (status /= 0) return
+        refined_vertices_bar = refined_vertices_bar + local_vertices_bar
+        call barycentric_refine_torus_surface_mesh_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            refined_vertices_bar, refined_parameters_bar, coarse_vertices_bar, &
+            coarse_parameters_bar, coarse_major_bar, coarse_minor_bar, status)
+        if (status /= 0) return
+        vertices_bar = source_vertices_bar + coarse_vertices_bar
+        parameters_bar = source_parameters_bar + coarse_parameters_bar
+        major_radius_bar = major_radius_bar + coarse_major_bar
+        minor_radius_bar = minor_radius_bar + coarse_minor_bar
+        status = 0
+    end subroutine assemble_maxwell_torus_mfie_offset_geometry_vjp
 
     subroutine evaluate_all_torus_curved_rwg_magnetic_fields( &
             vertices, triangles, parameters, edge_vertices, edge_triangles, &
@@ -4097,7 +4440,8 @@ contains
             raw_bar(1)*radial_difference/cylindrical_radius
         point_bar(2) = point_bar(2) + &
             raw_bar(2)*radial_difference/cylindrical_radius
-        cylindrical_radius_bar = -radial_difference*raw_bar(1)*point(1)/ &
+        cylindrical_radius_bar = radial_difference_bar - &
+            radial_difference*raw_bar(1)*point(1)/ &
             cylindrical_radius**2 - &
             radial_difference*raw_bar(2)*point(2)/cylindrical_radius**2
         point_bar(1) = point_bar(1) + &

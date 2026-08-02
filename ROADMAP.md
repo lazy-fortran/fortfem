@@ -1567,8 +1567,12 @@ gallery example.
   follow-up work. The assembled toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
-  geometry and full block derivatives remain explicit follow-up work. The
-  exact-curved plane-wave
+  complete fixed-topology geometry JVP/VJP chain now also propagates torus
+  vertices, angular parameters, radii, wave number, offset, refinement, BC
+  traces, normals, and magnetic reconstruction, with independent reassembly
+  and adjoint checks. The shared torus-normal reverse map now includes the
+  cylindrical-radius contribution of the radial-difference cotangent. Full
+  block derivatives remain explicit follow-up work. The exact-curved plane-wave
   RWG load now has matching geometry, direction, polarization, and wave-number
   JVP/VJP products with independent reassembly and complex real-part adjoint
   checks. Exact-curved torus RWG far-field reconstruction now has matching
