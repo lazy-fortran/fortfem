@@ -235,7 +235,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, an ordered triad map with omitted-sum count, deterministic one-product and bounded repeated-product work registries, radial regularity, complex coordinate derivatives, a same-registry three-factor vector/tensor Fourier product, a distinct-registry bilinear application with JVP/VJP, weighted modal-energy/conjugacy diagnostics with JVP/VJP, and a bounded-memory retained-mode toroidal Green convolution with complex JVP/VJP. The padded one-product registry now grows geometrically instead of reserving four N+N² arrays, reducing OOM risk for sparse/colliding mode windows. FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives and Gaunt products, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Nonlinear application composition with physical operators and uniform high-order torus-harmonic envelopes |
 | Edge and SOL equations | Equation-as-data fields, generic coefficient and boundary callbacks, conservative sources, FCI events, vector-valued terminal ledgers, a vector-valued volume-source ledger with JVP/VJP actions, and a deterministic composed FCI-map fixture. Species and closures remain client-owned | Manufactured source terms, mass and energy balances, terminal flux tallies, and broader client-owned reproducible FCI maps |
 | Mixed waves and elasticity | A common compatible port-Hamiltonian state for pressure, velocity, displacement, momentum, and tensor stress, including boundary power ports, plus separate dissipative Cayley and resistive-wall midpoint blocks; the coupled wave--wall midpoint now preserves port power and reports RL dissipation; a neutral mixed `C sigma - E u`, `D sigma - f` elasticity residual with complete JVP/VJP is public; the generic `assemble_symplectic_map_defect` diagnostic now reports \(S^T\Omega S-\Omega\) with JVP/VJP actions | Discrete energy, symplectic-form or passivity tests, dispersion, reversibility, and mixed versus second-order parity |
-| Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
+| Open boundaries | Curved vector FEM/BEM/DtN/PML coupling on toroidal external surfaces with larger-domain controls, plus a typed boundary-operator metadata/provenance contract shared by FEM, BEM, DtN, PML, NESTOR-like, BIEST-like, and virtual-casing clients | Reciprocity, passivity, far-field, reflection, and interior-field agreement across all four paths |
 | Verification and delivery | Seeded random tests, external-code adapters, provenance manifests, mesh-completeness checks, and Pages health checks | Repeated seeds, license and revision records, independent samplers, HTTP link checks, and FortPlot image regression |
 
 Closing a row requires a public API, a focused test, an independent oracle, a
@@ -961,7 +961,10 @@ all geometries:
    interior targets, including a larger-domain control.
 
 All backends return a typed operator with value, matrix-free action, assembled
-matrix (when practical), JVP, VJP, residual contribution, and provenance. A
+matrix (when practical), JVP, VJP, residual contribution, and provenance. The
+public `boundary_operator_contract_t` records these capabilities and the
+fixed-topology/normalization metadata without owning callbacks or application
+formats. A
 backend may use dense, H-matrix, ACA, FMM, or low-rank storage internally;
 that choice is not part of the physical contract.
 
