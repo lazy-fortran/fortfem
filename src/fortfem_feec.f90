@@ -32,6 +32,10 @@ module fortfem_feec
         assemble_bspline_polar_h1_operator_csc, &
         assemble_bspline_polar_hcurl_operator_csc, &
         assemble_bspline_polar_l2_mass_csc, restrict_bspline_polar_operator_csc
+    use fortfem_assembly_bspline_2d, only: &
+        assemble_bspline_h1_operator_csc, &
+        assemble_bspline_h1_operator_csc_jvp, &
+        assemble_bspline_h1_operator_csc_vjp
     use fortfem_bspline_feec, only: evaluate_bspline_basis
     use fortfem_bspline_polar, only: &
         build_bspline_polar_feec_2d_operators, &
@@ -53,9 +57,21 @@ module fortfem_feec
         evaluate_field_aligned_flux_vjp
     use fortfem_fci_parallel_operator, only: &
         apply_fci_parallel_diffusion, apply_fci_parallel_diffusion_jvp, &
-        apply_fci_parallel_diffusion_vjp, apply_fci_parallel_diffusion_field_vjp
+        apply_fci_parallel_diffusion_vjp, apply_fci_parallel_diffusion_field_vjp, &
+        apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
+        apply_fci_parallel_gradient_vjp
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
+    use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
+    use fortfem_fci_support_geometry, only: &
+        compute_fci_quadrilateral_cell_areas_2d, &
+        compute_fci_curved_quadrilateral_cell_areas_2d, &
+        compute_fci_polygon_cell_areas_2d, &
+        compute_fci_curved_polygon_cell_areas_2d, &
+        compute_fci_cubic_curved_polygon_cell_areas_2d, &
+        compute_fci_quartic_curved_polygon_cell_areas_2d, &
+        compute_fci_quintic_curved_polygon_cell_areas_2d, &
+        compute_fci_sextic_curved_polygon_cell_areas_2d
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -145,6 +161,21 @@ module fortfem_feec
     public :: apply_fci_parallel_diffusion_field_vjp
     public :: apply_fci_parallel_diffusion_jvp
     public :: apply_fci_parallel_diffusion_vjp
+    public :: assemble_bspline_h1_operator_csc
+    public :: assemble_bspline_h1_operator_csc_jvp
+    public :: assemble_bspline_h1_operator_csc_vjp
+    public :: apply_fci_parallel_gradient
+    public :: apply_fci_parallel_gradient_jvp
+    public :: apply_fci_parallel_gradient_vjp
+    public :: trace_fci_field_line_rk4
+    public :: compute_fci_quadrilateral_cell_areas_2d
+    public :: compute_fci_curved_quadrilateral_cell_areas_2d
+    public :: compute_fci_polygon_cell_areas_2d
+    public :: compute_fci_curved_polygon_cell_areas_2d
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d
+    public :: compute_fci_quartic_curved_polygon_cell_areas_2d
+    public :: compute_fci_quintic_curved_polygon_cell_areas_2d
+    public :: compute_fci_sextic_curved_polygon_cell_areas_2d
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp

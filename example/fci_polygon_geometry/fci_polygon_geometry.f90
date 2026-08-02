@@ -2,7 +2,7 @@ program fci_polygon_geometry
     ! FortSym-generated fixed-topology areas for arbitrary FCI polygons.
     ! The boundary-ordered pentagons are checked against independent
     ! shoelace and Gauss--Green oracles before their geometry is plotted.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         compute_fci_cubic_curved_polygon_cell_areas_2d, &
         compute_fci_curved_polygon_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &

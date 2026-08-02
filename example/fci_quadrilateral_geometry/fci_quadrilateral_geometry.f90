@@ -1,6 +1,6 @@
 program fci_quadrilateral_geometry
     ! FortSym-generated straight and curved areas for FCI plane cells.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         compute_fci_curved_quadrilateral_cell_areas_2d, &
         compute_fci_quadrilateral_cell_areas_2d
     use fortfem_kinds, only: dp

@@ -7,7 +7,7 @@ program fci_sol_gallery
     !! species, sheath, closure, or plasma-equilibrium model is selected here.
     !! The example is an executable geometry/algebra contract for later SOL
     !! applications, not a production edge solver.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         apply_fci_parallel_diffusion, apply_fci_parallel_gradient, &
         trace_fci_field_line_rk4
     use fortfem_kinds, only: dp
