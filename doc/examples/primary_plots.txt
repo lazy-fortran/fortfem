@@ -39,6 +39,7 @@ adaptive_bem_prolate prolate_density_3d.png
 adaptive_helmholtz_bem_sphere sphere_density_3d.png
 magnetic_curvilinear_metrics cylindrical_coefficients_1d.png
 toroidal_analytical toroidal_surface_2d.png
+nested_surface_solution nested_surface_solution_3d.png
 iga_shape_sensitivity shape_gradient_2d.png
 maxwell_mesh_adjoint mesh_gradient_2d.png
 iga_polar_feec polar_feec_solution_2d.png
