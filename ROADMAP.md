@@ -881,6 +881,12 @@ all geometries:
    modal Neumann solves, zero-mode constraints, and mode truncation/error
    metadata. This is useful for smooth toroidal surfaces and repeated
    free-boundary iterations, but it must share the physical-space trace API.
+   The first neutral spectral trace contract is now public: a caller-owned
+   P- or Q-branch toroidal modal expansion returns value and outward normal
+   derivative on a constant-eta surface, with analytical modal coefficient,
+   coordinate, and scale JVP/VJP actions. It is checked against the analytical
+   toroidal harmonic/DtN mode and central/adjoint oracles; periodic surface
+   sampling, convolution, zero-mode policy, and truncation estimates remain.
 3. **BIEST-like generalized-Debye-source operator.** Provide a second-kind
    surface formulation for Beltrami/Taylor/force-free fields, with explicit
    harmonic representatives for each handle and a resonance/status contract.
@@ -1946,6 +1952,10 @@ gallery example.
   and the upstream near-cut continuation. Stable degree-80 continuation is
   pinned to FortNum `9bb6e7b`; mode-coupled toroidal operators and uniform
   asymptotic envelopes remain.
+- The neutral `evaluate_toroidal_spectral_trace` map now composes the P/Q
+  branches with complex toroidal Fourier phases and outward normal traces;
+  its analytical coefficient/geometry JVP/VJP products are independently
+  checked against the existing harmonic/DtN mode and central/adjoint oracles.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
   operators.
