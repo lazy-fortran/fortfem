@@ -2565,6 +2565,12 @@ gallery example.
   an exact coefficient/coordinate JVP, and a real-part VJP, each checked against
   independent phase/radial, central-difference, adjoint, shape, and finite-input
   oracles; vector/tensor component composition remains caller-owned.
+- `evaluate_fourier_mode_expansion_hessian` now exposes the six symmetric
+  coordinate Hessian components `(rho,theta,phi)` and
+  `evaluate_fourier_mode_expansion_hvp` applies that Hessian to a fixed-
+  coefficient coordinate direction. Independent nested-loop algebra and
+  central differences of the first gradient verify the radial, angular, and
+  mixed terms; this remains a fixed-topology neutral derivative contract.
 - `build_fourier_mode_closure_registry` now applies the one-product constructor
   for a caller-selected positive number of rounds. Round one is the padded
   registry; subsequent rounds retain every prior-work-set pair sum. The

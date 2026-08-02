@@ -393,7 +393,9 @@ module fortfem_api
     use fortfem_fourier_mode_expansion, only: &
         evaluate_fourier_mode_expansion, &
         evaluate_fourier_mode_expansion_jvp, &
-        evaluate_fourier_mode_expansion_vjp
+        evaluate_fourier_mode_expansion_vjp, &
+        evaluate_fourier_mode_expansion_hessian, &
+        evaluate_fourier_mode_expansion_hvp
     use fortfem_fourier_mode_energy, only: &
         assemble_fourier_mode_energy, &
         assemble_fourier_mode_energy_jvp, &
@@ -1854,6 +1856,8 @@ module fortfem_api
     public :: evaluate_fourier_mode_expansion
     public :: evaluate_fourier_mode_expansion_jvp
     public :: evaluate_fourier_mode_expansion_vjp
+    public :: evaluate_fourier_mode_expansion_hessian
+    public :: evaluate_fourier_mode_expansion_hvp
     public :: assemble_fourier_mode_energy
     public :: assemble_fourier_mode_energy_jvp
     public :: assemble_fourier_mode_energy_vjp
