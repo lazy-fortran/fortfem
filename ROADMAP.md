@@ -2713,6 +2713,12 @@ gallery example.
   A seeded 16-case property campaign now repeats the energy and signed-step
   checks for diagonal SPD masses and random coupling blocks, covering both
   midpoint and Strang without global random state.
+  The seeded `test_mixed_wave_3d_properties` campaign now adds 16 fixed-size
+  three-component cases with dense Cholesky-built SPD mass blocks and
+  diagonally dominant port couplings. An independent block-matrix oracle
+  checks midpoint values, energy, signed-step reversal, and the mass-weighted
+  symplectic form; it also checks the partitioned symplectic-Euler map and
+  separates its symplectic defect from its non-energy-preserving behavior.
   The neutral `advance_quadratic_avf` primitive now supplies the
   caller-owned quadratic Hamiltonian average-vector-field/discrete-gradient
   update, with analytical JVP/VJP products in state, Hamiltonian, skew
