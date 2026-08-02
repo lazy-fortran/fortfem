@@ -1,6 +1,6 @@
 # FortFEM roadmap
 
-Status: living architecture and verification plan, 2026-08-01
+Status: living architecture and verification plan, 2026-08-02
 
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
@@ -835,6 +835,215 @@ Every boundary path has an explicit larger-domain comparison: move the
 artificial boundary away, compare FEM/BEM, DtN, and PML fields on a common
 interior region, and report the expected nonzero but convergent difference.
 
+### 8.5 Free-boundary, vacuum, wall, and response foundations
+
+Free-boundary support is a numerical boundary-operator capability, not an
+equilibrium solver. FortFEM must make the following composition possible for
+an external VMEC, VMEC++, GVEC, DESC, SPEC/SPECTRE, CHEASE, FreeGS, GPEC,
+MARS, GLISS, JOREK, or other client without importing that client's physics,
+file formats, or conventions. The client owns profiles, coils, pressure laws,
+force balance, state selection, and continuation; FortFEM owns geometry,
+traces, operators, residuals, derivatives, and solver contracts.
+
+#### 8.5.1 Boundary and region graph
+
+Implement a neutral `boundary_region_graph_t` with explicitly oriented
+interfaces and exterior components. It must record:
+
+- bounded, exterior, and shell regions, including multiple components,
+  handles, holes, and nested surfaces;
+- a geometry provider (triangles, high-order panels, Fourier surfaces, NURBS,
+  B-spline patches, or IGA patch graphs) with a common physical sampler;
+- plus/minus ownership, outward normals, tangent frames, periodicity, field
+  period, genus, and orientation transformations;
+- trace spaces and work pairings on every interface, including scalar normal,
+  vector tangential, RWG/BC, H(curl), H(div), and skeleton unknowns;
+- fixed-topology identifiers and an explicit event when components split,
+  merge, or change genus.
+
+The graph is the only object passed to a free-boundary residual. It must not
+assume cylindrical coordinates, nested flux surfaces, stellarator symmetry,
+or a particular Fourier convention. Geometry construction and any adapter
+from an application-owned representation remain outside this repository.
+
+#### 8.5.2 Vacuum and exterior operator backends
+
+Keep several interchangeable backends because no single method is best for
+all geometries:
+
+1. **High-order physical-space BEM.** Complete Laplace, Helmholtz, and
+   magnetostatic/eddy-current layer potentials, principal-value traces,
+   hypersingular regularization, near-neighbour quadrature, and far-field
+   evaluation on curved panels. The existing Duffy, wedge, RWG, BC/RBC, and
+   torus/sphere machinery is the baseline.
+2. **NESTOR-like spectral Green operator.** A periodic surface sampler and
+   Fourier convolution layer shall expose regularized toroidal Green kernels,
+   modal Neumann solves, zero-mode constraints, and mode truncation/error
+   metadata. This is useful for smooth toroidal surfaces and repeated
+   free-boundary iterations, but it must share the physical-space trace API.
+3. **BIEST-like generalized-Debye-source operator.** Provide a second-kind
+   surface formulation for Beltrami/Taylor/force-free fields, with explicit
+   harmonic representatives for each handle and a resonance/status contract.
+   This is a reusable vector boundary operator, not a Taylor-state or MRxMHD
+   implementation.
+4. **Virtual-casing/Biot--Savart maps.** A caller-owned volume or surface
+   current is mapped to the field, normal field, tangential field, and their
+   traces on arbitrary target surfaces. The map supports direct, reciprocal,
+   and adjoint actions and is valid for non-nested or island-bearing surfaces.
+5. **Finite-domain/PML backend.** The same vacuum field can be represented in
+   a bounded FEM/PML region. PML, DtN, and BEM results are compared on common
+   interior targets, including a larger-domain control.
+
+All backends return a typed operator with value, matrix-free action, assembled
+matrix (when practical), JVP, VJP, residual contribution, and provenance. A
+backend may use dense, H-matrix, ACA, FMM, or low-rank storage internally;
+that choice is not part of the physical contract.
+
+#### 8.5.3 Coupling and free-boundary residuals
+
+Add generic coupling forms, without selecting an equilibrium model:
+
+- Johnson--Nédélec, Bielak--MacCamy, Costabel symmetric, and user-defined
+  nonsymmetric FEM--BEM couplings for scalar and vector traces;
+- FEM--DtN, FEM--NtD, BEM--DtN, mortar, Nitsche, and multiplier couplings for
+  nonmatching interior, plasma, vacuum, wall, and coil surfaces;
+- a declarative boundary residual for normal-flux continuity, tangential-field
+  work pairing, supplied surface-current jumps, supplied total-pressure data,
+  and supplied external-field traces;
+- optional adjoint variables for nonsymmetric virtual-casing or response
+  operators, so a non-energy-derived residual remains differentiable without
+  pretending it is a symmetric energy minimization;
+- integral constraints and nullspaces for fluxes, loop currents, gauges,
+  harmonic fields, mean potentials, and supplied global invariants;
+- block assembly and Schur complements that keep the plasma/interior,
+  vacuum, wall, and interface blocks separately inspectable.
+
+The library must expose the boundary residual in the form
+
+\[
+  R(q,\,g,\,\Gamma)=0,
+\]
+
+where (q) is a caller-owned field or trace, (g) is caller-owned source or
+boundary data, and \(\Gamma\) is the oriented geometry graph. Generated
+JVP/VJP products cover all three arguments at fixed topology. A client may
+then add its own force-balance or pressure law without changing the operator
+or derivative ABI.
+
+#### 8.5.4 Conducting walls and reusable response matrices
+
+Provide a neutral STARWALL-like response layer for thin or volumetric
+conductors:
+
+- surface current-potential spaces on triangulated, spline, and IGA wall
+  patches, with holes and disconnected conductors;
+- ideal-wall algebraic response and resistive-wall inductive/resistive block
+  equations;
+- response blocks (M_{ee}, M_{ey}, M_{ye}, M_{yy}), explicit units/signs,
+  reciprocity or controlled nonsymmetry, and passivity/energy tests;
+- reusable response-matrix serialization through a versioned neutral schema,
+  never a JOREK/STARWALL file reader;
+- dense-to-low-rank compression (SVD/ACA/H-matrix) with error bounds and a
+  matrix-free action, while retaining a small dense oracle;
+- static condensation and implicit JVP/VJP actions for wall currents;
+- structure-preserving time coupling: the wall RL system is dissipative, the
+  ideal-wall limit is constraint-like, and the coupled field/wall energy ledger
+  is tested independently of a client's time integrator.
+
+This response layer is also the reusable foundation for linear ideal/resistive
+perturbations, external-kink and resistive-wall problems, and nonlinear
+time-dependent clients. It must not contain a plasma closure, an MARS/GPEC
+normalization, or a JOREK state vector.
+
+#### 8.5.5 Shape calculus and continuation contracts
+
+At fixed topology, generate analytical derivatives of panel and spline
+geometry, normals, surface Jacobians, Green kernels, principal-value
+subtractions, Fourier maps, trace transformations, coupling blocks, response
+matrices, and solved states. The common operations are geometry JVP/VJP,
+data JVP/VJP, implicit solve JVP/VJP, and adjoint objective evaluation.
+
+Continuation is a client policy, but the numerical layer must provide:
+
+- predictor/corrector residual and tangent interfaces;
+- line-search/trust-region and pseudo-transient hooks;
+- event diagnostics for a cut crossing, separatrix, topology change, or
+  resonance;
+- frozen-topology derivatives and an explicit invalid-derivative status across
+  a discrete topology event;
+- independent complex-step/central and real-part adjoint checks for every
+  smooth block.
+
+#### 8.5.6 Geometry-independent 2D and 3D benchmark ladder
+
+The following examples are required before an application adapter is trusted.
+They use manufactured fields or public analytical solutions, not equilibrium
+profiles or production-code inputs:
+
+1. exterior circle and cylinder Laplace/Helmholtz problems, comparing analytic
+   Fourier modes, BEM, DtN, FEM--BEM, and PML;
+2. an axisymmetric Grad--Shafranov-shaped *scalar* free-boundary analogue with
+   supplied source and boundary traces, comparing Johnson--Nédélec and
+   symmetric FEM--BEM coupling;
+3. a smooth toroidal vacuum Neumann problem comparing NESTOR-like Fourier,
+   physical-space BEM, DtN, and larger-domain PML fields;
+4. a toroidal-shell Beltrami manufactured field comparing a BIEST-like
+   generalized-Debye-source map with compatible H(curl) volume assembly,
+   including handle/harmonic modes and resonance rejection;
+5. a virtual-casing surface-current test on sphere, cylinder, and torus with
+   direct field, normal/tangential trace, reciprocity, and shape-derivative
+   oracles;
+6. a generic two-region interface with an imposed sheet current and supplied
+   total-pressure jump, checking normal-flux continuity, tangential jump, and
+   work balance without solving an MHD equilibrium;
+7. a thin conducting shell with ideal and resistive limits, response-matrix
+   compression, passivity, and a structure-preserving field/wall time step;
+8. a non-axisymmetric multi-surface graph with holes and nonmatching IGA,
+   Fourier, triangular, and FEM/PML discretizations, including a fixed-
+   topology shape derivative;
+9. a linear forced-response block that compares vacuum, ideal-wall, and
+   resistive-wall limits and exports neutral samples for external GPEC/MARS/
+   GLISS/JOREK oracle runs;
+10. a free-boundary continuation fixture in which only a manufactured boundary
+    trace is varied, reporting residual, force-like supplied functional,
+    conditioning, solve time, and derivative error.
+
+Every example's first plot is the physical solution (surface, slice, vector
+field, or field line), followed by mesh/geometry, residual/conservation,
+convergence, performance, and derivative plots. The gallery stores numerical
+CSV/JSON only; generated images stay out of git and are rebuilt by the docs
+workflow.
+
+#### 8.5.7 Implementation order and method-selection rule
+
+Implement the foundation in this order:
+
+1. oriented region graph, trace work pairings, harmonic/nullspace metadata,
+   and neutral boundary sampling;
+2. high-order Laplace/Helmholtz and magnetostatic layer potentials with
+   singular/near quadrature and analytical data/geometry derivatives;
+3. FEM--BEM, FEM--DtN, and PML coupling plus scalar 2D/3D manufactured tests;
+4. virtual-casing and target-surface reconstruction, then toroidal periodic
+   Fourier/NESTOR-like operators;
+5. vector H(curl) BEM with generalized-Debye-source/BIEST-like harmonic
+   blocks, tree--cotree gauge reduction, and Beltrami manufactured tests;
+6. wall surface-current spaces, response blocks, compression, passivity, and
+   structure-preserving wall coupling;
+7. shape derivatives, implicit derivatives, continuation hooks, and the full
+   sphere/cylinder/torus benchmark ladder;
+8. external oracle adapters and neutral interchange files, never application
+   readers or production equilibrium/state algorithms.
+
+NESTOR-like Fourier BIE is preferred for smooth periodic toroidal surfaces and
+   repeated modal solves; BIEST-like second-kind generalized Debye sources are
+   preferred for vector Beltrami fields and nontrivial topology; physical BEM
+   and FEM--BEM are preferred for arbitrary geometry or material coefficients;
+   DtN/NtD is preferred when the same exterior geometry is reused many times;
+   PML is the independent finite-domain control; virtual casing is preferred
+   for supplied interior-current equivalence. These are complementary
+   backends, not competing replacements. Each choice must be benchmarked
+   against at least one independent method and a manufactured solution.
+
 ## 9. Solver, constraints, and differentiation roadmap
 
 ### 9.1 Sparse and nonlinear solvers
@@ -1578,7 +1787,11 @@ gallery example.
   sphere panel quadrature with independent reassembly and complex adjoint
   checks. The curved-sphere RWG mass block now has analytical vertex/radius
   geometry JVP/VJP products with an independent central reassembly and real
-  adjoint oracle. The assembled toroidal MFIE offset trace now exposes a
+  adjoint oracle. Exact-curved sphere RWG far-field reconstruction now has
+  matching analytical geometry, radius, coefficient, direction, wave-number,
+  and impedance JVP/VJP products, independently checked by central
+  reassembly and the complex real-part adjoint identity. The assembled
+  toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus
@@ -1640,6 +1853,13 @@ gallery example.
   independent central reassembly and real-part adjoint oracle closes the
   spherical vector trace-load path.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
+- The free-boundary foundation in section 8.5 is an active cross-domain
+  workstream: first close the oriented region graph and scalar exterior
+  operators, then add virtual-casing and NESTOR-like Fourier maps, the
+  BIEST-like vector/harmonic layer, and finally STARWALL-like response blocks
+  with shape derivatives and structure-preserving time coupling. Each stage
+  must land with the independent 2D/3D benchmark ladder before an external
+  equilibrium or MHD adapter consumes it.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
 
@@ -2187,6 +2407,26 @@ official documentation, or official repositories where possible.
 - [HKT resonant current-sheet study](https://collaborate.princeton.edu/en/publications/numerical-study-of-%CE%B4-function-current-sheets-arising-from-resonan/)
 - [Matched-asymptotic resistive-layer formulation](https://collaborate.princeton.edu/en/publications/computation-of-resistive-instabilities-by-matched-asymptotic-expa/)
 - [STARWALL and linear MHD stability](https://arxiv.org/abs/1508.04911)
+
+### Free-boundary, vacuum, and conducting-wall operators
+
+- [Merkel, NESTOR toroidal Neumann solver](https://doi.org/10.1016/0021-9991(86)90055-0)
+- [Three-dimensional free-boundary calculations using a spectral Green function](https://doi.org/10.1016/0010-4655(86)90058-5)
+- [Malhotra et al., BIEST generalized-Debye-source Taylor states](https://arxiv.org/abs/1902.01205)
+- [O'Neil and Cerfon, integral-equation Beltrami/Taylor states](https://arxiv.org/abs/1611.01420)
+- [Lazerson, virtual-casing principle for 3D toroidal systems](https://doi.org/10.1088/0741-3335/54/12/122002)
+- [Toler, Cerfon, and Malhotra, direct virtual-casing field](https://doi.org/10.1017/S0022377824000527)
+- [Conlin et al., high-order free-boundary equilibria in DESC](https://arxiv.org/abs/2412.05680)
+- [VMEC++ free-boundary method documentation](https://proximafusion.github.io/vmecpp/api/vmecpp.html)
+- [SPEC free-boundary virtual-casing documentation](https://princetonuniversity.github.io/SPEC/group__grp__free-boundary.html)
+- [FEM--BEM coupling for axisymmetric free-boundary equilibrium](https://doi.org/10.1016/j.jcp.2017.06.006)
+- [Hoelzl et al., JOREK--STARWALL coupling](https://arxiv.org/abs/1206.2748)
+- [Cipolletta et al., compressed JOREK wall response matrices](https://arxiv.org/abs/2404.16546)
+- [JOREK overview and vacuum response matrices](https://doi.org/10.1088/1741-4326/abf99f)
+
+These references motivate neutral operator contracts only. Their profiles,
+coordinate conventions, input formats, plasma closures, and production
+equilibrium algorithms remain external application responsibilities.
 
 ### Structure-preserving discretization
 
