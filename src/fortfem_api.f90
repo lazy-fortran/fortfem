@@ -59,6 +59,11 @@ module fortfem_api
         initialize_complex_low_rank_matrix, &
         materialize_complex_low_rank_matrix, &
         validate_complex_low_rank_matrix
+    use fortfem_mixed_wave_wall_time, only: &
+        advance_mixed_wave_wall_midpoint, &
+        advance_mixed_wave_wall_midpoint_jvp, &
+        advance_mixed_wave_wall_midpoint_vjp, &
+        evaluate_mixed_wave_wall_energy_balance
     use fortfem_complex_boundary_trace_residual, only: &
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
@@ -2614,6 +2619,10 @@ module fortfem_api
     public :: apply_complex_low_rank_matrix
     public :: apply_complex_low_rank_matrix_jvp
     public :: apply_complex_low_rank_matrix_vjp
+    public :: advance_mixed_wave_wall_midpoint
+    public :: advance_mixed_wave_wall_midpoint_jvp
+    public :: advance_mixed_wave_wall_midpoint_vjp
+    public :: evaluate_mixed_wave_wall_energy_balance
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
