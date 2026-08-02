@@ -41,3 +41,10 @@ an oracle, checks a three-field graph with rectangular and duplicate edges,
 finite-differences all differentiable inputs, verifies the adjoint identity,
 and rejects inconsistent offsets.  Production callers can retain packed local
 blocks and use the same derivative contract without the oracle matrix.
+
+The scalar edge product is emitted by the pinned FortSym generator in
+`tools/codegen/app/gen_block_graph_products.f90`. The runtime graph still owns
+topology and accumulation, while the generated value, product-rule JVP, and
+reverse product are used for every packed block entry. Regeneration is part of
+the normal `tools/codegen/check_generated.sh` provenance check; no CAS is needed
+to build the library.

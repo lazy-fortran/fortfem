@@ -5,6 +5,11 @@ program test_block_graph_residual
         assemble_block_graph_residual, &
         assemble_block_graph_residual_jvp, &
         assemble_block_graph_residual_vjp
+    use fortfem_generated_block_graph, only: generated_block_graph_product
+    use fortfem_generated_block_graph_product_jvp, only: &
+        generated_block_graph_product_jvp
+    use fortfem_generated_block_graph_product_vjp, only: &
+        generated_block_graph_product_vjp
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -24,11 +29,22 @@ program test_block_graph_residual
     real(dp) :: rhs_bar(total_state_count), oracle(total_state_count)
     real(dp) :: oracle_dot(total_state_count), epsilon, fd_error, lhs, rhs_inner
     real(dp) :: matrix(total_state_count, total_state_count)
+    real(dp) :: product, product_dot, product_bar, state_value_bar
     type(fortsparse_status_t) :: status
     logical :: all_passed
     integer :: edge, row, column, row_offset, column_offset, value_index
 
     all_passed = .true.
+    call generated_block_graph_product(2.5_dp, -0.4_dp, product)
+    call record_condition(abs(product + 1.0_dp) < 1.0e-14_dp, &
+        "FortSym block graph product reproduces the scalar action")
+    call generated_block_graph_product_jvp(2.5_dp, -0.4_dp, 0.3_dp, 0.2_dp, product_dot)
+    call record_condition(abs(product_dot - 0.38_dp) < 1.0e-14_dp, &
+        "FortSym block graph product reproduces the product-rule JVP")
+    call generated_block_graph_product_vjp(2.5_dp, -0.4_dp, 0.7_dp, product_bar, state_value_bar)
+    call record_condition(abs(product_bar + 0.28_dp) < 1.0e-14_dp .and. &
+        abs(state_value_bar - 1.75_dp) < 1.0e-14_dp, &
+        "FortSym block graph product reproduces the scalar VJP")
     block_values = [(0.03_dp*real(value_index, dp), value_index=1,total_value_count)]
     block_values_dot = [ &
         0.01_dp, -0.02_dp, 0.03_dp, -0.01_dp, 0.02_dp, 0.04_dp, -0.03_dp, 0.01_dp, &

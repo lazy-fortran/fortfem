@@ -10,6 +10,11 @@ module fortfem_block_graph_residual
     !! monolithic matrix.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
+    use fortfem_generated_block_graph, only: generated_block_graph_product
+    use fortfem_generated_block_graph_product_jvp, only: &
+        generated_block_graph_product_jvp
+    use fortfem_generated_block_graph_product_vjp, only: &
+        generated_block_graph_product_vjp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t, status_set
     implicit none
@@ -30,6 +35,7 @@ contains
         real(dp), intent(out) :: residual(:)
         type(fortsparse_status_t), intent(out) :: status
         integer :: edge, row, column, row_offset, column_offset, value_index
+        real(dp) :: contribution
 
         residual = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -44,8 +50,9 @@ contains
                 do row = 1, field_sizes(edge_rows(edge))
                     value_index = block_offsets(edge) + row - 1 + &
                         (column - 1)*field_sizes(edge_rows(edge))
-                    residual(row_offset + row - 1) = residual(row_offset + row - 1) + &
-                        block_values(value_index)*state(column_offset + column - 1)
+                    call generated_block_graph_product( &
+                        block_values(value_index), state(column_offset + column - 1), contribution)
+                    residual(row_offset + row - 1) = residual(row_offset + row - 1) + contribution
                 end do
             end do
         end do
@@ -62,6 +69,7 @@ contains
         real(dp), intent(out) :: residual_dot(:)
         type(fortsparse_status_t), intent(out) :: status
         integer :: edge, row, column, row_offset, column_offset, value_index
+        real(dp) :: contribution_dot
 
         residual_dot = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -79,9 +87,12 @@ contains
                 do row = 1, field_sizes(edge_rows(edge))
                     value_index = block_offsets(edge) + row - 1 + &
                         (column - 1)*field_sizes(edge_rows(edge))
+                    call generated_block_graph_product_jvp( &
+                        block_values(value_index), state(column_offset + column - 1), &
+                        block_values_dot(value_index), state_dot(column_offset + column - 1), &
+                        contribution_dot)
                     residual_dot(row_offset + row - 1) = residual_dot(row_offset + row - 1) + &
-                        block_values_dot(value_index)*state(column_offset + column - 1) + &
-                        block_values(value_index)*state_dot(column_offset + column - 1)
+                        contribution_dot
                 end do
             end do
         end do
@@ -97,6 +108,7 @@ contains
         real(dp), intent(out) :: block_values_bar(:), state_bar(:), rhs_bar(:)
         type(fortsparse_status_t), intent(out) :: status
         integer :: edge, row, column, row_offset, column_offset, value_index
+        real(dp) :: block_value_bar, state_value_bar
 
         block_values_bar = 0.0_dp
         state_bar = 0.0_dp
@@ -116,10 +128,12 @@ contains
                 do row = 1, field_sizes(edge_rows(edge))
                     value_index = block_offsets(edge) + row - 1 + &
                         (column - 1)*field_sizes(edge_rows(edge))
-                    block_values_bar(value_index) = block_values_bar(value_index) + &
-                        residual_bar(row_offset + row - 1)*state(column_offset + column - 1)
-                    state_bar(column_offset + column - 1) = state_bar(column_offset + column - 1) + &
-                        block_values(value_index)*residual_bar(row_offset + row - 1)
+                    call generated_block_graph_product_vjp( &
+                        block_values(value_index), state(column_offset + column - 1), &
+                        residual_bar(row_offset + row - 1), block_value_bar, state_value_bar)
+                    block_values_bar(value_index) = block_values_bar(value_index) + block_value_bar
+                    state_bar(column_offset + column - 1) = &
+                        state_bar(column_offset + column - 1) + state_value_bar
                 end do
             end do
         end do
