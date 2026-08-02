@@ -34,6 +34,23 @@ moment, including for a cut cell. Its fixed-topology JVP differentiates the
 edge intersections and polygon moments directly, so quadratic manufactured
 loads can use the cut geometry without a finite-difference kernel.
 
+`evaluate_level_set_triangle_cut_fourth_moments_2d` extends the same contract
+to the symmetric rank-four tensor
+
+\[
+M_{abcd}^{\pm}=\int_{\Omega^{\pm}}x_a x_b x_c x_d\,dA.
+\]
+
+The implementation uses the exact Green-theorem primitive
+\(\int_K x^p y^q\,dA=(p+1)^{-1}\oint_{\partial K}x^{p+1}y^q\,dy\)
+and a finite binomial edge sum, so it remains exact for every clipped
+triangle or quadrilateral. Its fixed-topology JVP differentiates the same
+primitive term by term. The focused test checks an independent simplex
+monomial oracle, conservation of the parent quartic tensor, and a central-
+difference JVP oracle. This is the first degree-four cut rule; the matching
+tetrahedral degree-four rule and general curved-cell moment fitting remain
+open.
+
 The edge topology is intentionally explicit: a triangle with no proper cut, a
 degenerate physical map, or a zero-gradient level set is rejected. A cut that
 passes through a vertex is deduplicated, but derivative paths must still treat
