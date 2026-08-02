@@ -68,6 +68,10 @@ module fortfem_api
         assemble_coupled_field_residual, &
         assemble_coupled_field_residual_jvp, &
         assemble_coupled_field_residual_vjp
+    use fortfem_block_2x2_residual, only: &
+        assemble_block_2x2_residual, &
+        assemble_block_2x2_residual_jvp, &
+        assemble_block_2x2_residual_vjp
     use fortfem_toroidal_modal_convolution, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
@@ -2736,6 +2740,9 @@ module fortfem_api
     public :: assemble_coupled_field_residual
     public :: assemble_coupled_field_residual_jvp
     public :: assemble_coupled_field_residual_vjp
+    public :: assemble_block_2x2_residual
+    public :: assemble_block_2x2_residual_jvp
+    public :: assemble_block_2x2_residual_vjp
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp

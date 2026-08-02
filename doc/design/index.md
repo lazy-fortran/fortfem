@@ -233,6 +233,12 @@ caller-owned rectangular field operator and constraint operator into one
 residual with exact real JVP/VJP actions. It is the neutral assembly boundary
 for multi-field FEM, BEM, DtN, PML, tensor, and interface clients.
 
+The [two-field 2x2 block residual](block_2x2_residual.html) composes two
+independent state fields and four rectangular caller-owned blocks with the
+same primal, JVP, and VJP contract. It is the small reference composition
+primitive for mixed FEM/BEM/DtN/PML systems; global sparse storage and Schur
+choices remain caller-owned.
+
 The [complex coupled field residual](complex_coupled_field_residual.html) is
 the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall
