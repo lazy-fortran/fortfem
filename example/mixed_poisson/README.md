@@ -18,7 +18,9 @@ source and analytical solution are
 
 The rectangular divergence blocks and their transpose are compiled from the
 symbolic expressions into FortSparse CSC matrices. Three refinements verify
-the expected second-order convergence of both flux and pressure.
+the expected second-order convergence of both flux and pressure. The first
+plot is sampled from the solved DG1 pressure coefficients on the finest mesh;
+the companion CSV records numerical and analytical values independently.
 
-CI generates `mixed_poisson_convergence_1d.png`; generated media are not
-committed.
+CI generates `mixed_poisson_solution_2d.png` first, followed by
+`mixed_poisson_convergence_1d.png`; generated media are not committed.

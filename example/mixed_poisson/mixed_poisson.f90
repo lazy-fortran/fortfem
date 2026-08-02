@@ -24,13 +24,22 @@ program mixed_poisson
         "output/example/mixed_poisson"
     integer, parameter :: mesh_sizes(3) = [5, 9, 17]
     real(dp) :: errors(2, 3), flux_errors(3), h(3), pressure_errors(3)
+    type(mesh_2d_t) :: plotted_mesh
+    real(dp), allocatable :: plotted_pressure_dofs(:)
     integer :: level
 
     call init_measures()
     call execute_command_line("mkdir -p "//output_directory)
+    call initialize_gallery_sequence()
     do level = 1, size(mesh_sizes)
         h(level) = 1.0_dp/real(mesh_sizes(level) - 1, dp)
-        call solve_and_measure(mesh_sizes(level), errors(:, level))
+        if (level == size(mesh_sizes)) then
+            call solve_and_measure( &
+                mesh_sizes(level), errors(:, level), plotted_pressure_dofs, &
+                plotted_mesh)
+        else
+            call solve_and_measure(mesh_sizes(level), errors(:, level))
+        end if
     end do
     if (minval(log(errors(:, :2)/errors(:, 2:))/ &
         spread(log(h(:2)/h(2:)), 1, 2)) <= 1.45_dp) then
@@ -39,7 +48,7 @@ program mixed_poisson
     flux_errors = errors(1, :)
     pressure_errors = errors(2, :)
 
-    call render_solution()
+    call render_solution(plotted_mesh, plotted_pressure_dofs)
 
     call figure(figsize=[8.5_dp, 5.5_dp])
     call plot(h, flux_errors, label="RT1 flux L2 error", marker="o")
@@ -51,14 +60,27 @@ program mixed_poisson
     call title("Symbolic RT-DG mixed Poisson convergence")
     call legend()
     call savefig(output_directory//"/mixed_poisson_convergence_1d.png")
+    call record_gallery_stage("diagnostics")
 
 contains
 
-    subroutine render_solution()
+    subroutine render_solution(mesh, pressure_dofs)
         integer, parameter :: nx = 32, ny = 32
+        type(mesh_2d_t), intent(inout) :: mesh
+        real(dp), intent(in) :: pressure_dofs(:)
         real(dp) :: x_edges(nx + 1), y_edges(ny + 1), values(nx, ny)
-        integer :: i, j
+        real(dp) :: exact_values(nx, ny), point(2)
+        type(triangle_lagrange_basis_t) :: pressure_basis
+        integer, allocatable :: pressure_map(:, :)
+        integer :: i, j, status, pressure_count, unit
 
+        call initialize_triangle_lagrange_basis(1, pressure_basis, status)
+        if (status /= 0) error stop "DG1 basis failed for gallery plot"
+        call build_triangle_discontinuous_dof_map( &
+            mesh, 1, pressure_map, pressure_count, status)
+        if (status /= 0) error stop "DG1 map failed for gallery plot"
+        if (size(pressure_dofs) /= pressure_count) &
+            error stop "DG1 gallery coefficient size mismatch"
         do i = 1, nx + 1
             x_edges(i) = real(i - 1, dp)/real(nx, dp)
         end do
@@ -67,24 +89,88 @@ contains
         end do
         do j = 1, ny
             do i = 1, nx
-                values(i, j) = exact_pressure([ &
+                point = [ &
                     0.5_dp*(x_edges(i) + x_edges(i + 1)), &
-                    0.5_dp*(y_edges(j) + y_edges(j + 1))])
+                    0.5_dp*(y_edges(j) + y_edges(j + 1))]
+                call evaluate_pressure_at_point( &
+                    mesh, pressure_basis, pressure_map, pressure_dofs, point, &
+                    values(i, j), status)
+                if (status /= 0) error stop "DG1 gallery evaluation failed"
+                exact_values(i, j) = exact_pressure(point)
             end do
         end do
-
         call figure(figsize=[8.5_dp, 5.5_dp])
         call pcolormesh(x_edges, y_edges, values, cmap="viridis")
-        call colorbar(label="manufactured pressure p")
+        call colorbar(label="solved DG1 pressure p_h")
         call xlabel("x")
         call ylabel("y")
-        call title("RT-DG mixed Poisson pressure field")
+        call title("Solved RT-DG mixed Poisson pressure field")
         call savefig(output_directory//"/mixed_poisson_solution_2d.png")
+        call record_gallery_stage("physical_solution")
+
+        open (newunit=unit, file=output_directory//"/mixed_poisson_solution.csv", &
+            status="replace", action="write")
+        write (unit, "(a)") "x,y,numerical,exact"
+        do j = 1, ny
+            do i = 1, nx
+                write (unit, "(4(es24.16,:,','))") &
+                    0.5_dp*(x_edges(i) + x_edges(i + 1)), &
+                    0.5_dp*(y_edges(j) + y_edges(j + 1)), values(i, j), &
+                    exact_values(i, j)
+            end do
+        end do
+        close (unit)
     end subroutine render_solution
 
-    subroutine solve_and_measure(vertex_count, errors)
+    subroutine evaluate_pressure_at_point( &
+            mesh, basis, pressure_map, pressure_dofs, point, value, status)
+        type(mesh_2d_t), intent(inout) :: mesh
+        type(triangle_lagrange_basis_t), intent(in) :: basis
+        integer, intent(in) :: pressure_map(:, :)
+        real(dp), intent(in) :: pressure_dofs(:), point(2)
+        real(dp), intent(out) :: value
+        integer, intent(out) :: status
+
+        real(dp) :: vertices(2, 3), reference_values(3), gradients(2, 3)
+        real(dp) :: determinant, xi, eta, dx, dy
+        integer :: triangle
+        logical :: found
+
+        found = .false.
+        value = 0.0_dp
+        status = 0
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            determinant = (vertices(1, 2) - vertices(1, 1))* &
+                (vertices(2, 3) - vertices(2, 1)) - &
+                (vertices(1, 3) - vertices(1, 1))* &
+                (vertices(2, 2) - vertices(2, 1))
+            dx = point(1) - vertices(1, 1)
+            dy = point(2) - vertices(2, 1)
+            xi = (dx*(vertices(2, 3) - vertices(2, 1)) - &
+                (vertices(1, 3) - vertices(1, 1))*dy)/determinant
+            eta = ((vertices(1, 2) - vertices(1, 1))*dy - &
+                dx*(vertices(2, 2) - vertices(2, 1)))/determinant
+            if (xi >= -1.0e-12_dp .and. eta >= -1.0e-12_dp .and. &
+                xi + eta <= 1.0_dp + 1.0e-12_dp) then
+                call evaluate_triangle_lagrange_basis( &
+                    basis, xi, eta, reference_values, gradients, status)
+                if (status /= 0) return
+                value = dot_product(reference_values, &
+                    pressure_dofs(pressure_map(:, triangle)))
+                found = .true.
+                exit
+            end if
+        end do
+        if (.not. found) status = 1
+    end subroutine evaluate_pressure_at_point
+
+    subroutine solve_and_measure( &
+            vertex_count, errors, pressure_out, mesh_out)
         integer, intent(in) :: vertex_count
         real(dp), intent(out) :: errors(2)
+        real(dp), allocatable, intent(out), optional :: pressure_out(:)
+        type(mesh_2d_t), intent(out), optional :: mesh_out
 
         type(form_expr_t) :: balance_form, flux_form, pressure_flux_form
         type(fortsparse_status_t) :: status
@@ -115,6 +201,11 @@ contains
         if (status%code /= 0) error stop "symbolic mixed solve failed"
         call compute_errors( &
             mesh%data, flux_dofs, pressure_dofs, errors)
+        if (present(pressure_out)) then
+            allocate(pressure_out(size(pressure_dofs)))
+            pressure_out = pressure_dofs
+        end if
+        if (present(mesh_out)) mesh_out = mesh%data
     end subroutine solve_and_measure
 
     subroutine compute_errors(mesh, flux_dofs, pressure_dofs, errors)
@@ -212,5 +303,23 @@ contains
 
         value = 2.0_dp*pi**2*sin(pi*x)*sin(pi*y)
     end function exact_source
+
+    subroutine initialize_gallery_sequence()
+        integer :: unit
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        close (unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: unit
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write")
+        write (unit, "(a)") stage
+        close (unit)
+    end subroutine record_gallery_stage
 
 end program mixed_poisson
