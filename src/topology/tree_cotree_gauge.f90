@@ -16,6 +16,8 @@ module fortfem_tree_cotree_gauge
         private
         integer :: vertex_count = 0
         integer :: edge_count = 0
+        integer :: component_count = 0
+        integer, allocatable :: components(:)
         integer, allocatable :: tree_edges(:)
         integer, allocatable :: cotree_edges(:)
     end type tree_cotree_gauge_t
@@ -24,6 +26,7 @@ module fortfem_tree_cotree_gauge
     public :: build_tree_cotree_dof_map
     public :: validate_tree_cotree_gauge
     public :: tree_cotree_gauge_edges
+    public :: tree_cotree_gauge_components
     public :: apply_tree_cotree_restriction
     public :: apply_tree_cotree_prolongation
     public :: reduce_tree_cotree_dense_system
@@ -38,6 +41,7 @@ contains
         type(tree_cotree_gauge_t), intent(inout) :: gauge
         integer, intent(out) :: status
         integer, allocatable :: parent(:), tree_buffer(:), cotree_buffer(:)
+        integer, allocatable :: component_roots(:)
         integer :: vertex_count, edge_count, edge, vertex
         integer :: plus_vertex, minus_vertex, root_plus, root_minus
         integer :: tree_count, cotree_count
@@ -76,6 +80,17 @@ contains
 
         gauge%vertex_count = vertex_count
         gauge%edge_count = edge_count
+        allocate(gauge%components(vertex_count), component_roots(vertex_count))
+        gauge%components = 0
+        component_roots = 0
+        do vertex = 1, vertex_count
+            root_plus = find_root(parent, vertex)
+            if (component_roots(root_plus) == 0) then
+                gauge%component_count = gauge%component_count + 1
+                component_roots(root_plus) = gauge%component_count
+            end if
+            gauge%components(vertex) = component_roots(root_plus)
+        end do
         allocate(gauge%tree_edges(tree_count))
         allocate(gauge%cotree_edges(cotree_count))
         if (tree_count > 0) gauge%tree_edges = tree_buffer(:tree_count)
@@ -94,27 +109,54 @@ contains
         if (gauge%vertex_count < 1 .or. gauge%edge_count < 0) return
         if (.not. allocated(gauge%tree_edges) .or. &
             .not. allocated(gauge%cotree_edges)) return
+        if (.not. allocated(gauge%components)) return
+        if (size(gauge%components) /= gauge%vertex_count) then
+            status = 2
+            return
+        end if
+        if (gauge%component_count < 1 .or. &
+            gauge%component_count > gauge%vertex_count) then
+            status = 2
+            return
+        end if
+        if (any(gauge%components < 1) .or. &
+            any(gauge%components > gauge%component_count)) then
+            status = 2
+            return
+        end if
+        do edge = 1, gauge%component_count
+            if (count(gauge%components == edge) == 0) then
+                status = 2
+                return
+            end if
+        end do
         if (size(gauge%tree_edges) + size(gauge%cotree_edges) /= &
             gauge%edge_count) then
-            status = 2
+            status = 3
             return
         end if
         if (any(gauge%tree_edges < 1) .or. &
             any(gauge%tree_edges > gauge%edge_count) .or. &
             any(gauge%cotree_edges < 1) .or. &
             any(gauge%cotree_edges > gauge%edge_count)) then
-            status = 3
+            status = 4
             return
         end if
         do edge = 1, gauge%edge_count
             if (count(gauge%tree_edges == edge) + &
                 count(gauge%cotree_edges == edge) /= 1) then
-                status = 4
+                status = 5
                 return
             end if
         end do
-        if (size(gauge%tree_edges) > gauge%vertex_count - 1) then
-            status = 5
+        if (size(gauge%tree_edges) /= gauge%vertex_count - &
+            gauge%component_count) then
+            status = 6
+            return
+        end if
+        if (size(gauge%cotree_edges) /= gauge%edge_count - &
+            gauge%vertex_count + gauge%component_count) then
+            status = 7
             return
         end if
         status = 0
@@ -139,6 +181,33 @@ contains
         if (size(cotree_edges) > 0) cotree_edges = gauge%cotree_edges
         status = 0
     end subroutine tree_cotree_gauge_edges
+
+    subroutine tree_cotree_gauge_components( &
+            gauge, components, component_count, status)
+        !! Return deterministic connected-component labels of the graph.
+        !!
+        !! Labels are one-based and assigned by the first vertex in each
+        !! component.  For a fixed graph ordering the result is stable, and
+        !! the forest/cycle ranks satisfy
+        !! ``n_tree = n_vertex - n_component`` and
+        !! ``n_cotree = n_edge - n_vertex + n_component``.
+        type(tree_cotree_gauge_t), intent(in) :: gauge
+        integer, allocatable, intent(out) :: components(:)
+        integer, intent(out) :: component_count
+        integer, intent(out) :: status
+
+        if (allocated(components)) deallocate(components)
+        component_count = 0
+        call validate_tree_cotree_gauge(gauge, status)
+        if (status /= 0) then
+            allocate(components(0))
+            return
+        end if
+        allocate(components(size(gauge%components)))
+        components = gauge%components
+        component_count = gauge%component_count
+        status = 0
+    end subroutine tree_cotree_gauge_components
 
     subroutine build_tree_cotree_dof_map( &
             gauge, control_edge_dofs, total_dof_count, constrained, free_dofs, status)
@@ -371,8 +440,10 @@ contains
 
         if (allocated(gauge%tree_edges)) deallocate(gauge%tree_edges)
         if (allocated(gauge%cotree_edges)) deallocate(gauge%cotree_edges)
+        if (allocated(gauge%components)) deallocate(gauge%components)
         gauge%vertex_count = 0
         gauge%edge_count = 0
+        gauge%component_count = 0
     end subroutine clear_tree_cotree_gauge
 
 end module fortfem_tree_cotree_gauge

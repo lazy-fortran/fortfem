@@ -28,6 +28,8 @@ call build_tree_cotree_gauge(incidence, gauge, status)
 call build_tree_cotree_dof_map( &
     gauge, control_edge_dofs, total_dof_count, constrained, free_dofs, status)
 call tree_cotree_gauge_edges(gauge, tree_edges, cotree_edges, status)
+call tree_cotree_gauge_components( &
+    gauge, components, component_count, status)
 call apply_tree_cotree_restriction(gauge, full, reduced, status)
 call apply_tree_cotree_prolongation(gauge, reduced, full, status)
 call reduce_tree_cotree_dense_system( &
@@ -50,6 +52,12 @@ control graph must supply their topology explicitly. Disconnected graphs
 produce a spanning forest. On a multiply connected domain, non-tree edges
 include cotree loop representatives; period constraints and harmonic cuts are
 separate contracts.
+
+`tree_cotree_gauge_components` exposes one-based deterministic component
+labels, with labels assigned by the first vertex in each component. Validation
+enforces the rank identities `n_tree = n_vertex - n_component` and
+`n_cotree = n_edge - n_vertex + n_component`; this makes disconnected
+components explicit to direct-solver and future IGA graph-map consumers.
 
 ## FEEC and IGA scope
 

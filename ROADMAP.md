@@ -1860,7 +1860,10 @@ gallery example.
   sparse direct solver; duplicate and out-of-range maps have independent
   rejection tests. The new complex cycle-period constraint composes this
   fixed gauge with caller-owned oriented periods and has independent
-  finite-difference and real complex-adjoint tests.
+  finite-difference and real complex-adjoint tests. Deterministic connected
+  component labels and explicit forest/cycle-rank checks are also public, so
+  disconnected meshes and future IGA control graphs do not rely on implicit
+  component assumptions.
 - The neutral `internal_manifold_graph_t` contract now records oriented
   plus/minus region sides, open or boundaryless manifold endpoints, periodic
   self-identifications, junction incidence, closed-manifold flags, and

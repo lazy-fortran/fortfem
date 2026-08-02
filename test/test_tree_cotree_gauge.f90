@@ -5,6 +5,7 @@ program test_tree_cotree_gauge
         build_tree_cotree_dof_map, &
         reduce_tree_cotree_dense_system, reduce_tree_cotree_dense_system_jvp, &
         reduce_tree_cotree_dense_system_vjp, tree_cotree_gauge_edges, &
+        tree_cotree_gauge_components, &
         tree_cotree_gauge_t, validate_tree_cotree_gauge
     use fortfem_kinds, only: dp
     implicit none
@@ -22,6 +23,7 @@ program test_tree_cotree_gauge
     real(dp), parameter :: full_rhs(3) = [1.0_dp, 2.0_dp, 3.0_dp]
     type(tree_cotree_gauge_t) :: gauge, disconnected, invalid
     integer, allocatable :: tree_edges(:), cotree_edges(:)
+    integer, allocatable :: components(:)
     real(dp), allocatable :: reduced(:), prolonged(:)
     real(dp), allocatable :: reduced_matrix(:, :), reduced_rhs(:)
     real(dp), allocatable :: reduced_matrix_dot(:, :), reduced_rhs_dot(:)
@@ -29,7 +31,7 @@ program test_tree_cotree_gauge
     logical, allocatable :: constrained_dofs(:)
     integer, allocatable :: free_dofs(:)
     real(dp) :: lhs, rhs
-    integer :: status
+    integer :: component_count, status
 
     call build_tree_cotree_gauge(triangle_incidence, gauge, status)
     call check_condition(status == 0, "triangle graph builds a tree-cotree gauge")
@@ -39,6 +41,14 @@ program test_tree_cotree_gauge
         size(cotree_edges) == 1 .and. all(tree_edges == [1, 2]) .and. &
         all(cotree_edges == [3]), &
         "triangle gauge selects a spanning tree and one cotree edge")
+    call tree_cotree_gauge_components( &
+        gauge, components, component_count, status)
+    call check_condition(status == 0 .and. component_count == 1 .and. &
+        all(components == [1, 1, 1]) .and. &
+        size(tree_edges) == size(components) - component_count .and. &
+        size(cotree_edges) == size(triangle_incidence, 2) - &
+            size(components) + component_count, &
+        "triangle gauge exposes deterministic component and cycle ranks")
 
     call apply_tree_cotree_restriction(gauge, full_vector, reduced, status)
     call apply_tree_cotree_prolongation(gauge, reduced, prolonged, status)
@@ -66,8 +76,13 @@ program test_tree_cotree_gauge
 
     call build_tree_cotree_gauge(disconnected_incidence, disconnected, status)
     call tree_cotree_gauge_edges(disconnected, tree_edges, cotree_edges, status)
+    call tree_cotree_gauge_components( &
+        disconnected, components, component_count, status)
     call check_condition(status == 0 .and. size(tree_edges) == 2 .and. &
-        size(cotree_edges) == 0, "disconnected graph builds a spanning forest")
+        size(cotree_edges) == 0 .and. component_count == 2 .and. &
+        all(components == [1, 1, 2, 2]) .and. &
+        size(tree_edges) == size(components) - component_count, &
+        "disconnected graph exposes a deterministic spanning forest")
 
     call build_tree_cotree_dof_map( &
         gauge, [2, 4, 5], 6, constrained_dofs, free_dofs, status)
