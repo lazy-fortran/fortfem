@@ -43,4 +43,7 @@ quadrature and mode truncation while retaining this trace ABI.  The companion
 [spectral metadata contract](toroidal_spectral_metadata.html) now provides
 explicit rectangular-window counts, zero-mode rejection, and supplied-list
 energy diagnostics; regularized Green convolution and Neumann compatibility
-remain caller-owned.
+remain caller-owned.  `solve_toroidal_spectral_neumann` adds the fixed-surface
+diagonal modal inversion with an explicit zero-mode policy and resonance
+tolerance; its scale/η JVP/VJP actions are checked against central reassembly
+and the real complex adjoint.  It is not a global Neumann solver.

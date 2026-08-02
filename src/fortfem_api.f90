@@ -692,7 +692,10 @@ module fortfem_api
         evaluate_toroidal_spectral_trace_vjp, &
         evaluate_toroidal_spectral_trace_grid, &
         evaluate_toroidal_spectral_trace_grid_jvp, &
-        evaluate_toroidal_spectral_trace_grid_vjp
+        evaluate_toroidal_spectral_trace_grid_vjp, &
+        solve_toroidal_spectral_neumann, &
+        solve_toroidal_spectral_neumann_jvp, &
+        solve_toroidal_spectral_neumann_vjp
     use fortfem_toroidal_spectral_metadata, only: &
         analyze_toroidal_spectral_modes, &
         analyze_toroidal_spectral_modes_jvp, &
@@ -1552,6 +1555,9 @@ module fortfem_api
     public :: evaluate_toroidal_spectral_trace_grid
     public :: evaluate_toroidal_spectral_trace_grid_jvp
     public :: evaluate_toroidal_spectral_trace_grid_vjp
+    public :: solve_toroidal_spectral_neumann
+    public :: solve_toroidal_spectral_neumann_jvp
+    public :: solve_toroidal_spectral_neumann_vjp
     public :: analyze_toroidal_spectral_modes
     public :: analyze_toroidal_spectral_modes_jvp
     public :: analyze_toroidal_spectral_modes_vjp
