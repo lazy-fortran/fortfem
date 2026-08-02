@@ -17,3 +17,21 @@ and relative errors together with the componentwise maximum error. The
 independent real-valued sample contract remains available for equilibrium
 comparisons; this type is its complex counterpart for FEM/BEM/DtN/PML and
 external ideal/resistive response fields.
+
+The weighted L2 and relative metrics expose fixed-coordinate derivative
+actions as well:
+
+```fortran
+call compare_complex_interchange_samples_jvp( &
+    reference, candidate, coordinate_tolerance, reference_values_dot, &
+    candidate_values_dot, weights_dot, absolute_error_dot, relative_error_dot, status)
+call compare_complex_interchange_samples_vjp( &
+    reference, candidate, coordinate_tolerance, absolute_error_bar, &
+    relative_error_bar, reference_values_bar, candidate_values_bar, weights_bar, status)
+```
+
+The derivative uses the real-part convention
+`Re(sum(conjg(values_bar)*values_dot))`; zero error and zero reference norm
+are rejected, while the nonsmooth maximum norm remains diagnostic-only.
+`test_complex_interchange_sample_derivatives` checks central differences and
+the complex real-part adjoint identity.

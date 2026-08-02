@@ -27,6 +27,8 @@ module fortfem_complex_interchange_samples
     end type complex_interchange_sample_set_t
 
     public :: compare_complex_interchange_samples
+    public :: compare_complex_interchange_samples_jvp
+    public :: compare_complex_interchange_samples_vjp
     public :: initialize_complex_interchange_samples
     public :: validate_complex_interchange_samples
 
@@ -127,6 +129,120 @@ contains
         maximum_error = maxval(abs(difference))
         status = 0
     end subroutine compare_complex_interchange_samples
+
+    subroutine compare_complex_interchange_samples_jvp( &
+            reference, candidate, coordinate_tolerance, reference_values_dot, &
+            candidate_values_dot, weights_dot, absolute_error_dot, &
+            relative_error_dot, status)
+        !! Differentiate complex weighted L2 and relative errors.
+        !!
+        !! The derivative is real-valued and uses
+        !! `Re(conjg(value)*value_dot)`.  Coordinates are fixed and reference
+        !! and candidate share one validated weight vector.  The maximum-norm
+        !! diagnostic is intentionally excluded because its active component
+        !! is nonsmooth at ties.
+        type(complex_interchange_sample_set_t), intent(in) :: reference, candidate
+        real(dp), intent(in) :: coordinate_tolerance
+        complex(dp), intent(in) :: reference_values_dot(:, :)
+        complex(dp), intent(in) :: candidate_values_dot(:, :)
+        real(dp), intent(in) :: weights_dot(:)
+        real(dp), intent(out) :: absolute_error_dot, relative_error_dot
+        integer, intent(out) :: status
+
+        real(dp) :: absolute_error, relative_error, maximum_error
+        real(dp) :: reference_norm, squared_error_dot, reference_norm_dot
+        complex(dp), allocatable :: difference(:, :), difference_dot(:, :)
+
+        absolute_error_dot = 0.0_dp
+        relative_error_dot = 0.0_dp
+        status = 1
+        call compare_complex_interchange_samples( &
+            reference, candidate, coordinate_tolerance, absolute_error, &
+            relative_error, maximum_error, status)
+        if (status /= 0) return
+        status = 1
+        if (any(shape(reference_values_dot) /= shape(reference%values)) .or. &
+            any(shape(candidate_values_dot) /= shape(candidate%values)) .or. &
+            size(weights_dot) /= reference%sample_count) return
+        if (.not. finite_complex(reference_values_dot) .or. &
+            .not. finite_complex(candidate_values_dot) .or. &
+            .not. all(ieee_is_finite(weights_dot))) return
+        if (absolute_error <= tiny(1.0_dp)) return
+        allocate(difference(reference%component_count, reference%sample_count), &
+            difference_dot(reference%component_count, reference%sample_count))
+        difference = candidate%values - reference%values
+        difference_dot = candidate_values_dot - reference_values_dot
+        squared_error_dot = sum( &
+            spread(weights_dot, 1, reference%component_count)*abs(difference)**2 + &
+            2.0_dp*spread(reference%weights, 1, reference%component_count)* &
+            real(conjg(difference)*difference_dot, dp))
+        absolute_error_dot = squared_error_dot/(2.0_dp*absolute_error)
+
+        reference_norm = sqrt(sum( &
+            spread(reference%weights, 1, reference%component_count)* &
+            abs(reference%values)**2))
+        if (reference_norm <= tiny(1.0_dp)) return
+        reference_norm_dot = sum( &
+            spread(weights_dot, 1, reference%component_count)* &
+            abs(reference%values)**2 + 2.0_dp* &
+            spread(reference%weights, 1, reference%component_count)* &
+            real(conjg(reference%values)*reference_values_dot, dp))/ &
+            (2.0_dp*reference_norm)
+        relative_error_dot = absolute_error_dot/reference_norm - &
+            absolute_error*reference_norm_dot/reference_norm**2
+        status = 0
+    end subroutine compare_complex_interchange_samples_jvp
+
+    subroutine compare_complex_interchange_samples_vjp( &
+            reference, candidate, coordinate_tolerance, absolute_error_bar, &
+            relative_error_bar, reference_values_bar, candidate_values_bar, &
+            weights_bar, status)
+        !! Apply the real-part complex VJP of weighted error metrics.
+        type(complex_interchange_sample_set_t), intent(in) :: reference, candidate
+        real(dp), intent(in) :: coordinate_tolerance
+        real(dp), intent(in) :: absolute_error_bar, relative_error_bar
+        complex(dp), intent(out) :: reference_values_bar(:, :)
+        complex(dp), intent(out) :: candidate_values_bar(:, :)
+        real(dp), intent(out) :: weights_bar(:)
+        integer, intent(out) :: status
+
+        real(dp) :: absolute_error, relative_error, maximum_error
+        real(dp) :: reference_norm, absolute_partial, reference_partial
+        complex(dp), allocatable :: difference(:, :)
+        real(dp), allocatable :: weights_matrix(:, :)
+
+        reference_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        candidate_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        weights_bar = 0.0_dp
+        status = 1
+        call compare_complex_interchange_samples( &
+            reference, candidate, coordinate_tolerance, absolute_error, &
+            relative_error, maximum_error, status)
+        if (status /= 0) return
+        status = 1
+        if (any(shape(reference_values_bar) /= shape(reference%values)) .or. &
+            any(shape(candidate_values_bar) /= shape(candidate%values)) .or. &
+            size(weights_bar) /= reference%sample_count) return
+        if (.not. ieee_is_finite(absolute_error_bar) .or. &
+            .not. ieee_is_finite(relative_error_bar)) return
+        if (absolute_error <= tiny(1.0_dp)) return
+        allocate(difference(reference%component_count, reference%sample_count), &
+            weights_matrix(reference%component_count, reference%sample_count))
+        difference = candidate%values - reference%values
+        weights_matrix = spread(reference%weights, 1, reference%component_count)
+        reference_norm = sqrt(sum(weights_matrix*abs(reference%values)**2))
+        if (reference_norm <= tiny(1.0_dp)) return
+        absolute_partial = absolute_error_bar + relative_error_bar/reference_norm
+        reference_partial = -relative_error_bar*absolute_error/reference_norm**2
+        candidate_values_bar = absolute_partial*weights_matrix*difference/absolute_error
+        reference_values_bar = -candidate_values_bar + reference_partial* &
+            weights_matrix*reference%values/reference_norm
+        weights_bar = absolute_partial*0.5_dp*sum(abs(difference)**2, dim=1)/ &
+            absolute_error
+        weights_bar = weights_bar + reference_partial*0.5_dp* &
+            sum(abs(reference%values)**2, dim=1)/reference_norm
+        status = 0
+    end subroutine compare_complex_interchange_samples_vjp
 
     subroutine assign_complex_interchange_samples(lhs, rhs)
         class(complex_interchange_sample_set_t), intent(out) :: lhs
