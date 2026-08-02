@@ -800,6 +800,11 @@ module fortfem_api
         assemble_distributed_trace_reduction, &
         assemble_distributed_trace_reduction_jvp, &
         assemble_distributed_trace_reduction_vjp
+    use fortfem_physical_trace_ownership, only: &
+        physical_trace_ownership_t, initialize_physical_trace_ownership, &
+        validate_physical_trace_ownership, physical_trace_ownership_maps, &
+        physical_trace_ownership_dimension, physical_trace_ownership_point_count, &
+        physical_trace_ownership_rank, compare_physical_trace_coordinates
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -1528,6 +1533,14 @@ module fortfem_api
     public :: assemble_distributed_trace_reduction
     public :: assemble_distributed_trace_reduction_jvp
     public :: assemble_distributed_trace_reduction_vjp
+    public :: physical_trace_ownership_t
+    public :: initialize_physical_trace_ownership
+    public :: validate_physical_trace_ownership
+    public :: physical_trace_ownership_maps
+    public :: physical_trace_ownership_dimension
+    public :: physical_trace_ownership_point_count
+    public :: physical_trace_ownership_rank
+    public :: compare_physical_trace_coordinates
     public :: assemble_pseudo_arclength_residual
     public :: assemble_pseudo_arclength_residual_jvp
     public :: assemble_pseudo_arclength_residual_vjp
