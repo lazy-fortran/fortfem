@@ -1093,6 +1093,10 @@ complete analytical derivatives.
 The `evaluate_residual_merit` primitive supplies the positive-weighted
 least-squares merit and analytical JVP/VJP; acceptance rules and nonlinear
 solver state remain client-owned.
+The `assemble_pseudo_transient_residual` primitive now supplies the separate
+positive-step (R+M(u-u_{old})/\Delta t) continuation stabilizer with complete
+matrix/state/time JVP/VJP products; it is explicitly not a symplectic time
+integrator.
 The `classify_continuation_event` primitive now reports deterministic
 sign-crossing and near-zero margins with the global minimum margin. It is the
 explicit topology-event boundary for cuts, separatrices, resonances, and
