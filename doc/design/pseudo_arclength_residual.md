@@ -29,6 +29,12 @@ The VJP returns the corresponding real Euclidean cotangents. All arrays have
 fixed dimensions and finite values. A changed branch, cut topology, or
 interface graph is a client-level event and is not differentiated here.
 
+`normalize_pseudo_arclength_tangent` treats the state and continuation
+parameter tangent as one Euclidean vector and returns its unit blocks and
+norm. Its JVP/VJP products make tangent normalization differentiable while
+rejecting a zero or non-finite predictor. Metric-weighted normalization and
+tangent construction remain caller policies.
+
 ## API
 
 ```fortran
@@ -45,6 +51,16 @@ call assemble_pseudo_arclength_residual_vjp( &
     tangent_state, tangent_parameter, step, augmented_bar, residual_bar, &
     state_bar, parameter_bar, previous_state_bar, previous_parameter_bar, &
     tangent_state_bar, tangent_parameter_bar, step_bar, status)
+
+call normalize_pseudo_arclength_tangent( &
+    tangent_state, tangent_parameter, normalized_state, normalized_parameter, &
+    norm, status)
+call normalize_pseudo_arclength_tangent_jvp( &
+    tangent_state, tangent_parameter, tangent_state_dot, tangent_parameter_dot, &
+    normalized_state_dot, normalized_parameter_dot, norm_dot, status)
+call normalize_pseudo_arclength_tangent_vjp( &
+    tangent_state, tangent_parameter, normalized_state_bar, normalized_parameter_bar, &
+    norm_bar, tangent_state_bar, tangent_parameter_bar, status)
 ```
 
 `test_pseudo_arclength_residual` checks the value against the explicit scalar

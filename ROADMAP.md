@@ -1072,7 +1072,8 @@ Continuation is a client policy, but the numerical layer must provide:
 
 - a public pseudo-arclength residual with predictor/tangent value, JVP, and
   VJP actions; predictor construction, corrector solves, and tangent
-  normalization remain client-owned;
+  construction remain client-owned, while the public Euclidean tangent
+  normalization value/JVP/VJP fixes the scale contract;
 - line-search/trust-region and pseudo-transient hooks;
 - event diagnostics for a cut crossing, separatrix, topology change, or
   resonance;
@@ -1086,6 +1087,9 @@ fixed-topology augmented residual and complete analytical JVP/VJP products.
 It is deliberately free of free-boundary geometry, force balance, or a
 nonlinear solver, so the same primitive can be composed by VMEC/GVEC-like,
 SPEC-like, MARS/GPEC-like, JOREK-like, elasticity, and wave clients.
+The matching `normalize_pseudo_arclength_tangent` primitive supplies the
+allocation-free unit tangent blocks and norm with zero-tangent rejection and
+complete analytical derivatives.
 
 #### 8.5.6 Geometry-independent 2D and 3D benchmark ladder
 
