@@ -1576,7 +1576,9 @@ gallery example.
   real-part adjoint identities. Their wave-number and decay-rate JVP/VJP
   products now also propagate through the regular, coincident, and adaptive
   sphere panel quadrature with independent reassembly and complex adjoint
-  checks. The assembled toroidal MFIE offset trace now exposes a
+  checks. The curved-sphere RWG mass block now has analytical vertex/radius
+  geometry JVP/VJP products with an independent central reassembly and real
+  adjoint oracle. The assembled toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus
