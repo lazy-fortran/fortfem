@@ -8,7 +8,7 @@ title: fci_polygon_geometry Example
 title: FCI polygon geometry
 ---
 
-This fixture computes fixed-topology straight, quadratic, cubic, and quartic
+This fixture computes fixed-topology straight, quadratic, cubic, quartic, and quintic
 Bezier-edge areas for boundary-ordered pentagonal FCI plane cells with
 FortSym-generated edge contributions.  It compares the generated values with
 independent shoelace and Gauss--Green oracles and writes actual curved 2D
@@ -31,7 +31,8 @@ program fci_polygon_geometry
         compute_fci_cubic_curved_polygon_cell_areas_2d, &
         compute_fci_curved_polygon_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &
-        compute_fci_quartic_curved_polygon_cell_areas_2d
+        compute_fci_quartic_curved_polygon_cell_areas_2d, &
+        compute_fci_quintic_curved_polygon_cell_areas_2d
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
@@ -50,10 +51,12 @@ program fci_polygon_geometry
     real(dp) :: edge_controls(2, vertex_count, cell_count)
     real(dp) :: cubic_controls(2, 2, vertex_count, cell_count)
     real(dp) :: quartic_controls(2, 3, vertex_count, cell_count)
+    real(dp) :: quintic_controls(2, 4, vertex_count, cell_count)
     real(dp) :: areas(cell_count), expected(cell_count)
     real(dp) :: curved_areas(cell_count), curved_expected(cell_count)
     real(dp) :: cubic_areas(cell_count), cubic_expected(cell_count)
     real(dp) :: quartic_areas(cell_count), quartic_expected(cell_count)
+    real(dp) :: quintic_areas(cell_count), quintic_expected(cell_count)
     real(dp) :: x_plot(vertex_count + 1), y_plot(vertex_count + 1)
     real(dp) :: x_curve(vertex_count*edge_curve_points + 1)
     real(dp) :: y_curve(vertex_count*edge_curve_points + 1)
@@ -61,6 +64,8 @@ program fci_polygon_geometry
     real(dp) :: y_cubic(vertex_count*edge_curve_points + 1)
     real(dp) :: x_quartic(vertex_count*edge_curve_points + 1)
     real(dp) :: y_quartic(vertex_count*edge_curve_points + 1)
+    real(dp) :: x_quintic(vertex_count*edge_curve_points + 1)
+    real(dp) :: y_quintic(vertex_count*edge_curve_points + 1)
     real(dp) :: bezier_point(2), bezier_tangent(2), parameter
     real(dp) :: cell_index(cell_count)
     integer :: cell, vertex, edge, sample, point_index, next_vertex, unit
@@ -100,6 +105,16 @@ program fci_polygon_geometry
                 cubic_controls(:, 2, edge, cell) + 0.2_dp*( &
                 vertices(:, next_vertex, cell) - &
                 cubic_controls(:, 2, edge, cell))
+            quintic_controls(:, 1, edge, cell) = &
+                cubic_controls(:, 1, edge, cell)
+            quintic_controls(:, 2, edge, cell) = &
+                cubic_controls(:, 2, edge, cell)
+            quintic_controls(:, 3, edge, cell) = &
+                quartic_controls(:, 3, edge, cell)
+            quintic_controls(:, 4, edge, cell) = &
+                quartic_controls(:, 3, edge, cell) + 0.4_dp*( &
+                vertices(:, next_vertex, cell) - &
+                quartic_controls(:, 3, edge, cell))
         end do
     end do
 
@@ -148,6 +163,18 @@ program fci_polygon_geometry
             error stop "FCI quartic curved polygon area oracle failed"
         end if
     end do
+    call compute_fci_quintic_curved_polygon_cell_areas_2d( &
+        vertices, quintic_controls, quintic_areas, status)
+    if (status%code /= 0) then
+        error stop "FCI quintic curved polygon area evaluation failed"
+    end if
+    do cell = 1, cell_count
+        quintic_expected(cell) = quintic_gauss_green_area( &
+            vertices(:, :, cell), quintic_controls(:, :, :, cell))
+        if (abs(quintic_areas(cell) - quintic_expected(cell)) > 5.0e-12_dp) then
+            error stop "FCI quintic curved polygon area oracle failed"
+        end if
+    end do
 
     call figure(figsize=[9.0_dp, 6.0_dp])
     do cell = 1, cell_count
@@ -189,10 +216,25 @@ program fci_polygon_geometry
         end do
         call plot(x_quartic, y_quartic, label="quartic boundary "// &
             integer_label(cell), linestyle="--")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call quintic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), quintic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_quintic(point_index) = bezier_point(1)
+                y_quintic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_quintic, y_quintic, label="quintic boundary "// &
+            integer_label(cell), linestyle="-.")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Cubic and quartic Bezier FCI polygon cells")
+    call title("Cubic, quartic, and quintic Bezier FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_polygon_cells_2d.png")
 
@@ -243,10 +285,25 @@ program fci_polygon_geometry
         end do
         call plot(x_quartic, y_quartic, label="quartic pentagon "// &
             integer_label(cell), linestyle=":")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call quintic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), quintic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_quintic(point_index) = bezier_point(1)
+                y_quintic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_quintic, y_quintic, label="quintic pentagon "// &
+            integer_label(cell), linestyle="-.")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Quadratic, cubic, and quartic Bezier-edge FCI polygon cells")
+    call title("Quadratic through quintic Bezier-edge FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_curved_polygon_cells_2d.png")
 
@@ -259,6 +316,8 @@ program fci_polygon_geometry
         label="cubic Bezier-edge area")
     call plot(cell_index, quartic_areas, marker="d", linestyle=":", &
         label="quartic Bezier-edge area")
+    call plot(cell_index, quintic_areas, marker="v", linestyle="-.", &
+        label="quintic Bezier-edge area")
     call xlabel("cell index")
     call ylabel("cell area")
     call title("Generated FCI polygon plane-cell measures")
@@ -269,11 +328,13 @@ program fci_polygon_geometry
         status="replace", action="write")
     write (unit, "(a)") "cell,generated_area,shoelace_area,quadratic_area,"// &
         "quadratic_gauss_green_area,cubic_area,cubic_gauss_green_area,"// &
-        "quartic_area,quartic_gauss_green_area"
+        "quartic_area,quartic_gauss_green_area,quintic_area,"// &
+        "quintic_gauss_green_area"
     do cell = 1, cell_count
-        write (unit, "(i0,8(',',es24.16))") cell, areas(cell), expected(cell), &
+        write (unit, "(i0,10(',',es24.16))") cell, areas(cell), expected(cell), &
             curved_areas(cell), curved_expected(cell), cubic_areas(cell), &
-            cubic_expected(cell), quartic_areas(cell), quartic_expected(cell)
+            cubic_expected(cell), quartic_areas(cell), quartic_expected(cell), &
+            quintic_areas(cell), quintic_expected(cell)
     end do
     close (unit)
 
@@ -414,6 +475,58 @@ contains
             (controls(:, 3) - controls(:, 2)) + &
             4.0_dp*parameter**3*(last - controls(:, 3))
     end subroutine quartic_bezier_point_and_tangent
+
+    pure real(dp) function quintic_gauss_green_area(cell_vertices, controls) &
+            result(area)
+        real(dp), intent(in) :: cell_vertices(2, vertex_count)
+        real(dp), intent(in) :: controls(2, 4, vertex_count)
+        real(dp), parameter :: quintic_points(5) = [ &
+            0.0469100770306680_dp, 0.2307653449471585_dp, 0.5_dp, &
+            0.7692346550528415_dp, 0.9530899229693320_dp]
+        real(dp), parameter :: quintic_weights(5) = [ &
+            0.1184634425280945_dp, 0.2393143352496832_dp, &
+            0.2844444444444444_dp, 0.2393143352496832_dp, &
+            0.1184634425280945_dp]
+        real(dp) :: point(2), tangent(2), contribution
+        integer :: edge, quadrature, next_edge
+
+        area = 0.0_dp
+        do edge = 1, vertex_count
+            next_edge = mod(edge, vertex_count) + 1
+            do quadrature = 1, 5
+                call quintic_bezier_point_and_tangent( &
+                    cell_vertices(:, edge), controls(:, :, edge), &
+                    cell_vertices(:, next_edge), quintic_points(quadrature), &
+                    point, tangent)
+                contribution = point(1)*tangent(2) - &
+                    point(2)*tangent(1)
+                area = area + 0.5_dp*quintic_weights(quadrature)*contribution
+            end do
+        end do
+    end function quintic_gauss_green_area
+
+    pure subroutine quintic_bezier_point_and_tangent( &
+            first, controls, last, parameter, point, tangent)
+        real(dp), intent(in) :: first(2), controls(2, 4), last(2), parameter
+        real(dp), intent(out) :: point(2), tangent(2)
+        real(dp) :: one_minus_parameter
+
+        one_minus_parameter = 1.0_dp - parameter
+        point = one_minus_parameter**5*first + &
+            5.0_dp*one_minus_parameter**4*parameter*controls(:, 1) + &
+            10.0_dp*one_minus_parameter**3*parameter**2*controls(:, 2) + &
+            10.0_dp*one_minus_parameter**2*parameter**3*controls(:, 3) + &
+            5.0_dp*one_minus_parameter*parameter**4*controls(:, 4) + &
+            parameter**5*last
+        tangent = 5.0_dp*one_minus_parameter**4*(controls(:, 1) - first) + &
+            20.0_dp*one_minus_parameter**3*parameter* &
+            (controls(:, 2) - controls(:, 1)) + &
+            30.0_dp*one_minus_parameter**2*parameter**2* &
+            (controls(:, 3) - controls(:, 2)) + &
+            20.0_dp*one_minus_parameter*parameter**3* &
+            (controls(:, 4) - controls(:, 3)) + &
+            5.0_dp*parameter**4*(last - controls(:, 4))
+    end subroutine quintic_bezier_point_and_tangent
 
     function integer_label(value) result(label)
         integer, intent(in) :: value
