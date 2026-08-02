@@ -190,6 +190,11 @@ The [symplectic map defect contract](symplectic_map_defect.html) checks
 primal/JVP/VJP actions for mixed acoustics, vibration, elasticity, and
 electromagnetic clients.
 
+The [pseudo-arclength continuation residual contract](pseudo_arclength_residual.html)
+appends a predictor/tangent constraint to a caller-owned nonlinear residual,
+with analytical JVP/VJP actions for fixed-topology equilibrium, free-boundary,
+wave, and elasticity continuation clients.
+
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP

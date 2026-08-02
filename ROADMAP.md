@@ -1070,7 +1070,9 @@ data JVP/VJP, implicit solve JVP/VJP, and adjoint objective evaluation.
 
 Continuation is a client policy, but the numerical layer must provide:
 
-- predictor/corrector residual and tangent interfaces;
+- a public pseudo-arclength residual with predictor/tangent value, JVP, and
+  VJP actions; predictor construction, corrector solves, and tangent
+  normalization remain client-owned;
 - line-search/trust-region and pseudo-transient hooks;
 - event diagnostics for a cut crossing, separatrix, topology change, or
   resonance;
@@ -1078,6 +1080,12 @@ Continuation is a client policy, but the numerical layer must provide:
   a discrete topology event;
 - independent complex-step/central and real-part adjoint checks for every
   smooth block.
+
+The neutral `assemble_pseudo_arclength_residual` contract now supplies the
+fixed-topology augmented residual and complete analytical JVP/VJP products.
+It is deliberately free of free-boundary geometry, force balance, or a
+nonlinear solver, so the same primitive can be composed by VMEC/GVEC-like,
+SPEC-like, MARS/GPEC-like, JOREK-like, elasticity, and wave clients.
 
 #### 8.5.6 Geometry-independent 2D and 3D benchmark ladder
 
