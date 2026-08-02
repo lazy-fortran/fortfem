@@ -67,6 +67,12 @@ CASES = (
         "fortfem_time",
     ),
     ExampleCase(
+        "mixed pressure-displacement wave solution",
+        "example/mixed_wave_pressure_displacement_gallery/"
+        "mixed_wave_pressure_displacement_gallery.f90",
+        "fortfem_time",
+    ),
+    ExampleCase(
         "Helmholtz circle BEM spectrum",
         "example/helmholtz_bem_circle_spectrum.f90",
         "fortfem_boundary",
