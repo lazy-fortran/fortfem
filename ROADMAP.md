@@ -903,7 +903,12 @@ all geometries:
    is now public: caller-owned scalar/cogradient/harmonic lifts are composed
    with source and period maps, with complex JVP/VJP actions and an independent
    dot-product oracle. The second-kind Green-kernel block, resonance policy,
-   and topology-specific harmonic construction remain separate work.
+   and topology-specific harmonic construction remain separate work. A
+   matrix-free second-kind composition now applies a caller-owned `K` block to
+   that lifted current and returns source/period residuals, with complete
+   complex JVP/VJP actions and an independent reassembly/adjoint oracle; dense
+   global assembly, Green-kernel construction, and Beltrami closure remain
+   caller-owned.
 4. **Virtual-casing/Biot--Savart maps.** A caller-owned volume or surface
    current is mapped to the field, normal field, tangential field, and their
    traces on arbitrary target surfaces. The map supports direct, reciprocal,
