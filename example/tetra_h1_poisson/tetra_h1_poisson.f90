@@ -5,8 +5,8 @@ program tetra_h1_poisson
     use fortfem_generated_tetra_h1_oracle, only: generated_tetra_h1_oracle
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
-    use fortplot, only: add_scatter, figure, legend, plot, savefig, &
-        set_yscale, title, xlabel, ylabel
+    use fortplot, only: add_3d_plot, add_scatter, figure, legend, plot, &
+        savefig, set_yscale, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -101,7 +101,7 @@ contains
     subroutine render_solution(solution)
         real(dp), intent(in) :: solution(:)
 
-        integer, parameter :: sample_side = 12
+        integer, parameter :: sample_side = 24
         real(dp), allocatable :: x_plot(:), y_plot(:), z_plot(:), values(:)
         real(dp) :: point(3), value, gradient(3)
         integer :: cell, count, i, j, k, local_status
@@ -143,10 +143,31 @@ contains
         call add_scatter( &
             x_plot(:count), y_plot(:count), z_plot(:count), &
             c=values(:count), cmap="viridis", marker=".", &
-            markersize=4.0_dp, label="computed quartic solution samples")
+            markersize=2.5_dp, label="computed quartic solution samples")
+        call render_tetrahedron_edges()
         call title("Tetrahedral H1 Poisson computed solution")
         call savefig(output_directory//"/tetra_h1_poisson_solution_3d.png")
     end subroutine render_solution
+
+    subroutine render_tetrahedron_edges()
+        integer, parameter :: edge_count = 6
+        integer, parameter :: edges(2, edge_count) = reshape([ &
+            1, 2, 1, 3, 1, 4, 2, 3, 2, 4, 3, 4], [2, edge_count])
+        integer :: cell, edge
+
+        do cell = 1, size(tetrahedra, 2)
+            do edge = 1, edge_count
+                call add_3d_plot( &
+                    [vertices(1, tetrahedra(edges(1, edge), cell)), &
+                    vertices(1, tetrahedra(edges(2, edge), cell))], &
+                    [vertices(2, tetrahedra(edges(1, edge), cell)), &
+                    vertices(2, tetrahedra(edges(2, edge), cell))], &
+                    [vertices(3, tetrahedra(edges(1, edge), cell)), &
+                    vertices(3, tetrahedra(edges(2, edge), cell))], &
+                    color="dimgray", linewidth=1.1_dp)
+            end do
+        end do
+    end subroutine render_tetrahedron_edges
 
     subroutine solve_and_measure(degree, l2_error, h1_error)
         integer, intent(in) :: degree
