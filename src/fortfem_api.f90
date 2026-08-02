@@ -298,6 +298,10 @@ module fortfem_api
     use fortfem_force_balance_product, only: &
         evaluate_force_balance_product, evaluate_force_balance_product_jvp, &
         evaluate_force_balance_product_vjp
+    use fortfem_nested_surface_geometry, only: &
+        evaluate_nested_surface_geometry, &
+        evaluate_nested_surface_geometry_jvp, &
+        evaluate_nested_surface_geometry_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, assemble_tensor_diffusion_matrix_jvp, &
         assemble_tensor_diffusion_matrix_vjp
@@ -1553,6 +1557,9 @@ module fortfem_api
     public :: evaluate_fourier_mode
     public :: evaluate_fourier_mode_jvp
     public :: evaluate_fourier_mode_vjp
+    public :: evaluate_nested_surface_geometry
+    public :: evaluate_nested_surface_geometry_jvp
+    public :: evaluate_nested_surface_geometry_vjp
     public :: assemble_fourier_vector_product
     public :: assemble_fourier_vector_product_jvp
     public :: assemble_fourier_vector_product_vjp
