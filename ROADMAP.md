@@ -1170,7 +1170,8 @@ construction times on a shifted symmetric Poisson matrix and emits a log-log
 timing plot; production-size memory and accuracy scaling remain. `solve_sparse`
 PCG now accepts `sparse_ilut`/`ilut` and routes the legacy `ilu` alias through
 the row-oriented factor directly, avoiding the old dense CSC-to-array
-conversion; an exact sparse oracle covers that integration and its
+conversion. The sparse `ichol`/`ic`/`ic0` aliases likewise use the CSC
+IC builder directly. Exact sparse oracles cover both integrations and their
 bounded-memory intent. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and

@@ -1001,9 +1001,8 @@ contains
         character(len=*), intent(in) :: precond_type
         type(solver_options_t), intent(in) :: opts
 
-        integer :: n, i, j, k
+        integer :: n, i, k
         real(dp) :: a_ii
-        real(dp), allocatable :: A_dense(:, :)
         type(fortsparse_status_t) :: sparse_status
 
         n = A_sparse%nrow
@@ -1032,6 +1031,15 @@ contains
                 opts%fill_level, precond%sparse_ichol, sparse_status)
             if (sparse_status%code /= 0) precond%type = "none"
 
+        case ("ichol", "ic", "ic0")
+            call build_sparse_ichol(A_sparse, opts%drop_tolerance, &
+                opts%fill_level, precond%sparse_ichol, sparse_status)
+            if (sparse_status%code /= 0) then
+                precond%type = "none"
+            else
+                precond%type = "sparse_ichol"
+            end if
+
         case ("sparse_ilut", "ilut", "ilu")
             call build_sparse_ilut_row(A_sparse, opts%drop_tolerance, &
                 opts%fill_level, precond%sparse_ilut, sparse_status)
@@ -1040,26 +1048,6 @@ contains
             else
                 precond%type = "sparse_ilut"
             end if
-
-        case ("ichol", "ic", "ic0")
-            allocate (A_dense(n, n))
-            A_dense = 0.0_dp
-
-            do j = 1, n
-                do k = A_sparse%col_ptr(j), A_sparse%col_ptr(j + 1) - 1
-                    i = A_sparse%row_idx(k)
-                    A_dense(i, j) = A_sparse%val(k)
-                end do
-            end do
-
-            if (trim(precond_type) == "ilu") then
-                call build_ilu_preconditioner(A_dense, precond, opts)
-            else
-                call build_incomplete_cholesky(A_dense, precond%ichol, i)
-                if (i /= 0) precond%type = "none"
-            end if
-
-            deallocate (A_dense)
 
         case default
             precond%type = "none"
