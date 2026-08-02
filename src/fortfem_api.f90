@@ -380,6 +380,10 @@ module fortfem_api
         apply_fourier_mode_linear_operator, &
         apply_fourier_mode_linear_operator_jvp, &
         apply_fourier_mode_linear_operator_vjp
+    use fortfem_fourier_mode_expansion, only: &
+        evaluate_fourier_mode_expansion, &
+        evaluate_fourier_mode_expansion_jvp, &
+        evaluate_fourier_mode_expansion_vjp
     use fortfem_fourier_mode_energy, only: &
         assemble_fourier_mode_energy, &
         assemble_fourier_mode_energy_jvp, &
@@ -1837,6 +1841,9 @@ module fortfem_api
     public :: apply_fourier_mode_linear_operator
     public :: apply_fourier_mode_linear_operator_jvp
     public :: apply_fourier_mode_linear_operator_vjp
+    public :: evaluate_fourier_mode_expansion
+    public :: evaluate_fourier_mode_expansion_jvp
+    public :: evaluate_fourier_mode_expansion_vjp
     public :: assemble_fourier_mode_energy
     public :: assemble_fourier_mode_energy_jvp
     public :: assemble_fourier_mode_energy_vjp

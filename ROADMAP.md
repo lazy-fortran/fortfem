@@ -2550,6 +2550,12 @@ gallery example.
   complex real-part VJP actions are exported through the public API and checked
   against nested-loop, finite-difference, adjoint, shape, and non-finite-input
   oracles; physical closures and basis conventions remain caller-owned.
+- The neutral `evaluate_fourier_mode_expansion` now synthesizes a caller-owned
+  complex coefficient vector at one `(rho,theta,phi)` point by contracting all
+  retained radial/Fourier modes. It exposes analytical coordinate derivatives,
+  an exact coefficient/coordinate JVP, and a real-part VJP, each checked against
+  independent phase/radial, central-difference, adjoint, shape, and finite-input
+  oracles; vector/tensor component composition remains caller-owned.
 - `build_fourier_mode_closure_registry` now applies the one-product constructor
   for a caller-selected positive number of rounds. Round one is the padded
   registry; subsequent rounds retain every prior-work-set pair sum. The
