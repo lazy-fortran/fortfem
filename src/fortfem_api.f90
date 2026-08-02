@@ -394,7 +394,8 @@ module fortfem_api
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
-        evaluate_force_balance_objective_vjp
+        evaluate_force_balance_objective_vjp, &
+        evaluate_force_balance_objective_hvp
     use fortfem_force_balance_product, only: &
         evaluate_force_balance_product, evaluate_force_balance_product_jvp, &
         evaluate_force_balance_product_vjp
@@ -1799,6 +1800,7 @@ module fortfem_api
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
     public :: evaluate_force_balance_objective_vjp
+    public :: evaluate_force_balance_objective_hvp
     public :: evaluate_force_balance_product
     public :: evaluate_force_balance_product_jvp
     public :: evaluate_force_balance_product_vjp

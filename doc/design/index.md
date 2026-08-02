@@ -459,6 +459,10 @@ composes separate volume, boundary-traction, and sheet-current weak loads with
 complete real JVP/VJP actions, without selecting a pressure, magnetic, or
 plasma closure.
 
+Its weighted direct-force objective also exposes an exact Hessian-vector hook
+for residual and geometry-weight directions, keeping second-order
+DESC-like optimization composition outside FortFEM's physics boundary.
+
 The [tensor diffusion matrix contract](tensor_diffusion_matrix.html) provides
 the analogous tensor-weighted gradient pairing for anisotropic scalar,
 elastic, and compatible field blocks, with analytic JVP/VJP actions.

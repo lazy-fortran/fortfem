@@ -67,3 +67,13 @@ increments, malformed VJP residual cotangents, and a compatible VJP output
 allocation.  This keeps the neutral composition reusable for vector-valued
 anisotropic, Maxwell, elastic, and sheet-current clients without relying on
 Fortran's implicit shape assumptions.
+
+## Direct-force objective Hessian-vector hook
+
+`evaluate_force_balance_objective_hvp` differentiates the VJP of the
+caller-owned weighted least-squares objective along residual and weight
+directions while holding the scalar cotangent fixed.  It returns directional
+derivatives of both residual and weight cotangents.  The independent
+`test_force_balance_objective` finite-difference check covers this action;
+the hook supplies the second-order interface needed by DESC-like
+optimization clients without selecting a force law or optimizer.
