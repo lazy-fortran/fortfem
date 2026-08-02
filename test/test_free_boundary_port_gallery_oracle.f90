@@ -1,7 +1,7 @@
 program test_free_boundary_port_gallery_oracle
     !! Independent fast oracle for the neutral free-boundary-port gallery.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_free_boundary_port_residual
+    use fortfem_boundary, only: assemble_free_boundary_port_residual
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -48,4 +48,3 @@ program test_free_boundary_port_gallery_oracle
         "neutral gallery oracle exercises nonuniform trace samples")
     call check_summary("free-boundary port gallery oracle")
 end program test_free_boundary_port_gallery_oracle
-

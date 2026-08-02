@@ -38,6 +38,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
 - [biro_tree_cotree_benchmark](biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
+- [team7_neutral_benchmark](team7_neutral_benchmark.html) - This solution-first fixture is a small, license-safe 2-D analogue of the
 - [team13_neutral_benchmark](team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [linear_perturbation_response](linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
@@ -53,6 +54,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [bem_sphere_3d](bem_sphere_3d.html) - This example solves the unit-sphere Laplace Dirichlet problem with the P0
 - [adaptive_bem_prolate](adaptive_bem_prolate.html) - This example solves the exterior electrostatic Dirichlet problem with constant
 - [adaptive_helmholtz_bem_sphere](adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
+- [free_boundary_port_gallery](free_boundary_port_gallery.html) - This small gallery fixture samples a manufactured vector trace on a circular
 - [magnetic_curvilinear_metrics](magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
 - [nested_surface_solution](nested_surface_solution.html) - This physical-first gallery fixture evaluates FortFEM's neutral nested-surface

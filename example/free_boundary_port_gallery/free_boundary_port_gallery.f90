@@ -4,7 +4,7 @@ program free_boundary_port_gallery
     !! A manufactured vector trace is sampled on a torus and paired with a
     !! caller-owned external target and sheet-current target.  No equilibrium,
     !! coil, BEM, DtN, or free-boundary physics is inferred here.
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
