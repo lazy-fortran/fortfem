@@ -197,6 +197,10 @@ wave, and elasticity continuation clients. It also defines differentiable
 tangent normalization and a weighted residual merit for line-search and
 trust-region policies.
 
+The [continuation event diagnostics](continuation_events.html) classify
+signed-margin crossings and near-zero topology warnings without differentiating
+through a changed cut, separatrix, resonance, or interface graph.
+
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP
