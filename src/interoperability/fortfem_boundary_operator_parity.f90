@@ -31,6 +31,8 @@ module fortfem_boundary_operator_parity
     end type boundary_operator_parity_t
 
     public :: evaluate_boundary_operator_parity
+    public :: evaluate_boundary_operator_parity_jvp
+    public :: evaluate_boundary_operator_parity_vjp
     public :: validate_boundary_operator_parity
 
 contains
@@ -121,6 +123,177 @@ contains
         status = 0
     end subroutine evaluate_boundary_operator_parity
 
+    subroutine evaluate_boundary_operator_parity_jvp( &
+            reference, candidates, weights, contracts, absolute_tolerance, &
+            relative_tolerance, reference_dot, candidates_dot, weights_dot, &
+            reference_norm_dot, absolute_error_dot, relative_error_dot, status)
+        !! Fixed-topology complex JVP of weighted parity metrics.
+        !!
+        !! The metadata and tolerance decisions remain fixed.  The common
+        !! reference and every FEM/BEM/DtN/PML candidate may vary, as may the
+        !! supplied quadrature weights.  Zero reference or candidate error
+        !! norms are rejected because their Euclidean norm has no unique JVP.
+        complex(dp), intent(in) :: reference(:, :), candidates(:, :, :)
+        real(dp), intent(in) :: weights(:)
+        type(boundary_operator_contract_t), intent(in) :: contracts(:)
+        real(dp), intent(in) :: absolute_tolerance, relative_tolerance
+        complex(dp), intent(in) :: reference_dot(:, :), candidates_dot(:, :, :)
+        real(dp), intent(in) :: weights_dot(:)
+        real(dp), intent(out) :: reference_norm_dot
+        real(dp), intent(out) :: absolute_error_dot(:), relative_error_dot(:)
+        integer, intent(out) :: status
+
+        type(boundary_operator_parity_t) :: report
+        integer :: backend, component, sample
+        real(dp) :: reference_squared_dot, error_squared_dot
+        complex(dp) :: difference, difference_dot
+
+        reference_norm_dot = 0.0_dp
+        absolute_error_dot = 0.0_dp
+        relative_error_dot = 0.0_dp
+        call evaluate_boundary_operator_parity( &
+            reference, candidates, weights, contracts, absolute_tolerance, &
+            relative_tolerance, report, status)
+        if (status /= 0) return
+        if (.not. valid_jvp_directions( &
+                reference, candidates, weights, reference_dot, candidates_dot, &
+                weights_dot, absolute_error_dot, relative_error_dot)) then
+            status = 1
+            return
+        end if
+        if (report%reference_norm <= tiny(1.0_dp) .or. &
+            any(report%absolute_error <= tiny(1.0_dp))) then
+            status = 1
+            return
+        end if
+
+        reference_squared_dot = 0.0_dp
+        do sample = 1, size(reference, 2)
+            do component = 1, size(reference, 1)
+                reference_squared_dot = reference_squared_dot + &
+                    weights_dot(sample)*abs(reference(component, sample))**2 + &
+                    2.0_dp*weights(sample)*real(conjg(reference(component, sample))* &
+                    reference_dot(component, sample), dp)
+            end do
+        end do
+        reference_norm_dot = reference_squared_dot/(2.0_dp*report%reference_norm)
+        do backend = 1, size(contracts)
+            error_squared_dot = 0.0_dp
+            do sample = 1, size(reference, 2)
+                do component = 1, size(reference, 1)
+                    difference = candidates(component, sample, backend) - &
+                        reference(component, sample)
+                    difference_dot = candidates_dot(component, sample, backend) - &
+                        reference_dot(component, sample)
+                    error_squared_dot = error_squared_dot + &
+                        weights_dot(sample)*abs(difference)**2 + &
+                        2.0_dp*weights(sample)*real(conjg(difference)*difference_dot, dp)
+                end do
+            end do
+            absolute_error_dot(backend) = error_squared_dot/( &
+                2.0_dp*report%absolute_error(backend))
+            relative_error_dot(backend) = (absolute_error_dot(backend)* &
+                report%reference_norm - report%absolute_error(backend)* &
+                reference_norm_dot)/report%reference_norm**2
+        end do
+        if (.not. ieee_is_finite(reference_norm_dot) .or. &
+            .not. finite_real(absolute_error_dot) .or. &
+            .not. finite_real(relative_error_dot)) then
+            reference_norm_dot = 0.0_dp
+            absolute_error_dot = 0.0_dp
+            relative_error_dot = 0.0_dp
+            status = 1
+            return
+        end if
+        status = 0
+    end subroutine evaluate_boundary_operator_parity_jvp
+
+    subroutine evaluate_boundary_operator_parity_vjp( &
+            reference, candidates, weights, contracts, absolute_tolerance, &
+            relative_tolerance, reference_norm_bar, absolute_error_bar, &
+            relative_error_bar, reference_bar, candidates_bar, weights_bar, status)
+        !! Fixed-topology real-part complex adjoint of parity metrics.
+        complex(dp), intent(in) :: reference(:, :), candidates(:, :, :)
+        real(dp), intent(in) :: weights(:)
+        type(boundary_operator_contract_t), intent(in) :: contracts(:)
+        real(dp), intent(in) :: absolute_tolerance, relative_tolerance
+        real(dp), intent(in) :: reference_norm_bar
+        real(dp), intent(in) :: absolute_error_bar(:), relative_error_bar(:)
+        complex(dp), intent(out) :: reference_bar(:, :), candidates_bar(:, :, :)
+        real(dp), intent(out) :: weights_bar(:)
+        integer, intent(out) :: status
+
+        type(boundary_operator_parity_t) :: report
+        integer :: backend, component, sample
+        real(dp) :: reference_bar_effective, error_bar_effective
+        complex(dp) :: difference
+
+        reference_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        candidates_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        weights_bar = 0.0_dp
+        call evaluate_boundary_operator_parity( &
+            reference, candidates, weights, contracts, absolute_tolerance, &
+            relative_tolerance, report, status)
+        if (status /= 0) return
+        if (.not. valid_vjp_inputs( &
+                reference, candidates, weights, reference_norm_bar, &
+                absolute_error_bar, relative_error_bar, reference_bar, &
+                candidates_bar, weights_bar)) then
+            status = 1
+            return
+        end if
+        if (report%reference_norm <= tiny(1.0_dp) .or. &
+            any(report%absolute_error <= tiny(1.0_dp))) then
+            status = 1
+            return
+        end if
+        reference_bar_effective = reference_norm_bar
+        do backend = 1, size(contracts)
+            reference_bar_effective = reference_bar_effective - &
+                relative_error_bar(backend)*report%absolute_error(backend)/ &
+                report%reference_norm**2
+        end do
+        do sample = 1, size(reference, 2)
+            do component = 1, size(reference, 1)
+                reference_bar(component, sample) = &
+                    reference_bar_effective*weights(sample)*reference(component, sample)/ &
+                    report%reference_norm
+                weights_bar(sample) = weights_bar(sample) + &
+                    reference_bar_effective*abs(reference(component, sample))**2/ &
+                    (2.0_dp*report%reference_norm)
+            end do
+        end do
+        do backend = 1, size(contracts)
+            error_bar_effective = absolute_error_bar(backend) + &
+                relative_error_bar(backend)/report%reference_norm
+            do sample = 1, size(reference, 2)
+                do component = 1, size(reference, 1)
+                    difference = candidates(component, sample, backend) - &
+                        reference(component, sample)
+                    candidates_bar(component, sample, backend) = &
+                        error_bar_effective*weights(sample)*difference/ &
+                        report%absolute_error(backend)
+                    reference_bar(component, sample) = reference_bar(component, sample) - &
+                        error_bar_effective*weights(sample)*difference/ &
+                        report%absolute_error(backend)
+                    weights_bar(sample) = weights_bar(sample) + &
+                        error_bar_effective*abs(difference)**2/ &
+                        (2.0_dp*report%absolute_error(backend))
+                end do
+            end do
+        end do
+        if (.not. finite_complex_2d(reference_bar) .or. &
+            .not. finite_complex_3d(candidates_bar) .or. &
+            .not. finite_real(weights_bar)) then
+            reference_bar = cmplx(0.0_dp, 0.0_dp, dp)
+            candidates_bar = cmplx(0.0_dp, 0.0_dp, dp)
+            weights_bar = 0.0_dp
+            status = 1
+            return
+        end if
+        status = 0
+    end subroutine evaluate_boundary_operator_parity_vjp
+
     logical function validate_boundary_operator_parity(report, status) result(valid)
         type(boundary_operator_parity_t), intent(in) :: report
         integer, intent(out) :: status
@@ -151,6 +324,48 @@ contains
         status = 0
         valid = .true.
     end function validate_boundary_operator_parity
+
+    logical function valid_jvp_directions( &
+            reference, candidates, weights, reference_dot, candidates_dot, &
+            weights_dot, absolute_error_dot, relative_error_dot) result(valid)
+        complex(dp), intent(in) :: reference(:, :), candidates(:, :, :)
+        real(dp), intent(in) :: weights(:)
+        complex(dp), intent(in) :: reference_dot(:, :), candidates_dot(:, :, :)
+        real(dp), intent(in) :: weights_dot(:)
+        real(dp), intent(in) :: absolute_error_dot(:), relative_error_dot(:)
+
+        valid = size(reference_dot, 1) == size(reference, 1) .and. &
+            size(reference_dot, 2) == size(reference, 2) .and. &
+            size(candidates_dot, 1) == size(candidates, 1) .and. &
+            size(candidates_dot, 2) == size(candidates, 2) .and. &
+            size(candidates_dot, 3) == size(candidates, 3) .and. &
+            size(weights_dot) == size(weights) .and. &
+            size(absolute_error_dot) == size(candidates, 3) .and. &
+            size(relative_error_dot) == size(candidates, 3) .and. &
+            finite_complex_2d(reference_dot) .and. &
+            finite_complex_3d(candidates_dot) .and. finite_real(weights_dot)
+    end function valid_jvp_directions
+
+    logical function valid_vjp_inputs( &
+            reference, candidates, weights, reference_norm_bar, absolute_error_bar, &
+            relative_error_bar, reference_bar, candidates_bar, weights_bar) result(valid)
+        complex(dp), intent(in) :: reference(:, :), candidates(:, :, :)
+        real(dp), intent(in) :: weights(:), reference_norm_bar
+        real(dp), intent(in) :: absolute_error_bar(:), relative_error_bar(:)
+        complex(dp), intent(in) :: reference_bar(:, :), candidates_bar(:, :, :)
+        real(dp), intent(in) :: weights_bar(:)
+
+        valid = size(absolute_error_bar) == size(candidates, 3) .and. &
+            size(relative_error_bar) == size(candidates, 3) .and. &
+            size(reference_bar, 1) == size(reference, 1) .and. &
+            size(reference_bar, 2) == size(reference, 2) .and. &
+            size(candidates_bar, 1) == size(candidates, 1) .and. &
+            size(candidates_bar, 2) == size(candidates, 2) .and. &
+            size(candidates_bar, 3) == size(candidates, 3) .and. &
+            size(weights_bar) == size(weights) .and. &
+            ieee_is_finite(reference_norm_bar) .and. &
+            finite_real(absolute_error_bar) .and. finite_real(relative_error_bar)
+    end function valid_vjp_inputs
 
     logical function finite_complex_2d(values) result(valid)
         complex(dp), intent(in) :: values(:, :)
