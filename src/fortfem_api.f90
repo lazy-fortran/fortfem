@@ -628,17 +628,25 @@ module fortfem_api
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
+        assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
+        assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
         assemble_maxwell_sphere_curved_vector_potential_rwg_3d, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis, &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp, &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_rwg_basis, &
+        evaluate_maxwell_sphere_curved_rwg_basis_jvp, &
+        evaluate_maxwell_sphere_curved_rwg_basis_vjp, &
         integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_sphere_curved_coincident_rwg_pair_3d, &
         solve_maxwell_pec_sphere_curved_efie_rwg_3d, &
         solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh, &
+        barycentric_refine_sphere_surface_mesh_jvp, &
+        barycentric_refine_sphere_surface_mesh_vjp, &
         barycentric_refine_torus_surface_mesh, &
         barycentric_refine_torus_surface_mesh_jvp, &
         barycentric_refine_torus_surface_mesh_vjp
@@ -1421,15 +1429,23 @@ module fortfem_api
     public :: solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
+    public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
+    public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp
+    public :: evaluate_maxwell_sphere_curved_rwg_basis_jvp
+    public :: evaluate_maxwell_sphere_curved_rwg_basis_vjp
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
     public :: barycentric_refine_surface_mesh
+    public :: barycentric_refine_sphere_surface_mesh_jvp
+    public :: barycentric_refine_sphere_surface_mesh_vjp
     public :: barycentric_refine_torus_surface_mesh
     public :: barycentric_refine_torus_surface_mesh_jvp
     public :: barycentric_refine_torus_surface_mesh_vjp
