@@ -21,7 +21,8 @@ module fortfem_core
     use fortfem_structured_tetra_box_mesh, only: &
         generate_structured_tetra_box_mesh
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
-    use fortfem_api_types, only: mesh_t, function_space_t, dirichlet_bc_t
+    use fortfem_api_types, only: mesh_t, function_space_t, &
+        vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: unit_square_mesh, rectangle_mesh
     implicit none
     private
@@ -38,6 +39,7 @@ module fortfem_core
     public :: generate_torus_surface_mesh
     public :: mesh_t
     public :: function_space_t
+    public :: vector_function_space_t
     public :: dirichlet_bc_t
     public :: unit_square_mesh
     public :: rectangle_mesh

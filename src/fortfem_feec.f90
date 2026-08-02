@@ -126,8 +126,6 @@ module fortfem_feec
         test_function, trial_function, vector_test_function, &
         vector_trial_function, test_function_t, trial_function_t, &
         vector_test_function_t, vector_trial_function_t
-    use fortfem_api_types, only: &
-        mesh_t, function_space_t, vector_function_space_t
     use fortfem_api_forms, only: &
         compile_tetra_mixed_form_csc, div, dx, form_expr_t, init_measures, &
         inner, operator(*)
@@ -279,9 +277,6 @@ module fortfem_feec
     public :: function_space
     public :: vector_function_space
     public :: dirichlet_bc
-    public :: mesh_t
-    public :: function_space_t
-    public :: vector_function_space_t
     public :: test_function
     public :: trial_function
     public :: vector_test_function
