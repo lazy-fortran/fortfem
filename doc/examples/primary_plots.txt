@@ -39,6 +39,7 @@ biro_tree_cotree_3d_gallery solution.png
 team3_neutral_benchmark solution.png
 team7_neutral_benchmark solution.png
 team13_neutral_benchmark solution.png
+team20_neutral_benchmark solution.png
 interoperability_benchmarks manufactured_poisson_solution_2d.png
 laplace_bem_circle_spectrum laplace_disk_mode_2d.png
 laplace_exterior_bem_circle exterior_laplace_solution_2d.png

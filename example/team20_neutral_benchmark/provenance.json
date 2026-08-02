@@ -1,0 +1,23 @@
+{
+  "fixture": "team20_neutral_benchmark",
+  "benchmark_family": "TEAM",
+  "shape_target": "TEAM-20 three-dimensional solenoid, pole, and yoke static-force layout",
+  "exact_reproduction": false,
+  "data_status": "manufactured vector-potential field and supplied visual outlines; no TEAM reader or reference measurements",
+  "source_arrays_redistributed": false,
+  "references": [
+    {
+      "title": "TEAM workshop report",
+      "url": "https://www.osti.gov/servlets/purl/7179128"
+    },
+    {
+      "title": "TEAM-20 Magnetostatics validation description",
+      "url": "https://www.simscale.com/docs/validation-cases/team-20-magnetostatics/"
+    },
+    {
+      "title": "Analysis of Benchmark Problem TEAM20 with Various Formulations",
+      "url": "https://ansyshelp.ansys.com/public/Views/Secured/corp/v252/en/ans_vm/Hlp_V_VM233.html"
+    }
+  ],
+  "license_note": "Exact TEAM-20 geometry, steel B-H curve, mesh, force data, and reference curves remain external and require separate provenance and redistribution review."
+}
