@@ -21,6 +21,8 @@ module fortfem_level_set_tetra_interface_3d
     public :: evaluate_level_set_tetra_cut_moments_3d_jvp
     public :: evaluate_level_set_tetra_cut_third_moments_3d
     public :: evaluate_level_set_tetra_cut_third_moments_3d_jvp
+    public :: evaluate_level_set_tetra_cut_fourth_moments_3d
+    public :: evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
 
 contains
 
@@ -508,9 +510,121 @@ contains
             third_moment_dot=negative_third_moment_dot)
     end subroutine evaluate_level_set_tetra_cut_third_moments_3d_jvp
 
+    subroutine evaluate_level_set_tetra_cut_fourth_moments_3d( &
+            vertices, level_values, positive_fourth_moment, &
+            negative_fourth_moment, status)
+        !! Return exact degree-four raw moments for a linear tetrahedral cut.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(out) :: positive_fourth_moment(3, 3, 3, 3)
+        real(dp), intent(out) :: negative_fourth_moment(3, 3, 3, 3)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_volume, positive_centroid(3)
+        real(dp) :: negative_volume, negative_centroid(3)
+        real(dp) :: interface_area, normal(3)
+        real(dp) :: interface_points(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_count, interface_status
+
+        positive_fourth_moment = 0.0_dp
+        negative_fourth_moment = 0.0_dp
+        status = 1
+        call evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        if (status /= 0) return
+
+        interface_points = 0.0_dp
+        interface_count = 0
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        if (has_positive .and. has_negative) then
+            call evaluate_level_set_tetra_interface_3d( &
+                vertices, level_values, interface_points, interface_count, &
+                interface_area, normal, interface_status)
+            if (interface_status /= 0) then
+                status = interface_status
+                return
+            end if
+        end if
+        call accumulate_tetra_side( &
+            vertices, level_values, .true., interface_points, interface_count, &
+            positive_volume, positive_centroid, status, &
+            fourth_moment=positive_fourth_moment)
+        if (status /= 0) return
+        call accumulate_tetra_side( &
+            vertices, level_values, .false., interface_points, interface_count, &
+            negative_volume, negative_centroid, status, &
+            fourth_moment=negative_fourth_moment)
+    end subroutine evaluate_level_set_tetra_cut_fourth_moments_3d
+
+    subroutine evaluate_level_set_tetra_cut_fourth_moments_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_fourth_moment_dot, negative_fourth_moment_dot, status)
+        !! Apply the fixed-topology JVP of degree-four tetrahedral cut moments.
+        real(dp), intent(in) :: vertices(3, 4), level_values(4)
+        real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
+        real(dp), intent(out) :: positive_fourth_moment_dot(3, 3, 3, 3)
+        real(dp), intent(out) :: negative_fourth_moment_dot(3, 3, 3, 3)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_volume, positive_centroid(3)
+        real(dp) :: negative_volume, negative_centroid(3)
+        real(dp) :: positive_volume_dot, positive_centroid_dot(3)
+        real(dp) :: negative_volume_dot, negative_centroid_dot(3)
+        real(dp) :: interface_area, interface_area_dot, normal(3), normal_dot(3)
+        real(dp) :: interface_points(3, 4), interface_points_dot(3, 4)
+        logical :: has_positive, has_negative
+        integer :: interface_count, interface_status
+
+        positive_fourth_moment_dot = 0.0_dp
+        negative_fourth_moment_dot = 0.0_dp
+        status = 1
+        call evaluate_level_set_tetra_cut_quadrature_3d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_volume_dot, positive_centroid_dot, negative_volume_dot, &
+            negative_centroid_dot, interface_area_dot, normal_dot, status)
+        if (status /= 0) return
+        call evaluate_level_set_tetra_cut_quadrature_3d( &
+            vertices, level_values, positive_volume, positive_centroid, &
+            negative_volume, negative_centroid, interface_area, normal, status)
+        if (status /= 0) return
+
+        interface_points = 0.0_dp
+        interface_points_dot = 0.0_dp
+        interface_count = 0
+        has_positive = any(level_values > 0.0_dp)
+        has_negative = any(level_values < 0.0_dp)
+        if (has_positive .and. has_negative) then
+            call evaluate_tetra_interface_geometry_jvp( &
+                vertices, level_values, vertices_dot, level_values_dot, &
+                interface_points, interface_points_dot, interface_count, &
+                interface_area, interface_area_dot, normal, normal_dot, &
+                interface_status)
+            if (interface_status /= 0) then
+                status = interface_status
+                return
+            end if
+        end if
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            interface_points, interface_points_dot, interface_count, &
+            positive_volume, positive_centroid, positive_volume_dot, &
+            positive_centroid_dot, status, &
+            fourth_moment_dot=positive_fourth_moment_dot)
+        if (status /= 0) return
+        call accumulate_tetra_side_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            interface_points, interface_points_dot, interface_count, &
+            negative_volume, negative_centroid, negative_volume_dot, &
+            negative_centroid_dot, status, &
+            fourth_moment_dot=negative_fourth_moment_dot)
+    end subroutine evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
+
     subroutine accumulate_tetra_side( &
             vertices, level_values, keep_positive, interface_points, &
-            interface_count, volume, centroid, status, second_moment, third_moment)
+            interface_count, volume, centroid, status, second_moment, third_moment, &
+            fourth_moment)
         real(dp), intent(in) :: vertices(3, 4), level_values(4)
         logical, intent(in) :: keep_positive
         real(dp), intent(in) :: interface_points(3, 4)
@@ -519,6 +633,7 @@ contains
         integer, intent(out) :: status
         real(dp), intent(out), optional :: second_moment(3, 3)
         real(dp), intent(out), optional :: third_moment(3, 3, 3)
+        real(dp), intent(out), optional :: fourth_moment(3, 3, 3, 3)
 
         integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
         integer :: face_vertices(3, 4), face, polygon_count
@@ -526,6 +641,7 @@ contains
         real(dp) :: polygon(3, 6)
         real(dp) :: volume_accum, first_moment(3)
         real(dp) :: third_moment_accum(3, 3, 3)
+        real(dp) :: fourth_moment_accum(3, 3, 3, 3)
 
         face_vertices(:, 1) = [2, 3, 4]
         face_vertices(:, 2) = [1, 4, 3]
@@ -535,10 +651,12 @@ contains
         centroid = 0.0_dp
         if (present(second_moment)) second_moment = 0.0_dp
         if (present(third_moment)) third_moment = 0.0_dp
+        if (present(fourth_moment)) fourth_moment = 0.0_dp
         status = 1
         volume_accum = 0.0_dp
         first_moment = 0.0_dp
         third_moment_accum = 0.0_dp
+        fourth_moment_accum = 0.0_dp
         do face = 1, 4
             indices = face_vertices(:, face)
             call orient_tetra_face(vertices, face_opposite(face), indices)
@@ -546,9 +664,15 @@ contains
                 vertices, level_values, indices, keep_positive, polygon, &
                 polygon_count)
             if (polygon_count >= 3) then
-                call accumulate_oriented_polygon( &
-                    polygon, polygon_count, volume_accum, first_moment, &
-                    second_moment, third_moment_accum)
+                if (present(fourth_moment)) then
+                    call accumulate_oriented_polygon( &
+                        polygon, polygon_count, volume_accum, first_moment, &
+                        second_moment, third_moment_accum, fourth_moment_accum)
+                else
+                    call accumulate_oriented_polygon( &
+                        polygon, polygon_count, volume_accum, first_moment, &
+                        second_moment, third_moment_accum)
+                end if
             end if
         end do
 
@@ -562,9 +686,15 @@ contains
                 polygon(:, :interface_count) = &
                     interface_points(:, :interface_count)
             end if
-            call accumulate_oriented_polygon( &
-                polygon, interface_count, volume_accum, first_moment, &
-                second_moment, third_moment_accum)
+            if (present(fourth_moment)) then
+                call accumulate_oriented_polygon( &
+                    polygon, interface_count, volume_accum, first_moment, &
+                    second_moment, third_moment_accum, fourth_moment_accum)
+            else
+                call accumulate_oriented_polygon( &
+                    polygon, interface_count, volume_accum, first_moment, &
+                    second_moment, third_moment_accum)
+            end if
         end if
 
         if (volume_accum <= topology_tolerance) then
@@ -577,6 +707,7 @@ contains
         volume = volume_accum
         centroid = first_moment/volume
         if (present(third_moment)) third_moment = third_moment_accum
+        if (present(fourth_moment)) fourth_moment = fourth_moment_accum
         status = 0
     end subroutine accumulate_tetra_side
 
@@ -717,7 +848,7 @@ contains
             vertices, level_values, vertices_dot, level_values_dot, &
             keep_positive, interface_points, interface_points_dot, &
             interface_count, volume, centroid, volume_dot, centroid_dot, status, &
-            second_moment_dot, third_moment_dot)
+            second_moment_dot, third_moment_dot, fourth_moment_dot)
         real(dp), intent(in) :: vertices(3, 4), level_values(4)
         real(dp), intent(in) :: vertices_dot(3, 4), level_values_dot(4)
         logical, intent(in) :: keep_positive
@@ -728,6 +859,7 @@ contains
         integer, intent(out) :: status
         real(dp), intent(out), optional :: second_moment_dot(3, 3)
         real(dp), intent(out), optional :: third_moment_dot(3, 3, 3)
+        real(dp), intent(out), optional :: fourth_moment_dot(3, 3, 3, 3)
 
         integer, parameter :: face_opposite(4) = [1, 2, 3, 4]
         integer :: face_vertices(3, 4), face, polygon_count
@@ -736,6 +868,7 @@ contains
         real(dp) :: volume_accum, volume_accum_dot
         real(dp) :: first_moment_dot(3)
         real(dp) :: third_moment_dot_accum(3, 3, 3)
+        real(dp) :: fourth_moment_dot_accum(3, 3, 3, 3)
 
         face_vertices(:, 1) = [2, 3, 4]
         face_vertices(:, 2) = [1, 4, 3]
@@ -745,11 +878,13 @@ contains
         centroid_dot = 0.0_dp
         if (present(second_moment_dot)) second_moment_dot = 0.0_dp
         if (present(third_moment_dot)) third_moment_dot = 0.0_dp
+        if (present(fourth_moment_dot)) fourth_moment_dot = 0.0_dp
         status = 1
         volume_accum = 0.0_dp
         volume_accum_dot = 0.0_dp
         first_moment_dot = 0.0_dp
         third_moment_dot_accum = 0.0_dp
+        fourth_moment_dot_accum = 0.0_dp
         do face = 1, 4
             indices = face_vertices(:, face)
             call orient_tetra_face(vertices, face_opposite(face), indices)
@@ -757,10 +892,17 @@ contains
                 vertices, level_values, vertices_dot, level_values_dot, indices, &
                 keep_positive, polygon, polygon_dot, polygon_count)
             if (polygon_count >= 3) then
-                call accumulate_oriented_polygon_jvp( &
-                    polygon, polygon_dot, polygon_count, volume_accum, &
-                    volume_accum_dot, first_moment_dot, second_moment_dot, &
-                    third_moment_dot_accum)
+                if (present(fourth_moment_dot)) then
+                    call accumulate_oriented_polygon_jvp( &
+                        polygon, polygon_dot, polygon_count, volume_accum, &
+                        volume_accum_dot, first_moment_dot, second_moment_dot, &
+                        third_moment_dot_accum, fourth_moment_dot_accum)
+                else
+                    call accumulate_oriented_polygon_jvp( &
+                        polygon, polygon_dot, polygon_count, volume_accum, &
+                        volume_accum_dot, first_moment_dot, second_moment_dot, &
+                        third_moment_dot_accum)
+                end if
             end if
         end do
 
@@ -778,10 +920,17 @@ contains
                 polygon_dot(:, :interface_count) = &
                     interface_points_dot(:, :interface_count)
             end if
-            call accumulate_oriented_polygon_jvp( &
-                polygon, polygon_dot, interface_count, volume_accum, &
-                volume_accum_dot, first_moment_dot, second_moment_dot, &
-                third_moment_dot_accum)
+            if (present(fourth_moment_dot)) then
+                call accumulate_oriented_polygon_jvp( &
+                    polygon, polygon_dot, interface_count, volume_accum, &
+                    volume_accum_dot, first_moment_dot, second_moment_dot, &
+                    third_moment_dot_accum, fourth_moment_dot_accum)
+            else
+                call accumulate_oriented_polygon_jvp( &
+                    polygon, polygon_dot, interface_count, volume_accum, &
+                    volume_accum_dot, first_moment_dot, second_moment_dot, &
+                    third_moment_dot_accum)
+            end if
         end if
 
         if (volume <= topology_tolerance) then
@@ -794,6 +943,7 @@ contains
         volume_dot = volume_accum_dot
         centroid_dot = (first_moment_dot - volume_dot*centroid)/volume
         if (present(third_moment_dot)) third_moment_dot = third_moment_dot_accum
+        if (present(fourth_moment_dot)) fourth_moment_dot = fourth_moment_dot_accum
         status = 0
     end subroutine accumulate_tetra_side_jvp
 
@@ -913,21 +1063,25 @@ contains
     end function side_contains
 
     subroutine accumulate_oriented_polygon( &
-            polygon, point_count, volume, first_moment, second_moment, third_moment)
+            polygon, point_count, volume, first_moment, second_moment, third_moment, &
+            fourth_moment)
         real(dp), intent(in) :: polygon(3, 6)
         integer, intent(in) :: point_count
         real(dp), intent(inout) :: volume, first_moment(3)
         real(dp), intent(inout), optional :: second_moment(3, 3)
         real(dp), intent(inout), optional :: third_moment(3, 3, 3)
+        real(dp), intent(inout), optional :: fourth_moment(3, 3, 3, 3)
 
         integer :: point
         real(dp) :: signed_tetra_volume, first_point(3)
         real(dp) :: second_point(3), third_point(3)
         real(dp) :: pair_moment(3, 3)
         real(dp) :: triple_moment(3, 3, 3)
+        real(dp) :: fourth_moment_local(3, 3, 3, 3)
 
         if (present(second_moment)) pair_moment = 0.0_dp
         if (present(third_moment)) triple_moment = 0.0_dp
+        if (present(fourth_moment)) fourth_moment_local = 0.0_dp
 
         first_point = polygon(:, 1)
         do point = 2, point_count - 1
@@ -955,17 +1109,24 @@ contains
                     first_point, second_point, third_point)
                 third_moment = third_moment + signed_tetra_volume*triple_moment
             end if
+            if (present(fourth_moment)) then
+                fourth_moment_local = tetra_fourth_moment( &
+                    first_point, second_point, third_point)
+                fourth_moment = fourth_moment + &
+                    signed_tetra_volume*fourth_moment_local
+            end if
         end do
     end subroutine accumulate_oriented_polygon
 
     subroutine accumulate_oriented_polygon_jvp( &
             polygon, polygon_dot, point_count, volume, volume_dot, first_moment_dot, &
-            second_moment_dot, third_moment_dot)
+            second_moment_dot, third_moment_dot, fourth_moment_dot)
         real(dp), intent(in) :: polygon(3, 6), polygon_dot(3, 6)
         integer, intent(in) :: point_count
         real(dp), intent(inout) :: volume, volume_dot, first_moment_dot(3)
         real(dp), intent(inout), optional :: second_moment_dot(3, 3)
         real(dp), intent(inout), optional :: third_moment_dot(3, 3, 3)
+        real(dp), intent(inout), optional :: fourth_moment_dot(3, 3, 3, 3)
 
         integer :: point
         real(dp) :: first_point(3), first_point_dot(3)
@@ -974,6 +1135,8 @@ contains
         real(dp) :: signed_tetra_volume, signed_tetra_volume_dot
         real(dp) :: pair_moment(3, 3), pair_moment_dot(3, 3)
         real(dp) :: triple_moment(3, 3, 3), triple_moment_dot(3, 3, 3)
+        real(dp) :: fourth_moment_local(3, 3, 3, 3)
+        real(dp) :: fourth_moment_local_dot(3, 3, 3, 3)
 
         if (present(second_moment_dot)) then
             pair_moment = 0.0_dp
@@ -982,6 +1145,10 @@ contains
         if (present(third_moment_dot)) then
             triple_moment = 0.0_dp
             triple_moment_dot = 0.0_dp
+        end if
+        if (present(fourth_moment_dot)) then
+            fourth_moment_local = 0.0_dp
+            fourth_moment_local_dot = 0.0_dp
         end if
 
         first_point = polygon(:, 1)
@@ -1045,8 +1212,157 @@ contains
                     signed_tetra_volume_dot*triple_moment + &
                     signed_tetra_volume*triple_moment_dot
             end if
+            if (present(fourth_moment_dot)) then
+                fourth_moment_local = tetra_fourth_moment( &
+                    first_point, second_point, third_point)
+                fourth_moment_local_dot = tetra_fourth_moment_jvp( &
+                    first_point, second_point, third_point, first_point_dot, &
+                    second_point_dot, third_point_dot)
+                fourth_moment_dot = fourth_moment_dot + &
+                    signed_tetra_volume_dot*fourth_moment_local + &
+                    signed_tetra_volume*fourth_moment_local_dot
+            end if
         end do
     end subroutine accumulate_oriented_polygon_jvp
+
+    pure function tetra_fourth_moment(first, second, third) result(moment)
+        !! Exact rank-four moments of the tetrahedron (0, first, second, third).
+        real(dp), intent(in) :: first(3), second(3), third(3)
+        real(dp) :: moment(3, 3, 3, 3)
+
+        real(dp) :: vectors(3, 3), product, coefficient
+        integer :: first_index, second_index, third_index, fourth_index
+        integer :: assignment_first, assignment_second, assignment_third
+        integer :: assignment_fourth, counts(3)
+
+        vectors(:, 1) = first
+        vectors(:, 2) = second
+        vectors(:, 3) = third
+        moment = 0.0_dp
+        do first_index = 1, 3
+            do second_index = 1, 3
+                do third_index = 1, 3
+                    do fourth_index = 1, 3
+                        do assignment_first = 1, 3
+                            do assignment_second = 1, 3
+                                do assignment_third = 1, 3
+                                    do assignment_fourth = 1, 3
+                                        counts = 0
+                                        counts(assignment_first) = &
+                                            counts(assignment_first) + 1
+                                        counts(assignment_second) = &
+                                            counts(assignment_second) + 1
+                                        counts(assignment_third) = &
+                                            counts(assignment_third) + 1
+                                        counts(assignment_fourth) = &
+                                            counts(assignment_fourth) + 1
+                                        product = vectors(first_index, assignment_first)* &
+                                            vectors(second_index, assignment_second)* &
+                                            vectors(third_index, assignment_third)* &
+                                            vectors(fourth_index, assignment_fourth)
+                                        coefficient = 6.0_dp*real( &
+                                            factorial_integer(counts(1))* &
+                                            factorial_integer(counts(2))* &
+                                            factorial_integer(counts(3)), dp)/5040.0_dp
+                                        moment(first_index, second_index, third_index, &
+                                            fourth_index) = &
+                                            moment(first_index, second_index, third_index, &
+                                            fourth_index) + coefficient*product
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end do
+                end do
+            end do
+        end do
+    end function tetra_fourth_moment
+
+    pure function tetra_fourth_moment_jvp( &
+            first, second, third, first_dot, second_dot, third_dot) &
+            result(moment_dot)
+        real(dp), intent(in) :: first(3), second(3), third(3)
+        real(dp), intent(in) :: first_dot(3), second_dot(3), third_dot(3)
+        real(dp) :: moment_dot(3, 3, 3, 3)
+
+        real(dp) :: vectors(3, 3), vectors_dot(3, 3)
+        real(dp) :: product, product_dot, coefficient
+        integer :: first_index, second_index, third_index, fourth_index
+        integer :: assignment_first, assignment_second, assignment_third
+        integer :: assignment_fourth, counts(3)
+
+        vectors(:, 1) = first
+        vectors(:, 2) = second
+        vectors(:, 3) = third
+        vectors_dot(:, 1) = first_dot
+        vectors_dot(:, 2) = second_dot
+        vectors_dot(:, 3) = third_dot
+        moment_dot = 0.0_dp
+        do first_index = 1, 3
+            do second_index = 1, 3
+                do third_index = 1, 3
+                    do fourth_index = 1, 3
+                        do assignment_first = 1, 3
+                            do assignment_second = 1, 3
+                                do assignment_third = 1, 3
+                                    do assignment_fourth = 1, 3
+                                        counts = 0
+                                        counts(assignment_first) = &
+                                            counts(assignment_first) + 1
+                                        counts(assignment_second) = &
+                                            counts(assignment_second) + 1
+                                        counts(assignment_third) = &
+                                            counts(assignment_third) + 1
+                                        counts(assignment_fourth) = &
+                                            counts(assignment_fourth) + 1
+                                        product = vectors(first_index, assignment_first)* &
+                                            vectors(second_index, assignment_second)* &
+                                            vectors(third_index, assignment_third)* &
+                                            vectors(fourth_index, assignment_fourth)
+                                        product_dot = &
+                                            vectors_dot(first_index, assignment_first)* &
+                                            vectors(second_index, assignment_second)* &
+                                            vectors(third_index, assignment_third)* &
+                                            vectors(fourth_index, assignment_fourth) + &
+                                            vectors(first_index, assignment_first)* &
+                                            vectors_dot(second_index, assignment_second)* &
+                                            vectors(third_index, assignment_third)* &
+                                            vectors(fourth_index, assignment_fourth) + &
+                                            vectors(first_index, assignment_first)* &
+                                            vectors(second_index, assignment_second)* &
+                                            vectors_dot(third_index, assignment_third)* &
+                                            vectors(fourth_index, assignment_fourth) + &
+                                            vectors(first_index, assignment_first)* &
+                                            vectors(second_index, assignment_second)* &
+                                            vectors(third_index, assignment_third)* &
+                                            vectors_dot(fourth_index, assignment_fourth)
+                                        coefficient = 6.0_dp*real( &
+                                            factorial_integer(counts(1))* &
+                                            factorial_integer(counts(2))* &
+                                            factorial_integer(counts(3)), dp)/5040.0_dp
+                                        moment_dot(first_index, second_index, third_index, &
+                                            fourth_index) = &
+                                            moment_dot(first_index, second_index, third_index, &
+                                            fourth_index) + coefficient*product_dot
+                                    end do
+                                end do
+                            end do
+                        end do
+                    end do
+                end do
+            end do
+        end do
+    end function tetra_fourth_moment_jvp
+
+    pure integer function factorial_integer(number) result(value)
+        integer, intent(in) :: number
+        integer :: factor
+
+        value = 1
+        do factor = 2, number
+            value = value*factor
+        end do
+    end function factorial_integer
 
     pure function tetra_third_moment(first, second, third) result(moment)
         real(dp), intent(in) :: first(3), second(3), third(3)

@@ -1718,8 +1718,11 @@ gallery example.
   central-difference oracle. The 2-D triangle path now also exposes an exact
   degree-four raw-moment tensor and fixed-topology JVP through an exact
   Green-theorem binomial edge primitive, with independent simplex-moment,
-  conservation, and central-difference oracles; degree-four tetrahedral and
-  curved-cell moment-fitting rules remain. A weighted
+  conservation, and central-difference oracles. The 3-D tetrahedral path now
+  also exposes an exact degree-four raw-moment tensor and fixed-topology JVP
+  through its oriented fan and barycentric multinomial primitive, with the
+  same independent simplex-moment, conservation, and central-difference
+  oracles; curved-cell moment-fitting rules remain. A weighted
   enrichment-support Gram contract now exposes value/JVP/VJP actions with a
   fixed activation mask, and a symmetric-Jacobi rank/condition diagnostic
   reports the active enrichment rank and singularity with an independent
