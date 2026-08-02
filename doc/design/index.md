@@ -359,6 +359,12 @@ The surface-current trace contract also exposes a neutral residual for an
 independent tangential-current test/trial basis, with analytic JVP/VJP actions
 for fitted, cut, DG/HDG, and IGA trace ownership.
 
+The [regularized surface-current layer](regularized_surface_current_layer.html)
+maps caller-owned signed normal distances and tangential sheet currents to a
+normalized Gaussian volume current. FortSym-generated JVP/VJP products and an
+integrated-current diagnostic support resolved-layer comparisons on any
+geometry without selecting a material closure.
+
 The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
