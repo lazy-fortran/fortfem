@@ -408,6 +408,7 @@ slice.
 | `migrate_scalar_gallery_facades` | Simple Poisson, mesh, scalar/core, and anisotropic/FCI examples and their focused tests; split legacy `fortfem_api_*` imports between `fortfem_core`, `fortfem_feec`, and `fortfem_plot` without adding a second implementation | No-umbrella compile/import audit, independent analytical solution or field/energy oracle, and focused `fo test` |
 | `migrate_boundary_gallery_facades` | Adaptive BEM, acoustic DtN/NtD, Helmholtz/PML, Maxwell open-boundary, and boundary solver examples/tests; own the representative facade checker updates | FEM/BEM/DtN/PML physical-solution oracle, derivative/trace parity, checker negative fixture, and focused `fo test` |
 | `migrate_iga_fourier_facades` | IGA, Fourier-FEM, toroidal, special-function, and field-aligned examples/tests; expose missing symbols through `fortfem_feec` or `fortfem_fourier` only | Geometry/mode/toroidal analytical oracle, physical-first plot-data gate, no-umbrella compile, and focused `fo test` |
+| `migrate_wave_tensor_facades` | Mixed acoustics/waves, elasticity, wall, tensor-pressure, sheet-current, and linear-response consumers; use `fortfem_time`, `fortfem_feec`, `fortfem_boundary`, `fortfem_interop`, and `fortfem_plot` as applicable | Independent energy/symplectic, constitutive, response, or trace oracle; no-umbrella compile, physical-first plot-data gate, and focused `fo test` |
 
 This dispatch is a consumer migration, not permission to mass-rename public
 procedures. Verb-first renames remain coordinated API-03 work: an agent may
