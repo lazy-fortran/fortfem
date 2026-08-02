@@ -41,6 +41,19 @@ small neutral arrays, or data produced by an external adapter. A reference
 code name in this roadmap identifies a parity target or oracle, not a planned
 FortFEM module.
 
+### Foundation-only delivery rule
+
+Every equilibrium or MHD item below is delivered as a reusable ingredient:
+space, geometry map, trace or interface operator, residual block, derivative
+action, solver contract, manufactured fixture, and provenance record. A gallery
+example may compose these pieces into a small analytical or supplied-data
+demonstration. It must not grow into a production equilibrium, stability, or
+time-dependent MHD code. Application-specific profiles, closures, readers,
+continuation policy, and physical interpretation stay in the external client.
+The acceptance question is whether an independent client can assemble and
+verify the needed operator, not whether FortFEM can run a named code end to
+end.
+
 ## How to read this document
 
 The labels below describe the state of a deliverable.
