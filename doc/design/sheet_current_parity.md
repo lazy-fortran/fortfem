@@ -4,7 +4,7 @@ title: Sheet-current representation parity
 
 # Sheet-current representation parity
 
-`evaluate_sheet_current_parity` is a small manufactured slab contract for
+`compare_sheet_current_representations` is a small manufactured slab contract for
 MHD-09.  It compares two representations of the same tangential surface
 current without implementing an equilibrium or Maxwell solver:
 

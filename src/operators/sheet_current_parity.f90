@@ -19,11 +19,11 @@ module fortfem_sheet_current_parity
 
     real(dp), parameter :: equality_tolerance = 2.0e-12_dp
 
-    public :: evaluate_sheet_current_parity
+    public :: compare_sheet_current_representations
 
 contains
 
-    subroutine evaluate_sheet_current_parity( &
+    subroutine compare_sheet_current_representations( &
             signed_distance, normal_weights, sheet_current, thickness, &
             surface_measure, explicit_current, regularized_integrated, &
             explicit_integrated, relative_error, status)
@@ -75,7 +75,7 @@ contains
             return
         end if
         call status_set(status, FORTSPARSE_OK, "")
-    end subroutine evaluate_sheet_current_parity
+    end subroutine compare_sheet_current_representations
 
     subroutine validate_inputs( &
             signed_distance, normal_weights, sheet_current, thickness, &

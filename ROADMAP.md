@@ -349,7 +349,7 @@ waits for the full gallery/CI job before handing off.
 
 | Queue item | Owned files and result | Independent acceptance oracle |
 | --- | --- | --- |
-| API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; rename `evaluate_sheet_current_parity` to `compare_sheet_current_representations` and close value/JVP/VJP parity | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
+| API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; canonical `compare_sheet_current_representations` export and value parity are complete (the surface-quadrature companion remains in API-03-SURFACE) | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
 | API-03-SURFACE | Surface-quadrature definition, exports, tests/docs; rename `evaluate_sheet_current_surface_parity{,_jvp}` to `compare_sheet_current_surface_representations{,_jvp}` | Orientation/measure/toroidal quadrature oracle, central-difference JVP, and invalid-measure rejection |
 | API-06-GATE | New release-gate runner and isolated negative fixtures; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
 | API-05-GALLERY | Example import audit and documentation links, ordered by scalar-to-vector-to-interface complexity; no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
