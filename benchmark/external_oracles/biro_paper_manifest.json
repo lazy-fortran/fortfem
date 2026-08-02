@@ -1,0 +1,43 @@
+{
+  "schema": "fortfem-biro-paper-adapter-1",
+  "paper": {
+    "citation": "Biro, Preis, and Richter, On the use of the magnetic vector potential in the nodal and edge finite element analysis of 3D magnetostatic fields, IEEE Transactions on Magnetics 32 (1996), 651-654",
+    "provenance_uri": "https://doi.org/10.1109/20.497322",
+    "content_policy": "Paper-specific geometry, material, and source arrays are not redistributed; obtain an independently licensed artifact from the sister repository before running the exact adapter."
+  },
+  "case": {
+    "id": "biro-1996-tree-cotree-magnetostatic-v1",
+    "method": "direct tree-cotree gauge for a three-dimensional magnetostatic edge-element system",
+    "arrays": {
+      "geometry": {
+        "state": "external",
+        "embedded": false,
+        "artifact_member": "geometry",
+        "description": "paper-specific mesh and coordinate arrays"
+      },
+      "material": {
+        "state": "external",
+        "embedded": false,
+        "artifact_member": "material",
+        "description": "paper-specific material and metric arrays"
+      },
+      "source": {
+        "state": "external",
+        "embedded": false,
+        "artifact_member": "source",
+        "description": "paper-specific excitation and right-hand-side arrays"
+      }
+    }
+  },
+  "external_data": {
+    "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+    "manifest_uri": null,
+    "archive_sha256": null,
+    "availability": "absent"
+  },
+  "adapter": {
+    "status": "skipped",
+    "skip_reason": "the reviewed sister-repository artifact is not present; the in-tree manufactured gallery remains the method-faithful tree-cotree oracle",
+    "runner": "benchmark/external_oracles/run_biro_paper_adapter.py"
+  }
+}
