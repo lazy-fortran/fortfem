@@ -82,6 +82,11 @@ For cubic edges, the two controls `c_{e,1}`, `c_{e,2}` give
 The generated polynomial still evaluates the line integral exactly; the
 independent three-point rule is exact because the integrand has degree five.
 
+The public `compute_fci_quartic_curved_polygon_cell_areas_2d` contract adds
+three controls per edge.  Its FortSym-generated value/JVP/VJP products are
+checked independently with four-point Gauss--Green quadrature; the quartic
+edge Green integrand has degree seven, so that quadrature is exact.
+
 ## Provenance
 
 The factorization follows the support-operator construction described in the
