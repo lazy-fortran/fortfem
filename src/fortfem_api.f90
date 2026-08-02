@@ -45,6 +45,15 @@ module fortfem_api
         assemble_complex_coupled_field_residual, &
         assemble_complex_coupled_field_residual_jvp, &
         assemble_complex_coupled_field_residual_vjp
+    use fortfem_complex_low_rank_response, only: &
+        apply_complex_low_rank_matrix, &
+        apply_complex_low_rank_matrix_jvp, &
+        apply_complex_low_rank_matrix_vjp, &
+        compress_complex_matrix_cross, &
+        complex_low_rank_matrix_t, &
+        initialize_complex_low_rank_matrix, &
+        materialize_complex_low_rank_matrix, &
+        validate_complex_low_rank_matrix
     use fortfem_complex_boundary_trace_residual, only: &
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
@@ -2588,6 +2597,14 @@ module fortfem_api
     public :: assemble_complex_coupled_field_residual
     public :: assemble_complex_coupled_field_residual_jvp
     public :: assemble_complex_coupled_field_residual_vjp
+    public :: complex_low_rank_matrix_t
+    public :: initialize_complex_low_rank_matrix
+    public :: validate_complex_low_rank_matrix
+    public :: compress_complex_matrix_cross
+    public :: materialize_complex_low_rank_matrix
+    public :: apply_complex_low_rank_matrix
+    public :: apply_complex_low_rank_matrix_jvp
+    public :: apply_complex_low_rank_matrix_vjp
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
