@@ -217,6 +217,66 @@ Each facade must depend only on lower layers, keep generated kernels behind a
 stable module interface, and have a focused test target. Splitting build
 targets and modules comes before splitting repositories.
 
+### 1.4 API reorganization and rename workstream
+
+The current public surface has grown faster than its namespace: the
+3,412-line `src/fortfem_api.f90` umbrella imports the older
+`fortfem_api_types`, `fortfem_api_mesh`, `fortfem_api_spaces`,
+`fortfem_api_forms`, `fortfem_api_solvers`, and plotting modules as well as
+the newer domain modules. This is useful for examples, but it makes ownership,
+dependency direction, generated-code visibility, and future semantic versioning
+hard to audit. The following workstream is a product task, not cosmetic
+renaming. It must be completed before the public API is treated as stable.
+
+The migration is deliberately staged:
+
+1. inventory every exported symbol and its defining module, source file,
+   derivative actions, tests, examples, and generator provenance;
+2. freeze the dependency layers and create canonical facades
+   (`fortfem_core`, `fortfem_feec`, `fortfem_fourier`, `fortfem_boundary`,
+   `fortfem_time`, `fortfem_interop`, and `fortfem_plot`);
+3. move or re-export symbols behind those facades without changing numerical
+   behavior, and make `fortfem_api` a thin convenience import;
+4. apply the verb-first names in §1.3 in one pre-release rename, updating all
+   source, tests, examples, documentation, and generated API references in
+   the same commit; and
+5. remove obsolete spellings after the migration gate passes. A temporary
+   compatibility alias is allowed only when an external release has already
+   depended on the name; it must carry an explicit removal issue and test.
+
+The refactor must not create a second implementation of an operator. A public
+facade owns validation and metadata; a generated module owns kernels; a
+domain module owns the residual or algebra; and the umbrella only re-exports
+the canonical symbol. No generated file may import the umbrella, and no
+facade may depend on a higher layer or on a plotting module. All public
+procedures retain primal/JVP/VJP/HVP conventions and fixed-topology
+differentiability during the move.
+
+#### Agent-ready API task ledger
+
+Each row is independently reviewable and must be done on an agent branch or
+worktree with disjoint file ownership. Agents must not mass-rename symbols
+until API-00 has produced the inventory. A row closes only with its focused
+test, an independent behavioral oracle, and a short migration note.
+
+| ID | Scope and deliverable | Acceptance gate |
+| --- | --- | --- |
+| **API-00** | Build a deterministic public-symbol inventory from `fortfem_api.f90` and all existing API modules. Record symbol, defining module/file, proposed facade, current spelling, proposed spelling (if any), generator, derivative actions, tests, examples, and status. Detect duplicate exports, orphaned public symbols, cyclic facade dependencies, and generated modules that leak directly into clients. Do not rename code. | Re-running the inventory is byte-stable; every current export has exactly one owner; an independent fixture catches a deliberately duplicated or orphaned entry. |
+| **API-01** | Write and enforce the module-layer graph: core → FEEC/forms/operators → boundary/time → solvers/interop/plot, with generated kernels below their owning facade. Add a small cycle/leak check that uses compiler-visible module dependencies rather than string matching alone. | The existing tree passes; a fixture with a reversed edge or umbrella import fails with a useful diagnostic; no numerical source changes. |
+| **API-02** | Introduce the canonical facades in small slices, starting with `fortfem_core` and `fortfem_feec`, then the remaining facades. Re-export existing implementations first; keep `fortfem_api` as a thin umbrella. Move implementation ownership only after a facade has a focused test. | Public smoke programs compile using each facade and the umbrella; old and new import paths produce identical values, JVPs, VJPs, and structure ledgers on an analytical case. |
+| **API-03** | Perform the coordinated verb-first rename. Prioritize ambiguous `evaluate_*_parity` and other non-semantic `compute_*` names, then types and constructors. Update call sites, examples, docs, generated manifests, and FortSym registration atomically. Remove obsolete spellings unless the release policy explicitly records a compatibility alias. | A compile-time old-spelling scan finds no stale internal use; independent value/JVP/VJP and conservation or symplectic oracles pass for every renamed operator; the generated-code currentness check remains green. |
+| **API-04** | Audit generated and handwritten boundaries. Give every generated family a stable internal module and one checked public wrapper; add visibility tests so clients cannot accidentally import an unpinned generated symbol. Record FortSym revision and regeneration command in the inventory. | Regeneration is byte-current; a negative compile fixture cannot use an internal generated symbol; wrapper and direct-kernel outputs agree independently. |
+| **API-05** | Migrate examples and documentation in increasing complexity. Every example imports the smallest suitable facade, while one smoke gallery retains the umbrella path. Generate API pages and cross-links from the inventory; do not check in plots or build products. | `fo test`, formatting, example compilation, link checks, and the example documentation coverage test pass; at least one physical solution plot per migrated example remains unchanged within the declared image/data oracle. |
+| **API-06** | Add the release gate and deprecation/removal policy. The gate checks public exports, layer cycles, stale names, generated currentness, focused derivative tests, and a clean module dependency graph in the fast ten-second path; slow cross-compiler and gallery jobs remain asynchronous. | A clean tree passes the gate; each failure mode has an independent fixture and actionable diagnostic; the roadmap records the release milestone at which obsolete names disappear. |
+| **API-07** | Run a downstream-style consumer audit without importing any application physics. Compile minimal clients for FEM, IGA/Fourier, FEM/BEM/DtN/PML, mixed waves/elasticity, and external-adapter interchange using only canonical facades. | Clients compile with no umbrella dependency, preserve units and metadata, and reproduce the same analytical/oracle results as the pre-refactor baseline. |
+
+The first implementation increment is intentionally small: API-00 and API-01
+may land without adding facades, and API-02 may land with only re-exports.
+This keeps the product usable while agents parallelize the inventory and
+refactor. A rename is not considered complete because `rg` found a new
+spelling; it is complete only when the behavioral, derivative, generated, and
+documentation gates above pass.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
