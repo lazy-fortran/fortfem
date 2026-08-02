@@ -306,6 +306,14 @@ module fortfem_api
     use fortfem_flux_surface_average, only: &
         evaluate_flux_surface_average, evaluate_flux_surface_average_jvp, &
         evaluate_flux_surface_average_vjp
+    use fortfem_equation_objective_registry, only: &
+        equation_objective_block_t, equation_objective_registry_t, &
+        initialize_equation_objective_registry, &
+        validate_equation_objective_registry, equation_objective_registry_block, &
+        equation_objective_registry_block_count, equation_objective_registry_total_rows, &
+        pack_equation_objective_values, pack_equation_objective_values_jvp, &
+        pack_equation_objective_values_vjp, unpack_equation_objective_values, &
+        REGISTRY_KIND_EQUATION, REGISTRY_KIND_OBJECTIVE, REGISTRY_KIND_CONSTRAINT
     use fortfem_nested_surface_geometry, only: &
         evaluate_nested_surface_geometry, &
         evaluate_nested_surface_geometry_jvp, &
@@ -1621,6 +1629,20 @@ module fortfem_api
     public :: evaluate_flux_surface_average
     public :: evaluate_flux_surface_average_jvp
     public :: evaluate_flux_surface_average_vjp
+    public :: equation_objective_block_t
+    public :: equation_objective_registry_t
+    public :: initialize_equation_objective_registry
+    public :: validate_equation_objective_registry
+    public :: equation_objective_registry_block
+    public :: equation_objective_registry_block_count
+    public :: equation_objective_registry_total_rows
+    public :: pack_equation_objective_values
+    public :: pack_equation_objective_values_jvp
+    public :: pack_equation_objective_values_vjp
+    public :: unpack_equation_objective_values
+    public :: REGISTRY_KIND_EQUATION
+    public :: REGISTRY_KIND_OBJECTIVE
+    public :: REGISTRY_KIND_CONSTRAINT
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp
