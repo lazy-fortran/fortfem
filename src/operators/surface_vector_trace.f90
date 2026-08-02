@@ -33,7 +33,7 @@ contains
         normal_component = 0.0_dp
         tangential_field = 0.0_dp
         if (.not. valid_base_inputs(field, normals, normal_component, &
-                tangential_field)) then
+            tangential_field)) then
             call invalid_status(status, &
                 "surface vector trace has incompatible or non-finite samples")
             return
@@ -70,8 +70,8 @@ contains
         normal_component_dot = 0.0_dp
         tangential_field_dot = 0.0_dp
         if (.not. valid_base_inputs(field, normals, normal_component_dot, &
-                tangential_field_dot) .or. .not. valid_direction_inputs( &
-                field, normals, field_dot, normals_dot)) then
+            tangential_field_dot) .or. .not. valid_direction_inputs( &
+            field, normals, field_dot, normals_dot)) then
             call invalid_status(status, &
                 "surface vector trace JVP has incompatible samples")
             return
@@ -115,7 +115,7 @@ contains
         field_bar = 0.0_dp
         normals_bar = 0.0_dp
         if (.not. valid_base_inputs(field, normals, normal_component_bar, &
-                tangential_field_bar) .or. size(field_bar, 1) /= 3 .or. &
+            tangential_field_bar) .or. size(field_bar, 1) /= 3 .or. &
             size(field_bar, 2) /= size(field, 2) .or. &
             size(normals_bar, 1) /= 3 .or. size(normals_bar, 2) /= size(field, 2) .or. &
             .not. all(ieee_is_finite(normal_component_bar)) .or. &
