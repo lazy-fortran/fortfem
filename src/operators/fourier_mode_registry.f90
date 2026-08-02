@@ -282,15 +282,16 @@ contains
         integer, allocatable :: poloidal_buffer(:), toroidal_buffer(:)
         integer, allocatable :: radial_buffer(:)
         real(dp), allocatable :: normalization_buffer(:)
-        integer :: mode_count, maximum_count, mode_total
+        integer :: mode_count, mode_total
         integer :: first_mode, second_mode
 
         call clear_registry(padded_registry)
         if (.not. validate_fourier_mode_registry(registry, status)) return
         mode_count = size(registry%poloidal_modes)
-        maximum_count = mode_count + mode_count*mode_count
-        allocate(poloidal_buffer(maximum_count), toroidal_buffer(maximum_count), &
-            radial_buffer(maximum_count), normalization_buffer(maximum_count))
+        ! Most Fourier windows have many colliding sums. Grow only when a
+        ! distinct sum is retained instead of reserving four N+N^2 arrays.
+        allocate(poloidal_buffer(mode_count), toroidal_buffer(mode_count), &
+            radial_buffer(mode_count), normalization_buffer(mode_count))
         mode_total = 0
         do first_mode = 1, mode_count
             call append_padded_mode( &
@@ -357,9 +358,9 @@ contains
         type(fourier_mode_registry_t), intent(in) :: registry
         integer, intent(in) :: poloidal_mode, toroidal_mode
         integer, intent(inout) :: mode_total
-        integer, intent(inout) :: poloidal_buffer(:), toroidal_buffer(:)
-        integer, intent(inout) :: radial_buffer(:)
-        real(dp), intent(inout) :: normalization_buffer(:)
+        integer, allocatable, intent(inout) :: poloidal_buffer(:), toroidal_buffer(:)
+        integer, allocatable, intent(inout) :: radial_buffer(:)
+        real(dp), allocatable, intent(inout) :: normalization_buffer(:)
         integer :: existing_mode, source_mode
 
         do existing_mode = 1, mode_total
@@ -367,6 +368,10 @@ contains
                 toroidal_buffer(existing_mode) /= toroidal_mode) cycle
             return
         end do
+        if (mode_total == size(poloidal_buffer)) then
+            call grow_padded_buffers( &
+                poloidal_buffer, toroidal_buffer, radial_buffer, normalization_buffer)
+        end if
         mode_total = mode_total + 1
         poloidal_buffer(mode_total) = poloidal_mode
         toroidal_buffer(mode_total) = toroidal_mode
@@ -379,6 +384,30 @@ contains
             normalization_buffer(mode_total) = 1.0_dp
         end if
     end subroutine append_padded_mode
+
+    subroutine grow_padded_buffers( &
+            poloidal_buffer, toroidal_buffer, radial_buffer, normalization_buffer)
+        integer, allocatable, intent(inout) :: poloidal_buffer(:), toroidal_buffer(:)
+        integer, allocatable, intent(inout) :: radial_buffer(:)
+        real(dp), allocatable, intent(inout) :: normalization_buffer(:)
+        integer, allocatable :: poloidal_new(:), toroidal_new(:), radial_new(:)
+        real(dp), allocatable :: normalization_new(:)
+        integer :: old_capacity, new_capacity
+
+        old_capacity = size(poloidal_buffer)
+        new_capacity = max(1, 2*old_capacity)
+        allocate( &
+            poloidal_new(new_capacity), toroidal_new(new_capacity), &
+            radial_new(new_capacity), normalization_new(new_capacity))
+        poloidal_new(:old_capacity) = poloidal_buffer
+        toroidal_new(:old_capacity) = toroidal_buffer
+        radial_new(:old_capacity) = radial_buffer
+        normalization_new(:old_capacity) = normalization_buffer
+        call move_alloc(poloidal_new, poloidal_buffer)
+        call move_alloc(toroidal_new, toroidal_buffer)
+        call move_alloc(radial_new, radial_buffer)
+        call move_alloc(normalization_new, normalization_buffer)
+    end subroutine grow_padded_buffers
 
     subroutine evaluate_fourier_mode( &
             registry, mode_index, radius, theta, phi, value, radial_derivative, &
