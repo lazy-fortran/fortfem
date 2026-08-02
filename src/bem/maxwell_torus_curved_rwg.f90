@@ -39,6 +39,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: evaluate_maxwell_torus_curved_rwg_basis_jvp
     public :: evaluate_maxwell_torus_curved_rwg_basis_vjp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
+    public :: evaluate_maxwell_torus_curved_localized_rwg_basis_jvp
+    public :: evaluate_maxwell_torus_curved_localized_rwg_basis_vjp
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
     public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
@@ -1049,6 +1051,204 @@ contains
         surface_divergence = 2.0_dp*edge_length/surface_jacobian
         status = 0
     end subroutine evaluate_maxwell_torus_curved_localized_rwg_basis
+
+    pure subroutine evaluate_maxwell_torus_curved_localized_rwg_basis_jvp( &
+            vertices, triangles, parameters, panel, local_edge, major_radius, &
+            minor_radius, xi, eta, vertices_dot, parameters_dot, &
+            major_radius_dot, minor_radius_dot, point, value, surface_divergence, &
+            surface_jacobian, point_dot, value_dot, surface_divergence_dot, &
+            surface_jacobian_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :), panel, local_edge
+        real(dp), intent(in) :: major_radius, minor_radius, xi, eta
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), intent(out) :: point(3), value(3), surface_divergence
+        real(dp), intent(out) :: surface_jacobian, point_dot(3), value_dot(3)
+        real(dp), intent(out) :: surface_divergence_dot, surface_jacobian_dot
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_dot(3), edge_length, edge_length_dot
+        real(dp) :: panel_parameters(2, 3), panel_parameters_dot(2, 3)
+        real(dp) :: tangent_eta(3), tangent_eta_dot(3)
+        real(dp) :: tangent_xi(3), tangent_xi_dot(3)
+        real(dp) :: vector(3), vector_dot(3), coefficient, coefficient_dot
+        real(dp) :: opposite_coordinates(2)
+        integer :: edge_local_vertices(2), local, opposite
+
+        point = 0.0_dp
+        value = 0.0_dp
+        surface_divergence = 0.0_dp
+        surface_jacobian = 0.0_dp
+        point_dot = 0.0_dp
+        value_dot = 0.0_dp
+        surface_divergence_dot = 0.0_dp
+        surface_jacobian_dot = 0.0_dp
+        status = 1
+        if (size(vertices, 1) /= 3) return
+        if (size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (any(shape(parameters_dot) /= shape(parameters))) return
+        if (panel < 1 .or. panel > size(triangles, 2)) return
+        if (local_edge < 1 .or. local_edge > 3) return
+        select case (local_edge)
+        case (1)
+            edge_local_vertices = [1, 2]
+            opposite = 3
+        case (2)
+            edge_local_vertices = [3, 1]
+            opposite = 2
+        case (3)
+            edge_local_vertices = [2, 3]
+            opposite = 1
+        end select
+        do local = 1, 3
+            panel_parameters(:, local) = parameters(:, triangles(local, panel))
+            panel_parameters_dot(:, local) = &
+                parameters_dot(:, triangles(local, panel))
+        end do
+        call evaluate_torus_curved_panel( &
+            panel_parameters, major_radius, minor_radius, xi, eta, point, &
+            tangent_xi, tangent_eta, surface_jacobian, status)
+        if (status /= 0) return
+        call evaluate_torus_curved_panel_jvp( &
+            panel_parameters, major_radius, minor_radius, xi, eta, &
+            panel_parameters_dot, major_radius_dot, minor_radius_dot, 0.0_dp, &
+            0.0_dp, point_dot, tangent_xi_dot, tangent_eta_dot, &
+            surface_jacobian_dot, status)
+        if (status /= 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge = vertices(:, triangles(edge_local_vertices(2), panel)) - &
+            vertices(:, triangles(edge_local_vertices(1), panel))
+        edge_dot = vertices_dot(:, triangles(edge_local_vertices(2), panel)) - &
+            vertices_dot(:, triangles(edge_local_vertices(1), panel))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp)) return
+        edge_length_dot = dot_product(edge, edge_dot)/edge_length
+        vector = (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta
+        vector_dot = (xi - opposite_coordinates(1))*tangent_xi_dot + &
+            (eta - opposite_coordinates(2))*tangent_eta_dot
+        coefficient = edge_length/surface_jacobian
+        coefficient_dot = edge_length_dot/surface_jacobian - &
+            edge_length*surface_jacobian_dot/surface_jacobian**2
+        value = coefficient*vector
+        value_dot = coefficient_dot*vector + coefficient*vector_dot
+        surface_divergence = 2.0_dp*coefficient
+        surface_divergence_dot = 2.0_dp*coefficient_dot
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_localized_rwg_basis_jvp
+
+    pure subroutine evaluate_maxwell_torus_curved_localized_rwg_basis_vjp( &
+            vertices, triangles, parameters, panel, local_edge, major_radius, &
+            minor_radius, xi, eta, point_bar, value_bar, &
+            surface_divergence_bar, surface_jacobian_bar, vertices_bar, &
+            parameters_bar, major_radius_bar, minor_radius_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :), panel, local_edge
+        real(dp), intent(in) :: major_radius, minor_radius, xi, eta
+        real(dp), intent(in) :: point_bar(3), value_bar(3)
+        real(dp), intent(in) :: surface_divergence_bar, surface_jacobian_bar
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_bar(3), edge_length, edge_length_bar
+        real(dp) :: panel_parameters(2, 3), panel_parameters_bar(2, 3)
+        real(dp) :: tangent_eta(3), tangent_eta_bar(3)
+        real(dp) :: tangent_xi(3), tangent_xi_bar(3)
+        real(dp) :: vector(3), vector_bar(3), coefficient, coefficient_bar
+        real(dp) :: local_jacobian_bar, local_major_bar, local_minor_bar
+        real(dp) :: opposite_coordinates(2), surface_jacobian
+        real(dp) :: dummy_point(3), dummy_tangent_xi(3), dummy_tangent_eta(3)
+        integer :: edge_local_vertices(2), local, opposite
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        status = 1
+        if (size(vertices, 1) /= 3) return
+        if (size(parameters, 1) /= 2) return
+        if (size(parameters, 2) /= size(vertices, 2)) return
+        if (size(vertices_bar, 1) /= size(vertices, 1)) return
+        if (size(vertices_bar, 2) /= size(vertices, 2)) return
+        if (size(parameters_bar, 1) /= size(parameters, 1)) return
+        if (size(parameters_bar, 2) /= size(parameters, 2)) return
+        if (panel < 1 .or. panel > size(triangles, 2)) return
+        if (local_edge < 1 .or. local_edge > 3) return
+        select case (local_edge)
+        case (1)
+            edge_local_vertices = [1, 2]
+            opposite = 3
+        case (2)
+            edge_local_vertices = [3, 1]
+            opposite = 2
+        case (3)
+            edge_local_vertices = [2, 3]
+            opposite = 1
+        end select
+        do local = 1, 3
+            panel_parameters(:, local) = parameters(:, triangles(local, panel))
+        end do
+        call evaluate_torus_curved_panel( &
+            panel_parameters, major_radius, minor_radius, xi, eta, dummy_point, &
+            dummy_tangent_xi, dummy_tangent_eta, surface_jacobian, status)
+        if (status /= 0) return
+        select case (opposite)
+        case (1)
+            opposite_coordinates = [0.0_dp, 0.0_dp]
+        case (2)
+            opposite_coordinates = [1.0_dp, 0.0_dp]
+        case (3)
+            opposite_coordinates = [0.0_dp, 1.0_dp]
+        end select
+        edge = vertices(:, triangles(edge_local_vertices(2), panel)) - &
+            vertices(:, triangles(edge_local_vertices(1), panel))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp)) return
+        tangent_xi = dummy_tangent_xi
+        tangent_eta = dummy_tangent_eta
+        coefficient = edge_length/surface_jacobian
+        vector = (xi - opposite_coordinates(1))*tangent_xi + &
+            (eta - opposite_coordinates(2))*tangent_eta
+        coefficient_bar = dot_product(value_bar, vector)
+        vector_bar = coefficient*value_bar
+        edge_length_bar = coefficient_bar/surface_jacobian + &
+            2.0_dp*surface_divergence_bar/surface_jacobian
+        local_jacobian_bar = surface_jacobian_bar - &
+            edge_length*coefficient_bar/surface_jacobian**2 - &
+            2.0_dp*edge_length*surface_divergence_bar/surface_jacobian**2
+        edge_bar = edge_length_bar*edge/edge_length
+        vertices_bar(:, triangles(edge_local_vertices(1), panel)) = &
+            vertices_bar(:, triangles(edge_local_vertices(1), panel)) - edge_bar
+        vertices_bar(:, triangles(edge_local_vertices(2), panel)) = &
+            vertices_bar(:, triangles(edge_local_vertices(2), panel)) + edge_bar
+        tangent_xi_bar = (xi - opposite_coordinates(1))*vector_bar
+        tangent_eta_bar = (eta - opposite_coordinates(2))*vector_bar
+        call evaluate_torus_curved_panel_vjp( &
+            panel_parameters, major_radius, minor_radius, xi, eta, point_bar, &
+            tangent_xi_bar, tangent_eta_bar, local_jacobian_bar, &
+            panel_parameters_bar, local_major_bar, local_minor_bar, &
+            dummy_point(1), dummy_point(2), status)
+        if (status /= 0) return
+        do local = 1, 3
+            parameters_bar(:, triangles(local, panel)) = &
+                parameters_bar(:, triangles(local, panel)) + &
+                panel_parameters_bar(:, local)
+        end do
+        major_radius_bar = local_major_bar
+        minor_radius_bar = local_minor_bar
+        status = 0
+    end subroutine evaluate_maxwell_torus_curved_localized_rwg_basis_vjp
 
     subroutine assemble_maxwell_torus_curved_efie_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
