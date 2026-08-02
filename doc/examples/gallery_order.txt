@@ -8,6 +8,7 @@ plotting
 mixed_poisson
 anisotropic_tensor_diffusion
 xfem_interface_solution
+regularized_surface_current_layer
 curl_curl
 cgl_pressure_tensor
 field_aligned_flux
