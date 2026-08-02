@@ -40,6 +40,7 @@ OBSOLETE_NAMES = (
     "evaluate_sheet_current_parity",
     "evaluate_sheet_current_surface_parity",
     "evaluate_sheet_current_surface_parity_jvp",
+    "evaluate_tree_cotree_iga_parity",
 )
 
 
