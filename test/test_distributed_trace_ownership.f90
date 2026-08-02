@@ -35,8 +35,9 @@ program test_distributed_trace_ownership
         [local_count, component_count])
     type(partition_layout_t) :: partitions(partition_count)
     type(partition_layout_t) :: bad_partitions(partition_count)
+    type(partition_layout_t) :: incomplete_partitions(partition_count)
     type(partition_layout_t) :: bad_partition, mismatched_partition
-    type(distributed_trace_layout_t) :: layout, bad_layout
+    type(distributed_trace_layout_t) :: layout, bad_layout, incomplete_layout
     type(fortsparse_status_t) :: status
     real(dp) :: global_values(global_count, component_count)
     real(dp) :: owner_values(global_count, component_count)
@@ -159,6 +160,17 @@ program test_distributed_trace_ownership
         bad_layout, bad_partitions, component_count, status)
     call record_condition(status%code /= 0, &
         "distributed trace layout rejects inconsistent ghost owner IDs")
+
+    call initialize_partition_layout( &
+        incomplete_partitions(1), global_count + 1, local_to_global_0, &
+        owner_rank_0, owned_0, 0, status)
+    call initialize_partition_layout( &
+        incomplete_partitions(2), global_count + 1, local_to_global_1, &
+        owner_rank_1, owned_1, 1, status)
+    call initialize_distributed_trace_layout( &
+        incomplete_layout, incomplete_partitions, component_count, status)
+    call record_condition(status%code /= 0, &
+        "distributed trace layout rejects an omitted global row")
 
     call check_summary("distributed trace ownership")
     if (.not. all_passed) error stop 1

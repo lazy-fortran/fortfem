@@ -153,6 +153,11 @@ contains
             end do
         end do
         do global_id = 1, layout%global_count
+            if (.not. seen(global_id)) then
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "distributed trace layout omits a global row")
+                return
+            end if
             if (seen(global_id) .and. owner_count(global_id) /= 1) then
                 call status_set(status, FORTSPARSE_INVALID_MATRIX, &
                     "distributed trace row does not have exactly one owner")
