@@ -1,6 +1,6 @@
 program test_field_aligned_flux
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_field_aligned_flux, evaluate_field_aligned_flux_jvp, &
         evaluate_field_aligned_flux_vjp
     use fortfem_kinds, only: dp

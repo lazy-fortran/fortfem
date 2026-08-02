@@ -1,6 +1,6 @@
 program anisotropic_tensor_diffusion
     !! Manufactured P1 diffusion with a strongly anisotropic tensor.
-    use fortfem_api, only: assemble_tensor_diffusion_matrix
+    use fortfem_feec, only: assemble_tensor_diffusion_matrix
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, contourf, figure, legend, plot, savefig, &
         title, xlabel, ylabel
