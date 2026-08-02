@@ -220,6 +220,10 @@ end program team13_neutral_benchmark
 
 ![primary.png](../../media/examples/team13_neutral_benchmark/primary.png)
 
+### probe.png
+
+![probe.png](../../media/examples/team13_neutral_benchmark/probe.png)
+
 ### solution.png
 
 ![solution.png](../../media/examples/team13_neutral_benchmark/solution.png)

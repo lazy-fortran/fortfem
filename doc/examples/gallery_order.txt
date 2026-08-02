@@ -43,6 +43,7 @@ fortfem_mesh_benchmark
 solver_benchmark
 biro_tree_cotree_benchmark
 biro_tree_cotree_3d_gallery
+team3_neutral_benchmark
 team7_neutral_benchmark
 team13_neutral_benchmark
 interoperability_benchmarks

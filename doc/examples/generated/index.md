@@ -39,9 +39,10 @@ Pages contain the complete source, usage command, and generated plots.
 - [acoustic_fem_dtn](acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
 - [maxwell_open_boundary_comparison](maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
-- [solver_benchmark](solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
+- [solver_benchmark](solver_benchmark.html) - This example solves the unit-source Poisson system, shows the physical
 - [biro_tree_cotree_benchmark](biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
 - [biro_tree_cotree_3d_gallery](biro_tree_cotree_3d_gallery.html) - This executable is a small, license-safe manufactured 3-D edge-element
+- [team3_neutral_benchmark](team3_neutral_benchmark.html) - This example is a small, solution-first foundation fixture shaped like the
 - [team7_neutral_benchmark](team7_neutral_benchmark.html) - This solution-first fixture is a small, license-safe 2-D analogue of the
 - [team13_neutral_benchmark](team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,

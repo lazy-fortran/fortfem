@@ -402,9 +402,25 @@ end program mixed_wave_pressure_displacement_gallery
 
 ![primary.png](../../media/examples/mixed_wave_pressure_displacement_gallery/primary.png)
 
+### diagnostics_energy_error.png
+
+![diagnostics_energy_error.png](../../media/examples/mixed_wave_pressure_displacement_gallery/diagnostics_energy_error.png)
+
+### diagnostics_structure.png
+
+![diagnostics_structure.png](../../media/examples/mixed_wave_pressure_displacement_gallery/diagnostics_structure.png)
+
+### solution_1d.png
+
+![solution_1d.png](../../media/examples/mixed_wave_pressure_displacement_gallery/solution_1d.png)
+
 ### solution_2d.png
 
 ![solution_2d.png](../../media/examples/mixed_wave_pressure_displacement_gallery/solution_2d.png)
+
+### solution_3d.png
+
+![solution_3d.png](../../media/examples/mixed_wave_pressure_displacement_gallery/solution_3d.png)
 
 ---
 

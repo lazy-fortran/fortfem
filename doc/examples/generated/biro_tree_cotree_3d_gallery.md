@@ -348,9 +348,17 @@ end program biro_tree_cotree_3d_gallery
 
 ![primary.png](../../media/examples/biro_tree_cotree_3d_gallery/primary.png)
 
+### diagnostics_1d.png
+
+![diagnostics_1d.png](../../media/examples/biro_tree_cotree_3d_gallery/diagnostics_1d.png)
+
 ### solution.png
 
 ![solution.png](../../media/examples/biro_tree_cotree_3d_gallery/solution.png)
+
+### solution_3d.png
+
+![solution_3d.png](../../media/examples/biro_tree_cotree_3d_gallery/solution_3d.png)
 
 ---
 

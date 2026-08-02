@@ -363,9 +363,17 @@ end program free_boundary_port_gallery
 
 ![primary.png](../../media/examples/free_boundary_port_gallery/primary.png)
 
+### free_boundary_port_diagnostics_1d.png
+
+![free_boundary_port_diagnostics_1d.png](../../media/examples/free_boundary_port_gallery/free_boundary_port_diagnostics_1d.png)
+
 ### free_boundary_port_solution_3d.png
 
 ![free_boundary_port_solution_3d.png](../../media/examples/free_boundary_port_gallery/free_boundary_port_solution_3d.png)
+
+### free_boundary_port_trace_2d.png
+
+![free_boundary_port_trace_2d.png](../../media/examples/free_boundary_port_gallery/free_boundary_port_trace_2d.png)
 
 ---
 

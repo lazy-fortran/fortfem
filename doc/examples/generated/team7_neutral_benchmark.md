@@ -294,6 +294,14 @@ end program team7_neutral_benchmark
 
 ![primary.png](../../media/examples/team7_neutral_benchmark/primary.png)
 
+### current.png
+
+![current.png](../../media/examples/team7_neutral_benchmark/current.png)
+
+### probe.png
+
+![probe.png](../../media/examples/team7_neutral_benchmark/probe.png)
+
 ### solution.png
 
 ![solution.png](../../media/examples/team7_neutral_benchmark/solution.png)
