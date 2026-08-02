@@ -64,6 +64,16 @@ module fortfem_api
         assemble_nonlinear_resistive_mhd_residual_jvp, &
         assemble_nonlinear_resistive_mhd_residual_vjp, &
         nonlinear_resistive_mhd_energy_ledger_t
+    use fortfem_resistive_mhd_branch_history, only: &
+        compare_resistive_mhd_branch_histories, &
+        evaluate_resistive_mhd_branch_diagnostics, &
+        evaluate_resistive_mhd_branch_path_metric, &
+        evaluate_resistive_mhd_branch_path_metric_jvp, &
+        evaluate_resistive_mhd_branch_path_metric_vjp, &
+        initialize_resistive_mhd_branch_history, &
+        resistive_mhd_branch_diagnostics_t, &
+        resistive_mhd_branch_history_t, &
+        validate_resistive_mhd_branch_history
     use fortfem_pseudo_arclength_residual, only: &
         assemble_pseudo_arclength_residual, &
         assemble_pseudo_arclength_residual_jvp, &
@@ -3013,6 +3023,15 @@ module fortfem_api
     public :: assemble_nonlinear_resistive_mhd_residual
     public :: assemble_nonlinear_resistive_mhd_residual_jvp
     public :: assemble_nonlinear_resistive_mhd_residual_vjp
+    public :: resistive_mhd_branch_history_t
+    public :: resistive_mhd_branch_diagnostics_t
+    public :: initialize_resistive_mhd_branch_history
+    public :: validate_resistive_mhd_branch_history
+    public :: evaluate_resistive_mhd_branch_diagnostics
+    public :: compare_resistive_mhd_branch_histories
+    public :: evaluate_resistive_mhd_branch_path_metric
+    public :: evaluate_resistive_mhd_branch_path_metric_jvp
+    public :: evaluate_resistive_mhd_branch_path_metric_vjp
     public :: linear_response_schema_magic
     public :: read_linear_response_interchange
     public :: write_linear_response_interchange
