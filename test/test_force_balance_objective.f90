@@ -3,7 +3,8 @@ program test_force_balance_objective
     use fortfem_api, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
-        evaluate_force_balance_objective_vjp
+        evaluate_force_balance_objective_vjp, &
+        evaluate_force_balance_objective_hvp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -15,6 +16,9 @@ program test_force_balance_objective
     real(dp), parameter :: epsilon_fd = 1.0e-6_dp
     real(dp) :: objective, objective_plus, objective_minus, objective_dot
     real(dp) :: residual_bar(3), weights_bar(3), objective_bar
+    real(dp) :: residual_bar_dot(3), weights_bar_dot(3)
+    real(dp) :: residual_bar_plus(3), weights_bar_plus(3)
+    real(dp) :: residual_bar_minus(3), weights_bar_minus(3)
     real(dp) :: lhs, rhs
     logical :: all_passed
     type(fortsparse_status_t) :: status
@@ -42,6 +46,22 @@ program test_force_balance_objective
     rhs = sum(residual_bar*residual_dot) + sum(weights_bar*weights_dot)
     call record_condition(status%code == 0 .and. abs(lhs - rhs) < 1.0e-14_dp, &
         "weighted force objective VJP satisfies the real adjoint identity")
+
+    call evaluate_force_balance_objective_hvp( &
+        residual, weights, residual_dot, weights_dot, objective_bar, &
+        residual_bar_dot, weights_bar_dot, status)
+    call evaluate_force_balance_objective_vjp( &
+        residual + epsilon_fd*residual_dot, weights + epsilon_fd*weights_dot, &
+        objective_bar, residual_bar_plus, weights_bar_plus, status)
+    call evaluate_force_balance_objective_vjp( &
+        residual - epsilon_fd*residual_dot, weights - epsilon_fd*weights_dot, &
+        objective_bar, residual_bar_minus, weights_bar_minus, status)
+    call record_condition(status%code == 0 .and. &
+        maxval(abs(residual_bar_dot - (residual_bar_plus - residual_bar_minus) / &
+            (2.0_dp*epsilon_fd))) < 1.0e-8_dp .and. &
+        maxval(abs(weights_bar_dot - (weights_bar_plus - weights_bar_minus) / &
+            (2.0_dp*epsilon_fd))) < 1.0e-8_dp, &
+        "force-balance objective Hessian-vector action matches VJP finite difference")
 
     call evaluate_force_balance_objective(residual, [-1.0_dp, 1.0_dp, 1.0_dp], &
         objective, status)
