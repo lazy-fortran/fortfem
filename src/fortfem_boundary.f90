@@ -35,6 +35,10 @@ module fortfem_boundary
     use fortfem_helmholtz_exterior_2d, only: &
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
+    use fortfem_free_boundary_port_residual, only: &
+        assemble_free_boundary_port_residual, &
+        assemble_free_boundary_port_residual_jvp, &
+        assemble_free_boundary_port_residual_vjp
     use fortfem_laplace_symmetric_coupling_2d, only: &
         solve_laplace_symmetric_coupling_p1_p0
     use fortfem_planar_helmholtz_dtn, only: &
@@ -80,6 +84,9 @@ module fortfem_boundary
     public :: evaluate_helmholtz_combined_potential_constant
     public :: solve_helmholtz_cfie_constant
     public :: solve_laplace_symmetric_coupling_p1_p0
+    public :: assemble_free_boundary_port_residual
+    public :: assemble_free_boundary_port_residual_jvp
+    public :: assemble_free_boundary_port_residual_vjp
 
     ! Boundary type for defining domains
     type :: boundary_t

@@ -85,6 +85,11 @@ CASES = (
         "example/laplace_symmetric_transmission.f90",
         "fortfem_boundary",
     ),
+    ExampleCase(
+        "neutral free-boundary trace",
+        "example/free_boundary_port_gallery/free_boundary_port_gallery.f90",
+        "fortfem_boundary",
+    ),
 )
 
 
