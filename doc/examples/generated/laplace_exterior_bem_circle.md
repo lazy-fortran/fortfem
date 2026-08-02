@@ -42,7 +42,7 @@ program laplace_exterior_bem_circle
     !! The single-layer representation is solved on a periodic piecewise
     !! constant boundary space and evaluated in the unbounded exterior.  The
     !! manufactured solution is u(r,theta) = cos(theta)/r.
-    use fortfem_api, only: assemble_laplace_single_layer_constant
+    use fortfem_boundary, only: assemble_laplace_single_layer_constant
     use fortfem_advanced_solvers, only: solver_options, solver_options_t, &
         solver_stats_t, solve
     use fortnum_quadrature, only: gauss_legendre_ab

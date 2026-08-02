@@ -24,65 +24,83 @@ program biro_tree_cotree_benchmark
     real(dp), parameter :: mesh_color(3) = [0.65_dp, 0.65_dp, 0.65_dp]
     real(dp), parameter :: node_color(3) = [0.05_dp, 0.05_dp, 0.05_dp]
     real(dp), parameter :: arrow_color(3) = [0.12_dp, 0.35_dp, 0.75_dp]
-    real(dp), parameter :: edge_solution(edge_count) = [ &
-        0.0_dp, 0.0_dp, 0.0_dp, 0.75_dp, -0.4_dp]
+    ! Add a discrete gradient to the physical cotree potential.  The curl
+    ! block cannot see this component; the direct tree gauge removes it.
+    real(dp), parameter :: target_solution(edge_count) = [ &
+        -0.35_dp, 0.50_dp, -0.60_dp, 1.20_dp, -0.25_dp]
+    real(dp), parameter :: physical_solution(edge_count) = [ &
+        0.0_dp, 0.0_dp, 0.0_dp, 0.75_dp, -0.40_dp]
+    ! Face-edge incidence for the two triangular faces of the square split.
+    ! Its Gram matrix is the topological curl-curl block C^T C.
+    real(dp), parameter :: curl_incidence(2, edge_count) = reshape([ &
+        1.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, &
+        0.0_dp, 1.0_dp, -1.0_dp, 1.0_dp], [2, edge_count])
     real(dp), parameter :: full_matrix(edge_count, edge_count) = reshape([ &
-        4.0_dp, 0.1_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
-        0.1_dp, 5.0_dp, 0.2_dp, 0.0_dp, 0.0_dp, &
-        0.0_dp, 0.2_dp, 6.0_dp, 0.0_dp, 0.1_dp, &
-        0.0_dp, 0.0_dp, 0.0_dp, 7.0_dp, 0.3_dp, &
-        0.0_dp, 0.0_dp, 0.1_dp, 0.3_dp, 8.0_dp], &
+        1.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, -1.0_dp, &
+        1.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, -1.0_dp, &
+        0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, &
+        0.0_dp, 0.0_dp, 1.0_dp, 1.0_dp, 1.0_dp, &
+        -1.0_dp, -1.0_dp, 1.0_dp, 1.0_dp, 2.0_dp], &
         [edge_count, edge_count])
     character(*), parameter :: output_directory = &
         "output/example/biro_tree_cotree_benchmark"
     type(tree_cotree_gauge_t) :: gauge
-    real(dp), allocatable :: restricted(:), prolonged(:)
+    real(dp), allocatable :: expected_restricted(:), restricted(:), prolonged(:)
     real(dp), allocatable :: reduced_matrix(:, :), reduced_rhs(:)
-    real(dp) :: full_rhs(edge_count), residual
+    real(dp) :: face_circulation(2), full_rhs(edge_count), residual
     real(dp) :: midpoint_x(edge_count), midpoint_y(edge_count)
     real(dp) :: arrow_u(edge_count), arrow_v(edge_count)
     integer :: edge, first_node, second_node, status, unit
 
     call execute_command_line("mkdir -p "//output_directory)
-    full_rhs = matmul(full_matrix, edge_solution)
+    if (maxval(abs(full_matrix - matmul(transpose(curl_incidence), &
+        curl_incidence))) > 1.0e-12_dp) error stop "curl-curl block mismatch"
+    full_rhs = matmul(full_matrix, target_solution)
     call build_tree_cotree_gauge(incidence, gauge, status)
     if (status /= 0) error stop "Biro tree-cotree gauge construction failed"
-    call apply_tree_cotree_restriction(gauge, edge_solution, restricted, status)
+    call apply_tree_cotree_restriction( &
+        gauge, target_solution, expected_restricted, status)
     if (status /= 0) error stop "Biro tree-cotree restriction failed"
-    call apply_tree_cotree_prolongation(gauge, restricted, prolonged, status)
-    if (status /= 0) error stop "Biro tree-cotree prolongation failed"
     call reduce_tree_cotree_dense_system( &
         gauge, full_matrix, full_rhs, reduced_matrix, reduced_rhs, status)
     if (status /= 0) error stop "Biro tree-cotree direct reduction failed"
+    call solve_reduced_2x2(reduced_matrix, reduced_rhs, restricted, status)
+    if (status /= 0) error stop "Biro reduced direct solve failed"
+    if (maxval(abs(restricted - physical_solution(4:5))) > 1.0e-12_dp) &
+        error stop "Biro reduced solve did not recover cotree solution"
+    call apply_tree_cotree_prolongation(gauge, restricted, prolonged, status)
+    if (status /= 0) error stop "Biro tree-cotree prolongation failed"
+    face_circulation = matmul(curl_incidence, prolonged)
     residual = maxval(abs(matmul(full_matrix, prolonged) - full_rhs))
     if (residual > 1.0e-12_dp) error stop "Biro manufactured residual failed"
 
     open (newunit=unit, file=output_directory//"/solution.csv", &
         status="replace", action="write")
-    write (unit, "(a)") "edge,x0,y0,x1,y1,A_edge,loop_current_proxy"
+    write (unit, "(a)") "edge,x0,y0,x1,y1,A_edge"
     do edge = 1, edge_count
         first_node = edge_nodes(1, edge)
         second_node = edge_nodes(2, edge)
         midpoint_x(edge) = 0.5_dp*(node_x(first_node) + node_x(second_node))
         midpoint_y(edge) = 0.5_dp*(node_y(first_node) + node_y(second_node))
-        arrow_u(edge) = 0.18_dp*edge_solution(edge)* &
+        arrow_u(edge) = 0.18_dp*prolonged(edge)* &
             (node_x(second_node) - node_x(first_node))
-        arrow_v(edge) = 0.18_dp*edge_solution(edge)* &
+        arrow_v(edge) = 0.18_dp*prolonged(edge)* &
             (node_y(second_node) - node_y(first_node))
         write (unit, "(*(es24.16,:,','))") real(edge, dp), &
             node_x(first_node), node_y(first_node), node_x(second_node), &
-            node_y(second_node), prolonged(edge), dot_product( &
-            real(incidence(:, edge), dp), [0.0_dp, 0.0_dp, 1.0_dp, -1.0_dp])
+            node_y(second_node), prolonged(edge)
     end do
     close (unit)
     open (newunit=unit, file=output_directory//"/diagnostics.csv", &
         status="replace", action="write")
     write (unit, "(a,es24.16)") "manufactured_residual,", residual
+    write (unit, "(a,es24.16)") "face_circulation_1,", face_circulation(1)
+    write (unit, "(a,es24.16)") "face_circulation_2,", face_circulation(2)
     write (unit, "(a,es24.16)") "direct_cotree_energy,", &
         0.5_dp*dot_product(restricted, matmul(reduced_matrix, restricted))
     close (unit)
 
-    ! Physical solution first: edge potential and its oriented current proxy.
+    ! Physical solution first: solved edge potential and face circulation.
     call figure(figsize=[7.2_dp, 6.2_dp])
     do edge = 1, edge_count
         first_node = edge_nodes(1, edge)
@@ -101,4 +119,26 @@ program biro_tree_cotree_benchmark
     call title("Bíró tree--cotree curl--curl solution")
     call legend()
     call savefig(output_directory//"/solution.png")
+
+contains
+
+    subroutine solve_reduced_2x2(matrix, rhs, solution, status)
+        real(dp), intent(in) :: matrix(:, :), rhs(:)
+        real(dp), allocatable, intent(out) :: solution(:)
+        integer, intent(out) :: status
+        real(dp) :: determinant
+
+        status = 1
+        allocate(solution(0))
+        if (size(matrix, 1) /= 2 .or. size(matrix, 2) /= 2 .or. &
+            size(rhs) /= 2) return
+        determinant = matrix(1, 1)*matrix(2, 2) - &
+            matrix(1, 2)*matrix(2, 1)
+        if (abs(determinant) < 1.0e-14_dp) return
+        deallocate(solution)
+        allocate(solution(2))
+        solution(1) = (matrix(2, 2)*rhs(1) - matrix(1, 2)*rhs(2))/determinant
+        solution(2) = (matrix(1, 1)*rhs(2) - matrix(2, 1)*rhs(1))/determinant
+        status = 0
+    end subroutine solve_reduced_2x2
 end program biro_tree_cotree_benchmark
