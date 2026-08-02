@@ -1599,6 +1599,10 @@ gallery example.
   pairing expose analytical JVP/VJP products.  A central reassembly test and
   full real adjoint oracle cover sphere vertices and radius, so spherical
   geometry is no longer a finite-difference-only exception.
+  The torus parent RWG basis now also differentiates moving reference
+  coordinates explicitly in both value JVPs and coordinate VJPs; a direct
+  geometry-plus-`(xi,eta)` central reassembly and real adjoint oracle guards
+  this lower-level contract independently of the assembled RBC pairing.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
