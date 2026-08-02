@@ -46,6 +46,13 @@ module fortfem_api
         evaluate_near_axis_diagnostic_metadata, &
         evaluate_near_axis_diagnostic_metadata_jvp, &
         evaluate_near_axis_diagnostic_metadata_vjp
+    use fortfem_critical_point_metadata, only: &
+        CRITICAL_CONTOUR_LIMITER, CRITICAL_CONTOUR_NONE, &
+        CRITICAL_CONTOUR_SEPARATRIX, CRITICAL_POINT_DEGENERATE, &
+        CRITICAL_POINT_O_POINT, CRITICAL_POINT_REGULAR, CRITICAL_POINT_X_POINT, &
+        critical_point_metadata_t, evaluate_critical_point_metadata, &
+        evaluate_critical_point_metadata_jvp, evaluate_critical_point_metadata_vjp, &
+        validate_critical_point_metadata
     use fortfem_oracle_manifest, only: &
         oracle_manifest_schema_magic, oracle_manifest_schema_version, &
         oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
@@ -3141,6 +3148,18 @@ module fortfem_api
     public :: evaluate_near_axis_diagnostic_metadata
     public :: evaluate_near_axis_diagnostic_metadata_jvp
     public :: evaluate_near_axis_diagnostic_metadata_vjp
+    public :: CRITICAL_CONTOUR_LIMITER
+    public :: CRITICAL_CONTOUR_NONE
+    public :: CRITICAL_CONTOUR_SEPARATRIX
+    public :: CRITICAL_POINT_DEGENERATE
+    public :: CRITICAL_POINT_O_POINT
+    public :: CRITICAL_POINT_REGULAR
+    public :: CRITICAL_POINT_X_POINT
+    public :: critical_point_metadata_t
+    public :: evaluate_critical_point_metadata
+    public :: evaluate_critical_point_metadata_jvp
+    public :: evaluate_critical_point_metadata_vjp
+    public :: validate_critical_point_metadata
     public :: linear_response_cross_metadata_t
     public :: initialize_linear_response_cross_metadata
     public :: validate_linear_response_cross_metadata
