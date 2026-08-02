@@ -2,7 +2,7 @@ program test_beltrami_shell_parity
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
-        beltrami_shell_parity_t, evaluate_beltrami_shell_parity, &
+        beltrami_shell_parity_t, compare_beltrami_shell_residual, &
         validate_beltrami_shell_parity
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -26,7 +26,7 @@ program test_beltrami_shell_parity
         divergence, divergence_target, flux, flux_target, helicity, helicity_target, &
         energy_target, expected_energy)
 
-    call evaluate_beltrami_shell_parity( &
+    call compare_beltrami_shell_residual( &
         "slab", curl_hcurl, curl_oracle, magnetic_field, lambda, sample_weight, &
         divergence, divergence_target, flux, flux_target, helicity, helicity_target, &
         energy_target, 1.0e-12_dp, report, status)
@@ -42,7 +42,7 @@ program test_beltrami_shell_parity
         1.0e-14_dp, &
         "independent magnetic-energy quadrature closes each slab region")
 
-    call evaluate_beltrami_shell_parity( &
+    call compare_beltrami_shell_residual( &
         "toroidal-shell", curl_hcurl, curl_oracle, magnetic_field, lambda, &
         sample_weight, &
         divergence, divergence_target, flux, flux_target, helicity, helicity_target, &
@@ -55,7 +55,7 @@ program test_beltrami_shell_parity
         "toroidal-shell compatible and independent energies agree")
 
     curl_oracle(2, 3, 2) = curl_oracle(2, 3, 2) + 0.125_dp
-    call evaluate_beltrami_shell_parity( &
+    call compare_beltrami_shell_residual( &
         "toroidal-shell", curl_hcurl, curl_oracle, magnetic_field, lambda, &
         sample_weight, &
         divergence, divergence_target, flux, flux_target, helicity, helicity_target, &
@@ -65,7 +65,7 @@ program test_beltrami_shell_parity
         "toroidal-shell report exposes an independent curl mismatch")
 
     energy_target(1) = energy_target(1) + 0.25_dp
-    call evaluate_beltrami_shell_parity( &
+    call compare_beltrami_shell_residual( &
         "slab", curl_hcurl, curl_hcurl, magnetic_field, lambda, sample_weight, &
         divergence, divergence_target, flux, flux_target, helicity, helicity_target, &
         energy_target, 1.0e-12_dp, report, status)

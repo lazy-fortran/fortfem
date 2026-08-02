@@ -2,7 +2,7 @@ program test_beltrami_parity
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
     use fortfem_api, only: &
-        beltrami_parity_t, evaluate_beltrami_two_region_parity, &
+        beltrami_parity_t, compare_beltrami_two_region_residual, &
         validate_beltrami_parity, validate_beltrami_resonance
     use fortsparse, only: FORTSPARSE_SINGULAR, fortsparse_status_t
     implicit none
@@ -29,7 +29,7 @@ program test_beltrami_parity
     call build_manufactured_state( &
         curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
         divergence_target, flux, flux_target, helicity, helicity_target)
-    call evaluate_beltrami_two_region_parity( &
+    call compare_beltrami_two_region_residual( &
         curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
         divergence_target, flux, flux_target, helicity, helicity_target, &
         1.0e-12_dp, residual, divergence_residual, flux_residual, &
@@ -58,7 +58,7 @@ program test_beltrami_parity
         "flux, helicity, and divergence constraint rows close independently")
 
     curl_oracle(1, 1, 1) = curl_oracle(1, 1, 1) + 0.125_dp
-    call evaluate_beltrami_two_region_parity( &
+    call compare_beltrami_two_region_residual( &
         curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
         divergence_target, flux, flux_target, helicity, helicity_target, &
         1.0e-12_dp, residual, divergence_residual, flux_residual, &

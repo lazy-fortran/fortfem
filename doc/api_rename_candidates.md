@@ -38,15 +38,15 @@ procedure aliases.
 | --- | --- | --- | ---: | --- | --- |
 | `compare_boundary_operator_parity` | `compare_boundary_operator_parity` | `fortfem_boundary_operator_parity` | 7 / 12 / 2 | `_jvp`, `_vjp` | Implemented as the canonical pre-release spelling; the report type and `fortfem-boundary-parity-1` schema remain unchanged. |
 | `compare_larger_domain_solution` | `compare_larger_domain_solution` | `fortfem_larger_domain_parity` | 6 / 5 / 1 | `_jvp` | Implemented as the canonical pre-release spelling; the report type and `fortfem-larger-domain-parity-1` schema remain unchanged. |
-| `evaluate_beltrami_two_region_parity` | `compare_beltrami_two_region_residual` | `fortfem_beltrami_parity` | 6 / 3 / 1 | none | Compares assembled H(curl) residual with the independent oracle residual. `validate_beltrami_parity` stays a validator. |
-| `evaluate_beltrami_shell_parity` | `compare_beltrami_shell_residual` | `fortfem_beltrami_parity` | 5 / 5 / 1 | none | Same as the two-region path, with an energy/conservation ledger. |
+| `compare_beltrami_two_region_residual` | `compare_beltrami_two_region_residual` | `fortfem_beltrami_parity` | 8 / 3 / 3 | none | Implemented as the canonical pre-release spelling; formerly `evaluate_beltrami_two_region_parity`. The independent curl-eigen and constraint oracle, report type, and schema remain unchanged. |
+| `compare_beltrami_shell_residual` | `compare_beltrami_shell_residual` | `fortfem_beltrami_parity` | 7 / 5 / 3 | none | Implemented as the canonical pre-release spelling; formerly `evaluate_beltrami_shell_parity`. The weighted curl-eigen, flux/helicity, and energy ledger remains unchanged. |
 | `compare_sheet_current_representations` | `compare_sheet_current_representations` | `fortfem_sheet_current_parity` | 5 / 3 / 3 | none | Implemented as the canonical pre-release spelling; the fitted/resolved ledger contract remains unchanged. |
 | `compare_sheet_current_surface_representations` | `compare_sheet_current_surface_representations` | `fortfem_sheet_current_surface_parity` | 6 / 9 / 0 | `_jvp` | Implemented as the canonical pre-release spelling; the surface quadrature and regularized-layer ledger are unchanged. |
 | `evaluate_tree_cotree_iga_parity` | `diagnose_tree_cotree_iga_invariance` | `fortfem_tree_cotree_iga_parity` | 5 / 3 / 0 | none | Tests signed-map invariance of a fixed IGA tree-cotree reduction; `diagnose_` is clearer than `compare_` because there is no external reference field. |
 
 The completed pre-release slices make the canonical procedure the only
-internal spelling: boundary, larger-domain, sheet-current, and surface-
-quadrature parity families now use `compare_*` names in the implementation,
+internal spelling: boundary, larger-domain, sheet-current, surface-
+quadrature, and Beltrami parity families now use `compare_*` names in the implementation,
 umbrella, facades, tests, examples, and inventory.  Each slice keeps one
 implementation and compares its outputs against an independent analytical or
 quadrature oracle; it does not retain a compatibility alias because FortFEM

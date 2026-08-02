@@ -57,7 +57,7 @@ not implement SPEC/SPECTRE physics, equilibrium profiles, readers, gauges, or
 
 ## Two-path manufactured parity
 
-`evaluate_beltrami_two_region_parity` composes the residual above with an
+`compare_beltrami_two_region_residual` composes the residual above with an
 independent algebraic oracle. A compatible H(curl) client supplies
 `curl_hcurl`; the report's oracle path evaluates `curl_oracle-lambda*B`
 directly, so a shared residual implementation cannot make the comparison pass
@@ -72,7 +72,7 @@ Fourier, and IGA clients.
 
 ## Slab and toroidal-shell ledger
 
-`evaluate_beltrami_shell_parity` is a small geometry-labelled acceptance
+`compare_beltrami_shell_residual` is a small geometry-labelled acceptance
 fixture for two-region slab and toroidal-shell clients. The label identifies
 the caller's fixed physical sample set; FortFEM does not construct coordinates
 or a shell mesh. It independently compares weighted

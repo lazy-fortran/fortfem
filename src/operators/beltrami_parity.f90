@@ -57,15 +57,15 @@ module fortfem_beltrami_parity
         logical :: within_tolerance = .false.
     end type beltrami_shell_parity_t
 
-    public :: evaluate_beltrami_two_region_parity
+    public :: compare_beltrami_two_region_residual
     public :: validate_beltrami_parity
     public :: validate_beltrami_resonance
-    public :: evaluate_beltrami_shell_parity
+    public :: compare_beltrami_shell_residual
     public :: validate_beltrami_shell_parity
 
 contains
 
-    subroutine evaluate_beltrami_two_region_parity( &
+    subroutine compare_beltrami_two_region_residual( &
             curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
             divergence_target, flux, flux_target, helicity, helicity_target, &
             tolerance, residual, divergence_residual, flux_residual, &
@@ -131,9 +131,9 @@ contains
         report%within_tolerance = report%absolute_error <= tolerance .or. &
             report%relative_error <= tolerance
         call status_set(status, FORTSPARSE_OK, "")
-    end subroutine evaluate_beltrami_two_region_parity
+    end subroutine compare_beltrami_two_region_residual
 
-    subroutine evaluate_beltrami_shell_parity( &
+    subroutine compare_beltrami_shell_residual( &
             geometry_kind, curl_hcurl, curl_oracle, magnetic_field, lambda, &
             sample_weight, divergence, divergence_target, flux, flux_target, &
             helicity, helicity_target, energy_target, tolerance, report, status)
@@ -182,7 +182,7 @@ contains
             size(curl_hcurl, 3)))
         allocate(divergence_residual(size(divergence, 1), size(divergence, 2)))
         allocate(flux_residual(size(flux)), helicity_residual(size(helicity)))
-        call evaluate_beltrami_two_region_parity( &
+        call compare_beltrami_two_region_residual( &
             curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
             divergence_target, flux, flux_target, helicity, helicity_target, &
             tolerance, &
@@ -239,7 +239,7 @@ contains
             (report%weighted_absolute_error <= tolerance .or. &
             report%weighted_relative_error <= tolerance)
         call status_set(status, FORTSPARSE_OK, "")
-    end subroutine evaluate_beltrami_shell_parity
+    end subroutine compare_beltrami_shell_residual
 
     logical function validate_beltrami_shell_parity(report, status) result(valid)
         type(beltrami_shell_parity_t), intent(in) :: report

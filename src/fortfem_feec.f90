@@ -38,6 +38,11 @@ module fortfem_feec
     use fortfem_tree_cotree_iga_parity, only: &
         diagnose_tree_cotree_iga_invariance, &
         tree_cotree_iga_parity_t
+    use fortfem_beltrami_parity, only: &
+        beltrami_parity_t, compare_beltrami_two_region_residual, &
+        beltrami_shell_parity_t, compare_beltrami_shell_residual, &
+        validate_beltrami_parity, validate_beltrami_resonance, &
+        validate_beltrami_shell_parity
     implicit none
     private
 
@@ -68,5 +73,12 @@ module fortfem_feec
     public :: tetra_nedelec_first_kind_t
     public :: tetra_duffy_quadrature
     public :: validate_tree_cotree_gauge
+    public :: beltrami_parity_t
+    public :: compare_beltrami_two_region_residual
+    public :: validate_beltrami_parity
+    public :: validate_beltrami_resonance
+    public :: beltrami_shell_parity_t
+    public :: compare_beltrami_shell_residual
+    public :: validate_beltrami_shell_parity
 
 end module fortfem_feec
