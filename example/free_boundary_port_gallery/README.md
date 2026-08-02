@@ -25,5 +25,4 @@ fixture only demonstrates the trace pairing and its differentiable residual.
 
 The contract is documented in the source module
 `src/operators/free_boundary_port_residual.f90` and is exposed through the
-public `fortfem_api` facade.
-
+canonical `fortfem_boundary` facade.
