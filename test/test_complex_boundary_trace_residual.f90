@@ -25,6 +25,8 @@ program test_complex_boundary_trace_residual
     complex(dp) :: tangential_residual_dot(tangential_count)
     complex(dp) :: normal_residual_plus(normal_count)
     complex(dp) :: tangential_residual_plus(tangential_count)
+    complex(dp) :: normal_residual_repeat(normal_count)
+    complex(dp) :: tangential_residual_repeat(tangential_count)
     complex(dp) :: normal_residual_bar(normal_count)
     complex(dp) :: tangential_residual_bar(tangential_count)
     complex(dp) :: normal_trace_bar(normal_count, state_count)
@@ -85,6 +87,15 @@ program test_complex_boundary_trace_residual
         tangential_target_dot, normal_residual_dot, tangential_residual_dot, status)
     call record_condition(status%code == 0, &
         "complex boundary trace residual JVP assembles")
+    call repeat_jvp_calls( &
+        normal_trace, tangential_trace, normal_weights, tangential_weights, state, &
+        normal_target, tangential_target, normal_trace_dot, tangential_trace_dot, &
+        normal_weights_dot, tangential_weights_dot, state_dot, normal_target_dot, &
+        tangential_target_dot, normal_residual_repeat, tangential_residual_repeat, status)
+    call record_condition(status%code == 0 .and. &
+        maxval(abs(normal_residual_repeat - normal_residual_dot)) < 1.0e-14_dp .and. &
+        maxval(abs(tangential_residual_repeat - tangential_residual_dot)) < 1.0e-14_dp, &
+        "complex boundary trace JVP is stable across repeated batch calls")
 
     epsilon = 1.0e-7_dp
     call assemble_complex_boundary_trace_residual( &
@@ -132,6 +143,32 @@ program test_complex_boundary_trace_residual
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine repeat_jvp_calls( &
+            normal_trace, tangential_trace, normal_weights, tangential_weights, state, &
+            normal_target, tangential_target, normal_trace_dot, tangential_trace_dot, &
+            normal_weights_dot, tangential_weights_dot, state_dot, normal_target_dot, &
+            tangential_target_dot, normal_residual, tangential_residual, status)
+        complex(dp), intent(in) :: normal_trace(:, :), tangential_trace(:, :)
+        real(dp), intent(in) :: normal_weights(:), tangential_weights(:)
+        complex(dp), intent(in) :: state(:), normal_target(:), tangential_target(:)
+        complex(dp), intent(in) :: normal_trace_dot(:, :), tangential_trace_dot(:, :)
+        real(dp), intent(in) :: normal_weights_dot(:), tangential_weights_dot(:)
+        complex(dp), intent(in) :: state_dot(:), normal_target_dot(:)
+        complex(dp), intent(in) :: tangential_target_dot(:)
+        complex(dp), intent(out) :: normal_residual(:), tangential_residual(:)
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: repeat
+
+        do repeat = 1, 32
+            call assemble_complex_boundary_trace_residual_jvp( &
+                normal_trace, tangential_trace, normal_weights, tangential_weights, state, &
+                normal_target, tangential_target, normal_trace_dot, tangential_trace_dot, &
+                normal_weights_dot, tangential_weights_dot, state_dot, normal_target_dot, &
+                tangential_target_dot, normal_residual, tangential_residual, status)
+            if (status%code /= 0) return
+        end do
+    end subroutine repeat_jvp_calls
 
     subroutine build_system( &
             normal_trace, tangential_trace, normal_weights, tangential_weights, &

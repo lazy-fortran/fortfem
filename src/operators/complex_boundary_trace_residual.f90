@@ -70,9 +70,6 @@ contains
         complex(dp), intent(out) :: normal_residual_dot(:), tangential_residual_dot(:)
         type(fortsparse_status_t), intent(out) :: status
 
-        complex(dp), allocatable :: normal_raw(:), tangential_raw(:)
-        complex(dp), allocatable :: normal_raw_dot(:), tangential_raw_dot(:)
-
         normal_residual_dot = cmplx(0.0_dp, 0.0_dp, dp)
         tangential_residual_dot = cmplx(0.0_dp, 0.0_dp, dp)
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -87,20 +84,13 @@ contains
             tangential_weights_dot, state_dot, normal_target_dot, &
             tangential_target_dot)) return
 
-        allocate(normal_raw(size(normal_weights)), &
-            tangential_raw(size(tangential_weights)), &
-            normal_raw_dot(size(normal_weights)), &
-            tangential_raw_dot(size(tangential_weights)))
-        normal_raw = matmul(normal_trace, state) - normal_target
-        tangential_raw = matmul(tangential_trace, state) - tangential_target
-        normal_raw_dot = matmul(normal_trace_dot, state) + &
-            matmul(normal_trace, state_dot) - normal_target_dot
-        tangential_raw_dot = matmul(tangential_trace_dot, state) + &
-            matmul(tangential_trace, state_dot) - tangential_target_dot
-        normal_residual_dot = normal_weights_dot*normal_raw + &
-            normal_weights*normal_raw_dot
-        tangential_residual_dot = tangential_weights_dot*tangential_raw + &
-            tangential_weights*tangential_raw_dot
+        normal_residual_dot = normal_weights_dot*(matmul(normal_trace, state) - &
+            normal_target) + normal_weights*(matmul(normal_trace_dot, state) + &
+            matmul(normal_trace, state_dot) - normal_target_dot)
+        tangential_residual_dot = tangential_weights_dot*( &
+            matmul(tangential_trace, state) - tangential_target) + &
+            tangential_weights*(matmul(tangential_trace_dot, state) + &
+            matmul(tangential_trace, state_dot) - tangential_target_dot)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine assemble_complex_boundary_trace_residual_jvp
 
@@ -122,8 +112,8 @@ contains
         complex(dp), intent(out) :: tangential_target_bar(:)
         type(fortsparse_status_t), intent(out) :: status
 
-        complex(dp), allocatable :: normal_raw(:), tangential_raw(:)
-        complex(dp), allocatable :: normal_weighted_bar(:), tangential_weighted_bar(:)
+        complex(dp) :: normal_raw, tangential_raw
+        complex(dp) :: normal_weighted_bar, tangential_weighted_bar
         integer :: column, row
 
         normal_trace_bar = cmplx(0.0_dp, 0.0_dp, dp)
@@ -147,34 +137,31 @@ contains
         if (.not. finite_complex(normal_residual_bar) .or. &
             .not. finite_complex(tangential_residual_bar)) return
 
-        allocate(normal_raw(size(normal_weights)), tangential_raw(size(tangential_weights)))
-        allocate(normal_weighted_bar(size(normal_weights)), &
-            tangential_weighted_bar(size(tangential_weights)))
-        normal_raw = matmul(normal_trace, state) - normal_target
-        tangential_raw = matmul(tangential_trace, state) - tangential_target
-        normal_weighted_bar = normal_weights*normal_residual_bar
-        tangential_weighted_bar = tangential_weights*tangential_residual_bar
-
         do row = 1, size(normal_weights)
+            normal_raw = sum(normal_trace(row, :)*state) - normal_target(row)
+            normal_weighted_bar = normal_weights(row)*normal_residual_bar(row)
             normal_weights_bar(row) = real(conjg(normal_residual_bar(row))* &
-                normal_raw(row), dp)
-            normal_target_bar(row) = -normal_weighted_bar(row)
-            state_bar = state_bar + conjg(normal_trace(row, :))* &
-                normal_weighted_bar(row)
+                normal_raw, dp)
+            normal_target_bar(row) = -normal_weighted_bar
+            state_bar = state_bar + conjg(normal_trace(row, :))*normal_weighted_bar
             do column = 1, size(state)
-                normal_trace_bar(row, column) = normal_weighted_bar(row)* &
+                normal_trace_bar(row, column) = normal_weighted_bar* &
                     conjg(state(column))
             end do
         end do
         do row = 1, size(tangential_weights)
+            tangential_raw = sum(tangential_trace(row, :)*state) - &
+                tangential_target(row)
+            tangential_weighted_bar = tangential_weights(row)* &
+                tangential_residual_bar(row)
             tangential_weights_bar(row) = real( &
-                conjg(tangential_residual_bar(row))*tangential_raw(row), dp)
-            tangential_target_bar(row) = -tangential_weighted_bar(row)
+                conjg(tangential_residual_bar(row))*tangential_raw, dp)
+            tangential_target_bar(row) = -tangential_weighted_bar
             state_bar = state_bar + conjg(tangential_trace(row, :))* &
-                tangential_weighted_bar(row)
+                tangential_weighted_bar
             do column = 1, size(state)
                 tangential_trace_bar(row, column) = &
-                    tangential_weighted_bar(row)*conjg(state(column))
+                    tangential_weighted_bar*conjg(state(column))
             end do
         end do
         call status_set(status, FORTSPARSE_OK, "")
