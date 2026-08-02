@@ -1,14 +1,17 @@
 program toroidal_analytical
-    use fortfem_api, only: &
-        cartesian_to_toroidal, &
+    use fortfem_feec, only: &
         evaluate_helmholtz_representation_torus_curved_3d, &
-        evaluate_laplace_representation_torus_curved_3d, &
-        evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
-        generate_solid_torus_tetra_mesh, generate_torus_surface_mesh, &
+        evaluate_laplace_representation_torus_curved_3d
+    use fortfem_boundary, only: &
         solve_helmholtz_fem_bem_costabel_torus_curved_3d, &
         solve_helmholtz_bem_dtn_torus_curved_3d, &
         solve_laplace_fem_bem_costabel_torus_curved_3d, &
-        solve_laplace_bem_dtn_torus_curved_3d, toroidal_point_to_cartesian
+        solve_laplace_bem_dtn_torus_curved_3d
+    use fortfem_core, only: &
+        cartesian_to_toroidal, generate_solid_torus_tetra_mesh, &
+        generate_torus_surface_mesh, toroidal_point_to_cartesian
+    use fortfem_fourier, only: &
+        evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p
     use fortfem_kinds, only: dp
     use fortplot, only: add_parametric_surface, add_scatter, figure, plot, &
         pcolormesh, xlabel, ylabel, title, legend, savefig

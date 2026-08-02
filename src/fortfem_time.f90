@@ -30,6 +30,7 @@ module fortfem_time
         advance_mixed_wave_wall_midpoint_jvp, &
         advance_mixed_wave_wall_midpoint_vjp, &
         evaluate_mixed_wave_wall_energy_balance
+    use fortfem_continuation_event, only: CONTINUATION_EVENT_SIGN_CROSSING
     implicit none
     private
 
@@ -53,5 +54,6 @@ module fortfem_time
     public :: assemble_symplectic_map_defect_jvp
     public :: assemble_symplectic_map_defect_vjp
     public :: evaluate_mixed_wave_wall_energy_balance
+    public :: CONTINUATION_EVENT_SIGN_CROSSING
 
 end module fortfem_time
