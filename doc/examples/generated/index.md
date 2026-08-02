@@ -45,6 +45,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [team3_neutral_benchmark](team3_neutral_benchmark.html) - This example is a small, solution-first foundation fixture shaped like the
 - [team7_neutral_benchmark](team7_neutral_benchmark.html) - This solution-first fixture is a small, license-safe 2-D analogue of the
 - [team13_neutral_benchmark](team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
+- [team20_neutral_benchmark](team20_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like TEAM Problem
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [linear_perturbation_response](linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
 - [eulerian_island_gallery](eulerian_island_gallery.html) - This small gallery samples the analytic slab-island flux

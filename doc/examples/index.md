@@ -459,6 +459,17 @@ fpm run --example <example_name>
 <p>This is a small, solution-first foundation fixture shaped like the TEAM 13</p>
 </div>
 </article>
+<article class="example-card" data-example="team20_neutral_benchmark">
+<a class="example-card-preview" href="generated/team20_neutral_benchmark.html">
+<img class="example-card-image"
+ src="../media/examples/team20_neutral_benchmark/primary.png"
+ alt="Plot preview for team20_neutral_benchmark" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/team20_neutral_benchmark.html">team20_neutral_benchmark</a></h3>
+<p>This is a small, solution-first foundation fixture shaped like TEAM Problem</p>
+</div>
+</article>
 <article class="example-card" data-example="interoperability_benchmarks">
 <a class="example-card-preview" href="generated/interoperability_benchmarks.html">
 <img class="example-card-image"
@@ -780,6 +791,7 @@ fpm run --example <example_name>
 - [team3_neutral_benchmark](generated/team3_neutral_benchmark.html) - This example is a small, solution-first foundation fixture shaped like the
 - [team7_neutral_benchmark](generated/team7_neutral_benchmark.html) - This solution-first fixture is a small, license-safe 2-D analogue of the
 - [team13_neutral_benchmark](generated/team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
+- [team20_neutral_benchmark](generated/team20_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like TEAM Problem
 - [interoperability_benchmarks](generated/interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [linear_perturbation_response](generated/linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
 - [eulerian_island_gallery](generated/eulerian_island_gallery.html) - This small gallery samples the analytic slab-island flux
