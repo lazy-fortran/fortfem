@@ -693,6 +693,10 @@ module fortfem_api
         evaluate_toroidal_spectral_trace_grid, &
         evaluate_toroidal_spectral_trace_grid_jvp, &
         evaluate_toroidal_spectral_trace_grid_vjp
+    use fortfem_toroidal_spectral_metadata, only: &
+        analyze_toroidal_spectral_modes, &
+        analyze_toroidal_spectral_modes_jvp, &
+        analyze_toroidal_spectral_modes_vjp
     use fortfem_wall_response_condensation, only: &
         condense_wall_response_blocks, condense_wall_response_blocks_jvp, &
         condense_wall_response_blocks_vjp
@@ -1548,6 +1552,9 @@ module fortfem_api
     public :: evaluate_toroidal_spectral_trace_grid
     public :: evaluate_toroidal_spectral_trace_grid_jvp
     public :: evaluate_toroidal_spectral_trace_grid_vjp
+    public :: analyze_toroidal_spectral_modes
+    public :: analyze_toroidal_spectral_modes_jvp
+    public :: analyze_toroidal_spectral_modes_vjp
     public :: condense_wall_response_blocks
     public :: condense_wall_response_blocks_jvp
     public :: condense_wall_response_blocks_vjp

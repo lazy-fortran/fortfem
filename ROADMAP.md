@@ -887,7 +887,11 @@ all geometries:
    coordinate, and scale JVP/VJP actions. It is checked against the analytical
    toroidal harmonic/DtN mode and central/adjoint oracles; periodic surface
    sampling is now available through a batched grid wrapper; convolution,
-   zero-mode policy, and truncation estimates remain.
+   zero-mode policy, and truncation estimates are now explicit through a
+   fixed-topology metadata/energy block: callers can reject an explicit mean,
+   report retained/omitted rectangular-window modes, and differentiate supplied
+   coefficient energies. Regularized Green convolution, Neumann compatibility,
+   and unprovided-tail estimation remain caller-owned.
 3. **BIEST-like generalized-Debye-source operator.** Provide a second-kind
    surface formulation for Beltrami/Taylor/force-free fields, with explicit
    harmonic representatives for each handle and a resonance/status contract.

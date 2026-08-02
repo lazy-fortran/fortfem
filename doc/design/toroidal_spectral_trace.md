@@ -39,4 +39,8 @@ operator and remain caller policy.
 caller-owned list of periodic sample points and accumulates the shared modal
 coefficient and scale cotangents.  It is intentionally a sampler, not an
 implicit FFT or convolution plan; a later NESTOR-like layer can choose its
-quadrature and mode truncation while retaining this trace ABI.
+quadrature and mode truncation while retaining this trace ABI.  The companion
+[spectral metadata contract](toroidal_spectral_metadata.html) now provides
+explicit rectangular-window counts, zero-mode rejection, and supplied-list
+energy diagnostics; regularized Green convolution and Neumann compatibility
+remain caller-owned.
