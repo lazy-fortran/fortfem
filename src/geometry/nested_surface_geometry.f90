@@ -21,6 +21,8 @@ module fortfem_nested_surface_geometry
     public :: evaluate_nested_surface_geometry
     public :: evaluate_nested_surface_geometry_jvp
     public :: evaluate_nested_surface_geometry_vjp
+    public :: evaluate_nested_surface_geometry_coordinate_jvp
+    public :: evaluate_nested_surface_geometry_coordinate_vjp
 
     interface finite_real
         module procedure finite_real_1d
@@ -79,6 +81,110 @@ contains
         end do
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_nested_surface_geometry
+
+    subroutine evaluate_nested_surface_geometry_coordinate_jvp( &
+            registry, coefficients, rho, theta, zeta, rho_dot, theta_dot, &
+            zeta_dot, mapped_coordinates_dot, physical_coordinates_dot, status)
+        !! Fixed-topology tangent for perturbations of sample coordinates.
+        !!
+        !! This action differentiates the returned coordinate values only.  The
+        !! Jacobian, metric, and volume diagnostics have coordinate derivatives
+        !! of second order and remain separate planned products.
+        type(fourier_mode_registry_t), intent(in) :: registry
+        complex(dp), intent(in) :: coefficients(:, :)
+        real(dp), intent(in) :: rho(:), theta(:), zeta(:)
+        real(dp), intent(in) :: rho_dot(:), theta_dot(:), zeta_dot(:)
+        real(dp), intent(out) :: mapped_coordinates_dot(:, :)
+        real(dp), intent(out) :: physical_coordinates_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: sample
+        real(dp) :: mapped(3), mapped_jac(3, 3)
+        real(dp) :: physical(3), physical_jac(3, 3), metric(3, 3), volume
+        real(dp) :: coordinate_dot(3)
+
+        mapped_coordinates_dot = 0.0_dp
+        physical_coordinates_dot = 0.0_dp
+        call validate_base_inputs( &
+            registry, coefficients, rho, theta, zeta, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (.not. valid_coordinate_jvp_shapes( &
+                rho, rho_dot, theta_dot, zeta_dot, mapped_coordinates_dot, &
+                physical_coordinates_dot) .or. &
+                .not. finite_real(rho_dot) .or. &
+                .not. finite_real(theta_dot) .or. &
+                .not. finite_real(zeta_dot)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "nested-surface coordinate JVP has invalid shapes or values")
+            return
+        end if
+
+        do sample = 1, size(rho)
+            call evaluate_modal_fields( &
+                registry, coefficients, rho(sample), theta(sample), &
+                zeta(sample), mapped, mapped_jac, status)
+            if (status%code /= FORTSPARSE_OK) return
+            call map_inverse_coordinates( &
+                mapped, mapped_jac, zeta(sample), physical, physical_jac, &
+                metric, volume)
+            coordinate_dot = [rho_dot(sample), theta_dot(sample), zeta_dot(sample)]
+            mapped_coordinates_dot(:, sample) = matmul(mapped_jac, coordinate_dot)
+            physical_coordinates_dot(:, sample) = &
+                matmul(physical_jac, coordinate_dot)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_nested_surface_geometry_coordinate_jvp
+
+    subroutine evaluate_nested_surface_geometry_coordinate_vjp( &
+            registry, coefficients, rho, theta, zeta, mapped_coordinates_bar, &
+            physical_coordinates_bar, rho_bar, theta_bar, zeta_bar, status)
+        !! Reverse fixed-topology action for sample-coordinate perturbations.
+        type(fourier_mode_registry_t), intent(in) :: registry
+        complex(dp), intent(in) :: coefficients(:, :)
+        real(dp), intent(in) :: rho(:), theta(:), zeta(:)
+        real(dp), intent(in) :: mapped_coordinates_bar(:, :)
+        real(dp), intent(in) :: physical_coordinates_bar(:, :)
+        real(dp), intent(out) :: rho_bar(:), theta_bar(:), zeta_bar(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: sample
+        real(dp) :: mapped(3), mapped_jac(3, 3)
+        real(dp) :: physical(3), physical_jac(3, 3), metric(3, 3), volume
+        real(dp) :: coordinate_bar(3)
+
+        rho_bar = 0.0_dp
+        theta_bar = 0.0_dp
+        zeta_bar = 0.0_dp
+        call validate_base_inputs( &
+            registry, coefficients, rho, theta, zeta, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (.not. valid_coordinate_vjp_shapes( &
+                rho, mapped_coordinates_bar, physical_coordinates_bar, &
+                rho_bar, theta_bar, zeta_bar) .or. &
+                .not. finite_real(mapped_coordinates_bar) .or. &
+                .not. finite_real(physical_coordinates_bar)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "nested-surface coordinate VJP has invalid shapes or values")
+            return
+        end if
+
+        do sample = 1, size(rho)
+            call evaluate_modal_fields( &
+                registry, coefficients, rho(sample), theta(sample), &
+                zeta(sample), mapped, mapped_jac, status)
+            if (status%code /= FORTSPARSE_OK) return
+            call map_inverse_coordinates( &
+                mapped, mapped_jac, zeta(sample), physical, physical_jac, &
+                metric, volume)
+            coordinate_bar = matmul(transpose(mapped_jac), &
+                mapped_coordinates_bar(:, sample)) + &
+                matmul(transpose(physical_jac), physical_coordinates_bar(:, sample))
+            rho_bar(sample) = coordinate_bar(1)
+            theta_bar(sample) = coordinate_bar(2)
+            zeta_bar(sample) = coordinate_bar(3)
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_nested_surface_geometry_coordinate_vjp
 
     subroutine evaluate_nested_surface_geometry_jvp( &
             registry, coefficients, rho, theta, zeta, coefficients_dot, &
@@ -293,6 +399,28 @@ contains
             rho, mapped, physical, mapped_jac, physical_jac, metric, volume) .and. &
             size(coefficients, 1) == 3 .and. size(coefficients, 2) == mode_count
     end function valid_vjp_shapes
+
+    logical function valid_coordinate_jvp_shapes( &
+            rho, rho_dot, theta_dot, zeta_dot, mapped, physical) result(valid)
+        real(dp), intent(in) :: rho(:), rho_dot(:), theta_dot(:), zeta_dot(:)
+        real(dp), intent(in) :: mapped(:, :), physical(:, :)
+
+        valid = size(rho_dot) == size(rho) .and. &
+            size(theta_dot) == size(rho) .and. size(zeta_dot) == size(rho) .and. &
+            size(mapped, 1) == 3 .and. size(mapped, 2) == size(rho) .and. &
+            size(physical, 1) == 3 .and. size(physical, 2) == size(rho)
+    end function valid_coordinate_jvp_shapes
+
+    logical function valid_coordinate_vjp_shapes( &
+            rho, mapped, physical, rho_bar, theta_bar, zeta_bar) result(valid)
+        real(dp), intent(in) :: rho(:), mapped(:, :), physical(:, :)
+        real(dp), intent(in) :: rho_bar(:), theta_bar(:), zeta_bar(:)
+
+        valid = size(mapped, 1) == 3 .and. size(mapped, 2) == size(rho) .and. &
+            size(physical, 1) == 3 .and. size(physical, 2) == size(rho) .and. &
+            size(rho_bar) == size(rho) .and. size(theta_bar) == size(rho) .and. &
+            size(zeta_bar) == size(rho)
+    end function valid_coordinate_vjp_shapes
 
     subroutine evaluate_modal_fields( &
             registry, coefficients, rho, theta, zeta, fields, field_jac, status)

@@ -3,7 +3,9 @@ program test_nested_surface_geometry
     use fortfem_api, only: &
         evaluate_nested_surface_geometry, &
         evaluate_nested_surface_geometry_jvp, &
-        evaluate_nested_surface_geometry_vjp
+        evaluate_nested_surface_geometry_vjp, &
+        evaluate_nested_surface_geometry_coordinate_jvp, &
+        evaluate_nested_surface_geometry_coordinate_vjp
     use fortfem_fourier_mode_registry, only: &
         fourier_mode_registry_t, initialize_fourier_mode_registry
     use fortfem_kinds, only: dp
@@ -28,6 +30,12 @@ program test_nested_surface_geometry
     real(dp) :: mapped_jacobian_dot(3, 3, sample_count)
     real(dp) :: physical_jacobian_dot(3, 3, sample_count)
     real(dp) :: metric_dot(3, 3, sample_count), volume_dot(sample_count)
+    real(dp) :: rho_dot(sample_count), theta_dot(sample_count), zeta_dot(sample_count)
+    real(dp) :: coordinate_mapped_dot(3, sample_count)
+    real(dp) :: coordinate_physical_dot(3, sample_count)
+    real(dp) :: coordinate_rho_bar(sample_count)
+    real(dp) :: coordinate_theta_bar(sample_count)
+    real(dp) :: coordinate_zeta_bar(sample_count)
     real(dp) :: mapped_plus(3, sample_count), physical_plus(3, sample_count)
     real(dp) :: mapped_minus(3, sample_count), physical_minus(3, sample_count)
     real(dp) :: mapped_jacobian_plus(3, 3, sample_count)
@@ -44,6 +52,9 @@ program test_nested_surface_geometry
     real(dp) :: bad_rho(1), bad_mapped(3, 1), bad_physical(3, 1)
     real(dp) :: bad_mapped_jacobian(3, 3, 1), bad_physical_jacobian(3, 3, 1)
     real(dp) :: bad_metric(3, 3, 1), bad_volume(1)
+    real(dp) :: bad_coordinate_dot(1), bad_coordinate_mapped_dot(3, 1)
+    real(dp) :: bad_coordinate_physical_dot(3, 1)
+    real(dp) :: bad_coordinate_bar(3, 1)
     integer :: status_code, mode
     logical :: all_passed
 
@@ -154,6 +165,60 @@ program test_nested_surface_geometry
     call record_condition( &
         abs(forward_pairing - reverse_pairing) < derivative_tolerance, &
         "nested-surface coefficient VJP satisfies the dot-product oracle")
+
+    rho_dot = [0.0_dp, 0.08_dp]
+    theta_dot = [0.02_dp, -0.03_dp]
+    zeta_dot = [-0.04_dp, 0.05_dp]
+    call evaluate_nested_surface_geometry_coordinate_jvp( &
+        registry, coefficients, rho, theta, zeta, rho_dot, theta_dot, zeta_dot, &
+        coordinate_mapped_dot, coordinate_physical_dot, status)
+    call record_condition(status%code == 0, &
+        "nested-surface coordinate JVP succeeds")
+    call evaluate_nested_surface_geometry( &
+        registry, coefficients, rho + step*rho_dot, theta + step*theta_dot, &
+        zeta + step*zeta_dot, mapped_plus, physical_plus, mapped_jacobian_plus, &
+        physical_jacobian_plus, metric_plus, volume_plus, status)
+    call evaluate_nested_surface_geometry( &
+        registry, coefficients, rho - step*rho_dot, theta - step*theta_dot, &
+        zeta - step*zeta_dot, mapped_minus, physical_minus, mapped_jacobian_minus, &
+        physical_jacobian_minus, metric_minus, volume_minus, status)
+    call record_condition(maxval(abs(coordinate_mapped_dot - &
+        (mapped_plus - mapped_minus)/(2.0_dp*step))) < derivative_tolerance, &
+        "mapped-coordinate JVP matches central differences")
+    call record_condition(maxval(abs(coordinate_physical_dot - &
+        (physical_plus - physical_minus)/(2.0_dp*step))) < derivative_tolerance, &
+        "Cartesian-coordinate JVP matches central differences")
+
+    mapped_bar = reshape([(0.013_dp*real(mode, dp), mode=1, 6)], &
+        [3, sample_count])
+    physical_bar = reshape([(0.017_dp*real(mode, dp), mode=1, 6)], &
+        [3, sample_count])
+    call evaluate_nested_surface_geometry_coordinate_vjp( &
+        registry, coefficients, rho, theta, zeta, mapped_bar, physical_bar, &
+        coordinate_rho_bar, coordinate_theta_bar, coordinate_zeta_bar, status)
+    call record_condition(status%code == 0, &
+        "nested-surface coordinate VJP succeeds")
+    forward_pairing = sum(mapped_bar*coordinate_mapped_dot) + &
+        sum(physical_bar*coordinate_physical_dot)
+    reverse_pairing = sum(coordinate_rho_bar*rho_dot) + &
+        sum(coordinate_theta_bar*theta_dot) + sum(coordinate_zeta_bar*zeta_dot)
+    call record_condition( &
+        abs(forward_pairing - reverse_pairing) < derivative_tolerance, &
+        "nested-surface coordinate VJP satisfies the dot-product oracle")
+
+    bad_coordinate_dot = [0.1_dp]
+    call evaluate_nested_surface_geometry_coordinate_jvp( &
+        registry, coefficients, rho, theta, zeta, bad_coordinate_dot, &
+        theta_dot, zeta_dot, bad_coordinate_mapped_dot, &
+        bad_coordinate_physical_dot, status)
+    call record_condition(status%code /= 0, &
+        "nested-surface coordinate JVP rejects an axis-length mismatch")
+    call evaluate_nested_surface_geometry_coordinate_vjp( &
+        registry, coefficients, rho, theta, zeta, bad_coordinate_bar, &
+        physical_bar, coordinate_rho_bar, coordinate_theta_bar, &
+        coordinate_zeta_bar, status)
+    call record_condition(status%code /= 0, &
+        "nested-surface coordinate VJP rejects a sample-shape mismatch")
 
     bad_rho = [-0.1_dp]
     call evaluate_nested_surface_geometry( &
