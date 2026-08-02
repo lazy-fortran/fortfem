@@ -293,12 +293,16 @@ documentation gates above pass.
   `scripts/check_module_layers.py` audits compiler-visible `module`/`use`
   edges, duplicate providers, cycles, umbrella/facade/generated leaks, and
   has independent negative fixtures in `test/test_module_layer_audit.sh`.
-- **API-02 — core and FEEC slices complete:** `fortfem_core` directly
-  re-exports foundational cell-complex and toroidal-coordinate contracts, and
-  `fortfem_feec` directly re-exports exact-sequence/commuting-projection and
-  tree--cotree gauge contracts. Both have independent analytical/JVP/VJP or
-  structure smoke tests. Boundary, Fourier, time, interoperability, and plot
-  facades remain separate slices; no facade may grow into the umbrella.
+- **API-02 — six canonical slices complete:** `fortfem_core` directly
+  re-exports foundational cell-complex and toroidal-coordinate contracts;
+  `fortfem_feec` exposes exact-sequence/commuting-projection and tree--cotree
+  gauges; `fortfem_boundary` exposes planar Helmholtz DtN and boundary-port
+  metadata; `fortfem_fourier` exposes mode registry/expansion and toroidal
+  harmonics; `fortfem_time` exposes mixed-wave/symplectic/dissipative steps;
+  and `fortfem_interop` exposes sample, oracle-manifest, and boundary
+  comparison contracts. Each has a direct-import facade and focused
+  analytical or structure smoke test. `fortfem_plot` remains separate; no
+  facade may grow into the umbrella.
 - **API-03 — first rename complete:** the boundary parity family is now
   `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
   module, umbrella exports, tests, and design documentation. The obsolete
@@ -308,11 +312,14 @@ documentation gates above pass.
 - **API-04–API-06 — planned:** generated visibility, example migration, and
   release/deprecation gates remain intentionally separate so a failed rename
   cannot corrupt numerical behavior or generated provenance.
-- **API-07 — first consumer slice complete:** a no-umbrella downstream smoke
-  client covers core geometry, Fourier modes, planar Helmholtz DtN,
-  structure-preserving mixed-wave stepping, and interchange metrics. It uses
-  direct domain modules where canonical facades are not yet available; it must
-  be migrated to the remaining canonical facades before API-07 closes.
+- **API-07 — first client complete:** the no-umbrella downstream smoke client
+  now imports `fortfem_core`, `fortfem_fourier`, `fortfem_boundary`,
+  `fortfem_time`, and `fortfem_interop` exclusively (apart from kinds and
+  sparse utility modules). It covers core geometry, Fourier modes, planar
+  Helmholtz DtN, structure-preserving mixed-wave stepping, and interchange
+  metrics with independent analytical, energy, reversibility, and weighted
+  error oracles. Additional consumer clients remain useful as the facades
+  grow, but the first API-07 gate is closed.
 
 ## 2. Current baseline
 
