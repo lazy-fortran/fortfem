@@ -32,6 +32,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_torus_efie_imaginary_impedance_jvp
+    public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
@@ -818,6 +820,66 @@ contains
             decay_rate*vector_potential + scalar_potential/decay_rate)
         status = 0
     end subroutine assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
+
+    subroutine assemble_maxwell_torus_efie_imaginary_impedance_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, impedance, quadrature_degree, tolerance, max_depth, &
+            impedance_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, decay_rate
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: impedance_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: decaying_operator(:, :)
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (decay_rate <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status, decaying_kernel=.true.)
+        if (status /= 0) return
+        decaying_operator = decay_rate*vector_potential + &
+            scalar_potential/decay_rate
+        matrix = -impedance*decaying_operator
+        matrix_dot = -impedance_dot*decaying_operator
+        status = 0
+    end subroutine &
+        assemble_maxwell_torus_efie_imaginary_impedance_jvp
+
+    subroutine assemble_maxwell_torus_efie_imaginary_impedance_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix_bar, impedance_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, decay_rate
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: impedance_bar
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: decaying_operator(:, :)
+
+        impedance_bar = 0.0_dp
+        status = 1
+        if (decay_rate <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            decay_rate, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status, decaying_kernel=.true.)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(vector_potential))) return
+        decaying_operator = decay_rate*vector_potential + &
+            scalar_potential/decay_rate
+        impedance_bar = real(sum(conjg(matrix_bar)*(-decaying_operator)), dp)
+        status = 0
+    end subroutine &
+        assemble_maxwell_torus_efie_imaginary_impedance_vjp
 
     subroutine assemble_maxwell_torus_curved_mfie_rwg_rbc_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
