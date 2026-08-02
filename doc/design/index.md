@@ -245,6 +245,11 @@ without materializing a monolithic matrix. It is the bounded-memory reference
 path for element, interface, FEM/BEM/DtN/PML, tensor, and Fourier block
 contributions.
 
+The [packed block graph to CSC adapter](block_graph_csc.html) is the explicit
+sparse boundary for callers that need a retained FortSparse factor. It emits
+real or complex CSC storage from the same graph, sums duplicate entries, and
+never constructs a dense global matrix.
+
 The [complex packed block graph residual](complex_block_graph_residual.html)
 provides the same N-field path for frequency-domain operators and documents
 the real-part complex adjoint convention used by Helmholtz, curl--curl,

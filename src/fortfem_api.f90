@@ -76,6 +76,7 @@ module fortfem_api
         assemble_block_graph_residual, &
         assemble_block_graph_residual_jvp, &
         assemble_block_graph_residual_vjp
+    use fortfem_block_graph_csc, only: assemble_block_graph_csc
     use fortfem_complex_block_graph_residual, only: &
         assemble_complex_block_graph_residual, &
         assemble_complex_block_graph_residual_jvp, &
@@ -2765,6 +2766,7 @@ module fortfem_api
     public :: assemble_block_graph_residual
     public :: assemble_block_graph_residual_jvp
     public :: assemble_block_graph_residual_vjp
+    public :: assemble_block_graph_csc
     public :: assemble_complex_block_graph_residual
     public :: assemble_complex_block_graph_residual_jvp
     public :: assemble_complex_block_graph_residual_vjp
