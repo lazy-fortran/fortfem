@@ -1585,7 +1585,11 @@ gallery example.
   also exposes fixed-topology analytical JVP/VJP products for refined angles,
   embedded vertices, and major/minor radii, with a central-difference and
   real-adjoint oracle; coarse-to-refined geometry can therefore be composed
-  without finite-differencing the refinement routine.
+  without finite-differencing the refinement routine. The generic
+  Buffa--Christiansen/RBC transformation now also exposes analytical geometry
+  JVP/VJP products for its vertex-ring and reference-edge inverse-length
+  coefficients; an independent reassembly and real adjoint-product test
+  guards this BC layer before assembled RBC pairing derivatives are added.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
