@@ -304,7 +304,8 @@ documentation gates above pass.
   and solution-plot contracts without generated media. Each has a
   direct-import facade and focused analytical or structure smoke test. No
   facade may grow into the umbrella.
-- **API-03 — two renames complete; two slices in flight:** the boundary parity family is now
+- **API-03 — two renames complete; two slices in flight:** the boundary parity
+  family is now
   `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
   module, umbrella exports, tests, and design documentation. The obsolete
   internal spelling is gone; the independent weighted complex value/JVP/VJP
