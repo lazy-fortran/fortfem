@@ -303,6 +303,9 @@ module fortfem_api
     use fortfem_force_balance_product, only: &
         evaluate_force_balance_product, evaluate_force_balance_product_jvp, &
         evaluate_force_balance_product_vjp
+    use fortfem_flux_surface_average, only: &
+        evaluate_flux_surface_average, evaluate_flux_surface_average_jvp, &
+        evaluate_flux_surface_average_vjp
     use fortfem_nested_surface_geometry, only: &
         evaluate_nested_surface_geometry, &
         evaluate_nested_surface_geometry_jvp, &
@@ -1615,6 +1618,9 @@ module fortfem_api
     public :: evaluate_force_balance_product
     public :: evaluate_force_balance_product_jvp
     public :: evaluate_force_balance_product_vjp
+    public :: evaluate_flux_surface_average
+    public :: evaluate_flux_surface_average_jvp
+    public :: evaluate_flux_surface_average_vjp
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp
