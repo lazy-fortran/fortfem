@@ -1093,6 +1093,11 @@ complete analytical derivatives.
 The `evaluate_residual_merit` primitive supplies the positive-weighted
 least-squares merit and analytical JVP/VJP; acceptance rules and nonlinear
 solver state remain client-owned.
+The `classify_continuation_event` primitive now reports deterministic
+sign-crossing and near-zero margins with the global minimum margin. It is the
+explicit topology-event boundary for cuts, separatrices, resonances, and
+interface graphs; derivatives across a reported event remain invalid by
+contract.
 
 #### 8.5.6 Geometry-independent 2D and 3D benchmark ladder
 

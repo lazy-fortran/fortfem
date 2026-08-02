@@ -50,6 +50,9 @@ module fortfem_api
     use fortfem_residual_merit, only: &
         evaluate_residual_merit, evaluate_residual_merit_jvp, &
         evaluate_residual_merit_vjp
+    use fortfem_continuation_event, only: &
+        CONTINUATION_EVENT_NEAR_ZERO, CONTINUATION_EVENT_NONE, &
+        CONTINUATION_EVENT_SIGN_CROSSING, classify_continuation_event
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -1394,6 +1397,10 @@ module fortfem_api
     public :: evaluate_residual_merit
     public :: evaluate_residual_merit_jvp
     public :: evaluate_residual_merit_vjp
+    public :: CONTINUATION_EVENT_NONE
+    public :: CONTINUATION_EVENT_SIGN_CROSSING
+    public :: CONTINUATION_EVENT_NEAR_ZERO
+    public :: classify_continuation_event
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp
