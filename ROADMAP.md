@@ -356,6 +356,8 @@ waits for the full gallery/CI job before handing off.
 | --- | --- | --- |
 | API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; canonical `compare_sheet_current_representations` export and value parity are complete | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
 | API-03-SURFACE | Surface-quadrature definition, exports, tests/docs; canonical `compare_sheet_current_surface_representations{,_jvp}` and interop-facade export are complete | Orientation/measure/toroidal quadrature oracle, central-difference JVP, and invalid-measure rejection |
+| API-03-BELTRAMI | Next parity family: rename `evaluate_beltrami_two_region_parity` and `evaluate_beltrami_shell_parity` to the documented `compare_*_residual` names, keeping flux/helicity/energy schemas unchanged | Independent curl-eigen residual, constraint, energy, and value/JVP/VJP oracles; no physics closure or reader changes |
+| API-03-TREE | Rename `evaluate_tree_cotree_iga_parity` to `diagnose_tree_cotree_iga_invariance` with the fixed-map derivative contract | Signed-map invariance, loop-period, direct-reduction, and fixed-topology JVP/VJP oracle |
 | API-06-GATE | Release-gate runner, isolated negative fixtures, and fpm-safe fixture layout are complete; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
 | API-05-GALLERY | Example import audit and documentation links, ordered by scalar-to-vector-to-interface complexity; no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
 
