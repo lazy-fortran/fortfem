@@ -42,7 +42,8 @@ module fortfem_interop
         compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity
     use fortfem_sheet_current_surface_parity, only: &
-        compare_sheet_current_surface_representations
+        compare_sheet_current_surface_representations, &
+        compare_sheet_current_surface_representations_jvp
     use fortfem_sheet_current_parity, only: &
         compare_sheet_current_representations
     implicit none
@@ -72,6 +73,7 @@ module fortfem_interop
     public :: compare_interchange_samples_jvp
     public :: compare_interchange_samples_vjp
     public :: compare_sheet_current_surface_representations
+    public :: compare_sheet_current_surface_representations_jvp
     public :: compare_sheet_current_representations
     public :: complex_interchange_sample_set_t
     public :: initialize_boundary_operator_contract
