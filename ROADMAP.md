@@ -661,14 +661,17 @@ half-integer toroidal `P/Q` API. It also provides standard orthonormal complex
 polar interval (with derivative evaluation intentionally undefined at its
 poles), plus a Gaunt product coefficient with an independent Wigner-3j
 Racah-sum oracle. The [pinned FortNum API
-revision](https://github.com/lazy-fortran/fortnum/blob/9bb6e7b/docs/api.md)
+revision](https://github.com/lazy-fortran/fortnum/blob/3920109/docs/api.md)
 records the domains, normalization, derivative convention, DLMF provenance,
 and the current continuation scope. FortNum's zero-order toroidal Q
 branch now uses the DLMF zero-balanced continuation near x=1 and generates
 associated orders from its analytical derivative; half-integer toroidal P uses
 an upward degree recurrence and the recessive Q branch uses scaled Miller
 continuation at ordinary aspect ratios, with independent degree-80 references
-and recurrence checks. The remaining limitation is uniform asymptotics for
+and recurrence checks. FortNum `3920109` additionally exposes analytical
+second derivatives for ordinary Ferrers/second-kind Legendre and half-integer
+toroidal P/Q branches, checked against independent finite differences and ODE
+residuals. The remaining limitation is uniform asymptotics for
 arbitrarily large degree/order and cross-geometry special-function oracles.
 Analytical solutions and DtN
 maps are tested on slabs, cylinders, spheres, and exact toroidal surfaces. The
@@ -2560,8 +2563,12 @@ gallery example.
   derivatives through `fortfem_toroidal_harmonics`; an independent adapter
   oracle covers both Hobson branches, derivative values, invalid-domain NaN,
   and the upstream near-cut continuation. Stable degree-80 continuation is
-  pinned to FortNum `9bb6e7b`; mode-coupled toroidal operators and uniform
+  pinned to the FortNum revision recorded in `fpm.toml`; mode-coupled toroidal operators and uniform
   asymptotic envelopes remain.
+- The toroidal P/Q adapter also exposes second radial derivatives from the
+  pinned FortNum branch, with independent associated-Legendre ODE residual
+  checks for both branches. This closes the local second-order radial hook;
+  uniform asymptotics and mode-coupled operators remain separate work.
 - The neutral `evaluate_toroidal_spectral_trace` map now composes the P/Q
   branches with complex toroidal Fourier phases and outward normal traces;
   its analytical coefficient/geometry JVP/VJP products are independently
