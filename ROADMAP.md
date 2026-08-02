@@ -1564,6 +1564,12 @@ Since this audit, the neutral implementation now includes:
   `gen_surface_shape_objective_products`, and `check_generated.sh` compares the
   committed generated kernel byte-for-byte when the locked FortSym revision is
   available.
+- The seeded `test_surface_shape_objective_properties` fixture samples 1-D,
+  2-D, and 3-D fixed-topology surfaces, compares the weighted-loop value and
+  product-rule JVP against independent arithmetic and centered differences,
+  checks the real VJP identity, and exercises non-positive-weight and topology
+  rejection. This adds randomized objective coverage without selecting a
+  geometry or free-boundary physics model.
 - `evaluate_surface_integral_constraint` and its JVP/VJP companions for a
   caller-owned scalar surface ledger with a target residual. Positive weights,
   samples, units, quadrature, topology, and target selection remain external;
