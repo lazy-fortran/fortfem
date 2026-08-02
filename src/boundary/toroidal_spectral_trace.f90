@@ -16,6 +16,9 @@ module fortfem_toroidal_spectral_trace
     public :: evaluate_toroidal_spectral_trace
     public :: evaluate_toroidal_spectral_trace_jvp
     public :: evaluate_toroidal_spectral_trace_vjp
+    public :: evaluate_toroidal_spectral_trace_grid
+    public :: evaluate_toroidal_spectral_trace_grid_jvp
+    public :: evaluate_toroidal_spectral_trace_grid_vjp
 
 contains
 
@@ -84,6 +87,113 @@ contains
         end do
         status = 0
     end subroutine evaluate_toroidal_spectral_trace_jvp
+
+    subroutine evaluate_toroidal_spectral_trace_grid( &
+            degree_indices, orders, coefficients, scale, eta, theta, phi, &
+            use_second_kind, values, normal_derivatives, status)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: coefficients(:)
+        real(dp), intent(in) :: scale, eta(:), theta(:), phi(:)
+        logical, intent(in) :: use_second_kind
+        complex(dp), intent(out) :: values(:), normal_derivatives(:)
+        integer, intent(out) :: status
+
+        integer :: point
+
+        values = cmplx(0.0_dp, 0.0_dp, dp)
+        normal_derivatives = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(eta) < 1 .or. size(theta) /= size(eta) .or. &
+            size(phi) /= size(eta) .or. size(values) /= size(eta) .or. &
+            size(normal_derivatives) /= size(eta)) return
+        do point = 1, size(eta)
+            call evaluate_toroidal_spectral_trace( &
+                degree_indices, orders, coefficients, scale, eta(point), &
+                theta(point), phi(point), use_second_kind, values(point), &
+                normal_derivatives(point), status)
+            if (status /= 0) return
+        end do
+        status = 0
+    end subroutine evaluate_toroidal_spectral_trace_grid
+
+    subroutine evaluate_toroidal_spectral_trace_grid_jvp( &
+            degree_indices, orders, coefficients, scale, eta, theta, phi, &
+            use_second_kind, coefficients_dot, scale_dot, eta_dot, theta_dot, &
+            phi_dot, values_dot, normal_derivatives_dot, status)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: scale, eta(:), theta(:), phi(:)
+        logical, intent(in) :: use_second_kind
+        real(dp), intent(in) :: scale_dot, eta_dot(:), theta_dot(:), phi_dot(:)
+        complex(dp), intent(out) :: values_dot(:), normal_derivatives_dot(:)
+        integer, intent(out) :: status
+
+        integer :: point
+
+        values_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        normal_derivatives_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(eta) < 1 .or. size(theta) /= size(eta) .or. &
+            size(phi) /= size(eta) .or. size(eta_dot) /= size(eta) .or. &
+            size(theta_dot) /= size(eta) .or. size(phi_dot) /= size(eta) .or. &
+            size(values_dot) /= size(eta) .or. &
+            size(normal_derivatives_dot) /= size(eta)) return
+        do point = 1, size(eta)
+            call evaluate_toroidal_spectral_trace_jvp( &
+                degree_indices, orders, coefficients, scale, eta(point), &
+                theta(point), phi(point), use_second_kind, coefficients_dot, &
+                scale_dot, eta_dot(point), theta_dot(point), phi_dot(point), &
+                values_dot(point), normal_derivatives_dot(point), status)
+            if (status /= 0) return
+        end do
+        status = 0
+    end subroutine evaluate_toroidal_spectral_trace_grid_jvp
+
+    subroutine evaluate_toroidal_spectral_trace_grid_vjp( &
+            degree_indices, orders, coefficients, scale, eta, theta, phi, &
+            use_second_kind, values_bar, normal_derivatives_bar, coefficients_bar, &
+            scale_bar, eta_bar, theta_bar, phi_bar, status)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: coefficients(:), values_bar(:)
+        complex(dp), intent(in) :: normal_derivatives_bar(:)
+        real(dp), intent(in) :: scale, eta(:), theta(:), phi(:)
+        logical, intent(in) :: use_second_kind
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        real(dp), intent(out) :: scale_bar, eta_bar(:), theta_bar(:), phi_bar(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: local_coefficients_bar(:)
+        real(dp) :: local_scale_bar, local_eta_bar, local_theta_bar, local_phi_bar
+        integer :: point
+
+        scale_bar = 0.0_dp
+        eta_bar = 0.0_dp
+        theta_bar = 0.0_dp
+        phi_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        status = 1
+        if (size(eta) < 1 .or. size(theta) /= size(eta) .or. &
+            size(phi) /= size(eta) .or. size(values_bar) /= size(eta) .or. &
+            size(normal_derivatives_bar) /= size(eta) .or. &
+            size(eta_bar) /= size(eta) .or. size(theta_bar) /= size(eta) .or. &
+            size(phi_bar) /= size(eta)) return
+        allocate(coefficients_bar(size(coefficients)))
+        coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do point = 1, size(eta)
+            call evaluate_toroidal_spectral_trace_vjp( &
+                degree_indices, orders, coefficients, scale, eta(point), &
+                theta(point), phi(point), use_second_kind, values_bar(point), &
+                normal_derivatives_bar(point), local_coefficients_bar, &
+                local_scale_bar, local_eta_bar, local_theta_bar, local_phi_bar, status)
+            if (status /= 0) return
+            coefficients_bar = coefficients_bar + local_coefficients_bar
+            scale_bar = scale_bar + local_scale_bar
+            eta_bar(point) = local_eta_bar
+            theta_bar(point) = local_theta_bar
+            phi_bar(point) = local_phi_bar
+        end do
+        status = 0
+    end subroutine evaluate_toroidal_spectral_trace_grid_vjp
 
     subroutine evaluate_toroidal_spectral_trace_vjp( &
             degree_indices, orders, coefficients, scale, eta, theta, phi, &

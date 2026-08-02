@@ -689,7 +689,10 @@ module fortfem_api
         advance_resistive_wall_midpoint_vjp, evaluate_resistive_wall_energy_balance
     use fortfem_toroidal_spectral_trace, only: &
         evaluate_toroidal_spectral_trace, evaluate_toroidal_spectral_trace_jvp, &
-        evaluate_toroidal_spectral_trace_vjp
+        evaluate_toroidal_spectral_trace_vjp, &
+        evaluate_toroidal_spectral_trace_grid, &
+        evaluate_toroidal_spectral_trace_grid_jvp, &
+        evaluate_toroidal_spectral_trace_grid_vjp
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1535,6 +1538,9 @@ module fortfem_api
     public :: evaluate_toroidal_spectral_trace
     public :: evaluate_toroidal_spectral_trace_jvp
     public :: evaluate_toroidal_spectral_trace_vjp
+    public :: evaluate_toroidal_spectral_trace_grid
+    public :: evaluate_toroidal_spectral_trace_grid_jvp
+    public :: evaluate_toroidal_spectral_trace_grid_vjp
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
