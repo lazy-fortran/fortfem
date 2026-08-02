@@ -1,0 +1,179 @@
+{
+  "schema": "fortfem-external-oracle-runner-1",
+  "data_repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+  "case": {
+    "id": "unit-square-poisson-mms-v1",
+    "equation": "-laplacian(u) = f",
+    "exact_solution": "sin(pi*x)*sin(pi*y)",
+    "source": "2*pi^2*sin(pi*x)*sin(pi*y)",
+    "boundary_condition": "u=0 on the unit-square boundary",
+    "sampling": {
+      "coordinate_system": "physical-cartesian",
+      "rule": "uniform tensor grid at x,y in {0, 0.5, 1}",
+      "sample_count": 9,
+      "points": [
+        [0.0, 0.0], [0.5, 0.0], [1.0, 0.0],
+        [0.0, 0.5], [0.5, 0.5], [1.0, 0.5],
+        [0.0, 1.0], [0.5, 1.0], [1.0, 1.0]
+      ],
+      "reference_values": [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+      "weights": [
+        0.1111111111111111, 0.1111111111111111, 0.1111111111111111,
+        0.1111111111111111, 0.1111111111111111, 0.1111111111111111,
+        0.1111111111111111, 0.1111111111111111, 0.1111111111111111
+      ],
+      "reference_artifact": {
+        "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+        "coordinates_sha256": "a276e8e0d8c6c74e2b2255a9519f7873b5c7983a34ffa36f916c9769a048f8e2",
+        "values_sha256": "485750f31a2540d715b3bd7e853d714b08b8819c3c14c145c8e8ebb4990f619e"
+      }
+    },
+    "tolerances": {
+      "coordinate": 1.0e-12,
+      "absolute": 1.0e-10,
+      "relative": 1.0e-08,
+      "residual": 1.0e-08
+    }
+  },
+  "runners": [
+    {
+      "id": "freefem",
+      "code": "FreeFEM",
+      "license": "GPL-2.0-or-later",
+      "source_uri": "https://github.com/FreeFem/FreeFem-sources",
+      "revision": null,
+      "status": "skipped",
+      "skip_reason": "optional external executable is not invoked by the fast repository test",
+      "launch": {
+        "command": ["FreeFem++", "-nw", "benchmark/freefem/poisson-2d/poisson_2d.edp"],
+        "working_directory": "repository-root",
+        "timeout_seconds": 10.0
+      },
+      "uv": {
+        "supported": false,
+        "reason": "FreeFEM is a native external executable; uv is not its package manager"
+      },
+      "sampling": {
+        "coordinate_system": "physical-cartesian",
+        "rule": "shared-case probe coordinates",
+        "sample_count": 9
+      },
+      "tolerances": {
+        "coordinate": 1.0e-12,
+        "absolute": 1.0e-10,
+        "relative": 1.0e-08,
+        "residual": 1.0e-08
+      },
+      "timing": {
+        "mesh_seconds": null,
+        "assembly_seconds": null,
+        "factorization_seconds": null,
+        "solve_seconds": null,
+        "output_seconds": null,
+        "total_seconds": null,
+        "peak_memory_bytes": null,
+        "warmup_count": null,
+        "repetition_count": null
+      },
+      "artifact": {
+        "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+        "manifest_uri": null,
+        "coordinates_sha256": null,
+        "samples_sha256": null
+      }
+    },
+    {
+      "id": "mfem",
+      "code": "MFEM",
+      "license": "BSD-3-Clause",
+      "source_uri": "https://github.com/mfem/mfem",
+      "revision": null,
+      "status": "skipped",
+      "skip_reason": "optional MFEM build is not invoked by the fast repository test",
+      "launch": {
+        "command": ["./mfem_manufactured_oracles", "--case", "unit-square-poisson-mms-v1"],
+        "working_directory": "benchmark/mfem",
+        "timeout_seconds": 10.0
+      },
+      "uv": {
+        "supported": false,
+        "reason": "MFEM is a native C++ library; uv is not its build system"
+      },
+      "sampling": {
+        "coordinate_system": "physical-cartesian",
+        "rule": "shared-case probe coordinates",
+        "sample_count": 9
+      },
+      "tolerances": {
+        "coordinate": 1.0e-12,
+        "absolute": 1.0e-10,
+        "relative": 1.0e-08,
+        "residual": 1.0e-08
+      },
+      "timing": {
+        "mesh_seconds": null,
+        "assembly_seconds": null,
+        "factorization_seconds": null,
+        "solve_seconds": null,
+        "output_seconds": null,
+        "total_seconds": null,
+        "peak_memory_bytes": null,
+        "warmup_count": null,
+        "repetition_count": null
+      },
+      "artifact": {
+        "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+        "manifest_uri": null,
+        "coordinates_sha256": null,
+        "samples_sha256": null
+      }
+    },
+    {
+      "id": "fenicsx",
+      "code": "FEniCSx/DOLFINx",
+      "license": "Apache-2.0",
+      "source_uri": "https://github.com/FEniCS/dolfinx",
+      "revision": null,
+      "status": "skipped",
+      "skip_reason": "DOLFINx requires its compiled container and is not installed by the fast repository test",
+      "launch": {
+        "command": ["python", "benchmark/fenicsx/manufactured_oracles.py"],
+        "working_directory": "repository-root",
+        "timeout_seconds": 10.0
+      },
+      "uv": {
+        "supported": true,
+        "purpose": "lightweight CSV validation and plotting after the official DOLFINx container run",
+        "postprocess_command": ["uv", "run", "--with", "numpy", "--", "python", "tools/plot_external_oracle_records.py"]
+      },
+      "sampling": {
+        "coordinate_system": "physical-cartesian",
+        "rule": "shared-case probe coordinates",
+        "sample_count": 9
+      },
+      "tolerances": {
+        "coordinate": 1.0e-12,
+        "absolute": 1.0e-10,
+        "relative": 1.0e-08,
+        "residual": 1.0e-08
+      },
+      "timing": {
+        "mesh_seconds": null,
+        "assembly_seconds": null,
+        "factorization_seconds": null,
+        "solve_seconds": null,
+        "output_seconds": null,
+        "total_seconds": null,
+        "peak_memory_bytes": null,
+        "warmup_count": null,
+        "repetition_count": null
+      },
+      "artifact": {
+        "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+        "manifest_uri": null,
+        "coordinates_sha256": null,
+        "samples_sha256": null
+      }
+    }
+  ]
+}
