@@ -2771,6 +2771,12 @@ gallery example.
   solutions, with physical state, phase-space, energy, error, and timing
   plots. The same neutral block contract remains reusable for elasticity,
   electromagnetic, and tensor-pressure clients.
+- The `mixed_wave_3d_structure` gallery fixture now adds the smallest
+  explicit Cartesian (x/y/z) physical trajectory: its first FortPlot is a
+  connected 3D numerical/analytical solution path, followed by component and
+  energy diagnostics. A bounded shell oracle checks nonempty PNG/CSV output
+  and `physical_solution` before `diagnostics`; no production physics is
+  selected.
 - The `mixed_elasticity_wave` gallery fixture now exercises the mixed
   displacement/velocity and constitutive/equilibrium contracts on a
   manufactured one-dimensional elastic bar. Its first plot reconstructs the
