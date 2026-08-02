@@ -350,6 +350,12 @@ documentation gates above pass.
   broader migrated examples are guarded by their focused behavioral tests and
   module-layer audit. The remaining gallery still needs the same smallest-
   facade treatment; these commits do not close API-05 globally.
+  The follow-up `84216c7` slice completes the executable gallery import audit:
+  only `example/tetra_h1_poisson/tetra_h1_poisson.f90` retains the umbrella,
+  as the single intentional compatibility smoke. The regenerated inventory
+  at `1902f8c`, representative checker, module-layer audit, and generated-
+  visibility audit all pass; solution-first visual coverage remains a
+  separate gallery gate.
 - **API-06 — complete first gate:**
   `scripts/check_api_release_gate.py` and
   `test/test_api_release_gate.sh` compose byte-current inventory, module-layer,
@@ -423,6 +429,11 @@ All four 2026-08-03 dispatches have now handed off clean branches. Their
 commits are recorded above and the integrator has regenerated the API
 inventory at `0fabd83`; future agents must take the next disjoint example
 batch rather than reopening these files or duplicating their exports.
+
+The `migrate_remaining_gallery_facades` hand-off (`84216c7`) then removed the
+umbrella from the final eleven non-compatibility examples. It preserved the
+single tetrahedral Poisson compatibility smoke and passed the release-facing
+facade, module-layer, and generated-visibility checks.
 
 The optional external-code runner foundation is also now on `main` in
 `b333388`: `benchmark/external_oracles/runner_manifest.json` and
