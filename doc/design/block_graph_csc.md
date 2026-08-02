@@ -19,6 +19,8 @@ call assemble_block_graph_csc( &
 The real and complex paths share the same topology contract. The focused test
 compares CSC matvecs against independently written dense oracles, checks
 duplicate-edge compression through the resulting nonzero count, and rejects
-inconsistent offsets. The resulting matrix can be passed directly to
-FortSparse retained direct factors and their converged-state derivative
-actions; solver policy, gauge reduction, and block ordering remain caller-owned.
+inconsistent offsets. The resulting matrix can be passed directly to FortSparse
+retained direct factors and their converged-state derivative actions. The
+focused test exercises that complete real and complex graph-to-factor path,
+including the JVP/VJP adjoint identity; solver policy, gauge reduction, and
+block ordering remain caller-owned.
