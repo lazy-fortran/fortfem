@@ -93,6 +93,12 @@ defines conservative cross-mass transfer between an FCI background trace and a
 fitted or cut boundary patch, including constant reproduction, ownership, and
 the weighted adjoint identity.
 
+The [geometry-aware mortar trace contract](geometry_mortar_trace_coupling.html)
+adds the physical surface metric layer for arbitrary multipatch IGA, Fourier,
+panel, and cut-surface providers. It returns the physical quadrature ledger and
+has complete trace, reference-weight, metric, JVP, and VJP actions while
+leaving coordinates, normals, and interface laws caller-owned.
+
 The [oriented cell-complex contract](cell_complex.html) defines integer chain
 boundary maps, exact boundary-of-boundary validation, Euler characteristic, and
 small homology diagnostics for later FEEC, gauge, cut, and interface graphs.
