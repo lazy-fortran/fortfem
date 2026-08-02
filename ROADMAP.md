@@ -1326,8 +1326,8 @@ named application or its plasma closure.
 | MHD-01 | **active** | Stabilize one equation-as-data ABI for scalar, vector, tensor, complex-frequency, and multiplier fields, including units, normalization, constraints, traces, residual/JVP/VJP, and converged-state derivatives | Manufactured mixed-field residual with independent matrix, finite-difference, real-adjoint, and invalid-shape tests; no plasma state vector is hard-coded |
 | MHD-02 | **active** | Finish the compatible spatial core: H1--H(curl)--H(div)--L2, Fourier-FEM, IGA patch graphs, orientation/periodic maps, harmonic forms, and tree--cotree direct gauge reduction for curl--curl systems. The topology-only `build_multipatch_signed_dof_map` and its 2D/3D B-spline compositions now construct arbitrary-patch signed maps, face permutations, and orientation-cycle checks; geometry-aware traces and distributed ownership are still open | Slab, cylinder, sphere, and torus complexes satisfy incidence identities, divergence/curl defects, loop periods, gauge reduction, and direct-solve parity; fixed selectors are not differentiated |
 | MHD-03 | **active** | Compose tensor-valued pressure/stress and Maxwell traction blocks, including CGL-shaped parallel/perpendicular terms, gyrotropic/nonsymmetric terms, stress work, force divergence, and interface jumps | Independent tensor contraction, traction, force-volume, normal-flux, tangential-jump, power, and real/complex JVP/VJP oracles; angular-momentum and energy defects are reported |
-| MHD-04 | **planned** | Add a generic force-balance residual composition for supplied magnetic, pressure/stress, inertial, and body-force blocks, with explicit volume, boundary, and sheet-current terms | A manufactured equilibrium-like field on slab/cylinder/torus has zero residual under the supplied data; fitted, cut, DG, and IGA forms agree on common samples |
-| MHD-05 | **planned** | Add the nested-surface variational composition used by VMEC/GVEC/DESC-like clients: toroidal embedding, radial FE/IGA, Fourier modes, flux/constraint blocks, shape derivatives, and NESTOR-like vacuum trace | A supplied nested toroidal embedding reproduces manufactured fluxes and force residuals; physical surface plots, mode energies, conditioning, and shape-derivative checks are published |
+| MHD-04 | **active** | Add a generic force-balance residual composition for supplied magnetic, pressure/stress, inertial, and body-force blocks, with explicit volume, boundary, and sheet-current terms. `assemble_force_balance_residual` now provides the closure-neutral three-term weak composition with complete real JVP/VJP actions; tensor and constitutive blocks remain caller-owned | A manufactured equilibrium-like field on slab/cylinder/torus has zero residual under the supplied data; fitted, cut, DG, and IGA forms agree on common samples |
+| MHD-05 | **planned** | Add the nested-surface coordinate and variational composition used by VMEC/GVEC clients and consumed by DESC-like direct-force clients: toroidal embedding, radial FE/IGA, Fourier modes, flux/constraint blocks, shape derivatives, and NESTOR-like vacuum trace | A supplied nested toroidal embedding reproduces manufactured fluxes and force residuals; physical surface plots, mode energies, conditioning, and shape-derivative checks are published |
 | MHD-06 | **planned** | Add the multi-region relaxed composition used by SPEC/SPECTRE-like clients: independent region fields, Beltrami/curl-eigen blocks, ideal interfaces, pressure balance, flux/helicity constraints, and harmonic loop data | Two-region slab and toroidal-shell manufactured states compare BIEST-like and compatible H(curl) paths, reject resonant gauges, and close flux/helicity/energy ledgers |
 | MHD-07 | **planned** | Add the Eulerian non-nested composition used by SIESTA-like clients: fixed-domain compatible fields, supplied force/divergence residuals, pseudo-transient hooks, topology events, and free-boundary traces | An island-forming manufactured perturbation reports field topology, divergence, force residual, event status, and fixed-topology derivative validity without selecting a relaxation closure |
 | MHD-08 | **planned** | Add linear ideal/resistive perturbation composition used by GPEC/MARS/GLISS-like clients: inertia, Lorentz, pressure/stress, vacuum, wall, resistive, singular-layer, and complex-frequency blocks | Forced and generalized-eigen manufactured cases satisfy reciprocity/passivity where declared; ideal shielding, penetrated resonant field, layer matching, normalization, and response matrices have independent oracles |
@@ -1339,14 +1339,62 @@ named application or its plasma closure.
 | MHD-14 | **planned** | Compose a bounded nonlinear resistive-MHD operator family: Faraday/Ampere-compatible blocks, supplied momentum/pressure/tensor terms, anisotropic transport, wall/free-boundary ports, continuation, and branch/event diagnostics | A reduced manufactured island/wall continuation case reports residual, input, dissipation, branch multiplicity, hysteresis, and derivative validity; it is not a JOREK replacement |
 | MHD-15 | **planned** | Build the external oracle ladder and neutral data path for CHEASE, FreeGS, VMEC/PARVMEC, GVEC/DESC, SPEC/SIESTA, GPEC/MARS, GLISS, STARWALL, JOREK, FreeFEM, MFEM, and FEniCSx | Common physical sampling, checksums, licenses, executable revisions, tolerances, performance metadata, and optional sister-repository data; no external source or reader enters FortFEM |
 | MHD-16 | **planned** | Finish the MHD gallery and benchmark contract in increasing complexity, with physical solution first: 1D slab, 2D circle/cylinder, 3D sphere/torus, vector arrows/surfaces/field lines, mesh completeness, convergence, invariants, and timings | Every page has a solution preview before diagnostics, generated FortPlot media, CSV/JSON provenance, no checked-in images, and a bounded memory/timeout record |
+| MHD-17 | **planned** | Add the DESC-like direct nested-surface force-balance/optimization foundation without implementing DESC physics: inverse toroidal-flux coordinates ((R,Z,lambda)), Fourier--Zernike or equivalent axis-regular radial bases, parity and axis regularity, collocation force components, profile/objective/constraint callback registries, exact JVP/VJP and Hessian-vector hooks, perturbation/continuation/deflation, flux-surface averages/Boozer-transform hooks, near-axis data hooks, and fixed/free-boundary external-field and sheet-current residual ports | Manufactured axisymmetric and 3D toroidal states show axis regularity, exponential radial/mode convergence, direct force residual closure, objective/constraint derivatives, perturbation and continuation parity, and free-boundary/sheet-current boundary residuals; all profile laws, readers, and production optimization remain external |
 
-Dependency order is MHD-00/01 → MHD-02/03 → MHD-04/09 → MHD-05/06/07 →
+Dependency order is MHD-00/01 → MHD-02/03 → MHD-04/09 → MHD-05/06/07/17 →
 MHD-08/10 → MHD-11/12/13 → MHD-14/15/16. In particular, a generic
 coupled Schur layer is an MHD-01/02 solver dependency, not an equilibrium
 implementation; its off-diagonal blocks remain caller-owned. A gallery or
 oracle may use a name such as “HKT”, “VMEC-like”, or “JOREK-like” only to
 identify the mathematical benchmark and provenance, never to imply that the
 corresponding production code is being reimplemented here.
+
+#### DESC-specific foundation checklist
+
+DESC is a direct force-balance and optimization target, not merely another
+variational VMEC implementation. Its public theory and documentation require
+the following reusable ingredients to be explicit in FortFEM before an
+external DESC-like client can be built:
+
+1. **Nested inverse representation.** Store a toroidal-flux radial coordinate,
+   two periodic angles, and the surface embedding (R,Z) plus stream/straight-
+   field-line map (lambda). Keep the axis, boundary, and field-period
+   conditions as separate constrained traces.
+2. **Axis-regular spectral spaces.** Provide Fourier modes coupled to a radial
+   polynomial/spline basis with parity, regularity, and mode-coupling rules at
+   the magnetic axis. Fourier--Zernike is the reference oracle; a compatible
+   radial FE/IGA representation is an allowed FortFEM backend.
+3. **Direct force residual.** Expose the radial and helical force-balance
+   components at caller-owned collocation or quadrature points, including the
+   volume Jacobian/metric weights, and provide assembled, matrix-free JVP,
+   VJP, and Hessian-vector hooks. This is distinct from minimizing an energy.
+4. **Equation and objective registry.** Treat force balance, boundary
+   conditions, flux/rotational-transform constraints, profile callbacks,
+   quasi-symmetry/omnigenity objectives, Mercier or ballooning diagnostics, and
+   user objectives as typed residual/objective blocks. FortFEM supplies the
+   derivative and constraint composition, not the plasma formulas.
+5. **Continuation and perturbation.** Support implicit derivatives of a
+   converged equilibrium, first/second/third-order perturbation blocks,
+   pseudo-arclength continuation, trust-region/Newton acceptance, deflation,
+   and topology/event diagnostics. Solver iteration paths remain outside the
+   derivative contract.
+6. **Geometry diagnostics and transforms.** Reserve neutral contracts for
+   flux-surface averages, Boozer-like coordinate transforms, near-axis supplied
+   data, magnetic-well/Mercier-style scalar diagnostics, and field-line
+   samples. These must consume the common physical interchange schema and must
+   not become DESC or VMEC file readers.
+7. **Free-boundary ports.** Compose the same nested representation with
+   external-field, vacuum, conductor, virtual-casing, PML, and explicit
+   sheet-current traces. Fixed-boundary and free-boundary residuals must share
+   shape/JVP/VJP conventions.
+
+The checklist is grounded in the [DESC documentation](https://desc-docs.readthedocs.io/en/stable/),
+the original [DESC formulation](https://doi.org/10.1063/5.0020743), the
+[force-balance and convergence study](https://arxiv.org/abs/2203.17173),
+[perturbation/continuation work](https://arxiv.org/abs/2203.15927), and the
+[high-order free-boundary formulation](https://arxiv.org/abs/2412.05680).
+These are provenance and oracle references only; FortFEM still does not ship
+DESC inputs, profiles, coil models, or optimization physics.
 
 ## 9. Solver, constraints, and differentiation roadmap
 
@@ -1446,7 +1494,7 @@ work. Input conversion and application physics remain outside FortFEM.
 | [CHEASE](https://crppwww.epfl.ch/~sauter/chease/), [paper](https://doi.org/10.1016/0010-4655(96)00046-X) | 2D fixed-boundary axisymmetric toroidal equilibrium | Generic axisymmetric elliptic/Fourier forms, spline/FEM geometry, axis and boundary trace contracts, and a common sampler. No COCOS or GEQDSK implementation |
 | [FreeGS](https://freegs.readthedocs.io/en/stable/creating_equilibria.html) | 2D free-boundary axisymmetric equilibrium | Generic nonlinear residual, external boundary and coil-trace callbacks, X/O-point metadata fields, and manufactured profiles. Coil physics and GEQDSK conversion remain external |
 | [VMEC/PARVMEC](https://github.com/ORNL-Fusion/PARVMEC), [VMEC++ numerics](https://arxiv.org/abs/2502.04374) | 3D nested-surface variational ideal equilibrium and free boundary | Kinematically nested toroidal embeddings, Fourier angles, radial FE/IGA, flux and constraint blocks, NESTOR-like vacuum traces, shape JVP/VJP, and an external-data sampler |
-| [GVEC](https://gvec.readthedocs.io/develop/index.html), [DESC](https://github.com/PlasmaControl/DESC) | Flexible 3D variational equilibrium and optimization | General coordinate maps, radial B-splines, Fourier modes, multiple interfaces, and exact residual derivatives. Input and profile models remain external |
+| [GVEC](https://gvec.readthedocs.io/develop/index.html), [DESC](https://github.com/PlasmaControl/DESC) | GVEC-like variational and DESC-like direct-force-balance 3D nested-surface equilibrium and optimization | General coordinate maps, radial B-splines or Fourier--Zernike bases, axis regularity, Fourier modes, multiple interfaces, collocation/weak residuals, exact residual derivatives, perturbation/continuation, objective/constraint callbacks, and free-boundary external-field/sheet-current traces. Input and profile models remain external |
 | [SIESTA](https://doi.org/10.1063/1.3597155) | Eulerian ideal-MHD relaxation with islands and stochastic regions, including a free-plasma-boundary extension | Fixed-domain compatible volume fields, force and divergence residuals, relaxation/preconditioner contracts, topology events, and free-boundary trace coupling. Pressure and relaxation closures remain external |
 | [SPEC](https://princetonuniversity.github.io/SPEC/) | Multi-region relaxed MHD with ideal interfaces | Region graph, independent fields, generic curl-eigenproblem and constraint blocks, total-pressure trace law, and interface shape derivatives. Beltrami and profile selection remain client code |
 | [GPEC](https://princetonuniversity.github.io/GPEC/), [references](https://princetonuniversity.github.io/GPEC/references.html) | Linear ideal, kinetic, and resistive perturbed response with ideal outer shielding and optional resistive inner layers | Fourier coupling, explicit resonant sheet-current/penetrated-field traces, singular outer/inner layer contracts, vacuum and wall response, response matrices, normalization, and reciprocity. Equilibrium import remains external |
@@ -2430,6 +2478,13 @@ gallery example.
   GEQDSK or COCOS readers, profile laws, coil models, or equilibrium solvers.
 - Generic multi-region curl-eigenproblem, interface, and constraint blocks that
   external VMEC, GVEC, DESC, or SPEC clients can exercise.
+- DESC-specific foundation is tracked separately from the VMEC/GVEC variational
+  path: axis-regular Fourier--Zernike-compatible nested coordinates, direct
+  radial/helical force residuals, objective/constraint registries, exact
+  converged-state derivatives, perturbation/continuation/deflation, neutral
+  flux-surface/Boozer/near-axis diagnostics, and fixed/free-boundary sheet and
+  vacuum ports. No DESC reader, profile law, or optimization objective is
+  implemented here.
 - Generic linear ideal and resistive response blocks, singular layers, vacuum,
   conducting-wall traces, and response matrices for external GPEC, MARS, and
   GLISS oracle data.

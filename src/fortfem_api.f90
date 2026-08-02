@@ -288,6 +288,9 @@ module fortfem_api
     use fortfem_tensor_volume_work, only: &
         assemble_tensor_volume_work, assemble_tensor_volume_work_jvp, &
         assemble_tensor_volume_work_vjp
+    use fortfem_force_balance_residual, only: &
+        assemble_force_balance_residual, assemble_force_balance_residual_jvp, &
+        assemble_force_balance_residual_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, assemble_tensor_diffusion_matrix_jvp, &
         assemble_tensor_diffusion_matrix_vjp
@@ -1571,6 +1574,9 @@ module fortfem_api
     public :: assemble_tensor_volume_work
     public :: assemble_tensor_volume_work_jvp
     public :: assemble_tensor_volume_work_vjp
+    public :: assemble_force_balance_residual
+    public :: assemble_force_balance_residual_jvp
+    public :: assemble_force_balance_residual_vjp
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp

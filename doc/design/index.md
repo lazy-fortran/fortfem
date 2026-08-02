@@ -371,6 +371,11 @@ The [tensor volume work contract](tensor_volume_work.html) assembles the
 caller-owned `stress:grad(test)` residual and its geometry/tensor/weight
 JVP/VJP actions for CGL, Maxwell, anisotropic, and elastic clients.
 
+The [closure-neutral force-balance residual](force_balance_residual.html)
+composes separate volume, boundary-traction, and sheet-current weak loads with
+complete real JVP/VJP actions, without selecting a pressure, magnetic, or
+plasma closure.
+
 The [tensor diffusion matrix contract](tensor_diffusion_matrix.html) provides
 the analogous tensor-weighted gradient pairing for anisotropic scalar,
 elastic, and compatible field blocks, with analytic JVP/VJP actions.
