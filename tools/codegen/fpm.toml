@@ -104,6 +104,11 @@ source-dir = "app"
 main = "gen_fci_parallel_products.f90"
 
 [[executable]]
+name = "gen_fci_power_flux_products"
+source-dir = "app"
+main = "gen_fci_power_flux_products.f90"
+
+[[executable]]
 name = "gen_fci_quartic_lagrange"
 source-dir = "app"
 main = "gen_fci_quartic_lagrange.f90"

@@ -280,6 +280,10 @@ module fortfem_api
         assemble_fci_terminal_boundary_ledger, &
         assemble_fci_terminal_boundary_ledger_jvp, &
         assemble_fci_terminal_boundary_ledger_vjp
+    use fortfem_fci_power_flux_ledger, only: &
+        evaluate_fci_power_flux_ledger, &
+        evaluate_fci_power_flux_ledger_jvp, &
+        evaluate_fci_power_flux_ledger_vjp
     use fortfem_volume_balance_ledger, only: &
         assemble_volume_balance_ledger, &
         assemble_volume_balance_ledger_jvp, &
@@ -2198,6 +2202,9 @@ module fortfem_api
     public :: assemble_fci_terminal_boundary_ledger
     public :: assemble_fci_terminal_boundary_ledger_jvp
     public :: assemble_fci_terminal_boundary_ledger_vjp
+    public :: evaluate_fci_power_flux_ledger
+    public :: evaluate_fci_power_flux_ledger_jvp
+    public :: evaluate_fci_power_flux_ledger_vjp
     public :: assemble_volume_balance_ledger
     public :: assemble_volume_balance_ledger_jvp
     public :: assemble_volume_balance_ledger_vjp
