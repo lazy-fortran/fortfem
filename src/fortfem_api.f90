@@ -625,6 +625,9 @@ module fortfem_api
         assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp, &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
@@ -1434,6 +1437,9 @@ module fortfem_api
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
