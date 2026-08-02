@@ -5,6 +5,8 @@ module fortfem_barycentric_surface_refinement
 
     public :: barycentric_refine_surface_mesh
     public :: barycentric_refine_torus_surface_mesh
+    public :: barycentric_refine_torus_surface_mesh_jvp
+    public :: barycentric_refine_torus_surface_mesh_vjp
 
 contains
 
@@ -68,6 +70,180 @@ contains
         end do
         status = 0
     end subroutine barycentric_refine_torus_surface_mesh
+
+    subroutine barycentric_refine_torus_surface_mesh_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+            refined_vertices_dot, refined_triangles, refined_parameters_dot, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius
+        real(dp), intent(in) :: vertices_dot(:, :), parameters_dot(:, :)
+        real(dp), intent(in) :: major_radius_dot, minor_radius_dot
+        real(dp), allocatable, intent(out) :: refined_vertices_dot(:, :)
+        integer, allocatable, intent(out) :: refined_triangles(:, :)
+        real(dp), allocatable, intent(out) :: refined_parameters_dot(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_midpoints(:), primal_edges(:, :)
+        integer, allocatable :: centroid_vertices(:)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: refined_parameters(:, :)
+        real(dp), allocatable :: topology_vertices(:, :)
+        real(dp) :: rho, rho_dot, theta, theta_dot, phi, phi_dot
+        real(dp) :: local_parameters_dot(2, 3)
+        integer :: edge, face, local, vertex
+
+        if (allocated(refined_vertices_dot)) deallocate(refined_vertices_dot)
+        if (allocated(refined_triangles)) deallocate(refined_triangles)
+        if (allocated(refined_parameters_dot)) deallocate(refined_parameters_dot)
+        status = 1
+        call barycentric_refine_torus_surface_mesh( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            refined_vertices, refined_triangles, refined_parameters, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        if (any(shape(parameters_dot) /= shape(parameters))) then
+            status = 1
+            return
+        end if
+        call barycentric_refine_surface_mesh( &
+            vertices, triangles, topology_vertices, refined_triangles, &
+            primal_edges, edge_midpoints, centroid_vertices)
+        allocate( &
+            refined_vertices_dot(3, size(refined_vertices, 2)), &
+            refined_parameters_dot(2, size(refined_parameters, 2)))
+        refined_vertices_dot = 0.0_dp
+        refined_parameters_dot = 0.0_dp
+        refined_parameters_dot(:, :size(parameters, 2)) = parameters_dot
+        do edge = 1, size(primal_edges, 2)
+            refined_parameters_dot(:, edge_midpoints(edge)) = 0.5_dp*( &
+                parameters_dot(:, primal_edges(1, edge)) + &
+                parameters_dot(:, primal_edges(2, edge)))
+        end do
+        do face = 1, size(triangles, 2)
+            do local = 1, 3
+                local_parameters_dot(:, local) = &
+                    parameters_dot(:, triangles(local, face))
+            end do
+            refined_parameters_dot(:, centroid_vertices(face)) = &
+                sum(local_parameters_dot, dim=2)/3.0_dp
+        end do
+        do vertex = 1, size(refined_parameters, 2)
+            theta = refined_parameters(1, vertex)
+            phi = refined_parameters(2, vertex)
+            theta_dot = refined_parameters_dot(1, vertex)
+            phi_dot = refined_parameters_dot(2, vertex)
+            rho = major_radius + minor_radius*cos(theta)
+            rho_dot = major_radius_dot + minor_radius_dot*cos(theta) - &
+                minor_radius*sin(theta)*theta_dot
+            refined_vertices_dot(:, vertex) = [ &
+                rho_dot*cos(phi) - rho*sin(phi)*phi_dot, &
+                rho_dot*sin(phi) + rho*cos(phi)*phi_dot, &
+                minor_radius_dot*sin(theta) + &
+                minor_radius*cos(theta)*theta_dot]
+        end do
+        status = 0
+    end subroutine barycentric_refine_torus_surface_mesh_jvp
+
+    subroutine barycentric_refine_torus_surface_mesh_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            refined_vertices_bar, refined_parameters_bar, vertices_bar, &
+            parameters_bar, major_radius_bar, minor_radius_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius
+        real(dp), intent(in) :: refined_vertices_bar(:, :)
+        real(dp), intent(in) :: refined_parameters_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :), parameters_bar(:, :)
+        real(dp), intent(out) :: major_radius_bar, minor_radius_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_midpoints(:), primal_edges(:, :)
+        integer, allocatable :: centroid_vertices(:)
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: refined_vertices(:, :)
+        real(dp), allocatable :: refined_parameters(:, :)
+        real(dp), allocatable :: topology_vertices(:, :)
+        real(dp), allocatable :: parameter_bar_total(:, :)
+        real(dp) :: dtheta(3), dphi(3), dradius(3), dminor(3)
+        real(dp) :: rho, theta, phi
+        integer :: edge, face, local, vertex
+
+        vertices_bar = 0.0_dp
+        parameters_bar = 0.0_dp
+        major_radius_bar = 0.0_dp
+        minor_radius_bar = 0.0_dp
+        status = 1
+        call barycentric_refine_torus_surface_mesh( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            refined_vertices, refined_triangles, refined_parameters, status)
+        if (status /= 0) return
+        if (any(shape(refined_vertices_bar) /= shape(refined_vertices))) then
+            status = 1
+            return
+        end if
+        if (any(shape(refined_parameters_bar) /= shape(refined_parameters))) then
+            status = 1
+            return
+        end if
+        if (any(shape(vertices_bar) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        if (any(shape(parameters_bar) /= shape(parameters))) then
+            status = 1
+            return
+        end if
+        call barycentric_refine_surface_mesh( &
+            vertices, triangles, topology_vertices, refined_triangles, &
+            primal_edges, edge_midpoints, centroid_vertices)
+        allocate(parameter_bar_total(2, size(refined_parameters, 2)))
+        parameter_bar_total = refined_parameters_bar
+        do vertex = 1, size(refined_parameters, 2)
+            theta = refined_parameters(1, vertex)
+            phi = refined_parameters(2, vertex)
+            rho = major_radius + minor_radius*cos(theta)
+            dtheta = [ &
+                -minor_radius*sin(theta)*cos(phi), &
+                -minor_radius*sin(theta)*sin(phi), &
+                minor_radius*cos(theta)]
+            dphi = [ &
+                -rho*sin(phi), rho*cos(phi), 0.0_dp]
+            dradius = [cos(phi), sin(phi), 0.0_dp]
+            dminor = [ &
+                cos(theta)*cos(phi), cos(theta)*sin(phi), sin(theta)]
+            parameter_bar_total(1, vertex) = parameter_bar_total(1, vertex) + &
+                dot_product(refined_vertices_bar(:, vertex), dtheta)
+            parameter_bar_total(2, vertex) = parameter_bar_total(2, vertex) + &
+                dot_product(refined_vertices_bar(:, vertex), dphi)
+            major_radius_bar = major_radius_bar + &
+                dot_product(refined_vertices_bar(:, vertex), dradius)
+            minor_radius_bar = minor_radius_bar + &
+                dot_product(refined_vertices_bar(:, vertex), dminor)
+        end do
+        parameters_bar(:, :) = parameter_bar_total(:, :size(parameters, 2))
+        do edge = 1, size(primal_edges, 2)
+            parameters_bar(:, primal_edges(1, edge)) = &
+                parameters_bar(:, primal_edges(1, edge)) + &
+                0.5_dp*parameter_bar_total(:, edge_midpoints(edge))
+            parameters_bar(:, primal_edges(2, edge)) = &
+                parameters_bar(:, primal_edges(2, edge)) + &
+                0.5_dp*parameter_bar_total(:, edge_midpoints(edge))
+        end do
+        do face = 1, size(triangles, 2)
+            do local = 1, 3
+                parameters_bar(:, triangles(local, face)) = &
+                    parameters_bar(:, triangles(local, face)) + &
+                    parameter_bar_total(:, centroid_vertices(face))/3.0_dp
+            end do
+        end do
+        status = 0
+    end subroutine barycentric_refine_torus_surface_mesh_vjp
 
     pure subroutine unwrap_parameters(reference, value)
         real(dp), intent(in) :: reference(2)
