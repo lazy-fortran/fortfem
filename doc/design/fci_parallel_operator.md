@@ -235,6 +235,13 @@ all segments. The topology rule is deliberate: a traced endpoint on a grid
 line is valid for the primal map but is rejected by the derivative paths until
 the stencil cell is rebuilt.
 
+`test_fci_reproducible_map` composes this adapter with sparse `Q` and the
+weighted support divergence. It rebuilds a fixed endpoint set bit-for-bit,
+checks partition of unity, applies the map to an affine manufactured field
+with a known plane offset, and verifies the independent weighted adjoint
+identity. This is a deterministic map fixture rather than a magnetic-field or
+edge-physics model.
+
 For logically unstructured poloidal planes, the triangle adapter accepts a
 fixed containing-cell id per target and emits barycentric weights over the
 global vertex vector. It reproduces affine fields and provides geometry/target
