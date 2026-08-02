@@ -1540,6 +1540,11 @@ Since this audit, the neutral implementation now includes:
 - `equation_objective_metadata_t` for targets, bounds, weights, scales,
   active/fixed flags, KKT/nullspace IDs, parameter tangents, and HVP capability
   metadata, with deep-copy and validation oracles;
+- `evaluate_equation_objective_merit` and its JVP/VJP companions for the
+  normalized weighted value algebra of one active metadata block, with
+  independent finite-difference and real-adjoint checks. This remains a
+  neutral residual/objective composition layer; bounds, profile laws, and
+  optimizer decisions stay caller-owned;
 - `evaluate_boozer_like_rotational_transform` and
   `evaluate_near_axis_diagnostic_metadata` for supplied-field/geometry samples
   and supplied near-axis coefficient data, with JVP/VJP actions and strict
@@ -2530,6 +2535,12 @@ gallery example.
   same explicit output-label projection and are independently checked against
   a padded contraction oracle; no model-specific bracket or coefficient
   symmetry is imposed.
+- The neutral `apply_fourier_mode_linear_operator` now supplies the
+  mode-diagonal block map `y(:,m)=A(:,:,m)c(:,m)` for scalar, vector, tensor,
+  H(curl), and H(div) coefficient compositions. Exact matrix/field JVP and
+  complex real-part VJP actions are exported through the public API and checked
+  against nested-loop, finite-difference, adjoint, shape, and non-finite-input
+  oracles; physical closures and basis conventions remain caller-owned.
 - `build_fourier_mode_closure_registry` now applies the one-product constructor
   for a caller-selected positive number of rounds. Round one is the padded
   registry; subsequent rounds retain every prior-work-set pair sum. The
@@ -2761,6 +2772,11 @@ gallery example.
   positive-weighted quadratic objective and exact residual/weight JVP/VJP
   needed by direct-force optimization clients; it deliberately remains
   independent of profiles, coordinates, optimizers, and plasma closures.
+- The metadata-driven `evaluate_equation_objective_merit` value/JVP/VJP
+  contract now applies caller-owned targets, positive weights, scales, and
+  activation to equation/objective/constraint rows, giving DESC/GVEC-like
+  clients a reusable normalized merit without selecting an optimizer or
+  physical objective.
 - Generic linear ideal and resistive response blocks, singular layers, vacuum,
   conducting-wall traces, and response matrices for external GPEC, MARS, and
   GLISS oracle data.
