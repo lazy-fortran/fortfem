@@ -1,6 +1,6 @@
 program test_cgl_pressure_tensor
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp
     use fortfem_kinds, only: dp

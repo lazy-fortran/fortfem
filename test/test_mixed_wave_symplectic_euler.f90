@@ -1,6 +1,6 @@
 program test_mixed_wave_symplectic_euler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_mixed_wave_symplectic_euler, &
+    use fortfem_time, only: advance_mixed_wave_symplectic_euler, &
         advance_mixed_wave_symplectic_euler_jvp, &
         advance_mixed_wave_symplectic_euler_vjp
     use fortfem_kinds, only: dp

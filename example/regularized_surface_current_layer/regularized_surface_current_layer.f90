@@ -1,6 +1,6 @@
 program regularized_surface_current_layer
     !! Resolved slab view of a tangential sheet-current regularization.
-    use fortfem_api, only: evaluate_regularized_surface_current_integral, &
+    use fortfem_interop, only: evaluate_regularized_surface_current_integral, &
         evaluate_regularized_surface_current_layer
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, set_xscale, &

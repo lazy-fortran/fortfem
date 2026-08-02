@@ -1,7 +1,7 @@
 program test_nonlinear_mhd_gallery_oracle
     !! Independent oracle for the neutral island/wall continuation fixture.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         compare_resistive_mhd_branch_histories, &
         evaluate_resistive_mhd_branch_diagnostics, &
         evaluate_resistive_mhd_branch_path_metric, &

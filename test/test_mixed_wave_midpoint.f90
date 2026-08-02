@@ -1,6 +1,6 @@
 program test_mixed_wave_midpoint
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_mixed_wave_midpoint, &
+    use fortfem_time, only: advance_mixed_wave_midpoint, &
         advance_mixed_wave_midpoint_jvp, advance_mixed_wave_midpoint_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

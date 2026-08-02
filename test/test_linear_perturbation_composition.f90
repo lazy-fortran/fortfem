@@ -1,7 +1,7 @@
 program test_linear_perturbation_composition
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         LINEAR_PASSIVITY_HERMITIAN_NONNEGATIVE, &
         LINEAR_RECIPROCITY_TRANSPOSE, &
         assemble_linear_perturbation_operator, &

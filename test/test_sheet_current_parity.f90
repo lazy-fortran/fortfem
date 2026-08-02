@@ -1,7 +1,7 @@
 program test_sheet_current_parity
     !! Independent slab oracle for the explicit/resolved sheet-current bridge.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compare_sheet_current_representations
+    use fortfem_interop, only: compare_sheet_current_representations
     use fortfem_kinds, only: dp
     use fortfem_interop, only: &
         compare_sheet_current_representations_interop => &

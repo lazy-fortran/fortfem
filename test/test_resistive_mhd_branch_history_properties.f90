@@ -8,7 +8,7 @@ program test_resistive_mhd_branch_history_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         compare_resistive_mhd_branch_histories, &
         evaluate_resistive_mhd_branch_diagnostics, &
         evaluate_resistive_mhd_branch_path_metric, &

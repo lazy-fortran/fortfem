@@ -1,7 +1,7 @@
 program test_regularized_surface_current_layer
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_regularized_surface_current_layer, &
+    use fortfem_interop, only: evaluate_regularized_surface_current_layer, &
         evaluate_regularized_surface_current_layer_jvp, &
         evaluate_regularized_surface_current_layer_vjp, &
         evaluate_regularized_surface_current_integral

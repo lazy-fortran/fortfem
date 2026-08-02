@@ -81,6 +81,14 @@ module fortfem_feec
     use fortfem_cgl_pressure_divergence, only: &
         evaluate_cgl_pressure_divergence, &
         evaluate_cgl_pressure_divergence_jvp, evaluate_cgl_pressure_divergence_vjp
+    use fortfem_mixed_elasticity_residual, only: &
+        assemble_mixed_elasticity_residual, &
+        assemble_mixed_elasticity_residual_jvp, &
+        assemble_mixed_elasticity_residual_vjp
+    use fortfem_elasticity_symmetry_constraint, only: &
+        assemble_elasticity_symmetry_constraint, &
+        assemble_elasticity_symmetry_constraint_jvp, &
+        assemble_elasticity_symmetry_constraint_vjp
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, &
         apply_tree_cotree_restriction, &
@@ -188,6 +196,12 @@ module fortfem_feec
     public :: evaluate_cgl_pressure_divergence
     public :: evaluate_cgl_pressure_divergence_jvp
     public :: evaluate_cgl_pressure_divergence_vjp
+    public :: assemble_mixed_elasticity_residual
+    public :: assemble_mixed_elasticity_residual_jvp
+    public :: assemble_mixed_elasticity_residual_vjp
+    public :: assemble_elasticity_symmetry_constraint
+    public :: assemble_elasticity_symmetry_constraint_jvp
+    public :: assemble_elasticity_symmetry_constraint_vjp
     public :: validate_tree_cotree_gauge
     public :: beltrami_parity_t
     public :: compare_beltrami_two_region_residual

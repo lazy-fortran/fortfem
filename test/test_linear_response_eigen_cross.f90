@@ -1,7 +1,7 @@
 program test_linear_response_eigen_cross
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         assemble_linear_response_eigen_cross_residual, &
         assemble_linear_response_eigen_cross_residual_jvp, &
         assemble_linear_response_eigen_cross_residual_vjp, &

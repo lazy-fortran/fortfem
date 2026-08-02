@@ -25,6 +25,11 @@ module fortfem_time
         advance_dissipative_cayley_vjp
     use fortfem_assembly_bspline_2d, only: &
         advance_bspline_jorek_poloidal_flux_midpoint_steps
+    use fortfem_mixed_wave_wall_time, only: &
+        advance_mixed_wave_wall_midpoint, &
+        advance_mixed_wave_wall_midpoint_jvp, &
+        advance_mixed_wave_wall_midpoint_vjp, &
+        evaluate_mixed_wave_wall_energy_balance
     implicit none
     private
 
@@ -41,8 +46,12 @@ module fortfem_time
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp
     public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
+    public :: advance_mixed_wave_wall_midpoint
+    public :: advance_mixed_wave_wall_midpoint_jvp
+    public :: advance_mixed_wave_wall_midpoint_vjp
     public :: assemble_symplectic_map_defect
     public :: assemble_symplectic_map_defect_jvp
     public :: assemble_symplectic_map_defect_vjp
+    public :: evaluate_mixed_wave_wall_energy_balance
 
 end module fortfem_time
