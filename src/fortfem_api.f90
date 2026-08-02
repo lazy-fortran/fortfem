@@ -21,6 +21,11 @@ module fortfem_api
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp, &
         assemble_singular_layer_matching_vjp
+    use fortfem_equation_objective_metadata, only: &
+        OBJECTIVE_METADATA_KIND_EQUATION, OBJECTIVE_METADATA_KIND_OBJECTIVE, &
+        OBJECTIVE_METADATA_KIND_CONSTRAINT, OBJECTIVE_METADATA_UNSET_ID, &
+        equation_objective_metadata_t, initialize_equation_objective_metadata, &
+        validate_equation_objective_metadata, clear_equation_objective_metadata
     use fortfem_linear_response_cross, only: &
         assemble_linear_response_eigen_cross_residual, &
         assemble_linear_response_eigen_cross_residual_jvp, &
@@ -33,6 +38,14 @@ module fortfem_api
         initialize_equilibrium_interchange, validate_equilibrium_interchange
     use fortfem_equilibrium_sample_adapter, only: &
         build_equilibrium_interchange_sample_set
+    use fortfem_toroidal_diagnostic_hooks, only: &
+        near_axis_diagnostic_metadata_t, &
+        evaluate_boozer_like_rotational_transform, &
+        evaluate_boozer_like_rotational_transform_jvp, &
+        evaluate_boozer_like_rotational_transform_vjp, &
+        evaluate_near_axis_diagnostic_metadata, &
+        evaluate_near_axis_diagnostic_metadata_jvp, &
+        evaluate_near_axis_diagnostic_metadata_vjp
     use fortfem_oracle_manifest, only: &
         oracle_manifest_schema_magic, oracle_manifest_schema_version, &
         oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
@@ -3102,6 +3115,21 @@ module fortfem_api
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
     public :: assemble_singular_layer_matching_vjp
+    public :: OBJECTIVE_METADATA_KIND_EQUATION
+    public :: OBJECTIVE_METADATA_KIND_OBJECTIVE
+    public :: OBJECTIVE_METADATA_KIND_CONSTRAINT
+    public :: OBJECTIVE_METADATA_UNSET_ID
+    public :: equation_objective_metadata_t
+    public :: initialize_equation_objective_metadata
+    public :: validate_equation_objective_metadata
+    public :: clear_equation_objective_metadata
+    public :: near_axis_diagnostic_metadata_t
+    public :: evaluate_boozer_like_rotational_transform
+    public :: evaluate_boozer_like_rotational_transform_jvp
+    public :: evaluate_boozer_like_rotational_transform_vjp
+    public :: evaluate_near_axis_diagnostic_metadata
+    public :: evaluate_near_axis_diagnostic_metadata_jvp
+    public :: evaluate_near_axis_diagnostic_metadata_vjp
     public :: linear_response_cross_metadata_t
     public :: initialize_linear_response_cross_metadata
     public :: validate_linear_response_cross_metadata
