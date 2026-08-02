@@ -32,6 +32,10 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_vjp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
@@ -504,6 +508,64 @@ contains
             decay_rate*vector_potential + scalar_potential/decay_rate)
         status = 0
     end subroutine assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+
+    subroutine assemble_maxwell_sphere_efie_imaginary_impedance_jvp( &
+            vertices, triangles, radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, impedance_dot, matrix, &
+            matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius, decay_rate, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance, impedance_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: decaying_operator(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (radius <= 0.0_dp .or. decay_rate <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, decay_rate, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status, &
+            decaying_kernel=.true.)
+        if (status /= 0) return
+        decaying_operator = decay_rate*vector_potential + &
+            scalar_potential/decay_rate
+        matrix = -impedance*decaying_operator
+        matrix_dot = -impedance_dot*decaying_operator
+        status = 0
+    end subroutine assemble_maxwell_sphere_efie_imaginary_impedance_jvp
+
+    subroutine assemble_maxwell_sphere_efie_imaginary_impedance_vjp( &
+            vertices, triangles, radius, decay_rate, impedance, &
+            quadrature_degree, tolerance, max_depth, matrix_bar, impedance_bar, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), radius, decay_rate, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: impedance_bar
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: decaying_operator(:, :)
+
+        impedance_bar = 0.0_dp
+        status = 1
+        if (radius <= 0.0_dp .or. decay_rate <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, decay_rate, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status, &
+            decaying_kernel=.true.)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(vector_potential))) return
+        decaying_operator = decay_rate*vector_potential + &
+            scalar_potential/decay_rate
+        impedance_bar = real(sum(conjg(matrix_bar)*(-decaying_operator)), dp)
+        status = 0
+    end subroutine assemble_maxwell_sphere_efie_imaginary_impedance_vjp
 
     subroutine assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &
@@ -1413,6 +1475,63 @@ contains
             cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
         status = 0
     end subroutine assemble_maxwell_sphere_curved_efie_rwg_3d
+
+    subroutine assemble_maxwell_sphere_efie_propagating_impedance_jvp( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, impedance_dot, matrix, &
+            matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance, impedance_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (radius <= 0.0_dp .or. wave_number <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        matrix_dot = cmplx(0.0_dp, wave_number*impedance_dot, dp)* &
+            vector_potential - cmplx(0.0_dp, impedance_dot/wave_number, dp)* &
+            scalar_potential
+        status = 0
+    end subroutine assemble_maxwell_sphere_efie_propagating_impedance_jvp
+
+    subroutine assemble_maxwell_sphere_efie_propagating_impedance_vjp( &
+            vertices, triangles, radius, wave_number, impedance, &
+            quadrature_degree, tolerance, max_depth, matrix_bar, impedance_bar, &
+            status)
+        real(dp), intent(in) :: vertices(:, :), radius, wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: tolerance
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: impedance_bar
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: impedance_operator(:, :)
+
+        impedance_bar = 0.0_dp
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number <= 0.0_dp .or. &
+            impedance <= 0.0_dp) return
+        call assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
+            vertices, triangles, radius, wave_number, quadrature_degree, &
+            tolerance, max_depth, vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(vector_potential))) return
+        impedance_operator = &
+            cmplx(0.0_dp, wave_number, dp)*vector_potential - &
+            cmplx(0.0_dp, 1.0_dp/wave_number, dp)*scalar_potential
+        impedance_bar = real(sum(conjg(matrix_bar)*impedance_operator), dp)
+        status = 0
+    end subroutine assemble_maxwell_sphere_efie_propagating_impedance_vjp
 
     subroutine assemble_maxwell_sphere_curved_potential_operators_rwg_3d( &
             vertices, triangles, radius, wave_number, quadrature_degree, &

@@ -1570,8 +1570,11 @@ gallery example.
   JVP/VJP through the same analytical quadrature chain and independent
   reassembly/adjoint checks; its propagating impedance JVP/VJP now has the
   corresponding reassembly and complex real-part adjoint oracle; geometry
-  derivatives remain explicit follow-up work. The assembled toroidal MFIE
-  offset trace now exposes a
+  derivatives remain explicit follow-up work. The curved-sphere propagating
+  and decaying EFIE blocks now expose matching fixed-geometry impedance
+  JVP/VJP products, independently checked by central reassembly and complex
+  real-part adjoint identities. The assembled toroidal MFIE offset trace now
+  exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus
