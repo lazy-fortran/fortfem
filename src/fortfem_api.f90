@@ -358,6 +358,9 @@ module fortfem_api
         assemble_normal_traction_jump_jvp, &
         assemble_normal_traction_jump_vjp, assemble_traction_jump, &
         assemble_traction_jump_jvp, assemble_traction_jump_vjp
+    use fortfem_total_pressure_balance, only: &
+        assemble_total_pressure_jump, assemble_total_pressure_jump_jvp, &
+        assemble_total_pressure_jump_vjp
     use fortfem_heaviside_enrichment, only: &
         evaluate_shifted_heaviside_enrichment, &
         evaluate_shifted_heaviside_enrichment_jvp, &
@@ -1766,6 +1769,9 @@ module fortfem_api
     public :: assemble_traction_jump
     public :: assemble_traction_jump_jvp
     public :: assemble_traction_jump_vjp
+    public :: assemble_total_pressure_jump
+    public :: assemble_total_pressure_jump_jvp
+    public :: assemble_total_pressure_jump_vjp
     public :: evaluate_shifted_heaviside_enrichment
     public :: evaluate_shifted_heaviside_enrichment_jvp
     public :: evaluate_shifted_heaviside_enrichment_vjp
