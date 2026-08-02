@@ -166,7 +166,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/fci_polygon_geometry.html">fci_polygon_geometry</a></h3>
-<p>This fixture computes fixed-topology straight and quadratic Bezier-edge areas</p>
+<p>This fixture computes fixed-topology straight, quadratic, and cubic</p>
 </div>
 </article>
 </div>
@@ -540,7 +540,7 @@ fpm run --example <example_name>
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [fci_quadrilateral_geometry](generated/fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
-- [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
+- [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight, quadratic, and cubic
 - [mixed_acoustic_wave](generated/mixed_acoustic_wave.html) - This fixture is a small physical wave problem for the common mixed
 - [mixed_elasticity_wave](generated/mixed_elasticity_wave.html) - This example is a manufactured one-dimensional elastic-bar modal problem. It
 - [mixed_wave_wall](generated/mixed_wave_wall.html) - This small structure-preserving example couples a first-order mixed wave port
