@@ -7,7 +7,7 @@ output_directory="$repository_dir/output/example/team3_neutral_benchmark"
 
 (
     cd "$repository_dir"
-    timeout --foreground 10s fo exec --no-build team3_neutral_benchmark \
+    timeout --foreground 10s fo exec --no-build --example team3_neutral_benchmark \
         >/tmp/fortfem-team3-neutral-gallery.log
 )
 
