@@ -890,6 +890,10 @@ all geometries:
    current is mapped to the field, normal field, tangential field, and their
    traces on arbitrary target surfaces. The map supports direct, reciprocal,
    and adjoint actions and is valid for non-nested or island-bearing surfaces.
+   The affine-triangle RWG off-surface magnetic map now provides analytical
+   source-geometry, current-data, target, and wave-number JVP/VJP actions with
+   an independent central-reassembly and real-complex-adjoint oracle; the
+   curved sphere and torus maps provide the corresponding geometry contracts.
 5. **Finite-domain/PML backend.** The same vacuum field can be represented in
    a bounded FEM/PML region. PML, DtN, and BEM results are compared on common
    interior targets, including a larger-domain control.

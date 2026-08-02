@@ -8,6 +8,8 @@ module fortfem_maxwell_magnetic_rwg_3d
     private
 
     public :: evaluate_maxwell_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_vjp
 
 contains
 
@@ -69,6 +71,387 @@ contains
         status = 0
     end subroutine evaluate_maxwell_magnetic_field_rwg_3d
 
+    subroutine evaluate_maxwell_magnetic_field_rwg_3d_jvp( &
+            vertices, triangles, coefficients, observation, wave_number, &
+            quadrature_degree, vertices_dot, coefficients_dot, observation_dot, &
+            wave_number_dot, magnetic_field_dot, status)
+        real(dp), intent(in) :: vertices(:, :), observation(3), wave_number
+        real(dp), intent(in) :: vertices_dot(:, :), observation_dot(3)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: wave_number_dot
+        complex(dp), intent(out) :: magnetic_field_dot(3)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), basis_value_dot(3), basis_divergence
+        real(dp) :: basis_divergence_dot, displacement(3), displacement_dot(3)
+        real(dp) :: jacobian, jacobian_dot, point(3), point_dot(3), radius
+        real(dp) :: radius_dot, unit(3), unit_dot(3)
+        complex(dp) :: curl_integrand(3), curl_integrand_dot(3)
+        complex(dp) :: gradient_green(3), gradient_green_dot(3), green, green_dot
+        complex(dp) :: q, q_dot, surface_current(3), surface_current_dot(3)
+        integer :: basis, node, panel
+
+        magnetic_field_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (wave_number < 0.0_dp .or. quadrature_degree < 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (size(coefficients_dot) /= size(coefficients)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_panels, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        do panel = 1, size(triangles, 2)
+            jacobian = 2.0_dp*triangle_area( &
+                vertices(:, triangles(:, panel)))
+            jacobian_dot = 2.0_dp*triangle_area_jvp( &
+                vertices(:, triangles(:, panel)), &
+                vertices_dot(:, triangles(:, panel)))
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    vertices(:, triangles(:, panel)), xi(node), eta(node))
+                point_dot = triangle_point( &
+                    vertices_dot(:, triangles(:, panel)), xi(node), eta(node))
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                surface_current_dot = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_panels(:, basis) == panel)) cycle
+                    call evaluate_flat_rwg_basis_jvp( &
+                        vertices, vertices_dot, triangles, edge_vertices, &
+                        edge_panels, basis, panel, xi(node), eta(node), point, &
+                        jacobian, point_dot, jacobian_dot, basis_value, basis_divergence, &
+                        basis_value_dot, basis_divergence_dot, status)
+                    if (status /= 0) return
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                    surface_current_dot = surface_current_dot + &
+                        coefficients_dot(basis)*basis_value + &
+                        coefficients(basis)*basis_value_dot
+                end do
+                displacement = observation - point
+                displacement_dot = observation_dot - point_dot
+                radius = norm2(displacement)
+                if (radius <= 128.0_dp*epsilon(1.0_dp)) return
+                radius_dot = dot_product(displacement, displacement_dot)/radius
+                green = exp(cmplx(0.0_dp, wave_number*radius, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*radius)
+                green_dot = green*(cmplx( &
+                    0.0_dp, wave_number_dot*radius + &
+                    wave_number*radius_dot, dp) - radius_dot/radius)
+                unit = displacement/radius
+                unit_dot = (displacement_dot - unit*radius_dot)/radius
+                q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/radius
+                q_dot = cmplx(0.0_dp, wave_number_dot, dp) + &
+                    radius_dot/radius**2
+                gradient_green = green*q*unit
+                gradient_green_dot = (green_dot*q + green*q_dot)*unit + &
+                    green*q*unit_dot
+                curl_integrand = complex_cross_product( &
+                    gradient_green, surface_current)
+                curl_integrand_dot = complex_cross_product( &
+                    gradient_green_dot, surface_current) + &
+                    complex_cross_product(gradient_green, surface_current_dot)
+                magnetic_field_dot = magnetic_field_dot + weights(node)*( &
+                    jacobian_dot*curl_integrand + &
+                    jacobian*curl_integrand_dot)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_magnetic_field_rwg_3d_jvp
+
+    subroutine evaluate_maxwell_magnetic_field_rwg_3d_vjp( &
+            vertices, triangles, coefficients, observation, wave_number, &
+            quadrature_degree, magnetic_field_bar, vertices_bar, &
+            coefficients_bar, observation_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), observation(3), wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), magnetic_field_bar(3)
+        real(dp), intent(out) :: vertices_bar(:, :), observation_bar(3)
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        real(dp), intent(out) :: wave_number_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), basis_divergence, jacobian, point(3)
+        real(dp) :: point_bar(3), value_bar(3), jacobian_bar
+        real(dp) :: displacement(3), distance, unit(3), unit_bar(3)
+        real(dp) :: distance_bar, displacement_bar(3)
+        real(dp) :: local_vertices_bar(3, 2), panel_vertices_bar(3, 3)
+        complex(dp) :: curl_integrand(3), curl_bar(3), gradient_green(3)
+        complex(dp) :: gradient_bar(3), green, q, factor, unit_factor
+        complex(dp) :: surface_current(3), surface_current_bar(3)
+        logical :: explicit_geometry_consumed
+        integer :: basis, local, node, panel, status_local, vertex
+
+        vertices_bar = 0.0_dp
+        observation_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (wave_number < 0.0_dp .or. quadrature_degree < 0) return
+        if (size(vertices_bar, 1) /= size(vertices, 1) .or. &
+            size(vertices_bar, 2) /= size(vertices, 2)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_panels, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(edge_vertices, 2)))
+        coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(triangles, 2)
+            jacobian = 2.0_dp*triangle_area( &
+                vertices(:, triangles(:, panel)))
+            do node = 1, size(weights)
+                point = triangle_point( &
+                    vertices(:, triangles(:, panel)), xi(node), eta(node))
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_panels(:, basis) == panel)) cycle
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_panels, basis, &
+                        panel, point, basis_value, basis_divergence, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                end do
+                displacement = observation - point
+                distance = norm2(displacement)
+                if (distance <= 128.0_dp*epsilon(1.0_dp)) return
+                unit = displacement/distance
+                green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*distance)
+                q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance
+                factor = green*q
+                gradient_green = factor*unit
+                curl_integrand = complex_cross_product( &
+                    gradient_green, surface_current)
+                curl_bar = weights(node)*jacobian*magnetic_field_bar
+                jacobian_bar = weights(node)*real(sum(conjg( &
+                    magnetic_field_bar)*curl_integrand), dp)
+                gradient_bar = complex_cross_product( &
+                    conjg(surface_current), curl_bar)
+                surface_current_bar = complex_cross_product( &
+                    curl_bar, conjg(gradient_green))
+                unit_bar = real(conjg(gradient_bar)*factor, dp)
+                unit_factor = green*(q**2 + 1.0_dp/distance**2)
+                distance_bar = real(sum(conjg(gradient_bar)* &
+                    unit_factor*unit), dp)
+                wave_number_bar = wave_number_bar + real(sum( &
+                    conjg(gradient_bar)*green*cmplx(0.0_dp, 1.0_dp, dp)* &
+                    (distance*q + 1.0_dp)*unit), dp)
+                displacement_bar = distance_bar*unit + &
+                    (unit_bar - unit*dot_product(unit, unit_bar))/distance
+                observation_bar = observation_bar + displacement_bar
+                point_bar = -displacement_bar
+                explicit_geometry_consumed = .false.
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_panels(:, basis) == panel)) cycle
+                    call evaluate_maxwell_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_panels, basis, &
+                        panel, point, basis_value, basis_divergence, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    coefficients_bar(basis) = coefficients_bar(basis) + &
+                        sum(surface_current_bar*cmplx(basis_value, 0.0_dp, dp))
+                    value_bar = real(conjg(surface_current_bar)* &
+                        coefficients(basis), dp)
+                    if (.not. explicit_geometry_consumed) then
+                        explicit_geometry_consumed = .true.
+                    else
+                        point_bar = 0.0_dp
+                        jacobian_bar = 0.0_dp
+                    end if
+                    call evaluate_flat_rwg_basis_vjp( &
+                        vertices, triangles, edge_vertices, edge_panels, basis, &
+                        panel, xi(node), eta(node), point, jacobian, point_bar, &
+                        value_bar, 0.0_dp, jacobian_bar, local_vertices_bar, &
+                        panel_vertices_bar, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        vertices_bar(:, triangles(local, panel)) = &
+                            vertices_bar(:, triangles(local, panel)) + &
+                            panel_vertices_bar(:, local)
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_magnetic_field_rwg_3d_vjp
+
+    subroutine evaluate_flat_rwg_basis_jvp( &
+            vertices, vertices_dot, triangles, edge_vertices, edge_panels, &
+            basis, triangle, &
+            xi, eta, point, jacobian, point_dot, jacobian_dot, value, divergence, &
+            value_dot, divergence_dot, status)
+        real(dp), intent(in) :: vertices(:, :), vertices_dot(:, :), point(3)
+        real(dp), intent(in) :: jacobian, xi, eta
+        real(dp), intent(in) :: point_dot(3), jacobian_dot
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_panels(:, :), basis, triangle
+        real(dp), intent(out) :: value(3), divergence, value_dot(3)
+        real(dp), intent(out) :: divergence_dot
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_dot(3), edge_length, edge_length_dot
+        real(dp) :: panel(3, 3), panel_dot(3, 3), vector(3), vector_dot(3)
+        real(dp) :: coefficient, coefficient_dot
+        integer :: local, next, opposite, orientation
+
+        value = 0.0_dp
+        divergence = 0.0_dp
+        value_dot = 0.0_dp
+        divergence_dot = 0.0_dp
+        status = 1
+        if (basis < 1 .or. basis > size(edge_vertices, 2)) return
+        if (triangle < 1 .or. triangle > size(triangles, 2)) return
+        if (.not. any(edge_panels(:, basis) == triangle)) return
+        do local = 1, 3
+            panel(:, local) = vertices(:, triangles(local, triangle))
+            panel_dot(:, local) = vertices_dot(:, triangles(local, triangle))
+        end do
+        orientation = 0
+        opposite = 0
+        do local = 1, 3
+            next = modulo(local, 3) + 1
+            if (triangles(local, triangle) == edge_vertices(1, basis) .and. &
+                triangles(next, triangle) == edge_vertices(2, basis)) then
+                orientation = 1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+            if (triangles(local, triangle) == edge_vertices(2, basis) .and. &
+                triangles(next, triangle) == edge_vertices(1, basis)) then
+                orientation = -1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+        end do
+        if (orientation == 0) return
+        edge = vertices(:, edge_vertices(2, basis)) - &
+            vertices(:, edge_vertices(1, basis))
+        edge_dot = vertices_dot(:, edge_vertices(2, basis)) - &
+            vertices_dot(:, edge_vertices(1, basis))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp) .or. jacobian <= tiny(1.0_dp)) return
+        edge_length_dot = dot_product(edge, edge_dot)/edge_length
+        vector = point - panel(:, opposite)
+        vector_dot = point_dot - panel_dot(:, opposite)
+        coefficient = real(orientation, dp)*edge_length/jacobian
+        coefficient_dot = real(orientation, dp)*( &
+            edge_length_dot/jacobian - edge_length*jacobian_dot/jacobian**2)
+        value = coefficient*vector
+        value_dot = coefficient_dot*vector + coefficient*vector_dot
+        divergence = 2.0_dp*coefficient
+        divergence_dot = 2.0_dp*coefficient_dot
+        status = 0
+    end subroutine evaluate_flat_rwg_basis_jvp
+
+    subroutine evaluate_flat_rwg_basis_vjp( &
+            vertices, triangles, edge_vertices, edge_panels, basis, triangle, &
+            xi, eta, point, jacobian, point_bar, value_bar, divergence_bar, &
+            jacobian_bar, edge_vertices_bar, panel_vertices_bar, status)
+        real(dp), intent(in) :: vertices(:, :), point(3), jacobian, xi, eta
+        real(dp), intent(in) :: point_bar(3), value_bar(3), divergence_bar
+        real(dp), intent(in) :: jacobian_bar
+        integer, intent(in) :: triangles(:, :), edge_vertices(:, :)
+        integer, intent(in) :: edge_panels(:, :), basis, triangle
+        real(dp), intent(out) :: edge_vertices_bar(3, 2), panel_vertices_bar(3, 3)
+        integer, intent(out) :: status
+
+        real(dp) :: edge(3), edge_bar(3), edge_length, edge_length_bar
+        real(dp) :: normal(3), normal_bar(3), first_edge(3), second_edge(3)
+        real(dp) :: first_edge_bar(3), second_edge_bar(3)
+        real(dp) :: vector(3), vector_bar(3), point_total_bar(3)
+        real(dp) :: coefficient, coefficient_bar, total_jacobian_bar
+        integer :: local, next, opposite, orientation
+
+        edge_vertices_bar = 0.0_dp
+        panel_vertices_bar = 0.0_dp
+        status = 1
+        if (basis < 1 .or. basis > size(edge_vertices, 2)) return
+        if (triangle < 1 .or. triangle > size(triangles, 2)) return
+        if (.not. any(edge_panels(:, basis) == triangle)) return
+        do local = 1, 3
+            panel_vertices_bar(:, local) = 0.0_dp
+        end do
+        orientation = 0
+        opposite = 0
+        do local = 1, 3
+            next = modulo(local, 3) + 1
+            if (triangles(local, triangle) == edge_vertices(1, basis) .and. &
+                triangles(next, triangle) == edge_vertices(2, basis)) then
+                orientation = 1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+            if (triangles(local, triangle) == edge_vertices(2, basis) .and. &
+                triangles(next, triangle) == edge_vertices(1, basis)) then
+                orientation = -1
+                opposite = modulo(next, 3) + 1
+                exit
+            end if
+        end do
+        if (orientation == 0) return
+        edge = vertices(:, edge_vertices(2, basis)) - &
+            vertices(:, edge_vertices(1, basis))
+        edge_length = norm2(edge)
+        if (edge_length <= tiny(1.0_dp) .or. jacobian <= tiny(1.0_dp)) return
+        first_edge = vertices(:, triangles(2, triangle)) - &
+            vertices(:, triangles(1, triangle))
+        second_edge = vertices(:, triangles(3, triangle)) - &
+            vertices(:, triangles(1, triangle))
+        normal = cross_product_real(first_edge, second_edge)
+        coefficient = real(orientation, dp)*edge_length/jacobian
+        vector = point - vertices(:, triangles(opposite, triangle))
+        coefficient_bar = dot_product(value_bar, vector)
+        vector_bar = coefficient*value_bar
+        edge_length_bar = real(orientation, dp)*coefficient_bar/jacobian + &
+            2.0_dp*real(orientation, dp)*divergence_bar/jacobian
+        total_jacobian_bar = jacobian_bar - &
+            real(orientation, dp)*edge_length*coefficient_bar/jacobian**2 - &
+            2.0_dp*real(orientation, dp)*edge_length*divergence_bar/jacobian**2
+        edge_bar = edge_length_bar*edge/edge_length
+        normal_bar = total_jacobian_bar*normal/jacobian
+        first_edge_bar = cross_product_real(second_edge, normal_bar)
+        second_edge_bar = cross_product_real(normal_bar, first_edge)
+        point_total_bar = point_bar + vector_bar
+        panel_vertices_bar(:, 1) = panel_vertices_bar(:, 1) + &
+            (1.0_dp - xi - eta)*point_total_bar - first_edge_bar - &
+            second_edge_bar
+        panel_vertices_bar(:, 2) = panel_vertices_bar(:, 2) + &
+            xi*point_total_bar + first_edge_bar
+        panel_vertices_bar(:, 3) = panel_vertices_bar(:, 3) + &
+            eta*point_total_bar + second_edge_bar
+        panel_vertices_bar(:, opposite) = panel_vertices_bar(:, opposite) - &
+            vector_bar
+        edge_vertices_bar(:, 1) = -edge_bar
+        edge_vertices_bar(:, 2) = edge_bar
+        status = 0
+    end subroutine evaluate_flat_rwg_basis_vjp
+
     pure function triangle_point(vertices, xi, eta) result(point)
         real(dp), intent(in) :: vertices(3, 3), xi, eta
         real(dp) :: point(3)
@@ -85,6 +468,25 @@ contains
             vertices(:, 2) - vertices(:, 1), &
             vertices(:, 3) - vertices(:, 1)))
     end function triangle_area
+
+    pure function triangle_area_jvp(vertices, vertices_dot) result(area_dot)
+        real(dp), intent(in) :: vertices(3, 3), vertices_dot(3, 3)
+        real(dp) :: area_dot, normal(3), normal_dot(3)
+
+        normal = cross_product_real( &
+            vertices(:, 2) - vertices(:, 1), &
+            vertices(:, 3) - vertices(:, 1))
+        normal_dot = cross_product_real( &
+            vertices_dot(:, 2) - vertices_dot(:, 1), &
+            vertices(:, 3) - vertices(:, 1)) + cross_product_real( &
+            vertices(:, 2) - vertices(:, 1), &
+            vertices_dot(:, 3) - vertices_dot(:, 1))
+        if (norm2(normal) <= tiny(1.0_dp)) then
+            area_dot = 0.0_dp
+        else
+            area_dot = 0.5_dp*dot_product(normal, normal_dot)/norm2(normal)
+        end if
+    end function triangle_area_jvp
 
     pure function cross_product_real(first, second) result(product)
         real(dp), intent(in) :: first(3), second(3)
@@ -105,5 +507,12 @@ contains
             first(3)*second(1) - first(1)*second(3), &
             first(1)*second(2) - first(2)*second(1)]
     end function cross_product
+
+    pure function complex_cross_product(first, second) result(product)
+        complex(dp), intent(in) :: first(3), second(3)
+        complex(dp) :: product(3)
+
+        product = cross_product(first, second)
+    end function complex_cross_product
 
 end module fortfem_maxwell_magnetic_rwg_3d
