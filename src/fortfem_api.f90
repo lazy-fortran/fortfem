@@ -463,6 +463,12 @@ module fortfem_api
         evaluate_nested_surface_geometry_vjp, &
         evaluate_nested_surface_geometry_coordinate_jvp, &
         evaluate_nested_surface_geometry_coordinate_vjp
+    use fortfem_nested_geometry_differential_jet, only: &
+        evaluate_nested_geometry_differential_jet, &
+        evaluate_nested_geometry_differential_jet_jvp, &
+        evaluate_nested_geometry_differential_jet_vjp, &
+        evaluate_nested_geometry_polynomial_jet, &
+        validate_nested_geometry_axis_flags
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, assemble_tensor_diffusion_matrix_jvp, &
         assemble_tensor_diffusion_matrix_vjp, assemble_tensor_diffusion_matrix_nd, &
@@ -1793,6 +1799,11 @@ module fortfem_api
     public :: evaluate_nested_surface_geometry_vjp
     public :: evaluate_nested_surface_geometry_coordinate_jvp
     public :: evaluate_nested_surface_geometry_coordinate_vjp
+    public :: evaluate_nested_geometry_differential_jet
+    public :: evaluate_nested_geometry_differential_jet_jvp
+    public :: evaluate_nested_geometry_differential_jet_vjp
+    public :: evaluate_nested_geometry_polynomial_jet
+    public :: validate_nested_geometry_axis_flags
     public :: assemble_fourier_vector_product
     public :: assemble_fourier_vector_product_jvp
     public :: assemble_fourier_vector_product_vjp
