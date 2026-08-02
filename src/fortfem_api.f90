@@ -26,6 +26,9 @@ module fortfem_api
         assemble_linear_response_residual_vjp, &
         initialize_linear_response_interchange, &
         linear_response_interchange_t, validate_linear_response_interchange
+    use fortfem_linear_response_schema, only: &
+        linear_response_schema_magic, &
+        read_linear_response_interchange, write_linear_response_interchange
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -2570,6 +2573,9 @@ module fortfem_api
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
+    public :: linear_response_schema_magic
+    public :: read_linear_response_interchange
+    public :: write_linear_response_interchange
     public :: assemble_generalized_eigen_residual
     public :: assemble_generalized_eigen_residual_jvp
     public :: assemble_generalized_eigen_residual_vjp

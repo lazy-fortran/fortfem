@@ -167,6 +167,10 @@ defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and
 wall response adapters without importing their application physics.
 
+The [linear-response interchange schema](linear_response_schema.html) provides
+a bounded, versioned text round-trip for those neutral records, retaining a
+small dense oracle without importing GPEC, MARS-F, GLISS, or STARWALL files.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
