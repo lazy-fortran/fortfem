@@ -465,9 +465,21 @@ end program field_aligned_anisotropic_3d_gallery
 
 ![primary.png](../../media/examples/field_aligned_anisotropic_3d_gallery/primary.png)
 
+### diagnostics_slice.png
+
+![diagnostics_slice.png](../../media/examples/field_aligned_anisotropic_3d_gallery/diagnostics_slice.png)
+
 ### solution.png
 
 ![solution.png](../../media/examples/field_aligned_anisotropic_3d_gallery/solution.png)
+
+### solution_3d.png
+
+![solution_3d.png](../../media/examples/field_aligned_anisotropic_3d_gallery/solution_3d.png)
+
+### solution_slice.png
+
+![solution_slice.png](../../media/examples/field_aligned_anisotropic_3d_gallery/solution_slice.png)
 
 ---
 

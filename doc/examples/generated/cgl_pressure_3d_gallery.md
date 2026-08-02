@@ -563,9 +563,17 @@ end program cgl_pressure_3d_gallery
 
 ![primary.png](../../media/examples/cgl_pressure_3d_gallery/primary.png)
 
+### pressure_components.png
+
+![pressure_components.png](../../media/examples/cgl_pressure_3d_gallery/pressure_components.png)
+
 ### solution.png
 
 ![solution.png](../../media/examples/cgl_pressure_3d_gallery/solution.png)
+
+### solution_3d.png
+
+![solution_3d.png](../../media/examples/cgl_pressure_3d_gallery/solution_3d.png)
 
 ---
 
