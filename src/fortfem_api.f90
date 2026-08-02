@@ -93,6 +93,10 @@ module fortfem_api
         assemble_glued_feec_sequence, &
         assemble_glued_feec_sequence_jvp, &
         assemble_glued_feec_sequence_vjp
+    use fortfem_glued_feec_sequence_csc, only: &
+        assemble_glued_feec_sequence_csc, &
+        assemble_glued_feec_sequence_csc_jvp, &
+        assemble_glued_feec_sequence_csc_vjp
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cohomology_cocycle_basis, &
         cell_complex_cycle_basis, &
@@ -2713,6 +2717,9 @@ module fortfem_api
     public :: assemble_glued_feec_sequence
     public :: assemble_glued_feec_sequence_jvp
     public :: assemble_glued_feec_sequence_vjp
+    public :: assemble_glued_feec_sequence_csc
+    public :: assemble_glued_feec_sequence_csc_jvp
+    public :: assemble_glued_feec_sequence_csc_vjp
 
     ! Plotting interface
     public :: plot

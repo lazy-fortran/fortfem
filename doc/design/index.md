@@ -200,6 +200,10 @@ dense reference composition from cell-local maps to conforming, broken, cut,
 or multipatch global numbering, including orientation signs and complete
 JVP/VJP actions.
 
+The [signed glued FEEC CSC contract](glued_feec_sequence_csc.html) provides
+the duplicate-compressed sparse counterpart and fixed-topology local-matrix
+JVP/VJP scatter.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
