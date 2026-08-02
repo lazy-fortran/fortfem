@@ -193,7 +193,9 @@ electromagnetic clients.
 The [pseudo-arclength continuation residual contract](pseudo_arclength_residual.html)
 appends a predictor/tangent constraint to a caller-owned nonlinear residual,
 with analytical JVP/VJP actions for fixed-topology equilibrium, free-boundary,
-wave, and elasticity continuation clients.
+wave, and elasticity continuation clients. It also defines differentiable
+tangent normalization and a weighted residual merit for line-search and
+trust-region policies.
 
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product

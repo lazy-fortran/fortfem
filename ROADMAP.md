@@ -1090,6 +1090,9 @@ SPEC-like, MARS/GPEC-like, JOREK-like, elasticity, and wave clients.
 The matching `normalize_pseudo_arclength_tangent` primitive supplies the
 allocation-free unit tangent blocks and norm with zero-tangent rejection and
 complete analytical derivatives.
+The `evaluate_residual_merit` primitive supplies the positive-weighted
+least-squares merit and analytical JVP/VJP; acceptance rules and nonlinear
+solver state remain client-owned.
 
 #### 8.5.6 Geometry-independent 2D and 3D benchmark ladder
 
