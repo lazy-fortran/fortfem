@@ -233,6 +233,7 @@ contains
         complex(dp), intent(out) :: axis_value_dot
         type(fortsparse_status_t), intent(out) :: status
         type(near_axis_diagnostic_metadata_t) :: metadata
+        integer :: term
 
         coefficient_l2_norm_dot = 0.0_dp
         axis_value_dot = cmplx(0.0_dp, 0.0_dp, dp)
@@ -248,7 +249,11 @@ contains
         end if
         coefficient_l2_norm_dot = real(sum(conjg(coefficients)*coefficients_dot), dp) / &
             max(metadata%coefficient_l2_norm, tiny(1.0_dp))
-        do concurrent (integer :: term = 1:size(coefficients))
+        ! This reduction is intentionally serial: each iteration accumulates
+        ! into ``axis_value_dot``.  A DO CONCURRENT construct would make that
+        ! loop-carried dependency non-conforming (and declaring ``term`` in
+        ! the construct is rejected by the oldest gfortran used in CI).
+        do term = 1, size(coefficients)
             if (radial_powers(term) == 0 .and. poloidal_modes(term) == 0) then
                 axis_value_dot = axis_value_dot + coefficients_dot(term)
             end if
