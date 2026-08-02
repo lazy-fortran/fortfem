@@ -196,6 +196,17 @@ fpm run --example <example_name>
 <p>This example is a manufactured one-dimensional elastic-bar modal problem. It</p>
 </div>
 </article>
+<article class="example-card" data-example="mixed_wave_wall">
+<a class="example-card-preview" href="generated/mixed_wave_wall.html">
+<img class="example-card-image"
+ src="../media/examples/mixed_wave_wall/primary.png"
+ alt="Plot preview for mixed_wave_wall" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/mixed_wave_wall.html">mixed_wave_wall</a></h3>
+<p>This small structure-preserving example couples a first-order mixed wave port</p>
+</div>
+</article>
 <article class="example-card" data-example="tetra_h1_poisson">
 <a class="example-card-preview" href="generated/tetra_h1_poisson.html">
 <img class="example-card-image"
@@ -532,6 +543,7 @@ fpm run --example <example_name>
 - [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight and quadratic Bezier-edge areas
 - [mixed_acoustic_wave](generated/mixed_acoustic_wave.html) - This fixture is a small physical wave problem for the common mixed
 - [mixed_elasticity_wave](generated/mixed_elasticity_wave.html) - This example is a manufactured one-dimensional elastic-bar modal problem. It
+- [mixed_wave_wall](generated/mixed_wave_wall.html) - This small structure-preserving example couples a first-order mixed wave port
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
 - [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - A short V-shaped head makes direction readable in the
