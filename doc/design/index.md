@@ -414,6 +414,11 @@ The [mixed first-order wave step](mixed_wave_time.html) documents the common
 pressure/velocity, displacement/momentum, and electromagnetic midpoint/Cayley
 contract with independent energy and reversibility checks.
 
+The three-dimensional manufactured wave parity fixture is documented in the
+[mixed-wave time-stepping design](mixed_wave_time.html).  It checks the
+Cartesian solution, energy, canonical two-form, signed-step reversal, and the
+explicit non-symplectic status of the dissipative Cayley companion.
+
 The [symmetric mixed-wave split](mixed_wave_strang.html) composes ideal
 midpoint/Cayley factors as A(Δt/2)-B(Δt)-A(Δt/2), with analytical JVP/VJP
 actions and independent energy, reversibility, finite-difference, and adjoint

@@ -2478,6 +2478,12 @@ gallery example.
   oracle checks the linear solve, Hamiltonian preservation, signed-step
   reversibility, central-difference JVP, and real-adjoint VJP; dissipative
   terms remain separate.
+  The independent `test_mixed_wave_3d_structure_oracle` fixture extends this
+  contract to explicit Cartesian (x/y/z) components: an analytical
+  three-component solution, energy ledger, canonical six-dimensional
+  symplectic-form defect, signed-step reversal, and a positive-time
+  dissipative-Cayley energy decrease with a nonzero symplectic defect.  The
+  dissipative block is therefore tested as a separate non-symplectic map.
   Dissipative splitting remains separate; discrete-gradient/average-vector-
   field options are now covered by this neutral quadratic slice, while
   broader problem-size campaigns remain active work.

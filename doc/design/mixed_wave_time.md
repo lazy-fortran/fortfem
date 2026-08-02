@@ -103,3 +103,26 @@ test checks the JVP against a central difference of the complete update and
 checks the VJP dot-product identity.  Mass and coupling blocks are held fixed
 by this contract; a caller differentiating geometry or constitutive data
 should differentiate those blocks in its surrounding residual.
+
+## Three-dimensional manufactured parity fixture
+
+`test_mixed_wave_3d_structure_oracle` is the smallest explicit three-component
+manufactured wave case.  Its diagonal (C) block represents the (x), (y),
+and (z) components with independent frequencies, so the oracle is the
+closed-form Cartesian oscillator rather than an internal time-step quantity.
+It checks, independently:
+
+- the midpoint solution against all three analytical component trajectories;
+- quadratic energy over 300 steps;
+- signed-step reversibility;
+- the six-dimensional canonical two-form through
+  `assemble_symplectic_map_defect`; and
+- separation of ideal and dissipative structure: a positive-time
+  `advance_dissipative_cayley` step strictly decreases energy and has a
+  nonzero canonical symplectic defect.
+
+The last check is intentional.  A dissipative Cayley solve is a useful
+resistive or absorbing building block, but it is never reported as a
+symplectic update merely because it is implicit.  The fixture is reusable for
+3D acoustic, elastic, Maxwell, and tensor-pressure clients by replacing the
+caller-owned blocks while retaining the same ledgers.
