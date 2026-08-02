@@ -37,7 +37,8 @@ program eulerian_island_gallery
     real(dp) :: previous_margin(2), current_margin(2), minimum_margin
     integer, parameter :: separatrix_count = 101
     real(dp) :: separatrix_x(separatrix_count), separatrix_y(separatrix_count)
-    real(dp) :: separatrix_x_lower(separatrix_count), separatrix_y_lower(separatrix_count)
+    real(dp) :: separatrix_x_lower(separatrix_count)
+    real(dp) :: separatrix_y_lower(separatrix_count)
     real(dp) :: quiver_x(quiver_count), quiver_y(quiver_count)
     real(dp) :: quiver_u(quiver_count), quiver_v(quiver_count)
     real(dp) :: maximum_divergence, residual_l2, residual_dot_l2
