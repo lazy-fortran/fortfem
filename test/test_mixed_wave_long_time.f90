@@ -5,7 +5,7 @@ program test_mixed_wave_long_time
     !! quantity returned by the time-stepper.  A second pass with the signed
     !! step checks that accumulated forward evolution is reversible.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_mixed_wave_strang
+    use fortfem_time, only: advance_mixed_wave_strang
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

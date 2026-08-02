@@ -1,6 +1,6 @@
 program test_cgl_pressure_divergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_cgl_pressure_divergence, &
+    use fortfem_feec, only: evaluate_cgl_pressure_divergence, &
         evaluate_cgl_pressure_divergence_jvp, &
         evaluate_cgl_pressure_divergence_vjp
     use fortfem_kinds, only: dp

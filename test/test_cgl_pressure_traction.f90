@@ -1,6 +1,6 @@
 program test_cgl_pressure_traction
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_cgl_pressure_traction, &
+    use fortfem_feec, only: evaluate_cgl_pressure_traction, &
         evaluate_cgl_pressure_traction_jvp, evaluate_cgl_pressure_traction_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

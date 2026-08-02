@@ -1,7 +1,7 @@
 program test_mixed_wave_wall_midpoint
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_time, only: &
         advance_mixed_wave_wall_midpoint, &
         advance_mixed_wave_wall_midpoint_jvp, &
         advance_mixed_wave_wall_midpoint_vjp, &

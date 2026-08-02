@@ -1,7 +1,7 @@
 program test_mixed_elasticity_residual
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_mixed_elasticity_residual, &
         assemble_mixed_elasticity_residual_jvp, &
         assemble_mixed_elasticity_residual_vjp

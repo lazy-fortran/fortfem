@@ -8,7 +8,7 @@ program test_nonlinear_resistive_mhd_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         RESISTIVE_MHD_BLOCK_COUNT, &
         assemble_nonlinear_resistive_mhd_residual, &
         assemble_nonlinear_resistive_mhd_residual_jvp, &

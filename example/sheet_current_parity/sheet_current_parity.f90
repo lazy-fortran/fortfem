@@ -1,6 +1,6 @@
 program sheet_current_parity
     !! Physical-first slab fixture for explicit versus resolved sheet ledgers.
-    use fortfem_api, only: evaluate_regularized_surface_current_layer, &
+    use fortfem_interop, only: evaluate_regularized_surface_current_layer, &
         compare_sheet_current_representations
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel

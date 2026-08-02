@@ -1,7 +1,7 @@
 program test_linear_response_interchange
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         evaluate_linear_response_diagnostics, &
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &

@@ -1,6 +1,6 @@
 program test_nonlinear_resistive_mhd_composition
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         RESISTIVE_MHD_AMPERE, &
         RESISTIVE_MHD_ANISOTROPIC_TRANSPORT, &
         RESISTIVE_MHD_BLOCK_COUNT, &

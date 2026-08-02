@@ -6,12 +6,12 @@ program test_sheet_current_surface_parity
     !! this test are an independent oracle for a cylinder, sphere, and torus;
     !! no geometry-specific implementation is hidden in the library routine.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compare_sheet_current_surface_representations, &
-        compare_sheet_current_surface_representations_jvp
     use fortfem_sheet_current_surface_parity, only: &
         compare_sheet_current_surface_representations_direct => &
         compare_sheet_current_surface_representations
     use fortfem_interop, only: &
+        compare_sheet_current_surface_representations, &
+        compare_sheet_current_surface_representations_jvp, &
         compare_sheet_current_surface_representations_interop => &
         compare_sheet_current_surface_representations, &
         compare_sheet_current_surface_representations_jvp_interop => &

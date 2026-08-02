@@ -7,7 +7,7 @@ program test_mixed_wave_3d_structure_oracle
     !! fixture also checks the canonical two-form and proves that the separate
     !! dissipative Cayley block is energy-contracting but not symplectic.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_dissipative_cayley, &
+    use fortfem_time, only: advance_dissipative_cayley, &
         advance_mixed_wave_midpoint, assemble_symplectic_map_defect
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

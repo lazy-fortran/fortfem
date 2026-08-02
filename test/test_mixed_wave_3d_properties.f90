@@ -2,7 +2,7 @@ program test_mixed_wave_3d_properties
     use, intrinsic :: iso_fortran_env, only: int32
     use check, only: check_condition, check_property, check_summary, &
         property_random_unit, property_rng_initialize, property_rng_t
-    use fortfem_api, only: &
+    use fortfem_time, only: &
         advance_mixed_wave_midpoint, advance_mixed_wave_symplectic_euler
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

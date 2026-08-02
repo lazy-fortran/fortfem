@@ -1,7 +1,7 @@
 program test_elasticity_symmetry_constraint
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_elasticity_symmetry_constraint, &
         assemble_elasticity_symmetry_constraint_jvp, &
         assemble_elasticity_symmetry_constraint_vjp
