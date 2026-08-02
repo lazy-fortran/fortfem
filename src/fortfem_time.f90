@@ -23,6 +23,8 @@ module fortfem_time
         advance_dissipative_cayley, &
         advance_dissipative_cayley_jvp, &
         advance_dissipative_cayley_vjp
+    use fortfem_assembly_bspline_2d, only: &
+        advance_bspline_jorek_poloidal_flux_midpoint_steps
     implicit none
     private
 
@@ -38,6 +40,7 @@ module fortfem_time
     public :: advance_mixed_wave_symplectic_euler
     public :: advance_mixed_wave_symplectic_euler_jvp
     public :: advance_mixed_wave_symplectic_euler_vjp
+    public :: advance_bspline_jorek_poloidal_flux_midpoint_steps
     public :: assemble_symplectic_map_defect
     public :: assemble_symplectic_map_defect_jvp
     public :: assemble_symplectic_map_defect_vjp

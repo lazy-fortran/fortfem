@@ -1,8 +1,8 @@
 program nested_surface_solution
     !! Physical-first manufactured field on a neutral nested toroidal map.
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_axis_regular_radial_basis, evaluate_nested_surface_geometry
-    use fortfem_fourier_mode_registry, only: &
+    use fortfem_fourier, only: &
         fourier_mode_registry_t, initialize_fourier_mode_registry
     use fortfem_kinds, only: dp
     use fortplot, only: &
