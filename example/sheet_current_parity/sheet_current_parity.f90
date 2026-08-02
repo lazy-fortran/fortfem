@@ -1,7 +1,7 @@
 program sheet_current_parity
     !! Physical-first slab fixture for explicit versus resolved sheet ledgers.
     use fortfem_api, only: evaluate_regularized_surface_current_layer, &
-        evaluate_sheet_current_parity
+        compare_sheet_current_representations
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
@@ -49,7 +49,7 @@ program sheet_current_parity
         if (point == 1 .or. point == parity_count) weights(point) = 0.5_dp*spacing
         current(point, :) = sheet
     end do
-    call evaluate_sheet_current_parity( &
+    call compare_sheet_current_representations( &
         distance, weights, current, thickness, surface_measure, sheet, &
         regularized, explicit, relative_error, status)
     if (status%code /= 0 .or. relative_error > 2.0e-12_dp) &
