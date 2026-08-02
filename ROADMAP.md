@@ -2577,7 +2577,12 @@ gallery example.
   `evaluate_fourier_mode_expansion_hvp` applies that Hessian to a fixed-
   coefficient coordinate direction. Independent nested-loop algebra and
   central differences of the first gradient verify the radial, angular, and
-  mixed terms; this remains a fixed-topology neutral derivative contract.
+  mixed terms; this remains a fixed-topology neutral derivative contract. A
+  FortSym generation audit keeps this kernel and its oracle explicit: runtime
+  integer radial powers, variable mode counts, and the `rho=0` power branches
+  are not a fixed-shape CAS kernel without duplicating the metadata loop. The
+  nested-loop oracle therefore remains deliberately independent of generated
+  production code, avoiding correlated symbolic and implementation errors.
 - The seeded `test_fourier_mode_expansion_properties` fixture now samples
   bounded radial powers, normalizations, phases, coefficients, coordinates,
   and directions across 24 deterministic cases. It compares value, gradient,
