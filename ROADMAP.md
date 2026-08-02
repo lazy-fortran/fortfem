@@ -2571,6 +2571,12 @@ gallery example.
   coefficient coordinate direction. Independent nested-loop algebra and
   central differences of the first gradient verify the radial, angular, and
   mixed terms; this remains a fixed-topology neutral derivative contract.
+- The seeded `test_fourier_mode_expansion_properties` fixture now samples
+  bounded radial powers, normalizations, phases, coefficients, coordinates,
+  and directions across 24 deterministic cases. It compares value, gradient,
+  all six Hessian components, and HVP outputs with independent nested-loop
+  algebra, extending randomized Fourier coverage without changing the API or
+  importing a physics closure.
 - `build_fourier_mode_closure_registry` now applies the one-product constructor
   for a caller-selected positive number of rounds. Round one is the padded
   registry; subsequent rounds retain every prior-work-set pair sum. The
