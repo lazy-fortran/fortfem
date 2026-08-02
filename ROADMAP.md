@@ -1366,6 +1366,48 @@ named application or its plasma closure.
 | MHD-16 | **active** | Finish the MHD gallery and benchmark contract in increasing complexity, with physical solution first: 1D slab, 2D circle/cylinder, 3D sphere/torus, vector arrows/surfaces/field lines, mesh completeness, convergence, invariants, and timings. Simple Poisson, tetrahedral H1, tetrahedral Nédélec, regularized sheet-current, linear response, and nested-torus pages now lead with physical plots; the tetrahedral previews record physical-before-diagnostics execution order, with readable sampled scalar/vector fields, mesh edges, and quiver arrows, while the toroidal Maxwell radiation preview uses a connected periodic surface rather than an unordered point cloud. All pages retain ignored generated media plus CSV/JSON provenance | Every page has a solution preview before diagnostics, generated FortPlot media, CSV/JSON provenance, no checked-in images, and a bounded memory/timeout record |
 | MHD-17 | **active** | Add the DESC-like direct nested-surface force-balance/optimization foundation without implementing DESC physics: inverse toroidal-flux coordinates \((R,Z,\lambda)\), Fourier--Zernike or equivalent axis-regular radial bases, parity and axis regularity, collocation force components, profile/objective/constraint callback registries, exact JVP/VJP and Hessian-vector hooks, perturbation/continuation/deflation, flux-surface averages/Boozer-transform hooks, near-axis data hooks, and fixed/free-boundary external-field and sheet-current residual ports. The neutral `build_axis_regular_mode_table` validator reports scalar \(\rho\)-power/parity requirements and deterministic conjugate-safe mode ordering; `evaluate_axis_regular_radial_basis` now evaluates caller-selected finite complex radial polynomials with exact coefficient/rho JVP/VJP products and the same minimum-power/parity contract; `evaluate_flux_surface_average` supplies weighted diagnostic reduction; nested geometry supplies coordinate-sample JVP/VJP products; `evaluate_force_balance_objective` now provides a positive-weighted direct-force least-squares value/JVP/VJP contract; `assemble_free_boundary_port_residual` supplies fixed-topology trace/exterior-target/sheet-jump composition; vector/tensor shifts remain caller-owned | Manufactured axisymmetric and 3D toroidal states show axis regularity, exponential radial/mode convergence, direct force residual closure, objective/constraint derivatives (including weighted averages and coordinate adjoints), perturbation and continuation parity, and free-boundary/sheet-current boundary residuals; all profile laws, readers, and production optimization remain external |
 
+#### Free-boundary completion checklist
+
+The rows above cover the field and residual pieces, but a reusable free-boundary
+client also needs the following small, application-neutral contracts.  They are
+deliberately phrased in terms of sampled geometry and linear maps: coil models,
+profiles, equilibrium selection, and input readers stay outside FortFEM.
+
+1. **Surface-current potential and loop basis.**  Decompose a tangential surface
+   current into a single-valued scalar potential plus one harmonic representative
+   per handle, with explicit cuts, periods, gauge, orientation, and units.  The
+   same map must feed virtual casing, NESTOR-like vacuum maps, BIEST-like
+   generalized-Debye sources, and conducting-wall response blocks.
+2. **Source-to-trace/inductance maps.**  Provide a neutral map from caller-owned
+   source samples (filament, panel, volume, or spline coefficients) to target
+   normal/tangential fields and work-conjugate fluxes.  Expose reciprocal and
+   adjoint products, self/near-panel regularization status, optional retained
+   response blocks, and shape/parameter JVP/VJP actions.  This is a numerical
+   map, not a coil or vessel model.
+3. **Moving-surface shape calculus.**  Differentiate point positions, tangent
+   frames, normals, measures, periodic seam identifications, and singular or
+   coincident-panel quadrature consistently for a fixed region topology.  Report
+   a topology-event status when a component, handle, cut, or critical point
+   changes; never differentiate silently through that event.
+4. **Axisymmetric critical-point metadata.**  Add a neutral descriptor for
+   magnetic/null points, X/O points, limiter or separatrix contours, and their
+   event margins.  It stores sampled geometry and classification only; locating
+   points from a supplied scalar field and all equilibrium interpretation remain
+   external.  This is the common 2-D hook needed by CHEASE/FreeGS-like clients.
+5. **Coupled free-boundary solve bookkeeping.**  Keep interior, vacuum, wall,
+   surface-current, and geometric blocks separately inspectable in a residual
+   and Schur/Jacobian graph.  Record block scaling, units, nullspaces, retained
+   factors, continuation parameter, conditioning, and work/energy ledgers so
+   NESTOR/BIEST, FEM--BEM/DtN, PML, and virtual-casing paths can be swapped in
+   the same manufactured solve.
+
+The acceptance fixture for this checklist is a supplied circle and toroidal
+surface with a manufactured current potential and one handle mode: direct
+source-to-trace, spectral vacuum, and compatible volume paths must agree in
+weighted flux/work, pass the reciprocal/adjoint and shape-JVP checks, and reject
+an intentionally changed topology.  The fixture may be generated in the
+gallery, but its numerical data—not any external code or reader—is the oracle.
+
 The equation/objective registry is the neutral packing layer for MHD-01 and
 MHD-17 callback composition; all constitutive and profile callbacks remain
 external.
