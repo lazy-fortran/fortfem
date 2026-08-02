@@ -1,9 +1,10 @@
 program test_maxwell_torus_fem_bem_solution
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
-        build_tetra_nedelec_dof_map, generate_solid_torus_tetra_mesh, &
         solve_maxwell_fem_bem_torus_curved_system_3d
+    use fortfem_core, only: generate_solid_torus_tetra_mesh
+    use fortfem_feec, only: build_tetra_nedelec_dof_map
     use fortfem_kinds, only: dp
     implicit none
 

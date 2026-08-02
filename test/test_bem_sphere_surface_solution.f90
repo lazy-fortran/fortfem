@@ -1,8 +1,8 @@
 program test_bem_sphere_surface_solution
     !! Independent oracle for the exterior monopole used by the 3-D gallery.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_laplace_representation_triangles_3d, &
-        generate_sphere_surface_mesh
+    use fortfem_boundary, only: evaluate_laplace_representation_triangles_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
