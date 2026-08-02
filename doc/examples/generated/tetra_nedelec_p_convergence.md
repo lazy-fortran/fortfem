@@ -4,7 +4,21 @@ title: tetra_nedelec_p_convergence Example
 
 # tetra_nedelec_p_convergence Example
 
-A short V-shaped head makes direction readable in the
+This example interpolates the manufactured curl-free vector field.  The first
+gallery image is a physical slice through the tetrahedron with field magnitude
+and direction arrows; convergence diagnostics follow it.
+
+\[
+\boldsymbol{E}=\nabla\!\left(x^4+\frac{2}{3}y^3+z^3\right)
+ = (4x^3,\,2y^2,\,3z^2)
+\]
+
+with first-kind Nédélec spaces on the reference tetrahedron.  The gallery
+starts with the computed solution: the 3-D view shows the tetrahedron edges,
+field magnitude, and direction arrows; a triangular slice shows the same
+vector field with quiver arrows.  The p-convergence curve is reported after
+the physical solution plots.  Each run writes `gallery_sequence.txt`, whose
+two records are an execution oracle for that ordering.
 
 ## Usage
 
@@ -35,8 +49,9 @@ program tetra_nedelec_p_convergence
     call execute_command_line( &
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
+    call initialize_gallery_sequence()
 
-    print "(a)", "order  L2 error for grad(x^4)"
+    print "(a)", "order  L2 error for manufactured curl-free field"
     do order = 1, 4
         degrees(order) = real(order, dp)
         call initialize_tetra_nedelec_first_kind(order, basis, status)
@@ -53,6 +68,7 @@ program tetra_nedelec_p_convergence
     end if
 
     call render_field()
+    call record_gallery_stage("physical_solution")
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(degrees, errors, label="Nedelec interpolation error", &
@@ -62,15 +78,38 @@ program tetra_nedelec_p_convergence
     call ylabel("L2 vector error")
     call title("Tetrahedral Nedelec p-convergence")
     call savefig(output_directory//"/p_convergence_1d.png")
+    call record_gallery_stage("diagnostics")
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot initialize gallery sequence"
+        close (unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write", &
+            iostat=local_status)
+        if (local_status /= 0) error stop "cannot record gallery sequence"
+        write (unit, "(a)", iostat=local_status) stage
+        close (unit)
+        if (local_status /= 0) error stop "cannot write gallery sequence"
+    end subroutine record_gallery_stage
 
     subroutine render_field()
         integer, parameter :: sample_side = 12
         real(dp), allocatable :: dofs(:), x_plot(:), y_plot(:), z_plot(:)
         real(dp), allocatable :: field_magnitude(:), basis_values(:, :)
         real(dp), allocatable :: basis_curls(:, :)
-        real(dp) :: point(3), field_value(3), arrow_end(3), arrow_side(3)
+        real(dp) :: point(3), field_value(3), arrow_end(3)
         real(dp) :: field_scale, arrow_length
         integer :: count, i, j, k, local_status
 
@@ -109,6 +148,7 @@ contains
             x_plot(:count), y_plot(:count), z_plot(:count), &
             c=field_magnitude(:count), cmap="viridis", marker=".", &
             markersize=4.0_dp, label="computed Nedelec field magnitude")
+        call render_tetrahedron_edges()
         field_scale = maxval(field_magnitude(:count))
         field_scale = max(field_scale, epsilon(1.0_dp))
         do k = 0, sample_side, 3
@@ -127,19 +167,9 @@ contains
                     if (arrow_length <= 1.0e-12_dp) cycle
                     arrow_end = point + arrow_length*field_value/ &
                         max(norm2(field_value), epsilon(1.0_dp))
-                    arrow_side = arrow_end - point
                     call add_3d_plot( &
                         [point(1), arrow_end(1)], [point(2), arrow_end(2)], &
                         [point(3), arrow_end(3)], color="black", linewidth=1.2_dp)
-                    ! A short V-shaped head makes direction readable in the
-                    ! projected 3-D renderer without adding a second API.
-                    call add_3d_plot( &
-                        [arrow_end(1), arrow_end(1) - 0.25_dp*arrow_side(1) + &
-                        0.08_dp, arrow_end(1)], &
-                        [arrow_end(2), arrow_end(2) - 0.25_dp*arrow_side(2), &
-                        arrow_end(2) + 0.08_dp], &
-                        [arrow_end(3), arrow_end(3) - 0.25_dp*arrow_side(3), &
-                        arrow_end(3)], color="black", linewidth=1.0_dp)
                 end do
             end do
         end do
@@ -147,6 +177,28 @@ contains
         call savefig(output_directory//"/nedelec_field_3d.png")
         call render_field_slice(basis, dofs)
     end subroutine render_field
+
+    subroutine render_tetrahedron_edges()
+        real(dp), parameter :: vertices(3, 4) = reshape([ &
+            0.0_dp, 0.0_dp, 0.0_dp, &
+            1.0_dp, 0.0_dp, 0.0_dp, &
+            0.0_dp, 1.0_dp, 0.0_dp, &
+            0.0_dp, 0.0_dp, 1.0_dp], [3, 4])
+        integer, parameter :: edges(2, 6) = reshape([ &
+            1, 2, 1, 3, 1, 4, 2, 3, 2, 4, 3, 4], [2, 6])
+        integer :: edge
+
+        do edge = 1, size(edges, 2)
+            call add_3d_plot( &
+                [vertices(1, edges(1, edge)), &
+                vertices(1, edges(2, edge))], &
+                [vertices(2, edges(1, edge)), &
+                vertices(2, edges(2, edge))], &
+                [vertices(3, edges(1, edge)), &
+                vertices(3, edges(2, edge))], &
+                color="dimgray", linewidth=2.0_dp)
+        end do
+    end subroutine render_tetrahedron_edges
 
     subroutine render_field_slice(basis, dofs)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
@@ -157,7 +209,7 @@ contains
         real(dp), allocatable :: arrow_x(:), arrow_y(:), arrow_u(:), arrow_v(:)
         real(dp), allocatable :: basis_values(:, :), basis_curls(:, :)
         real(dp) :: point(3), field_value(3), field_norm
-        integer :: count, arrow_count, i, j, local_status
+        integer :: count, arrow_count, csv_unit, i, j, local_status
 
         allocate( &
             x(slice_side**2), y(slice_side**2), magnitude(slice_side**2), &
@@ -166,6 +218,13 @@ contains
             arrow_u((slice_side/vector_stride + 1)**2), &
             arrow_v((slice_side/vector_stride + 1)**2), &
             basis_values(3, size(dofs)), basis_curls(3, size(dofs)))
+        open (newunit=csv_unit, &
+            file=output_directory//"/nedelec_field_slice_2d.csv", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot open Nedelec field CSV"
+        write (csv_unit, "(a)", iostat=local_status) &
+            "x,y,z,Ex,Ey,Ez,magnitude"
+        if (local_status /= 0) error stop "cannot write Nedelec field CSV header"
         count = 0
         arrow_count = 0
         do j = 1, slice_side
@@ -182,6 +241,9 @@ contains
                 x(count) = point(1)
                 y(count) = point(2)
                 magnitude(count) = norm2(field_value)
+                write (csv_unit, "(7(es24.16,','))", iostat=local_status) &
+                    point(1), point(2), point(3), field_value, magnitude(count)
+                if (local_status /= 0) error stop "cannot write Nedelec field CSV"
                 if (mod(i - 1, vector_stride) == 0 .and. &
                     mod(j - 1, vector_stride) == 0) then
                     arrow_count = arrow_count + 1
@@ -192,6 +254,8 @@ contains
                 end if
             end do
         end do
+        close (csv_unit, iostat=local_status)
+        if (local_status /= 0) error stop "cannot close Nedelec field CSV"
         do i = 1, arrow_count
             field_norm = sqrt(arrow_u(i)**2 + arrow_v(i)**2)
             if (field_norm > epsilon(1.0_dp)) then
@@ -203,6 +267,10 @@ contains
         call add_scatter(x(:count), y(:count), c=magnitude(:count), &
             cmap="viridis", marker=".", markersize=9.0_dp, &
             label="computed field magnitude at z=0.25")
+        call plot([0.0_dp, 0.75_dp, 0.0_dp, 0.0_dp], &
+            [0.0_dp, 0.0_dp, 0.75_dp, 0.0_dp], &
+            color=[0.25_dp, 0.25_dp, 0.25_dp], &
+            linewidth=2.0_dp, label="tetrahedron slice")
         call quiver( &
             arrow_x(:arrow_count), arrow_y(:arrow_count), &
             arrow_u(:arrow_count), arrow_v(:arrow_count), scale=1.0_dp, &
@@ -256,7 +324,11 @@ contains
         real(dp), intent(in) :: point(3)
         real(dp) :: value(3)
 
-        value = [4.0_dp * point(1)**3, 0.0_dp, 0.0_dp]
+        ! A cubic scalar potential gives a curl-free field with all three
+        ! components visible in the vector plot:
+        ! phi = x^4 + (2/3)y^3 + z^3.
+        value = [4.0_dp * point(1)**3, &
+            2.0_dp * point(2)**2, 3.0_dp * point(3)**2]
     end function cubic_gradient_value
 
 end program tetra_nedelec_p_convergence

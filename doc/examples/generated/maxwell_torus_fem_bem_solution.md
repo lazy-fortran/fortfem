@@ -7,11 +7,11 @@ title: maxwell_torus_fem_bem_solution Example
 # Toroidal Maxwell FEM--BEM solution
 
 This fixture solves the neutral curl--curl FEM--BEM system on a small exact
-solid-torus mesh. A constant analytical (H(\mathrm{curl})) field supplies the
+solid-torus mesh. An affine analytical (H(\mathrm{curl})) field supplies the
 manufactured right-hand side, so the coupled solve has a known volume field
 and zero surface-current solution. The first plot is the computed physical
-field magnitude on a toroidal cross-section; a vector-arrow view, curved
-geometry, error, and timing diagnostics follow.
+field magnitude and vector direction on a toroidal cross-section; a larger
+vector-arrow view, curved geometry, error, and timing diagnostics follow.
 
 The example exercises the same volume Nédélec, curved RWG trace, and dense
 FEM--BEM system used by external Maxwell clients. It is a foundation fixture,
@@ -48,7 +48,12 @@ program maxwell_torus_fem_bem_solution
     real(dp), parameter :: mass_coefficient = -0.7_dp
     real(dp), parameter :: wave_number = 0.8_dp
     real(dp), parameter :: impedance = 1.4_dp
-    real(dp), parameter :: electric_field(3) = [0.7_dp, -0.4_dp, 0.2_dp]
+    ! Lowest-order tetrahedral Nedelec fields have the affine form
+    ! E(x) = E0 + omega x x.  A nonzero rotational part keeps the physical
+    ! solution visible in the first plot while retaining an exact line
+    ! integral oracle for the coupled FEM--BEM solve.
+    real(dp), parameter :: electric_field(3) = [0.5_dp, -0.3_dp, 0.2_dp]
+    real(dp), parameter :: electric_rotation(3) = [0.0_dp, 0.0_dp, 0.35_dp]
     real(dp), parameter :: blue(3) = [0.0_dp, 114.0_dp, 178.0_dp]/255.0_dp
     real(dp), parameter :: orange(3) = [230.0_dp, 159.0_dp, 0.0_dp]/255.0_dp
     real(dp), parameter :: white(3) = [1.0_dp, 1.0_dp, 1.0_dp]
@@ -73,7 +78,7 @@ program maxwell_torus_fem_bem_solution
     real(dp) :: exact_centre(slice_nx), field_error, current_error
     real(dp) :: start_time, elapsed, x, z, value, exact_value, arrow_norm
     integer :: arrow_count, field_count, info, ix, iz, status, unit
-    real(dp) :: sample_vector(3)
+    real(dp) :: sample_vector(3), edge_midpoint(3), edge_delta(3)
 
     call execute_command_line("mkdir -p "//output_directory)
     call generate_solid_torus_tetra_mesh( &
@@ -92,9 +97,11 @@ program maxwell_torus_fem_bem_solution
     allocate(exact_state(size(system_matrix, 1)), right_hand_side(size(system_matrix, 1)))
     exact_state = cmplx(0.0_dp, 0.0_dp, dp)
     do info = 1, size(edges, 2)
+        edge_delta = vertices(:, edges(2, info)) - vertices(:, edges(1, info))
+        edge_midpoint = 0.5_dp*(vertices(:, edges(2, info)) + &
+            vertices(:, edges(1, info)))
         exact_state(info) = cmplx(dot_product( &
-            electric_field, vertices(:, edges(2, info)) - &
-            vertices(:, edges(1, info))), 0.0_dp, dp)
+            manufactured_vector(edge_midpoint), edge_delta), 0.0_dp, dp)
     end do
     right_hand_side = matmul(system_matrix, exact_state)
 
@@ -127,7 +134,7 @@ program maxwell_torus_fem_bem_solution
             x = 0.5_dp*(x_edges(ix) + x_edges(ix + 1))
             call evaluate_field([x, slice_y, z], value, status)
             if (status == 0 .and. ieee_is_finite(value)) then
-                exact_value = sqrt(sum(electric_field**2))
+                exact_value = sqrt(sum(manufactured_vector([x, slice_y, z])**2))
                 field_map(ix, iz) = value
                 exact_map(ix, iz) = exact_value
                 if (mod(ix - 1, arrow_stride) == 0 .and. &
@@ -161,7 +168,8 @@ program maxwell_torus_fem_bem_solution
         call evaluate_field([centre_x(ix), slice_y, 0.0_dp], &
             computed_centre(ix), status)
         if (status /= 0) error stop "toroidal centerline sample failed"
-        exact_centre(ix) = sqrt(sum(electric_field**2))
+        exact_centre(ix) = sqrt(sum(manufactured_vector( &
+            [centre_x(ix), slice_y, 0.0_dp])**2))
     end do
 
     call render_plots()
@@ -236,6 +244,16 @@ contains
         end do
     end subroutine evaluate_vector
 
+    pure function manufactured_vector(point) result(vector)
+        real(dp), intent(in) :: point(3)
+        real(dp) :: vector(3)
+
+        vector = electric_field + [ &
+            electric_rotation(2)*point(3) - electric_rotation(3)*point(2), &
+            electric_rotation(3)*point(1) - electric_rotation(1)*point(3), &
+            electric_rotation(1)*point(2) - electric_rotation(2)*point(1)]
+    end function manufactured_vector
+
     subroutine render_plots()
         real(dp) :: surface_x(geometry_polar + 1, geometry_toroidal + 1)
         real(dp) :: surface_y(geometry_polar + 1, geometry_toroidal + 1)
@@ -258,6 +276,9 @@ contains
         call colorbar(label="|E_h|")
         call plot(section_x, section_z, label="exact torus section", &
             color=white, linewidth=1.2_dp)
+        if (arrow_count > 0) call quiver( &
+            arrow_x(:arrow_count), arrow_z(:arrow_count), &
+            arrow_u(:arrow_count), arrow_v(:arrow_count), color="black")
         call xlabel("x at y = 0.017")
         call ylabel("z")
         call title("Solved toroidal Maxwell FEM--BEM field magnitude")
@@ -338,6 +359,10 @@ end program maxwell_torus_fem_bem_solution
 ### primary.png
 
 ![primary.png](../../media/examples/maxwell_torus_fem_bem_solution/primary.png)
+
+### debug_quiver.png
+
+![debug_quiver.png](../../media/examples/maxwell_torus_fem_bem_solution/debug_quiver.png)
 
 ### maxwell_torus_fem_bem_centerline_1d.png
 

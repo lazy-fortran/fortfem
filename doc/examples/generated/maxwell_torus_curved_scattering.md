@@ -133,6 +133,7 @@ program maxwell_torus_curved_scattering
     call evaluate_reciprocity()
     call cpu_time(end_time)
     far_field_seconds = end_time - start_time
+    call write_gallery_sequence()
     call render_plots()
     call write_outputs()
 
@@ -268,8 +269,13 @@ contains
         real(dp) :: surface_x(visual_polar + 1, visual_azimuth + 1)
         real(dp) :: surface_y(visual_polar + 1, visual_azimuth + 1)
         real(dp) :: surface_z(visual_polar + 1, visual_azimuth + 1)
+        real(dp) :: radiation_x(visual_polar + 1, visual_azimuth + 1)
+        real(dp) :: radiation_y(visual_polar + 1, visual_azimuth + 1)
+        real(dp) :: radiation_z(visual_polar + 1, visual_azimuth + 1)
         real(dp) :: curve_azimuth, curve_polar, curve_radius
-        integer :: coefficient, curve_index, point_index
+        real(dp) :: normalized_radius, maximum_rcs
+        integer :: coefficient, curve_index, point_index, source_azimuth
+        integer :: source_polar
 
         call figure(figsize=[8.5_dp, 6.5_dp])
         call pcolormesh( &
@@ -323,8 +329,33 @@ contains
         call title("PEC torus Maxwell bistatic RCS")
         call savefig(output_directory//"/maxwell_torus_rcs_2d.png")
 
+        ! The far-field radius is a physical solution surface, not an
+        ! unordered point cloud.  Use the same periodic tensor-product
+        ! topology as the angular samples so FortPlot can render connected
+        ! quads and preserve the toroidal seam in the 3-D view.
+        maximum_rcs = max(maxval(rcs_map), tiny(1.0_dp))
+        do curve_index = 0, visual_polar
+            source_polar = min(polar_cells, max(1, curve_index))
+            curve_polar = pi*real(curve_index, dp)/real(visual_polar, dp)
+            do point_index = 0, visual_azimuth
+                source_azimuth = 1 + mod(point_index, azimuth_cells)
+                curve_azimuth = 2.0_dp*pi*real(point_index, dp)/ &
+                    real(visual_azimuth, dp)
+                normalized_radius = max( &
+                    rcs_map(source_azimuth, source_polar)/maximum_rcs, 0.03_dp)
+                radiation_x(curve_index + 1, point_index + 1) = &
+                    normalized_radius*sin(curve_polar)*cos(curve_azimuth)
+                radiation_y(curve_index + 1, point_index + 1) = &
+                    normalized_radius*sin(curve_polar)*sin(curve_azimuth)
+                radiation_z(curve_index + 1, point_index + 1) = &
+                    normalized_radius*cos(curve_polar)
+            end do
+        end do
         call figure(figsize=[7.5_dp, 6.5_dp])
-        call add_scatter(x, y, z, label="normalized RCS surface", marker=".")
+        call add_parametric_surface( &
+            radiation_x, radiation_y, radiation_z, color="darkorange", &
+            alpha=0.82_dp, linewidth=0.25_dp, filled=.true., &
+            label="normalized RCS surface")
         call title("PEC torus Maxwell three-dimensional radiation pattern")
         call savefig(output_directory//"/maxwell_torus_rcs_3d.png")
 
@@ -337,6 +368,17 @@ contains
         call legend()
         call savefig(output_directory//"/maxwell_torus_dtn_1d.png")
     end subroutine render_plots
+
+    subroutine write_gallery_sequence()
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, &
+            file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        write (sequence_unit, "(a)") "physical_solution"
+        write (sequence_unit, "(a)") "diagnostics"
+        close (sequence_unit)
+    end subroutine write_gallery_sequence
 
     subroutine write_outputs()
         integer :: sample
