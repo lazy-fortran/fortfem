@@ -158,6 +158,8 @@ module fortfem_api
         assemble_glued_feec_sequence_csc_compositions, &
         assemble_glued_feec_sequence_csc_compositions_jvp, &
         assemble_glued_feec_sequence_csc_compositions_vjp
+    use fortfem_multipatch_dof_graph, only: &
+        build_multipatch_signed_dof_map
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cohomology_cocycle_basis, &
         cell_complex_cycle_basis, &
@@ -2848,6 +2850,7 @@ module fortfem_api
     public :: assemble_glued_feec_sequence_csc_compositions
     public :: assemble_glued_feec_sequence_csc_compositions_jvp
     public :: assemble_glued_feec_sequence_csc_compositions_vjp
+    public :: build_multipatch_signed_dof_map
 
     ! Plotting interface
     public :: plot

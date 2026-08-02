@@ -259,6 +259,11 @@ that retained block from caller-owned exterior couplings and returns real or
 complex value/JVP/VJP actions without dense global assembly. Its off-diagonal
 blocks remain caller-owned.
 
+The [arbitrary multipatch signed DOF graph](multipatch_dof_graph.html)
+constructs fixed-topology signed local-to-global maps for any patch graph,
+checks orientation cycles, and composes directly with glued FEEC and IGA
+assemblers while leaving geometry and interface laws caller-owned.
+
 The [complex packed block graph residual](complex_block_graph_residual.html)
 provides the same N-field path for frequency-domain operators and documents
 the real-part complex adjoint convention used by Helmholtz, curl--curl,
