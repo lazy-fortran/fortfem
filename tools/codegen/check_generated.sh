@@ -159,4 +159,8 @@ filename="fortfem_force_balance_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_regularized_surface_current_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 echo "generated FortFEM kernels match committed sources"

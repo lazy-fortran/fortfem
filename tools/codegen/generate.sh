@@ -78,6 +78,7 @@ run_codegen gen_field_aligned_flux_products
 run_codegen gen_field_aligned_hall_products
 run_codegen gen_block_graph_products
 run_codegen gen_force_balance_products
+run_codegen gen_regularized_surface_current_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -119,3 +120,4 @@ fo fmt "$generated_dir/fortfem_field_aligned_flux_products.f90"
 fo fmt "$generated_dir/fortfem_field_aligned_hall_products.f90"
 fo fmt "$generated_dir/fortfem_block_graph_products.f90"
 fo fmt "$generated_dir/fortfem_force_balance_products.f90"
+fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"

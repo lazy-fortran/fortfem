@@ -244,6 +244,11 @@ module fortfem_api
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
         assemble_surface_current_trace_residual_vjp
+    use fortfem_regularized_surface_current_layer, only: &
+        evaluate_regularized_surface_current_layer, &
+        evaluate_regularized_surface_current_layer_jvp, &
+        evaluate_regularized_surface_current_layer_vjp, &
+        evaluate_regularized_surface_current_integral
     use fortfem_broken_skeleton_spaces, only: &
         BROKEN_SPACE_H1, BROKEN_SPACE_HCURL, BROKEN_SPACE_HDIV, &
         BROKEN_SPACE_L2, SKELETON_SPACE_SCALAR, &
@@ -1592,6 +1597,10 @@ module fortfem_api
     public :: assemble_surface_current_trace_residual
     public :: assemble_surface_current_trace_residual_jvp
     public :: assemble_surface_current_trace_residual_vjp
+    public :: evaluate_regularized_surface_current_layer
+    public :: evaluate_regularized_surface_current_layer_jvp
+    public :: evaluate_regularized_surface_current_layer_vjp
+    public :: evaluate_regularized_surface_current_integral
     public :: BROKEN_SPACE_H1
     public :: BROKEN_SPACE_HCURL
     public :: BROKEN_SPACE_HDIV

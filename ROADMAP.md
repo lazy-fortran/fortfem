@@ -1807,6 +1807,13 @@ gallery example.
   Independent analytical, orientation-reversal, finite-difference, and
   real-adjoint tests cover the generic trace algebra; conservation at
   interface edges and material laws remain higher-level contracts.
+- `evaluate_regularized_surface_current_layer` now maps caller-owned signed
+  normal distances and tangential sheet currents to the normalized Gaussian
+  approximation of \(\mathbf K\delta_\Gamma\). FortSym-generated value/JVP/VJP
+  products cover distance, current, and positive thickness, while a separate
+  quadrature diagnostic reports profile normalization and integrated current.
+  Geometry-specific distance construction and resistive-layer closures remain
+  client-owned.
 - `assemble_surface_current_trace_residual` now pairs caller-owned,
   independently sized test and trial tangential trace bases with a target
   current. Its full product-rule JVP and real VJP cover basis, quadrature,
