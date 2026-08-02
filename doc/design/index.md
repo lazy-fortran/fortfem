@@ -4,6 +4,10 @@ title: Design Documentation
 
 # FortFEM Design Documentation
 
+The [sheet-current representation parity contract](sheet_current_parity.html)
+provides a manufactured explicit-surface versus resolved-layer ledger for
+fitted, cut, DG, and IGA clients.
+
 ## Overview
 
 FortFEM is designed with the following principles:

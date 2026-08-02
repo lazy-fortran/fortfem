@@ -275,6 +275,7 @@ module fortfem_api
         evaluate_regularized_surface_current_layer_jvp, &
         evaluate_regularized_surface_current_layer_vjp, &
         evaluate_regularized_surface_current_integral
+    use fortfem_sheet_current_parity, only: evaluate_sheet_current_parity
     use fortfem_broken_skeleton_spaces, only: &
         BROKEN_SPACE_H1, BROKEN_SPACE_HCURL, BROKEN_SPACE_HDIV, &
         BROKEN_SPACE_L2, SKELETON_SPACE_SCALAR, &
@@ -1650,6 +1651,7 @@ module fortfem_api
     public :: evaluate_regularized_surface_current_layer_jvp
     public :: evaluate_regularized_surface_current_layer_vjp
     public :: evaluate_regularized_surface_current_integral
+    public :: evaluate_sheet_current_parity
     public :: BROKEN_SPACE_H1
     public :: BROKEN_SPACE_HCURL
     public :: BROKEN_SPACE_HDIV
