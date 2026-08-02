@@ -264,7 +264,9 @@ constructs fixed-topology signed local-to-global maps for any patch graph,
 checks orientation cycles, and composes directly with glued FEEC and IGA
 assemblers while leaving geometry and interface laws caller-owned. Its
 `build_bspline_feec_2d_multipatch_maps` companion applies the same contract to
-packed arbitrary 2D tensor-patch H1/H(curl) traces.
+packed arbitrary 2D tensor-patch H1/H(curl) traces, while
+`build_bspline_feec_3d_multipatch_maps` extends it to H(div), face swaps, and
+3D orientation metadata.
 
 The [complex packed block graph residual](complex_block_graph_residual.html)
 provides the same N-field path for frequency-domain operators and documents
