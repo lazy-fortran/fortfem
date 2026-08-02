@@ -14,10 +14,13 @@ is used. The comparison follows the transparent boundary formulation of Jiang
 et al., arXiv:1811.12449.
 
 The first generated image is the solution itself: the colour field is the
-reconstructed Nédélec magnitude on an interior `z` slice, and the overlaid
-arrows are the real in-plane components reconstructed from the solved edge
-degrees of freedom. The arrows therefore show the computed vector field rather
-than a source or convergence diagnostic.
+reconstructed Nédélec magnitude on an interior `z` slice, with linear shading
+between the displayed physical samples, and the overlaid arrows are the real
+in-plane components reconstructed from the solved edge degrees of freedom. The
+arrows therefore show the computed vector field rather than a source or
+convergence diagnostic. An analytical plane-wave check guards the plotted
+sample orientation, so attenuation in `x` cannot silently appear as stripes in
+`y`.
 
 The volume-boundary example additionally constructs a tetrahedral box,
 reproduces a constant field with first-kind Nédélec elements of orders one

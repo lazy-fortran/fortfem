@@ -405,24 +405,32 @@ contains
 
     subroutine render_pml_field_slice()
         integer, parameter :: slice_nx = 40, slice_ny = 40
+        integer, parameter :: render_nx = 160, render_ny = 160
         integer, parameter :: arrow_nx = 7, arrow_ny = 7
         integer, parameter :: sample_offset_count = 9
         real(dp), parameter :: mesh_spacing = &
             1.0_dp/real(pml_mesh_count(1), dp)
-        real(dp) :: x_edges(slice_nx + 1), y_edges(slice_ny + 1)
-        real(dp) :: values(slice_nx, slice_ny)
+        real(dp) :: x_samples(slice_nx), y_samples(slice_ny)
+        real(dp) :: values(slice_ny, slice_nx)
+        real(dp) :: x_edges(render_nx + 1), y_edges(render_ny + 1)
+        real(dp) :: rendered_values(render_ny, render_nx)
         real(dp) :: point(3), sample_point(3), sample_value
         real(dp) :: arrow_x(arrow_nx*arrow_ny), arrow_y(arrow_nx*arrow_ny)
         real(dp) :: arrow_u(arrow_nx*arrow_ny), arrow_v(arrow_nx*arrow_ny)
+        real(dp) :: exact_magnitude, maximum_slice_error
+        real(dp) :: source_x, source_y, weight_x, weight_y
         complex(dp) :: vector_value(3)
         real(dp) :: sample_offsets(2, sample_offset_count)
         integer :: arrow, index_x, index_y, sample_offset, local_status
+        integer :: source_index_x, source_index_y
 
-        do index_x = 1, slice_nx + 1
-            x_edges(index_x) = real(index_x - 1, dp)/real(slice_nx, dp)
+        do index_x = 1, slice_nx
+            x_samples(index_x) = &
+                (real(index_x, dp) - 0.5_dp)/real(slice_nx, dp)
         end do
-        do index_y = 1, slice_ny + 1
-            y_edges(index_y) = real(index_y - 1, dp)/real(slice_ny, dp)
+        do index_y = 1, slice_ny
+            y_samples(index_y) = &
+                (real(index_y, dp) - 0.5_dp)/real(slice_ny, dp)
         end do
         sample_offsets = reshape([ &
             -0.35_dp, -0.35_dp, 0.0_dp, -0.35_dp, 0.35_dp, -0.35_dp, &
@@ -438,10 +446,7 @@ contains
                 ! expose an arbitrary side.  Averaging over one element-sized
                 ! footprint gives a stable visualization of this broken H(curl)
                 ! magnitude instead of displaying tetrahedron stripes.
-                point = [ &
-                    (real(index_x, dp) - 0.5_dp)/real(slice_nx, dp), &
-                    (real(index_y, dp) - 0.5_dp)/real(slice_ny, dp), &
-                    0.503_dp]
+                point = [x_samples(index_x), y_samples(index_y), 0.503_dp]
                 do sample_offset = 1, sample_offset_count
                     sample_point = point
                     sample_point(1) = min(1.0_dp, max(0.0_dp, &
@@ -454,18 +459,59 @@ contains
                         sample_point, sample_value, local_status)
                     if (local_status /= 0) error stop &
                         "Maxwell PML plot sample failed"
-                    values(index_x, index_y) = &
-                        values(index_x, index_y) + sample_value/ &
+                    values(index_y, index_x) = &
+                        values(index_y, index_x) + sample_value/ &
                         real(sample_offset_count, dp)
                 end do
             end do
         end do
 
+        maximum_slice_error = 0.0_dp
+        do index_x = 1, slice_nx
+            exact_magnitude = exp( &
+                -pml_wave_number*aimag(cmplx(1.0_dp, 0.35_dp, dp))* &
+                x_samples(index_x))
+            maximum_slice_error = max(maximum_slice_error, &
+                maxval(abs(values(:, index_x) - exact_magnitude)))
+        end do
+        if (maximum_slice_error >= 2.0e-2_dp) &
+            error stop "Maxwell PML slice orientation regression"
+
+        do index_x = 1, render_nx + 1
+            x_edges(index_x) = real(index_x - 1, dp)/real(render_nx, dp)
+        end do
+        do index_y = 1, render_ny + 1
+            y_edges(index_y) = real(index_y - 1, dp)/real(render_ny, dp)
+        end do
+        do index_y = 1, render_ny
+            source_y = (real(index_y, dp) - 0.5_dp)* &
+                real(slice_ny, dp)/real(render_ny, dp) + 0.5_dp
+            source_y = min(real(slice_ny, dp), max(1.0_dp, source_y))
+            source_index_y = min(slice_ny - 1, int(floor(source_y)))
+            weight_y = source_y - real(source_index_y, dp)
+            do index_x = 1, render_nx
+                source_x = (real(index_x, dp) - 0.5_dp)* &
+                    real(slice_nx, dp)/real(render_nx, dp) + 0.5_dp
+                source_x = min(real(slice_nx, dp), max(1.0_dp, source_x))
+                source_index_x = min(slice_nx - 1, int(floor(source_x)))
+                weight_x = source_x - real(source_index_x, dp)
+                rendered_values(index_y, index_x) = &
+                    (1.0_dp - weight_x)*(1.0_dp - weight_y)* &
+                    values(source_index_y, source_index_x) + &
+                    weight_x*(1.0_dp - weight_y)* &
+                    values(source_index_y, source_index_x + 1) + &
+                    (1.0_dp - weight_x)*weight_y* &
+                    values(source_index_y + 1, source_index_x) + &
+                    weight_x*weight_y* &
+                    values(source_index_y + 1, source_index_x + 1)
+            end do
+        end do
+
         call figure(figsize=[8.0_dp, 6.5_dp])
-        ! pcolormesh uses z(y, x), whereas the reconstruction loop is
-        ! naturally indexed as values(x, y).  Transpose here so a plane wave
-        ! varying in x is not displayed as a spurious y-directed stripe.
-        call pcolormesh(x_edges, y_edges, transpose(values), cmap="viridis")
+        ! Store values as (y, x), matching pcolormesh directly.  The dense
+        ! display grid is a documented bilinear interpolation of the physical
+        ! reconstruction samples; it does not alter the solve or those samples.
+        call pcolormesh(x_edges, y_edges, rendered_values, cmap="viridis")
         arrow = 0
         do index_y = 1, arrow_ny
             do index_x = 1, arrow_nx
@@ -481,10 +527,10 @@ contains
         end do
         call quiver(arrow_x, arrow_y, arrow_u, arrow_v, color="white", &
             angles="xy", scale_units="xy", scale=0.5_dp, width=0.0025_dp)
-        call colorbar(label="reconstructed Nedelec field magnitude")
+        call colorbar(label="reconstructed Nedelec |E_h|")
         call xlabel("x")
         call ylabel("y")
-        call title("Maxwell PML solution near z = 0.503")
+        call title("Maxwell PML solution |E_h| near z = 0.503")
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
 
