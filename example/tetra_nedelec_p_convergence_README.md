@@ -1,4 +1,6 @@
-This example interpolates the manufactured curl-free field
+This example interpolates the manufactured curl-free vector field.  The first
+gallery image is a physical slice through the tetrahedron with field magnitude
+and direction arrows; convergence diagnostics follow it.
 
 \[
 \boldsymbol{E}=\nabla\!\left(x^4+\frac{2}{3}y^3+z^3\right)

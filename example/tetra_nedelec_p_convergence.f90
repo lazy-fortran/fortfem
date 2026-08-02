@@ -78,7 +78,7 @@ contains
         real(dp), allocatable :: dofs(:), x_plot(:), y_plot(:), z_plot(:)
         real(dp), allocatable :: field_magnitude(:), basis_values(:, :)
         real(dp), allocatable :: basis_curls(:, :)
-        real(dp) :: point(3), field_value(3), arrow_end(3), arrow_side(3)
+        real(dp) :: point(3), field_value(3), arrow_end(3)
         real(dp) :: field_scale, arrow_length
         integer :: count, i, j, k, local_status
 
@@ -136,19 +136,9 @@ contains
                     if (arrow_length <= 1.0e-12_dp) cycle
                     arrow_end = point + arrow_length*field_value/ &
                         max(norm2(field_value), epsilon(1.0_dp))
-                    arrow_side = arrow_end - point
                     call add_3d_plot( &
                         [point(1), arrow_end(1)], [point(2), arrow_end(2)], &
                         [point(3), arrow_end(3)], color="black", linewidth=1.2_dp)
-                    ! A short V-shaped head makes direction readable in the
-                    ! projected 3-D renderer without adding a second API.
-                    call add_3d_plot( &
-                        [arrow_end(1), arrow_end(1) - 0.25_dp*arrow_side(1) + &
-                        0.08_dp, arrow_end(1)], &
-                        [arrow_end(2), arrow_end(2) - 0.25_dp*arrow_side(2), &
-                        arrow_end(2) + 0.08_dp], &
-                        [arrow_end(3), arrow_end(3) - 0.25_dp*arrow_side(3), &
-                        arrow_end(3)], color="black", linewidth=1.0_dp)
                 end do
             end do
         end do
@@ -188,7 +178,7 @@ contains
         real(dp), allocatable :: arrow_x(:), arrow_y(:), arrow_u(:), arrow_v(:)
         real(dp), allocatable :: basis_values(:, :), basis_curls(:, :)
         real(dp) :: point(3), field_value(3), field_norm
-        integer :: count, arrow_count, i, j, local_status
+        integer :: count, arrow_count, csv_unit, i, j, local_status
 
         allocate( &
             x(slice_side**2), y(slice_side**2), magnitude(slice_side**2), &
@@ -197,6 +187,13 @@ contains
             arrow_u((slice_side/vector_stride + 1)**2), &
             arrow_v((slice_side/vector_stride + 1)**2), &
             basis_values(3, size(dofs)), basis_curls(3, size(dofs)))
+        open (newunit=csv_unit, &
+            file=output_directory//"/nedelec_field_slice_2d.csv", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot open Nedelec field CSV"
+        write (csv_unit, "(a)", iostat=local_status) &
+            "x,y,z,Ex,Ey,Ez,magnitude"
+        if (local_status /= 0) error stop "cannot write Nedelec field CSV header"
         count = 0
         arrow_count = 0
         do j = 1, slice_side
@@ -213,6 +210,9 @@ contains
                 x(count) = point(1)
                 y(count) = point(2)
                 magnitude(count) = norm2(field_value)
+                write (csv_unit, "(7(es24.16,','))", iostat=local_status) &
+                    point(1), point(2), point(3), field_value, magnitude(count)
+                if (local_status /= 0) error stop "cannot write Nedelec field CSV"
                 if (mod(i - 1, vector_stride) == 0 .and. &
                     mod(j - 1, vector_stride) == 0) then
                     arrow_count = arrow_count + 1
@@ -223,6 +223,8 @@ contains
                 end if
             end do
         end do
+        close (csv_unit, iostat=local_status)
+        if (local_status /= 0) error stop "cannot close Nedelec field CSV"
         do i = 1, arrow_count
             field_norm = sqrt(arrow_u(i)**2 + arrow_v(i)**2)
             if (field_norm > epsilon(1.0_dp)) then
