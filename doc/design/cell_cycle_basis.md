@@ -24,17 +24,24 @@ boundary. Together, the two kernels provide the chain and cochain sides of
 the first compatible-complex nullspace contract without selecting a metric or
 a gauge.
 
-This routine deliberately returns cycles, not homology representatives or
-metric-harmonic forms. Face boundaries, period normalization, cuts, gauges,
-and Hodge choices must be supplied by the higher FEEC/topology layer. In
-particular, a nonzero cycle count is not by itself a claim about a physical
-magnetic flux or a plasma equilibrium degree of freedom.
+`cell_complex_homology_cycle_basis` removes the span of the oriented face
+boundaries from the cycle space and returns representatives of
+
+\[
+    H_1 = \ker(D_1) / \operatorname{im}(D_2).
+\]
+
+The representatives are selected by a deterministic rank-increase rule. They
+retain the original edge ordering and orientation, but do not select a metric,
+period normalization, cut, gauge, or physical magnetic flux.
 
 ## API
 
 ```fortran
 call cell_complex_cycle_basis(complex, cycles, cycle_count, status)
 call cell_complex_cocycle_basis(complex, cocycles, cocycle_count, status)
+call cell_complex_homology_cycle_basis( &
+    complex, homology_cycles, homology_count, status)
 ```
 
 `cycles` and `cocycles` have one row per oriented edge and one column per
@@ -47,5 +54,7 @@ The focused cell-complex test checks that an interval has no one-cycle, the
 one-cell circle has a unit cycle and exact zero boundary, and the two-loop
 torus CW complex has two independent cycles whose boundary vanishes. Betti
 numbers are checked separately, so the cycle-space and homology dimensions are
-not conflated. The same test checks the circle and torus cocycle kernels
-against the independent transpose-boundary oracle.
+not conflated. A filled triangular loop is additionally checked to have zero
+first homology, while the torus returns two representatives. The same test
+checks the circle and torus cocycle kernels against the independent
+transpose-boundary oracle.

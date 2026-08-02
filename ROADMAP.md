@@ -226,7 +226,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 
 | Foundation | Contract still missing | Required independent oracle |
 | --- | --- | --- |
-| Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; metric-harmonic one-forms now have a fixed-topology cycle-period normalization map with JVP/VJP, and complex edge fields have an explicit cycle-period residual with JVP/VJP | Chain-complex identities, Euler characteristic, cycle and flux integrals, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
+| Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; `cell_complex_homology_cycle_basis` now returns deterministic representatives of `ker(boundary_1)/im(boundary_2)` alongside the metric-harmonic one-form period normalization map and complex edge-period residual JVP/VJP actions | Chain-complex identities, Euler characteristic, cycle and flux integrals, filled-loop quotient, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, scalar and full-vector traction jumps, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | Scalar and vector matrix-level shifted-Heaviside enriched-space constructors, a 3D vector-enrichment curl/divergence product-rule diagnostic, the physical vector/metric support Gram contraction, batched 2D/3D covariant/contravariant Piola-enrichment composition, and a rectangular commuting-projection audit with value/JVP/VJP actions are public; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Curl-gradient and divergence-curl identities on every generated space, Piola/XIGA constructors, and fitted versus unfitted convergence |
 | Coupled field residuals | A neutral rectangular field-plus-constraint residual now composes caller-owned vector, tensor, interface, boundary, FEM, BEM, DtN, or PML blocks with complete JVP/VJP actions; the neutral tensor volume-work and tensor-weighted diffusion contractions are public. Its complex counterpart now covers frequency-domain rectangular blocks with the real-part complex adjoint convention, and the semantic complex normal/tangential boundary-port residual covers supplied trace/jump targets and work weights. Plasma state assembly remains in an external client | FortSym manufactured residuals, block-Jacobian products, energy or power balance, and cross-formulation parity |
@@ -1681,8 +1681,11 @@ gallery example.
   space numbering, constitutive jump targets, and global block constraints
   remain caller composition.
 - Build the region and cell-complex graph around the validated chain maps,
-  adding periodic identifications, harmonic representatives, gauge constraints,
-  and stable cycle IDs.
+  adding periodic identifications, deterministic homology representatives,
+  harmonic representatives, gauge constraints, and stable cycle IDs. The
+  public `cell_complex_homology_cycle_basis` removes face-boundary cycles by a
+  scale-aware rank-increase oracle; metric and period normalization remain
+  separate layers.
 - Add closed-loop and open-edge sheet-current constraints, surface divergence,
   pressure balance, and current-ledger oracles on slab, cylinder, sphere, and
   torus fixtures.

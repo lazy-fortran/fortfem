@@ -30,6 +30,7 @@ module fortfem_cell_complex
     public :: cell_complex_euler_characteristic
     public :: cell_complex_betti_numbers
     public :: cell_complex_cycle_basis
+    public :: cell_complex_homology_cycle_basis
     public :: cell_complex_cocycle_basis
     public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
@@ -190,6 +191,64 @@ contains
             real(complex%boundary_1, dp), cycles, cycle_count)
         status = 0
     end subroutine cell_complex_cycle_basis
+
+    subroutine cell_complex_homology_cycle_basis( &
+            complex, homology_cycles, homology_count, status)
+        !! Return one-cycle representatives modulo oriented face boundaries.
+        !!
+        !! The columns are closed one-cochains in the chain convention and
+        !! are independent modulo ``im(boundary_2)``.  They therefore form a
+        !! basis of H_1 over the reals, while retaining the caller's cell
+        !! ordering and orientation.  No metric, gauge, or physical period
+        !! normalization is selected here.
+        type(cell_complex_t), intent(in) :: complex
+        real(dp), allocatable, intent(out) :: homology_cycles(:, :)
+        integer, intent(out) :: homology_count
+        integer, intent(out) :: status
+        real(dp), allocatable :: cycles(:, :), candidates(:, :), selected(:, :)
+        integer :: cycle_count, face_count, edge_count
+        integer :: selected_count, rank_before, rank_after, cycle
+
+        if (allocated(homology_cycles)) deallocate(homology_cycles)
+        homology_count = 0
+        call cell_complex_cycle_basis(complex, cycles, cycle_count, status)
+        if (status /= 0) return
+
+        edge_count = size(complex%boundary_1, 2)
+        face_count = size(complex%boundary_2, 2)
+        allocate(homology_cycles(edge_count, 0))
+        if (cycle_count == 0) then
+            status = 0
+            return
+        end if
+
+        allocate(candidates(edge_count, face_count + cycle_count))
+        candidates = 0.0_dp
+        if (face_count > 0) candidates(:, 1:face_count) = &
+            real(complex%boundary_2, dp)
+        allocate(selected(edge_count, cycle_count))
+        selected = 0.0_dp
+        selected_count = 0
+        rank_before = real_matrix_rank(candidates(:, 1:face_count))
+        do cycle = 1, cycle_count
+            candidates(:, face_count + selected_count + 1) = cycles(:, cycle)
+            rank_after = real_matrix_rank( &
+                candidates(:, 1:face_count + selected_count + 1))
+            if (rank_after > rank_before) then
+                selected_count = selected_count + 1
+                selected(:, selected_count) = cycles(:, cycle)
+                rank_before = rank_after
+            else
+                candidates(:, face_count + selected_count + 1) = 0.0_dp
+            end if
+        end do
+
+        deallocate(homology_cycles)
+        allocate(homology_cycles(edge_count, selected_count))
+        if (selected_count > 0) homology_cycles = selected(:, :selected_count)
+        homology_count = selected_count
+        status = 0
+    end subroutine cell_complex_homology_cycle_basis
 
     subroutine cell_complex_cocycle_basis( &
             complex, cocycles, cocycle_count, status)
@@ -409,6 +468,51 @@ contains
             pivot_row = pivot_row + 1
         end do
     end subroutine matrix_rank
+
+    integer function real_matrix_rank(matrix) result(rank)
+        real(dp), intent(in) :: matrix(:, :)
+        real(dp), allocatable :: work(:, :)
+        real(dp) :: scale, tolerance, pivot_value, factor, value
+        integer :: row, column, pivot_row, pivot, rows, columns
+
+        rows = size(matrix, 1)
+        columns = size(matrix, 2)
+        rank = 0
+        if (rows == 0 .or. columns == 0) return
+        allocate(work(rows, columns))
+        work = matrix
+        scale = max(1.0_dp, maxval(abs(work)))
+        tolerance = 128.0_dp*epsilon(1.0_dp)*scale* &
+            real(max(rows, columns), dp)
+        pivot_row = 1
+        do column = 1, columns
+            if (pivot_row > rows) exit
+            pivot = pivot_row
+            pivot_value = abs(work(pivot_row, column))
+            do row = pivot_row + 1, rows
+                value = abs(work(row, column))
+                if (value > pivot_value) then
+                    pivot = row
+                    pivot_value = value
+                end if
+            end do
+            if (pivot_value <= tolerance) cycle
+            if (pivot /= pivot_row) then
+                work([pivot, pivot_row], :) = work([pivot_row, pivot], :)
+            end if
+            pivot_value = work(pivot_row, column)
+            work(pivot_row, :) = work(pivot_row, :)/pivot_value
+            do row = 1, rows
+                if (row == pivot_row) cycle
+                factor = work(row, column)
+                if (abs(factor) > tolerance) then
+                    work(row, :) = work(row, :) - factor*work(pivot_row, :)
+                end if
+            end do
+            rank = rank + 1
+            pivot_row = pivot_row + 1
+        end do
+    end function real_matrix_rank
 
     subroutine matrix_nullspace(matrix, basis, nullity)
         real(dp), intent(in) :: matrix(:, :)
