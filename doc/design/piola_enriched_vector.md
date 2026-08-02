@@ -33,6 +33,9 @@ call evaluate_piola_enriched_vector_values_jvp( &
 call evaluate_piola_enriched_vector_values_vjp( &
     map_kind, jacobians, reference_values, activation, physical_values_bar, &
     jacobians_bar, reference_values_bar, activation_bar, status)
+call evaluate_piola_enriched_vector_differential_3d(...)
+call evaluate_piola_enriched_vector_differential_3d_jvp(...)
+call evaluate_piola_enriched_vector_differential_3d_vjp(...)
 ```
 
 The JVP differentiates the inverse/determinant Piola factors, reference
@@ -42,9 +45,34 @@ activation cotangents.  This makes shape sensitivity and enrichment
 conditioning composable without duplicating covariant/contravariant formulas
 in IGA or XFEM clients.
 
+For 3D affine cells, the differential contract makes the de Rham effect
+explicit.  A covariant H(curl) map reports
+
+```text
+curl(a b) = a J curl_hat(b)/det(J) + grad(a) x b,
+```
+
+while a contravariant H(div) map reports
+
+```text
+div(a b) = a div_hat(b)/det(J) + grad(a) . b.
+```
+
+The value, JVP, and VJP APIs differentiate the Jacobian, reference values,
+reference curl/divergence, activation, and physical activation gradient.  The
+unused differential is returned as zero for the selected FEEC family, so a
+caller can inspect an intentional exact-sequence break without silently
+mixing H(curl) and H(div) laws.  The affine restriction is deliberate:
+curved-cell derivative maps and cut quadrature remain separate compositions.
+
 `test_piola_enriched_vector` is an independent behavioral oracle: it computes
 2D and 3D inverse/determinant formulas locally, checks both map kinds against
 the primal result, checks central-difference JVPs and real dot-product VJPs,
 and rejects singular and unknown map choices.  Exact-sequence preservation
 across a cut, support activation, and higher-order curved-map construction
 remain separate contracts.
+
+`test_piola_enriched_differential_3d` independently evaluates the affine
+Piola pullbacks and enrichment product terms, checks both FEEC families by
+central differences, and verifies the complete real dot-product identity for
+geometry and enrichment-gradient directions.
