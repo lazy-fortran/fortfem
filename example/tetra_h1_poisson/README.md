@@ -22,4 +22,6 @@ reconstructs physical values and gradients.
 The example writes uncommitted `convergence.csv` and
 `tetra_h1_poisson_convergence.png` artifacts. Both \(L^2\) and gradient errors
 must decrease under p-refinement, and the degree-four solution must reproduce
-the quartic analytical field to roundoff.
+the quartic analytical field to roundoff. A small `gallery_sequence.txt`
+record is also emitted as an execution oracle: it records the physical
+solution plot before the convergence diagnostics are written.
