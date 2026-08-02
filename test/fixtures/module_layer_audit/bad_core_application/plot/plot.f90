@@ -1,0 +1,2 @@
+module bad_plot_application
+end module bad_plot_application
