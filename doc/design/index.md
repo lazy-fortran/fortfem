@@ -250,6 +250,12 @@ provides the same N-field path for frequency-domain operators and documents
 the real-part complex adjoint convention used by Helmholtz, curl--curl,
 FEM/BEM/DtN, PML, and wall-response compositions.
 
+The [boundary operator contract](boundary_operator_contract.html) is the
+typed metadata boundary for FEM, BEM, DtN, PML, NESTOR-like, BIEST-like, and
+virtual-casing blocks. It records dimensions, available actions, units,
+normalization, fixed-topology identity, and provenance without owning
+procedure pointers or application file formats.
+
 The [complex coupled field residual](complex_coupled_field_residual.html) is
 the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall

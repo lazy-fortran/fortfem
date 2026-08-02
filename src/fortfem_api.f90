@@ -80,6 +80,13 @@ module fortfem_api
         assemble_complex_block_graph_residual, &
         assemble_complex_block_graph_residual_jvp, &
         assemble_complex_block_graph_residual_vjp
+    use fortfem_boundary_operator_contract, only: &
+        BOUNDARY_OPERATOR_BACKEND_BEM, BOUNDARY_OPERATOR_BACKEND_BIEST, &
+        BOUNDARY_OPERATOR_BACKEND_DTN, BOUNDARY_OPERATOR_BACKEND_FEM, &
+        BOUNDARY_OPERATOR_BACKEND_NESTOR, BOUNDARY_OPERATOR_BACKEND_PML, &
+        BOUNDARY_OPERATOR_BACKEND_USER, BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING, &
+        boundary_operator_contract_t, initialize_boundary_operator_contract, &
+        validate_boundary_operator_contract
     use fortfem_toroidal_modal_convolution, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
@@ -2757,6 +2764,17 @@ module fortfem_api
     public :: assemble_complex_block_graph_residual
     public :: assemble_complex_block_graph_residual_jvp
     public :: assemble_complex_block_graph_residual_vjp
+    public :: boundary_operator_contract_t
+    public :: initialize_boundary_operator_contract
+    public :: validate_boundary_operator_contract
+    public :: BOUNDARY_OPERATOR_BACKEND_FEM
+    public :: BOUNDARY_OPERATOR_BACKEND_BEM
+    public :: BOUNDARY_OPERATOR_BACKEND_DTN
+    public :: BOUNDARY_OPERATOR_BACKEND_PML
+    public :: BOUNDARY_OPERATOR_BACKEND_NESTOR
+    public :: BOUNDARY_OPERATOR_BACKEND_BIEST
+    public :: BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING
+    public :: BOUNDARY_OPERATOR_BACKEND_USER
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp
