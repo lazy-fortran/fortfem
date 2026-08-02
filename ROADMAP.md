@@ -974,6 +974,12 @@ actions, and an independent discrete energy/input/dissipation ledger. This is
 the reusable structure-preserving wall block; geometry, surface-current basis,
 and STARWALL normalization remain caller-owned.
 
+The neutral `condense_wall_response_blocks` primitive now performs the complex
+Schur reduction (M_{ee}-M_{ey}M_{yy}^{-1}M_{ye}), with matrix-free analytical
+JVP/VJP actions and an independent reassembly/real-complex-adjoint oracle.
+Retained factors, low-rank compression, and field-port assembly remain
+separate layers.
+
 This response layer is also the reusable foundation for linear ideal/resistive
 perturbations, external-kink and resistive-wall problems, and nonlinear
 time-dependent clients. It must not contain a plasma closure, an MARS/GPEC
