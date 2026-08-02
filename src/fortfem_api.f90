@@ -386,6 +386,10 @@ module fortfem_api
         pack_equation_objective_values, pack_equation_objective_values_jvp, &
         pack_equation_objective_values_vjp, unpack_equation_objective_values, &
         REGISTRY_KIND_EQUATION, REGISTRY_KIND_OBJECTIVE, REGISTRY_KIND_CONSTRAINT
+    use fortfem_equation_objective_callbacks, only: &
+        evaluate_equation_objective_callbacks, &
+        evaluate_equation_objective_callbacks_jvp, &
+        evaluate_equation_objective_callbacks_vjp
     use fortfem_nested_surface_geometry, only: &
         evaluate_nested_surface_geometry, &
         evaluate_nested_surface_geometry_jvp, &
@@ -1777,6 +1781,9 @@ module fortfem_api
     public :: pack_equation_objective_values_jvp
     public :: pack_equation_objective_values_vjp
     public :: unpack_equation_objective_values
+    public :: evaluate_equation_objective_callbacks
+    public :: evaluate_equation_objective_callbacks_jvp
+    public :: evaluate_equation_objective_callbacks_vjp
     public :: REGISTRY_KIND_EQUATION
     public :: REGISTRY_KIND_OBJECTIVE
     public :: REGISTRY_KIND_CONSTRAINT
