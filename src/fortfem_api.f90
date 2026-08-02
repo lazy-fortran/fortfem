@@ -64,6 +64,10 @@ module fortfem_api
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
         assemble_generalized_eigen_residual_vjp
+    use fortfem_beltrami_residual, only: &
+        assemble_beltrami_residual, &
+        assemble_beltrami_residual_jvp, &
+        assemble_beltrami_residual_vjp
     use fortfem_coupled_field_residual, only: &
         assemble_coupled_field_residual, &
         assemble_coupled_field_residual_jvp, &
@@ -2804,6 +2808,9 @@ module fortfem_api
     public :: assemble_generalized_eigen_residual
     public :: assemble_generalized_eigen_residual_jvp
     public :: assemble_generalized_eigen_residual_vjp
+    public :: assemble_beltrami_residual
+    public :: assemble_beltrami_residual_jvp
+    public :: assemble_beltrami_residual_vjp
     public :: assemble_coupled_field_residual
     public :: assemble_coupled_field_residual_jvp
     public :: assemble_coupled_field_residual_vjp
