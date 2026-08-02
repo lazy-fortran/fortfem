@@ -69,8 +69,11 @@ for row in rows[::17]:
     assert abs(residual) < 2.0e-13
     mismatch_residual = complex(float(row["mismatch_residual_real"]), float(row["mismatch_residual_imag"]))
     assert abs(mismatch_residual + weight * mismatch) < 2.0e-12
-    assert math.isfinite(float(row["residual_jvp_real"]))
-    assert math.isfinite(float(row["residual_jvp_imag"]))
+    weight_dot = 0.04 * math.sin(math.pi * s)
+    mismatch_dot = 0.011 * math.sin(math.pi * s) * complex(1.0, -0.35)
+    residual_jvp = complex(float(row["residual_jvp_real"]), float(row["residual_jvp_imag"]))
+    assert abs(residual_jvp + weight_dot * mismatch + weight * mismatch_dot) < 2.0e-12
+    assert float(row["jvp_error"]) < 2.0e-9
 
 print("singular-layer gallery renders physical matching before diagnostics")
 PY
