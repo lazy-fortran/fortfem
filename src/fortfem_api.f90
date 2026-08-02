@@ -752,6 +752,10 @@ module fortfem_api
         assemble_geometry_mortar_trace_coupling, &
         assemble_geometry_mortar_trace_coupling_jvp, &
         assemble_geometry_mortar_trace_coupling_vjp
+    use fortfem_physical_surface_geometry, only: &
+        sample_physical_surface_geometry, &
+        sample_physical_surface_geometry_jvp, &
+        sample_physical_surface_geometry_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
         assemble_fci_boundary_patch_mortar, &
         assemble_fci_boundary_patch_mortar_jvp, &
@@ -2749,6 +2753,9 @@ module fortfem_api
     public :: assemble_geometry_mortar_trace_coupling
     public :: assemble_geometry_mortar_trace_coupling_jvp
     public :: assemble_geometry_mortar_trace_coupling_vjp
+    public :: sample_physical_surface_geometry
+    public :: sample_physical_surface_geometry_jvp
+    public :: sample_physical_surface_geometry_vjp
     public :: assemble_fci_boundary_patch_mortar
     public :: assemble_fci_boundary_patch_mortar_jvp
     public :: assemble_fci_boundary_patch_mortar_vjp
