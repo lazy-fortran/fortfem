@@ -1173,6 +1173,9 @@ the row-oriented factor directly, avoiding the old dense CSC-to-array
 conversion. The sparse `ichol`/`ic`/`ic0` aliases likewise use the CSC
 IC builder directly. Exact sparse oracles cover both integrations and their
 bounded-memory intent. The
+`solve_sparse` dispatcher now also has a true sparse GMRES callback path,
+with an independent CSC matvec oracle, instead of silently falling back to
+PCG when `method="gmres"` is requested. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
