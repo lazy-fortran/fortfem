@@ -324,10 +324,13 @@ documentation gates above pass.
   fixtures. The gate is standard-library-only and passes on the current tree;
   the temporary analytical-oracle allowlist is explicit and documented by the
   checker.
-- **API-05 — active:** example and documentation migration remains staged by
-  complexity. The canonical plot facade is present, but the gallery still
-  needs a complete smallest-facade import audit and a solution-first visual
-  oracle for every page.
+- **API-05 — first migration slice complete:** six representative examples
+  now import the smallest suitable `fortfem_feec`, `fortfem_boundary`, or
+  `fortfem_time` facade, with one scalar Poisson umbrella compatibility smoke.
+  `tools/check_example_facade_imports.py` and
+  `test/test_api05_example_facades.f90` provide import and behavioral gates;
+  the remaining gallery still needs a complete smallest-facade audit and a
+  solution-first visual oracle for every page.
 - **API-06 — complete first gate:**
   `scripts/check_api_release_gate.py` and
   `test/test_api_release_gate.sh` compose byte-current inventory, module-layer,
@@ -359,7 +362,8 @@ waits for the full gallery/CI job before handing off.
 | API-03-BELTRAMI | Next parity family: rename `evaluate_beltrami_two_region_parity` and `evaluate_beltrami_shell_parity` to the documented `compare_*_residual` names, keeping flux/helicity/energy schemas unchanged | Independent curl-eigen residual, constraint, energy, and value/JVP/VJP oracles; no physics closure or reader changes |
 | API-03-TREE | Rename `evaluate_tree_cotree_iga_parity` to `diagnose_tree_cotree_iga_invariance` with the fixed-map derivative contract | Signed-map invariance, loop-period, direct-reduction, and fixed-topology JVP/VJP oracle |
 | API-06-GATE | Release-gate runner, isolated negative fixtures, and fpm-safe fixture layout are complete; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
-| API-05-GALLERY | Example import audit and documentation links, ordered by scalar-to-vector-to-interface complexity; no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
+| API-05-GALLERY | First six-example import audit and documentation migration are complete; continue in scalar-to-vector-to-interface order with no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
+| GALLERY-BIRO-TEAM | Add provenance-pinned Bíró tree--cotree curl--curl reproduction and the first license-safe TEAM magnetostatic/eddy-current fixture with solution-first 2D/3D plot data; keep benchmark arrays external when redistribution is restricted | Gauge-invariant field/energy/loop-current oracle, TEAM probe/field/energy manifest, mesh convergence, and no checked-in media or readers |
 
 The queue is extensible: a new public family gets an inventory row and a
 disjoint owner before implementation. A rename may not be merged merely
@@ -1915,6 +1919,8 @@ work. Input conversion and application physics remain outside FortFEM.
 | [GLISS](https://github.com/itpplasma/GLISS) | Global linear ideal-MHD stability in 3D toroidal equilibria | Compatible radial spline FE, Fourier mode topology, generic eigenvalue and inertia contracts, and derivative boundaries. GVEC/VMEC input adapters remain external |
 | [JOREK](https://www.jorek.eu/), [overview paper](https://arxiv.org/abs/2011.09120) | Nonlinear extended and resistive MHD | 2D FE plus toroidal Fourier blocks, coupled residuals, anisotropic transport, implicit structure-aware stepping, wall and free-boundary traces, operator-level parity tests |
 | MEPHIT and STARWALL | Electromagnetic response and resistive-wall coupling | H(curl)/H(div) FEEC, surface traces, FEM/BEM/DtN wall blocks, retained complex factors, interface currents, reciprocity and energy tests |
+| [Bíró, Preis, and Richter tree--cotree formulation](https://ieeexplore.ieee.org/document/558631) | Direct-gauge curl--curl finite-element benchmark for multiply connected conducting domains | A license-safe manufactured reproduction of the paper's topology, tree/cotree reduction, direct solve, gauge-invariant magnetic field, and energy/loop-current diagnostics. No paper code or proprietary geometry is copied |
+| [TEAM workshops](https://www.osti.gov/servlets/purl/7179128), [TEAM 13 reference reproduction](https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html) | Community electromagnetic magnetostatic and eddy-current benchmark problems | Neutral supplied geometry/material/source arrays, H(curl) residuals, gauge/direct-solver paths, probe/energy/force outputs, and external reference-data manifests. TEAM readers, nonlinear material laws, and benchmark data licensing remain external |
 | [BOUT++](https://bout-dev.readthedocs.io/en/stable/user_docs/introduction.html) | General 3D curvilinear fluid framework with model-specific clients | Equation-as-data residuals, curvilinear metric and boundary contracts, field-aligned operators, mixed conservative fluxes, and model-level JVP/VJP. Fluid models remain external |
 | [GRILLIX](https://physik.uni-greifswald.de/ag-manz/forschung/codes/grillix/), [FCI paper](https://doi.org/10.1088/1361-6587/aaa373) | 3D edge and scrape-off-layer use of flux-coordinate-independent operators | FCI field-line tracing and interpolation, parallel/perpendicular operator split, immersed boundaries, anisotropic transport, generic material traces, and manufactured MMS fixtures. Braginskii and sheath laws remain external |
 | [PARALLAX](https://gitlab.mpcdf.mpg.de/phoenix-public/parallax), [elliptic solver paper](https://arxiv.org/abs/2509.11831) | FCI mesh, magnetic-field handling, 2D elliptic solves, matrix-free 3D actions, and multigrid for GRILLIX and GENE-X | A Fortran-compatible geometry and operator adapter, matrix-free sparse products, anisotropy-aware multigrid contracts, and independent Poisson/Ampere timings. PARALLAX is LGPL-3.0, so no source is copied into FortFEM. |
@@ -1987,39 +1993,52 @@ conservation diagnostic when applicable.
     supplied through an external adapter.
 16. **Fourier-FEM slab and cylinder.** Mode diagonal operators, retained
     nonlinear triads, real/conjugate packing, and torus-harmonic diagnostics.
-17. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
+17. **Bíró tree--cotree curl--curl benchmark.** Reproduce the published
+    direct-gauge topology on a small multiply connected conducting domain with
+    the same tree/cotree reduction, a gauge-invariant \(\mathbf B\) field, loop
+    current, energy, and direct-solve residual plots. The fixture is
+    manufactured and provenance-pinned; it demonstrates the method without
+    shipping paper source or application-specific readers.
+18. **TEAM electromagnetic benchmark ladder.** Start with a small
+    license-safe TEAM magnetostatic/eddy-current subset (TEAM 3, 7, 13, or 20
+    as the external manifest permits), then add supplied probe curves and
+    field/eddy-current/energy/force plots. Every case records geometry and
+    material-data provenance, direct-gauge versus constrained solve, mesh
+    convergence, and a solution-first 2D/3D view. Full benchmark data stays in
+    the sister data repository when redistribution is restricted.
+19. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
     interfaces, generic flux and helicity constraints, and a pressure-balance
     residual with manufactured coefficients.
-18. **Linear 3D perturbation blocks.** Generic mode response with vacuum, wall,
+20. **Linear 3D perturbation blocks.** Generic mode response with vacuum, wall,
     singular-layer, and response-matrix toy operators. GPEC or MARS data enter
     only through an external sampler.
-19. **Energy-principle toy spectrum.** Radial spline FE, Fourier modes, inertia
+21. **Energy-principle toy spectrum.** Radial spline FE, Fourier modes, inertia
     count, eigenpair derivatives, and external-data interchange tests.
-20. **Resonant interface sheet.** Ideal current-sheet limit, finite resistive
+22. **Resonant interface sheet.** Ideal current-sheet limit, finite resistive
     layer, XFEM enrichment, fitted sheet, and convergence to a manufactured
     singular solution.
-21. **Skew bracket fixture.** Energy-skew nonlinear bracket, Fourier convolution,
+23. **Skew bracket fixture.** Energy-skew nonlinear bracket, Fourier convolution,
     analytical JVP, and long-time structure-preserving integration for a
     caller-defined state.
-22. **Resistive diffusion and tearing layer.** Explicit layer, adaptive layer,
+24. **Resistive diffusion and tearing layer.** Explicit layer, adaptive layer,
     asymptotic enrichment, DG, and ideal-limit comparison.
-23. **Generic coupled-field path.** Independently testable magnetic, scalar,
+25. **Generic coupled-field path.** Independently testable magnetic, scalar,
     vector, tensor, interface, and constraint residual blocks. A JOREK-style
     client can map its fields into this path, but FortFEM contains no JOREK
     state or closure implementation.
 
 ### Waves, elasticity, and anisotropy
 
-24. **Mixed symplectic acoustics.** Pressure and particle velocity in a first-
+26. **Mixed symplectic acoustics.** Pressure and particle velocity in a first-
     order compatible pair, with energy-preserving symplectic stepping and a
     comparison against the second-order pressure reduction.
-25. **General wave family.** The same mixed residual for acoustics, Maxwell,
+27. **General wave family.** The same mixed residual for acoustics, Maxwell,
     elastodynamics, and a scalar wave, with common energy, dispersion, and
     boundary-port plots.
-26. **Structure-preserving linear elasticity.** Displacement, velocity, and
+28. **Structure-preserving linear elasticity.** Displacement, velocity, and
     tensor stress with weak symmetry, traction interfaces, and a mixed
     Hellinger--Reissner oracle.
-27. **Tensor-pressure wave.** A caller-supplied anisotropic tensor with
+29. **Tensor-pressure wave.** A caller-supplied anisotropic tensor with
     parallel, perpendicular, and gyrotropic parts, including force balance and
     energy diagnostics. The tensor is a generic constitutive fixture.
 The current `cgl_pressure_tensor` gallery example provides the first
@@ -3469,6 +3488,10 @@ official documentation, or official repositories where possible.
 - [HKT resonant current-sheet study](https://collaborate.princeton.edu/en/publications/numerical-study-of-%CE%B4-function-current-sheets-arising-from-resonan/)
 - [HKT current sheets, MRxMHD, and the ideal nested limit](https://arxiv.org/abs/2108.09327)
 - [Ideal shielding and resonant current sheets](https://conferences.iaea.org/event/98/contributions/11599/)
+- [Manges and Cendes, generalized tree--cotree gauge](https://doi.org/10.1109/20.376275)
+- [Bíró, Preis, and Richter, magnetic vector potential with tree--cotree gauge](https://ieeexplore.ieee.org/document/558631)
+- [TEAM workshops and benchmark problems](https://www.osti.gov/servlets/purl/7179128)
+- [TEAM Workshop 13 neutral benchmark description](https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html)
 - [Fitzpatrick, bifurcated resistive-wall steady states](https://doi.org/10.1088/0029-5515/33/7/I08)
 - [Matched-asymptotic resistive-layer formulation](https://collaborate.princeton.edu/en/publications/computation-of-resistive-instabilities-by-matched-asymptotic-expa/)
 - [STARWALL and linear MHD stability](https://arxiv.org/abs/1508.04911)
