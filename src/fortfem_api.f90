@@ -619,6 +619,10 @@ module fortfem_api
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
+        assemble_maxwell_sphere_efie_propagating_impedance_jvp, &
+        assemble_maxwell_sphere_efie_propagating_impedance_vjp, &
+        assemble_maxwell_sphere_efie_imaginary_impedance_jvp, &
+        assemble_maxwell_sphere_efie_imaginary_impedance_vjp, &
         assemble_maxwell_sphere_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d, &
@@ -1439,6 +1443,10 @@ module fortfem_api
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_vjp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
