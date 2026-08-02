@@ -1,6 +1,7 @@
 module fortfem_api
     use fortfem_interchange_samples, only: &
-        compare_interchange_samples, initialize_interchange_samples, &
+        compare_interchange_samples, compare_interchange_samples_jvp, &
+        compare_interchange_samples_vjp, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
     use fortfem_complex_interchange_samples, only: &
         compare_complex_interchange_samples, &
@@ -2621,6 +2622,8 @@ module fortfem_api
     public :: initialize_interchange_samples
     public :: validate_interchange_samples
     public :: compare_interchange_samples
+    public :: compare_interchange_samples_jvp
+    public :: compare_interchange_samples_vjp
     public :: complex_interchange_sample_set_t
     public :: initialize_complex_interchange_samples
     public :: validate_complex_interchange_samples

@@ -65,6 +65,24 @@ comparison or quadrature weights from the caller. Selectors must be unique
 component indices. It performs no interpolation, file parsing, unit
 conversion, or equilibrium physics; those remain in the external adapter.
 
+For fixed coordinates and a common weight vector, the weighted L2 and
+relative comparison metrics also expose differentiated contracts:
+
+```fortran
+call compare_interchange_samples_jvp( &
+    reference, candidate, coordinate_tolerance, reference_values_dot, &
+    candidate_values_dot, weights_dot, absolute_error_dot, relative_error_dot, status)
+call compare_interchange_samples_vjp( &
+    reference, candidate, coordinate_tolerance, absolute_error_bar, &
+    relative_error_bar, reference_values_bar, candidate_values_bar, weights_bar, status)
+```
+
+The maximum-norm diagnostic is deliberately excluded from these derivatives:
+its active component is nonsmooth at ties. Zero L2 error and zero reference
+norm are rejected as nondifferentiable/undefined points. `test_interchange_sample_derivatives`
+checks both actions against central differences and the real weighted adjoint
+identity.
+
 ## Differentiation and topology
 
 The record is a fixed-topology interchange object.  Intrinsic assignment makes
