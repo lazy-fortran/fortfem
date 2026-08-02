@@ -2307,6 +2307,12 @@ gallery example.
   quadrature weights. The independent multi-backend oracle covers metric
   re-evaluation, central differences, and the real-part complex adjoint while
   rejecting zero norms where the Euclidean derivative is undefined.
+- The seeded `test_boundary_operator_parity_properties` fixture now generates
+  finite complex reference/candidate traces and positive quadrature weights,
+  checks the weighted norm value against an independent loop oracle, verifies
+  JVP central differences and the real-part complex VJP identity, and confirms
+  that JVP/VJP reject a zero reference norm. This extends randomized coverage
+  without selecting a boundary solver or equation-specific normalization.
 - Complete scalar and Maxwell FEM/BEM, DtN, and PML parity on slab, circle,
   sphere, cylinder, and torus.
 - The public curvilinear PML coefficient contract now accepts a full complex
