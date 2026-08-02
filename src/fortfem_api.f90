@@ -5,6 +5,8 @@ module fortfem_api
         interchange_sample_set_t, validate_interchange_samples
     use fortfem_complex_interchange_samples, only: &
         compare_complex_interchange_samples, &
+        compare_complex_interchange_samples_jvp, &
+        compare_complex_interchange_samples_vjp, &
         complex_interchange_sample_set_t, &
         initialize_complex_interchange_samples, &
         validate_complex_interchange_samples
@@ -2628,6 +2630,8 @@ module fortfem_api
     public :: initialize_complex_interchange_samples
     public :: validate_complex_interchange_samples
     public :: compare_complex_interchange_samples
+    public :: compare_complex_interchange_samples_jvp
+    public :: compare_complex_interchange_samples_vjp
     public :: evaluate_weighted_complex_error
     public :: evaluate_weighted_complex_error_jvp
     public :: evaluate_weighted_complex_error_vjp
