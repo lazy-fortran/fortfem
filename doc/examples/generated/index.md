@@ -13,6 +13,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [plotting](plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [anisotropic_tensor_diffusion](anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
+- [field_aligned_anisotropic_3d_gallery](field_aligned_anisotropic_3d_gallery.html) - This neutral manufactured-solution gallery exercises the public three-dimensional
 - [xfem_interface_solution](xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [regularized_surface_current_layer](regularized_surface_current_layer.html) - This physical-first slab example resolves a tangential surface current
 - [sheet_current_parity](sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet

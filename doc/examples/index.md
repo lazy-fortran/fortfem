@@ -92,6 +92,17 @@ fpm run --example <example_name>
 <p>This example solves a manufactured two-dimensional diffusion problem with a</p>
 </div>
 </article>
+<article class="example-card" data-example="field_aligned_anisotropic_3d_gallery">
+<a class="example-card-preview" href="generated/field_aligned_anisotropic_3d_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/field_aligned_anisotropic_3d_gallery/primary.png"
+ alt="Plot preview for field_aligned_anisotropic_3d_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/field_aligned_anisotropic_3d_gallery.html">field_aligned_anisotropic_3d_gallery</a></h3>
+<p>This neutral manufactured-solution gallery exercises the public three-dimensional</p>
+</div>
+</article>
 <article class="example-card" data-example="xfem_interface_solution">
 <a class="example-card-preview" href="generated/xfem_interface_solution.html">
 <img class="example-card-image"
@@ -704,6 +715,7 @@ fpm run --example <example_name>
 - [plotting](generated/plotting.html) - This comprehensive example showcases FortFEM's complete plotting and visualization capabilities using multiple colormap options and plot types.
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [anisotropic_tensor_diffusion](generated/anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
+- [field_aligned_anisotropic_3d_gallery](generated/field_aligned_anisotropic_3d_gallery.html) - This neutral manufactured-solution gallery exercises the public three-dimensional
 - [xfem_interface_solution](generated/xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [regularized_surface_current_layer](generated/regularized_surface_current_layer.html) - This physical-first slab example resolves a tangential surface current
 - [sheet_current_parity](generated/sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet

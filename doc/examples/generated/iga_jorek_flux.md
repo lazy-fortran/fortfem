@@ -154,6 +154,7 @@ program iga_jorek_flux
     call sample_flux_field( &
         flux_history(:, 1), initial_map, initial_br, initial_bz)
     call sample_flux_map(flux_history(:, step_count + 1), final_map)
+    call write_initial_field_csv()
     call render_plots()
     call write_benchmark()
 
@@ -290,6 +291,34 @@ contains
             end do
         end do
     end subroutine sample_flux_map
+
+    subroutine write_initial_field_csv()
+        integer :: local_unit, local_status, ix, iz
+        real(dp) :: magnitude
+
+        open (newunit=local_unit, &
+            file=output_directory//"/jorek_flux_initial_field.csv", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot open JOREK field CSV"
+        write (local_unit, "(a)", iostat=local_status) &
+            "R,Z,psi,Br,Bz,B_magnitude"
+        if (local_status /= 0) error stop "cannot write JOREK field CSV header"
+        do ix = 1, size(initial_map, 2)
+            do iz = 1, size(initial_map, 1)
+                magnitude = sqrt(initial_br(iz, ix)**2 + &
+                    initial_bz(iz, ix)**2)
+                write (local_unit, "(6(es24.16,','))", iostat=local_status) &
+                    1.0_dp + (real(ix, dp) - 0.5_dp)/ &
+                    real(size(initial_map, 2), dp), &
+                    (real(iz, dp) - 0.5_dp)/real(size(initial_map, 1), dp), &
+                    initial_map(iz, ix), initial_br(iz, ix), &
+                    initial_bz(iz, ix), magnitude
+                if (local_status /= 0) error stop "cannot write JOREK field CSV"
+            end do
+        end do
+        close (local_unit, iostat=local_status)
+        if (local_status /= 0) error stop "cannot close JOREK field CSV"
+    end subroutine write_initial_field_csv
 
     subroutine write_benchmark()
         open (newunit=unit, file=output_directory//"/benchmark.txt", &

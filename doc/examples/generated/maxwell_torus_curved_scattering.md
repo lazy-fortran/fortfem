@@ -62,13 +62,13 @@ fpm run --example maxwell_torus_curved_scattering
 ```fortran
 program maxwell_torus_curved_scattering
     !! Exact-curved torus PEC scattering with a regularized Maxwell CFIE.
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
-        generate_torus_surface_mesh, &
         assemble_maxwell_torus_curved_dtn_rwg_3d, &
         apply_maxwell_trace_to_flux_map, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     use fortplot, only: &
         add_parametric_surface, add_scatter, colorbar, figure, legend, pcolormesh, &

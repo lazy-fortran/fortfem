@@ -1,6 +1,6 @@
 program field_aligned_anisotropic_3d_gallery
     !! Physical-first 3-D field-aligned anisotropic diffusion gallery.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tensor_diffusion_matrix_3d, &
         evaluate_field_aligned_constitutive_tensor
     use fortfem_kinds, only: dp

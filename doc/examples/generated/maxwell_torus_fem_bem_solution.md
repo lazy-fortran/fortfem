@@ -29,12 +29,14 @@ fpm run --example maxwell_torus_fem_bem_solution
 program maxwell_torus_fem_bem_solution
     !! Manufactured solved-state check for toroidal Maxwell FEM--BEM coupling.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
+        solve_maxwell_fem_bem_torus_curved_system_3d
+    use fortfem_core, only: &
+        generate_solid_torus_tetra_mesh, invert_tetra_affine_map
+    use fortfem_feec, only: &
         build_tetra_nedelec_dof_map, evaluate_tetra_nedelec_first_kind, &
-        generate_solid_torus_tetra_mesh, initialize_tetra_nedelec_first_kind, &
-        invert_tetra_affine_map, map_tetra_nedelec_covariant, &
-        solve_maxwell_fem_bem_torus_curved_system_3d, &
+        initialize_tetra_nedelec_first_kind, map_tetra_nedelec_covariant, &
         tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
     use fortplot, only: &
