@@ -23,9 +23,31 @@ equilibrium variables remain caller-owned. This lets VMEC/GVEC/DESC-like,
 SPEC-like, free-boundary, elasticity, and reduced-MHD clients share the same
 weak residual without making FortFEM a plasma-physics code.
 
+## Generated local contraction
+
+The scalar product
+
+\[
+    c = w\,v\,f
+\]
+
+is emitted by `tools/codegen/app/gen_force_balance_products.f90` with FortSym
+revision `fortsym@a0e3857436f15347a0ab69740e309d6598c64960`.  The committed
+`src/generated/fortfem_force_balance_products.f90` contains value, JVP, and
+VJP kernels; `force_balance_residual` calls the public wrapper
+`evaluate_force_balance_product*` for volume, boundary, and sheet terms.  The
+generator is included in `tools/codegen/generate.sh` and byte-checked by
+`tools/codegen/check_generated.sh`, so a consumer build never needs a CAS and
+the three contraction paths cannot drift independently.
+
 `test_force_balance_residual` compares the value against an independent
 three-term contraction, checks a central-difference JVP and the adjoint
 identity, and rejects a nonpositive volume measure.
+
+`test_force_balance_generated_product` checks the generated local product
+against an independently written scalar oracle, a central difference, and the
+real dot-product identity.  It intentionally does not parse generated source
+or compare repository state.
 
 ## Shape-validation boundary
 

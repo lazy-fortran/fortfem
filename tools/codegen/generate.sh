@@ -76,6 +76,7 @@ run_codegen gen_cgl_pressure_divergence_products
 run_codegen gen_fci_support_volume_products
 run_codegen gen_field_aligned_flux_products
 run_codegen gen_block_graph_products
+run_codegen gen_force_balance_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -115,3 +116,4 @@ fo fmt "$generated_dir/fortfem_cgl_pressure_divergence_products.f90"
 fo fmt "$generated_dir/fortfem_fci_support_volume_products.f90"
 fo fmt "$generated_dir/fortfem_field_aligned_flux_products.f90"
 fo fmt "$generated_dir/fortfem_block_graph_products.f90"
+fo fmt "$generated_dir/fortfem_force_balance_products.f90"

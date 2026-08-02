@@ -14,6 +14,9 @@ module fortfem_force_balance_residual
     !! constitutive laws, geometry, and physical units remain caller-owned.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
+    use fortfem_force_balance_product, only: &
+        evaluate_force_balance_product, evaluate_force_balance_product_jvp, &
+        evaluate_force_balance_product_vjp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
@@ -38,6 +41,7 @@ contains
         real(dp), intent(out) :: residual(:, :)
         type(fortsparse_status_t), intent(out) :: status
         integer :: sample, test_function, component
+        real(dp) :: contribution
 
         residual = 0.0_dp
         if (.not. validate_value_inputs( &
@@ -47,11 +51,12 @@ contains
         do sample = 1, size(volume_weights)
             do test_function = 1, size(residual, 1)
                 do component = 1, size(residual, 2)
+                    call evaluate_force_balance_product( &
+                        volume_weights(sample), &
+                        volume_test(sample, test_function, component), &
+                        volume_force(sample, component), contribution)
                     residual(test_function, component) = &
-                        residual(test_function, component) + &
-                        volume_weights(sample)*volume_test( &
-                        sample, test_function, component)*volume_force( &
-                        sample, component)
+                        residual(test_function, component) + contribution
                 end do
             end do
         end do
@@ -82,6 +87,7 @@ contains
         real(dp), intent(out) :: residual_dot(:, :)
         type(fortsparse_status_t), intent(out) :: status
         integer :: sample, test_function, component
+        real(dp) :: contribution_dot
 
         residual_dot = 0.0_dp
         if (.not. validate_value_inputs( &
@@ -98,14 +104,14 @@ contains
         do sample = 1, size(volume_weights)
             do test_function = 1, size(residual_dot, 1)
                 do component = 1, size(residual_dot, 2)
+                    call evaluate_force_balance_product_jvp( &
+                        volume_weights(sample), &
+                        volume_test(sample, test_function, component), &
+                        volume_force(sample, component), volume_weights_dot(sample), &
+                        volume_test_dot(sample, test_function, component), &
+                        volume_force_dot(sample, component), contribution_dot)
                     residual_dot(test_function, component) = &
-                        residual_dot(test_function, component) + &
-                        volume_weights_dot(sample)*volume_test( &
-                        sample, test_function, component)*volume_force(sample, component) + &
-                        volume_weights(sample)*volume_test_dot( &
-                        sample, test_function, component)*volume_force(sample, component) + &
-                        volume_weights(sample)*volume_test( &
-                        sample, test_function, component)*volume_force_dot(sample, component)
+                        residual_dot(test_function, component) + contribution_dot
                 end do
             end do
         end do
@@ -139,7 +145,7 @@ contains
         real(dp), intent(out) :: sheet_weights_bar(:)
         type(fortsparse_status_t), intent(out) :: status
         integer :: sample, test_function, component
-        real(dp) :: cotangent
+        real(dp) :: cotangent, test_value_bar, force_value_bar, weight_bar
 
         volume_test_bar = 0.0_dp
         volume_force_bar = 0.0_dp
@@ -165,16 +171,16 @@ contains
             do test_function = 1, size(residual_bar, 1)
                 do component = 1, size(residual_bar, 2)
                     cotangent = residual_bar(test_function, component)
+                    call evaluate_force_balance_product_vjp( &
+                        volume_weights(sample), &
+                        volume_test(sample, test_function, component), &
+                        volume_force(sample, component), cotangent, weight_bar, &
+                        test_value_bar, force_value_bar)
                     volume_test_bar(sample, test_function, component) = &
-                        volume_test_bar(sample, test_function, component) + &
-                        volume_weights(sample)*cotangent*volume_force(sample, component)
+                        volume_test_bar(sample, test_function, component) + test_value_bar
                     volume_force_bar(sample, component) = &
-                        volume_force_bar(sample, component) + &
-                        volume_weights(sample)*cotangent*volume_test( &
-                        sample, test_function, component)
-                    volume_weights_bar(sample) = volume_weights_bar(sample) + &
-                        cotangent*volume_test(sample, test_function, component)* &
-                        volume_force(sample, component)
+                        volume_force_bar(sample, component) + force_value_bar
+                    volume_weights_bar(sample) = volume_weights_bar(sample) + weight_bar
                 end do
             end do
         end do
@@ -191,13 +197,16 @@ contains
         real(dp), intent(in) :: test(:, :, :), force(:, :), weights(:)
         real(dp), intent(inout) :: residual(:, :)
         integer :: sample, test_function, component
+        real(dp) :: contribution
 
         do sample = 1, size(weights)
             do test_function = 1, size(residual, 1)
                 do component = 1, size(residual, 2)
+                    call evaluate_force_balance_product( &
+                        weights(sample), test(sample, test_function, component), &
+                        force(sample, component), contribution)
                     residual(test_function, component) = &
-                        residual(test_function, component) + weights(sample)* &
-                        test(sample, test_function, component)*force(sample, component)
+                        residual(test_function, component) + contribution
                 end do
             end do
         end do
@@ -209,17 +218,18 @@ contains
         real(dp), intent(in) :: test_dot(:, :, :), force_dot(:, :), weights_dot(:)
         real(dp), intent(inout) :: residual_dot(:, :)
         integer :: sample, test_function, component
+        real(dp) :: contribution_dot
 
         do sample = 1, size(weights)
             do test_function = 1, size(residual_dot, 1)
                 do component = 1, size(residual_dot, 2)
+                    call evaluate_force_balance_product_jvp( &
+                        weights(sample), test(sample, test_function, component), &
+                        force(sample, component), weights_dot(sample), &
+                        test_dot(sample, test_function, component), &
+                        force_dot(sample, component), contribution_dot)
                     residual_dot(test_function, component) = &
-                        residual_dot(test_function, component) + &
-                        weights_dot(sample)*test(sample, test_function, component)* &
-                        force(sample, component) + weights(sample)*test_dot( &
-                        sample, test_function, component)*force(sample, component) + &
-                        weights(sample)*test(sample, test_function, component)* &
-                        force_dot(sample, component)
+                        residual_dot(test_function, component) + contribution_dot
                 end do
             end do
         end do
@@ -232,6 +242,7 @@ contains
         real(dp), intent(out) :: test_bar(:, :, :), force_bar(:, :), weights_bar(:)
         integer :: sample, test_function, component
         real(dp) :: cotangent
+        real(dp) :: test_value_bar, force_value_bar, weight_bar
 
         test_bar = 0.0_dp
         force_bar = 0.0_dp
@@ -240,13 +251,15 @@ contains
             do test_function = 1, size(residual_bar, 1)
                 do component = 1, size(residual_bar, 2)
                     cotangent = residual_bar(test_function, component)
+                    call evaluate_force_balance_product_vjp( &
+                        weights(sample), test(sample, test_function, component), &
+                        force(sample, component), cotangent, weight_bar, &
+                        test_value_bar, force_value_bar)
                     test_bar(sample, test_function, component) = &
-                        test_bar(sample, test_function, component) + &
-                        weights(sample)*cotangent*force(sample, component)
+                        test_bar(sample, test_function, component) + test_value_bar
                     force_bar(sample, component) = force_bar(sample, component) + &
-                        weights(sample)*cotangent*test(sample, test_function, component)
-                    weights_bar(sample) = weights_bar(sample) + cotangent* &
-                        test(sample, test_function, component)*force(sample, component)
+                        force_value_bar
+                    weights_bar(sample) = weights_bar(sample) + weight_bar
                 end do
             end do
         end do

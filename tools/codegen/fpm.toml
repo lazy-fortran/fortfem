@@ -179,6 +179,11 @@ source-dir = "app"
 main = "gen_block_graph_products.f90"
 
 [[executable]]
+name = "gen_force_balance_products"
+source-dir = "app"
+main = "gen_force_balance_products.f90"
+
+[[executable]]
 name = "gen_surface_triangle_geometry_products"
 source-dir = "app"
 main = "gen_surface_triangle_geometry_products.f90"
