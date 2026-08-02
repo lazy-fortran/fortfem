@@ -17,6 +17,8 @@ module fortfem_maxwell_bc_surface
     private
 
     public :: build_maxwell_bc_transformation
+    public :: differentiate_maxwell_bc_transformation_jvp
+    public :: differentiate_maxwell_bc_transformation_vjp
     public :: assemble_maxwell_rwg_rbc_pairing
 
 contains
@@ -202,6 +204,330 @@ contains
         end do
         status = 0
     end subroutine build_maxwell_bc_transformation
+
+    subroutine differentiate_maxwell_bc_transformation_jvp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            refined_vertices_dot, transformation_dot, status)
+        real(dp), intent(in) :: vertices(:, :), refined_vertices(:, :)
+        real(dp), intent(in) :: refined_vertices_dot(:, :)
+        integer, intent(in) :: triangles(:, :), refined_triangles(:, :)
+        real(dp), allocatable, intent(out) :: transformation_dot(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), primal_edges(:, :)
+        integer, allocatable :: refined_edges(:, :), refined_element_edges(:, :)
+        integer :: basis, lower, upper, vertex1, vertex2
+        integer :: local_vertex1, local_vertex2
+        integer :: upper_minus, upper_plus, lower_minus, lower_plus
+
+        if (allocated(transformation_dot)) deallocate(transformation_dot)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(refined_vertices, 1) /= 3) return
+        if (size(refined_vertices_dot, 1) /= 3 .or. &
+            any(shape(refined_vertices_dot) /= shape(refined_vertices))) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, primal_edges, edge_panels, status)
+        if (status /= 0) return
+        if (size(primal_edges, 2) /= 3*size(triangles, 2)/2) then
+            status = 2
+            return
+        end if
+        call enumerate_local_edges( &
+            refined_triangles, refined_edges, refined_element_edges)
+        allocate(transformation_dot(3*size(refined_triangles, 2), &
+            size(primal_edges, 2)))
+        transformation_dot = 0.0_dp
+        do basis = 1, size(primal_edges, 2)
+            call upper_lower_panels( &
+                triangles, primal_edges(:, basis), edge_panels(:, basis), &
+                upper, lower)
+            vertex1 = primal_edges(1, basis)
+            vertex2 = primal_edges(2, basis)
+            local_vertex1 = find_local_vertex(triangles(:, upper), vertex1)
+            if (triangles(modulo(local_vertex1 - 2, 3) + 1, upper) == &
+                vertex2) then
+                vertex1 = primal_edges(2, basis)
+                vertex2 = primal_edges(1, basis)
+            end if
+            local_vertex1 = find_local_vertex(triangles(:, upper), vertex1)
+            local_vertex2 = find_local_vertex(triangles(:, lower), vertex2)
+            upper_minus = 6*(upper - 1) + 2*(local_vertex1 - 1) + 1
+            upper_plus = upper_minus + 1
+            lower_minus = 6*(lower - 1) + 2*(local_vertex2 - 1) + 1
+            lower_plus = lower_minus + 1
+            call differentiate_vertex_ring_jvp( &
+                vertex1, upper_minus, -1.0_dp, basis, refined_vertices, &
+                refined_vertices_dot, refined_triangles, refined_element_edges, &
+                transformation_dot, status)
+            if (status /= 0) return
+            call differentiate_vertex_ring_jvp( &
+                vertex2, lower_minus, 1.0_dp, basis, refined_vertices, &
+                refined_vertices_dot, refined_triangles, refined_element_edges, &
+                transformation_dot, status)
+            if (status /= 0) return
+            call differentiate_reference_edge_jvp( &
+                upper_minus, upper_plus, lower_minus, lower_plus, basis, &
+                refined_vertices, refined_vertices_dot, refined_triangles, &
+                transformation_dot)
+        end do
+        status = 0
+    end subroutine differentiate_maxwell_bc_transformation_jvp
+
+    subroutine differentiate_maxwell_bc_transformation_vjp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation_bar, refined_vertices_bar, status)
+        real(dp), intent(in) :: vertices(:, :), refined_vertices(:, :)
+        integer, intent(in) :: triangles(:, :), refined_triangles(:, :)
+        real(dp), intent(in) :: transformation_bar(:, :)
+        real(dp), intent(out) :: refined_vertices_bar(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), primal_edges(:, :)
+        integer, allocatable :: refined_edges(:, :), refined_element_edges(:, :)
+        integer :: basis, lower, upper, vertex1, vertex2
+        integer :: local_vertex1, local_vertex2
+        integer :: upper_minus, upper_plus, lower_minus, lower_plus
+
+        refined_vertices_bar = 0.0_dp
+        status = 1
+        if (size(vertices, 1) /= 3 .or. size(refined_vertices, 1) /= 3) return
+        if (size(refined_vertices_bar, 1) /= 3 .or. &
+            any(shape(refined_vertices_bar) /= shape(refined_vertices))) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, primal_edges, edge_panels, status)
+        if (status /= 0) return
+        if (size(primal_edges, 2) /= 3*size(triangles, 2)/2) then
+            status = 2
+            return
+        end if
+        if (size(transformation_bar, 1) /= 3*size(refined_triangles, 2)) return
+        if (size(transformation_bar, 2) /= size(primal_edges, 2)) return
+        call enumerate_local_edges( &
+            refined_triangles, refined_edges, refined_element_edges)
+        do basis = 1, size(primal_edges, 2)
+            call upper_lower_panels( &
+                triangles, primal_edges(:, basis), edge_panels(:, basis), &
+                upper, lower)
+            vertex1 = primal_edges(1, basis)
+            vertex2 = primal_edges(2, basis)
+            local_vertex1 = find_local_vertex(triangles(:, upper), vertex1)
+            if (triangles(modulo(local_vertex1 - 2, 3) + 1, upper) == &
+                vertex2) then
+                vertex1 = primal_edges(2, basis)
+                vertex2 = primal_edges(1, basis)
+            end if
+            local_vertex1 = find_local_vertex(triangles(:, upper), vertex1)
+            local_vertex2 = find_local_vertex(triangles(:, lower), vertex2)
+            upper_minus = 6*(upper - 1) + 2*(local_vertex1 - 1) + 1
+            upper_plus = upper_minus + 1
+            lower_minus = 6*(lower - 1) + 2*(local_vertex2 - 1) + 1
+            lower_plus = lower_minus + 1
+            call differentiate_vertex_ring_vjp( &
+                vertex1, upper_minus, -1.0_dp, basis, refined_vertices, &
+                refined_triangles, refined_element_edges, transformation_bar, &
+                refined_vertices_bar, status)
+            if (status /= 0) return
+            call differentiate_vertex_ring_vjp( &
+                vertex2, lower_minus, 1.0_dp, basis, refined_vertices, &
+                refined_triangles, refined_element_edges, transformation_bar, &
+                refined_vertices_bar, status)
+            if (status /= 0) return
+            call differentiate_reference_edge_vjp( &
+                upper_minus, upper_plus, lower_minus, lower_plus, basis, &
+                refined_vertices, refined_triangles, transformation_bar, &
+                refined_vertices_bar)
+        end do
+        status = 0
+    end subroutine differentiate_maxwell_bc_transformation_vjp
+
+    subroutine differentiate_vertex_ring_jvp( &
+            vertex, start_element, initial_sign, basis, vertices, vertices_dot, &
+            triangles, element_edges, transformation_dot, status)
+        integer, intent(in) :: vertex, start_element, basis
+        real(dp), intent(in) :: initial_sign, vertices(:, :), vertices_dot(:, :)
+        integer, intent(in) :: triangles(:, :), element_edges(:, :)
+        real(dp), intent(inout) :: transformation_dot(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: ring_elements(:), ring_first(:), ring_second(:)
+        integer, allocatable :: entry_elements(:), entry_edges(:)
+        integer :: count_index, entry, item, local_edge, nc, row
+        real(dp) :: edge_length, edge_length_dot, sign, coefficient
+
+        call ordered_vertex_ring( &
+            vertex, start_element, triangles, element_edges, ring_elements, &
+            ring_first, ring_second, status)
+        if (status /= 0) return
+        allocate( &
+            entry_elements(2*size(ring_elements) - 2), &
+            entry_edges(2*size(ring_elements) - 2))
+        entry = 0
+        do item = 1, size(ring_elements)
+            if (item == 1) then
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_second(item)
+            else if (item == size(ring_elements)) then
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_first(item)
+            else
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_first(item)
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_second(item)
+            end if
+        end do
+        nc = size(ring_elements)/2
+        count_index = 0
+        sign = initial_sign
+        do entry = 1, size(entry_elements)
+            if (modulo(entry, 2) == 1) count_index = count_index + 1
+            item = entry_elements(entry)
+            local_edge = entry_edges(entry)
+            row = 3*(item - 1) + local_edge
+            edge_length = local_edge_length( &
+                vertices, triangles(:, item), local_edge)
+            edge_length_dot = local_edge_length_dot( &
+                vertices, vertices_dot, triangles(:, item), local_edge)
+            if (edge_length <= tiny(1.0_dp)) then
+                status = 1
+                return
+            end if
+            coefficient = sign*real(nc - count_index, dp)/(2.0_dp*real(nc, dp))
+            transformation_dot(row, basis) = transformation_dot(row, basis) - &
+                coefficient*edge_length_dot/edge_length**2
+            sign = -sign
+        end do
+        status = 0
+    end subroutine differentiate_vertex_ring_jvp
+
+    subroutine differentiate_vertex_ring_vjp( &
+            vertex, start_element, initial_sign, basis, vertices, triangles, &
+            element_edges, transformation_bar, vertices_bar, status)
+        integer, intent(in) :: vertex, start_element, basis
+        real(dp), intent(in) :: initial_sign, vertices(:, :)
+        integer, intent(in) :: triangles(:, :), element_edges(:, :)
+        real(dp), intent(in) :: transformation_bar(:, :)
+        real(dp), intent(inout) :: vertices_bar(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: ring_elements(:), ring_first(:), ring_second(:)
+        integer, allocatable :: entry_elements(:), entry_edges(:)
+        integer :: count_index, entry, item, local_edge, nc, row
+        real(dp) :: edge(3), edge_bar(3), edge_length, sign, coefficient
+        integer :: edge_vertices_local(2)
+
+        call ordered_vertex_ring( &
+            vertex, start_element, triangles, element_edges, ring_elements, &
+            ring_first, ring_second, status)
+        if (status /= 0) return
+        allocate( &
+            entry_elements(2*size(ring_elements) - 2), &
+            entry_edges(2*size(ring_elements) - 2))
+        entry = 0
+        do item = 1, size(ring_elements)
+            if (item == 1) then
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_second(item)
+            else if (item == size(ring_elements)) then
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_first(item)
+            else
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_first(item)
+                entry = entry + 1
+                entry_elements(entry) = ring_elements(item)
+                entry_edges(entry) = ring_second(item)
+            end if
+        end do
+        nc = size(ring_elements)/2
+        count_index = 0
+        sign = initial_sign
+        do entry = 1, size(entry_elements)
+            if (modulo(entry, 2) == 1) count_index = count_index + 1
+            item = entry_elements(entry)
+            local_edge = entry_edges(entry)
+            row = 3*(item - 1) + local_edge
+            edge = local_edge_vector(vertices, triangles(:, item), local_edge)
+            edge_length = norm2(edge)
+            if (edge_length <= tiny(1.0_dp)) then
+                status = 1
+                return
+            end if
+            coefficient = sign*real(nc - count_index, dp)/(2.0_dp*real(nc, dp))
+            edge_bar = -coefficient*transformation_bar(row, basis)* &
+                edge/edge_length**3
+            edge_vertices_local = local_edge_vertex_ids( &
+                triangles(:, item), local_edge)
+            vertices_bar(:, edge_vertices_local(1)) = &
+                vertices_bar(:, edge_vertices_local(1)) - edge_bar
+            vertices_bar(:, edge_vertices_local(2)) = &
+                vertices_bar(:, edge_vertices_local(2)) + edge_bar
+            sign = -sign
+        end do
+        status = 0
+    end subroutine differentiate_vertex_ring_vjp
+
+    subroutine differentiate_reference_edge_jvp( &
+            upper_minus, upper_plus, lower_minus, lower_plus, basis, vertices, &
+            vertices_dot, triangles, transformation_dot)
+        integer, intent(in) :: upper_minus, upper_plus, lower_minus, lower_plus, basis
+        real(dp), intent(in) :: vertices(:, :), vertices_dot(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(inout) :: transformation_dot(:, :)
+        real(dp) :: upper_length, upper_length_dot, lower_length, lower_length_dot
+
+        upper_length = local_edge_length(vertices, triangles(:, upper_minus), 3)
+        lower_length = local_edge_length(vertices, triangles(:, lower_minus), 3)
+        upper_length_dot = local_edge_length_dot( &
+            vertices, vertices_dot, triangles(:, upper_minus), 3)
+        lower_length_dot = local_edge_length_dot( &
+            vertices, vertices_dot, triangles(:, lower_minus), 3)
+        transformation_dot(3*(upper_minus - 1) + 3, basis) = &
+            -upper_length_dot/(2.0_dp*upper_length**2)
+        transformation_dot(3*(upper_plus - 1) + 3, basis) = &
+            upper_length_dot/(2.0_dp*upper_length**2)
+        transformation_dot(3*(lower_minus - 1) + 3, basis) = &
+            lower_length_dot/(2.0_dp*lower_length**2)
+        transformation_dot(3*(lower_plus - 1) + 3, basis) = &
+            -lower_length_dot/(2.0_dp*lower_length**2)
+    end subroutine differentiate_reference_edge_jvp
+
+    subroutine differentiate_reference_edge_vjp( &
+            upper_minus, upper_plus, lower_minus, lower_plus, basis, vertices, &
+            triangles, transformation_bar, vertices_bar)
+        integer, intent(in) :: upper_minus, upper_plus, lower_minus, lower_plus, basis
+        real(dp), intent(in) :: vertices(:, :), transformation_bar(:, :)
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(inout) :: vertices_bar(:, :)
+        real(dp) :: upper_edge(3), lower_edge(3), upper_length, lower_length
+        real(dp) :: upper_length_bar, lower_length_bar
+
+        upper_edge = local_edge_vector(vertices, triangles(:, upper_minus), 3)
+        lower_edge = local_edge_vector(vertices, triangles(:, lower_minus), 3)
+        upper_length = norm2(upper_edge)
+        lower_length = norm2(lower_edge)
+        upper_length_bar = ( &
+            -transformation_bar(3*(upper_minus - 1) + 3, basis) + &
+            transformation_bar(3*(upper_plus - 1) + 3, basis))/ &
+            (2.0_dp*upper_length**2)
+        lower_length_bar = ( &
+            transformation_bar(3*(lower_minus - 1) + 3, basis) - &
+            transformation_bar(3*(lower_plus - 1) + 3, basis))/ &
+            (2.0_dp*lower_length**2)
+        call add_edge_length_bar( &
+            upper_edge, upper_length, upper_length_bar, &
+            triangles(:, upper_minus), 3, vertices_bar)
+        call add_edge_length_bar( &
+            lower_edge, lower_length, lower_length_bar, &
+            triangles(:, lower_minus), 3, vertices_bar)
+    end subroutine differentiate_reference_edge_vjp
 
     subroutine upper_lower_panels( &
             triangles, edge, panels, upper, lower)
@@ -435,11 +761,50 @@ contains
             vertices, element, local_edge) result(length)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: element(3), local_edge
+
+        length = norm2(local_edge_vector(vertices, element, local_edge))
+    end function local_edge_length
+
+    pure function local_edge_vector(vertices, element, local_edge) result(edge)
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: element(3), local_edge
+        real(dp) :: edge(3)
         integer :: ids(2)
 
         ids = local_edge_vertex_ids(element, local_edge)
-        length = norm2(vertices(:, ids(2)) - vertices(:, ids(1)))
-    end function local_edge_length
+        edge = vertices(:, ids(2)) - vertices(:, ids(1))
+    end function local_edge_vector
+
+    pure real(dp) function local_edge_length_dot( &
+            vertices, vertices_dot, element, local_edge) result(length_dot)
+        real(dp), intent(in) :: vertices(:, :), vertices_dot(:, :)
+        integer, intent(in) :: element(3), local_edge
+        real(dp) :: edge(3), edge_dot(3), length
+
+        edge = local_edge_vector(vertices, element, local_edge)
+        edge_dot = local_edge_vector(vertices_dot, element, local_edge)
+        length = norm2(edge)
+        if (length <= tiny(1.0_dp)) then
+            length_dot = 0.0_dp
+        else
+            length_dot = dot_product(edge, edge_dot)/length
+        end if
+    end function local_edge_length_dot
+
+    subroutine add_edge_length_bar( &
+            edge, edge_length, edge_length_bar, element, local_edge, vertices_bar)
+        real(dp), intent(in) :: edge(3), edge_length, edge_length_bar
+        integer, intent(in) :: element(3), local_edge
+        real(dp), intent(inout) :: vertices_bar(:, :)
+        integer :: ids(2)
+        real(dp) :: edge_bar(3)
+
+        if (edge_length <= tiny(1.0_dp)) return
+        ids = local_edge_vertex_ids(element, local_edge)
+        edge_bar = edge_length_bar*edge/edge_length
+        vertices_bar(:, ids(1)) = vertices_bar(:, ids(1)) - edge_bar
+        vertices_bar(:, ids(2)) = vertices_bar(:, ids(2)) + edge_bar
+    end subroutine add_edge_length_bar
 
     pure integer function find_local_vertex(element, vertex) result(local)
         integer, intent(in) :: element(3), vertex

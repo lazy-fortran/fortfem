@@ -645,7 +645,9 @@ module fortfem_api
     use fortfem_maxwell_localized_rwg_surface, only: &
         evaluate_maxwell_localized_rwg_basis
     use fortfem_maxwell_bc_surface, only: &
-        assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation
+        assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation, &
+        differentiate_maxwell_bc_transformation_jvp, &
+        differentiate_maxwell_bc_transformation_vjp
     use fortfem_maxwell_magnetic_rwg_3d, only: &
         evaluate_maxwell_magnetic_field_rwg_3d
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
@@ -1431,6 +1433,8 @@ module fortfem_api
     public :: barycentric_refine_torus_surface_mesh_vjp
     public :: evaluate_maxwell_localized_rwg_basis
     public :: build_maxwell_bc_transformation
+    public :: differentiate_maxwell_bc_transformation_jvp
+    public :: differentiate_maxwell_bc_transformation_vjp
     public :: assemble_maxwell_rwg_rbc_pairing
     public :: evaluate_maxwell_magnetic_field_rwg_3d
     public :: assemble_maxwell_mfie_rwg_rbc_3d
