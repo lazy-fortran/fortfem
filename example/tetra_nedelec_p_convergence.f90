@@ -19,7 +19,7 @@ program tetra_nedelec_p_convergence
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
 
-    print "(a)", "order  L2 error for grad(x^4)"
+    print "(a)", "order  L2 error for manufactured curl-free field"
     do order = 1, 4
         degrees(order) = real(order, dp)
         call initialize_tetra_nedelec_first_kind(order, basis, status)
@@ -92,6 +92,7 @@ contains
             x_plot(:count), y_plot(:count), z_plot(:count), &
             c=field_magnitude(:count), cmap="viridis", marker=".", &
             markersize=4.0_dp, label="computed Nedelec field magnitude")
+        call render_tetrahedron_edges()
         field_scale = maxval(field_magnitude(:count))
         field_scale = max(field_scale, epsilon(1.0_dp))
         do k = 0, sample_side, 3
@@ -130,6 +131,28 @@ contains
         call savefig(output_directory//"/nedelec_field_3d.png")
         call render_field_slice(basis, dofs)
     end subroutine render_field
+
+    subroutine render_tetrahedron_edges()
+        real(dp), parameter :: vertices(3, 4) = reshape([ &
+            0.0_dp, 0.0_dp, 0.0_dp, &
+            1.0_dp, 0.0_dp, 0.0_dp, &
+            0.0_dp, 1.0_dp, 0.0_dp, &
+            0.0_dp, 0.0_dp, 1.0_dp], [3, 4])
+        integer, parameter :: edges(2, 6) = reshape([ &
+            1, 2, 1, 3, 1, 4, 2, 3, 2, 4, 3, 4], [2, 6])
+        integer :: edge
+
+        do edge = 1, size(edges, 2)
+            call add_3d_plot( &
+                [vertices(1, edges(1, edge)), &
+                vertices(1, edges(2, edge))], &
+                [vertices(2, edges(1, edge)), &
+                vertices(2, edges(2, edge))], &
+                [vertices(3, edges(1, edge)), &
+                vertices(3, edges(2, edge))], &
+                color="dimgray", linewidth=2.0_dp)
+        end do
+    end subroutine render_tetrahedron_edges
 
     subroutine render_field_slice(basis, dofs)
         type(tetra_nedelec_first_kind_t), intent(in) :: basis
@@ -186,6 +209,10 @@ contains
         call add_scatter(x(:count), y(:count), c=magnitude(:count), &
             cmap="viridis", marker=".", markersize=9.0_dp, &
             label="computed field magnitude at z=0.25")
+        call plot([0.0_dp, 0.75_dp, 0.0_dp, 0.0_dp], &
+            [0.0_dp, 0.0_dp, 0.75_dp, 0.0_dp], &
+            color=[0.25_dp, 0.25_dp, 0.25_dp], &
+            linewidth=2.0_dp, label="tetrahedron slice")
         call quiver( &
             arrow_x(:arrow_count), arrow_y(:arrow_count), &
             arrow_u(:arrow_count), arrow_v(:arrow_count), scale=1.0_dp, &
@@ -239,7 +266,11 @@ contains
         real(dp), intent(in) :: point(3)
         real(dp) :: value(3)
 
-        value = [4.0_dp * point(1)**3, 0.0_dp, 0.0_dp]
+        ! A cubic scalar potential gives a curl-free field with all three
+        ! components visible in the vector plot:
+        ! phi = x^4 + (2/3)y^3 + z^3.
+        value = [4.0_dp * point(1)**3, &
+            2.0_dp * point(2)**2, 3.0_dp * point(3)**2]
     end function cubic_gradient_value
 
 end program tetra_nedelec_p_convergence
