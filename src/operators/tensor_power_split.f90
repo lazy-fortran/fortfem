@@ -9,6 +9,12 @@ module fortfem_tensor_power_split
     !! callers own quadrature, geometry, and field-aligned pullbacks.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
+    use fortfem_generated_tensor_power_split, only: &
+        generated_tensor_power_split
+    use fortfem_generated_tensor_power_split_jvp, only: &
+        generated_tensor_power_split_jvp
+    use fortfem_generated_tensor_power_split_vjp, only: &
+        generated_tensor_power_split_vjp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
@@ -26,19 +32,18 @@ contains
         real(dp), intent(out) :: symmetric_power, skew_power, total_power
         type(fortsparse_status_t), intent(out) :: status
 
-        real(dp) :: symmetric_tensor(3, 3), skew_tensor(3, 3)
-
         symmetric_power = 0.0_dp
         skew_power = 0.0_dp
         total_power = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
             "tensor power split received incompatible arrays")
         if (.not. valid_inputs(tensor, vector)) return
-        symmetric_tensor = 0.5_dp*(tensor + transpose(tensor))
-        skew_tensor = 0.5_dp*(tensor - transpose(tensor))
-        symmetric_power = dot_product(vector, matmul(symmetric_tensor, vector))
-        skew_power = dot_product(vector, matmul(skew_tensor, vector))
-        total_power = dot_product(vector, matmul(tensor, vector))
+        call generated_tensor_power_split( &
+            tensor(1, 1), tensor(1, 2), tensor(1, 3), &
+            tensor(2, 1), tensor(2, 2), tensor(2, 3), &
+            tensor(3, 1), tensor(3, 2), tensor(3, 3), &
+            vector(1), vector(2), vector(3), symmetric_power, skew_power, &
+            total_power)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_tensor_power_split
 
@@ -51,9 +56,6 @@ contains
         real(dp), intent(out) :: total_power_dot
         type(fortsparse_status_t), intent(out) :: status
 
-        real(dp) :: symmetric_tensor(3, 3), skew_tensor(3, 3)
-        real(dp) :: symmetric_tensor_dot(3, 3), skew_tensor_dot(3, 3)
-
         symmetric_power_dot = 0.0_dp
         skew_power_dot = 0.0_dp
         total_power_dot = 0.0_dp
@@ -61,20 +63,15 @@ contains
             "tensor power split JVP received incompatible arrays")
         if (.not. valid_inputs(tensor, vector) .or. &
             .not. valid_inputs(tensor_dot, vector_dot)) return
-        symmetric_tensor = 0.5_dp*(tensor + transpose(tensor))
-        skew_tensor = 0.5_dp*(tensor - transpose(tensor))
-        symmetric_tensor_dot = 0.5_dp*(tensor_dot + transpose(tensor_dot))
-        skew_tensor_dot = 0.5_dp*(tensor_dot - transpose(tensor_dot))
-        symmetric_power_dot = dot_product(vector_dot, matmul( &
-            symmetric_tensor, vector)) + dot_product(vector, matmul( &
-            symmetric_tensor_dot, vector)) + dot_product(vector, matmul( &
-            symmetric_tensor, vector_dot))
-        skew_power_dot = dot_product(vector_dot, matmul(skew_tensor, vector)) + &
-            dot_product(vector, matmul(skew_tensor_dot, vector)) + &
-            dot_product(vector, matmul(skew_tensor, vector_dot))
-        total_power_dot = dot_product(vector_dot, matmul(tensor, vector)) + &
-            dot_product(vector, matmul(tensor_dot, vector)) + &
-            dot_product(vector, matmul(tensor, vector_dot))
+        call generated_tensor_power_split_jvp( &
+            tensor(1, 1), tensor(1, 2), tensor(1, 3), &
+            tensor(2, 1), tensor(2, 2), tensor(2, 3), &
+            tensor(3, 1), tensor(3, 2), tensor(3, 3), &
+            vector(1), vector(2), vector(3), tensor_dot(1, 1), &
+            tensor_dot(1, 2), tensor_dot(1, 3), tensor_dot(2, 1), &
+            tensor_dot(2, 2), tensor_dot(2, 3), tensor_dot(3, 1), &
+            tensor_dot(3, 2), tensor_dot(3, 3), vector_dot(1), vector_dot(2), &
+            vector_dot(3), symmetric_power_dot, skew_power_dot, total_power_dot)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_tensor_power_split_jvp
 
@@ -87,9 +84,6 @@ contains
         real(dp), intent(out) :: tensor_bar(:, :), vector_bar(:)
         type(fortsparse_status_t), intent(out) :: status
 
-        real(dp) :: symmetric_tensor(3, 3), skew_tensor(3, 3)
-        integer :: row, column
-
         tensor_bar = 0.0_dp
         vector_bar = 0.0_dp
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
@@ -100,21 +94,16 @@ contains
             .not. ieee_is_finite(symmetric_power_bar) .or. &
             .not. ieee_is_finite(skew_power_bar) .or. &
             .not. ieee_is_finite(total_power_bar)) return
-        symmetric_tensor = 0.5_dp*(tensor + transpose(tensor))
-        skew_tensor = 0.5_dp*(tensor - transpose(tensor))
-        do row = 1, 3
-            do column = 1, 3
-                tensor_bar(row, column) = 0.5_dp*symmetric_power_bar* &
-                    (vector(row)*vector(column) + vector(column)*vector(row)) + &
-                    0.5_dp*skew_power_bar*(vector(row)*vector(column) - &
-                    vector(column)*vector(row)) + total_power_bar*vector(row)* &
-                    vector(column)
-            end do
-        end do
-        vector_bar = symmetric_power_bar*matmul( &
-            symmetric_tensor + transpose(symmetric_tensor), vector) + &
-            skew_power_bar*matmul(skew_tensor + transpose(skew_tensor), vector) + &
-            total_power_bar*matmul(tensor + transpose(tensor), vector)
+        call generated_tensor_power_split_vjp( &
+            tensor(1, 1), tensor(1, 2), tensor(1, 3), &
+            tensor(2, 1), tensor(2, 2), tensor(2, 3), &
+            tensor(3, 1), tensor(3, 2), tensor(3, 3), &
+            vector(1), vector(2), vector(3), symmetric_power_bar, &
+            skew_power_bar, total_power_bar, tensor_bar(1, 1), &
+            tensor_bar(1, 2), tensor_bar(1, 3), tensor_bar(2, 1), &
+            tensor_bar(2, 2), tensor_bar(2, 3), tensor_bar(3, 1), &
+            tensor_bar(3, 2), tensor_bar(3, 3), vector_bar(1), vector_bar(2), &
+            vector_bar(3))
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_tensor_power_split_vjp
 

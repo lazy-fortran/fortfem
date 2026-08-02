@@ -134,6 +134,11 @@ source-dir = "app"
 main = "gen_surface_shape_objective_products.f90"
 
 [[executable]]
+name = "gen_tensor_power_split_products"
+source-dir = "app"
+main = "gen_tensor_power_split_products.f90"
+
+[[executable]]
 name = "gen_fci_quadrilateral_area_products"
 source-dir = "app"
 main = "gen_fci_quadrilateral_area_products.f90"
