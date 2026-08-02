@@ -42,6 +42,7 @@ interoperability_benchmarks
 
 # Linear-response foundations
 linear_perturbation_response
+eulerian_island_gallery
 
 # Boundary elements and coupling
 laplace_bem_circle_spectrum
