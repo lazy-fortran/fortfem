@@ -33,6 +33,10 @@ The [tetrahedral scalar curvilinear PML assembly](tetra_scalar_curvilinear_pml.h
 provides the P1 Helmholtz element and CSC value/JVP/VJP paths that consume
 those full tensors.
 
+The [geometry-generated scalar tetrahedral PML contract](tetra_lagrange_geometry_pml.html)
+composes the same layer geometry builder with scalar CSC assembly and exposes
+the full mesh/layer/wave-number/attenuation derivative chain.
+
 The [spherical-harmonic contract](spherical_harmonics.html) records the
 FortNum-backed normalization, angular domains, and pole convention used by
 Fourier-FEM and boundary operators.

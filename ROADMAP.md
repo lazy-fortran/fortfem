@@ -1780,6 +1780,10 @@ gallery example.
   attenuation parameters through both chains, with a fixed-active-set
   reassembly and adjoint oracle. Closest-point classification and cell
   activation events remain caller-owned.
+- The matching geometry-generated scalar tetrahedral Helmholtz PML CSC
+  wrapper now composes the same builder with the scalar assembly, returning
+  the full mesh/layer/wave-number/attenuation JVP/VJP chain under the same
+  fixed-active-set event rule.
 - The public `fortfem_maxwell_curved_dtn` contract now composes weak electric
   and magnetic trace forms into a mixed RWG/RBC map with matrix-free action,
   JVP, and VJP products. `assemble_maxwell_torus_curved_dtn_rwg_3d` wires the
