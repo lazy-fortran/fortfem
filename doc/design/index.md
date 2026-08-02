@@ -25,6 +25,10 @@ The [curvilinear PML geometry builder](curvilinear_pml_geometry.html) turns
 caller-owned curved-layer points and unit normals into full per-cell normal
 frame stretches, with generated attenuation and geometry JVP/VJP products.
 
+The [geometry-generated tetrahedral Nédélec PML contract](tetra_nedelec_geometry_pml.html)
+composes that builder with global H(curl) CSC assembly and propagates the full
+mesh/layer/wave-number/attenuation JVP and VJP chain.
+
 The [tetrahedral scalar curvilinear PML assembly](tetra_scalar_curvilinear_pml.html)
 provides the P1 Helmholtz element and CSC value/JVP/VJP paths that consume
 those full tensors.
