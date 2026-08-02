@@ -90,6 +90,11 @@ CASES = (
         "example/free_boundary_port_gallery/free_boundary_port_gallery.f90",
         "fortfem_boundary",
     ),
+    ExampleCase(
+        "Bíró 3-D tree-cotree solution",
+        "example/biro_tree_cotree_3d_gallery/biro_tree_cotree_3d_gallery.f90",
+        "fortfem_feec",
+    ),
 )
 
 
