@@ -50,6 +50,11 @@ Its matrix, state, previous-state, and positive-step JVP/VJP products are
 analytical. This is a solver-neutral pseudo-transient hook and is not a
 replacement for the symplectic or dissipative time integrators.
 
+`evaluate_step_reduction` returns the actual reduction and the smooth
+actual/predicted ratio. Its JVP/VJP cover merit and prediction directions,
+while acceptance thresholds, trust-region radii, and backtracking remain
+caller-owned discrete policies.
+
 ## API
 
 ```fortran
@@ -91,6 +96,16 @@ call assemble_pseudo_transient_residual_jvp( &
 call assemble_pseudo_transient_residual_vjp( &
     residual, mass, state, previous_state, time_step, augmented_residual_bar, &
     residual_bar, mass_bar, state_bar, previous_state_bar, time_step_bar, status)
+
+call evaluate_step_reduction( &
+    base_merit, trial_merit, predicted_reduction, actual_reduction, &
+    reduction_ratio, status)
+call evaluate_step_reduction_jvp( &
+    base_merit, trial_merit, predicted_reduction, base_merit_dot, trial_merit_dot, &
+    predicted_reduction_dot, actual_reduction_dot, reduction_ratio_dot, status)
+call evaluate_step_reduction_vjp( &
+    base_merit, trial_merit, predicted_reduction, actual_reduction_bar, &
+    reduction_ratio_bar, base_merit_bar, trial_merit_bar, predicted_reduction_bar, status)
 ```
 
 `test_pseudo_arclength_residual` checks the value against the explicit scalar
@@ -104,3 +119,5 @@ non-positive weight.
 `test_pseudo_transient_residual` checks the matrix/state/time product rule,
 central difference, full real adjoint identity, and non-positive-step
 rejection against an independent manufactured expression.
+`test_step_reduction` independently checks actual/predicted reduction values,
+central differences, the real adjoint identity, and invalid prediction input.

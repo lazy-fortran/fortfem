@@ -196,7 +196,8 @@ with analytical JVP/VJP actions for fixed-topology equilibrium, free-boundary,
 wave, and elasticity continuation clients. It also defines differentiable
 tangent normalization and a weighted residual merit for line-search and
 trust-region policies. The same contract documents a separate
-pseudo-transient residual hook for stiff continuation clients.
+pseudo-transient residual hook for stiff continuation clients and a smooth
+actual/predicted reduction diagnostic for their acceptance policies.
 
 The [continuation event diagnostics](continuation_events.html) classify
 signed-margin crossings and near-zero topology warnings without differentiating
