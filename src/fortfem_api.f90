@@ -26,6 +26,10 @@ module fortfem_api
         OBJECTIVE_METADATA_KIND_CONSTRAINT, OBJECTIVE_METADATA_UNSET_ID, &
         equation_objective_metadata_t, initialize_equation_objective_metadata, &
         validate_equation_objective_metadata, clear_equation_objective_metadata
+    use fortfem_equation_objective_merit, only: &
+        evaluate_equation_objective_merit, &
+        evaluate_equation_objective_merit_jvp, &
+        evaluate_equation_objective_merit_vjp
     use fortfem_linear_response_cross, only: &
         assemble_linear_response_eigen_cross_residual, &
         assemble_linear_response_eigen_cross_residual_jvp, &
@@ -3158,6 +3162,9 @@ module fortfem_api
     public :: initialize_equation_objective_metadata
     public :: validate_equation_objective_metadata
     public :: clear_equation_objective_metadata
+    public :: evaluate_equation_objective_merit
+    public :: evaluate_equation_objective_merit_jvp
+    public :: evaluate_equation_objective_merit_vjp
     public :: near_axis_diagnostic_metadata_t
     public :: evaluate_boozer_like_rotational_transform
     public :: evaluate_boozer_like_rotational_transform_jvp
