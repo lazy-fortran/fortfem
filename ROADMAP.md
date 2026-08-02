@@ -2707,6 +2707,12 @@ gallery example.
   optional-zero, and invalid-input tests cover both limits. This remains a
   pointwise constitutive ingredient: geometry pullbacks, quadrature, and
   physical closures stay caller-owned.
+- The seeded `test_field_aligned_constitutive_properties` fixture now samples
+  bounded unit directions and anisotropic/Hall coefficients with the check
+  RNG, compares an independent projector-plus-Hall oracle, checks symmetric,
+  skew, and total power identities, and exercises near-unit acceptance and
+  non-unit rejection bounds. This adds randomized constitutive coverage while
+  keeping the closure-neutral tensor contract and the short feedback path.
 - `assemble_tensor_diffusion_matrix` now provides the neutral quadrature
   contraction `grad(test)^T K grad(trial)` for strongly anisotropic scalar,
   elastic, resistive, and compatible-field clients, with full tensor,
