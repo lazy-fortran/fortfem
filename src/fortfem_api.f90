@@ -706,7 +706,10 @@ module fortfem_api
     use fortfem_generalized_debye_source, only: &
         assemble_generalized_debye_source_residual, &
         assemble_generalized_debye_source_residual_jvp, &
-        assemble_generalized_debye_source_residual_vjp
+        assemble_generalized_debye_source_residual_vjp, &
+        assemble_generalized_debye_source_second_kind, &
+        assemble_generalized_debye_source_second_kind_jvp, &
+        assemble_generalized_debye_source_second_kind_vjp
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1567,6 +1570,9 @@ module fortfem_api
     public :: assemble_generalized_debye_source_residual
     public :: assemble_generalized_debye_source_residual_jvp
     public :: assemble_generalized_debye_source_residual_vjp
+    public :: assemble_generalized_debye_source_second_kind
+    public :: assemble_generalized_debye_source_second_kind_jvp
+    public :: assemble_generalized_debye_source_second_kind_vjp
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
