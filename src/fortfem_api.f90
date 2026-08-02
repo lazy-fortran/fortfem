@@ -260,6 +260,11 @@ module fortfem_api
         assemble_fourier_mode_energy_jvp, &
         assemble_fourier_mode_energy_vjp, &
         fourier_coefficients_conjugate_symmetric
+    use fortfem_axis_regular_fourier_modes, only: &
+        AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
+        axis_regular_mode_record_t, axis_regular_mode_table_t, &
+        axis_regular_mode_requirements, build_axis_regular_mode_table, &
+        validate_axis_regular_mode_table
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -1570,6 +1575,13 @@ module fortfem_api
     public :: assemble_fourier_mode_energy_jvp
     public :: assemble_fourier_mode_energy_vjp
     public :: fourier_coefficients_conjugate_symmetric
+    public :: AXIS_RADIAL_PARITY_EVEN
+    public :: AXIS_RADIAL_PARITY_ODD
+    public :: axis_regular_mode_record_t
+    public :: axis_regular_mode_table_t
+    public :: axis_regular_mode_requirements
+    public :: build_axis_regular_mode_table
+    public :: validate_axis_regular_mode_table
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
