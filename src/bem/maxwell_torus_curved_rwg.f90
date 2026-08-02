@@ -34,6 +34,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_efie_imaginary_impedance_jvp
     public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
+    public :: assemble_maxwell_torus_efie_propagating_impedance_jvp
+    public :: assemble_maxwell_torus_efie_propagating_impedance_vjp
     public :: assemble_maxwell_torus_efie_imaginary_decay_jvp
     public :: assemble_maxwell_torus_efie_imaginary_decay_vjp
     public :: assemble_maxwell_torus_efie_wave_number_jvp
@@ -888,6 +890,66 @@ contains
         status = 0
     end subroutine &
         assemble_maxwell_torus_efie_imaginary_impedance_vjp
+
+    subroutine assemble_maxwell_torus_efie_propagating_impedance_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            impedance_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: impedance_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        matrix_dot = cmplx(0.0_dp, wave_number*impedance_dot, dp)* &
+            vector_potential - cmplx(0.0_dp, impedance_dot/wave_number, dp)* &
+            scalar_potential
+        status = 0
+    end subroutine assemble_maxwell_torus_efie_propagating_impedance_jvp
+
+    subroutine assemble_maxwell_torus_efie_propagating_impedance_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix_bar, impedance_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: impedance_bar
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: impedance_operator(:, :)
+
+        impedance_bar = 0.0_dp
+        status = 1
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, tolerance, max_depth, &
+            vector_potential, scalar_potential, status)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(vector_potential))) return
+        impedance_operator = &
+            cmplx(0.0_dp, wave_number, dp)*vector_potential - &
+            cmplx(0.0_dp, 1.0_dp/wave_number, dp)*scalar_potential
+        impedance_bar = real(sum(conjg(matrix_bar)*impedance_operator), dp)
+        status = 0
+    end subroutine assemble_maxwell_torus_efie_propagating_impedance_vjp
 
     subroutine assemble_maxwell_torus_efie_imaginary_decay_jvp( &
             vertices, triangles, parameters, major_radius, minor_radius, &
