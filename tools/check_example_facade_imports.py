@@ -36,8 +36,8 @@ class ExampleCase:
 
 CASES = (
     ExampleCase(
-        "scalar Poisson compatibility smoke",
-        "example/simple_poisson/simple_poisson.f90",
+        "tetrahedral Poisson compatibility smoke",
+        "example/tetra_h1_poisson/tetra_h1_poisson.f90",
         "fortfem_api",
         legacy_smoke=True,
     ),
