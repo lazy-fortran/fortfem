@@ -1563,8 +1563,11 @@ gallery example.
   independent reassembly and real adjoint oracle. The assembled decaying
   torus EFIE now also exposes an exact impedance-parameter JVP/VJP product,
   independently checked by reassembly and the complex real-part adjoint
-  identity; decay-rate kernel and geometry derivatives remain explicit
-  follow-up work. The assembled toroidal MFIE offset trace now exposes a
+  identity, and its decaying Green-kernel decay-rate JVP/VJP now propagates
+  through regular, coincident, and adaptive panel-pair quadrature with an
+  independent central reassembly and complex real-part adjoint oracle;
+  geometry derivatives remain explicit follow-up work. The assembled toroidal
+  MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus
