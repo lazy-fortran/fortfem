@@ -1559,6 +1559,10 @@ Since this audit, the neutral implementation now includes:
   Point ordering, quadrature, topology, and geometry maps remain caller-owned;
   the contract is the neutral shape-mismatch port used by fixed/free-boundary
   clients rather than a DESC, VMEC, or plasma objective.
+- `evaluate_surface_integral_constraint` and its JVP/VJP companions for a
+  caller-owned scalar surface ledger with a target residual. Positive weights,
+  samples, units, quadrature, topology, and target selection remain external;
+  the primitive is reusable for area, flux, volume, loop, and shape constraints.
 
 These are interchange and diagnostic foundations only. They do not implement
 DESC profiles, optimization, equilibrium readers, coil models, or plasma
