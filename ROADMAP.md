@@ -897,6 +897,10 @@ all geometries:
    A batched target-point wrapper reuses that kernel for arbitrary sampled
    target surfaces and accumulates shared-source geometry/current cotangents,
    with independent single-target, central-reassembly, and adjoint tests.
+   The target-trace wrapper now supplies normal and tangential magnetic fields
+   plus analytical target-normal JVP/VJP actions, so a free-boundary residual
+   can consume work-conjugate traces without reimplementing the projection;
+   central-reassembly and real-complex-adjoint tests cover the full chain.
 5. **Finite-domain/PML backend.** The same vacuum field can be represented in
    a bounded FEM/PML region. PML, DtN, and BEM results are compared on common
    interior targets, including a larger-domain control.

@@ -680,6 +680,10 @@ module fortfem_api
         evaluate_maxwell_magnetic_field_rwg_3d_targets, &
         evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp, &
         evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
+    use fortfem_maxwell_virtual_casing, only: &
+        evaluate_maxwell_virtual_casing_rwg_3d, &
+        evaluate_maxwell_virtual_casing_rwg_3d_jvp, &
+        evaluate_maxwell_virtual_casing_rwg_3d_vjp
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1515,6 +1519,9 @@ module fortfem_api
     public :: evaluate_maxwell_magnetic_field_rwg_3d_targets
     public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp
     public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
+    public :: evaluate_maxwell_virtual_casing_rwg_3d
+    public :: evaluate_maxwell_virtual_casing_rwg_3d_jvp
+    public :: evaluate_maxwell_virtual_casing_rwg_3d_vjp
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
