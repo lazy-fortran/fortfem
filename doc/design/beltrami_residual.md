@@ -54,3 +54,18 @@ MRxMHD formulation by Hudson *et al.*
 context.  FortFEM only provides the differentiable array contract; it does
 not implement SPEC/SPECTRE physics, equilibrium profiles, readers, gauges, or
   solvers.
+
+## Two-path manufactured parity
+
+`evaluate_beltrami_two_region_parity` composes the residual above with an
+independent algebraic oracle. A compatible H(curl) client supplies
+`curl_hcurl`; the report's oracle path evaluates `curl_oracle-lambda*B`
+directly, so a shared residual implementation cannot make the comparison pass
+by construction. The report records absolute and relative path errors and the
+divergence, flux, and helicity residual norms.
+
+`validate_beltrami_resonance` takes a caller-supplied table of forbidden
+gauge/eigenvalue parameters and returns `FORTSPARSE_SINGULAR` when a region
+parameter falls within the declared tolerance. It does not infer a spectrum
+or choose a gauge, leaving that policy to compatible H(curl), BIEST-like,
+Fourier, and IGA clients.
