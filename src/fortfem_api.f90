@@ -82,6 +82,10 @@ module fortfem_api
         assemble_pseudo_transient_residual, &
         assemble_pseudo_transient_residual_jvp, &
         assemble_pseudo_transient_residual_vjp
+    use fortfem_eulerian_nonnested_residual, only: &
+        assemble_eulerian_nonnested_residual, &
+        assemble_eulerian_nonnested_residual_jvp, &
+        assemble_eulerian_nonnested_residual_vjp
     use fortfem_step_reduction, only: &
         evaluate_step_reduction, evaluate_step_reduction_jvp, &
         evaluate_step_reduction_vjp
@@ -1576,6 +1580,9 @@ module fortfem_api
     public :: assemble_pseudo_transient_residual
     public :: assemble_pseudo_transient_residual_jvp
     public :: assemble_pseudo_transient_residual_vjp
+    public :: assemble_eulerian_nonnested_residual
+    public :: assemble_eulerian_nonnested_residual_jvp
+    public :: assemble_eulerian_nonnested_residual_vjp
     public :: evaluate_step_reduction
     public :: evaluate_step_reduction_jvp
     public :: evaluate_step_reduction_vjp

@@ -232,6 +232,12 @@ The [continuation event diagnostics](continuation_events.html) classify
 signed-margin crossings and near-zero topology warnings without differentiating
 through a changed cut, separatrix, resonance, or interface graph.
 
+The [Eulerian non-nested residual contract](eulerian_nonnested_residual.html)
+concatenates caller-owned force and divergence residuals, optionally adds a
+precomputed pseudo-transient stabilization, and reports fixed-topology event
+metadata with complete residual JVP/VJP actions.  It contains no relaxation or
+plasma closure.
+
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP
