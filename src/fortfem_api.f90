@@ -87,6 +87,10 @@ module fortfem_api
         BOUNDARY_OPERATOR_BACKEND_USER, BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING, &
         boundary_operator_contract_t, initialize_boundary_operator_contract, &
         validate_boundary_operator_contract
+    use fortfem_boundary_trace_residual, only: &
+        assemble_boundary_trace_residual, &
+        assemble_boundary_trace_residual_jvp, &
+        assemble_boundary_trace_residual_vjp
     use fortfem_toroidal_modal_convolution, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
@@ -2775,6 +2779,9 @@ module fortfem_api
     public :: BOUNDARY_OPERATOR_BACKEND_BIEST
     public :: BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING
     public :: BOUNDARY_OPERATOR_BACKEND_USER
+    public :: assemble_boundary_trace_residual
+    public :: assemble_boundary_trace_residual_jvp
+    public :: assemble_boundary_trace_residual_vjp
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp

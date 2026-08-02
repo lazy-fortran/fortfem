@@ -256,6 +256,11 @@ virtual-casing blocks. It records dimensions, available actions, units,
 normalization, fixed-topology identity, and provenance without owning
 procedure pointers or application file formats.
 
+The [real boundary trace residual](boundary_trace_residual.html) is the
+scalar/real counterpart of the complex normal/tangential port. It supplies
+weighted trace, jump, surface-current, and total-pressure residuals with
+allocation-free JVP/VJP actions.
+
 The [complex coupled field residual](complex_coupled_field_residual.html) is
 the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall
