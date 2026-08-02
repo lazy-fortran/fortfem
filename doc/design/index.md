@@ -183,6 +183,11 @@ The [region/interface graph contract](region_interface_graph.html) adds
 oriented plus/minus region incidence, periodic self-identifications, and
 connectivity labels without importing an application-specific interface law.
 
+The [boundary-region graph contract](boundary_region_graph.html) layers
+caller-owned interface genus/exterior metadata and contiguous physical
+point/normal/weight samples on that topology, providing the common geometry
+sampler boundary for BEM, DtN, PML, virtual-casing, and IGA clients.
+
 The [internal-manifold graph contract](internal_manifold_graph.html) adds
 explicit open/closed manifold endpoints and junction incidence for later
 surface-current divergence and interface-balance operators.

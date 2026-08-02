@@ -866,6 +866,13 @@ assume cylindrical coordinates, nested flux surfaces, stellarator symmetry,
 or a particular Fourier convention. Geometry construction and any adapter
 from an application-owned representation remain outside this repository.
 
+The public `boundary_region_graph_t` now supplies this neutral graph boundary:
+it delegates oriented topology to the existing region graph and attaches
+caller-owned interface genus/exterior flags plus contiguous physical
+point/normal/weight samples with validated offsets and per-interface accessors.
+Mesh generation, shape derivatives, coils, profiles, and application file
+formats remain outside the type.
+
 #### 8.5.2 Vacuum and exterior operator backends
 
 Keep several interchangeable backends because no single method is best for
