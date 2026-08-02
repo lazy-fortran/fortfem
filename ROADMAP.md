@@ -1596,7 +1596,7 @@ conservation diagnostic when applicable.
 
 ### Application-oriented numerical ingredients
 
-14. **Toroidal Maxwell FEM--BEM manufactured solution.** A constant physical
+14. **Toroidal Maxwell FEM--BEM manufactured solution.** An affine physical
     H(curl) field, exact edge-integral coefficients, curved RWG trace coupling,
     solved-state oracle, physical cross-section, vector arrows, and curved
     three-dimensional geometry. This is the neutral vector FEM--BEM baseline;
