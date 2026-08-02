@@ -18,6 +18,7 @@ program tetra_nedelec_p_convergence
     call execute_command_line( &
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
+    call initialize_gallery_sequence()
 
     print "(a)", "order  L2 error for manufactured curl-free field"
     do order = 1, 4
@@ -36,6 +37,7 @@ program tetra_nedelec_p_convergence
     end if
 
     call render_field()
+    call record_gallery_stage("physical_solution")
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(degrees, errors, label="Nedelec interpolation error", &
@@ -45,8 +47,31 @@ program tetra_nedelec_p_convergence
     call ylabel("L2 vector error")
     call title("Tetrahedral Nedelec p-convergence")
     call savefig(output_directory//"/p_convergence_1d.png")
+    call record_gallery_stage("diagnostics")
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot initialize gallery sequence"
+        close (unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write", &
+            iostat=local_status)
+        if (local_status /= 0) error stop "cannot record gallery sequence"
+        write (unit, "(a)", iostat=local_status) stage
+        close (unit)
+        if (local_status /= 0) error stop "cannot write gallery sequence"
+    end subroutine record_gallery_stage
 
     subroutine render_field()
         integer, parameter :: sample_side = 12
