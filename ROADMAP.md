@@ -227,6 +227,11 @@ the newer domain modules. This is useful for examples, but it makes ownership,
 dependency direction, generated-code visibility, and future semantic versioning
 hard to audit. The following workstream is a product task, not cosmetic
 renaming. It must be completed before the public API is treated as stable.
+The current deterministic public-symbol inventory is documented in
+[`doc/api_public_inventory.md`](doc/api_public_inventory.md), its generator is
+[`tools/generate_api_public_inventory.py`](tools/generate_api_public_inventory.py),
+and the first bounded rename candidates are recorded in
+[`doc/api_rename_candidates.md`](doc/api_rename_candidates.md).
 
 The migration is deliberately staged:
 
