@@ -1365,6 +1365,12 @@ The equation/objective registry is the neutral packing layer for MHD-01 and
 MHD-17 callback composition; all constitutive and profile callbacks remain
 external.
 
+The neutral `assemble_deflated_residual` contract now supplies a smooth,
+caller-owned root-deflation wrapper with exact state/residual JVP/VJP actions.
+It is intended to compose with the existing pseudo-arclength residual for
+DESC-like continuation and branch searches; reference-root selection and
+nonlinear acceptance remain external.
+
 Dependency order is MHD-00/01 → MHD-02/03 → MHD-04/09 → MHD-05/06/07/17 →
 MHD-08/10 → MHD-11/12/13 → MHD-14/15/16. In particular, a generic
 coupled Schur layer is an MHD-01/02 solver dependency, not an equilibrium

@@ -68,6 +68,10 @@ module fortfem_api
         assemble_pseudo_arclength_residual, &
         assemble_pseudo_arclength_residual_jvp, &
         assemble_pseudo_arclength_residual_vjp
+    use fortfem_deflated_residual, only: &
+        assemble_deflated_residual, &
+        assemble_deflated_residual_jvp, &
+        assemble_deflated_residual_vjp
     use fortfem_pseudo_arclength_tangent, only: &
         normalize_pseudo_arclength_tangent, &
         normalize_pseudo_arclength_tangent_jvp, &
@@ -1570,6 +1574,9 @@ module fortfem_api
     public :: assemble_pseudo_arclength_residual
     public :: assemble_pseudo_arclength_residual_jvp
     public :: assemble_pseudo_arclength_residual_vjp
+    public :: assemble_deflated_residual
+    public :: assemble_deflated_residual_jvp
+    public :: assemble_deflated_residual_vjp
     public :: normalize_pseudo_arclength_tangent
     public :: normalize_pseudo_arclength_tangent_jvp
     public :: normalize_pseudo_arclength_tangent_vjp
