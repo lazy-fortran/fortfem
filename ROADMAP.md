@@ -356,6 +356,11 @@ documentation gates above pass.
   at `1902f8c`, representative checker, module-layer audit, and generated-
   visibility audit all pass; solution-first visual coverage remains a
   separate gallery gate.
+  The follow-up `596cb13` removes accidental duplicate `mesh_t` and space-type
+  exports: foundational mesh and space types now have one canonical owner in
+  `fortfem_core`, while FEEC keeps the constructors and operators. The API
+  compatibility allowlist remains unchanged and the complete release gate
+  passes.
 - **API-06 — complete first gate:**
   `scripts/check_api_release_gate.py` and
   `test/test_api_release_gate.sh` compose byte-current inventory, module-layer,
