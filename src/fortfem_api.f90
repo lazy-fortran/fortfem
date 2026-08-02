@@ -674,7 +674,9 @@ module fortfem_api
         differentiate_maxwell_bc_transformation_jvp, &
         differentiate_maxwell_bc_transformation_vjp
     use fortfem_maxwell_magnetic_rwg_3d, only: &
-        evaluate_maxwell_magnetic_field_rwg_3d
+        evaluate_maxwell_magnetic_field_rwg_3d, &
+        evaluate_maxwell_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_magnetic_field_rwg_3d_vjp
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1505,6 +1507,8 @@ module fortfem_api
     public :: differentiate_maxwell_bc_transformation_vjp
     public :: assemble_maxwell_rwg_rbc_pairing
     public :: evaluate_maxwell_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_vjp
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
