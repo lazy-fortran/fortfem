@@ -39,6 +39,16 @@ module fortfem_api
     use fortfem_linear_response_schema, only: &
         linear_response_schema_magic, &
         read_linear_response_interchange, write_linear_response_interchange
+    use fortfem_linear_perturbation_composition, only: &
+        LINEAR_PASSIVITY_HERMITIAN_NONNEGATIVE, &
+        LINEAR_PASSIVITY_UNDECLARED, &
+        LINEAR_RECIPROCITY_TRANSPOSE, LINEAR_RECIPROCITY_UNDECLARED, &
+        assemble_linear_perturbation_operator, &
+        assemble_linear_perturbation_operator_jvp, &
+        assemble_linear_perturbation_operator_vjp, &
+        initialize_linear_perturbation_metadata, &
+        linear_perturbation_metadata_t, &
+        validate_linear_perturbation_metadata
     use fortfem_pseudo_arclength_residual, only: &
         assemble_pseudo_arclength_residual, &
         assemble_pseudo_arclength_residual_jvp, &
@@ -2901,6 +2911,16 @@ module fortfem_api
     public :: assemble_linear_response_operator
     public :: assemble_linear_response_operator_jvp
     public :: assemble_linear_response_operator_vjp
+    public :: LINEAR_RECIPROCITY_UNDECLARED
+    public :: LINEAR_RECIPROCITY_TRANSPOSE
+    public :: LINEAR_PASSIVITY_UNDECLARED
+    public :: LINEAR_PASSIVITY_HERMITIAN_NONNEGATIVE
+    public :: linear_perturbation_metadata_t
+    public :: initialize_linear_perturbation_metadata
+    public :: validate_linear_perturbation_metadata
+    public :: assemble_linear_perturbation_operator
+    public :: assemble_linear_perturbation_operator_jvp
+    public :: assemble_linear_perturbation_operator_vjp
     public :: linear_response_schema_magic
     public :: read_linear_response_interchange
     public :: write_linear_response_interchange

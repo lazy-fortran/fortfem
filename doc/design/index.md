@@ -188,6 +188,11 @@ defines the modal metadata, complex block composition, provenance, and
 real-part complex JVP/VJP convention for external ideal/resistive, vacuum, and
 wall response adapters without importing their application physics.
 
+The [linear perturbation block composition](linear_perturbation_composition.html)
+keeps supplied inertia, Lorentz, pressure/stress, vacuum, wall, resistive, and
+singular-layer matrices separately inspectable while composing their complex-
+frequency operator with exact JVP/VJP actions.
+
 The [linear-response interchange schema](linear_response_schema.html) provides
 a bounded, versioned text round-trip for those neutral records, retaining a
 small dense oracle without importing GPEC, MARS-F, GLISS, or STARWALL files.
