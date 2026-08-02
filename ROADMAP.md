@@ -1603,6 +1603,11 @@ gallery example.
   coordinates explicitly in both value JVPs and coordinate VJPs; a direct
   geometry-plus-`(xi,eta)` central reassembly and real adjoint oracle guards
   this lower-level contract independently of the assembled RBC pairing.
+  The torus Buffa--Christiansen plane-wave trace load now exposes analytical
+  JVP/VJP products through barycentric geometry, the BC transformation,
+  localized RWG traces, radii, polarization, direction, and wave number; an
+  independent complex central reassembly and real-part adjoint oracle covers
+  the assembled RHS used by the vector FEM--BEM path.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
