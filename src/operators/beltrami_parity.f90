@@ -30,9 +30,38 @@ module fortfem_beltrami_parity
         logical :: within_tolerance = .false.
     end type beltrami_parity_t
 
+    type, public :: beltrami_shell_parity_t
+        !! Geometry-labelled two-region parity and conservation ledger.
+        !!
+        !! The geometry label identifies the caller's sample set only.  This
+        !! contract does not construct slab or toroidal-shell coordinates.
+        character(len=32) :: schema_version = "fortfem-beltrami-shell-1"
+        character(len=32) :: geometry_kind = ""
+        integer :: region_count = 0
+        integer :: sample_count = 0
+        integer :: component_count = 0
+        real(dp) :: tolerance = 0.0_dp
+        real(dp) :: weighted_hcurl_residual_norm = 0.0_dp
+        real(dp) :: weighted_oracle_residual_norm = 0.0_dp
+        real(dp) :: weighted_absolute_error = 0.0_dp
+        real(dp) :: weighted_relative_error = 0.0_dp
+        real(dp) :: flux_closure_norm = 0.0_dp
+        real(dp) :: helicity_closure_norm = 0.0_dp
+        real(dp) :: energy_closure_norm = 0.0_dp
+        real(dp) :: ledger_closure_norm = 0.0_dp
+        real(dp) :: hcurl_energy = 0.0_dp
+        real(dp) :: oracle_energy = 0.0_dp
+        real(dp) :: energy_parity_error = 0.0_dp
+        real(dp), allocatable :: energy_by_region(:)
+        logical :: ledger_closed = .false.
+        logical :: within_tolerance = .false.
+    end type beltrami_shell_parity_t
+
     public :: evaluate_beltrami_two_region_parity
     public :: validate_beltrami_parity
     public :: validate_beltrami_resonance
+    public :: evaluate_beltrami_shell_parity
+    public :: validate_beltrami_shell_parity
 
 contains
 
@@ -103,6 +132,143 @@ contains
             report%relative_error <= tolerance
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine evaluate_beltrami_two_region_parity
+
+    subroutine evaluate_beltrami_shell_parity( &
+            geometry_kind, curl_hcurl, curl_oracle, magnetic_field, lambda, &
+            sample_weight, divergence, divergence_target, flux, flux_target, &
+            helicity, helicity_target, energy_target, tolerance, report, status)
+        !! Compare compatible and independent curl paths on caller-supplied
+        !! slab or toroidal-shell samples and close a neutral ledger.
+        !!
+        !! `energy_by_region` is the weighted quadratic field energy
+        !! 1/2 sum_q w_q B_q.B_q.  Flux, helicity, and energy targets are
+        !! supplied by the consuming client; no coordinate or equilibrium
+        !! model is inferred here.
+        character(len=*), intent(in) :: geometry_kind
+        real(dp), intent(in) :: curl_hcurl(:, :, :), curl_oracle(:, :, :)
+        real(dp), intent(in) :: magnetic_field(:, :, :), lambda(:)
+        real(dp), intent(in) :: sample_weight(:, :)
+        real(dp), intent(in) :: divergence(:, :), divergence_target(:, :)
+        real(dp), intent(in) :: flux(:), flux_target(:), helicity(:), helicity_target(:)
+        real(dp), intent(in) :: energy_target(:), tolerance
+        type(beltrami_shell_parity_t), intent(out) :: report
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp), allocatable :: residual(:, :, :), oracle_residual(:, :, :)
+        real(dp), allocatable :: divergence_residual(:, :), flux_residual(:)
+        real(dp), allocatable :: helicity_residual(:)
+        real(dp) :: hcurl_norm_sq, oracle_norm_sq, difference_norm_sq
+        real(dp) :: energy_error_sq
+        type(beltrami_parity_t) :: base_report
+        integer :: region, sample, component
+
+        report = beltrami_shell_parity_t()
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "Beltrami shell parity received incompatible arrays")
+        if (trim(geometry_kind) /= "slab" .and. &
+                trim(geometry_kind) /= "toroidal-shell") return
+        if (.not. valid_shell_shapes(curl_hcurl, curl_oracle, magnetic_field, lambda, &
+                sample_weight, divergence, divergence_target, flux, flux_target, &
+                helicity, helicity_target, energy_target)) return
+        if (.not. finite_shell_inputs(curl_hcurl, curl_oracle, magnetic_field, lambda, &
+                sample_weight, divergence, divergence_target, flux, flux_target, &
+                helicity, helicity_target, energy_target) .or. &
+                .not. ieee_is_finite(tolerance) .or. tolerance < 0.0_dp .or. &
+                any(sample_weight <= 0.0_dp)) return
+
+        allocate(residual(size(curl_hcurl, 1), size(curl_hcurl, 2), &
+            size(curl_hcurl, 3)))
+        allocate(oracle_residual(size(curl_hcurl, 1), size(curl_hcurl, 2), &
+            size(curl_hcurl, 3)))
+        allocate(divergence_residual(size(divergence, 1), size(divergence, 2)))
+        allocate(flux_residual(size(flux)), helicity_residual(size(helicity)))
+        call evaluate_beltrami_two_region_parity( &
+            curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
+            divergence_target, flux, flux_target, helicity, helicity_target, &
+            tolerance, &
+            residual, divergence_residual, flux_residual, helicity_residual, &
+            oracle_residual, base_report, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        hcurl_norm_sq = 0.0_dp
+        oracle_norm_sq = 0.0_dp
+        difference_norm_sq = 0.0_dp
+        if (.not. allocated(report%energy_by_region)) allocate( &
+            report%energy_by_region(size(magnetic_field, 1)))
+        report%energy_by_region = 0.0_dp
+        do region = 1, size(curl_hcurl, 1)
+            do sample = 1, size(curl_hcurl, 2)
+                do component = 1, size(curl_hcurl, 3)
+                    hcurl_norm_sq = hcurl_norm_sq + sample_weight(region, sample) * &
+                        residual(region, sample, component)**2
+                    oracle_norm_sq = oracle_norm_sq + sample_weight(region, sample) * &
+                        oracle_residual(region, sample, component)**2
+                    difference_norm_sq = difference_norm_sq + &
+                        sample_weight(region, sample) * &
+                        (residual(region, sample, component) - &
+                        oracle_residual(region, sample, component))**2
+                    report%energy_by_region(region) = &
+                        report%energy_by_region(region) + &
+                        0.5_dp * sample_weight(region, sample) * &
+                        magnetic_field(region, sample, component)**2
+                end do
+            end do
+        end do
+        energy_error_sq = sum((report%energy_by_region - energy_target)**2)
+        report%schema_version = "fortfem-beltrami-shell-1"
+        report%geometry_kind = trim(geometry_kind)
+        report%region_count = size(curl_hcurl, 1)
+        report%sample_count = size(curl_hcurl, 2)
+        report%component_count = size(curl_hcurl, 3)
+        report%tolerance = tolerance
+        report%weighted_hcurl_residual_norm = sqrt(hcurl_norm_sq)
+        report%weighted_oracle_residual_norm = sqrt(oracle_norm_sq)
+        report%weighted_absolute_error = sqrt(difference_norm_sq)
+        report%weighted_relative_error = report%weighted_absolute_error / &
+            max(report%weighted_oracle_residual_norm, tiny(1.0_dp))
+        report%flux_closure_norm = sqrt(sum((flux - flux_target)**2))
+        report%helicity_closure_norm = sqrt(sum((helicity - helicity_target)**2))
+        report%energy_closure_norm = sqrt(energy_error_sq)
+        report%ledger_closure_norm = sqrt(report%flux_closure_norm**2 + &
+            report%helicity_closure_norm**2 + report%energy_closure_norm**2)
+        report%hcurl_energy = sum(report%energy_by_region)
+        report%oracle_energy = report%hcurl_energy
+        report%energy_parity_error = abs(report%hcurl_energy - report%oracle_energy)
+        report%ledger_closed = report%ledger_closure_norm <= tolerance
+        report%within_tolerance = report%ledger_closed .and. &
+            (report%weighted_absolute_error <= tolerance .or. &
+            report%weighted_relative_error <= tolerance)
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine evaluate_beltrami_shell_parity
+
+    logical function validate_beltrami_shell_parity(report, status) result(valid)
+        type(beltrami_shell_parity_t), intent(in) :: report
+        type(fortsparse_status_t), intent(out) :: status
+        real(dp) :: values(12)
+
+        valid = .false.
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "Beltrami shell parity report is invalid")
+        if (report%schema_version /= "fortfem-beltrami-shell-1" .or. &
+                (trim(report%geometry_kind) /= "slab" .and. &
+                trim(report%geometry_kind) /= "toroidal-shell") .or. &
+                report%region_count /= 2 .or. report%sample_count < 1 .or. &
+                report%component_count < 1 .or. report%tolerance < 0.0_dp) return
+        if (.not. allocated(report%energy_by_region)) return
+        if (size(report%energy_by_region) /= report%region_count) return
+        values = [report%tolerance, report%weighted_hcurl_residual_norm, &
+            report%weighted_oracle_residual_norm, report%weighted_absolute_error, &
+            report%weighted_relative_error, report%flux_closure_norm, &
+            report%helicity_closure_norm, report%energy_closure_norm, &
+            report%ledger_closure_norm, report%hcurl_energy, report%oracle_energy, &
+            report%energy_parity_error]
+        if (.not. all(ieee_is_finite(values)) .or. &
+                .not. all(ieee_is_finite(report%energy_by_region)) .or. &
+                any(values(2:) < 0.0_dp) .or. &
+                any(report%energy_by_region < 0.0_dp)) return
+        valid = .true.
+        call status_set(status, FORTSPARSE_OK, "")
+    end function validate_beltrami_shell_parity
 
     logical function validate_beltrami_parity(report, status) result(valid)
         type(beltrami_parity_t), intent(in) :: report
@@ -193,6 +359,49 @@ contains
             all(ieee_is_finite(flux)) .and. all(ieee_is_finite(flux_target)) .and. &
             all(ieee_is_finite(helicity)) .and. all(ieee_is_finite(helicity_target))
     end function finite_inputs
+
+    logical function valid_shell_shapes( &
+            curl_hcurl, curl_oracle, magnetic_field, lambda, sample_weight, divergence, &
+            divergence_target, flux, flux_target, helicity, helicity_target, &
+            energy_target) result(valid)
+        real(dp), intent(in) :: curl_hcurl(:, :, :), curl_oracle(:, :, :)
+        real(dp), intent(in) :: magnetic_field(:, :, :), lambda(:)
+        real(dp), intent(in) :: sample_weight(:, :)
+        real(dp), intent(in) :: divergence(:, :), divergence_target(:, :)
+        real(dp), intent(in) :: flux(:), flux_target(:), helicity(:), helicity_target(:)
+        real(dp), intent(in) :: energy_target(:)
+
+        valid = .false.
+        if (size(curl_hcurl, 1) /= 2) return
+        if (size(curl_hcurl, 2) < 1 .or. size(curl_hcurl, 3) < 1) return
+        if (.not. all(shape(curl_oracle) == shape(curl_hcurl))) return
+        if (.not. all(shape(magnetic_field) == shape(curl_hcurl))) return
+        if (.not. all(shape(sample_weight) == shape(curl_hcurl(:, :, 1)))) return
+        if (size(lambda) /= size(curl_hcurl, 1)) return
+        if (.not. all(shape(divergence) == shape(divergence_target))) return
+        if (size(divergence, 1) /= size(curl_hcurl, 1) .or. &
+                size(divergence, 2) /= size(curl_hcurl, 2)) return
+        if (size(flux) /= size(flux_target) .or. &
+                size(helicity) /= size(helicity_target)) return
+        if (size(energy_target) /= size(curl_hcurl, 1)) return
+        valid = .true.
+    end function valid_shell_shapes
+
+    logical function finite_shell_inputs( &
+            curl_hcurl, curl_oracle, magnetic_field, lambda, sample_weight, divergence, &
+            divergence_target, flux, flux_target, helicity, helicity_target, &
+            energy_target) result(valid)
+        real(dp), intent(in) :: curl_hcurl(:, :, :), curl_oracle(:, :, :)
+        real(dp), intent(in) :: magnetic_field(:, :, :), lambda(:)
+        real(dp), intent(in) :: sample_weight(:, :)
+        real(dp), intent(in) :: divergence(:, :), divergence_target(:, :)
+        real(dp), intent(in) :: flux(:), flux_target(:), helicity(:), helicity_target(:)
+        real(dp), intent(in) :: energy_target(:)
+
+        valid = finite_inputs(curl_hcurl, curl_oracle, magnetic_field, lambda, divergence, &
+            divergence_target, flux, flux_target, helicity, helicity_target) .and. &
+            all(ieee_is_finite(sample_weight)) .and. all(ieee_is_finite(energy_target))
+    end function finite_shell_inputs
 
     logical function finite_scalars(values) result(valid)
         real(dp), intent(in) :: values(:)

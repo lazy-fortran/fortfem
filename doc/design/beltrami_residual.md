@@ -69,3 +69,22 @@ gauge/eigenvalue parameters and returns `FORTSPARSE_SINGULAR` when a region
 parameter falls within the declared tolerance. It does not infer a spectrum
 or choose a gauge, leaving that policy to compatible H(curl), BIEST-like,
 Fourier, and IGA clients.
+
+## Slab and toroidal-shell ledger
+
+`evaluate_beltrami_shell_parity` is a small geometry-labelled acceptance
+fixture for two-region slab and toroidal-shell clients. The label identifies
+the caller's fixed physical sample set; FortFEM does not construct coordinates
+or a shell mesh. It independently compares weighted
+`curl_hcurl-lambda*B` and `curl_oracle-lambda*B` norms and closes supplied
+flux, helicity, and per-region quadratic field-energy targets. The energy
+quadrature is
+
+\[
+ E_r=\tfrac12\sum_q w_{rq}\,B_{rq}\cdot B_{rq}.
+\]
+
+The report marks `ledger_closed` only when all three target families close
+within the declared tolerance. This is a neutral parity and conservation
+oracle for BIEST-like, compatible H(curl), Fourier, and IGA implementations;
+it does not choose an equilibrium, topology, or gauge.

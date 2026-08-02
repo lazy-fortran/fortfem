@@ -11,6 +11,8 @@ fitted, cut, DG, and IGA clients.
 The [multi-region Beltrami residual contract](beltrami_residual.html) also
 provides a two-path H(curl)-versus-algebraic manufactured parity report and an
 explicit caller-supplied resonance guard for SPEC/SPECTRE-like clients.
+Its slab/toroidal-shell ledger variant independently closes flux, helicity,
+and weighted field-energy targets for two-region manufactured states.
 
 ## Overview
 
