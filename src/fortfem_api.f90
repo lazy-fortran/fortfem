@@ -1625,6 +1625,9 @@ module fortfem_api
         bicgstab_solve_jvp, bicgstab_solve_vjp, gmres_solve_jvp,            &
         gmres_solve_vjp, jacobi_preconditioner, ilu_preconditioner, &
         ichol_preconditioner, ichol_controlled_preconditioner
+    use fortfem_solver_resource_budget, only: &
+        solver_resource_budget_t, initialize_solver_resource_budget, &
+        validate_solver_resource_budget, evaluate_solver_resource_usage
     use fortfem_incomplete_cholesky, only: apply_incomplete_cholesky, &
         build_incomplete_cholesky, incomplete_cholesky_factor_t
     use fortfem_sparse_incomplete_cholesky, only: &
@@ -2907,6 +2910,10 @@ module fortfem_api
 
     ! Advanced solver types and functions
     public :: solver_options_t, solver_stats_t
+    public :: solver_resource_budget_t
+    public :: initialize_solver_resource_budget
+    public :: validate_solver_resource_budget
+    public :: evaluate_solver_resource_usage
     public :: solver_options
     public :: solve_sparse
     public :: cg_solve, pcg_solve, bicgstab_solve, gmres_solve
