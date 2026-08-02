@@ -46,6 +46,25 @@ FortFEM depend on that project's format or license.  The manifest is metadata
 only: sampled fields remain caller-owned artifacts in the separate benchmark
 data repository.
 
+### Target-ladder validation fixture
+
+`test/test_oracle_manifest_ladder.f90` is a deterministic, metadata-only
+fixture for the external target ladder. It instantiates the same small
+manufactured case for CHEASE, FreeGS, VMEC/PARVMEC, GVEC, DESC, SPEC/SIESTA,
+GPEC, MARS-F, GLISS, STARWALL, JOREK, FreeFEM, MFEM, and FEniCSx. For every
+name it requires a nonempty release, immutable revision, declared license,
+case and sample checksums, normalization, tolerances, runner identity, and
+phase-level timing and memory fields. It also checks that the declared total
+time covers all measured phases and that a manifest cannot be published after
+its revision is removed.
+
+The fixture uses synthetic strings such as `fixture-v1` and
+`runner-supplies-revision`; they are deliberately not claims about an
+upstream release or license. No external executable, reader, source tree,
+mesh, or solution data is needed to run it. Real adapters replace those
+fields with values obtained from their isolated runner and publish samples in
+the separate benchmark-data repository.
+
 The ordinary correctness workflow also runs a lightweight isogeometric oracle
 with Nutils 9.2. On the same uniform quadratic tensor-product patch, Nutils
 independently assembles the scalar mass and stiffness matrices and verifies:
