@@ -53,6 +53,10 @@ module fortfem_api
     use fortfem_continuation_event, only: &
         CONTINUATION_EVENT_NEAR_ZERO, CONTINUATION_EVENT_NONE, &
         CONTINUATION_EVENT_SIGN_CROSSING, classify_continuation_event
+    use fortfem_pseudo_transient_residual, only: &
+        assemble_pseudo_transient_residual, &
+        assemble_pseudo_transient_residual_jvp, &
+        assemble_pseudo_transient_residual_vjp
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -1401,6 +1405,9 @@ module fortfem_api
     public :: CONTINUATION_EVENT_SIGN_CROSSING
     public :: CONTINUATION_EVENT_NEAR_ZERO
     public :: classify_continuation_event
+    public :: assemble_pseudo_transient_residual
+    public :: assemble_pseudo_transient_residual_jvp
+    public :: assemble_pseudo_transient_residual_vjp
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp

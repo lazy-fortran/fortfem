@@ -41,6 +41,15 @@ clients. Positive caller-owned weights are required; the routine reports the
 merit and its analytical JVP/VJP but deliberately does not make a step
 acceptance decision.
 
+`assemble_pseudo_transient_residual` supplies the separate continuation
+stabilizer
+\[
+  R_{pt}=R(u)+M(u-u_{old})/\Delta t.
+\]
+Its matrix, state, previous-state, and positive-step JVP/VJP products are
+analytical. This is a solver-neutral pseudo-transient hook and is not a
+replacement for the symplectic or dissipative time integrators.
+
 ## API
 
 ```fortran
@@ -73,6 +82,15 @@ call evaluate_residual_merit_jvp( &
     residual, weights, residual_dot, weights_dot, merit_dot, status)
 call evaluate_residual_merit_vjp( &
     residual, weights, merit_bar, residual_bar, weights_bar, status)
+
+call assemble_pseudo_transient_residual( &
+    residual, mass, state, previous_state, time_step, augmented_residual, status)
+call assemble_pseudo_transient_residual_jvp( &
+    residual, mass, state, previous_state, time_step, residual_dot, mass_dot, &
+    state_dot, previous_state_dot, time_step_dot, augmented_residual_dot, status)
+call assemble_pseudo_transient_residual_vjp( &
+    residual, mass, state, previous_state, time_step, augmented_residual_bar, &
+    residual_bar, mass_bar, state_bar, previous_state_bar, time_step_bar, status)
 ```
 
 `test_pseudo_arclength_residual` checks the value against the explicit scalar
@@ -83,3 +101,6 @@ are supplied by higher layers.
 `test_residual_merit` independently checks the weighted scalar formula, a
 central-difference JVP, the real dot-product VJP identity, and rejection of a
 non-positive weight.
+`test_pseudo_transient_residual` checks the matrix/state/time product rule,
+central difference, full real adjoint identity, and non-positive-step
+rejection against an independent manufactured expression.
