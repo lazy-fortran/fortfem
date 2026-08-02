@@ -35,6 +35,12 @@ norm. Its JVP/VJP products make tangent normalization differentiable while
 rejecting a zero or non-finite predictor. Metric-weighted normalization and
 tangent construction remain caller policies.
 
+`evaluate_residual_merit` supplies the weighted least-squares scalar
+\(\phi(R)=\tfrac12\sum_i w_iR_i^2\) used by line-search and trust-region
+clients. Positive caller-owned weights are required; the routine reports the
+merit and its analytical JVP/VJP but deliberately does not make a step
+acceptance decision.
+
 ## API
 
 ```fortran
@@ -61,6 +67,12 @@ call normalize_pseudo_arclength_tangent_jvp( &
 call normalize_pseudo_arclength_tangent_vjp( &
     tangent_state, tangent_parameter, normalized_state_bar, normalized_parameter_bar, &
     norm_bar, tangent_state_bar, tangent_parameter_bar, status)
+
+call evaluate_residual_merit(residual, weights, merit, status)
+call evaluate_residual_merit_jvp( &
+    residual, weights, residual_dot, weights_dot, merit_dot, status)
+call evaluate_residual_merit_vjp( &
+    residual, weights, merit_bar, residual_bar, weights_bar, status)
 ```
 
 `test_pseudo_arclength_residual` checks the value against the explicit scalar
@@ -68,3 +80,6 @@ formula, the JVP against both the product rule and a central difference, and
 the VJP against an independent real dot-product identity. It is intentionally
 solver- and application-neutral: free-boundary geometry and force functionals
 are supplied by higher layers.
+`test_residual_merit` independently checks the weighted scalar formula, a
+central-difference JVP, the real dot-product VJP identity, and rejection of a
+non-positive weight.

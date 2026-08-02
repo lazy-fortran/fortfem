@@ -47,6 +47,9 @@ module fortfem_api
         normalize_pseudo_arclength_tangent, &
         normalize_pseudo_arclength_tangent_jvp, &
         normalize_pseudo_arclength_tangent_vjp
+    use fortfem_residual_merit, only: &
+        evaluate_residual_merit, evaluate_residual_merit_jvp, &
+        evaluate_residual_merit_vjp
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -1388,6 +1391,9 @@ module fortfem_api
     public :: normalize_pseudo_arclength_tangent
     public :: normalize_pseudo_arclength_tangent_jvp
     public :: normalize_pseudo_arclength_tangent_vjp
+    public :: evaluate_residual_merit
+    public :: evaluate_residual_merit_jvp
+    public :: evaluate_residual_merit_vjp
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp
