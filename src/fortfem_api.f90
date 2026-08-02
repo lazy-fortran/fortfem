@@ -34,6 +34,10 @@ module fortfem_api
         assemble_coupled_field_residual, &
         assemble_coupled_field_residual_jvp, &
         assemble_coupled_field_residual_vjp
+    use fortfem_complex_coupled_field_residual, only: &
+        assemble_complex_coupled_field_residual, &
+        assemble_complex_coupled_field_residual_jvp, &
+        assemble_complex_coupled_field_residual_vjp
     use fortfem_mixed_elasticity_residual, only: &
         assemble_mixed_elasticity_residual, &
         assemble_mixed_elasticity_residual_jvp, &
@@ -2550,6 +2554,9 @@ module fortfem_api
     public :: assemble_coupled_field_residual
     public :: assemble_coupled_field_residual_jvp
     public :: assemble_coupled_field_residual_vjp
+    public :: assemble_complex_coupled_field_residual
+    public :: assemble_complex_coupled_field_residual_jvp
+    public :: assemble_complex_coupled_field_residual_vjp
     public :: assemble_mixed_elasticity_residual
     public :: assemble_mixed_elasticity_residual_jvp
     public :: assemble_mixed_elasticity_residual_vjp
