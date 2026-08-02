@@ -745,6 +745,10 @@ is now public with FortSym-generated value/JVP/VJP products and independent
 unit-direction, finite-difference, and dot-product tests. It is the common
 constitutive block for future anisotropic diffusion, conduction, resistivity,
 and wave assemblies.
+The companion `evaluate_field_aligned_constitutive_tensor` adds the same
+parallel/perpendicular projectors and an optional skew Hall cross-product
+term, with exact value/JVP/VJP and strict finite/unit-direction validation;
+it is intentionally independent of any plasma closure.
 The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
 RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
 interpolation matrices assemble a sparse staggered gradient; the support
@@ -2449,6 +2453,14 @@ gallery example.
   JVP/VJP actions and an independent contraction oracle; constitutive laws and
   caller-supplied correction tensors remain external. No plasma closure is
   implemented.
+- The neutral `evaluate_field_aligned_constitutive_tensor` contract now
+  composes the CGL parallel/perpendicular projectors with an optional skew
+  Hall/gyrotropic cross-product block. Its value, exact JVP, and real VJP
+  validate finite coefficients and unit directions; independent central-
+  difference, transpose, optional-zero, and invalid-input tests cover the
+  symmetric and nonsymmetric limits. This remains a pointwise constitutive
+  ingredient: geometry pullbacks, quadrature, and physical closures stay
+  caller-owned.
 - `assemble_tensor_diffusion_matrix` now provides the neutral quadrature
   contraction `grad(test)^T K grad(trial)` for strongly anisotropic scalar,
   elastic, resistive, and compatible-field clients, with full tensor,
