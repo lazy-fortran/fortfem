@@ -21,6 +21,8 @@ module fortfem_maxwell_sphere_curved_rwg
 
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
@@ -2651,6 +2653,173 @@ contains
         end do
         status = 0
     end subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix
+
+    subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp( &
+            vertices, triangles, radius, quadrature_degree, vertices_dot, &
+            radius_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: vertices_dot(:, :), radius_dot
+        real(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), values(:, :), values_dot(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: divergence, divergence_dot, jacobian, jacobian_dot
+        real(dp) :: point(3), point_dot(3), value_dot(3)
+        integer :: basis, node, panel, test_basis
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        call assemble_maxwell_sphere_curved_rwg_mass_matrix( &
+            vertices, triangles, radius, quadrature_degree, matrix, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            matrix_dot(size(edge_vertices, 2), size(edge_vertices, 2)), &
+            values(3, size(edge_vertices, 2)), &
+            values_dot(3, size(edge_vertices, 2)))
+        matrix_dot = 0.0_dp
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                values = 0.0_dp
+                values_dot = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis_jvp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), vertices_dot, &
+                        radius_dot, point, values(:, basis), divergence, jacobian, &
+                        point_dot, value_dot, divergence_dot, jacobian_dot, status)
+                    if (status /= 0) return
+                    values_dot(:, basis) = value_dot
+                end do
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    do test_basis = 1, size(edge_vertices, 2)
+                        if (.not. any( &
+                            edge_triangles(:, test_basis) == panel)) cycle
+                        matrix_dot(test_basis, basis) = &
+                            matrix_dot(test_basis, basis) + weights(node)*( &
+                            jacobian_dot*dot_product( &
+                            values(:, test_basis), values(:, basis)) + jacobian*( &
+                            dot_product(values_dot(:, test_basis), values(:, basis)) + &
+                            dot_product(values(:, test_basis), values_dot(:, basis))))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp
+
+    subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp( &
+            vertices, triangles, radius, quadrature_degree, matrix_bar, &
+            vertices_bar, radius_bar, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :), radius_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), values(:, :), values_bar(:, :), weights(:)
+        real(dp), allocatable :: xi(:)
+        real(dp) :: divergence, jacobian, jacobian_bar, point(3)
+        real(dp) :: value(3), point_bar(3), surface_divergence_bar
+        real(dp) :: local_radius_bar, local_jacobian_bar
+        real(dp) :: local_edge_vertices_bar(3, 2), local_panel_vertices_bar(3, 3)
+        logical :: jacobian_consumed
+        integer :: basis, node, panel, test_basis, vertex, local
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        point_bar = 0.0_dp
+        surface_divergence_bar = 0.0_dp
+        status = 1
+        if (size(vertices, 1) /= 3) return
+        if (size(vertices_bar, 1) /= size(vertices, 1)) return
+        if (size(vertices_bar, 2) /= size(vertices, 2)) return
+        if (radius <= 0.0_dp) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(matrix_bar, 1) /= size(edge_vertices, 2)) return
+        if (size(matrix_bar, 2) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            values(3, size(edge_vertices, 2)), &
+            values_bar(3, size(edge_vertices, 2)))
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                values = 0.0_dp
+                values_bar = 0.0_dp
+                jacobian = 0.0_dp
+                jacobian_consumed = .false.
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        values(:, basis), divergence, jacobian, status)
+                    if (status /= 0) return
+                end do
+                jacobian_bar = 0.0_dp
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    do test_basis = 1, size(edge_vertices, 2)
+                        if (.not. any( &
+                            edge_triangles(:, test_basis) == panel)) cycle
+                        values_bar(:, test_basis) = &
+                            values_bar(:, test_basis) + weights(node)*jacobian* &
+                            matrix_bar(test_basis, basis)*values(:, basis)
+                        values_bar(:, basis) = values_bar(:, basis) + &
+                            weights(node)*jacobian*matrix_bar(test_basis, basis)* &
+                            values(:, test_basis)
+                        jacobian_bar = jacobian_bar + weights(node)* &
+                            matrix_bar(test_basis, basis)*dot_product( &
+                            values(:, test_basis), values(:, basis))
+                    end do
+                end do
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    if (.not. jacobian_consumed) then
+                        local_jacobian_bar = jacobian_bar
+                        jacobian_consumed = .true.
+                    else
+                        local_jacobian_bar = 0.0_dp
+                    end if
+                    call evaluate_maxwell_sphere_curved_rwg_basis_vjp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point_bar, &
+                        values_bar(:, basis), surface_divergence_bar, &
+                        local_jacobian_bar, local_edge_vertices_bar, &
+                        local_panel_vertices_bar, local_radius_bar, status)
+                    if (status /= 0) return
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_edge_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        vertices_bar(:, triangles(local, panel)) = &
+                            vertices_bar(:, triangles(local, panel)) + &
+                            local_panel_vertices_bar(:, local)
+                    end do
+                    radius_bar = radius_bar + local_radius_bar
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp
 
     pure subroutine evaluate_maxwell_sphere_curved_rwg_basis( &
             vertices, triangles, edge_vertices, edge_triangles, basis, panel, &
