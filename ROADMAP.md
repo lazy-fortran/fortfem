@@ -1174,9 +1174,10 @@ conversion. The sparse `ichol`/`ic`/`ic0` aliases likewise use the CSC
 IC builder directly. Exact sparse oracles cover both integrations and their
 bounded-memory intent. The
 `solve_sparse` dispatcher now also has a true sparse GMRES callback path,
-and a matrix-free sparse BiCGSTAB callback path for ILUT-backed nonsymmetric
-blocks, instead of silently falling back to PCG when either method is
-requested. Independent exact CSC oracles cover both dispatches. The
+with left application of the selected bounded preconditioner, and a
+matrix-free sparse BiCGSTAB callback path for ILUT-backed nonsymmetric blocks,
+instead of silently falling back to PCG when either method is requested.
+Independent exact CSC oracles cover both dispatches. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.

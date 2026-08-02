@@ -26,12 +26,13 @@ program test_sparse_gmres
     call record_condition(status%code == 0, &
         "sparse GMRES matrix has a valid CSC structure")
     options = solver_options(method="gmres", tolerance=1.0e-12_dp, &
-        max_iterations=8, tolerance_type="absolute")
+        max_iterations=8, preconditioner="sparse_ilut", drop_tolerance=0.0_dp, &
+        fill_level=n, tolerance_type="absolute")
     solution = 0.0_dp
     call solve_sparse(matrix, right_hand_side, solution, options, stats)
     call record_condition(stats%method_used == "gmres" .and. stats%converged .and. &
         maxval(abs(solution - expected_solution)) < 1.0e-11_dp, &
-        "sparse GMRES uses the requested callback path and matches the oracle")
+        "sparse GMRES uses the ILUT callback path and matches the oracle")
     call check_summary("sparse GMRES integration")
     if (.not. all_passed) error stop 1
 
