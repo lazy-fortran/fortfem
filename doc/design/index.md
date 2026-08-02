@@ -185,6 +185,11 @@ couples a port-Hamiltonian wave block to a resistive RL wall by implicit
 midpoint, with an independent energy/dissipation ledger and full JVP/VJP
 actions.
 
+The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
+composes shifted vector XFEM/XIGA basis values with curl/divergence product
+rules over basis functions and quadrature points, including complete JVP/VJP
+actions.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.

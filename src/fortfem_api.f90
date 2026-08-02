@@ -64,6 +64,10 @@ module fortfem_api
         advance_mixed_wave_wall_midpoint_jvp, &
         advance_mixed_wave_wall_midpoint_vjp, &
         evaluate_mixed_wave_wall_energy_balance
+    use fortfem_batched_vector_enrichment_differential_3d, only: &
+        evaluate_batched_vector_enrichment_differential_3d, &
+        evaluate_batched_vector_enrichment_differential_3d_jvp, &
+        evaluate_batched_vector_enrichment_differential_3d_vjp
     use fortfem_complex_boundary_trace_residual, only: &
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
@@ -2623,6 +2627,9 @@ module fortfem_api
     public :: advance_mixed_wave_wall_midpoint_jvp
     public :: advance_mixed_wave_wall_midpoint_vjp
     public :: evaluate_mixed_wave_wall_energy_balance
+    public :: evaluate_batched_vector_enrichment_differential_3d
+    public :: evaluate_batched_vector_enrichment_differential_3d_jvp
+    public :: evaluate_batched_vector_enrichment_differential_3d_vjp
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
