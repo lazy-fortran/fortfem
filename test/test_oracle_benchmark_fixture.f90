@@ -73,6 +73,7 @@ program test_oracle_benchmark_fixture
         sample_checksum="sha256:fixture-samples", spatial_dimension=2, &
         sample_count=sample_count, normalization=normalization, &
         tolerances=tolerances, timing=timing, runner_id="deterministic-ci", &
+        runner_hardware="CI-x86_64 / 32 GB / Linux / 1 thread", &
         fortfem_commit="fixture-independent", success=.true., &
         notes="fixed metadata fixture; no external solver dependency", &
         status=status)

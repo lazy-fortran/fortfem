@@ -12,9 +12,9 @@ module fortfem_oracle_manifest
     private
 
     character(len=*), parameter, public :: oracle_manifest_schema_magic = &
-        "FORTFEM_ORACLE_MANIFEST_TEXT 1"
+        "FORTFEM_ORACLE_MANIFEST_TEXT 2"
     character(len=*), parameter, public :: oracle_manifest_schema_version = &
-        "fortfem-oracle-manifest-1"
+        "fortfem-oracle-manifest-2"
 
     type, public :: oracle_normalization_t
         character(len=64) :: normalization_name = ""
@@ -63,6 +63,7 @@ module fortfem_oracle_manifest
         character(len=128) :: coordinate_checksum = ""
         character(len=128) :: sample_checksum = ""
         character(len=64) :: runner_id = ""
+        character(len=256) :: runner_hardware = ""
         character(len=64) :: fortfem_commit = ""
         character(len=256) :: sister_repository_uri = ""
         character(len=256) :: notes = ""
@@ -85,7 +86,7 @@ contains
             code_revision, code_license, case_name, case_revision, &
             coordinate_system, coordinate_checksum, sample_checksum, &
             spatial_dimension, sample_count, normalization, tolerances, &
-            timing, runner_id, fortfem_commit, sister_repository_uri, &
+            timing, runner_id, runner_hardware, fortfem_commit, sister_repository_uri, &
             success, notes, status)
         type(oracle_manifest_t), intent(out) :: manifest
         character(len=*), intent(in) :: code_name, code_version
@@ -97,7 +98,7 @@ contains
         type(oracle_normalization_t), intent(in) :: normalization
         type(oracle_tolerance_t), intent(in) :: tolerances
         type(oracle_timing_t), intent(in) :: timing
-        character(len=*), intent(in) :: runner_id, fortfem_commit
+        character(len=*), intent(in) :: runner_id, runner_hardware, fortfem_commit
         character(len=*), intent(in), optional :: sister_repository_uri
         logical, intent(in), optional :: success
         character(len=*), intent(in), optional :: notes
@@ -120,6 +121,7 @@ contains
         manifest%tolerances = tolerances
         manifest%timing = timing
         manifest%runner_id = runner_id
+        manifest%runner_hardware = runner_hardware
         manifest%fortfem_commit = fortfem_commit
         if (present(sister_repository_uri)) then
             manifest%sister_repository_uri = sister_repository_uri
@@ -150,7 +152,8 @@ contains
             len_trim(manifest%checksum_algorithm) == 0 .or. &
             len_trim(manifest%coordinate_checksum) == 0 .or. &
             len_trim(manifest%sample_checksum) == 0 .or. &
-            len_trim(manifest%runner_id) == 0) return
+            len_trim(manifest%runner_id) == 0 .or. &
+            len_trim(manifest%runner_hardware) == 0) return
         if (manifest%spatial_dimension < 1 .or. &
             manifest%spatial_dimension > 3 .or. manifest%sample_count < 1) return
         scales = [manifest%normalization%length_scale, &
@@ -212,6 +215,7 @@ contains
         if (ios == 0) write(unit, '(A)', iostat=ios) trim(manifest%coordinate_checksum)
         if (ios == 0) write(unit, '(A)', iostat=ios) trim(manifest%sample_checksum)
         if (ios == 0) write(unit, '(A)', iostat=ios) trim(manifest%runner_id)
+        if (ios == 0) write(unit, '(A)', iostat=ios) trim(manifest%runner_hardware)
         if (ios == 0) write(unit, '(A)', iostat=ios) trim(manifest%fortfem_commit)
         if (ios == 0) write(unit, '(A)', iostat=ios) &
             trim(manifest%sister_repository_uri)
@@ -284,6 +288,7 @@ contains
         call read_line_into(unit, manifest%coordinate_checksum, ios)
         call read_line_into(unit, manifest%sample_checksum, ios)
         call read_line_into(unit, manifest%runner_id, ios)
+        call read_line_into(unit, manifest%runner_hardware, ios)
         call read_line_into(unit, manifest%fortfem_commit, ios)
         call read_line_into(unit, manifest%sister_repository_uri, ios)
         call read_line_into(unit, manifest%notes, ios)

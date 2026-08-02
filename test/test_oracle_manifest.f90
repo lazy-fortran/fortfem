@@ -5,6 +5,7 @@ program test_oracle_manifest
         oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
         oracle_tolerance_t, initialize_oracle_manifest, &
         validate_oracle_manifest, oracle_manifest_schema_magic, &
+        oracle_manifest_schema_version, &
         read_oracle_manifest, write_oracle_manifest
     implicit none
 
@@ -57,6 +58,7 @@ program test_oracle_manifest
         sample_checksum="sha256:samples-c3d4", spatial_dimension=3, &
         sample_count=128, normalization=normalization, &
         tolerances=tolerances, timing=timing, runner_id="linux-x86_64", &
+        runner_hardware="AMD EPYC / 64 GB / Linux / 1 thread", &
         fortfem_commit="fortfem-abcdef", &
         sister_repository_uri="https://example.invalid/benchmarks@deadbeef", &
         success=.true., notes="license-safe external oracle", status=status)
@@ -95,12 +97,20 @@ program test_oracle_manifest
         restored%timing%repetition_count == 5 .and. &
         restored%sister_repository_uri == copied%sister_repository_uri, &
         "timing, memory, and sister repository survive round-trip")
+    call check_condition(restored%runner_hardware == copied%runner_hardware, &
+        "runner hardware provenance survives round-trip")
+
+    copied%runner_hardware = ""
+    valid = validate_oracle_manifest(copied, status)
+    call check_condition(.not. valid .and. status /= 0, &
+        "missing runner hardware is rejected")
+    copied%runner_hardware = "AMD EPYC / 64 GB / Linux / 1 thread"
 
     open(newunit=unit, file=filename, status="old", action="read")
     close(unit, status="delete")
     open(newunit=unit, file=bad_filename, status="replace", action="write")
     write(unit, '(A)') oracle_manifest_schema_magic
-    write(unit, '(A)') "fortfem-oracle-manifest-1"
+    write(unit, '(A)') oracle_manifest_schema_version
     write(unit, '(A)') "CHEASE"
     write(unit, '(A)') "unknown"
     write(unit, '(A)') "revision"
