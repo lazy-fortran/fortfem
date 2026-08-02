@@ -1,5 +1,6 @@
 module fortfem_bspline_multipatch
     !! Orientation-aware conforming traces for tensor-product spline patches.
+    use fortfem_multipatch_dof_graph, only: build_multipatch_signed_dof_map
     implicit none
     private
 
@@ -12,6 +13,7 @@ module fortfem_bspline_multipatch
 
     public :: build_bspline_feec_2d_interface_dofs
     public :: build_bspline_feec_2d_two_patch_maps
+    public :: build_bspline_feec_2d_multipatch_maps
     public :: build_bspline_feec_3d_interface_dofs
     public :: build_bspline_feec_3d_two_patch_maps
 
@@ -126,6 +128,189 @@ contains
         l2_right_map = &
             [(size(l2_left_map) + dof, dof = 1, size(l2_right_map))]
     end subroutine build_bspline_feec_2d_two_patch_maps
+
+    subroutine build_bspline_feec_2d_multipatch_maps( &
+            nx, ny, left_patch, right_patch, face_left, face_right, reversed, &
+            h1_offsets, h1_map, h1_global_count, hcurl_offsets, hcurl_map, &
+            hcurl_global_count, l2_offsets, l2_map, l2_global_count, status)
+        !! Build packed signed maps for an arbitrary 2D tensor-patch graph.
+        !!
+        !! The patch-local maps use the same ordering as the existing two-patch
+        !! helper.  Interface trace extraction remains geometry-neutral; each
+        !! relation is handed to the topology-only signed graph builder so
+        !! periodic and cyclic patch graphs receive the same cycle checks.
+        integer, intent(in) :: nx(:), ny(:)
+        integer, intent(in) :: left_patch(:), right_patch(:)
+        integer, intent(in) :: face_left(:), face_right(:)
+        logical, intent(in) :: reversed(:)
+        integer, allocatable, intent(out) :: h1_offsets(:), h1_map(:)
+        integer, intent(out) :: h1_global_count
+        integer, allocatable, intent(out) :: hcurl_offsets(:), hcurl_map(:)
+        integer, intent(out) :: hcurl_global_count
+        integer, allocatable, intent(out) :: l2_offsets(:), l2_map(:)
+        integer, intent(out) :: l2_global_count, status
+
+        integer, allocatable :: h1_left_trace(:), h1_right_trace(:)
+        integer, allocatable :: hcurl_left_trace(:), hcurl_right_trace(:)
+        integer, allocatable :: hcurl_trace_sign(:)
+        integer, allocatable :: h1_left_relation(:), h1_right_relation(:)
+        integer, allocatable :: hcurl_left_relation(:), hcurl_right_relation(:)
+        integer, allocatable :: hcurl_relation_sign(:)
+        integer, allocatable :: h1_left_patch_relation(:)
+        integer, allocatable :: h1_right_patch_relation(:)
+        integer, allocatable :: hcurl_left_patch_relation(:)
+        integer, allocatable :: hcurl_right_patch_relation(:)
+        integer, allocatable :: h1_relation_sign(:)
+        integer :: patch_count, interface_count
+        integer :: h1_relation_count, hcurl_relation_count
+        integer :: patch, interface, trace, offset
+        integer :: h1_size, hcurl_size, l2_size, trace_status
+
+        status = 1
+        h1_global_count = 0
+        hcurl_global_count = 0
+        l2_global_count = 0
+        if (.not. valid_multipatch_inputs( &
+            nx, ny, left_patch, right_patch, face_left, face_right, reversed)) return
+        patch_count = size(nx)
+        interface_count = size(left_patch)
+
+        call build_offsets_2d(nx, ny, h1_offsets, hcurl_offsets, l2_offsets)
+        h1_size = h1_offsets(patch_count + 1) - 1
+        hcurl_size = hcurl_offsets(patch_count + 1) - 1
+        l2_size = l2_offsets(patch_count + 1) - 1
+        allocate(h1_map(h1_size), hcurl_map(hcurl_size), l2_map(l2_size))
+        l2_map = 0
+        h1_relation_count = 0
+        hcurl_relation_count = 0
+        do interface = 1, interface_count
+            call build_bspline_feec_2d_interface_dofs( &
+                nx(left_patch(interface)), ny(left_patch(interface)), &
+                nx(right_patch(interface)), ny(right_patch(interface)), &
+                face_left(interface), face_right(interface), reversed(interface), &
+                h1_left_trace, h1_right_trace, hcurl_left_trace, &
+                hcurl_right_trace, hcurl_trace_sign, trace_status)
+            if (trace_status /= 0) then
+                status = 1
+                return
+            end if
+            h1_relation_count = h1_relation_count + size(h1_left_trace)
+            hcurl_relation_count = hcurl_relation_count + size(hcurl_left_trace)
+        end do
+
+        allocate( &
+            h1_left_relation(h1_relation_count), h1_right_relation(h1_relation_count), &
+            h1_left_patch_relation(h1_relation_count), &
+            h1_right_patch_relation(h1_relation_count), &
+            h1_relation_sign(h1_relation_count), &
+            hcurl_left_relation(hcurl_relation_count), &
+            hcurl_right_relation(hcurl_relation_count), &
+            hcurl_left_patch_relation(hcurl_relation_count), &
+            hcurl_right_patch_relation(hcurl_relation_count), &
+            hcurl_relation_sign(hcurl_relation_count))
+        h1_relation_count = 0
+        hcurl_relation_count = 0
+        do interface = 1, interface_count
+            call build_bspline_feec_2d_interface_dofs( &
+                nx(left_patch(interface)), ny(left_patch(interface)), &
+                nx(right_patch(interface)), ny(right_patch(interface)), &
+                face_left(interface), face_right(interface), reversed(interface), &
+                h1_left_trace, h1_right_trace, hcurl_left_trace, &
+                hcurl_right_trace, hcurl_trace_sign, trace_status)
+            do trace = 1, size(h1_left_trace)
+                h1_relation_count = h1_relation_count + 1
+                h1_left_relation(h1_relation_count) = h1_left_trace(trace)
+                h1_right_relation(h1_relation_count) = h1_right_trace(trace)
+                h1_left_patch_relation(h1_relation_count) = left_patch(interface)
+                h1_right_patch_relation(h1_relation_count) = right_patch(interface)
+                h1_relation_sign(h1_relation_count) = 1
+            end do
+            do trace = 1, size(hcurl_left_trace)
+                hcurl_relation_count = hcurl_relation_count + 1
+                hcurl_left_relation(hcurl_relation_count) = hcurl_left_trace(trace)
+                hcurl_right_relation(hcurl_relation_count) = hcurl_right_trace(trace)
+                hcurl_left_patch_relation(hcurl_relation_count) = left_patch(interface)
+                hcurl_right_patch_relation(hcurl_relation_count) = right_patch(interface)
+                hcurl_relation_sign(hcurl_relation_count) = hcurl_trace_sign(trace)
+            end do
+        end do
+
+        call build_multipatch_signed_dof_map( &
+            h1_offsets, h1_left_patch_relation, h1_left_relation, &
+            h1_right_patch_relation, h1_right_relation, h1_relation_sign, &
+            h1_map, h1_global_count, status)
+        if (status /= 0) return
+        call build_multipatch_signed_dof_map( &
+            hcurl_offsets, hcurl_left_patch_relation, hcurl_left_relation, &
+            hcurl_right_patch_relation, hcurl_right_relation, hcurl_relation_sign, &
+            hcurl_map, hcurl_global_count, status)
+        if (status /= 0) return
+
+        offset = 0
+        do patch = 1, patch_count
+            do trace = 1, l2_offsets(patch + 1) - l2_offsets(patch)
+                offset = offset + 1
+                l2_map(offset) = offset
+            end do
+        end do
+        l2_global_count = l2_size
+        status = 0
+    end subroutine build_bspline_feec_2d_multipatch_maps
+
+    logical function valid_multipatch_inputs( &
+            nx, ny, left_patch, right_patch, face_left, face_right, reversed) &
+            result(valid)
+        integer, intent(in) :: nx(:), ny(:)
+        integer, intent(in) :: left_patch(:), right_patch(:)
+        integer, intent(in) :: face_left(:), face_right(:)
+        logical, intent(in) :: reversed(:)
+        integer :: patch, interface, patch_count
+
+        valid = .false.
+        patch_count = size(nx)
+        if (patch_count < 1) return
+        if (size(ny) /= patch_count) return
+        do patch = 1, patch_count
+            if (nx(patch) < 2) return
+            if (ny(patch) < 2) return
+        end do
+        if (size(right_patch) /= size(left_patch)) return
+        if (size(face_left) /= size(left_patch)) return
+        if (size(face_right) /= size(left_patch)) return
+        if (size(reversed) /= size(left_patch)) return
+        do interface = 1, size(left_patch)
+            if (left_patch(interface) < 1 .or. &
+                left_patch(interface) > patch_count) return
+            if (right_patch(interface) < 1 .or. &
+                right_patch(interface) > patch_count) return
+            if (face_trace_count(nx(left_patch(interface)), &
+                ny(left_patch(interface)), face_left(interface)) < 2) return
+            if (face_trace_count(nx(right_patch(interface)), &
+                ny(right_patch(interface)), face_right(interface)) < 2) return
+        end do
+        valid = .true.
+    end function valid_multipatch_inputs
+
+    subroutine build_offsets_2d(nx, ny, h1_offsets, hcurl_offsets, l2_offsets)
+        integer, intent(in) :: nx(:), ny(:)
+        integer, allocatable, intent(out) :: h1_offsets(:), hcurl_offsets(:)
+        integer, allocatable, intent(out) :: l2_offsets(:)
+        integer :: patch
+
+        allocate( &
+            h1_offsets(size(nx) + 1), hcurl_offsets(size(nx) + 1), &
+            l2_offsets(size(nx) + 1))
+        h1_offsets(1) = 1
+        hcurl_offsets(1) = 1
+        l2_offsets(1) = 1
+        do patch = 1, size(nx)
+            h1_offsets(patch + 1) = h1_offsets(patch) + nx(patch)*ny(patch)
+            hcurl_offsets(patch + 1) = hcurl_offsets(patch) + &
+                (nx(patch) - 1)*ny(patch) + nx(patch)*(ny(patch) - 1)
+            l2_offsets(patch + 1) = l2_offsets(patch) + &
+                (nx(patch) - 1)*(ny(patch) - 1)
+        end do
+    end subroutine build_offsets_2d
 
     subroutine build_bspline_feec_3d_interface_dofs( &
             nx_left, ny_left, nz_left, nx_right, ny_right, nz_right, &

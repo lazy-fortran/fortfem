@@ -262,7 +262,9 @@ blocks remain caller-owned.
 The [arbitrary multipatch signed DOF graph](multipatch_dof_graph.html)
 constructs fixed-topology signed local-to-global maps for any patch graph,
 checks orientation cycles, and composes directly with glued FEEC and IGA
-assemblers while leaving geometry and interface laws caller-owned.
+assemblers while leaving geometry and interface laws caller-owned. Its
+`build_bspline_feec_2d_multipatch_maps` companion applies the same contract to
+packed arbitrary 2D tensor-patch H1/H(curl) traces.
 
 The [complex packed block graph residual](complex_block_graph_residual.html)
 provides the same N-field path for frequency-domain operators and documents

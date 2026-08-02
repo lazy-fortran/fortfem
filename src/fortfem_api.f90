@@ -566,6 +566,7 @@ module fortfem_api
         BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
         BSPLINE_FACE_Y_MIN, BSPLINE_FACE_Z_MAX, BSPLINE_FACE_Z_MIN, &
         build_bspline_feec_2d_interface_dofs, &
+        build_bspline_feec_2d_multipatch_maps, &
         build_bspline_feec_2d_two_patch_maps, &
         build_bspline_feec_3d_interface_dofs, &
         build_bspline_feec_3d_two_patch_maps
@@ -2025,6 +2026,7 @@ module fortfem_api
     public :: BSPLINE_FACE_Z_MAX
     public :: BSPLINE_FACE_Z_MIN
     public :: build_bspline_feec_2d_interface_dofs
+    public :: build_bspline_feec_2d_multipatch_maps
     public :: build_bspline_feec_2d_two_patch_maps
     public :: build_bspline_feec_2d_two_patch_operators_csc
     public :: build_bspline_feec_3d_interface_dofs

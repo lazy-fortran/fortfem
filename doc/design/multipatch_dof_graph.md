@@ -26,3 +26,19 @@ The implementation uses a signed disjoint-set forest, so it does not create a
 dense identification matrix. The independent test checks the equivalence
 classes and every declared orientation relation, and also exercises rejection
 of an inconsistent cycle.
+
+## B-spline/IGA composition
+
+`build_bspline_feec_2d_multipatch_maps` now lifts this topology contract to an
+arbitrary graph of tensor-product 2D patches. It extracts H1 and H(curl) face
+traces with the existing face-orientation rules, packs each patch's local map
+using deterministic offsets, and returns signed maps plus global counts. L2
+cells remain patch-local because there is no conforming trace identification in
+this neutral layer. The packed maps can be passed directly to the signed
+glued FEEC reference or CSC assemblers.
+
+This is still a topology and trace-numbering layer: it does not infer physical
+patch geometry, knot compatibility beyond the supplied dimensions, metric
+continuity, mortar quadrature, material jumps, or distributed owner/ghost
+exchange. The 3D analogue and geometry-aware assembly remain later roadmap
+gates.
