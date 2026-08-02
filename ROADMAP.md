@@ -389,6 +389,34 @@ disjoint owner before implementation. A rename may not be merged merely
 because `rg` finds the new spelling; the derivative, generated provenance,
 consumer, and documentation gates remain part of the same task.
 
+#### Current agent dispatch (2026-08-03)
+
+The following worktrees are the active API-05/API-07 consumer migration
+queue. They are deliberately disjoint so that facade refactoring can proceed
+without a serial gallery-wide rename or duplicated fixes. Each agent must
+rebase its branch on the current `main` before hand-off, add or update a
+focused behavioral test first, migrate the smallest suitable canonical facade
+(`fortfem_core`, `fortfem_feec`, `fortfem_fourier`, `fortfem_boundary`,
+`fortfem_time`, `fortfem_interop`, or `fortfem_plot`), run the ten-second
+focused gate, and report the exact files and public symbols moved. Agents may
+not edit this roadmap, generated API inventory, or another queue item's files;
+the integrator regenerates the inventory and documentation after each verified
+slice.
+
+| Worktree task | Owned migration slice | Required gate |
+| --- | --- | --- |
+| `migrate_scalar_gallery_facades` | Simple Poisson, mesh, scalar/core, and anisotropic/FCI examples and their focused tests; split legacy `fortfem_api_*` imports between `fortfem_core`, `fortfem_feec`, and `fortfem_plot` without adding a second implementation | No-umbrella compile/import audit, independent analytical solution or field/energy oracle, and focused `fo test` |
+| `migrate_boundary_gallery_facades` | Adaptive BEM, acoustic DtN/NtD, Helmholtz/PML, Maxwell open-boundary, and boundary solver examples/tests; own the representative facade checker updates | FEM/BEM/DtN/PML physical-solution oracle, derivative/trace parity, checker negative fixture, and focused `fo test` |
+| `migrate_iga_fourier_facades` | IGA, Fourier-FEM, toroidal, special-function, and field-aligned examples/tests; expose missing symbols through `fortfem_feec` or `fortfem_fourier` only | Geometry/mode/toroidal analytical oracle, physical-first plot-data gate, no-umbrella compile, and focused `fo test` |
+
+This dispatch is a consumer migration, not permission to mass-rename public
+procedures. Verb-first renames remain coordinated API-03 work: an agent may
+use an already canonical name, but a new rename requires an inventory row,
+derivative and generated-code evidence, a negative stale-name test, and one
+integrator commit that updates all call sites atomically. A hand-off that
+fails its independent oracle is returned to the owning worktree rather than
+being papered over in `main`.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
