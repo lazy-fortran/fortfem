@@ -1,7 +1,10 @@
 program test_glued_feec_sequence_csc
     use check, only: check_condition, check_summary
     use fortfem_api, only: assemble_glued_feec_sequence_csc, &
-        assemble_glued_feec_sequence_csc_jvp, assemble_glued_feec_sequence_csc_vjp
+        assemble_glued_feec_sequence_csc_jvp, assemble_glued_feec_sequence_csc_vjp, &
+        assemble_glued_feec_sequence_csc_compositions, &
+        assemble_glued_feec_sequence_csc_compositions_jvp, &
+        assemble_glued_feec_sequence_csc_compositions_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_t, fortsparse_status_t
     implicit none
@@ -22,6 +25,7 @@ program test_glued_feec_sequence_csc
     real(dp) :: gradient_plus(g1, g0), curl_plus(g2, g1), divergence_plus(g3, g2)
     real(dp) :: gradient_minus(g1, g0), curl_minus(g2, g1), divergence_minus(g3, g2)
     real(dp) :: gradient_bar(g1, g0), curl_bar(g2, g1), divergence_bar(g3, g2)
+    real(dp) :: curl_gradient_bar(g2, g0), divergence_curl_bar(g3, g1)
     real(dp) :: local_gradient_bar(n1, n0, cells), local_curl_bar(n2, n1, cells)
     real(dp) :: local_divergence_bar(n3, n2, cells)
     real(dp) :: expected_gradient_bar(n1, n0, cells), expected_curl_bar(n2, n1, cells)
@@ -31,6 +35,11 @@ program test_glued_feec_sequence_csc
     type(csc_t) :: gradient_bar_sparse, curl_bar_sparse, divergence_bar_sparse
     type(csc_t) :: gradient_plus_sparse, curl_plus_sparse, divergence_plus_sparse
     type(csc_t) :: gradient_minus_sparse, curl_minus_sparse, divergence_minus_sparse
+    type(csc_t) :: curl_gradient_sparse, divergence_curl_sparse
+    type(csc_t) :: curl_gradient_dot_sparse, divergence_curl_dot_sparse
+    type(csc_t) :: curl_gradient_bar_sparse, divergence_curl_bar_sparse
+    type(csc_t) :: gradient_composition_bar_sparse, curl_composition_bar_sparse
+    type(csc_t) :: divergence_composition_bar_sparse
     type(fortsparse_status_t) :: status
     logical :: passed
     integer :: i
@@ -72,6 +81,27 @@ program test_glued_feec_sequence_csc
     call compare_csc(divergence_dot_sparse, divergence_dot, passed)
     call check_condition(passed, "signed FEEC CSC JVP matches independent scatter")
 
+    call assemble_glued_feec_sequence_csc_compositions( &
+        gradient_sparse, curl_sparse, divergence_sparse, curl_gradient_sparse, &
+        divergence_curl_sparse, status)
+    call check_condition(status%code == 0, "signed FEEC CSC compositions assemble")
+    passed = status%code == 0
+    call compare_csc(curl_gradient_sparse, matmul(curl, gradient), passed)
+    call compare_csc(divergence_curl_sparse, matmul(divergence, curl), passed)
+    call check_condition(passed, &
+        "signed FEEC CSC compositions match independent dense products")
+
+    call assemble_glued_feec_sequence_csc_compositions_jvp( &
+        gradient_sparse, curl_sparse, divergence_sparse, gradient_dot_sparse, &
+        curl_dot_sparse, divergence_dot_sparse, curl_gradient_dot_sparse, &
+        divergence_curl_dot_sparse, status)
+    passed = status%code == 0
+    call compare_csc(curl_gradient_dot_sparse, matmul(curl_dot, gradient) + &
+        matmul(curl, gradient_dot), passed)
+    call compare_csc(divergence_curl_dot_sparse, matmul(divergence_dot, curl) + &
+        matmul(divergence, curl_dot), passed)
+    call check_condition(passed, "signed FEEC CSC composition JVP matches the product rule")
+
     call assemble_glued_feec_sequence_csc( &
         local_gradient + eps*local_gradient_dot, local_curl + eps*local_curl_dot, &
         local_divergence + eps*local_divergence_dot, scalar_map, hcurl_map, hdiv_map, &
@@ -106,11 +136,31 @@ program test_glued_feec_sequence_csc
         maxval(abs(local_divergence_bar - expected_divergence_bar)) < 1.0e-14_dp, &
         "signed FEEC CSC VJP scatters the real matrix cotangent")
 
+    curl_gradient_bar = reshape([0.2_dp, -0.1_dp, 0.4_dp], shape(curl_gradient_bar))
+    divergence_curl_bar = reshape([-0.3_dp, 0.5_dp, -0.7_dp, 0.9_dp, -1.1_dp, 1.3_dp], &
+        shape(divergence_curl_bar))
+    call dense_to_csc(curl_gradient_bar, curl_gradient_bar_sparse, status)
+    call dense_to_csc(divergence_curl_bar, divergence_curl_bar_sparse, status)
+    call assemble_glued_feec_sequence_csc_compositions_vjp( &
+        gradient_sparse, curl_sparse, divergence_sparse, curl_gradient_bar_sparse, &
+        divergence_curl_bar_sparse, gradient_composition_bar_sparse, &
+        curl_composition_bar_sparse, divergence_composition_bar_sparse, status)
+    passed = status%code == 0
+    call compare_csc(gradient_composition_bar_sparse, matmul(transpose(curl), &
+        curl_gradient_bar), passed)
+    call compare_csc(curl_composition_bar_sparse, &
+        matmul(curl_gradient_bar, transpose(gradient)) + &
+        matmul(transpose(divergence), divergence_curl_bar), passed)
+    call compare_csc(divergence_composition_bar_sparse, &
+        matmul(divergence_curl_bar, transpose(curl)), passed)
+    call check_condition(passed, "signed FEEC CSC composition VJP matches the reverse product")
+
     call assemble_glued_feec_sequence_csc( &
         local_gradient, local_curl, local_divergence, reshape([0, 2, 2, 3], [n0, cells]), &
         hcurl_map, hdiv_map, l2_map, g0, g1, g2, g3, gradient_sparse, curl_sparse, &
         divergence_sparse, status)
     call check_condition(status%code /= 0, "signed FEEC CSC gluing rejects zero IDs")
+    if (status%code == 0) error stop 1
     call check_summary("glued FEEC CSC sequence")
 
 contains

@@ -15,6 +15,12 @@ VJP reads canonical CSC cotangents and scatters them to local matrices using
 the same row/column orientation signs. No sparse pattern or graph rebuild is
 differentiated.
 
+The same module also exposes sparse exact-sequence compositions
+`curl*gradient` and `divergence*curl`, together with their product-rule JVP and
+reverse-product VJP. These diagnostics operate on already assembled CSC maps,
+so they are usable by conforming, broken, cut, and multipatch clients without
+coupling the reference path to a mesh or solver.
+
 ## API
 
 ```fortran
@@ -24,10 +30,14 @@ call assemble_glued_feec_sequence_csc( &
     gradient, curl, divergence, status)
 call assemble_glued_feec_sequence_csc_jvp(...)
 call assemble_glued_feec_sequence_csc_vjp(...)
+call assemble_glued_feec_sequence_csc_compositions(...)
+call assemble_glued_feec_sequence_csc_compositions_jvp(...)
+call assemble_glued_feec_sequence_csc_compositions_vjp(...)
 ```
 
 The focused CSC fixture compares every matrix action against an independently
 loop-assembled dense matrix, checks the fixed-topology tangent, verifies the
-cotangent scatter, and rejects zero IDs. This is a small deterministic
+cotangent scatter and the two sparse composition product rules, and rejects
+zero IDs. This is a small deterministic
 reference for a future distributed sparse owner/ghost assembler; it does not
 select a solver or PDE.
