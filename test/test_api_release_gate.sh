@@ -37,10 +37,13 @@ run_negative stale-inventory \
     --root "$repository_dir" --inventory "$fixtures/stale_inventory.md" \
     --inventory-only
 
-# Keep the release path intentionally small: these two analytical tests cover
-# value/JVP/VJP parity and the larger-domain value/JVP closure.  Full galleries,
-# external-code comparisons and cross-compiler jobs run asynchronously.
+# Keep the release path intentionally small: these analytical tests cover
+# value/JVP/VJP parity, the larger-domain closure, and one downstream client
+# importing the canonical free-boundary facade without the umbrella module.
+# Full galleries, external-code comparisons and cross-compiler jobs run
+# asynchronously.
 timeout --foreground "${API_RELEASE_TEST_TIMEOUT:-10}s" \
-    fo test test_boundary_operator_parity test_larger_domain_parity
+    fo test test_boundary_operator_parity test_larger_domain_parity \
+    test_api07_free_boundary_consumer
 
 echo "API release gate passed (fast inventory/layer/generated/derivative path)"
