@@ -3096,7 +3096,8 @@ contains
         edge_length_dot = dot_product(edge, edge_dot)/edge_length
         vector = (xi - opposite_coordinates(1))*tangent_xi + &
             (eta - opposite_coordinates(2))*tangent_eta
-        vector_dot = (xi - opposite_coordinates(1))*tangent_xi_dot + &
+        vector_dot = local_xi_dot*tangent_xi + local_eta_dot*tangent_eta + &
+            (xi - opposite_coordinates(1))*tangent_xi_dot + &
             (eta - opposite_coordinates(2))*tangent_eta_dot
         jacobian = surface_jacobian
         coefficient = real(orientation, dp)*edge_length/jacobian
@@ -3136,6 +3137,7 @@ contains
         real(dp) :: jacobian, jacobian_bar, local_major_bar, local_minor_bar
         real(dp) :: opposite_coordinates(2)
         real(dp) :: local_xi_bar, local_eta_bar
+        real(dp) :: panel_xi_bar, panel_eta_bar
         integer :: local, next, opposite, orientation
 
         edge_vertices_bar = 0.0_dp
@@ -3207,12 +3209,16 @@ contains
         edge_vertices_bar(:, 2) = edge_bar
         tangent_xi_bar = (xi - opposite_coordinates(1))*vector_bar
         tangent_eta_bar = (eta - opposite_coordinates(2))*vector_bar
+        local_xi_bar = dot_product(vector_bar, tangent_xi)
+        local_eta_bar = dot_product(vector_bar, tangent_eta)
         call evaluate_torus_curved_panel_vjp( &
             panel_parameters, major_radius, minor_radius, xi, eta, point_bar, &
             tangent_xi_bar, tangent_eta_bar, jacobian_bar, &
             panel_parameters_bar, local_major_bar, local_minor_bar, &
-            local_xi_bar, local_eta_bar, status)
+            panel_xi_bar, panel_eta_bar, status)
         if (status /= 0) return
+        local_xi_bar = local_xi_bar + panel_xi_bar
+        local_eta_bar = local_eta_bar + panel_eta_bar
         major_radius_bar = local_major_bar
         minor_radius_bar = local_minor_bar
         if (present(xi_bar)) xi_bar = local_xi_bar
