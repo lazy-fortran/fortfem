@@ -293,18 +293,26 @@ documentation gates above pass.
   `scripts/check_module_layers.py` audits compiler-visible `module`/`use`
   edges, duplicate providers, cycles, umbrella/facade/generated leaks, and
   has independent negative fixtures in `test/test_module_layer_audit.sh`.
-- **API-02 — complete first slice:** `fortfem_core` directly re-exports
-  foundational cell-complex and toroidal-coordinate contracts and has an
-  analytical/JVP/VJP/topology smoke test. The remaining facades are still
-  staged work; the core facade must never grow into the umbrella.
-- **API-03 — audit complete, implementation planned:**
-  `doc/api_rename_candidates.md` records the first parity, `compute_*`, and
-  constructor families with derivative closure and independent-oracle gates.
-  No old spelling has been removed yet.
-- **API-04–API-07 — planned:** generated visibility, example migration,
-  release/deprecation gate, and downstream-style canonical-facade clients are
-  intentionally separate slices so a failed rename cannot corrupt numerical
-  behavior or generated provenance.
+- **API-02 — core and FEEC slices complete:** `fortfem_core` directly
+  re-exports foundational cell-complex and toroidal-coordinate contracts, and
+  `fortfem_feec` directly re-exports exact-sequence/commuting-projection and
+  tree--cotree gauge contracts. Both have independent analytical/JVP/VJP or
+  structure smoke tests. Boundary, Fourier, time, interoperability, and plot
+  facades remain separate slices; no facade may grow into the umbrella.
+- **API-03 — first rename complete:** the boundary parity family is now
+  `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
+  module, umbrella exports, tests, and design documentation. The obsolete
+  internal spelling is gone; the independent weighted complex value/JVP/VJP
+  and metadata oracles pass. The remaining candidate families still require
+  separate rename units.
+- **API-04–API-06 — planned:** generated visibility, example migration, and
+  release/deprecation gates remain intentionally separate so a failed rename
+  cannot corrupt numerical behavior or generated provenance.
+- **API-07 — first consumer slice complete:** a no-umbrella downstream smoke
+  client covers core geometry, Fourier modes, planar Helmholtz DtN,
+  structure-preserving mixed-wave stepping, and interchange metrics. It uses
+  direct domain modules where canonical facades are not yet available; it must
+  be migrated to the remaining canonical facades before API-07 closes.
 
 ## 2. Current baseline
 
