@@ -6,7 +6,7 @@ checker="$repo_root/scripts/check_generated_visibility.py"
 
 python3 "$checker" --root "$repo_root"
 
-fixtures="$repo_root/test/fixtures/generated_visibility"
+fixtures="$repo_root/tools/fixtures/generated_visibility"
 run_negative() {
     local name=$1
     local expected=$2
