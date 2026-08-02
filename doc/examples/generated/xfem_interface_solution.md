@@ -29,7 +29,7 @@ fpm run --example xfem_interface_solution
 ```fortran
 program xfem_interface_solution
     !! Manufactured scalar and vector shifted-XFEM interface fields.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_shifted_enriched_space, &
         evaluate_shifted_vector_enriched_space
     use fortfem_kinds, only: dp

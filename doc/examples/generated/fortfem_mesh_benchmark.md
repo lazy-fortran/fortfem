@@ -34,7 +34,7 @@ fpm run --example fortfem_mesh_benchmark
 ```fortran
 program fortfem_mesh_benchmark
     ! FortFEM mesh generation benchmark to compare with FreeFEM
-    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
+    use fortfem_core, only: mesh_t, unit_square_mesh
     use fortfem_kinds, only: dp
     use fortfem_plot, only: plot
     use fortplot, only: figure, legend, fortplot_plot => plot, savefig, &
