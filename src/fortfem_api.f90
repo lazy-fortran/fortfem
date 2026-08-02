@@ -645,6 +645,8 @@ module fortfem_api
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
         assemble_maxwell_sphere_curved_vector_potential_rwg_3d, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp, &
@@ -1477,6 +1479,8 @@ module fortfem_api
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp

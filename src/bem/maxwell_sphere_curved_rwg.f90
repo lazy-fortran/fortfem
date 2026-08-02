@@ -28,6 +28,8 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
     public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
@@ -1393,7 +1395,8 @@ contains
         if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
         call build_maxwell_rwg_surface_space( &
             vertices, triangles, edge_vertices, edge_triangles, status)
-        if (status /= 0 .or. size(coefficients) /= size(edge_vertices, 2)) return
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
         call triangle_duffy_quadrature( &
             quadrature_degree, xi, eta, weights, status)
         if (status /= 0) return
@@ -2552,6 +2555,277 @@ contains
             (4.0_dp*acos(-1.0_dp)), dp)*far_field
         status = 0
     end subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d
+
+    subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp( &
+            vertices, triangles, radius, coefficients, direction, wave_number, &
+            impedance, quadrature_degree, vertices_dot, radius_dot, &
+            coefficients_dot, direction_dot, wave_number_dot, impedance_dot, &
+            far_field, far_field_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: vertices_dot(:, :), radius_dot
+        real(dp), intent(in) :: direction_dot(3), wave_number_dot, impedance_dot
+        complex(dp), intent(out) :: far_field(3), far_field_dot(3)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), basis_value_dot(3)
+        real(dp) :: divergence, divergence_dot, jacobian, jacobian_dot
+        real(dp) :: point(3), point_dot(3), phase_argument_dot
+        complex(dp) :: projection, projection_dot
+        complex(dp) :: phase, phase_dot, surface_current(3)
+        complex(dp) :: surface_current_dot(3), transverse_current(3)
+        complex(dp) :: transverse_current_dot(3), integral(3), integral_dot(3)
+        complex(dp) :: factor, factor_dot
+        integer :: basis, node, panel
+
+        far_field_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        call evaluate_maxwell_sphere_curved_far_field_rwg_3d( &
+            vertices, triangles, radius, coefficients, direction, wave_number, &
+            impedance, quadrature_degree, far_field, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        if (size(coefficients_dot) /= size(coefficients)) then
+            status = 1
+            return
+        end if
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        integral = cmplx(0.0_dp, 0.0_dp, dp)
+        integral_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                surface_current_dot = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis_jvp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), vertices_dot, &
+                        radius_dot, point, basis_value, divergence, jacobian, &
+                        point_dot, basis_value_dot, divergence_dot, jacobian_dot, &
+                        status)
+                    if (status /= 0) return
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                    surface_current_dot = surface_current_dot + &
+                        coefficients_dot(basis)*basis_value + &
+                        coefficients(basis)*basis_value_dot
+                end do
+                projection = sum(direction*surface_current)
+                projection_dot = sum(direction_dot*surface_current) + &
+                    sum(direction*surface_current_dot)
+                transverse_current = surface_current - direction*projection
+                transverse_current_dot = surface_current_dot - &
+                    direction_dot*projection - direction*projection_dot
+                phase_argument_dot = -wave_number_dot*sum(direction*point) - &
+                    wave_number*(sum(direction_dot*point) + &
+                    sum(direction*point_dot))
+                phase = exp(cmplx( &
+                    0.0_dp, -wave_number*sum(direction*point), dp))
+                phase_dot = cmplx(0.0_dp, phase_argument_dot, dp)*phase
+                integral = integral + weights(node)*jacobian*phase* &
+                    transverse_current
+                integral_dot = integral_dot + weights(node)*( &
+                    jacobian_dot*phase*transverse_current + &
+                    jacobian*phase_dot*transverse_current + &
+                    jacobian*phase*transverse_current_dot)
+            end do
+        end do
+        factor = cmplx(0.0_dp, wave_number*impedance/ &
+            (4.0_dp*acos(-1.0_dp)), dp)
+        factor_dot = cmplx(0.0_dp, (wave_number_dot*impedance + &
+            wave_number*impedance_dot)/(4.0_dp*acos(-1.0_dp)), dp)
+        far_field_dot = factor_dot*integral + factor*integral_dot
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp
+
+    subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp( &
+            vertices, triangles, radius, coefficients, direction, wave_number, &
+            impedance, quadrature_degree, far_field_bar, vertices_bar, &
+            radius_bar, coefficients_bar, direction_bar, wave_number_bar, &
+            impedance_bar, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: coefficients(:), far_field_bar(3)
+        real(dp), intent(in) :: wave_number, impedance
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(out) :: vertices_bar(:, :), radius_bar
+        real(dp), intent(out) :: direction_bar(3), wave_number_bar, impedance_bar
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), divergence, jacobian, point(3)
+        real(dp) :: point_bar(3), value_bar(3), jacobian_bar
+        real(dp) :: local_point_bar(3), local_jacobian_bar
+        real(dp) :: local_edge_vertices_bar(3, 2)
+        real(dp) :: local_panel_vertices_bar(3, 3), local_radius_bar
+        complex(dp) :: projection
+        real(dp) :: phase_argument_bar
+        complex(dp) :: phase, surface_current(3), transverse_current(3)
+        complex(dp) :: surface_current_bar(3), transverse_current_bar(3)
+        complex(dp) :: integral(3), integral_bar(3), phase_bar, factor
+        complex(dp) :: direction_current_bar(3), primal_far_field(3)
+        logical :: explicit_geometry_consumed
+        integer :: basis, local, node, panel, status_local, vertex
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        direction_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        impedance_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        call evaluate_maxwell_sphere_curved_far_field_rwg_3d( &
+            vertices, triangles, radius, coefficients, direction, wave_number, &
+            impedance, quadrature_degree, primal_far_field, status)
+        if (status /= 0) return
+        if (any(shape(vertices_bar) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) then
+            status = 1
+            return
+        end if
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(edge_vertices, 2)))
+        coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        integral = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                end do
+                projection = sum(direction*surface_current)
+                transverse_current = surface_current - direction*projection
+                phase = exp(cmplx( &
+                    0.0_dp, -wave_number*sum(direction*point), dp))
+                integral = integral + weights(node)*jacobian*phase* &
+                    transverse_current
+            end do
+        end do
+        factor = cmplx(0.0_dp, wave_number*impedance/ &
+            (4.0_dp*acos(-1.0_dp)), dp)
+        integral_bar = conjg(factor)*far_field_bar
+        wave_number_bar = real(sum(conjg(far_field_bar)*cmplx( &
+            0.0_dp, impedance/(4.0_dp*acos(-1.0_dp)), dp)*integral), dp)
+        impedance_bar = real(sum(conjg(far_field_bar)*cmplx( &
+            0.0_dp, wave_number/(4.0_dp*acos(-1.0_dp)), dp)*integral), dp)
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                end do
+                projection = sum(direction*surface_current)
+                transverse_current = surface_current - direction*projection
+                phase = exp(cmplx( &
+                    0.0_dp, -wave_number*sum(direction*point), dp))
+                transverse_current_bar = weights(node)*jacobian* &
+                    conjg(phase)*integral_bar
+                phase_bar = weights(node)*jacobian*sum( &
+                    conjg(transverse_current)*integral_bar)
+                jacobian_bar = real(sum(conjg(integral_bar)*phase* &
+                    transverse_current), dp)*weights(node)
+                surface_current_bar = transverse_current_bar - &
+                    direction*sum(direction*transverse_current_bar)
+                direction_current_bar = -conjg(projection)* &
+                    transverse_current_bar - surface_current*sum( &
+                    direction*conjg(transverse_current_bar))
+                direction_bar = direction_bar + real(direction_current_bar, dp)
+                phase_argument_bar = real(conjg(phase_bar)* &
+                    cmplx(0.0_dp, 1.0_dp, dp)*phase, dp)
+                wave_number_bar = wave_number_bar - phase_argument_bar* &
+                    sum(direction*point)
+                direction_bar = direction_bar - phase_argument_bar* &
+                    wave_number*point
+                point_bar = -phase_argument_bar*wave_number*direction
+                explicit_geometry_consumed = .false.
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    value_bar = real(conjg(surface_current_bar)* &
+                        coefficients(basis), dp)
+                    coefficients_bar(basis) = coefficients_bar(basis) + &
+                        sum(surface_current_bar*cmplx(basis_value, 0.0_dp, dp))
+                    if (.not. explicit_geometry_consumed) then
+                        local_point_bar = point_bar
+                        local_jacobian_bar = jacobian_bar
+                        explicit_geometry_consumed = .true.
+                    else
+                        local_point_bar = 0.0_dp
+                        local_jacobian_bar = 0.0_dp
+                    end if
+                    call evaluate_maxwell_sphere_curved_rwg_basis_vjp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), &
+                        local_point_bar, value_bar, 0.0_dp, local_jacobian_bar, &
+                        local_edge_vertices_bar, local_panel_vertices_bar, &
+                        local_radius_bar, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_edge_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        vertices_bar(:, triangles(local, panel)) = &
+                            vertices_bar(:, triangles(local, panel)) + &
+                            local_panel_vertices_bar(:, local)
+                    end do
+                    radius_bar = radius_bar + local_radius_bar
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp
 
     subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d( &
             vertices, triangles, radius, direction, polarization, wave_number, &
