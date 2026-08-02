@@ -337,6 +337,7 @@ module fortfem_api
         build_tree_cotree_dof_map, build_tree_cotree_gauge, &
         reduce_tree_cotree_dense_system, &
         reduce_tree_cotree_dense_system_jvp, reduce_tree_cotree_dense_system_vjp, &
+        tree_cotree_gauge_components, &
         tree_cotree_gauge_edges, tree_cotree_gauge_t, &
         validate_tree_cotree_gauge
     use fortfem_surface_triangle_geometry_3d, only: &
@@ -1620,6 +1621,7 @@ module fortfem_api
     public :: build_tree_cotree_gauge
     public :: build_tree_cotree_dof_map
     public :: validate_tree_cotree_gauge
+    public :: tree_cotree_gauge_components
     public :: tree_cotree_gauge_edges
     public :: apply_tree_cotree_restriction
     public :: apply_tree_cotree_prolongation
