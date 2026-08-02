@@ -1577,7 +1577,11 @@ gallery example.
   independent complex central-difference/adjoint test guards the contract.
   The actual curved-torus block also has an independent nonzero manufactured
   RWG-current state test, so the coupling gate is not limited to the
-  zero-current constant-field example.
+  zero-current constant-field example. The refined/localized torus RWG basis
+  used by the RBC pairing now also exposes analytical geometry JVP/VJP
+  products, with an independent reassembly and real adjoint oracle; this is
+  the local derivative layer needed before differentiating the assembled
+  refined-to-coarse pairing itself.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**

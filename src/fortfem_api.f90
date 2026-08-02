@@ -685,6 +685,8 @@ module fortfem_api
         evaluate_maxwell_torus_magnetic_geometry_vjp, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
         evaluate_maxwell_torus_curved_localized_rwg_basis, &
+        evaluate_maxwell_torus_curved_localized_rwg_basis_jvp, &
+        evaluate_maxwell_torus_curved_localized_rwg_basis_vjp, &
         evaluate_maxwell_torus_curved_rwg_basis, &
         evaluate_maxwell_torus_curved_rwg_basis_jvp, &
         evaluate_maxwell_torus_curved_rwg_basis_vjp, &
@@ -1462,6 +1464,8 @@ module fortfem_api
     public :: evaluate_maxwell_torus_magnetic_geometry_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_localized_rwg_basis
+    public :: evaluate_maxwell_torus_curved_localized_rwg_basis_jvp
+    public :: evaluate_maxwell_torus_curved_localized_rwg_basis_vjp
     public :: evaluate_maxwell_torus_curved_rwg_basis
     public :: evaluate_maxwell_torus_curved_rwg_basis_jvp
     public :: evaluate_maxwell_torus_curved_rwg_basis_vjp
