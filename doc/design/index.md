@@ -185,6 +185,11 @@ couples a port-Hamiltonian wave block to a resistive RL wall by implicit
 midpoint, with an independent energy/dissipation ledger and full JVP/VJP
 actions.
 
+The [symplectic map defect contract](symplectic_map_defect.html) checks
+\(S^T\Omega S-\Omega\) for arbitrary linear one-step maps, with complete
+primal/JVP/VJP actions for mixed acoustics, vibration, elasticity, and
+electromagnetic clients.
+
 The [batched vector enrichment differential](batched_vector_enrichment_differential_3d.html)
 composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP
