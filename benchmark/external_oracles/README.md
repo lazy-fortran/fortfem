@@ -20,6 +20,7 @@ The validator and adapter use only the Python standard library:
 python3 tools/validate_biro_external_manifest.py \
   benchmark/external_oracles/biro_paper_manifest.json
 python3 benchmark/external_oracles/run_biro_paper_adapter.py
+python3 benchmark/external_oracles/run_biro_paper_gallery.py
 ```
 
 The second command intentionally prints `SKIP` and exits successfully while the
@@ -27,3 +28,15 @@ external manifest is absent. With a reviewed sister-repository checkout, pass
 `--contract`, `--data-manifest`, and `--data-root`; the adapter verifies the
 case/provenance/member contract and archive bytes before reporting `READY`.
 It never downloads or invokes an external solver.
+
+The gallery command uses the same gate. When a reviewed artifact supplies a
+JSON payload with schema `fortfem-biro-paper-payload-1` (nodes, elements, and
+postprocessed solution values), it writes `solution.svg`, `solution.csv`, and
+`provenance.json` under `--output-dir`. The SVG deliberately puts the verified
+solution first and labels the DOI, checksum, and exact-data status. Vector
+solution values are rendered by their magnitude. This is a plotting adapter,
+not a claim that FortFEM contains the paper's application data or solver.
+
+The checked-in contract remains `SKIP`; the in-tree
+`example/biro_tree_cotree_3d_gallery` is the manufactured, method-faithful
+tree--cotree oracle and is labeled separately.

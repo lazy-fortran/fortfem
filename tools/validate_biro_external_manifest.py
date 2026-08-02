@@ -20,6 +20,7 @@ from typing import Any
 
 SCHEMA = "fortfem-biro-paper-adapter-1"
 DATA_SCHEMA = "fortfem-biro-paper-data-1"
+PAYLOAD_SCHEMA = "fortfem-biro-paper-payload-1"
 CASE_ID = "biro-1996-tree-cotree-magnetostatic-v1"
 PAPER_URI = "https://doi.org/10.1109/20.497322"
 ARRAY_KEYS = ("geometry", "material", "source")
@@ -132,6 +133,8 @@ def validate_manifest(document: dict[str, Any]) -> None:
         require(availability == "available",
                 "ready adapter requires available external data")
 
+    validate_gallery_metadata(document)
+
 
 def validate_external_data_manifest(document: dict[str, Any]) -> None:
     """Validate a sister-repository artifact manifest without reading arrays."""
@@ -157,6 +160,30 @@ def validate_external_data_manifest(document: dict[str, Any]) -> None:
     for name in ARRAY_KEYS:
         require(isinstance(members[name], str) and members[name].strip(),
                 f"data members.{name} must be a non-empty artifact selector")
+
+
+def validate_gallery_metadata(document: dict[str, Any]) -> None:
+    """Validate the optional solution-first gallery contract."""
+
+    gallery = document.get("gallery")
+    require(isinstance(gallery, dict), "gallery metadata is required")
+    require(gallery.get("runner") ==
+            "benchmark/external_oracles/run_biro_paper_gallery.py",
+            "gallery.runner must identify the solution-first gallery runner")
+    require(gallery.get("payload_schema") == PAYLOAD_SCHEMA,
+            f"gallery.payload_schema must be {PAYLOAD_SCHEMA}")
+    require(gallery.get("plot") == "solution-first-svg",
+            "gallery.plot must be solution-first-svg")
+    status = gallery.get("status")
+    require(status in ("skipped", "ready"),
+            "gallery.status must be skipped or ready")
+    if status == "skipped":
+        require(isinstance(gallery.get("skip_reason"), str) and
+                gallery["skip_reason"].strip(),
+                "skipped gallery requires an explicit skip_reason")
+    else:
+        require(gallery.get("skip_reason") is None,
+                "ready gallery must not retain skip_reason")
 
 
 def canonical_file_sha256(path: Path) -> str:

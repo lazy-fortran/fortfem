@@ -39,5 +39,12 @@
     "status": "skipped",
     "skip_reason": "the reviewed sister-repository artifact is not present; the in-tree manufactured gallery remains the method-faithful tree-cotree oracle",
     "runner": "benchmark/external_oracles/run_biro_paper_adapter.py"
+  },
+  "gallery": {
+    "status": "skipped",
+    "skip_reason": "the exact paper payload is absent; no exact solution plot is generated",
+    "runner": "benchmark/external_oracles/run_biro_paper_gallery.py",
+    "payload_schema": "fortfem-biro-paper-payload-1",
+    "plot": "solution-first-svg"
   }
 }
