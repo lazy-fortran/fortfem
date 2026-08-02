@@ -20,7 +20,8 @@ fixture should not be read as a claim to reproduce a paper figure.  It is a
 reproducible method and orientation oracle that exercises the same direct
 gauge mechanism in three dimensions.  The first plot is the solved physical
 edge potential: blue tree edges, red cotree edges, black edge-potential
-vectors, and face-circulation markers.
+vectors, and edge-DOF magnitude markers.  The oriented face circulations are
+reported separately in `diagnostics_1d.png` and `diagnostics.csv`.
 
 Run it with:
 
