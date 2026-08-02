@@ -35,5 +35,15 @@ report = json.loads((out / "benchmark.json").read_text())
 assert report["samples"] == 25 * 33
 assert report["fd_error"] < 2e-9
 assert report["geometry_error"] < 2e-12
+objective = 0.0
+for row in rows:
+    residual = float(row["residual"])
+    weight = float(row["weight"])
+    assert weight > 0.0
+    objective += 0.5 * weight * residual * residual
+assert abs(objective - report["objective"]) <= 2e-12
+assert report["provenance"] == "analytic-torus-direct-force-v1"
+assert report["primary_plot"] == "direct_force_torus_solution_3d.png"
+assert report["closure"] == "neutral-caller-owned-residual"
 print("direct-force gallery renders physical torus before diagnostics")
 PY
