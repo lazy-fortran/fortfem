@@ -187,6 +187,10 @@ the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall
 response compositions.
 
+The [complex boundary trace residual](complex_boundary_trace_residual.html)
+gives normal-flux and tangential-field ports with supplied targets/jumps and
+positive work weights, including complete complex JVP/VJP actions.
+
 The [incomplete-Cholesky contract](incomplete_cholesky.html) provides an
 explicit SPD IC(0) factor/apply primitive for compatible iterative paths and a
 fixed-pattern sparse IC(0) path; its companion sparse ILU(0) API is the
