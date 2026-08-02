@@ -1,5 +1,5 @@
 program tetra_nedelec_p_convergence
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_tetra_nedelec_first_kind, &
         initialize_tetra_nedelec_first_kind, &
         interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &

@@ -22,7 +22,11 @@ module fortfem_boundary
         initialize_boundary_operator_contract, &
         initialize_boundary_operator_trace_metadata, &
         validate_boundary_operator_contract
+    use fortfem_circular_dtn_2d, only: &
+        apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
     use fortfem_kinds, only: dp
+    use fortfem_laplace_boundary_operators_2d, only: &
+        assemble_laplace_single_layer_constant
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, &
         apply_planar_helmholtz_dtn_jvp, &
@@ -56,6 +60,9 @@ module fortfem_boundary
     public :: assemble_planar_helmholtz_dtn_form
     public :: assemble_planar_helmholtz_dtn_form_jvp
     public :: assemble_planar_helmholtz_dtn_form_vjp
+    public :: apply_circular_helmholtz_dtn
+    public :: circular_helmholtz_dtn_eigenvalue
+    public :: assemble_laplace_single_layer_constant
 
     ! Boundary type for defining domains
     type :: boundary_t

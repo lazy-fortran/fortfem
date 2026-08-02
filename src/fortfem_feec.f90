@@ -14,6 +14,15 @@ module fortfem_feec
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
         assemble_feec_commuting_projection_vjp
+    use fortfem_tetra_nedelec_arbitrary_order, only: &
+        evaluate_tetra_nedelec_first_kind, &
+        evaluate_tetra_nedelec_first_kind_jvp, &
+        evaluate_tetra_nedelec_first_kind_vjp, &
+        initialize_tetra_nedelec_first_kind, &
+        tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
+    use fortfem_tetra_nedelec_interpolation, only: &
+        interpolate_reference_tetra_nedelec
+    use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, &
         apply_tree_cotree_restriction, &
@@ -39,12 +48,20 @@ module fortfem_feec
     public :: assemble_feec_exact_sequence_vjp
     public :: build_tree_cotree_dof_map
     public :: build_tree_cotree_gauge
+    public :: evaluate_tetra_nedelec_first_kind
+    public :: evaluate_tetra_nedelec_first_kind_jvp
+    public :: evaluate_tetra_nedelec_first_kind_vjp
+    public :: initialize_tetra_nedelec_first_kind
+    public :: interpolate_reference_tetra_nedelec
     public :: reduce_tree_cotree_dense_system
     public :: reduce_tree_cotree_dense_system_jvp
     public :: reduce_tree_cotree_dense_system_vjp
     public :: tree_cotree_gauge_components
     public :: tree_cotree_gauge_edges
     public :: tree_cotree_gauge_t
+    public :: tetra_nedelec_dof_count
+    public :: tetra_nedelec_first_kind_t
+    public :: tetra_duffy_quadrature
     public :: validate_tree_cotree_gauge
 
 end module fortfem_feec
