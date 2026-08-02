@@ -377,8 +377,9 @@ contains
             local_vertices = box_vertices(:, box_tetrahedra(:, tetrahedron))
             call invert_tetra_affine_map( &
                 local_vertices, point, reference_point, map_status)
-            if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) .or. &
-                sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
+            if (map_status /= 0) cycle
+            if (any(reference_point < -1.0e-10_dp)) cycle
+            if (sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
             do local_edge = 1, 6
                 real_dofs(local_edge) = &
                     real(box_orientations(local_edge, tetrahedron), dp)* &
@@ -419,9 +420,11 @@ contains
         real(dp) :: arrow_u(arrow_nx*arrow_ny), arrow_v(arrow_nx*arrow_ny)
         real(dp) :: exact_magnitude, maximum_slice_error
         real(dp) :: source_x, source_y, weight_x, weight_y
-        complex(dp) :: vector_value(3)
+        complex(dp) :: vector_value(3), sample_field(3)
+        complex(dp) :: field_samples(3, slice_nx, slice_ny)
         real(dp) :: sample_offsets(2, sample_offset_count)
-        integer :: arrow, index_x, index_y, sample_offset, local_status
+        integer :: arrow, csv_unit, index_x, index_y, sample_offset
+        integer :: local_status
         integer :: source_index_x, source_index_y
 
         do index_x = 1, slice_nx
@@ -456,15 +459,42 @@ contains
                         sample_point(2) + sample_offsets(2, sample_offset)* &
                         mesh_spacing))
                     call evaluate_pml_magnitude_at_point( &
-                        sample_point, sample_value, local_status)
+                        sample_point, sample_value, local_status, sample_field)
                     if (local_status /= 0) error stop &
                         "Maxwell PML plot sample failed"
+                    if (sample_offset == 5) &
+                        field_samples(:, index_x, index_y) = sample_field
                     values(index_y, index_x) = &
                         values(index_y, index_x) + sample_value/ &
                         real(sample_offset_count, dp)
                 end do
             end do
         end do
+
+        open (newunit=csv_unit, &
+            file=output_directory//"/maxwell_pml_field_slice.csv", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot open Maxwell field CSV"
+        write (csv_unit, "(a)", iostat=local_status) &
+            "x,y,Ex_real,Ey_real,Ez_real,Ex_imag,Ey_imag,Ez_imag,E_magnitude"
+        if (local_status /= 0) error stop "cannot write Maxwell field CSV header"
+        do index_y = 1, slice_ny
+            do index_x = 1, slice_nx
+                write (csv_unit, "(9(es24.16,','))", iostat=local_status) &
+                    x_samples(index_x), y_samples(index_y), &
+                    real(field_samples(1, index_x, index_y), dp), &
+                    real(field_samples(2, index_x, index_y), dp), &
+                    real(field_samples(3, index_x, index_y), dp), &
+                    aimag(field_samples(1, index_x, index_y)), &
+                    aimag(field_samples(2, index_x, index_y)), &
+                    aimag(field_samples(3, index_x, index_y)), &
+                    sqrt(sum(abs(field_samples(:, index_x, index_y))**2))
+                if (local_status /= 0) &
+                    error stop "cannot write Maxwell field CSV"
+            end do
+        end do
+        close (csv_unit, iostat=local_status)
+        if (local_status /= 0) error stop "cannot close Maxwell field CSV"
 
         maximum_slice_error = 0.0_dp
         do index_x = 1, slice_nx
@@ -534,10 +564,12 @@ contains
         call savefig(output_directory//"/maxwell_pml_field_slice_2d.png")
     end subroutine render_pml_field_slice
 
-    subroutine evaluate_pml_magnitude_at_point(point, magnitude, local_status)
+    subroutine evaluate_pml_magnitude_at_point( &
+            point, magnitude, local_status, field_value)
         real(dp), intent(in) :: point(3)
         real(dp), intent(out) :: magnitude
         integer, intent(out) :: local_status
+        complex(dp), intent(out), optional :: field_value(3)
 
         real(dp) :: reference_point(3), real_value(3), real_curl(3)
         real(dp) :: imaginary_value(3), imaginary_curl(3)
@@ -549,14 +581,16 @@ contains
         if (basis_status /= 0) then
             local_status = 1
             magnitude = 0.0_dp
+            if (present(field_value)) field_value = cmplx(0.0_dp, 0.0_dp, dp)
             return
         end if
         do tetrahedron = 1, size(tetrahedra, 2)
             local_vertices = vertices(:, tetrahedra(:, tetrahedron))
             call invert_tetra_affine_map( &
                 local_vertices, point, reference_point, map_status)
-            if (map_status /= 0 .or. any(reference_point < -1.0e-10_dp) .or. &
-                sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
+            if (map_status /= 0) cycle
+            if (any(reference_point < -1.0e-10_dp)) cycle
+            if (sum(reference_point) > 1.0_dp + 1.0e-10_dp) cycle
             do local_edge = 1, 6
                 local_dofs(local_edge) = &
                     real(orientations(local_edge, tetrahedron), dp)* &
@@ -578,11 +612,14 @@ contains
                 imaginary_curl, local_status)
             if (local_status /= 0) cycle
             magnitude = sqrt(sum(real_value**2 + imaginary_value**2))
+            if (present(field_value)) &
+                field_value = cmplx(real_value, imaginary_value, dp)
             local_status = 0
             return
         end do
         magnitude = 0.0_dp
         local_status = 1
+        if (present(field_value)) field_value = cmplx(0.0_dp, 0.0_dp, dp)
     end subroutine evaluate_pml_magnitude_at_point
 
     pure subroutine constant_source(x, y, z, value)
