@@ -744,6 +744,10 @@ module fortfem_api
         assemble_vector_entropy_stable_flux_vjp
     use fortfem_mortar_trace_coupling, only: assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, assemble_mortar_trace_coupling_vjp
+    use fortfem_geometry_mortar_trace_coupling, only: &
+        assemble_geometry_mortar_trace_coupling, &
+        assemble_geometry_mortar_trace_coupling_jvp, &
+        assemble_geometry_mortar_trace_coupling_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
         assemble_fci_boundary_patch_mortar, &
         assemble_fci_boundary_patch_mortar_jvp, &
@@ -2734,6 +2738,9 @@ module fortfem_api
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
+    public :: assemble_geometry_mortar_trace_coupling
+    public :: assemble_geometry_mortar_trace_coupling_jvp
+    public :: assemble_geometry_mortar_trace_coupling_vjp
     public :: assemble_fci_boundary_patch_mortar
     public :: assemble_fci_boundary_patch_mortar_jvp
     public :: assemble_fci_boundary_patch_mortar_vjp
