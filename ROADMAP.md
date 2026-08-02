@@ -2279,6 +2279,12 @@ gallery example.
 
 ### Phase 4: Open boundaries and vector operators: **active**
 
+- The neutral `evaluate_surface_vector_trace` contract now decomposes
+  caller-owned three-dimensional surface samples into normalized normal and
+  tangential traces, with fixed-topology field/normal JVP/VJP actions and an
+  independent reconstruction, finite-difference, adjoint, and invalid-normal
+  oracle. FEM, BEM, DtN, PML, and surface-plot clients can share this trace
+  convention without selecting an equation or boundary physics.
 - Complete scalar and Maxwell FEM/BEM, DtN, and PML parity on slab, circle,
   sphere, cylinder, and torus.
 - The public curvilinear PML coefficient contract now accepts a full complex
@@ -2323,6 +2329,13 @@ gallery example.
   wrapper now composes the same builder with the scalar assembly, returning
   the full mesh/layer/wave-number/attenuation JVP/VJP chain under the same
   fixed-active-set event rule.
+- The neutral `evaluate_surface_vector_trace` contract now decomposes
+  caller-owned three-dimensional fields on FEM/BEM/DtN/PML surfaces into
+  normal and tangential traces, normalizing supplied normals and exposing
+  value/JVP/VJP actions. An independent central-difference and real-adjoint
+  oracle covers non-unit normals and rejects degenerate surfaces; it is a
+  reusable physical-field plotting and boundary-work layer, not an equation
+  or solver selection.
 - The public `fortfem_maxwell_curved_dtn` contract now composes weak electric
   and magnetic trace forms into a mixed RWG/RBC map with matrix-free action,
   JVP, and VJP products. `assemble_maxwell_torus_curved_dtn_rwg_3d` wires the

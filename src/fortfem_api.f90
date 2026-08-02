@@ -971,6 +971,10 @@ module fortfem_api
         sample_physical_surface_geometry, &
         sample_physical_surface_geometry_jvp, &
         sample_physical_surface_geometry_vjp
+    use fortfem_surface_vector_trace, only: &
+        evaluate_surface_vector_trace, &
+        evaluate_surface_vector_trace_jvp, &
+        evaluate_surface_vector_trace_vjp
     use fortfem_fci_boundary_patch_mortar, only: &
         assemble_fci_boundary_patch_mortar, &
         assemble_fci_boundary_patch_mortar_jvp, &
@@ -3113,6 +3117,9 @@ module fortfem_api
     public :: sample_physical_surface_geometry
     public :: sample_physical_surface_geometry_jvp
     public :: sample_physical_surface_geometry_vjp
+    public :: evaluate_surface_vector_trace
+    public :: evaluate_surface_vector_trace_jvp
+    public :: evaluate_surface_vector_trace_vjp
     public :: assemble_fci_boundary_patch_mortar
     public :: assemble_fci_boundary_patch_mortar_jvp
     public :: assemble_fci_boundary_patch_mortar_vjp
