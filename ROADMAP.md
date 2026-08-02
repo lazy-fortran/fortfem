@@ -1521,6 +1521,21 @@ closure-neutral pieces (and keep their own manufactured oracles):
    This campaign must compose the operators above before any external DESC
    client is considered viable.
 
+Since this audit, the neutral implementation now includes:
+
+- `equation_objective_metadata_t` for targets, bounds, weights, scales,
+  active/fixed flags, KKT/nullspace IDs, parameter tangents, and HVP capability
+  metadata, with deep-copy and validation oracles;
+- `evaluate_boozer_like_rotational_transform` and
+  `evaluate_near_axis_diagnostic_metadata` for supplied-field/geometry samples
+  and supplied near-axis coefficient data, with JVP/VJP actions and strict
+  axis-regularity checks.
+
+These are interchange and diagnostic foundations only. They do not implement
+DESC profiles, optimization, equilibrium readers, coil models, or plasma
+closures. The geometry differential jet, physical operator chain, and composed
+direct-force campaign remain open below.
+
 The checklist is grounded in the [DESC documentation](https://desc-docs.readthedocs.io/en/stable/),
 including its [basis and collocation contract](https://desc-docs.readthedocs.io/en/stable/notebooks/basis_grid.html),
 [transforms](https://desc-docs.readthedocs.io/en/stable/dev_guide/notebooks/transform.html),
