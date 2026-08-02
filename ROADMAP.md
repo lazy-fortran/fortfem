@@ -1152,8 +1152,8 @@ The dense IC(0) factor/apply primitive and the PCG `ichol`/`ic0` option are now
 public and independently tested. Standalone sparse IC(0) and ILU(0) paths now
 consume FortSparse CSC directly, preserve the input lower/upper patterns
 without fill, and expose fixed-factor right-hand-side JVP/VJP actions,
-including the transpose solve for ILU. PCG integration, ILUT/fill-controlled
-ICHOL and production-size scaling remain active solver work. The deterministic
+including the transpose solve for ILU. Fill-controlled ICHOL and
+production-size scaling remain active solver work. The deterministic
 `build_sparse_ilut`/`apply_sparse_ilut` path now supplies drop tolerance,
 per-column fill selection, fixed-factor JVP/VJP, and explicit pivot status;
 `build_sparse_ichol` supplies the matching SPD drop/fill path on the existing
@@ -1167,7 +1167,11 @@ row-oriented ICHOL now performs the matching symmetric row sweep with a
 Cholesky diagonal oracle and the same sparse CSC apply/JVP/VJP contract.
 The `solver_benchmark` gallery fixture now records row-ILUT and row-ICHOL
 construction times on a shifted symmetric Poisson matrix and emits a log-log
-timing plot; production-size memory and accuracy scaling remain. The
+timing plot; production-size memory and accuracy scaling remain. `solve_sparse`
+PCG now accepts `sparse_ilut`/`ilut` and routes the legacy `ilu` alias through
+the row-oriented factor directly, avoiding the old dense CSC-to-array
+conversion; an exact sparse oracle covers that integration and its
+bounded-memory intent. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
