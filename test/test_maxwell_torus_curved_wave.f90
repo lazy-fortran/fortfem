@@ -5,6 +5,8 @@ program test_maxwell_torus_curved_wave
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp, &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp, &
         generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
@@ -16,6 +18,9 @@ program test_maxwell_torus_curved_wave
     complex(dp), allocatable :: right_hand_side_dot(:), right_hand_side_bar(:)
     complex(dp), allocatable :: right_hand_side_plus(:), right_hand_side_minus(:)
     complex(dp), allocatable :: polarization_bar(:)
+    complex(dp), allocatable :: coefficients_dot(:), coefficients_bar(:)
+    complex(dp) :: far_field_dot(3), far_field_plus(3), far_field_minus(3)
+    complex(dp) :: far_field_bar(3)
     complex(dp) :: far_field(3), polarization(3), received, transmitted
     integer, allocatable :: triangles(:, :)
     real(dp), allocatable :: parameters(:, :), vertices(:, :)
@@ -26,6 +31,7 @@ program test_maxwell_torus_curved_wave
     real(dp) :: direction_dot(3), direction_axis(3), major_radius_dot
     real(dp) :: minor_radius_dot, major_radius_bar, minor_radius_bar
     real(dp) :: direction_bar(3), wave_number_bar, wave_number_dot
+    real(dp) :: impedance_dot, impedance_bar
     real(dp) :: step, jvp_error, lhs, rhs, adjoint_error
     complex(dp) :: polarization_dot(3)
     integer, parameter :: derivative_quadrature_degree = 4
@@ -141,6 +147,58 @@ program test_maxwell_torus_curved_wave
     call record_condition(status == 0 .and. adjoint_error < &
         5.0e-9_dp*max(1.0_dp, abs(lhs), abs(rhs)), &
         "exact-torus plane-wave RHS geometry/data VJP satisfies the adjoint identity")
+
+    allocate(coefficients_dot(size(coefficients)))
+    do basis = 1, size(coefficients_dot)
+        coefficients_dot(basis) = cmplx( &
+            0.013_dp*sin(real(2*basis, dp)), &
+            -0.017_dp*cos(real(3*basis, dp)), dp)
+    end do
+    impedance_dot = -0.023_dp
+    call evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp( &
+        vertices, triangles, parameters, major_radius, minor_radius, coefficients, &
+        direction, wave_number, impedance, derivative_quadrature_degree, &
+        vertices_dot, parameters_dot, major_radius_dot, minor_radius_dot, &
+        coefficients_dot, direction_dot, wave_number_dot, impedance_dot, far_field, &
+        far_field_dot, status)
+    call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+        vertices + step*vertices_dot, triangles, parameters + step*parameters_dot, &
+        major_radius + step*major_radius_dot, minor_radius + step*minor_radius_dot, &
+        coefficients + step*coefficients_dot, &
+        rotate_vector(direction, direction_axis, step), wave_number + step*wave_number_dot, &
+        impedance + step*impedance_dot, derivative_quadrature_degree, far_field_plus, &
+        status)
+    call evaluate_maxwell_torus_curved_far_field_rwg_3d( &
+        vertices - step*vertices_dot, triangles, parameters - step*parameters_dot, &
+        major_radius - step*major_radius_dot, minor_radius - step*minor_radius_dot, &
+        coefficients - step*coefficients_dot, &
+        rotate_vector(direction, direction_axis, -step), wave_number - step*wave_number_dot, &
+        impedance - step*impedance_dot, derivative_quadrature_degree, far_field_minus, &
+        status)
+    jvp_error = maxval(abs(far_field_dot - &
+        (far_field_plus - far_field_minus)/(2.0_dp*step)))
+    call record_condition(status == 0 .and. jvp_error < 2.0e-7_dp, &
+        "exact-torus Maxwell far-field geometry/data JVP matches reassembly")
+
+    far_field_bar = [ &
+        cmplx(0.37_dp, -0.21_dp, dp), cmplx(-0.14_dp, 0.29_dp, dp), &
+        cmplx(0.23_dp, 0.11_dp, dp)]
+    call evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp( &
+        vertices, triangles, parameters, major_radius, minor_radius, coefficients, &
+        direction, wave_number, impedance, derivative_quadrature_degree, &
+        far_field_bar, vertices_bar, parameters_bar, major_radius_bar, &
+        minor_radius_bar, coefficients_bar, direction_bar, wave_number_bar, &
+        impedance_bar, status)
+    lhs = real(sum(conjg(far_field_bar)*far_field_dot), dp)
+    rhs = sum(vertices_bar*vertices_dot) + sum(parameters_bar*parameters_dot) + &
+        major_radius_bar*major_radius_dot + minor_radius_bar*minor_radius_dot + &
+        real(sum(conjg(coefficients_bar)*coefficients_dot), dp) + &
+        dot_product(direction_bar, direction_dot) + wave_number_bar*wave_number_dot + &
+        impedance_bar*impedance_dot
+    adjoint_error = abs(lhs - rhs)
+    call record_condition(status == 0 .and. adjoint_error < &
+        5.0e-9_dp*max(1.0_dp, abs(lhs), abs(rhs)), &
+        "exact-torus Maxwell far-field geometry/data VJP satisfies the adjoint identity")
 
     call check_summary("Exact-curved torus Maxwell wave traces")
     if (.not. all_passed) error stop 1
