@@ -758,6 +758,10 @@ skew, and total pointwise tensor power, with exact real JVP/VJP actions. Its
 independent oracle makes the zero instantaneous power of Hall/gyrotropic skew
 parts explicit while retaining tensor-valued derivatives; quadrature,
 field-aligned pullbacks, and physical closures remain caller-owned.
+The fixed 3-D value, JVP, and VJP contractions now delegate to pinned
+FortSym-generated kernels; `check_generated.sh` pins their byte-current source,
+while the existing deterministic and seeded constitutive tests remain the
+independent behavioral oracle.
 The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
 RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
 interpolation matrices assemble a sparse staggered gradient; the support
