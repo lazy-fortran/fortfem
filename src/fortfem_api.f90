@@ -680,6 +680,8 @@ module fortfem_api
         assemble_maxwell_torus_curved_rwg_mass_matrix_jvp, &
         assemble_maxwell_torus_curved_rwg_mass_matrix_vjp, &
         assemble_maxwell_torus_curved_rwg_rbc_pairing, &
+        assemble_maxwell_torus_curved_rwg_rbc_pairing_jvp, &
+        assemble_maxwell_torus_curved_rwg_rbc_pairing_vjp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp, &
@@ -1452,6 +1454,8 @@ module fortfem_api
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix_jvp
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_jvp
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_vjp
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
