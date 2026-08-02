@@ -1566,8 +1566,10 @@ gallery example.
   identity, and its decaying Green-kernel decay-rate JVP/VJP now propagates
   through regular, coincident, and adaptive panel-pair quadrature with an
   independent central reassembly and complex real-part adjoint oracle;
-  geometry derivatives remain explicit follow-up work. The assembled toroidal
-  MFIE offset trace now exposes a
+  the propagating torus EFIE now has the matching fixed-geometry wave-number
+  JVP/VJP through the same analytical quadrature chain and independent
+  reassembly/adjoint checks; geometry derivatives remain explicit follow-up
+  work. The assembled toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
   complete fixed-topology geometry JVP/VJP chain now also propagates torus

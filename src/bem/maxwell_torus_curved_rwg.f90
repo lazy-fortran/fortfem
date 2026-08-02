@@ -36,6 +36,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_torus_efie_imaginary_decay_jvp
     public :: assemble_maxwell_torus_efie_imaginary_decay_vjp
+    public :: assemble_maxwell_torus_efie_wave_number_jvp
+    public :: assemble_maxwell_torus_efie_wave_number_vjp
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
     public :: assemble_maxwell_torus_mfie_offset_jvp
@@ -948,6 +950,66 @@ contains
         end if
         decay_rate_bar = real(sum(conjg(matrix_bar)*matrix_dot), dp)
     end subroutine assemble_maxwell_torus_efie_imaginary_decay_vjp
+
+    subroutine assemble_maxwell_torus_efie_wave_number_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            wave_number_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        real(dp), intent(in) :: wave_number_dot
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+        complex(dp), allocatable :: scalar_potential(:, :), vector_potential(:, :)
+        complex(dp), allocatable :: scalar_potential_dot(:, :)
+        complex(dp), allocatable :: vector_potential_dot(:, :)
+
+        status = 1
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, wave_number_dot, quadrature_degree, tolerance, max_depth, &
+            .false., vector_potential, scalar_potential, vector_potential_dot, &
+            scalar_potential_dot, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        matrix_dot = cmplx(0.0_dp, impedance*wave_number_dot, dp)*vector_potential + &
+            cmplx(0.0_dp, impedance*wave_number, dp)*vector_potential_dot - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential_dot + &
+            cmplx(0.0_dp, impedance*wave_number_dot/wave_number**2, dp)* &
+            scalar_potential
+        status = 0
+    end subroutine assemble_maxwell_torus_efie_wave_number_jvp
+
+    subroutine assemble_maxwell_torus_efie_wave_number_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: wave_number_bar
+        complex(dp), allocatable :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        wave_number_bar = 0.0_dp
+        call assemble_maxwell_torus_efie_wave_number_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            1.0_dp, matrix, matrix_dot, status)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(matrix_dot))) then
+            status = 1
+            return
+        end if
+        wave_number_bar = real(sum(conjg(matrix_bar)*matrix_dot), dp)
+    end subroutine assemble_maxwell_torus_efie_wave_number_vjp
 
     subroutine assemble_maxwell_torus_curved_mfie_rwg_rbc_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
