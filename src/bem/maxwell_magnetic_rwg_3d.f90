@@ -10,6 +10,9 @@ module fortfem_maxwell_magnetic_rwg_3d
     public :: evaluate_maxwell_magnetic_field_rwg_3d
     public :: evaluate_maxwell_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_magnetic_field_rwg_3d_vjp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
 
 contains
 
@@ -70,6 +73,113 @@ contains
         end do
         status = 0
     end subroutine evaluate_maxwell_magnetic_field_rwg_3d
+
+    subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets( &
+            vertices, triangles, coefficients, observations, wave_number, &
+            quadrature_degree, magnetic_fields, status)
+        real(dp), intent(in) :: vertices(:, :), observations(:, :), wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:)
+        complex(dp), intent(out) :: magnetic_fields(:, :)
+        integer, intent(out) :: status
+
+        complex(dp) :: magnetic_field(3)
+        integer :: target
+
+        status = 1
+        if (size(observations, 1) /= 3 .or. size(magnetic_fields, 1) /= 3) return
+        if (size(magnetic_fields, 2) /= size(observations, 2)) return
+        magnetic_fields = cmplx(0.0_dp, 0.0_dp, dp)
+        do target = 1, size(observations, 2)
+            call evaluate_maxwell_magnetic_field_rwg_3d( &
+                vertices, triangles, coefficients, observations(:, target), &
+                wave_number, quadrature_degree, magnetic_field, status)
+            if (status /= 0) return
+            magnetic_fields(:, target) = magnetic_field
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets
+
+    subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp( &
+            vertices, triangles, coefficients, observations, wave_number, &
+            quadrature_degree, vertices_dot, coefficients_dot, observations_dot, &
+            wave_number_dot, magnetic_fields_dot, status)
+        real(dp), intent(in) :: vertices(:, :), observations(:, :), wave_number
+        real(dp), intent(in) :: vertices_dot(:, :), observations_dot(:, :)
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: wave_number_dot
+        complex(dp), intent(out) :: magnetic_fields_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp) :: magnetic_field_dot(3)
+        integer :: target
+
+        status = 1
+        if (size(observations, 1) /= 3 .or. size(magnetic_fields_dot, 1) /= 3) return
+        if (any(shape(observations_dot) /= shape(observations))) return
+        if (any(shape(magnetic_fields_dot) /= shape(observations))) return
+        magnetic_fields_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do target = 1, size(observations, 2)
+            call evaluate_maxwell_magnetic_field_rwg_3d_jvp( &
+                vertices, triangles, coefficients, observations(:, target), &
+                wave_number, quadrature_degree, vertices_dot, coefficients_dot, &
+                observations_dot(:, target), wave_number_dot, magnetic_field_dot, &
+                status)
+            if (status /= 0) return
+            magnetic_fields_dot(:, target) = magnetic_field_dot
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp
+
+    subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp( &
+            vertices, triangles, coefficients, observations, wave_number, &
+            quadrature_degree, magnetic_fields_bar, vertices_bar, &
+            coefficients_bar, observations_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), observations(:, :), wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        complex(dp), intent(in) :: coefficients(:), magnetic_fields_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :), observations_bar(:, :)
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        real(dp), intent(out) :: wave_number_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_panels(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: local_vertices_bar(:, :)
+        real(dp) :: local_observation_bar(3), local_wave_number_bar
+        complex(dp), allocatable :: local_coefficients_bar(:)
+        integer :: target
+
+        vertices_bar = 0.0_dp
+        observations_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        status = 1
+        if (size(observations, 1) /= 3 .or. &
+            size(magnetic_fields_bar, 1) /= 3) return
+        if (any(shape(magnetic_fields_bar) /= shape(observations))) return
+        if (any(shape(observations_bar) /= shape(observations))) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_panels, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        allocate(coefficients_bar(size(edge_vertices, 2)))
+        coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        allocate(local_vertices_bar(size(vertices, 1), size(vertices, 2)))
+        do target = 1, size(observations, 2)
+            call evaluate_maxwell_magnetic_field_rwg_3d_vjp( &
+                vertices, triangles, coefficients, observations(:, target), &
+                wave_number, quadrature_degree, magnetic_fields_bar(:, target), &
+                local_vertices_bar, local_coefficients_bar, local_observation_bar, &
+                local_wave_number_bar, status)
+            if (status /= 0) return
+            vertices_bar = vertices_bar + local_vertices_bar
+            coefficients_bar = coefficients_bar + local_coefficients_bar
+            observations_bar(:, target) = local_observation_bar
+            wave_number_bar = wave_number_bar + local_wave_number_bar
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
 
     subroutine evaluate_maxwell_magnetic_field_rwg_3d_jvp( &
             vertices, triangles, coefficients, observation, wave_number, &

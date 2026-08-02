@@ -894,6 +894,9 @@ all geometries:
    source-geometry, current-data, target, and wave-number JVP/VJP actions with
    an independent central-reassembly and real-complex-adjoint oracle; the
    curved sphere and torus maps provide the corresponding geometry contracts.
+   A batched target-point wrapper reuses that kernel for arbitrary sampled
+   target surfaces and accumulates shared-source geometry/current cotangents,
+   with independent single-target, central-reassembly, and adjoint tests.
 5. **Finite-domain/PML backend.** The same vacuum field can be represented in
    a bounded FEM/PML region. PML, DtN, and BEM results are compared on common
    interior targets, including a larger-domain control.
