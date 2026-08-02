@@ -1,5 +1,5 @@
 program bem_sphere_3d
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_helmholtz_cfie_p0_hierarchical_3d, &
         apply_helmholtz_single_layer_p0_hierarchical_3d, &
         apply_laplace_single_layer_p0_hierarchical_3d, &
@@ -8,12 +8,12 @@ program bem_sphere_3d
         evaluate_helmholtz_cfie_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_laplace_representation_triangles_3d, &
-        generate_sphere_surface_mesh, &
         solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_cfie_p0_hierarchical_3d, &
         solve_helmholtz_dirichlet_p0_3d, &
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_laplace_dirichlet_p0_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     use fortplot, only: add_parametric_surface, add_scatter, colorbar, figure, &
         legend, plot, savefig, title, xlabel, xscale, ylabel, yscale

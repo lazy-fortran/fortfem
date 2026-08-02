@@ -1,6 +1,6 @@
 program test_bspline_polar_axis
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_bspline_polar_hcurl_operator_csc, &
         assemble_bspline_polar_h1_operator_csc, &
         assemble_bspline_polar_l2_mass_csc, &
