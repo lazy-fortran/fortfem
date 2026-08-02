@@ -1564,7 +1564,11 @@ gallery example.
   torus EFIE now also exposes an exact impedance-parameter JVP/VJP product,
   independently checked by reassembly and the complex real-part adjoint
   identity; decay-rate kernel and geometry derivatives remain explicit
-  follow-up work. The exact-curved plane-wave
+  follow-up work. The assembled toroidal MFIE offset trace now exposes a
+  fixed-geometry relative-offset JVP/VJP product, independently checked by
+  central reassembly and a complex real-part adjoint identity; its geometry,
+  wave-number, and full block derivatives remain explicit follow-up work. The
+  exact-curved plane-wave
   RWG load now has matching geometry, direction, polarization, and wave-number
   JVP/VJP products with independent reassembly and complex real-part adjoint
   checks. Exact-curved torus RWG far-field reconstruction now has matching
