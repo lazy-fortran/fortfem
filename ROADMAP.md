@@ -961,6 +961,12 @@ conductors:
   ideal-wall limit is constraint-like, and the coupled field/wall energy ledger
   is tested independently of a client's time integrator.
 
+The neutral `advance_resistive_wall_midpoint` primitive now supplies the
+implicit-midpoint RL step, analytical matrix/state/voltage/step JVP/VJP
+actions, and an independent discrete energy/input/dissipation ledger. This is
+the reusable structure-preserving wall block; geometry, surface-current basis,
+and STARWALL normalization remain caller-owned.
+
 This response layer is also the reusable foundation for linear ideal/resistive
 perturbations, external-kink and resistive-wall problems, and nonlinear
 time-dependent clients. It must not contain a plasma closure, an MARS/GPEC
@@ -1946,6 +1952,10 @@ gallery example.
 
 ### Phase 6: Structure-preserving time evolution: **active**
 
+- The neutral resistive-wall RL block now advances by implicit midpoint and
+  reports a discrete magnetic-energy/input/dissipation ledger; its analytical
+  JVP/VJP actions are independently checked. Coupling this block to a
+  caller-owned FEM/BEM or DtN field port remains an active composition test.
 - The public `advance_mixed_wave_midpoint` step now provides the common
   first-order pressure/velocity, displacement/momentum, and port-Hamiltonian
   Cayley contract. Its analytical JVP/VJP now differentiate the complete
