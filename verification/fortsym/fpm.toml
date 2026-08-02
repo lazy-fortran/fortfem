@@ -14,7 +14,7 @@ implicit-external = false
 source-form = "free"
 
 [dependencies]
-fortsym = { git = "https://github.com/lazy-fortran/fortsym.git", rev = "a490b5b04e153d3b5d3eafccd9521fba00fd85f4" }
+fortsym = { git = "https://github.com/lazy-fortran/fortsym.git", rev = "85ac876395bc7d875142aa2bd38a06df8c3e6e4b" }
 
 [[executable]]
 name = "verify_polar_complex"
