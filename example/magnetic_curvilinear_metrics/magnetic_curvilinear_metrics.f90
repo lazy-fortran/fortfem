@@ -1,5 +1,5 @@
 program magnetic_curvilinear_metrics
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel

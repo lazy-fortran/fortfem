@@ -23,6 +23,8 @@ module fortfem_fourier
     use fortfem_toroidal_harmonics, only: &
         toroidal_p, toroidal_q, toroidal_p_derivative, toroidal_q_derivative, &
         toroidal_p_second_derivative, toroidal_q_second_derivative
+    use fortfem_magnetic_curvilinear_coefficients_2d, only: &
+        scalar_reluctivity_curvilinear_fourier_coefficients
     implicit none
     private
 
@@ -48,6 +50,7 @@ module fortfem_fourier
     public :: toroidal_q
     public :: toroidal_q_derivative
     public :: toroidal_q_second_derivative
+    public :: scalar_reluctivity_curvilinear_fourier_coefficients
     public :: validate_fourier_mode_registry
 
 end module fortfem_fourier
