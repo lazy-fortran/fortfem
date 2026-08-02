@@ -39,6 +39,7 @@ maxwell_open_boundary_comparison
 fortfem_mesh_benchmark
 solver_benchmark
 biro_tree_cotree_benchmark
+biro_tree_cotree_3d_gallery
 team7_neutral_benchmark
 team13_neutral_benchmark
 interoperability_benchmarks
