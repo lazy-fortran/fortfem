@@ -335,6 +335,11 @@ The [boundary-operator parity contract](boundary_operator_parity.html) compares
 FEM, BEM, DtN, and PML reconstructions on common weighted physical samples
 while enforcing shared topology, equation-space, units, and provenance.
 
+The [larger-domain parity contract](larger_domain_parity.html) compares two
+complex fields on common interior samples while allowing the same backend at
+different artificial-boundary distances and recording absolute/relative
+differences with distance-increase metadata.
+
 The [real boundary trace residual](boundary_trace_residual.html) is the
 scalar/real counterpart of the complex normal/tangential port. It supplies
 weighted trace, jump, surface-current, and total-pressure residuals with
