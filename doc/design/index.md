@@ -232,6 +232,9 @@ The [continuation event diagnostics](continuation_events.html) classify
 signed-margin crossings and near-zero topology warnings without differentiating
 through a changed cut, separatrix, resonance, or interface graph.
 
+The [smooth deflated residual contract](deflated_residual.html) supplies a
+caller-owned root-deflation wrapper with exact residual JVP/VJP actions.
+
 The [Eulerian non-nested residual contract](eulerian_nonnested_residual.html)
 concatenates caller-owned force and divergence residuals, optionally adds a
 precomputed pseudo-transient stabilization, and reports fixed-topology event
