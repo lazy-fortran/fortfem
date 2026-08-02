@@ -43,6 +43,12 @@ map with matrix-free, JVP, and VJP actions. Its exact-curved torus wrapper
 keeps the RWG and RBC trace conventions explicit; the same contract includes
 caller-owned weak-to-point trace reconstruction for physical field evaluation.
 
+The [generalized-Debye-source coordinate contract](generalized_debye_source.html)
+provides the explicit scalar, cogradient, and harmonic lifts plus caller-owned
+source/period residual maps needed before a BIEST-like second-kind vector
+surface operator. It is kernel-, topology-, and closure-neutral and includes
+complete complex JVP/VJP actions.
+
 The [manufactured toroidal Maxwell FEM--BEM solution](maxwell_torus_fem_bem_solution.html)
 composes the same curved RWG trace with a volume Nédélec solve and checks the
 coupled field/current state against a constant analytical (H(\mathrm{curl}))
