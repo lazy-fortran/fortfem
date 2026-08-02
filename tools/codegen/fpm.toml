@@ -129,6 +129,11 @@ source-dir = "app"
 main = "gen_surface_integral_products.f90"
 
 [[executable]]
+name = "gen_surface_shape_objective_products"
+source-dir = "app"
+main = "gen_surface_shape_objective_products.f90"
+
+[[executable]]
 name = "gen_fci_quadrilateral_area_products"
 source-dir = "app"
 main = "gen_fci_quadrilateral_area_products.f90"

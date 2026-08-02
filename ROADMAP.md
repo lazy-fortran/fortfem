@@ -1559,7 +1559,11 @@ Since this audit, the neutral implementation now includes:
   positive-weighted mismatch of candidate and target physical surface samples.
   Point ordering, quadrature, topology, and geometry maps remain caller-owned;
   the contract is the neutral shape-mismatch port used by fixed/free-boundary
-  clients rather than a DESC, VMEC, or plasma objective.
+  clients rather than a DESC, VMEC, or plasma objective. Its pointwise weighted
+  squared-mismatch value, JVP, and VJP come from the pinned FortSym generator
+  `gen_surface_shape_objective_products`, and `check_generated.sh` compares the
+  committed generated kernel byte-for-byte when the locked FortSym revision is
+  available.
 - `evaluate_surface_integral_constraint` and its JVP/VJP companions for a
   caller-owned scalar surface ledger with a target residual. Positive weights,
   samples, units, quadrature, topology, and target selection remain external;
