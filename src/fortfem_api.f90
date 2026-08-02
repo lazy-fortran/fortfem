@@ -134,6 +134,9 @@ module fortfem_api
         BOUNDARY_OPERATOR_BACKEND_USER, BOUNDARY_OPERATOR_BACKEND_VIRTUAL_CASING, &
         boundary_operator_contract_t, initialize_boundary_operator_contract, &
         validate_boundary_operator_contract
+    use fortfem_boundary_operator_parity, only: &
+        boundary_operator_parity_t, evaluate_boundary_operator_parity, &
+        validate_boundary_operator_parity
     use fortfem_boundary_trace_residual, only: &
         assemble_boundary_trace_residual, &
         assemble_boundary_trace_residual_jvp, &
@@ -3029,6 +3032,9 @@ module fortfem_api
     public :: boundary_operator_contract_t
     public :: initialize_boundary_operator_contract
     public :: validate_boundary_operator_contract
+    public :: boundary_operator_parity_t
+    public :: evaluate_boundary_operator_parity
+    public :: validate_boundary_operator_parity
     public :: BOUNDARY_OPERATOR_BACKEND_FEM
     public :: BOUNDARY_OPERATOR_BACKEND_BEM
     public :: BOUNDARY_OPERATOR_BACKEND_DTN
