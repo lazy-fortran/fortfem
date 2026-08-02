@@ -202,7 +202,8 @@ JVP/VJP actions.
 
 The [signed glued FEEC CSC contract](glued_feec_sequence_csc.html) provides
 the duplicate-compressed sparse counterpart and fixed-topology local-matrix
-JVP/VJP scatter.
+JVP/VJP scatter, plus sparse `curl(grad)` and `div(curl)` composition
+diagnostics with product-rule JVP/VJP actions.
 
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with

@@ -7,7 +7,8 @@ module fortfem_glued_feec_sequence_csc
     !! triplet values.  The path owns no mesh or constitutive data.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
-    use fortsparse, only: csc_from_triplet, csc_is_valid, csc_t, &
+    use fortsparse, only: csc_from_triplet, csc_is_valid, csc_matmul, csc_t, &
+        csc_transpose, &
         fortsparse_status_t, status_set, FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
     private
@@ -15,6 +16,9 @@ module fortfem_glued_feec_sequence_csc
     public :: assemble_glued_feec_sequence_csc
     public :: assemble_glued_feec_sequence_csc_jvp
     public :: assemble_glued_feec_sequence_csc_vjp
+    public :: assemble_glued_feec_sequence_csc_compositions
+    public :: assemble_glued_feec_sequence_csc_compositions_jvp
+    public :: assemble_glued_feec_sequence_csc_compositions_vjp
 
 contains
 
@@ -127,6 +131,205 @@ contains
             divergence_bar, l2_map, hdiv_map, local_divergence_bar)
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine assemble_glued_feec_sequence_csc_vjp
+
+    subroutine assemble_glued_feec_sequence_csc_compositions( &
+            gradient, curl, divergence, curl_gradient, divergence_curl, status)
+        !! Form the sparse exact-sequence composition residuals.
+        type(csc_t), intent(in) :: gradient, curl, divergence
+        type(csc_t), intent(out) :: curl_gradient, divergence_curl
+        type(fortsparse_status_t), intent(out) :: status
+
+        if (.not. valid_composition_sequence(gradient, curl, divergence)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC composition has invalid sequence matrices")
+            return
+        end if
+        call csc_matmul(curl, gradient, curl_gradient, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(divergence, curl, divergence_curl, status)
+    end subroutine assemble_glued_feec_sequence_csc_compositions
+
+    subroutine assemble_glued_feec_sequence_csc_compositions_jvp( &
+            gradient, curl, divergence, gradient_dot, curl_dot, divergence_dot, &
+            curl_gradient_dot, divergence_curl_dot, status)
+        !! Differentiate both sparse composition residuals by the product rule.
+        type(csc_t), intent(in) :: gradient, curl, divergence
+        type(csc_t), intent(in) :: gradient_dot, curl_dot, divergence_dot
+        type(csc_t), intent(out) :: curl_gradient_dot, divergence_curl_dot
+        type(fortsparse_status_t), intent(out) :: status
+        type(csc_t) :: first_term, second_term
+
+        if (.not. valid_composition_sequence(gradient, curl, divergence)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC composition JVP has invalid matrices")
+            return
+        end if
+        if (.not. valid_composition_direction(gradient_dot, curl_dot, divergence_dot, &
+            gradient, curl, divergence)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC composition JVP has invalid direction matrices")
+            return
+        end if
+        call csc_matmul(curl_dot, gradient, first_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(curl, gradient_dot, second_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_add(first_term, second_term, curl_gradient_dot, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(divergence_dot, curl, first_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(divergence, curl_dot, second_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_add(first_term, second_term, divergence_curl_dot, status)
+    end subroutine assemble_glued_feec_sequence_csc_compositions_jvp
+
+    subroutine assemble_glued_feec_sequence_csc_compositions_vjp( &
+            gradient, curl, divergence, curl_gradient_bar, divergence_curl_bar, &
+            gradient_bar, curl_bar, divergence_bar, status)
+        !! Reverse product rule for curl*gradient and divergence*curl.
+        type(csc_t), intent(in) :: gradient, curl, divergence
+        type(csc_t), intent(in) :: curl_gradient_bar, divergence_curl_bar
+        type(csc_t), intent(out) :: gradient_bar, curl_bar, divergence_bar
+        type(fortsparse_status_t), intent(out) :: status
+        type(csc_t) :: gradient_transpose, curl_transpose, divergence_transpose
+        type(csc_t) :: first_term, second_term
+
+        if (.not. valid_composition_sequence(gradient, curl, divergence)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC composition VJP has invalid matrices")
+            return
+        end if
+        if (.not. valid_composition_cotangents( &
+            curl_gradient_bar, divergence_curl_bar, gradient, curl, divergence)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC composition VJP has invalid cotangents")
+            return
+        end if
+        call csc_transpose(curl, curl_transpose, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(curl_transpose, curl_gradient_bar, gradient_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        call csc_transpose(gradient, gradient_transpose, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(curl_gradient_bar, gradient_transpose, first_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_transpose(divergence, divergence_transpose, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_matmul(divergence_transpose, divergence_curl_bar, second_term, status)
+        if (status%code /= FORTSPARSE_OK) return
+        call csc_add(first_term, second_term, curl_bar, status)
+        if (status%code /= FORTSPARSE_OK) return
+
+        call csc_matmul(divergence_curl_bar, curl_transpose, divergence_bar, status)
+    end subroutine assemble_glued_feec_sequence_csc_compositions_vjp
+
+    subroutine csc_add(first, second, sum, status)
+        !! Add two real CSC matrices through duplicate-compressing triplets.
+        type(csc_t), intent(in) :: first, second
+        type(csc_t), intent(out) :: sum
+        type(fortsparse_status_t), intent(out) :: status
+        integer, allocatable :: rows(:), columns(:)
+        real(dp), allocatable :: values(:)
+        integer :: entry, column, first_entry, last_entry, total
+
+        if (.not. csc_is_valid(first)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC addition has invalid or incompatible matrices")
+            return
+        end if
+        if (.not. csc_is_valid(second)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC addition has invalid or incompatible matrices")
+            return
+        end if
+        if (first%nrow /= second%nrow .or. first%ncol /= second%ncol) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC addition has invalid or incompatible matrices")
+            return
+        end if
+        if (.not. finite_csc(first) .or. .not. finite_csc(second)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "glued FEEC CSC addition has non-finite values")
+            return
+        end if
+        total = first%nnz + second%nnz
+        allocate(rows(total), columns(total), values(total))
+        entry = 0
+        do column = 1, first%ncol
+            first_entry = first%col_ptr(column)
+            last_entry = first%col_ptr(column + 1) - 1
+            if (last_entry >= first_entry) then
+                rows(entry + 1:entry + last_entry - first_entry + 1) = &
+                    first%row_idx(first_entry:last_entry)
+                columns(entry + 1:entry + last_entry - first_entry + 1) = column
+                values(entry + 1:entry + last_entry - first_entry + 1) = &
+                    first%val(first_entry:last_entry)
+                entry = entry + last_entry - first_entry + 1
+            end if
+            first_entry = second%col_ptr(column)
+            last_entry = second%col_ptr(column + 1) - 1
+            if (last_entry >= first_entry) then
+                rows(entry + 1:entry + last_entry - first_entry + 1) = &
+                    second%row_idx(first_entry:last_entry)
+                columns(entry + 1:entry + last_entry - first_entry + 1) = column
+                values(entry + 1:entry + last_entry - first_entry + 1) = &
+                    second%val(first_entry:last_entry)
+                entry = entry + last_entry - first_entry + 1
+            end if
+        end do
+        call csc_from_triplet(first%nrow, first%ncol, rows, columns, values, sum, status)
+    end subroutine csc_add
+
+    logical function valid_composition_sequence(gradient, curl, divergence) result(valid)
+        type(csc_t), intent(in) :: gradient, curl, divergence
+
+        valid = .false.
+        if (.not. csc_is_valid(gradient)) return
+        if (.not. csc_is_valid(curl)) return
+        if (.not. csc_is_valid(divergence)) return
+        if (gradient%nrow /= curl%ncol .or. curl%nrow /= divergence%ncol) return
+        if (.not. finite_csc(gradient)) return
+        if (.not. finite_csc(curl)) return
+        if (.not. finite_csc(divergence)) return
+        valid = .true.
+    end function valid_composition_sequence
+
+    logical function valid_composition_direction( &
+            gradient_dot, curl_dot, divergence_dot, gradient, curl, divergence) result(valid)
+        type(csc_t), intent(in) :: gradient_dot, curl_dot, divergence_dot
+        type(csc_t), intent(in) :: gradient, curl, divergence
+
+        valid = .false.
+        if (.not. csc_is_valid(gradient_dot)) return
+        if (.not. csc_is_valid(curl_dot)) return
+        if (.not. csc_is_valid(divergence_dot)) return
+        if (gradient_dot%nrow /= gradient%nrow .or. &
+            gradient_dot%ncol /= gradient%ncol .or. curl_dot%nrow /= curl%nrow .or. &
+            curl_dot%ncol /= curl%ncol .or. divergence_dot%nrow /= divergence%nrow .or. &
+            divergence_dot%ncol /= divergence%ncol) return
+        if (.not. finite_csc(gradient_dot)) return
+        if (.not. finite_csc(curl_dot)) return
+        if (.not. finite_csc(divergence_dot)) return
+        valid = .true.
+    end function valid_composition_direction
+
+    logical function valid_composition_cotangents( &
+            curl_gradient_bar, divergence_curl_bar, gradient, curl, divergence) result(valid)
+        type(csc_t), intent(in) :: curl_gradient_bar, divergence_curl_bar
+        type(csc_t), intent(in) :: gradient, curl, divergence
+
+        valid = .false.
+        if (.not. csc_is_valid(curl_gradient_bar)) return
+        if (.not. csc_is_valid(divergence_curl_bar)) return
+        if (curl_gradient_bar%nrow /= curl%nrow .or. &
+            curl_gradient_bar%ncol /= gradient%ncol .or. &
+            divergence_curl_bar%nrow /= divergence%nrow .or. &
+            divergence_curl_bar%ncol /= curl%ncol) return
+        if (.not. finite_csc(curl_gradient_bar)) return
+        if (.not. finite_csc(divergence_curl_bar)) return
+        valid = .true.
+    end function valid_composition_cotangents
 
     subroutine assemble_one_csc( &
             local_matrix, row_map, column_map, row_count, column_count, matrix, status)
