@@ -382,6 +382,17 @@ fpm run --example <example_name>
 <p>This small manufactured case reproduces the structural part of the direct</p>
 </div>
 </article>
+<article class="example-card" data-example="biro_tree_cotree_3d_gallery">
+<a class="example-card-preview" href="generated/biro_tree_cotree_3d_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/biro_tree_cotree_3d_gallery/primary.png"
+ alt="Plot preview for biro_tree_cotree_3d_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/biro_tree_cotree_3d_gallery.html">biro_tree_cotree_3d_gallery</a></h3>
+<p>This executable is a small, license-safe manufactured 3-D edge-element</p>
+</div>
+</article>
 <article class="example-card" data-example="team7_neutral_benchmark">
 <a class="example-card-preview" href="generated/team7_neutral_benchmark.html">
 <img class="example-card-image"
@@ -718,6 +729,7 @@ fpm run --example <example_name>
 - [fortfem_mesh_benchmark](generated/fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](generated/solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
 - [biro_tree_cotree_benchmark](generated/biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
+- [biro_tree_cotree_3d_gallery](generated/biro_tree_cotree_3d_gallery.html) - This executable is a small, license-safe manufactured 3-D edge-element
 - [team7_neutral_benchmark](generated/team7_neutral_benchmark.html) - This solution-first fixture is a small, license-safe 2-D analogue of the
 - [team13_neutral_benchmark](generated/team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
 - [interoperability_benchmarks](generated/interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
