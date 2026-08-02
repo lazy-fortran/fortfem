@@ -2415,6 +2415,12 @@ gallery example.
   branches with complex toroidal Fourier phases and outward normal traces;
   its analytical coefficient/geometry JVP/VJP products are independently
   checked against the existing harmonic/DtN mode and central/adjoint oracles.
+- The independent `test_toroidal_harmonic_parity` fixture now checks both
+  P/Q branches against the separated trace normalization, angular-period and
+  conjugate-reflection parity, the outward-normal sign, linear modal
+  contraction, and the associated-Legendre radial ODE.  It is an analytical
+  fixed-topology contract only; equilibrium profiles and plasma readers
+  remain external.
 - Define mode normalization, phase, field-period, and real packing.
 - Add mode-coupled scalar, H(curl), H(div), and caller-defined nonlinear
   operators.

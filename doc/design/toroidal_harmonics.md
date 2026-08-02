@@ -21,6 +21,14 @@ fixtures. The adapter test checks independent high-precision values for both
 branches, derivative values, near-cut finiteness, and NaN rejection outside
 `x > 1`.
 
+The independent `test_toroidal_harmonic_parity` oracle also checks the
+separated trace normalization used by FEM/BEM layers.  It verifies both
+angular periods, conjugate reflection for real radial data, the outward
+normal sign, linear modal coefficient contraction, and the associated
+Legendre radial ODE for both P and Q branches.  This is a fixed-topology
+analytical contract; it does not select an equilibrium, field-period, or
+plasma coordinate convention.
+
 The normalization and provenance are recorded in the [FortNum
 API](https://github.com/lazy-fortran/fortnum/blob/d8be030/docs/api.md), with
 the half-integer specialization specified by [DLMF
