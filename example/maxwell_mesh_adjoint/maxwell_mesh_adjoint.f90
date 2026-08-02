@@ -1,8 +1,8 @@
 program maxwell_mesh_adjoint
-    use fortfem_api, only: assemble_tetra_nedelec_pml_csc, &
+    use fortfem_feec, only: assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
-        assemble_tetra_nedelec_pml_csc_vjp, &
-        generate_structured_tetra_box_mesh
+        assemble_tetra_nedelec_pml_csc_vjp
+    use fortfem_core, only: generate_structured_tetra_box_mesh
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, set_xscale, &
         set_yscale, title, xlabel, ylabel

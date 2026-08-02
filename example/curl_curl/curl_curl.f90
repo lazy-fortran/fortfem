@@ -1,8 +1,8 @@
 program curl_curl_example
     !! Verified arbitrary-order tetrahedral Nedelec curl-curl solve.
-    use fortfem_api, only: solve_tetra_nedelec_curl_mass
-    use fortfem_api, only: evaluate_tetra_nedelec_interpolant_at_point, &
-        invert_tetra_affine_map
+    use fortfem_feec, only: solve_tetra_nedelec_curl_mass, &
+        evaluate_tetra_nedelec_interpolant_at_point
+    use fortfem_core, only: invert_tetra_affine_map
     use fortfem_kinds, only: dp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
