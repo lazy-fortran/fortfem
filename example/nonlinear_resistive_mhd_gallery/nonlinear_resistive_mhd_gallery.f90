@@ -56,6 +56,7 @@ program nonlinear_resistive_mhd_gallery
     command_status = 0
     call execute_command_line("mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create island/wall output directory"
+    call initialize_gallery_sequence()
 
     do sample = 1, sample_count
         parameter_values(sample) = real(sample - 1, dp)/real(sample_count - 1, dp)
@@ -138,6 +139,7 @@ program nonlinear_resistive_mhd_gallery
     call title("Neutral nonlinear island--wall continuation: physical state")
     call legend()
     call savefig(output_directory//"/island_wall_solution_1d.png")
+    call record_gallery_stage("physical_solution")
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(parameter_values, forward_state(1, :), label="forward branch amplitude", &
@@ -149,6 +151,7 @@ program nonlinear_resistive_mhd_gallery
     call title("Manufactured continuation branches and hysteresis")
     call legend()
     call savefig(output_directory//"/island_wall_branches_1d.png")
+    call record_gallery_stage("branch_diagnostics")
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(parameter_values, input_power, label="signed input power", &
@@ -162,6 +165,7 @@ program nonlinear_resistive_mhd_gallery
     call title("Nonlinear composition ledger")
     call legend()
     call savefig(output_directory//"/island_wall_ledger_1d.png")
+    call record_gallery_stage("ledger_diagnostics")
 
     open (newunit=unit, file=output_directory//"/island_wall_solution.csv", &
         status="replace", action="write")
@@ -208,6 +212,27 @@ program nonlinear_resistive_mhd_gallery
     close (unit)
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: sequence_unit, local_status
+
+        open (newunit=sequence_unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot initialize gallery sequence"
+        close (sequence_unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: sequence_unit, local_status
+
+        open (newunit=sequence_unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot open gallery sequence"
+        write (sequence_unit, "(a)", iostat=local_status) stage
+        close (sequence_unit)
+        if (local_status /= 0) error stop "cannot record gallery sequence"
+    end subroutine record_gallery_stage
 
     pure function manufactured_state(parameter_value, offset) result(state_out)
         real(dp), intent(in) :: parameter_value, offset
