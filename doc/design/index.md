@@ -245,6 +245,11 @@ without materializing a monolithic matrix. It is the bounded-memory reference
 path for element, interface, FEM/BEM/DtN/PML, tensor, and Fourier block
 contributions.
 
+The [complex packed block graph residual](complex_block_graph_residual.html)
+provides the same N-field path for frequency-domain operators and documents
+the real-part complex adjoint convention used by Helmholtz, curl--curl,
+FEM/BEM/DtN, PML, and wall-response compositions.
+
 The [complex coupled field residual](complex_coupled_field_residual.html) is
 the frequency-domain counterpart with rectangular complex blocks and the
 real-part complex adjoint convention needed by FEM/BEM/DtN/PML and wall
