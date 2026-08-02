@@ -65,6 +65,26 @@ CASES = (
         "example/mixed_wave_3d_structure/mixed_wave_3d_structure.f90",
         "fortfem_time",
     ),
+    ExampleCase(
+        "Helmholtz circle BEM spectrum",
+        "example/helmholtz_bem_circle_spectrum.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "Laplace circle BEM spectrum",
+        "example/laplace_bem_circle_spectrum.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "Helmholtz circle CFIE solution",
+        "example/helmholtz_cfie_circle.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "Laplace symmetric FEM-BEM transmission",
+        "example/laplace_symmetric_transmission.f90",
+        "fortfem_boundary",
+    ),
 )
 
 

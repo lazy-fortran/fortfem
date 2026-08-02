@@ -1,5 +1,5 @@
 program laplace_symmetric_transmission
-    use fortfem_api, only: solve_laplace_symmetric_coupling_p1_p0
+    use fortfem_boundary, only: solve_laplace_symmetric_coupling_p1_p0
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
         title, xlabel, ylabel

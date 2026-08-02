@@ -1,5 +1,5 @@
 program helmholtz_bem_circle_spectrum
-    use fortfem_api, only: assemble_helmholtz_double_layer_constant, &
+    use fortfem_boundary, only: assemble_helmholtz_double_layer_constant, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_kinds, only: dp

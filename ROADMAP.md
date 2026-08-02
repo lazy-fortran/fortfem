@@ -327,9 +327,12 @@ documentation gates above pass.
   fixtures. The gate is standard-library-only and passes on the current tree;
   the temporary analytical-oracle allowlist is explicit and documented by the
   checker.
-- **API-05 — first migration slice complete:** six representative examples
+- **API-05 — first migration slices complete:** ten representative examples
   now import the smallest suitable `fortfem_feec`, `fortfem_boundary`, or
   `fortfem_time` facade, with one scalar Poisson umbrella compatibility smoke.
+  The added boundary slice covers 2-D Helmholtz/Laplace BEM spectra, CFIE,
+  and symmetric FEM--BEM transmission through the same `fortfem_boundary`
+  capability surface.
   `tools/check_example_facade_imports.py` and
   `test/test_api05_example_facades.f90` provide import and behavioral gates;
   the remaining gallery still needs a complete smallest-facade audit and a
@@ -365,7 +368,7 @@ waits for the full gallery/CI job before handing off.
 | API-03-BELTRAMI | **complete**: renamed `evaluate_beltrami_two_region_parity` and `evaluate_beltrami_shell_parity` to the documented `compare_*_residual` names, keeping flux/helicity/energy schemas unchanged; canonical FEEC facade exports both reports and comparators | Independent curl-eigen residual, constraint, and energy value oracles; the underlying residual JVP/VJP closure remains covered; no physics closure or reader changes |
 | API-03-TREE | `diagnose_tree_cotree_iga_invariance` is complete in the implementation, umbrella, FEEC facade, tests, and inventory | Signed-map invariance, loop-period, direct-reduction, and fixed-topology oracle |
 | API-06-GATE | Release-gate runner, isolated negative fixtures, and fpm-safe fixture layout are complete; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
-| API-05-GALLERY | First six-example import audit and documentation migration are complete; continue in scalar-to-vector-to-interface order with no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
+| API-05-GALLERY | First ten-example import audit and documentation migration are complete, including the 2-D boundary/BEM slice; continue in scalar-to-vector-to-interface order with no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
 | GALLERY-BIRO-TEAM | **first slice complete**: `biro_tree_cotree_benchmark` provides the provenance-pinned tree--cotree curl--curl reduction, direct reconstruction, loop-current proxy, energy/residual CSV, and solution-first graph/vector plot; `team13_neutral_benchmark` provides a license-safe TEAM-13-shaped supplied-array field, probe/energy diagnostics, and solution-first magnitude/vector/geometry plot. The remaining TEAM 3/7/13/20 ladder stays external-data work; benchmark arrays, readers, nonlinear material laws, and reference curves do not enter FortFEM | Independent tree/cotree restriction/prolongation and reduced-system oracle; finite TEAM field/probe/energy manifest; generated media remain ignored and no paper/TEAM source or reader is copied |
 
 The queue is extensible: a new public family gets an inventory row and a

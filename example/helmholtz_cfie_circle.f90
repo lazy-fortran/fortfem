@@ -1,5 +1,5 @@
 program helmholtz_cfie_circle
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_kinds, only: dp

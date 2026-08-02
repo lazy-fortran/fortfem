@@ -1,5 +1,5 @@
 program laplace_bem_circle_spectrum
-    use fortfem_api, only: assemble_laplace_hypersingular_linear, &
+    use fortfem_boundary, only: assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_kinds, only: dp
     use fortplot, only: add_scatter, colorbar, figure, legend, pcolormesh, plot, &

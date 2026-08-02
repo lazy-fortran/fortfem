@@ -26,7 +26,17 @@ module fortfem_boundary
         apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
+        assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
+    use fortfem_helmholtz_boundary_operators_2d, only: &
+        assemble_helmholtz_double_layer_constant, &
+        assemble_helmholtz_hypersingular_linear, &
+        assemble_helmholtz_single_layer_constant
+    use fortfem_helmholtz_exterior_2d, only: &
+        evaluate_helmholtz_combined_potential_constant, &
+        solve_helmholtz_cfie_constant
+    use fortfem_laplace_symmetric_coupling_2d, only: &
+        solve_laplace_symmetric_coupling_p1_p0
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, &
         apply_planar_helmholtz_dtn_jvp, &
@@ -63,6 +73,13 @@ module fortfem_boundary
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
     public :: assemble_laplace_single_layer_constant
+    public :: assemble_laplace_hypersingular_linear
+    public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_hypersingular_linear
+    public :: assemble_helmholtz_single_layer_constant
+    public :: evaluate_helmholtz_combined_potential_constant
+    public :: solve_helmholtz_cfie_constant
+    public :: solve_laplace_symmetric_coupling_p1_p0
 
     ! Boundary type for defining domains
     type :: boundary_t
