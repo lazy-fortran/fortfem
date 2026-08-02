@@ -103,6 +103,28 @@ fpm run --example <example_name>
 <p>This physical-first gallery fixture constructs a manufactured scalar and</p>
 </div>
 </article>
+<article class="example-card" data-example="regularized_surface_current_layer">
+<a class="example-card-preview" href="generated/regularized_surface_current_layer.html">
+<img class="example-card-image"
+ src="../media/examples/regularized_surface_current_layer/primary.png"
+ alt="Plot preview for regularized_surface_current_layer" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/regularized_surface_current_layer.html">regularized_surface_current_layer</a></h3>
+<p>This physical-first slab example resolves a tangential surface current</p>
+</div>
+</article>
+<article class="example-card" data-example="sheet_current_parity">
+<a class="example-card-preview" href="generated/sheet_current_parity.html">
+<img class="example-card-image"
+ src="../media/examples/sheet_current_parity/primary.png"
+ alt="Plot preview for sheet_current_parity" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/sheet_current_parity.html">sheet_current_parity</a></h3>
+<p>This physical-first slab gallery fixture compares the same tangential sheet</p>
+</div>
+</article>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
@@ -147,6 +169,17 @@ fpm run --example <example_name>
 <p>This small fixture exercises FortFEM's field-coordinate-independent support</p>
 </div>
 </article>
+<article class="example-card" data-example="fci_sol_gallery">
+<a class="example-card-preview" href="generated/fci_sol_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/fci_sol_gallery/primary.png"
+ alt="Plot preview for fci_sol_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/fci_sol_gallery.html">fci_sol_gallery</a></h3>
+<p>This neutral FCI/SOL fixture traces three helical field lines on a toroidal</p>
+</div>
+</article>
 <article class="example-card" data-example="fci_quadrilateral_geometry">
 <a class="example-card-preview" href="generated/fci_quadrilateral_geometry.html">
 <img class="example-card-image"
@@ -185,6 +218,17 @@ fpm run --example <example_name>
 <p>This fixture is a small physical wave problem for the common mixed</p>
 </div>
 </article>
+<article class="example-card" data-example="mixed_wave_3d_structure">
+<a class="example-card-preview" href="generated/mixed_wave_3d_structure.html">
+<img class="example-card-image"
+ src="../media/examples/mixed_wave_3d_structure/primary.png"
+ alt="Plot preview for mixed_wave_3d_structure" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/mixed_wave_3d_structure.html">mixed_wave_3d_structure</a></h3>
+<p>This neutral gallery fixture advances three manufactured Cartesian oscillator</p>
+</div>
+</article>
 <article class="example-card" data-example="mixed_elasticity_wave">
 <a class="example-card-preview" href="generated/mixed_elasticity_wave.html">
 <img class="example-card-image"
@@ -193,7 +237,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/mixed_elasticity_wave.html">mixed_elasticity_wave</a></h3>
-<p>This example is a manufactured one-dimensional elastic-bar modal problem. It</p>
+<p>This example is a manufactured mixed elastic-wave modal problem. It uses the</p>
 </div>
 </article>
 <article class="example-card" data-example="mixed_wave_wall">
@@ -205,6 +249,17 @@ fpm run --example <example_name>
 <div class="example-card-body">
 <h3><a href="generated/mixed_wave_wall.html">mixed_wave_wall</a></h3>
 <p>This small structure-preserving example couples a first-order mixed wave port</p>
+</div>
+</article>
+<article class="example-card" data-example="nonlinear_resistive_mhd_gallery">
+<a class="example-card-preview" href="generated/nonlinear_resistive_mhd_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/nonlinear_resistive_mhd_gallery/primary.png"
+ alt="Plot preview for nonlinear_resistive_mhd_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/nonlinear_resistive_mhd_gallery.html">nonlinear_resistive_mhd_gallery</a></h3>
+<p>This bounded manufactured fixture is the physical-first gallery seed for</p>
 </div>
 </article>
 <article class="example-card" data-example="tetra_h1_poisson">
@@ -237,7 +292,7 @@ fpm run --example <example_name>
 </a>
 <div class="example-card-body">
 <h3><a href="generated/tetra_nedelec_p_convergence.html">tetra_nedelec_p_convergence</a></h3>
-<p>A short V-shaped head makes direction readable in the</p>
+<p>This example interpolates the manufactured curl-free vector field.  The first</p>
 </div>
 </article>
 </div>
@@ -325,6 +380,55 @@ fpm run --example <example_name>
 <div class="example-card-body">
 <h3><a href="generated/interoperability_benchmarks.html">interoperability_benchmarks</a></h3>
 <p>This example reads the neutral CSV records produced by the isolated FEniCSx,</p>
+</div>
+</article>
+</div>
+
+### Linear-response foundations
+
+<div class="example-gallery">
+<article class="example-card" data-example="linear_perturbation_response">
+<a class="example-card-preview" href="generated/linear_perturbation_response.html">
+<img class="example-card-image"
+ src="../media/examples/linear_perturbation_response/primary.png"
+ alt="Plot preview for linear_perturbation_response" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/linear_perturbation_response.html">linear_perturbation_response</a></h3>
+<p>This closure-neutral fixture composes the seven public linear-perturbation</p>
+</div>
+</article>
+<article class="example-card" data-example="eulerian_island_gallery">
+<a class="example-card-preview" href="generated/eulerian_island_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/eulerian_island_gallery/primary.png"
+ alt="Plot preview for eulerian_island_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/eulerian_island_gallery.html">eulerian_island_gallery</a></h3>
+<p>This small gallery samples the analytic slab-island flux</p>
+</div>
+</article>
+<article class="example-card" data-example="singular_layer_matching_gallery">
+<a class="example-card-preview" href="generated/singular_layer_matching_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/singular_layer_matching_gallery/primary.png"
+ alt="Plot preview for singular_layer_matching_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/singular_layer_matching_gallery.html">singular_layer_matching_gallery</a></h3>
+<p>This bounded MHD-08/MHD-09 foundation gallery samples analytical complex inner</p>
+</div>
+</article>
+<article class="example-card" data-example="direct_force_campaign_gallery">
+<a class="example-card-preview" href="generated/direct_force_campaign_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/direct_force_campaign_gallery/primary.png"
+ alt="Plot preview for direct_force_campaign_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/direct_force_campaign_gallery.html">direct_force_campaign_gallery</a></h3>
+<p>This small, closure-neutral campaign exercises FortFEM's public direct</p>
 </div>
 </article>
 </div>
@@ -458,6 +562,17 @@ fpm run --example <example_name>
 <p>This example evaluates the real \(n=2,m=1\) toroidal harmonic</p>
 </div>
 </article>
+<article class="example-card" data-example="nested_surface_solution">
+<a class="example-card-preview" href="generated/nested_surface_solution.html">
+<img class="example-card-image"
+ src="../media/examples/nested_surface_solution/primary.png"
+ alt="Plot preview for nested_surface_solution" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/nested_surface_solution.html">nested_surface_solution</a></h3>
+<p>This physical-first gallery fixture evaluates FortFEM's neutral nested-surface</p>
+</div>
+</article>
 <article class="example-card" data-example="iga_shape_sensitivity">
 <a class="example-card-preview" href="generated/iga_shape_sensitivity.html">
 <img class="example-card-image"
@@ -535,18 +650,23 @@ fpm run --example <example_name>
 - [mixed_poisson](generated/mixed_poisson.html) - This example is the first vector finite-element problem after the scalar
 - [anisotropic_tensor_diffusion](generated/anisotropic_tensor_diffusion.html) - This example solves a manufactured two-dimensional diffusion problem with a
 - [xfem_interface_solution](generated/xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
+- [regularized_surface_current_layer](generated/regularized_surface_current_layer.html) - This physical-first slab example resolves a tangential surface current
+- [sheet_current_parity](generated/sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [field_aligned_flux](generated/field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](generated/fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
+- [fci_sol_gallery](generated/fci_sol_gallery.html) - This neutral FCI/SOL fixture traces three helical field lines on a toroidal
 - [fci_quadrilateral_geometry](generated/fci_quadrilateral_geometry.html) - This small geometry fixture computes positive, fixed-topology areas for three
 - [fci_polygon_geometry](generated/fci_polygon_geometry.html) - This fixture computes fixed-topology straight, quadratic, cubic, quartic, quintic, and sextic
 - [mixed_acoustic_wave](generated/mixed_acoustic_wave.html) - This fixture is a small physical wave problem for the common mixed
-- [mixed_elasticity_wave](generated/mixed_elasticity_wave.html) - This example is a manufactured one-dimensional elastic-bar modal problem. It
+- [mixed_wave_3d_structure](generated/mixed_wave_3d_structure.html) - This neutral gallery fixture advances three manufactured Cartesian oscillator
+- [mixed_elasticity_wave](generated/mixed_elasticity_wave.html) - This example is a manufactured mixed elastic-wave modal problem. It uses the
 - [mixed_wave_wall](generated/mixed_wave_wall.html) - This small structure-preserving example couples a first-order mixed wave port
+- [nonlinear_resistive_mhd_gallery](generated/nonlinear_resistive_mhd_gallery.html) - This bounded manufactured fixture is the physical-first gallery seed for
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
-- [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - A short V-shaped head makes direction readable in the
+- [tetra_nedelec_p_convergence](generated/tetra_nedelec_p_convergence.html) - This example interpolates the manufactured curl-free vector field.  The first
 - [circular_dtn_modes](generated/circular_dtn_modes.html) - Boundary data on the unit circle:
 - [helmholtz_open_boundary_comparison](generated/helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing
 - [acoustic_fem_dtn](generated/acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
@@ -554,6 +674,10 @@ fpm run --example <example_name>
 - [fortfem_mesh_benchmark](generated/fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](generated/solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
 - [interoperability_benchmarks](generated/interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
+- [linear_perturbation_response](generated/linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
+- [eulerian_island_gallery](generated/eulerian_island_gallery.html) - This small gallery samples the analytic slab-island flux
+- [singular_layer_matching_gallery](generated/singular_layer_matching_gallery.html) - This bounded MHD-08/MHD-09 foundation gallery samples analytical complex inner
+- [direct_force_campaign_gallery](generated/direct_force_campaign_gallery.html) - This small, closure-neutral campaign exercises FortFEM's public direct
 - [laplace_bem_circle_spectrum](generated/laplace_bem_circle_spectrum.html) - Executable FortFEM laplace_bem_circle_spectrum.f90 example.
 - [laplace_exterior_bem_circle](generated/laplace_exterior_bem_circle.html) - This example solves the unbounded exterior Dirichlet problem on the unit
 - [helmholtz_bem_circle_spectrum](generated/helmholtz_bem_circle_spectrum.html) - Executable FortFEM helmholtz_bem_circle_spectrum.f90 example.
@@ -565,6 +689,7 @@ fpm run --example <example_name>
 - [adaptive_helmholtz_bem_sphere](generated/adaptive_helmholtz_bem_sphere.html) - This example applies the solve-estimate-mark-refine loop to the complex P0
 - [magnetic_curvilinear_metrics](generated/magnetic_curvilinear_metrics.html) - This example evaluates the metric-to-coefficient transform used by the
 - [toroidal_analytical](generated/toroidal_analytical.html) - This example evaluates the real \(n=2,m=1\) toroidal harmonic
+- [nested_surface_solution](generated/nested_surface_solution.html) - This physical-first gallery fixture evaluates FortFEM's neutral nested-surface
 - [iga_shape_sensitivity](generated/iga_shape_sensitivity.html) - This example differentiates a complete scalar isogeometric state problem,
 - [maxwell_mesh_adjoint](generated/maxwell_mesh_adjoint.html) - This example benchmarks analytical forward and reverse products for
 - [iga_polar_feec](generated/iga_polar_feec.html) - This example constructs the Type-1 polar spline de Rham sequence

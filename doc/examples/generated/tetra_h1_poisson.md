@@ -28,7 +28,12 @@ reconstructs physical values and gradients.
 The example writes uncommitted `convergence.csv` and
 `tetra_h1_poisson_convergence.png` artifacts. Both \(L^2\) and gradient errors
 must decrease under p-refinement, and the degree-four solution must reproduce
-the quartic analytical field to roundoff.
+the quartic analytical field to roundoff. The physical view uses dense
+tetrahedral samples with the conforming sub-tetrahedron edges overlaid, so the
+solution is readable as a volume/slice view rather than an unlabelled cloud.
+A small `gallery_sequence.txt`
+record is also emitted as an execution oracle: it records the physical
+solution plot before the convergence diagnostics are written.
 
 ## Usage
 
@@ -46,8 +51,8 @@ program tetra_h1_poisson
     use fortfem_generated_tetra_h1_oracle, only: generated_tetra_h1_oracle
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
-    use fortplot, only: add_scatter, figure, legend, plot, savefig, &
-        set_yscale, title, xlabel, ylabel
+    use fortplot, only: add_3d_plot, add_scatter, figure, legend, plot, &
+        savefig, set_yscale, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
@@ -70,6 +75,7 @@ program tetra_h1_poisson
     call execute_command_line( &
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
+    call initialize_gallery_sequence()
     do degree = 1, 4
         degrees(degree) = real(degree, dp)
         call solve_and_measure(degree, l2_errors(degree), h1_errors(degree))
@@ -87,6 +93,13 @@ program tetra_h1_poisson
         error stop "quartic tetrahedral H1 gradient was not reproduced"
     end if
 
+    call solve_tetra_lagrange_poisson( &
+        vertices, tetrahedra, 4, bubble_source, zero_boundary, &
+        plot_solution, plot_status)
+    if (plot_status%code /= 0) error stop "tetrahedral plot solve failed"
+    call render_solution(plot_solution)
+    call record_gallery_stage("physical_solution")
+
     open (newunit=unit, file=output_directory//"/convergence.csv", &
         status="replace", action="write")
     write (unit, "(a)") "degree,l2_error,gradient_error"
@@ -95,12 +108,6 @@ program tetra_h1_poisson
             degree, l2_errors(degree), h1_errors(degree)
     end do
     close (unit)
-
-    call solve_tetra_lagrange_poisson( &
-        vertices, tetrahedra, 4, bubble_source, zero_boundary, &
-        plot_solution, plot_status)
-    if (plot_status%code /= 0) error stop "tetrahedral plot solve failed"
-    call render_solution(plot_solution)
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot( &
@@ -113,13 +120,34 @@ program tetra_h1_poisson
     call title("FortSym oracle vs FortSparse tetrahedral H1 solve")
     call legend()
     call savefig(output_directory//"/tetra_h1_poisson_convergence.png")
+    call record_gallery_stage("diagnostics")
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, &
+            file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        close (sequence_unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(len=*), intent(in) :: stage
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, &
+            file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write")
+        write (sequence_unit, "(a)") trim(stage)
+        close (sequence_unit)
+    end subroutine record_gallery_stage
 
     subroutine render_solution(solution)
         real(dp), intent(in) :: solution(:)
 
-        integer, parameter :: sample_side = 12
+        integer, parameter :: sample_side = 24
         real(dp), allocatable :: x_plot(:), y_plot(:), z_plot(:), values(:)
         real(dp) :: point(3), value, gradient(3)
         integer :: cell, count, i, j, k, local_status
@@ -161,10 +189,31 @@ contains
         call add_scatter( &
             x_plot(:count), y_plot(:count), z_plot(:count), &
             c=values(:count), cmap="viridis", marker=".", &
-            markersize=4.0_dp, label="computed quartic solution samples")
+            markersize=2.5_dp, label="computed quartic solution samples")
+        call render_tetrahedron_edges()
         call title("Tetrahedral H1 Poisson computed solution")
         call savefig(output_directory//"/tetra_h1_poisson_solution_3d.png")
     end subroutine render_solution
+
+    subroutine render_tetrahedron_edges()
+        integer, parameter :: edge_count = 6
+        integer, parameter :: edges(2, edge_count) = reshape([ &
+            1, 2, 1, 3, 1, 4, 2, 3, 2, 4, 3, 4], [2, edge_count])
+        integer :: cell, edge
+
+        do cell = 1, size(tetrahedra, 2)
+            do edge = 1, edge_count
+                call add_3d_plot( &
+                    [vertices(1, tetrahedra(edges(1, edge), cell)), &
+                    vertices(1, tetrahedra(edges(2, edge), cell))], &
+                    [vertices(2, tetrahedra(edges(1, edge), cell)), &
+                    vertices(2, tetrahedra(edges(2, edge), cell))], &
+                    [vertices(3, tetrahedra(edges(1, edge), cell)), &
+                    vertices(3, tetrahedra(edges(2, edge), cell))], &
+                    color="dimgray", linewidth=1.1_dp)
+            end do
+        end do
+    end subroutine render_tetrahedron_edges
 
     subroutine solve_and_measure(degree, l2_error, h1_error)
         integer, intent(in) :: degree

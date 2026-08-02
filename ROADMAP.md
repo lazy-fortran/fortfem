@@ -1372,6 +1372,11 @@ and derivative diagnostics, and emits CSV/JSON timing and finite-difference
 provenance. It remains a neutral contract; profiles, readers, and production
 optimization stay caller-owned.
 
+The neutral `critical_point_metadata_t` contract now records caller-supplied
+two-dimensional critical-point candidates, gradient/Hessian event margins,
+regular/O/X/degenerate classification, and limiter/separatrix labels with fixed-
+topology JVP/VJP actions. It does not locate nulls or assign plasma physics.
+
 #### Free-boundary completion checklist
 
 The rows above cover the field and residual pieces, but a reusable free-boundary
