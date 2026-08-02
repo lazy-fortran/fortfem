@@ -43,6 +43,10 @@ module fortfem_api
         assemble_pseudo_arclength_residual, &
         assemble_pseudo_arclength_residual_jvp, &
         assemble_pseudo_arclength_residual_vjp
+    use fortfem_pseudo_arclength_tangent, only: &
+        normalize_pseudo_arclength_tangent, &
+        normalize_pseudo_arclength_tangent_jvp, &
+        normalize_pseudo_arclength_tangent_vjp
     use fortfem_generalized_eigen_residual, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
@@ -1381,6 +1385,9 @@ module fortfem_api
     public :: assemble_pseudo_arclength_residual
     public :: assemble_pseudo_arclength_residual_jvp
     public :: assemble_pseudo_arclength_residual_vjp
+    public :: normalize_pseudo_arclength_tangent
+    public :: normalize_pseudo_arclength_tangent_jvp
+    public :: normalize_pseudo_arclength_tangent_vjp
     public :: normalize_harmonic_one_forms
     public :: normalize_harmonic_one_forms_jvp
     public :: normalize_harmonic_one_forms_vjp
