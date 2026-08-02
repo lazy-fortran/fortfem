@@ -276,6 +276,13 @@ module fortfem_api
         assemble_interface_surface_current, &
         assemble_interface_surface_current_jvp, &
         assemble_interface_surface_current_vjp
+    use fortfem_surface_current_potential, only: &
+        surface_current_potential_metadata_t, &
+        initialize_surface_current_potential_metadata, &
+        validate_surface_current_potential_metadata, &
+        assemble_surface_current_potential, &
+        assemble_surface_current_potential_jvp, &
+        assemble_surface_current_potential_vjp
     use fortfem_surface_current_balance, only: &
         assemble_surface_current_junction_balance, &
         assemble_surface_current_junction_balance_jvp, &
@@ -358,6 +365,24 @@ module fortfem_api
         evaluate_axis_regular_radial_basis, &
         evaluate_axis_regular_radial_basis_jvp, &
         evaluate_axis_regular_radial_basis_vjp
+    use fortfem_fourier_zernike_basis, only: &
+        FOURIER_ZERNIKE_PARITY_EVEN, FOURIER_ZERNIKE_PARITY_ODD, &
+        fourier_zernike_mode_t, fourier_zernike_basis_t, &
+        build_fourier_zernike_basis, validate_fourier_zernike_basis, &
+        fourier_zernike_mode_requirements, evaluate_fourier_zernike_radial
+    use fortfem_collocation_grid, only: &
+        COLLOCATION_GRID_LINEAR, COLLOCATION_GRID_QUADRATURE, &
+        COLLOCATION_GRID_CONCENTRIC, collocation_grid_t, &
+        initialize_collocation_grid, validate_collocation_grid, &
+        collocation_grid_metadata, collocation_grid_flat_index, &
+        collocation_grid_unflatten_index, collocation_grid_chunk_bounds, &
+        collocation_grid_point_count
+    use fortfem_direct_fourier_transform, only: &
+        direct_fourier_plan_t, initialize_direct_fourier_plan, &
+        validate_direct_fourier_plan, direct_fourier_plan_metadata, &
+        direct_fourier_plan_chunk_bounds, direct_fourier_forward, &
+        direct_fourier_adjoint, direct_fourier_plan_sample_count, &
+        direct_fourier_plan_mode_count
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -1690,6 +1715,12 @@ module fortfem_api
     public :: assemble_interface_surface_current
     public :: assemble_interface_surface_current_jvp
     public :: assemble_interface_surface_current_vjp
+    public :: surface_current_potential_metadata_t
+    public :: initialize_surface_current_potential_metadata
+    public :: validate_surface_current_potential_metadata
+    public :: assemble_surface_current_potential
+    public :: assemble_surface_current_potential_jvp
+    public :: assemble_surface_current_potential_vjp
     public :: assemble_surface_current_junction_balance
     public :: assemble_surface_current_junction_balance_jvp
     public :: assemble_surface_current_junction_balance_vjp
@@ -1769,6 +1800,34 @@ module fortfem_api
     public :: evaluate_axis_regular_radial_basis
     public :: evaluate_axis_regular_radial_basis_jvp
     public :: evaluate_axis_regular_radial_basis_vjp
+    public :: FOURIER_ZERNIKE_PARITY_EVEN
+    public :: FOURIER_ZERNIKE_PARITY_ODD
+    public :: fourier_zernike_mode_t
+    public :: fourier_zernike_basis_t
+    public :: build_fourier_zernike_basis
+    public :: validate_fourier_zernike_basis
+    public :: fourier_zernike_mode_requirements
+    public :: evaluate_fourier_zernike_radial
+    public :: COLLOCATION_GRID_LINEAR
+    public :: COLLOCATION_GRID_QUADRATURE
+    public :: COLLOCATION_GRID_CONCENTRIC
+    public :: collocation_grid_t
+    public :: initialize_collocation_grid
+    public :: validate_collocation_grid
+    public :: collocation_grid_metadata
+    public :: collocation_grid_flat_index
+    public :: collocation_grid_unflatten_index
+    public :: collocation_grid_chunk_bounds
+    public :: collocation_grid_point_count
+    public :: direct_fourier_plan_t
+    public :: initialize_direct_fourier_plan
+    public :: validate_direct_fourier_plan
+    public :: direct_fourier_plan_metadata
+    public :: direct_fourier_plan_chunk_bounds
+    public :: direct_fourier_forward
+    public :: direct_fourier_adjoint
+    public :: direct_fourier_plan_sample_count
+    public :: direct_fourier_plan_mode_count
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
