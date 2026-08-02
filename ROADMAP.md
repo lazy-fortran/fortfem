@@ -1554,6 +1554,11 @@ Since this audit, the neutral implementation now includes:
   diagnostics, fixed-topology JVP/VJP actions, and explicit finite axis-limit
   handling. Its polynomial manufactured test passes the independent value,
   finite-difference, adjoint, singular-branch, and invalid-flag checks.
+- `evaluate_surface_shape_objective` and its JVP/VJP companions for a
+  positive-weighted mismatch of candidate and target physical surface samples.
+  Point ordering, quadrature, topology, and geometry maps remain caller-owned;
+  the contract is the neutral shape-mismatch port used by fixed/free-boundary
+  clients rather than a DESC, VMEC, or plasma objective.
 
 These are interchange and diagnostic foundations only. They do not implement
 DESC profiles, optimization, equilibrium readers, coil models, or plasma

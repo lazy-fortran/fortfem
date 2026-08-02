@@ -30,6 +30,10 @@ module fortfem_api
         evaluate_equation_objective_merit, &
         evaluate_equation_objective_merit_jvp, &
         evaluate_equation_objective_merit_vjp
+    use fortfem_surface_shape_objective, only: &
+        evaluate_surface_shape_objective, &
+        evaluate_surface_shape_objective_jvp, &
+        evaluate_surface_shape_objective_vjp
     use fortfem_linear_response_cross, only: &
         assemble_linear_response_eigen_cross_residual, &
         assemble_linear_response_eigen_cross_residual_jvp, &
@@ -3182,6 +3186,9 @@ module fortfem_api
     public :: evaluate_equation_objective_merit
     public :: evaluate_equation_objective_merit_jvp
     public :: evaluate_equation_objective_merit_vjp
+    public :: evaluate_surface_shape_objective
+    public :: evaluate_surface_shape_objective_jvp
+    public :: evaluate_surface_shape_objective_vjp
     public :: near_axis_diagnostic_metadata_t
     public :: evaluate_boozer_like_rotational_transform
     public :: evaluate_boozer_like_rotational_transform_jvp
