@@ -42,6 +42,28 @@ real-adjoint tests.
 `compute_fci_staggered_flux_box_volumes` combines traced forward/backward flux
 expansion with plane-cell area and (B_\varphi) for the support weights.
 
+Edge/SOL clients can keep the conservative accounting in the same neutral
+layer. `assemble_fci_terminal_boundary_ledger` accepts one signed terminal
+flux vector per traced event, accumulates its canonical-cell contribution, and
+returns the integrated total for every channel. The matching
+`assemble_volume_balance_ledger` integrates caller-supplied volume rates
+against positive cell measures. Both expose fixed-topology analytical JVP and
+VJP actions, so a client can compare mass, energy, charge, or species channels
+without FortFEM selecting units, signs, closures, or sheath laws.
+
+```fortran
+call assemble_fci_terminal_boundary_ledger( &
+    terminal_owners, terminal_weights, terminal_flux, canonical_volumes, &
+    terminal_contribution, terminal_total, status)
+call assemble_volume_balance_ledger( &
+    cell_weights, volume_source_rate, cell_source, volume_total, status)
+```
+
+The terminal total is the signed event integral, while the volume total is
+the signed cell-measure integral. Their difference or sum is intentionally a
+client-owned balance convention; keeping both ledgers explicit avoids hiding
+an application-specific sign choice in the operator library.
+
 For segment `k`, let `Q_plus(k)` map the upper poloidal plane to staggered flux
 boxes and `Q_minus(k)` map the lower plane. With line lengths `ell`, the
 gradient is
