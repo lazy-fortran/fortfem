@@ -684,6 +684,9 @@ module fortfem_api
         evaluate_maxwell_virtual_casing_rwg_3d, &
         evaluate_maxwell_virtual_casing_rwg_3d_jvp, &
         evaluate_maxwell_virtual_casing_rwg_3d_vjp
+    use fortfem_resistive_wall_midpoint, only: &
+        advance_resistive_wall_midpoint, advance_resistive_wall_midpoint_jvp, &
+        advance_resistive_wall_midpoint_vjp, evaluate_resistive_wall_energy_balance
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1522,6 +1525,10 @@ module fortfem_api
     public :: evaluate_maxwell_virtual_casing_rwg_3d
     public :: evaluate_maxwell_virtual_casing_rwg_3d_jvp
     public :: evaluate_maxwell_virtual_casing_rwg_3d_vjp
+    public :: advance_resistive_wall_midpoint
+    public :: advance_resistive_wall_midpoint_jvp
+    public :: advance_resistive_wall_midpoint_vjp
+    public :: evaluate_resistive_wall_energy_balance
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
