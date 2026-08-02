@@ -252,8 +252,12 @@ never constructs a dense global matrix.
 
 The [retained field-split contract](retained_field_split.html) reuses those
 fixed factors for concatenated real or complex field blocks and supplies solve
-JVP/VJP products without refactoring. Coupled Schur corrections remain
-caller-owned.
+JVP/VJP products without refactoring.
+
+The [retained coupled Schur contract](retained_coupled_schur.html) eliminates
+that retained block from caller-owned exterior couplings and returns real or
+complex value/JVP/VJP actions without dense global assembly. Its off-diagonal
+blocks remain caller-owned.
 
 The [complex packed block graph residual](complex_block_graph_residual.html)
 provides the same N-field path for frequency-domain operators and documents

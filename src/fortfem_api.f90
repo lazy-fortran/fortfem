@@ -86,6 +86,10 @@ module fortfem_api
         factor_retained_field_split, free_retained_complex_field_split, &
         free_retained_field_split, retained_complex_field_split_t, &
         retained_field_split_t
+    use fortfem_retained_coupled_schur, only: &
+        assemble_retained_coupled_schur, &
+        assemble_retained_coupled_schur_jvp, &
+        assemble_retained_coupled_schur_vjp
     use fortfem_complex_block_graph_residual, only: &
         assemble_complex_block_graph_residual, &
         assemble_complex_block_graph_residual_jvp, &
@@ -2782,6 +2786,9 @@ module fortfem_api
     public :: apply_retained_field_split_jvp, apply_retained_complex_field_split_jvp
     public :: apply_retained_field_split_vjp, apply_retained_complex_field_split_vjp
     public :: free_retained_field_split, free_retained_complex_field_split
+    public :: assemble_retained_coupled_schur
+    public :: assemble_retained_coupled_schur_jvp
+    public :: assemble_retained_coupled_schur_vjp
     public :: assemble_complex_block_graph_residual
     public :: assemble_complex_block_graph_residual_jvp
     public :: assemble_complex_block_graph_residual_vjp

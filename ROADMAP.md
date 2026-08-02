@@ -256,6 +256,16 @@ FortSym or provenance entry, and a gallery fixture when the row affects a
 visible numerical result. A current primitive does not imply that its coupled
 application residual is complete.
 
+The retained-coupled-Schur gap is now closed at the neutral solver-composition
+layer: assemble_retained_coupled_schur eliminates caller-owned exterior
+couplings against retained real or complex field factors and provides value,
+JVP, and VJP actions without dense global assembly. The independent
+test_retained_coupled_schur oracle covers diagonal elimination,
+finite-difference derivatives, and real/complex adjoint identities. The
+remaining gap is composition of these corrections into arbitrary multipatch
+graphs and FortSym-generated physical residuals; no MHD state or closure is
+selected here.
+
 ## 4. Structure-preserving numerics
 
 Structure preservation is measured, tested, and shown in the gallery.
