@@ -304,7 +304,7 @@ documentation gates above pass.
   and solution-plot contracts without generated media. Each has a
   direct-import facade and focused analytical or structure smoke test. No
   facade may grow into the umbrella.
-- **API-03 — four parity renames complete:** the boundary parity family is now
+- **API-03 — five parity renames complete; one slice in flight:** the boundary parity family is now
   `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
   module, umbrella exports, tests, and design documentation. The obsolete
   internal spelling is gone; the independent weighted complex value/JVP/VJP
@@ -315,8 +315,9 @@ documentation gates above pass.
   `compare_sheet_current_representations` and
   `compare_sheet_current_surface_representations{,_jvp}`, with independent
   Gaussian/surface-quadrature ledgers and derivative checks. Remaining parity
-  candidates (Beltrami and tree--cotree diagnostics) stay separate rename
-  units.
+  candidate families are the two Beltrami residual names; the tree--cotree
+  diagnostic is now `diagnose_tree_cotree_iga_invariance` with signed-map and
+  loop-period invariance checks.
 - **API-04 — generated visibility complete:**
   `scripts/check_generated_visibility.py` and
   `test/test_generated_visibility.sh` enforce private generated implementation
@@ -360,7 +361,7 @@ waits for the full gallery/CI job before handing off.
 | API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; canonical `compare_sheet_current_representations` export and value parity are complete | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
 | API-03-SURFACE | Surface-quadrature definition, exports, tests/docs; canonical `compare_sheet_current_surface_representations{,_jvp}` and interop-facade export are complete | Orientation/measure/toroidal quadrature oracle, central-difference JVP, and invalid-measure rejection |
 | API-03-BELTRAMI | Next parity family: rename `evaluate_beltrami_two_region_parity` and `evaluate_beltrami_shell_parity` to the documented `compare_*_residual` names, keeping flux/helicity/energy schemas unchanged | Independent curl-eigen residual, constraint, energy, and value/JVP/VJP oracles; no physics closure or reader changes |
-| API-03-TREE | Rename `evaluate_tree_cotree_iga_parity` to `diagnose_tree_cotree_iga_invariance` with the fixed-map derivative contract | Signed-map invariance, loop-period, direct-reduction, and fixed-topology JVP/VJP oracle |
+| API-03-TREE | `diagnose_tree_cotree_iga_invariance` is complete in the implementation, umbrella, FEEC facade, tests, and inventory | Signed-map invariance, loop-period, direct-reduction, and fixed-topology oracle |
 | API-06-GATE | Release-gate runner, isolated negative fixtures, and fpm-safe fixture layout are complete; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
 | API-05-GALLERY | First six-example import audit and documentation migration are complete; continue in scalar-to-vector-to-interface order with no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
 | GALLERY-BIRO-TEAM | Add provenance-pinned Bíró tree--cotree curl--curl reproduction and the first license-safe TEAM magnetostatic/eddy-current fixture with solution-first 2D/3D plot data; keep benchmark arrays external when redistribution is restricted | Gauge-invariant field/energy/loop-current oracle, TEAM probe/field/energy manifest, mesh convergence, and no checked-in media or readers |
