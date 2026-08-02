@@ -159,7 +159,7 @@ documentation baseline. The list is intentionally conservative.
 | Area | Current state | Next gate |
 | --- | --- | --- |
 | Scalar FEM | P1/P2/Q1 and arbitrary-order triangular scalar paths, Poisson and diffusion forms, boundary conditions, plotting | General field and coefficient callbacks in the symbolic form compiler |
-| FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson, neutral real and complex two-field/packed N-field block graph residuals with complete JVP/VJP contracts, and real/complex packed-graph CSC adapters whose focused oracle exercises retained FortSparse solve JVP/VJP composition | Schur/field-split derivatives over composed N-field graphs and arbitrary multipatch assembly |
+| FEEC | Oriented triangular and tetrahedral H1, H(curl), H(div), and DG families, Piola maps, commuting tests, sparse assembly, mixed RT-DG Poisson, neutral real and complex two-field/packed N-field block graph residuals with complete JVP/VJP contracts, real/complex packed-graph CSC adapters, and retained real/complex field-split solve JVP/VJP products | Coupled Schur corrections over composed N-field graphs and arbitrary multipatch assembly |
 | IGA | Nonuniform B-splines, rational maps, two- and three-dimensional de Rham incidence complexes, cylindrical and toroidal Fourier blocks, initial JOREK magnetic-flux residual/JVP | General patch graphs, trimming, enrichment, and the remaining coupled JOREK variables |
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives and Gaunt products, Hobson-normalized toroidal P/Q branches, stable high-degree half-integer continuation, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Uniform asymptotics for arbitrarily large degree/order and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
@@ -229,7 +229,7 @@ an arbitrary-topology three-dimensional MHD or edge application.
 | Topological complex | A region and cell-complex graph with periodic identifications, orientations, homology, cohomology, harmonic representatives, cuts, and gauges; `cell_complex_homology_cycle_basis` and the dual `cell_complex_cohomology_cocycle_basis` now return deterministic quotient representatives of `ker(boundary_1)/im(boundary_2)` and `ker(boundary_2^T)/im(boundary_1^T)` alongside the metric-harmonic one-form period normalization map and complex edge-period residual JVP/VJP actions | Chain-complex identities, Euler characteristic, cycle and flux integrals, filled-loop quotient, normalized periods, and nullspace dimension on slab, cylinder, sphere, and torus cells |
 | Sheet-current interface | Neutral open/closed internal-manifold graph, integrated-current junction ledger, fixed-topology loop-current constraints, differentiable geometry-to-edge-flux contraction, topology-only edge-flux balance, scalar and full-vector traction jumps, and an independent test/trial tangential surface-current trace residual are public; constitutive pressure laws and flux/helicity constraints remain | Ampere jump, surface-current conservation, loop current, pressure jump, and regularized-layer limits |
 | Cut FEEC spaces | Scalar and vector matrix-level shifted-Heaviside enriched-space constructors, a 3D vector-enrichment curl/divergence product-rule diagnostic, the physical vector/metric support Gram contraction, batched 2D/3D covariant/contravariant Piola-enrichment composition, matching 2D/3D affine Piola H(curl)/H(div) differential contracts with value/JVP/VJP actions, a rectangular commuting-projection audit, and signed dense/CSC local-to-global `assemble_glued_feec_sequence` reference compositions with value/JVP/VJP actions are public; the CSC path now also reports sparse `curl(grad)` and `div(curl)` products with product-rule JVP/VJP actions; Piola-aware vector-compatible XFEM/XIGA and DG spaces that preserve or explicitly report the de Rham sequence across cuts remain | Curl-gradient and divergence-curl identities on every generated space, Piola/XIGA constructors, and fitted versus unfitted convergence |
-| Coupled field residuals | Neutral real and complex rectangular field-plus-constraint and packed N-field block graph residuals now compose caller-owned vector, tensor, interface, boundary, FEM, BEM, DtN, or PML blocks with complete JVP/VJP actions; real and complex semantic normal/tangential boundary-port residuals cover supplied trace/jump targets and work weights. The neutral tensor volume-work and tensor-weighted diffusion contractions are public. Complex paths use the real-part adjoint convention. The packed graph's scalar value, product-rule JVP, and reverse product are emitted by the pinned FortSym generator and checked against an independent matrix oracle. Real/complex packed-graph CSC adapters now provide the explicit retained-factor storage boundary without dense assembly, and their focused oracle covers retained solve JVP/VJP composition. Plasma state assembly remains in an external client | Schur/field-split derivatives over composed N-field graphs, FortSym manufactured residuals for composed forms, energy or power balance, and cross-formulation parity |
+| Coupled field residuals | Neutral real and complex rectangular field-plus-constraint and packed N-field block graph residuals now compose caller-owned vector, tensor, interface, boundary, FEM, BEM, DtN, or PML blocks with complete JVP/VJP actions; real and complex semantic normal/tangential boundary-port residuals cover supplied trace/jump targets and work weights. The neutral tensor volume-work and tensor-weighted diffusion contractions are public. Complex paths use the real-part adjoint convention. The packed graph's scalar value, product-rule JVP, and reverse product are emitted by the pinned FortSym generator and checked against an independent matrix oracle. Real/complex packed-graph CSC adapters provide retained-factor storage without dense assembly, and `retained_field_split` composes those fixed factors into real/complex block-diagonal solve JVP/VJP paths. Plasma state assembly remains in an external client | Coupled Schur corrections over composed N-field graphs, FortSym manufactured residuals for composed forms, energy or power balance, and cross-formulation parity |
 | Equilibrium interchange | The neutral external-adapter schema for mapped coordinates, physical samples, named scalar/vector/tensor coefficients and scalar profiles, segmented boundaries, provenance, units, and normalization is public and validated. `build_equilibrium_interchange_sample_set` now projects selected, already-sampled physical coefficient components onto the common weighted sample-set schema, and weighted L2/relative comparison metrics expose fixed-coordinate value/weight JVP/VJP actions. GEQDSK and COCOS parsing remain outside FortFEM | Analytic manufactured data covers toroidal mapped samples, named fields, segmented boundaries, vector/tensor component offsets, copy semantics, rejection, selected-component common-grid projection, and central/adjoint comparison derivatives; license-safe CHEASE and FreeGS outputs still enter through external resamplers |
 | Linear response interchange | The neutral external-adapter record now carries modal `(m,n)` metadata, complex frequency, provenance, normalization, response channels, and caller-owned equilibrium, inertia, resistive, vacuum, and wall blocks. The composed operator, forced residual, complex JVP/VJP, normalized reciprocity error, conservative Hermitian passivity lower bound, neutral generalized eigen-residual `K u - lambda M u` with analytic JVP/VJP, common real and complex weighted physical sample-set validation with real-part comparison JVP/VJP actions, independently sized weighted inner/outer singular-layer trace matching, a bounded versioned text schema round-trip, and deterministic bounded cross-factor actions are public; no GPEC/MARS/GLISS/STARWALL reader or closure is included | Assembly-specific FEM/BEM/DtN/PML response matrices, singular-layer asymptotic models, reciprocity/passivity normalization, and external sampler fixtures |
 | Fourier and toroidal modes | The fixed-topology mode registry now provides field-period phase, normalization, conjugate packing, retained-triad lookup, an ordered triad map with omitted-sum count, deterministic one-product and bounded repeated-product work registries, radial regularity, complex coordinate derivatives, a same-registry three-factor vector/tensor Fourier product, a distinct-registry bilinear application with JVP/VJP, weighted modal-energy/conjugacy diagnostics with JVP/VJP, and a bounded-memory retained-mode toroidal Green convolution with complex JVP/VJP. The padded one-product registry now grows geometrically instead of reserving four N+N² arrays, reducing OOM risk for sparse/colliding mode windows. FortNum now exposes independently tested ordinary Legendre Q values/derivatives, orthonormal complex spherical harmonics with angular derivatives and Gaunt products, and Hobson-normalized half-integer toroidal P/Q values/derivatives; model-specific mode operators and branch data remain | Nonlinear application composition with physical operators and uniform high-order torus-harmonic envelopes |
@@ -1146,6 +1146,20 @@ profiles or production-code inputs:
 10. a free-boundary continuation fixture in which only a manufactured boundary
     trace is varied, reporting residual, force-like supplied functional,
     conditioning, solve time, and derivative error.
+11. a nested-surface variational fixture with a toroidal embedding, prescribed
+    fluxes, a NESTOR-like vacuum map, and a physical surface-shape plot;
+12. an ideal perturbed-response fixture with a rational surface, explicit
+    shielding-current trace, penetrated resonant field, and an optional
+    supplied resistive inner-layer oracle;
+13. an Eulerian relaxation fixture initialized from the nested solution, with
+    an island-forming perturbation, force residual, divergence defect, and
+    topology-event report;
+14. a multi-region relaxed fixture with independent Beltrami blocks, ideal
+    interfaces, pressure jumps, flux/helicity constraints, and comparison to
+    a compatible H(curl) volume solution;
+15. a reduced resistive island/wall continuation fixture that reports
+    branch multiplicity, energy input, dissipation, island width, and
+    hysteresis without claiming an arbitrary static resistive equilibrium.
 
 Every example's first plot is the physical solution (surface, slice, vector
 field, or field line), followed by mesh/geometry, residual/conservation,
@@ -1153,7 +1167,98 @@ convergence, performance, and derivative plots. The gallery stores numerical
 CSV/JSON only; generated images stay out of git and are rebuilt by the docs
 workflow.
 
-#### 8.5.7 Implementation order and method-selection rule
+#### 8.5.7 Equilibrium-model selection
+
+FortFEM will expose several equilibrium-model foundations. They share
+geometry, traces, compatible spaces, block residuals, continuation, and
+derivative contracts, but they do not impose the same magnetic topology.
+Nested ideal equilibria, ideal perturbed responses, relaxed non-nested
+equilibria, and resistive dynamics are separate model branches.
+
+**Nested ideal branch.** A surface embedding
+
+\[
+  \mathbf{x}=\mathbf{x}(\rho,\theta,\zeta)
+\]
+
+represents every \(\rho=\mathrm{const.}\) surface as a torus. The magnetic
+field representation enforces \(\mathbf B\cdot\nabla\rho=0\) kinematically.
+The residual or constrained energy uses supplied fluxes, currents, pressure
+profiles, and other physical invariants. Radial IGA or high-order finite
+elements and Fourier or spline surface bases provide a coordinate-clean
+VMEC/GVEC/DESC-like foundation. A NESTOR-like toroidal vacuum operator is the
+preferred exterior backend for smooth periodic surfaces. This branch is
+accurate and efficient for nested equilibria. Nestedness is a model
+assumption, not a diagnostic that the solver may silently enforce after a
+topology change.
+
+**Ideal perturbed-response branch.** A nested equilibrium is followed by a
+linear displacement and field-response solve. GPEC/IPEC-like outer response
+blocks, vacuum and wall operators, and supplied resonant-layer data share the
+same trace interface. At a rational surface, an ideal shielding current is a
+surface distribution represented by an explicit \(\mathbf K\) trace or a
+field jump. The response layer may match an external resistive inner-layer
+model. It must report the sheet current, penetrated resonant field, and the
+validity of the fixed-topology derivative. Ideal shielding response is not a
+replacement for the equilibrium branch.
+
+**Eulerian relaxed branch.** A SIESTA-like energy relaxation starts from a
+nested state and updates volume fields or displacements on a fixed physical
+mesh. The representation can form islands and stochastic regions without
+requiring flux coordinates everywhere. FortFEM supplies compatible
+\(H(\mathrm{curl})\)/\(H(\mathrm{div})\) spaces, force and divergence
+residuals, topology-event reporting, pseudo-transient hooks, and physical
+preconditioner blocks. A client supplies the pressure, transport, and
+relaxation model.
+
+**Multi-region relaxed branch.** A region graph contains independently
+represented plasma volumes and ideal interfaces. Beltrami or generalized
+relaxed-field blocks, flux and helicity constraints, total-pressure jumps,
+and interface shape derivatives provide a SPEC/MRxMHD-like foundation. A
+region may contain islands or chaotic field lines while the interfaces remain
+explicit. BIEST-like generalized-Debye-source operators and compatible
+volume FEEC are interchangeable interior backends.
+
+**Resistive dynamic branch.** Finite resistivity, current drive, flow,
+pressure or heat transport, wall response, and boundary forcing define a
+time-dependent problem. A steady state is then a result of the specified
+dynamics and continuation path, not an arbitrary constrained minimum. This
+branch is required for reconnection, finite island saturation, island
+overlap, stochastic transport, error-field penetration, wall locking, and
+bifurcation studies. Structure-preserving time integration and energy or
+helicity ledgers remain mandatory.
+
+Model selection follows the physical question:
+
+| Question | Foundation branch |
+| --- | --- |
+| Smooth equilibrium, coil design, or reconstruction with nested surfaces | Nested ideal branch with NESTOR-like or physical vacuum BEM |
+| Small non-axisymmetric perturbation and ideal shielding | Nested equilibrium plus ideal perturbed-response branch |
+| Finite islands or stochastic regions in an equilibrium calculation | Eulerian relaxed or multi-region relaxed branch |
+| Reconnection, island saturation, wall locking, or hysteresis | Resistive dynamic branch |
+
+The solver must preserve non-uniqueness as observable structure. Constraints
+are accepted only when they represent physical invariants, boundary data, or
+gauge conditions. Pseudo-arclength continuation, deflation, multi-start
+initialization, topology-event diagnostics, and Hessian or stability spectra
+track distinct solution branches instead of selecting one silently. A
+current-sheet limit, a relaxed multi-region state, and a finite-resistivity
+state are compared as separate solutions with declared assumptions.
+
+The corresponding FortFEM interfaces are:
+
+- `nested_surface_variational` for the fixed nested topology;
+- `ideal_perturbed_response` for displacement, shielding-current, vacuum, and
+  wall blocks;
+- `eulerian_relaxation` for fixed-domain non-nested ideal relaxation;
+- `multi_region_relaxed` for explicit region graphs and ideal interfaces;
+- `resistive_dynamics` for client-owned time-dependent closures.
+
+These names describe external composition contracts. FortFEM does not contain
+VMEC, GVEC, DESC, SIESTA, SPEC, GPEC, MARS, or resistive-MHD application
+physics.
+
+#### 8.5.8 Implementation order and method-selection rule
 
 Implement the foundation in this order:
 
@@ -1280,10 +1385,11 @@ work. Input conversion and application physics remain outside FortFEM.
 | --- | --- | --- |
 | [CHEASE](https://crppwww.epfl.ch/~sauter/chease/), [paper](https://doi.org/10.1016/0010-4655(96)00046-X) | 2D fixed-boundary axisymmetric toroidal equilibrium | Generic axisymmetric elliptic/Fourier forms, spline/FEM geometry, axis and boundary trace contracts, and a common sampler. No COCOS or GEQDSK implementation |
 | [FreeGS](https://freegs.readthedocs.io/en/stable/creating_equilibria.html) | 2D free-boundary axisymmetric equilibrium | Generic nonlinear residual, external boundary and coil-trace callbacks, X/O-point metadata fields, and manufactured profiles. Coil physics and GEQDSK conversion remain external |
-| [VMEC/PARVMEC](https://github.com/ORNL-Fusion/PARVMEC), [VMEC++ numerics](https://arxiv.org/abs/2502.04374) | 3D nested-surface variational ideal equilibrium | Fourier angles, radial FE/IGA, generic energy and constraint blocks, shape JVP/VJP, and an external-data sampler |
+| [VMEC/PARVMEC](https://github.com/ORNL-Fusion/PARVMEC), [VMEC++ numerics](https://arxiv.org/abs/2502.04374) | 3D nested-surface variational ideal equilibrium and free boundary | Kinematically nested toroidal embeddings, Fourier angles, radial FE/IGA, flux and constraint blocks, NESTOR-like vacuum traces, shape JVP/VJP, and an external-data sampler |
 | [GVEC](https://gvec.readthedocs.io/develop/index.html), [DESC](https://github.com/PlasmaControl/DESC) | Flexible 3D variational equilibrium and optimization | General coordinate maps, radial B-splines, Fourier modes, multiple interfaces, and exact residual derivatives. Input and profile models remain external |
+| [SIESTA](https://doi.org/10.1063/1.3597155) | Eulerian ideal-MHD relaxation with islands and stochastic regions, including a free-plasma-boundary extension | Fixed-domain compatible volume fields, force and divergence residuals, relaxation/preconditioner contracts, topology events, and free-boundary trace coupling. Pressure and relaxation closures remain external |
 | [SPEC](https://princetonuniversity.github.io/SPEC/) | Multi-region relaxed MHD with ideal interfaces | Region graph, independent fields, generic curl-eigenproblem and constraint blocks, total-pressure trace law, and interface shape derivatives. Beltrami and profile selection remain client code |
-| [GPEC](https://princetonuniversity.github.io/GPEC/), [references](https://princetonuniversity.github.io/GPEC/references.html) | Linear ideal, kinetic, and resistive perturbed response | Fourier coupling, singular outer/inner layer contracts, vacuum and wall response, response matrices, normalization, and reciprocity. Equilibrium import remains external |
+| [GPEC](https://princetonuniversity.github.io/GPEC/), [references](https://princetonuniversity.github.io/GPEC/references.html) | Linear ideal, kinetic, and resistive perturbed response with ideal outer shielding and optional resistive inner layers | Fourier coupling, explicit resonant sheet-current/penetrated-field traces, singular outer/inner layer contracts, vacuum and wall response, response matrices, normalization, and reciprocity. Equilibrium import remains external |
 | [MARS-F response work](https://doi.org/10.1016/j.cpc.2006.09.003) | Linear toroidal ideal/resistive MHD and wall response | Linear block interfaces, complex frequency, generic plasma-vacuum-wall trace coupling, Fourier-FEM assembly, and resistive-layer matching. MARS physics remains external |
 | [GLISS](https://github.com/itpplasma/GLISS) | Global linear ideal-MHD stability in 3D toroidal equilibria | Compatible radial spline FE, Fourier mode topology, generic eigenvalue and inertia contracts, and derivative boundaries. GVEC/VMEC input adapters remain external |
 | [JOREK](https://www.jorek.eu/), [overview paper](https://arxiv.org/abs/2011.09120) | Nonlinear extended and resistive MHD | 2D FE plus toroidal Fourier blocks, coupled residuals, anisotropic transport, implicit structure-aware stepping, wall and free-boundary traces, operator-level parity tests |
