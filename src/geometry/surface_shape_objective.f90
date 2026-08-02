@@ -34,7 +34,7 @@ contains
 
         objective = 0.0_dp
         if (.not. validate_surface_samples( &
-                candidate_coordinates, target_coordinates, weights, status)) return
+            candidate_coordinates, target_coordinates, weights, status)) return
         do point = 1, size(weights)
             do component = 1, size(candidate_coordinates, 1)
                 difference = candidate_coordinates(component, point) - &
@@ -67,7 +67,7 @@ contains
 
         objective_dot = 0.0_dp
         if (.not. validate_surface_samples( &
-                candidate_coordinates, target_coordinates, weights, status)) return
+            candidate_coordinates, target_coordinates, weights, status)) return
         if (.not. same_shape(candidate_dot, candidate_coordinates)) then
             call status_set(status, FORTSPARSE_INVALID_MATRIX, &
                 "surface shape JVP has an incompatible candidate tangent")
@@ -135,7 +135,7 @@ contains
         target_bar = 0.0_dp
         weights_bar = 0.0_dp
         if (.not. validate_surface_samples( &
-                candidate_coordinates, target_coordinates, weights, status)) return
+            candidate_coordinates, target_coordinates, weights, status)) return
         if (.not. same_shape(candidate_bar, candidate_coordinates)) then
             call status_set(status, FORTSPARSE_INVALID_MATRIX, &
                 "surface shape VJP has an incompatible candidate cotangent")
@@ -204,7 +204,7 @@ contains
 
         valid = .false.
         if (size(candidate_coordinates, 1) < 1 .or. &
-                size(candidate_coordinates, 2) < 1) then
+            size(candidate_coordinates, 2) < 1) then
             call status_set(status, FORTSPARSE_INVALID_MATRIX, &
                 "surface shape objective requires non-empty coordinates")
             return
