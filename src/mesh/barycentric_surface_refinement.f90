@@ -4,11 +4,125 @@ module fortfem_barycentric_surface_refinement
     private
 
     public :: barycentric_refine_surface_mesh
+    public :: barycentric_refine_sphere_surface_mesh_jvp
+    public :: barycentric_refine_sphere_surface_mesh_vjp
     public :: barycentric_refine_torus_surface_mesh
     public :: barycentric_refine_torus_surface_mesh_jvp
     public :: barycentric_refine_torus_surface_mesh_vjp
 
 contains
+
+    subroutine barycentric_refine_sphere_surface_mesh_jvp( &
+            vertices, triangles, radius, vertices_dot, radius_dot, &
+            refined_vertices_dot, refined_triangles, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: vertices_dot(:, :), radius_dot
+        real(dp), allocatable, intent(out) :: refined_vertices_dot(:, :)
+        integer, allocatable, intent(out) :: refined_triangles(:, :)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_midpoints(:), face_centroids(:)
+        integer, allocatable :: primal_edges(:, :)
+        real(dp), allocatable :: raw_vertices(:, :), raw_vertices_dot(:, :)
+        real(dp) :: norm_raw, normal(3), raw_dot(3), raw(3)
+        integer :: edge, face, vertex, n_vertices
+
+        if (allocated(refined_vertices_dot)) deallocate(refined_vertices_dot)
+        if (allocated(refined_triangles)) deallocate(refined_triangles)
+        status = 1
+        if (radius <= 0.0_dp) return
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (size(vertices_dot, 1) /= 3 .or. &
+            any(shape(vertices_dot) /= shape(vertices))) return
+        call barycentric_refine_surface_mesh( &
+            vertices, triangles, raw_vertices, refined_triangles, primal_edges, &
+            edge_midpoints, face_centroids)
+        allocate(raw_vertices_dot(3, size(raw_vertices, 2)))
+        n_vertices = size(vertices, 2)
+        raw_vertices_dot(:, :n_vertices) = vertices_dot
+        do edge = 1, size(primal_edges, 2)
+            raw_vertices_dot(:, edge_midpoints(edge)) = 0.5_dp*( &
+                vertices_dot(:, primal_edges(1, edge)) + &
+                vertices_dot(:, primal_edges(2, edge)))
+        end do
+        do face = 1, size(triangles, 2)
+            raw_vertices_dot(:, face_centroids(face)) = sum( &
+                vertices_dot(:, triangles(:, face)), dim=2)/3.0_dp
+        end do
+        allocate(refined_vertices_dot(3, size(raw_vertices, 2)))
+        do vertex = 1, size(raw_vertices, 2)
+            raw = raw_vertices(:, vertex)
+            raw_dot = raw_vertices_dot(:, vertex)
+            norm_raw = norm2(raw)
+            if (norm_raw <= tiny(1.0_dp)) then
+                status = 1
+                return
+            end if
+            normal = raw/norm_raw
+            refined_vertices_dot(:, vertex) = radius_dot*normal + &
+                radius/norm_raw*(raw_dot - normal*dot_product(normal, raw_dot))
+        end do
+        status = 0
+    end subroutine barycentric_refine_sphere_surface_mesh_jvp
+
+    subroutine barycentric_refine_sphere_surface_mesh_vjp( &
+            vertices, triangles, radius, refined_vertices_bar, vertices_bar, &
+            radius_bar, status)
+        real(dp), intent(in) :: vertices(:, :), radius
+        integer, intent(in) :: triangles(:, :)
+        real(dp), intent(in) :: refined_vertices_bar(:, :)
+        real(dp), intent(out) :: vertices_bar(:, :), radius_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_midpoints(:), face_centroids(:)
+        integer, allocatable :: primal_edges(:, :), refined_triangles(:, :)
+        real(dp), allocatable :: raw_vertices(:, :), raw_bar(:, :)
+        real(dp) :: norm_raw, normal(3), projected_bar(3), raw(3)
+        integer :: edge, face, vertex, n_vertices
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        status = 1
+        if (radius <= 0.0_dp) return
+        if (size(vertices, 1) /= 3 .or. size(triangles, 1) /= 3) return
+        if (size(vertices_bar, 1) /= size(vertices, 1) .or. &
+            size(vertices_bar, 2) /= size(vertices, 2)) return
+        call barycentric_refine_surface_mesh( &
+            vertices, triangles, raw_vertices, refined_triangles, primal_edges, &
+            edge_midpoints, face_centroids)
+        if (any(shape(refined_vertices_bar) /= shape(raw_vertices))) return
+        allocate(raw_bar(3, size(raw_vertices, 2)))
+        raw_bar = 0.0_dp
+        do vertex = 1, size(raw_vertices, 2)
+            raw = raw_vertices(:, vertex)
+            norm_raw = norm2(raw)
+            if (norm_raw <= tiny(1.0_dp)) then
+                status = 1
+                return
+            end if
+            normal = raw/norm_raw
+            projected_bar = refined_vertices_bar(:, vertex) - normal* &
+                dot_product(normal, refined_vertices_bar(:, vertex))
+            raw_bar(:, vertex) = radius/norm_raw*projected_bar
+            radius_bar = radius_bar + dot_product( &
+                refined_vertices_bar(:, vertex), normal)
+        end do
+        n_vertices = size(vertices, 2)
+        vertices_bar = raw_bar(:, :n_vertices)
+        do edge = 1, size(primal_edges, 2)
+            vertices_bar(:, primal_edges(1, edge)) = vertices_bar(:, &
+                primal_edges(1, edge)) + 0.5_dp*raw_bar(:, edge_midpoints(edge))
+            vertices_bar(:, primal_edges(2, edge)) = vertices_bar(:, &
+                primal_edges(2, edge)) + 0.5_dp*raw_bar(:, edge_midpoints(edge))
+        end do
+        do face = 1, size(triangles, 2)
+            vertices_bar(:, triangles(:, face)) = vertices_bar(:, &
+                triangles(:, face)) + spread(raw_bar(:, face_centroids(face)), &
+                2, 3)/3.0_dp
+        end do
+        status = 0
+    end subroutine barycentric_refine_sphere_surface_mesh_vjp
 
     subroutine barycentric_refine_torus_surface_mesh( &
             vertices, triangles, parameters, major_radius, minor_radius, &

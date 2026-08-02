@@ -1593,6 +1593,12 @@ gallery example.
   those BC, localized-basis, parameter-map, normal, and parent-RWG products
   into analytical matrix JVP/VJP actions; central reassembly and a full real
   matrix adjoint oracle cover vertices, torus parameters, and both radii.
+  The exact-curved sphere path now has the same composable derivative contract:
+  radial barycentric refinement, localized and parent RWG basis evaluation,
+  inverse parent-panel coordinates, curved normals, and the assembled RWG/RBC
+  pairing expose analytical JVP/VJP products.  A central reassembly test and
+  full real adjoint oracle cover sphere vertices and radius, so spherical
+  geometry is no longer a finite-difference-only exception.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
