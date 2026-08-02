@@ -99,6 +99,14 @@ module fortfem_boundary
         apply_laplace_single_layer_p0_hierarchical_3d
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d
+    use fortfem_helmholtz_torus_curved_bem_3d, only: &
+        solve_helmholtz_bem_dtn_torus_curved_3d
+    use fortfem_helmholtz_torus_curved_fem_bem_coupling_3d, only: &
+        solve_helmholtz_fem_bem_costabel_torus_curved_3d
+    use fortfem_laplace_torus_curved_bem_3d, only: &
+        solve_laplace_bem_dtn_torus_curved_3d
+    use fortfem_laplace_torus_curved_fem_bem_coupling_3d, only: &
+        solve_laplace_fem_bem_costabel_torus_curved_3d
     implicit none
 
     private
@@ -177,6 +185,10 @@ module fortfem_boundary
     public :: solve_laplace_dirichlet_p0_3d
     public :: solve_maxwell_fem_bem_torus_curved_system_3d
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    public :: solve_helmholtz_bem_dtn_torus_curved_3d
+    public :: solve_helmholtz_fem_bem_costabel_torus_curved_3d
+    public :: solve_laplace_bem_dtn_torus_curved_3d
+    public :: solve_laplace_fem_bem_costabel_torus_curved_3d
 
     ! Boundary type for defining domains
     type :: boundary_t

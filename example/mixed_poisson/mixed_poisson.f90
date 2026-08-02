@@ -1,16 +1,17 @@
 program mixed_poisson
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_triangle_discontinuous_dof_map, &
         build_triangle_trimmed_dof_map, div, dx, &
         evaluate_triangle_lagrange_basis, evaluate_triangle_rt_interpolant, &
         form_expr_t, function_space, function_space_t, init_measures, inner, &
         initialize_triangle_lagrange_basis, &
-        initialize_triangle_raviart_thomas, mesh_t, operator(*), &
-        rectangle_mesh, solve_symbolic_mixed_poisson_rt, test_function, &
+        initialize_triangle_raviart_thomas, operator(*), &
+        solve_symbolic_mixed_poisson_rt, test_function, &
         test_function_t, triangle_duffy_quadrature, triangle_lagrange_basis_t, &
         triangle_rt_basis_t, trial_function, trial_function_t, &
         vector_function_space, vector_function_space_t, vector_test_function, &
         vector_test_function_t, vector_trial_function, vector_trial_function_t
+    use fortfem_core, only: mesh_t, rectangle_mesh
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &

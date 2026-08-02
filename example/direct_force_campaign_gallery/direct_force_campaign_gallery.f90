@@ -1,6 +1,6 @@
 program direct_force_campaign_gallery
     !! Physical-first neutral direct-force objective campaign on a torus.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp
     use fortfem_kinds, only: dp

@@ -109,6 +109,64 @@ module fortfem_feec
         beltrami_shell_parity_t, compare_beltrami_shell_residual, &
         validate_beltrami_parity, validate_beltrami_resonance, &
         validate_beltrami_shell_parity
+    use fortfem_eulerian_nonnested_residual, only: &
+        assemble_eulerian_nonnested_residual, &
+        assemble_eulerian_nonnested_residual_jvp
+    use fortfem_force_balance_objective, only: &
+        evaluate_force_balance_objective, &
+        evaluate_force_balance_objective_jvp
+    use fortfem_shifted_enriched_space, only: evaluate_shifted_enriched_space
+    use fortfem_shifted_vector_enriched_space, only: &
+        evaluate_shifted_vector_enriched_space
+    use fortfem_singular_layer_matching, only: &
+        assemble_singular_layer_matching, &
+        assemble_singular_layer_matching_jvp
+    use fortfem_api_spaces, only: &
+        function_space, vector_function_space, dirichlet_bc, &
+        test_function, trial_function, vector_test_function, &
+        vector_trial_function, test_function_t, trial_function_t, &
+        vector_test_function_t, vector_trial_function_t
+    use fortfem_api_types, only: &
+        mesh_t, function_space_t, vector_function_space_t
+    use fortfem_api_forms, only: &
+        compile_tetra_mixed_form_csc, div, dx, form_expr_t, init_measures, &
+        inner, operator(*)
+    use fortfem_mixed_poisson_2d, only: solve_symbolic_mixed_poisson_rt
+    use fortfem_tetra_mixed_poisson_3d, only: &
+        solve_symbolic_tetra_mixed_poisson_rt
+    use fortfem_tetra_discontinuous_arbitrary_order, only: &
+        evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
+        tetra_discontinuous_t
+    use fortfem_triangle_discontinuous_dof_map, only: &
+        build_triangle_discontinuous_dof_map
+    use fortfem_triangle_global_dof_map, only: build_triangle_trimmed_dof_map
+    use fortfem_triangle_lagrange_arbitrary_order, only: &
+        evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
+        triangle_lagrange_basis_t
+    use fortfem_triangle_rt_arbitrary_order, only: &
+        initialize_triangle_raviart_thomas, triangle_rt_basis_t
+    use fortfem_triangle_vector_interpolation, only: &
+        evaluate_triangle_rt_interpolant
+    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_api_solvers, only: &
+        assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
+        sparse_direct_factor_t, sparse_direct_factor_csc, &
+        sparse_direct_factor_transpose_csc, sparse_direct_free, &
+        sparse_direct_solve_factored, sparse_direct_solve_factored_jvp, &
+        sparse_direct_solve_factored_vjp
+    use fortfem_sparse_ilut, only: &
+        build_sparse_ilut_row, sparse_ilut_factor_t, apply_sparse_ilut
+    use fortfem_sparse_incomplete_cholesky, only: &
+        build_sparse_ichol_row, sparse_incomplete_cholesky_factor_t, &
+        apply_sparse_incomplete_cholesky
+    use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_pml_csc, &
+        assemble_tetra_nedelec_pml_csc_jvp, &
+        assemble_tetra_nedelec_pml_csc_vjp
+    use fortfem_helmholtz_representation_3d, only: &
+        evaluate_helmholtz_representation_torus_curved_3d
+    use fortfem_laplace_representation_3d, only: &
+        evaluate_laplace_representation_torus_curved_3d
     implicit none
     private
 
@@ -210,5 +268,69 @@ module fortfem_feec
     public :: beltrami_shell_parity_t
     public :: compare_beltrami_shell_residual
     public :: validate_beltrami_shell_parity
+    public :: assemble_eulerian_nonnested_residual
+    public :: assemble_eulerian_nonnested_residual_jvp
+    public :: evaluate_force_balance_objective
+    public :: evaluate_force_balance_objective_jvp
+    public :: evaluate_shifted_enriched_space
+    public :: evaluate_shifted_vector_enriched_space
+    public :: assemble_singular_layer_matching
+    public :: assemble_singular_layer_matching_jvp
+    public :: function_space
+    public :: vector_function_space
+    public :: dirichlet_bc
+    public :: mesh_t
+    public :: function_space_t
+    public :: vector_function_space_t
+    public :: test_function
+    public :: trial_function
+    public :: vector_test_function
+    public :: vector_trial_function
+    public :: test_function_t
+    public :: trial_function_t
+    public :: vector_test_function_t
+    public :: vector_trial_function_t
+    public :: compile_tetra_mixed_form_csc
+    public :: div
+    public :: dx
+    public :: form_expr_t
+    public :: init_measures
+    public :: inner
+    public :: operator(*)
+    public :: solve_symbolic_mixed_poisson_rt
+    public :: solve_symbolic_tetra_mixed_poisson_rt
+    public :: evaluate_tetra_discontinuous
+    public :: initialize_tetra_discontinuous
+    public :: tetra_discontinuous_t
+    public :: build_triangle_discontinuous_dof_map
+    public :: build_triangle_trimmed_dof_map
+    public :: evaluate_triangle_lagrange_basis
+    public :: initialize_triangle_lagrange_basis
+    public :: triangle_lagrange_basis_t
+    public :: initialize_triangle_raviart_thomas
+    public :: triangle_rt_basis_t
+    public :: evaluate_triangle_rt_interpolant
+    public :: triangle_duffy_quadrature
+    public :: assemble_laplacian_system
+    public :: sparse_from_dense
+    public :: sparse_matrix_t
+    public :: sparse_direct_factor_t
+    public :: sparse_direct_factor_csc
+    public :: sparse_direct_factor_transpose_csc
+    public :: sparse_direct_free
+    public :: sparse_direct_solve_factored
+    public :: sparse_direct_solve_factored_jvp
+    public :: sparse_direct_solve_factored_vjp
+    public :: build_sparse_ilut_row
+    public :: sparse_ilut_factor_t
+    public :: apply_sparse_ilut
+    public :: build_sparse_ichol_row
+    public :: sparse_incomplete_cholesky_factor_t
+    public :: apply_sparse_incomplete_cholesky
+    public :: assemble_tetra_nedelec_pml_csc
+    public :: assemble_tetra_nedelec_pml_csc_jvp
+    public :: assemble_tetra_nedelec_pml_csc_vjp
+    public :: evaluate_helmholtz_representation_torus_curved_3d
+    public :: evaluate_laplace_representation_torus_curved_3d
 
 end module fortfem_feec

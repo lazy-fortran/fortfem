@@ -1,7 +1,8 @@
 program solver_benchmark
     use fortfem_kinds, only: dp
-    use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
-        unit_square_mesh, function_space, dirichlet_bc, &
+    use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, &
+        unit_square_mesh
+    use fortfem_feec, only: function_space, dirichlet_bc, &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
         build_sparse_ilut_row, build_sparse_ichol_row, &
         sparse_ilut_factor_t, sparse_incomplete_cholesky_factor_t, &

@@ -4,7 +4,7 @@ program singular_layer_matching_gallery
     !! The one-dimensional profiles are analytical caller data.  The public
     !! singular-layer contract is applied pointwise to a scalar trace row;
     !! no singular asymptotic, plasma closure, or tearing model is selected.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp
     use fortfem_kinds, only: dp
