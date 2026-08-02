@@ -892,7 +892,11 @@ all geometries:
    surface formulation for Beltrami/Taylor/force-free fields, with explicit
    harmonic representatives for each handle and a resonance/status contract.
    This is a reusable vector boundary operator, not a Taylor-state or MRxMHD
-   implementation.
+   implementation. The first neutral generalized-Debye-source coordinate layer
+   is now public: caller-owned scalar/cogradient/harmonic lifts are composed
+   with source and period maps, with complex JVP/VJP actions and an independent
+   dot-product oracle. The second-kind Green-kernel block, resonance policy,
+   and topology-specific harmonic construction remain separate work.
 4. **Virtual-casing/Biot--Savart maps.** A caller-owned volume or surface
    current is mapped to the field, normal field, tangential field, and their
    traces on arbitrary target surfaces. The map supports direct, reciprocal,

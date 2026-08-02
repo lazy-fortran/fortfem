@@ -696,6 +696,10 @@ module fortfem_api
     use fortfem_wall_response_condensation, only: &
         condense_wall_response_blocks, condense_wall_response_blocks_jvp, &
         condense_wall_response_blocks_vjp
+    use fortfem_generalized_debye_source, only: &
+        assemble_generalized_debye_source_residual, &
+        assemble_generalized_debye_source_residual_jvp, &
+        assemble_generalized_debye_source_residual_vjp
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -1547,6 +1551,9 @@ module fortfem_api
     public :: condense_wall_response_blocks
     public :: condense_wall_response_blocks_jvp
     public :: condense_wall_response_blocks_vjp
+    public :: assemble_generalized_debye_source_residual
+    public :: assemble_generalized_debye_source_residual_jvp
+    public :: assemble_generalized_debye_source_residual_vjp
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
     public :: assemble_maxwell_bc_potential_operators_3d
