@@ -293,25 +293,29 @@ documentation gates above pass.
   `scripts/check_module_layers.py` audits compiler-visible `module`/`use`
   edges, duplicate providers, cycles, umbrella/facade/generated leaks, and
   has independent negative fixtures in `test/test_module_layer_audit.sh`.
-- **API-02 — six canonical slices complete:** `fortfem_core` directly
+- **API-02 — seven canonical slices complete:** `fortfem_core` directly
   re-exports foundational cell-complex and toroidal-coordinate contracts;
   `fortfem_feec` exposes exact-sequence/commuting-projection and tree--cotree
   gauges; `fortfem_boundary` exposes planar Helmholtz DtN and boundary-port
   metadata; `fortfem_fourier` exposes mode registry/expansion and toroidal
   harmonics; `fortfem_time` exposes mixed-wave/symplectic/dissipative steps;
   and `fortfem_interop` exposes sample, oracle-manifest, and boundary
-  comparison contracts. Each has a direct-import facade and focused
-  analytical or structure smoke test. `fortfem_plot` remains separate; no
+  comparison contracts; `fortfem_plot` exposes the existing mesh, sampling,
+  and solution-plot contracts without generated media. Each has a
+  direct-import facade and focused analytical or structure smoke test. No
   facade may grow into the umbrella.
-- **API-03 — first rename complete:** the boundary parity family is now
+- **API-03 — two renames complete:** the boundary parity family is now
   `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
   module, umbrella exports, tests, and design documentation. The obsolete
   internal spelling is gone; the independent weighted complex value/JVP/VJP
-  and metadata oracles pass. The remaining candidate families still require
-  separate rename units.
-- **API-04–API-06 — planned:** generated visibility, example migration, and
-  release/deprecation gates remain intentionally separate so a failed rename
-  cannot corrupt numerical behavior or generated provenance.
+  and metadata oracles pass. The larger-domain family is now
+  `compare_larger_domain_solution{,_jvp}` with its report schema preserved and
+  independent weighted/JVP oracle. The remaining candidate families still
+  require separate rename units.
+- **API-04–API-06 — generated gate pending, migration planned:** generated
+  visibility, example migration, and release/deprecation gates remain
+  intentionally separate so a failed rename cannot corrupt numerical behavior
+  or generated provenance.
 - **API-07 — first client complete:** the no-umbrella downstream smoke client
   now imports `fortfem_core`, `fortfem_fourier`, `fortfem_boundary`,
   `fortfem_time`, and `fortfem_interop` exclusively (apart from kinds and
