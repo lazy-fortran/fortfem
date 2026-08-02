@@ -419,6 +419,10 @@ module fortfem_api
         assemble_tetra_nedelec_vector_load_samples_jvp, &
         assemble_tetra_nedelec_vector_load_samples_vjp, &
         assemble_tetra_nedelec_weighted_csc
+    use fortfem_assembly_tetra_nedelec_geometry_pml_3d, only: &
+        assemble_tetra_nedelec_geometry_pml_csc, &
+        assemble_tetra_nedelec_geometry_pml_csc_jvp, &
+        assemble_tetra_nedelec_geometry_pml_csc_vjp
     use fortfem_kinds
     use fortfem_bspline_polar, only: &
         build_bspline_polar_feec_2d_extractions, &
@@ -2302,6 +2306,9 @@ module fortfem_api
     public :: assemble_tetra_nedelec_curvilinear_pml_csc
     public :: assemble_tetra_nedelec_curvilinear_pml_csc_jvp
     public :: assemble_tetra_nedelec_curvilinear_pml_csc_vjp
+    public :: assemble_tetra_nedelec_geometry_pml_csc
+    public :: assemble_tetra_nedelec_geometry_pml_csc_jvp
+    public :: assemble_tetra_nedelec_geometry_pml_csc_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
