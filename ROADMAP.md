@@ -1580,8 +1580,8 @@ gallery example.
   zero-current constant-field example. The refined/localized torus RWG basis
   used by the RBC pairing now also exposes analytical geometry JVP/VJP
   products, with an independent reassembly and real adjoint oracle; this is
-  the local derivative layer needed before differentiating the assembled
-  refined-to-coarse pairing itself. The torus barycentric refinement map now
+  the local derivative layer used by the assembled refined-to-coarse pairing.
+  The torus barycentric refinement map now
   also exposes fixed-topology analytical JVP/VJP products for refined angles,
   embedded vertices, and major/minor radii, with a central-difference and
   real-adjoint oracle; coarse-to-refined geometry can therefore be composed
@@ -1589,7 +1589,10 @@ gallery example.
   Buffa--Christiansen/RBC transformation now also exposes analytical geometry
   JVP/VJP products for its vertex-ring and reference-edge inverse-length
   coefficients; an independent reassembly and real adjoint-product test
-  guards this BC layer before assembled RBC pairing derivatives are added.
+  guards this BC layer. The exact-curved torus RWG/RBC pairing now composes
+  those BC, localized-basis, parameter-map, normal, and parent-RWG products
+  into analytical matrix JVP/VJP actions; central reassembly and a full real
+  matrix adjoint oracle cover vertices, torus parameters, and both radii.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
