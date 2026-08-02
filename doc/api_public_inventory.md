@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1761 unique exported symbols** (2065 declarations, including wrapper duplicates).
+The inventory contains **1761 unique exported symbols** (2072 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
