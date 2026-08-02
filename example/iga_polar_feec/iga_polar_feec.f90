@@ -8,7 +8,7 @@ program iga_polar_feec
         evaluate_periodic_bspline_basis
     use fortfem_kinds, only: dp
     use fortplot, only: add_scatter, colorbar, figure, plot, quiver, savefig, &
-        set_yscale, title, xlabel, ylabel
+        set_yscale, title, xlabel, xlim, ylabel, ylim
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
 
@@ -18,8 +18,13 @@ program iga_polar_feec
         0.0_dp, 0.0_dp, 0.25_dp, 0.5_dp, 0.75_dp, 1.0_dp, 1.0_dp]
     character(*), parameter :: output_directory = &
         "output/example/iga_polar_feec"
-    integer, parameter :: plot_samples = 41, plot_line_samples = 121
-    integer, parameter :: vector_stride = 4
+    integer, parameter :: angular_plot_samples = 128
+    integer, parameter :: radial_plot_samples = 49
+    integer, parameter :: plot_line_samples = 121
+    integer, parameter :: angular_vector_stride = 16
+    integer, parameter :: radial_vector_stride = 8
+    integer, parameter :: max_vector_samples = &
+        angular_plot_samples*radial_plot_samples
     real(dp), allocatable :: control_points(:, :, :), curl(:, :)
     real(dp), allocatable :: edge_state(:), energy_error(:), face_state(:)
     real(dp), allocatable :: gradient(:, :), scalar_state(:), weights(:, :)
@@ -166,17 +171,17 @@ contains
         integer :: count, arrow_count, i, j, local_status, tensor_index
 
         allocate( &
-            x(plot_samples**2), y(plot_samples**2), values(plot_samples**2), &
-            arrow_x((plot_samples/vector_stride + 1)**2), &
-            arrow_y((plot_samples/vector_stride + 1)**2), &
-            arrow_u((plot_samples/vector_stride + 1)**2), &
-            arrow_v((plot_samples/vector_stride + 1)**2))
+            x(angular_plot_samples*radial_plot_samples), &
+            y(angular_plot_samples*radial_plot_samples), &
+            values(angular_plot_samples*radial_plot_samples), &
+            arrow_x(max_vector_samples), arrow_y(max_vector_samples), &
+            arrow_u(max_vector_samples), arrow_v(max_vector_samples))
         count = 0
         arrow_count = 0
-        do j = 1, plot_samples
-            coordinate_r = (real(j, dp) - 0.5_dp)/real(plot_samples, dp)
-            do i = 1, plot_samples
-                coordinate_a = (real(i, dp) - 0.5_dp)/real(plot_samples, dp)
+        do j = 1, radial_plot_samples
+            coordinate_r = real(j - 1, dp)/real(radial_plot_samples - 1, dp)
+            do i = 1, angular_plot_samples
+                coordinate_a = real(i - 1, dp)/real(angular_plot_samples, dp)
                 call evaluate_polar_point( &
                     coordinate_r, coordinate_a, x(count + 1), y(count + 1), &
                     jacobian, local_status)
@@ -218,9 +223,10 @@ contains
                     gradient_x = 0.0_dp
                     gradient_y = 0.0_dp
                 end if
-                if (mod(i - 1, vector_stride) == 0 .and. &
-                    j > plot_samples/8 .and. &
-                    mod(j - 1, vector_stride) == 0) then
+                if (mod(i - 1, angular_vector_stride) == 0 .and. &
+                    j > radial_vector_stride .and. &
+                    j < radial_plot_samples .and. &
+                    mod(j - 1, radial_vector_stride) == 0) then
                     arrow_count = arrow_count + 1
                     arrow_x(arrow_count) = x(count)
                     arrow_y(arrow_count) = y(count)
@@ -232,12 +238,13 @@ contains
         gradient_scale = maxval(sqrt(arrow_u(:arrow_count)**2 + &
             arrow_v(:arrow_count)**2))
         gradient_scale = max(gradient_scale, epsilon(1.0_dp))
-        arrow_u(:arrow_count) = 0.12_dp*arrow_u(:arrow_count)/gradient_scale
-        arrow_v(:arrow_count) = 0.12_dp*arrow_v(:arrow_count)/gradient_scale
+        arrow_u(:arrow_count) = 0.075_dp*arrow_u(:arrow_count)/gradient_scale
+        arrow_v(:arrow_count) = 0.075_dp*arrow_v(:arrow_count)/gradient_scale
         call figure(figsize=[8.0_dp, 7.0_dp])
         call add_scatter(x(:count), y(:count), c=values(:count), &
-            cmap="coolwarm", marker=".", markersize=8.0_dp, &
+            cmap="coolwarm", marker=".", markersize=10.0_dp, &
             label="computed polar FEEC scalar solution")
+        call draw_physical_mesh(0.18_dp, 0.35_dp)
         call quiver(arrow_x(:arrow_count), arrow_y(:arrow_count), &
             arrow_u(:arrow_count), arrow_v(:arrow_count), scale=1.0_dp, &
             scale_units="xy", angles="xy", color="black", width=0.003_dp, &
@@ -245,20 +252,35 @@ contains
         call colorbar(label="scalar solution")
         call xlabel("physical x coordinate")
         call ylabel("physical y coordinate")
-        call title("Computed polar FEEC solution and physical gradient")
+        call xlim(-1.08_dp, 1.08_dp)
+        call ylim(-1.08_dp, 1.08_dp)
+        call title("Polar FEEC solution on the mapped curvilinear mesh")
         call savefig(output_directory//"/polar_feec_solution_2d.png")
     end subroutine render_solution
 
     subroutine render_mesh()
+        call figure(figsize=[6.5_dp, 6.5_dp])
+        call draw_physical_mesh(0.80_dp, 0.65_dp)
+        call xlabel("physical x coordinate")
+        call ylabel("physical y coordinate")
+        call xlim(-1.08_dp, 1.08_dp)
+        call ylim(-1.08_dp, 1.08_dp)
+        call title("Curvilinear physical mesh from periodic polar splines")
+        call savefig(output_directory//"/polar_curvilinear_mesh_2d.png")
+    end subroutine render_mesh
+
+    subroutine draw_physical_mesh(line_alpha, line_width)
+        real(dp), intent(in) :: line_alpha, line_width
+
         real(dp) :: ring_x(plot_line_samples), ring_y(plot_line_samples)
         real(dp) :: spoke_x(plot_line_samples), spoke_y(plot_line_samples)
         real(dp) :: coordinate_r, coordinate_a
         real(dp) :: jacobian(2, 2)
-        integer :: sample, local_status
+        real(dp), parameter :: mesh_color(3) = [0.12_dp, 0.12_dp, 0.12_dp]
+        integer :: local_azimuth, local_radial, sample, local_status
 
-        call figure(figsize=[6.5_dp, 6.5_dp])
-        do radial = 2, radial_count
-            coordinate_r = real(radial - 1, dp)/real(radial_count - 1, dp)
+        do local_radial = 2, radial_count
+            coordinate_r = real(local_radial - 1, dp)/real(radial_count - 1, dp)
             do sample = 1, plot_line_samples
                 coordinate_a = real(sample - 1, dp)/ &
                     real(plot_line_samples - 1, dp)
@@ -267,10 +289,11 @@ contains
                     jacobian, local_status)
                 if (local_status /= 0) error stop "polar ring evaluation failed"
             end do
-            call plot(ring_x, ring_y)
+            call plot(ring_x, ring_y, color=mesh_color, linewidth=line_width, &
+                alpha=line_alpha)
         end do
-        do azimuth = 1, azimuth_count
-            coordinate_a = real(azimuth - 1, dp)/real(azimuth_count, dp)
+        do local_azimuth = 1, azimuth_count
+            coordinate_a = real(local_azimuth - 1, dp)/real(azimuth_count, dp)
             do sample = 1, plot_line_samples
                 coordinate_r = real(sample - 1, dp)/ &
                     real(plot_line_samples - 1, dp)
@@ -279,13 +302,10 @@ contains
                     jacobian, local_status)
                 if (local_status /= 0) error stop "polar spoke evaluation failed"
             end do
-            call plot(spoke_x, spoke_y)
+            call plot(spoke_x, spoke_y, color=mesh_color, linewidth=line_width, &
+                alpha=line_alpha)
         end do
-        call xlabel("R-like coordinate")
-        call ylabel("Z-like coordinate")
-        call title("Curvilinear physical mesh from periodic polar splines")
-        call savefig(output_directory//"/polar_curvilinear_mesh_2d.png")
-    end subroutine render_mesh
+    end subroutine draw_physical_mesh
 
     subroutine evaluate_polar_point(coordinate_r, coordinate_a, x, y, &
             jacobian, local_status)
