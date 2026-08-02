@@ -2,6 +2,7 @@ program solver_benchmark
     use fortfem_kinds, only: dp
     use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, &
         unit_square_mesh
+    use fortfem_mesh_2d, only: mesh_2d_t
     use fortfem_feec, only: function_space, dirichlet_bc, &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
         build_sparse_ilut_row, build_sparse_ichol_row, &
@@ -29,6 +30,7 @@ contains
         real(dp), allocatable :: direct_times(:), pcg_times(:)
         real(dp), allocatable :: direct_residuals(:), pcg_residuals(:)
         real(dp), allocatable :: row_ilut_times(:), row_ichol_times(:)
+        real(dp), allocatable :: reference_solution(:)
         real(dp) :: speedup
         real(dp), allocatable :: K(:, :), F(:)
         type(mesh_t) :: mesh
@@ -36,6 +38,8 @@ contains
         type(dirichlet_bc_t) :: bc
 
         write (*, *) "=== FortFEM Solver Benchmark (Poisson) ==="
+        call ensure_example_output_directory()
+        call initialize_gallery_sequence()
 
         allocate (dofs(n_cases), pcg_iters(n_cases))
         allocate (direct_times(n_cases), pcg_times(n_cases))
@@ -45,9 +49,14 @@ contains
         do i = 1, n_cases
             call build_laplacian_system(mesh_sizes(i), mesh, Vh, bc, K, F, &
                 dofs(i))
-            call benchmark_solvers(K, F, direct_times(i), pcg_times(i), &
-                pcg_iters(i), direct_residuals(i), &
-                pcg_residuals(i))
+            if (i == n_cases) then
+                call benchmark_solvers(K, F, direct_times(i), pcg_times(i), &
+                    pcg_iters(i), direct_residuals(i), pcg_residuals(i), &
+                    reference_solution)
+            else
+                call benchmark_solvers(K, F, direct_times(i), pcg_times(i), &
+                    pcg_iters(i), direct_residuals(i), pcg_residuals(i))
+            end if
             call benchmark_sparse_factors(K, F, row_ilut_times(i), &
                 row_ichol_times(i))
 
@@ -69,18 +78,26 @@ contains
             pcg_residuals, row_ilut_times, row_ichol_times)
 
         call ensure_example_output_directory()
-        call render_reference_solution()
+        call render_reference_solution(mesh, reference_solution)
         call plot_solver_times(mesh_sizes, direct_times, pcg_times)
         call plot_solver_residuals(mesh_sizes, direct_residuals, pcg_residuals)
         call plot_sparse_factor_times(mesh_sizes, row_ilut_times, &
             row_ichol_times)
+        call record_gallery_stage("diagnostics")
     end subroutine run_solver_benchmark
 
-    subroutine render_reference_solution()
+    subroutine render_reference_solution(mesh, solution)
         integer, parameter :: nx = 32, ny = 32
+        type(mesh_t), intent(inout) :: mesh
+        real(dp), intent(in) :: solution(:)
         real(dp) :: x_edges(nx + 1), y_edges(ny + 1), values(nx, ny)
+        real(dp) :: exact_values(nx, ny), point(2)
         real(dp) :: x, y
-        integer :: i, j
+        integer :: i, j, unit
+
+        if (size(solution) /= mesh%data%n_vertices) then
+            error stop "solver benchmark plot solution has wrong size"
+        end if
 
         do i = 1, nx + 1
             x_edges(i) = real(i - 1, dp)/real(nx, dp)
@@ -92,19 +109,65 @@ contains
             y = 0.5_dp*(y_edges(j) + y_edges(j + 1))
             do i = 1, nx
                 x = 0.5_dp*(x_edges(i) + x_edges(i + 1))
-                values(i, j) = sin(acos(-1.0_dp)*x)* &
-                    sin(acos(-1.0_dp)*y)
+                point = [x, y]
+                call evaluate_p1_at_point(mesh%data, solution, point, values(i, j))
+                exact_values(i, j) = unit_source_solution(x, y)
             end do
         end do
-
         call figure(figsize=[8.5_dp, 5.5_dp])
         call pcolormesh(x_edges, y_edges, values, cmap="viridis")
-        call colorbar(label="manufactured Poisson solution u")
+        call colorbar(label="solved P1 Poisson solution u_h")
         call xlabel("x")
         call ylabel("y")
-        call title("Poisson solution used by the solver benchmark")
+        call title("Solved Poisson field used by the solver benchmark")
         call savefig(output_directory//"/poisson_solution_2d.png")
+        call record_gallery_stage("physical_solution")
+
+        open (newunit=unit, file=output_directory//"/poisson_solution.csv", &
+            status="replace", action="write")
+        write (unit, "(a)") "x,y,numerical,exact"
+        do j = 1, ny
+            do i = 1, nx
+                write (unit, "(4(es24.16,:,','))") &
+                    0.5_dp*(x_edges(i) + x_edges(i + 1)), &
+                    0.5_dp*(y_edges(j) + y_edges(j + 1)), values(i, j), &
+                    exact_values(i, j)
+            end do
+        end do
+        close (unit)
     end subroutine render_reference_solution
+
+    subroutine evaluate_p1_at_point(mesh, solution, point, value)
+        type(mesh_2d_t), intent(in) :: mesh
+        real(dp), intent(in) :: solution(:), point(2)
+        real(dp), intent(out) :: value
+
+        real(dp) :: vertices(2, 3), determinant, xi, eta, dx, dy
+        integer :: triangle
+
+        value = 0.0_dp
+        do triangle = 1, mesh%n_triangles
+            vertices = mesh%vertices(:, mesh%triangles(:, triangle))
+            determinant = (vertices(1, 2) - vertices(1, 1))* &
+                (vertices(2, 3) - vertices(2, 1)) - &
+                (vertices(1, 3) - vertices(1, 1))* &
+                (vertices(2, 2) - vertices(2, 1))
+            dx = point(1) - vertices(1, 1)
+            dy = point(2) - vertices(2, 1)
+            xi = (dx*(vertices(2, 3) - vertices(2, 1)) - &
+                (vertices(1, 3) - vertices(1, 1))*dy)/determinant
+            eta = ((vertices(1, 2) - vertices(1, 1))*dy - &
+                dx*(vertices(2, 2) - vertices(2, 1)))/determinant
+            if (xi >= -1.0e-12_dp .and. eta >= -1.0e-12_dp .and. &
+                xi + eta <= 1.0_dp + 1.0e-12_dp) then
+                value = (1.0_dp - xi - eta)*solution(mesh%triangles(1, triangle)) + &
+                    xi*solution(mesh%triangles(2, triangle)) + &
+                    eta*solution(mesh%triangles(3, triangle))
+                return
+            end if
+        end do
+        error stop "solver benchmark plot point is outside mesh"
+    end subroutine evaluate_p1_at_point
 
     subroutine plot_solver_times(mesh_sizes, direct_times, pcg_times)
         integer, intent(in) :: mesh_sizes(:)
@@ -171,11 +234,12 @@ contains
     end subroutine build_laplacian_system
 
     subroutine benchmark_solvers(K, F, direct_time, pcg_time, pcg_iters, &
-            direct_residual, pcg_residual)
+            direct_residual, pcg_residual, solution_out)
         real(dp), intent(in) :: K(:, :), F(:)
         real(dp), intent(out) :: direct_time, pcg_time
         integer, intent(out) :: pcg_iters
         real(dp), intent(out) :: direct_residual, pcg_residual
+        real(dp), allocatable, intent(out), optional :: solution_out(:)
 
         real(dp), allocatable :: x_direct(:), x_pcg(:)
         type(solver_options_t) :: opts_direct, opts_pcg
@@ -208,6 +272,10 @@ contains
         direct_time = stats_direct%solve_time
         pcg_time = stats_pcg%solve_time
         pcg_iters = stats_pcg%iterations
+        if (present(solution_out)) then
+            allocate(solution_out(size(x_pcg)))
+            solution_out = x_pcg
+        end if
     end subroutine benchmark_solvers
 
     subroutine benchmark_sparse_factors(K, F, ilut_time, ichol_time)
@@ -357,5 +425,38 @@ contains
             call execute_command_line("mkdir -p "//output_directory)
         end if
     end subroutine ensure_example_output_directory
+
+    pure real(dp) function unit_source_solution(x, y) result(value)
+        real(dp), intent(in) :: x, y
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        integer :: m, n
+
+        value = 0.0_dp
+        do m = 1, 79, 2
+            do n = 1, 79, 2
+                value = value + 16.0_dp/pi**4 * &
+                    sin(real(m, dp)*pi*x)*sin(real(n, dp)*pi*y)/ &
+                    (real(m*n, dp)*real(m*m + n*n, dp))
+            end do
+        end do
+    end function unit_source_solution
+
+    subroutine initialize_gallery_sequence()
+        integer :: unit
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        close (unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: unit
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write")
+        write (unit, "(a)") stage
+        close (unit)
+    end subroutine record_gallery_stage
 
 end program solver_benchmark
