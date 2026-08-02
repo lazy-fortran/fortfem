@@ -1,22 +1,21 @@
 program test_canonical_consumer_smoke
     !! Small downstream-style client for the staged canonical API.
     !!
-    !! This executable deliberately does not import fortfem_api.  Each section
-    !! represents a consumer that selects only the domain modules it needs:
-    !! foundational geometry, Fourier-FEM, an open-boundary DtN operator,
+    !! This executable deliberately does not import fortfem_api or any
+    !! implementation module.  Each section selects one canonical facade:
+    !! geometry, Fourier-FEM, an open-boundary DtN operator,
     !! structure-preserving time stepping, and interchange samples.
     use check, only: check_condition, check_summary
     use fortfem_core, only: toroidal_point_to_cartesian
-    use fortfem_fourier_mode_expansion, only: &
-        evaluate_fourier_mode_expansion
-    use fortfem_fourier_mode_registry, only: &
-        fourier_mode_registry_t, initialize_fourier_mode_registry
-    use fortfem_interchange_samples, only: &
+    use fortfem_fourier, only: &
+        evaluate_fourier_mode_expansion, fourier_mode_registry_t, &
+        initialize_fourier_mode_registry
+    use fortfem_interop, only: &
         compare_interchange_samples, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
     use fortfem_kinds, only: dp
-    use fortfem_mixed_wave_time, only: advance_mixed_wave_midpoint
-    use fortfem_planar_helmholtz_dtn, only: apply_planar_helmholtz_dtn
+    use fortfem_time, only: advance_mixed_wave_midpoint
+    use fortfem_boundary, only: apply_planar_helmholtz_dtn
     use fortsparse, only: fortsparse_status_t
     implicit none
 
