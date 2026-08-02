@@ -49,6 +49,15 @@ module fortfem_api
         initialize_linear_perturbation_metadata, &
         linear_perturbation_metadata_t, &
         validate_linear_perturbation_metadata
+    use fortfem_nonlinear_resistive_mhd_composition, only: &
+        RESISTIVE_MHD_AMPERE, RESISTIVE_MHD_ANISOTROPIC_TRANSPORT, &
+        RESISTIVE_MHD_BLOCK_COUNT, RESISTIVE_MHD_FARADAY, &
+        RESISTIVE_MHD_FREE_BOUNDARY, RESISTIVE_MHD_MOMENTUM, &
+        RESISTIVE_MHD_PRESSURE, RESISTIVE_MHD_TENSOR, RESISTIVE_MHD_WALL, &
+        assemble_nonlinear_resistive_mhd_residual, &
+        assemble_nonlinear_resistive_mhd_residual_jvp, &
+        assemble_nonlinear_resistive_mhd_residual_vjp, &
+        nonlinear_resistive_mhd_energy_ledger_t
     use fortfem_pseudo_arclength_residual, only: &
         assemble_pseudo_arclength_residual, &
         assemble_pseudo_arclength_residual_jvp, &
@@ -2950,6 +2959,19 @@ module fortfem_api
     public :: assemble_linear_perturbation_operator
     public :: assemble_linear_perturbation_operator_jvp
     public :: assemble_linear_perturbation_operator_vjp
+    public :: RESISTIVE_MHD_AMPERE
+    public :: RESISTIVE_MHD_ANISOTROPIC_TRANSPORT
+    public :: RESISTIVE_MHD_BLOCK_COUNT
+    public :: RESISTIVE_MHD_FARADAY
+    public :: RESISTIVE_MHD_FREE_BOUNDARY
+    public :: RESISTIVE_MHD_MOMENTUM
+    public :: RESISTIVE_MHD_PRESSURE
+    public :: RESISTIVE_MHD_TENSOR
+    public :: RESISTIVE_MHD_WALL
+    public :: nonlinear_resistive_mhd_energy_ledger_t
+    public :: assemble_nonlinear_resistive_mhd_residual
+    public :: assemble_nonlinear_resistive_mhd_residual_jvp
+    public :: assemble_nonlinear_resistive_mhd_residual_vjp
     public :: linear_response_schema_magic
     public :: read_linear_response_interchange
     public :: write_linear_response_interchange

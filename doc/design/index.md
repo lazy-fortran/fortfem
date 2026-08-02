@@ -193,6 +193,13 @@ keeps supplied inertia, Lorentz, pressure/stress, vacuum, wall, resistive, and
 singular-layer matrices separately inspectable while composing their complex-
 frequency operator with exact JVP/VJP actions.
 
+The [nonlinear resistive-MHD block composition](nonlinear_resistive_mhd_composition.html)
+is the corresponding closure-neutral nonlinear boundary.  Caller-owned
+Faraday, Ampère, momentum, pressure, tensor, anisotropic-transport,
+wall, and free-boundary callbacks are summed with an explicit
+energy/input/dissipation ledger and exact value/JVP/VJP actions; state
+selection, constitutive laws, and continuation remain external.
+
 The [linear-response interchange schema](linear_response_schema.html) provides
 a bounded, versioned text round-trip for those neutral records, retaining a
 small dense oracle without importing GPEC, MARS-F, GLISS, or STARWALL files.
