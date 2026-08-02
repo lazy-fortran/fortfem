@@ -18,6 +18,7 @@ fci_polygon_geometry
 # Structure-preserving dynamics
 mixed_acoustic_wave
 mixed_elasticity_wave
+mixed_wave_wall
 
 tetra_h1_poisson
 tetra_mixed_poisson
