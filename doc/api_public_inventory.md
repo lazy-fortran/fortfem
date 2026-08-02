@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1761 unique exported symbols** (2051 declarations, including wrapper duplicates).
+The inventory contains **1761 unique exported symbols** (2052 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
@@ -159,7 +159,7 @@ generated headers or explicit `fortfem_generated_*` imports.
 | evaluate_regularized_surface_current_layer_vjp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_regularized_surface_current_layer` / `src/operators/regularized_surface_current_layer.f90` | fortfem_boundary | same | VJP | `test/test_regularized_surface_current_layer.f90` | uses generated kernel(s): `fortfem_generated_regularized_surface_current`, `fortfem_generated_regularized_surface_current_jvp`, `fortfem_generated_regularized_surface_current_vjp` |
 | evaluate_regularized_surface_current_integral | `fortfem_api (src/fortfem_api.f90)` | `fortfem_regularized_surface_current_layer` / `src/operators/regularized_surface_current_layer.f90` | fortfem_boundary | same | — | `test/test_regularized_surface_current_layer.f90`, `example/regularized_surface_current_layer/regularized_surface_current_layer.f90` | uses generated kernel(s): `fortfem_generated_regularized_surface_current`, `fortfem_generated_regularized_surface_current_jvp`, `fortfem_generated_regularized_surface_current_vjp` |
 | compare_sheet_current_representations | `fortfem_api (src/fortfem_api.f90)`; `fortfem_interop (src/fortfem_interop.f90)` | `fortfem_sheet_current_parity` / `src/operators/sheet_current_parity.f90` | fortfem_feec | same | — | `test/test_sheet_current_parity.f90`, `example/sheet_current_parity/sheet_current_parity.f90` | hand-written / no generator link in defining file |
-| compare_sheet_current_surface_representations | `fortfem_api (src/fortfem_api.f90)` | `fortfem_sheet_current_surface_parity` / `src/operators/sheet_current_surface_parity.f90` | fortfem_feec | same | JVP | `test/test_sheet_current_surface_parity.f90` | hand-written / no generator link in defining file |
+| compare_sheet_current_surface_representations | `fortfem_api (src/fortfem_api.f90)`; `fortfem_interop (src/fortfem_interop.f90)` | `fortfem_sheet_current_surface_parity` / `src/operators/sheet_current_surface_parity.f90` | fortfem_feec | same | JVP | `test/test_sheet_current_surface_facade.f90`, `test/test_sheet_current_surface_parity.f90` | hand-written / no generator link in defining file |
 | compare_sheet_current_surface_representations_jvp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_sheet_current_surface_parity` / `src/operators/sheet_current_surface_parity.f90` | fortfem_feec | same | JVP | `test/test_sheet_current_surface_parity.f90` | hand-written / no generator link in defining file |
 | BROKEN_SPACE_H1 | `fortfem_api (src/fortfem_api.f90)` | `fortfem_broken_skeleton_spaces` / `src/spaces/broken_skeleton_spaces.f90` | fortfem_feec | same | — | `test/test_broken_skeleton_spaces.f90` | hand-written / no generator link in defining file |
 | BROKEN_SPACE_HCURL | `fortfem_api (src/fortfem_api.f90)` | `fortfem_broken_skeleton_spaces` / `src/spaces/broken_skeleton_spaces.f90` | fortfem_feec | same | — | `test/test_broken_skeleton_spaces.f90` | hand-written / no generator link in defining file |

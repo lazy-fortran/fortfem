@@ -304,17 +304,19 @@ documentation gates above pass.
   and solution-plot contracts without generated media. Each has a
   direct-import facade and focused analytical or structure smoke test. No
   facade may grow into the umbrella.
-- **API-03 — two renames complete; two slices in flight:** the boundary parity
-  family is now
+- **API-03 — four parity renames complete:** the boundary parity family is now
   `compare_boundary_operator_parity{,_jvp,_vjp}` throughout its defining
   module, umbrella exports, tests, and design documentation. The obsolete
   internal spelling is gone; the independent weighted complex value/JVP/VJP
   and metadata oracles pass. The larger-domain family is now
   `compare_larger_domain_solution{,_jvp}` with its report schema preserved and
   independent weighted/JVP oracle. The sheet-current and surface-sheet-current
-  representation families are the next disjoint rename units; their candidate
-  spellings and derivative closure are recorded in
-  [`doc/api_rename_candidates.md`](doc/api_rename_candidates.md).
+  representation families are now
+  `compare_sheet_current_representations` and
+  `compare_sheet_current_surface_representations{,_jvp}`, with independent
+  Gaussian/surface-quadrature ledgers and derivative checks. Remaining parity
+  candidates (Beltrami and tree--cotree diagnostics) stay separate rename
+  units.
 - **API-04 — generated visibility complete:**
   `scripts/check_generated_visibility.py` and
   `test/test_generated_visibility.sh` enforce private generated implementation
@@ -326,10 +328,13 @@ documentation gates above pass.
   complexity. The canonical plot facade is present, but the gallery still
   needs a complete smallest-facade import audit and a solution-first visual
   oracle for every page.
-- **API-06 — active:** the release/migration gate is being composed from the
-  inventory, layer, generated-visibility, stale-name, and focused behavioral
-  checks. It must remain fast-path bounded; full gallery and cross-compiler
-  jobs stay asynchronous.
+- **API-06 — complete first gate:**
+  `scripts/check_api_release_gate.py` and
+  `test/test_api_release_gate.sh` compose byte-current inventory, module-layer,
+  generated-visibility, stale-name fixtures, and focused boundary/larger-domain
+  derivative tests under a ten-second timeout. Full gallery and cross-compiler
+  jobs remain asynchronous; the deprecation/removal release policy is still
+  active work.
 - **API-07 — first client complete:** the no-umbrella downstream smoke client
   now imports `fortfem_core`, `fortfem_fourier`, `fortfem_boundary`,
   `fortfem_time`, and `fortfem_interop` exclusively (apart from kinds and
@@ -349,9 +354,9 @@ waits for the full gallery/CI job before handing off.
 
 | Queue item | Owned files and result | Independent acceptance oracle |
 | --- | --- | --- |
-| API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; canonical `compare_sheet_current_representations` export and value parity are complete (the surface-quadrature companion remains in API-03-SURFACE) | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
-| API-03-SURFACE | Surface-quadrature definition, exports, tests/docs; rename `evaluate_sheet_current_surface_parity{,_jvp}` to `compare_sheet_current_surface_representations{,_jvp}` | Orientation/measure/toroidal quadrature oracle, central-difference JVP, and invalid-measure rejection |
-| API-06-GATE | New release-gate runner and isolated negative fixtures; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
+| API-03-SHEET | `fortfem_sheet_current_parity` definition, umbrella/facade exports, sheet-current tests/docs; canonical `compare_sheet_current_representations` export and value parity are complete | Fitted surface ledger versus independently integrated regularized layer; old-spelling internal scan |
+| API-03-SURFACE | Surface-quadrature definition, exports, tests/docs; canonical `compare_sheet_current_surface_representations{,_jvp}` and interop-facade export are complete | Orientation/measure/toroidal quadrature oracle, central-difference JVP, and invalid-measure rejection |
+| API-06-GATE | Release-gate runner, isolated negative fixtures, and fpm-safe fixture layout are complete; compose inventory, layer, generated-visibility, stale-name, and canonical-consumer checks | Clean-tree pass plus one independently failing fixture per gate component |
 | API-05-GALLERY | Example import audit and documentation links, ordered by scalar-to-vector-to-interface complexity; no media committed | Example compilation, link/coverage checks, and solution-first numerical/visual data oracle |
 
 The queue is extensible: a new public family gets an inventory row and a
