@@ -1,5 +1,5 @@
 program mixed_elasticity_wave
-    !! Structure-preserving mixed 1-D elastic bar modal example.
+    !! Structure-preserving mixed elastic wave gallery example.
     !!
     !! The two sine modes are a manufactured compatible bar state.  The
     !! mixed midpoint step advances displacement-like coordinates and their
@@ -7,12 +7,13 @@ program mixed_elasticity_wave
     use fortfem_api, only: &
         assemble_mixed_elasticity_residual, advance_mixed_wave_midpoint
     use fortfem_kinds, only: dp
-    use fortplot, only: figure, legend, plot, savefig, set_yscale, title, &
-        xlabel, ylabel
+    use fortplot, only: colorbar, contourf, figure, legend, plot, quiver, &
+        savefig, set_yscale, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
     implicit none
 
     integer, parameter :: mode_count = 2, step_count = 400, sample_count = 161
+    integer, parameter :: grid_count = 9, vector_count = grid_count*grid_count
     real(dp), parameter :: time_step = 0.01_dp
     real(dp), parameter :: frequencies(mode_count) = [ &
         acos(-1.0_dp), 2.0_dp*acos(-1.0_dp)]
@@ -35,15 +36,19 @@ program mixed_elasticity_wave
     real(dp) :: constitutive_residual(mode_count), equilibrium_residual(mode_count)
     real(dp) :: x(sample_count), displacement_field(sample_count)
     real(dp) :: velocity_field(sample_count), stress_field(sample_count)
+    real(dp) :: grid(grid_count), stress_2d(grid_count, grid_count)
+    real(dp) :: vector_x(vector_count), vector_y(vector_count)
+    real(dp) :: vector_u(vector_count), vector_v(vector_count)
     real(dp) :: time(step_count + 1), energy_history(step_count + 1)
     real(dp) :: error_history(step_count + 1)
     real(dp) :: displacement_exact(mode_count), velocity_exact(mode_count)
     real(dp) :: maximum_error, maximum_energy_drift, maximum_residual
     real(dp) :: start_time, elapsed, energy_initial, energy
-    integer :: mode, point, step, unit, residual_status
+    integer :: mode, point, step, unit, residual_status, ix, iy, vector_point
     type(fortsparse_status_t) :: status
 
     call execute_command_line("mkdir -p "//output_directory)
+    call initialize_gallery_sequence()
     mass_displacement = 0.0_dp
     mass_velocity = 0.0_dp
     coupling = 0.0_dp
@@ -117,7 +122,24 @@ program mixed_elasticity_wave
     end do
     call reconstruct_fields(x, displacement, velocity, displacement_field, &
         velocity_field, stress_field)
-    call render_plots()
+    call reconstruct_2d_fields()
+    call render_physical_plots()
+    call record_gallery_stage("physical_solution")
+    call render_diagnostic_plots()
+    call record_gallery_stage("diagnostics")
+
+    open (newunit=unit, file=output_directory//"/mixed_elasticity_solution_2d.csv", &
+        status="replace", action="write")
+    write (unit, "(a)") "x,y,displacement_x,displacement_y,stress_magnitude"
+    do iy = 1, grid_count
+        do ix = 1, grid_count
+            vector_point = ix + (iy - 1)*grid_count
+            write (unit, "(*(es24.16,:,','))") grid(ix), grid(iy), &
+                vector_u(vector_point), vector_v(vector_point), stress_2d(ix, iy)
+        end do
+    end do
+    close (unit)
+
     open (newunit=unit, file=output_directory//"/benchmark.txt", &
         status="replace", action="write")
     write (unit, "(a)") "quantity,value"
@@ -126,6 +148,9 @@ program mixed_elasticity_wave
     write (unit, "(a,es24.16)") "maximum_exact_state_error,", maximum_error
     write (unit, "(a,es24.16)") "maximum_relative_energy_drift,", maximum_energy_drift
     write (unit, "(a,es24.16)") "mixed_residual_norm,", maximum_residual
+    write (unit, "(a,es24.16)") "final_time,", time(step_count + 1)
+    write (unit, "(a,es24.16)") "final_displacement_mode_1,", displacement(1)
+    write (unit, "(a,es24.16)") "final_displacement_mode_2,", displacement(2)
     write (unit, "(a,es24.16)") "midpoint_wall_time_seconds,", elapsed
     close (unit)
 
@@ -171,7 +196,36 @@ contains
         end do
     end subroutine reconstruct_fields
 
-    subroutine render_plots()
+    subroutine reconstruct_2d_fields()
+        real(dp) :: x_value, y_value, stress_xx, stress_yy
+
+        do ix = 1, grid_count
+            grid(ix) = real(ix - 1, dp)/real(grid_count - 1, dp)
+        end do
+        vector_point = 0
+        do iy = 1, grid_count
+            do ix = 1, grid_count
+                x_value = grid(ix)
+                y_value = grid(iy)
+                vector_point = vector_point + 1
+                vector_x(vector_point) = x_value
+                vector_y(vector_point) = y_value
+                vector_u(vector_point) = displacement(1)*sin(frequencies(1)*x_value)* &
+                    sin(frequencies(1)*y_value)
+                vector_v(vector_point) = displacement(2)*sin(frequencies(2)*x_value)* &
+                    sin(frequencies(2)*y_value)
+                stress_xx = frequencies(1)*displacement(1)* &
+                    cos(frequencies(1)*x_value)* &
+                    sin(frequencies(1)*y_value)
+                stress_yy = frequencies(2)*displacement(2)* &
+                    sin(frequencies(2)*x_value)* &
+                    cos(frequencies(2)*y_value)
+                stress_2d(ix, iy) = sqrt(stress_xx**2 + stress_yy**2)
+            end do
+        end do
+    end subroutine reconstruct_2d_fields
+
+    subroutine render_physical_plots()
         call figure(figsize=[9.0_dp, 5.5_dp])
         call plot(x, displacement_field, label="displacement u(x)", color=blue)
         call plot(x, stress_field/max(1.0_dp, maxval(abs(stress_field))), &
@@ -182,6 +236,16 @@ contains
         call legend()
         call savefig(output_directory//"/mixed_elasticity_solution_1d.png")
 
+        call figure(figsize=[8.0_dp, 6.0_dp])
+        call contourf(grid, grid, stress_2d, cmap="coolwarm", show_colorbar=.true.)
+        call colorbar(label="stress magnitude")
+        call quiver(vector_x, vector_y, vector_u, vector_v, color=blue, scale=6.0_dp, &
+            width=0.003_dp)
+        call xlabel("x")
+        call ylabel("y")
+        call title("Mixed elasticity 2D displacement and stress")
+        call savefig(output_directory//"/mixed_elasticity_solution_2d.png")
+
         call figure(figsize=[9.0_dp, 5.5_dp])
         call plot(x, stress_field, label="stress sigma(x)", color=orange)
         call plot(x, velocity_field, label="velocity v(x)", color=blue, linestyle="--")
@@ -190,7 +254,9 @@ contains
         call title("Mixed elastic bar stress and velocity")
         call legend()
         call savefig(output_directory//"/mixed_elasticity_stress_1d.png")
+    end subroutine render_physical_plots
 
+    subroutine render_diagnostic_plots()
         call figure(figsize=[9.0_dp, 5.5_dp])
         call plot(time, energy_history, label="relative energy drift", color=green)
         call xlabel("time")
@@ -206,6 +272,24 @@ contains
         call ylabel("absolute error")
         call title("Mixed elastic bar analytical comparison")
         call savefig(output_directory//"/mixed_elasticity_error_1d.png")
-    end subroutine render_plots
+    end subroutine render_diagnostic_plots
+
+    subroutine initialize_gallery_sequence()
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        close (sequence_unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(*), intent(in) :: stage
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write")
+        write (sequence_unit, "(a)") stage
+        close (sequence_unit)
+    end subroutine record_gallery_stage
 
 end program mixed_elasticity_wave
