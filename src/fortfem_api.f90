@@ -154,6 +154,8 @@ module fortfem_api
     use fortfem_boundary_operator_parity, only: &
         boundary_operator_parity_t, evaluate_boundary_operator_parity, &
         validate_boundary_operator_parity
+    use fortfem_boundary_response_diagnostics, only: &
+        evaluate_weighted_boundary_response_diagnostics
     use fortfem_larger_domain_parity, only: &
         larger_domain_parity_t, evaluate_larger_domain_parity, &
         validate_larger_domain_parity
@@ -3079,6 +3081,7 @@ module fortfem_api
     public :: boundary_operator_parity_t
     public :: evaluate_boundary_operator_parity
     public :: validate_boundary_operator_parity
+    public :: evaluate_weighted_boundary_response_diagnostics
     public :: larger_domain_parity_t
     public :: evaluate_larger_domain_parity
     public :: validate_larger_domain_parity
