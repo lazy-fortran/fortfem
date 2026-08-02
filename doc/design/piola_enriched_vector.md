@@ -36,6 +36,9 @@ call evaluate_piola_enriched_vector_values_vjp( &
 call evaluate_piola_enriched_vector_differential_3d(...)
 call evaluate_piola_enriched_vector_differential_3d_jvp(...)
 call evaluate_piola_enriched_vector_differential_3d_vjp(...)
+call evaluate_piola_enriched_vector_differential_2d(...)
+call evaluate_piola_enriched_vector_differential_2d_jvp(...)
+call evaluate_piola_enriched_vector_differential_2d_vjp(...)
 ```
 
 The JVP differentiates the inverse/determinant Piola factors, reference
@@ -45,14 +48,15 @@ activation cotangents.  This makes shape sensitivity and enrichment
 conditioning composable without duplicating covariant/contravariant formulas
 in IGA or XFEM clients.
 
-For 3D affine cells, the differential contract makes the de Rham effect
+For 2D and 3D affine cells, the differential contract makes the de Rham effect
 explicit.  A covariant H(curl) map reports
 
 ```text
 curl(a b) = a J curl_hat(b)/det(J) + grad(a) x b,
 ```
 
-while a contravariant H(div) map reports
+in 3D (with the corresponding scalar rotated-gradient term in 2D), while a
+contravariant H(div) map reports
 
 ```text
 div(a b) = a div_hat(b)/det(J) + grad(a) . b.
@@ -72,7 +76,8 @@ and rejects singular and unknown map choices.  Exact-sequence preservation
 across a cut, support activation, and higher-order curved-map construction
 remain separate contracts.
 
-`test_piola_enriched_differential_3d` independently evaluates the affine
+`test_piola_enriched_differential_2d` and
+`test_piola_enriched_differential_3d` independently evaluate the affine
 Piola pullbacks and enrichment product terms, checks both FEEC families by
 central differences, and verifies the complete real dot-product identity for
 geometry and enrichment-gradient directions.
