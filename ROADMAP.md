@@ -2394,7 +2394,11 @@ gallery example.
   open-boundary gallery now solves a second, physically larger tetrahedral PML
   box, reconstructs the same interior field at shared targets, and reports the
   measured domain difference and solve time; its previous hard-coded far-wall
-  placeholder is gone. Exact-curved torus RWG currents now also have a public
+  placeholder is gone. The common-interior larger-domain parity now also
+  exposes a fixed-topology complex JVP for field, weight, and boundary-distance
+  perturbations, with an independent weighted metric and central-re-evaluation
+  oracle; norm ties and zero differences are rejected as nondifferentiable.
+  Exact-curved torus RWG currents now also have a public
   off-surface magnetic-field reconstruction path with a coefficient-linearity
   oracle, so the torus Maxwell gallery can show a computed field slice. That
   reconstruction now also has analytical geometry JVP and VJP products through

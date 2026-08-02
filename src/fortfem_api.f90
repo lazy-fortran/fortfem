@@ -200,6 +200,7 @@ module fortfem_api
         evaluate_weighted_source_trace_reciprocity_defect
     use fortfem_larger_domain_parity, only: &
         larger_domain_parity_t, evaluate_larger_domain_parity, &
+        evaluate_larger_domain_parity_jvp, &
         validate_larger_domain_parity
     use fortfem_boundary_trace_residual, only: &
         assemble_boundary_trace_residual, &
@@ -3306,6 +3307,7 @@ module fortfem_api
     public :: evaluate_weighted_source_trace_reciprocity_defect
     public :: larger_domain_parity_t
     public :: evaluate_larger_domain_parity
+    public :: evaluate_larger_domain_parity_jvp
     public :: validate_larger_domain_parity
     public :: BOUNDARY_OPERATOR_BACKEND_FEM
     public :: BOUNDARY_OPERATOR_BACKEND_BEM
