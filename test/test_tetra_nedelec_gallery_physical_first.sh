@@ -13,6 +13,7 @@ rm -rf -- "$output_directory"
 
 test -s "$output_directory/nedelec_field_3d.png"
 test -s "$output_directory/nedelec_field_slice_2d.png"
+test -s "$output_directory/nedelec_field_slice_2d.csv"
 test -s "$output_directory/p_convergence_1d.png"
 test -s "$output_directory/gallery_sequence.txt"
 
@@ -29,5 +30,29 @@ test "$primary_name" = nedelec_field_slice_2d.png
 # convergence curve that is emitted last by the example.
 test "$(file -b "$output_directory/$primary_name" | cut -d' ' -f1)" = PNG
 test "$primary_name" != p_convergence_1d.png
+
+# Check the physical data independently of the rendered PNG.  A scalar-only
+# plot can pass the image checks while silently dropping the vector components.
+python3 - "$output_directory/nedelec_field_slice_2d.csv" <<'PY'
+import csv
+import math
+import sys
+
+with open(sys.argv[1], newline="") as stream:
+    rows = list(csv.DictReader(stream))
+if len(rows) < 100:
+    raise SystemExit("Nedelec physical slice has too few samples")
+for name in ("Ex", "Ey", "Ez", "magnitude"):
+    values = [float(row[name]) for row in rows]
+    if not all(math.isfinite(value) for value in values):
+        raise SystemExit(f"non-finite Nedelec component: {name}")
+    if max(abs(value) for value in values) <= 1.0e-12:
+        raise SystemExit(f"Nedelec component is visually absent: {name}")
+for row in rows:
+    field = [float(row[name]) for name in ("Ex", "Ey", "Ez")]
+    magnitude = float(row["magnitude"])
+    if abs(math.sqrt(sum(value * value for value in field)) - magnitude) > 1.0e-11:
+        raise SystemExit("Nedelec magnitude does not match vector components")
+PY
 
 echo "tetrahedral Nedelec gallery emits vector solution before diagnostics"
