@@ -5,7 +5,8 @@ module fortfem_toroidal_harmonics
     !! This module keeps those analytical torus-harmonic functions available
     !! through the FortFEM public API without selecting an application law.
     use fortnum_special_toroidal, only: &
-        toroidal_p, toroidal_q, toroidal_p_derivative, toroidal_q_derivative
+        toroidal_p, toroidal_q, toroidal_p_derivative, toroidal_q_derivative, &
+        toroidal_p_second_derivative, toroidal_q_second_derivative
     implicit none
     private
 
@@ -13,5 +14,7 @@ module fortfem_toroidal_harmonics
     public :: toroidal_q
     public :: toroidal_p_derivative
     public :: toroidal_q_derivative
+    public :: toroidal_p_second_derivative
+    public :: toroidal_q_second_derivative
 
 end module fortfem_toroidal_harmonics
