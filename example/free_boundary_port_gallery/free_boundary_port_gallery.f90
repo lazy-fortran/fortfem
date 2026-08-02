@@ -272,7 +272,9 @@ contains
         open (newunit=csv_unit, file=output_directory//"/boundary_trace.csv", &
             status="replace", action="write")
         write (csv_unit, "(a)") &
-            "theta,phi,x,y,z,trace_x,trace_y,trace_z,target_x,target_y,target_z,sheet_x,sheet_y,sheet_z,residual_x,residual_y,residual_z,weight"
+            "theta,phi,x,y,z,trace_x,trace_y,trace_z,target_x,target_y,"// &
+            "target_z,sheet_x,sheet_y,sheet_z,residual_x,residual_y,"// &
+            "residual_z,weight"
         local_point = 0
         do local_j = 1, phi_samples
             do local_i = 1, theta_samples
