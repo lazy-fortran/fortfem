@@ -291,6 +291,9 @@ module fortfem_api
     use fortfem_force_balance_residual, only: &
         assemble_force_balance_residual, assemble_force_balance_residual_jvp, &
         assemble_force_balance_residual_vjp
+    use fortfem_force_balance_product, only: &
+        evaluate_force_balance_product, evaluate_force_balance_product_jvp, &
+        evaluate_force_balance_product_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, assemble_tensor_diffusion_matrix_jvp, &
         assemble_tensor_diffusion_matrix_vjp
@@ -1582,6 +1585,9 @@ module fortfem_api
     public :: assemble_force_balance_residual
     public :: assemble_force_balance_residual_jvp
     public :: assemble_force_balance_residual_vjp
+    public :: evaluate_force_balance_product
+    public :: evaluate_force_balance_product_jvp
+    public :: evaluate_force_balance_product_vjp
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp
