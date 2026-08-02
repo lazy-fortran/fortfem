@@ -50,6 +50,8 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp
@@ -1429,6 +1431,230 @@ contains
         end do
         status = 0
     end subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+
+    subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp( &
+            vertices, triangles, radius, coefficients, observation, wave_number, &
+            quadrature_degree, vertices_dot, radius_dot, coefficients_dot, &
+            observation_dot, wave_number_dot, magnetic_field_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius, observation(3)
+        complex(dp), intent(in) :: coefficients(:), coefficients_dot(:)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: vertices_dot(:, :), radius_dot
+        real(dp), intent(in) :: observation_dot(3), wave_number_dot
+        complex(dp), intent(out) :: magnetic_field_dot(3)
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), basis_value_dot(3)
+        real(dp) :: displacement(3), displacement_dot(3), distance
+        real(dp) :: distance_dot, divergence, divergence_dot, jacobian
+        real(dp) :: jacobian_dot, point(3), point_dot(3), unit(3), unit_dot(3)
+        complex(dp) :: curl_integrand(3), curl_integrand_dot(3)
+        complex(dp) :: gradient_green(3), gradient_green_dot(3), green, green_dot
+        complex(dp) :: q, q_dot, surface_current(3), surface_current_dot(3)
+        integer :: basis, node, panel
+
+        magnetic_field_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
+        if (any(shape(vertices_dot) /= shape(vertices))) return
+        if (size(coefficients_dot) /= size(coefficients)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                surface_current_dot = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis_jvp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), vertices_dot, &
+                        radius_dot, point, basis_value, divergence, jacobian, &
+                        point_dot, basis_value_dot, divergence_dot, jacobian_dot, &
+                        status)
+                    if (status /= 0) return
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                    surface_current_dot = surface_current_dot + &
+                        coefficients_dot(basis)*basis_value + &
+                        coefficients(basis)*basis_value_dot
+                end do
+                displacement = observation - point
+                displacement_dot = observation_dot - point_dot
+                distance = norm2(displacement)
+                if (distance <= 128.0_dp*epsilon(1.0_dp)*radius) return
+                distance_dot = dot_product(displacement, displacement_dot)/distance
+                green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*distance)
+                green_dot = green*(cmplx( &
+                    0.0_dp, wave_number_dot*distance + &
+                    wave_number*distance_dot, dp) - distance_dot/distance)
+                unit = displacement/distance
+                unit_dot = (displacement_dot - unit*distance_dot)/distance
+                q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance
+                q_dot = cmplx(0.0_dp, wave_number_dot, dp) + &
+                    distance_dot/distance**2
+                gradient_green = green*q*unit
+                gradient_green_dot = (green_dot*q + green*q_dot)*unit + &
+                    green*q*unit_dot
+                curl_integrand = complex_cross_product( &
+                    gradient_green, surface_current)
+                curl_integrand_dot = complex_cross_product( &
+                    gradient_green_dot, surface_current) + &
+                    complex_cross_product(gradient_green, surface_current_dot)
+                magnetic_field_dot = magnetic_field_dot + weights(node)*( &
+                    jacobian_dot*curl_integrand + &
+                    jacobian*curl_integrand_dot)
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp
+
+    subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp( &
+            vertices, triangles, radius, coefficients, observation, wave_number, &
+            quadrature_degree, magnetic_field_bar, vertices_bar, radius_bar, &
+            coefficients_bar, observation_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), radius, observation(3)
+        complex(dp), intent(in) :: coefficients(:), magnetic_field_bar(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(out) :: vertices_bar(:, :), radius_bar
+        complex(dp), allocatable, intent(out) :: coefficients_bar(:)
+        real(dp), intent(out) :: observation_bar(3), wave_number_bar
+        integer, intent(out) :: status
+
+        integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
+        real(dp), allocatable :: eta(:), weights(:), xi(:)
+        real(dp) :: basis_value(3), divergence, jacobian, point(3)
+        real(dp) :: point_bar(3), value_bar(3), jacobian_bar
+        real(dp) :: local_edge_vertices_bar(3, 2)
+        real(dp) :: local_panel_vertices_bar(3, 3), local_radius_bar
+        real(dp) :: displacement(3), distance, unit(3), unit_bar(3)
+        real(dp) :: distance_bar, displacement_bar(3)
+        complex(dp) :: curl_integrand(3), curl_bar(3), gradient_green(3)
+        complex(dp) :: gradient_bar(3), green, q, factor, unit_factor
+        complex(dp) :: surface_current(3), surface_current_bar(3)
+        logical :: explicit_geometry_consumed
+        integer :: basis, local, node, panel, status_local, vertex
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        observation_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(coefficients_bar)) deallocate(coefficients_bar)
+        status = 1
+        if (radius <= 0.0_dp .or. wave_number < 0.0_dp) return
+        if (size(vertices_bar, 1) /= size(vertices, 1)) return
+        if (size(vertices_bar, 2) /= size(vertices, 2)) return
+        call build_maxwell_rwg_surface_space( &
+            vertices, triangles, edge_vertices, edge_triangles, status)
+        if (status /= 0) return
+        if (size(coefficients) /= size(edge_vertices, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(coefficients_bar(size(edge_vertices, 2)))
+        coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(triangles, 2)
+            do node = 1, size(weights)
+                surface_current = cmplx(0.0_dp, 0.0_dp, dp)
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    surface_current = surface_current + &
+                        coefficients(basis)*basis_value
+                end do
+                displacement = observation - point
+                distance = norm2(displacement)
+                if (distance <= 128.0_dp*epsilon(1.0_dp)*radius) return
+                unit = displacement/distance
+                green = exp(cmplx(0.0_dp, wave_number*distance, dp))/ &
+                    (4.0_dp*acos(-1.0_dp)*distance)
+                q = cmplx(0.0_dp, wave_number, dp) - 1.0_dp/distance
+                factor = green*q
+                gradient_green = factor*unit
+                curl_integrand = complex_cross_product( &
+                    gradient_green, surface_current)
+                curl_bar = weights(node)*jacobian*magnetic_field_bar
+                jacobian_bar = weights(node)*real(sum(conjg( &
+                    magnetic_field_bar)*curl_integrand), dp)
+                gradient_bar = complex_cross_product( &
+                    conjg(surface_current), curl_bar)
+                surface_current_bar = complex_cross_product( &
+                    curl_bar, conjg(gradient_green))
+                unit_bar = real(conjg(gradient_bar)*factor, dp)
+                unit_factor = green*(q**2 + 1.0_dp/distance**2)
+                distance_bar = real(sum(conjg(gradient_bar)* &
+                    unit_factor*unit), dp)
+                wave_number_bar = wave_number_bar + real(sum( &
+                    conjg(gradient_bar)*green*cmplx(0.0_dp, 1.0_dp, dp)* &
+                    (distance*q + 1.0_dp)*unit), dp)
+                displacement_bar = distance_bar*unit + &
+                    (unit_bar - unit*dot_product(unit, unit_bar))/distance
+                observation_bar = observation_bar + displacement_bar
+                point_bar = -displacement_bar
+                explicit_geometry_consumed = .false.
+                do basis = 1, size(edge_vertices, 2)
+                    if (.not. any(edge_triangles(:, basis) == panel)) cycle
+                    call evaluate_maxwell_sphere_curved_rwg_basis( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point, &
+                        basis_value, divergence, jacobian, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    coefficients_bar(basis) = coefficients_bar(basis) + &
+                        sum(surface_current_bar*cmplx(basis_value, 0.0_dp, dp))
+                    value_bar = real(conjg(surface_current_bar)* &
+                        coefficients(basis), dp)
+                    if (.not. explicit_geometry_consumed) then
+                        explicit_geometry_consumed = .true.
+                    else
+                        point_bar = 0.0_dp
+                        jacobian_bar = 0.0_dp
+                    end if
+                    call evaluate_maxwell_sphere_curved_rwg_basis_vjp( &
+                        vertices, triangles, edge_vertices, edge_triangles, &
+                        basis, panel, radius, xi(node), eta(node), point_bar, &
+                        value_bar, 0.0_dp, jacobian_bar, &
+                        local_edge_vertices_bar, local_panel_vertices_bar, &
+                        local_radius_bar, status_local)
+                    if (status_local /= 0) then
+                        status = status_local
+                        return
+                    end if
+                    do vertex = 1, 2
+                        vertices_bar(:, edge_vertices(vertex, basis)) = &
+                            vertices_bar(:, edge_vertices(vertex, basis)) + &
+                            local_edge_vertices_bar(:, vertex)
+                    end do
+                    do local = 1, 3
+                        vertices_bar(:, triangles(local, panel)) = &
+                            vertices_bar(:, triangles(local, panel)) + &
+                            local_panel_vertices_bar(:, local)
+                    end do
+                    radius_bar = radius_bar + local_radius_bar
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
 
     subroutine solve_maxwell_pec_sphere_curved_efie_rwg_3d( &
             vertices, triangles, radius, direction, polarization, wave_number, &
