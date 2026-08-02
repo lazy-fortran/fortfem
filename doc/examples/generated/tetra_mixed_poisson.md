@@ -33,13 +33,14 @@ fpm run --example tetra_mixed_poisson
 
 ```fortran
 program tetra_mixed_poisson
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         compile_tetra_mixed_form_csc, div, dx, &
         evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
-        generate_structured_tetra_box_mesh, init_measures, inner, operator(*), &
+        init_measures, inner, operator(*), &
         solve_symbolic_tetra_mixed_poisson_rt, test_function_t, &
         tetra_discontinuous_t, trial_function_t, vector_test_function_t, &
         vector_trial_function_t
+    use fortfem_core, only: generate_structured_tetra_box_mesh
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
     use fortplot, only: add_scatter, figure, legend, plot, savefig, set_yscale, &

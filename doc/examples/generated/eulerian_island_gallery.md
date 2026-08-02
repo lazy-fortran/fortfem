@@ -43,10 +43,10 @@ program eulerian_island_gallery
     !! A fixed Cartesian sample carries an analytic slab-island flux.  The
     !! caller owns the force and divergence residual samples passed to the
     !! Eulerian non-nested composition; no plasma closure is selected here.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_eulerian_nonnested_residual, &
-        assemble_eulerian_nonnested_residual_jvp, &
-        CONTINUATION_EVENT_SIGN_CROSSING
+        assemble_eulerian_nonnested_residual_jvp
+    use fortfem_time, only: CONTINUATION_EVENT_SIGN_CROSSING
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, contourf, figure, legend, plot, quiver, &
         savefig, title, xlabel, ylabel
