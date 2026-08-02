@@ -177,6 +177,9 @@ contains
                 precond)
         case ("gmres")
             call gmres_solve_sparse_impl(A_sparse, b, x, local_opts, stats)
+        case ("bicgstab")
+            call bicgstab_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
+                precond)
         case default
             local_opts%method = "pcg"
             call pcg_solve_sparse_impl(A_sparse, b, x, local_opts, stats, &
@@ -271,6 +274,86 @@ contains
         end subroutine sparse_matvec
 
     end subroutine gmres_solve_sparse_impl
+
+    subroutine bicgstab_solve_sparse_impl( &
+            A_sparse, b, x, opts, stats, precond)
+        type(sparse_matrix_t), intent(in) :: A_sparse
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(inout) :: x(:)
+        type(solver_options_t), intent(in) :: opts
+        type(solver_stats_t), intent(out) :: stats
+        type(preconditioner_t), intent(in) :: precond
+
+        real(dp), allocatable :: r(:), r0(:), p(:), v(:), s(:), t(:)
+        real(dp), allocatable :: p_preconditioned(:), s_preconditioned(:), Ax(:)
+        real(dp) :: rho, rho_old, alpha, omega, beta, denominator
+        real(dp) :: residual_norm, initial_norm, tolerance
+        integer :: iteration, n
+
+        n = size(x)
+        allocate(r(n), r0(n), p(n), v(n), s(n), t(n), &
+            p_preconditioned(n), s_preconditioned(n), Ax(n))
+        call spmv(A_sparse, x, Ax)
+        r = b - Ax
+        r0 = r
+        initial_norm = sqrt(dot_product(r, r))
+        if (trim(opts%tolerance_type) == "absolute") then
+            tolerance = opts%tolerance
+        else
+            tolerance = opts%tolerance*initial_norm
+        end if
+        residual_norm = initial_norm
+        rho_old = 1.0_dp
+        alpha = 1.0_dp
+        omega = 1.0_dp
+        p = 0.0_dp
+        v = 0.0_dp
+        stats%converged = residual_norm <= tolerance
+        stats%iterations = 0
+
+        do iteration = 1, opts%max_iterations
+            if (stats%converged) exit
+            rho = dot_product(r0, r)
+            if (abs(rho) <= epsilon(1.0_dp)) exit
+            if (iteration == 1) then
+                p = r
+            else
+                if (abs(omega) <= epsilon(1.0_dp)) exit
+                beta = (rho/rho_old)*(alpha/omega)
+                p = r + beta*(p - omega*v)
+            end if
+            call apply_preconditioner(precond, p, p_preconditioned)
+            call spmv(A_sparse, p_preconditioned, v)
+            denominator = dot_product(r0, v)
+            if (abs(denominator) <= epsilon(1.0_dp)) exit
+            alpha = rho/denominator
+            s = r - alpha*v
+            residual_norm = sqrt(dot_product(s, s))
+            if (residual_norm <= tolerance) then
+                x = x + alpha*p_preconditioned
+                stats%converged = .true.
+                stats%iterations = iteration
+                exit
+            end if
+            call apply_preconditioner(precond, s, s_preconditioned)
+            call spmv(A_sparse, s_preconditioned, t)
+            denominator = dot_product(t, t)
+            if (abs(denominator) <= epsilon(1.0_dp)) exit
+            omega = dot_product(t, s)/denominator
+            if (abs(omega) <= epsilon(1.0_dp)) exit
+            x = x + alpha*p_preconditioned + omega*s_preconditioned
+            r = s - omega*t
+            residual_norm = sqrt(dot_product(r, r))
+            stats%iterations = iteration
+            if (residual_norm <= tolerance) stats%converged = .true.
+            rho_old = rho
+        end do
+
+        stats%final_residual = residual_norm
+        stats%method_used = "bicgstab"
+        deallocate(r, r0, p, v, s, t, p_preconditioned, s_preconditioned, Ax)
+
+    end subroutine bicgstab_solve_sparse_impl
 
     ! Conjugate Gradient solver (dense interface)
     subroutine cg_solve(A, b, x, opts, stats)
