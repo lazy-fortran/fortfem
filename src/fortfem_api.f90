@@ -138,6 +138,10 @@ module fortfem_api
         assemble_fci_terminal_boundary_ledger, &
         assemble_fci_terminal_boundary_ledger_jvp, &
         assemble_fci_terminal_boundary_ledger_vjp
+    use fortfem_volume_balance_ledger, only: &
+        assemble_volume_balance_ledger, &
+        assemble_volume_balance_ledger_jvp, &
+        assemble_volume_balance_ledger_vjp
     use fortfem_surface_current_trace_residual, only: &
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
@@ -1854,6 +1858,9 @@ module fortfem_api
     public :: assemble_fci_terminal_boundary_ledger
     public :: assemble_fci_terminal_boundary_ledger_jvp
     public :: assemble_fci_terminal_boundary_ledger_vjp
+    public :: assemble_volume_balance_ledger
+    public :: assemble_volume_balance_ledger_jvp
+    public :: assemble_volume_balance_ledger_vjp
     public :: assemble_nonlinear_surface_flux
     public :: assemble_nonlinear_surface_flux_jvp
     public :: assemble_nonlinear_surface_flux_vjp
