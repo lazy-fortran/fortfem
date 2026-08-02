@@ -42,6 +42,11 @@ keeps zero-mode policy, rectangular truncation, and supplied-coefficient tail
 diagnostics explicit for periodic Green operators, with differentiable modal
 energy diagnostics.
 
+The [toroidal modal convolution contract](toroidal_modal_convolution.html)
+provides a bounded-memory retained-mode Green action with complex JVP/VJP
+products; regularization, normalization, and compatibility constraints remain
+caller-owned.
+
 The [curved Maxwell trace-to-flux contract](maxwell_curved_dtn.html) composes
 EFIE, MFIE/RBC, and a primal trace mass matrix into a weak curved-surface DtN
 map with matrix-free, JVP, and VJP actions. Its exact-curved torus wrapper
