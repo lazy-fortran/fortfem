@@ -6,7 +6,9 @@ output_directory="$repository_dir/output/example/team7_neutral_benchmark"
 
 (
     cd "$repository_dir"
-    timeout --foreground 10s fpm run --example team7_neutral_benchmark \
+    # The build is a separate CI step; keep this gate's ten-second budget for
+    # the gallery executable and its output checks.
+    timeout --foreground 10s fo exec --no-build team7_neutral_benchmark \
         >/tmp/fortfem-team7-neutral-gallery.log
 )
 
