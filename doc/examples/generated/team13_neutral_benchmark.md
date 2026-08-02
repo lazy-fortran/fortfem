@@ -60,7 +60,9 @@ program team13_neutral_benchmark
     real(dp) :: x_grid(nx), y_grid(ny), bmag(ny, nx)
     real(dp) :: arrow_x(arrow_count), arrow_y(arrow_count)
     real(dp) :: arrow_u(arrow_count), arrow_v(arrow_count)
-    real(dp) :: bx, by, x, y, psi, dpsi_dx, dpsi_dy
+    real(dp) :: bx, by, x, y, psi
+    real(dp) :: bx_plus, bx_minus, by_plus, by_minus
+    real(dp) :: bx_yplus, bx_yminus, by_yplus, by_yminus
     real(dp) :: coil, channel, plate, energy, divergence_error
     real(dp) :: probe_x(nx), probe_b(nx)
     integer :: ix, iy, arrow, unit
@@ -81,14 +83,23 @@ program team13_neutral_benchmark
             x = x_grid(ix)
             call manufactured_field(x, y, psi, bx, by, coil, channel, plate)
             bmag(iy, ix) = sqrt(bx**2 + by**2)
-            energy = energy + 0.5_dp*bmag(ix, iy)**2
-            if (ix > 1 .and. ix < nx .and. iy > 1 .and. iy < ny) then
-                call manufactured_field(x + 1.0e-5_dp, y, psi, dpsi_dx, &
-                    dpsi_dy, coil, channel, plate)
-                call manufactured_field(x - 1.0e-5_dp, y, psi, bx, by, &
-                    coil, channel, plate)
+            energy = energy + 0.5_dp*bmag(iy, ix)**2
+            ! The channel uses |x| and |y| to suggest a benchmark slot.  Its
+            ! manufactured field is smooth away from those coordinate axes,
+            ! so exclude the kink lines from this finite-difference diagnostic.
+            if (ix > 1 .and. ix < nx .and. iy > 1 .and. iy < ny .and. &
+                abs(x) > 2.0e-5_dp .and. abs(y) > 2.0e-5_dp) then
+                call manufactured_field(x + 1.0e-5_dp, y, psi, bx_plus, &
+                    by_plus, coil, channel, plate)
+                call manufactured_field(x - 1.0e-5_dp, y, psi, bx_minus, &
+                    by_minus, coil, channel, plate)
+                call manufactured_field(x, y + 1.0e-5_dp, psi, bx_yplus, &
+                    by_yplus, coil, channel, plate)
+                call manufactured_field(x, y - 1.0e-5_dp, psi, bx_yminus, &
+                    by_yminus, coil, channel, plate)
                 divergence_error = max(divergence_error, abs( &
-                    (dpsi_dx - bx)/(2.0e-5_dp)))
+                    (bx_plus - bx_minus)/(2.0e-5_dp) + &
+                    (by_yplus - by_yminus)/(2.0e-5_dp)))
             end if
         end do
     end do
@@ -194,10 +205,10 @@ contains
         psi = coil + 0.25_dp*channel + 0.18_dp*plate + 0.06_dp*gaussian
         bx = -( -36.0_dp*coil_y*coil + &
             0.25_dp*(-110.0_dp*sign(1.0_dp, y)*channel_y*channel) + &
-            0.18_dp*(-10.0_dp*plate_y*plate) - 0.24_dp*y*0.06_dp*gaussian)
+            0.18_dp*(-10.0_dp*plate_y*plate) - 0.24_dp*y*gaussian)
         by = -36.0_dp*coil_x*coil + &
             0.25_dp*(-110.0_dp*sign(1.0_dp, x)*channel_x*channel) + &
-            0.18_dp*(-36.0_dp*plate_x*plate) - 0.24_dp*x*0.06_dp*gaussian
+            0.18_dp*(-36.0_dp*plate_x*plate) - 0.24_dp*x*gaussian
     end subroutine manufactured_field
 
 end program team13_neutral_benchmark
