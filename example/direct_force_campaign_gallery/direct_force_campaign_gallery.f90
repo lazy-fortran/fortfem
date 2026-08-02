@@ -149,7 +149,9 @@ program direct_force_campaign_gallery
         '"fd_error":'//trim(adjustl(rtoa(fd_error)))//","// &
         '"geometry_error":'//trim(adjustl(rtoa(radius_error)))//","// &
         '"elapsed_seconds":'//trim(adjustl(rtoa(elapsed_seconds)))//","// &
-        '"physics":"caller-owned manufactured residual"}'
+        '"provenance":"analytic-torus-direct-force-v1",'// &
+        '"primary_plot":"direct_force_torus_solution_3d.png",'// &
+        '"closure":"neutral-caller-owned-residual"}'
     close (unit)
 
 contains
