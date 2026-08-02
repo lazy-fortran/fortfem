@@ -42,6 +42,7 @@ module fortfem_larger_domain_parity
     end type larger_domain_parity_t
 
     public :: evaluate_larger_domain_parity
+    public :: evaluate_larger_domain_parity_jvp
     public :: validate_larger_domain_parity
 
 contains
@@ -145,6 +146,128 @@ contains
         status = 0
     end subroutine evaluate_larger_domain_parity
 
+    subroutine evaluate_larger_domain_parity_jvp( &
+            inner_field, outer_field, weights, inner_contract, outer_contract, &
+            inner_boundary_distance, outer_boundary_distance, absolute_tolerance, &
+            relative_tolerance, inner_field_dot, outer_field_dot, weights_dot, &
+            inner_boundary_distance_dot, outer_boundary_distance_dot, &
+            comparison_norm_dot, absolute_difference_dot, relative_difference_dot, &
+            relative_difference_per_distance_dot, distance_increase_dot, &
+            distance_ratio_dot, status)
+        !! Fixed-topology JVP of the common-interior parity metrics.
+        !!
+        !! The supplied fields may be nonzero scattering states from distinct
+        !! FEM, BEM, DtN, or PML clients.  Integer/backend metadata and the
+        !! tolerance decision remain fixed.  A JVP is rejected at the
+        !! nondifferentiable equal-norm or zero-difference branches.
+        complex(dp), intent(in) :: inner_field(:, :), outer_field(:, :)
+        real(dp), intent(in) :: weights(:)
+        type(boundary_operator_contract_t), intent(in) :: inner_contract
+        type(boundary_operator_contract_t), intent(in) :: outer_contract
+        real(dp), intent(in) :: inner_boundary_distance, outer_boundary_distance
+        real(dp), intent(in) :: absolute_tolerance, relative_tolerance
+        complex(dp), intent(in) :: inner_field_dot(:, :), outer_field_dot(:, :)
+        real(dp), intent(in) :: weights_dot(:)
+        real(dp), intent(in) :: inner_boundary_distance_dot
+        real(dp), intent(in) :: outer_boundary_distance_dot
+        real(dp), intent(out) :: comparison_norm_dot, absolute_difference_dot
+        real(dp), intent(out) :: relative_difference_dot
+        real(dp), intent(out) :: relative_difference_per_distance_dot
+        real(dp), intent(out) :: distance_increase_dot, distance_ratio_dot
+        integer, intent(out) :: status
+
+        type(larger_domain_parity_t) :: report
+        integer :: sample, component
+        real(dp) :: inner_squared, outer_squared, difference_squared
+        real(dp) :: inner_squared_dot, outer_squared_dot, difference_squared_dot
+        real(dp) :: comparison_norm, absolute_difference
+        complex(dp) :: inner_value, outer_value, difference, difference_dot
+
+        comparison_norm_dot = 0.0_dp
+        absolute_difference_dot = 0.0_dp
+        relative_difference_dot = 0.0_dp
+        relative_difference_per_distance_dot = 0.0_dp
+        distance_increase_dot = 0.0_dp
+        distance_ratio_dot = 0.0_dp
+        call evaluate_larger_domain_parity( &
+            inner_field, outer_field, weights, inner_contract, outer_contract, &
+            inner_boundary_distance, outer_boundary_distance, absolute_tolerance, &
+            relative_tolerance, report, status)
+        if (status /= 0) return
+        if (.not. valid_jvp_directions( &
+                inner_field, outer_field, weights, inner_field_dot, &
+                outer_field_dot, weights_dot)) then
+            status = 1
+            return
+        end if
+
+        inner_squared = 0.0_dp
+        outer_squared = 0.0_dp
+        difference_squared = 0.0_dp
+        inner_squared_dot = 0.0_dp
+        outer_squared_dot = 0.0_dp
+        difference_squared_dot = 0.0_dp
+        do sample = 1, size(inner_field, 2)
+            do component = 1, size(inner_field, 1)
+                inner_value = inner_field(component, sample)
+                outer_value = outer_field(component, sample)
+                difference = outer_value - inner_value
+                difference_dot = outer_field_dot(component, sample) - &
+                    inner_field_dot(component, sample)
+                inner_squared = inner_squared + weights(sample)*abs(inner_value)**2
+                outer_squared = outer_squared + weights(sample)*abs(outer_value)**2
+                difference_squared = difference_squared + weights(sample)*abs(difference)**2
+                inner_squared_dot = inner_squared_dot + weights_dot(sample)*abs(inner_value)**2 + &
+                    2.0_dp*weights(sample)*real(conjg(inner_value)* &
+                    inner_field_dot(component, sample), dp)
+                outer_squared_dot = outer_squared_dot + weights_dot(sample)*abs(outer_value)**2 + &
+                    2.0_dp*weights(sample)*real(conjg(outer_value)* &
+                    outer_field_dot(component, sample), dp)
+                difference_squared_dot = difference_squared_dot + &
+                    weights_dot(sample)*abs(difference)**2 + &
+                    2.0_dp*weights(sample)*real(conjg(difference)*difference_dot, dp)
+            end do
+        end do
+        if (abs(inner_squared - outer_squared) <= tiny(1.0_dp) .or. &
+            difference_squared <= tiny(1.0_dp)) then
+            status = 1
+            return
+        end if
+        comparison_norm = report%comparison_norm
+        absolute_difference = report%absolute_difference
+        if (outer_squared > inner_squared) then
+            comparison_norm_dot = outer_squared_dot/(2.0_dp*comparison_norm)
+        else
+            comparison_norm_dot = inner_squared_dot/(2.0_dp*comparison_norm)
+        end if
+        absolute_difference_dot = difference_squared_dot/(2.0_dp*absolute_difference)
+        relative_difference_dot = (absolute_difference_dot*comparison_norm - &
+            absolute_difference*comparison_norm_dot)/comparison_norm**2
+        distance_increase_dot = outer_boundary_distance_dot - inner_boundary_distance_dot
+        distance_ratio_dot = outer_boundary_distance_dot/inner_boundary_distance - &
+            outer_boundary_distance*inner_boundary_distance_dot/ &
+            inner_boundary_distance**2
+        relative_difference_per_distance_dot = relative_difference_dot/ &
+            report%distance_increase - report%relative_difference*distance_increase_dot/ &
+            report%distance_increase**2
+        if (.not. ieee_is_finite(comparison_norm_dot) .or. &
+            .not. ieee_is_finite(absolute_difference_dot) .or. &
+            .not. ieee_is_finite(relative_difference_dot) .or. &
+            .not. ieee_is_finite(relative_difference_per_distance_dot) .or. &
+            .not. ieee_is_finite(distance_increase_dot) .or. &
+            .not. ieee_is_finite(distance_ratio_dot)) then
+            comparison_norm_dot = 0.0_dp
+            absolute_difference_dot = 0.0_dp
+            relative_difference_dot = 0.0_dp
+            relative_difference_per_distance_dot = 0.0_dp
+            distance_increase_dot = 0.0_dp
+            distance_ratio_dot = 0.0_dp
+            status = 1
+            return
+        end if
+        status = 0
+    end subroutine evaluate_larger_domain_parity_jvp
+
     logical function validate_larger_domain_parity(report, status) result(valid)
         type(larger_domain_parity_t), intent(in) :: report
         integer, intent(out) :: status
@@ -179,6 +302,23 @@ contains
         status = 0
         valid = .true.
     end function validate_larger_domain_parity
+
+    logical function valid_jvp_directions( &
+            inner_field, outer_field, weights, inner_field_dot, &
+            outer_field_dot, weights_dot) result(valid)
+        complex(dp), intent(in) :: inner_field(:, :), outer_field(:, :)
+        real(dp), intent(in) :: weights(:)
+        complex(dp), intent(in) :: inner_field_dot(:, :), outer_field_dot(:, :)
+        real(dp), intent(in) :: weights_dot(:)
+
+        valid = size(inner_field_dot, 1) == size(inner_field, 1) .and. &
+            size(inner_field_dot, 2) == size(inner_field, 2) .and. &
+            size(outer_field_dot, 1) == size(outer_field, 1) .and. &
+            size(outer_field_dot, 2) == size(outer_field, 2) .and. &
+            size(weights_dot) == size(weights) .and. &
+            finite_complex_2d(inner_field_dot) .and. &
+            finite_complex_2d(outer_field_dot) .and. finite_real(weights_dot)
+    end function valid_jvp_directions
 
     logical function finite_complex_2d(values) result(valid)
         complex(dp), intent(in) :: values(:, :)
