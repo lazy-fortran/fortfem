@@ -6,7 +6,7 @@ other backend fields at the same physical sample points, one with an inner
 artificial-boundary distance and one with a farther boundary:
 
 ```fortran
-call evaluate_larger_domain_parity(inner_field, outer_field, weights, &
+call compare_larger_domain_solution(inner_field, outer_field, weights, &
     inner_contract, outer_contract, inner_distance, outer_distance, &
     absolute_tolerance, relative_tolerance, report, status)
 ```
