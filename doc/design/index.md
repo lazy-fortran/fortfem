@@ -99,6 +99,12 @@ panel, and cut-surface providers. It returns the physical quadrature ledger and
 has complete trace, reference-weight, metric, JVP, and VJP actions while
 leaving coordinates, normals, and interface laws caller-owned.
 
+The [distributed trace ownership contract](distributed_trace_ownership.html)
+packs communicator-free `partition_layout_t` instances for physical trace
+rows. It validates one deterministic owner per global row, accumulates duplicate
+ghost contributions, and exposes value, JVP, and VJP reductions for residual and
+mortar clients without introducing MPI or solver state.
+
 The [oriented cell-complex contract](cell_complex.html) defines integer chain
 boundary maps, exact boundary-of-boundary validation, Euler characteristic, and
 small homology diagnostics for later FEEC, gauge, cut, and interface graphs.
