@@ -22,6 +22,9 @@ module fortfem_feec
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t
     use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_reference_tetra_nedelec
+    use fortfem_tetra_vector_evaluation, only: &
+        evaluate_tetra_nedelec_interpolant_at_point
+    use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_nedelec_global_dof_map, only: build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
@@ -51,6 +54,8 @@ module fortfem_feec
     use fortfem_fci_parallel_operator, only: &
         apply_fci_parallel_diffusion, apply_fci_parallel_diffusion_jvp, &
         apply_fci_parallel_diffusion_vjp, apply_fci_parallel_diffusion_field_vjp
+    use fortfem_tetra_nedelec_solver_3d, only: &
+        solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -94,6 +99,7 @@ module fortfem_feec
     public :: build_tree_cotree_dof_map
     public :: build_tree_cotree_gauge
     public :: build_tetra_nedelec_dof_map
+    public :: build_tetra_edge_dof_map
     public :: build_bspline_polar_feec_2d_operators
     public :: build_bspline_polar_feec_2d_extractions
     public :: build_bspline_polar_h1_extraction
@@ -106,6 +112,7 @@ module fortfem_feec
     public :: evaluate_tetra_nedelec_first_kind
     public :: evaluate_tetra_nedelec_first_kind_jvp
     public :: evaluate_tetra_nedelec_first_kind_vjp
+    public :: evaluate_tetra_nedelec_interpolant_at_point
     public :: initialize_tetra_nedelec_first_kind
     public :: interpolate_reference_tetra_nedelec
     public :: map_tetra_nedelec_covariant
@@ -118,6 +125,8 @@ module fortfem_feec
     public :: tree_cotree_iga_parity_t
     public :: tetra_nedelec_dof_count
     public :: tetra_nedelec_first_kind_t
+    public :: solve_tetra_nedelec_curl_mass
+    public :: solve_tetra_nedelec_pml
     public :: tetra_duffy_quadrature
     public :: assemble_bspline_polar_h1_operator_csc
     public :: assemble_bspline_polar_hcurl_operator_csc

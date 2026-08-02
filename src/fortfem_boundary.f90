@@ -24,6 +24,9 @@ module fortfem_boundary
         validate_boundary_operator_contract
     use fortfem_circular_dtn_2d, only: &
         apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
+    use fortfem_curved_acoustic_displacement_ntd_2d, only: &
+        apply_curved_acoustic_displacement_ntd_2d, &
+        assemble_curved_acoustic_displacement_ntd_form_2d
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
         assemble_laplace_hypersingular_linear, &
@@ -39,6 +42,14 @@ module fortfem_boundary
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
+    use fortfem_adaptive_surface_bem, only: &
+        estimate_helmholtz_p0_two_level_residual_3d, &
+        estimate_laplace_p0_two_level_residual_3d, &
+        mark_bem_dorfler, refine_surface_mesh_marked
+    use fortfem_elasticity_planar_acoustic_dtn_2d, only: &
+        solve_elasticity_planar_acoustic_dtn_p1
+    use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
+        solve_elasticity_curved_acoustic_ntd_p1
     use fortfem_laplace_symmetric_coupling_2d, only: &
         solve_laplace_symmetric_coupling_p1_p0
     use fortfem_planar_helmholtz_dtn, only: &
@@ -48,6 +59,19 @@ module fortfem_boundary
         assemble_planar_helmholtz_dtn_form, &
         assemble_planar_helmholtz_dtn_form_jvp, &
         assemble_planar_helmholtz_dtn_form_vjp
+    use fortfem_planar_maxwell_dtn, only: &
+        apply_planar_maxwell_dtn, assemble_planar_maxwell_dtn_form, &
+        assemble_planar_maxwell_dtn_form_jvp, &
+        assemble_planar_maxwell_dtn_form_vjp
+    use fortfem_planar_nedelec_maxwell_dtn, only: &
+        assemble_planar_nedelec_maxwell_dtn_form, &
+        build_planar_nedelec_trace_sampling, &
+        pullback_planar_maxwell_dtn_form, &
+        pullback_planar_maxwell_dtn_form_jvp, &
+        pullback_planar_maxwell_dtn_form_vjp
+    use fortfem_scalar_helmholtz_pml_slab_1d, only: &
+        assemble_scalar_helmholtz_pml_slab_1d_matrix, &
+        solve_scalar_helmholtz_pml_slab_1d
     use fortfem_maxwell_fem_bem_coupling_3d, only: &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
         solve_maxwell_fem_bem_torus_curved_system_3d
@@ -103,6 +127,25 @@ module fortfem_boundary
     public :: assemble_planar_helmholtz_dtn_form_vjp
     public :: apply_circular_helmholtz_dtn
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: apply_curved_acoustic_displacement_ntd_2d
+    public :: assemble_curved_acoustic_displacement_ntd_form_2d
+    public :: estimate_helmholtz_p0_two_level_residual_3d
+    public :: estimate_laplace_p0_two_level_residual_3d
+    public :: mark_bem_dorfler
+    public :: refine_surface_mesh_marked
+    public :: solve_elasticity_planar_acoustic_dtn_p1
+    public :: solve_elasticity_curved_acoustic_ntd_p1
+    public :: apply_planar_maxwell_dtn
+    public :: assemble_planar_maxwell_dtn_form
+    public :: assemble_planar_maxwell_dtn_form_jvp
+    public :: assemble_planar_maxwell_dtn_form_vjp
+    public :: assemble_planar_nedelec_maxwell_dtn_form
+    public :: build_planar_nedelec_trace_sampling
+    public :: pullback_planar_maxwell_dtn_form
+    public :: pullback_planar_maxwell_dtn_form_jvp
+    public :: pullback_planar_maxwell_dtn_form_vjp
+    public :: assemble_scalar_helmholtz_pml_slab_1d_matrix
+    public :: solve_scalar_helmholtz_pml_slab_1d
     public :: assemble_laplace_single_layer_constant
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_helmholtz_double_layer_constant

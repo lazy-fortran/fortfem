@@ -1,9 +1,10 @@
 program test_planar_nedelec_maxwell_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_planar_nedelec_maxwell_dtn_form, &
-        build_planar_nedelec_trace_sampling, &
-        generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass
+        build_planar_nedelec_trace_sampling
+    use fortfem_core, only: generate_structured_tetra_box_mesh
+    use fortfem_feec, only: solve_tetra_nedelec_curl_mass
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
