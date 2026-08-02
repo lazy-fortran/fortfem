@@ -2,6 +2,11 @@ module fortfem_api
     use fortfem_interchange_samples, only: &
         compare_interchange_samples, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
+    use fortfem_complex_interchange_samples, only: &
+        compare_complex_interchange_samples, &
+        complex_interchange_sample_set_t, &
+        initialize_complex_interchange_samples, &
+        validate_complex_interchange_samples
     use fortfem_wave_reflection_diagnostics, only: &
         evaluate_weighted_complex_error, &
         evaluate_weighted_complex_error_jvp, &
@@ -2559,6 +2564,10 @@ module fortfem_api
     public :: initialize_interchange_samples
     public :: validate_interchange_samples
     public :: compare_interchange_samples
+    public :: complex_interchange_sample_set_t
+    public :: initialize_complex_interchange_samples
+    public :: validate_complex_interchange_samples
+    public :: compare_complex_interchange_samples
     public :: evaluate_weighted_complex_error
     public :: evaluate_weighted_complex_error_jvp
     public :: evaluate_weighted_complex_error_vjp
