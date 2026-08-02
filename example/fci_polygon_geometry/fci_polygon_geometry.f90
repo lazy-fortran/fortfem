@@ -5,7 +5,8 @@ program fci_polygon_geometry
     use fortfem_api, only: &
         compute_fci_cubic_curved_polygon_cell_areas_2d, &
         compute_fci_curved_polygon_cell_areas_2d, &
-        compute_fci_polygon_cell_areas_2d
+        compute_fci_polygon_cell_areas_2d, &
+        compute_fci_quartic_curved_polygon_cell_areas_2d
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
@@ -23,14 +24,18 @@ program fci_polygon_geometry
     real(dp) :: vertices(2, vertex_count, cell_count)
     real(dp) :: edge_controls(2, vertex_count, cell_count)
     real(dp) :: cubic_controls(2, 2, vertex_count, cell_count)
+    real(dp) :: quartic_controls(2, 3, vertex_count, cell_count)
     real(dp) :: areas(cell_count), expected(cell_count)
     real(dp) :: curved_areas(cell_count), curved_expected(cell_count)
     real(dp) :: cubic_areas(cell_count), cubic_expected(cell_count)
+    real(dp) :: quartic_areas(cell_count), quartic_expected(cell_count)
     real(dp) :: x_plot(vertex_count + 1), y_plot(vertex_count + 1)
     real(dp) :: x_curve(vertex_count*edge_curve_points + 1)
     real(dp) :: y_curve(vertex_count*edge_curve_points + 1)
     real(dp) :: x_cubic(vertex_count*edge_curve_points + 1)
     real(dp) :: y_cubic(vertex_count*edge_curve_points + 1)
+    real(dp) :: x_quartic(vertex_count*edge_curve_points + 1)
+    real(dp) :: y_quartic(vertex_count*edge_curve_points + 1)
     real(dp) :: bezier_point(2), bezier_tangent(2), parameter
     real(dp) :: cell_index(cell_count)
     integer :: cell, vertex, edge, sample, point_index, next_vertex, unit
@@ -59,6 +64,19 @@ program fci_polygon_geometry
     cubic_controls(:, 2, :, 2) = reshape([ &
         5.5_dp, 0.1_dp, 6.7_dp, 1.3_dp, 5.3_dp, 2.6_dp, &
         4.0_dp, 2.0_dp, 3.7_dp, 0.7_dp], [2, vertex_count])
+    do cell = 1, cell_count
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            quartic_controls(:, 1, edge, cell) = &
+                cubic_controls(:, 1, edge, cell)
+            quartic_controls(:, 2, edge, cell) = &
+                cubic_controls(:, 2, edge, cell)
+            quartic_controls(:, 3, edge, cell) = &
+                cubic_controls(:, 2, edge, cell) + 0.2_dp*( &
+                vertices(:, next_vertex, cell) - &
+                cubic_controls(:, 2, edge, cell))
+        end do
+    end do
 
     call compute_fci_polygon_cell_areas_2d(vertices, areas, status)
     if (status%code /= 0) error stop "FCI polygon area evaluation failed"
@@ -93,6 +111,18 @@ program fci_polygon_geometry
             error stop "FCI cubic curved polygon area oracle failed"
         end if
     end do
+    call compute_fci_quartic_curved_polygon_cell_areas_2d( &
+        vertices, quartic_controls, quartic_areas, status)
+    if (status%code /= 0) then
+        error stop "FCI quartic curved polygon area evaluation failed"
+    end if
+    do cell = 1, cell_count
+        quartic_expected(cell) = quartic_gauss_green_area( &
+            vertices(:, :, cell), quartic_controls(:, :, :, cell))
+        if (abs(quartic_areas(cell) - quartic_expected(cell)) > 4.0e-12_dp) then
+            error stop "FCI quartic curved polygon area oracle failed"
+        end if
+    end do
 
     call figure(figsize=[9.0_dp, 6.0_dp])
     do cell = 1, cell_count
@@ -119,10 +149,25 @@ program fci_polygon_geometry
         end do
         call plot(x_cubic, y_cubic, label="cubic boundary "// &
             integer_label(cell), linestyle="-")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call quartic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), quartic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_quartic(point_index) = bezier_point(1)
+                y_quartic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_quartic, y_quartic, label="quartic boundary "// &
+            integer_label(cell), linestyle="--")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Cubic Bezier FCI polygon cells")
+    call title("Cubic and quartic Bezier FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_polygon_cells_2d.png")
 
@@ -158,10 +203,25 @@ program fci_polygon_geometry
         end do
         call plot(x_cubic, y_cubic, label="cubic pentagon "// &
             integer_label(cell), linestyle="--")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call quartic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), quartic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_quartic(point_index) = bezier_point(1)
+                y_quartic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_quartic, y_quartic, label="quartic pentagon "// &
+            integer_label(cell), linestyle=":")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Quadratic and cubic Bezier-edge FCI polygon cells")
+    call title("Quadratic, cubic, and quartic Bezier-edge FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_curved_polygon_cells_2d.png")
 
@@ -172,6 +232,8 @@ program fci_polygon_geometry
         label="quadratic Bezier-edge area")
     call plot(cell_index, cubic_areas, marker="^", linestyle="--", &
         label="cubic Bezier-edge area")
+    call plot(cell_index, quartic_areas, marker="d", linestyle=":", &
+        label="quartic Bezier-edge area")
     call xlabel("cell index")
     call ylabel("cell area")
     call title("Generated FCI polygon plane-cell measures")
@@ -181,11 +243,12 @@ program fci_polygon_geometry
     open (newunit=unit, file=output_directory//"/fci_polygon_areas.csv", &
         status="replace", action="write")
     write (unit, "(a)") "cell,generated_area,shoelace_area,quadratic_area,"// &
-        "quadratic_gauss_green_area,cubic_area,cubic_gauss_green_area"
+        "quadratic_gauss_green_area,cubic_area,cubic_gauss_green_area,"// &
+        "quartic_area,quartic_gauss_green_area"
     do cell = 1, cell_count
-        write (unit, "(i0,6(',',es24.16))") cell, areas(cell), expected(cell), &
+        write (unit, "(i0,8(',',es24.16))") cell, areas(cell), expected(cell), &
             curved_areas(cell), curved_expected(cell), cubic_areas(cell), &
-            cubic_expected(cell)
+            cubic_expected(cell), quartic_areas(cell), quartic_expected(cell)
     end do
     close (unit)
 
@@ -278,6 +341,54 @@ contains
             (controls(:, 2) - controls(:, 1)) + &
             3.0_dp*parameter**2*(last - controls(:, 2))
     end subroutine cubic_bezier_point_and_tangent
+
+    pure real(dp) function quartic_gauss_green_area(cell_vertices, controls) &
+            result(area)
+        real(dp), intent(in) :: cell_vertices(2, vertex_count)
+        real(dp), intent(in) :: controls(2, 3, vertex_count)
+        real(dp), parameter :: quartic_points(4) = [ &
+            0.0694318442029737_dp, 0.3300094782075719_dp, &
+            0.6699905217924281_dp, 0.9305681557970262_dp]
+        real(dp), parameter :: quartic_weights(4) = [ &
+            0.1739274225687269_dp, 0.3260725774312731_dp, &
+            0.3260725774312731_dp, 0.1739274225687269_dp]
+        real(dp) :: point(2), tangent(2), contribution
+        integer :: edge, quadrature, next_edge
+
+        area = 0.0_dp
+        do edge = 1, vertex_count
+            next_edge = mod(edge, vertex_count) + 1
+            do quadrature = 1, 4
+                call quartic_bezier_point_and_tangent( &
+                    cell_vertices(:, edge), controls(:, :, edge), &
+                    cell_vertices(:, next_edge), quartic_points(quadrature), &
+                    point, tangent)
+                contribution = point(1)*tangent(2) - &
+                    point(2)*tangent(1)
+                area = area + 0.5_dp*quartic_weights(quadrature)*contribution
+            end do
+        end do
+    end function quartic_gauss_green_area
+
+    pure subroutine quartic_bezier_point_and_tangent( &
+            first, controls, last, parameter, point, tangent)
+        real(dp), intent(in) :: first(2), controls(2, 3), last(2), parameter
+        real(dp), intent(out) :: point(2), tangent(2)
+        real(dp) :: one_minus_parameter
+
+        one_minus_parameter = 1.0_dp - parameter
+        point = one_minus_parameter**4*first + &
+            4.0_dp*one_minus_parameter**3*parameter*controls(:, 1) + &
+            6.0_dp*one_minus_parameter**2*parameter**2*controls(:, 2) + &
+            4.0_dp*one_minus_parameter*parameter**3*controls(:, 3) + &
+            parameter**4*last
+        tangent = 4.0_dp*one_minus_parameter**3*(controls(:, 1) - first) + &
+            12.0_dp*one_minus_parameter**2*parameter* &
+            (controls(:, 2) - controls(:, 1)) + &
+            12.0_dp*one_minus_parameter*parameter**2* &
+            (controls(:, 3) - controls(:, 2)) + &
+            4.0_dp*parameter**3*(last - controls(:, 3))
+    end subroutine quartic_bezier_point_and_tangent
 
     function integer_label(value) result(label)
         integer, intent(in) :: value
