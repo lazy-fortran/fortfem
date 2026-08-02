@@ -24,6 +24,7 @@ mixed_acoustic_wave
 mixed_wave_3d_structure
 mixed_elasticity_wave
 mixed_wave_wall
+mixed_wave_pressure_displacement_gallery
 nonlinear_resistive_mhd_gallery
 
 tetra_h1_poisson

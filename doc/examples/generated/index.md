@@ -28,6 +28,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [mixed_wave_3d_structure](mixed_wave_3d_structure.html) - This neutral gallery fixture advances three manufactured Cartesian oscillator
 - [mixed_elasticity_wave](mixed_elasticity_wave.html) - This example is a manufactured mixed elastic-wave modal problem. It uses the
 - [mixed_wave_wall](mixed_wave_wall.html) - This small structure-preserving example couples a first-order mixed wave port
+- [mixed_wave_pressure_displacement_gallery](mixed_wave_pressure_displacement_gallery.html) - This neutral gallery advances a first-order mixed wave state with the existing
 - [nonlinear_resistive_mhd_gallery](nonlinear_resistive_mhd_gallery.html) - This bounded manufactured fixture is the physical-first gallery seed for
 - [tetra_h1_poisson](tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube

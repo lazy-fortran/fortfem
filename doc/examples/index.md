@@ -262,6 +262,17 @@ fpm run --example <example_name>
 <p>This small structure-preserving example couples a first-order mixed wave port</p>
 </div>
 </article>
+<article class="example-card" data-example="mixed_wave_pressure_displacement_gallery">
+<a class="example-card-preview" href="generated/mixed_wave_pressure_displacement_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/mixed_wave_pressure_displacement_gallery/primary.png"
+ alt="Plot preview for mixed_wave_pressure_displacement_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/mixed_wave_pressure_displacement_gallery.html">mixed_wave_pressure_displacement_gallery</a></h3>
+<p>This neutral gallery advances a first-order mixed wave state with the existing</p>
+</div>
+</article>
 <article class="example-card" data-example="nonlinear_resistive_mhd_gallery">
 <a class="example-card-preview" href="generated/nonlinear_resistive_mhd_gallery.html">
 <img class="example-card-image"
@@ -730,6 +741,7 @@ fpm run --example <example_name>
 - [mixed_wave_3d_structure](generated/mixed_wave_3d_structure.html) - This neutral gallery fixture advances three manufactured Cartesian oscillator
 - [mixed_elasticity_wave](generated/mixed_elasticity_wave.html) - This example is a manufactured mixed elastic-wave modal problem. It uses the
 - [mixed_wave_wall](generated/mixed_wave_wall.html) - This small structure-preserving example couples a first-order mixed wave port
+- [mixed_wave_pressure_displacement_gallery](generated/mixed_wave_pressure_displacement_gallery.html) - This neutral gallery advances a first-order mixed wave state with the existing
 - [nonlinear_resistive_mhd_gallery](generated/nonlinear_resistive_mhd_gallery.html) - This bounded manufactured fixture is the physical-first gallery seed for
 - [tetra_h1_poisson](generated/tetra_h1_poisson.html) - This example solves
 - [tetra_mixed_poisson](generated/tetra_mixed_poisson.html) - This example extends the symbolic Darcy form from triangles to a unit cube
