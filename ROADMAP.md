@@ -2149,7 +2149,12 @@ gallery example.
   `assemble_feec_commuting_projection` now checks projected discrete and
   continuous differentials, including all projection directions in its
   JVP/VJP; concrete generated enriched-space constructors remain a later
-  layer.
+  layer.  The neutral `assemble_enriched_feec_sequence` composition now
+  accepts caller-owned shifted scalar, H(curl), H(div), and L2 maps, reports
+  enriched `curl(grad)` and `div(curl)` defects, and provides complete
+  product-rule value/JVP/VJP actions with independent dense matrix oracles;
+  concrete map construction, cut integration, and global ownership remain
+  client-owned.
   The symmetric jump-penalty block also has value/JVP/VJP actions, including
   penalty and surface-weight directions.
 - Conservative/upwind vector flux interfaces now include scalar and
