@@ -44,13 +44,16 @@ procedure aliases.
 | `compare_sheet_current_surface_representations` | `compare_sheet_current_surface_representations` | `fortfem_sheet_current_surface_parity` | 6 / 9 / 0 | `_jvp` | Implemented as the canonical pre-release spelling; the surface quadrature and regularized-layer ledger are unchanged. |
 | `evaluate_tree_cotree_iga_parity` | `diagnose_tree_cotree_iga_invariance` | `fortfem_tree_cotree_iga_parity` | 5 / 3 / 0 | none | Tests signed-map invariance of a fixed IGA tree-cotree reduction; `diagnose_` is clearer than `compare_` because there is no external reference field. |
 
-The first implementation slice should add canonical wrappers in the defining
-modules and re-export both names from `fortfem_api`.  The wrappers must be
-thin calls, so the old and new paths have one implementation and cannot drift.
-An old/new equivalence test should compare every output array, report field,
-status code, and (where present) JVP/VJP output.  Deprecation comments may be
-added after the wrappers have shipped, but compiler-specific deprecation
-attributes must not become a build requirement.
+The completed pre-release slices make the canonical procedure the only
+internal spelling: boundary, larger-domain, sheet-current, and surface-
+quadrature parity families now use `compare_*` names in the implementation,
+umbrella, facades, tests, examples, and inventory.  Each slice keeps one
+implementation and compares its outputs against an independent analytical or
+quadrature oracle; it does not retain a compatibility alias because FortFEM
+has no released downstream API yet.  Future candidate slices follow the same
+policy.  If an external release later depends on an old name, add a temporary
+facade alias with an explicit removal milestone and migration test instead of
+silently restoring an internal duplicate.
 
 ### Call-site implications
 
@@ -139,7 +142,7 @@ constructor is renamed.
 | API-00 | Generate a machine-readable public export manifest: symbol, defining module/file, facade re-export, call-site counts, derivative siblings, and schema/provenance markers. Detect duplicate exports. | `tools/api/`, `doc/api_manifest_schema.md`, manifest output ignored by git | Manifest parser plus a deliberately duplicated fixture; `fo test` or a fast shell check | none |
 | API-01 | Add domain-layer policy and module-cycle checker. Define canonical layers (types/mesh/geometry -> spaces/forms -> operators/assembly -> solvers/time -> interoperability/plot -> umbrella). | `doc/api_organization.md`, `tools/api/check_layers.sh` | A fixture with one forbidden reverse edge must fail; current tree must pass | API-00 |
 | API-02 | Add the first canonical facades for geometry and operators by re-exporting existing symbols. Keep `fortfem_api` as a compatibility facade and do not rename implementations. | New `src/fortfem_geometry_api.f90`, `src/fortfem_operators_api.f90`, focused smoke test | Old/new import and numerical parity for one trace and one residual contract | API-00, API-01 |
-| API-03 | Implement candidate-set-A wrappers, including value/JVP/VJP closure and explicit deprecation comments. | Defining parity modules, umbrella exports, focused tests only | Old/new array/report/status equality; boundary and larger-domain independent manufactured tests | API-02 |
+| API-03 | Implement candidate-set-A canonical renames, including value/JVP/VJP closure and removal of obsolete internal spellings. | Defining parity modules, umbrella/facade exports, focused tests/docs | Canonical array/report/status equality against independent manufactured or quadrature tests; stale-name scan | API-02 |
 | API-04 | Add candidate-set-B aliases in two slices: pure trace/plot/mesh operations, then generated FCI wrappers. | Defining modules and focused tests; never `src/generated/` in first slice | Direct trace oracle; generated-currentness check and FCI JVP/VJP properties | API-03 |
 | API-05 | Add `make_*` constructor aliases and migrate one example per family; update API docs. | `fortfem_api_spaces`, mesh/boundary facades, examples/docs | Compile old and new programs; compare type contents and solve result | API-02 |
 | API-06 | Enforce deprecation/removal policy in CI and publish a migration table. | CI script, `doc/modules.md`, release notes | A fixture that imports old names remains green until the declared removal release | API-03..05 |
