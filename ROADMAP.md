@@ -750,6 +750,11 @@ parallel/perpendicular projectors and an optional skew Hall cross-product
 term. FortSym generates the nonduplicating three-scalar Hall product and its
 JVP/VJP while the wrapper owns only the fixed skew layout; strict finite and
 unit-direction validation remains independent of any plasma closure.
+The neutral `evaluate_tensor_power_split` contract now reports symmetric,
+skew, and total pointwise tensor power, with exact real JVP/VJP actions. Its
+independent oracle makes the zero instantaneous power of Hall/gyrotropic skew
+parts explicit while retaining tensor-valued derivatives; quadrature,
+field-aligned pullbacks, and physical closures remain caller-owned.
 The first PARALLAX-aligned algebraic slice is now on `main`: a dependency-light
 RK4 field-line tracer provides geometry endpoints; mapped upper and lower plane
 interpolation matrices assemble a sparse staggered gradient; the support

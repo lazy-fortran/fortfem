@@ -800,6 +800,8 @@ module fortfem_api
         evaluate_field_aligned_constitutive_tensor, &
         evaluate_field_aligned_constitutive_tensor_jvp, &
         evaluate_field_aligned_constitutive_tensor_vjp
+    use fortfem_tensor_power_split, only: evaluate_tensor_power_split, &
+        evaluate_tensor_power_split_jvp, evaluate_tensor_power_split_vjp
     use fortfem_spherical_harmonics, only: spherical_harmonic, &
         spherical_harmonic_product_coefficient, &
         spherical_harmonic_theta_derivative, spherical_harmonic_phi_derivative
@@ -2890,6 +2892,9 @@ module fortfem_api
     public :: evaluate_field_aligned_constitutive_tensor
     public :: evaluate_field_aligned_constitutive_tensor_jvp
     public :: evaluate_field_aligned_constitutive_tensor_vjp
+    public :: evaluate_tensor_power_split
+    public :: evaluate_tensor_power_split_jvp
+    public :: evaluate_tensor_power_split_vjp
     public :: spherical_harmonic
     public :: spherical_harmonic_theta_derivative
     public :: spherical_harmonic_phi_derivative
