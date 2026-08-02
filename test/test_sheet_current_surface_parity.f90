@@ -11,6 +11,11 @@ program test_sheet_current_surface_parity
     use fortfem_sheet_current_surface_parity, only: &
         compare_sheet_current_surface_representations_direct => &
         compare_sheet_current_surface_representations
+    use fortfem_interop, only: &
+        compare_sheet_current_surface_representations_interop => &
+        compare_sheet_current_surface_representations, &
+        compare_sheet_current_surface_representations_jvp_interop => &
+        compare_sheet_current_surface_representations_jvp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -77,6 +82,9 @@ contains
         integer :: point, sample
         real(dp) :: reference(3), independent_resolved(3), dot_current(3)
         real(dp) :: fitted_direct(3), resolved_direct(3), relative_direct
+        real(dp) :: fitted_interop(3), resolved_interop(3), relative_interop
+        real(dp) :: fitted_dot_interop(3), resolved_dot_interop(3)
+        real(dp) :: relative_dot_interop
         real(dp) :: reversed(3), oriented(3), invalid_fitted(3), invalid_resolved(3)
         real(dp) :: invalid_error
         real(dp), allocatable :: invalid_weights(:), invalid_normals(:, :)
@@ -104,6 +112,15 @@ contains
             maxval(abs(resolved_direct - resolved)) < 2.0e-13_dp .and. &
             abs(relative_direct - relative_error) < 2.0e-13_dp, trim(name)// &
             " defining-module and umbrella canonical names agree")
+        call compare_sheet_current_surface_representations_interop( &
+            plus_field, minus_field, normals, surface_weights, distance, &
+            normal_weights, thickness, fitted_interop, resolved_interop, &
+            relative_interop, status)
+        call check_condition(status%code == 0 .and. &
+            maxval(abs(fitted_interop - fitted)) < 2.0e-13_dp .and. &
+            maxval(abs(resolved_interop - resolved)) < 2.0e-13_dp .and. &
+            abs(relative_interop - relative_error) < 2.0e-13_dp, &
+            trim(name)//" interop facade preserves surface ledger")
 
         reference = 0.0_dp
         independent_resolved = 0.0_dp
@@ -181,6 +198,16 @@ contains
                 normal_weights, thickness, plus_dot, minus_dot, normals_dot, &
                 surface_weights_dot, distance_dot, normal_weights_dot, thickness_dot, &
                 fitted_dot, resolved_dot, relative_error_dot, status)
+            call compare_sheet_current_surface_representations_jvp_interop( &
+                plus_field, minus_field, normals, surface_weights, distance, &
+                normal_weights, thickness, plus_dot, minus_dot, normals_dot, &
+                surface_weights_dot, distance_dot, normal_weights_dot, thickness_dot, &
+                fitted_dot_interop, resolved_dot_interop, relative_dot_interop, status)
+            call check_condition(status%code == 0 .and. &
+                maxval(abs(fitted_dot_interop - fitted_dot)) < 2.0e-13_dp .and. &
+                maxval(abs(resolved_dot_interop - resolved_dot)) < 2.0e-13_dp .and. &
+                abs(relative_dot_interop - relative_error_dot) < 2.0e-13_dp, &
+                trim(name)//" interop facade preserves surface JVP")
             call compare_sheet_current_surface_representations( &
                 plus_field + eps*plus_dot, minus_field + eps*minus_dot, &
                 normals + eps*normals_dot, surface_weights_plus, distance + eps*distance_dot, &
