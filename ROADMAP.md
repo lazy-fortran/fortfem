@@ -1530,6 +1530,11 @@ Since this audit, the neutral implementation now includes:
   `evaluate_near_axis_diagnostic_metadata` for supplied-field/geometry samples
   and supplied near-axis coefficient data, with JVP/VJP actions and strict
   axis-regularity checks.
+- `fortfem_nested_geometry_differential_jet` for caller-owned first-, second-,
+  and third-order map jets, metric/determinant derivatives, inverse-Jacobian
+  diagnostics, fixed-topology JVP/VJP actions, and explicit finite axis-limit
+  handling. Its polynomial manufactured test passes the independent value,
+  finite-difference, adjoint, singular-branch, and invalid-flag checks.
 
 These are interchange and diagnostic foundations only. They do not implement
 DESC profiles, optimization, equilibrium readers, coil models, or plasma
