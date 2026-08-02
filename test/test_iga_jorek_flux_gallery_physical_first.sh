@@ -6,7 +6,7 @@ output_directory="$repository_dir/output/example/iga_jorek_flux"
 
 (
     cd "$repository_dir"
-    timeout --foreground 10s fpm run --example iga_jorek_flux \
+    timeout --foreground 10s fo exec --no-build iga_jorek_flux \
         >/tmp/fortfem-iga-jorek-flux-gallery.log
 )
 

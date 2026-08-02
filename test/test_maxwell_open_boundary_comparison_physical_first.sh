@@ -6,7 +6,7 @@ output_directory="$repository_dir/output/example/maxwell_open_boundary_compariso
 
 (
     cd "$repository_dir"
-    timeout --foreground 10s fpm run --example maxwell_open_boundary_comparison \
+    timeout --foreground 10s fo exec --no-build maxwell_open_boundary_comparison \
         >/tmp/fortfem-maxwell-open-boundary-gallery.log
 )
 
