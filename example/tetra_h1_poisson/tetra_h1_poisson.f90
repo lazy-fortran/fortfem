@@ -29,6 +29,7 @@ program tetra_h1_poisson
     call execute_command_line( &
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
+    call initialize_gallery_sequence()
     do degree = 1, 4
         degrees(degree) = real(degree, dp)
         call solve_and_measure(degree, l2_errors(degree), h1_errors(degree))
@@ -46,6 +47,13 @@ program tetra_h1_poisson
         error stop "quartic tetrahedral H1 gradient was not reproduced"
     end if
 
+    call solve_tetra_lagrange_poisson( &
+        vertices, tetrahedra, 4, bubble_source, zero_boundary, &
+        plot_solution, plot_status)
+    if (plot_status%code /= 0) error stop "tetrahedral plot solve failed"
+    call render_solution(plot_solution)
+    call record_gallery_stage("physical_solution")
+
     open (newunit=unit, file=output_directory//"/convergence.csv", &
         status="replace", action="write")
     write (unit, "(a)") "degree,l2_error,gradient_error"
@@ -54,12 +62,6 @@ program tetra_h1_poisson
             degree, l2_errors(degree), h1_errors(degree)
     end do
     close (unit)
-
-    call solve_tetra_lagrange_poisson( &
-        vertices, tetrahedra, 4, bubble_source, zero_boundary, &
-        plot_solution, plot_status)
-    if (plot_status%code /= 0) error stop "tetrahedral plot solve failed"
-    call render_solution(plot_solution)
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot( &
@@ -72,8 +74,29 @@ program tetra_h1_poisson
     call title("FortSym oracle vs FortSparse tetrahedral H1 solve")
     call legend()
     call savefig(output_directory//"/tetra_h1_poisson_convergence.png")
+    call record_gallery_stage("diagnostics")
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, &
+            file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write")
+        close (sequence_unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(len=*), intent(in) :: stage
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, &
+            file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write")
+        write (sequence_unit, "(a)") trim(stage)
+        close (sequence_unit)
+    end subroutine record_gallery_stage
 
     subroutine render_solution(solution)
         real(dp), intent(in) :: solution(:)
