@@ -1,10 +1,10 @@
 program test_adaptive_surface_bem
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         estimate_helmholtz_p0_two_level_residual_3d, &
-        estimate_laplace_p0_two_level_residual_3d, &
-        generate_sphere_surface_mesh, mark_bem_dorfler, &
+        estimate_laplace_p0_two_level_residual_3d, mark_bem_dorfler, &
         refine_surface_mesh_marked
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

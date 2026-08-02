@@ -1,9 +1,10 @@
 program adaptive_helmholtz_bem_sphere
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         estimate_helmholtz_p0_two_level_residual_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
-        generate_sphere_surface_mesh, mark_bem_dorfler, &
-        refine_surface_mesh_marked, solve_helmholtz_dirichlet_p0_3d
+        mark_bem_dorfler, refine_surface_mesh_marked, &
+        solve_helmholtz_dirichlet_p0_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     use fortplot, only: add_parametric_surface, add_scatter, figure, legend, &
         plot, savefig, title, xlabel, ylabel, yscale
