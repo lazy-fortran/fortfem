@@ -998,6 +998,8 @@ complex JVP/VJP products. It does not choose a constitutive law or an
 equilibrium convention, so clients may use it for virtual casing,
 FEM--BEM/DtN/PML coupling, surface currents, total-pressure data, or wall
 ports.
+Its JVP/VJP path is allocation-free and has a repeated-call regression, which
+keeps batched free-boundary and FEM/BEM trace evaluations bounded in memory.
 
 The library must expose the boundary residual in the form
 

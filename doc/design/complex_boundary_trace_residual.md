@@ -19,6 +19,8 @@ populate the maps.
 
 Value, JVP, and VJP actions include trace maps, positive work weights, state,
 and both supplied targets. VJPs use the real-part complex inner product. The
-implementation is matrix-free and only uses caller-sized residual/cotangent
-arrays. The independent test checks separate normal and tangential matrix
-oracles, a complete product-rule difference, and the complex adjoint identity.
+implementation is matrix-free and uses no per-call allocatable work arrays,
+so repeated batched boundary evaluations do not accumulate temporary storage.
+The independent test checks separate normal and tangential matrix oracles, a
+complete product-rule difference, the complex adjoint identity, and repeated
+JVP calls.
