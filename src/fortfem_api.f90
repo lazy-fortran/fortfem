@@ -70,7 +70,8 @@ module fortfem_api
         boundary_region_graph_t, initialize_boundary_region_graph, &
         validate_boundary_region_graph, boundary_region_graph_incidence, &
         boundary_region_graph_components, boundary_region_graph_cycle_basis, &
-        boundary_region_graph_interface_samples
+        boundary_region_graph_interface_samples, &
+        boundary_region_graph_interface_metadata
     use fortfem_surface_current, only: &
         assemble_interface_surface_current, &
         assemble_interface_surface_current_jvp, &
@@ -1301,6 +1302,7 @@ module fortfem_api
     public :: boundary_region_graph_components
     public :: boundary_region_graph_cycle_basis
     public :: boundary_region_graph_interface_samples
+    public :: boundary_region_graph_interface_metadata
     public :: assemble_interface_surface_current
     public :: assemble_interface_surface_current_jvp
     public :: assemble_interface_surface_current_vjp

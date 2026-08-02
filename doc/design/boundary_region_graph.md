@@ -21,6 +21,8 @@ triangles, high-order panels, Fourier surfaces, NURBS, or IGA patches.  The
 `boundary_region_graph_interface_samples` accessor returns an independent copy
 of one interface's samples, so a BEM, DtN, PML, virtual-casing, or external
 free-boundary client can consume the same physical sampler contract.
+`boundary_region_graph_interface_metadata` returns the genus and exterior flag
+without exposing the graph's private storage.
 
 Geometry values and shape derivatives remain caller-owned operator data.  This
 type is metadata, not a mesh or an equilibrium representation; it has no coil,
