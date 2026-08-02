@@ -269,6 +269,10 @@ module fortfem_api
         axis_regular_mode_record_t, axis_regular_mode_table_t, &
         axis_regular_mode_requirements, build_axis_regular_mode_table, &
         validate_axis_regular_mode_table
+    use fortfem_axis_regular_radial_basis, only: &
+        evaluate_axis_regular_radial_basis, &
+        evaluate_axis_regular_radial_basis_jvp, &
+        evaluate_axis_regular_radial_basis_vjp
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, &
@@ -1629,6 +1633,9 @@ module fortfem_api
     public :: axis_regular_mode_requirements
     public :: build_axis_regular_mode_table
     public :: validate_axis_regular_mode_table
+    public :: evaluate_axis_regular_radial_basis
+    public :: evaluate_axis_regular_radial_basis_jvp
+    public :: evaluate_axis_regular_radial_basis_vjp
     public :: assemble_normal_traction_jump
     public :: assemble_normal_traction_jump_jvp
     public :: assemble_normal_traction_jump_vjp
