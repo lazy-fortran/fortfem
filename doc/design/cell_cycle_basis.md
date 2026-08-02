@@ -35,6 +35,13 @@ The representatives are selected by a deterministic rank-increase rule. They
 retain the original edge ordering and orientation, but do not select a metric,
 period normalization, cut, gauge, or physical magnetic flux.
 
+The dual `cell_complex_cohomology_cocycle_basis` removes exact one-cochains
+from the cocycle space and returns representatives of
+
+\[
+    H^1 = \ker(D_2^T) / \operatorname{im}(D_1^T).
+\]
+
 ## API
 
 ```fortran
@@ -42,6 +49,8 @@ call cell_complex_cycle_basis(complex, cycles, cycle_count, status)
 call cell_complex_cocycle_basis(complex, cocycles, cocycle_count, status)
 call cell_complex_homology_cycle_basis( &
     complex, homology_cycles, homology_count, status)
+call cell_complex_cohomology_cocycle_basis( &
+    complex, cohomology_cocycles, cohomology_count, status)
 ```
 
 `cycles` and `cocycles` have one row per oriented edge and one column per
@@ -58,3 +67,5 @@ not conflated. A filled triangular loop is additionally checked to have zero
 first homology, while the torus returns two representatives. The same test
 checks the circle and torus cocycle kernels against the independent
 transpose-boundary oracle.
+The same quotient check verifies zero first cohomology for the filled loop and
+two representatives for the torus.

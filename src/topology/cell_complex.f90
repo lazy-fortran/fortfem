@@ -32,6 +32,7 @@ module fortfem_cell_complex
     public :: cell_complex_cycle_basis
     public :: cell_complex_homology_cycle_basis
     public :: cell_complex_cocycle_basis
+    public :: cell_complex_cohomology_cocycle_basis
     public :: cell_complex_harmonic_one_forms
     public :: quotient_cell_complex
 
@@ -249,6 +250,65 @@ contains
         homology_count = selected_count
         status = 0
     end subroutine cell_complex_homology_cycle_basis
+
+    subroutine cell_complex_cohomology_cocycle_basis( &
+            complex, cohomology_cocycles, cohomology_count, status)
+        !! Return one-cocycle representatives modulo exact one-cochains.
+        !!
+        !! The columns are in ``ker(transpose(boundary_2))`` and are
+        !! independent modulo ``im(transpose(boundary_1))``.  They form a
+        !! deterministic real basis of H^1 without selecting a metric, gauge,
+        !! period normalization, or physical flux convention.
+        type(cell_complex_t), intent(in) :: complex
+        real(dp), allocatable, intent(out) :: cohomology_cocycles(:, :)
+        integer, intent(out) :: cohomology_count
+        integer, intent(out) :: status
+        real(dp), allocatable :: cocycles(:, :), candidates(:, :), selected(:, :)
+        integer :: cocycle_count, vertex_count, edge_count
+        integer :: selected_count, rank_before, rank_after, cocycle
+
+        if (allocated(cohomology_cocycles)) deallocate(cohomology_cocycles)
+        cohomology_count = 0
+        call cell_complex_cocycle_basis(complex, cocycles, cocycle_count, status)
+        if (status /= 0) return
+
+        vertex_count = size(complex%boundary_1, 1)
+        edge_count = size(complex%boundary_1, 2)
+        allocate(cohomology_cocycles(edge_count, 0))
+        if (cocycle_count == 0) then
+            status = 0
+            return
+        end if
+
+        allocate(candidates(edge_count, vertex_count + cocycle_count))
+        candidates = 0.0_dp
+        if (vertex_count > 0) candidates(:, 1:vertex_count) = &
+            real(transpose(complex%boundary_1), dp)
+        allocate(selected(edge_count, cocycle_count))
+        selected = 0.0_dp
+        selected_count = 0
+        rank_before = real_matrix_rank(candidates(:, 1:vertex_count))
+        do cocycle = 1, cocycle_count
+            candidates(:, vertex_count + selected_count + 1) = cocycles(:, cocycle)
+            rank_after = real_matrix_rank( &
+                candidates(:, 1:vertex_count + selected_count + 1))
+            if (rank_after > rank_before) then
+                selected_count = selected_count + 1
+                selected(:, selected_count) = cocycles(:, cocycle)
+                rank_before = rank_after
+            else
+                candidates(:, vertex_count + selected_count + 1) = 0.0_dp
+            end if
+        end do
+
+        deallocate(cohomology_cocycles)
+        allocate(cohomology_cocycles(edge_count, selected_count))
+        if (selected_count > 0) then
+            cohomology_cocycles = selected(:, :selected_count)
+        end if
+        cohomology_count = selected_count
+        status = 0
+    end subroutine cell_complex_cohomology_cocycle_basis
 
     subroutine cell_complex_cocycle_basis( &
             complex, cocycles, cocycle_count, status)
