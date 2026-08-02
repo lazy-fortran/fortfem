@@ -77,6 +77,15 @@ module fortfem_api
         assemble_block_graph_residual_jvp, &
         assemble_block_graph_residual_vjp
     use fortfem_block_graph_csc, only: assemble_block_graph_csc
+    use fortfem_retained_field_split, only: &
+        apply_retained_complex_field_split, &
+        apply_retained_complex_field_split_jvp, &
+        apply_retained_complex_field_split_vjp, &
+        apply_retained_field_split, apply_retained_field_split_jvp, &
+        apply_retained_field_split_vjp, factor_retained_complex_field_split, &
+        factor_retained_field_split, free_retained_complex_field_split, &
+        free_retained_field_split, retained_complex_field_split_t, &
+        retained_field_split_t
     use fortfem_complex_block_graph_residual, only: &
         assemble_complex_block_graph_residual, &
         assemble_complex_block_graph_residual_jvp, &
@@ -2767,6 +2776,12 @@ module fortfem_api
     public :: assemble_block_graph_residual_jvp
     public :: assemble_block_graph_residual_vjp
     public :: assemble_block_graph_csc
+    public :: retained_field_split_t, retained_complex_field_split_t
+    public :: factor_retained_field_split, factor_retained_complex_field_split
+    public :: apply_retained_field_split, apply_retained_complex_field_split
+    public :: apply_retained_field_split_jvp, apply_retained_complex_field_split_jvp
+    public :: apply_retained_field_split_vjp, apply_retained_complex_field_split_vjp
+    public :: free_retained_field_split, free_retained_complex_field_split
     public :: assemble_complex_block_graph_residual
     public :: assemble_complex_block_graph_residual_jvp
     public :: assemble_complex_block_graph_residual_vjp
