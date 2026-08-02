@@ -31,6 +31,12 @@ call initialize_equilibrium_interchange( &
     status, coefficient_ranks, coefficient_offsets, &
     coefficient_component_names)
 valid = validate_equilibrium_interchange(data, status)
+
+type(interchange_sample_set_t) :: physical_samples
+
+call build_equilibrium_interchange_sample_set( &
+    data, [1, 2], sample_weights, "external-adapter", &
+    "producer-revision/common-grid", physical_samples, status)
 ```
 
 Coordinate arrays have shape `(spatial_dimension, sample_count)` and use the
@@ -51,6 +57,13 @@ Normalization stores unit labels and positive scale factors for length,
 magnetic field, pressure, and current.  These are metadata, not hidden unit
 conversions.  The application owns the physical interpretation and any
 dimensionless normalization convention.
+
+`build_equilibrium_interchange_sample_set` is the neutral bridge to the
+common physical-grid comparison contract. It selects already sampled rows of
+`coefficient_values`, retains `physical_coordinates`, and takes positive
+comparison or quadrature weights from the caller. Selectors must be unique
+component indices. It performs no interpolation, file parsing, unit
+conversion, or equilibrium physics; those remain in the external adapter.
 
 ## Differentiation and topology
 
@@ -74,4 +87,6 @@ The manufactured test uses toroidal coordinates
 and independently checks coordinate, coefficient, profile, boundary,
 normalization, copy, and rejection behavior.  This keeps the contract
 license-safe while providing the common-grid oracle needed by future CHEASE
-and FreeGS adapters.
+and FreeGS adapters.  `test_equilibrium_sample_adapter` additionally checks
+that selected physical coefficient components retain their weights, ordering,
+and explicit provenance without performing interpolation.

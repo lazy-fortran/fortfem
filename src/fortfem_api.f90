@@ -21,6 +21,8 @@ module fortfem_api
     use fortfem_equilibrium_interchange, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
+    use fortfem_equilibrium_sample_adapter, only: &
+        build_equilibrium_interchange_sample_set
     use fortfem_linear_response_interchange, only: &
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
@@ -2622,6 +2624,7 @@ module fortfem_api
     public :: equilibrium_normalization_t
     public :: initialize_equilibrium_interchange
     public :: validate_equilibrium_interchange
+    public :: build_equilibrium_interchange_sample_set
     public :: linear_response_interchange_t
     public :: initialize_linear_response_interchange
     public :: validate_linear_response_interchange
