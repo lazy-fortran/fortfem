@@ -171,6 +171,11 @@ The [linear-response interchange schema](linear_response_schema.html) provides
 a bounded, versioned text round-trip for those neutral records, retaining a
 small dense oracle without importing GPEC, MARS-F, GLISS, or STARWALL files.
 
+The [complex low-rank response contract](complex_low_rank_response.html)
+provides deterministic cross factors, a bounded residual certificate,
+matrix-free complex action, and analytical JVP/VJP products for reusable
+response blocks.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
