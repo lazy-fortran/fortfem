@@ -16,7 +16,7 @@ fpm run --example circular_dtn_modes
 
 ```fortran
 program circular_dtn_modes
-    use fortfem_api, only: apply_circular_helmholtz_dtn
+    use fortfem_boundary, only: apply_circular_helmholtz_dtn
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, figure, legend, pcolormesh, plot, savefig, &
         title, xlabel, ylabel

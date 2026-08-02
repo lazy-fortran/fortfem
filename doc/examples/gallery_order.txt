@@ -38,6 +38,8 @@ maxwell_open_boundary_comparison
 # Verification and performance
 fortfem_mesh_benchmark
 solver_benchmark
+biro_tree_cotree_benchmark
+team13_neutral_benchmark
 interoperability_benchmarks
 
 # Linear-response foundations

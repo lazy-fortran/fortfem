@@ -371,6 +371,28 @@ fpm run --example <example_name>
 <p>This example solves a manufactured Poisson system, shows the physical</p>
 </div>
 </article>
+<article class="example-card" data-example="biro_tree_cotree_benchmark">
+<a class="example-card-preview" href="generated/biro_tree_cotree_benchmark.html">
+<img class="example-card-image"
+ src="../media/examples/biro_tree_cotree_benchmark/primary.png"
+ alt="Plot preview for biro_tree_cotree_benchmark" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/biro_tree_cotree_benchmark.html">biro_tree_cotree_benchmark</a></h3>
+<p>This small manufactured case reproduces the structural part of the direct</p>
+</div>
+</article>
+<article class="example-card" data-example="team13_neutral_benchmark">
+<a class="example-card-preview" href="generated/team13_neutral_benchmark.html">
+<img class="example-card-image"
+ src="../media/examples/team13_neutral_benchmark/primary.png"
+ alt="Plot preview for team13_neutral_benchmark" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/team13_neutral_benchmark.html">team13_neutral_benchmark</a></h3>
+<p>This is a small, solution-first foundation fixture shaped like the TEAM 13</p>
+</div>
+</article>
 <article class="example-card" data-example="interoperability_benchmarks">
 <a class="example-card-preview" href="generated/interoperability_benchmarks.html">
 <img class="example-card-image"
@@ -673,6 +695,8 @@ fpm run --example <example_name>
 - [maxwell_open_boundary_comparison](generated/maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
 - [fortfem_mesh_benchmark](generated/fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](generated/solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
+- [biro_tree_cotree_benchmark](generated/biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
+- [team13_neutral_benchmark](generated/team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
 - [interoperability_benchmarks](generated/interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [linear_perturbation_response](generated/linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
 - [eulerian_island_gallery](generated/eulerian_island_gallery.html) - This small gallery samples the analytic slab-island flux

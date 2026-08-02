@@ -37,6 +37,8 @@ Pages contain the complete source, usage command, and generated plots.
 - [maxwell_open_boundary_comparison](maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](solver_benchmark.html) - This example solves a manufactured Poisson system, shows the physical
+- [biro_tree_cotree_benchmark](biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
+- [team13_neutral_benchmark](team13_neutral_benchmark.html) - This is a small, solution-first foundation fixture shaped like the TEAM 13
 - [interoperability_benchmarks](interoperability_benchmarks.html) - This example reads the neutral CSV records produced by the isolated FEniCSx,
 - [linear_perturbation_response](linear_perturbation_response.html) - This closure-neutral fixture composes the seven public linear-perturbation
 - [eulerian_island_gallery](eulerian_island_gallery.html) - This small gallery samples the analytic slab-island flux

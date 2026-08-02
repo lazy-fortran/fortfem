@@ -42,7 +42,7 @@ program mixed_acoustic_wave
     !!
     !! The two modal pairs satisfy q_dot = -C^T v and v_dot = C q.
     !! Implicit midpoint is used as the energy-preserving Cayley map.
-    use fortfem_api, only: advance_mixed_wave_midpoint
+    use fortfem_time, only: advance_mixed_wave_midpoint
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, set_yscale, title, &
         xlabel, ylabel
