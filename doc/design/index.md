@@ -37,6 +37,11 @@ The [toroidal-harmonic contract](toroidal_harmonics.html) records the
 FortNum-backed Hobson-normalized half-integer P/Q branches used by exact
 toroidal analytical solutions and DtN fixtures.
 
+The [toroidal spectral metadata contract](toroidal_spectral_metadata.html)
+keeps zero-mode policy, rectangular truncation, and supplied-coefficient tail
+diagnostics explicit for periodic Green operators, with differentiable modal
+energy diagnostics.
+
 The [curved Maxwell trace-to-flux contract](maxwell_curved_dtn.html) composes
 EFIE, MFIE/RBC, and a primal trace mass matrix into a weak curved-surface DtN
 map with matrix-free, JVP, and VJP actions. Its exact-curved torus wrapper

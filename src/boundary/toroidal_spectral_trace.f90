@@ -43,7 +43,7 @@ contains
         do mode = 1, size(coefficients)
             call evaluate_mode( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
                 mode_value, mode_normal, mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             value = value + coefficients(mode)*mode_value
@@ -76,7 +76,7 @@ contains
         do mode = 1, size(coefficients)
             call evaluate_mode( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, scale_dot, eta_dot, theta_dot, phi_dot, 0.0_dp, &
+                use_second_kind, scale_dot, eta_dot, theta_dot, phi_dot, &
                 mode_value, mode_normal, mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             value_dot = value_dot + coefficients_dot(mode)*mode_value + &
@@ -223,14 +223,14 @@ contains
         do mode = 1, size(coefficients)
             call evaluate_mode( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
                 mode_value, mode_normal, mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             coefficients_bar(mode) = value_bar*conjg(mode_value) + &
                 normal_derivative_bar*conjg(mode_normal)
             call mode_direction( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                use_second_kind, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
                 mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             scale_bar = scale_bar + real(conjg(value_bar)*coefficients(mode)* &
@@ -238,7 +238,7 @@ contains
                 mode_normal_dot, dp)
             call mode_direction( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, &
                 mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             eta_bar = eta_bar + real(conjg(value_bar)*coefficients(mode)* &
@@ -246,7 +246,7 @@ contains
                 mode_normal_dot, dp)
             call mode_direction( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, &
                 mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             theta_bar = theta_bar + real(conjg(value_bar)*coefficients(mode)* &
@@ -254,7 +254,7 @@ contains
                 mode_normal_dot, dp)
             call mode_direction( &
                 degree_indices(mode), orders(mode), scale, eta, theta, phi, &
-                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, &
                 mode_value_dot, mode_normal_dot, status)
             if (status /= 0) return
             phi_bar = phi_bar + real(conjg(value_bar)*coefficients(mode)* &
@@ -266,30 +266,30 @@ contains
 
     subroutine mode_direction( &
             degree_index, order, scale, eta, theta, phi, use_second_kind, &
-            scale_dot, eta_dot, theta_dot, phi_dot, unused, value_dot, &
+            scale_dot, eta_dot, theta_dot, phi_dot, value_dot, &
             normal_dot, status)
         integer, intent(in) :: degree_index, order
         real(dp), intent(in) :: scale, eta, theta, phi
         logical, intent(in) :: use_second_kind
-        real(dp), intent(in) :: scale_dot, eta_dot, theta_dot, phi_dot, unused
+        real(dp), intent(in) :: scale_dot, eta_dot, theta_dot, phi_dot
         complex(dp), intent(out) :: value_dot, normal_dot
         integer, intent(out) :: status
         complex(dp) :: value, normal
 
         call evaluate_mode( &
             degree_index, order, scale, eta, theta, phi, use_second_kind, &
-            scale_dot, eta_dot, theta_dot, phi_dot, unused, value, normal, &
+            scale_dot, eta_dot, theta_dot, phi_dot, value, normal, &
             value_dot, normal_dot, status)
     end subroutine mode_direction
 
     subroutine evaluate_mode( &
             degree_index, order, scale, eta, theta, phi, use_second_kind, &
-            scale_dot, eta_dot, theta_dot, phi_dot, unused, value, normal, &
+            scale_dot, eta_dot, theta_dot, phi_dot, value, normal, &
             value_dot, normal_dot, status)
         integer, intent(in) :: degree_index, order
         real(dp), intent(in) :: scale, eta, theta, phi
         logical, intent(in) :: use_second_kind
-        real(dp), intent(in) :: scale_dot, eta_dot, theta_dot, phi_dot, unused
+        real(dp), intent(in) :: scale_dot, eta_dot, theta_dot, phi_dot
         complex(dp), intent(out) :: value, normal, value_dot, normal_dot
         integer, intent(out) :: status
 
