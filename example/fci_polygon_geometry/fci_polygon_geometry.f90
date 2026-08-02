@@ -7,7 +7,8 @@ program fci_polygon_geometry
         compute_fci_curved_polygon_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &
         compute_fci_quartic_curved_polygon_cell_areas_2d, &
-        compute_fci_quintic_curved_polygon_cell_areas_2d
+        compute_fci_quintic_curved_polygon_cell_areas_2d, &
+        compute_fci_sextic_curved_polygon_cell_areas_2d
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
@@ -27,11 +28,13 @@ program fci_polygon_geometry
     real(dp) :: cubic_controls(2, 2, vertex_count, cell_count)
     real(dp) :: quartic_controls(2, 3, vertex_count, cell_count)
     real(dp) :: quintic_controls(2, 4, vertex_count, cell_count)
+    real(dp) :: sextic_controls(2, 5, vertex_count, cell_count)
     real(dp) :: areas(cell_count), expected(cell_count)
     real(dp) :: curved_areas(cell_count), curved_expected(cell_count)
     real(dp) :: cubic_areas(cell_count), cubic_expected(cell_count)
     real(dp) :: quartic_areas(cell_count), quartic_expected(cell_count)
     real(dp) :: quintic_areas(cell_count), quintic_expected(cell_count)
+    real(dp) :: sextic_areas(cell_count), sextic_expected(cell_count)
     real(dp) :: x_plot(vertex_count + 1), y_plot(vertex_count + 1)
     real(dp) :: x_curve(vertex_count*edge_curve_points + 1)
     real(dp) :: y_curve(vertex_count*edge_curve_points + 1)
@@ -41,6 +44,8 @@ program fci_polygon_geometry
     real(dp) :: y_quartic(vertex_count*edge_curve_points + 1)
     real(dp) :: x_quintic(vertex_count*edge_curve_points + 1)
     real(dp) :: y_quintic(vertex_count*edge_curve_points + 1)
+    real(dp) :: x_sextic(vertex_count*edge_curve_points + 1)
+    real(dp) :: y_sextic(vertex_count*edge_curve_points + 1)
     real(dp) :: bezier_point(2), bezier_tangent(2), parameter
     real(dp) :: cell_index(cell_count)
     integer :: cell, vertex, edge, sample, point_index, next_vertex, unit
@@ -90,6 +95,12 @@ program fci_polygon_geometry
                 quartic_controls(:, 3, edge, cell) + 0.4_dp*( &
                 vertices(:, next_vertex, cell) - &
                 quartic_controls(:, 3, edge, cell))
+            sextic_controls(:, 1:4, edge, cell) = &
+                quintic_controls(:, :, edge, cell)
+            sextic_controls(:, 5, edge, cell) = &
+                quintic_controls(:, 4, edge, cell) + 0.35_dp*( &
+                vertices(:, next_vertex, cell) - &
+                quintic_controls(:, 4, edge, cell))
         end do
     end do
 
@@ -150,6 +161,18 @@ program fci_polygon_geometry
             error stop "FCI quintic curved polygon area oracle failed"
         end if
     end do
+    call compute_fci_sextic_curved_polygon_cell_areas_2d( &
+        vertices, sextic_controls, sextic_areas, status)
+    if (status%code /= 0) then
+        error stop "FCI sextic curved polygon area evaluation failed"
+    end if
+    do cell = 1, cell_count
+        sextic_expected(cell) = sextic_gauss_green_area( &
+            vertices(:, :, cell), sextic_controls(:, :, :, cell))
+        if (abs(sextic_areas(cell) - sextic_expected(cell)) > 6.0e-12_dp) then
+            error stop "FCI sextic curved polygon area oracle failed"
+        end if
+    end do
 
     call figure(figsize=[9.0_dp, 6.0_dp])
     do cell = 1, cell_count
@@ -206,10 +229,25 @@ program fci_polygon_geometry
         end do
         call plot(x_quintic, y_quintic, label="quintic boundary "// &
             integer_label(cell), linestyle="-.")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call sextic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), sextic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_sextic(point_index) = bezier_point(1)
+                y_sextic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_sextic, y_sextic, label="sextic boundary "// &
+            integer_label(cell), linestyle="--")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Cubic, quartic, and quintic Bezier FCI polygon cells")
+    call title("Cubic through sextic Bezier FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_polygon_cells_2d.png")
 
@@ -275,10 +313,25 @@ program fci_polygon_geometry
         end do
         call plot(x_quintic, y_quintic, label="quintic pentagon "// &
             integer_label(cell), linestyle="-.")
+        do edge = 1, vertex_count
+            next_vertex = mod(edge, vertex_count) + 1
+            do sample = 0, edge_curve_points
+                point_index = (edge - 1)*edge_curve_points + sample + 1
+                parameter = real(sample, dp)/real(edge_curve_points, dp)
+                call sextic_bezier_point_and_tangent( &
+                    vertices(:, edge, cell), sextic_controls(:, :, edge, cell), &
+                    vertices(:, next_vertex, cell), parameter, bezier_point, &
+                    bezier_tangent)
+                x_sextic(point_index) = bezier_point(1)
+                y_sextic(point_index) = bezier_point(2)
+            end do
+        end do
+        call plot(x_sextic, y_sextic, label="sextic pentagon "// &
+            integer_label(cell), linestyle="--")
     end do
     call xlabel("poloidal x")
     call ylabel("poloidal y")
-    call title("Quadratic through quintic Bezier-edge FCI polygon cells")
+    call title("Quadratic through sextic Bezier-edge FCI polygon cells")
     call legend()
     call savefig(output_directory//"/fci_curved_polygon_cells_2d.png")
 
@@ -293,6 +346,8 @@ program fci_polygon_geometry
         label="quartic Bezier-edge area")
     call plot(cell_index, quintic_areas, marker="v", linestyle="-.", &
         label="quintic Bezier-edge area")
+    call plot(cell_index, sextic_areas, marker="<", linestyle="--", &
+        label="sextic Bezier-edge area")
     call xlabel("cell index")
     call ylabel("cell area")
     call title("Generated FCI polygon plane-cell measures")
@@ -304,12 +359,13 @@ program fci_polygon_geometry
     write (unit, "(a)") "cell,generated_area,shoelace_area,quadratic_area,"// &
         "quadratic_gauss_green_area,cubic_area,cubic_gauss_green_area,"// &
         "quartic_area,quartic_gauss_green_area,quintic_area,"// &
-        "quintic_gauss_green_area"
+        "quintic_gauss_green_area,sextic_area,sextic_gauss_green_area"
     do cell = 1, cell_count
-        write (unit, "(i0,10(',',es24.16))") cell, areas(cell), expected(cell), &
+        write (unit, "(i0,12(',',es24.16))") cell, areas(cell), expected(cell), &
             curved_areas(cell), curved_expected(cell), cubic_areas(cell), &
             cubic_expected(cell), quartic_areas(cell), quartic_expected(cell), &
-            quintic_areas(cell), quintic_expected(cell)
+            quintic_areas(cell), quintic_expected(cell), sextic_areas(cell), &
+            sextic_expected(cell)
     end do
     close (unit)
 
@@ -502,6 +558,63 @@ contains
             (controls(:, 4) - controls(:, 3)) + &
             5.0_dp*parameter**4*(last - controls(:, 4))
     end subroutine quintic_bezier_point_and_tangent
+
+    pure real(dp) function sextic_gauss_green_area(cell_vertices, controls) &
+            result(area)
+        real(dp), intent(in) :: cell_vertices(2, vertex_count)
+        real(dp), intent(in) :: controls(2, 5, vertex_count)
+        real(dp), parameter :: sextic_points(7) = [ &
+            0.0254460438286207_dp, 0.1292344072003028_dp, &
+            0.2970774243113014_dp, 0.5_dp, 0.7029225756886986_dp, &
+            0.8707655927996972_dp, 0.9745539561713793_dp]
+        real(dp), parameter :: sextic_weights(7) = [ &
+            0.0647424830844348_dp, 0.1398526957446383_dp, &
+            0.1909150252525595_dp, 0.2089795918367347_dp, &
+            0.1909150252525595_dp, 0.1398526957446383_dp, &
+            0.0647424830844348_dp]
+        real(dp) :: point(2), tangent(2), contribution
+        integer :: edge, quadrature, next_edge
+
+        area = 0.0_dp
+        do edge = 1, vertex_count
+            next_edge = mod(edge, vertex_count) + 1
+            do quadrature = 1, 7
+                call sextic_bezier_point_and_tangent( &
+                    cell_vertices(:, edge), controls(:, :, edge), &
+                    cell_vertices(:, next_edge), sextic_points(quadrature), &
+                    point, tangent)
+                contribution = point(1)*tangent(2) - &
+                    point(2)*tangent(1)
+                area = area + 0.5_dp*sextic_weights(quadrature)*contribution
+            end do
+        end do
+    end function sextic_gauss_green_area
+
+    pure subroutine sextic_bezier_point_and_tangent( &
+            first, controls, last, parameter, point, tangent)
+        real(dp), intent(in) :: first(2), controls(2, 5), last(2), parameter
+        real(dp), intent(out) :: point(2), tangent(2)
+        real(dp) :: one_minus_parameter
+
+        one_minus_parameter = 1.0_dp - parameter
+        point = one_minus_parameter**6*first + &
+            6.0_dp*one_minus_parameter**5*parameter*controls(:, 1) + &
+            15.0_dp*one_minus_parameter**4*parameter**2*controls(:, 2) + &
+            20.0_dp*one_minus_parameter**3*parameter**3*controls(:, 3) + &
+            15.0_dp*one_minus_parameter**2*parameter**4*controls(:, 4) + &
+            6.0_dp*one_minus_parameter*parameter**5*controls(:, 5) + &
+            parameter**6*last
+        tangent = 6.0_dp*one_minus_parameter**5*(controls(:, 1) - first) + &
+            30.0_dp*one_minus_parameter**4*parameter* &
+            (controls(:, 2) - controls(:, 1)) + &
+            60.0_dp*one_minus_parameter**3*parameter**2* &
+            (controls(:, 3) - controls(:, 2)) + &
+            60.0_dp*one_minus_parameter**2*parameter**3* &
+            (controls(:, 4) - controls(:, 3)) + &
+            30.0_dp*one_minus_parameter*parameter**4* &
+            (controls(:, 5) - controls(:, 4)) + &
+            6.0_dp*parameter**5*(last - controls(:, 5))
+    end subroutine sextic_bezier_point_and_tangent
 
     function integer_label(value) result(label)
         integer, intent(in) :: value

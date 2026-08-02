@@ -92,6 +92,11 @@ four controls per edge.  Its generated value/JVP/VJP kernels are guarded by an
 independent five-point Gauss--Green oracle; the quintic-edge integrand has
 degree nine, so the rule is exact on the fixed topology.
 
+The public `compute_fci_sextic_curved_polygon_cell_areas_2d` contract adds
+five controls per edge.  Its generated value/JVP/VJP kernels are guarded by an
+independent seven-point Gauss--Green oracle; the sextic-edge integrand has
+degree eleven, so the rule is exact on the fixed topology.
+
 ## Provenance
 
 The factorization follows the support-operator construction described in the
