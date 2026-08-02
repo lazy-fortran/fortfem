@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1761 unique exported symbols** (2063 declarations, including wrapper duplicates).
+The inventory contains **1761 unique exported symbols** (2065 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
@@ -369,8 +369,8 @@ generated headers or explicit `fortfem_generated_*` imports.
 | reduce_tree_cotree_dense_system | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_tree_cotree_gauge` / `src/topology/tree_cotree_gauge.f90` | fortfem_feec | same | JVP, VJP | `test/test_tree_cotree_gauge.f90` | hand-written / no generator link in defining file |
 | reduce_tree_cotree_dense_system_jvp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_tree_cotree_gauge` / `src/topology/tree_cotree_gauge.f90` | fortfem_feec | same | JVP | `test/test_tree_cotree_gauge.f90` | hand-written / no generator link in defining file |
 | reduce_tree_cotree_dense_system_vjp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_tree_cotree_gauge` / `src/topology/tree_cotree_gauge.f90` | fortfem_feec | same | VJP | `test/test_tree_cotree_gauge.f90` | hand-written / no generator link in defining file |
-| tree_cotree_iga_parity_t | `fortfem_api (src/fortfem_api.f90)` | `fortfem_tree_cotree_iga_parity` / `src/topology/tree_cotree_iga_parity.f90` | fortfem_feec | same | — | `test/test_tree_cotree_iga_parity.f90` | hand-written / no generator link in defining file |
-| evaluate_tree_cotree_iga_parity | `fortfem_api (src/fortfem_api.f90)` | `fortfem_tree_cotree_iga_parity` / `src/topology/tree_cotree_iga_parity.f90` | fortfem_feec | compare_tree_cotree_iga (proposed) | — | `test/test_tree_cotree_iga_parity.f90` | hand-written / no generator link in defining file |
+| tree_cotree_iga_parity_t | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_tree_cotree_iga_parity` / `src/topology/tree_cotree_iga_parity.f90` | fortfem_feec | same | — | `test/test_tree_cotree_iga_parity.f90` | hand-written / no generator link in defining file |
+| diagnose_tree_cotree_iga_invariance | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_tree_cotree_iga_parity` / `src/topology/tree_cotree_iga_parity.f90` | fortfem_feec | same | — | `test/test_tree_cotree_iga_parity.f90` | hand-written / no generator link in defining file |
 | incomplete_cholesky_factor_t | `fortfem_api (src/fortfem_api.f90)` | `fortfem_incomplete_cholesky` / `src/solvers/incomplete_cholesky.f90` | fortfem_feec | same | — | `test/test_incomplete_cholesky.f90` | hand-written / no generator link in defining file |
 | build_incomplete_cholesky | `fortfem_api (src/fortfem_api.f90)` | `fortfem_incomplete_cholesky` / `src/solvers/incomplete_cholesky.f90` | fortfem_feec | same | — | `test/test_incomplete_cholesky.f90` | hand-written / no generator link in defining file |
 | apply_incomplete_cholesky | `fortfem_api (src/fortfem_api.f90)` | `fortfem_incomplete_cholesky` / `src/solvers/incomplete_cholesky.f90` | fortfem_feec | same | — | `test/test_incomplete_cholesky.f90` | hand-written / no generator link in defining file |

@@ -35,6 +35,9 @@ module fortfem_feec
         tree_cotree_gauge_edges, &
         tree_cotree_gauge_t, &
         validate_tree_cotree_gauge
+    use fortfem_tree_cotree_iga_parity, only: &
+        diagnose_tree_cotree_iga_invariance, &
+        tree_cotree_iga_parity_t
     implicit none
     private
 
@@ -48,6 +51,7 @@ module fortfem_feec
     public :: assemble_feec_exact_sequence_vjp
     public :: build_tree_cotree_dof_map
     public :: build_tree_cotree_gauge
+    public :: diagnose_tree_cotree_iga_invariance
     public :: evaluate_tetra_nedelec_first_kind
     public :: evaluate_tetra_nedelec_first_kind_jvp
     public :: evaluate_tetra_nedelec_first_kind_vjp
@@ -59,6 +63,7 @@ module fortfem_feec
     public :: tree_cotree_gauge_components
     public :: tree_cotree_gauge_edges
     public :: tree_cotree_gauge_t
+    public :: tree_cotree_iga_parity_t
     public :: tetra_nedelec_dof_count
     public :: tetra_nedelec_first_kind_t
     public :: tetra_duffy_quadrature

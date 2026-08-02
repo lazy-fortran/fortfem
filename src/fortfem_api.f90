@@ -555,7 +555,7 @@ module fortfem_api
         tree_cotree_gauge_edges, tree_cotree_gauge_t, &
         validate_tree_cotree_gauge
     use fortfem_tree_cotree_iga_parity, only: &
-        evaluate_tree_cotree_iga_parity, tree_cotree_iga_parity_t
+        diagnose_tree_cotree_iga_invariance, tree_cotree_iga_parity_t
     use fortfem_surface_triangle_geometry_3d, only: &
         evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
@@ -2016,7 +2016,7 @@ module fortfem_api
     public :: reduce_tree_cotree_dense_system_jvp
     public :: reduce_tree_cotree_dense_system_vjp
     public :: tree_cotree_iga_parity_t
-    public :: evaluate_tree_cotree_iga_parity
+    public :: diagnose_tree_cotree_iga_invariance
     public :: incomplete_cholesky_factor_t
     public :: build_incomplete_cholesky
     public :: apply_incomplete_cholesky
