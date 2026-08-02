@@ -3,7 +3,8 @@ program test_fortfem_toroidal_harmonics
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use, intrinsic :: iso_fortran_env, only: dp => real64, error_unit
     use fortfem_api, only: toroidal_p, toroidal_q, &
-        toroidal_p_derivative, toroidal_q_derivative
+        toroidal_p_derivative, toroidal_q_derivative, &
+        toroidal_p_second_derivative, toroidal_q_second_derivative
     implicit none
 
     integer :: nfail
@@ -21,6 +22,8 @@ program test_fortfem_toroidal_harmonics
         48.525686151003148510_dp)
     call check("dQ_3/2^1(2.5)", toroidal_q_derivative(2, 1, 2.5_dp), &
         0.067949860642696846331_dp)
+    call check_ode("P second derivative", .true., 3, 1, 2.2_dp)
+    call check_ode("Q second derivative", .false., 3, 1, 2.2_dp)
     call check_true("invalid x", ieee_is_nan(toroidal_p(0, 0, 1.0_dp)))
     call check_true("invalid order", ieee_is_nan(toroidal_q(0, -1, 2.0_dp)))
 
@@ -53,5 +56,29 @@ contains
             write (error_unit, "(a)") "FAIL: "//label
         end if
     end subroutine check_true
+
+    subroutine check_ode(label, first_kind, degree_index, order, x)
+        character(*), intent(in) :: label
+        logical, intent(in) :: first_kind
+        integer, intent(in) :: degree_index, order
+        real(dp), intent(in) :: x
+        real(dp) :: value, first, second, degree, denominator, residual
+
+        if (first_kind) then
+            value = toroidal_p(degree_index, order, x)
+            first = toroidal_p_derivative(degree_index, order, x)
+            second = toroidal_p_second_derivative(degree_index, order, x)
+        else
+            value = toroidal_q(degree_index, order, x)
+            first = toroidal_q_derivative(degree_index, order, x)
+            second = toroidal_q_second_derivative(degree_index, order, x)
+        end if
+        degree = real(degree_index, dp) - 0.5_dp
+        denominator = 1.0_dp - x*x
+        residual = denominator*second - 2.0_dp*x*first + &
+            (degree*(degree + 1.0_dp) - &
+            real(order*order, dp)/denominator)*value
+        call check(label, residual, 0.0_dp)
+    end subroutine check_ode
 
 end program test_fortfem_toroidal_harmonics
