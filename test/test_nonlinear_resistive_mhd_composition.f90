@@ -89,6 +89,11 @@ program test_nonlinear_resistive_mhd_composition
     call check_condition(status%code /= FORTSPARSE_OK .and. maxval(abs(residual)) == 0.0_dp, &
         "callback failure is rejected without a partial residual")
 
+    call assemble_nonlinear_resistive_mhd_residual( &
+        state, negative_dissipation_value, residual, ledger, status)
+    call check_condition(status%code /= FORTSPARSE_OK .and. maxval(abs(residual)) == 0.0_dp, &
+        "negative dissipation is rejected without a partial residual")
+
     call check_summary("nonlinear resistive-MHD composition")
 
 contains
@@ -182,6 +187,21 @@ contains
         dissipation = 0.0_dp
         local_status = merge(7, 0, block_id == RESISTIVE_MHD_AMPERE)
     end subroutine rejecting_value
+
+    subroutine negative_dissipation_value(state_in, block_id, block_residual, &
+            stored_energy, input_power, dissipation, local_status)
+        real(dp), intent(in) :: state_in(:)
+        integer, intent(in) :: block_id
+        real(dp), intent(out) :: block_residual(:)
+        real(dp), intent(out) :: stored_energy, input_power, dissipation
+        integer, intent(out) :: local_status
+
+        block_residual = state_in
+        stored_energy = 0.0_dp
+        input_power = 0.0_dp
+        dissipation = merge(-1.0_dp, 0.0_dp, block_id == RESISTIVE_MHD_AMPERE)
+        local_status = 0
+    end subroutine negative_dissipation_value
 
     subroutine independent_value_oracle(state_in, residual_out, ledger_out)
         real(dp), intent(in) :: state_in(:)
