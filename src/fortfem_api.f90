@@ -66,6 +66,11 @@ module fortfem_api
         internal_manifold_graph_junction_incidence, &
         internal_manifold_graph_region_incidence, &
         internal_manifold_graph_t, validate_internal_manifold_graph
+    use fortfem_boundary_region_graph, only: &
+        boundary_region_graph_t, initialize_boundary_region_graph, &
+        validate_boundary_region_graph, boundary_region_graph_incidence, &
+        boundary_region_graph_components, boundary_region_graph_cycle_basis, &
+        boundary_region_graph_interface_samples
     use fortfem_surface_current, only: &
         assemble_interface_surface_current, &
         assemble_interface_surface_current_jvp, &
@@ -1289,6 +1294,13 @@ module fortfem_api
     public :: internal_manifold_graph_junction_incidence
     public :: internal_manifold_graph_closed
     public :: internal_manifold_graph_components
+    public :: boundary_region_graph_t
+    public :: initialize_boundary_region_graph
+    public :: validate_boundary_region_graph
+    public :: boundary_region_graph_incidence
+    public :: boundary_region_graph_components
+    public :: boundary_region_graph_cycle_basis
+    public :: boundary_region_graph_interface_samples
     public :: assemble_interface_surface_current
     public :: assemble_interface_surface_current_jvp
     public :: assemble_interface_surface_current_vjp
