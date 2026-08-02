@@ -8,6 +8,10 @@ The [sheet-current representation parity contract](sheet_current_parity.html)
 provides a manufactured explicit-surface versus resolved-layer ledger for
 fitted, cut, DG, and IGA clients.
 
+The [multi-region Beltrami residual contract](beltrami_residual.html) also
+provides a two-path H(curl)-versus-algebraic manufactured parity report and an
+explicit caller-supplied resonance guard for SPEC/SPECTRE-like clients.
+
 ## Overview
 
 FortFEM is designed with the following principles:
