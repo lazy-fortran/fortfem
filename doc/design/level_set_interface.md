@@ -106,6 +106,14 @@ conservation, and the independent interface-JVP contract. The neutral
 internal-manifold graph supplies the topology attachment; geometry-to-graph
 construction remains a client composition layer.
 
+`evaluate_level_set_tetra_cut_fourth_moments_3d` extends the same oriented
+tetrahedral fan to the symmetric rank-four raw tensor. Each fan tetrahedron is
+integrated by the exact barycentric multinomial sum, and its fixed-topology JVP
+differentiates the vertex products directly. The focused test checks an
+independent simplex-moment oracle, conservation of the parent quartic tensor,
+and a central-difference JVP oracle. Curved-cell moment fitting and adaptive
+cut integration remain separate higher-level layers.
+
 `evaluate_level_set_tetra_cut_moments_3d` extends the same oriented fan with
 the symmetric raw second-moment tensor
 
