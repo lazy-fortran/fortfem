@@ -2210,16 +2210,16 @@ gallery example.
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
   interpolation derivatives beyond quintic and curved support-volume measures
-  beyond quadratic remain separate planned components. The generic polygon map
+  beyond cubic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
-  quadratic Bezier-edge extension covers arbitrary curved polygon boundaries. A
-  generated quadratic Bezier-edge area map now
-  supplies a fixed-topology curved-cell value/JVP/VJP contract with an
-  independent Gauss--Green oracle and sampled-boundary gallery output.
+  quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
+  Generated quadratic and cubic Bezier-edge area maps now supply fixed-topology
+  curved-cell value/JVP/VJP contracts with independent Gauss--Green oracles and
+  sampled-boundary gallery output.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
-  connectivity, higher-order curved measures beyond quadratic, and stencil rebuilds at
+  connectivity, higher-order curved measures beyond cubic, and stencil rebuilds at
   topology events remain planned; the generic straight polygon map and
   quadratic Bezier-edge quadrilateral map are now the unstructured-cell
   baselines.
