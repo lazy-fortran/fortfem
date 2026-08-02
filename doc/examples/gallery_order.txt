@@ -36,6 +36,9 @@ fortfem_mesh_benchmark
 solver_benchmark
 interoperability_benchmarks
 
+# Linear-response foundations
+linear_perturbation_response
+
 # Boundary elements and coupling
 laplace_bem_circle_spectrum
 laplace_exterior_bem_circle
