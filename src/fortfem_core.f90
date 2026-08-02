@@ -15,6 +15,8 @@ module fortfem_core
     use fortfem_tetra_affine_map, only: invert_tetra_affine_map
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
+    use fortfem_structured_tetra_box_mesh, only: &
+        generate_structured_tetra_box_mesh
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     implicit none
     private
@@ -27,6 +29,7 @@ module fortfem_core
     public :: cell_complex_t
     public :: generate_solid_torus_tetra_mesh
     public :: generate_sphere_surface_mesh
+    public :: generate_structured_tetra_box_mesh
     public :: generate_torus_surface_mesh
     public :: initialize_cell_complex
     public :: invert_tetra_affine_map

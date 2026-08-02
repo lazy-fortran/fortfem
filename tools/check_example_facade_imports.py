@@ -135,6 +135,42 @@ CASES = (
         "fortfem_boundary",
         required_facades=("fortfem_boundary", "fortfem_core"),
     ),
+    ExampleCase(
+        "adaptive Laplace BEM solution",
+        "example/adaptive_bem_prolate/adaptive_bem_prolate.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core"),
+    ),
+    ExampleCase(
+        "adaptive Helmholtz BEM solution",
+        "example/adaptive_helmholtz_bem_sphere/"
+        "adaptive_helmholtz_bem_sphere.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core"),
+    ),
+    ExampleCase(
+        "planar acoustic FEM-DtN solution",
+        "example/acoustic_fem_dtn/acoustic_fem_dtn.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "curved acoustic NtD solution",
+        "example/curved_acoustic_ntd/curved_acoustic_ntd.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "scalar Helmholtz PML comparison",
+        "example/helmholtz_open_boundary_comparison/"
+        "helmholtz_open_boundary_comparison.f90",
+        "fortfem_boundary",
+    ),
+    ExampleCase(
+        "Maxwell DtN/PML comparison",
+        "example/maxwell_open_boundary_comparison/"
+        "maxwell_open_boundary_comparison.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core", "fortfem_feec"),
+    ),
 )
 
 

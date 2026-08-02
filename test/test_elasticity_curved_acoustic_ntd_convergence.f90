@@ -1,6 +1,6 @@
 program test_elasticity_curved_acoustic_ntd_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         circular_helmholtz_dtn_eigenvalue, &
         solve_elasticity_curved_acoustic_ntd_p1
     use fortfem_kinds, only: dp

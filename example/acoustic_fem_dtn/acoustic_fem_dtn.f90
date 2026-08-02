@@ -1,5 +1,5 @@
 program acoustic_fem_dtn
-    use fortfem_api, only: solve_elasticity_planar_acoustic_dtn_p1
+    use fortfem_boundary, only: solve_elasticity_planar_acoustic_dtn_p1
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     implicit none
