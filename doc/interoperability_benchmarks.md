@@ -25,6 +25,27 @@ side. The analytical fields are the primary oracle. Cross-code agreement is a
 secondary oracle that can expose a shared FortFEM implementation error but
 never replaces convergence against the exact solution.
 
+## Versioned oracle manifest
+
+Every external result may be accompanied by the neutral
+`fortfem-oracle-manifest-1` text record.  The public
+`oracle_manifest_t` contract records the external code name, release and
+immutable revision, the applicable license, case revision, coordinate system,
+SHA-256 checksums for coordinates and sampled data, declared units and scale
+factors, comparison tolerances, runner identity, wall-clock phase timings,
+peak memory, repetition counts, and an optional immutable sister-repository
+URI.  `write_oracle_manifest` and `read_oracle_manifest` provide a bounded
+round-trip format; `validate_oracle_manifest` rejects incomplete provenance,
+non-finite scales/tolerances/timings, invalid dimensions, and inconsistent
+performance metadata before data are published.
+
+The code-name field is intentionally open rather than an enum.  Thus an
+adapter can identify CHEASE, FreeGS, VMEC/PARVMEC, GVEC, DESC, SPEC/SPECTRE,
+GPEC, MARS-F, GLISS, STARWALL, JOREK, FreeFEM, MFEM, or FEniCSx without making
+FortFEM depend on that project's format or license.  The manifest is metadata
+only: sampled fields remain caller-owned artifacts in the separate benchmark
+data repository.
+
 The ordinary correctness workflow also runs a lightweight isogeometric oracle
 with Nutils 9.2. On the same uniform quadratic tensor-product patch, Nutils
 independently assembles the scalar mass and stiffness matrices and verifies:
