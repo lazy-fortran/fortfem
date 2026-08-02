@@ -1,11 +1,10 @@
 program simple_poisson
-    use fortfem_api_forms, only: dx, form_expr_t, grad, inner, operator(*), &
-        operator(==)
-    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
-    use fortfem_api_solvers, only: solve
-    use fortfem_api_spaces, only: constant, dirichlet_bc, dirichlet_bc_t, &
-        function, function_space, function_space_t, function_t, test_function, &
-        test_function_t, trial_function, trial_function_t
+    use fortfem_core, only: dirichlet_bc_t, function_space_t, mesh_t, &
+        unit_square_mesh
+    use fortfem_feec, only: constant, dirichlet_bc, dx, form_expr_t, function, &
+        function_space, function_t, grad, inner, operator(*), &
+        operator(==), solve, test_function, test_function_t, trial_function, &
+        trial_function_t
     use fortfem_kinds, only: dp
     use fortfem_plot, only: plot
     implicit none

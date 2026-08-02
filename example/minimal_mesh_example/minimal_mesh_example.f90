@@ -1,6 +1,6 @@
 program minimal_mesh_example
     ! Minimal working example of FortFEM mesh generation
-    use fortfem_api_mesh, only: circle_boundary, mesh_t, rectangle_mesh, &
+    use fortfem_core, only: circle_boundary, mesh_t, rectangle_mesh, &
         unit_square_mesh
     use fortfem_boundary, only: boundary_t
     use fortfem_kinds, only: dp

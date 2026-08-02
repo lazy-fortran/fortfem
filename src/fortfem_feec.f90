@@ -122,13 +122,14 @@ module fortfem_feec
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp
     use fortfem_api_spaces, only: &
-        function_space, vector_function_space, dirichlet_bc, &
+        constant, function, function_space, vector_function_space, dirichlet_bc, &
         test_function, trial_function, vector_test_function, &
         vector_trial_function, test_function_t, trial_function_t, &
         vector_test_function_t, vector_trial_function_t
+    use fortfem_api_types, only: function_t
     use fortfem_api_forms, only: &
         compile_tetra_mixed_form_csc, div, dx, form_expr_t, init_measures, &
-        inner, operator(*)
+        grad, inner, operator(*), operator(==)
     use fortfem_mixed_poisson_2d, only: solve_symbolic_mixed_poisson_rt
     use fortfem_tetra_mixed_poisson_3d, only: &
         solve_symbolic_tetra_mixed_poisson_rt
@@ -151,7 +152,7 @@ module fortfem_feec
         sparse_direct_factor_t, sparse_direct_factor_csc, &
         sparse_direct_factor_transpose_csc, sparse_direct_free, &
         sparse_direct_solve_factored, sparse_direct_solve_factored_jvp, &
-        sparse_direct_solve_factored_vjp
+        sparse_direct_solve_factored_vjp, solve
     use fortfem_sparse_ilut, only: &
         build_sparse_ilut_row, sparse_ilut_factor_t, apply_sparse_ilut
     use fortfem_sparse_incomplete_cholesky, only: &
@@ -275,8 +276,11 @@ module fortfem_feec
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
     public :: function_space
+    public :: constant
+    public :: function
     public :: vector_function_space
     public :: dirichlet_bc
+    public :: function_t
     public :: test_function
     public :: trial_function
     public :: vector_test_function
@@ -292,6 +296,9 @@ module fortfem_feec
     public :: init_measures
     public :: inner
     public :: operator(*)
+    public :: operator(==)
+    public :: grad
+    public :: solve
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_symbolic_tetra_mixed_poisson_rt
     public :: evaluate_tetra_discontinuous
