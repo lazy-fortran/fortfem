@@ -29,6 +29,8 @@ operators, sparse solvers, and analytical verification examples.
   - energy-preserving ideal update with analytical JVP/VJP actions
 - [CGL pressure tensor](design/cgl_pressure_tensor.html) - generated
   gyrotropic tensor pressure with JVP/VJP actions
+- [Tensor power split](design/tensor_power_split.html) - neutral symmetric,
+  skew, and total constitutive-power diagnostics with JVP/VJP actions
 - [Material-surface flux](design/nonlinear_surface_flux.html) - application
   callbacks with tagged residual, ledger, JVP, and VJP assembly
 - [Roadmap](https://github.com/lazy-fortran/fortfem/blob/main/ROADMAP.md) -
