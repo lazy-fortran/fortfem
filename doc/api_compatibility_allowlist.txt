@@ -1,0 +1,20 @@
+# Canonical-facade re-exports which intentionally serve both boundary and
+# neutral interoperability clients.  Keep this file sorted by symbol.  A
+# future duplicate must be documented here before it can pass the gate.
+# symbol|facade|facade|reason
+boundary_operator_backend_bem|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_biest|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_dtn|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_fem|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_nestor|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_pml|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_user|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_backend_virtual_casing|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_contract_t|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_trace_channel_mixed|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_trace_channel_normal|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_trace_channel_scalar|fortfem_boundary|fortfem_interop|shared backend metadata contract
+boundary_operator_trace_channel_tangential|fortfem_boundary|fortfem_interop|shared backend metadata contract
+initialize_boundary_operator_contract|fortfem_boundary|fortfem_interop|shared backend metadata contract
+initialize_boundary_operator_trace_metadata|fortfem_boundary|fortfem_interop|shared backend metadata contract
+validate_boundary_operator_contract|fortfem_boundary|fortfem_interop|shared backend metadata contract
