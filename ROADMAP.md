@@ -164,6 +164,59 @@ not only contributor etiquette.
   degeneracies, mode sets, constitutive tensors, and solver dimensions. They
   complement analytical and manufactured oracles and never replace them.
 
+### 1.3 Public API naming and modularity
+
+FortFEM has no downstream consumers whose source compatibility constrains the
+pre-release API. A naming cleanup may therefore be breaking and should happen
+in one coordinated change. Do not add compatibility aliases merely to retain
+an internal name. Update source, tests, examples, documentation, and generated
+API references together, then remove the obsolete spelling.
+
+The canonical procedure vocabulary is:
+
+- `build_*` constructs topology, metadata, maps, or spaces;
+- `evaluate_*` evaluates pointwise maps or analytical quantities;
+- `assemble_*` forms residuals, matrices, or dense blocks;
+- `apply_*` performs a matrix-free or factor action;
+- `solve_*` performs a complete solve;
+- `advance_*` performs one time step;
+- `validate_*` checks metadata or input contracts;
+- `compare_*` or `diagnose_*` reports parity, error, or invariant results.
+
+`compute_*` is reserved for an explicitly named reduction or derived-array
+operation when `evaluate_*` would obscure that it performs an aggregate
+calculation. New names use the verb first and the numerical object second,
+with a domain qualifier when it prevents ambiguity. Derivative actions use
+the fixed suffixes `_jvp`, `_vjp`, and `_hvp`. Public derived types use the
+`*_t` suffix, and metadata contracts use `*_metadata_t`.
+
+Names such as `evaluate_*_parity` are scheduled for conversion to
+`compare_*` or `diagnose_*` before the first external release. The same rule
+applies to any procedure whose verb does not describe its side effect or
+mathematical role. The API review must prefer established numerical terms
+(`trace`, `residual`, `quadrature`, `skeleton`, `DtN`, `NtD`, `JVP`, `VJP`)
+over project-specific synonyms.
+
+The repository remains a modular monorepo. Public facades are split by
+dependency layer so a client can import only what it needs:
+
+1. `fortfem_core`: kinds, status, topology, geometry, spaces, and residual
+   contracts;
+2. `fortfem_feec`: FEM, FEEC, DG, HDG, XFEM/XIGA, and IGA operators;
+3. `fortfem_fourier`: Fourier-FEM, toroidal modes, and special-function
+   adapters;
+4. `fortfem_boundary`: BEM, DtN, NtD, PML, wall, and free-boundary ports;
+5. `fortfem_time`: mixed-wave, symplectic, dissipative, and structure ledgers;
+6. `fortfem_interop`: external-code schemas, comparison metrics, and
+   provenance;
+7. `fortfem_plot`: plotting and gallery helpers.
+
+The umbrella `fortfem_api` may remain as a convenience import while these
+facades are introduced, but it is not the canonical dependency boundary.
+Each facade must depend only on lower layers, keep generated kernels behind a
+stable module interface, and have a focused test target. Splitting build
+targets and modules comes before splitting repositories.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
