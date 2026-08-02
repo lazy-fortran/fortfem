@@ -2466,7 +2466,10 @@ gallery example.
   elastic, resistive, and compatible-field clients, with full tensor,
   geometry, weight, JVP, and real VJP actions. A hand-evaluated anisotropic
   matrix, central-difference, adjoint, and positivity oracle cover the public
-  block; global numbering and constitutive laws remain client-owned.
+  block; global numbering and constitutive laws remain client-owned. The
+  compatibility-preserving 2D entry point now shares a strict arbitrary-
+  dimension implementation with new 3D and `nd` wrappers, including matching
+  JVP/VJP actions and independent 3D contraction/dimension-validation tests.
 - The neutral mixed elasticity residual now exposes caller-owned compliance,
   strain, and equilibrium maps as explicit constitutive and force-balance
   blocks with complete value/JVP/VJP actions. Its independent matrix,

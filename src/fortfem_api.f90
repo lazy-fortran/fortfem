@@ -326,7 +326,11 @@ module fortfem_api
         evaluate_nested_surface_geometry_coordinate_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, assemble_tensor_diffusion_matrix_jvp, &
-        assemble_tensor_diffusion_matrix_vjp
+        assemble_tensor_diffusion_matrix_vjp, assemble_tensor_diffusion_matrix_nd, &
+        assemble_tensor_diffusion_matrix_nd_jvp, &
+        assemble_tensor_diffusion_matrix_nd_vjp, &
+        assemble_tensor_diffusion_matrix_3d, assemble_tensor_diffusion_matrix_3d_jvp, &
+        assemble_tensor_diffusion_matrix_3d_vjp
     use fortfem_dissipative_cayley, only: &
         advance_dissipative_cayley, advance_dissipative_cayley_jvp, &
         advance_dissipative_cayley_vjp
@@ -1678,6 +1682,12 @@ module fortfem_api
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp
+    public :: assemble_tensor_diffusion_matrix_nd
+    public :: assemble_tensor_diffusion_matrix_nd_jvp
+    public :: assemble_tensor_diffusion_matrix_nd_vjp
+    public :: assemble_tensor_diffusion_matrix_3d
+    public :: assemble_tensor_diffusion_matrix_3d_jvp
+    public :: assemble_tensor_diffusion_matrix_3d_vjp
     public :: advance_dissipative_cayley
     public :: advance_dissipative_cayley_jvp
     public :: advance_dissipative_cayley_vjp
