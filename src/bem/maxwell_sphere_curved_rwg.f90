@@ -22,6 +22,9 @@ module fortfem_maxwell_sphere_curved_rwg
     public :: evaluate_maxwell_sphere_curved_rwg_basis
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
     public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
@@ -181,6 +184,218 @@ contains
         end do
         status = 0
     end subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
+
+    subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, vertices_dot, radius_dot, direction_dot, &
+            polarization_dot, wave_number_dot, right_hand_side, &
+            right_hand_side_dot, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: polarization(3), polarization_dot(3)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(in) :: vertices_dot(:, :), radius_dot
+        real(dp), intent(in) :: direction_dot(3), wave_number_dot
+        complex(dp), allocatable, intent(out) :: right_hand_side(:)
+        complex(dp), allocatable, intent(out) :: right_hand_side_dot(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :), refined_triangles_dot(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: refined_vertices_dot(:, :)
+        real(dp), allocatable :: transformation(:, :), transformation_dot(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: divergence, divergence_dot, jacobian, jacobian_dot
+        real(dp) :: local_value(3), local_value_dot(3), point(3), point_dot(3)
+        real(dp) :: phase_argument_dot
+        complex(dp) :: contraction, contraction_dot, incident_field(3)
+        complex(dp) :: incident_field_dot(3), phase, phase_dot
+        integer :: basis, local_edge, node, panel, row
+
+        if (allocated(right_hand_side_dot)) deallocate(right_hand_side_dot)
+        call assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, right_hand_side, status)
+        if (status /= 0) return
+        if (any(shape(vertices_dot) /= shape(vertices))) then
+            status = 1
+            return
+        end if
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        call barycentric_refine_sphere_surface_mesh_jvp( &
+            vertices, triangles, radius, vertices_dot, radius_dot, &
+            refined_vertices_dot, refined_triangles_dot, status)
+        if (status /= 0) return
+        if (any(refined_triangles_dot /= refined_triangles)) then
+            status = 1
+            return
+        end if
+        call differentiate_maxwell_bc_transformation_jvp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            refined_vertices_dot, transformation_dot, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate(right_hand_side_dot(size(transformation, 2)))
+        right_hand_side_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        do panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                do local_edge = 1, 3
+                    call evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp( &
+                        refined_vertices, refined_triangles, panel, local_edge, &
+                        radius, xi(node), eta(node), refined_vertices_dot, radius_dot, &
+                        point, local_value, divergence, jacobian, point_dot, &
+                        local_value_dot, divergence_dot, jacobian_dot, status)
+                    if (status /= 0) return
+                    phase_argument_dot = wave_number_dot*dot_product( &
+                        direction, point) + wave_number*( &
+                        dot_product(direction_dot, point) + &
+                        dot_product(direction, point_dot))
+                    phase = exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    phase_dot = cmplx(0.0_dp, phase_argument_dot, dp)*phase
+                    incident_field = polarization*phase
+                    incident_field_dot = polarization_dot*phase + &
+                        polarization*phase_dot
+                    contraction = sum(cmplx(local_value, 0.0_dp, dp)* &
+                        incident_field)
+                    contraction_dot = sum(cmplx(local_value_dot, 0.0_dp, dp)* &
+                        incident_field + cmplx(local_value, 0.0_dp, dp)* &
+                        incident_field_dot)
+                    row = 3*(panel - 1) + local_edge
+                    do basis = 1, size(transformation, 2)
+                        right_hand_side_dot(basis) = &
+                            right_hand_side_dot(basis) - weights(node)*( &
+                            jacobian_dot*transformation(row, basis)*contraction + &
+                            jacobian*(transformation_dot(row, basis)*contraction + &
+                            transformation(row, basis)*contraction_dot))
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
+
+    subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp( &
+            vertices, triangles, radius, direction, polarization, wave_number, &
+            quadrature_degree, right_hand_side_bar, vertices_bar, radius_bar, &
+            direction_bar, polarization_bar, wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), radius, direction(3)
+        complex(dp), intent(in) :: polarization(3), right_hand_side_bar(:)
+        real(dp), intent(in) :: wave_number
+        integer, intent(in) :: triangles(:, :), quadrature_degree
+        real(dp), intent(out) :: vertices_bar(:, :), radius_bar
+        real(dp), intent(out) :: direction_bar(3), wave_number_bar
+        complex(dp), allocatable, intent(out) :: polarization_bar(:)
+        integer, intent(out) :: status
+
+        integer, allocatable :: refined_triangles(:, :)
+        real(dp), allocatable :: eta(:), refined_vertices(:, :)
+        real(dp), allocatable :: transformation(:, :), transformation_bar(:, :)
+        real(dp), allocatable :: refined_vertices_bar(:, :)
+        real(dp), allocatable :: local_vertices_bar(:, :)
+        real(dp), allocatable :: weights(:), xi(:)
+        real(dp) :: divergence, jacobian, jacobian_bar
+        real(dp) :: local_value(3), local_value_bar(3), point(3), point_bar(3)
+        real(dp) :: phase_argument_bar, local_radius_bar
+        complex(dp) :: contraction, phase, phase_bar, seed
+        integer :: basis, local_edge, node, panel, row
+
+        vertices_bar = 0.0_dp
+        radius_bar = 0.0_dp
+        direction_bar = 0.0_dp
+        wave_number_bar = 0.0_dp
+        if (allocated(polarization_bar)) deallocate(polarization_bar)
+        status = 1
+        if (size(vertices, 1) /= 3 .or. radius <= 0.0_dp) return
+        if (size(vertices_bar, 1) /= size(vertices, 1) .or. &
+            size(vertices_bar, 2) /= size(vertices, 2)) return
+        if (wave_number < 0.0_dp .or. quadrature_degree < 0) return
+        if (abs(norm2(direction) - 1.0_dp) > 128.0_dp*epsilon(1.0_dp)) return
+        if (abs(sum(polarization*direction)) > &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+            sqrt(sum(abs(polarization)**2)))) return
+        call build_maxwell_bc_transformation( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation, status, sphere_radius=radius)
+        if (status /= 0) return
+        if (size(right_hand_side_bar) /= size(transformation, 2)) return
+        call triangle_duffy_quadrature( &
+            quadrature_degree, xi, eta, weights, status)
+        if (status /= 0) return
+        allocate( &
+            polarization_bar(3), &
+            transformation_bar(size(transformation, 1), size(transformation, 2)), &
+            refined_vertices_bar(3, size(refined_vertices, 2)), &
+            local_vertices_bar(3, size(refined_vertices, 2)))
+        polarization_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        transformation_bar = 0.0_dp
+        refined_vertices_bar = 0.0_dp
+        do panel = 1, size(refined_triangles, 2)
+            do node = 1, size(weights)
+                do local_edge = 1, 3
+                    call evaluate_maxwell_sphere_curved_localized_rwg_basis( &
+                        refined_vertices, refined_triangles, panel, local_edge, &
+                        radius, xi(node), eta(node), point, local_value, &
+                        divergence, jacobian, status)
+                    if (status /= 0) return
+                    phase = exp(cmplx( &
+                        0.0_dp, wave_number*dot_product(direction, point), dp))
+                    contraction = sum(cmplx(local_value, 0.0_dp, dp)*polarization)
+                    row = 3*(panel - 1) + local_edge
+                    do basis = 1, size(transformation, 2)
+                        seed = -weights(node)*jacobian* &
+                            transformation(row, basis)*conjg(phase)* &
+                            right_hand_side_bar(basis)
+                        phase_bar = -weights(node)*jacobian* &
+                            transformation(row, basis)*conjg(contraction)* &
+                            right_hand_side_bar(basis)
+                        jacobian_bar = real(conjg(right_hand_side_bar(basis))* &
+                            (-weights(node)*transformation(row, basis)* &
+                            phase*contraction), dp)
+                        local_value_bar = real(conjg(seed)*polarization, dp)
+                        polarization_bar = polarization_bar + &
+                            seed*cmplx(local_value, 0.0_dp, dp)
+                        phase_argument_bar = real(conjg(phase_bar)* &
+                            cmplx(0.0_dp, 1.0_dp, dp)*phase, dp)
+                        wave_number_bar = wave_number_bar + phase_argument_bar* &
+                            dot_product(direction, point)
+                        direction_bar = direction_bar + phase_argument_bar* &
+                            wave_number*point
+                        point_bar = phase_argument_bar*wave_number*direction
+                        transformation_bar(row, basis) = &
+                            transformation_bar(row, basis) + real( &
+                            conjg(right_hand_side_bar(basis))* &
+                            (-weights(node)*jacobian*phase*contraction), dp)
+                        call evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp( &
+                            refined_vertices, refined_triangles, panel, local_edge, &
+                            radius, xi(node), eta(node), point_bar, local_value_bar, &
+                            0.0_dp, jacobian_bar, local_vertices_bar, &
+                            local_radius_bar, status)
+                        if (status /= 0) return
+                        refined_vertices_bar = refined_vertices_bar + &
+                            local_vertices_bar
+                        radius_bar = radius_bar + local_radius_bar
+                    end do
+                end do
+            end do
+        end do
+        call differentiate_maxwell_bc_transformation_vjp( &
+            vertices, triangles, refined_vertices, refined_triangles, &
+            transformation_bar, local_vertices_bar, status)
+        if (status /= 0) return
+        refined_vertices_bar = refined_vertices_bar + local_vertices_bar
+        call barycentric_refine_sphere_surface_mesh_vjp( &
+            vertices, triangles, radius, refined_vertices_bar, vertices_bar, &
+            local_radius_bar, status)
+        if (status /= 0) return
+        radius_bar = radius_bar + local_radius_bar
+        status = 0
+    end subroutine assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp
 
     subroutine assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d( &
             vertices, triangles, radius, wave_number, impedance, &

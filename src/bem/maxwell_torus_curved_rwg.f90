@@ -500,7 +500,10 @@ contains
             refined_vertices_dot, refined_triangles_dot, refined_parameters_dot, &
             status)
         if (status /= 0) return
-        if (any(refined_triangles_dot /= refined_triangles)) return
+        if (any(refined_triangles_dot /= refined_triangles)) then
+            status = 1
+            return
+        end if
         call differentiate_maxwell_bc_transformation_jvp( &
             vertices, triangles, refined_vertices, refined_triangles, &
             refined_vertices_dot, transformation_dot, status)

@@ -1608,6 +1608,11 @@ gallery example.
   localized RWG traces, radii, polarization, direction, and wave number; an
   independent complex central reassembly and real-part adjoint oracle covers
   the assembled RHS used by the vector FEM--BEM path.
+  The corresponding curved-sphere BC plane-wave load is now public with the
+  same analytical JVP/VJP composition through radial refinement, the BC map,
+  localized traces, radius, polarization, direction, and wave number; its
+  independent central reassembly and real-part adjoint oracle closes the
+  spherical vector trace-load path.
 - Verify FortPlot mesh and surface rendering for every mesh-bearing plot.
 
 ### Phase 5: Fourier-FEM and torus harmonics: **active**
