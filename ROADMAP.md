@@ -327,12 +327,13 @@ documentation gates above pass.
   fixtures. The gate is standard-library-only and passes on the current tree;
   the temporary analytical-oracle allowlist is explicit and documented by the
   checker.
-- **API-05 — first migration slices complete:** eleven representative examples
+- **API-05 — first migration slices complete:** twelve representative examples
   now import the smallest suitable `fortfem_feec`, `fortfem_boundary`, or
   `fortfem_time` facade, with one scalar Poisson umbrella compatibility smoke.
   The added boundary slice covers 2-D Helmholtz/Laplace BEM spectra, CFIE,
-  symmetric FEM--BEM transmission, and the neutral free-boundary trace
-  gallery through the same `fortfem_boundary` capability surface.
+  symmetric FEM--BEM transmission, the neutral free-boundary trace gallery,
+  and the 3-D tree--cotree solution gallery through canonical capability
+  surfaces.
   `tools/check_example_facade_imports.py` and
   `test/test_api05_example_facades.f90` provide import and behavioral gates;
   the remaining gallery still needs a complete smallest-facade audit and a
