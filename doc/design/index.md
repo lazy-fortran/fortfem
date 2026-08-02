@@ -195,6 +195,11 @@ composes shifted vector XFEM/XIGA basis values with curl/divergence product
 rules over basis functions and quadrature points, including complete JVP/VJP
 actions.
 
+The [signed glued FEEC sequence contract](glued_feec_sequence.html) is the
+dense reference composition from cell-local maps to conforming, broken, cut,
+or multipatch global numbering, including orientation signs and complete
+JVP/VJP actions.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
