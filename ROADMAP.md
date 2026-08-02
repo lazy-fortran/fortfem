@@ -1616,6 +1616,11 @@ with left application of the selected bounded preconditioner, and a
 matrix-free sparse BiCGSTAB callback path for ILUT-backed nonsymmetric blocks,
 instead of silently falling back to PCG when either method is requested.
 Independent exact CSC oracles cover both dispatches. The
+neutral `solver_resource_budget_t` API validates caller-owned positive
+wall-time, peak-memory, and repetition limits and evaluates measured usage
+without introducing timing or allocation side effects; its independent
+acceptance/over-budget/invalid-input test is the serial resource-boundary
+contract for solver and benchmark runners. The
 converged-state PCG JVP/VJP differentiates the exact solve independently of
 the inactive preconditioner iteration path; factor rebuilds, breakdowns, and
 graph changes are reported events rather than silently differentiated.
@@ -1925,6 +1930,12 @@ gallery example.
   all-reduce backends can replace without changing local kernels. MPI
   assembly, checkpointing, and distributed solver adapters remain deferred
   until the serial residual and invariant contracts are stable.
+- The neutral `solver_resource_budget_t` contract now validates positive
+  caller-owned wall-time, peak-memory, and repetition limits, and reports
+  whether measured usage fits those limits without timing, allocation, MPI,
+  or solver side effects. A seven-case independent test covers acceptance,
+  over-budget measurements, and invalid limits; this is the resource gate
+  used by focused solver and gallery runners before larger benchmarks.
 - Keep FortSym revision pins and generated-kernel checks green.
 
 ### Phase 1: Interface calculus: **active**
