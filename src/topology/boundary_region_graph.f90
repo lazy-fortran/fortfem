@@ -78,12 +78,9 @@ contains
     subroutine validate_boundary_region_graph(graph, status)
         type(boundary_region_graph_t), intent(in) :: graph
         integer, intent(out) :: status
-        integer, allocatable :: incidence(:, :)
 
         status = 1
         call validate_region_interface_graph(graph%topology, status)
-        if (status /= 0) return
-        call region_interface_graph_incidence(graph%topology, incidence, status)
         if (status /= 0) return
         if (.not. allocated(graph%interface_genus) .or. &
             .not. allocated(graph%exterior_interface) .or. &
