@@ -31,6 +31,7 @@ class ExampleCase:
     path: str
     facade: str
     legacy_smoke: bool = False
+    required_facades: tuple[str, ...] = ()
 
 
 CASES = (
@@ -95,6 +96,29 @@ CASES = (
         "example/biro_tree_cotree_3d_gallery/biro_tree_cotree_3d_gallery.f90",
         "fortfem_feec",
     ),
+    ExampleCase(
+        "polar IGA FEEC solution",
+        "example/iga_polar_feec/iga_polar_feec.f90",
+        "fortfem_feec",
+    ),
+    ExampleCase(
+        "toroidal Maxwell FEM-BEM solution",
+        "example/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_solution.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core", "fortfem_feec"),
+    ),
+    ExampleCase(
+        "curved toroidal Maxwell scattering solution",
+        "example/maxwell_torus_curved_scattering/maxwell_torus_curved_scattering.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core"),
+    ),
+    ExampleCase(
+        "three-dimensional sphere BEM solution",
+        "example/bem_sphere_3d/bem_sphere_3d.f90",
+        "fortfem_boundary",
+        required_facades=("fortfem_boundary", "fortfem_core"),
+    ),
 )
 
 
@@ -142,18 +166,24 @@ def check(root: Path) -> list[str]:
             continue
         modules = imported_modules(source)
         facade = case.facade.lower()
-        provider = providers.get(facade)
-        if provider is None:
-            errors.append(f"{case.name}: facade {case.facade} has no module provider")
-        else:
-            expected = root / "src" / f"{facade}.f90"
-            if provider != expected:
+        required_facades = tuple(
+            name.lower() for name in (case.required_facades or (case.facade,))
+        )
+        for required in required_facades:
+            provider = providers.get(required)
+            if provider is None:
                 errors.append(
-                    f"{case.name}: facade {case.facade} resolves to {provider}, "
-                    f"expected {expected}"
+                    f"{case.name}: facade {required} has no module provider"
                 )
-        if facade not in modules:
-            errors.append(f"{case.name}: missing canonical import {case.facade}")
+            else:
+                expected = root / "src" / f"{required}.f90"
+                if provider != expected:
+                    errors.append(
+                        f"{case.name}: facade {required} resolves to {provider}, "
+                        f"expected {expected}"
+                    )
+            if required not in modules:
+                errors.append(f"{case.name}: missing canonical import {required}")
         if case.legacy_smoke:
             legacy_count += 1
             if facade != "fortfem_api":

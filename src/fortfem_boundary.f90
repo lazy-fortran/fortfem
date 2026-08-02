@@ -48,6 +48,33 @@ module fortfem_boundary
         assemble_planar_helmholtz_dtn_form, &
         assemble_planar_helmholtz_dtn_form_jvp, &
         assemble_planar_helmholtz_dtn_form_vjp
+    use fortfem_maxwell_fem_bem_coupling_3d, only: &
+        assemble_maxwell_fem_bem_torus_curved_system_3d, &
+        solve_maxwell_fem_bem_torus_curved_system_3d
+    use fortfem_maxwell_curved_dtn, only: &
+        apply_maxwell_trace_to_flux_map, &
+        assemble_maxwell_torus_curved_dtn_rwg_3d
+    use fortfem_maxwell_torus_curved_rwg, only: &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d, &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
+        solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_single_layer_p0_3d, &
+        evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
+        solve_helmholtz_dirichlet_p0_3d
+    use fortfem_helmholtz_hierarchical_3d, only: &
+        apply_helmholtz_cfie_p0_hierarchical_3d, &
+        apply_helmholtz_single_layer_p0_hierarchical_3d, &
+        solve_helmholtz_cfie_p0_hierarchical_3d, &
+        solve_helmholtz_dirichlet_p0_hierarchical_3d
+    use fortfem_helmholtz_representation_3d, only: &
+        evaluate_helmholtz_representation_triangles_3d
+    use fortfem_laplace_galerkin_3d, only: &
+        assemble_laplace_single_layer_p0_3d, solve_laplace_dirichlet_p0_3d
+    use fortfem_laplace_hierarchical_3d, only: &
+        apply_laplace_single_layer_p0_hierarchical_3d
+    use fortfem_laplace_representation_3d, only: &
+        evaluate_laplace_representation_triangles_3d
     implicit none
 
     private
@@ -87,6 +114,26 @@ module fortfem_boundary
     public :: assemble_free_boundary_port_residual
     public :: assemble_free_boundary_port_residual_jvp
     public :: assemble_free_boundary_port_residual_vjp
+    public :: assemble_maxwell_fem_bem_torus_curved_system_3d
+    public :: assemble_maxwell_torus_curved_dtn_rwg_3d
+    public :: assemble_helmholtz_single_layer_p0_3d
+    public :: assemble_laplace_single_layer_p0_3d
+    public :: apply_helmholtz_cfie_p0_hierarchical_3d
+    public :: apply_helmholtz_single_layer_p0_hierarchical_3d
+    public :: apply_laplace_single_layer_p0_hierarchical_3d
+    public :: apply_maxwell_trace_to_flux_map
+    public :: evaluate_helmholtz_cfie_p0_3d
+    public :: evaluate_helmholtz_representation_triangles_3d
+    public :: evaluate_laplace_representation_triangles_3d
+    public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
+    public :: solve_helmholtz_cfie_p0_3d
+    public :: solve_helmholtz_cfie_p0_hierarchical_3d
+    public :: solve_helmholtz_dirichlet_p0_3d
+    public :: solve_helmholtz_dirichlet_p0_hierarchical_3d
+    public :: solve_laplace_dirichlet_p0_3d
+    public :: solve_maxwell_fem_bem_torus_curved_system_3d
+    public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
 
     ! Boundary type for defining domains
     type :: boundary_t

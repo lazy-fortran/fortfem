@@ -1,6 +1,6 @@
 program test_sphere_surface_mesh
     use check, only: check_condition, check_summary
-    use fortfem_api, only: generate_sphere_surface_mesh
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
