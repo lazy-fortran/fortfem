@@ -3,6 +3,7 @@ program test_boundary_region_graph
     use fortfem_api, only: &
         boundary_region_graph_components, boundary_region_graph_cycle_basis, &
         boundary_region_graph_incidence, boundary_region_graph_interface_samples, &
+        boundary_region_graph_interface_metadata, &
         boundary_region_graph_t, initialize_boundary_region_graph, &
         validate_boundary_region_graph
     use fortfem_kinds, only: dp
@@ -15,6 +16,8 @@ program test_boundary_region_graph
     integer, allocatable :: incidence_alloc(:, :), components(:), cycle_basis(:, :)
     real(dp) :: sample_points(3, 3), sample_normals(3, 3), sample_weights(3)
     real(dp), allocatable :: points(:, :), normals(:, :), weights(:)
+    integer, allocatable :: genus_copy(:)
+    logical, allocatable :: exterior_copy(:)
     logical :: all_passed
 
     all_passed = .true.
@@ -58,6 +61,11 @@ program test_boundary_region_graph
     call record_condition(status == 0 .and. size(points, 2) == 1 .and. &
         maxval(abs(points(:, 1) - sample_points(:, 3))) < 2.0e-14_dp, &
         "boundary region graph extracts exterior interface samples")
+    call boundary_region_graph_interface_metadata( &
+        graph, genus_copy, exterior_copy, status)
+    call record_condition(status == 0 .and. all(genus_copy == interface_genus) .and. &
+        all(exterior_copy .eqv. exterior_interface), &
+        "boundary region graph exposes interface topology metadata")
 
     sample_offsets = [1, 4, 5]
     call initialize_boundary_region_graph( &

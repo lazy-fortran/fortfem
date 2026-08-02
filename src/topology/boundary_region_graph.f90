@@ -32,6 +32,7 @@ module fortfem_boundary_region_graph
     public :: boundary_region_graph_components
     public :: boundary_region_graph_cycle_basis
     public :: boundary_region_graph_interface_samples
+    public :: boundary_region_graph_interface_metadata
 
 contains
 
@@ -174,6 +175,27 @@ contains
         end if
         status = 0
     end subroutine boundary_region_graph_interface_samples
+
+    subroutine boundary_region_graph_interface_metadata( &
+            graph, interface_genus, exterior_interface, status)
+        type(boundary_region_graph_t), intent(in) :: graph
+        integer, allocatable, intent(out) :: interface_genus(:)
+        logical, allocatable, intent(out) :: exterior_interface(:)
+        integer, intent(out) :: status
+
+        if (allocated(interface_genus)) deallocate(interface_genus)
+        if (allocated(exterior_interface)) deallocate(exterior_interface)
+        call validate_boundary_region_graph(graph, status)
+        if (status /= 0) then
+            allocate(interface_genus(0), exterior_interface(0))
+            return
+        end if
+        allocate(interface_genus(size(graph%interface_genus)), &
+            exterior_interface(size(graph%exterior_interface)))
+        interface_genus = graph%interface_genus
+        exterior_interface = graph%exterior_interface
+        status = 0
+    end subroutine boundary_region_graph_interface_metadata
 
     subroutine clear_boundary_region_graph(graph)
         type(boundary_region_graph_t), intent(inout) :: graph
