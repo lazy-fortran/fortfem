@@ -42,7 +42,7 @@ and non-adjacent edge intersections, and exposes matching `_jvp` and `_vjp`
 actions.  Shared endpoint cotangents are accumulated across the two incident
 edges.  The pentagon test and gallery fixture use independent shoelace
 oracles, central differences, and a real dot-product identity.  Moving
-connectivity and genuinely higher-order curved support-volume measures remain
+connectivity and degree-four-and-higher curved support-volume measures remain
 planned extensions.  The generic
 `compute_fci_curved_polygon_cell_areas_2d` contract now accepts one quadratic
 Bezier control point per edge for the same arbitrary polygon topology.  Its
@@ -53,7 +53,10 @@ curved quadrilateral map remains a specialized fixed-topology baseline.  For
 all curved maps, vertex ordering and finite controls are validated, while
 callers remain responsible for keeping the curved boundary non-self-
 intersecting.  Neither straight nor curved FCI topology is differentiable
-across a connectivity or orientation event.
+across a connectivity or orientation event.  The public
+`compute_fci_cubic_curved_polygon_cell_areas_2d` contract extends the same
+fixed-topology map to two cubic Bezier controls per edge, with generated
+value/JVP/VJP kernels and an independent three-point Gauss--Green oracle.
 
 For edge `e`, with endpoints `p_e`, `p_{e+1}` and control point `c_e`, the
 boundary is
@@ -68,6 +71,16 @@ independent test evaluates the same line integral with three-point Gauss
 quadrature, then checks central differences and the real VJP dot-product
 identity.  The gallery samples the actual Bezier boundaries rather than
 replacing them by a polygonal preview.
+
+For cubic edges, the two controls `c_{e,1}`, `c_{e,2}` give
+
+\[
+  r_e(t)=(1-t)^3p_e+3(1-t)^2t c_{e,1}
+       +3(1-t)t^2c_{e,2}+t^3p_{e+1}.
+\]
+
+The generated polynomial still evaluates the line integral exactly; the
+independent three-point rule is exact because the integrand has degree five.
 
 ## Provenance
 

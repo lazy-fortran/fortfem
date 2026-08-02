@@ -37,6 +37,12 @@ module fortfem_fci_support_geometry
         generated_fci_quadratic_bezier_edge_area_jvp
     use fortfem_generated_fci_quadratic_bezier_edge_area_vjp, only: &
         generated_fci_quadratic_bezier_edge_area_vjp
+    use fortfem_generated_fci_cubic_bezier_edge_area, only: &
+        generated_fci_cubic_bezier_edge_area
+    use fortfem_generated_fci_cubic_bezier_edge_area_jvp, only: &
+        generated_fci_cubic_bezier_edge_area_jvp
+    use fortfem_generated_fci_cubic_bezier_edge_area_vjp, only: &
+        generated_fci_cubic_bezier_edge_area_vjp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
@@ -54,6 +60,9 @@ module fortfem_fci_support_geometry
     public :: compute_fci_curved_polygon_cell_areas_2d
     public :: compute_fci_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_curved_polygon_cell_areas_2d_vjp
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
@@ -575,6 +584,227 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine compute_fci_curved_polygon_cell_areas_2d_vjp
 
+    subroutine compute_fci_cubic_curved_polygon_cell_areas_2d( &
+            cell_vertices, edge_controls, areas, status)
+        !! Compute positive Green areas for cubic Bezier-edge polygons.
+        !!
+        !! `edge_controls(:, 1:2, edge, cell)` are the two control points
+        !! for the edge from vertex `edge` to its cyclic successor.  The
+        !! straight polygon topology and orientation stay fixed while
+        !! differentiating the measure.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(out) :: areas(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: edge_area
+
+        areas = 0.0_dp
+        call validate_cubic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon areas have incompatible output")
+            return
+        end if
+        do cell = 1, cell_count
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_cubic_bezier_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    edge_controls(1, 1, vertex, cell), &
+                    edge_controls(2, 1, vertex, cell), &
+                    edge_controls(1, 2, vertex, cell), &
+                    edge_controls(2, 2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                areas(cell) = areas(cell) + edge_area
+            end do
+            if (.not. ieee_is_finite(areas(cell)) .or. &
+                areas(cell) <= 0.0_dp) then
+                areas = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI cubic curved polygon cells must have positive area")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_cubic_curved_polygon_cell_areas_2d
+
+    subroutine compute_fci_cubic_curved_polygon_cell_areas_2d_jvp( &
+            cell_vertices, edge_controls, cell_vertices_dot, &
+            edge_controls_dot, areas_dot, status)
+        !! Apply the fixed-topology JVP of cubic Bezier-edge areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(in) :: cell_vertices_dot(:, :, :)
+        real(dp), intent(in) :: edge_controls_dot(:, :, :, :)
+        real(dp), intent(out) :: areas_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: area, edge_area, edge_area_dot
+
+        areas_dot = 0.0_dp
+        call validate_cubic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(cell_vertices_dot, 1) /= 2 .or. &
+            size(cell_vertices_dot, 2) /= vertex_count .or. &
+            size(cell_vertices_dot, 3) /= cell_count .or. &
+            size(edge_controls_dot, 1) /= 2 .or. &
+            size(edge_controls_dot, 2) /= 2 .or. &
+            size(edge_controls_dot, 3) /= vertex_count .or. &
+            size(edge_controls_dot, 4) /= cell_count .or. &
+            size(areas_dot) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon area JVP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(cell_vertices_dot)) .or. &
+            any(.not. ieee_is_finite(edge_controls_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon area JVP has non-finite tangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_cubic_bezier_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    edge_controls(1, 1, vertex, cell), &
+                    edge_controls(2, 1, vertex, cell), &
+                    edge_controls(1, 2, vertex, cell), &
+                    edge_controls(2, 2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                area = area + edge_area
+                call generated_fci_cubic_bezier_edge_area_jvp( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    edge_controls(1, 1, vertex, cell), &
+                    edge_controls(2, 1, vertex, cell), &
+                    edge_controls(1, 2, vertex, cell), &
+                    edge_controls(2, 2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), &
+                    cell_vertices_dot(1, vertex, cell), &
+                    cell_vertices_dot(2, vertex, cell), &
+                    edge_controls_dot(1, 1, vertex, cell), &
+                    edge_controls_dot(2, 1, vertex, cell), &
+                    edge_controls_dot(1, 2, vertex, cell), &
+                    edge_controls_dot(2, 2, vertex, cell), &
+                    cell_vertices_dot(1, next_vertex, cell), &
+                    cell_vertices_dot(2, next_vertex, cell), edge_area_dot)
+                areas_dot(cell) = areas_dot(cell) + edge_area_dot
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp .or. &
+                .not. ieee_is_finite(areas_dot(cell))) then
+                areas_dot = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI cubic curved polygon area JVP crosses an area event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_cubic_curved_polygon_cell_areas_2d_jvp
+
+    subroutine compute_fci_cubic_curved_polygon_cell_areas_2d_vjp( &
+            cell_vertices, edge_controls, areas_bar, cell_vertices_bar, &
+            edge_controls_bar, status)
+        !! Apply the real VJP of fixed-topology cubic Bezier-edge areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(in) :: areas_bar(:)
+        real(dp), intent(out) :: cell_vertices_bar(:, :, :)
+        real(dp), intent(out) :: edge_controls_bar(:, :, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+        real(dp) :: area, edge_area
+        real(dp) :: x_start_bar, y_start_bar, control_1_x_bar, control_1_y_bar
+        real(dp) :: control_2_x_bar, control_2_y_bar, x_end_bar, y_end_bar
+
+        cell_vertices_bar = 0.0_dp
+        edge_controls_bar = 0.0_dp
+        call validate_cubic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas_bar) /= cell_count .or. &
+            size(cell_vertices_bar, 1) /= 2 .or. &
+            size(cell_vertices_bar, 2) /= vertex_count .or. &
+            size(cell_vertices_bar, 3) /= cell_count .or. &
+            size(edge_controls_bar, 1) /= 2 .or. &
+            size(edge_controls_bar, 2) /= 2 .or. &
+            size(edge_controls_bar, 3) /= vertex_count .or. &
+            size(edge_controls_bar, 4) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon area VJP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(areas_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon area VJP has non-finite cotangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                call generated_fci_cubic_bezier_edge_area( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    edge_controls(1, 1, vertex, cell), &
+                    edge_controls(2, 1, vertex, cell), &
+                    edge_controls(1, 2, vertex, cell), &
+                    edge_controls(2, 2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), edge_area)
+                area = area + edge_area
+                call generated_fci_cubic_bezier_edge_area_vjp( &
+                    cell_vertices(1, vertex, cell), &
+                    cell_vertices(2, vertex, cell), &
+                    edge_controls(1, 1, vertex, cell), &
+                    edge_controls(2, 1, vertex, cell), &
+                    edge_controls(1, 2, vertex, cell), &
+                    edge_controls(2, 2, vertex, cell), &
+                    cell_vertices(1, next_vertex, cell), &
+                    cell_vertices(2, next_vertex, cell), areas_bar(cell), &
+                    x_start_bar, y_start_bar, control_1_x_bar, control_1_y_bar, &
+                    control_2_x_bar, control_2_y_bar, x_end_bar, y_end_bar)
+                cell_vertices_bar(1, vertex, cell) = &
+                    cell_vertices_bar(1, vertex, cell) + x_start_bar
+                cell_vertices_bar(2, vertex, cell) = &
+                    cell_vertices_bar(2, vertex, cell) + y_start_bar
+                edge_controls_bar(1, 1, vertex, cell) = &
+                    edge_controls_bar(1, 1, vertex, cell) + control_1_x_bar
+                edge_controls_bar(2, 1, vertex, cell) = &
+                    edge_controls_bar(2, 1, vertex, cell) + control_1_y_bar
+                edge_controls_bar(1, 2, vertex, cell) = &
+                    edge_controls_bar(1, 2, vertex, cell) + control_2_x_bar
+                edge_controls_bar(2, 2, vertex, cell) = &
+                    edge_controls_bar(2, 2, vertex, cell) + control_2_y_bar
+                cell_vertices_bar(1, next_vertex, cell) = &
+                    cell_vertices_bar(1, next_vertex, cell) + x_end_bar
+                cell_vertices_bar(2, next_vertex, cell) = &
+                    cell_vertices_bar(2, next_vertex, cell) + y_end_bar
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp) then
+                cell_vertices_bar = 0.0_dp
+                edge_controls_bar = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI cubic curved polygon area VJP crosses an area event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_cubic_curved_polygon_cell_areas_2d_vjp
+
     subroutine compute_fci_curved_quadrilateral_cell_areas_2d( &
             cell_vertices, edge_controls, areas, status)
         !! Compute positive Green areas for quadratic Bezier-edge cells.
@@ -1087,6 +1317,32 @@ contains
         end if
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine validate_curved_polygon_vertices
+
+    subroutine validate_cubic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        integer, intent(out) :: vertex_count, cell_count
+        type(fortsparse_status_t), intent(out) :: status
+
+        call validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(edge_controls, 1) /= 2 .or. &
+            size(edge_controls, 2) /= 2 .or. &
+            size(edge_controls, 3) /= vertex_count .or. &
+            size(edge_controls, 4) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon controls have incompatible shape")
+            return
+        end if
+        if (any(.not. ieee_is_finite(edge_controls))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI cubic curved polygon controls contain non-finite values")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_cubic_curved_polygon_vertices
 
     pure logical function segments_intersect( &
             first_x, first_y, second_x, second_y, third_x, third_y, &
