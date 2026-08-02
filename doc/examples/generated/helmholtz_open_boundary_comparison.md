@@ -32,7 +32,7 @@ fpm run --example helmholtz_open_boundary_comparison
 
 ```fortran
 program helmholtz_open_boundary_comparison
-    use fortfem_api, only: solve_scalar_helmholtz_pml_slab_1d
+    use fortfem_boundary, only: solve_scalar_helmholtz_pml_slab_1d
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: dense_solve
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel

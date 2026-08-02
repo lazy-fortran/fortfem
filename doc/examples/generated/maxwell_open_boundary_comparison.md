@@ -50,15 +50,16 @@ fpm run --example maxwell_open_boundary_comparison
 
 ```fortran
 program maxwell_open_boundary_comparison
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_planar_maxwell_dtn, &
         assemble_planar_nedelec_maxwell_dtn_form, &
-        build_tetra_edge_dof_map, &
-        build_planar_nedelec_trace_sampling, &
-        evaluate_tetra_nedelec_interpolant_at_point, &
-        invert_tetra_affine_map, &
-        generate_structured_tetra_box_mesh, solve_tetra_nedelec_curl_mass, &
-        solve_tetra_nedelec_pml, initialize_tetra_nedelec_first_kind, &
+        build_planar_nedelec_trace_sampling
+    use fortfem_core, only: &
+        generate_structured_tetra_box_mesh, invert_tetra_affine_map
+    use fortfem_feec, only: &
+        build_tetra_edge_dof_map, evaluate_tetra_nedelec_interpolant_at_point, &
+        solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml, &
+        initialize_tetra_nedelec_first_kind, &
         tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, figure, legend, pcolormesh, plot, quiver, &

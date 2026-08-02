@@ -32,6 +32,7 @@ program circular_dtn_modes
     call execute_command_line( &
         "mkdir -p "//output_directory, exitstat=command_status)
     if (command_status /= 0) error stop "cannot create example output directory"
+    call initialize_gallery_sequence()
 
     ! Boundary data on the unit circle:
     ! u(theta) = exp(2 i theta) + 0.1 exp(9 i theta).
@@ -58,6 +59,7 @@ program circular_dtn_modes
     ! Render the physical field before one-dimensional diagnostics.  This is
     ! also the gallery's primary view of the example.
     call render_field()
+    call record_gallery_stage("physical_solution")
 
     call figure(figsize=[9.0_dp, 5.5_dp])
     call plot(theta, real(trace), label="Re(trace)", linestyle="-")
@@ -77,8 +79,31 @@ program circular_dtn_modes
     call ylabel("normal derivative")
     call title("Circular Helmholtz DtN response")
     call savefig(output_directory//"/circular_dtn_response_1d.png")
+    call record_gallery_stage("diagnostics")
 
 contains
+
+    subroutine initialize_gallery_sequence()
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="replace", action="write", iostat=local_status)
+        if (local_status /= 0) error stop "cannot initialize gallery sequence"
+        close (unit)
+    end subroutine initialize_gallery_sequence
+
+    subroutine record_gallery_stage(stage)
+        character(len=*), intent(in) :: stage
+        integer :: unit, local_status
+
+        open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+            status="old", position="append", action="write", &
+            iostat=local_status)
+        if (local_status /= 0) error stop "cannot open gallery sequence"
+        write (unit, "(a)", iostat=local_status) trim(stage)
+        close (unit)
+        if (local_status /= 0) error stop "cannot write gallery sequence"
+    end subroutine record_gallery_stage
 
     subroutine render_field()
         integer, parameter :: field_nx = 64, field_ny = 64

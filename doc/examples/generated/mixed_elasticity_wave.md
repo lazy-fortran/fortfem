@@ -35,8 +35,8 @@ program mixed_elasticity_wave
     !! The two sine modes are a manufactured compatible bar state.  The
     !! mixed midpoint step advances displacement-like coordinates and their
     !! velocity companions; stress is reconstructed from the strain map.
-    use fortfem_api, only: &
-        assemble_mixed_elasticity_residual, advance_mixed_wave_midpoint
+    use fortfem_feec, only: assemble_mixed_elasticity_residual
+    use fortfem_time, only: advance_mixed_wave_midpoint
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, contourf, figure, legend, plot, quiver, &
         savefig, set_yscale, title, xlabel, ylabel

@@ -46,7 +46,7 @@ program fci_parallel_diffusion
     ! transparent while retaining the full FCI P K_parallel Q API.  The
     ! cosine profile has zero continuous gradient at both open-line ends, so
     ! the gallery plot does not obscure the support action with boundary flux.
-    use fortfem_api, only: apply_fci_parallel_diffusion
+    use fortfem_feec, only: apply_fci_parallel_diffusion
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: fortsparse_status_t
