@@ -59,6 +59,7 @@ program test_oracle_manifest_ladder
             sample_checksum="sha256:fixture-samples", spatial_dimension=2, &
             sample_count=12, normalization=normalization, &
             tolerances=tolerances, timing=timing, runner_id="fixture-runner", &
+            runner_hardware="CI-x86_64 / 32 GB / Linux / 1 thread", &
             fortfem_commit="fixture-commit", &
             sister_repository_uri="https://example.invalid/fortfem-benchmarks", &
             success=.true., notes="metadata-only external target fixture", &

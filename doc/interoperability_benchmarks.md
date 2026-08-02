@@ -28,16 +28,20 @@ never replaces convergence against the exact solution.
 ## Versioned oracle manifest
 
 Every external result may be accompanied by the neutral
-`fortfem-oracle-manifest-1` text record.  The public
+`fortfem-oracle-manifest-2` text record.  The schema-2 record adds required
+runner-hardware provenance (CPU/memory/OS/thread context) so performance
+numbers are not detached from their execution environment.  The public
 `oracle_manifest_t` contract records the external code name, release and
 immutable revision, the applicable license, case revision, coordinate system,
 SHA-256 checksums for coordinates and sampled data, declared units and scale
-factors, comparison tolerances, runner identity, wall-clock phase timings,
-peak memory, repetition counts, and an optional immutable sister-repository
-URI.  `write_oracle_manifest` and `read_oracle_manifest` provide a bounded
-round-trip format; `validate_oracle_manifest` rejects incomplete provenance,
-non-finite scales/tolerances/timings, invalid dimensions, and inconsistent
-performance metadata before data are published.
+factors, comparison tolerances, runner identity and hardware, wall-clock phase
+timings, peak memory, repetition counts, and an optional immutable
+sister-repository URI.  `write_oracle_manifest` and `read_oracle_manifest`
+provide a bounded round-trip format; `validate_oracle_manifest` rejects
+incomplete provenance, non-finite scales/tolerances/timings, invalid
+dimensions, and inconsistent performance metadata before data are published.
+Schema-1 records are intentionally rejected rather than silently interpreted
+with missing hardware metadata; adapters must publish a new schema-2 record.
 
 The code-name field is intentionally open rather than an enum.  Thus an
 adapter can identify CHEASE, FreeGS, VMEC/PARVMEC, GVEC, DESC, SPEC/SPECTRE,
