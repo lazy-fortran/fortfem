@@ -162,6 +162,11 @@ field-period phase, normalization, conjugate packing, triad lookup, radial
 regularity, and complex-coordinate derivative conventions for Fourier-FEM and
 IGA clients.
 
+The [axis-regular radial basis](axis_regular_radial_basis.html) evaluates a
+caller-selected finite complex radial polynomial whose powers satisfy the
+scalar Fourier-axis minimum and parity rules, with exact coefficient and
+radial-coordinate JVP/VJP actions.
+
 The [neutral equilibrium interchange contract](equilibrium_interchange.html)
 defines the sample/provenance boundary for external equilibrium adapters
 without implementing GEQDSK, COCOS, or plasma-specific readers and closures.

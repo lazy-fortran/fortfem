@@ -40,10 +40,11 @@ its conjugate; the key is `(m,n)` for `m>0` (or `m=0,n>=0`), otherwise the
 negated pair, followed by orientation.  This keeps complex packing and
 field-period mode lookup deterministic without selecting a plasma model.
 
-The table only validates fixed-topology metadata.  It does not construct a
-Fourier--Zernike basis, choose profiles, enforce force balance, or import DESC,
-VMEC, or any plasma-specific format.  `nested_surface_geometry` can consume
-the same registry after this independent check.
+The table only validates fixed-topology metadata.  It does not choose profiles,
+enforce force balance, or import DESC, VMEC, or any plasma-specific format.
+`evaluate_axis_regular_radial_basis` applies the same rule to a caller-selected
+finite polynomial and supplies coefficient/radial-coordinate derivatives;
+`nested_surface_geometry` can consume the common mode metadata independently.
 
 ## Independent verification
 
