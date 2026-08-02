@@ -80,16 +80,13 @@ memory-scalable row-oriented builder.
 
 The same factor is selectable in the public PCG path with
 `solver_options(preconditioner=ichol_preconditioner())` (the aliases `ic` and
-`ic0` are accepted). The sparse baseline deliberately densifies a CSC matrix;
-the standalone sparse IC(0) API above is available for callers that must keep
-the factor sparse. `solver_options(preconditioner=ichol_controlled_preconditioner(),
-drop_tolerance=..., fill_level=...)` selects the sparse controlled path in
-`solve_sparse`; the exact full-fill one-step PCG fixture is independently
-tested. The row-oriented ICHOL constructor has an independent tridiagonal
-oracle and fixed-factor adjoint check. Measured scaling remains benchmark
-work. The legacy BiCGSTAB kernel accepts only its ILU
-factor contract and therefore reports an explicit unpreconditioned fallback
-if ICHOL is selected there.
+`ic0` are accepted). `solve_sparse` keeps this path sparse and uses the CSC
+IC builder directly; `ichol_controlled_preconditioner()` selects the explicit
+drop/fill-controlled spelling. The exact full-fill one-step PCG fixture is
+independently tested. The row-oriented ICHOL constructor has an independent
+tridiagonal oracle and fixed-factor adjoint check. Measured scaling remains
+benchmark work. Sparse BiCGSTAB and GMRES use their matrix-free callback
+paths; the dense BiCGSTAB entry point retains its legacy dense-ILU contract.
 
 The builder rejects nonsymmetric, non-finite, non-square, and non-positive
 pivot inputs. Factorization branches and sparsity patterns are fixed for

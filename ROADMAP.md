@@ -1152,8 +1152,8 @@ The dense IC(0) factor/apply primitive and the PCG `ichol`/`ic0` option are now
 public and independently tested. Standalone sparse IC(0) and ILU(0) paths now
 consume FortSparse CSC directly, preserve the input lower/upper patterns
 without fill, and expose fixed-factor right-hand-side JVP/VJP actions,
-including the transpose solve for ILU. Fill-controlled ICHOL and
-production-size scaling remain active solver work. The deterministic
+including the transpose solve for ILU. Production-size scaling remains
+active solver work. The deterministic
 `build_sparse_ilut`/`apply_sparse_ilut` path now supplies drop tolerance,
 per-column fill selection, fixed-factor JVP/VJP, and explicit pivot status;
 `build_sparse_ichol` supplies the matching SPD drop/fill path on the existing
