@@ -13,12 +13,19 @@ example; no numerical kernel was copied or rewritten.
 | Circular Helmholtz DtN | `example/circular_dtn_modes.f90` | `fortfem_boundary` | migrated |
 | Mixed acoustic wave | `example/mixed_acoustic_wave/mixed_acoustic_wave.f90` | `fortfem_time` | migrated |
 | Three-dimensional mixed wave | `example/mixed_wave_3d_structure/mixed_wave_3d_structure.f90` | `fortfem_time` | migrated |
+| Helmholtz circle BEM spectrum | `example/helmholtz_bem_circle_spectrum.f90` | `fortfem_boundary` | migrated |
+| Laplace circle BEM spectrum | `example/laplace_bem_circle_spectrum.f90` | `fortfem_boundary` | migrated |
+| Helmholtz circle CFIE | `example/helmholtz_cfie_circle.f90` | `fortfem_boundary` | migrated |
+| Laplace symmetric FEM-BEM transmission | `example/laplace_symmetric_transmission.f90` | `fortfem_boundary` | migrated |
 
 The Poisson program is intentionally the one umbrella-import compatibility
 smoke.  It keeps a complete legacy client available while the smaller
 facades grow to cover the general FEM form and mesh contracts.  The other
-five programs no longer import `fortfem_api`; their canonical modules
-re-export the existing implementations directly.
+nine programs no longer import `fortfem_api`; their canonical modules
+re-export the existing implementations directly.  The four boundary rows
+are one coherent 2-D BEM/CFIE/transmission slice: all operators remain in
+their existing implementation modules and `fortfem_boundary` only exposes
+the stable capability surface.
 
 Run the structural gate from the repository root:
 
