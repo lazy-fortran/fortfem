@@ -39,6 +39,15 @@ The apply path itself is sparse and has no factor rebuild.
 active fixed-factor right-hand-side solve; fill selection and pivot decisions
 are inactive topology/events.
 
+For a FortSparse matrix, `solve_sparse` accepts `preconditioner="sparse_ilut"`
+(or the aliases `"ilut"` and `"ilu"`) and routes PCG through the
+row-oriented builder.
+This keeps the preconditioner work proportional to the sparse graph instead of
+converting the input CSC matrix to an \(n\times n\) dense array. The option is
+intended for explicitly selected nonsymmetric or complex-response-compatible
+client blocks; PCG still requires the caller to establish an appropriate
+positive inner product.
+
 The focused behavioral tests check a hand-derived four-by-four LU solution,
 the dense-reference zero-fill diagonal limit, the row-builder no-fill
 diagonal oracle, finite fill-controlled application, the real JVP/VJP

@@ -9,6 +9,8 @@ module fortfem_advanced_solvers
     use fortfem_sparse_incomplete_cholesky, only: &
         apply_sparse_incomplete_cholesky, build_sparse_ichol, &
         sparse_incomplete_cholesky_factor_t
+    use fortfem_sparse_ilut, only: apply_sparse_ilut, build_sparse_ilut_row, &
+        sparse_ilut_factor_t
     use fortsparse, only: fortsparse_status_t
     use fortnum_linalg, only: dense_solve
     use fortnum_krylov, only: KRYLOV_OK, real_gmres_operator
@@ -62,6 +64,7 @@ module fortfem_advanced_solvers
         integer, allocatable :: pivot(:) ! For ILU
         type(incomplete_cholesky_factor_t) :: ichol ! For IC(0)
         type(sparse_incomplete_cholesky_factor_t) :: sparse_ichol
+        type(sparse_ilut_factor_t) :: sparse_ilut
     end type preconditioner_t
 
     abstract interface
@@ -1029,7 +1032,16 @@ contains
                 opts%fill_level, precond%sparse_ichol, sparse_status)
             if (sparse_status%code /= 0) precond%type = "none"
 
-        case ("ilu", "ichol", "ic", "ic0")
+        case ("sparse_ilut", "ilut", "ilu")
+            call build_sparse_ilut_row(A_sparse, opts%drop_tolerance, &
+                opts%fill_level, precond%sparse_ilut, sparse_status)
+            if (sparse_status%code /= 0) then
+                precond%type = "none"
+            else
+                precond%type = "sparse_ilut"
+            end if
+
+        case ("ichol", "ic", "ic0")
             allocate (A_dense(n, n))
             A_dense = 0.0_dp
 
@@ -1063,6 +1075,7 @@ contains
         integer :: n, i, status
         real(dp), allocatable :: z_ichol(:)
         real(dp), allocatable :: z_sparse_ichol(:)
+        real(dp), allocatable :: z_sparse_ilut(:)
         type(fortsparse_status_t) :: sparse_status
 
         n = size(r)
@@ -1081,6 +1094,15 @@ contains
                 precond%sparse_ichol, r, z_sparse_ichol, sparse_status)
             if (sparse_status%code == 0) then
                 z = z_sparse_ichol
+            else
+                z = r
+            end if
+
+        case ("sparse_ilut", "ilut")
+            call apply_sparse_ilut(precond%sparse_ilut, r, z_sparse_ilut, &
+                sparse_status)
+            if (sparse_status%code == 0) then
+                z = z_sparse_ilut
             else
                 z = r
             end if
