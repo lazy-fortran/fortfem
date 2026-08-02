@@ -1791,6 +1791,11 @@ gallery example.
   matching analytical geometry, radius, coefficient, direction, wave-number,
   and impedance JVP/VJP products, independently checked by central
   reassembly and the complex real-part adjoint identity. The assembled
+  curved-sphere off-surface magnetic reconstruction now also has complete
+  geometry, radius, coefficient, target, and wave-number JVP/VJP products;
+  independent central reassembly and complex real-part adjoint tests make the
+  sphere a second virtual-casing geometry rather than a visualization-only
+  fixture. The assembled
   toroidal MFIE offset trace now exposes a
   fixed-geometry relative-offset and wave-number JVP/VJP product, independently
   checked by central reassembly and a complex real-part adjoint identity; its
