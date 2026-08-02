@@ -265,6 +265,9 @@ module fortfem_api
         evaluate_piola_enriched_vector_differential_3d, &
         evaluate_piola_enriched_vector_differential_3d_jvp, &
         evaluate_piola_enriched_vector_differential_3d_vjp, &
+        evaluate_piola_enriched_vector_differential_2d, &
+        evaluate_piola_enriched_vector_differential_2d_jvp, &
+        evaluate_piola_enriched_vector_differential_2d_vjp, &
         PIOLA_COVARIANT, PIOLA_CONTRAVARIANT
     use fortfem_tree_cotree_gauge, only: &
         apply_tree_cotree_prolongation, apply_tree_cotree_restriction, &
@@ -1518,6 +1521,9 @@ module fortfem_api
     public :: evaluate_piola_enriched_vector_differential_3d
     public :: evaluate_piola_enriched_vector_differential_3d_jvp
     public :: evaluate_piola_enriched_vector_differential_3d_vjp
+    public :: evaluate_piola_enriched_vector_differential_2d
+    public :: evaluate_piola_enriched_vector_differential_2d_jvp
+    public :: evaluate_piola_enriched_vector_differential_2d_vjp
     public :: PIOLA_COVARIANT, PIOLA_CONTRAVARIANT
     public :: tree_cotree_gauge_t
     public :: build_tree_cotree_gauge
