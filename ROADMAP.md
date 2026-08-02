@@ -891,7 +891,10 @@ all geometries:
    fixed-topology metadata/energy block: callers can reject an explicit mean,
    report retained/omitted rectangular-window modes, and differentiate supplied
    coefficient energies. Regularized Green convolution, Neumann compatibility,
-   and unprovided-tail estimation remain caller-owned.
+   and unprovided-tail estimation remain caller-owned. A fixed-surface modal
+   Neumann inversion with explicit zero-mode and resonance status plus
+   analytical scale/η JVP/VJP actions is also public; global compatibility and
+   Green-kernel assembly remain caller-owned.
 3. **BIEST-like generalized-Debye-source operator.** Provide a second-kind
    surface formulation for Beltrami/Taylor/force-free fields, with explicit
    harmonic representatives for each handle and a resonance/status contract.

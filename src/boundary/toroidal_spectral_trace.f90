@@ -5,6 +5,7 @@ module fortfem_toroidal_spectral_trace
     !! modal coefficients and choose the regular P branch or decaying Q branch.
     !! No equilibrium profile, coil model, or toroidal field convention is
     !! selected here.
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_kinds, only: dp
     use fortnum_special_toroidal, only: &
         toroidal_p, toroidal_p_derivative, toroidal_q, toroidal_q_derivative
@@ -19,6 +20,9 @@ module fortfem_toroidal_spectral_trace
     public :: evaluate_toroidal_spectral_trace_grid
     public :: evaluate_toroidal_spectral_trace_grid_jvp
     public :: evaluate_toroidal_spectral_trace_grid_vjp
+    public :: solve_toroidal_spectral_neumann
+    public :: solve_toroidal_spectral_neumann_jvp
+    public :: solve_toroidal_spectral_neumann_vjp
 
 contains
 
@@ -195,6 +199,159 @@ contains
         status = 0
     end subroutine evaluate_toroidal_spectral_trace_grid_vjp
 
+    subroutine solve_toroidal_spectral_neumann( &
+            degree_indices, orders, normal_coefficients, scale, eta, &
+            use_second_kind, allow_zero_mode, resonance_tolerance, &
+            potential_coefficients, status)
+        !! Invert the diagonal modal normal trace on a fixed eta surface.
+        !!
+        !! `normal_coefficients` and `potential_coefficients` are coefficients
+        !! of the same exp(i*(degree*theta + order*phi)) basis.  The modal
+        !! normal factor is evaluated at theta=phi=0; angular phases cancel
+        !! coefficient-wise.  A caller chooses the zero-mode policy and the
+        !! resonance tolerance explicitly.
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: normal_coefficients(:)
+        real(dp), intent(in) :: scale, eta, resonance_tolerance
+        logical, intent(in) :: use_second_kind, allow_zero_mode
+        complex(dp), intent(out) :: potential_coefficients(:)
+        integer, intent(out) :: status
+
+        complex(dp) :: mode_value, mode_normal, mode_value_dot, mode_normal_dot
+        integer :: mode
+
+        potential_coefficients = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (.not. valid_neumann_inputs( &
+            degree_indices, orders, normal_coefficients, scale, eta, &
+            resonance_tolerance, potential_coefficients)) return
+        do mode = 1, size(normal_coefficients)
+            if (.not. allow_zero_mode .and. degree_indices(mode) == 0 .and. &
+                orders(mode) == 0) then
+                status = 2
+                return
+            end if
+            call evaluate_mode( &
+                degree_indices(mode), orders(mode), scale, eta, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, mode_value, &
+                mode_normal, mode_value_dot, mode_normal_dot, status)
+            if (status /= 0) then
+                status = 4
+                return
+            end if
+            if (abs(mode_normal) <= resonance_tolerance) then
+                status = 3
+                return
+            end if
+            potential_coefficients(mode) = normal_coefficients(mode)/mode_normal
+        end do
+        status = 0
+    end subroutine solve_toroidal_spectral_neumann
+
+    subroutine solve_toroidal_spectral_neumann_jvp( &
+            degree_indices, orders, normal_coefficients, scale, eta, &
+            use_second_kind, allow_zero_mode, resonance_tolerance, &
+            normal_coefficients_dot, scale_dot, eta_dot, potential_coefficients_dot, &
+            status)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: normal_coefficients(:), normal_coefficients_dot(:)
+        real(dp), intent(in) :: scale, eta, resonance_tolerance
+        logical, intent(in) :: use_second_kind, allow_zero_mode
+        real(dp), intent(in) :: scale_dot, eta_dot
+        complex(dp), intent(out) :: potential_coefficients_dot(:)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: potential_coefficients(:)
+        complex(dp) :: mode_value, mode_normal, mode_value_dot, mode_normal_dot
+        integer :: mode
+
+        potential_coefficients_dot = cmplx(0.0_dp, 0.0_dp, dp)
+        status = 1
+        if (size(normal_coefficients_dot) /= size(normal_coefficients)) return
+        allocate(potential_coefficients(size(normal_coefficients)))
+        call solve_toroidal_spectral_neumann( &
+            degree_indices, orders, normal_coefficients, scale, eta, use_second_kind, &
+            allow_zero_mode, resonance_tolerance, potential_coefficients, status)
+        if (status /= 0 .or. .not. finite_complex(normal_coefficients_dot)) return
+        do mode = 1, size(normal_coefficients)
+            call evaluate_mode( &
+                degree_indices(mode), orders(mode), scale, eta, 0.0_dp, 0.0_dp, &
+                use_second_kind, scale_dot, eta_dot, 0.0_dp, 0.0_dp, mode_value, &
+                mode_normal, mode_value_dot, mode_normal_dot, status)
+            if (status /= 0) then
+                status = 4
+                return
+            end if
+            potential_coefficients_dot(mode) = normal_coefficients_dot(mode)/mode_normal - &
+                potential_coefficients(mode)*mode_normal_dot/mode_normal
+        end do
+        status = 0
+    end subroutine solve_toroidal_spectral_neumann_jvp
+
+    subroutine solve_toroidal_spectral_neumann_vjp( &
+            degree_indices, orders, normal_coefficients, scale, eta, &
+            use_second_kind, allow_zero_mode, resonance_tolerance, &
+            potential_coefficients_bar, normal_coefficients_bar, scale_bar, eta_bar, &
+            status)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: normal_coefficients(:)
+        real(dp), intent(in) :: scale, eta, resonance_tolerance
+        logical, intent(in) :: use_second_kind, allow_zero_mode
+        complex(dp), intent(in) :: potential_coefficients_bar(:)
+        complex(dp), intent(out) :: normal_coefficients_bar(:)
+        real(dp), intent(out) :: scale_bar, eta_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: potential_coefficients(:)
+        complex(dp) :: mode_value, mode_normal, mode_value_dot, mode_normal_dot
+        complex(dp) :: mode_normal_bar
+        integer :: mode
+
+        normal_coefficients_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        scale_bar = 0.0_dp
+        eta_bar = 0.0_dp
+        status = 1
+        if (size(potential_coefficients_bar) /= size(normal_coefficients)) return
+        allocate(potential_coefficients(size(normal_coefficients)))
+        call solve_toroidal_spectral_neumann( &
+            degree_indices, orders, normal_coefficients, scale, eta, use_second_kind, &
+            allow_zero_mode, resonance_tolerance, potential_coefficients, status)
+        if (status /= 0 .or. .not. finite_complex(potential_coefficients_bar)) return
+        do mode = 1, size(normal_coefficients)
+            call evaluate_mode( &
+                degree_indices(mode), orders(mode), scale, eta, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, mode_value, &
+                mode_normal, mode_value_dot, mode_normal_dot, status)
+            if (status /= 0) then
+                status = 4
+                return
+            end if
+            normal_coefficients_bar(mode) = conjg(1.0_dp/mode_normal)* &
+                potential_coefficients_bar(mode)
+            mode_normal_bar = conjg(-normal_coefficients(mode)/mode_normal**2)* &
+                potential_coefficients_bar(mode)
+            call evaluate_mode( &
+                degree_indices(mode), orders(mode), scale, eta, 0.0_dp, 0.0_dp, &
+                use_second_kind, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, mode_value, &
+                mode_normal, mode_value_dot, mode_normal_dot, status)
+            if (status /= 0) then
+                status = 4
+                return
+            end if
+            scale_bar = scale_bar + real(conjg(mode_normal_bar)*mode_normal_dot, dp)
+            call evaluate_mode( &
+                degree_indices(mode), orders(mode), scale, eta, 0.0_dp, 0.0_dp, &
+                use_second_kind, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, mode_value, &
+                mode_normal, mode_value_dot, mode_normal_dot, status)
+            if (status /= 0) then
+                status = 4
+                return
+            end if
+            eta_bar = eta_bar + real(conjg(mode_normal_bar)*mode_normal_dot, dp)
+        end do
+        status = 0
+    end subroutine solve_toroidal_spectral_neumann_vjp
+
     subroutine evaluate_toroidal_spectral_trace_vjp( &
             degree_indices, orders, coefficients, scale, eta, theta, phi, &
             use_second_kind, value_bar, normal_derivative_bar, coefficients_bar, &
@@ -368,5 +525,29 @@ contains
             all(degree_indices >= 0) .and. all(orders >= 0) .and. &
             scale > 0.0_dp .and. eta > 0.0_dp
     end function valid_inputs
+
+    logical function valid_neumann_inputs( &
+            degree_indices, orders, normal_coefficients, scale, eta, &
+            resonance_tolerance, potential_coefficients) result(valid)
+        integer, intent(in) :: degree_indices(:), orders(:)
+        complex(dp), intent(in) :: normal_coefficients(:)
+        real(dp), intent(in) :: scale, eta, resonance_tolerance
+        complex(dp), intent(in) :: potential_coefficients(:)
+
+        valid = valid_inputs( &
+            degree_indices, orders, normal_coefficients, scale, eta) .and. &
+            size(potential_coefficients) == size(normal_coefficients) .and. &
+            resonance_tolerance > 0.0_dp .and. &
+            ieee_is_finite(resonance_tolerance) .and. &
+            finite_complex(normal_coefficients) .and. &
+            finite_complex(potential_coefficients)
+    end function valid_neumann_inputs
+
+    pure logical function finite_complex(values) result(valid)
+        complex(dp), intent(in) :: values(:)
+
+        valid = all(ieee_is_finite(real(values, dp))) .and. &
+            all(ieee_is_finite(aimag(values)))
+    end function finite_complex
 
 end module fortfem_toroidal_spectral_trace
