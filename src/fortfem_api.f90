@@ -85,6 +85,10 @@ module fortfem_api
         assemble_elasticity_symmetry_constraint, &
         assemble_elasticity_symmetry_constraint_jvp, &
         assemble_elasticity_symmetry_constraint_vjp
+    use fortfem_symplectic_map_defect, only: &
+        assemble_symplectic_map_defect, &
+        assemble_symplectic_map_defect_jvp, &
+        assemble_symplectic_map_defect_vjp
     use fortfem_cell_complex, only: cell_complex_betti_numbers, &
         cell_complex_cocycle_basis, cell_complex_cohomology_cocycle_basis, &
         cell_complex_cycle_basis, &
@@ -2699,6 +2703,9 @@ module fortfem_api
     public :: assemble_elasticity_symmetry_constraint
     public :: assemble_elasticity_symmetry_constraint_jvp
     public :: assemble_elasticity_symmetry_constraint_vjp
+    public :: assemble_symplectic_map_defect
+    public :: assemble_symplectic_map_defect_jvp
+    public :: assemble_symplectic_map_defect_vjp
 
     ! Plotting interface
     public :: plot
