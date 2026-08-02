@@ -180,6 +180,11 @@ provides deterministic cross factors, a bounded residual certificate,
 matrix-free complex action, and analytical JVP/VJP products for reusable
 response blocks.
 
+The [structure-preserving mixed wave--wall time contract](mixed_wave_wall_time.html)
+couples a port-Hamiltonian wave block to a resistive RL wall by implicit
+midpoint, with an independent energy/dissipation ledger and full JVP/VJP
+actions.
+
 Its [singular-layer matching block](linear_response_interchange.html)
 composes independently sized inner and outer complex trace spaces with
 weighted value/JVP/VJP actions; asymptotic models and jump laws remain external.
