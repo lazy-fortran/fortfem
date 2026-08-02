@@ -21,6 +21,13 @@ module fortfem_api
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp, &
         assemble_singular_layer_matching_vjp
+    use fortfem_linear_response_cross, only: &
+        assemble_linear_response_eigen_cross_residual, &
+        assemble_linear_response_eigen_cross_residual_jvp, &
+        assemble_linear_response_eigen_cross_residual_vjp, &
+        initialize_linear_response_cross_metadata, &
+        linear_response_cross_metadata_t, &
+        validate_linear_response_cross_metadata
     use fortfem_equilibrium_interchange, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
@@ -3008,6 +3015,12 @@ module fortfem_api
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
     public :: assemble_singular_layer_matching_vjp
+    public :: linear_response_cross_metadata_t
+    public :: initialize_linear_response_cross_metadata
+    public :: validate_linear_response_cross_metadata
+    public :: assemble_linear_response_eigen_cross_residual
+    public :: assemble_linear_response_eigen_cross_residual_jvp
+    public :: assemble_linear_response_eigen_cross_residual_vjp
     public :: equilibrium_interchange_t
     public :: equilibrium_normalization_t
     public :: initialize_equilibrium_interchange
