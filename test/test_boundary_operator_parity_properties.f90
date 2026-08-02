@@ -7,9 +7,9 @@ program test_boundary_operator_parity_properties
         BOUNDARY_OPERATOR_BACKEND_DTN, &
         BOUNDARY_OPERATOR_BACKEND_FEM, &
         boundary_operator_contract_t, boundary_operator_parity_t, &
-        evaluate_boundary_operator_parity, &
-        evaluate_boundary_operator_parity_jvp, &
-        evaluate_boundary_operator_parity_vjp, &
+        compare_boundary_operator_parity, &
+        compare_boundary_operator_parity_jvp, &
+        compare_boundary_operator_parity_vjp, &
         initialize_boundary_operator_contract
     use fortfem_kinds, only: dp
     implicit none
@@ -106,7 +106,7 @@ contains
             if (status /= 0) return
         end do
 
-        call evaluate_boundary_operator_parity( &
+        call compare_boundary_operator_parity( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, report, status)
         if (status /= 0) return
@@ -124,7 +124,7 @@ contains
         if (maxval(abs(report%absolute_error - expected_absolute)) > 2.0e-13_dp .or. &
             maxval(abs(report%relative_error - expected_relative)) > 2.0e-13_dp) return
 
-        call evaluate_boundary_operator_parity_jvp( &
+        call compare_boundary_operator_parity_jvp( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_dot, candidates_dot, weights_dot, &
             reference_norm_dot, absolute_error_dot, relative_error_dot, status)
@@ -135,11 +135,11 @@ contains
         candidates_minus = candidates - epsilon_fd*candidates_dot
         weights_plus = weights + epsilon_fd*weights_dot
         weights_minus = weights - epsilon_fd*weights_dot
-        call evaluate_boundary_operator_parity( &
+        call compare_boundary_operator_parity( &
             reference_plus, candidates_plus, weights_plus, contracts, &
             absolute_tolerance, relative_tolerance, report_plus, status)
         if (status /= 0) return
-        call evaluate_boundary_operator_parity( &
+        call compare_boundary_operator_parity( &
             reference_minus, candidates_minus, weights_minus, contracts, &
             absolute_tolerance, relative_tolerance, report_minus, status)
         if (status /= 0) return
@@ -161,7 +161,7 @@ contains
             absolute_error_bar(backend) = 2.0_dp*property_random_unit(rng) - 1.0_dp
             relative_error_bar(backend) = 2.0_dp*property_random_unit(rng) - 1.0_dp
         end do
-        call evaluate_boundary_operator_parity_vjp( &
+        call compare_boundary_operator_parity_vjp( &
             reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_norm_bar, absolute_error_bar, &
             relative_error_bar, reference_bar, candidates_bar, weights_bar, status)
@@ -175,12 +175,12 @@ contains
         if (abs(lhs - rhs) > 2.0e-8_dp) return
 
         zero_reference = cmplx(0.0_dp, 0.0_dp, dp)
-        call evaluate_boundary_operator_parity_jvp( &
+        call compare_boundary_operator_parity_jvp( &
             zero_reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_dot, candidates_dot, weights_dot, &
             reference_norm_dot, absolute_error_dot, relative_error_dot, status)
         if (status == 0) return
-        call evaluate_boundary_operator_parity_vjp( &
+        call compare_boundary_operator_parity_vjp( &
             zero_reference, candidates, weights, contracts, absolute_tolerance, &
             relative_tolerance, reference_norm_bar, absolute_error_bar, &
             relative_error_bar, reference_bar, candidates_bar, weights_bar, status)

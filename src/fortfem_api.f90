@@ -198,9 +198,9 @@ module fortfem_api
         initialize_boundary_operator_trace_metadata, &
         validate_boundary_operator_contract
     use fortfem_boundary_operator_parity, only: &
-        boundary_operator_parity_t, evaluate_boundary_operator_parity, &
-        evaluate_boundary_operator_parity_jvp, &
-        evaluate_boundary_operator_parity_vjp, &
+        boundary_operator_parity_t, compare_boundary_operator_parity, &
+        compare_boundary_operator_parity_jvp, &
+        compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity
     use fortfem_boundary_response_diagnostics, only: &
         evaluate_weighted_boundary_response_diagnostics
@@ -3331,9 +3331,9 @@ module fortfem_api
     public :: initialize_boundary_operator_trace_metadata
     public :: validate_boundary_operator_contract
     public :: boundary_operator_parity_t
-    public :: evaluate_boundary_operator_parity
-    public :: evaluate_boundary_operator_parity_jvp
-    public :: evaluate_boundary_operator_parity_vjp
+    public :: compare_boundary_operator_parity
+    public :: compare_boundary_operator_parity_jvp
+    public :: compare_boundary_operator_parity_vjp
     public :: validate_boundary_operator_parity
     public :: evaluate_weighted_boundary_response_diagnostics
     public :: evaluate_source_trace_map
