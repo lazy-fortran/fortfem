@@ -28,12 +28,12 @@ module fortfem_sheet_current_surface_parity
 
     real(dp), parameter :: unit_tolerance = 1.0e-12_dp
 
-    public :: evaluate_sheet_current_surface_parity
-    public :: evaluate_sheet_current_surface_parity_jvp
+    public :: compare_sheet_current_surface_representations
+    public :: compare_sheet_current_surface_representations_jvp
 
 contains
 
-    subroutine evaluate_sheet_current_surface_parity( &
+    subroutine compare_sheet_current_surface_representations( &
             plus_field, minus_field, normals, surface_weights, signed_distance, &
             normal_weights, thickness, fitted_integrated, regularized_integrated, &
             relative_error, status)
@@ -72,13 +72,13 @@ contains
             if (status%code /= FORTSPARSE_OK) return
             regularized_integrated = regularized_integrated + &
                 surface_weights(surface_point)*sum_weighted_profile( &
-                    normal_weights, profile)
+                normal_weights, profile)
         end do
         call evaluate_relative_error( &
             fitted_integrated, regularized_integrated, relative_error, status)
-    end subroutine evaluate_sheet_current_surface_parity
+    end subroutine compare_sheet_current_surface_representations
 
-    subroutine evaluate_sheet_current_surface_parity_jvp( &
+    subroutine compare_sheet_current_surface_representations_jvp( &
             plus_field, minus_field, normals, surface_weights, signed_distance, &
             normal_weights, thickness, plus_dot, minus_dot, normals_dot, &
             surface_weights_dot, signed_distance_dot, normal_weights_dot, thickness_dot, &
@@ -161,12 +161,12 @@ contains
             if (status%code /= FORTSPARSE_OK) return
             regularized_integrated_dot = regularized_integrated_dot + &
                 surface_weights_dot(surface_point)*sum_weighted_profile( &
-                    normal_weights, profile) + &
+                normal_weights, profile) + &
                 surface_weights(surface_point)*sum_weighted_profile_dot( &
-                    normal_weights, normal_weights_dot, profile, profile_dot)
+                normal_weights, normal_weights_dot, profile, profile_dot)
         end do
 
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, normals, surface_weights, signed_distance, &
             normal_weights, thickness, fitted_integrated, regularized_integrated, &
             relative_error, status)
@@ -174,7 +174,7 @@ contains
         call evaluate_relative_error_jvp( &
             fitted_integrated, regularized_integrated, fitted_integrated_dot, &
             regularized_integrated_dot, relative_error_dot, status)
-    end subroutine evaluate_sheet_current_surface_parity_jvp
+    end subroutine compare_sheet_current_surface_representations_jvp
 
     pure function sum_weighted_profile(weights, profile) result(result)
         real(dp), intent(in) :: weights(:), profile(:, :)

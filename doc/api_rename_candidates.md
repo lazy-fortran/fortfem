@@ -41,7 +41,7 @@ procedure aliases.
 | `evaluate_beltrami_two_region_parity` | `compare_beltrami_two_region_residual` | `fortfem_beltrami_parity` | 6 / 3 / 1 | none | Compares assembled H(curl) residual with the independent oracle residual. `validate_beltrami_parity` stays a validator. |
 | `evaluate_beltrami_shell_parity` | `compare_beltrami_shell_residual` | `fortfem_beltrami_parity` | 5 / 5 / 1 | none | Same as the two-region path, with an energy/conservation ledger. |
 | `evaluate_sheet_current_parity` | `compare_sheet_current_representations` | `fortfem_sheet_current_parity` | 5 / 3 / 3 | none | Compares fitted surface and resolved Gaussian ledgers. A plural `representations` avoids implying a Boolean test. |
-| `evaluate_sheet_current_surface_parity` | `compare_sheet_current_surface_representations` | `fortfem_sheet_current_surface_parity` | 6 / 9 / 0 | `_jvp` -> same suffix on `compare_` | Surface quadrature and Ampere trace are compared with a regularized layer. |
+| `compare_sheet_current_surface_representations` | `compare_sheet_current_surface_representations` | `fortfem_sheet_current_surface_parity` | 6 / 9 / 0 | `_jvp` | Implemented as the canonical pre-release spelling; the surface quadrature and regularized-layer ledger are unchanged. |
 | `evaluate_tree_cotree_iga_parity` | `diagnose_tree_cotree_iga_invariance` | `fortfem_tree_cotree_iga_parity` | 5 / 3 / 0 | none | Tests signed-map invariance of a fixed IGA tree-cotree reduction; `diagnose_` is clearer than `compare_` because there is no external reference field. |
 
 The first implementation slice should add canonical wrappers in the defining

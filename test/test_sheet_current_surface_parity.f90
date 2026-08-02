@@ -6,8 +6,11 @@ program test_sheet_current_surface_parity
     !! this test are an independent oracle for a cylinder, sphere, and torus;
     !! no geometry-specific implementation is hidden in the library routine.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_sheet_current_surface_parity, &
-        evaluate_sheet_current_surface_parity_jvp
+    use fortfem_api, only: compare_sheet_current_surface_representations, &
+        compare_sheet_current_surface_representations_jvp
+    use fortfem_sheet_current_surface_parity, only: &
+        compare_sheet_current_surface_representations_direct => &
+        compare_sheet_current_surface_representations
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
@@ -73,6 +76,7 @@ contains
         logical :: with_direction
         integer :: point, sample
         real(dp) :: reference(3), independent_resolved(3), dot_current(3)
+        real(dp) :: fitted_direct(3), resolved_direct(3), relative_direct
         real(dp) :: reversed(3), oriented(3), invalid_fitted(3), invalid_resolved(3)
         real(dp) :: invalid_error
         real(dp), allocatable :: invalid_weights(:), invalid_normals(:, :)
@@ -86,11 +90,20 @@ contains
         surface_weights_plus = surface_weights + eps*surface_weights_dot
         surface_weights_minus = surface_weights - eps*surface_weights_dot
 
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, normals, surface_weights, distance, &
             normal_weights, thickness, fitted, resolved, relative_error, status)
         call check_condition(status%code == 0, trim(name)// &
             " surface representation accepts fixed-topology geometry")
+        call compare_sheet_current_surface_representations_direct( &
+            plus_field, minus_field, normals, surface_weights, distance, &
+            normal_weights, thickness, fitted_direct, resolved_direct, &
+            relative_direct, status)
+        call check_condition(status%code == 0 .and. &
+            maxval(abs(fitted_direct - fitted)) < 2.0e-13_dp .and. &
+            maxval(abs(resolved_direct - resolved)) < 2.0e-13_dp .and. &
+            abs(relative_direct - relative_error) < 2.0e-13_dp, trim(name)// &
+            " defining-module and umbrella canonical names agree")
 
         reference = 0.0_dp
         independent_resolved = 0.0_dp
@@ -115,7 +128,7 @@ contains
             trim(name)//" preserves integrated current")
 
         ! Reversing only the supplied normal reverses the Ampere current.
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, -normals, surface_weights, distance, &
             normal_weights, thickness, reversed, invalid_resolved, invalid_error, status)
         call check_condition(status%code == 0 .and. &
@@ -123,7 +136,7 @@ contains
             " reverses integrated current with the normal")
 
         ! Reversing both orientation and trace ordering leaves K invariant.
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             minus_field, plus_field, -normals, surface_weights, distance, &
             normal_weights, thickness, oriented, invalid_resolved, invalid_error, status)
         call check_condition(status%code == 0 .and. &
@@ -137,21 +150,21 @@ contains
             invalid_normals(size(normals, 1), size(normals, 2)))
         invalid_weights = surface_weights(1:size(surface_weights) - 1)
         invalid_normals = normals
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, normals, invalid_weights, distance, normal_weights, &
             thickness, invalid_fitted, invalid_resolved, invalid_error, status)
         call check_condition(status%code /= 0, trim(name)// &
             " rejects a changed surface quadrature topology")
         invalid_weights = surface_weights
         invalid_weights(1) = 0.0_dp
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, normals, invalid_weights, distance, normal_weights, &
             thickness, invalid_fitted, invalid_resolved, invalid_error, status)
         call check_condition(status%code /= 0, trim(name)// &
             " rejects a non-positive surface measure")
         invalid_normals = normals
         invalid_normals(1, :) = 1.1_dp*invalid_normals(1, :)
-        call evaluate_sheet_current_surface_parity( &
+        call compare_sheet_current_surface_representations( &
             plus_field, minus_field, invalid_normals, surface_weights, distance, &
             normal_weights, thickness, invalid_fitted, invalid_resolved, invalid_error, status)
         call check_condition(status%code /= 0, trim(name)// &
@@ -163,17 +176,17 @@ contains
             distance_dot = 0.01_dp*distance
             normal_weights_dot = 0.015_dp*normal_weights
             thickness_dot = 0.02_dp
-            call evaluate_sheet_current_surface_parity_jvp( &
+            call compare_sheet_current_surface_representations_jvp( &
                 plus_field, minus_field, normals, surface_weights, distance, &
                 normal_weights, thickness, plus_dot, minus_dot, normals_dot, &
                 surface_weights_dot, distance_dot, normal_weights_dot, thickness_dot, &
                 fitted_dot, resolved_dot, relative_error_dot, status)
-            call evaluate_sheet_current_surface_parity( &
+            call compare_sheet_current_surface_representations( &
                 plus_field + eps*plus_dot, minus_field + eps*minus_dot, &
                 normals + eps*normals_dot, surface_weights_plus, distance + eps*distance_dot, &
                 normal_weights + eps*normal_weights_dot, thickness + eps*thickness_dot, &
                 fitted_plus, resolved_plus, relative_plus, status)
-            call evaluate_sheet_current_surface_parity( &
+            call compare_sheet_current_surface_representations( &
                 plus_field - eps*plus_dot, minus_field - eps*minus_dot, &
                 normals - eps*normals_dot, surface_weights_minus, distance - eps*distance_dot, &
                 normal_weights - eps*normal_weights_dot, thickness - eps*thickness_dot, &
