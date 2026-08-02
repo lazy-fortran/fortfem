@@ -102,6 +102,8 @@ program biro_tree_cotree_benchmark
     call apply_tree_cotree_restriction( &
         gauge, target_solution, expected_restricted, status)
     if (status /= 0) error stop "Biro tree-cotree restriction failed"
+    if (maxval(abs(expected_restricted - target_solution(4:5))) > 1.0e-12_dp) &
+        error stop "Biro tree-cotree selector changed cotree data"
     call reduce_tree_cotree_dense_system( &
         gauge, full_matrix, full_rhs, reduced_matrix, reduced_rhs, status)
     if (status /= 0) error stop "Biro tree-cotree direct reduction failed"
