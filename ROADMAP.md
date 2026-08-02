@@ -780,8 +780,9 @@ partition of unity, affine reproduction, fixed-topology JVP/VJP dot products,
 and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
 map now accepts explicit three-node stencils and reproduces quadratic fields
 on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
-finite-difference oracles. Higher-order interpolation Jacobians, degree-six-
-and-higher curved support-volume measures, and anisotropy-aware preconditioning
+finite-difference oracles. Higher-order interpolation Jacobians beyond sextic
+and degree-six-and-higher curved support-volume measures, and
+anisotropy-aware preconditioning
 remain active work. A generated fixed-topology quadrilateral area map now supplies
 positive unstructured plane-cell measures with value/JVP/VJP actions, independent
 shoelace/finite-difference/adjoint oracles, and a FortPlot gallery fixture. A
@@ -2854,10 +2855,13 @@ gallery example.
   independent polynomial, finite-difference, and real-adjoint oracles. A
   generated quintic fixed-stencil map now exposes the same value/JVP/VJP
   actions with independent quintic, finite-difference, and real-adjoint
-  oracles. A generated fixed-topology quadrilateral area map now supplies
+  oracles. A generated sextic fixed-stencil map now exposes the same
+  FortSym-generated value/JVP/VJP actions with independent sextic,
+  finite-difference, and real-adjoint oracles. A generated fixed-topology
+  quadrilateral area map now supplies
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
-  interpolation derivatives beyond quintic and curved support-volume measures
+  interpolation derivatives beyond sextic and curved support-volume measures
   beyond sextic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
