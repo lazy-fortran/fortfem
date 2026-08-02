@@ -14,6 +14,7 @@ curl_curl curl_curl_field_slice_2d.png
 cgl_pressure_tensor cgl_pressure_components_1d.png
 field_aligned_flux field_aligned_flux_1d.png
 fci_parallel_diffusion fci_parallel_profile_1d.png
+fci_sol_gallery fci_sol_field_lines_3d.png
 fci_quadrilateral_geometry fci_quadrilateral_cells_2d.png
 fci_polygon_geometry fci_polygon_cells_2d.png
 mixed_acoustic_wave mixed_acoustic_solution_1d.png
