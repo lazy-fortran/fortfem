@@ -58,9 +58,9 @@ fpm run --example iga_jorek_flux
 
 ```fortran
 program iga_jorek_flux
-    use fortfem_api, only: &
-        advance_bspline_jorek_poloidal_flux_midpoint_steps, &
+    use fortfem_feec, only: &
         assemble_bspline_h1_operator_csc, evaluate_bspline_basis
+    use fortfem_time, only: advance_bspline_jorek_poloidal_flux_midpoint_steps
     use fortfem_kinds, only: dp
     use fortplot, only: &
         colorbar, figure, plot, pcolormesh, quiver, savefig, set_yscale, &

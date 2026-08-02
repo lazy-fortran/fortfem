@@ -35,9 +35,11 @@ fpm run --example minimal_mesh_example
 ```fortran
 program minimal_mesh_example
     ! Minimal working example of FortFEM mesh generation
-    use fortfem_api
-    use fortfem_kinds
-    use fortplot, only: plot
+    use fortfem_api_mesh, only: circle_boundary, mesh_t, rectangle_mesh, &
+        unit_square_mesh
+    use fortfem_boundary, only: boundary_t
+    use fortfem_kinds, only: dp
+    use fortfem_plot, only: plot
     implicit none
 
     character(*), parameter :: output_directory = &

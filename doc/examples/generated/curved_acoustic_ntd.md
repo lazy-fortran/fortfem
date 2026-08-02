@@ -50,7 +50,7 @@ fpm run --example curved_acoustic_ntd
 
 ```fortran
 program curved_acoustic_ntd
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_curved_acoustic_displacement_ntd_2d, &
         circular_helmholtz_dtn_eigenvalue, &
         solve_elasticity_curved_acoustic_ntd_p1

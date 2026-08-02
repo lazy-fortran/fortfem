@@ -50,7 +50,7 @@ program nonlinear_resistive_mhd_gallery
     !! wall current, and a pressure-like amplitude.  The callbacks exercise
     !! the public eight-block nonlinear composition without selecting a plasma
     !! model or reading an application-specific equilibrium format.
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         RESISTIVE_MHD_AMPERE, &
         RESISTIVE_MHD_FARADAY, &
         RESISTIVE_MHD_PRESSURE, &
@@ -63,7 +63,7 @@ program nonlinear_resistive_mhd_gallery
         nonlinear_resistive_mhd_energy_ledger_t, &
         resistive_mhd_branch_diagnostics_t, &
         resistive_mhd_branch_history_t
-    use fortfem_api, only: RESISTIVE_MHD_BLOCK_COUNT
+    use fortfem_interop, only: RESISTIVE_MHD_BLOCK_COUNT
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel
     use fortsparse, only: FORTSPARSE_OK, fortsparse_status_t

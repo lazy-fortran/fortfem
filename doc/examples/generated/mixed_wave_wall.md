@@ -24,7 +24,7 @@ fpm run --example mixed_wave_wall
 ```fortran
 program mixed_wave_wall
     !! Manufactured mixed wave / resistive-wall port example.
-    use fortfem_api, only: &
+    use fortfem_time, only: &
         advance_mixed_wave_wall_midpoint, evaluate_mixed_wave_wall_energy_balance
     use fortfem_kinds, only: dp
     use fortplot, only: figure, legend, plot, savefig, title, xlabel, ylabel

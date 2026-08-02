@@ -44,7 +44,7 @@ program cgl_pressure_tensor
     ! Manufactured CGL pressure and force-divergence profile.
     ! The magnetic direction rotates across the sampled x-y field, so both the
     ! gyrotropic pressure components and the product-rule force are visible.
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_cgl_pressure_divergence, evaluate_cgl_pressure_tensor
     use fortfem_kinds, only: dp
     use fortplot, only: colorbar, contourf, figure, legend, plot, quiver, savefig, &
