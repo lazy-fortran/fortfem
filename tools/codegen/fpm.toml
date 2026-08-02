@@ -119,6 +119,11 @@ source-dir = "app"
 main = "gen_fci_quintic_lagrange.f90"
 
 [[executable]]
+name = "gen_fci_sextic_lagrange"
+source-dir = "app"
+main = "gen_fci_sextic_lagrange.f90"
+
+[[executable]]
 name = "gen_fci_quadrilateral_area_products"
 source-dir = "app"
 main = "gen_fci_quadrilateral_area_products.f90"
