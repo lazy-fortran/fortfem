@@ -29,16 +29,18 @@ of an inconsistent cycle.
 
 ## B-spline/IGA composition
 
-`build_bspline_feec_2d_multipatch_maps` now lifts this topology contract to an
+`build_bspline_feec_2d_multipatch_maps` lifts this topology contract to an
 arbitrary graph of tensor-product 2D patches. It extracts H1 and H(curl) face
 traces with the existing face-orientation rules, packs each patch's local map
-using deterministic offsets, and returns signed maps plus global counts. L2
-cells remain patch-local because there is no conforming trace identification in
-this neutral layer. The packed maps can be passed directly to the signed
-glued FEEC reference or CSC assemblers.
+using deterministic offsets, and returns signed maps plus global counts. The
+3D `build_bspline_feec_3d_multipatch_maps` companion does the same for H1,
+H(curl), and H(div), including face-axis swaps and independent face reversals.
+L2 cells remain patch-local because there is no conforming trace
+identification in this neutral layer. The packed maps can be passed directly
+to the signed glued FEEC reference or CSC assemblers.
 
 This is still a topology and trace-numbering layer: it does not infer physical
 patch geometry, knot compatibility beyond the supplied dimensions, metric
 continuity, mortar quadrature, material jumps, or distributed owner/ghost
-exchange. The 3D analogue and geometry-aware assembly remain later roadmap
-gates.
+exchange. Geometry-aware assembly and the higher-level physical patch graph
+remain later roadmap gates.

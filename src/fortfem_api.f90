@@ -569,6 +569,7 @@ module fortfem_api
         build_bspline_feec_2d_multipatch_maps, &
         build_bspline_feec_2d_two_patch_maps, &
         build_bspline_feec_3d_interface_dofs, &
+        build_bspline_feec_3d_multipatch_maps, &
         build_bspline_feec_3d_two_patch_maps
     use fortfem_assembly_bspline_multipatch_2d, only: &
         build_bspline_feec_2d_two_patch_operators_csc
@@ -2030,6 +2031,7 @@ module fortfem_api
     public :: build_bspline_feec_2d_two_patch_maps
     public :: build_bspline_feec_2d_two_patch_operators_csc
     public :: build_bspline_feec_3d_interface_dofs
+    public :: build_bspline_feec_3d_multipatch_maps
     public :: build_bspline_feec_3d_two_patch_maps
     public :: build_bspline_feec_3d_two_patch_operators_csc
     public :: scalar_weight_2d
