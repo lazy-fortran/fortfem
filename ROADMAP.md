@@ -1356,10 +1356,12 @@ variational VMEC implementation. Its public theory and documentation require
 the following reusable ingredients to be explicit in FortFEM before an
 external DESC-like client can be built:
 
-1. **Nested inverse representation.** Store a toroidal-flux radial coordinate,
-   two periodic angles, and the surface embedding (R,Z) plus stream/straight-
-   field-line map (lambda). Keep the axis, boundary, and field-period
-   conditions as separate constrained traces.
+1. **Nested inverse representation.** Store a toroidal-flux radial coordinate
+   (the DESC reference convention is \(\rho=\sqrt{\psi/\psi_{\mathrm{LCFS}}}\),
+   but the normalization must remain metadata), two periodic angles, and the
+   surface embedding (R,Z) plus stream/straight-field-line map (lambda). Keep
+   the axis, boundary, and field-period conditions as separate constrained
+   traces.
 2. **Axis-regular spectral spaces.** Provide Fourier modes coupled to a radial
    polynomial/spline basis with parity, regularity, and mode-coupling rules at
    the magnetic axis. Fourier--Zernike is the reference oracle; a compatible
@@ -1389,10 +1391,16 @@ external DESC-like client can be built:
    shape/JVP/VJP conventions.
 
 The checklist is grounded in the [DESC documentation](https://desc-docs.readthedocs.io/en/stable/),
-the original [DESC formulation](https://doi.org/10.1063/5.0020743), the
-[force-balance and convergence study](https://arxiv.org/abs/2203.17173),
-[perturbation/continuation work](https://arxiv.org/abs/2203.15927), and the
-[high-order free-boundary formulation](https://arxiv.org/abs/2412.05680).
+including its [basis and collocation contract](https://desc-docs.readthedocs.io/en/stable/notebooks/basis_grid.html),
+[transforms](https://desc-docs.readthedocs.io/en/stable/dev_guide/notebooks/transform.html),
+[near-axis constraints](https://desc-docs.readthedocs.io/en/stable/notebooks/tutorials/nae_constraint.html),
+[continuation](https://desc-docs.readthedocs.io/en/stable/notebooks/tutorials/continuation_step_by_step.html),
+[deflation](https://desc-docs.readthedocs.io/en/stable/notebooks/tutorials/deflation.html), and
+[free-boundary tutorial](https://desc-docs.readthedocs.io/en/stable/notebooks/tutorials/free_boundary_equilibrium.html),
+the original [Dudt--Kolemen DESC formulation](https://doi.org/10.1063/5.0020743),
+[Panici et al., Part I force-balance and convergence study](https://doi.org/10.1017/S0022377823000272),
+[Conlin et al., Part II perturbation and continuation](https://doi.org/10.1017/S0022377823000399),
+and the [high-order free-boundary formulation](https://arxiv.org/abs/2412.05680).
 These are provenance and oracle references only; FortFEM still does not ship
 DESC inputs, profiles, coil models, or optimization physics.
 
