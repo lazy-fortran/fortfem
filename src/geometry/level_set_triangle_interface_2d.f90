@@ -21,6 +21,8 @@ module fortfem_level_set_triangle_interface_2d
     public :: evaluate_level_set_triangle_cut_moments_2d_jvp
     public :: evaluate_level_set_triangle_cut_third_moments_2d
     public :: evaluate_level_set_triangle_cut_third_moments_2d_jvp
+    public :: evaluate_level_set_triangle_cut_fourth_moments_2d
+    public :: evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
 
 contains
 
@@ -517,6 +519,77 @@ contains
         status = 0
     end subroutine evaluate_level_set_triangle_cut_third_moments_2d_jvp
 
+    subroutine evaluate_level_set_triangle_cut_fourth_moments_2d( &
+            vertices, level_values, positive_fourth_moment, &
+            negative_fourth_moment, status)
+        !! Return exact degree-four raw moments for a linear level-set cut.
+        !!
+        !! The symmetric tensor contains the physical integrals
+        !! (M_{abcd} = \int_{\Omega_\pm} x_a x_b x_c x_d\,dA).
+        !! Edge moments are evaluated from the Green-theorem polynomial and
+        !! therefore remain exact for every polygon produced by clipping.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(out) :: positive_fourth_moment(2, 2, 2, 2)
+        real(dp), intent(out) :: negative_fourth_moment(2, 2, 2, 2)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_area, positive_centroid(2)
+        real(dp) :: negative_area, negative_centroid(2)
+        real(dp) :: interface_length, normal(2)
+        integer :: quadrature_status
+
+        positive_fourth_moment = 0.0_dp
+        negative_fourth_moment = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d( &
+            vertices, level_values, positive_area, positive_centroid, &
+            negative_area, negative_centroid, interface_length, normal, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments( &
+            vertices, level_values, .true., positive_area, positive_centroid, &
+            fourth_moment=positive_fourth_moment)
+        call level_set_side_moments( &
+            vertices, level_values, .false., negative_area, negative_centroid, &
+            fourth_moment=negative_fourth_moment)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_fourth_moments_2d
+
+    subroutine evaluate_level_set_triangle_cut_fourth_moments_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_fourth_moment_dot, negative_fourth_moment_dot, status)
+        !! Apply the fixed-topology JVP of degree-four cut moments.
+        real(dp), intent(in) :: vertices(2, 3), level_values(3)
+        real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
+        real(dp), intent(out) :: positive_fourth_moment_dot(2, 2, 2, 2)
+        real(dp), intent(out) :: negative_fourth_moment_dot(2, 2, 2, 2)
+        integer, intent(out) :: status
+
+        real(dp) :: positive_area_dot, positive_centroid_dot(2)
+        real(dp) :: negative_area_dot, negative_centroid_dot(2)
+        real(dp) :: interface_length_dot, normal_dot(2)
+        integer :: quadrature_status
+
+        positive_fourth_moment_dot = 0.0_dp
+        negative_fourth_moment_dot = 0.0_dp
+        status = 1
+        call evaluate_level_set_triangle_cut_quadrature_2d_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, &
+            positive_area_dot, positive_centroid_dot, negative_area_dot, &
+            negative_centroid_dot, interface_length_dot, normal_dot, &
+            quadrature_status)
+        if (quadrature_status /= 0) return
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .true., &
+            positive_area_dot, positive_centroid_dot, &
+            fourth_moment_dot=positive_fourth_moment_dot)
+        call level_set_side_moments_jvp( &
+            vertices, level_values, vertices_dot, level_values_dot, .false., &
+            negative_area_dot, negative_centroid_dot, &
+            fourth_moment_dot=negative_fourth_moment_dot)
+        status = 0
+    end subroutine evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
+
     pure function level_set_side_area(vertices, level_values, keep_positive) &
             result(area)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
@@ -530,16 +603,18 @@ contains
 
     pure subroutine level_set_side_moments( &
             vertices, level_values, keep_positive, area, centroid, second_moment, &
-            third_moment)
+            third_moment, fourth_moment)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area, centroid(2)
         real(dp), intent(out), optional :: second_moment(2, 2)
         real(dp), intent(out), optional :: third_moment(2, 2, 2)
+        real(dp), intent(out), optional :: fourth_moment(2, 2, 2, 2)
 
         real(dp) :: polygon(2, 6), clipped(2, 6)
         real(dp) :: signed_area, cross, first_moment(2), second_moment_signed(2, 2)
         real(dp) :: third_moment_signed(2, 2, 2)
+        real(dp) :: fourth_moment_signed(2, 2, 2, 2)
         real(dp) :: point_x, point_y, next_x, next_y
         integer :: point_count, point, next_point
 
@@ -547,6 +622,7 @@ contains
         centroid = 0.0_dp
         if (present(second_moment)) second_moment = 0.0_dp
         if (present(third_moment)) third_moment = 0.0_dp
+        if (present(fourth_moment)) fourth_moment = 0.0_dp
         polygon(:, 1:3) = vertices
         point_count = 3
         call clip_level_set_polygon( &
@@ -556,6 +632,7 @@ contains
         first_moment = 0.0_dp
         second_moment_signed = 0.0_dp
         third_moment_signed = 0.0_dp
+        fourth_moment_signed = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
             point_x = polygon(1, point)
@@ -579,6 +656,10 @@ contains
                     polygon(:, point), polygon(:, next_point), cross, &
                     third_moment_signed)
             end if
+            if (present(fourth_moment)) then
+                call add_polygon_fourth_moment( &
+                    polygon(:, point), polygon(:, next_point), fourth_moment_signed)
+            end if
         end do
         if (abs(signed_area) <= topology_tolerance) return
         area = abs(signed_area)
@@ -595,17 +676,22 @@ contains
         if (present(third_moment)) then
             third_moment = sign(1.0_dp, signed_area)*third_moment_signed
         end if
+        if (present(fourth_moment)) then
+            fourth_moment = sign(1.0_dp, signed_area)*fourth_moment_signed
+        end if
     end subroutine level_set_side_moments
 
     pure subroutine level_set_side_moments_jvp( &
             vertices, level_values, vertices_dot, level_values_dot, keep_positive, &
-            area_dot, centroid_dot, second_moment_dot, third_moment_dot)
+            area_dot, centroid_dot, second_moment_dot, third_moment_dot, &
+            fourth_moment_dot)
         real(dp), intent(in) :: vertices(2, 3), level_values(3)
         real(dp), intent(in) :: vertices_dot(2, 3), level_values_dot(3)
         logical, intent(in) :: keep_positive
         real(dp), intent(out) :: area_dot, centroid_dot(2)
         real(dp), intent(out), optional :: second_moment_dot(2, 2)
         real(dp), intent(out), optional :: third_moment_dot(2, 2, 2)
+        real(dp), intent(out), optional :: fourth_moment_dot(2, 2, 2, 2)
 
         real(dp) :: polygon(2, 6), polygon_dot(2, 6)
         real(dp) :: signed_area, signed_area_dot, cross, cross_dot
@@ -613,6 +699,8 @@ contains
         real(dp) :: second_moment_signed(2, 2), second_moment_signed_dot(2, 2)
         real(dp) :: third_moment_signed(2, 2, 2)
         real(dp) :: third_moment_signed_dot(2, 2, 2)
+        real(dp) :: fourth_moment_signed(2, 2, 2, 2)
+        real(dp) :: fourth_moment_signed_dot(2, 2, 2, 2)
         real(dp) :: point_x, point_y, next_x, next_y
         real(dp) :: point_x_dot, point_y_dot, next_x_dot, next_y_dot
         real(dp) :: term, term_dot
@@ -623,6 +711,7 @@ contains
         centroid_dot = 0.0_dp
         if (present(second_moment_dot)) second_moment_dot = 0.0_dp
         if (present(third_moment_dot)) third_moment_dot = 0.0_dp
+        if (present(fourth_moment_dot)) fourth_moment_dot = 0.0_dp
         polygon = 0.0_dp
         polygon_dot = 0.0_dp
         polygon(:, 1:3) = vertices
@@ -641,6 +730,8 @@ contains
         second_moment_signed_dot = 0.0_dp
         third_moment_signed = 0.0_dp
         third_moment_signed_dot = 0.0_dp
+        fourth_moment_signed = 0.0_dp
+        fourth_moment_signed_dot = 0.0_dp
         do point = 1, point_count
             next_point = 1 + mod(point, point_count)
             point_x = polygon(1, point)
@@ -696,6 +787,12 @@ contains
                     polygon_dot(:, point), polygon_dot(:, next_point), cross, &
                     cross_dot, third_moment_signed, third_moment_signed_dot)
             end if
+            if (present(fourth_moment_dot)) then
+                call add_polygon_fourth_moment_jvp( &
+                    polygon(:, point), polygon(:, next_point), &
+                    polygon_dot(:, point), polygon_dot(:, next_point), &
+                    fourth_moment_signed, fourth_moment_signed_dot)
+            end if
         end do
         if (abs(signed_area) <= topology_tolerance) return
         orientation = sign(1.0_dp, signed_area)
@@ -710,6 +807,9 @@ contains
         end if
         if (present(third_moment_dot)) then
             third_moment_dot = orientation*third_moment_signed_dot
+        end if
+        if (present(fourth_moment_dot)) then
+            fourth_moment_dot = orientation*fourth_moment_signed_dot
         end if
     end subroutine level_set_side_moments_jvp
 
@@ -823,6 +923,165 @@ contains
         moment_dot(first, second, third) = moment_dot(first, second, third) + &
             (cross_dot*term + cross*term_dot)/denominator
     end subroutine accumulate_third_component
+
+    pure subroutine add_polygon_fourth_moment(point, next_point, moment)
+        !! Green-theorem edge primitive for all degree-four tensor entries.
+        !!
+        !! The finite sums below are the binomial expansion of the exact
+        !! Green-theorem primitive
+        !! \(\int_K x^p y^q dA = (p+1)^{-1}\oint x^{p+1}y^qdy\).
+        real(dp), intent(in) :: point(2), next_point(2)
+        real(dp), intent(inout) :: moment(2, 2, 2, 2)
+
+        integer :: first, second, third, fourth, x_degree
+
+        do first = 1, 2
+            do second = 1, 2
+                do third = 1, 2
+                    do fourth = 1, 2
+                        x_degree = 8 - first - second - third - fourth
+                        moment(first, second, third, fourth) = &
+                            moment(first, second, third, fourth) + &
+                            edge_monomial_moment(point, next_point, x_degree, &
+                            4 - x_degree)
+                    end do
+                end do
+            end do
+        end do
+    end subroutine add_polygon_fourth_moment
+
+    pure subroutine add_polygon_fourth_moment_jvp( &
+            point, next_point, point_dot, next_point_dot, moment, moment_dot)
+        real(dp), intent(in) :: point(2), next_point(2), point_dot(2)
+        real(dp), intent(in) :: next_point_dot(2)
+        real(dp), intent(inout) :: moment(2, 2, 2, 2), moment_dot(2, 2, 2, 2)
+
+        integer :: first, second, third, fourth, x_degree
+        real(dp) :: value, value_dot
+
+        do first = 1, 2
+            do second = 1, 2
+                do third = 1, 2
+                    do fourth = 1, 2
+                        x_degree = 8 - first - second - third - fourth
+                        call edge_monomial_moment_jvp( &
+                            point, next_point, point_dot, next_point_dot, &
+                            x_degree, 4 - x_degree, value, value_dot)
+                        moment(first, second, third, fourth) = &
+                            moment(first, second, third, fourth) + value
+                        moment_dot(first, second, third, fourth) = &
+                            moment_dot(first, second, third, fourth) + value_dot
+                    end do
+                end do
+            end do
+        end do
+    end subroutine add_polygon_fourth_moment_jvp
+
+    pure function edge_monomial_moment(point, next_point, x_degree, y_degree) &
+            result(value)
+        real(dp), intent(in) :: point(2), next_point(2)
+        integer, intent(in) :: x_degree, y_degree
+
+        real(dp) :: value, ax, bx, ay, by, dx, dy
+        integer :: x_power, y_power
+
+        ax = point(1)
+        ay = point(2)
+        bx = next_point(1)
+        by = next_point(2)
+        dx = bx - ax
+        dy = by - ay
+        value = 0.0_dp
+        do x_power = 0, x_degree + 1
+            do y_power = 0, y_degree
+                value = value + dy*binomial(x_degree + 1, x_power)* &
+                    binomial(y_degree, y_power)*ax**(x_degree + 1 - x_power)* &
+                    dx**x_power*ay**(y_degree - y_power)*dy**y_power/ &
+                    real((x_degree + 1)*(x_power + y_power + 1), dp)
+            end do
+        end do
+    end function edge_monomial_moment
+
+    pure subroutine edge_monomial_moment_jvp( &
+            point, next_point, point_dot, next_point_dot, x_degree, y_degree, &
+            value, value_dot)
+        real(dp), intent(in) :: point(2), next_point(2), point_dot(2)
+        real(dp), intent(in) :: next_point_dot(2)
+        integer, intent(in) :: x_degree, y_degree
+        real(dp), intent(out) :: value, value_dot
+
+        real(dp) :: ax, bx, ay, by, dx, dy, ax_dot, bx_dot, ay_dot, by_dot
+        real(dp) :: dx_dot, dy_dot, leading, leading_dot
+        real(dp) :: factor_ax, factor_bx, factor_ay, factor_by
+        real(dp) :: factor_ax_dot, factor_bx_dot, factor_ay_dot, factor_by_dot
+        real(dp) :: product, product_dot, coefficient
+        integer :: x_power, y_power
+
+        ax = point(1)
+        ay = point(2)
+        bx = next_point(1)
+        by = next_point(2)
+        ax_dot = point_dot(1)
+        ay_dot = point_dot(2)
+        bx_dot = next_point_dot(1)
+        by_dot = next_point_dot(2)
+        dx = bx - ax
+        dy = by - ay
+        dx_dot = bx_dot - ax_dot
+        dy_dot = by_dot - ay_dot
+        value = 0.0_dp
+        value_dot = 0.0_dp
+        do x_power = 0, x_degree + 1
+            do y_power = 0, y_degree
+                call power_with_derivative( &
+                    ax, ax_dot, x_degree + 1 - x_power, factor_ax, &
+                    factor_ax_dot)
+                call power_with_derivative( &
+                    dx, dx_dot, x_power, factor_bx, factor_bx_dot)
+                call power_with_derivative( &
+                    ay, ay_dot, y_degree - y_power, factor_ay, &
+                    factor_ay_dot)
+                call power_with_derivative( &
+                    dy, dy_dot, y_power, factor_by, factor_by_dot)
+                product = factor_ax*factor_bx*factor_ay*factor_by
+                product_dot = factor_ax_dot*factor_bx*factor_ay*factor_by + &
+                    factor_ax*factor_bx_dot*factor_ay*factor_by + &
+                    factor_ax*factor_bx*factor_ay_dot*factor_by + &
+                    factor_ax*factor_bx*factor_ay*factor_by_dot
+                coefficient = binomial(x_degree + 1, x_power)* &
+                    binomial(y_degree, y_power)/ &
+                    real((x_degree + 1)*(x_power + y_power + 1), dp)
+                leading = dy*product
+                leading_dot = dy_dot*product + dy*product_dot
+                value = value + coefficient*leading
+                value_dot = value_dot + coefficient*leading_dot
+            end do
+        end do
+    end subroutine edge_monomial_moment_jvp
+
+    pure subroutine power_with_derivative(base, base_dot, exponent, value, value_dot)
+        real(dp), intent(in) :: base, base_dot
+        integer, intent(in) :: exponent
+        real(dp), intent(out) :: value, value_dot
+
+        value = base**exponent
+        value_dot = 0.0_dp
+        if (exponent > 0) value_dot = real(exponent, dp)*base**(exponent - 1)*base_dot
+    end subroutine power_with_derivative
+
+    pure function binomial(number, choose) result(value)
+        integer, intent(in) :: number, choose
+        real(dp) :: value
+        integer :: factor
+
+        value = 0.0_dp
+        if (choose < 0) return
+        if (choose > number) return
+        value = 1.0_dp
+        do factor = 1, choose
+            value = value*real(number - choose + factor, dp)/real(factor, dp)
+        end do
+    end function binomial
 
     pure subroutine clip_level_set_polygon( &
             polygon, point_count, level_values, keep_positive, clipped)
