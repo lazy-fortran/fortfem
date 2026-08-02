@@ -104,6 +104,7 @@ program iga_polar_feec
 
     call render_solution()
     call render_mesh()
+    call write_gallery_sequence()
     call figure(figsize=[8.0_dp, 5.5_dp])
     call plot(trials, max(energy_error(:trial_count), epsilon(1.0_dp)), &
         label="grad/H(curl)")
@@ -169,6 +170,7 @@ contains
         real(dp) :: numerator, radial_derivative, angular_derivative
         real(dp) :: determinant, gradient_x, gradient_y, gradient_scale
         integer :: count, arrow_count, i, j, local_status, tensor_index
+        integer :: csv_unit
 
         allocate( &
             x(angular_plot_samples*radial_plot_samples), &
@@ -256,7 +258,31 @@ contains
         call ylim(-1.08_dp, 1.08_dp)
         call title("Polar FEEC solution on the mapped curvilinear mesh")
         call savefig(output_directory//"/polar_feec_solution_2d.png")
+
+        open (newunit=csv_unit, file=output_directory// &
+            "/polar_feec_solution_2d.csv", status="replace", action="write")
+        write (csv_unit, "(a)") "radius_parameter,angle_parameter,x,y,solution"
+        do j = 1, radial_plot_samples
+            coordinate_r = real(j - 1, dp)/real(radial_plot_samples - 1, dp)
+            do i = 1, angular_plot_samples
+                coordinate_a = real(i - 1, dp)/real(angular_plot_samples, dp)
+                count = (j - 1)*angular_plot_samples + i
+                write (csv_unit, "(5(es24.16e3,:,','))") coordinate_r, &
+                    coordinate_a, x(count), y(count), values(count)
+            end do
+        end do
+        close (csv_unit)
     end subroutine render_solution
+
+    subroutine write_gallery_sequence()
+        integer :: sequence_unit
+
+        open (newunit=sequence_unit, file=output_directory// &
+            "/gallery_sequence.txt", status="replace", action="write")
+        write (sequence_unit, "(a)") "physical_solution"
+        write (sequence_unit, "(a)") "diagnostics"
+        close (sequence_unit)
+    end subroutine write_gallery_sequence
 
     subroutine render_mesh()
         call figure(figsize=[6.5_dp, 6.5_dp])
