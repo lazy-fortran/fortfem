@@ -13,6 +13,7 @@ regularized_surface_current_layer
 sheet_current_parity
 curl_curl
 cgl_pressure_tensor
+cgl_pressure_3d_gallery
 field_aligned_flux
 fci_parallel_diffusion
 fci_sol_gallery

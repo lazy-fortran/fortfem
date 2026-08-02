@@ -19,6 +19,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [sheet_current_parity](sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet
 - [curl_curl](curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
+- [cgl_pressure_3d_gallery](cgl_pressure_3d_gallery.html) - This neutral manufactured gallery is the physical-first 3-D fixture for a
 - [field_aligned_flux](field_aligned_flux.html) - This manufactured profile evaluates the generated pointwise constitutive
 - [fci_parallel_diffusion](fci_parallel_diffusion.html) - This small fixture exercises FortFEM's field-coordinate-independent support
 - [fci_sol_gallery](fci_sol_gallery.html) - This neutral FCI/SOL fixture traces three helical field lines on a toroidal

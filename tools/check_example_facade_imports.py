@@ -108,6 +108,11 @@ CASES = (
         "fortfem_feec",
     ),
     ExampleCase(
+        "CGL tensor-pressure 3-D solution",
+        "example/cgl_pressure_3d_gallery/cgl_pressure_3d_gallery.f90",
+        "fortfem_feec",
+    ),
+    ExampleCase(
         "polar IGA FEEC solution",
         "example/iga_polar_feec/iga_polar_feec.f90",
         "fortfem_feec",
