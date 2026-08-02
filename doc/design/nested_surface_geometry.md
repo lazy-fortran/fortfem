@@ -68,6 +68,31 @@ Mode activation, radial powers, field-period metadata, and phase conventions
 are discrete topology/metadata choices.  Changing them requires rebuilding
 the registry and is outside the fixed-topology derivative contract.
 
+The evaluator also exposes coordinate products for fixed modal coefficients:
+
+* `evaluate_nested_surface_geometry_coordinate_jvp` accepts perturbations of
+  the sampled `(rho,theta,zeta)` arrays and returns tangents of the mapped and
+  Cartesian coordinate values;
+* `evaluate_nested_surface_geometry_coordinate_vjp` maps cotangents of those
+  two coordinate outputs back to `(rho,theta,zeta)` sample cotangents.
+
+These products use the returned first Jacobians and therefore have the real
+pairing
+
+\[
+  \langle \bar q,\dot q\rangle
+  =\sum_s(\bar\rho_s\dot\rho_s+
+          \bar\theta_s\dot\theta_s+
+          \bar\zeta_s\dot\zeta_s).
+\]
+
+They deliberately cover coordinate values only: differentiating the returned
+coordinate Jacobians, metric, or volume determinant with respect to sample
+coordinates is a second-order geometry action and remains a separate planned
+product.  All coordinate arrays have one sample axis, must agree in length,
+and are checked for finite values; negative radial samples are rejected by the
+base evaluator.
+
 # Provenance and intended composition
 
 The radial Fourier basis and phase convention are delegated to
@@ -82,5 +107,6 @@ Fourier-FEM, BEM, DtN, and virtual-casing clients that need physical sample
 coordinates without importing plasma-specific formats.
 
 The independent test covers a manufactured modal oracle, field-period
-periodicity, the radial-power axis contract, central-difference JVP checks, and
-the coefficient VJP dot-product identity.
+periodicity, the radial-power axis contract, central-difference coefficient and
+sample-coordinate JVP checks, coefficient and coordinate VJP dot-product
+identities, and strict sample-shape rejection.
