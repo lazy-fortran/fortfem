@@ -22,6 +22,7 @@ mixed_acoustic_wave
 mixed_wave_3d_structure
 mixed_elasticity_wave
 mixed_wave_wall
+nonlinear_resistive_mhd_gallery
 
 tetra_h1_poisson
 tetra_mixed_poisson
