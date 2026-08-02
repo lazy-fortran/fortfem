@@ -41,13 +41,13 @@ module fortfem_larger_domain_parity
         character(len=128) :: provenance = ""
     end type larger_domain_parity_t
 
-    public :: evaluate_larger_domain_parity
-    public :: evaluate_larger_domain_parity_jvp
+    public :: compare_larger_domain_solution
+    public :: compare_larger_domain_solution_jvp
     public :: validate_larger_domain_parity
 
 contains
 
-    subroutine evaluate_larger_domain_parity( &
+    subroutine compare_larger_domain_solution( &
             inner_field, outer_field, weights, inner_contract, outer_contract, &
             inner_boundary_distance, outer_boundary_distance, absolute_tolerance, &
             relative_tolerance, report, status)
@@ -144,9 +144,9 @@ contains
             return
         end if
         status = 0
-    end subroutine evaluate_larger_domain_parity
+    end subroutine compare_larger_domain_solution
 
-    subroutine evaluate_larger_domain_parity_jvp( &
+    subroutine compare_larger_domain_solution_jvp( &
             inner_field, outer_field, weights, inner_contract, outer_contract, &
             inner_boundary_distance, outer_boundary_distance, absolute_tolerance, &
             relative_tolerance, inner_field_dot, outer_field_dot, weights_dot, &
@@ -189,14 +189,14 @@ contains
         relative_difference_per_distance_dot = 0.0_dp
         distance_increase_dot = 0.0_dp
         distance_ratio_dot = 0.0_dp
-        call evaluate_larger_domain_parity( &
+        call compare_larger_domain_solution( &
             inner_field, outer_field, weights, inner_contract, outer_contract, &
             inner_boundary_distance, outer_boundary_distance, absolute_tolerance, &
             relative_tolerance, report, status)
         if (status /= 0) return
         if (.not. valid_jvp_directions( &
-                inner_field, outer_field, weights, inner_field_dot, &
-                outer_field_dot, weights_dot)) then
+            inner_field, outer_field, weights, inner_field_dot, &
+            outer_field_dot, weights_dot)) then
             status = 1
             return
         end if
@@ -266,7 +266,7 @@ contains
             return
         end if
         status = 0
-    end subroutine evaluate_larger_domain_parity_jvp
+    end subroutine compare_larger_domain_solution_jvp
 
     logical function validate_larger_domain_parity(report, status) result(valid)
         type(larger_domain_parity_t), intent(in) :: report

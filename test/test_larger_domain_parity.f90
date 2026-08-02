@@ -6,9 +6,11 @@ program test_larger_domain_parity
         boundary_operator_contract_t, &
         initialize_boundary_operator_contract, &
         larger_domain_parity_t, &
-        evaluate_larger_domain_parity, &
-        evaluate_larger_domain_parity_jvp, &
+        compare_larger_domain_solution, &
+        compare_larger_domain_solution_jvp, &
         validate_larger_domain_parity
+    use fortfem_larger_domain_parity, only: &
+        compare_larger_domain_solution_direct => compare_larger_domain_solution
     implicit none
 
     integer, parameter :: dp = real64
@@ -25,7 +27,7 @@ program test_larger_domain_parity
     real(dp) :: weights_dot(sample_count), weights_plus(sample_count)
     real(dp) :: weights_minus(sample_count)
     type(boundary_operator_contract_t) :: inner_contract, outer_contract
-    type(larger_domain_parity_t) :: report, report_plus, report_minus, invalid
+    type(larger_domain_parity_t) :: report, report_direct, report_plus, report_minus, invalid
     real(dp) :: expected_absolute, expected_norm, expected_relative
     real(dp) :: comparison_norm_dot, absolute_difference_dot
     real(dp) :: relative_difference_dot, relative_per_distance_dot
@@ -45,11 +47,11 @@ program test_larger_domain_parity
 
     all_passed = .true.
     inner_field(1, :) = [cmplx(1.0_dp, 0.0_dp, dp), &
-                          cmplx(2.0_dp, 0.0_dp, dp), &
-                          cmplx(-1.0_dp, 0.0_dp, dp)]
+        cmplx(2.0_dp, 0.0_dp, dp), &
+        cmplx(-1.0_dp, 0.0_dp, dp)]
     inner_field(2, :) = [cmplx(0.0_dp, 1.0_dp, dp), &
-                          cmplx(1.0_dp, 0.0_dp, dp), &
-                          cmplx(2.0_dp, 0.0_dp, dp)]
+        cmplx(1.0_dp, 0.0_dp, dp), &
+        cmplx(2.0_dp, 0.0_dp, dp)]
     outer_field = inner_field
     outer_field(1, 1) = cmplx(1.1_dp, 0.2_dp, dp)
     outer_field(2, 2) = cmplx(1.1_dp, 0.0_dp, dp)
@@ -80,12 +82,25 @@ program test_larger_domain_parity
         "V/m", "unit", "larger-domain independent oracle", "common-interior-1", status)
     call record_condition(status == 0, "outer boundary metadata initializes")
 
-    call evaluate_larger_domain_parity( &
+    call compare_larger_domain_solution_direct( &
         inner_field, outer_field, weights, inner_contract, outer_contract, &
         0.5_dp, 1.5_dp, 0.30_dp, 0.08_dp, report, status)
-    call record_condition(status == 0, "larger-domain parity evaluates")
+    call record_condition(status == 0, "larger-domain solution comparison evaluates")
+    call compare_larger_domain_solution( &
+        inner_field, outer_field, weights, inner_contract, outer_contract, &
+        0.5_dp, 1.5_dp, 0.30_dp, 0.08_dp, report_direct, status)
+    call record_condition(status == 0 .and. &
+        report_direct%component_count == report%component_count .and. &
+        report_direct%sample_count == report%sample_count .and. &
+        abs(report_direct%absolute_difference - report%absolute_difference) < 1.0e-14_dp .and. &
+        abs(report_direct%relative_difference - report%relative_difference) < 1.0e-14_dp, &
+        "umbrella and defining-module canonical names agree")
     call record_condition(validate_larger_domain_parity(report, status), &
-        "larger-domain parity validates")
+        "larger-domain solution comparison validates")
+    call record_condition(report%schema_version == "fortfem-larger-domain-parity-1" .and. &
+        trim(report%topology_id) == "common-interior-1" .and. &
+        trim(report%provenance) == "larger-domain independent oracle", &
+        "canonical comparison preserves report schema and provenance")
 
     expected_absolute = sqrt(0.08_dp)
     expected_norm = sqrt(17.68_dp)
@@ -143,7 +158,7 @@ program test_larger_domain_parity
         expected_relative_dot/report%distance_increase - &
         report%relative_difference*expected_distance_increase_dot/ &
         report%distance_increase**2
-    call evaluate_larger_domain_parity_jvp( &
+    call compare_larger_domain_solution_jvp( &
         inner_field, outer_field, weights, inner_contract, outer_contract, &
         0.5_dp, 1.5_dp, 0.30_dp, 0.08_dp, inner_field_dot, outer_field_dot, &
         weights_dot, inner_distance_dot, outer_distance_dot, comparison_norm_dot, &
@@ -156,7 +171,7 @@ program test_larger_domain_parity
         abs(relative_per_distance_dot - expected_relative_per_distance_dot) < 1.0e-12_dp .and. &
         abs(distance_increase_dot - expected_distance_increase_dot) < 1.0e-12_dp .and. &
         abs(distance_ratio_dot - expected_distance_ratio_dot) < 1.0e-12_dp, &
-        "larger-domain parity JVP matches independent weighted metric oracle")
+        "canonical comparison JVP matches independent weighted metric oracle")
 
     inner_field_plus = inner_field + epsilon_fd*inner_field_dot
     outer_field_plus = outer_field + epsilon_fd*outer_field_dot
@@ -164,11 +179,11 @@ program test_larger_domain_parity
     inner_field_minus = inner_field - epsilon_fd*inner_field_dot
     outer_field_minus = outer_field - epsilon_fd*outer_field_dot
     weights_minus = weights - epsilon_fd*weights_dot
-    call evaluate_larger_domain_parity( &
+    call compare_larger_domain_solution( &
         inner_field_plus, outer_field_plus, weights_plus, inner_contract, outer_contract, &
         0.5_dp + epsilon_fd*inner_distance_dot, &
         1.5_dp + epsilon_fd*outer_distance_dot, 0.30_dp, 0.08_dp, report_plus, status)
-    call evaluate_larger_domain_parity( &
+    call compare_larger_domain_solution( &
         inner_field_minus, outer_field_minus, weights_minus, inner_contract, outer_contract, &
         0.5_dp - epsilon_fd*inner_distance_dot, &
         1.5_dp - epsilon_fd*outer_distance_dot, 0.30_dp, 0.08_dp, report_minus, status)
@@ -179,10 +194,10 @@ program test_larger_domain_parity
         report_minus%absolute_difference)/(2.0_dp*epsilon_fd)) < 1.0e-7_dp .and. &
         abs(relative_per_distance_dot - (report_plus%relative_difference_per_distance - &
         report_minus%relative_difference_per_distance)/(2.0_dp*epsilon_fd)) < 1.0e-7_dp, &
-        "larger-domain parity JVP matches complete central re-evaluation")
+        "canonical comparison JVP matches complete central re-evaluation")
 
     outer_contract%equation = "laplace"
-    call evaluate_larger_domain_parity( &
+    call compare_larger_domain_solution( &
         inner_field, outer_field, weights, inner_contract, outer_contract, &
         0.5_dp, 1.5_dp, 0.30_dp, 0.08_dp, invalid, status)
     call record_condition(status /= 0, "mixed equation spaces are rejected")
