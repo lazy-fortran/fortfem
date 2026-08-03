@@ -34,13 +34,24 @@ module fortfem_core
         evaluate_axis_regular_radial_basis, &
         evaluate_axis_regular_radial_basis_jvp, &
         evaluate_axis_regular_radial_basis_vjp
-    use fortfem_nested_surface_geometry, only: evaluate_nested_surface_geometry
+    use fortfem_nested_surface_geometry, only: &
+        evaluate_nested_surface_geometry, &
+        evaluate_nested_surface_geometry_jvp, &
+        evaluate_nested_surface_geometry_vjp, &
+        evaluate_nested_surface_geometry_coordinate_jvp, &
+        evaluate_nested_surface_geometry_coordinate_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
     use fortfem_structured_tetra_box_mesh, only: &
         generate_structured_tetra_box_mesh
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
-    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
+    use fortfem_torus_curved_panel, only: &
+        evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp, &
+        evaluate_torus_curved_panel_vjp
+    use fortfem_barycentric_surface_refinement, only: &
+        barycentric_refine_torus_surface_mesh, &
+        barycentric_refine_torus_surface_mesh_jvp, &
+        barycentric_refine_torus_surface_mesh_vjp
     use fortfem_level_set_tetra_interface_3d, only: &
         evaluate_level_set_tetra_interface_3d, &
         evaluate_level_set_tetra_interface_3d_jvp, &
@@ -82,7 +93,12 @@ module fortfem_core
     public :: generate_sphere_surface_mesh
     public :: generate_structured_tetra_box_mesh
     public :: generate_torus_surface_mesh
+    public :: barycentric_refine_torus_surface_mesh
+    public :: barycentric_refine_torus_surface_mesh_jvp
+    public :: barycentric_refine_torus_surface_mesh_vjp
     public :: evaluate_torus_curved_panel
+    public :: evaluate_torus_curved_panel_jvp
+    public :: evaluate_torus_curved_panel_vjp
     public :: evaluate_level_set_tetra_interface_3d
     public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d
@@ -122,6 +138,10 @@ module fortfem_core
     public :: evaluate_axis_regular_radial_basis_jvp
     public :: evaluate_axis_regular_radial_basis_vjp
     public :: evaluate_nested_surface_geometry
+    public :: evaluate_nested_surface_geometry_jvp
+    public :: evaluate_nested_surface_geometry_vjp
+    public :: evaluate_nested_surface_geometry_coordinate_jvp
+    public :: evaluate_nested_surface_geometry_coordinate_vjp
     public :: initialize_cell_complex
     public :: invert_tetra_affine_map
     public :: invert_tetra_affine_map_jvp

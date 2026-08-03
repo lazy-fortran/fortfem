@@ -74,6 +74,10 @@ module fortfem_feec
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
+    use fortfem_mortar_trace_coupling, only: &
+        assemble_mortar_trace_coupling, &
+        assemble_mortar_trace_coupling_jvp, &
+        assemble_mortar_trace_coupling_vjp
     use fortfem_maxwell_bc_surface, only: &
         assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation, &
         differentiate_maxwell_bc_transformation_jvp, &
@@ -361,7 +365,10 @@ module fortfem_feec
         validate_beltrami_shell_parity
     use fortfem_eulerian_nonnested_residual, only: &
         assemble_eulerian_nonnested_residual, &
-        assemble_eulerian_nonnested_residual_jvp
+        assemble_eulerian_nonnested_residual_jvp, &
+        assemble_eulerian_nonnested_residual_vjp
+    use fortfem_continuation_event, only: &
+        CONTINUATION_EVENT_NONE, CONTINUATION_EVENT_SIGN_CROSSING
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
@@ -642,6 +649,9 @@ module fortfem_feec
     public :: build_tetra_nedelec_dof_map
     public :: build_tetra_edge_dof_map
     public :: barycentric_refine_surface_mesh
+    public :: assemble_mortar_trace_coupling
+    public :: assemble_mortar_trace_coupling_jvp
+    public :: assemble_mortar_trace_coupling_vjp
     public :: assemble_maxwell_rwg_rbc_pairing
     public :: build_maxwell_bc_transformation
     public :: differentiate_maxwell_bc_transformation_jvp
@@ -933,6 +943,9 @@ module fortfem_feec
     public :: validate_beltrami_shell_parity
     public :: assemble_eulerian_nonnested_residual
     public :: assemble_eulerian_nonnested_residual_jvp
+    public :: assemble_eulerian_nonnested_residual_vjp
+    public :: CONTINUATION_EVENT_NONE
+    public :: CONTINUATION_EVENT_SIGN_CROSSING
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
     public :: evaluate_force_balance_objective_vjp

@@ -1,6 +1,6 @@
 program test_torus_barycentric_refinement
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         barycentric_refine_torus_surface_mesh, evaluate_torus_curved_panel, &
         generate_torus_surface_mesh
     use fortfem_kinds, only: dp

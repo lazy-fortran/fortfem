@@ -1,12 +1,12 @@
 program test_nested_surface_geometry
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_nested_surface_geometry, &
         evaluate_nested_surface_geometry_jvp, &
         evaluate_nested_surface_geometry_vjp, &
         evaluate_nested_surface_geometry_coordinate_jvp, &
         evaluate_nested_surface_geometry_coordinate_vjp
-    use fortfem_fourier_mode_registry, only: &
+    use fortfem_fourier, only: &
         fourier_mode_registry_t, initialize_fourier_mode_registry
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
