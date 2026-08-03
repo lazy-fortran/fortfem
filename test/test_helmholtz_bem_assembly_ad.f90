@@ -1,6 +1,6 @@
 program test_helmholtz_bem_assembly_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_helmholtz_single_layer_p0_3d, &
+    use fortfem_boundary, only: assemble_helmholtz_single_layer_p0_3d, &
         assemble_helmholtz_single_layer_p0_3d_jvp, &
         assemble_helmholtz_single_layer_p0_3d_vjp, &
         assemble_laplace_single_layer_p0_3d
