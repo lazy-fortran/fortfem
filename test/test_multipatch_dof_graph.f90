@@ -1,6 +1,6 @@
 program test_multipatch_dof_graph
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_multipatch_signed_dof_map
+    use fortfem_feec, only: build_multipatch_signed_dof_map
     implicit none
 
     integer :: local_to_global(9), status, global_count

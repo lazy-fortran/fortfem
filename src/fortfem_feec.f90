@@ -258,6 +258,8 @@ module fortfem_feec
         build_bspline_feec_2d_multipatch_maps, &
         build_bspline_feec_3d_interface_dofs, &
         build_bspline_feec_3d_multipatch_maps
+    use fortfem_multipatch_dof_graph, only: &
+        build_multipatch_signed_dof_map
     use fortfem_bspline_polar, only: &
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_feec_2d_extractions, &
@@ -920,6 +922,7 @@ module fortfem_feec
     public :: build_bspline_feec_2d_multipatch_maps
     public :: build_bspline_feec_3d_interface_dofs
     public :: build_bspline_feec_3d_multipatch_maps
+    public :: build_multipatch_signed_dof_map
     public :: build_bspline_feec_2d_two_patch_operators_csc
     public :: build_bspline_feec_3d_two_patch_operators_csc
     public :: build_bspline_feec_3d_operators_csc
