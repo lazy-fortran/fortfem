@@ -744,6 +744,7 @@ single commit for integration. The recent implementation slices are:
 | `4b80b2f` | External-oracle performance comparison ledger | Manifest provenance, weighted timing/memory/tolerance means, JVP/VJP, and invalid-record oracle |
 | `4f3654a` | Multipatch signed-trace CSC assembly | Sparse HDG delegation, fixed-map JVP/VJP, duplicate/sign validation, and sparse adjoint oracle |
 | `6e63bb5` | Public degree-five cut polygon moments | Green-theorem degree-five value/JVP/VJP, polynomial, symmetry, transpose, and degenerate-topology oracle |
+| `e8dac912` | Public degree-six cut polygon moments | 64 Green-theorem raw moments, conservation, central-difference JVP, real-adjoint VJP, and degenerate-topology oracle |
 | `bdbefa1` | Communicator-free MPI trace exchange schedule | Ownership/rank/offset validation, packed owner/ghost value/JVP/VJP maps, and independent exchange oracle |
 | `8b99e41` | Oriented arbitrary patch-graph trace contraction | Periodic/self-edge cycle contractions, weighted value/JVP/VJP, incidence closure, and transpose oracle |
 | `6a2ebfd` + `56720e9` | FortSym-generated degree-seven curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent degree-nine Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; generated source is byte-checked when the locked FortSym checkout is available |
@@ -2091,7 +2092,7 @@ application-specific field assembly remain external.
 The neutral oriented patch-graph trace contraction now consumes arbitrary
 region-interface cycle bases, including periodic/self-identification edges,
 and returns weighted cycle ledgers with exact derivatives. Higher-order cut
-geometry now includes a degree-five polygon moment oracle. Actual MPI
+geometry now includes degree-five and degree-six polygon moment oracles. Actual MPI
 communicators, geometry-aware physical assembly, and higher-order 3-D/cut-IGA
 construction remain open.
 
