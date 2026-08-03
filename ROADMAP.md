@@ -303,7 +303,9 @@ documentation gates above pass.
   comparison contracts; `fortfem_plot` exposes the existing mesh, sampling,
   and solution-plot contracts without generated media. The FEEC facade also
   exposes field-aligned constitutive tensors and 3-D tensor-diffusion
-  contractions used by the anisotropic gallery. Each has a direct-import
+  contractions used by the anisotropic gallery. The Fourier facade now also
+  re-exports the complete collocation-grid metadata/index/chunk contract, so
+  Fourier clients need not import the compatibility umbrella. Each has a direct-import
   facade and focused analytical or structure smoke test. No facade may grow
   into the umbrella.
 - **API-03 — six parity renames complete:** the boundary parity family is now
@@ -698,6 +700,9 @@ single commit for integration. The recent implementation slices are:
 | `e838ff9` + `e45c20a` | Direct Fourier transform sample/angle JVP and real-part complex VJP, with canonical `fortfem_fourier` exports | Independent nonuniform signed-mode central-difference and adjoint oracles, finite/shape rejection, and modulo-(2pi) duplicate-angle rejection |
 | `8797f75` + `d04a775` | FortSym-generated degree-eight (octic) curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; degree-eight uses seven interior controls, while six controls are the existing septic path |
 | `58daa083` + `7727770` | Retained FCI cycle composition over existing field-split factors and the coupled work ledger | Independent literal inverse, inverse-derivative JVP, nonsymmetric transpose VJP, full matrix-inclusive adjoint, and non-positive-weight rejection |
+| `764c9b45` | Assembled exact-curved torus EFIE RWG JVP/VJP for wave-number and impedance parameters | Independent central reassembly and real-part complex-adjoint oracle on the assembled torus operator |
+| `b38fa65f` | Canonical Fourier-facade exports for collocation-grid kinds, metadata, indexing, and chunking | No-umbrella downstream consumer with tensor-product cardinality, flatten/unflatten, chunk, and weight metadata oracle |
+| `f9680a25` | Pinned FortSym worktree override for generated-code provenance and isolated generator builds | Independent `/mnt/storage` detached-worktree fixture covers default/override resolution, lock mismatch, dirty checkout, dependency targeting, and cleanup |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
