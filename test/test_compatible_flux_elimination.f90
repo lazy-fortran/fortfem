@@ -1,6 +1,6 @@
 program test_compatible_flux_elimination
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_compatible_flux_elimination, &
         assemble_compatible_flux_elimination_jvp, &
         assemble_compatible_flux_elimination_vjp
