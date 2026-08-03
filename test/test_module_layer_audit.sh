@@ -6,7 +6,10 @@ checker="$repo_root/scripts/check_module_layers.py"
 
 python3 "$checker" --root "$repo_root/src"
 
-fixtures="$repo_root/test/fixtures/module_layer_audit"
+# Keep negative source trees outside ``test/``.  FPM recursively discovers
+# Fortran files below that directory when constructing its test module graph;
+# the fixtures are inputs to this checker, not package test sources.
+fixtures="$repo_root/tools/fixtures/module_layer_audit"
 run_negative() {
     local name=$1
     local expected=$2

@@ -6,12 +6,14 @@ release_checker="$repository_dir/scripts/check_api_release_gate.py"
 compatibility_checker="$repository_dir/tools/check_api_compatibility.py"
 layer_gate="$repository_dir/test/test_module_layer_audit.sh"
 generated_gate="$repository_dir/test/test_generated_visibility.sh"
+fixture_discovery_gate="$repository_dir/test/test_fpm_fixture_discovery.sh"
 fixtures="$repository_dir/tools/fixtures/api_release_gate"
 
 python3 "$release_checker" --root "$repository_dir"
 python3 "$compatibility_checker" --root "$repository_dir"
 bash "$layer_gate"
 bash "$generated_gate"
+bash "$fixture_discovery_gate"
 
 run_negative() {
     local label=$1
