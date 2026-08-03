@@ -1246,6 +1246,8 @@ module fortfem_api
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d, &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d, &
+        assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp, &
+        assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp, &
         assemble_maxwell_torus_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
         assemble_maxwell_torus_curved_rwg_mass_matrix_jvp, &
@@ -2321,6 +2323,8 @@ module fortfem_api
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_jvp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp
