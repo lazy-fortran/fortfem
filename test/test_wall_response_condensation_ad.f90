@@ -1,6 +1,6 @@
 program test_wall_response_condensation_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         condense_wall_response_blocks, condense_wall_response_blocks_jvp, &
         condense_wall_response_blocks_vjp
     use fortfem_kinds, only: dp
