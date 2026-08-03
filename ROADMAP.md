@@ -661,6 +661,15 @@ manifold, and physical-surface-geometry consumers now use their core/FEEC
 facades. Its seven focused tests and the 506-target `fo check` passed; the
 generated public inventory and release gate were refreshed afterward.
 
+The boundary/Maxwell handoff `6921153` then migrated five Helmholtz CFIE,
+toroidal panel, planar Nédélec DtN, and toroidal spectral-trace consumers.
+Their bounded analytical and geometry-derivative tests pass; two existing
+Helmholtz implementation modules remain direct owners because no boundary
+facade export exists yet, and that gap is recorded for the next facade pass
+instead of being papered over with duplicate wrappers. The Biro 3-D gallery
+also received a display-only edge-vector scale adjustment in `fb28cee`; the
+stored edge integrals and gauge oracle are unchanged.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
