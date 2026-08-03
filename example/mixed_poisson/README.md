@@ -24,3 +24,6 @@ the companion CSV records numerical and analytical values independently.
 
 CI generates `mixed_poisson_solution_2d.png` first, followed by
 `mixed_poisson_convergence_1d.png`; generated media are not committed.
+`benchmark.json` records the three-level problem size, accumulated solver CPU
+time, total example CPU time, and finest-grid flux and pressure errors. Timing
+is machine-local metadata and is not a cross-hardware speed claim.

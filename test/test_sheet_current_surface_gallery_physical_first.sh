@@ -66,7 +66,7 @@ assert stages == [
     "diagnostics",
 ]
 metadata = json.loads(metadata_path.read_text())
-assert metadata["schema"] == "fortfem-sheet-current-surface-gallery-v1"
+assert metadata["schema"] == "fortfem-sheet-current-surface-gallery-v2"
 assert metadata["physical_solution_first"] is True
 assert metadata["geometries"] == ["slab", "cylinder", "sphere", "torus"]
 PY

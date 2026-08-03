@@ -24,6 +24,8 @@ program mixed_poisson
         "output/example/mixed_poisson"
     integer, parameter :: mesh_sizes(3) = [5, 9, 17]
     real(dp) :: errors(2, 3), flux_errors(3), h(3), pressure_errors(3)
+    real(dp) :: solve_seconds, solve_start, solve_end
+    real(dp) :: total_seconds, total_start, total_end
     type(mesh_2d_t) :: plotted_mesh
     real(dp), allocatable :: plotted_pressure_dofs(:)
     integer :: level
@@ -31,6 +33,8 @@ program mixed_poisson
     call init_measures()
     call execute_command_line("mkdir -p "//output_directory)
     call initialize_gallery_sequence()
+    call cpu_time(total_start)
+    solve_seconds = 0.0_dp
     do level = 1, size(mesh_sizes)
         h(level) = 1.0_dp/real(mesh_sizes(level) - 1, dp)
         if (level == size(mesh_sizes)) then
@@ -61,6 +65,13 @@ program mixed_poisson
     call legend()
     call savefig(output_directory//"/mixed_poisson_convergence_1d.png")
     call record_gallery_stage("diagnostics")
+    call cpu_time(total_end)
+    total_seconds = total_end - total_start
+    if (.not. (solve_seconds > 0.0_dp)) &
+        error stop "mixed Poisson timing must be positive"
+    if (total_seconds < solve_seconds) &
+        error stop "mixed Poisson total timing is inconsistent"
+    call write_benchmark_metadata()
 
 contains
 
@@ -195,9 +206,12 @@ contains
         pressure_flux_form = &
             (-1.0_dp)*inner(pressure_trial, div(flux_test))*dx
         balance_form = inner(div(flux_trial), pressure_test)*dx
+        call cpu_time(solve_start)
         call solve_symbolic_mixed_poisson_rt( &
             mesh%data, 1, 8, flux_form, pressure_flux_form, balance_form, &
             exact_source, flux_dofs, pressure_dofs, status)
+        call cpu_time(solve_end)
+        solve_seconds = solve_seconds + solve_end - solve_start
         if (status%code /= 0) error stop "symbolic mixed solve failed"
         call compute_errors( &
             mesh%data, flux_dofs, pressure_dofs, errors)
@@ -321,5 +335,31 @@ contains
         write (unit, "(a)") stage
         close (unit)
     end subroutine record_gallery_stage
+
+    subroutine write_benchmark_metadata()
+        integer :: unit
+
+        open (newunit=unit, file=output_directory//"/benchmark.json", &
+            status="replace", action="write")
+        write (unit, "(a)") "{"
+        write (unit, "(a)") &
+            '  "schema": "fortfem-mixed-poisson-benchmark-v1",'
+        write (unit, "(a)") '  "physical_solution_first": true,'
+        write (unit, "(a,i0,a)") &
+            '  "mesh_levels": ', size(mesh_sizes), ","
+        write (unit, "(a,i0,a)") &
+            '  "finest_vertex_count": ', mesh_sizes(size(mesh_sizes)), ","
+        write (unit, "(a,es24.16,a)") &
+            '  "solve_seconds": ', solve_seconds, ","
+        write (unit, "(a,es24.16,a)") &
+            '  "total_seconds": ', total_seconds, ","
+        write (unit, "(a,es24.16,a)") &
+            '  "finest_flux_l2_error": ', flux_errors(size(flux_errors)), ","
+        write (unit, "(a,es24.16)") &
+            '  "finest_pressure_l2_error": ', &
+            pressure_errors(size(pressure_errors))
+        write (unit, "(a)") "}"
+        close (unit)
+    end subroutine write_benchmark_metadata
 
 end program mixed_poisson

@@ -13,3 +13,8 @@ equilibrium, coil, plasma profile, BEM, or material model is inferred.  The
 independent gate checks positive quadrature measures, unit outward normals,
 tangentiality, all four geometry labels, integrated-current parity, and the
 fixed-topology physical-before-diagnostics sequence.
+
+`benchmark.json` records total surface samples, machine-local elapsed CPU time,
+and the maximum integrated Ampère relative error across the four geometries.
+The independent gate recomputes that error from `geometry_ledger.csv`; timings
+are diagnostic metadata, not cross-hardware performance comparisons.
