@@ -1,6 +1,6 @@
 program test_curvilinear_helmholtz_pml
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         curvilinear_curl_curl_pml_coefficients, &
         curvilinear_curl_curl_pml_coefficients_jvp, &
         curvilinear_curl_curl_pml_coefficients_vjp, &

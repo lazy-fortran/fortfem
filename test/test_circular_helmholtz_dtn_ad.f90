@@ -1,6 +1,6 @@
 program test_circular_helmholtz_dtn_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_circular_helmholtz_dtn, apply_circular_helmholtz_dtn_jvp, &
         apply_circular_helmholtz_dtn_vjp, circular_helmholtz_dtn_eigenvalue, &
         circular_helmholtz_dtn_eigenvalue_jvp, &
