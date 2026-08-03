@@ -2007,6 +2007,12 @@ FEM/BEM/DtN/PML or fitted/cut/DG/IGA comparisons. They remain closure-neutral;
 their physical fields, meshes, constitutive laws, and external-code adapters
 remain caller-owned.
 
+The external-case hand-off is now explicit: all Paper Magnetic references
+(TEAM-1A, TEAM-1B, TEAM-2, TEAM-6, TEAM-13, and TEAM-20) are tracked by logical
+source ID, with exact payloads disabled until rights and checksums are
+reviewed. Their neutral fallbacks, common physical probes, and solution-first
+system/solution Pages plots are acceptance requirements, not optional polish.
+
 The compatible spatial core now also has a validated multipatch signed-trace
 assembly wrapper around the existing HDG kernel and a point-first tensor
 enrichment Gram/rank diagnostic for Piola/XIGA vector or tensor supports.
@@ -2559,6 +2565,45 @@ MARS-F, GLISS, STARWALL, and JOREK where a license-safe fixture is available.
 - Never copy external source code or proprietary test data into FortFEM.
 - Compare fields and invariants on a common physical sampling set, not by
   assuming that two codes use the same basis or numbering.
+
+The current private-source inventory and rights boundary are recorded in
+[`benchmark/external_oracles/source_registry.json`](benchmark/external_oracles/source_registry.json)
+and explained in
+[`doc/provenance_and_data_policy.md`](doc/provenance_and_data_policy.md). The
+inventory includes private Paper Magnetic references for TEAM-1A, TEAM-1B,
+TEAM-2, TEAM-6, TEAM-13, and TEAM-20, plus Zotero records for resonant-layer
+literature. These are source leads, not redistributed data. The exact
+Paper-Magnetic cases are part of the acceptance goal, but each remains
+`external-unavailable` until its geometry/material/source payload has a rights
+review, immutable manifest, and checksum. A private Biro reduced-scalar-
+potential paper is tracked as a candidate and is not misidentified as the
+tree--cotree paper.
+
+### 12.3 External-case implementation and Pages hand-off
+
+For every Paper Magnetic, TEAM, or external-code case, use this bounded
+sequence:
+
+1. inventory the private source by logical ID and record public provenance;
+2. transcribe only the reviewed computational contract: geometry topology and
+   dimensions, regions/material labels, units, normalization, excitations,
+   boundary/interface conditions, and probe coordinates;
+3. generate a small FortSym manufactured or neutral fixture so the fast suite
+   has an independent behavioral oracle even when exact data are unavailable;
+4. accept an exact payload only through the sister repository's versioned
+   schema, license declaration, immutable HTTPS manifest, and SHA-256 check;
+5. sample FortFEM and external results at the same physical points and report
+   field, invariant, derivative, and performance differences;
+6. generate the Pages example in solution-first order: complete system and
+   mesh/patch/coil/interface plot, computed scalar/vector/surface solution,
+   analytical or external overlay, then error/convergence/conservation/
+   derivative/performance diagnostics.
+
+The first two panels are mandatory for every example. A convergence-only page
+is not an accepted gallery result. Generated SVG/PNG stays ignored; CSV/JSON
+records carry the source ID, units, normalization, sampler, code revision,
+checksums, hardware, and skip reason. This makes private inputs useful for
+reproducible computation without exposing copyrighted content.
 
 ## 13. Performance and reproducibility
 
