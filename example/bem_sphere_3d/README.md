@@ -20,7 +20,12 @@ not source data or an abstract convergence quantity.
 Generated outputs:
 
 - `sphere_exterior_solution_3d.png`: computed exterior (1/r) field on the
-  observation shell;
+  connected observation shell, with a filled tensor-product surface and
+  ordered samples (the first gallery stage);
+- `sphere_exterior_solution_3d.csv`: ordered `(theta,phi)` surface samples
+  containing coordinates, computed values, exact `1/r`, and absolute error;
+- `gallery_sequence.txt`: machine-readable stage order proving that the
+  physical solution precedes density, operator, and convergence diagnostics;
 - `sphere_capacitance.png`: Galerkin capacitance convergence;
 - `sphere_hierarchical_action.png`: dense and hierarchical operator actions;
 - `sphere_helmholtz_hierarchical_action.png`: real and imaginary outgoing
