@@ -1,6 +1,6 @@
 program test_laplace_bem_state_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_laplace_dirichlet_p0_3d, &
+    use fortfem_boundary, only: solve_laplace_dirichlet_p0_3d, &
         solve_laplace_dirichlet_p0_3d_jvp, &
         solve_laplace_dirichlet_p0_3d_vjp
     use fortfem_kinds, only: dp
