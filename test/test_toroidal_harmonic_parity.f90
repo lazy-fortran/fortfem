@@ -6,7 +6,7 @@ program test_toroidal_harmonic_parity
     !! and the outward normal sign visible at the boundary between the
     !! special-function and FEM/BEM layers.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_toroidal_spectral_trace, toroidal_p, &
+    use fortfem_fourier, only: evaluate_toroidal_spectral_trace, toroidal_p, &
         toroidal_q, toroidal_p_derivative, toroidal_q_derivative
     use fortfem_kinds, only: dp
     implicit none

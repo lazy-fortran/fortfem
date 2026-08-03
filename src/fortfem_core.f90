@@ -11,7 +11,9 @@ module fortfem_core
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
-        toroidal_point_to_cartesian_jvp, toroidal_point_to_cartesian_vjp
+        toroidal_point_to_cartesian_jvp, toroidal_point_to_cartesian_vjp, &
+        toroidal_vector_to_cartesian, toroidal_vector_to_cartesian_jvp, &
+        toroidal_vector_to_cartesian_vjp
     use fortfem_tetra_affine_map, only: invert_tetra_affine_map
     use fortfem_triangle_affine_map, only: &
         invert_triangle_affine_map, invert_triangle_affine_map_jvp, &
@@ -61,6 +63,9 @@ module fortfem_core
     public :: toroidal_point_to_cartesian
     public :: toroidal_point_to_cartesian_jvp
     public :: toroidal_point_to_cartesian_vjp
+    public :: toroidal_vector_to_cartesian
+    public :: toroidal_vector_to_cartesian_jvp
+    public :: toroidal_vector_to_cartesian_vjp
     public :: validate_cell_complex
 
 end module fortfem_core

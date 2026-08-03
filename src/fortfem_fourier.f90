@@ -47,7 +47,28 @@ module fortfem_fourier
     use fortfem_magnetic_curvilinear_coefficients_2d, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_toroidal_poisson_dtn, only: &
-        evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p
+        evaluate_toroidal_harmonic_p, evaluate_toroidal_ampere_field_p, &
+        toroidal_poisson_exterior_dtn_p
+    use fortfem_toroidal_poisson_dtn_ad, only: &
+        evaluate_toroidal_harmonic_p_jvp, evaluate_toroidal_harmonic_p_vjp, &
+        evaluate_toroidal_ampere_field_p_jvp, &
+        evaluate_toroidal_ampere_field_p_vjp, &
+        toroidal_poisson_exterior_dtn_p_jvp, &
+        toroidal_poisson_exterior_dtn_p_vjp
+    use fortfem_toroidal_spectral_trace, only: &
+        evaluate_toroidal_spectral_trace, &
+        evaluate_toroidal_spectral_trace_jvp, &
+        evaluate_toroidal_spectral_trace_vjp, &
+        evaluate_toroidal_spectral_trace_grid, &
+        evaluate_toroidal_spectral_trace_grid_jvp, &
+        evaluate_toroidal_spectral_trace_grid_vjp, &
+        solve_toroidal_spectral_neumann, &
+        solve_toroidal_spectral_neumann_jvp, &
+        solve_toroidal_spectral_neumann_vjp
+    use fortfem_toroidal_modal_convolution, only: &
+        apply_toroidal_modal_convolution, &
+        apply_toroidal_modal_convolution_jvp, &
+        apply_toroidal_modal_convolution_vjp
     implicit none
     private
 
@@ -94,7 +115,26 @@ module fortfem_fourier
     public :: toroidal_q_second_derivative
     public :: scalar_reluctivity_curvilinear_fourier_coefficients
     public :: evaluate_toroidal_harmonic_p
+    public :: evaluate_toroidal_harmonic_p_jvp
+    public :: evaluate_toroidal_harmonic_p_vjp
     public :: evaluate_toroidal_ampere_field_p
+    public :: evaluate_toroidal_ampere_field_p_jvp
+    public :: evaluate_toroidal_ampere_field_p_vjp
+    public :: toroidal_poisson_exterior_dtn_p
+    public :: toroidal_poisson_exterior_dtn_p_jvp
+    public :: toroidal_poisson_exterior_dtn_p_vjp
+    public :: evaluate_toroidal_spectral_trace
+    public :: evaluate_toroidal_spectral_trace_jvp
+    public :: evaluate_toroidal_spectral_trace_vjp
+    public :: evaluate_toroidal_spectral_trace_grid
+    public :: evaluate_toroidal_spectral_trace_grid_jvp
+    public :: evaluate_toroidal_spectral_trace_grid_vjp
+    public :: solve_toroidal_spectral_neumann
+    public :: solve_toroidal_spectral_neumann_jvp
+    public :: solve_toroidal_spectral_neumann_vjp
+    public :: apply_toroidal_modal_convolution
+    public :: apply_toroidal_modal_convolution_jvp
+    public :: apply_toroidal_modal_convolution_vjp
     public :: validate_fourier_mode_registry
     public :: validate_axis_regular_mode_table
 

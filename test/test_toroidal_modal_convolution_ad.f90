@@ -1,7 +1,7 @@
 program test_toroidal_modal_convolution_ad
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
         apply_toroidal_modal_convolution_vjp, &

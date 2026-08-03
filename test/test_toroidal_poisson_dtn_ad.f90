@@ -1,6 +1,6 @@
 program test_toroidal_poisson_dtn_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_ampere_field_p, &
         evaluate_toroidal_ampere_field_p_jvp, &
         evaluate_toroidal_ampere_field_p_vjp, &
