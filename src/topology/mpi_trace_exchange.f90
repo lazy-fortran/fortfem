@@ -43,6 +43,12 @@ module fortfem_mpi_trace_exchange
     public :: unpack_mpi_trace_exchange
     public :: unpack_mpi_trace_exchange_jvp
     public :: unpack_mpi_trace_exchange_vjp
+    public :: pack_complex_mpi_trace_exchange
+    public :: pack_complex_mpi_trace_exchange_jvp
+    public :: pack_complex_mpi_trace_exchange_vjp
+    public :: unpack_complex_mpi_trace_exchange
+    public :: unpack_complex_mpi_trace_exchange_jvp
+    public :: unpack_complex_mpi_trace_exchange_vjp
 
 contains
 
@@ -324,6 +330,162 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine unpack_mpi_trace_exchange_vjp
 
+    subroutine pack_complex_mpi_trace_exchange( &
+            schedule, offsets, local_values, owner_values, ghost_values, status)
+        !! Pack complex trace rows without changing the real transport API.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: local_values(:, :)
+        complex(dp), intent(out) :: owner_values(:, :), ghost_values(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: row
+
+        owner_values = cmplx(0.0_dp, 0.0_dp, dp)
+        ghost_values = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_complex_exchange_shapes( &
+                schedule, offsets, local_values, owner_values, ghost_values, &
+                status)) return
+        if (.not. finite_complex_2d(local_values)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "complex MPI trace packing received non-finite values")
+            return
+        end if
+        do row = 1, schedule%local_count
+            if (schedule%owned(row)) then
+                owner_values(schedule%owner_buffer_index(row), :) = local_values(row, :)
+            else
+                ghost_values(schedule%ghost_buffer_index(row), :) = local_values(row, :)
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine pack_complex_mpi_trace_exchange
+
+    subroutine pack_complex_mpi_trace_exchange_jvp( &
+            schedule, offsets, local_values_dot, owner_values_dot, &
+            ghost_values_dot, status)
+        !! Apply the exact fixed-schedule complex packing JVP.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: local_values_dot(:, :)
+        complex(dp), intent(out) :: owner_values_dot(:, :), ghost_values_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call pack_complex_mpi_trace_exchange( &
+            schedule, offsets, local_values_dot, owner_values_dot, &
+            ghost_values_dot, status)
+    end subroutine pack_complex_mpi_trace_exchange_jvp
+
+    subroutine pack_complex_mpi_trace_exchange_vjp( &
+            schedule, offsets, owner_values_bar, ghost_values_bar, &
+            local_values_bar, status)
+        !! Apply the packing VJP under the real-part complex pairing.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: owner_values_bar(:, :), ghost_values_bar(:, :)
+        complex(dp), intent(out) :: local_values_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: row
+
+        local_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_complex_exchange_shapes( &
+                schedule, offsets, local_values_bar, owner_values_bar, &
+                ghost_values_bar, status)) return
+        if (.not. finite_complex_2d(owner_values_bar) .or. &
+            .not. finite_complex_2d(ghost_values_bar)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "complex MPI trace packing VJP received non-finite values")
+            return
+        end if
+        do row = 1, schedule%local_count
+            if (schedule%owned(row)) then
+                local_values_bar(row, :) = &
+                    owner_values_bar(schedule%owner_buffer_index(row), :)
+            else
+                local_values_bar(row, :) = &
+                    ghost_values_bar(schedule%ghost_buffer_index(row), :)
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine pack_complex_mpi_trace_exchange_vjp
+
+    subroutine unpack_complex_mpi_trace_exchange( &
+            schedule, offsets, owner_values, ghost_values, local_values, status)
+        !! Unpack complex owner and received ghost buffers into local rows.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: owner_values(:, :), ghost_values(:, :)
+        complex(dp), intent(out) :: local_values(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: row
+
+        local_values = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_complex_exchange_shapes( &
+                schedule, offsets, local_values, owner_values, ghost_values, &
+                status)) return
+        if (.not. finite_complex_2d(owner_values) .or. &
+            .not. finite_complex_2d(ghost_values)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "complex MPI trace unpacking received non-finite values")
+            return
+        end if
+        do row = 1, schedule%local_count
+            if (schedule%owned(row)) then
+                local_values(row, :) = owner_values(schedule%owner_buffer_index(row), :)
+            else
+                local_values(row, :) = ghost_values(schedule%ghost_buffer_index(row), :)
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine unpack_complex_mpi_trace_exchange
+
+    subroutine unpack_complex_mpi_trace_exchange_jvp( &
+            schedule, offsets, owner_values_dot, ghost_values_dot, &
+            local_values_dot, status)
+        !! Apply the exact fixed-schedule complex unpacking JVP.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: owner_values_dot(:, :), ghost_values_dot(:, :)
+        complex(dp), intent(out) :: local_values_dot(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        call unpack_complex_mpi_trace_exchange( &
+            schedule, offsets, owner_values_dot, ghost_values_dot, &
+            local_values_dot, status)
+    end subroutine unpack_complex_mpi_trace_exchange_jvp
+
+    subroutine unpack_complex_mpi_trace_exchange_vjp( &
+            schedule, offsets, local_values_bar, owner_values_bar, &
+            ghost_values_bar, status)
+        !! Apply the unpacking VJP under the real-part complex pairing.
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: local_values_bar(:, :)
+        complex(dp), intent(out) :: owner_values_bar(:, :), ghost_values_bar(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+        integer :: row
+
+        owner_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        ghost_values_bar = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. valid_complex_exchange_shapes( &
+                schedule, offsets, local_values_bar, owner_values_bar, &
+                ghost_values_bar, status)) return
+        if (.not. finite_complex_2d(local_values_bar)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "complex MPI trace unpacking VJP received non-finite values")
+            return
+        end if
+        do row = 1, schedule%local_count
+            if (schedule%owned(row)) then
+                owner_values_bar(schedule%owner_buffer_index(row), :) = &
+                    local_values_bar(row, :)
+            else
+                ghost_values_bar(schedule%ghost_buffer_index(row), :) = &
+                    local_values_bar(row, :)
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine unpack_complex_mpi_trace_exchange_vjp
+
     logical function valid_pack_inputs(schedule, offsets, local_values, owner_values, ghost_values, status) result(valid)
         type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
         integer, intent(in) :: offsets(:)
@@ -401,6 +563,40 @@ contains
         end if
         valid = .true.
     end function valid_unpack_bar_inputs
+
+    logical function valid_complex_exchange_shapes( &
+            schedule, offsets, local_values, owner_values, ghost_values, &
+            status) result(valid)
+        type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
+        integer, intent(in) :: offsets(:)
+        complex(dp), intent(in) :: local_values(:, :), owner_values(:, :)
+        complex(dp), intent(in) :: ghost_values(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        valid = .false.
+        call validate_mpi_trace_exchange_schedule(schedule, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (.not. offsets_match(schedule, offsets) .or. &
+            size(local_values, 1) /= schedule%local_count .or. &
+            size(local_values, 2) /= schedule%component_count .or. &
+            size(owner_values, 1) /= schedule%owner_count .or. &
+            size(owner_values, 2) /= schedule%component_count .or. &
+            size(ghost_values, 1) /= schedule%ghost_count .or. &
+            size(ghost_values, 2) /= schedule%component_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "complex MPI trace exchange received incompatible shapes")
+            return
+        end if
+        valid = .true.
+        call status_set(status, FORTSPARSE_OK, "")
+    end function valid_complex_exchange_shapes
+
+    logical function finite_complex_2d(values) result(finite)
+        complex(dp), intent(in) :: values(:, :)
+
+        finite = all(ieee_is_finite(real(values, dp))) .and. &
+            all(ieee_is_finite(aimag(values)))
+    end function finite_complex_2d
 
     logical function offsets_match(schedule, offsets) result(matches)
         type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
