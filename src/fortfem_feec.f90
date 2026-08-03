@@ -367,8 +367,7 @@ module fortfem_feec
         assemble_eulerian_nonnested_residual, &
         assemble_eulerian_nonnested_residual_jvp, &
         assemble_eulerian_nonnested_residual_vjp
-    use fortfem_continuation_event, only: &
-        CONTINUATION_EVENT_NONE, CONTINUATION_EVENT_SIGN_CROSSING
+    use fortfem_continuation_event, only: CONTINUATION_EVENT_NONE
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
@@ -948,7 +947,6 @@ module fortfem_feec
     public :: assemble_eulerian_nonnested_residual_jvp
     public :: assemble_eulerian_nonnested_residual_vjp
     public :: CONTINUATION_EVENT_NONE
-    public :: CONTINUATION_EVENT_SIGN_CROSSING
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
     public :: evaluate_force_balance_objective_vjp
