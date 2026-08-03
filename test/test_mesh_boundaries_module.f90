@@ -1,8 +1,8 @@
 program test_mesh_boundaries_module
     use fortfem_kinds, only: dp
-    use fortfem_core, only: boundary_t, circle_boundary, &
-        rectangle_boundary, line_segment, &
+    use fortfem_core, only: circle_boundary, rectangle_boundary, line_segment, &
         arc_segment, l_shape_boundary
+    use fortfem_boundary, only: boundary_t
     use check, only: check_condition, check_summary
     implicit none
 

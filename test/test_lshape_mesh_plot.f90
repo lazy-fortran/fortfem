@@ -1,7 +1,7 @@
 program test_lshape_mesh_plot
     use fortfem_kinds, only: dp
-    use fortfem_core, only: mesh_t, boundary_t, l_shape_boundary, &
-        mesh_from_boundary
+    use fortfem_core, only: mesh_t, l_shape_boundary, mesh_from_boundary
+    use fortfem_boundary, only: boundary_t
     use fortfem_plot, only: plot
     use check, only: check_condition, check_summary
     implicit none

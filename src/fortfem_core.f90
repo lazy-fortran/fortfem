@@ -8,7 +8,6 @@ module fortfem_core
     use fortfem_cell_complex, only: &
         cell_complex_betti_numbers, cell_complex_euler_characteristic, &
         cell_complex_t, initialize_cell_complex, validate_cell_complex
-    use fortfem_boundary, only: boundary_t
     use fortfem_boundary_region_graph, only: &
         boundary_region_graph_t, initialize_boundary_region_graph, &
         validate_boundary_region_graph, boundary_region_graph_incidence, &
@@ -60,13 +59,11 @@ module fortfem_core
         evaluate_level_set_triangle_cut_third_moments_2d_jvp, &
         evaluate_level_set_triangle_cut_fourth_moments_2d, &
         evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
-    use fortfem_api_types, only: mesh_t, function_space_t, function_t, &
-        vector_function_space_t, vector_function_t, dirichlet_bc_t
+    use fortfem_api_types, only: mesh_t, function_space_t, &
+        vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, rectangle_boundary, &
         line_segment, arc_segment, l_shape_boundary, unit_square_mesh, &
         rectangle_mesh, unit_disk_mesh, mesh_from_boundary, structured_quad_mesh
-    use fortfem_api_spaces, only: function_space, vector_function_space, &
-        function, vector_function
     implicit none
     private
 
@@ -103,11 +100,8 @@ module fortfem_core
     public :: evaluate_level_set_triangle_cut_fourth_moments_2d
     public :: evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
     public :: mesh_t
-    public :: boundary_t
     public :: function_space_t
-    public :: function_t
     public :: vector_function_space_t
-    public :: vector_function_t
     public :: dirichlet_bc_t
     public :: unit_square_mesh
     public :: rectangle_mesh
@@ -119,10 +113,6 @@ module fortfem_core
     public :: arc_segment
     public :: l_shape_boundary
     public :: mesh_from_boundary
-    public :: function_space
-    public :: vector_function_space
-    public :: function
-    public :: vector_function
     public :: evaluate_axis_regular_radial_basis
     public :: evaluate_axis_regular_radial_basis_jvp
     public :: evaluate_axis_regular_radial_basis_vjp
