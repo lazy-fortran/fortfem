@@ -708,6 +708,8 @@ single commit for integration. The recent implementation slices are:
 | `3edb699b` + `8d83361` | Complex patch-graph trace contraction with canonical core/umbrella exports | Independent cycle/weight value oracle, centered complex JVP, real-part complex VJP, sample-ledger mismatch, and malformed-graph rejection |
 | `0c863f60` | Remaining P0 Helmholtz Galerkin and exact-curved torus panel kernels exported through `fortfem_boundary`; direct consumers migrated | Existing hierarchical-vs-dense, generated-kernel, central-difference, and complex-adjoint oracles pass without umbrella imports |
 | `f4cdba38` + `7d50fa5` | Complex owner/ghost MPI-ready trace exchange with canonical core/umbrella exports | Independent exact packing, central-re-evaluation JVP, real-part complex adjoints, nonfinite rejection, and invalid-shape checks; no MPI dependency added |
+| `43c36cea` + `05307fa` | Neutral complex FEM/DtN source-to-trace residual with canonical boundary/umbrella exports | Independent manual value, full central reassembly JVP, real-part complex VJP, positive-weight, shape, and finite-value rejection oracles |
+| `ea624330` + `05307fa` | Complex geometry-mortar component coupling with canonical FEEC/umbrella exports | Independent nested-loop value, central matrix/weight JVP, real-part complex VJP, output-shape, nonfinite, and positive-geometry validation oracles |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
