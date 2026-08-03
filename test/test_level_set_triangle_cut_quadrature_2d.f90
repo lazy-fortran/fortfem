@@ -1,6 +1,6 @@
 program test_level_set_triangle_cut_quadrature_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_level_set_triangle_cut_quadrature_2d
+    use fortfem_core, only: evaluate_level_set_triangle_cut_quadrature_2d
     use fortfem_kinds, only: dp
     implicit none
 
