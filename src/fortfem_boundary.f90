@@ -174,9 +174,6 @@ module fortfem_boundary
     use fortfem_helmholtz_torus_curved_fem_bem_coupling_3d, only: &
         assemble_helmholtz_fem_bem_costabel_torus_curved_3d, &
         solve_helmholtz_fem_bem_costabel_torus_curved_3d
-    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
-    use fortfem_helmholtz_representation_3d, only: &
-        evaluate_helmholtz_representation_torus_curved_3d
     use fortfem_helmholtz_representation_ad_3d, only: &
         evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp, &
         evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
@@ -325,8 +322,6 @@ module fortfem_boundary
     public :: solve_maxwell_fem_bem_linear_state_jvp
     public :: solve_maxwell_fem_bem_linear_state_vjp
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
-    public :: evaluate_torus_curved_panel
-    public :: evaluate_helmholtz_representation_torus_curved_3d
     public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp
     public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
     public :: assemble_helmholtz_torus_curved_calderon_3d
