@@ -680,17 +680,24 @@ the 730-file starting audit.
 
 #### Active worktrees after the latest handoff
 
-The current queue is intentionally disjoint and short-feedback:
+The API migration queue above is complete through the current facade audit;
+there are no active FortFEM worktrees at this checkpoint. Any new parallel
+slice must create a disjoint branch under
+`/mnt/storage/code/lazy-fortran/worktrees/`, rebase from current `main`, avoid
+ROADMAP and inventory edits, run a bounded independent oracle, and hand off a
+single commit for integration. The recent implementation slices are:
 
-| Worktree | Scope | Required handoff |
+| Commit | Scope | Required handoff |
 | --- | --- | --- |
-| `migrate_special_functions_wave11` | FortNum spherical/toroidal harmonics, Fourier Hessian, Debye/eigen, and toroidal Neumann consumers | Focused special-function, modal, topology, and JVP/VJP oracles; Fourier/FEEC ownership only |
-| `migrate_objective_continuation_wave12` | Block residual, equation/objective registry, continuation, pseudo-arclength/transient, and shape-objective consumers | Independent residual/objective/continuation derivative oracles; FEEC/time/interop ownership only |
-| `migrate_iga_graph_wave13` | B-spline geometry-adjoint and multipatch signed-graph consumers | Geometry/orientation/JVP/VJP parity; core/FEEC ownership only |
+| `589571b` | Explicit mixed-wave implicit-midpoint Cayley map | Scalar Cayley, determinant, update/map, shape, and singular-block oracles |
+| `81844a8` | Provenance-gated Biro/TEAM solution-gallery geometry validation | Independent CSV/SVG counts, solution values, and degenerate-element rejection |
+| `56b6ff5` | Pages gallery media staging cleanup | Stale-file removal and source/destination alias rejection |
+| `5c0eea8` | Field-aligned tensor metric pullback | Generated determinant/inverse JVP/VJP, cofactor, and orientation oracle |
+| `df93e09` | NESTOR/BIEST-like toroidal P/Q modal response | Radial, finite-difference, complex-adjoint, reciprocity, and invalid-scale oracle |
+| `63f634f` | Metric-aware volume/boundary/sheet force-balance residual | Weighted-loop, central-difference, and real-adjoint oracle |
 
-The preceding TEAM adapter, Maxwell sphere/torus, and scalar/mesh worktrees
-are integrated as `02c5053`, `61ece44`, and `e58c663` respectively; they are
-kept in the handoff ledger above and must not be reopened or duplicated.
+These are closure-neutral foundations only; production physics, readers, and
+external benchmark payloads remain outside FortFEM.
 
 Each agent rebases from the latest `main`, edits only its listed files, and
 hands off a commit without waiting for the full test or Pages workflow. The
