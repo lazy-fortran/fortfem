@@ -57,6 +57,10 @@ module fortfem_feec
         assemble_hdg_global_skeleton, &
         assemble_hdg_global_skeleton_jvp, &
         assemble_hdg_global_skeleton_vjp
+    use fortfem_multipatch_signed_trace_assembly, only: &
+        assemble_multipatch_signed_trace_assembly, &
+        assemble_multipatch_signed_trace_assembly_jvp, &
+        assemble_multipatch_signed_trace_assembly_vjp
     use fortfem_hdg_global_skeleton_csc, only: &
         assemble_hdg_global_skeleton_csc, &
         assemble_hdg_global_skeleton_csc_jvp, &
@@ -604,6 +608,11 @@ module fortfem_feec
         evaluate_enrichment_support_vector_gram, &
         evaluate_enrichment_support_vector_gram_jvp, &
         evaluate_enrichment_support_vector_gram_vjp
+    use fortfem_enrichment_support_tensor_diagnostics, only: &
+        evaluate_enrichment_support_tensor_gram, &
+        evaluate_enrichment_support_tensor_gram_jvp, &
+        evaluate_enrichment_support_tensor_gram_vjp, &
+        evaluate_enrichment_support_tensor_rank_condition
     use fortfem_shifted_enriched_basis, only: &
         evaluate_shifted_enriched_basis, &
         evaluate_shifted_enriched_basis_jvp, &
@@ -932,6 +941,9 @@ module fortfem_feec
     public :: assemble_hdg_global_skeleton
     public :: assemble_hdg_global_skeleton_jvp
     public :: assemble_hdg_global_skeleton_vjp
+    public :: assemble_multipatch_signed_trace_assembly
+    public :: assemble_multipatch_signed_trace_assembly_jvp
+    public :: assemble_multipatch_signed_trace_assembly_vjp
     public :: assemble_hdg_global_skeleton_csc
     public :: assemble_hdg_global_skeleton_csc_jvp
     public :: assemble_hdg_global_skeleton_csc_vjp
@@ -1382,6 +1394,10 @@ module fortfem_feec
     public :: evaluate_enrichment_support_vector_gram
     public :: evaluate_enrichment_support_vector_gram_jvp
     public :: evaluate_enrichment_support_vector_gram_vjp
+    public :: evaluate_enrichment_support_tensor_gram
+    public :: evaluate_enrichment_support_tensor_gram_jvp
+    public :: evaluate_enrichment_support_tensor_gram_vjp
+    public :: evaluate_enrichment_support_tensor_rank_condition
     public :: evaluate_shifted_enriched_basis
     public :: evaluate_shifted_enriched_basis_jvp
     public :: evaluate_shifted_enriched_basis_vjp
