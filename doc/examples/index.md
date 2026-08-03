@@ -388,6 +388,17 @@ fpm run --example <example_name>
 <p>This example evaluates the biperiodic planar Maxwell capacity operator on</p>
 </div>
 </article>
+<article class="example-card" data-example="maxwell_vector_open_boundary_parity_gallery">
+<a class="example-card-preview" href="generated/maxwell_vector_open_boundary_parity_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/maxwell_vector_open_boundary_parity_gallery/primary.png"
+ alt="Plot preview for maxwell_vector_open_boundary_parity_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/maxwell_vector_open_boundary_parity_gallery.html">maxwell_vector_open_boundary_parity_gallery</a></h3>
+<p>This gallery is a small, license-safe manufactured curl--curl fixture.  It</p>
+</div>
+</article>
 </div>
 
 ### Verification and performance
@@ -796,6 +807,7 @@ fpm run --example <example_name>
 - [helmholtz_open_boundary_comparison](generated/helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing
 - [acoustic_fem_dtn](generated/acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
 - [maxwell_open_boundary_comparison](generated/maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
+- [maxwell_vector_open_boundary_parity_gallery](generated/maxwell_vector_open_boundary_parity_gallery.html) - This gallery is a small, license-safe manufactured curl--curl fixture.  It
 - [fortfem_mesh_benchmark](generated/fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](generated/solver_benchmark.html) - This example solves the unit-source Poisson system, shows the physical
 - [biro_tree_cotree_benchmark](generated/biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
