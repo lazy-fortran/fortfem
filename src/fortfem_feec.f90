@@ -139,7 +139,28 @@ module fortfem_feec
     use fortfem_assembly_bspline_2d, only: &
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_h1_operator_csc_jvp, &
-        assemble_bspline_h1_operator_csc_vjp
+        assemble_bspline_h1_operator_csc_vjp, &
+        assemble_bspline_h1_weighted_mass_csc, &
+        assemble_bspline_hcurl_operator_csc, &
+        assemble_bspline_hdiv_operator_csc, &
+        assemble_bspline_h1_hcurl_gradient_csc, &
+        assemble_bspline_hcurl_h1_adjoint_gradient_csc, &
+        assemble_bspline_hcurl_l2_curl_csc, &
+        assemble_bspline_l2_hcurl_adjoint_curl_csc, &
+        assemble_bspline_l2_mass_csc, &
+        assemble_bspline_grad_shafranov_csc, &
+        assemble_bspline_toroidal_fourier_laplacian_csc, &
+        assemble_bspline_poloidal_bracket_csc, &
+        apply_bspline_toroidal_poloidal_bracket, &
+        apply_bspline_toroidal_poloidal_bracket_jvp, &
+        apply_bspline_jorek_flux_rhs, &
+        apply_bspline_jorek_flux_jvp, &
+        apply_bspline_jorek_thermodynamic_rhs, &
+        apply_bspline_jorek_thermodynamic_jvp, &
+        apply_bspline_jorek_density_rhs, &
+        apply_bspline_jorek_density_jvp, &
+        project_bspline_toroidal_product, &
+        build_bspline_feec_2d_operators_csc
     use fortfem_assembly_bspline_3d, only: &
         build_bspline_feec_3d_operators_csc, &
         assemble_bspline_h1_operator_3d_csc, &
@@ -565,6 +586,27 @@ module fortfem_feec
     public :: assemble_bspline_h1_operator_csc
     public :: assemble_bspline_h1_operator_csc_jvp
     public :: assemble_bspline_h1_operator_csc_vjp
+    public :: assemble_bspline_h1_weighted_mass_csc
+    public :: assemble_bspline_hcurl_operator_csc
+    public :: assemble_bspline_hdiv_operator_csc
+    public :: assemble_bspline_h1_hcurl_gradient_csc
+    public :: assemble_bspline_hcurl_h1_adjoint_gradient_csc
+    public :: assemble_bspline_hcurl_l2_curl_csc
+    public :: assemble_bspline_l2_hcurl_adjoint_curl_csc
+    public :: assemble_bspline_l2_mass_csc
+    public :: assemble_bspline_grad_shafranov_csc
+    public :: assemble_bspline_toroidal_fourier_laplacian_csc
+    public :: assemble_bspline_poloidal_bracket_csc
+    public :: apply_bspline_toroidal_poloidal_bracket
+    public :: apply_bspline_toroidal_poloidal_bracket_jvp
+    public :: apply_bspline_jorek_flux_rhs
+    public :: apply_bspline_jorek_flux_jvp
+    public :: apply_bspline_jorek_thermodynamic_rhs
+    public :: apply_bspline_jorek_thermodynamic_jvp
+    public :: apply_bspline_jorek_density_rhs
+    public :: apply_bspline_jorek_density_jvp
+    public :: project_bspline_toroidal_product
+    public :: build_bspline_feec_2d_operators_csc
     public :: build_bspline_derivative_matrix
     public :: build_bspline_feec_2d_operators
     public :: build_bspline_feec_3d_operators

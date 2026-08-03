@@ -1,15 +1,15 @@
 program test_bspline_jorek_harmonics
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         apply_bspline_jorek_flux_rhs, &
         apply_bspline_jorek_flux_jvp, &
-        advance_bspline_jorek_poloidal_flux_midpoint_steps, &
         apply_bspline_toroidal_poloidal_bracket, &
         apply_bspline_toroidal_poloidal_bracket_jvp, &
-        apply_toroidal_fourier_derivative, &
         assemble_bspline_h1_weighted_mass_csc, &
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_poloidal_bracket_csc
+    use fortfem_fourier, only: apply_toroidal_fourier_derivative
+    use fortfem_time, only: advance_bspline_jorek_poloidal_flux_midpoint_steps
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
