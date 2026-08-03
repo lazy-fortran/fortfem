@@ -1,6 +1,6 @@
 program test_public_tetra_rt_arbitrary_order_solve_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_tetra_rt_div_mass
+    use fortfem_feec, only: solve_tetra_rt_div_mass
     use fortfem_kinds, only: dp
     use fortfem_tetra_piola_maps, only: map_tetra_rt_contravariant
     use fortfem_tetra_rt_arbitrary_order, only: &

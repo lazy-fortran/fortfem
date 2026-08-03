@@ -140,7 +140,7 @@ module fortfem_feec
         assemble_tetra_lagrange_stiffness_element_jvp, &
         assemble_tetra_lagrange_stiffness_element_vjp
     use fortfem_tetra_rt_arbitrary_order, only: &
-        initialize_tetra_rt, tetra_rt_t
+        evaluate_tetra_rt, initialize_tetra_rt, tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
     use fortfem_tetra_rt_interpolation, only: &
@@ -433,8 +433,10 @@ module fortfem_feec
         assemble_retained_coupled_schur_jvp, &
         assemble_retained_coupled_schur_vjp
     use fortfem_api_spaces, only: &
-        constant, function, function_space, vector_function_space, dirichlet_bc, &
-        test_function, trial_function, vector_function, vector_bc, &
+        cell_tensor_coefficient, cell_tensor_coefficient_t, &
+        cell_vector_source, cell_vector_source_t, constant, function, &
+        function_space, vector_function_space, vector_function_space_t, &
+        dirichlet_bc, test_function, trial_function, vector_function, vector_bc, &
         vector_test_function, &
         vector_trial_function, test_function_t, trial_function_t, &
         vector_test_function_t, vector_trial_function_t, vector_function_t, &
@@ -457,9 +459,12 @@ module fortfem_feec
         solve_tetra_mixed_poisson_sampled_state, &
         solve_tetra_mixed_poisson_sampled_state_jvp, &
         solve_tetra_mixed_poisson_sampled_state_vjp
+    use fortfem_tetra_rt_solver_3d, only: solve_tetra_rt_div_mass
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
         evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
-        tetra_discontinuous_t
+        tetra_discontinuous_dof_count, tetra_discontinuous_t
+    use fortfem_tetra_discontinuous_projection, only: &
+        project_physical_tetra_discontinuous
     use fortfem_triangle_discontinuous_dof_map, only: &
         build_triangle_discontinuous_dof_map
     use fortfem_triangle_global_dof_map, only: build_triangle_trimmed_dof_map
@@ -729,7 +734,9 @@ module fortfem_feec
     public :: assemble_tetra_lagrange_stiffness_element
     public :: assemble_tetra_lagrange_stiffness_element_jvp
     public :: assemble_tetra_lagrange_stiffness_element_vjp
+    public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
+    public :: tetra_rt_dof_count
     public :: tetra_rt_t
     public :: build_tetra_rt_basis_transform
     public :: build_tetra_rt_dof_map
@@ -753,6 +760,7 @@ module fortfem_feec
     public :: assemble_tetra_rt_vector_load_samples
     public :: assemble_tetra_rt_vector_load_samples_jvp
     public :: assemble_tetra_rt_vector_load_samples_vjp
+    public :: solve_tetra_rt_div_mass
     public :: assemble_bspline_polar_h1_operator_csc
     public :: assemble_bspline_polar_hcurl_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc
@@ -982,6 +990,7 @@ module fortfem_feec
     public :: constant
     public :: function
     public :: vector_function_space
+    public :: vector_function_space_t
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
@@ -996,6 +1005,10 @@ module fortfem_feec
     public :: trial_function_t
     public :: vector_test_function_t
     public :: vector_trial_function_t
+    public :: cell_tensor_coefficient
+    public :: cell_tensor_coefficient_t
+    public :: cell_vector_source
+    public :: cell_vector_source_t
     public :: compile_tetra_mixed_form_csc
     public :: div
     public :: dx
@@ -1023,7 +1036,9 @@ module fortfem_feec
     public :: solve_tetra_mixed_poisson_sampled_state_vjp
     public :: evaluate_tetra_discontinuous
     public :: initialize_tetra_discontinuous
+    public :: tetra_discontinuous_dof_count
     public :: tetra_discontinuous_t
+    public :: project_physical_tetra_discontinuous
     public :: build_triangle_discontinuous_dof_map
     public :: build_triangle_trimmed_dof_map
     public :: evaluate_triangle_lagrange_basis

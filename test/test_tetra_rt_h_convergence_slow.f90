@@ -1,7 +1,7 @@
 program test_tetra_rt_h_convergence_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_rt, &
-        generate_structured_tetra_box_mesh, initialize_tetra_rt, &
+    use fortfem_core, only: generate_structured_tetra_box_mesh
+    use fortfem_feec, only: evaluate_tetra_rt, initialize_tetra_rt, &
         interpolate_physical_tetra_rt, map_tetra_rt_contravariant, &
         tetra_duffy_quadrature, tetra_rt_dof_count, tetra_rt_t
     use fortfem_kinds, only: dp
