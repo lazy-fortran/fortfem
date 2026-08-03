@@ -30,6 +30,14 @@ module fortfem_core
         validate_physical_trace_ownership, physical_trace_ownership_maps, &
         physical_trace_ownership_dimension, physical_trace_ownership_point_count, &
         physical_trace_ownership_rank, compare_physical_trace_coordinates
+    use fortfem_physical_trace_reconciliation, only: &
+        physical_trace_reconciliation_t, &
+        initialize_physical_trace_reconciliation, &
+        validate_physical_trace_reconciliation, &
+        physical_trace_reconciliation_maps, &
+        reconcile_physical_trace_values, &
+        reconcile_physical_trace_values_jvp, &
+        reconcile_physical_trace_values_vjp
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
@@ -230,6 +238,13 @@ module fortfem_core
     public :: physical_trace_ownership_point_count
     public :: physical_trace_ownership_rank
     public :: compare_physical_trace_coordinates
+    public :: physical_trace_reconciliation_t
+    public :: initialize_physical_trace_reconciliation
+    public :: validate_physical_trace_reconciliation
+    public :: physical_trace_reconciliation_maps
+    public :: reconcile_physical_trace_values
+    public :: reconcile_physical_trace_values_jvp
+    public :: reconcile_physical_trace_values_vjp
     public :: assemble_geometry_mortar_trace_coupling
     public :: assemble_geometry_mortar_trace_coupling_jvp
     public :: assemble_geometry_mortar_trace_coupling_vjp
