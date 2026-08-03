@@ -22,6 +22,17 @@ module fortfem_boundary
         initialize_boundary_operator_contract, &
         initialize_boundary_operator_trace_metadata, &
         validate_boundary_operator_contract
+    use fortfem_boundary_trace_residual, only: &
+        assemble_boundary_trace_residual, &
+        assemble_boundary_trace_residual_jvp, &
+        assemble_boundary_trace_residual_vjp
+    use fortfem_interface_traces, only: &
+        compute_interface_scalar_jump_average, &
+        compute_interface_vector_traces
+    use fortfem_source_trace_map, only: &
+        evaluate_source_trace_map, evaluate_source_trace_map_jvp, &
+        evaluate_source_trace_map_vjp, &
+        evaluate_weighted_source_trace_reciprocity_defect
     use fortfem_circular_dtn_2d, only: &
         apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
     use fortfem_circular_dtn_2d_ad, only: &
@@ -363,6 +374,15 @@ module fortfem_boundary
     public :: initialize_boundary_operator_contract
     public :: initialize_boundary_operator_trace_metadata
     public :: validate_boundary_operator_contract
+    public :: assemble_boundary_trace_residual
+    public :: assemble_boundary_trace_residual_jvp
+    public :: assemble_boundary_trace_residual_vjp
+    public :: compute_interface_scalar_jump_average
+    public :: compute_interface_vector_traces
+    public :: evaluate_source_trace_map
+    public :: evaluate_source_trace_map_jvp
+    public :: evaluate_source_trace_map_vjp
+    public :: evaluate_weighted_source_trace_reciprocity_defect
     public :: apply_planar_helmholtz_dtn
     public :: apply_planar_helmholtz_dtn_jvp
     public :: apply_planar_helmholtz_dtn_vjp

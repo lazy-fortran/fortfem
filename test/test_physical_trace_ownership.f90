@@ -1,6 +1,6 @@
 program test_physical_trace_ownership
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         compare_physical_trace_coordinates, &
         initialize_physical_trace_ownership, &
         physical_trace_ownership_dimension, &
