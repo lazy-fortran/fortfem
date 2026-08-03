@@ -1,10 +1,10 @@
 program test_torus_curved_laplace_representation_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_laplace_representation_torus_curved_3d, &
         evaluate_laplace_representation_torus_curved_3d_jvp, &
-        evaluate_laplace_representation_torus_curved_3d_vjp, &
-        generate_torus_surface_mesh
+        evaluate_laplace_representation_torus_curved_3d_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

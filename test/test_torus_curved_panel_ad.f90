@@ -1,6 +1,6 @@
 program test_torus_curved_panel_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_torus_curved_panel, &
         evaluate_torus_curved_panel_jvp, &
         evaluate_torus_curved_panel_vjp

@@ -1,10 +1,11 @@
 program test_larger_domain_parity
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         BOUNDARY_OPERATOR_BACKEND_PML, &
         boundary_operator_contract_t, &
-        initialize_boundary_operator_contract, &
+        initialize_boundary_operator_contract
+    use fortfem_interop, only: &
         larger_domain_parity_t, &
         compare_larger_domain_solution, &
         compare_larger_domain_solution_jvp, &

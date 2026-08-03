@@ -2,7 +2,7 @@ program test_surface_integral_constraint
     !! Independent fixed-topology weighted surface-integral constraint oracle.
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_surface_integral_constraint, &
         evaluate_surface_integral_constraint_jvp, &
         evaluate_surface_integral_constraint_vjp

@@ -1,6 +1,6 @@
 program test_surface_current_balance
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_surface_current_junction_balance, &
+    use fortfem_boundary, only: assemble_surface_current_junction_balance, &
         assemble_surface_current_junction_balance_jvp, &
         assemble_surface_current_junction_balance_vjp
     use fortfem_kinds, only: dp

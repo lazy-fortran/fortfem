@@ -30,6 +30,14 @@ module fortfem_boundary
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
         assemble_surface_current_trace_residual_vjp
+    use fortfem_surface_current, only: &
+        assemble_interface_surface_current, &
+        assemble_interface_surface_current_jvp, &
+        assemble_interface_surface_current_vjp
+    use fortfem_surface_current_balance, only: &
+        assemble_surface_current_junction_balance, &
+        assemble_surface_current_junction_balance_jvp, &
+        assemble_surface_current_junction_balance_vjp
     use fortfem_surface_current_constraints, only: &
         assemble_surface_current_loop_constraints, &
         assemble_surface_current_loop_constraints_jvp, &
@@ -39,7 +47,13 @@ module fortfem_boundary
         assemble_total_pressure_jump_vjp
     use fortfem_surface_delta_load, only: &
         assemble_surface_delta_load, assemble_surface_delta_load_jvp, &
-        assemble_surface_delta_load_vjp
+        assemble_surface_delta_load_vjp, assemble_surface_vector_delta_load, &
+        assemble_surface_vector_delta_load_jvp, &
+        assemble_surface_vector_delta_load_vjp
+    use fortfem_surface_integral_constraint, only: &
+        evaluate_surface_integral_constraint, &
+        evaluate_surface_integral_constraint_jvp, &
+        evaluate_surface_integral_constraint_vjp
     use fortfem_boundary_response_diagnostics, only: &
         evaluate_weighted_boundary_response_diagnostics
     use fortfem_maxwell_virtual_casing, only: &
@@ -374,6 +388,8 @@ module fortfem_boundary
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
     use fortfem_laplace_representation_ad_3d, only: &
+        evaluate_laplace_representation_torus_curved_3d_jvp, &
+        evaluate_laplace_representation_torus_curved_3d_vjp, &
         evaluate_laplace_representation_torus_curved_3d_geometry_jvp, &
         evaluate_laplace_representation_torus_curved_3d_geometry_vjp
     use fortfem_helmholtz_torus_curved_bem_3d, only: &
@@ -396,6 +412,10 @@ module fortfem_boundary
         assemble_laplace_torus_curved_calderon_3d, &
         assemble_laplace_torus_curved_dtn_3d, &
         solve_laplace_bem_dtn_torus_curved_3d
+    use fortfem_laplace_torus_panel_pair_ad_3d, only: &
+        integrate_laplace_torus_panel_p0_3d, &
+        integrate_laplace_torus_panel_p0_3d_jvp, &
+        integrate_laplace_torus_panel_p0_3d_vjp
     use fortfem_laplace_torus_curved_bem_ad_3d, only: &
         assemble_laplace_torus_curved_dtn_3d_geometry_jvp, &
         assemble_laplace_torus_curved_dtn_3d_geometry_vjp
@@ -427,6 +447,12 @@ module fortfem_boundary
     public :: assemble_surface_current_trace_residual
     public :: assemble_surface_current_trace_residual_jvp
     public :: assemble_surface_current_trace_residual_vjp
+    public :: assemble_interface_surface_current
+    public :: assemble_interface_surface_current_jvp
+    public :: assemble_interface_surface_current_vjp
+    public :: assemble_surface_current_junction_balance
+    public :: assemble_surface_current_junction_balance_jvp
+    public :: assemble_surface_current_junction_balance_vjp
     public :: assemble_surface_current_loop_constraints
     public :: assemble_surface_current_loop_constraints_jvp
     public :: assemble_surface_current_loop_constraints_vjp
@@ -436,6 +462,12 @@ module fortfem_boundary
     public :: assemble_surface_delta_load
     public :: assemble_surface_delta_load_jvp
     public :: assemble_surface_delta_load_vjp
+    public :: assemble_surface_vector_delta_load
+    public :: assemble_surface_vector_delta_load_jvp
+    public :: assemble_surface_vector_delta_load_vjp
+    public :: evaluate_surface_integral_constraint
+    public :: evaluate_surface_integral_constraint_jvp
+    public :: evaluate_surface_integral_constraint_vjp
     public :: evaluate_weighted_boundary_response_diagnostics
     public :: evaluate_maxwell_virtual_casing_rwg_3d
     public :: evaluate_maxwell_virtual_casing_rwg_3d_jvp
@@ -609,8 +641,13 @@ module fortfem_boundary
     public :: evaluate_helmholtz_representation_torus_curved_3d
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
+    public :: evaluate_laplace_representation_torus_curved_3d_jvp
+    public :: evaluate_laplace_representation_torus_curved_3d_vjp
     public :: evaluate_laplace_representation_torus_curved_3d_geometry_jvp
     public :: evaluate_laplace_representation_torus_curved_3d_geometry_vjp
+    public :: integrate_laplace_torus_panel_p0_3d
+    public :: integrate_laplace_torus_panel_p0_3d_jvp
+    public :: integrate_laplace_torus_panel_p0_3d_vjp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp

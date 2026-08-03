@@ -1,6 +1,6 @@
 program test_surface_triangle_measures_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_surface_triangle_measures_3d, &
+    use fortfem_core, only: assemble_surface_triangle_measures_3d, &
         assemble_surface_triangle_measures_3d_jvp, &
         assemble_surface_triangle_measures_3d_vjp
     use fortfem_kinds, only: dp

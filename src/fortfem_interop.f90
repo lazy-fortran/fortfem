@@ -57,6 +57,9 @@ module fortfem_interop
         compare_boundary_operator_parity_jvp, &
         compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity
+    use fortfem_larger_domain_parity, only: &
+        larger_domain_parity_t, compare_larger_domain_solution, &
+        compare_larger_domain_solution_jvp, validate_larger_domain_parity
     use fortfem_sheet_current_surface_parity, only: &
         compare_sheet_current_surface_representations, &
         compare_sheet_current_surface_representations_jvp
@@ -236,6 +239,10 @@ module fortfem_interop
     public :: read_oracle_manifest
     public :: validate_boundary_operator_contract
     public :: validate_boundary_operator_parity
+    public :: larger_domain_parity_t
+    public :: compare_larger_domain_solution
+    public :: compare_larger_domain_solution_jvp
+    public :: validate_larger_domain_parity
     public :: validate_complex_interchange_samples
     public :: validate_interchange_samples
     public :: validate_oracle_manifest
