@@ -1,6 +1,6 @@
 program test_direct_fourier_transform_ad
     use check, only: check_condition, check_summary
-    use fortfem_direct_fourier_transform, only: &
+    use fortfem_fourier, only: &
         direct_fourier_forward_jvp, direct_fourier_forward_vjp, &
         direct_fourier_plan_t, initialize_direct_fourier_plan
     use fortfem_kinds, only: dp, pi

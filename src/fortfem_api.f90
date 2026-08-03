@@ -442,7 +442,8 @@ module fortfem_api
         direct_fourier_plan_t, initialize_direct_fourier_plan, &
         validate_direct_fourier_plan, direct_fourier_plan_metadata, &
         direct_fourier_plan_chunk_bounds, direct_fourier_forward, &
-        direct_fourier_adjoint, direct_fourier_plan_sample_count, &
+        direct_fourier_adjoint, direct_fourier_forward_jvp, &
+        direct_fourier_forward_vjp, direct_fourier_plan_sample_count, &
         direct_fourier_plan_mode_count
     use fortfem_interface_traction_balance, only: &
         assemble_normal_traction_jump, &
@@ -2005,6 +2006,8 @@ module fortfem_api
     public :: direct_fourier_plan_chunk_bounds
     public :: direct_fourier_forward
     public :: direct_fourier_adjoint
+    public :: direct_fourier_forward_jvp
+    public :: direct_fourier_forward_vjp
     public :: direct_fourier_plan_sample_count
     public :: direct_fourier_plan_mode_count
     public :: assemble_normal_traction_jump
