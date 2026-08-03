@@ -345,12 +345,29 @@ module fortfem_feec
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
-        initialize_triangle_raviart_thomas, triangle_rt_basis_t
+        evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
+        triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_triangle_vector_interpolation, only: &
-        evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec
+        evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec, &
+        interpolate_triangle_rt
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_element
+    use fortfem_assembly_rt_arbitrary_order_2d, only: &
+        assemble_triangle_rt_div_mass_element, &
+        assemble_triangle_rt_div_mass_element_jvp, &
+        assemble_triangle_rt_div_mass_element_vjp, &
+        assemble_triangle_rt_div_mass_csc, &
+        assemble_triangle_rt_div_mass_csc_jvp, &
+        assemble_triangle_rt_div_mass_csc_vjp, &
+        assemble_triangle_rt_divergence_csc, &
+        assemble_triangle_rt_vector_load_samples, &
+        assemble_triangle_rt_vector_load_samples_jvp, &
+        assemble_triangle_rt_vector_load_samples_vjp
+    use fortfem_triangle_rt_sampled_state_2d, only: &
+        solve_triangle_rt_sampled_state, &
+        solve_triangle_rt_sampled_state_jvp, &
+        solve_triangle_rt_sampled_state_vjp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_api_solvers, only: &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
@@ -714,8 +731,24 @@ module fortfem_feec
     public :: assemble_triangle_nedelec_curl_mass_csc
     public :: assemble_triangle_nedelec_curl_mass_element
     public :: initialize_triangle_raviart_thomas
+    public :: evaluate_triangle_raviart_thomas
     public :: triangle_rt_basis_t
+    public :: triangle_rt_dof_count
     public :: evaluate_triangle_rt_interpolant
+    public :: interpolate_triangle_rt
+    public :: assemble_triangle_rt_div_mass_element
+    public :: assemble_triangle_rt_div_mass_element_jvp
+    public :: assemble_triangle_rt_div_mass_element_vjp
+    public :: assemble_triangle_rt_div_mass_csc
+    public :: assemble_triangle_rt_div_mass_csc_jvp
+    public :: assemble_triangle_rt_div_mass_csc_vjp
+    public :: assemble_triangle_rt_divergence_csc
+    public :: assemble_triangle_rt_vector_load_samples
+    public :: assemble_triangle_rt_vector_load_samples_jvp
+    public :: assemble_triangle_rt_vector_load_samples_vjp
+    public :: solve_triangle_rt_sampled_state
+    public :: solve_triangle_rt_sampled_state_jvp
+    public :: solve_triangle_rt_sampled_state_vjp
     public :: triangle_duffy_quadrature
     public :: assemble_laplacian_system
     public :: sparse_from_dense

@@ -1,10 +1,10 @@
 program test_triangle_rt_manufactured_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: mesh_t, unit_square_mesh
+    use fortfem_feec, only: &
         evaluate_triangle_rt_interpolant, initialize_triangle_raviart_thomas, &
         interpolate_triangle_rt, triangle_duffy_quadrature, &
         triangle_rt_basis_t
-    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
     use fortfem_kinds, only: dp
     implicit none
 

@@ -1,7 +1,7 @@
 program test_triangle_rt_arbitrary_order_sparse
     use check, only: check_condition, check_summary
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_rt_div_mass_csc, build_triangle_trimmed_dof_map, &
         triangle_duffy_quadrature
     use fortfem_kinds, only: dp
