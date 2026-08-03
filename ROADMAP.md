@@ -621,6 +621,15 @@ pending note above is closed; the owning split is `fortfem_core` for geometry,
 `fortfem_feec` for curl--curl element/state operators, and `fortfem_boundary`
 for PML boundary contracts.
 
+The following compatible-operator wave is integrated as interface/wave tensor
+consumers (`2df6b68`), tetrahedral RT/Nédélec/L2 compatibility consumers
+(`4e2cee77d83fb31c2f16377af1492f4d8f0dc5d9`), and anisotropic/FCI consumers
+(`8febab8`, integrated with ownership cleanup `35f8b0e`). Their focused
+traction, tensor power/diffusion, wall midpoint, Piola, slow convergence,
+anisotropic matrix, Jacobi, and JVP/VJP tests pass. Duplicate public exports
+were removed rather than added to the compatibility allowlist; the current
+release gate is green.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
