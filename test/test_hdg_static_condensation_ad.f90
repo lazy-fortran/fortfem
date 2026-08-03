@@ -1,6 +1,6 @@
 program test_hdg_static_condensation_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_hdg_static_condensation, &
+    use fortfem_feec, only: assemble_hdg_static_condensation, &
         assemble_hdg_static_condensation_jvp, assemble_hdg_static_condensation_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

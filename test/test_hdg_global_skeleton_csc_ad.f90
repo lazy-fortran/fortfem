@@ -1,6 +1,6 @@
 program test_hdg_global_skeleton_csc_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_hdg_global_skeleton_csc, &
+    use fortfem_feec, only: assemble_hdg_global_skeleton_csc, &
         assemble_hdg_global_skeleton_csc_jvp, assemble_hdg_global_skeleton_csc_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t

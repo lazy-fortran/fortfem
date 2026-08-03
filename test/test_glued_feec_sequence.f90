@@ -1,6 +1,6 @@
 program test_glued_feec_sequence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_glued_feec_sequence, &
+    use fortfem_feec, only: assemble_glued_feec_sequence, &
         assemble_glued_feec_sequence_jvp, assemble_glued_feec_sequence_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
