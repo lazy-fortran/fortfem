@@ -1,6 +1,6 @@
 program test_tetra_nedelec_first_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_nedelec_first_order
+    use fortfem_feec, only: evaluate_tetra_nedelec_first_order
     use fortfem_kinds, only: dp
     implicit none
 

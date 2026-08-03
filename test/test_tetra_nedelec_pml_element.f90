@@ -1,6 +1,6 @@
 program test_tetra_nedelec_pml_element
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_nedelec_curl_mass_element, &
+    use fortfem_feec, only: assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_pml_element
     use fortfem_kinds, only: dp
     implicit none

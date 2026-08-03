@@ -1,8 +1,9 @@
 program test_tetra_nedelec_pml_larger_domain
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        build_tetra_edge_dof_map, evaluate_tetra_nedelec_interpolant_at_point, &
-        generate_structured_tetra_box_mesh, invert_tetra_affine_map, &
+    use fortfem_core, only: generate_structured_tetra_box_mesh, &
+        invert_tetra_affine_map
+    use fortfem_feec, only: build_tetra_edge_dof_map, &
+        evaluate_tetra_nedelec_interpolant_at_point, &
         initialize_tetra_nedelec_first_kind, solve_tetra_nedelec_pml, &
         tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp

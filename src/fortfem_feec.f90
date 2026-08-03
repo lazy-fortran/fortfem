@@ -59,6 +59,8 @@ module fortfem_feec
         assemble_coupled_field_residual, &
         assemble_coupled_field_residual_jvp, &
         assemble_coupled_field_residual_vjp
+    use fortfem_tetra_nedelec_first_order, only: &
+        evaluate_tetra_nedelec_first_order
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_kind_jvp, &
@@ -551,6 +553,9 @@ module fortfem_feec
         apply_sparse_incomplete_cholesky_jvp, apply_sparse_incomplete_cholesky_vjp
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_element, &
+        assemble_tetra_nedelec_curl_mass_element_jvp, &
+        assemble_tetra_nedelec_curl_mass_element_vjp, &
+        assemble_tetra_nedelec_pml_element, &
         assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp
@@ -657,6 +662,7 @@ module fortfem_feec
     public :: evaluate_tensor_power_split_vjp
     public :: evaluate_periodic_bspline_basis
     public :: evaluate_tetra_nedelec_first_kind
+    public :: evaluate_tetra_nedelec_first_order
     public :: evaluate_tetra_nedelec_first_kind_jvp
     public :: evaluate_tetra_nedelec_first_kind_vjp
     public :: evaluate_tetra_nedelec_interpolant_at_point
@@ -1104,6 +1110,9 @@ module fortfem_feec
     public :: apply_sparse_incomplete_cholesky_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_curl_mass_element
+    public :: assemble_tetra_nedelec_curl_mass_element_jvp
+    public :: assemble_tetra_nedelec_curl_mass_element_vjp
+    public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
 
