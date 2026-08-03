@@ -1,6 +1,6 @@
 program test_helmholtz_bem_linear_single_layer
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_helmholtz_single_layer_linear
+    use fortfem_boundary, only: assemble_helmholtz_single_layer_linear
     use fortfem_kinds, only: dp
     implicit none
 

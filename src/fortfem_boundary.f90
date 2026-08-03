@@ -43,7 +43,8 @@ module fortfem_boundary
         assemble_helmholtz_double_layer_constant, &
         assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
-        assemble_helmholtz_single_layer_constant
+        assemble_helmholtz_single_layer_constant, &
+        assemble_helmholtz_single_layer_linear
     use fortfem_helmholtz_exterior_2d, only: &
         evaluate_helmholtz_combined_potential_adaptive_constant, &
         evaluate_helmholtz_combined_potential_constant, &
@@ -237,6 +238,7 @@ module fortfem_boundary
         solve_maxwell_pec_sphere_curved_efie_rwg_3d, &
         solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_calderon_p1_p0_3d, &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
@@ -291,6 +293,9 @@ module fortfem_boundary
     use fortfem_helmholtz_representation_ad_3d, only: &
         evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp, &
         evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
+    use fortfem_helmholtz_fem_bem_coupling_3d, only: &
+        assemble_helmholtz_fem_bem_costabel_3d, &
+        solve_helmholtz_fem_bem_costabel_3d
     use fortfem_laplace_torus_curved_bem_3d, only: &
         assemble_laplace_torus_curved_calderon_3d, &
         assemble_laplace_torus_curved_dtn_3d, &
@@ -401,6 +406,7 @@ module fortfem_boundary
     public :: assemble_helmholtz_double_layer_mixed_linear
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
+    public :: assemble_helmholtz_single_layer_linear
     public :: evaluate_helmholtz_combined_potential_constant
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: solve_helmholtz_cfie_constant
@@ -435,6 +441,7 @@ module fortfem_boundary
     public :: assemble_helmholtz_single_layer_p0_adaptive_3d
     public :: assemble_helmholtz_single_layer_p0_3d_jvp
     public :: assemble_helmholtz_single_layer_p0_3d_vjp
+    public :: assemble_helmholtz_calderon_p1_p0_3d
     public :: assemble_laplace_single_layer_p0_3d
     public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_single_layer_p0_3d_jvp
@@ -449,6 +456,8 @@ module fortfem_boundary
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d
     public :: evaluate_helmholtz_cfie_p0_3d
+    public :: assemble_helmholtz_fem_bem_costabel_3d
+    public :: solve_helmholtz_fem_bem_costabel_3d
     public :: evaluate_helmholtz_representation_triangles_3d
     public :: evaluate_helmholtz_representation_torus_curved_3d
     public :: evaluate_laplace_representation_triangles_3d
