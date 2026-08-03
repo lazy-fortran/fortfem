@@ -2,7 +2,7 @@ program test_maxwell_torus_curved_potential_operator_ad
     use check, only: check_condition, check_summary
     use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
-    use fortfem_maxwell_torus_curved_rwg, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d, &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp, &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp
