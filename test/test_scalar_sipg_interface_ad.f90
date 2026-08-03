@@ -1,6 +1,6 @@
 program test_scalar_sipg_interface_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_scalar_sipg_interface, &
+    use fortfem_feec, only: assemble_scalar_sipg_interface, &
         assemble_scalar_sipg_interface_jvp, assemble_scalar_sipg_interface_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
