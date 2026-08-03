@@ -755,6 +755,14 @@ targets pass, including the bounded slow arbitrary-order Nédélec solves; the
 Lagrange h-convergence target remains explicitly slow. Inventory and release
 gates are green, and the umbrella audit is now 72 test files.
 
+The subsequent three waves are integrated as remaining tetrahedral/DG/Nédélec
+consumers (`8c63def` from `17e56ec`), interchange/oracle/nested-surface
+consumers (`320c111` from `b9b3a81`), and remaining triangle/vector/compiler
+consumers (`ef4e694` from `0d67c40`). Their focused analytical, exact-sequence,
+interchange, and derivative checks pass; the shared temporary filesystem was
+cleaned after the triangle build hit a generated-artifact capacity limit.
+The umbrella audit is now 38 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
