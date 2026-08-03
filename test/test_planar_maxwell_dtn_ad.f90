@@ -1,5 +1,5 @@
 program test_planar_maxwell_dtn_ad
-    use fortfem_api, only: apply_planar_maxwell_dtn, &
+    use fortfem_boundary, only: apply_planar_maxwell_dtn, &
         apply_planar_maxwell_dtn_jvp, apply_planar_maxwell_dtn_vjp
     use fortfem_kinds, only: dp
     use check, only: check_condition, check_summary

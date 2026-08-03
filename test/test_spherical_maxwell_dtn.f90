@@ -1,6 +1,6 @@
 program test_spherical_maxwell_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_spherical_maxwell_dtn, spherical_maxwell_dtn_eigenvalues
     use fortfem_kinds, only: dp
     implicit none

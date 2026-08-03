@@ -1,6 +1,6 @@
 program test_planar_maxwell_dtn_form_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_planar_maxwell_dtn_form, &
+    use fortfem_boundary, only: assemble_planar_maxwell_dtn_form, &
         assemble_planar_maxwell_dtn_form_jvp, &
         assemble_planar_maxwell_dtn_form_vjp
     use fortfem_kinds, only: dp

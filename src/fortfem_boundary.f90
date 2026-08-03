@@ -83,9 +83,19 @@ module fortfem_boundary
         spherical_helmholtz_dtn_eigenvalue_jvp, &
         spherical_helmholtz_dtn_eigenvalue_vjp
     use fortfem_planar_maxwell_dtn, only: &
-        apply_planar_maxwell_dtn, assemble_planar_maxwell_dtn_form, &
+        apply_planar_maxwell_dtn, apply_planar_maxwell_dtn_jvp, &
+        apply_planar_maxwell_dtn_vjp, assemble_planar_maxwell_dtn_form, &
         assemble_planar_maxwell_dtn_form_jvp, &
         assemble_planar_maxwell_dtn_form_vjp
+    use fortfem_planar_maxwell_dtn_system, only: &
+        solve_planar_maxwell_dtn_system, &
+        solve_planar_maxwell_dtn_system_jvp, &
+        solve_planar_maxwell_dtn_system_vjp
+    use fortfem_spherical_maxwell_dtn, only: &
+        apply_spherical_maxwell_dtn, apply_spherical_maxwell_dtn_jvp, &
+        apply_spherical_maxwell_dtn_vjp, spherical_maxwell_dtn_eigenvalues, &
+        spherical_maxwell_dtn_eigenvalues_jvp, &
+        spherical_maxwell_dtn_eigenvalues_vjp
     use fortfem_planar_nedelec_maxwell_dtn, only: &
         assemble_planar_nedelec_maxwell_dtn_form, &
         build_planar_nedelec_trace_sampling, &
@@ -277,9 +287,20 @@ module fortfem_boundary
     public :: solve_elasticity_planar_acoustic_dtn_p1
     public :: solve_elasticity_curved_acoustic_ntd_p1
     public :: apply_planar_maxwell_dtn
+    public :: apply_planar_maxwell_dtn_jvp
+    public :: apply_planar_maxwell_dtn_vjp
     public :: assemble_planar_maxwell_dtn_form
     public :: assemble_planar_maxwell_dtn_form_jvp
     public :: assemble_planar_maxwell_dtn_form_vjp
+    public :: solve_planar_maxwell_dtn_system
+    public :: solve_planar_maxwell_dtn_system_jvp
+    public :: solve_planar_maxwell_dtn_system_vjp
+    public :: apply_spherical_maxwell_dtn
+    public :: apply_spherical_maxwell_dtn_jvp
+    public :: apply_spherical_maxwell_dtn_vjp
+    public :: spherical_maxwell_dtn_eigenvalues
+    public :: spherical_maxwell_dtn_eigenvalues_jvp
+    public :: spherical_maxwell_dtn_eigenvalues_vjp
     public :: assemble_planar_nedelec_maxwell_dtn_form
     public :: build_planar_nedelec_trace_sampling
     public :: pullback_planar_maxwell_dtn_form
