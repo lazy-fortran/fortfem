@@ -1,11 +1,11 @@
 program test_maxwell_torus_curved_green_pairs
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        generate_torus_surface_mesh, &
+    use fortfem_boundary, only: &
         integrate_maxwell_torus_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_torus_curved_coincident_rwg_pair_3d
+    use fortfem_core, only: generate_torus_surface_mesh
+    use fortfem_feec, only: build_maxwell_rwg_surface_space
     use fortfem_kinds, only: dp
-    use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
     implicit none
 
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp

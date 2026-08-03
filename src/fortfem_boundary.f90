@@ -167,6 +167,14 @@ module fortfem_boundary
         assemble_maxwell_torus_curved_efie_imaginary_rwg_3d, &
         assemble_maxwell_torus_efie_imaginary_impedance_jvp, &
         assemble_maxwell_torus_efie_imaginary_impedance_vjp, &
+        assemble_maxwell_torus_efie_propagating_impedance_jvp, &
+        assemble_maxwell_torus_efie_propagating_impedance_vjp, &
+        assemble_maxwell_torus_efie_imaginary_decay_jvp, &
+        assemble_maxwell_torus_efie_imaginary_decay_vjp, &
+        assemble_maxwell_torus_efie_wave_number_jvp, &
+        assemble_maxwell_torus_efie_wave_number_vjp, &
+        assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
+        assemble_maxwell_torus_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
@@ -186,6 +194,8 @@ module fortfem_boundary
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
         evaluate_maxwell_torus_magnetic_geometry_jvp, &
         evaluate_maxwell_torus_magnetic_geometry_vjp, &
+        integrate_maxwell_torus_curved_adjacent_rwg_pair_3d, &
+        integrate_maxwell_torus_curved_coincident_rwg_pair_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_maxwell_magnetic_rwg_3d, only: &
         evaluate_maxwell_magnetic_field_rwg_3d, &
@@ -531,6 +541,14 @@ module fortfem_boundary
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_efie_imaginary_impedance_jvp
     public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
+    public :: assemble_maxwell_torus_efie_propagating_impedance_jvp
+    public :: assemble_maxwell_torus_efie_propagating_impedance_vjp
+    public :: assemble_maxwell_torus_efie_imaginary_decay_jvp
+    public :: assemble_maxwell_torus_efie_imaginary_decay_vjp
+    public :: assemble_maxwell_torus_efie_wave_number_jvp
+    public :: assemble_maxwell_torus_efie_wave_number_vjp
+    public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
+    public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
@@ -542,6 +560,8 @@ module fortfem_boundary
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_jvp
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_vjp
+    public :: integrate_maxwell_torus_curved_adjacent_rwg_pair_3d
+    public :: integrate_maxwell_torus_curved_coincident_rwg_pair_3d
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_hierarchical_3d
     public :: solve_helmholtz_dirichlet_p0_3d
