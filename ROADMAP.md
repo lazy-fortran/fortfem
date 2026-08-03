@@ -1464,7 +1464,7 @@ and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
 map now accepts explicit three-node stencils and reproduces quadratic fields
 on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
 finite-difference oracles. Higher-order interpolation Jacobians beyond sextic
-and curved support-volume measures beyond decic, and
+and curved support-volume measures beyond hendecic, and
 anisotropy-aware preconditioning
 remain active work. A generated fixed-topology quadrilateral area map now supplies
 positive unstructured plane-cell measures with value/JVP/VJP actions, independent
@@ -3710,7 +3710,7 @@ gallery example.
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
   interpolation derivatives beyond sextic and curved support-volume measures
-  beyond decic remain separate planned components. The generic polygon map
+  beyond hendecic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
   Generated quadratic, cubic, quartic, quintic, sextic, septic, and octic
