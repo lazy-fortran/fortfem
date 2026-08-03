@@ -385,17 +385,56 @@ module fortfem_feec
         evaluate_triangle_nedelec_first_kind_vjp, &
         initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
         triangle_nedelec_first_kind_t
+    use fortfem_triangle_nedelec_second_kind, only: &
+        evaluate_triangle_nedelec_second_kind, &
+        evaluate_triangle_nedelec_second_kind_jvp, &
+        evaluate_triangle_nedelec_second_kind_vjp, &
+        initialize_triangle_nedelec_second_kind, &
+        triangle_nedelec_second_kind_dof_count, &
+        triangle_nedelec_second_kind_t
+    use fortfem_triangle_bdm_arbitrary_order, only: &
+        evaluate_triangle_bdm, evaluate_triangle_bdm_jvp, &
+        evaluate_triangle_bdm_vjp, initialize_triangle_bdm, &
+        triangle_bdm_basis_t, triangle_bdm_dof_count
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
         evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_triangle_vector_interpolation, only: &
-        evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec, &
-        interpolate_triangle_rt
+        evaluate_triangle_bdm_interpolant, &
+        evaluate_triangle_bdm_interpolant_at_point, &
+        evaluate_triangle_bdm_interpolant_at_point_jvp, &
+        evaluate_triangle_bdm_interpolant_at_point_vjp, &
+        evaluate_triangle_bdm_interpolant_jvp, &
+        evaluate_triangle_bdm_interpolant_vjp, &
+        evaluate_triangle_nedelec_interpolant, &
+        evaluate_triangle_nedelec_interpolant_at_point, &
+        evaluate_triangle_nedelec_interpolant_at_point_jvp, &
+        evaluate_triangle_nedelec_interpolant_at_point_vjp, &
+        evaluate_triangle_nedelec_second_kind_interpolant, &
+        evaluate_triangle_nedelec_second_kind_interpolant_jvp, &
+        evaluate_triangle_nedelec_second_kind_interpolant_vjp, &
+        evaluate_triangle_nedelec_second_interpolant_at_point, &
+        evaluate_triangle_nedelec_second_interpolant_at_point_jvp, &
+        evaluate_triangle_nedelec_second_interpolant_at_point_vjp, &
+        evaluate_triangle_rt_interpolant, &
+        evaluate_triangle_rt_interpolant_at_point, &
+        evaluate_triangle_rt_interpolant_at_point_jvp, &
+        evaluate_triangle_rt_interpolant_at_point_vjp, &
+        interpolate_triangle_bdm, interpolate_triangle_nedelec, &
+        interpolate_triangle_nedelec_second_kind, interpolate_triangle_rt
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_mass_csc, &
-        assemble_triangle_nedelec_curl_mass_element
+        assemble_triangle_nedelec_curl_csc, &
+        assemble_triangle_nedelec_curl_mass_element, &
+        assemble_triangle_nedelec_curl_mass_element_jvp, &
+        assemble_triangle_nedelec_curl_mass_element_vjp, &
+        assemble_triangle_nedelec_vector_load_samples, &
+        assemble_triangle_nedelec_vector_load_samples_jvp, &
+        assemble_triangle_nedelec_vector_load_samples_vjp
+    use fortfem_assembly_full_vector_arbitrary_order_2d, only: &
+        assemble_triangle_bdm_vector_load_samples
     use fortfem_assembly_rt_arbitrary_order_2d, only: &
         assemble_triangle_rt_div_mass_element, &
         assemble_triangle_rt_div_mass_element_jvp, &
@@ -411,6 +450,13 @@ module fortfem_feec
         solve_triangle_rt_sampled_state, &
         solve_triangle_rt_sampled_state_jvp, &
         solve_triangle_rt_sampled_state_vjp
+    use fortfem_triangle_full_vector_sampled_state_2d, only: &
+        solve_triangle_bdm_sampled_state, &
+        solve_triangle_bdm_sampled_state_jvp, &
+        solve_triangle_bdm_sampled_state_vjp, &
+        solve_triangle_nedelec_second_sampled_state, &
+        solve_triangle_nedelec_second_sampled_state_jvp, &
+        solve_triangle_nedelec_second_sampled_state_vjp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_api_solvers, only: &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
@@ -817,14 +863,54 @@ module fortfem_feec
     public :: initialize_triangle_nedelec_first_kind
     public :: triangle_nedelec_dof_count
     public :: triangle_nedelec_first_kind_t
+    public :: evaluate_triangle_nedelec_second_kind
+    public :: evaluate_triangle_nedelec_second_kind_jvp
+    public :: evaluate_triangle_nedelec_second_kind_vjp
+    public :: initialize_triangle_nedelec_second_kind
+    public :: triangle_nedelec_second_kind_dof_count
+    public :: triangle_nedelec_second_kind_t
+    public :: evaluate_triangle_bdm
+    public :: evaluate_triangle_bdm_jvp
+    public :: evaluate_triangle_bdm_vjp
+    public :: initialize_triangle_bdm
+    public :: triangle_bdm_basis_t
+    public :: triangle_bdm_dof_count
     public :: interpolate_triangle_nedelec
+    public :: evaluate_triangle_nedelec_interpolant
+    public :: evaluate_triangle_nedelec_interpolant_at_point
+    public :: evaluate_triangle_nedelec_interpolant_at_point_jvp
+    public :: evaluate_triangle_nedelec_interpolant_at_point_vjp
+    public :: evaluate_triangle_nedelec_second_kind_interpolant
+    public :: evaluate_triangle_nedelec_second_kind_interpolant_jvp
+    public :: evaluate_triangle_nedelec_second_kind_interpolant_vjp
+    public :: evaluate_triangle_nedelec_second_interpolant_at_point
+    public :: evaluate_triangle_nedelec_second_interpolant_at_point_jvp
+    public :: evaluate_triangle_nedelec_second_interpolant_at_point_vjp
+    public :: evaluate_triangle_bdm_interpolant
+    public :: evaluate_triangle_bdm_interpolant_jvp
+    public :: evaluate_triangle_bdm_interpolant_vjp
+    public :: evaluate_triangle_bdm_interpolant_at_point
+    public :: evaluate_triangle_bdm_interpolant_at_point_jvp
+    public :: evaluate_triangle_bdm_interpolant_at_point_vjp
+    public :: interpolate_triangle_bdm
+    public :: interpolate_triangle_nedelec_second_kind
     public :: assemble_triangle_nedelec_curl_mass_csc
+    public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_nedelec_curl_mass_element
+    public :: assemble_triangle_nedelec_curl_mass_element_jvp
+    public :: assemble_triangle_nedelec_curl_mass_element_vjp
+    public :: assemble_triangle_nedelec_vector_load_samples
+    public :: assemble_triangle_nedelec_vector_load_samples_jvp
+    public :: assemble_triangle_nedelec_vector_load_samples_vjp
+    public :: assemble_triangle_bdm_vector_load_samples
     public :: initialize_triangle_raviart_thomas
     public :: evaluate_triangle_raviart_thomas
     public :: triangle_rt_basis_t
     public :: triangle_rt_dof_count
     public :: evaluate_triangle_rt_interpolant
+    public :: evaluate_triangle_rt_interpolant_at_point
+    public :: evaluate_triangle_rt_interpolant_at_point_jvp
+    public :: evaluate_triangle_rt_interpolant_at_point_vjp
     public :: interpolate_triangle_rt
     public :: assemble_triangle_rt_div_mass_element
     public :: assemble_triangle_rt_div_mass_element_jvp
@@ -839,6 +925,12 @@ module fortfem_feec
     public :: solve_triangle_rt_sampled_state
     public :: solve_triangle_rt_sampled_state_jvp
     public :: solve_triangle_rt_sampled_state_vjp
+    public :: solve_triangle_bdm_sampled_state
+    public :: solve_triangle_bdm_sampled_state_jvp
+    public :: solve_triangle_bdm_sampled_state_vjp
+    public :: solve_triangle_nedelec_second_sampled_state
+    public :: solve_triangle_nedelec_second_sampled_state_jvp
+    public :: solve_triangle_nedelec_second_sampled_state_vjp
     public :: triangle_duffy_quadrature
     public :: assemble_laplacian_system
     public :: sparse_from_dense

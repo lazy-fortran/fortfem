@@ -1,7 +1,7 @@
 program test_triangle_nedelec_discontinuous_curl
     use check, only: check_condition, check_summary
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_nedelec_curl_csc, &
         build_triangle_discontinuous_dof_map, &
         build_triangle_trimmed_dof_map, initialize_triangle_lagrange_basis, &
