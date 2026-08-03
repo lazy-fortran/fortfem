@@ -2,12 +2,12 @@ program test_complex_mpi_trace_exchange
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
-    use fortfem_mpi_trace_exchange, only: &
+    use fortfem_core, only: &
         initialize_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_t, &
         pack_complex_mpi_trace_exchange, pack_complex_mpi_trace_exchange_jvp, &
         pack_complex_mpi_trace_exchange_vjp, unpack_complex_mpi_trace_exchange, &
         unpack_complex_mpi_trace_exchange_jvp, unpack_complex_mpi_trace_exchange_vjp
-    use fortfem_partition_layout, only: initialize_partition_layout, partition_layout_t
+    use fortfem_feec, only: initialize_partition_layout, partition_layout_t
     use fortsparse, only: fortsparse_status_t
     implicit none
 
