@@ -697,6 +697,7 @@ single commit for integration. The recent implementation slices are:
 | `0718919` + `dffdb38` | Assembled curved-torus RWG potential-block JVP and wave-number VJP for vector/scalar FEM--BEM paths | Independent primal reassembly, central-difference geometry/wave-number JVP, and real-part complex adjoint oracle on exact-curved torus panels |
 | `e838ff9` + `e45c20a` | Direct Fourier transform sample/angle JVP and real-part complex VJP, with canonical `fortfem_fourier` exports | Independent nonuniform signed-mode central-difference and adjoint oracles, finite/shape rejection, and modulo-(2pi) duplicate-angle rejection |
 | `8797f75` + `d04a775` | FortSym-generated degree-eight (octic) curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; degree-eight uses seven interior controls, while six controls are the existing septic path |
+| `58daa083` + `7727770` | Retained FCI cycle composition over existing field-split factors and the coupled work ledger | Independent literal inverse, inverse-derivative JVP, nonsymmetric transpose VJP, full matrix-inclusive adjoint, and non-positive-weight rejection |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -3711,6 +3712,13 @@ gallery example.
   residual work, including exact value/JVP/VJP products. It is a bookkeeping
   and preconditioner-composition contract only; FCI geometry, constitutive
   coefficients, and solver policy remain caller-owned.
+- The neutral `evaluate_fci_retained_cycle_composition` layer now applies a
+  retained field-split factor as one additive FCI action and delegates residual
+  work accounting to the coupled ledger. Its JVP/VJP propagate nonsymmetric
+  retained factors, including transpose solves, without forming a global
+  preconditioner; an independent inverse and real-adjoint oracle covers the
+  complete composition. Stronger coupled block policies and application
+  closures remain caller-owned.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
