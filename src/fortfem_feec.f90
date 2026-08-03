@@ -74,6 +74,17 @@ module fortfem_feec
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
+    use fortfem_generalized_debye_source, only: &
+        assemble_generalized_debye_source_residual, &
+        assemble_generalized_debye_source_residual_jvp, &
+        assemble_generalized_debye_source_residual_vjp, &
+        assemble_generalized_debye_source_second_kind, &
+        assemble_generalized_debye_source_second_kind_jvp, &
+        assemble_generalized_debye_source_second_kind_vjp
+    use fortfem_generalized_eigen_residual, only: &
+        assemble_generalized_eigen_residual, &
+        assemble_generalized_eigen_residual_jvp, &
+        assemble_generalized_eigen_residual_vjp
     use fortfem_cell_identification, only: &
         cell_identification_classes, cell_identification_t, &
         identify_boundary_matrix, initialize_cell_identification, &
@@ -1268,6 +1279,15 @@ module fortfem_feec
     public :: apply_sparse_incomplete_cholesky
     public :: apply_sparse_incomplete_cholesky_jvp
     public :: apply_sparse_incomplete_cholesky_vjp
+    public :: assemble_generalized_debye_source_residual
+    public :: assemble_generalized_debye_source_residual_jvp
+    public :: assemble_generalized_debye_source_residual_vjp
+    public :: assemble_generalized_debye_source_second_kind
+    public :: assemble_generalized_debye_source_second_kind_jvp
+    public :: assemble_generalized_debye_source_second_kind_vjp
+    public :: assemble_generalized_eigen_residual
+    public :: assemble_generalized_eigen_residual_jvp
+    public :: assemble_generalized_eigen_residual_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_curl_mass_element_jvp

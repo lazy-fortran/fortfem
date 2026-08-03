@@ -1,6 +1,6 @@
 program test_toroidal_spectral_metadata_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: analyze_toroidal_spectral_modes, &
+    use fortfem_fourier, only: analyze_toroidal_spectral_modes, &
         analyze_toroidal_spectral_modes_jvp, analyze_toroidal_spectral_modes_vjp
     use fortfem_kinds, only: dp
     implicit none

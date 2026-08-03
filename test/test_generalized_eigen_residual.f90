@@ -1,7 +1,7 @@
 program test_generalized_eigen_residual
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_generalized_eigen_residual, &
         assemble_generalized_eigen_residual_jvp, &
         assemble_generalized_eigen_residual_vjp

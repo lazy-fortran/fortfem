@@ -1,11 +1,10 @@
 program test_fourier_mode_expansion_hessian
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_fourier_mode_expansion, &
         evaluate_fourier_mode_expansion_hessian, &
-        evaluate_fourier_mode_expansion_hvp
-    use fortfem_fourier_mode_registry, only: &
+        evaluate_fourier_mode_expansion_hvp, &
         fourier_mode_registry_t, initialize_fourier_mode_registry
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
