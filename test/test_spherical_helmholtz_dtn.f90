@@ -1,5 +1,5 @@
 program test_spherical_helmholtz_dtn
-    use fortfem_api, only: apply_spherical_helmholtz_dtn, &
+    use fortfem_boundary, only: apply_spherical_helmholtz_dtn, &
         spherical_helmholtz_dtn_eigenvalue
     use fortfem_kinds, only: dp
     use check, only: check_condition, check_summary

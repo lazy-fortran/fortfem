@@ -71,6 +71,17 @@ module fortfem_boundary
         assemble_planar_helmholtz_dtn_form, &
         assemble_planar_helmholtz_dtn_form_jvp, &
         assemble_planar_helmholtz_dtn_form_vjp
+    use fortfem_scalar_helmholtz_planar_dtn_2d, only: &
+        solve_scalar_helmholtz_planar_dtn_p1, &
+        solve_scalar_helmholtz_planar_dtn_p1_jvp, &
+        solve_scalar_helmholtz_planar_dtn_p1_vjp
+    use fortfem_spherical_helmholtz_dtn, only: &
+        apply_spherical_helmholtz_dtn, &
+        apply_spherical_helmholtz_dtn_jvp, &
+        apply_spherical_helmholtz_dtn_vjp, &
+        spherical_helmholtz_dtn_eigenvalue, &
+        spherical_helmholtz_dtn_eigenvalue_jvp, &
+        spherical_helmholtz_dtn_eigenvalue_vjp
     use fortfem_planar_maxwell_dtn, only: &
         apply_planar_maxwell_dtn, assemble_planar_maxwell_dtn_form, &
         assemble_planar_maxwell_dtn_form_jvp, &
@@ -185,6 +196,15 @@ module fortfem_boundary
     public :: assemble_planar_helmholtz_dtn_form
     public :: assemble_planar_helmholtz_dtn_form_jvp
     public :: assemble_planar_helmholtz_dtn_form_vjp
+    public :: solve_scalar_helmholtz_planar_dtn_p1
+    public :: solve_scalar_helmholtz_planar_dtn_p1_jvp
+    public :: solve_scalar_helmholtz_planar_dtn_p1_vjp
+    public :: apply_spherical_helmholtz_dtn
+    public :: apply_spherical_helmholtz_dtn_jvp
+    public :: apply_spherical_helmholtz_dtn_vjp
+    public :: spherical_helmholtz_dtn_eigenvalue
+    public :: spherical_helmholtz_dtn_eigenvalue_jvp
+    public :: spherical_helmholtz_dtn_eigenvalue_vjp
     public :: apply_circular_helmholtz_dtn
     public :: apply_circular_helmholtz_dtn_jvp
     public :: apply_circular_helmholtz_dtn_vjp

@@ -1,6 +1,6 @@
 program test_spherical_helmholtz_dtn_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_spherical_helmholtz_dtn, &
+    use fortfem_boundary, only: apply_spherical_helmholtz_dtn, &
         apply_spherical_helmholtz_dtn_jvp, apply_spherical_helmholtz_dtn_vjp
     use fortfem_kinds, only: dp
     implicit none
