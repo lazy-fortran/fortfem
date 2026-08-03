@@ -1,6 +1,6 @@
 program test_fci_support_volumes
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         compute_fci_staggered_flux_box_volumes, &
         compute_fci_staggered_flux_box_volumes_jvp, &
         compute_fci_staggered_flux_box_volumes_vjp

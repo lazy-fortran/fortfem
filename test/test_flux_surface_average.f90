@@ -1,6 +1,6 @@
 program test_flux_surface_average
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_flux_surface_average, &
         evaluate_flux_surface_average_jvp, &
         evaluate_flux_surface_average_vjp
