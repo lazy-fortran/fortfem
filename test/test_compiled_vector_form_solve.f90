@@ -1,6 +1,12 @@
 program test_compiled_vector_form_solve
     use check, only: check_condition, check_summary
-    use fortfem_api
+    use fortfem_core, only: mesh_t, unit_square_mesh, vector_function_space_t
+    use fortfem_feec, only: &
+        curl, dx, form_expr_t, inner, operator(*), operator(+), operator(==), &
+        solve, solver_stats_t, vector_bc, vector_bc_edge_moments, vector_bc_t, &
+        vector_function, &
+        vector_function_space, vector_function_t, vector_test_function, &
+        vector_test_function_t, vector_trial_function, vector_trial_function_t
     use fortfem_kinds, only: dp
     implicit none
 

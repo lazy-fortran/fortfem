@@ -1,6 +1,6 @@
 program test_vector_form_compiler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compile_vector_form_element, curl, div, dx, &
+    use fortfem_feec, only: compile_vector_form_element, curl, div, dx, &
         form_expr_t, init_measures, inner, &
         interpolate_triangle_bdm, &
         interpolate_triangle_nedelec_second_kind, operator(*), operator(+), &
