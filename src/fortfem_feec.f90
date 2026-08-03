@@ -359,6 +359,10 @@ module fortfem_feec
         assemble_geometry_mortar_component_coupling, &
         assemble_geometry_mortar_component_coupling_jvp, &
         assemble_geometry_mortar_component_coupling_vjp
+    use fortfem_beltrami_residual, only: &
+        assemble_beltrami_residual, &
+        assemble_beltrami_residual_jvp, &
+        assemble_beltrami_residual_vjp
     use fortfem_beltrami_parity, only: &
         beltrami_parity_t, compare_beltrami_two_region_residual, &
         beltrami_shell_parity_t, compare_beltrami_shell_residual, &
@@ -938,6 +942,9 @@ module fortfem_feec
     public :: assemble_elasticity_symmetry_constraint_jvp
     public :: assemble_elasticity_symmetry_constraint_vjp
     public :: validate_tree_cotree_gauge
+    public :: assemble_beltrami_residual
+    public :: assemble_beltrami_residual_jvp
+    public :: assemble_beltrami_residual_vjp
     public :: beltrami_parity_t
     public :: compare_beltrami_two_region_residual
     public :: validate_beltrami_parity
