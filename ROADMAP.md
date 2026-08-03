@@ -703,6 +703,7 @@ single commit for integration. The recent implementation slices are:
 | `764c9b45` | Assembled exact-curved torus EFIE RWG JVP/VJP for wave-number and impedance parameters | Independent central reassembly and real-part complex-adjoint oracle on the assembled torus operator |
 | `b38fa65f` | Canonical Fourier-facade exports for collocation-grid kinds, metadata, indexing, and chunking | No-umbrella downstream consumer with tensor-product cardinality, flatten/unflatten, chunk, and weight metadata oracle |
 | `f9680a25` | Pinned FortSym worktree override for generated-code provenance and isolated generator builds | Independent `/mnt/storage` detached-worktree fixture covers default/override resolution, lock mismatch, dirty checkout, dependency targeting, and cleanup |
+| `c50b908` | Generated-kernel checker storage-root override; local staging defaults to `/mnt/storage` and remains CI-portable | Independent synthetic checker fixture proves configured-root creation, generated-source parity, and staging cleanup without rebuilding FortSym |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
