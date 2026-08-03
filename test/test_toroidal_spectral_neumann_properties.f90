@@ -3,7 +3,7 @@ program test_toroidal_spectral_neumann_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         solve_toroidal_spectral_neumann, solve_toroidal_spectral_neumann_jvp, &
         solve_toroidal_spectral_neumann_vjp, toroidal_p, toroidal_p_derivative, &
         toroidal_q, toroidal_q_derivative

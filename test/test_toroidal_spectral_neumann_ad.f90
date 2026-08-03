@@ -1,6 +1,6 @@
 program test_toroidal_spectral_neumann_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_spectral_trace, solve_toroidal_spectral_neumann, &
         solve_toroidal_spectral_neumann_jvp, solve_toroidal_spectral_neumann_vjp
     use fortfem_kinds, only: dp

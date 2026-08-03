@@ -1,6 +1,6 @@
 program test_generalized_debye_second_kind_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_generalized_debye_source_second_kind, &
         assemble_generalized_debye_source_second_kind_jvp, &
         assemble_generalized_debye_source_second_kind_vjp

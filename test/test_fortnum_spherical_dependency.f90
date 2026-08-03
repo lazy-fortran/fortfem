@@ -1,7 +1,7 @@
 program test_fortnum_spherical_dependency
     ! Integration oracle for the FortNum revision consumed by FortFEM.
     use, intrinsic :: iso_fortran_env, only: dp => real64, error_unit
-    use fortfem_api, only: spherical_harmonic, &
+    use fortfem_fourier, only: spherical_harmonic, &
         spherical_harmonic_product_coefficient, &
         spherical_harmonic_theta_derivative, spherical_harmonic_phi_derivative
     implicit none

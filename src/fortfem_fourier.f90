@@ -65,6 +65,13 @@ module fortfem_fourier
         solve_toroidal_spectral_neumann, &
         solve_toroidal_spectral_neumann_jvp, &
         solve_toroidal_spectral_neumann_vjp
+    use fortfem_toroidal_spectral_metadata, only: &
+        analyze_toroidal_spectral_modes, &
+        analyze_toroidal_spectral_modes_jvp, &
+        analyze_toroidal_spectral_modes_vjp
+    use fortfem_spherical_harmonics, only: &
+        spherical_harmonic, spherical_harmonic_theta_derivative, &
+        spherical_harmonic_phi_derivative, spherical_harmonic_product_coefficient
     use fortfem_toroidal_modal_convolution, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
@@ -136,6 +143,13 @@ module fortfem_fourier
     public :: solve_toroidal_spectral_neumann
     public :: solve_toroidal_spectral_neumann_jvp
     public :: solve_toroidal_spectral_neumann_vjp
+    public :: analyze_toroidal_spectral_modes
+    public :: analyze_toroidal_spectral_modes_jvp
+    public :: analyze_toroidal_spectral_modes_vjp
+    public :: spherical_harmonic
+    public :: spherical_harmonic_theta_derivative
+    public :: spherical_harmonic_phi_derivative
+    public :: spherical_harmonic_product_coefficient
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp

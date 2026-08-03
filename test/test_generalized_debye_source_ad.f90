@@ -1,6 +1,6 @@
 program test_generalized_debye_source_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_generalized_debye_source_residual, &
         assemble_generalized_debye_source_residual_jvp, &
         assemble_generalized_debye_source_residual_vjp
