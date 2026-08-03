@@ -1,0 +1,19 @@
+{
+  "fixture": "team13_neutral_benchmark",
+  "benchmark_family": "TEAM",
+  "shape_target": "TEAM-13 nonlinear magnetostatic coil, channel, and plate layout",
+  "exact_reproduction": false,
+  "data_status": "manufactured magnetic field and material response; no TEAM reader or reference measurements",
+  "source_arrays_redistributed": false,
+  "references": [
+    {
+      "title": "TEAM workshop report",
+      "url": "https://www.osti.gov/servlets/purl/7179128"
+    },
+    {
+      "title": "TEAM-13 public reproduction description",
+      "url": "https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html"
+    }
+  ],
+  "license_note": "Exact TEAM-13 geometry, nonlinear B-H data, probes, and reference curves remain external and require separate provenance and redistribution review."
+}
