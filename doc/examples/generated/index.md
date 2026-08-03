@@ -39,6 +39,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [helmholtz_open_boundary_comparison](helmholtz_open_boundary_comparison.html) - This example compares three truncations of the same one-dimensional outgoing
 - [acoustic_fem_dtn](acoustic_fem_dtn.html) - This example couples complex, time-harmonic P1 elasticity to an outgoing
 - [maxwell_open_boundary_comparison](maxwell_open_boundary_comparison.html) - This example evaluates the biperiodic planar Maxwell capacity operator on
+- [maxwell_vector_open_boundary_parity_gallery](maxwell_vector_open_boundary_parity_gallery.html) - This gallery is a small, license-safe manufactured curl--curl fixture.  It
 - [fortfem_mesh_benchmark](fortfem_mesh_benchmark.html) - This example benchmarks FortFEM's mesh generation performance against FreeFEM.
 - [solver_benchmark](solver_benchmark.html) - This example solves the unit-source Poisson system, shows the physical
 - [biro_tree_cotree_benchmark](biro_tree_cotree_benchmark.html) - This small manufactured case reproduces the structural part of the direct
