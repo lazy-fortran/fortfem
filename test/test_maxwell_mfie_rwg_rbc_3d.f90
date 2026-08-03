@@ -1,12 +1,12 @@
 program test_maxwell_mfie_rwg_rbc_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_mfie_rwg_rbc_3d, &
-        build_maxwell_bc_transformation, &
-        evaluate_maxwell_localized_rwg_basis, &
         evaluate_maxwell_magnetic_field_rwg_3d
+    use fortfem_feec, only: &
+        build_maxwell_bc_transformation, &
+        evaluate_maxwell_localized_rwg_basis, triangle_duffy_quadrature
     use fortfem_kinds, only: dp
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
 
     complex(dp), allocatable :: matrix(:, :), principal_depth1(:, :)

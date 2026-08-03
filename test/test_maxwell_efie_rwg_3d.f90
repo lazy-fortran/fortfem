@@ -1,12 +1,12 @@
 program test_maxwell_efie_rwg_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_efie_rwg_3d, &
+    use fortfem_boundary, only: &
         assemble_maxwell_rwg_potential_operators_3d, &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
-        build_maxwell_rwg_surface_space, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_maxwell_efie_field_rwg_3d
+    use fortfem_feec, only: &
+        assemble_maxwell_efie_rwg_3d, build_maxwell_rwg_surface_space
     use fortfem_kinds, only: dp
     implicit none
 

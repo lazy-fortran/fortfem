@@ -185,7 +185,26 @@ module fortfem_boundary
         evaluate_maxwell_torus_magnetic_geometry_vjp, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_maxwell_magnetic_rwg_3d, only: &
-        evaluate_maxwell_magnetic_field_rwg_3d
+        evaluate_maxwell_magnetic_field_rwg_3d, &
+        evaluate_maxwell_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_magnetic_field_rwg_3d_targets, &
+        evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp, &
+        evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp, &
+        evaluate_maxwell_magnetic_field_rwg_3d_vjp
+    use fortfem_maxwell_cfie_regularized_3d, only: &
+        assemble_maxwell_regularized_cfie_rwg_3d
+    use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
+        assemble_maxwell_mfie_rwg_rbc_3d
+    use fortfem_maxwell_efie_bc_3d, only: &
+        assemble_maxwell_bc_potential_operators_3d, &
+        assemble_maxwell_bc_scalar_potential_3d, &
+        assemble_maxwell_efie_bc_3d, &
+        assemble_maxwell_efie_bc_imaginary_3d, &
+        build_maxwell_bc_panel_divergence, &
+        build_maxwell_bc_to_refined_rwg
+    use fortfem_maxwell_efie_rwg_3d, only: &
+        assemble_maxwell_rwg_potential_operators_3d, &
+        evaluate_maxwell_efie_field_rwg_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
@@ -408,6 +427,21 @@ module fortfem_boundary
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
+    public :: evaluate_maxwell_magnetic_field_rwg_3d_vjp
+    public :: assemble_maxwell_regularized_cfie_rwg_3d
+    public :: assemble_maxwell_mfie_rwg_rbc_3d
+    public :: assemble_maxwell_bc_potential_operators_3d
+    public :: assemble_maxwell_bc_scalar_potential_3d
+    public :: assemble_maxwell_efie_bc_3d
+    public :: assemble_maxwell_efie_bc_imaginary_3d
+    public :: build_maxwell_bc_panel_divergence
+    public :: build_maxwell_bc_to_refined_rwg
+    public :: assemble_maxwell_rwg_potential_operators_3d
+    public :: evaluate_maxwell_efie_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
