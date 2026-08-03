@@ -3313,6 +3313,11 @@ gallery example.
   block map and time-step product; an independent nonidentity-block test
   checks central differences and the real adjoint identity in addition to the
   oscillator map, energy, and signed-step reversibility.
+- `assemble_mixed_wave_midpoint_map` now exposes the explicit (A^{-1}B)
+  Cayley map through the canonical `fortfem_time` facade (and the compatibility
+  umbrella) for modal and structure diagnostics. An independent scalar Cayley
+  oracle checks determinant, update/map parity, output-shape rejection, and
+  singular-block handling without probing implementation internals.
 - The public `advance_mixed_wave_symplectic_euler` step now provides a
   partitioned first-order symplectic update for the same mixed state. Its
   independent test checks the two-stage mass-solve oracle and the canonical
