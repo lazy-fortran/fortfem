@@ -639,6 +639,22 @@ while geometry residuals expose only the neutral `CONTINUATION_EVENT_NONE`
 constant through FEEC (`c59337d`); this ownership cleanup is covered by the
 release gate.
 
+The latest API-07 handoffs continue the same disjoint migration discipline:
+`72b49ad` moves the PML plane-wave, symplectic-map, and tensor-power consumers
+to the FEEC/time facades; `32afe20` moves Krylov, PCG, GMRES, BiCGSTAB, and
+real/complex sparse derivative consumers to the sparse/advanced-solver
+facades; `a3145ea` moves FreeFEM/equilibrium/linear-response interchange and
+paper magnetic-box consumers to the interop/FEEC facades; `279889f` adds the
+missing canonical FEEC Beltrami residual exports and migrates the three
+Beltrami parity/energy consumers; and `370569c` moves ten FCI interpolation,
+terminal-hit, boundary-patch, and parallel-diffusion consumers to their
+narrow FCI/FEEC owners. All focused behavioral oracles and the fast release
+gate pass after these integrations. The exact Bíró paper arrays and exact
+TEAM reference data remain provenance-gated external artifacts; the
+redistributable in-tree examples are deliberately method-faithful or
+manufactured and never claim paper-data reproduction without a pinned,
+independently licensed sister-repository payload.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
