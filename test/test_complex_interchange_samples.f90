@@ -1,7 +1,7 @@
 program test_complex_interchange_samples
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         compare_complex_interchange_samples, &
         complex_interchange_sample_set_t, &
         initialize_complex_interchange_samples, &

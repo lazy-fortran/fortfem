@@ -1,6 +1,6 @@
 program test_nested_surface_gallery_oracle
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_axis_regular_radial_basis, evaluate_nested_surface_geometry
     use fortfem_fourier_mode_registry, only: &
         fourier_mode_registry_t, initialize_fourier_mode_registry

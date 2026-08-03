@@ -7,7 +7,7 @@ program test_oracle_manifest_ladder
     !! before an external record can enter the comparison pipeline.
     use, intrinsic :: iso_fortran_env, only: int64, real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
         oracle_tolerance_t, initialize_oracle_manifest, &
         validate_oracle_manifest

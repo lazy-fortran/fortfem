@@ -1,6 +1,6 @@
 program test_nonlinear_surface_flux
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_nonlinear_surface_flux, only: &
         assemble_nonlinear_surface_flux, &
         assemble_nonlinear_surface_flux_jvp, &
         assemble_nonlinear_surface_flux_vjp
