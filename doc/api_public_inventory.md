@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1765 unique exported symbols** (2856 declarations, including wrapper duplicates).
+The inventory contains **1765 unique exported symbols** (2859 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
@@ -98,9 +98,9 @@ generated headers or explicit `fortfem_generated_*` imports.
 | evaluate_step_reduction | `fortfem_api (src/fortfem_api.f90)` | `fortfem_step_reduction` / `src/solvers/step_reduction.f90` | fortfem_time | same | JVP, VJP | `test/test_step_reduction.f90` | hand-written / no generator link in defining file |
 | evaluate_step_reduction_jvp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_step_reduction` / `src/solvers/step_reduction.f90` | fortfem_time | same | JVP | `test/test_step_reduction.f90` | hand-written / no generator link in defining file |
 | evaluate_step_reduction_vjp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_step_reduction` / `src/solvers/step_reduction.f90` | fortfem_time | same | VJP | `test/test_step_reduction.f90` | hand-written / no generator link in defining file |
-| normalize_harmonic_one_forms | `fortfem_api (src/fortfem_api.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | JVP, VJP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
-| normalize_harmonic_one_forms_jvp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | JVP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
-| normalize_harmonic_one_forms_vjp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | VJP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
+| normalize_harmonic_one_forms | `fortfem_api (src/fortfem_api.f90)`; `fortfem_fourier (src/fortfem_fourier.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | JVP, VJP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
+| normalize_harmonic_one_forms_jvp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_fourier (src/fortfem_fourier.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | JVP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
+| normalize_harmonic_one_forms_vjp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_fourier (src/fortfem_fourier.f90)` | `fortfem_harmonic_period_normalization` / `src/topology/harmonic_period_normalization.f90` | fortfem_fourier | same | VJP | `test/test_harmonic_period_normalization.f90` | hand-written / no generator link in defining file |
 | cell_identification_t | `fortfem_api (src/fortfem_api.f90)` | `fortfem_cell_identification` / `src/topology/cell_identification.f90` | fortfem_feec | same | — | `test/test_cell_identification.f90` | hand-written / no generator link in defining file |
 | initialize_cell_identification | `fortfem_api (src/fortfem_api.f90)` | `fortfem_cell_identification` / `src/topology/cell_identification.f90` | fortfem_feec | same | — | `test/test_cell_identification.f90` | hand-written / no generator link in defining file |
 | validate_cell_identification | `fortfem_api (src/fortfem_api.f90)` | `fortfem_cell_identification` / `src/topology/cell_identification.f90` | fortfem_feec | same | — | `test/test_cell_identification.f90` | hand-written / no generator link in defining file |
