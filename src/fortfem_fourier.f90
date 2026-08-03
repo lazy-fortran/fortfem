@@ -36,6 +36,13 @@ module fortfem_fourier
         assemble_fourier_mode_energy_jvp, &
         assemble_fourier_mode_energy_vjp, &
         fourier_coefficients_conjugate_symmetric
+    use fortfem_direct_fourier_transform, only: &
+        direct_fourier_plan_t, initialize_direct_fourier_plan, &
+        validate_direct_fourier_plan, direct_fourier_plan_metadata, &
+        direct_fourier_plan_chunk_bounds, direct_fourier_forward, &
+        direct_fourier_adjoint, direct_fourier_forward_jvp, &
+        direct_fourier_forward_vjp, direct_fourier_plan_sample_count, &
+        direct_fourier_plan_mode_count
     use fortfem_axis_regular_fourier_modes, only: &
         AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
         axis_regular_mode_record_t, axis_regular_mode_table_t, &
@@ -113,6 +120,17 @@ module fortfem_fourier
     public :: assemble_fourier_mode_energy_jvp
     public :: assemble_fourier_mode_energy_vjp
     public :: fourier_coefficients_conjugate_symmetric
+    public :: direct_fourier_plan_t
+    public :: initialize_direct_fourier_plan
+    public :: validate_direct_fourier_plan
+    public :: direct_fourier_plan_metadata
+    public :: direct_fourier_plan_chunk_bounds
+    public :: direct_fourier_forward
+    public :: direct_fourier_adjoint
+    public :: direct_fourier_forward_jvp
+    public :: direct_fourier_forward_vjp
+    public :: direct_fourier_plan_sample_count
+    public :: direct_fourier_plan_mode_count
     public :: axis_regular_mode_requirements
     public :: axis_regular_mode_record_t
     public :: axis_regular_mode_table_t
