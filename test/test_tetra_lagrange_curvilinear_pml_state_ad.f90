@@ -1,6 +1,6 @@
 program test_tetra_lagrange_curvilinear_pml_state_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         solve_tetra_lagrange_curvilinear_pml, &
         solve_tetra_lagrange_curvilinear_pml_jvp, &
         solve_tetra_lagrange_curvilinear_pml_vjp

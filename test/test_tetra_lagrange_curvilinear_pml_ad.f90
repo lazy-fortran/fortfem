@@ -1,13 +1,14 @@
 program test_tetra_lagrange_curvilinear_pml_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
+        curvilinear_scalar_helmholtz_pml_coefficients
+    use fortfem_feec, only: &
         assemble_tetra_lagrange_curvilinear_pml_csc, &
         assemble_tetra_lagrange_curvilinear_pml_csc_jvp, &
         assemble_tetra_lagrange_curvilinear_pml_csc_vjp, &
         assemble_tetra_lagrange_curvilinear_pml_element, &
         assemble_tetra_lagrange_curvilinear_pml_element_jvp, &
-        assemble_tetra_lagrange_curvilinear_pml_element_vjp, &
-        curvilinear_scalar_helmholtz_pml_coefficients
+        assemble_tetra_lagrange_curvilinear_pml_element_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_z_t, fortsparse_status_t
     implicit none

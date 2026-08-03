@@ -1,7 +1,7 @@
 program test_tetra_lagrange_poisson_h_convergence_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_lagrange_solution_prepared, &
-        generate_structured_tetra_box_mesh, &
+    use fortfem_core, only: generate_structured_tetra_box_mesh
+    use fortfem_feec, only: evaluate_tetra_lagrange_solution_prepared, &
         initialize_tetra_lagrange_solution_evaluator, &
         solve_tetra_lagrange_poisson, tetra_duffy_quadrature, &
         tetra_lagrange_solution_evaluator_t

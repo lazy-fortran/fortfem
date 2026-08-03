@@ -1,6 +1,6 @@
 program test_tetra_lagrange_poisson_p_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_lagrange_solution, &
+    use fortfem_feec, only: evaluate_tetra_lagrange_solution, &
         solve_tetra_lagrange_diffusion_reaction, &
         solve_tetra_lagrange_poisson, tetra_duffy_quadrature
     use fortfem_generated_tetra_h1_oracle, only: generated_tetra_h1_oracle
