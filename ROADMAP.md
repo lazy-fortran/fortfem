@@ -723,6 +723,7 @@ single commit for integration. The recent implementation slices are:
 | `a81ff34` + `b28dd772` | FortSym-pinned degree-ten (decic) curved Bézier FCI polygon measures with canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value, central JVP, real VJP, straight-edge, degenerate-topology, and byte-current generation oracles |
 | `9410c10c` | Tetrahedral Nédélec gallery now leads with the complete 3-D reconstructed vector solution; the 2-D slice remains available for readable component arrows | Bounded physical-first shell oracle checks the 3-D PNG, complete stage order, slice CSV, and non-empty diagnostics |
 | `2a69dfc6` | IGA polar gallery now draws mapped curvilinear rings and spokes before the solution samples and emits their physical line paths | Bounded geometry oracle checks all 4 rings and 64 spokes, 121 samples per path, closed rings, radial endpoints, and finite coordinates |
+| `875274a8` + `98d15057` | JOREK magnetic-flux gallery now samples the signed solution on an 80x80 physical raster, keeps readable reconstructed field arrows, and uses the supported FPM example runner | Bounded oracle checks 6,400 finite samples, radial/vertical ordering, vector-derived magnitude, signed flux, invariant drift, reversibility, and runtime |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
