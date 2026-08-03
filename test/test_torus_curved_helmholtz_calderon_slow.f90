@@ -1,8 +1,9 @@
 program test_torus_curved_helmholtz_calderon_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_helmholtz_torus_curved_calderon_3d, &
-        generate_torus_surface_mesh, solve_helmholtz_bem_dtn_torus_curved_3d
+        solve_helmholtz_bem_dtn_torus_curved_3d
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

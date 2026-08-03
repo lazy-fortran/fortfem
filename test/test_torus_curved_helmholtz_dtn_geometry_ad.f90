@@ -1,10 +1,10 @@
 program test_torus_curved_helmholtz_dtn_geometry_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_helmholtz_torus_curved_dtn_3d, &
         assemble_helmholtz_torus_curved_dtn_3d_geometry_jvp, &
-        assemble_helmholtz_torus_curved_dtn_3d_geometry_vjp, &
-        generate_torus_surface_mesh
+        assemble_helmholtz_torus_curved_dtn_3d_geometry_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
