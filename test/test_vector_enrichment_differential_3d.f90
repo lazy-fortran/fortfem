@@ -1,6 +1,6 @@
 program test_vector_enrichment_differential_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_vector_enrichment_differential_3d, &
         evaluate_vector_enrichment_differential_3d_jvp, &
         evaluate_vector_enrichment_differential_3d_vjp

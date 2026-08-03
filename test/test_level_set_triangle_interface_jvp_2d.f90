@@ -1,6 +1,6 @@
 program test_level_set_triangle_interface_jvp_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_level_set_triangle_interface_2d, &
         evaluate_level_set_triangle_interface_2d_jvp
     use fortfem_kinds, only: dp
