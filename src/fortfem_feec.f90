@@ -578,6 +578,10 @@ module fortfem_feec
         assemble_force_balance_residual, &
         assemble_force_balance_residual_jvp, &
         assemble_force_balance_residual_vjp
+    use fortfem_force_balance_representation_parity, only: &
+        evaluate_force_balance_representation_parity, &
+        evaluate_force_balance_representation_parity_jvp, &
+        evaluate_force_balance_representation_parity_vjp
     use fortfem_force_balance_metric_residual, only: &
         assemble_metric_force_balance_residual, &
         assemble_metric_force_balance_residual_jvp, &
@@ -1375,6 +1379,9 @@ module fortfem_feec
     public :: assemble_force_balance_residual
     public :: assemble_force_balance_residual_jvp
     public :: assemble_force_balance_residual_vjp
+    public :: evaluate_force_balance_representation_parity
+    public :: evaluate_force_balance_representation_parity_jvp
+    public :: evaluate_force_balance_representation_parity_vjp
     public :: assemble_metric_force_balance_residual
     public :: assemble_metric_force_balance_residual_jvp
     public :: assemble_metric_force_balance_residual_vjp

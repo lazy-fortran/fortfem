@@ -31,6 +31,10 @@ module fortfem_time
         advance_mixed_wave_wall_midpoint_jvp, &
         advance_mixed_wave_wall_midpoint_vjp, &
         evaluate_mixed_wave_wall_energy_balance
+    use fortfem_mixed_wave_energy_ledger, only: &
+        evaluate_mixed_wave_energy_helicity_port_ledger, &
+        evaluate_mixed_wave_energy_helicity_port_ledger_jvp, &
+        evaluate_mixed_wave_energy_helicity_port_ledger_vjp
     use fortfem_continuation_event, only: &
         CONTINUATION_EVENT_NEAR_ZERO, CONTINUATION_EVENT_SIGN_CROSSING, &
         classify_continuation_event
@@ -58,6 +62,9 @@ module fortfem_time
     public :: assemble_symplectic_map_defect_jvp
     public :: assemble_symplectic_map_defect_vjp
     public :: evaluate_mixed_wave_wall_energy_balance
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger_jvp
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger_vjp
     public :: CONTINUATION_EVENT_NEAR_ZERO
     public :: CONTINUATION_EVENT_SIGN_CROSSING
     public :: classify_continuation_event
