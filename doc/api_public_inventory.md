@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1762 unique exported symbols** (2335 declarations, including wrapper duplicates).
+The inventory contains **1765 unique exported symbols** (2341 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
@@ -1517,6 +1517,9 @@ generated headers or explicit `fortfem_generated_*` imports.
 | assemble_geometry_mortar_trace_coupling | `fortfem_api (src/fortfem_api.f90)` | `fortfem_geometry_mortar_trace_coupling` / `src/operators/geometry_mortar_trace_coupling.f90` | fortfem_core | same | JVP, VJP | `test/test_geometry_mortar_trace_coupling.f90` | hand-written / no generator link in defining file |
 | assemble_geometry_mortar_trace_coupling_jvp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_geometry_mortar_trace_coupling` / `src/operators/geometry_mortar_trace_coupling.f90` | fortfem_core | same | JVP | `test/test_geometry_mortar_trace_coupling.f90` | hand-written / no generator link in defining file |
 | assemble_geometry_mortar_trace_coupling_vjp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_geometry_mortar_trace_coupling` / `src/operators/geometry_mortar_trace_coupling.f90` | fortfem_core | same | VJP | `test/test_geometry_mortar_trace_coupling.f90` | hand-written / no generator link in defining file |
+| assemble_geometry_mortar_component_coupling | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_geometry_mortar_component_coupling` / `src/operators/geometry_mortar_component_coupling.f90` | fortfem_core | same | JVP, VJP | `test/test_geometry_mortar_component_coupling.f90` | hand-written / no generator link in defining file |
+| assemble_geometry_mortar_component_coupling_jvp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_geometry_mortar_component_coupling` / `src/operators/geometry_mortar_component_coupling.f90` | fortfem_core | same | JVP | `test/test_geometry_mortar_component_coupling.f90` | hand-written / no generator link in defining file |
+| assemble_geometry_mortar_component_coupling_vjp | `fortfem_api (src/fortfem_api.f90)`; `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_geometry_mortar_component_coupling` / `src/operators/geometry_mortar_component_coupling.f90` | fortfem_core | same | VJP | `test/test_geometry_mortar_component_coupling.f90` | hand-written / no generator link in defining file |
 | sample_physical_surface_geometry | `fortfem_api (src/fortfem_api.f90)` | `fortfem_physical_surface_geometry` / `src/operators/physical_surface_geometry.f90` | fortfem_core | same | JVP, VJP | `test/test_physical_surface_geometry.f90` | hand-written / no generator link in defining file |
 | sample_physical_surface_geometry_jvp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_physical_surface_geometry` / `src/operators/physical_surface_geometry.f90` | fortfem_core | same | JVP | `test/test_physical_surface_geometry.f90` | hand-written / no generator link in defining file |
 | sample_physical_surface_geometry_vjp | `fortfem_api (src/fortfem_api.f90)` | `fortfem_physical_surface_geometry` / `src/operators/physical_surface_geometry.f90` | fortfem_core | same | VJP | `test/test_physical_surface_geometry.f90` | hand-written / no generator link in defining file |
