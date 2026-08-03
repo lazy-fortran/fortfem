@@ -481,6 +481,10 @@ FortFEM task uses `/tmp` for a worktree and unrelated downstream worktrees
 remain untouched. A degree-eleven generator is optional if its generated
 kernel exceeds the bounded memory/timeout budget; the explicit no-op and
 reason are recorded rather than lowering the oracle standard.
+The tensor consumer slice is now integrated as `c9c3c544`, with the inventory
+refresh in `9591b0d5`; its focused gate is part of the fast API release gate.
+This closes one representative API-07-TENSOR client, not the full tensor
+gallery or constitutive-physics roadmap row.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
