@@ -20,6 +20,11 @@ The provenance targets are the [TEAM workshop report](https://www.osti.gov/servl
 the [TEAM-20 static-force description](https://www.simscale.com/docs/validation-cases/team-20-magnetostatics/),
 and the [Bíró/Ostergaard TEAM-20 proceedings reference](https://ansyshelp.ansys.com/public/Views/Secured/corp/v252/en/ans_vm/Hlp_V_VM233.html).
 
+Exact TEAM-20 mesh, B--H, force, and probe arrays remain ineligible for
+redistribution in FortFEM.  A reviewed sister-repository artifact can be
+validated and rendered through the optional adapter described in
+[`benchmark/external_oracles`](../../benchmark/external_oracles/README.md).
+
 Run it with:
 
 ```text

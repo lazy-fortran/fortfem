@@ -29,6 +29,10 @@ workshop report ([TEAM catalogue](https://www.osti.gov/biblio/7179128),
 [workshop report](https://www.osti.gov/servlets/purl/7179128)).  No source
 arrays or measurement data are copied from those works.
 
+Exact TEAM-3 data are handled only by the metadata/checksum-gated external
+adapter in [`benchmark/external_oracles`](../../benchmark/external_oracles/README.md);
+this neutral fixture stays manufactured and license-safe.
+
 Run with:
 
 ```text
