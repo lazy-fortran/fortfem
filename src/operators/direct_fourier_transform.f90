@@ -41,6 +41,8 @@ module fortfem_direct_fourier_transform
     public :: direct_fourier_plan_chunk_bounds
     public :: direct_fourier_forward
     public :: direct_fourier_adjoint
+    public :: direct_fourier_forward_jvp
+    public :: direct_fourier_forward_vjp
     public :: direct_fourier_plan_sample_count
     public :: direct_fourier_plan_mode_count
 
@@ -238,6 +240,92 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine direct_fourier_adjoint
 
+    subroutine direct_fourier_forward_jvp( &
+            plan, samples, sample_tangent, angle_tangent, coefficient_tangent, status)
+        !! Differentiate the fixed-mode direct transform with respect to its
+        !! complex samples and real sample angles.
+        type(direct_fourier_plan_t), intent(in) :: plan
+        complex(dp), intent(in) :: samples(:), sample_tangent(:)
+        real(dp), intent(in) :: angle_tangent(:)
+        complex(dp), intent(out) :: coefficient_tangent(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: mode, sample
+        complex(dp) :: kernel_tangent
+
+        coefficient_tangent = cmplx(0.0_dp, 0.0_dp, dp)
+        if (.not. validate_direct_fourier_plan(plan, status)) return
+        if (size(samples) /= plan%sample_count .or. &
+            size(sample_tangent) /= plan%sample_count .or. &
+            size(angle_tangent) /= plan%sample_count .or. &
+            size(coefficient_tangent) /= plan%mode_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "direct Fourier JVP received incompatible vectors")
+            return
+        end if
+        if (.not. finite_complex(samples) .or. &
+            .not. finite_complex(sample_tangent) .or. &
+            .not. all(ieee_is_finite(angle_tangent))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "direct Fourier JVP received non-finite vectors")
+            return
+        end if
+        do mode = 1, plan%mode_count
+            do sample = 1, plan%sample_count
+                kernel_tangent = plan%kernel(mode, sample)*cmplx( &
+                    0.0_dp, -real(plan%mode_indices(mode), dp)* &
+                    angle_tangent(sample), dp)
+                coefficient_tangent(mode) = coefficient_tangent(mode) + &
+                    plan%kernel(mode, sample)*sample_tangent(sample) + &
+                    kernel_tangent*samples(sample)
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine direct_fourier_forward_jvp
+
+    subroutine direct_fourier_forward_vjp( &
+            plan, samples, coefficient_cotangent, sample_cotangent, &
+            angle_cotangent, status)
+        !! Apply the real-part complex adjoint of the fixed-mode transform.
+        type(direct_fourier_plan_t), intent(in) :: plan
+        complex(dp), intent(in) :: samples(:), coefficient_cotangent(:)
+        complex(dp), intent(out) :: sample_cotangent(:)
+        real(dp), intent(out) :: angle_cotangent(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: mode, sample
+        complex(dp) :: kernel_tangent
+
+        sample_cotangent = cmplx(0.0_dp, 0.0_dp, dp)
+        angle_cotangent = 0.0_dp
+        if (.not. validate_direct_fourier_plan(plan, status)) return
+        if (size(samples) /= plan%sample_count .or. &
+            size(coefficient_cotangent) /= plan%mode_count .or. &
+            size(sample_cotangent) /= plan%sample_count .or. &
+            size(angle_cotangent) /= plan%sample_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "direct Fourier VJP received incompatible vectors")
+            return
+        end if
+        if (.not. finite_complex(samples) .or. &
+            .not. finite_complex(coefficient_cotangent)) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "direct Fourier VJP received non-finite vectors")
+            return
+        end if
+        do sample = 1, plan%sample_count
+            do mode = 1, plan%mode_count
+                sample_cotangent(sample) = sample_cotangent(sample) + &
+                    conjg(plan%kernel(mode, sample))*coefficient_cotangent(mode)
+                kernel_tangent = plan%kernel(mode, sample)*cmplx( &
+                    0.0_dp, -real(plan%mode_indices(mode), dp), dp)*samples(sample)
+                angle_cotangent(sample) = angle_cotangent(sample) + real( &
+                    conjg(coefficient_cotangent(mode))*kernel_tangent, dp)
+            end do
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine direct_fourier_forward_vjp
+
     integer function direct_fourier_plan_sample_count(plan)
         type(direct_fourier_plan_t), intent(in) :: plan
 
@@ -255,7 +343,8 @@ contains
         real(dp), intent(in) :: angles(:)
         integer, intent(in) :: mode_indices(:), chunk_size
         real(dp), intent(in), optional :: sample_weights(:)
-        integer :: mode, other
+        integer :: mode, other, sample, other_sample
+        real(dp), parameter :: periodic_tolerance = 128.0_dp*epsilon(1.0_dp)
 
         valid = .false.
         if (size(angles) < 1 .or. size(mode_indices) < 1 .or. &
@@ -266,6 +355,12 @@ contains
                 .not. all(ieee_is_finite(sample_weights)) .or. &
                 any(sample_weights <= 0.0_dp)) return
         end if
+        do sample = 1, size(angles)
+            do other_sample = sample + 1, size(angles)
+                if (abs(sin(0.5_dp*(angles(sample) - angles(other_sample)))) <= &
+                    periodic_tolerance) return
+            end do
+        end do
         do mode = 1, size(mode_indices)
             do other = mode + 1, size(mode_indices)
                 if (mode_indices(mode) == mode_indices(other)) return
