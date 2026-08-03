@@ -1,7 +1,7 @@
 program test_complex_dtn_trace_residual
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_complex_dtn_trace_residual, only: &
+    use fortfem_boundary, only: &
         assemble_complex_dtn_trace_residual, &
         assemble_complex_dtn_trace_residual_jvp, &
         assemble_complex_dtn_trace_residual_vjp

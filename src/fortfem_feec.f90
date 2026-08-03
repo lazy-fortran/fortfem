@@ -569,6 +569,10 @@ module fortfem_feec
         assemble_geometry_mortar_component_coupling, &
         assemble_geometry_mortar_component_coupling_jvp, &
         assemble_geometry_mortar_component_coupling_vjp
+    use fortfem_complex_geometry_mortar_component_coupling, only: &
+        assemble_complex_geometry_mortar_component_coupling, &
+        assemble_complex_geometry_mortar_component_coupling_jvp, &
+        assemble_complex_geometry_mortar_component_coupling_vjp
     use fortfem_beltrami_residual, only: &
         assemble_beltrami_residual, &
         assemble_beltrami_residual_jvp, &
@@ -1052,6 +1056,9 @@ module fortfem_feec
     public :: assemble_geometry_mortar_component_coupling
     public :: assemble_geometry_mortar_component_coupling_jvp
     public :: assemble_geometry_mortar_component_coupling_vjp
+    public :: assemble_complex_geometry_mortar_component_coupling
+    public :: assemble_complex_geometry_mortar_component_coupling_jvp
+    public :: assemble_complex_geometry_mortar_component_coupling_vjp
     public :: evaluate_bspline_basis
     public :: evaluate_field_aligned_constitutive_tensor
     public :: evaluate_field_aligned_constitutive_tensor_jvp

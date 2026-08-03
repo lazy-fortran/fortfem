@@ -109,6 +109,10 @@ module fortfem_boundary
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
         assemble_complex_boundary_trace_residual_vjp
+    use fortfem_complex_dtn_trace_residual, only: &
+        assemble_complex_dtn_trace_residual, &
+        assemble_complex_dtn_trace_residual_jvp, &
+        assemble_complex_dtn_trace_residual_vjp
     use fortfem_adaptive_surface_bem, only: &
         estimate_helmholtz_p0_two_level_residual_3d, &
         estimate_laplace_p0_two_level_residual_3d, &
@@ -520,6 +524,9 @@ module fortfem_boundary
     public :: solve_elasticity_curved_acoustic_ntd_p1
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
+    public :: assemble_complex_dtn_trace_residual
+    public :: assemble_complex_dtn_trace_residual_jvp
+    public :: assemble_complex_dtn_trace_residual_vjp
     public :: apply_planar_maxwell_dtn
     public :: apply_planar_maxwell_dtn_jvp
     public :: apply_planar_maxwell_dtn_vjp

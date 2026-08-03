@@ -1,7 +1,7 @@
 program test_complex_geometry_mortar_component_coupling
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_complex_geometry_mortar_component_coupling, only: &
+    use fortfem_feec, only: &
         assemble_complex_geometry_mortar_component_coupling, &
         assemble_complex_geometry_mortar_component_coupling_jvp, &
         assemble_complex_geometry_mortar_component_coupling_vjp

@@ -266,6 +266,10 @@ module fortfem_api
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
         assemble_complex_boundary_trace_residual_vjp
+    use fortfem_complex_dtn_trace_residual, only: &
+        assemble_complex_dtn_trace_residual, &
+        assemble_complex_dtn_trace_residual_jvp, &
+        assemble_complex_dtn_trace_residual_vjp
     use fortfem_mixed_elasticity_residual, only: &
         assemble_mixed_elasticity_residual, &
         assemble_mixed_elasticity_residual_jvp, &
@@ -1086,6 +1090,10 @@ module fortfem_api
         assemble_geometry_mortar_component_coupling, &
         assemble_geometry_mortar_component_coupling_jvp, &
         assemble_geometry_mortar_component_coupling_vjp
+    use fortfem_complex_geometry_mortar_component_coupling, only: &
+        assemble_complex_geometry_mortar_component_coupling, &
+        assemble_complex_geometry_mortar_component_coupling_jvp, &
+        assemble_complex_geometry_mortar_component_coupling_vjp
     use fortfem_physical_surface_geometry, only: &
         sample_physical_surface_geometry, &
         sample_physical_surface_geometry_jvp, &
@@ -3327,6 +3335,9 @@ module fortfem_api
     public :: assemble_geometry_mortar_component_coupling
     public :: assemble_geometry_mortar_component_coupling_jvp
     public :: assemble_geometry_mortar_component_coupling_vjp
+    public :: assemble_complex_geometry_mortar_component_coupling
+    public :: assemble_complex_geometry_mortar_component_coupling_jvp
+    public :: assemble_complex_geometry_mortar_component_coupling_vjp
     public :: sample_physical_surface_geometry
     public :: sample_physical_surface_geometry_jvp
     public :: sample_physical_surface_geometry_vjp
@@ -3569,6 +3580,9 @@ module fortfem_api
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
+    public :: assemble_complex_dtn_trace_residual
+    public :: assemble_complex_dtn_trace_residual_jvp
+    public :: assemble_complex_dtn_trace_residual_vjp
     public :: assemble_mixed_elasticity_residual
     public :: assemble_mixed_elasticity_residual_jvp
     public :: assemble_mixed_elasticity_residual_vjp
