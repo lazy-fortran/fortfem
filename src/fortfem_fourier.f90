@@ -69,6 +69,11 @@ module fortfem_fourier
         analyze_toroidal_spectral_modes, &
         analyze_toroidal_spectral_modes_jvp, &
         analyze_toroidal_spectral_modes_vjp
+    use fortfem_nestor_fourier_response, only: &
+        apply_nestor_fourier_response_map, &
+        apply_nestor_fourier_response_map_jvp, &
+        apply_nestor_fourier_response_map_vjp, &
+        evaluate_nestor_fourier_reciprocity_defect
     use fortfem_spherical_harmonics, only: &
         spherical_harmonic, spherical_harmonic_theta_derivative, &
         spherical_harmonic_phi_derivative, spherical_harmonic_product_coefficient
@@ -146,6 +151,10 @@ module fortfem_fourier
     public :: analyze_toroidal_spectral_modes
     public :: analyze_toroidal_spectral_modes_jvp
     public :: analyze_toroidal_spectral_modes_vjp
+    public :: apply_nestor_fourier_response_map
+    public :: apply_nestor_fourier_response_map_jvp
+    public :: apply_nestor_fourier_response_map_vjp
+    public :: evaluate_nestor_fourier_reciprocity_defect
     public :: spherical_harmonic
     public :: spherical_harmonic_theta_derivative
     public :: spherical_harmonic_phi_derivative

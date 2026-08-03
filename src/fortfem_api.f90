@@ -926,6 +926,11 @@ module fortfem_api
     use fortfem_toroidal_harmonics, only: toroidal_p, toroidal_q, &
         toroidal_p_derivative, toroidal_q_derivative, &
         toroidal_p_second_derivative, toroidal_q_second_derivative
+    use fortfem_nestor_fourier_response, only: &
+        apply_nestor_fourier_response_map, &
+        apply_nestor_fourier_response_map_jvp, &
+        apply_nestor_fourier_response_map_vjp, &
+        evaluate_nestor_fourier_reciprocity_defect
     use fortfem_interface_traces, only: &
         compute_interface_scalar_jump_average, compute_interface_vector_traces
     use fortfem_surface_delta_load, only: &
@@ -3107,6 +3112,10 @@ module fortfem_api
     public :: toroidal_q_derivative
     public :: toroidal_p_second_derivative
     public :: toroidal_q_second_derivative
+    public :: apply_nestor_fourier_response_map
+    public :: apply_nestor_fourier_response_map_jvp
+    public :: apply_nestor_fourier_response_map_vjp
+    public :: evaluate_nestor_fourier_reciprocity_defect
     public :: compute_interface_scalar_jump_average
     public :: compute_interface_vector_traces
     public :: assemble_surface_delta_load
