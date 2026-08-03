@@ -1,6 +1,6 @@
 program test_toroidal_vector_coordinates_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         toroidal_vector_to_cartesian, toroidal_vector_to_cartesian_jvp, &
         toroidal_vector_to_cartesian_vjp
     use fortfem_kinds, only: dp

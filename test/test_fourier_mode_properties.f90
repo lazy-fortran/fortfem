@@ -3,7 +3,7 @@ program test_fourier_mode_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         build_fourier_mode_padded_registry, find_fourier_mode, &
         fourier_mode_registry_t, initialize_fourier_mode_registry, &
         validate_fourier_mode_registry

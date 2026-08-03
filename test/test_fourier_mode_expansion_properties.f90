@@ -3,7 +3,7 @@ program test_fourier_mode_expansion_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_fourier_mode_expansion, &
         evaluate_fourier_mode_expansion_hessian, &
         evaluate_fourier_mode_expansion_hvp, &

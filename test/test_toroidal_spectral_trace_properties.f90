@@ -3,7 +3,7 @@ program test_toroidal_spectral_trace_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_spectral_trace, &
         evaluate_toroidal_spectral_trace_grid, &
         evaluate_toroidal_spectral_trace_grid_jvp, &
