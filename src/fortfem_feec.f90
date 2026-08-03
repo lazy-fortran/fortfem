@@ -582,6 +582,10 @@ module fortfem_feec
         evaluate_force_balance_representation_parity, &
         evaluate_force_balance_representation_parity_jvp, &
         evaluate_force_balance_representation_parity_vjp
+    use fortfem_cut_polygon_fifth_moments_2d, only: &
+        evaluate_cut_polygon_fifth_moments_2d, &
+        evaluate_cut_polygon_fifth_moments_2d_jvp, &
+        evaluate_cut_polygon_fifth_moments_2d_vjp
     use fortfem_force_balance_metric_residual, only: &
         assemble_metric_force_balance_residual, &
         assemble_metric_force_balance_residual_jvp, &
@@ -1382,6 +1386,9 @@ module fortfem_feec
     public :: evaluate_force_balance_representation_parity
     public :: evaluate_force_balance_representation_parity_jvp
     public :: evaluate_force_balance_representation_parity_vjp
+    public :: evaluate_cut_polygon_fifth_moments_2d
+    public :: evaluate_cut_polygon_fifth_moments_2d_jvp
+    public :: evaluate_cut_polygon_fifth_moments_2d_vjp
     public :: assemble_metric_force_balance_residual
     public :: assemble_metric_force_balance_residual_jvp
     public :: assemble_metric_force_balance_residual_vjp
