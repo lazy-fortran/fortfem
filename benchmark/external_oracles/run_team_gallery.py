@@ -46,6 +46,27 @@ def scalar_solution(value: Any, label: str) -> float:
     return finite_number(value, label)
 
 
+def require_drawable_element(nodes: list[list[float]], indices: list[int],
+                             label: str) -> None:
+    """Reject zero-area elements before they become misleading solution plots."""
+
+    require(len(set(indices)) == len(indices),
+            f"{label} must not repeat a node")
+    origin = nodes[indices[0]]
+    scale = max(1.0, *(abs(value) for index in indices for value in nodes[index]))
+    largest_cross_squared = 0.0
+    for left, right in zip(indices[1:-1], indices[2:]):
+        first = [nodes[left][axis] - origin[axis] for axis in range(3)]
+        second = [nodes[right][axis] - origin[axis] for axis in range(3)]
+        cross = [first[1] * second[2] - first[2] * second[1],
+                 first[2] * second[0] - first[0] * second[2],
+                 first[0] * second[1] - first[1] * second[0]]
+        largest_cross_squared = max(
+            largest_cross_squared, sum(component * component for component in cross))
+    require(largest_cross_squared > 1.0e-24 * scale**4,
+            f"{label} must have non-zero area")
+
+
 def load_case_payload(artifact: Path, case_id: str, contract: dict[str, Any]) -> tuple[
         list[list[float]], list[list[int]], list[float], str]:
     document = load_json(artifact)
@@ -94,6 +115,8 @@ def load_case_payload(artifact: Path, case_id: str, contract: dict[str, Any]) ->
     for element_index, element in enumerate(elements):
         require(all(0 <= index < len(nodes) for index in element),
                 f"{case_id} elements[{element_index}] references an invalid node")
+        require_drawable_element(nodes, element,
+                                 f"{case_id} elements[{element_index}]")
 
     raw_solution = raw_case.get("solution")
     if isinstance(raw_solution, dict):
@@ -192,6 +215,8 @@ def write_gallery(output_dir: Path, case_id: str, nodes: list[list[float]],
         "provenance_uri": provenance_uri,
         "exact_data": True,
         "manufactured": False,
+        "comparison_mode": "external-benchmark-payload",
+        "analytical_reference": "provenance-only; no analytical arrays bundled",
         "solution_first": True,
         "plot": "solution.svg",
         "artifact_sha256": digest,

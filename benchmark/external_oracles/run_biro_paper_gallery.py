@@ -125,6 +125,27 @@ def solution_scalar(value: Any, label: str) -> float:
     return finite_number(value, label)
 
 
+def require_drawable_element(nodes: list[list[float]], indices: list[int],
+                             label: str) -> None:
+    """Reject zero-area elements before they become misleading solution plots."""
+
+    require(len(set(indices)) == len(indices),
+            f"{label} must not repeat a node")
+    origin = nodes[indices[0]]
+    scale = max(1.0, *(abs(value) for index in indices for value in nodes[index]))
+    largest_cross_squared = 0.0
+    for left, right in zip(indices[1:-1], indices[2:]):
+        first = [nodes[left][axis] - origin[axis] for axis in range(3)]
+        second = [nodes[right][axis] - origin[axis] for axis in range(3)]
+        cross = [first[1] * second[2] - first[2] * second[1],
+                 first[2] * second[0] - first[0] * second[2],
+                 first[0] * second[1] - first[1] * second[0]]
+        largest_cross_squared = max(
+            largest_cross_squared, sum(component * component for component in cross))
+    require(largest_cross_squared > 1.0e-24 * scale**4,
+            f"{label} must have non-zero area")
+
+
 def load_payload(path: Path) -> tuple[list[list[float]], list[list[int]], list[float]]:
     payload = load_json(path)
     require(payload.get("schema") == PAYLOAD_SCHEMA,
@@ -171,6 +192,8 @@ def load_payload(path: Path) -> tuple[list[list[float]], list[list[int]], list[f
     for element_index, element in enumerate(elements):
         require(all(0 <= index < len(nodes) for index in element),
                 f"geometry.elements[{element_index}] references an invalid node")
+        require_drawable_element(nodes, element,
+                                 f"geometry.elements[{element_index}]")
 
     raw_solution = payload.get("solution")
     if isinstance(raw_solution, dict):
@@ -269,6 +292,8 @@ def write_gallery(
         "provenance_uri": PAPER_URI,
         "exact_data": True,
         "manufactured": False,
+        "comparison_mode": "external-benchmark-payload",
+        "analytical_reference": "provenance-only; no analytical arrays bundled",
         "solution_first": True,
         "plot": "solution.svg",
         "artifact_sha256": digest,

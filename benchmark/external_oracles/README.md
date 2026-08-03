@@ -34,8 +34,12 @@ JSON payload with schema `fortfem-biro-paper-payload-1` (nodes, elements, and
 postprocessed solution values), it writes `solution.svg`, `solution.csv`, and
 `provenance.json` under `--output-dir`. The SVG deliberately puts the verified
 solution first and labels the DOI, checksum, and exact-data status. Vector
-solution values are rendered by their magnitude. This is a plotting adapter,
-not a claim that FortFEM contains the paper's application data or solver.
+solution values are rendered by their magnitude. The output metadata labels the
+plot as an `external-benchmark-payload` and keeps the analytical reference
+explicitly provenance-only; it is not a manufactured or bundled analytical
+solution. Elements with repeated nodes or zero area are rejected before
+rendering. This is a plotting adapter, not a claim that FortFEM contains the
+paper's application data or solver.
 
 The checked-in contract remains `SKIP`; the in-tree
 `example/biro_tree_cotree_3d_gallery` is the manufactured, method-faithful
@@ -66,4 +70,7 @@ case ID, HTTPS provenance, payload schema, license declaration, repository URI,
 and SHA-256 before the gallery consumes it.  It never downloads or invokes an
 external solver.  With a verified payload, the gallery writes one
 solution-first `solution.svg`, `solution.csv`, and `provenance.json` per case
-under `--output-dir/TEAM-*`; the exact arrays remain outside FortFEM.
+under `--output-dir/TEAM-*`. Metadata identifies each output as an
+`external-benchmark-payload` with a provenance-only analytical reference, and
+degenerate elements are rejected before a misleading plot can be emitted; the
+exact arrays remain outside FortFEM.
