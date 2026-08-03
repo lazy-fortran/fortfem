@@ -566,6 +566,15 @@ path, while `test_symbolic_tetra_mixed_poisson_slow` is explicitly bounded in
 the slow lane and passed at 45.20 s. These batches were kept on unique
 worktrees and touched only their assigned tests plus FEEC facade exports.
 
+The next disjoint slices are also landing incrementally: boundary graph,
+free-boundary-port, and planar acoustic DtN consumers are integrated as
+`0dff489`, and field-aligned tensor-power consumers as `8d64b56`. Their
+focused trace, constitutive, JVP/VJP, and symmetry/energy tests pass; the
+tensor agent also confirmed `fo check` (build plus 506 tests). A pre-existing
+lint policy issue in `test_field_aligned_constitutive_tensor` still reports
+that the test lacks an explicit failing exit; it is tracked separately and
+is not hidden by this facade migration.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
