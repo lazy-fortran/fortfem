@@ -643,12 +643,13 @@ generated public inventory and release gate were refreshed afterward.
 
 The boundary/Maxwell handoff `6921153` then migrated five Helmholtz CFIE,
 toroidal panel, planar Nédélec DtN, and toroidal spectral-trace consumers.
-Their bounded analytical and geometry-derivative tests pass; two existing
-Helmholtz implementation modules remain direct owners because no boundary
-facade export exists yet, and that gap is recorded for the next facade pass
-instead of being papered over with duplicate wrappers. The Biro 3-D gallery
-also received a display-only edge-vector scale adjustment in `fb28cee`; the
-stored edge integrals and gauge oracle are unchanged.
+Their bounded analytical and geometry-derivative tests pass. The remaining
+P0 Helmholtz Galerkin double-layer and exact-curved torus panel kernels were
+subsequently exported through `fortfem_boundary` and their two direct tests
+were migrated in `0c863f60`; no implementation duplicate was introduced.
+The Biro 3-D gallery also received a display-only edge-vector scale
+adjustment in `fb28cee`; the stored edge integrals and gauge oracle are
+unchanged.
 
 The trace/Neumann handoff `a998b72` completes eight more consumer migrations:
 boundary contracts and parity use boundary/interop, fitted and mortar traces
@@ -704,6 +705,9 @@ single commit for integration. The recent implementation slices are:
 | `b38fa65f` | Canonical Fourier-facade exports for collocation-grid kinds, metadata, indexing, and chunking | No-umbrella downstream consumer with tensor-product cardinality, flatten/unflatten, chunk, and weight metadata oracle |
 | `f9680a25` | Pinned FortSym worktree override for generated-code provenance and isolated generator builds | Independent `/mnt/storage` detached-worktree fixture covers default/override resolution, lock mismatch, dirty checkout, dependency targeting, and cleanup |
 | `c50b908` | Generated-kernel checker storage-root override; local staging defaults to `/mnt/storage` and remains CI-portable | Independent synthetic checker fixture proves configured-root creation, generated-source parity, and staging cleanup without rebuilding FortSym |
+| `3edb699b` + `8d83361` | Complex patch-graph trace contraction with canonical core/umbrella exports | Independent cycle/weight value oracle, centered complex JVP, real-part complex VJP, sample-ledger mismatch, and malformed-graph rejection |
+| `0c863f60` | Remaining P0 Helmholtz Galerkin and exact-curved torus panel kernels exported through `fortfem_boundary`; direct consumers migrated | Existing hierarchical-vs-dense, generated-kernel, central-difference, and complex-adjoint oracles pass without umbrella imports |
+| `f4cdba38` + `7d50fa5` | Complex owner/ghost MPI-ready trace exchange with canonical core/umbrella exports | Independent exact packing, central-re-evaluation JVP, real-part complex adjoints, nonfinite rejection, and invalid-shape checks; no MPI dependency added |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
