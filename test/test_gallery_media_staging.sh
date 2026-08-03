@@ -22,7 +22,13 @@ cmp "$source_dir/nested/values.csv" "$destination_dir/nested/values.csv"
 
 # Staging is intentionally idempotent so a rerun cannot leave stale gallery
 # media behind.
+printf 'stale image\n' >"$destination_dir/stale.png"
+mkdir -p "$destination_dir/obsolete-example"
+printf 'stale nested image\n' >"$destination_dir/obsolete-example/old.png"
 "$stager" "$source_dir" "$destination_dir"
+test ! -e "$destination_dir/stale.png"
+test ! -e "$destination_dir/obsolete-example/old.png"
+test ! -e "$destination_dir/obsolete-example"
 
 : >"$source_dir/empty.png"
 if "$stager" "$source_dir" "$destination_dir"; then

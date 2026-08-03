@@ -14,6 +14,18 @@ if [[ ! -d "$source_dir" ]]; then
 fi
 
 mkdir -p "$destination_dir"
+# The destination is a dedicated gallery-media directory.  Remove its old
+# contents before copying so a rerun cannot publish plots for examples that
+# were removed (or stale plots from a previous test artifact).  Keep the
+# source untouched and reject the dangerous same-directory case explicitly.
+source_real=$(realpath -m "$source_dir")
+destination_real=$(realpath -m "$destination_dir")
+if [[ "$source_real" == "$destination_real" ]]; then
+    echo "gallery media source and destination must differ" >&2
+    exit 1
+fi
+find "$destination_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+
 # Copy the complete tree in one operation.  This preserves nested example
 # names and avoids a shell read loop silently losing the final artifact.
 if ! cp -a -- "$source_dir"/. "$destination_dir"/; then
