@@ -1,6 +1,6 @@
 program test_maxwell_rwg_surface
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_maxwell_rwg_mass_matrix, &
         build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
         map_maxwell_rwg_to_tetra_nedelec_edges

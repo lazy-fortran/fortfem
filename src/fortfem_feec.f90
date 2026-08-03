@@ -78,7 +78,15 @@ module fortfem_feec
         differentiate_maxwell_bc_transformation_vjp
     use fortfem_maxwell_rwg_surface, only: &
         assemble_maxwell_rwg_mass_matrix, build_maxwell_rwg_surface_space, &
-        map_maxwell_rwg_to_tetra_nedelec_edges
+        evaluate_maxwell_rwg_basis, map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_maxwell_localized_rwg_surface, only: &
+        evaluate_maxwell_localized_rwg_basis
+    use fortfem_maxwell_surface_rt, only: &
+        assemble_maxwell_surface_rt_mass_matrix, &
+        build_maxwell_surface_rt_dof_map, evaluate_maxwell_surface_rt_basis, &
+        evaluate_maxwell_surface_rt_global_basis
+    use fortfem_maxwell_surface_rt_efie_3d, only: &
+        assemble_maxwell_surface_rt_efie_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         evaluate_maxwell_sphere_curved_localized_rwg_basis, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp, &
@@ -406,7 +414,14 @@ module fortfem_feec
     public :: differentiate_maxwell_bc_transformation_vjp
     public :: assemble_maxwell_rwg_mass_matrix
     public :: build_maxwell_rwg_surface_space
+    public :: evaluate_maxwell_rwg_basis
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
+    public :: evaluate_maxwell_localized_rwg_basis
+    public :: assemble_maxwell_surface_rt_mass_matrix
+    public :: build_maxwell_surface_rt_dof_map
+    public :: evaluate_maxwell_surface_rt_basis
+    public :: evaluate_maxwell_surface_rt_global_basis
+    public :: assemble_maxwell_surface_rt_efie_3d
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp
     public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp

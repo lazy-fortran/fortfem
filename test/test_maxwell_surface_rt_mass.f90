@@ -1,6 +1,6 @@
 program test_maxwell_surface_rt_mass
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_maxwell_rwg_mass_matrix, &
         assemble_maxwell_surface_rt_mass_matrix, &
         build_maxwell_rwg_surface_space, &

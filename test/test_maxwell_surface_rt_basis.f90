@@ -1,6 +1,6 @@
 program test_maxwell_surface_rt_basis
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_maxwell_surface_rt_dof_map, &
         evaluate_maxwell_surface_rt_basis, &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t

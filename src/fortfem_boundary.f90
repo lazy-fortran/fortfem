@@ -167,6 +167,8 @@ module fortfem_boundary
         evaluate_maxwell_torus_magnetic_geometry_jvp, &
         evaluate_maxwell_torus_magnetic_geometry_vjp, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
+    use fortfem_maxwell_magnetic_rwg_3d, only: &
+        evaluate_maxwell_magnetic_field_rwg_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
@@ -363,6 +365,7 @@ module fortfem_boundary
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_magnetic_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
