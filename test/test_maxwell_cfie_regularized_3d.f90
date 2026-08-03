@@ -1,8 +1,7 @@
 program test_maxwell_cfie_regularized_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_regularized_cfie_rwg_3d, &
-        assemble_maxwell_rwg_rbc_pairing
+    use fortfem_boundary, only: assemble_maxwell_regularized_cfie_rwg_3d
+    use fortfem_feec, only: assemble_maxwell_rwg_rbc_pairing
     use fortfem_kinds, only: dp
     implicit none
 

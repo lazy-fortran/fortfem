@@ -1,6 +1,6 @@
 program test_maxwell_magnetic_rwg_targets_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_magnetic_field_rwg_3d, &
         evaluate_maxwell_magnetic_field_rwg_3d_targets, &
         evaluate_maxwell_magnetic_field_rwg_3d_targets_jvp, &

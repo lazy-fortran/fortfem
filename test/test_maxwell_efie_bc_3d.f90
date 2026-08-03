@@ -1,12 +1,13 @@
 program test_maxwell_efie_bc_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_bc_potential_operators_3d, &
         assemble_maxwell_bc_scalar_potential_3d, &
         assemble_maxwell_efie_bc_3d, &
         assemble_maxwell_efie_bc_imaginary_3d, &
         build_maxwell_bc_panel_divergence, &
-        build_maxwell_bc_to_refined_rwg, build_maxwell_bc_transformation
+        build_maxwell_bc_to_refined_rwg
+    use fortfem_feec, only: build_maxwell_bc_transformation
     use fortfem_kinds, only: dp
     implicit none
 
