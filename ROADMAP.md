@@ -530,6 +530,11 @@ FEEC, and core facades. The slow CFIE, vector-field, far-field, reciprocity,
 and trace tests pass after the additive export merge; inventory refresh and
 the release gate remain mandatory after each boundary batch.
 
+The surface-RWG/RT batch (`527c08a`, inventory `f66247c`) adds six more
+orientation, EFIE, localized-RWG, mass, and magnetic-field consumers to the
+FEEC/boundary facades. All six focused behavioral tests pass; the remaining
+planar/spherical Maxwell DtN consumers are isolated in the next worktree.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
