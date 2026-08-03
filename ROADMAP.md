@@ -695,6 +695,8 @@ single commit for integration. The recent implementation slices are:
 | `6a2ebfd` + `56720e9` | FortSym-generated degree-seven curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent degree-nine Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; generated source is byte-checked when the locked FortSym checkout is available |
 | `836628f` + `05acc70` | Coupled FCI split ledger with parallel-Jacobi, ragged plane-cycle, retained-block actions, positive partition weights, and per-component work totals | Independent literal composition, finite-difference JVP, real-adjoint VJP, signed-work and negative-energy rejection; no FCI closure or solver policy is selected |
 | `0718919` + `dffdb38` | Assembled curved-torus RWG potential-block JVP and wave-number VJP for vector/scalar FEM--BEM paths | Independent primal reassembly, central-difference geometry/wave-number JVP, and real-part complex adjoint oracle on exact-curved torus panels |
+| `e838ff9` + `e45c20a` | Direct Fourier transform sample/angle JVP and real-part complex VJP, with canonical `fortfem_fourier` exports | Independent nonuniform signed-mode central-difference and adjoint oracles, finite/shape rejection, and modulo-(2pi) duplicate-angle rejection |
+| `8797f75` + `d04a775` | FortSym-generated degree-eight (octic) curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; degree-eight uses seven interior controls, while six controls are the existing septic path |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -1262,6 +1264,16 @@ registry rebuild. The independent contract and manufactured oracle are
 documented in [`nested_surface_geometry.md`](design/nested_surface_geometry.md).
 This is geometry only; nested-equilibrium residuals, profiles, fluxes, and
 free-boundary laws stay in external clients.
+
+The bounded `direct_fourier_plan_t` contract now also differentiates the dense
+fixed-mode transform with respect to complex samples and real sample angles:
+`direct_fourier_forward_jvp` and the real-part complex
+`direct_fourier_forward_vjp` are exported through `fortfem_fourier` and the
+compatibility umbrella. Nonuniform signed modes are checked against an
+independent central-difference and adjoint oracle, while duplicate sample
+locations modulo (2\pi) are rejected as invalid plan metadata. Chunking,
+normalization, and mode labels remain caller-owned metadata; no FFT or plasma
+coordinate convention is implied.
 
 This is the common numerical ingredient for CHEASE-like axisymmetric models,
 GLISS and CAS3D-like linear calculations, GPEC/MARS-like perturbations, and
@@ -3644,11 +3656,11 @@ gallery example.
   beyond sextic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
-  Generated quadratic, cubic, quartic, quintic, sextic, and septic Bezier-edge
-  area maps now supply fixed-topology curved-cell value/JVP/VJP contracts with
-  independent Gauss--Green oracles; quadratic through sextic are also sampled
-  in the boundary gallery, while septic remains a generated-kernel and
-  high-order cut-cell regression fixture.
+  Generated quadratic, cubic, quartic, quintic, sextic, septic, and octic
+  Bezier-edge area maps now supply fixed-topology curved-cell value/JVP/VJP
+  contracts with independent Gauss--Green oracles; quadratic through sextic
+  are also sampled in the boundary gallery, while septic and octic remain
+  generated-kernel and high-order cut-cell regression fixtures.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
