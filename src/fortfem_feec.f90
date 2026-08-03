@@ -385,6 +385,10 @@ module fortfem_feec
         evaluate_field_aligned_constitutive_tensor, &
         evaluate_field_aligned_constitutive_tensor_jvp, &
         evaluate_field_aligned_constitutive_tensor_vjp
+    use fortfem_complex_tensor_power, only: &
+        evaluate_complex_tensor_power, &
+        evaluate_complex_tensor_power_jvp, &
+        evaluate_complex_tensor_power_vjp
     use fortfem_field_aligned_tensor_pullback, only: &
         pullback_field_aligned_tensor, pullback_field_aligned_tensor_jvp, &
         pullback_field_aligned_tensor_vjp
@@ -1073,6 +1077,9 @@ module fortfem_feec
     public :: evaluate_field_aligned_constitutive_tensor
     public :: evaluate_field_aligned_constitutive_tensor_jvp
     public :: evaluate_field_aligned_constitutive_tensor_vjp
+    public :: evaluate_complex_tensor_power
+    public :: evaluate_complex_tensor_power_jvp
+    public :: evaluate_complex_tensor_power_vjp
     public :: pullback_field_aligned_tensor
     public :: pullback_field_aligned_tensor_jvp
     public :: pullback_field_aligned_tensor_vjp
