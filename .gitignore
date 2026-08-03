@@ -1,6 +1,7 @@
 # Build directories
 build/
 artifacts/
+build_cmake/
 
 # Object and library files
 *.o

@@ -1801,6 +1801,7 @@ module fortfem_api
     use fortfem_sparse_ilut, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
         apply_sparse_ilut_vjp, build_sparse_ilut, build_sparse_ilut_row, &
         sparse_ilut_factor_t
+    use triangle_compat, only: tc_result_t, triangulate_compat
     implicit none
 
     private
@@ -2653,6 +2654,8 @@ module fortfem_api
     public :: mesh_from_arrays
     public :: mesh_from_triangle_files
     public :: mesh_from_domain
+    public :: tc_result_t
+    public :: triangulate_compat
     public :: structured_quad_mesh
     public :: refine_uniform
     public :: refine_adaptive
