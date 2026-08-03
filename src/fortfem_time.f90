@@ -7,6 +7,7 @@ module fortfem_time
     !! have one implementation while new clients avoid the legacy umbrella.
     use fortfem_mixed_wave_time, only: &
         advance_mixed_wave_midpoint, &
+        assemble_mixed_wave_midpoint_map, &
         advance_mixed_wave_midpoint_jvp, &
         advance_mixed_wave_midpoint_vjp, &
         advance_mixed_wave_symplectic_euler, &
@@ -40,6 +41,7 @@ module fortfem_time
     public :: advance_dissipative_cayley_jvp
     public :: advance_dissipative_cayley_vjp
     public :: advance_mixed_wave_midpoint
+    public :: assemble_mixed_wave_midpoint_map
     public :: advance_mixed_wave_midpoint_jvp
     public :: advance_mixed_wave_midpoint_vjp
     public :: advance_mixed_wave_strang
