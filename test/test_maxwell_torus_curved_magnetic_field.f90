@@ -1,14 +1,14 @@
 program test_maxwell_torus_curved_magnetic_field
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp, &
         evaluate_maxwell_torus_magnetic_geometry_jvp, &
         evaluate_maxwell_torus_magnetic_geometry_vjp, &
-        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
-        generate_torus_surface_mesh
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

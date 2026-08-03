@@ -1,10 +1,11 @@
 program test_maxwell_torus_curved_fem_bem_trace
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
-        assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d, &
-        build_maxwell_rwg_surface_space, generate_solid_torus_tetra_mesh, &
+        assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d
+    use fortfem_core, only: generate_solid_torus_tetra_mesh
+    use fortfem_feec, only: build_maxwell_rwg_surface_space, &
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_kinds, only: dp
     implicit none

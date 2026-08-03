@@ -127,6 +127,7 @@ module fortfem_boundary
         assemble_maxwell_fem_bem_system_3d, &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
         assemble_maxwell_rwg_nedelec_coupling_3d, &
+        assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d, &
         solve_maxwell_fem_bem_system_3d, &
         solve_maxwell_fem_bem_torus_curved_system_3d
     use fortfem_maxwell_curved_dtn, only: &
@@ -149,8 +150,22 @@ module fortfem_boundary
         condense_wall_response_blocks_jvp, &
         condense_wall_response_blocks_vjp
     use fortfem_maxwell_torus_curved_rwg, only: &
+        assemble_maxwell_torus_curved_efie_rwg_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
+        assemble_maxwell_torus_curved_potential_operators_rwg_3d, &
+        assemble_maxwell_torus_curved_regularized_cfie_rwg_3d, &
+        assemble_maxwell_torus_curved_rwg_mass_matrix, &
+        assemble_maxwell_torus_curved_rwg_rbc_pairing, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp, &
+        evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp, &
+        evaluate_maxwell_torus_magnetic_geometry_jvp, &
+        evaluate_maxwell_torus_magnetic_geometry_vjp, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
@@ -312,6 +327,7 @@ module fortfem_boundary
     public :: assemble_maxwell_fem_bem_system_3d
     public :: assemble_maxwell_fem_bem_torus_curved_system_3d
     public :: assemble_maxwell_rwg_nedelec_coupling_3d
+    public :: assemble_maxwell_torus_curved_rwg_nedelec_coupling_3d
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
     public :: apply_maxwell_trace_to_flux
     public :: apply_maxwell_trace_to_flux_jvp
@@ -344,6 +360,8 @@ module fortfem_boundary
     public :: evaluate_laplace_representation_torus_curved_3d_geometry_jvp
     public :: evaluate_laplace_representation_torus_curved_3d_geometry_vjp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp
+    public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
@@ -352,6 +370,18 @@ module fortfem_boundary
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
+    public :: evaluate_maxwell_torus_magnetic_geometry_jvp
+    public :: evaluate_maxwell_torus_magnetic_geometry_vjp
+    public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
+    public :: assemble_maxwell_torus_curved_rwg_mass_matrix
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_hierarchical_3d
     public :: solve_helmholtz_dirichlet_p0_3d
