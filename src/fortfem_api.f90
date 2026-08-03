@@ -71,6 +71,10 @@ module fortfem_api
         oracle_tolerance_t, initialize_oracle_manifest, &
         validate_oracle_manifest, read_oracle_manifest, &
         write_oracle_manifest
+    use fortfem_oracle_performance_ledger, only: &
+        evaluate_oracle_performance_ledger, &
+        evaluate_oracle_performance_ledger_jvp, &
+        evaluate_oracle_performance_ledger_vjp
     use fortfem_linear_response_interchange, only: &
         assemble_linear_response_operator, &
         assemble_linear_response_operator_jvp, &
@@ -3318,6 +3322,9 @@ module fortfem_api
     public :: validate_oracle_manifest
     public :: read_oracle_manifest
     public :: write_oracle_manifest
+    public :: evaluate_oracle_performance_ledger
+    public :: evaluate_oracle_performance_ledger_jvp
+    public :: evaluate_oracle_performance_ledger_vjp
     public :: linear_response_interchange_t
     public :: initialize_linear_response_interchange
     public :: validate_linear_response_interchange
