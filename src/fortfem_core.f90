@@ -20,7 +20,8 @@ module fortfem_core
         toroidal_point_to_cartesian_jvp, toroidal_point_to_cartesian_vjp, &
         toroidal_vector_to_cartesian, toroidal_vector_to_cartesian_jvp, &
         toroidal_vector_to_cartesian_vjp
-    use fortfem_tetra_affine_map, only: invert_tetra_affine_map
+    use fortfem_tetra_affine_map, only: invert_tetra_affine_map, &
+        invert_tetra_affine_map_jvp, invert_tetra_affine_map_vjp
     use fortfem_triangle_affine_map, only: &
         invert_triangle_affine_map, invert_triangle_affine_map_jvp, &
         invert_triangle_affine_map_vjp
@@ -59,8 +60,9 @@ module fortfem_core
         evaluate_level_set_triangle_cut_fourth_moments_2d, &
         evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
     use fortfem_api_types, only: mesh_t, function_space_t, &
-        vector_function_space_t, dirichlet_bc_t
-    use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh
+        vector_function_space_t, dirichlet_bc_t, vector_bc_t
+    use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh, &
+        structured_quad_mesh
     implicit none
     private
 
@@ -100,8 +102,10 @@ module fortfem_core
     public :: function_space_t
     public :: vector_function_space_t
     public :: dirichlet_bc_t
+    public :: vector_bc_t
     public :: unit_square_mesh
     public :: rectangle_mesh
+    public :: structured_quad_mesh
     public :: circle_boundary
     public :: evaluate_axis_regular_radial_basis
     public :: evaluate_axis_regular_radial_basis_jvp
@@ -109,6 +113,8 @@ module fortfem_core
     public :: evaluate_nested_surface_geometry
     public :: initialize_cell_complex
     public :: invert_tetra_affine_map
+    public :: invert_tetra_affine_map_jvp
+    public :: invert_tetra_affine_map_vjp
     public :: invert_triangle_affine_map
     public :: invert_triangle_affine_map_jvp
     public :: invert_triangle_affine_map_vjp
