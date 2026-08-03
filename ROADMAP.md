@@ -500,6 +500,11 @@ returned without a commit: the full generator driver did not emit the new
 kernel within the bounded run and touched an unrelated tetrahedral artifact.
 The worktree was discarded, and the milestone remains queued until a
 single-generator run can prove byte-current output without unrelated drift.
+The FPM discovery regression is now fixed as `996437b3`: negative module-layer
+fixtures live under `tools/fixtures` rather than the package test root, while
+the checker still exercises all six malformed trees. The API release gate
+now includes a bounded `fpm test --list` oracle, and the former missing
+`bad_plot_application` discovery failure is gone.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
