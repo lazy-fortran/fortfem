@@ -1,7 +1,7 @@
 program test_helmholtz_calderon_p1_p0_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_helmholtz_calderon_p1_p0_3d, generate_sphere_surface_mesh
+    use fortfem_boundary, only: assemble_helmholtz_calderon_p1_p0_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
