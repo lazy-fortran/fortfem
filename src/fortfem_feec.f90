@@ -442,6 +442,10 @@ module fortfem_feec
         evaluate_fci_coupled_field_split_ledger, &
         evaluate_fci_coupled_field_split_ledger_jvp, &
         evaluate_fci_coupled_field_split_ledger_vjp
+    use fortfem_fci_retained_cycle_composition, only: &
+        evaluate_fci_retained_cycle_composition, &
+        evaluate_fci_retained_cycle_composition_jvp, &
+        evaluate_fci_retained_cycle_composition_vjp
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     use fortfem_tetra_nedelec_pml_state_3d, only: &
@@ -1288,6 +1292,9 @@ module fortfem_feec
     public :: evaluate_fci_coupled_field_split_ledger
     public :: evaluate_fci_coupled_field_split_ledger_jvp
     public :: evaluate_fci_coupled_field_split_ledger_vjp
+    public :: evaluate_fci_retained_cycle_composition
+    public :: evaluate_fci_retained_cycle_composition_jvp
+    public :: evaluate_fci_retained_cycle_composition_vjp
     public :: trace_fci_field_line_rk4
     public :: trace_fci_field_line_rk4_jvp
     public :: build_fci_linear_interpolation_map_1d
