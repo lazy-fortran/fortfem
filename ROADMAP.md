@@ -4206,3 +4206,10 @@ When a future implementation uses a formula, convention, or compatibility
 fixture from another code, add an equation-level entry to the relevant
 provenance file and record the external revision. A literature citation alone
 does not document a software dependency or justify source reuse.
+## Cross-repository handoff (2026-08-03)
+
+FortFEM PR [#56](https://github.com/lazy-fortran/fortfem/pull/56) is merged.
+Keep its Triangle-compatibility behavioral and CMake coverage in the next
+release gate, and update downstream references if post-merge regressions
+appear. The ffc master roadmap records this as completed infrastructure rather
+than an open blocker.
