@@ -33,6 +33,8 @@ module fortfem_boundary
         assemble_curved_acoustic_displacement_ntd_form_2d
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
+        assemble_laplace_adjoint_double_layer_constant, &
+        assemble_laplace_double_layer_constant, &
         assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
@@ -244,9 +246,15 @@ module fortfem_boundary
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_representation_torus_curved_3d
     use fortfem_laplace_galerkin_3d, only: &
+        assemble_laplace_calderon_p1_p0_3d, &
         assemble_laplace_single_layer_p0_3d, &
         assemble_laplace_single_layer_p0_adaptive_3d, &
         solve_laplace_dirichlet_p0_3d
+    use fortfem_laplace_panel_pair_3d, only: &
+        assemble_laplace_single_layer_p0_3d_jvp, &
+        assemble_laplace_single_layer_p0_3d_vjp
+    use fortfem_laplace_fem_bem_coupling_3d, only: &
+        solve_laplace_fem_bem_johnson_nedelec_3d
     use fortfem_laplace_hierarchical_3d, only: &
         apply_laplace_single_layer_p0_hierarchical_3d
     use fortfem_laplace_representation_3d, only: &
@@ -369,6 +377,8 @@ module fortfem_boundary
     public :: curvilinear_scalar_helmholtz_pml_coefficients_jvp
     public :: curvilinear_scalar_helmholtz_pml_coefficients_vjp
     public :: assemble_laplace_single_layer_constant
+    public :: assemble_laplace_adjoint_double_layer_constant
+    public :: assemble_laplace_double_layer_constant
     public :: assemble_laplace_double_layer_mixed_linear
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_helmholtz_double_layer_constant
@@ -412,6 +422,9 @@ module fortfem_boundary
     public :: assemble_helmholtz_single_layer_p0_3d_vjp
     public :: assemble_laplace_single_layer_p0_3d
     public :: assemble_laplace_single_layer_p0_adaptive_3d
+    public :: assemble_laplace_single_layer_p0_3d_jvp
+    public :: assemble_laplace_single_layer_p0_3d_vjp
+    public :: assemble_laplace_calderon_p1_p0_3d
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d
@@ -487,6 +500,7 @@ module fortfem_boundary
     public :: solve_helmholtz_dirichlet_p0_3d
     public :: solve_helmholtz_dirichlet_p0_hierarchical_3d
     public :: solve_laplace_dirichlet_p0_3d
+    public :: solve_laplace_fem_bem_johnson_nedelec_3d
     public :: solve_maxwell_fem_bem_torus_curved_system_3d
     public :: solve_maxwell_fem_bem_system_3d
     public :: solve_maxwell_fem_bem_linear_state

@@ -1,18 +1,18 @@
 program test_laplace_bem_galerkin_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_helmholtz_single_layer_p0_hierarchical_3d, &
         apply_laplace_single_layer_p0_hierarchical_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
         assemble_laplace_calderon_p1_p0_3d, &
         evaluate_helmholtz_representation_triangles_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
-        generate_sphere_surface_mesh, &
         solve_helmholtz_dirichlet_p0_hierarchical_3d, &
         solve_helmholtz_dirichlet_p0_3d, &
         solve_helmholtz_cfie_p0_hierarchical_3d, &
         solve_laplace_fem_bem_johnson_nedelec_3d, &
         solve_laplace_dirichlet_p0_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
