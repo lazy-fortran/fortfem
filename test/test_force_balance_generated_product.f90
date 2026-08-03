@@ -1,6 +1,6 @@
 program test_force_balance_generated_product
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_force_balance_product, &
+    use fortfem_feec, only: evaluate_force_balance_product, &
         evaluate_force_balance_product_jvp, evaluate_force_balance_product_vjp
     use fortfem_kinds, only: dp
     implicit none

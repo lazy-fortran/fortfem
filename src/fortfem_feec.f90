@@ -47,6 +47,18 @@ module fortfem_feec
         assemble_block_graph_residual, &
         assemble_block_graph_residual_jvp, &
         assemble_block_graph_residual_vjp
+    use fortfem_complex_block_graph_residual, only: &
+        assemble_complex_block_graph_residual, &
+        assemble_complex_block_graph_residual_jvp, &
+        assemble_complex_block_graph_residual_vjp
+    use fortfem_complex_coupled_field_residual, only: &
+        assemble_complex_coupled_field_residual, &
+        assemble_complex_coupled_field_residual_jvp, &
+        assemble_complex_coupled_field_residual_vjp
+    use fortfem_coupled_field_residual, only: &
+        assemble_coupled_field_residual, &
+        assemble_coupled_field_residual_jvp, &
+        assemble_coupled_field_residual_vjp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_kind_jvp, &
@@ -193,6 +205,10 @@ module fortfem_feec
         assemble_force_balance_residual, &
         assemble_force_balance_residual_jvp, &
         assemble_force_balance_residual_vjp
+    use fortfem_force_balance_product, only: &
+        evaluate_force_balance_product, &
+        evaluate_force_balance_product_jvp, &
+        evaluate_force_balance_product_vjp
     use fortfem_shifted_enriched_space, only: evaluate_shifted_enriched_space
     use fortfem_shifted_vector_enriched_space, only: &
         evaluate_shifted_vector_enriched_space
@@ -258,6 +274,15 @@ module fortfem_feec
     public :: assemble_block_graph_residual
     public :: assemble_block_graph_residual_jvp
     public :: assemble_block_graph_residual_vjp
+    public :: assemble_complex_block_graph_residual
+    public :: assemble_complex_block_graph_residual_jvp
+    public :: assemble_complex_block_graph_residual_vjp
+    public :: assemble_complex_coupled_field_residual
+    public :: assemble_complex_coupled_field_residual_jvp
+    public :: assemble_complex_coupled_field_residual_vjp
+    public :: assemble_coupled_field_residual
+    public :: assemble_coupled_field_residual_jvp
+    public :: assemble_coupled_field_residual_vjp
     public :: assemble_feec_commuting_projection
     public :: assemble_feec_commuting_projection_jvp
     public :: assemble_feec_commuting_projection_vjp
@@ -438,6 +463,9 @@ module fortfem_feec
     public :: assemble_force_balance_residual
     public :: assemble_force_balance_residual_jvp
     public :: assemble_force_balance_residual_vjp
+    public :: evaluate_force_balance_product
+    public :: evaluate_force_balance_product_jvp
+    public :: evaluate_force_balance_product_vjp
     public :: evaluate_shifted_enriched_space
     public :: evaluate_shifted_vector_enriched_space
     public :: assemble_singular_layer_matching
