@@ -1,6 +1,6 @@
 program test_fci_first_hit_polyline_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: find_fci_first_hit_polyline_3d
+    use fortfem_fci_terminal_polyline_3d, only: find_fci_first_hit_polyline_3d
     use fortfem_kinds, only: dp
     implicit none
 
