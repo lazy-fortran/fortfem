@@ -102,6 +102,11 @@ module fortfem_boundary
         assemble_free_boundary_source_response, &
         assemble_free_boundary_source_response_jvp, &
         assemble_free_boundary_source_response_vjp
+    use fortfem_nestor_fourier_response, only: &
+        apply_nestor_fourier_response_map, &
+        apply_nestor_fourier_response_map_jvp, &
+        apply_nestor_fourier_response_map_vjp, &
+        evaluate_nestor_fourier_reciprocity_defect
     use fortfem_planar_acoustic_displacement_dtn, only: &
         apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
@@ -585,6 +590,10 @@ module fortfem_boundary
     public :: assemble_free_boundary_source_response
     public :: assemble_free_boundary_source_response_jvp
     public :: assemble_free_boundary_source_response_vjp
+    public :: apply_nestor_fourier_response_map
+    public :: apply_nestor_fourier_response_map_jvp
+    public :: apply_nestor_fourier_response_map_vjp
+    public :: evaluate_nestor_fourier_reciprocity_defect
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
