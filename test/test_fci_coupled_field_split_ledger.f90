@@ -1,6 +1,6 @@
 program test_fci_coupled_field_split_ledger
     use check, only: check_condition, check_summary
-    use fortfem_fci_coupled_field_split_ledger, only: &
+    use fortfem_feec, only: &
         evaluate_fci_coupled_field_split_ledger, &
         evaluate_fci_coupled_field_split_ledger_jvp, &
         evaluate_fci_coupled_field_split_ledger_vjp
