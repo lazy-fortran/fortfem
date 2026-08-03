@@ -3,7 +3,7 @@ program test_complex_tensor_power
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_OK, fortsparse_status_t
-    use fortfem_complex_tensor_power, only: &
+    use fortfem_feec, only: &
         evaluate_complex_tensor_power, evaluate_complex_tensor_power_jvp, &
         evaluate_complex_tensor_power_vjp
     implicit none
