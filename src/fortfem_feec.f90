@@ -262,7 +262,11 @@ module fortfem_feec
         apply_fci_parallel_diffusion, apply_fci_parallel_diffusion_jvp, &
         apply_fci_parallel_diffusion_vjp, apply_fci_parallel_diffusion_field_vjp, &
         apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
-        apply_fci_parallel_gradient_vjp, compute_fci_parallel_diffusion_diagonal
+        apply_fci_parallel_gradient_vjp, compute_fci_parallel_diffusion_diagonal, &
+        compute_fci_anisotropic_diffusion_diagonal, &
+        apply_fci_anisotropic_jacobi_preconditioner, &
+        apply_fci_anisotropic_diffusion, &
+        apply_fci_anisotropic_diffusion_field_vjp
     use fortfem_fci_power_flux_ledger, only: &
         evaluate_fci_power_flux_ledger, &
         evaluate_fci_power_flux_ledger_jvp, &
@@ -437,11 +441,15 @@ module fortfem_feec
         cell_vector_source, cell_vector_source_t, constant, function, &
         function_space, vector_function_space, vector_function_space_t, &
         dirichlet_bc, test_function, trial_function, vector_function, vector_bc, &
+        vector_bc_edge_moments, &
         vector_test_function, &
         vector_trial_function, test_function_t, trial_function_t, &
         vector_test_function_t, vector_trial_function_t, vector_function_t, &
         vector_bc_t
-    use fortfem_api_types, only: function_t
+    use fortfem_api_types, only: cell_tensor_coefficient_t, cell_vector_source_t, &
+        function_t
+    use fortfem_magnetic_curvilinear_coefficients_2d, only: &
+        scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_api_forms, only: &
         compile_tetra_mixed_form_csc, curl, div, dx, form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
@@ -852,6 +860,11 @@ module fortfem_feec
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp
     public :: compute_fci_parallel_diffusion_diagonal
+    public :: compute_fci_anisotropic_diffusion_diagonal
+    public :: apply_fci_anisotropic_jacobi_preconditioner
+    public :: apply_fci_anisotropic_diffusion
+    public :: apply_fci_anisotropic_diffusion_field_vjp
+    public :: scalar_reluctivity_curvilinear_fourier_coefficients
     public :: evaluate_fci_power_flux_ledger
     public :: evaluate_fci_power_flux_ledger_jvp
     public :: evaluate_fci_power_flux_ledger_vjp
@@ -987,6 +1000,10 @@ module fortfem_feec
     public :: assemble_retained_coupled_schur_jvp
     public :: assemble_retained_coupled_schur_vjp
     public :: function_space
+    public :: cell_tensor_coefficient
+    public :: cell_tensor_coefficient_t
+    public :: cell_vector_source
+    public :: cell_vector_source_t
     public :: constant
     public :: function
     public :: vector_function_space
@@ -994,6 +1011,7 @@ module fortfem_feec
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
+    public :: vector_bc_edge_moments
     public :: vector_bc_t
     public :: dirichlet_bc
     public :: function_t

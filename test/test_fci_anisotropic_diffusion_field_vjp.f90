@@ -1,6 +1,6 @@
 program test_fci_anisotropic_diffusion_field_vjp
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_anisotropic_diffusion, &
+    use fortfem_feec, only: apply_fci_anisotropic_diffusion, &
         apply_fci_anisotropic_diffusion_field_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
