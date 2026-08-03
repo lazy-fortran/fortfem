@@ -45,6 +45,47 @@ The checked-in contract remains `SKIP`; the in-tree
 `example/biro_tree_cotree_3d_gallery` is the manufactured, method-faithful
 tree--cotree oracle and is labeled separately.
 
+## Private source registry and public extraction boundary
+
+`source_registry.json` records logical source IDs for the private Nextcloud and
+Zotero material that has been inventoried for this work. It is deliberately
+not a file index: it contains no absolute local paths, PDF bytes, scans,
+source scripts, meshes, reference arrays, or copyrighted figures. A private
+attachment remains private even when its bibliographic record or public DOI is
+listed.
+
+The Paper Magnetic cases are required acceptance fixtures. The current
+inventory includes private references for TEAM-1A, TEAM-1B, TEAM-2, TEAM-6,
+TEAM-13, and TEAM-20. Their exact data are not yet enabled in FortFEM. The
+public extraction task is limited to a reviewed transcription of geometry,
+region/material labels, units, excitations, boundary and interface conditions,
+normalization, and probe coordinates. Those fields can be published as a
+small case manifest when their source permits it; raw scans, B--H tables,
+measurement arrays, private meshes, and solver scripts stay in the private
+vault or the separately licensed benchmark-data repository.
+
+The reduced-scalar-potential item in the private Biro inventory is recorded as
+a candidate only. It is not silently treated as the published tree--cotree
+case. The tree--cotree adapter remains tied to its own public provenance and
+will be enabled only after the exact target and rights are confirmed.
+
+For every exported case, the Pages job follows the same sequence:
+
+1. render the system first (complete mesh or spline patches, regions, coils,
+   interfaces, and boundary labels);
+2. render the computed solution (scalar contours, vector arrows, surface
+   fields, or field lines) on the same physical geometry;
+3. add analytical or external-reference overlays;
+4. append error, convergence, conservation, derivative, and performance
+   panels.
+
+The gallery writes SVG/PNG as ignored build artifacts and CSV/JSON containing
+the case ID, source ID, sampler, units, normalization, executable revision,
+checksums, and skip reason. Exact-data adapters must validate the immutable
+manifest and SHA-256 before they can emit a solution plot. The complete policy
+and hand-off checklist is in
+[`doc/provenance_and_data_policy.md`](../../doc/provenance_and_data_policy.md).
+
 ## TEAM exact-data boundary
 
 The four TEAM cases used by the neutral galleries are tracked by

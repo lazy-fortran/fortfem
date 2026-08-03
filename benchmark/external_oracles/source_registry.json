@@ -1,0 +1,163 @@
+{
+  "schema": "fortfem-public-source-registry-1",
+  "purpose": "Public provenance and extraction inventory; no protected source files or numerical payloads are embedded.",
+  "data_policy": {
+    "public_repository_may_contain": [
+      "bibliographic metadata and public provenance URLs",
+      "manually reviewed geometry topology and dimensions",
+      "region and material labels",
+      "boundary, interface, excitation, and normalization declarations",
+      "probe coordinates and generated meshes when their license permits",
+      "FortSym-generated manufactured fields, source terms, and analytical references"
+    ],
+    "must_remain_external": [
+      "publisher PDFs and scans",
+      "copyrighted figures and tables",
+      "raw reference measurements and unlicensed probe arrays",
+      "private meshes, source code, scripts, and solver output",
+      "non-redistributable B-H curves or other proprietary constitutive data"
+    ],
+    "external_payload_repository": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+    "publication_gate": "A case becomes exact-data enabled only after license review, immutable manifest, SHA-256 checksum, and a solution-first gallery record are available."
+  },
+  "sources": [
+    {
+      "id": "nextcloud:paper-magnetic-team-problem13",
+      "family": "TEAM",
+      "case_ids": ["TEAM-13"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": [
+        "https://www.osti.gov/biblio/7179128",
+        "https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html"
+      ],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:paper-magnetic-team-problem20",
+      "family": "TEAM",
+      "case_ids": ["TEAM-20"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": [
+        "https://www.osti.gov/biblio/7179128",
+        "https://www.simscale.com/docs/validation-cases/team-20-magnetostatics/"
+      ],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:paper-magnetic-team-problem1a",
+      "family": "TEAM",
+      "case_ids": ["TEAM-1A"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": ["https://www.osti.gov/biblio/7179128"],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:paper-magnetic-team-problem1b",
+      "family": "TEAM",
+      "case_ids": ["TEAM-1B"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": ["https://www.osti.gov/biblio/7179128"],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:paper-magnetic-team-problem2",
+      "family": "TEAM",
+      "case_ids": ["TEAM-2"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": ["https://www.osti.gov/biblio/7179128"],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:paper-magnetic-team-problem6",
+      "family": "TEAM",
+      "case_ids": ["TEAM-6"],
+      "vault": "nextcloud",
+      "source_class": "private-reference-document",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located",
+      "public_provenance": ["https://www.osti.gov/biblio/7179128"],
+      "public_extraction": "geometry-boundary-condition transcription only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "nextcloud:biro-1993-reduced-scalar-potential",
+      "family": "Biro",
+      "case_ids": [],
+      "vault": "nextcloud",
+      "source_class": "private-publisher-copy",
+      "rights": "not-cleared-for-redistribution",
+      "inventory_status": "located-but-target-unconfirmed",
+      "public_provenance": [
+        "https://tugraz.elsevierpure.com/en/publications/computation-of-3-d-magnetostatic-fields-using-a-reduced-scalar-potential"
+      ],
+      "public_extraction": "bibliographic metadata and independently transcribed method notes only",
+      "exact_payload": "external-unavailable",
+      "note": "This item is a reduced-scalar-potential paper; it must not be labeled as the tree-cotree paper without a separate provenance check."
+    },
+    {
+      "id": "zotero:Park2025-IAEA",
+      "family": "resonant-layer-literature",
+      "case_ids": ["linear-perturbation-resonant-layer"],
+      "vault": "zotero",
+      "source_class": "bibliographic-record-with-private-attachment",
+      "rights": "attachment-not-redistributable",
+      "inventory_status": "bibliographic-record-located",
+      "public_provenance": [
+        "https://conferences.iaea.org/event/392/papers/35712/files/13694-ParkJK_FEC2025.pdf"
+      ],
+      "public_extraction": "equation and boundary-condition summary only",
+      "exact_payload": "external-unavailable"
+    },
+    {
+      "id": "zotero:Waltz2012",
+      "family": "resonant-layer-literature",
+      "case_ids": ["linear-perturbation-resonant-layer"],
+      "vault": "zotero",
+      "source_class": "bibliographic-record",
+      "rights": "metadata-and-public-doi",
+      "inventory_status": "bibliographic-record-located",
+      "public_provenance": ["https://doi.org/10.1063/1.3692222"],
+      "public_extraction": "bibliographic metadata and equation-level provenance",
+      "exact_payload": "not-applicable"
+    }
+  ],
+  "case_workflow": {
+    "steps": [
+      "inventory private references by logical source ID",
+      "classify rights and record public provenance",
+      "transcribe only geometry, regions, units, boundary conditions, excitations, and probe locations",
+      "generate a neutral or FortSym manufactured case when exact arrays are not licensed",
+      "validate the external payload manifest and checksum before exact execution",
+      "run the independent solver adapter on the common physical sample set",
+      "render system geometry and the computed solution before diagnostics",
+      "publish CSV/JSON provenance and generated SVG/PNG to Pages; keep media untracked"
+    ],
+    "plot_order": [
+      "system geometry, mesh or spline patches, regions, coils, interfaces, and boundary labels",
+      "computed scalar solution, vector arrows, surface field, or field lines",
+      "analytical or external-reference comparison",
+      "error, convergence, conservation, derivative, and performance diagnostics"
+    ],
+    "acceptance": "Every Paper Magnetic and TEAM case must have a solution-first gallery record, an independent behavioral oracle, common physical probes, provenance JSON, and an explicit skip until exact rights and checksums are available."
+  }
+}
