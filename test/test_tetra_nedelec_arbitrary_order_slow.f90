@@ -1,6 +1,6 @@
 program test_tetra_nedelec_arbitrary_order_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_nedelec_first_kind, &
+    use fortfem_feec, only: evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_order, &
         initialize_tetra_nedelec_first_kind, &
         interpolate_reference_tetra_nedelec, tetra_duffy_quadrature, &

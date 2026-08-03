@@ -1,6 +1,6 @@
 program test_tetra_nedelec_geometry_pml_chain_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_assembly_tetra_nedelec_geometry_pml_3d, only: &
         assemble_tetra_nedelec_geometry_pml_csc, &
         assemble_tetra_nedelec_geometry_pml_csc_jvp, &
         assemble_tetra_nedelec_geometry_pml_csc_vjp

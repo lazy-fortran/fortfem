@@ -1,6 +1,6 @@
 program test_tetra_nedelec_global_dof_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_tetra_nedelec_global_dof_map, only: &
         build_tetra_nedelec_basis_transform, build_tetra_nedelec_dof_map
     use fortfem_tetra_face_moment_transforms, only: &
         transform_tetra_face_moments
