@@ -17,6 +17,7 @@ module fortfem_mixed_wave_time
     private
 
     public :: advance_mixed_wave_midpoint
+    public :: assemble_mixed_wave_midpoint_map
     public :: advance_mixed_wave_midpoint_jvp
     public :: advance_mixed_wave_midpoint_vjp
     public :: advance_mixed_wave_symplectic_euler
@@ -27,6 +28,68 @@ module fortfem_mixed_wave_time
     public :: advance_mixed_wave_strang_vjp
 
 contains
+
+    subroutine assemble_mixed_wave_midpoint_map( &
+            mass_q, mass_v, coupling, time_step, map, status)
+        !! Assemble the linear state map of one mixed-wave midpoint step.
+        !!
+        !! For the state z=(q,v), the midpoint equations are A z_next=B z
+        !! with caller-owned mass and coupling blocks.  This routine returns
+        !! A^{-1}B so small modal clients can inspect its symplectic form or
+        !! use it in independent structure diagnostics without probing a
+        !! state-update routine.
+        real(dp), intent(in) :: mass_q(:, :)
+        real(dp), intent(in) :: mass_v(:, :)
+        real(dp), intent(in) :: coupling(:, :)
+        real(dp), intent(in) :: time_step
+        real(dp), intent(out) :: map(:, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        integer :: nq, nv, total_size, column, info
+        real(dp), allocatable :: matrix_a(:, :), matrix_b(:, :)
+        real(dp), allocatable :: right_hand_side(:), map_column(:)
+
+        map = 0.0_dp
+        call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+            "mixed wave midpoint map received incompatible blocks")
+        nq = size(mass_q, 1)
+        nv = size(mass_v, 1)
+        total_size = nq + nv
+        if (nq < 1 .or. nv < 1) return
+        if (size(mass_q, 2) /= nq .or. size(mass_v, 2) /= nv) return
+        if (size(coupling, 1) /= nv .or. size(coupling, 2) /= nq) return
+        if (size(map, 1) /= total_size .or. size(map, 2) /= total_size) return
+
+        allocate(matrix_a(total_size, total_size), &
+            matrix_b(total_size, total_size), right_hand_side(total_size), &
+            map_column(total_size))
+        matrix_a = 0.0_dp
+        matrix_b = 0.0_dp
+        matrix_a(:nq, :nq) = mass_q
+        matrix_a(:nq, nq + 1:total_size) = &
+            0.5_dp*time_step*transpose(coupling)
+        matrix_a(nq + 1:total_size, :nq) = &
+            -0.5_dp*time_step*coupling
+        matrix_a(nq + 1:total_size, nq + 1:total_size) = mass_v
+        matrix_b(:nq, :nq) = mass_q
+        matrix_b(:nq, nq + 1:total_size) = &
+            -0.5_dp*time_step*transpose(coupling)
+        matrix_b(nq + 1:total_size, :nq) = &
+            0.5_dp*time_step*coupling
+        matrix_b(nq + 1:total_size, nq + 1:total_size) = mass_v
+
+        do column = 1, total_size
+            right_hand_side = matrix_b(:, column)
+            call dense_solve(matrix_a, right_hand_side, map_column, info)
+            if (info /= 0) then
+                call status_set(status, FORTSPARSE_SINGULAR, &
+                    "mixed wave midpoint map block is singular")
+                return
+            end if
+            map(:, column) = map_column
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine assemble_mixed_wave_midpoint_map
 
     subroutine advance_mixed_wave_midpoint( &
             mass_q, mass_v, coupling, time_step, q, v, status)
