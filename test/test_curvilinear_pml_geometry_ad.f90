@@ -1,6 +1,6 @@
 program test_curvilinear_pml_geometry_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         build_curvilinear_normal_pml_element_stretch, &
         build_curvilinear_normal_pml_element_stretch_jvp, &
         build_curvilinear_normal_pml_element_stretch_vjp
