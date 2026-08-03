@@ -3,7 +3,7 @@ set -euo pipefail
 
 repository_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 output_directory="$repository_dir/output/example/bem_sphere_3d"
-log_file="${TMPDIR:-/tmp}/fortfem-bem-sphere-gallery.log"
+log_file="/mnt/storage/fortfem-bem-sphere-gallery.log"
 
 (
     cd "$repository_dir"

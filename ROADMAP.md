@@ -491,6 +491,10 @@ primal/JVP/VJP kernels and independent Gauss--Green/finite-difference/
 real-adjoint/degeneracy oracle pass after a clean build. This closes the
 specific hendecic measure milestone; moving connectivity, topology-event
 rebuilds, and higher interpolation maps remain active.
+The 3-D exterior sphere BEM gallery slice is also integrated as `5a715e49`:
+its first panel is a connected filled observation surface with ordered
+solution samples, and the bounded visual oracle checks the analytical
+exterior monopole before any convergence or operator diagnostics.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
