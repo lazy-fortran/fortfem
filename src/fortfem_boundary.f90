@@ -37,11 +37,13 @@ module fortfem_boundary
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_helmholtz_boundary_operators_2d, only: &
+        assemble_helmholtz_adjoint_double_layer_constant, &
         assemble_helmholtz_double_layer_constant, &
         assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_helmholtz_exterior_2d, only: &
+        evaluate_helmholtz_combined_potential_adaptive_constant, &
         evaluate_helmholtz_combined_potential_constant, &
         solve_helmholtz_cfie_constant
     use fortfem_free_boundary_port_residual, only: &
@@ -107,9 +109,13 @@ module fortfem_boundary
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
         solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     use fortfem_helmholtz_galerkin_3d, only: &
+        assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
         solve_helmholtz_dirichlet_p0_3d
+    use fortfem_helmholtz_panel_pair_3d, only: &
+        assemble_helmholtz_single_layer_p0_3d_jvp, &
+        assemble_helmholtz_single_layer_p0_3d_vjp
     use fortfem_helmholtz_hierarchical_3d, only: &
         apply_helmholtz_cfie_p0_hierarchical_3d, &
         apply_helmholtz_single_layer_p0_hierarchical_3d, &
@@ -118,7 +124,9 @@ module fortfem_boundary
     use fortfem_helmholtz_representation_3d, only: &
         evaluate_helmholtz_representation_triangles_3d
     use fortfem_laplace_galerkin_3d, only: &
-        assemble_laplace_single_layer_p0_3d, solve_laplace_dirichlet_p0_3d
+        assemble_laplace_single_layer_p0_3d, &
+        assemble_laplace_single_layer_p0_adaptive_3d, &
+        solve_laplace_dirichlet_p0_3d
     use fortfem_laplace_hierarchical_3d, only: &
         apply_laplace_single_layer_p0_hierarchical_3d
     use fortfem_laplace_representation_3d, only: &
@@ -198,10 +206,12 @@ module fortfem_boundary
     public :: assemble_laplace_double_layer_mixed_linear
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_adjoint_double_layer_constant
     public :: assemble_helmholtz_double_layer_mixed_linear
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: evaluate_helmholtz_combined_potential_constant
+    public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: solve_helmholtz_cfie_constant
     public :: solve_laplace_symmetric_coupling_p1_p0
     public :: assemble_free_boundary_port_residual
@@ -213,7 +223,11 @@ module fortfem_boundary
     public :: condense_wall_response_blocks_jvp
     public :: condense_wall_response_blocks_vjp
     public :: assemble_helmholtz_single_layer_p0_3d
+    public :: assemble_helmholtz_single_layer_p0_adaptive_3d
+    public :: assemble_helmholtz_single_layer_p0_3d_jvp
+    public :: assemble_helmholtz_single_layer_p0_3d_vjp
     public :: assemble_laplace_single_layer_p0_3d
+    public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d

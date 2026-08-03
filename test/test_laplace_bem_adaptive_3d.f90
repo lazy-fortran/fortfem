@@ -1,6 +1,6 @@
 program test_laplace_bem_adaptive_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_laplace_single_layer_p0_adaptive_3d
     use fortfem_kinds, only: dp
     implicit none

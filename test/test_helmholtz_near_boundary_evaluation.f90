@@ -1,6 +1,6 @@
 program test_helmholtz_near_boundary_evaluation
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_helmholtz_combined_potential_adaptive_constant
     use fortfem_kinds, only: dp
     implicit none
