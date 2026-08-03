@@ -1,11 +1,13 @@
 program test_vector_plotting
     use fortfem_kinds, only: dp
-    use fortfem_api, only: mesh_t, vector_function_space_t, &
+    use fortfem_core, only: mesh_t, unit_square_mesh, vector_function_space_t
+    use fortfem_feec, only: &
         vector_trial_function_t, vector_test_function_t, vector_function_t, &
-        vector_bc_t, form_expr_t, unit_square_mesh, vector_function_space, &
+        vector_bc_t, form_expr_t, vector_function_space, &
         vector_function, vector_trial_function, vector_test_function, &
-        vector_bc, inner, curl, dx, solve, plot, operator(*), operator(==), &
+        vector_bc, inner, curl, dx, solve, operator(*), operator(==), &
         operator(+)
+    use fortfem_plot, only: plot
     use check, only: check_condition, check_summary
     implicit none
 
