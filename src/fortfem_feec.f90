@@ -456,8 +456,11 @@ module fortfem_feec
     use fortfem_api_types, only: cell_tensor_coefficient_t, cell_vector_source_t, &
         function_t
     use fortfem_api_forms, only: &
-        compile_tetra_mixed_form_csc, curl, div, dx, form_expr_t, init_measures, &
+        compile_mixed_form_csc, compile_tetra_mixed_form_csc, &
+        compile_vector_form_element, curl, div, dx, form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
+    use fortfem_edge_interpolation_2d, only: &
+        interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
         solve_symbolic_mixed_poisson_rt
@@ -569,7 +572,7 @@ module fortfem_feec
         sparse_direct_factor_t, sparse_direct_factor_csc, &
         sparse_direct_factor_transpose_csc, sparse_direct_free, &
         sparse_direct_solve_factored, sparse_direct_solve_factored_jvp, &
-        sparse_direct_solve_factored_vjp, solve
+        sparse_direct_solve_factored_vjp, solve, solver_stats_t
     use fortfem_sparse_direct, only: &
         sparse_direct_solve_tree_cotree, &
         sparse_direct_solve_tree_cotree_jvp, &
@@ -1033,6 +1036,8 @@ module fortfem_feec
     public :: vector_test_function_t
     public :: vector_trial_function_t
     public :: compile_tetra_mixed_form_csc
+    public :: compile_mixed_form_csc
+    public :: compile_vector_form_element
     public :: div
     public :: dx
     public :: form_expr_t
@@ -1044,6 +1049,7 @@ module fortfem_feec
     public :: grad
     public :: curl
     public :: solve
+    public :: solver_stats_t
     public :: solve_mixed_poisson_rt0
     public :: solve_mixed_poisson_rt
     public :: solve_mixed_rt_system
@@ -1051,6 +1057,8 @@ module fortfem_feec
     public :: solve_mixed_rt_system_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_symbolic_tetra_mixed_poisson_rt
+    public :: interpolate_nedelec_edge_dofs
+    public :: interpolate_rt_edge_dofs
     public :: solve_tetra_mixed_poisson_state
     public :: solve_tetra_mixed_poisson_state_jvp
     public :: solve_tetra_mixed_poisson_state_vjp

@@ -1,9 +1,9 @@
 program test_compiled_nedelec_manufactured
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_vector_source, cell_vector_source_t, curl, &
-        dx, form_expr_t, inner, mesh_t, operator(*), operator(+), &
-        operator(==), rectangle_mesh, solve, vector_bc, vector_bc_t, &
-        vector_function, vector_function_space, vector_function_space_t, &
+    use fortfem_core, only: mesh_t, rectangle_mesh, vector_function_space_t
+    use fortfem_feec, only: cell_vector_source, cell_vector_source_t, curl, &
+        dx, form_expr_t, inner, operator(*), operator(+), operator(==), solve, &
+        vector_bc, vector_bc_t, vector_function, vector_function_space, &
         vector_function_t, vector_test_function, vector_test_function_t, &
         vector_trial_function, vector_trial_function_t
     use fortfem_gauss_quadrature_2d, only: &

@@ -1,12 +1,13 @@
 program test_symbolic_mixed_poisson
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        compile_mixed_form_csc, div, dx, init_measures, inner, &
-        function_space, function_space_t, mesh_t, operator(*), rectangle_mesh, &
-        solve_symbolic_mixed_poisson_rt, &
-        test_function, test_function_t, trial_function, trial_function_t, &
-        vector_function_space, vector_function_space_t, vector_test_function, &
-        vector_test_function_t, vector_trial_function, vector_trial_function_t
+    use fortfem_core, only: &
+        function_space_t, mesh_t, rectangle_mesh, vector_function_space_t
+    use fortfem_feec, only: &
+        compile_mixed_form_csc, div, dx, init_measures, inner, operator(*), &
+        function_space, solve_symbolic_mixed_poisson_rt, test_function, &
+        test_function_t, trial_function, trial_function_t, vector_function_space, &
+        vector_test_function, vector_test_function_t, vector_trial_function, &
+        vector_trial_function_t
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none

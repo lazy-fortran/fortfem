@@ -1,6 +1,6 @@
 program test_symbolic_mixed_form_compiler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         compile_mixed_form_csc, curl, div, dx, init_measures, inner, &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs, operator(*), &
         test_function_t, trial_function_t, vector_test_function_t, &
