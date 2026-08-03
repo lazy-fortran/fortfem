@@ -692,6 +692,9 @@ single commit for integration. The recent implementation slices are:
 | `6e63bb5` | Public degree-five cut polygon moments | Green-theorem degree-five value/JVP/VJP, polynomial, symmetry, transpose, and degenerate-topology oracle |
 | `bdbefa1` | Communicator-free MPI trace exchange schedule | Ownership/rank/offset validation, packed owner/ghost value/JVP/VJP maps, and independent exchange oracle |
 | `8b99e41` | Oriented arbitrary patch-graph trace contraction | Periodic/self-edge cycle contractions, weighted value/JVP/VJP, incidence closure, and transpose oracle |
+| `6a2ebfd` + `05acc70` | FortSym-generated degree-seven curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent degree-nine Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; generated source is byte-checked when the locked FortSym checkout is available |
+| `836628f` + `05acc70` | Coupled FCI split ledger with parallel-Jacobi, ragged plane-cycle, retained-block actions, positive partition weights, and per-component work totals | Independent literal composition, finite-difference JVP, real-adjoint VJP, signed-work and negative-energy rejection; no FCI closure or solver policy is selected |
+| `0718919` + `dffdb38` | Assembled curved-torus RWG potential-block JVP and wave-number VJP for vector/scalar FEM--BEM paths | Independent primal reassembly, central-difference geometry/wave-number JVP, and real-part complex adjoint oracle on exact-curved torus panels |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -791,7 +794,7 @@ documentation baseline. The list is intentionally conservative.
 | Special functions | FortNum quadrature, ordinary and associated Legendre P/Q, orthonormal complex spherical harmonics with angular derivatives and Gaunt products, Hobson-normalized toroidal P/Q branches, stable high-degree half-integer continuation, Bessel/Hankel paths, and a FortFEM Fourier mode registry with phase/radial derivative contracts; the pinned spherical and toroidal APIs are re-exported through `fortfem_api` and checked by integration oracles | Uniform asymptotics for arbitrarily large degree/order and cross-geometry special-function oracles |
 | Sparse algebra | FortSparse CSC assembly, retained factors, real and complex solves, sparse products, tree--cotree CSC direct reductions with fixed-map JVP/VJP, and CG, PCG, GMRES, and BiCGSTAB converged-state derivative contracts; dense and standalone sparse IC(0)/ILU(0) factor/apply paths plus deterministic sparse fixed-factor ILUT, memory-scalable row-oriented ILUT and ICHOL, controlled ICHOL paths, and a solver-gallery timing fixture are public | Production-size measured scaling, flexible Krylov products, and block solver derivatives |
 | Linear response interchange | Neutral modal `(m,n)` metadata, provenance, complex equilibrium/inertia/resistive/vacuum/wall blocks, response channels, the (K-omega^2M+iomega R+V+W) operator and forced residual with complex JVP/VJP products, reciprocity/passivity diagnostics, common real and complex weighted physical sample-set contracts with real-part comparison JVP/VJP actions, a weighted inner/outer singular-layer trace-matching block, a bounded versioned text schema round-trip, and deterministic bounded cross-factor actions are public and independently tested | FEM/BEM/DtN/PML assembly-specific response matrices, singular-layer asymptotic models, and external-code sampler fixtures |
-| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels, a manufactured toroidal Maxwell FEM--BEM solved-state/field-reconstruction fixture, a neutral complex implicit value/JVP/VJP solve map for concatenated volume/surface states, and a geometry-generated curvilinear tetrahedral Nédélec PML CSC chain with full layer/mesh JVP/VJP products | Assembly-specific curved-object matrix/solver derivatives, larger-domain toroidal Maxwell/PML comparisons, nonzero-scattering vector FEM/BEM/DtN parity, and robust vector field reconstruction fixtures |
+| Open boundaries | Planar, circular, and spherical scalar Helmholtz DtN paths, scalar BEM, Maxwell trace and PML components, a mixed RWG/RBC weak Maxwell DtN map assembled from exact-curved torus EFIE/MFIE/mass forms, toroidal Laplace/Helmholtz off-surface reconstruction with optional target gradients and fundamental-solution oracles, fixed-geometry data/target JVP/VJP products, toroidal Laplace and Helmholtz representation geometry JVP/VJP products, assembled toroidal Laplace and Helmholtz DtN single-layer/double-layer/mass geometry JVP/VJP products covering regular and coincident panels, a manufactured toroidal Maxwell FEM--BEM solved-state/field-reconstruction fixture, assembled curved-torus vector/scalar potential-block JVP/VJP products, a neutral complex implicit value/JVP/VJP solve map for concatenated volume/surface states, and a geometry-generated curvilinear tetrahedral Nédélec PML CSC chain with full layer/mesh JVP/VJP products | Assembly-specific curved-object matrix/solver derivatives, larger-domain toroidal Maxwell/PML comparisons, nonzero-scattering vector FEM/BEM/DtN parity, and robust vector field reconstruction fixtures |
 | PML | Scalar and curl-curl Cartesian complex-stretching tensors with slab, triangular, and tetrahedral examples, plus full complex 3-by-3 curvilinear scalar and curl-curl coefficient maps, tetrahedral scalar P1 and Nédélec element/CSC/solved-state JVP/VJP products, caller-owned normal-frame curved-layer geometry, and weighted complex reflection/error diagnostics with diagonal-reduction oracles | Automated curved-object layers and derivative coverage for all geometry parameters |
 | Differentiation | Analytical FortSym paths, selected Enzyme checks, sparse matrix products, converged CG/PCG/GMRES/BiCGSTAB solves, toroidal coordinate and DtN products | Complete operator inventory, JVP/VJP parity for all public operators, and shape derivatives |
 | Parallel readiness | Serial local kernels and deterministic focused tests | Owned/ghost mesh and field data, partition-independent numbering, halo exchange, distributed assembly, checkpointing, and MPI-enabled solver backends |
@@ -3641,10 +3644,11 @@ gallery example.
   beyond sextic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
-  Generated quadratic, cubic, quartic, quintic, and sextic Bezier-edge area maps now
-  supply fixed-topology curved-cell value/JVP/VJP contracts with independent
-  Gauss--Green oracles; quadratic through sextic are also sampled in the
-  boundary gallery.
+  Generated quadratic, cubic, quartic, quintic, sextic, and septic Bezier-edge
+  area maps now supply fixed-topology curved-cell value/JVP/VJP contracts with
+  independent Gauss--Green oracles; quadratic through sextic are also sampled
+  in the boundary gallery, while septic remains a generated-kernel and
+  high-order cut-cell regression fixture.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
@@ -3689,7 +3693,12 @@ gallery example.
   reuses FortSparse factorizations across right-hand sides, and the recursive
   multilevel V-cycle accepts flat level offsets for nonuniform hierarchies, and
   the W-cycle variant repeats coarse corrections; coupled blocks remain active
-  work.
+  work. The closure-neutral `fci_coupled_field_split_ledger` now composes the
+  parallel Jacobi action, ragged plane cycles, and arbitrary retained action
+  columns with positive partition weights and reports per-component and total
+  residual work, including exact value/JVP/VJP products. It is a bookkeeping
+  and preconditioner-composition contract only; FCI geometry, constitutive
+  coefficients, and solver policy remain caller-owned.
 - A fixed-cell barycentric triangle interpolation path now covers logically
   unstructured poloidal targets, including geometry and target JVP/VJP actions;
   its batched endpoint-to-map path now feeds the support-operator tensor
