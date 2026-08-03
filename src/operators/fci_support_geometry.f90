@@ -61,6 +61,12 @@ module fortfem_fci_support_geometry
         generated_fci_sextic_bezier_edge_area_jvp
     use fortfem_generated_fci_sextic_bezier_edge_area_vjp, only: &
         generated_fci_sextic_bezier_edge_area_vjp
+    use fortfem_generated_fci_septic_bezier_edge_area, only: &
+        generated_fci_septic_bezier_edge_area
+    use fortfem_generated_fci_septic_bezier_edge_area_jvp, only: &
+        generated_fci_septic_bezier_edge_area_jvp
+    use fortfem_generated_fci_septic_bezier_edge_area_vjp, only: &
+        generated_fci_septic_bezier_edge_area_vjp
     use fortsparse, only: fortsparse_status_t, status_set, &
         FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK
     implicit none
@@ -90,6 +96,9 @@ module fortfem_fci_support_geometry
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d_vjp
+    public :: compute_fci_septic_curved_polygon_cell_areas_2d
+    public :: compute_fci_septic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_septic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
@@ -1596,6 +1605,242 @@ contains
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine compute_fci_sextic_curved_polygon_cell_areas_2d_vjp
 
+    subroutine compute_fci_septic_curved_polygon_cell_areas_2d( &
+            cell_vertices, edge_controls, areas, status)
+        !! Compute positive Green areas for degree-seven Bezier-edge polygons.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(out) :: areas(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: edge_points(2, 0:7), edge_area
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+
+        areas = 0.0_dp
+        call validate_septic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon areas have incompatible output")
+            return
+        end if
+        do cell = 1, cell_count
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                edge_points(:, 0) = cell_vertices(:, vertex, cell)
+                edge_points(:, 1:6) = edge_controls(:, :, vertex, cell)
+                edge_points(:, 7) = cell_vertices(:, next_vertex, cell)
+                call septic_bezier_edge_area(edge_points, edge_area)
+                areas(cell) = areas(cell) + edge_area
+            end do
+            if (.not. ieee_is_finite(areas(cell)) .or. &
+                areas(cell) <= 0.0_dp) then
+                areas = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI septic curved polygon cells must have positive area")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_septic_curved_polygon_cell_areas_2d
+
+    subroutine compute_fci_septic_curved_polygon_cell_areas_2d_jvp( &
+            cell_vertices, edge_controls, cell_vertices_dot, &
+            edge_controls_dot, areas_dot, status)
+        !! Apply the fixed-topology JVP of degree-seven Bezier-edge areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(in) :: cell_vertices_dot(:, :, :)
+        real(dp), intent(in) :: edge_controls_dot(:, :, :, :)
+        real(dp), intent(out) :: areas_dot(:)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: edge_points(2, 0:7), edge_points_dot(2, 0:7)
+        real(dp) :: area, edge_area, edge_area_dot
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+
+        areas_dot = 0.0_dp
+        call validate_septic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(cell_vertices_dot, 1) /= 2 .or. &
+            size(cell_vertices_dot, 2) /= vertex_count .or. &
+            size(cell_vertices_dot, 3) /= cell_count .or. &
+            size(edge_controls_dot, 1) /= 2 .or. &
+            size(edge_controls_dot, 2) /= 6 .or. &
+            size(edge_controls_dot, 3) /= vertex_count .or. &
+            size(edge_controls_dot, 4) /= cell_count .or. &
+            size(areas_dot) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon area JVP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(cell_vertices_dot)) .or. &
+            any(.not. ieee_is_finite(edge_controls_dot))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon area JVP has non-finite tangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                edge_points(:, 0) = cell_vertices(:, vertex, cell)
+                edge_points(:, 1:6) = edge_controls(:, :, vertex, cell)
+                edge_points(:, 7) = cell_vertices(:, next_vertex, cell)
+                edge_points_dot(:, 0) = cell_vertices_dot(:, vertex, cell)
+                edge_points_dot(:, 1:6) = edge_controls_dot(:, :, vertex, cell)
+                edge_points_dot(:, 7) = &
+                    cell_vertices_dot(:, next_vertex, cell)
+                call septic_bezier_edge_area(edge_points, edge_area)
+                call septic_bezier_edge_area_jvp( &
+                    edge_points, edge_points_dot, edge_area_dot)
+                area = area + edge_area
+                areas_dot(cell) = areas_dot(cell) + edge_area_dot
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp .or. &
+                .not. ieee_is_finite(areas_dot(cell))) then
+                areas_dot = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI septic curved polygon area JVP crosses an area event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_septic_curved_polygon_cell_areas_2d_jvp
+
+    subroutine compute_fci_septic_curved_polygon_cell_areas_2d_vjp( &
+            cell_vertices, edge_controls, areas_bar, cell_vertices_bar, &
+            edge_controls_bar, status)
+        !! Apply the real VJP of fixed-topology degree-seven Bezier-edge areas.
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        real(dp), intent(in) :: areas_bar(:)
+        real(dp), intent(out) :: cell_vertices_bar(:, :, :)
+        real(dp), intent(out) :: edge_controls_bar(:, :, :, :)
+        type(fortsparse_status_t), intent(out) :: status
+
+        real(dp) :: edge_points(2, 0:7), edge_points_bar(2, 0:7)
+        real(dp) :: area, edge_area
+        integer :: vertex_count, cell_count, cell, vertex, next_vertex
+
+        cell_vertices_bar = 0.0_dp
+        edge_controls_bar = 0.0_dp
+        call validate_septic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(areas_bar) /= cell_count .or. &
+            size(cell_vertices_bar, 1) /= 2 .or. &
+            size(cell_vertices_bar, 2) /= vertex_count .or. &
+            size(cell_vertices_bar, 3) /= cell_count .or. &
+            size(edge_controls_bar, 1) /= 2 .or. &
+            size(edge_controls_bar, 2) /= 6 .or. &
+            size(edge_controls_bar, 3) /= vertex_count .or. &
+            size(edge_controls_bar, 4) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon area VJP has incompatible arrays")
+            return
+        end if
+        if (any(.not. ieee_is_finite(areas_bar))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon area VJP has non-finite cotangents")
+            return
+        end if
+        do cell = 1, cell_count
+            area = 0.0_dp
+            do vertex = 1, vertex_count
+                next_vertex = mod(vertex, vertex_count) + 1
+                edge_points(:, 0) = cell_vertices(:, vertex, cell)
+                edge_points(:, 1:6) = edge_controls(:, :, vertex, cell)
+                edge_points(:, 7) = cell_vertices(:, next_vertex, cell)
+                call septic_bezier_edge_area(edge_points, edge_area)
+                call septic_bezier_edge_area_vjp( &
+                    edge_points, areas_bar(cell), edge_points_bar)
+                area = area + edge_area
+                cell_vertices_bar(:, vertex, cell) = &
+                    cell_vertices_bar(:, vertex, cell) + edge_points_bar(:, 0)
+                edge_controls_bar(:, :, vertex, cell) = &
+                    edge_controls_bar(:, :, vertex, cell) + &
+                    edge_points_bar(:, 1:6)
+                cell_vertices_bar(:, next_vertex, cell) = &
+                    cell_vertices_bar(:, next_vertex, cell) + &
+                    edge_points_bar(:, 7)
+            end do
+            if (.not. ieee_is_finite(area) .or. area <= 0.0_dp) then
+                cell_vertices_bar = 0.0_dp
+                edge_controls_bar = 0.0_dp
+                call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                    "FCI septic curved polygon area VJP crosses an area event")
+                return
+            end if
+        end do
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine compute_fci_septic_curved_polygon_cell_areas_2d_vjp
+
+    pure subroutine septic_bezier_edge_area(edge_points, edge_area)
+        real(dp), intent(in) :: edge_points(2, 0:7)
+        real(dp), intent(out) :: edge_area
+
+        call generated_fci_septic_bezier_edge_area( &
+            edge_points(1, 0), edge_points(2, 0), &
+            edge_points(1, 1), edge_points(2, 1), &
+            edge_points(1, 2), edge_points(2, 2), &
+            edge_points(1, 3), edge_points(2, 3), &
+            edge_points(1, 4), edge_points(2, 4), &
+            edge_points(1, 5), edge_points(2, 5), &
+            edge_points(1, 6), edge_points(2, 6), &
+            edge_points(1, 7), edge_points(2, 7), edge_area)
+    end subroutine septic_bezier_edge_area
+
+    pure subroutine septic_bezier_edge_area_jvp( &
+            edge_points, edge_points_dot, edge_area_dot)
+        real(dp), intent(in) :: edge_points(2, 0:7), edge_points_dot(2, 0:7)
+        real(dp), intent(out) :: edge_area_dot
+
+        call generated_fci_septic_bezier_edge_area_jvp( &
+            edge_points(1, 0), edge_points(2, 0), &
+            edge_points(1, 1), edge_points(2, 1), &
+            edge_points(1, 2), edge_points(2, 2), &
+            edge_points(1, 3), edge_points(2, 3), &
+            edge_points(1, 4), edge_points(2, 4), &
+            edge_points(1, 5), edge_points(2, 5), &
+            edge_points(1, 6), edge_points(2, 6), &
+            edge_points(1, 7), edge_points(2, 7), &
+            edge_points_dot(1, 0), edge_points_dot(2, 0), &
+            edge_points_dot(1, 1), edge_points_dot(2, 1), &
+            edge_points_dot(1, 2), edge_points_dot(2, 2), &
+            edge_points_dot(1, 3), edge_points_dot(2, 3), &
+            edge_points_dot(1, 4), edge_points_dot(2, 4), &
+            edge_points_dot(1, 5), edge_points_dot(2, 5), &
+            edge_points_dot(1, 6), edge_points_dot(2, 6), &
+            edge_points_dot(1, 7), edge_points_dot(2, 7), edge_area_dot)
+    end subroutine septic_bezier_edge_area_jvp
+
+    pure subroutine septic_bezier_edge_area_vjp( &
+            edge_points, edge_area_bar, edge_points_bar)
+        real(dp), intent(in) :: edge_points(2, 0:7), edge_area_bar
+        real(dp), intent(out) :: edge_points_bar(2, 0:7)
+
+        call generated_fci_septic_bezier_edge_area_vjp( &
+            edge_points(1, 0), edge_points(2, 0), &
+            edge_points(1, 1), edge_points(2, 1), &
+            edge_points(1, 2), edge_points(2, 2), &
+            edge_points(1, 3), edge_points(2, 3), &
+            edge_points(1, 4), edge_points(2, 4), &
+            edge_points(1, 5), edge_points(2, 5), &
+            edge_points(1, 6), edge_points(2, 6), &
+            edge_points(1, 7), edge_points(2, 7), edge_area_bar, &
+            edge_points_bar(1, 0), edge_points_bar(2, 0), &
+            edge_points_bar(1, 1), edge_points_bar(2, 1), &
+            edge_points_bar(1, 2), edge_points_bar(2, 2), &
+            edge_points_bar(1, 3), edge_points_bar(2, 3), &
+            edge_points_bar(1, 4), edge_points_bar(2, 4), &
+            edge_points_bar(1, 5), edge_points_bar(2, 5), &
+            edge_points_bar(1, 6), edge_points_bar(2, 6), &
+            edge_points_bar(1, 7), edge_points_bar(2, 7))
+    end subroutine septic_bezier_edge_area_vjp
+
     subroutine compute_fci_curved_quadrilateral_cell_areas_2d( &
             cell_vertices, edge_controls, areas, status)
         !! Compute positive Green areas for quadratic Bezier-edge cells.
@@ -2212,6 +2457,32 @@ contains
         end if
         call status_set(status, FORTSPARSE_OK, "")
     end subroutine validate_sextic_curved_polygon_vertices
+
+    subroutine validate_septic_curved_polygon_vertices( &
+            cell_vertices, edge_controls, vertex_count, cell_count, status)
+        real(dp), intent(in) :: cell_vertices(:, :, :)
+        real(dp), intent(in) :: edge_controls(:, :, :, :)
+        integer, intent(out) :: vertex_count, cell_count
+        type(fortsparse_status_t), intent(out) :: status
+
+        call validate_polygon_vertices( &
+            cell_vertices, vertex_count, cell_count, status)
+        if (status%code /= FORTSPARSE_OK) return
+        if (size(edge_controls, 1) /= 2 .or. &
+            size(edge_controls, 2) /= 6 .or. &
+            size(edge_controls, 3) /= vertex_count .or. &
+            size(edge_controls, 4) /= cell_count) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon controls have incompatible shape")
+            return
+        end if
+        if (any(.not. ieee_is_finite(edge_controls))) then
+            call status_set(status, FORTSPARSE_INVALID_MATRIX, &
+                "FCI septic curved polygon controls contain non-finite values")
+            return
+        end if
+        call status_set(status, FORTSPARSE_OK, "")
+    end subroutine validate_septic_curved_polygon_vertices
 
     pure logical function segments_intersect( &
             first_x, first_y, second_x, second_y, third_x, third_y, &
