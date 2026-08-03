@@ -28,6 +28,7 @@ program sheet_current_surface_gallery
 
     real(dp) :: signed_distance(profile_count), normal_weights(profile_count)
     real(dp) :: spacing, start_time, end_time, elapsed_seconds
+    real(dp) :: ampere_errors(4), maximum_ampere_error
     real(dp), allocatable :: slab_points(:, :), slab_normals(:, :), slab_weights(:)
     real(dp), allocatable :: slab_current(:, :), slab_plus(:, :), slab_minus(:, :)
     real(dp), allocatable :: cylinder_points(:, :), cylinder_normals(:, :)
@@ -73,16 +74,17 @@ program sheet_current_surface_gallery
         torus_plus, torus_minus)
 
     call render_case("slab", slab_points, slab_normals, slab_weights, slab_current, &
-        slab_plus, slab_minus, surface_unit, ledger_unit, status)
+        slab_plus, slab_minus, surface_unit, ledger_unit, ampere_errors(1), status)
     call write_stage(sequence_unit, "physical_solution_slab")
     call render_case("cylinder", cylinder_points, cylinder_normals, cylinder_weights, &
-        cylinder_current, cylinder_plus, cylinder_minus, surface_unit, ledger_unit, status)
+        cylinder_current, cylinder_plus, cylinder_minus, surface_unit, ledger_unit, &
+        ampere_errors(2), status)
     call write_stage(sequence_unit, "physical_solution_cylinder")
     call render_case("sphere", sphere_points, sphere_normals, sphere_weights, sphere_current, &
-        sphere_plus, sphere_minus, surface_unit, ledger_unit, status)
+        sphere_plus, sphere_minus, surface_unit, ledger_unit, ampere_errors(3), status)
     call write_stage(sequence_unit, "physical_solution_sphere")
     call render_case("torus", torus_points, torus_normals, torus_weights, torus_current, &
-        torus_plus, torus_minus, surface_unit, ledger_unit, status)
+        torus_plus, torus_minus, surface_unit, ledger_unit, ampere_errors(4), status)
     call write_stage(sequence_unit, "physical_solution_torus")
     call write_stage(sequence_unit, "diagnostics")
     close (surface_unit)
@@ -90,17 +92,30 @@ program sheet_current_surface_gallery
 
     call cpu_time(end_time)
     elapsed_seconds = end_time - start_time
+    maximum_ampere_error = maxval(ampere_errors)
+    if (.not. (elapsed_seconds > 0.0_dp)) &
+        error stop "surface-current timing must be positive"
+    if (.not. (maximum_ampere_error >= 0.0_dp)) &
+        error stop "surface-current Ampere error must be finite"
+    if (maximum_ampere_error >= 4.0e-12_dp) &
+        error stop "surface-current Ampere error exceeds tolerance"
     close (sequence_unit)
     open (newunit=metadata_unit, file=output_directory//"/benchmark.json", &
         status="replace", action="write")
     write (metadata_unit, "(a)") "{"
     write (metadata_unit, "(a)") &
-        '  "schema": "fortfem-sheet-current-surface-gallery-v1",'
+        '  "schema": "fortfem-sheet-current-surface-gallery-v2",'
     write (metadata_unit, "(a)") '  "physical_solution_first": true,'
     write (metadata_unit, "(a)") &
         '  "geometries": ["slab", "cylinder", "sphere", "torus"],'
+    write (metadata_unit, "(a,i0,a)") &
+        '  "total_surface_points": ', &
+        slab_u*slab_v + cylinder_phi*cylinder_z + &
+        sphere_theta*sphere_phi + torus_theta*torus_phi, ","
+    write (metadata_unit, "(a,es24.16,a)") &
+        '  "elapsed_seconds": ', elapsed_seconds, ","
     write (metadata_unit, "(a,es24.16)") &
-        '  "elapsed_seconds": ', elapsed_seconds
+        '  "max_integrated_ampere_relative_error": ', maximum_ampere_error
     write (metadata_unit, "(a)") "}"
     close (metadata_unit)
 
@@ -242,13 +257,14 @@ contains
     end subroutine manufactured_current
 
     subroutine render_case(name, points, normals, weights, current, plus, minus, &
-            surface_unit, ledger_unit, local_status)
+            surface_unit, ledger_unit, relative_error, local_status)
         character(len=*), intent(in) :: name
         real(dp), intent(in) :: points(:, :), normals(:, :), weights(:), current(:, :)
         real(dp), intent(in) :: plus(:, :), minus(:, :)
         integer, intent(in) :: surface_unit, ledger_unit
+        real(dp), intent(out) :: relative_error
         type(fortsparse_status_t), intent(out) :: local_status
-        real(dp) :: fitted(3), resolved(3), relative_error
+        real(dp) :: fitted(3), resolved(3)
         real(dp) :: direct(3), jump(3), area, arrow_scale, maximum_current
         real(dp) :: point_extent(3), reference_extent
         real(dp) :: x2(2), y2(2), z2(2), direction(3)
