@@ -1,7 +1,8 @@
 program test_torus_curved_laplace_costabel
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        evaluate_torus_curved_panel, generate_solid_torus_tetra_mesh, &
+    use fortfem_core, only: evaluate_torus_curved_panel, &
+        generate_solid_torus_tetra_mesh
+    use fortfem_boundary, only: &
         solve_laplace_fem_bem_costabel_torus_curved_3d, &
         triangle_duffy_quadrature
     use fortfem_kinds, only: dp
