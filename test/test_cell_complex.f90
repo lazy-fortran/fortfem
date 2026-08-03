@@ -1,6 +1,6 @@
 program test_cell_complex
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_complex_betti_numbers, cell_complex_cocycle_basis, &
+    use fortfem_core, only: cell_complex_betti_numbers, cell_complex_cocycle_basis, &
         cell_complex_cycle_basis, cell_complex_harmonic_one_forms, &
         cell_complex_euler_characteristic, cell_complex_t, &
         initialize_cell_complex, validate_cell_complex

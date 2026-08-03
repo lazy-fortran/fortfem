@@ -1,6 +1,6 @@
 program test_distributed_trace_ownership
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_distributed_trace_reduction, &
         assemble_distributed_trace_reduction_jvp, &
         assemble_distributed_trace_reduction_vjp, &

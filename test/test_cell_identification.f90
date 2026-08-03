@@ -1,11 +1,10 @@
 program test_cell_identification
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_complex_betti_numbers, &
-        cell_complex_t, cell_identification_classes, &
-        identify_boundary_matrix, &
-        cell_identification_t, initialize_cell_identification, &
-        initialize_cell_complex, quotient_cell_complex, &
-        validate_cell_identification, validate_cell_complex
+    use fortfem_core, only: cell_complex_betti_numbers, cell_complex_t, &
+        initialize_cell_complex, quotient_cell_complex, validate_cell_complex
+    use fortfem_feec, only: cell_identification_classes, &
+        identify_boundary_matrix, cell_identification_t, &
+        initialize_cell_identification, validate_cell_identification
     implicit none
 
     type(cell_complex_t) :: interval, quotient, invalid_complex

@@ -74,6 +74,32 @@ module fortfem_feec
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
+    use fortfem_cell_identification, only: &
+        cell_identification_classes, cell_identification_t, &
+        identify_boundary_matrix, initialize_cell_identification, &
+        validate_cell_identification
+    use fortfem_partition_layout, only: &
+        assemble_partitioned_sum, assemble_partitioned_sum_jvp, &
+        assemble_partitioned_sum_vjp, initialize_partition_layout, &
+        partition_layout_ghost_count, partition_layout_global_count, &
+        partition_layout_maps, partition_layout_owned_count, &
+        partition_layout_t, validate_partition_layout
+    use fortfem_distributed_trace_ownership, only: &
+        assemble_distributed_trace_reduction, &
+        assemble_distributed_trace_reduction_jvp, &
+        assemble_distributed_trace_reduction_vjp, &
+        distributed_trace_layout_component_count, &
+        distributed_trace_layout_global_count, &
+        distributed_trace_layout_local_count, &
+        distributed_trace_layout_partition_count, &
+        distributed_trace_layout_t, initialize_distributed_trace_layout, &
+        validate_distributed_trace_layout
+    use fortfem_internal_manifold_graph, only: &
+        initialize_internal_manifold_graph, internal_manifold_graph_closed, &
+        internal_manifold_graph_components, &
+        internal_manifold_graph_junction_incidence, &
+        internal_manifold_graph_region_incidence, internal_manifold_graph_t, &
+        validate_internal_manifold_graph
     use fortfem_mortar_trace_coupling, only: &
         assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, &
@@ -656,6 +682,38 @@ module fortfem_feec
     public :: build_tetra_nedelec_dof_map
     public :: build_tetra_edge_dof_map
     public :: barycentric_refine_surface_mesh
+    public :: cell_identification_classes
+    public :: cell_identification_t
+    public :: identify_boundary_matrix
+    public :: initialize_cell_identification
+    public :: validate_cell_identification
+    public :: assemble_partitioned_sum
+    public :: assemble_partitioned_sum_jvp
+    public :: assemble_partitioned_sum_vjp
+    public :: initialize_partition_layout
+    public :: partition_layout_ghost_count
+    public :: partition_layout_global_count
+    public :: partition_layout_maps
+    public :: partition_layout_owned_count
+    public :: partition_layout_t
+    public :: validate_partition_layout
+    public :: assemble_distributed_trace_reduction
+    public :: assemble_distributed_trace_reduction_jvp
+    public :: assemble_distributed_trace_reduction_vjp
+    public :: distributed_trace_layout_component_count
+    public :: distributed_trace_layout_global_count
+    public :: distributed_trace_layout_local_count
+    public :: distributed_trace_layout_partition_count
+    public :: distributed_trace_layout_t
+    public :: initialize_distributed_trace_layout
+    public :: validate_distributed_trace_layout
+    public :: initialize_internal_manifold_graph
+    public :: internal_manifold_graph_closed
+    public :: internal_manifold_graph_components
+    public :: internal_manifold_graph_junction_incidence
+    public :: internal_manifold_graph_region_incidence
+    public :: internal_manifold_graph_t
+    public :: validate_internal_manifold_graph
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
