@@ -2,7 +2,7 @@ program test_surface_shape_objective
     !! Independent weighted fixed-topology surface-shape objective oracle.
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_surface_shape_objective, &
         evaluate_surface_shape_objective_jvp, &
         evaluate_surface_shape_objective_vjp

@@ -3,7 +3,7 @@ program test_surface_shape_objective_properties
     use check, only: check_condition, check_property, check_summary, &
         property_random_integer, property_random_unit, property_rng_initialize, &
         property_rng_t
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_surface_shape_objective, &
         evaluate_surface_shape_objective_jvp, &
         evaluate_surface_shape_objective_vjp

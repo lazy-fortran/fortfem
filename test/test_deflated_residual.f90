@@ -1,6 +1,6 @@
 program test_deflated_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_deflated_residual, assemble_deflated_residual_jvp, &
         assemble_deflated_residual_vjp
     use fortfem_kinds, only: dp

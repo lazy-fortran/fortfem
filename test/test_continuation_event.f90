@@ -1,8 +1,9 @@
 program test_continuation_event
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        CONTINUATION_EVENT_NEAR_ZERO, CONTINUATION_EVENT_NONE, &
-        CONTINUATION_EVENT_SIGN_CROSSING, classify_continuation_event
+    use fortfem_feec, only: CONTINUATION_EVENT_NONE
+    use fortfem_time, only: &
+        CONTINUATION_EVENT_NEAR_ZERO, CONTINUATION_EVENT_SIGN_CROSSING, &
+        classify_continuation_event
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t

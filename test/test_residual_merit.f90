@@ -1,6 +1,6 @@
 program test_residual_merit
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_residual_merit, evaluate_residual_merit_jvp, evaluate_residual_merit_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &

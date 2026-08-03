@@ -1,6 +1,6 @@
 program test_pseudo_transient_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_pseudo_transient_residual, &
         assemble_pseudo_transient_residual_jvp, &
         assemble_pseudo_transient_residual_vjp
