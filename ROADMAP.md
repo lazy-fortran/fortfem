@@ -670,6 +670,14 @@ instead of being papered over with duplicate wrappers. The Biro 3-D gallery
 also received a display-only edge-vector scale adjustment in `fb28cee`; the
 stored edge integrals and gauge oracle are unchanged.
 
+The trace/Neumann handoff `a998b72` completes eight more consumer migrations:
+boundary contracts and parity use boundary/interop, fitted and mortar traces
+use FEEC, geometry mortar uses core, and Neumann/Nédélec boundary clients use
+the smallest core/space/form/solver facades. Only the missing canonical
+re-export wiring was added; all eight focused tests pass and the release gate
+remains green. The umbrella-consumer count is now 191 test files, down from
+the 730-file starting audit.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
