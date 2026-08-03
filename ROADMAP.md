@@ -541,6 +541,12 @@ Seven DtN/system/adjoint tests and six toroidal complex/JVP/VJP/RWG tests pass
 with the canonical ownership split; no new solver implementation or external
 physics data was introduced.
 
+The follow-on general/sphere Maxwell batches are integrated as
+`7fb4313` and `097a037` (inventory `1fefc60`). Twelve CFIE/EFIE/MFIE,
+complex-kernel, magnetic-target, sphere-impedance, RBC, and RWG-mass consumers
+now use the canonical facades; all focused behavioral tests and the release
+gate pass.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
