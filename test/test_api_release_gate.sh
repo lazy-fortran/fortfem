@@ -46,6 +46,6 @@ run_negative stale-inventory \
 # asynchronously.
 timeout --foreground "${API_RELEASE_TEST_TIMEOUT:-10}s" \
     fo test test_boundary_operator_parity test_larger_domain_parity \
-    test_api07_free_boundary_consumer
+    test_api07_free_boundary_consumer test_api07_tensor_consumer
 
 echo "API release gate passed (fast inventory/layer/generated/derivative path)"
