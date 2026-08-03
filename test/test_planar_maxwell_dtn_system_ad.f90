@@ -1,6 +1,6 @@
 program test_planar_maxwell_dtn_system_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_planar_maxwell_dtn_system, &
+    use fortfem_boundary, only: solve_planar_maxwell_dtn_system, &
         solve_planar_maxwell_dtn_system_jvp, &
         solve_planar_maxwell_dtn_system_vjp
     use fortfem_kinds, only: dp
