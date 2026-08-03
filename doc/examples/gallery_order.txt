@@ -11,6 +11,7 @@ field_aligned_anisotropic_3d_gallery
 xfem_interface_solution
 regularized_surface_current_layer
 sheet_current_parity
+sheet_current_surface_gallery
 curl_curl
 cgl_pressure_tensor
 cgl_pressure_3d_gallery
