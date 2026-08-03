@@ -40,6 +40,18 @@ module fortfem_core
         evaluate_level_set_tetra_cut_third_moments_3d_jvp, &
         evaluate_level_set_tetra_cut_fourth_moments_3d, &
         evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
+    use fortfem_level_set_triangle_interface_2d, only: &
+        evaluate_level_set_triangle_interface_2d, &
+        evaluate_level_set_triangle_interface_2d_jvp, &
+        evaluate_level_set_triangle_cut_areas_2d, &
+        evaluate_level_set_triangle_cut_quadrature_2d, &
+        evaluate_level_set_triangle_cut_quadrature_2d_jvp, &
+        evaluate_level_set_triangle_cut_moments_2d, &
+        evaluate_level_set_triangle_cut_moments_2d_jvp, &
+        evaluate_level_set_triangle_cut_third_moments_2d, &
+        evaluate_level_set_triangle_cut_third_moments_2d_jvp, &
+        evaluate_level_set_triangle_cut_fourth_moments_2d, &
+        evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
     use fortfem_api_types, only: mesh_t, function_space_t, &
         vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh
@@ -67,6 +79,17 @@ module fortfem_core
     public :: evaluate_level_set_tetra_cut_third_moments_3d_jvp
     public :: evaluate_level_set_tetra_cut_fourth_moments_3d
     public :: evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
+    public :: evaluate_level_set_triangle_interface_2d
+    public :: evaluate_level_set_triangle_interface_2d_jvp
+    public :: evaluate_level_set_triangle_cut_areas_2d
+    public :: evaluate_level_set_triangle_cut_quadrature_2d
+    public :: evaluate_level_set_triangle_cut_quadrature_2d_jvp
+    public :: evaluate_level_set_triangle_cut_moments_2d
+    public :: evaluate_level_set_triangle_cut_moments_2d_jvp
+    public :: evaluate_level_set_triangle_cut_third_moments_2d
+    public :: evaluate_level_set_triangle_cut_third_moments_2d_jvp
+    public :: evaluate_level_set_triangle_cut_fourth_moments_2d
+    public :: evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
