@@ -1,6 +1,6 @@
 program test_fourier_mode_closure
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         build_fourier_mode_closure_registry, &
         build_fourier_mode_padded_registry, &
         find_fourier_mode, fourier_mode_registry_t, &

@@ -1,6 +1,6 @@
 program test_fourier_mode_energy
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         assemble_fourier_mode_energy, assemble_fourier_mode_energy_jvp, &
         assemble_fourier_mode_energy_vjp, &
         fourier_coefficients_conjugate_symmetric, &

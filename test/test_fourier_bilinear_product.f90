@@ -1,6 +1,6 @@
 program test_fourier_bilinear_product
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         apply_fourier_bilinear_product, &
         apply_fourier_bilinear_product_jvp, &
         apply_fourier_bilinear_product_vjp, &

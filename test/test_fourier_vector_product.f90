@@ -1,6 +1,6 @@
 program test_fourier_vector_product
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         assemble_fourier_vector_product, &
         assemble_fourier_vector_product_jvp, &
         assemble_fourier_vector_product_vjp, &
