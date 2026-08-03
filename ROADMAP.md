@@ -747,6 +747,14 @@ consumer was corrected to import `vector_function_space_t` from its canonical
 core owner (`8c4bf5b`) rather than recreating a FEEC export. Inventory and
 release gates are green; the umbrella audit is now 100 test files.
 
+The final high-order FEEC wave is integrated as FCI quintic/sextic and
+compatible-flux consumers (`9ffcb38` from `77507bd`), tetrahedral Lagrange
+PML/Poisson/state consumers (`d7577ed` from `a3a8bb6`), and tetrahedral
+Nédélec/PML/assembly consumers (`b47de51` from `680d502`). Eighteen focused
+targets pass, including the bounded slow arbitrary-order Nédélec solves; the
+Lagrange h-convergence target remains explicitly slow. Inventory and release
+gates are green, and the umbrella audit is now 72 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
