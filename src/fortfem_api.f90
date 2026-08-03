@@ -254,6 +254,10 @@ module fortfem_api
         advance_mixed_wave_wall_midpoint_jvp, &
         advance_mixed_wave_wall_midpoint_vjp, &
         evaluate_mixed_wave_wall_energy_balance
+    use fortfem_mixed_wave_energy_ledger, only: &
+        evaluate_mixed_wave_energy_helicity_port_ledger, &
+        evaluate_mixed_wave_energy_helicity_port_ledger_jvp, &
+        evaluate_mixed_wave_energy_helicity_port_ledger_vjp
     use fortfem_batched_vector_enrichment_differential_3d, only: &
         evaluate_batched_vector_enrichment_differential_3d, &
         evaluate_batched_vector_enrichment_differential_3d_jvp, &
@@ -478,6 +482,10 @@ module fortfem_api
     use fortfem_force_balance_residual, only: &
         assemble_force_balance_residual, assemble_force_balance_residual_jvp, &
         assemble_force_balance_residual_vjp
+    use fortfem_force_balance_representation_parity, only: &
+        evaluate_force_balance_representation_parity, &
+        evaluate_force_balance_representation_parity_jvp, &
+        evaluate_force_balance_representation_parity_vjp
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
@@ -1997,6 +2005,9 @@ module fortfem_api
     public :: assemble_force_balance_residual
     public :: assemble_force_balance_residual_jvp
     public :: assemble_force_balance_residual_vjp
+    public :: evaluate_force_balance_representation_parity
+    public :: evaluate_force_balance_representation_parity_jvp
+    public :: evaluate_force_balance_representation_parity_vjp
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
     public :: evaluate_force_balance_objective_vjp
@@ -3471,6 +3482,9 @@ module fortfem_api
     public :: advance_mixed_wave_wall_midpoint_jvp
     public :: advance_mixed_wave_wall_midpoint_vjp
     public :: evaluate_mixed_wave_wall_energy_balance
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger_jvp
+    public :: evaluate_mixed_wave_energy_helicity_port_ledger_vjp
     public :: evaluate_batched_vector_enrichment_differential_3d
     public :: evaluate_batched_vector_enrichment_differential_3d_jvp
     public :: evaluate_batched_vector_enrichment_differential_3d_vjp

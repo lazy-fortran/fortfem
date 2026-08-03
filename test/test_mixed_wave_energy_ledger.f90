@@ -1,7 +1,7 @@
 program test_mixed_wave_energy_ledger
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
-    use fortfem_mixed_wave_energy_ledger, only: &
+    use fortfem_time, only: &
         evaluate_mixed_wave_energy_helicity_port_ledger, &
         evaluate_mixed_wave_energy_helicity_port_ledger_jvp, &
         evaluate_mixed_wave_energy_helicity_port_ledger_vjp

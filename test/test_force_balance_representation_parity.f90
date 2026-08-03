@@ -1,6 +1,6 @@
 program test_force_balance_representation_parity
     use check, only: check_condition, check_summary
-    use fortfem_force_balance_representation_parity, only: &
+    use fortfem_feec, only: &
         evaluate_force_balance_representation_parity, &
         evaluate_force_balance_representation_parity_jvp, &
         evaluate_force_balance_representation_parity_vjp
