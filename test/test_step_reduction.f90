@@ -1,6 +1,6 @@
 program test_step_reduction
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_step_reduction, only: &
         evaluate_step_reduction, evaluate_step_reduction_jvp, evaluate_step_reduction_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &

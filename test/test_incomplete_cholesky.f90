@@ -1,6 +1,6 @@
 program test_incomplete_cholesky
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_incomplete_cholesky, &
+    use fortfem_incomplete_cholesky, only: apply_incomplete_cholesky, &
         build_incomplete_cholesky, incomplete_cholesky_factor_t
     use fortfem_kinds, only: dp
     implicit none
