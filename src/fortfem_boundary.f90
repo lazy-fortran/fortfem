@@ -209,7 +209,9 @@ module fortfem_boundary
         evaluate_maxwell_efie_field_rwg_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
+        assemble_maxwell_sphere_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_sphere_efie_propagating_impedance_jvp, &
         assemble_maxwell_sphere_efie_propagating_impedance_vjp, &
         assemble_maxwell_sphere_efie_imaginary_impedance_jvp, &
@@ -220,15 +222,20 @@ module fortfem_boundary
         assemble_maxwell_sphere_efie_imaginary_decay_vjp, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
+        assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
-        assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
+        assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp, &
-        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
+        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp, &
+        integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d, &
+        integrate_maxwell_sphere_curved_coincident_rwg_pair_3d, &
+        solve_maxwell_pec_sphere_curved_efie_rwg_3d, &
+        solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     use fortfem_helmholtz_galerkin_3d, only: &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
@@ -469,7 +476,9 @@ module fortfem_boundary
     public :: assemble_maxwell_rwg_potential_operators_3d
     public :: evaluate_maxwell_efie_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
     public :: assemble_maxwell_sphere_efie_propagating_impedance_vjp
     public :: assemble_maxwell_sphere_efie_imaginary_impedance_jvp
@@ -480,8 +489,9 @@ module fortfem_boundary
     public :: assemble_maxwell_sphere_efie_imaginary_decay_vjp
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
-    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
@@ -489,6 +499,10 @@ module fortfem_boundary
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
+    public :: integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
+    public :: integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
+    public :: solve_maxwell_pec_sphere_curved_efie_rwg_3d
+    public :: solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_magnetic_geometry_jvp

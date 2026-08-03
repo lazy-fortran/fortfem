@@ -1,8 +1,8 @@
 program test_maxwell_sphere_curved_mfie_trace
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
-        generate_sphere_surface_mesh
+    use fortfem_boundary, only: &
+        assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
