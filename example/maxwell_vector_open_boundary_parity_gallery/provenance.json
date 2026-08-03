@@ -1,0 +1,23 @@
+{
+  "fixture": "maxwell_vector_open_boundary_parity_gallery",
+  "problem": "manufactured nonzero vector curl-curl field with open-boundary parity",
+  "discretizations": [
+    "curved tetrahedral Nedelec FEM--BEM coupling",
+    "curved RWG/RBC Maxwell DtN map",
+    "tetrahedral Nedelec PML on a base and larger box"
+  ],
+  "field_observable": "real vector components and magnitude reconstructed from solved edge degrees of freedom",
+  "exact_reproduction": false,
+  "data_status": "solver-generated manufactured field; no external arrays redistributed",
+  "references": [
+    {
+      "title": "A dual finite element complex on the barycentric refinement",
+      "url": "https://doi.org/10.1090/S0025-5718-07-01965-5"
+    },
+    {
+      "title": "A practical guide to the finite element method for Maxwell equations",
+      "url": "https://doi.org/10.1007/978-3-319-32455-4"
+    }
+  ],
+  "license_note": "Only generated geometry, fields, and diagnostics are emitted; literature is cited but no external data are copied."
+}

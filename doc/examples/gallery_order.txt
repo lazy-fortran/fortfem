@@ -38,6 +38,7 @@ circular_dtn_modes
 helmholtz_open_boundary_comparison
 acoustic_fem_dtn
 maxwell_open_boundary_comparison
+maxwell_vector_open_boundary_parity_gallery
 
 # Verification and performance
 fortfem_mesh_benchmark
