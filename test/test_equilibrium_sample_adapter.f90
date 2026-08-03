@@ -1,6 +1,6 @@
 program test_equilibrium_sample_adapter
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         build_equilibrium_interchange_sample_set, &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, interchange_sample_set_t, &

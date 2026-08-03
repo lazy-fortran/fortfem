@@ -2,7 +2,7 @@ program test_equilibrium_interchange
     use, intrinsic :: iso_fortran_env, only: real64
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         equilibrium_interchange_t, equilibrium_normalization_t, &
         initialize_equilibrium_interchange, validate_equilibrium_interchange
     implicit none

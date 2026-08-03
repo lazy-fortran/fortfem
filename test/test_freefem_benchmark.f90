@@ -1,6 +1,6 @@
 program test_freefem_benchmark
     ! TDD test for FreeFEM benchmark comparison
-    use fortfem_api
+    use fortfem_core, only: mesh_t, unit_square_mesh
     use fortfem_kinds
     implicit none
 
