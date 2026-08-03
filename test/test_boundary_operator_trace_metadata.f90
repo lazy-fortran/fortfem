@@ -1,6 +1,6 @@
 program test_boundary_operator_trace_metadata
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         BOUNDARY_OPERATOR_BACKEND_BEM, &
         BOUNDARY_OPERATOR_TRACE_CHANNEL_NORMAL, &
         BOUNDARY_OPERATOR_TRACE_CHANNEL_TANGENTIAL, &
