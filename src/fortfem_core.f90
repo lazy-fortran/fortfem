@@ -29,6 +29,17 @@ module fortfem_core
         generate_structured_tetra_box_mesh
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
+    use fortfem_level_set_tetra_interface_3d, only: &
+        evaluate_level_set_tetra_interface_3d, &
+        evaluate_level_set_tetra_interface_3d_jvp, &
+        evaluate_level_set_tetra_cut_quadrature_3d, &
+        evaluate_level_set_tetra_cut_quadrature_3d_jvp, &
+        evaluate_level_set_tetra_cut_moments_3d, &
+        evaluate_level_set_tetra_cut_moments_3d_jvp, &
+        evaluate_level_set_tetra_cut_third_moments_3d, &
+        evaluate_level_set_tetra_cut_third_moments_3d_jvp, &
+        evaluate_level_set_tetra_cut_fourth_moments_3d, &
+        evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
     use fortfem_api_types, only: mesh_t, function_space_t, &
         vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh
@@ -46,6 +57,16 @@ module fortfem_core
     public :: generate_structured_tetra_box_mesh
     public :: generate_torus_surface_mesh
     public :: evaluate_torus_curved_panel
+    public :: evaluate_level_set_tetra_interface_3d
+    public :: evaluate_level_set_tetra_interface_3d_jvp
+    public :: evaluate_level_set_tetra_cut_quadrature_3d
+    public :: evaluate_level_set_tetra_cut_quadrature_3d_jvp
+    public :: evaluate_level_set_tetra_cut_moments_3d
+    public :: evaluate_level_set_tetra_cut_moments_3d_jvp
+    public :: evaluate_level_set_tetra_cut_third_moments_3d
+    public :: evaluate_level_set_tetra_cut_third_moments_3d_jvp
+    public :: evaluate_level_set_tetra_cut_fourth_moments_3d
+    public :: evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
