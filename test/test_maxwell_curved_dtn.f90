@@ -1,6 +1,6 @@
 program test_maxwell_curved_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_maxwell_trace_to_flux, apply_maxwell_trace_to_flux_jvp, &
         apply_maxwell_trace_to_flux_map, apply_maxwell_trace_to_flux_vjp, &
         apply_maxwell_weak_trace_reconstruction, &
@@ -10,7 +10,8 @@ program test_maxwell_curved_dtn
         assemble_maxwell_trace_to_flux_map_jvp, &
         assemble_maxwell_trace_to_flux_map_vjp, &
         assemble_maxwell_weak_trace_reconstruction, &
-        assemble_maxwell_torus_curved_dtn_rwg_3d, generate_torus_surface_mesh
+        assemble_maxwell_torus_curved_dtn_rwg_3d
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

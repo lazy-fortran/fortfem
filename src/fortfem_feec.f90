@@ -70,6 +70,16 @@ module fortfem_feec
     use fortfem_tetra_vector_evaluation, only: &
         evaluate_tetra_nedelec_interpolant_at_point
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
+    use fortfem_barycentric_surface_refinement, only: &
+        barycentric_refine_surface_mesh
+    use fortfem_maxwell_bc_surface, only: &
+        assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation, &
+        differentiate_maxwell_bc_transformation_jvp, &
+        differentiate_maxwell_bc_transformation_vjp
+    use fortfem_maxwell_rwg_surface, only: &
+        assemble_maxwell_rwg_mass_matrix, build_maxwell_rwg_surface_space, &
+        map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_maxwell_efie_rwg_3d, only: assemble_maxwell_efie_rwg_3d
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_nedelec_global_dof_map, only: build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
@@ -280,6 +290,7 @@ module fortfem_feec
         build_sparse_ichol_row, sparse_incomplete_cholesky_factor_t, &
         apply_sparse_incomplete_cholesky
     use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp
@@ -346,6 +357,15 @@ module fortfem_feec
     public :: build_tree_cotree_gauge
     public :: build_tetra_nedelec_dof_map
     public :: build_tetra_edge_dof_map
+    public :: barycentric_refine_surface_mesh
+    public :: assemble_maxwell_rwg_rbc_pairing
+    public :: build_maxwell_bc_transformation
+    public :: differentiate_maxwell_bc_transformation_jvp
+    public :: differentiate_maxwell_bc_transformation_vjp
+    public :: assemble_maxwell_rwg_mass_matrix
+    public :: build_maxwell_rwg_surface_space
+    public :: map_maxwell_rwg_to_tetra_nedelec_edges
+    public :: assemble_maxwell_efie_rwg_3d
     public :: build_bspline_polar_feec_2d_operators
     public :: build_bspline_polar_feec_2d_extractions
     public :: build_bspline_polar_h1_extraction
@@ -571,6 +591,7 @@ module fortfem_feec
     public :: sparse_incomplete_cholesky_factor_t
     public :: apply_sparse_incomplete_cholesky
     public :: assemble_tetra_nedelec_pml_csc
+    public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
     public :: evaluate_helmholtz_representation_torus_curved_3d

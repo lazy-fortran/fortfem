@@ -1,6 +1,6 @@
 program test_maxwell_fem_bem_state_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         solve_maxwell_fem_bem_linear_state, &
         solve_maxwell_fem_bem_linear_state_jvp, &
         solve_maxwell_fem_bem_linear_state_vjp

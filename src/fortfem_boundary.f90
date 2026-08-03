@@ -99,11 +99,27 @@ module fortfem_boundary
         curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
         curvilinear_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_maxwell_fem_bem_coupling_3d, only: &
+        assemble_maxwell_fem_bem_boundary_matrix_3d, &
+        assemble_maxwell_fem_bem_system_3d, &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
+        assemble_maxwell_rwg_nedelec_coupling_3d, &
+        solve_maxwell_fem_bem_system_3d, &
         solve_maxwell_fem_bem_torus_curved_system_3d
     use fortfem_maxwell_curved_dtn, only: &
-        apply_maxwell_trace_to_flux_map, &
+        apply_maxwell_trace_to_flux, apply_maxwell_trace_to_flux_jvp, &
+        apply_maxwell_trace_to_flux_map, apply_maxwell_trace_to_flux_vjp, &
+        apply_maxwell_weak_trace_reconstruction, &
+        apply_maxwell_weak_trace_reconstruction_jvp, &
+        apply_maxwell_weak_trace_reconstruction_vjp, &
+        assemble_maxwell_trace_to_flux_map, &
+        assemble_maxwell_trace_to_flux_map_jvp, &
+        assemble_maxwell_trace_to_flux_map_vjp, &
+        assemble_maxwell_weak_trace_reconstruction, &
         assemble_maxwell_torus_curved_dtn_rwg_3d
+    use fortfem_maxwell_fem_bem_state_ad, only: &
+        solve_maxwell_fem_bem_linear_state, &
+        solve_maxwell_fem_bem_linear_state_jvp, &
+        solve_maxwell_fem_bem_linear_state_vjp
     use fortfem_wall_response_condensation, only: &
         condense_wall_response_blocks, &
         condense_wall_response_blocks_jvp, &
@@ -224,8 +240,22 @@ module fortfem_boundary
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
+    public :: assemble_maxwell_fem_bem_boundary_matrix_3d
+    public :: assemble_maxwell_fem_bem_system_3d
     public :: assemble_maxwell_fem_bem_torus_curved_system_3d
+    public :: assemble_maxwell_rwg_nedelec_coupling_3d
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
+    public :: apply_maxwell_trace_to_flux
+    public :: apply_maxwell_trace_to_flux_jvp
+    public :: apply_maxwell_trace_to_flux_map
+    public :: apply_maxwell_trace_to_flux_vjp
+    public :: apply_maxwell_weak_trace_reconstruction
+    public :: apply_maxwell_weak_trace_reconstruction_jvp
+    public :: apply_maxwell_weak_trace_reconstruction_vjp
+    public :: assemble_maxwell_trace_to_flux_map
+    public :: assemble_maxwell_trace_to_flux_map_jvp
+    public :: assemble_maxwell_trace_to_flux_map_vjp
+    public :: assemble_maxwell_weak_trace_reconstruction
     public :: condense_wall_response_blocks
     public :: condense_wall_response_blocks_jvp
     public :: condense_wall_response_blocks_vjp
@@ -238,7 +268,6 @@ module fortfem_boundary
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d
-    public :: apply_maxwell_trace_to_flux_map
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: evaluate_helmholtz_representation_triangles_3d
     public :: evaluate_laplace_representation_triangles_3d
@@ -250,6 +279,10 @@ module fortfem_boundary
     public :: solve_helmholtz_dirichlet_p0_hierarchical_3d
     public :: solve_laplace_dirichlet_p0_3d
     public :: solve_maxwell_fem_bem_torus_curved_system_3d
+    public :: solve_maxwell_fem_bem_system_3d
+    public :: solve_maxwell_fem_bem_linear_state
+    public :: solve_maxwell_fem_bem_linear_state_jvp
+    public :: solve_maxwell_fem_bem_linear_state_vjp
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     public :: solve_helmholtz_bem_dtn_torus_curved_3d
     public :: solve_helmholtz_fem_bem_costabel_torus_curved_3d

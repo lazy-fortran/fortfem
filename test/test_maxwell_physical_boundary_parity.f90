@@ -2,7 +2,7 @@ program test_maxwell_physical_boundary_parity
     !! Independent physical-sample parity fixture for vector open boundaries.
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         BOUNDARY_OPERATOR_BACKEND_BEM, &
         BOUNDARY_OPERATOR_BACKEND_DTN, &
         BOUNDARY_OPERATOR_BACKEND_FEM, &

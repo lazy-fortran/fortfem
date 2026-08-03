@@ -1,6 +1,6 @@
 program test_maxwell_bc_surface
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation
     use fortfem_kinds, only: dp
     implicit none
