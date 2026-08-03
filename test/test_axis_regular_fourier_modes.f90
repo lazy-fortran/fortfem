@@ -1,6 +1,6 @@
 program test_axis_regular_fourier_modes
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
         axis_regular_mode_requirements, axis_regular_mode_table_t, &
         build_axis_regular_mode_table, fourier_mode_registry_t, &

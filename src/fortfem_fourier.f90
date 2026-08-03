@@ -20,6 +20,11 @@ module fortfem_fourier
         evaluate_fourier_mode_expansion_vjp, &
         evaluate_fourier_mode_expansion_hessian, &
         evaluate_fourier_mode_expansion_hvp
+    use fortfem_axis_regular_fourier_modes, only: &
+        AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
+        axis_regular_mode_record_t, axis_regular_mode_table_t, &
+        axis_regular_mode_requirements, build_axis_regular_mode_table, &
+        validate_axis_regular_mode_table
     use fortfem_toroidal_harmonics, only: &
         toroidal_p, toroidal_q, toroidal_p_derivative, toroidal_q_derivative, &
         toroidal_p_second_derivative, toroidal_q_second_derivative
@@ -31,6 +36,7 @@ module fortfem_fourier
     private
 
     public :: build_fourier_mode_closure_registry
+    public :: build_axis_regular_mode_table
     public :: build_fourier_mode_padded_registry
     public :: build_fourier_mode_triad_map
     public :: evaluate_fourier_mode
@@ -41,9 +47,14 @@ module fortfem_fourier
     public :: evaluate_fourier_mode_expansion_vjp
     public :: evaluate_fourier_mode_jvp
     public :: evaluate_fourier_mode_vjp
+    public :: axis_regular_mode_requirements
+    public :: axis_regular_mode_record_t
+    public :: axis_regular_mode_table_t
     public :: find_fourier_mode
     public :: fourier_mode_conjugate_index
     public :: fourier_mode_registry_t
+    public :: AXIS_RADIAL_PARITY_EVEN
+    public :: AXIS_RADIAL_PARITY_ODD
     public :: fourier_mode_triad_closed
     public :: initialize_fourier_mode_registry
     public :: toroidal_p
@@ -56,5 +67,6 @@ module fortfem_fourier
     public :: evaluate_toroidal_harmonic_p
     public :: evaluate_toroidal_ampere_field_p
     public :: validate_fourier_mode_registry
+    public :: validate_axis_regular_mode_table
 
 end module fortfem_fourier
