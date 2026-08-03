@@ -712,6 +712,14 @@ adds only the missing existing-symbol boundary exports. Their bounded focused
 tests pass, including the 41.38 s torus reciprocity slow target; no full-suite
 wait was required. The umbrella audit is now 178 test files.
 
+The IGA graph handoff `b66f4de` (from `467961a`) migrates the B-spline
+geometry-adjoint and multipatch signed-graph consumers and adds only the
+existing FEEC map export. The special-function handoff `c919447` (from
+`409e3a7`) then migrates eight FortNum/Fourier/Debye/eigen/toroidal-harmonic
+consumers, adding only existing canonical Fourier/FEEC exports. Their focused
+analytical, modal, topology, and derivative tests pass; the release gate is
+green and the umbrella audit is now 168 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
