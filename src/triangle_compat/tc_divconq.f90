@@ -188,6 +188,7 @@ contains
         integer :: lowerleft, lowerright, upperleft, upperright
         integer :: nextapex, checkvertex
         logical :: changemade, badedge, leftfinished, rightfinished
+        logical :: knitright
 
         innerleftdest = t_dest(s, innerleft)
         innerleftapex = t_apex(s, innerleft)
@@ -263,8 +264,16 @@ contains
         upperleft = t_apex(s, leftcand)
         upperright = t_apex(s, rightcand)
         do
-            leftfinished = ccw_v(s, upperleft, lowerleft, lowerright) <= 0.0_dp
-            rightfinished = ccw_v(s, upperright, lowerleft, lowerright) <= 0.0_dp
+            if (upperleft == 0) then
+                leftfinished = .true.
+            else
+                leftfinished = ccw_v(s, upperleft, lowerleft, lowerright) <= 0.0_dp
+            end if
+            if (upperright == 0) then
+                rightfinished = .true.
+            else
+                rightfinished = ccw_v(s, upperright, lowerleft, lowerright) <= 0.0_dp
+            end if
             if (leftfinished .and. rightfinished) then
                 nextedge = make_triangle(s)
                 call set_org(s, nextedge, lowerleft)
@@ -366,10 +375,17 @@ contains
                     end do
                 end if
             end if
-            if (leftfinished .or. (.not. rightfinished .and. &
-                                   (incircle_v(s, upperleft, lowerleft, &
-                                               lowerright, upperright) &
-                                    > 0.0_dp))) then
+            if (leftfinished) then
+                knitright = .true.
+            else if (rightfinished) then
+                knitright = .false.
+            else if (upperright == 0) then
+                knitright = .false.
+            else
+                knitright = incircle_v(s, upperleft, lowerleft, &
+                                       lowerright, upperright) > 0.0_dp
+            end if
+            if (knitright) then
                 call t_bond(s, baseedge, rightcand)
                 baseedge = t_lprev(rightcand)
                 call set_dest(s, baseedge, lowerleft)

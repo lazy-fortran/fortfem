@@ -119,8 +119,10 @@ contains
 
                     if ((.not. acuteorg) .and. (.not. acutedest)) then
                         eapex = t_apex(s, enctri)
-                        do while ((s%vtype(eapex) == V_FREE) .and. &
-                                  (chew_dot(s, eorg, edest, eapex) < 0.0_dp))
+                        do
+                            if (eapex == 0) exit
+                            if (s%vtype(eapex) /= V_FREE) exit
+                            if (chew_dot(s, eorg, edest, eapex) >= 0.0_dp) exit
                             call deletevertex(s, testtri)
                             enctri = st_pivot(s, currentenc)
                             eapex = t_apex(s, enctri)
@@ -141,9 +143,10 @@ contains
 
                         if ((.not. acuteorg2) .and. (.not. acutedest2)) then
                             eapex = t_org(s, testtri)
-                            do while ((s%vtype(eapex) == V_FREE) .and. &
-                                      (chew_dot(s, eorg, edest, eapex) &
-                                       < 0.0_dp))
+                            do
+                                if (eapex == 0) exit
+                                if (s%vtype(eapex) /= V_FREE) exit
+                                if (chew_dot(s, eorg, edest, eapex) >= 0.0_dp) exit
                                 call deletevertex(s, testtri)
                                 testtri = t_sym(s, enctri)
                                 eapex = t_apex(s, testtri)
