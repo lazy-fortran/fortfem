@@ -630,6 +630,15 @@ anisotropic matrix, Jacobi, and JVP/VJP tests pass. Duplicate public exports
 were removed rather than added to the compatibility allowlist; the current
 release gate is green.
 
+The next geometry/symbolic/open-boundary wave is integrated as geometry and
+topology consumers (`0fbec15`), FortSym form/compiler consumers (`fd2a3ef`),
+and toroidal Maxwell FEM--BEM/MFIE consumers (`866416f`). The five geometry,
+six generated-form, and six toroidal boundary tests pass with bounded slow
+cases. `continuation_event_sign_crossing` remains owned by `fortfem_time`,
+while geometry residuals expose only the neutral `CONTINUATION_EVENT_NONE`
+constant through FEEC (`c59337d`); this ownership cleanup is covered by the
+release gate.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
