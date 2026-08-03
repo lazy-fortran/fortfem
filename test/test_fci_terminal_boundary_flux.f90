@@ -1,6 +1,6 @@
 program test_fci_terminal_boundary_flux
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_fci_terminal_boundary_flux, &
         assemble_fci_terminal_boundary_flux_jvp, &
         assemble_fci_terminal_boundary_flux_vjp

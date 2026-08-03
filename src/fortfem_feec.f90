@@ -260,6 +260,12 @@ module fortfem_feec
     use fortfem_fci_field_line_tracer, only: &
         trace_fci_field_line_rk4, trace_fci_field_line_rk4_jvp
     use fortfem_fci_interpolation_map, only: &
+        build_fci_linear_interpolation_map_1d, &
+        build_fci_linear_interpolation_map_1d_jvp, &
+        build_fci_linear_interpolation_map_1d_vjp, &
+        build_fci_quadratic_interpolation_map_1d, &
+        build_fci_quadratic_interpolation_map_1d_jvp, &
+        build_fci_quadratic_interpolation_map_1d_vjp, &
         build_fci_bilinear_interpolation_map_2d, &
         build_fci_bilinear_interpolation_map_2d_jvp, &
         build_fci_bilinear_interpolation_map_2d_vjp, &
@@ -267,9 +273,14 @@ module fortfem_feec
         build_fci_cubic_interpolation_map_1d_jvp, &
         build_fci_cubic_interpolation_map_1d_vjp
     use fortfem_fci_support_geometry, only: &
+        compute_fci_staggered_flux_box_volumes, &
+        compute_fci_staggered_flux_box_volumes_jvp, &
+        compute_fci_staggered_flux_box_volumes_vjp, &
         compute_fci_quadrilateral_cell_areas_2d, &
         compute_fci_curved_quadrilateral_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &
+        compute_fci_polygon_cell_areas_2d_jvp, &
+        compute_fci_polygon_cell_areas_2d_vjp, &
         compute_fci_curved_polygon_cell_areas_2d, &
         compute_fci_curved_polygon_cell_areas_2d_jvp, &
         compute_fci_curved_polygon_cell_areas_2d_vjp, &
@@ -281,6 +292,14 @@ module fortfem_feec
         compute_fci_quartic_curved_polygon_cell_areas_2d, &
         compute_fci_quintic_curved_polygon_cell_areas_2d, &
         compute_fci_sextic_curved_polygon_cell_areas_2d
+    use fortfem_fci_terminal_boundary_flux, only: &
+        assemble_fci_terminal_boundary_flux, &
+        assemble_fci_terminal_boundary_flux_jvp, &
+        assemble_fci_terminal_boundary_flux_vjp
+    use fortfem_flux_surface_average, only: &
+        evaluate_flux_surface_average, &
+        evaluate_flux_surface_average_jvp, &
+        evaluate_flux_surface_average_vjp
     use fortfem_cgl_pressure_tensor, only: &
         evaluate_cgl_pressure_tensor, evaluate_cgl_pressure_tensor_jvp, &
         evaluate_cgl_pressure_tensor_vjp, evaluate_cgl_pressure_traction, &
@@ -780,17 +799,28 @@ module fortfem_feec
     public :: apply_fci_additive_field_split_preconditioner
     public :: trace_fci_field_line_rk4
     public :: trace_fci_field_line_rk4_jvp
+    public :: build_fci_linear_interpolation_map_1d
+    public :: build_fci_linear_interpolation_map_1d_jvp
+    public :: build_fci_linear_interpolation_map_1d_vjp
+    public :: build_fci_quadratic_interpolation_map_1d
+    public :: build_fci_quadratic_interpolation_map_1d_jvp
+    public :: build_fci_quadratic_interpolation_map_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
     public :: build_fci_bilinear_interpolation_map_2d_jvp
     public :: build_fci_bilinear_interpolation_map_2d_vjp
     public :: build_fci_cubic_interpolation_map_1d
     public :: build_fci_cubic_interpolation_map_1d_jvp
     public :: build_fci_cubic_interpolation_map_1d_vjp
+    public :: compute_fci_staggered_flux_box_volumes
+    public :: compute_fci_staggered_flux_box_volumes_jvp
+    public :: compute_fci_staggered_flux_box_volumes_vjp
     public :: compute_fci_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     public :: compute_fci_polygon_cell_areas_2d
+    public :: compute_fci_polygon_cell_areas_2d_jvp
+    public :: compute_fci_polygon_cell_areas_2d_vjp
     public :: compute_fci_curved_polygon_cell_areas_2d
     public :: compute_fci_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_curved_polygon_cell_areas_2d_vjp
@@ -800,6 +830,12 @@ module fortfem_feec
     public :: compute_fci_quartic_curved_polygon_cell_areas_2d
     public :: compute_fci_quintic_curved_polygon_cell_areas_2d
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d
+    public :: assemble_fci_terminal_boundary_flux
+    public :: assemble_fci_terminal_boundary_flux_jvp
+    public :: assemble_fci_terminal_boundary_flux_vjp
+    public :: evaluate_flux_surface_average
+    public :: evaluate_flux_surface_average_jvp
+    public :: evaluate_flux_surface_average_vjp
     public :: evaluate_cgl_pressure_tensor
     public :: evaluate_cgl_pressure_tensor_jvp
     public :: evaluate_cgl_pressure_tensor_vjp

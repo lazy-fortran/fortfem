@@ -1,6 +1,6 @@
 program test_fci_interpolation_map_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_fci_linear_interpolation_map_1d_jvp, &
         build_fci_linear_interpolation_map_1d_vjp
     use fortfem_kinds, only: dp
