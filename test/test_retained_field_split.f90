@@ -1,7 +1,7 @@
 program test_retained_field_split
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         apply_retained_complex_field_split, apply_retained_complex_field_split_jvp, &
         apply_retained_complex_field_split_vjp, apply_retained_field_split, &
         apply_retained_field_split_jvp, apply_retained_field_split_vjp, &
