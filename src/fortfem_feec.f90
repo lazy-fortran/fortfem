@@ -240,6 +240,10 @@ module fortfem_feec
         solve_tetra_lagrange_state_vjp, solve_tetra_lagrange_sampled_state, &
         solve_tetra_lagrange_sampled_state_jvp, &
         solve_tetra_lagrange_sampled_state_vjp
+    use fortfem_tetra_lagrange_curvilinear_pml_state_3d, only: &
+        solve_tetra_lagrange_curvilinear_pml, &
+        solve_tetra_lagrange_curvilinear_pml_jvp, &
+        solve_tetra_lagrange_curvilinear_pml_vjp
     use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
         assemble_tetra_lagrange_scalar_load, &
         assemble_tetra_lagrange_scalar_load_samples, &
@@ -251,6 +255,17 @@ module fortfem_feec
         assemble_tetra_lagrange_stiffness_element, &
         assemble_tetra_lagrange_stiffness_element_jvp, &
         assemble_tetra_lagrange_stiffness_element_vjp
+    use fortfem_assembly_tetra_lagrange_curvilinear_pml_3d, only: &
+        assemble_tetra_lagrange_curvilinear_pml_element, &
+        assemble_tetra_lagrange_curvilinear_pml_element_jvp, &
+        assemble_tetra_lagrange_curvilinear_pml_element_vjp, &
+        assemble_tetra_lagrange_curvilinear_pml_csc, &
+        assemble_tetra_lagrange_curvilinear_pml_csc_jvp, &
+        assemble_tetra_lagrange_curvilinear_pml_csc_vjp
+    use fortfem_assembly_tetra_lagrange_geometry_pml_3d, only: &
+        assemble_tetra_lagrange_geometry_pml_csc, &
+        assemble_tetra_lagrange_geometry_pml_csc_jvp, &
+        assemble_tetra_lagrange_geometry_pml_csc_vjp
     use fortfem_tetra_rt_arbitrary_order, only: &
         evaluate_tetra_rt, initialize_tetra_rt, tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
@@ -990,6 +1005,9 @@ module fortfem_feec
     public :: solve_tetra_lagrange_sampled_state
     public :: solve_tetra_lagrange_sampled_state_jvp
     public :: solve_tetra_lagrange_sampled_state_vjp
+    public :: solve_tetra_lagrange_curvilinear_pml
+    public :: solve_tetra_lagrange_curvilinear_pml_jvp
+    public :: solve_tetra_lagrange_curvilinear_pml_vjp
     public :: assemble_tetra_lagrange_scalar_load
     public :: assemble_tetra_lagrange_scalar_load_samples
     public :: assemble_tetra_lagrange_scalar_load_samples_jvp
@@ -1000,6 +1018,15 @@ module fortfem_feec
     public :: assemble_tetra_lagrange_stiffness_element
     public :: assemble_tetra_lagrange_stiffness_element_jvp
     public :: assemble_tetra_lagrange_stiffness_element_vjp
+    public :: assemble_tetra_lagrange_curvilinear_pml_element
+    public :: assemble_tetra_lagrange_curvilinear_pml_element_jvp
+    public :: assemble_tetra_lagrange_curvilinear_pml_element_vjp
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc_jvp
+    public :: assemble_tetra_lagrange_curvilinear_pml_csc_vjp
+    public :: assemble_tetra_lagrange_geometry_pml_csc
+    public :: assemble_tetra_lagrange_geometry_pml_csc_jvp
+    public :: assemble_tetra_lagrange_geometry_pml_csc_vjp
     public :: evaluate_tetra_rt
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count

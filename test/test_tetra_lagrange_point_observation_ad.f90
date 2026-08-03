@@ -1,6 +1,6 @@
 program test_tetra_lagrange_point_observation_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: evaluate_tetra_lagrange_solution_at_point, &
+    use fortfem_feec, only: evaluate_tetra_lagrange_solution_at_point, &
         evaluate_tetra_lagrange_solution_at_point_jvp, &
         evaluate_tetra_lagrange_solution_at_point_vjp, &
         initialize_tetra_lagrange, tetra_lagrange_dof_count, tetra_lagrange_t

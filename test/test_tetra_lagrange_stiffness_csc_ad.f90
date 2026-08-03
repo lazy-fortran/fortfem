@@ -1,6 +1,6 @@
 program test_tetra_lagrange_stiffness_csc_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: assemble_tetra_lagrange_stiffness_csc, &
+    use fortfem_feec, only: assemble_tetra_lagrange_stiffness_csc, &
         assemble_tetra_lagrange_stiffness_csc_jvp, &
         assemble_tetra_lagrange_stiffness_csc_vjp
     use fortfem_kinds, only: dp

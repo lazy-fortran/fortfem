@@ -1,6 +1,6 @@
 program test_tetra_lagrange_element_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: assemble_tetra_lagrange_stiffness_element, &
+    use fortfem_feec, only: assemble_tetra_lagrange_stiffness_element, &
         assemble_tetra_lagrange_stiffness_element_jvp, &
         assemble_tetra_lagrange_stiffness_element_vjp
     use fortfem_kinds, only: dp
