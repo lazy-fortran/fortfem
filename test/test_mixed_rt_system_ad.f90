@@ -1,6 +1,6 @@
 program test_mixed_rt_system_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: solve_mixed_rt_system, solve_mixed_rt_system_jvp, &
+    use fortfem_feec, only: solve_mixed_rt_system, solve_mixed_rt_system_jvp, &
         solve_mixed_rt_system_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
