@@ -1,6 +1,6 @@
 program test_fci_octic_curved_polygon_area
     use check, only: check_condition, check_summary
-    use fortfem_fci_support_geometry, only: &
+    use fortfem_feec, only: &
         compute_fci_octic_curved_polygon_cell_areas_2d, &
         compute_fci_octic_curved_polygon_cell_areas_2d_jvp, &
         compute_fci_octic_curved_polygon_cell_areas_2d_vjp
