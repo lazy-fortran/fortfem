@@ -1,7 +1,8 @@
 program test_maxwell_magnetic_rwg_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        build_maxwell_rwg_surface_space, evaluate_maxwell_magnetic_field_rwg_3d, &
+    use fortfem_boundary, only: evaluate_maxwell_magnetic_field_rwg_3d
+    use fortfem_feec, only: &
+        build_maxwell_rwg_surface_space, &
         evaluate_maxwell_rwg_basis
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature

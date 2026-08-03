@@ -1,6 +1,6 @@
 program test_maxwell_localized_rwg_surface
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_maxwell_localized_rwg_basis
+    use fortfem_feec, only: evaluate_maxwell_localized_rwg_basis
     use fortfem_kinds, only: dp
     implicit none
 

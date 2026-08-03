@@ -1,6 +1,6 @@
 program test_maxwell_surface_rt_efie
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_maxwell_efie_rwg_3d, assemble_maxwell_surface_rt_efie_3d, &
         build_maxwell_surface_rt_dof_map
     use fortfem_kinds, only: dp
