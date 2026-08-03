@@ -515,6 +515,15 @@ and slow-kernel oracles pass. Representation and panel symbols now have one
 canonical owner (`0c82e1b`, `7bac61b`); the generated inventory and duplicate
 export gate are clean.
 
+The next solution/operator batches are also integrated: six scalar Helmholtz
+PML clients (`f5bc120`, inventory `0686e60`), six curved-sphere Maxwell
+clients (`be17d3b`), and four toroidal Laplace/Helmholtz representation
+gradient/geometry-adjoint clients (`6cd7efe`, inventory `01675b5`). Their
+analytical, vector, geometry-adjoint, and open-boundary focused oracles pass.
+The Bíró gallery README now documents the exact-data adapter contract; absent
+paper arrays still produce an explicit provenance-gated skip rather than an
+unverifiable reproduction.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
