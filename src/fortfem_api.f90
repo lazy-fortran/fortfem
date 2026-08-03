@@ -220,6 +220,10 @@ module fortfem_api
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
+    use fortfem_free_boundary_source_response, only: &
+        assemble_free_boundary_source_response, &
+        assemble_free_boundary_source_response_jvp, &
+        assemble_free_boundary_source_response_vjp
     use fortfem_toroidal_modal_convolution, only: &
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
@@ -3371,6 +3375,9 @@ module fortfem_api
     public :: assemble_free_boundary_port_residual
     public :: assemble_free_boundary_port_residual_jvp
     public :: assemble_free_boundary_port_residual_vjp
+    public :: assemble_free_boundary_source_response
+    public :: assemble_free_boundary_source_response_jvp
+    public :: assemble_free_boundary_source_response_vjp
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp
