@@ -326,6 +326,13 @@ module fortfem_feec
         solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
     use fortfem_tetra_mixed_poisson_3d, only: &
         solve_symbolic_tetra_mixed_poisson_rt
+    use fortfem_tetra_mixed_poisson_state_3d, only: &
+        solve_tetra_mixed_poisson_state, &
+        solve_tetra_mixed_poisson_state_jvp, &
+        solve_tetra_mixed_poisson_state_vjp, &
+        solve_tetra_mixed_poisson_sampled_state, &
+        solve_tetra_mixed_poisson_sampled_state_jvp, &
+        solve_tetra_mixed_poisson_sampled_state_vjp
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
         evaluate_tetra_discontinuous, initialize_tetra_discontinuous, &
         tetra_discontinuous_t
@@ -710,6 +717,12 @@ module fortfem_feec
     public :: solve_mixed_rt_system_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_symbolic_tetra_mixed_poisson_rt
+    public :: solve_tetra_mixed_poisson_state
+    public :: solve_tetra_mixed_poisson_state_jvp
+    public :: solve_tetra_mixed_poisson_state_vjp
+    public :: solve_tetra_mixed_poisson_sampled_state
+    public :: solve_tetra_mixed_poisson_sampled_state_jvp
+    public :: solve_tetra_mixed_poisson_sampled_state_vjp
     public :: evaluate_tetra_discontinuous
     public :: initialize_tetra_discontinuous
     public :: tetra_discontinuous_t
