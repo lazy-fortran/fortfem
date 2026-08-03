@@ -1,7 +1,7 @@
 program test_tensor_power_split
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tensor_power_split, &
+    use fortfem_feec, only: evaluate_tensor_power_split, &
         evaluate_tensor_power_split_jvp, evaluate_tensor_power_split_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
