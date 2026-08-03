@@ -678,6 +678,8 @@ single commit for integration. The recent implementation slices are:
 | `5cbc152` | Mixed-wave energy, helicity, and signed-port ledger | Nested-loop, finite-difference JVP, real-adjoint VJP, signed-power, and invalid-weight oracle |
 | `c268e53` | Force-balance representation parity | Volume/boundary/sheet residual-difference, finite-difference, real-adjoint, and shape-rejection oracle |
 | `bb24eff` | Weighted surface FEM/BEM/DtN/PML trace parity ledger | Weighted norm/error, reciprocity/work defect, complex JVP/VJP, topology, and positive-weight oracle |
+| `b414074` | Multipatch signed trace assembly validation | Per-patch duplicate-ID/orientation checks with delegated HDG value/JVP/VJP oracle |
+| `6b6e5b8` | Point-first tensor enrichment Gram diagnostics | SPD metric, fixed active mask, nested-loop/FD/adjoint, rank, and invalid-weight oracle |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -1982,6 +1984,10 @@ representations, and a weighted complex surface-trace parity ledger for
 FEM/BEM/DtN/PML or fitted/cut/DG/IGA comparisons. They remain closure-neutral;
 their physical fields, meshes, constitutive laws, and external-code adapters
 remain caller-owned.
+
+The compatible spatial core now also has a validated multipatch signed-trace
+assembly wrapper around the existing HDG kernel and a point-first tensor
+enrichment Gram/rank diagnostic for Piola/XIGA vector or tensor supports.
 
 The direct-force campaign is now also a physical-first gallery fixture: it renders a
 manufactured toroidal state with a visible force-vector field before its parameter
