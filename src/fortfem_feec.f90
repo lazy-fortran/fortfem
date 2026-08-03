@@ -383,7 +383,28 @@ module fortfem_feec
         assemble_enriched_feec_sequence_vjp
     use fortfem_singular_layer_matching, only: &
         assemble_singular_layer_matching, &
-        assemble_singular_layer_matching_jvp
+        assemble_singular_layer_matching_jvp, &
+        assemble_singular_layer_matching_vjp
+    use fortfem_scalar_numerical_flux, only: &
+        assemble_scalar_numerical_flux, &
+        assemble_scalar_numerical_flux_jvp, &
+        assemble_scalar_numerical_flux_vjp
+    use fortfem_vector_numerical_flux, only: &
+        assemble_vector_entropy_stable_flux, &
+        assemble_vector_entropy_stable_flux_jvp, &
+        assemble_vector_entropy_stable_flux_vjp
+    use fortfem_xfem_blending_correction, only: &
+        evaluate_blending_corrected_enrichment, &
+        evaluate_blending_corrected_enrichment_jvp, &
+        evaluate_blending_corrected_enrichment_vjp, &
+        evaluate_vector_blending_corrected_enrichment, &
+        evaluate_vector_blending_corrected_enrichment_jvp, &
+        evaluate_vector_blending_corrected_enrichment_vjp
+    use fortfem_piola_enriched_vector, only: &
+        evaluate_piola_enriched_vector_values, &
+        evaluate_piola_enriched_vector_values_jvp, &
+        evaluate_piola_enriched_vector_values_vjp, &
+        PIOLA_COVARIANT, PIOLA_CONTRAVARIANT
     use fortfem_retained_field_split, only: &
         apply_retained_complex_field_split, &
         apply_retained_complex_field_split_jvp, &
@@ -894,6 +915,24 @@ module fortfem_feec
     public :: assemble_enriched_feec_sequence_vjp
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
+    public :: assemble_singular_layer_matching_vjp
+    public :: assemble_scalar_numerical_flux
+    public :: assemble_scalar_numerical_flux_jvp
+    public :: assemble_scalar_numerical_flux_vjp
+    public :: assemble_vector_entropy_stable_flux
+    public :: assemble_vector_entropy_stable_flux_jvp
+    public :: assemble_vector_entropy_stable_flux_vjp
+    public :: evaluate_blending_corrected_enrichment
+    public :: evaluate_blending_corrected_enrichment_jvp
+    public :: evaluate_blending_corrected_enrichment_vjp
+    public :: evaluate_vector_blending_corrected_enrichment
+    public :: evaluate_vector_blending_corrected_enrichment_jvp
+    public :: evaluate_vector_blending_corrected_enrichment_vjp
+    public :: evaluate_piola_enriched_vector_values
+    public :: evaluate_piola_enriched_vector_values_jvp
+    public :: evaluate_piola_enriched_vector_values_vjp
+    public :: PIOLA_COVARIANT
+    public :: PIOLA_CONTRAVARIANT
     public :: retained_field_split_t
     public :: retained_complex_field_split_t
     public :: factor_retained_field_split
