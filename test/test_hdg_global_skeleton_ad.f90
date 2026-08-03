@@ -1,6 +1,6 @@
 program test_hdg_global_skeleton_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_hdg_global_skeleton, &
+    use fortfem_feec, only: assemble_hdg_global_skeleton, &
         assemble_hdg_global_skeleton_jvp, assemble_hdg_global_skeleton_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

@@ -1,6 +1,6 @@
 program test_broken_skeleton_spaces
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         BROKEN_SPACE_H1, BROKEN_SPACE_HCURL, BROKEN_SPACE_HDIV, &
         BROKEN_SPACE_L2, SKELETON_SPACE_NORMAL, SKELETON_SPACE_SCALAR, &
         SKELETON_SPACE_TANGENTIAL, broken_space_layout_global_count, &

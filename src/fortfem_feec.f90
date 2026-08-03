@@ -14,6 +14,35 @@ module fortfem_feec
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
         assemble_feec_commuting_projection_vjp
+    use fortfem_broken_feec_sequence, only: &
+        assemble_broken_feec_sequence, &
+        assemble_broken_feec_sequence_jvp, &
+        assemble_broken_feec_sequence_vjp
+    use fortfem_glued_feec_sequence, only: &
+        assemble_glued_feec_sequence, &
+        assemble_glued_feec_sequence_jvp, &
+        assemble_glued_feec_sequence_vjp
+    use fortfem_broken_skeleton_spaces, only: &
+        BROKEN_SPACE_H1, BROKEN_SPACE_HCURL, BROKEN_SPACE_HDIV, &
+        BROKEN_SPACE_L2, SKELETON_SPACE_SCALAR, &
+        SKELETON_SPACE_TANGENTIAL, SKELETON_SPACE_NORMAL, &
+        broken_space_layout_t, skeleton_space_layout_t, &
+        initialize_broken_space_layout, validate_broken_space_layout, &
+        broken_space_layout_maps, broken_space_layout_global_count, &
+        initialize_skeleton_space_layout, validate_skeleton_space_layout, &
+        skeleton_space_layout_maps, skeleton_space_layout_global_count
+    use fortfem_hdg_static_condensation, only: &
+        assemble_hdg_static_condensation, &
+        assemble_hdg_static_condensation_jvp, &
+        assemble_hdg_static_condensation_vjp
+    use fortfem_hdg_global_skeleton, only: &
+        assemble_hdg_global_skeleton, &
+        assemble_hdg_global_skeleton_jvp, &
+        assemble_hdg_global_skeleton_vjp
+    use fortfem_hdg_global_skeleton_csc, only: &
+        assemble_hdg_global_skeleton_csc, &
+        assemble_hdg_global_skeleton_csc_jvp, &
+        assemble_hdg_global_skeleton_csc_vjp
     use fortfem_block_graph_residual, only: &
         assemble_block_graph_residual, &
         assemble_block_graph_residual_jvp, &
@@ -235,6 +264,38 @@ module fortfem_feec
     public :: assemble_feec_exact_sequence
     public :: assemble_feec_exact_sequence_jvp
     public :: assemble_feec_exact_sequence_vjp
+    public :: assemble_broken_feec_sequence
+    public :: assemble_broken_feec_sequence_jvp
+    public :: assemble_broken_feec_sequence_vjp
+    public :: assemble_glued_feec_sequence
+    public :: assemble_glued_feec_sequence_jvp
+    public :: assemble_glued_feec_sequence_vjp
+    public :: BROKEN_SPACE_H1
+    public :: BROKEN_SPACE_HCURL
+    public :: BROKEN_SPACE_HDIV
+    public :: BROKEN_SPACE_L2
+    public :: SKELETON_SPACE_SCALAR
+    public :: SKELETON_SPACE_TANGENTIAL
+    public :: SKELETON_SPACE_NORMAL
+    public :: broken_space_layout_t
+    public :: skeleton_space_layout_t
+    public :: initialize_broken_space_layout
+    public :: validate_broken_space_layout
+    public :: broken_space_layout_maps
+    public :: broken_space_layout_global_count
+    public :: initialize_skeleton_space_layout
+    public :: validate_skeleton_space_layout
+    public :: skeleton_space_layout_maps
+    public :: skeleton_space_layout_global_count
+    public :: assemble_hdg_static_condensation
+    public :: assemble_hdg_static_condensation_jvp
+    public :: assemble_hdg_static_condensation_vjp
+    public :: assemble_hdg_global_skeleton
+    public :: assemble_hdg_global_skeleton_jvp
+    public :: assemble_hdg_global_skeleton_vjp
+    public :: assemble_hdg_global_skeleton_csc
+    public :: assemble_hdg_global_skeleton_csc_jvp
+    public :: assemble_hdg_global_skeleton_csc_vjp
     public :: build_tree_cotree_dof_map
     public :: build_tree_cotree_gauge
     public :: build_tetra_nedelec_dof_map
