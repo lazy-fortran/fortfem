@@ -1,6 +1,6 @@
 program test_laplace_bem_circle_spectrum
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_laplace_hypersingular_linear, &
+    use fortfem_boundary, only: assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_kinds, only: dp
     implicit none
