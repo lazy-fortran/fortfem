@@ -20,6 +20,22 @@ module fortfem_fourier
         evaluate_fourier_mode_expansion_vjp, &
         evaluate_fourier_mode_expansion_hessian, &
         evaluate_fourier_mode_expansion_hvp
+    use fortfem_fourier_vector_product, only: &
+        apply_fourier_bilinear_product, &
+        apply_fourier_bilinear_product_jvp, &
+        apply_fourier_bilinear_product_vjp, &
+        assemble_fourier_vector_product, &
+        assemble_fourier_vector_product_jvp, &
+        assemble_fourier_vector_product_vjp
+    use fortfem_fourier_mode_linear_operator, only: &
+        apply_fourier_mode_linear_operator, &
+        apply_fourier_mode_linear_operator_jvp, &
+        apply_fourier_mode_linear_operator_vjp
+    use fortfem_fourier_mode_energy, only: &
+        assemble_fourier_mode_energy, &
+        assemble_fourier_mode_energy_jvp, &
+        assemble_fourier_mode_energy_vjp, &
+        fourier_coefficients_conjugate_symmetric
     use fortfem_axis_regular_fourier_modes, only: &
         AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
         axis_regular_mode_record_t, axis_regular_mode_table_t, &
@@ -47,6 +63,19 @@ module fortfem_fourier
     public :: evaluate_fourier_mode_expansion_vjp
     public :: evaluate_fourier_mode_jvp
     public :: evaluate_fourier_mode_vjp
+    public :: apply_fourier_bilinear_product
+    public :: apply_fourier_bilinear_product_jvp
+    public :: apply_fourier_bilinear_product_vjp
+    public :: assemble_fourier_vector_product
+    public :: assemble_fourier_vector_product_jvp
+    public :: assemble_fourier_vector_product_vjp
+    public :: apply_fourier_mode_linear_operator
+    public :: apply_fourier_mode_linear_operator_jvp
+    public :: apply_fourier_mode_linear_operator_vjp
+    public :: assemble_fourier_mode_energy
+    public :: assemble_fourier_mode_energy_jvp
+    public :: assemble_fourier_mode_energy_vjp
+    public :: fourier_coefficients_conjugate_symmetric
     public :: axis_regular_mode_requirements
     public :: axis_regular_mode_record_t
     public :: axis_regular_mode_table_t

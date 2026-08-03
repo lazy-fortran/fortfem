@@ -1,7 +1,7 @@
 program test_fourier_mode_linear_operator
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         apply_fourier_mode_linear_operator, &
         apply_fourier_mode_linear_operator_jvp, &
         apply_fourier_mode_linear_operator_vjp
