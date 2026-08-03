@@ -1,12 +1,13 @@
 program test_tetra_discontinuous_projection_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_tetra_discontinuous_arbitrary_order, only: &
         initialize_tetra_discontinuous, &
+        tetra_discontinuous_t
+    use fortfem_tetra_discontinuous_projection, only: &
         project_physical_tetra_discontinuous, &
         project_sampled_physical_tetra_discontinuous, &
         project_sampled_physical_tetra_discontinuous_jvp, &
-        project_sampled_physical_tetra_discontinuous_vjp, &
-        tetra_discontinuous_t
+        project_sampled_physical_tetra_discontinuous_vjp
     use fortfem_kinds, only: dp
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     implicit none

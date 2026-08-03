@@ -1,12 +1,14 @@
 program test_tetra_nedelec_interpolation_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
-        initialize_tetra_nedelec_first_kind, &
+    use fortfem_feec, only: initialize_tetra_nedelec_first_kind, &
+        tetra_nedelec_first_kind_t
+    use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_physical_tetra_nedelec, &
         interpolate_sampled_physical_tetra_nedelec, &
         interpolate_sampled_physical_tetra_nedelec_jvp, &
         interpolate_sampled_physical_tetra_nedelec_vjp, &
-        tetra_nedelec_interpolation_points, tetra_nedelec_first_kind_t, &
+        tetra_nedelec_interpolation_points
+    use fortfem_tetra_vector_samples, only: &
         tetra_vector_sample_gradients_t, tetra_vector_samples_t, &
         zero_tetra_vector_samples_like
     use fortfem_kinds, only: dp

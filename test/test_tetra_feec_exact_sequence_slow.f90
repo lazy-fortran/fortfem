@@ -1,14 +1,16 @@
 program test_tetra_feec_exact_sequence_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        build_tetra_discrete_curl, build_tetra_discrete_gradient, &
+    use fortfem_feec, only: &
         evaluate_tetra_lagrange, evaluate_tetra_rt, &
         evaluate_tetra_nedelec_first_kind, initialize_tetra_lagrange, &
         initialize_tetra_nedelec_first_kind, initialize_tetra_rt, &
-        interpolate_reference_tetra_nedelec, interpolate_reference_tetra_rt, &
+        interpolate_reference_tetra_nedelec, &
         tetra_lagrange_dof_count, tetra_lagrange_t, &
         tetra_nedelec_dof_count, tetra_nedelec_first_kind_t, &
         tetra_rt_dof_count, tetra_rt_t
+    use fortfem_tetra_feec_operators, only: &
+        build_tetra_discrete_curl, build_tetra_discrete_gradient
+    use fortfem_tetra_rt_interpolation, only: interpolate_reference_tetra_rt
     use fortfem_kinds, only: dp
     implicit none
 

@@ -1,6 +1,6 @@
 program test_tetra_nedelec_pec_p_convergence_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_tetra_nedelec_weighted_curl_mass
+    use fortfem_tetra_nedelec_solver_3d, only: solve_tetra_nedelec_weighted_curl_mass
     use fortfem_kinds, only: dp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &

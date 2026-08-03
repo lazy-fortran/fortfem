@@ -1,6 +1,6 @@
 program test_tetra_nedelec_piola_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: map_tetra_nedelec_covariant, &
+    use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant, &
         map_tetra_nedelec_covariant_jvp, map_tetra_nedelec_covariant_vjp
     use fortfem_kinds, only: dp
     implicit none

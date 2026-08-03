@@ -1,6 +1,7 @@
 program test_tetra_discontinuous_basis_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: evaluate_tetra_discontinuous, &
+    use fortfem_tetra_discontinuous_arbitrary_order, only: &
+        evaluate_tetra_discontinuous, &
         evaluate_tetra_discontinuous_jvp, evaluate_tetra_discontinuous_vjp, &
         initialize_tetra_discontinuous, tetra_discontinuous_dof_count, &
         tetra_discontinuous_t
