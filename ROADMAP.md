@@ -469,6 +469,19 @@ spaces (`2d54659`), and Maxwell/open-boundary consumers
 (`4253419`) are now on `main`, with the generated inventory refreshed after
 each integration.
 
+The next bounded dispatch is explicitly tracked here so API work does not
+silently turn into a broad rename. The current `/mnt/storage` worktrees are
+`fci_hendecic` (FortSym-generated degree-eleven curved FCI edge measures) and
+`api_tensor_consumer` (a no-umbrella tensor-pressure/anisotropy consumer).
+Each owns only its generator/source and test slice, writes an independent
+behavioral oracle first, and hands back one commit before integration. The
+integrator alone updates this document and the generated API inventory.
+Finished worktrees are removed from `/mnt/storage` after their commit; no
+FortFEM task uses `/tmp` for a worktree and unrelated downstream worktrees
+remain untouched. A degree-eleven generator is optional if its generated
+kernel exceeds the bounded memory/timeout budget; the explicit no-op and
+reason are recorded rather than lowering the oracle standard.
+
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
 six toroidal-coordinate/harmonic/DtN clients (`82b0547`). Their focused
@@ -1441,7 +1454,7 @@ and Cartesian bilinear affine reproduction. A generated quadratic Lagrange
 map now accepts explicit three-node stencils and reproduces quadratic fields
 on nonuniform slices, with generated fixed-stencil JVP/VJP dot-product and
 finite-difference oracles. Higher-order interpolation Jacobians beyond sextic
-and degree-six-and-higher curved support-volume measures, and
+and curved support-volume measures beyond decic, and
 anisotropy-aware preconditioning
 remain active work. A generated fixed-topology quadrilateral area map now supplies
 positive unstructured plane-cell measures with value/JVP/VJP actions, independent
@@ -3687,7 +3700,7 @@ gallery example.
   positive unstructured plane-cell measures with independent shoelace,
   finite-difference, and real-adjoint oracles plus a gallery fixture. Higher
   interpolation derivatives beyond sextic and curved support-volume measures
-  beyond sextic remain separate planned components. The generic polygon map
+  beyond decic remain separate planned components. The generic polygon map
   covers fixed-topology cells with more than four vertices, and its generated
   quadratic Bezier-edge extension covers arbitrary curved polygon boundaries.
   Generated quadratic, cubic, quartic, quintic, sextic, septic, and octic
