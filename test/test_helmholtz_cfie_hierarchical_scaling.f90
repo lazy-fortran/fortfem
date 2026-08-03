@@ -2,11 +2,10 @@ program test_helmholtz_cfie_hierarchical_scaling
     use check, only: check_condition, check_summary
     use fortfem_boundary, only: &
         apply_helmholtz_cfie_p0_hierarchical_3d, &
+        assemble_helmholtz_double_layer_p0_3d, &
         assemble_helmholtz_single_layer_p0_3d
     use fortfem_core, only: &
         generate_sphere_surface_mesh
-    use fortfem_helmholtz_galerkin_3d, only: &
-        assemble_helmholtz_double_layer_p0_3d
     use fortfem_kinds, only: dp
     implicit none
 
