@@ -8,8 +8,10 @@ program test_triangle_comparison
     !    4. Plots both meshes for visual comparison
     !
     use fortfem_kinds, only: dp
-    use fortfem_api, only: mesh_t, boundary_t, l_shape_boundary,              &
-        mesh_from_boundary, mesh_from_triangle_files, plot
+    use fortfem_core, only: mesh_t, l_shape_boundary, mesh_from_boundary
+    use fortfem_boundary, only: boundary_t
+    use fortfem_api_mesh, only: mesh_from_triangle_files
+    use fortfem_plot, only: plot
     use triangle_io, only: write_triangle_poly_file, ensure_triangle_available
     use check, only: check_condition, check_summary
     implicit none

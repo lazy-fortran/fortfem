@@ -1,6 +1,6 @@
 program test_triangle_full_vector_element_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_bdm_div_mass_element, &
         assemble_triangle_bdm_div_mass_element_jvp, &
         assemble_triangle_bdm_div_mass_element_vjp, &

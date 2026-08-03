@@ -1,6 +1,6 @@
 program test_triangle_bdm_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_triangle_bdm, initialize_triangle_bdm, &
         triangle_bdm_basis_t, triangle_bdm_dof_count, &
         triangle_duffy_quadrature
@@ -62,7 +62,7 @@ program test_triangle_bdm_arbitrary_order
 contains
 
     subroutine check_basis_moments(basis, degree, basis_dof, dof_count)
-        use fortfem_api, only: &
+        use fortfem_feec, only: &
             evaluate_triangle_raviart_thomas, &
             initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
             triangle_rt_dof_count
@@ -132,7 +132,7 @@ contains
     end subroutine check_basis_moments
 
     subroutine polynomial_dofs(degree, dofs)
-        use fortfem_api, only: &
+        use fortfem_feec, only: &
             evaluate_triangle_raviart_thomas, &
             initialize_triangle_raviart_thomas, triangle_rt_basis_t, &
             triangle_rt_dof_count
