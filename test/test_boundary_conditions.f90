@@ -1,6 +1,11 @@
 program test_boundary_conditions
-    use fortfem_kinds
-    use fortfem_api
+    use fortfem_kinds, only: dp
+    use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, unit_square_mesh
+    use fortfem_feec, only: function_space, constant, function, grad, inner, dx, &
+        form_expr_t, function_t, test_function_t, trial_function_t, solve, &
+        dirichlet_bc, test_function, trial_function, operator(*), operator(+), &
+        operator(==)
+    use fortfem_plot, only: plot
     use check
     implicit none
 

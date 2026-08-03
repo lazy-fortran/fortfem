@@ -1,7 +1,7 @@
 program test_source_trace_map
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_source_trace_map, evaluate_source_trace_map_jvp, &
         evaluate_source_trace_map_vjp, &
         evaluate_weighted_source_trace_reciprocity_defect

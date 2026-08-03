@@ -14,6 +14,11 @@ module fortfem_core
         boundary_region_graph_components, boundary_region_graph_cycle_basis, &
         boundary_region_graph_interface_samples, &
         boundary_region_graph_interface_metadata
+    use fortfem_physical_trace_ownership, only: &
+        physical_trace_ownership_t, initialize_physical_trace_ownership, &
+        validate_physical_trace_ownership, physical_trace_ownership_maps, &
+        physical_trace_ownership_dimension, physical_trace_ownership_point_count, &
+        physical_trace_ownership_rank, compare_physical_trace_coordinates
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
@@ -139,5 +144,13 @@ module fortfem_core
     public :: boundary_region_graph_cycle_basis
     public :: boundary_region_graph_interface_samples
     public :: boundary_region_graph_interface_metadata
+    public :: physical_trace_ownership_t
+    public :: initialize_physical_trace_ownership
+    public :: validate_physical_trace_ownership
+    public :: physical_trace_ownership_maps
+    public :: physical_trace_ownership_dimension
+    public :: physical_trace_ownership_point_count
+    public :: physical_trace_ownership_rank
+    public :: compare_physical_trace_coordinates
 
 end module fortfem_core

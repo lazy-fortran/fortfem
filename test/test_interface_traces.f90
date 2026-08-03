@@ -1,6 +1,6 @@
 program test_interface_traces
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         compute_interface_scalar_jump_average, &
         compute_interface_vector_traces
     use fortfem_kinds, only: dp
