@@ -234,10 +234,22 @@ module fortfem_feec
         evaluate_field_aligned_constitutive_tensor_vjp
     use fortfem_tensor_power_split, only: evaluate_tensor_power_split, &
         evaluate_tensor_power_split_jvp, evaluate_tensor_power_split_vjp
+    use fortfem_interface_traction_balance, only: &
+        assemble_normal_traction_jump, &
+        assemble_normal_traction_jump_jvp, &
+        assemble_normal_traction_jump_vjp, &
+        assemble_traction_jump, assemble_traction_jump_jvp, &
+        assemble_traction_jump_vjp
+    use fortfem_tensor_volume_work, only: &
+        assemble_tensor_volume_work, assemble_tensor_volume_work_jvp, &
+        assemble_tensor_volume_work_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, &
         assemble_tensor_diffusion_matrix_jvp, &
         assemble_tensor_diffusion_matrix_vjp, &
+        assemble_tensor_diffusion_matrix_nd, &
+        assemble_tensor_diffusion_matrix_nd_jvp, &
+        assemble_tensor_diffusion_matrix_nd_vjp, &
         assemble_tensor_diffusion_matrix_3d, &
         assemble_tensor_diffusion_matrix_3d_jvp, &
         assemble_tensor_diffusion_matrix_3d_vjp
@@ -745,12 +757,24 @@ module fortfem_feec
     public :: assemble_bspline_polar_hcurl_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc
     public :: restrict_bspline_polar_operator_csc
+    public :: assemble_normal_traction_jump
+    public :: assemble_normal_traction_jump_jvp
+    public :: assemble_normal_traction_jump_vjp
+    public :: assemble_traction_jump
+    public :: assemble_traction_jump_jvp
+    public :: assemble_traction_jump_vjp
+    public :: assemble_tensor_volume_work
+    public :: assemble_tensor_volume_work_jvp
+    public :: assemble_tensor_volume_work_vjp
     public :: assemble_tensor_diffusion_matrix_3d
     public :: assemble_tensor_diffusion_matrix_3d_jvp
     public :: assemble_tensor_diffusion_matrix_3d_vjp
     public :: assemble_tensor_diffusion_matrix
     public :: assemble_tensor_diffusion_matrix_jvp
     public :: assemble_tensor_diffusion_matrix_vjp
+    public :: assemble_tensor_diffusion_matrix_nd
+    public :: assemble_tensor_diffusion_matrix_nd_jvp
+    public :: assemble_tensor_diffusion_matrix_nd_vjp
     public :: evaluate_field_aligned_flux
     public :: evaluate_field_aligned_flux_jvp
     public :: evaluate_field_aligned_flux_vjp

@@ -1,6 +1,6 @@
 program test_tensor_diffusion_matrix_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tensor_diffusion_matrix_3d, &
         assemble_tensor_diffusion_matrix_3d_jvp, &
         assemble_tensor_diffusion_matrix_3d_vjp, &

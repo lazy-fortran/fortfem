@@ -1,6 +1,6 @@
 program test_resistive_wall_midpoint_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         advance_resistive_wall_midpoint, advance_resistive_wall_midpoint_jvp, &
         advance_resistive_wall_midpoint_vjp, evaluate_resistive_wall_energy_balance
     use fortfem_kinds, only: dp

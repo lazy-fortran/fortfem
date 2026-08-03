@@ -1,6 +1,6 @@
 program test_tensor_volume_work
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tensor_volume_work, assemble_tensor_volume_work_jvp, &
         assemble_tensor_volume_work_vjp
     use fortfem_kinds, only: dp

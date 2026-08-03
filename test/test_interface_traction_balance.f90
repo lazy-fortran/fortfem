@@ -1,6 +1,6 @@
 program test_interface_traction_balance
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_normal_traction_jump, &
+    use fortfem_feec, only: assemble_normal_traction_jump, &
         assemble_normal_traction_jump_jvp, assemble_normal_traction_jump_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

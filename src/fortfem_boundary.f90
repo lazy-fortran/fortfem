@@ -207,6 +207,11 @@ module fortfem_boundary
         condense_wall_response_blocks, &
         condense_wall_response_blocks_jvp, &
         condense_wall_response_blocks_vjp
+    use fortfem_resistive_wall_midpoint, only: &
+        advance_resistive_wall_midpoint, &
+        advance_resistive_wall_midpoint_jvp, &
+        advance_resistive_wall_midpoint_vjp, &
+        evaluate_resistive_wall_energy_balance
     use fortfem_maxwell_torus_curved_rwg, only: &
         assemble_maxwell_torus_curved_efie_rwg_3d, &
         assemble_maxwell_torus_curved_efie_imaginary_rwg_3d, &
@@ -550,6 +555,10 @@ module fortfem_boundary
     public :: condense_wall_response_blocks
     public :: condense_wall_response_blocks_jvp
     public :: condense_wall_response_blocks_vjp
+    public :: advance_resistive_wall_midpoint
+    public :: advance_resistive_wall_midpoint_jvp
+    public :: advance_resistive_wall_midpoint_vjp
+    public :: evaluate_resistive_wall_energy_balance
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_helmholtz_single_layer_p0_adaptive_3d
     public :: assemble_helmholtz_single_layer_p0_3d_jvp
