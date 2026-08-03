@@ -1,10 +1,12 @@
 program test_poisson_quads
     use fortfem_kinds, only: dp
-    use fortfem_api, only: mesh_t, function_space_t, trial_function_t,     &
-        test_function_t, function_t, dirichlet_bc_t, form_expr_t,          &
-        unit_square_mesh, structured_quad_mesh, function_space,            &
-        trial_function, test_function, constant, dirichlet_bc,             &
-        function, inner, grad, dx, solve, plot, operator(*), operator(==)
+    use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, &
+        unit_square_mesh, structured_quad_mesh
+    use fortfem_feec, only: trial_function_t, test_function_t, function_t, &
+        form_expr_t, function_space, trial_function, &
+        test_function, constant, dirichlet_bc, function, inner, grad, dx, &
+        solve, operator(*), operator(==)
+    use fortfem_plot, only: plot
     use check, only: check_condition, check_summary
     implicit none
 

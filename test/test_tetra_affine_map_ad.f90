@@ -1,6 +1,6 @@
 program test_tetra_affine_map_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: invert_tetra_affine_map, &
+    use fortfem_core, only: invert_tetra_affine_map, &
         invert_tetra_affine_map_jvp, invert_tetra_affine_map_vjp
     use fortfem_kinds, only: dp
     implicit none

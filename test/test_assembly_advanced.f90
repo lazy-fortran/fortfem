@@ -1,6 +1,11 @@
 program test_assembly_advanced
     use fortfem_kinds
-    use fortfem_api
+    use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, &
+        unit_square_mesh
+    use fortfem_feec, only: trial_function_t, test_function_t, function_t, &
+        form_expr_t, function_space, trial_function, &
+        test_function, constant, dirichlet_bc, function, inner, grad, dx, &
+        solve, operator(*), operator(==)
     use check
     implicit none
 
