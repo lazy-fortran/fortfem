@@ -673,6 +673,7 @@ single commit for integration. The recent implementation slices are:
 | `5c0eea8` | Field-aligned tensor metric pullback | Generated determinant/inverse JVP/VJP, cofactor, and orientation oracle |
 | `df93e09` | NESTOR/BIEST-like toroidal P/Q modal response | Radial, finite-difference, complex-adjoint, reciprocity, and invalid-scale oracle |
 | `63f634f` | Metric-aware volume/boundary/sheet force-balance residual | Weighted-loop, central-difference, and real-adjoint oracle |
+| `d47c4e7` | Physical trace reconciliation for independently ordered FEM/BEM/DtN/IGA rows | ID permutation, orientation-sign, coordinate-tolerance, JVP, and real-adjoint oracle |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
