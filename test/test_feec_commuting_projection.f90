@@ -1,6 +1,6 @@
 program test_feec_commuting_projection
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_feec_commuting_projection, &
+    use fortfem_feec, only: assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
         assemble_feec_commuting_projection_vjp
     use fortfem_kinds, only: dp

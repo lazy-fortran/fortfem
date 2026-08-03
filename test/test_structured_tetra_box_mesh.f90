@@ -1,6 +1,6 @@
 program test_structured_tetra_box_mesh
     use check, only: check_condition, check_summary
-    use fortfem_api, only: generate_structured_tetra_box_mesh
+    use fortfem_core, only: generate_structured_tetra_box_mesh
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
     implicit none

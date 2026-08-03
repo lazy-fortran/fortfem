@@ -1,6 +1,6 @@
 program test_glued_feec_sequence_csc
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_glued_feec_sequence_csc, &
+    use fortfem_glued_feec_sequence_csc, only: assemble_glued_feec_sequence_csc, &
         assemble_glued_feec_sequence_csc_jvp, assemble_glued_feec_sequence_csc_vjp, &
         assemble_glued_feec_sequence_csc_compositions, &
         assemble_glued_feec_sequence_csc_compositions_jvp, &

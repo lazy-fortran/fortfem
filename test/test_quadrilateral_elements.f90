@@ -1,6 +1,9 @@
 program test_quadrilateral_elements
     use fortfem_kinds
-    use fortfem_api
+    use fortfem_core, only: dirichlet_bc_t, function_space_t, mesh_t, &
+        structured_quad_mesh, unit_square_mesh
+    use fortfem_feec, only: dirichlet_bc, function, function_space, function_t
+    use fortfem_plot, only: plot
     use basis_q1_quad_2d_module, only: q1_shape_functions, q1_shape_derivatives, &
         q1_jacobian, q1_reference_to_physical
     use check
