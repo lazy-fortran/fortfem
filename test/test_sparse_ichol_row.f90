@@ -1,6 +1,6 @@
 program test_sparse_ichol_row
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_sparse_incomplete_cholesky, &
+    use fortfem_feec, only: apply_sparse_incomplete_cholesky, &
         apply_sparse_incomplete_cholesky_jvp, &
         apply_sparse_incomplete_cholesky_vjp, build_sparse_ichol_row, &
         sparse_incomplete_cholesky_factor_t

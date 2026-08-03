@@ -1,7 +1,7 @@
 program test_retained_coupled_schur
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_retained_coupled_schur, &
         assemble_retained_coupled_schur_jvp, &
         assemble_retained_coupled_schur_vjp, &

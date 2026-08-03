@@ -1,6 +1,13 @@
 program test_solver_validation
     use fortfem_kinds
-    use fortfem_api
+    use fortfem_core, only: mesh_t, function_space_t, vector_function_space_t, &
+        dirichlet_bc_t, unit_square_mesh
+    use fortfem_feec, only: constant, curl, dirichlet_bc, dx, form_expr_t, &
+        function, function_t, function_space, grad, inner, solve, test_function, &
+        test_function_t, trial_function, trial_function_t, vector_bc, vector_bc_t, &
+        vector_function, vector_function_t, vector_function_space, &
+        vector_test_function, vector_test_function_t, vector_trial_function, &
+        vector_trial_function_t, operator(*), operator(+), operator(==)
     use check
     implicit none
 

@@ -331,6 +331,19 @@ module fortfem_feec
     use fortfem_singular_layer_matching, only: &
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp
+    use fortfem_retained_field_split, only: &
+        apply_retained_complex_field_split, &
+        apply_retained_complex_field_split_jvp, &
+        apply_retained_complex_field_split_vjp, &
+        apply_retained_field_split, apply_retained_field_split_jvp, &
+        apply_retained_field_split_vjp, factor_retained_complex_field_split, &
+        factor_retained_field_split, free_retained_complex_field_split, &
+        free_retained_field_split, retained_complex_field_split_t, &
+        retained_field_split_t
+    use fortfem_retained_coupled_schur, only: &
+        assemble_retained_coupled_schur, &
+        assemble_retained_coupled_schur_jvp, &
+        assemble_retained_coupled_schur_vjp
     use fortfem_api_spaces, only: &
         constant, function, function_space, vector_function_space, dirichlet_bc, &
         test_function, trial_function, vector_function, vector_bc, &
@@ -410,10 +423,12 @@ module fortfem_feec
         sparse_direct_solve_tree_cotree_jvp, &
         sparse_direct_solve_tree_cotree_vjp
     use fortfem_sparse_ilut, only: &
-        build_sparse_ilut_row, sparse_ilut_factor_t, apply_sparse_ilut
+        build_sparse_ilut, build_sparse_ilut_row, sparse_ilut_factor_t, &
+        apply_sparse_ilut, apply_sparse_ilut_jvp, apply_sparse_ilut_vjp
     use fortfem_sparse_incomplete_cholesky, only: &
-        build_sparse_ichol_row, sparse_incomplete_cholesky_factor_t, &
-        apply_sparse_incomplete_cholesky
+        build_sparse_ichol, build_sparse_ichol_row, &
+        sparse_incomplete_cholesky_factor_t, apply_sparse_incomplete_cholesky, &
+        apply_sparse_incomplete_cholesky_jvp, apply_sparse_incomplete_cholesky_vjp
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_pml_csc, &
@@ -727,6 +742,21 @@ module fortfem_feec
     public :: assemble_enriched_feec_sequence_vjp
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
+    public :: retained_field_split_t
+    public :: retained_complex_field_split_t
+    public :: factor_retained_field_split
+    public :: factor_retained_complex_field_split
+    public :: apply_retained_field_split
+    public :: apply_retained_complex_field_split
+    public :: apply_retained_field_split_jvp
+    public :: apply_retained_complex_field_split_jvp
+    public :: apply_retained_field_split_vjp
+    public :: apply_retained_complex_field_split_vjp
+    public :: free_retained_field_split
+    public :: free_retained_complex_field_split
+    public :: assemble_retained_coupled_schur
+    public :: assemble_retained_coupled_schur_jvp
+    public :: assemble_retained_coupled_schur_vjp
     public :: function_space
     public :: constant
     public :: function
@@ -823,12 +853,18 @@ module fortfem_feec
     public :: sparse_direct_solve_tree_cotree
     public :: sparse_direct_solve_tree_cotree_jvp
     public :: sparse_direct_solve_tree_cotree_vjp
+    public :: build_sparse_ilut
     public :: build_sparse_ilut_row
     public :: sparse_ilut_factor_t
     public :: apply_sparse_ilut
+    public :: apply_sparse_ilut_jvp
+    public :: apply_sparse_ilut_vjp
+    public :: build_sparse_ichol
     public :: build_sparse_ichol_row
     public :: sparse_incomplete_cholesky_factor_t
     public :: apply_sparse_incomplete_cholesky
+    public :: apply_sparse_incomplete_cholesky_jvp
+    public :: apply_sparse_incomplete_cholesky_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_csc_jvp

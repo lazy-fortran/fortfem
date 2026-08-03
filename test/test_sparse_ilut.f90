@@ -1,6 +1,6 @@
 program test_sparse_ilut
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
+    use fortfem_feec, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
         apply_sparse_ilut_vjp, build_sparse_ilut, sparse_ilut_factor_t
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
