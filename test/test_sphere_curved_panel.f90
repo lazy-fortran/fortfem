@@ -1,10 +1,10 @@
 program test_sphere_curved_panel
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_sphere_curved_panel, generate_sphere_surface_mesh, &
         invert_sphere_curved_panel
     use fortfem_kinds, only: dp
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_feec, only: triangle_duffy_quadrature
     implicit none
 
     integer, allocatable :: triangles(:, :)

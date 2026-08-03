@@ -52,6 +52,9 @@ module fortfem_core
         evaluate_nested_surface_geometry_coordinate_jvp, &
         evaluate_nested_surface_geometry_coordinate_vjp
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
+    use fortfem_sphere_curved_panel, only: &
+        evaluate_sphere_curved_panel, evaluate_sphere_curved_panel_jvp, &
+        evaluate_sphere_curved_panel_vjp, invert_sphere_curved_panel
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
     use fortfem_structured_tetra_box_mesh, only: &
         generate_structured_tetra_box_mesh
@@ -59,6 +62,14 @@ module fortfem_core
     use fortfem_torus_curved_panel, only: &
         evaluate_torus_curved_panel, evaluate_torus_curved_panel_jvp, &
         evaluate_torus_curved_panel_vjp
+    use fortfem_surface_triangle_geometry_3d, only: &
+        evaluate_surface_triangle_geometry_3d, &
+        evaluate_surface_triangle_geometry_3d_jvp, &
+        evaluate_surface_triangle_geometry_3d_vjp
+    use fortfem_surface_triangle_measures_3d, only: &
+        assemble_surface_triangle_measures_3d, &
+        assemble_surface_triangle_measures_3d_jvp, &
+        assemble_surface_triangle_measures_3d_vjp
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_torus_surface_mesh, &
         barycentric_refine_torus_surface_mesh_jvp, &
@@ -113,6 +124,10 @@ module fortfem_core
     public :: cell_complex_t
     public :: generate_solid_torus_tetra_mesh
     public :: generate_sphere_surface_mesh
+    public :: evaluate_sphere_curved_panel
+    public :: evaluate_sphere_curved_panel_jvp
+    public :: evaluate_sphere_curved_panel_vjp
+    public :: invert_sphere_curved_panel
     public :: generate_structured_tetra_box_mesh
     public :: generate_torus_surface_mesh
     public :: barycentric_refine_torus_surface_mesh
@@ -121,6 +136,12 @@ module fortfem_core
     public :: evaluate_torus_curved_panel
     public :: evaluate_torus_curved_panel_jvp
     public :: evaluate_torus_curved_panel_vjp
+    public :: evaluate_surface_triangle_geometry_3d
+    public :: evaluate_surface_triangle_geometry_3d_jvp
+    public :: evaluate_surface_triangle_geometry_3d_vjp
+    public :: assemble_surface_triangle_measures_3d
+    public :: assemble_surface_triangle_measures_3d_jvp
+    public :: assemble_surface_triangle_measures_3d_vjp
     public :: evaluate_level_set_tetra_interface_3d
     public :: evaluate_level_set_tetra_interface_3d_jvp
     public :: evaluate_level_set_tetra_cut_quadrature_3d

@@ -1,9 +1,9 @@
 program test_torus_curved_panel
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_torus_curved_panel, generate_torus_surface_mesh
     use fortfem_kinds, only: dp
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_feec, only: triangle_duffy_quadrature
     implicit none
 
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp

@@ -1,6 +1,6 @@
 program test_surface_triangle_geometry_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_surface_triangle_geometry_3d, &
+    use fortfem_core, only: evaluate_surface_triangle_geometry_3d, &
         evaluate_surface_triangle_geometry_3d_jvp, &
         evaluate_surface_triangle_geometry_3d_vjp
     use fortfem_kinds, only: dp

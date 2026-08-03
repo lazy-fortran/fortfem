@@ -1,6 +1,6 @@
 program test_surface_current
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_interface_surface_current, &
+    use fortfem_boundary, only: assemble_interface_surface_current, &
         assemble_interface_surface_current_jvp, &
         assemble_interface_surface_current_vjp
     use fortfem_kinds, only: dp
