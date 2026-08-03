@@ -495,6 +495,11 @@ The 3-D exterior sphere BEM gallery slice is also integrated as `5a715e49`:
 its first panel is a connected filled observation surface with ordered
 solution samples, and the bounded visual oracle checks the analytical
 exterior monopole before any convergence or operator diagnostics.
+The attempted septic fixed-stencil interpolation dispatch was deliberately
+returned without a commit: the full generator driver did not emit the new
+kernel within the bounded run and touched an unrelated tetrahedral artifact.
+The worktree was discarded, and the milestone remains queued until a
+single-generator run can prove byte-current output without unrelated drift.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
