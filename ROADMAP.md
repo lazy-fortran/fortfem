@@ -510,9 +510,10 @@ The degree-six clipped-polygon moment milestone is integrated as `e8dac912`,
 with inventory refresh `5e8afc37`. Its 64 raw moments, conservation identity,
 fixed-topology JVP/VJP, and degenerate-cell rejection pass independently; the
 3-D high-order cut and curved-cell moment layers remain active.
-The current bounded `/mnt/storage` worktree is `cut_tetra_fifth`, implementing
-the next independent 3-D degree-five cut-moment slice. It owns only geometry,
-facade, and test files and will be removed after its focused handoff.
+The attempted `cut_tetra_fifth` dispatch was returned without a commit: the
+source extension did not reach its independent test/facade handoff within the
+bound, so the partial worktree was discarded. The 3-D degree-five cut-moment
+milestone remains queued and must return with a complete value/JVP/VJP oracle.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
