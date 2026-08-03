@@ -739,6 +739,14 @@ boundary-ledger, L-shape, surface/volume-balance, and resource-budget
 consumers. All 24 focused tests pass with independent behavioral oracles and
 the release gate remains green. The umbrella audit is now 130 test files.
 
+The next three API waves are integrated: FCI multilevel/Jacobi and polygon
+geometry (`40c388e` from `a439ae4`), sparse factor/ILU/ICHOL/PCG consumers
+(`e054f63` from `077d5bd`), and triangle BDM/full-vector/assembly consumers
+(`5cc00b7` from `5c5ac9c`). Their 30 focused tests pass. A stale arbitrary-RT
+consumer was corrected to import `vector_function_space_t` from its canonical
+core owner (`8c4bf5b`) rather than recreating a FEEC export. Inventory and
+release gates are green; the umbrella audit is now 100 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
