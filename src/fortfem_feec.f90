@@ -190,11 +190,6 @@ module fortfem_feec
         distributed_trace_layout_partition_count, &
         distributed_trace_layout_t, initialize_distributed_trace_layout, &
         validate_distributed_trace_layout
-    use fortfem_mpi_trace_exchange, only: &
-        mpi_trace_exchange_schedule_t, initialize_mpi_trace_exchange_schedule, &
-        validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
-        pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, pack_mpi_trace_exchange_vjp, &
-        unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp
     use fortfem_internal_manifold_graph, only: &
         initialize_internal_manifold_graph, internal_manifold_graph_closed, &
         internal_manifold_graph_components, &
@@ -996,16 +991,6 @@ module fortfem_feec
     public :: distributed_trace_layout_t
     public :: initialize_distributed_trace_layout
     public :: validate_distributed_trace_layout
-    public :: mpi_trace_exchange_schedule_t
-    public :: initialize_mpi_trace_exchange_schedule
-    public :: validate_mpi_trace_exchange_schedule
-    public :: mpi_trace_exchange_schedule_maps
-    public :: pack_mpi_trace_exchange
-    public :: pack_mpi_trace_exchange_jvp
-    public :: pack_mpi_trace_exchange_vjp
-    public :: unpack_mpi_trace_exchange
-    public :: unpack_mpi_trace_exchange_jvp
-    public :: unpack_mpi_trace_exchange_vjp
     public :: initialize_internal_manifold_graph
     public :: internal_manifold_graph_closed
     public :: internal_manifold_graph_components
