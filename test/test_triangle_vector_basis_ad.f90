@@ -1,6 +1,6 @@
 program test_triangle_vector_basis_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_triangle_bdm, evaluate_triangle_bdm_jvp, &
         evaluate_triangle_bdm_vjp, evaluate_triangle_nedelec_first_kind, &
         evaluate_triangle_nedelec_first_kind_jvp, &

@@ -1,6 +1,6 @@
 program test_triangle_piola_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         map_triangle_nedelec_covariant, &
         map_triangle_nedelec_covariant_jvp, &
         map_triangle_nedelec_covariant_vjp, &

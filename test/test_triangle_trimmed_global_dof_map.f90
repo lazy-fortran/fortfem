@@ -1,6 +1,6 @@
 program test_triangle_trimmed_global_dof_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_triangle_trimmed_dof_map
+    use fortfem_feec, only: build_triangle_trimmed_dof_map
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
     implicit none

@@ -1,7 +1,7 @@
 program test_vector_form_compiler_sparse
     use check, only: check_condition, check_summary
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
-    use fortfem_api, only: cell_coefficient, cell_coefficient_t, &
+    use fortfem_feec, only: cell_coefficient, cell_coefficient_t, &
         compile_vector_form_csc, curl, div, dx, form_expr_t, init_measures, &
         inner, interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs, &
         operator(*), operator(+), &
