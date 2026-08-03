@@ -3731,6 +3731,10 @@ gallery example.
   per-example output with an independent media validator and keeps the short
   ten-second limit for focused tests while allowing the more expensive
   physical 3-D gallery products a bounded execution window.
+- Gallery staging now clears only its dedicated destination before copying a
+  fresh artifact tree and rejects source/destination aliasing. An independent
+  stale-file fixture verifies that removed or renamed examples cannot leave
+  obsolete PNGs on a subsequent Pages deployment.
 - The executable examples follow the same physical-first order at runtime as
   the Pages gallery.  The circular DtN fixture now emits its filled disk field
   before the boundary-trace and response curves, so running an example
