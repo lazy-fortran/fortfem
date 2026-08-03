@@ -26,6 +26,26 @@ module fortfem_boundary
         assemble_boundary_trace_residual, &
         assemble_boundary_trace_residual_jvp, &
         assemble_boundary_trace_residual_vjp
+    use fortfem_surface_current_trace_residual, only: &
+        assemble_surface_current_trace_residual, &
+        assemble_surface_current_trace_residual_jvp, &
+        assemble_surface_current_trace_residual_vjp
+    use fortfem_surface_current_constraints, only: &
+        assemble_surface_current_loop_constraints, &
+        assemble_surface_current_loop_constraints_jvp, &
+        assemble_surface_current_loop_constraints_vjp
+    use fortfem_total_pressure_balance, only: &
+        assemble_total_pressure_jump, assemble_total_pressure_jump_jvp, &
+        assemble_total_pressure_jump_vjp
+    use fortfem_surface_delta_load, only: &
+        assemble_surface_delta_load, assemble_surface_delta_load_jvp, &
+        assemble_surface_delta_load_vjp
+    use fortfem_boundary_response_diagnostics, only: &
+        evaluate_weighted_boundary_response_diagnostics
+    use fortfem_maxwell_virtual_casing, only: &
+        evaluate_maxwell_virtual_casing_rwg_3d, &
+        evaluate_maxwell_virtual_casing_rwg_3d_jvp, &
+        evaluate_maxwell_virtual_casing_rwg_3d_vjp
     use fortfem_interface_traces, only: &
         compute_interface_scalar_jump_average, &
         compute_interface_vector_traces
@@ -385,6 +405,22 @@ module fortfem_boundary
     public :: assemble_boundary_trace_residual
     public :: assemble_boundary_trace_residual_jvp
     public :: assemble_boundary_trace_residual_vjp
+    public :: assemble_surface_current_trace_residual
+    public :: assemble_surface_current_trace_residual_jvp
+    public :: assemble_surface_current_trace_residual_vjp
+    public :: assemble_surface_current_loop_constraints
+    public :: assemble_surface_current_loop_constraints_jvp
+    public :: assemble_surface_current_loop_constraints_vjp
+    public :: assemble_total_pressure_jump
+    public :: assemble_total_pressure_jump_jvp
+    public :: assemble_total_pressure_jump_vjp
+    public :: assemble_surface_delta_load
+    public :: assemble_surface_delta_load_jvp
+    public :: assemble_surface_delta_load_vjp
+    public :: evaluate_weighted_boundary_response_diagnostics
+    public :: evaluate_maxwell_virtual_casing_rwg_3d
+    public :: evaluate_maxwell_virtual_casing_rwg_3d_jvp
+    public :: evaluate_maxwell_virtual_casing_rwg_3d_vjp
     public :: compute_interface_scalar_jump_average
     public :: compute_interface_vector_traces
     public :: evaluate_source_trace_map

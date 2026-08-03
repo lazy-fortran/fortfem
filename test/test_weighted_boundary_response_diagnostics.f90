@@ -1,7 +1,7 @@
 program test_weighted_boundary_response_diagnostics
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_weighted_boundary_response_diagnostics
+    use fortfem_boundary, only: evaluate_weighted_boundary_response_diagnostics
     implicit none
 
     integer, parameter :: dp = real64, n = 3

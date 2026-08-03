@@ -1,6 +1,6 @@
 program test_maxwell_virtual_casing_traces_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_virtual_casing_rwg_3d, &
         evaluate_maxwell_virtual_casing_rwg_3d_jvp, &
         evaluate_maxwell_virtual_casing_rwg_3d_vjp
