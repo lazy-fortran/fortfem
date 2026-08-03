@@ -2459,13 +2459,15 @@ conservation diagnostic when applicable.
     current, energy, and direct-solve residual plots. The fixture is
     manufactured and provenance-pinned; it demonstrates the method without
     shipping paper source or application-specific readers.
-18. **TEAM electromagnetic benchmark ladder.** Start with a small
-    license-safe TEAM magnetostatic/eddy-current subset (TEAM 3, 7, 13, or 20
-    as the external manifest permits), then add supplied probe curves and
-    field/eddy-current/energy/force plots. Every case records geometry and
-    material-data provenance, direct-gauge versus constrained solve, mesh
-    convergence, and a solution-first 2D/3D view. Full benchmark data stays in
-    the sister data repository when redistribution is restricted.
+18. **TEAM/Paper Magnetic electromagnetic benchmark ladder.** Start with
+    license-safe neutral fixtures for TEAM-1A, TEAM-1B, TEAM-2, TEAM-3,
+    TEAM-6, TEAM-7, TEAM-13, and TEAM-20, then enable an exact case only when
+    the external manifest permits it. Add supplied probe curves and
+    field/eddy-current/energy/force plots through the sister data repository.
+    Every case records geometry and material-data provenance, direct-gauge
+    versus constrained solve, mesh convergence, and a solution-first 2D/3D
+    view. Full benchmark data stays external when redistribution is
+    restricted.
 19. **Multi-region curl-eigenproblem fixture.** Independent regions, ideal
     interfaces, generic flux and helicity constraints, and a pressure-balance
     residual with manufactured coefficients.
@@ -4017,8 +4019,11 @@ official documentation, or official repositories where possible.
 - [HKT resonant current-sheet study](https://collaborate.princeton.edu/en/publications/numerical-study-of-%CE%B4-function-current-sheets-arising-from-resonan/)
 - [HKT current sheets, MRxMHD, and the ideal nested limit](https://arxiv.org/abs/2108.09327)
 - [Ideal shielding and resonant current sheets](https://conferences.iaea.org/event/98/contributions/11599/)
+- [Park et al., extended drift-MHD resonant-layer response (FEC 2025)](https://conferences.iaea.org/event/392/papers/35712/files/13694-ParkJK_FEC2025.pdf)
+- [Waltz and Waelbroeck, resonant magnetic perturbations](https://doi.org/10.1063/1.3692222)
 - [Manges and Cendes, generalized tree--cotree gauge](https://doi.org/10.1109/20.376275)
 - [Bíró, Preis, and Richter, magnetic vector potential with tree--cotree gauge](https://ieeexplore.ieee.org/document/558631)
+- [Bíró, Preis, Renhart, Richter, and Vrisk, vector-potential formulations for 3-D eddy currents](https://tugraz.elsevierpure.com/en/publications/performance-of-different-vector-potential-formulations-in-solving)
 - [Bíró and Preis, 3-D eddy-current vector-potential formulation](https://doi.org/10.1109/20.34388)
 - [On the tree gauge in magnetostatics](https://doi.org/10.3390/jrfm5010004)
 - [Tree--cotree decomposition of isogeometric mortared H(curl) spaces](https://doi.org/10.1016/j.cma.2022.114920)
