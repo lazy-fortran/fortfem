@@ -1,13 +1,12 @@
 program test_beltrami_shell_parity
-    use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         beltrami_shell_parity_t, compare_beltrami_shell_residual, &
         validate_beltrami_shell_parity
+    use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
 
-    integer, parameter :: dp = real64
     integer, parameter :: nregion = 2, nsample = 4, ncomponent = 3
     integer, parameter :: nconstraint = 2
     real(dp) :: curl_hcurl(nregion, nsample, ncomponent)

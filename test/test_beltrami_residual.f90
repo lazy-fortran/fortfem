@@ -1,15 +1,14 @@
 program test_beltrami_residual
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_beltrami_residual, &
         assemble_beltrami_residual_jvp, &
         assemble_beltrami_residual_vjp
+    use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
 
-    integer, parameter :: dp = real64
     integer, parameter :: nregion = 2, nsample = 3, ncomponent = 2
     integer, parameter :: ndivrow = 2, ndivpoint = 2, nconstraint = 2
     real(dp) :: curl_field(nregion, nsample, ncomponent)
