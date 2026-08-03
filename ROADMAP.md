@@ -731,6 +731,14 @@ minimal FEEC/time exports for existing contracts, keeps continuation event
 ownership explicit, and passes all 14 bounded focused tests plus the release
 gate. The umbrella audit is now 154 test files.
 
+The enrichment/interface wave `662cb53` migrates eight XFEM/XIGA, level-set,
+and enriched-Piola consumers with canonical FEEC exports; the DG/interface
+wave `020b62d` migrates eight SIPG/Nitsche/vector-DG/load/interface-graph
+consumers; and the balance wave `2b6baa4` migrates eight orientation,
+boundary-ledger, L-shape, surface/volume-balance, and resource-budget
+consumers. All 24 focused tests pass with independent behavioral oracles and
+the release gate remains green. The umbrella audit is now 130 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
