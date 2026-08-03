@@ -39,6 +39,25 @@ Generated files are written below
 `output/example/biro_tree_cotree_3d_gallery`; media are intentionally not
 checked in.
 
+## Exact paper-data adapter
+
+The exact paper-specific geometry, metric, material, and source arrays are
+accepted only through the provenance-checked sister-repository adapter.  Once
+an independently licensed payload is available, render its solution-first
+plot with:
+
+```text
+python3 benchmark/external_oracles/run_biro_paper_gallery.py \
+  --data-manifest /path/to/biro-gallery-manifest.json \
+  --data-root /path/to/fortfem-benchmark-data
+```
+
+The adapter verifies the case identifier, provenance URI, archive checksum,
+and payload schema before writing any output.  With no reviewed payload in
+this repository it exits with an explicit `SKIP`; the executable above remains
+the reproducible in-tree tree--cotree oracle rather than a fabricated claim of
+paper-data reproduction.
+
 ## Usage
 
 ```bash
