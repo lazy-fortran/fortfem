@@ -7,16 +7,19 @@ program test_maxwell_vector_open_boundary_parity
     !! involved.  The small complex algebra check below is independent of the
     !! geometric assemblies and guards the value/JVP/VJP contract.
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         apply_maxwell_trace_to_flux, &
         apply_maxwell_trace_to_flux_jvp, apply_maxwell_trace_to_flux_vjp, &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
         assemble_maxwell_torus_curved_dtn_rwg_3d, &
+        solve_maxwell_fem_bem_torus_curved_system_3d
+    use fortfem_core, only: &
+        generate_solid_torus_tetra_mesh, generate_structured_tetra_box_mesh, &
+        generate_torus_surface_mesh, invert_tetra_affine_map
+    use fortfem_feec, only: &
         build_tetra_edge_dof_map, build_tetra_nedelec_dof_map, &
         evaluate_tetra_nedelec_interpolant_at_point, &
-        generate_solid_torus_tetra_mesh, generate_structured_tetra_box_mesh, &
-        generate_torus_surface_mesh, initialize_tetra_nedelec_first_kind, &
-        invert_tetra_affine_map, solve_maxwell_fem_bem_torus_curved_system_3d, &
+        initialize_tetra_nedelec_first_kind, &
         solve_tetra_nedelec_pml, tetra_nedelec_first_kind_t
     use fortfem_kinds, only: dp
     implicit none
