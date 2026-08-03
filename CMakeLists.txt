@@ -12,10 +12,27 @@ option(FORTFEM_ENABLE_ENZYME
     "Enable optional Flang/Enzyme element-kernel tournaments" OFF)
 option(FORTFEM_ENZYME_REQUIRED
     "Fail configuration when the optional Enzyme toolchain is unavailable" OFF)
+option(FORTFEM_TRIANGLE_COMPAT_ONLY
+    "Build only the dependency-free triangle_compat mesher library" OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_Fortran_STANDARD 2018)
 set(CMAKE_Fortran_STANDARD_REQUIRED ON)
+
+file(GLOB FORTFEM_TRIANGLE_COMPAT_SOURCES CONFIGURE_DEPENDS
+    src/triangle_compat/*.f90)
+add_library(fortfem_triangle_compat ${FORTFEM_TRIANGLE_COMPAT_SOURCES})
+add_library(fortfem::triangle_compat ALIAS fortfem_triangle_compat)
+set_target_properties(fortfem_triangle_compat PROPERTIES
+    EXPORT_NAME triangle_compat
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/triangle_compat_modules")
+target_include_directories(fortfem_triangle_compat PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/triangle_compat_modules>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fortfem>)
+
+if(FORTFEM_TRIANGLE_COMPAT_ONLY)
+    return()
+endif()
 
 if(NOT TARGET fortsparse)
     if(NOT FORTFEM_FETCH_DEPENDENCIES)
@@ -72,7 +89,7 @@ target_include_directories(fortfem_capi
     PRIVATE "${PROJECT_BINARY_DIR}/modules")
 target_link_libraries(fortfem_capi PRIVATE fortsparse)
 
-install(TARGETS fortfem_capi
+install(TARGETS fortfem_capi fortfem_triangle_compat
     EXPORT fortfemTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
