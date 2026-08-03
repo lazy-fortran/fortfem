@@ -514,6 +514,10 @@ The attempted `cut_tetra_fifth` dispatch was returned without a commit: the
 source extension did not reach its independent test/facade handoff within the
 bound, so the partial worktree was discarded. The 3-D degree-five cut-moment
 milestone remains queued and must return with a complete value/JVP/VJP oracle.
+The bounded retry `cut_tetra_fifth_retry` is now the sole active FortFEM
+worktree; it must write the independent test before touching the shared
+tetrahedral implementation and will be discarded if the handoff is
+incomplete.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
