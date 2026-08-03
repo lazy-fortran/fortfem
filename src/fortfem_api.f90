@@ -969,7 +969,10 @@ module fortfem_api
     use fortfem_multipatch_signed_trace_assembly, only: &
         assemble_multipatch_signed_trace_assembly, &
         assemble_multipatch_signed_trace_assembly_jvp, &
-        assemble_multipatch_signed_trace_assembly_vjp
+        assemble_multipatch_signed_trace_assembly_vjp, &
+        assemble_multipatch_signed_trace_assembly_csc, &
+        assemble_multipatch_signed_trace_assembly_csc_jvp, &
+        assemble_multipatch_signed_trace_assembly_csc_vjp
     use fortfem_hdg_global_skeleton_csc, only: &
         assemble_hdg_global_skeleton_csc, &
         assemble_hdg_global_skeleton_csc_jvp, &
@@ -3193,6 +3196,9 @@ module fortfem_api
     public :: assemble_multipatch_signed_trace_assembly
     public :: assemble_multipatch_signed_trace_assembly_jvp
     public :: assemble_multipatch_signed_trace_assembly_vjp
+    public :: assemble_multipatch_signed_trace_assembly_csc
+    public :: assemble_multipatch_signed_trace_assembly_csc_jvp
+    public :: assemble_multipatch_signed_trace_assembly_csc_vjp
     public :: assemble_hdg_global_skeleton_csc
     public :: assemble_hdg_global_skeleton_csc_jvp
     public :: assemble_hdg_global_skeleton_csc_vjp
