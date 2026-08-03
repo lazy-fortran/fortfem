@@ -279,6 +279,7 @@ module fortfem_feec
         apply_fci_additive_field_split_preconditioner
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
+    use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
     use fortfem_fci_field_line_tracer, only: &
         trace_fci_field_line_rk4, trace_fci_field_line_rk4_jvp
     use fortfem_fci_interpolation_map, only: &
@@ -715,6 +716,7 @@ module fortfem_feec
     public :: tetra_nedelec_first_kind_t
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
+    public :: solve_magnetic_box_3d
     public :: tetra_duffy_quadrature
     public :: evaluate_tetra_lagrange
     public :: evaluate_tetra_lagrange_jvp

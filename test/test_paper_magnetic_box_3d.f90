@@ -1,6 +1,6 @@
 program test_paper_magnetic_box_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_magnetic_box_3d
+    use fortfem_feec, only: solve_magnetic_box_3d
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

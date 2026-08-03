@@ -77,6 +77,11 @@ module fortfem_interop
         evaluate_linear_response_diagnostics, &
         initialize_linear_response_interchange, &
         linear_response_interchange_t, validate_linear_response_interchange
+    use fortfem_equilibrium_interchange, only: &
+        equilibrium_interchange_t, equilibrium_normalization_t, &
+        initialize_equilibrium_interchange, validate_equilibrium_interchange
+    use fortfem_equilibrium_sample_adapter, only: &
+        build_equilibrium_interchange_sample_set
     use fortfem_linear_response_schema, only: &
         linear_response_schema_magic, read_linear_response_interchange, &
         write_linear_response_interchange
@@ -141,6 +146,11 @@ module fortfem_interop
     public :: compare_sheet_current_surface_representations
     public :: compare_sheet_current_surface_representations_jvp
     public :: compare_sheet_current_representations
+    public :: equilibrium_interchange_t
+    public :: equilibrium_normalization_t
+    public :: initialize_equilibrium_interchange
+    public :: validate_equilibrium_interchange
+    public :: build_equilibrium_interchange_sample_set
     public :: evaluate_regularized_surface_current_layer
     public :: evaluate_regularized_surface_current_layer_jvp
     public :: evaluate_regularized_surface_current_layer_vjp
