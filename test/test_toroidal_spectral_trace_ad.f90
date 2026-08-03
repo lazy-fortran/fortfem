@@ -1,6 +1,6 @@
 program test_toroidal_spectral_trace_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_harmonic_p, evaluate_toroidal_spectral_trace, &
         evaluate_toroidal_spectral_trace_jvp, evaluate_toroidal_spectral_trace_vjp, &
         toroidal_poisson_exterior_dtn_p
