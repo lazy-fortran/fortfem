@@ -763,6 +763,17 @@ interchange, and derivative checks pass; the shared temporary filesystem was
 cleaned after the triangle build hit a generated-artifact capacity limit.
 The umbrella audit is now 38 test files.
 
+The final foundation slices are now integrated: core/FEEC compatibility
+consumers (`2809eff`), spherical/toroidal surface and larger-domain consumers
+(`800a51d`), tetra PML/RT/vector consumers (`fb78499`), and the scalar form
+compiler (`6aec70e`). Their focused analytical, geometry, structure, and
+derivative checks pass; intentionally slow RT targets remain in the slow
+lane. Only `test_fortfem_api_solvers_modules` and
+`test_fortfem_api_structure` retain the umbrella import as compatibility
+smokes. New parallel worktrees are created under
+`/mnt/storage/code/lazy-fortran/worktrees/`; stale generated worktrees under
+`/tmp` are removed after handoff to keep temporary storage below capacity.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
