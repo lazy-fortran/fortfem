@@ -568,6 +568,16 @@ toroidal Maxwell EFIE/MFIE/Green-pair consumers use boundary/core/FEEC. Their
 focused tests pass; the toroidal slow CFIE path is bounded and no external
 physics implementation was added.
 
+The symmetric/spherical BEM continuation is integrated as `0031333` with the
+inventory refresh `8e513f3`. Six Laplace/Helmholtz symmetric-coupling and
+spherical-panel AD consumers now use `fortfem_boundary`; analytical,
+convergence, JVP, and VJP checks pass. The next API-07 hand-offs are kept on
+unique worktrees: triangle RT assembly/interpolation
+(`api07-migrate-triangle-rt-clean`) and tetrahedral mixed-Poisson state derivatives
+(`api07-migrate-tetra-mixed-clean`). Each must touch only its assigned tests
+and facade exports, rebase from current `main`, and land as one focused commit
+with the independent behavioral oracle before the next inventory refresh.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
