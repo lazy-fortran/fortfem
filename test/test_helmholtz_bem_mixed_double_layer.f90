@@ -1,6 +1,6 @@
 program test_helmholtz_bem_mixed_double_layer
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_helmholtz_double_layer_constant, &
+    use fortfem_boundary, only: assemble_helmholtz_double_layer_constant, &
         assemble_helmholtz_double_layer_mixed_linear, &
         assemble_laplace_double_layer_mixed_linear
     use fortfem_kinds, only: dp

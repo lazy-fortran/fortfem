@@ -33,10 +33,12 @@ module fortfem_boundary
         assemble_curved_acoustic_displacement_ntd_form_2d
     use fortfem_kinds, only: dp
     use fortfem_laplace_boundary_operators_2d, only: &
+        assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant
     use fortfem_helmholtz_boundary_operators_2d, only: &
         assemble_helmholtz_double_layer_constant, &
+        assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
     use fortfem_helmholtz_exterior_2d, only: &
@@ -193,8 +195,10 @@ module fortfem_boundary
     public :: curvilinear_scalar_helmholtz_pml_coefficients_jvp
     public :: curvilinear_scalar_helmholtz_pml_coefficients_vjp
     public :: assemble_laplace_single_layer_constant
+    public :: assemble_laplace_double_layer_mixed_linear
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_helmholtz_double_layer_constant
+    public :: assemble_helmholtz_double_layer_mixed_linear
     public :: assemble_helmholtz_hypersingular_linear
     public :: assemble_helmholtz_single_layer_constant
     public :: evaluate_helmholtz_combined_potential_constant
