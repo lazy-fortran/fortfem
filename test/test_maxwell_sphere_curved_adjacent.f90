@@ -1,8 +1,9 @@
 program test_maxwell_sphere_curved_adjacent
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        build_maxwell_rwg_surface_space, generate_sphere_surface_mesh, &
+    use fortfem_boundary, only: &
         integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
+    use fortfem_feec, only: build_maxwell_rwg_surface_space
     use fortfem_kinds, only: dp
     implicit none
 
