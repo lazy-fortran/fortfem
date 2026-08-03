@@ -185,6 +185,9 @@ module fortfem_boundary
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
+    use fortfem_laplace_representation_ad_3d, only: &
+        evaluate_laplace_representation_torus_curved_3d_geometry_jvp, &
+        evaluate_laplace_representation_torus_curved_3d_geometry_vjp
     use fortfem_helmholtz_torus_curved_bem_3d, only: &
         assemble_helmholtz_torus_curved_calderon_3d, &
         assemble_helmholtz_torus_curved_dtn_3d, &
@@ -338,6 +341,8 @@ module fortfem_boundary
     public :: evaluate_helmholtz_representation_torus_curved_3d
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
+    public :: evaluate_laplace_representation_torus_curved_3d_geometry_jvp
+    public :: evaluate_laplace_representation_torus_curved_3d_geometry_vjp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
