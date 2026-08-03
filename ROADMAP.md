@@ -609,6 +609,13 @@ focused runs. The three batches were rebased from the same clean `main`, and
 the generated inventory/release gate is green after their additive facade
 exports.
 
+The next operator wave adds six sheet-current/pressure/delta/virtual-casing
+consumers (`cd6372b`), six DG/XFEM/enrichment consumers (`8e0457e`), and six
+tetrahedral Nédélec/PML consumers (`56b2caa`, pending final rebase onto the
+latest documentation commit). These retain independent jump, flux,
+enrichment, curl--curl, PML, larger-domain, and derivative oracles; no
+application closure or external benchmark data is introduced.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
