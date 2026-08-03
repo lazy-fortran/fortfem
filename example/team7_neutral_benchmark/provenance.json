@@ -1,0 +1,19 @@
+{
+  "fixture": "team7_neutral_benchmark",
+  "benchmark_family": "TEAM",
+  "shape_target": "TEAM-7 asymmetrical conducting plate with a hole",
+  "exact_reproduction": false,
+  "data_status": "manufactured complex stream-function field; no TEAM reader or reference measurements",
+  "source_arrays_redistributed": false,
+  "references": [
+    {
+      "title": "TEAM workshop report",
+      "url": "https://www.osti.gov/servlets/purl/7179128"
+    },
+    {
+      "title": "TEAM problem catalogue",
+      "url": "https://www.osti.gov/biblio/7179128"
+    }
+  ],
+  "license_note": "Exact TEAM-7 geometry, material data, probes, and reference curves remain external and require separate provenance and redistribution review."
+}
