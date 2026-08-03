@@ -158,6 +158,50 @@ program laplace_exterior_bem_circle
     write (unit, "(a,es14.6)") "maximum radial trace error: ", trace_error
     close (unit)
 
+    ! Keep a machine-readable physical field independent of the rendered
+    ! image.  The gallery gate recomputes x/r**2 itself instead of comparing
+    ! against this implementation's exact_field array.
+    open (newunit=unit, file=output_directory//"/solution.csv", &
+        status="replace", action="write")
+    write (unit, "(a)") "x,y,computed,exact"
+    do j = 1, field_ny
+        do i = 1, field_nx
+            radius = sqrt(field_x(i)*field_x(i) + field_y(j)*field_y(j))
+            if (radius <= 1.02_dp) cycle
+            write (unit, "(f24.16,',',f24.16,',',es24.16,',',es24.16)") &
+                field_x(i), field_y(j), field(j, i), exact_field(j, i)
+        end do
+    end do
+    close (unit)
+
+    open (newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+        status="replace", action="write")
+    write (unit, "(a)") "physical_solution"
+    write (unit, "(a)") "diagnostics"
+    close (unit)
+
+    open (newunit=unit, file=output_directory//"/provenance.json", &
+        status="replace", action="write")
+    write (unit, "(a)") "{"
+    write (unit, "(a)") &
+        '  "schema": "fortfem-gallery-provenance-1",'
+    write (unit, "(a)") &
+        '  "problem": "exterior-laplace-unit-circle",'
+    write (unit, "(a)") &
+        '  "exact_solution": "cos(theta)/r",'
+    write (unit, "(a)") &
+        '  "solution_first": true,'
+    write (unit, "(a)") &
+        '  "external_data": false,'
+    write (unit, "(a)") &
+        '  "primary_plot": "exterior_laplace_solution_2d.png",'
+    write (unit, "(a)") &
+        '  "kernel": "-(2 pi)^-1 log(|x-y|)",'
+    write (unit, "(a)") &
+        '  "reference": "https://doi.org/10.1007/978-3-540-68093-2"'
+    write (unit, "(a)") "}"
+    close (unit)
+
 contains
 
     subroutine evaluate_single_layer(point, source_density, starts, ends, &

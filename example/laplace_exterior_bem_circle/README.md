@@ -14,6 +14,12 @@ an analytical radial trace and the recovered boundary density. The interior of
 the circle is shown as a neutral zero-valued region in the solution plot; no
 artificial far boundary is introduced.
 
+The run also writes `solution.csv`, `provenance.json`, and
+`gallery_sequence.txt`.  The solution CSV contains the sampled computed field
+and the exact value at each exterior point; the physical-first gate recomputes
+the (x/r^2) oracle independently and checks the plot/data ordering.  Images
+and CSV output are generated artifacts and are not committed.
+
 ## Provenance
 
 - S. Sauter and C. Schwab, *Boundary Element Methods*, Springer, 2011,
