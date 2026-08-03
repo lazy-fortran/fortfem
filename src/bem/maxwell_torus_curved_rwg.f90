@@ -31,6 +31,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_jvp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_rwg_3d_jvp
+    public :: assemble_maxwell_torus_curved_efie_rwg_3d_vjp
     public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_torus_efie_imaginary_impedance_jvp
     public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
@@ -2730,6 +2732,93 @@ contains
             cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
         status = 0
     end subroutine assemble_maxwell_torus_curved_efie_rwg_3d
+
+    subroutine assemble_maxwell_torus_curved_efie_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            wave_number_dot, impedance_dot, matrix, matrix_dot, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        real(dp), intent(in) :: wave_number_dot, impedance_dot
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), allocatable, intent(out) :: matrix(:, :), matrix_dot(:, :)
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: scalar_potential_dot(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+        complex(dp), allocatable :: vector_potential_dot(:, :)
+
+        status = 1
+        if (allocated(matrix)) deallocate(matrix)
+        if (allocated(matrix_dot)) deallocate(matrix_dot)
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, wave_number_dot, quadrature_degree, tolerance, &
+            max_depth, .false., vector_potential, scalar_potential, &
+            vector_potential_dot, scalar_potential_dot, status)
+        if (status /= 0) return
+        matrix = cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential
+        matrix_dot = cmplx(0.0_dp, &
+            impedance*wave_number_dot + wave_number*impedance_dot, dp)* &
+            vector_potential + &
+            cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential_dot - &
+            cmplx(0.0_dp, impedance_dot/wave_number - &
+            impedance*wave_number_dot/wave_number**2, dp)*scalar_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential_dot
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_efie_rwg_3d_jvp
+
+    subroutine assemble_maxwell_torus_curved_efie_rwg_3d_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, impedance, quadrature_degree, tolerance, max_depth, &
+            matrix_bar, wave_number_bar, impedance_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: impedance, tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        complex(dp), intent(in) :: matrix_bar(:, :)
+        real(dp), intent(out) :: wave_number_bar, impedance_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: scalar_potential_dot(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+        complex(dp), allocatable :: vector_potential_dot(:, :)
+        complex(dp), allocatable :: impedance_operator(:, :)
+        complex(dp), allocatable :: wave_number_operator(:, :)
+
+        wave_number_bar = 0.0_dp
+        impedance_bar = 0.0_dp
+        status = 1
+        if (wave_number <= 0.0_dp .or. impedance <= 0.0_dp) return
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, 1.0_dp, quadrature_degree, tolerance, max_depth, &
+            .false., vector_potential, scalar_potential, vector_potential_dot, &
+            scalar_potential_dot, status)
+        if (status /= 0) return
+        if (any(shape(matrix_bar) /= shape(vector_potential))) then
+            status = 1
+            return
+        end if
+        wave_number_operator = &
+            cmplx(0.0_dp, impedance, dp)*vector_potential + &
+            cmplx(0.0_dp, wave_number*impedance, dp)*vector_potential_dot + &
+            cmplx(0.0_dp, impedance/wave_number**2, dp)*scalar_potential - &
+            cmplx(0.0_dp, impedance/wave_number, dp)*scalar_potential_dot
+        impedance_operator = &
+            cmplx(0.0_dp, wave_number, dp)*vector_potential - &
+            cmplx(0.0_dp, 1.0_dp/wave_number, dp)*scalar_potential
+        wave_number_bar = &
+            real(sum(conjg(matrix_bar)*wave_number_operator), dp)
+        impedance_bar = &
+            real(sum(conjg(matrix_bar)*impedance_operator), dp)
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_efie_rwg_3d_vjp
 
     subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d( &
             vertices, triangles, parameters, major_radius, minor_radius, &
