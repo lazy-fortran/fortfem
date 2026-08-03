@@ -60,10 +60,9 @@ fpm run --example toroidal_analytical
 
 ```fortran
 program toroidal_analytical
-    use fortfem_feec, only: &
-        evaluate_helmholtz_representation_torus_curved_3d, &
-        evaluate_laplace_representation_torus_curved_3d
     use fortfem_boundary, only: &
+        evaluate_helmholtz_representation_torus_curved_3d, &
+        evaluate_laplace_representation_torus_curved_3d, &
         solve_helmholtz_fem_bem_costabel_torus_curved_3d, &
         solve_helmholtz_bem_dtn_torus_curved_3d, &
         solve_laplace_fem_bem_costabel_torus_curved_3d, &
