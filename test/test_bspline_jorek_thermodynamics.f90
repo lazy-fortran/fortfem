@@ -1,6 +1,6 @@
 program test_bspline_jorek_thermodynamics
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         apply_bspline_jorek_thermodynamic_jvp, &
         apply_bspline_jorek_thermodynamic_rhs, &
         apply_bspline_jorek_density_jvp, &
