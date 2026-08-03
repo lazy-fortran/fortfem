@@ -104,6 +104,10 @@ module fortfem_feec
     use fortfem_tree_cotree_iga_parity, only: &
         diagnose_tree_cotree_iga_invariance, &
         tree_cotree_iga_parity_t
+    use fortfem_geometry_mortar_component_coupling, only: &
+        assemble_geometry_mortar_component_coupling, &
+        assemble_geometry_mortar_component_coupling_jvp, &
+        assemble_geometry_mortar_component_coupling_vjp
     use fortfem_beltrami_parity, only: &
         beltrami_parity_t, compare_beltrami_two_region_residual, &
         beltrami_shell_parity_t, compare_beltrami_shell_residual, &
@@ -185,6 +189,9 @@ module fortfem_feec
     public :: build_bspline_polar_feec_2d_extractions
     public :: build_bspline_polar_h1_extraction
     public :: diagnose_tree_cotree_iga_invariance
+    public :: assemble_geometry_mortar_component_coupling
+    public :: assemble_geometry_mortar_component_coupling_jvp
+    public :: assemble_geometry_mortar_component_coupling_vjp
     public :: evaluate_bspline_basis
     public :: evaluate_field_aligned_constitutive_tensor
     public :: evaluate_field_aligned_constitutive_tensor_jvp
