@@ -1,15 +1,17 @@
 program test_maxwell_fem_bem_coupling_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_efie_rwg_3d, &
+    use fortfem_boundary, only: &
         assemble_maxwell_fem_bem_boundary_matrix_3d, &
-        assemble_maxwell_rwg_nedelec_coupling_3d, &
         assemble_maxwell_fem_bem_system_3d, &
+        assemble_maxwell_rwg_nedelec_coupling_3d, &
+        solve_maxwell_fem_bem_system_3d
+    use fortfem_feec, only: &
+        assemble_maxwell_efie_rwg_3d, &
         assemble_maxwell_rwg_mass_matrix, &
         assemble_tetra_nedelec_curl_mass_element, &
         build_maxwell_rwg_surface_space, build_tetra_edge_dof_map, &
         map_maxwell_rwg_to_tetra_nedelec_edges, &
-        solve_maxwell_fem_bem_system_3d, solve_tetra_nedelec_curl_mass
+        solve_tetra_nedelec_curl_mass
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

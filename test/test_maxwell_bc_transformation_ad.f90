@@ -1,11 +1,11 @@
 program test_maxwell_bc_transformation_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         barycentric_refine_surface_mesh, &
         build_maxwell_bc_transformation, &
         differentiate_maxwell_bc_transformation_jvp, &
-        differentiate_maxwell_bc_transformation_vjp, &
-        generate_torus_surface_mesh
+        differentiate_maxwell_bc_transformation_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
