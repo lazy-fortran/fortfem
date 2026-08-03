@@ -1,6 +1,6 @@
 program test_krylov_solver_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_advanced_solvers, only: &
         bicgstab_solve, bicgstab_solve_jvp, bicgstab_solve_vjp, &
         gmres_solve, gmres_solve_jvp, gmres_solve_vjp, solver_options_t, &
         solver_stats_t

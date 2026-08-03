@@ -1,7 +1,8 @@
 program test_sparse_gmres
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_sparse, solver_options, solver_options_t, &
-        solver_stats_t, sparse_matrix_t
+    use fortfem_advanced_solvers, only: solve_sparse, solver_options, &
+        solver_options_t, solver_stats_t
+    use fortfem_sparse_matrix, only: sparse_matrix_t
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, fortsparse_status_t
     implicit none
