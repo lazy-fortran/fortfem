@@ -141,6 +141,14 @@ module fortfem_boundary
         curvilinear_scalar_helmholtz_pml_coefficients, &
         curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
         curvilinear_scalar_helmholtz_pml_coefficients_vjp
+    use fortfem_cartesian_pml_geometry, only: &
+        build_cartesian_pml_element_stretch, &
+        build_cartesian_pml_element_stretch_jvp, &
+        build_cartesian_pml_element_stretch_vjp
+    use fortfem_curvilinear_pml_geometry, only: &
+        build_curvilinear_normal_pml_element_stretch, &
+        build_curvilinear_normal_pml_element_stretch_jvp, &
+        build_curvilinear_normal_pml_element_stretch_vjp
     use fortfem_maxwell_fem_bem_coupling_3d, only: &
         assemble_maxwell_fem_bem_boundary_matrix_3d, &
         assemble_maxwell_fem_bem_system_3d, &
@@ -428,6 +436,12 @@ module fortfem_boundary
     public :: curvilinear_scalar_helmholtz_pml_coefficients
     public :: curvilinear_scalar_helmholtz_pml_coefficients_jvp
     public :: curvilinear_scalar_helmholtz_pml_coefficients_vjp
+    public :: build_cartesian_pml_element_stretch
+    public :: build_cartesian_pml_element_stretch_jvp
+    public :: build_cartesian_pml_element_stretch_vjp
+    public :: build_curvilinear_normal_pml_element_stretch
+    public :: build_curvilinear_normal_pml_element_stretch_jvp
+    public :: build_curvilinear_normal_pml_element_stretch_vjp
     public :: assemble_laplace_single_layer_constant
     public :: assemble_laplace_adjoint_double_layer_constant
     public :: assemble_laplace_double_layer_constant

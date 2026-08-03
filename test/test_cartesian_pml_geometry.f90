@@ -1,6 +1,6 @@
 program test_cartesian_pml_geometry
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_cartesian_pml_element_stretch, &
+    use fortfem_boundary, only: build_cartesian_pml_element_stretch, &
         build_cartesian_pml_element_stretch_jvp, &
         build_cartesian_pml_element_stretch_vjp
     use fortfem_kinds, only: dp
