@@ -1,6 +1,6 @@
 program test_triangle_rt_load_samples_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_rt_vector_load_samples, &
         assemble_triangle_rt_vector_load_samples_jvp, &
         assemble_triangle_rt_vector_load_samples_vjp, &

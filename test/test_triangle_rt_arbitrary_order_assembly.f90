@@ -1,6 +1,6 @@
 program test_triangle_rt_arbitrary_order_assembly
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_rt_div_mass_element, triangle_duffy_quadrature
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab

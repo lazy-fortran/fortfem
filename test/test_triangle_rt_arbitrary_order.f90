@@ -1,6 +1,6 @@
 program test_triangle_rt_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_triangle_raviart_thomas, &
+    use fortfem_feec, only: evaluate_triangle_raviart_thomas, &
         initialize_triangle_raviart_thomas, triangle_duffy_quadrature, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_kinds, only: dp
