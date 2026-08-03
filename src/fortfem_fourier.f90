@@ -43,6 +43,13 @@ module fortfem_fourier
         direct_fourier_adjoint, direct_fourier_forward_jvp, &
         direct_fourier_forward_vjp, direct_fourier_plan_sample_count, &
         direct_fourier_plan_mode_count
+    use fortfem_collocation_grid, only: &
+        COLLOCATION_GRID_LINEAR, COLLOCATION_GRID_QUADRATURE, &
+        COLLOCATION_GRID_CONCENTRIC, collocation_grid_t, &
+        initialize_collocation_grid, validate_collocation_grid, &
+        collocation_grid_metadata, collocation_grid_flat_index, &
+        collocation_grid_unflatten_index, collocation_grid_chunk_bounds, &
+        collocation_grid_point_count
     use fortfem_axis_regular_fourier_modes, only: &
         AXIS_RADIAL_PARITY_EVEN, AXIS_RADIAL_PARITY_ODD, &
         axis_regular_mode_record_t, axis_regular_mode_table_t, &
@@ -131,6 +138,17 @@ module fortfem_fourier
     public :: direct_fourier_forward_vjp
     public :: direct_fourier_plan_sample_count
     public :: direct_fourier_plan_mode_count
+    public :: COLLOCATION_GRID_LINEAR
+    public :: COLLOCATION_GRID_QUADRATURE
+    public :: COLLOCATION_GRID_CONCENTRIC
+    public :: collocation_grid_t
+    public :: initialize_collocation_grid
+    public :: validate_collocation_grid
+    public :: collocation_grid_metadata
+    public :: collocation_grid_flat_index
+    public :: collocation_grid_unflatten_index
+    public :: collocation_grid_chunk_bounds
+    public :: collocation_grid_point_count
     public :: axis_regular_mode_requirements
     public :: axis_regular_mode_record_t
     public :: axis_regular_mode_table_t
