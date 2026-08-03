@@ -1017,6 +1017,11 @@ module fortfem_api
         assemble_distributed_trace_reduction, &
         assemble_distributed_trace_reduction_jvp, &
         assemble_distributed_trace_reduction_vjp
+    use fortfem_mpi_trace_exchange, only: &
+        mpi_trace_exchange_schedule_t, initialize_mpi_trace_exchange_schedule, &
+        validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
+        pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, pack_mpi_trace_exchange_vjp, &
+        unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp
     use fortfem_physical_trace_ownership, only: &
         physical_trace_ownership_t, initialize_physical_trace_ownership, &
         validate_physical_trace_ownership, physical_trace_ownership_maps, &
@@ -1771,6 +1776,16 @@ module fortfem_api
     public :: assemble_distributed_trace_reduction
     public :: assemble_distributed_trace_reduction_jvp
     public :: assemble_distributed_trace_reduction_vjp
+    public :: mpi_trace_exchange_schedule_t
+    public :: initialize_mpi_trace_exchange_schedule
+    public :: validate_mpi_trace_exchange_schedule
+    public :: mpi_trace_exchange_schedule_maps
+    public :: pack_mpi_trace_exchange
+    public :: pack_mpi_trace_exchange_jvp
+    public :: pack_mpi_trace_exchange_vjp
+    public :: unpack_mpi_trace_exchange
+    public :: unpack_mpi_trace_exchange_jvp
+    public :: unpack_mpi_trace_exchange_vjp
     public :: physical_trace_ownership_t
     public :: initialize_physical_trace_ownership
     public :: validate_physical_trace_ownership

@@ -1,14 +1,12 @@
 program test_mpi_trace_exchange
     use check, only: check_condition, check_summary
-    use fortfem_mpi_trace_exchange, only: &
+    use fortfem_feec, only: &
         initialize_mpi_trace_exchange_schedule, &
         pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, &
         pack_mpi_trace_exchange_vjp, unpack_mpi_trace_exchange, &
         unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp, &
-        mpi_trace_exchange_schedule_t
+        mpi_trace_exchange_schedule_t, initialize_partition_layout, partition_layout_t
     use fortfem_kinds, only: dp
-    use fortfem_partition_layout, only: &
-        initialize_partition_layout, partition_layout_t
     use fortsparse, only: fortsparse_status_t
     implicit none
 
