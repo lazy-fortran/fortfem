@@ -35,7 +35,11 @@ program iga_jorek_flux
     call execute_command_line("mkdir -p "//output_directory)
     r = greville_abscissae(knots_r, degree)
     z = greville_abscissae(knots_z, degree)
-    allocate(r_edges(41), z_edges(41))
+    ! Keep the solution view substantially finer than the spline control
+    ! mesh.  The physical field is reconstructed from the B-spline basis,
+    ! so a 40-by-40 raster made the first gallery image look like a coarse
+    ! source-cell diagnostic rather than a resolved solution.
+    allocate(r_edges(81), z_edges(81))
     do ix = 1, size(r_edges)
         r_edges(ix) = real(ix - 1, dp)/real(size(r_edges) - 1, dp)
         z_edges(ix) = r_edges(ix)
@@ -90,8 +94,8 @@ program iga_jorek_flux
         error stop "JOREK gallery reversibility regression"
 
     allocate( &
-        initial_map(40, 40), final_map(40, 40), &
-        initial_br(40, 40), initial_bz(40, 40))
+        initial_map(80, 80), final_map(80, 80), &
+        initial_br(80, 80), initial_bz(80, 80))
     call sample_flux_field( &
         flux_history(:, 1), initial_map, initial_br, initial_bz)
     call sample_flux_map(flux_history(:, step_count + 1), final_map)
@@ -102,7 +106,7 @@ program iga_jorek_flux
 contains
 
     subroutine render_plots()
-        integer, parameter :: vector_stride = 4
+        integer, parameter :: vector_stride = 8
         real(dp) :: arrow_r(10*10), arrow_z(10*10)
         real(dp) :: arrow_br(10*10), arrow_bz(10*10)
         integer :: arrow_count, ix, iz

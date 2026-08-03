@@ -31,8 +31,25 @@ import sys
 
 with open(sys.argv[1], newline="") as stream:
     rows = list(csv.DictReader(stream))
-if len(rows) != 1600:
+if len(rows) != 6400:
     raise SystemExit(f"unexpected JOREK field sample count: {len(rows)}")
+if len({float(row["R"]) for row in rows}) != 80:
+    raise SystemExit("JOREK field raster has unexpected radial resolution")
+if len({float(row["Z"]) for row in rows}) != 80:
+    raise SystemExit("JOREK field raster has unexpected vertical resolution")
+# The executable writes radial columns with vertically increasing samples.
+# Check this independently of the Fortran loop implementation so a future
+# plot/CSV transpose cannot silently produce a misleading physical view.
+for radial_column in range(80):
+    column = rows[radial_column * 80:(radial_column + 1) * 80]
+    expected_r = 1.0 + (radial_column + 0.5) / 80.0
+    if not all(math.isclose(float(row["R"]), expected_r,
+                            rel_tol=0.0, abs_tol=1.0e-13)
+               for row in column):
+        raise SystemExit("JOREK CSV radial ordering changed")
+    z_values = [float(row["Z"]) for row in column]
+    if any(z_next <= z_now for z_now, z_next in zip(z_values, z_values[1:])):
+        raise SystemExit("JOREK CSV vertical ordering changed")
 for row in rows:
     values = [float(row[name]) for name in
               ("R", "Z", "psi", "Br", "Bz", "B_magnitude")]
