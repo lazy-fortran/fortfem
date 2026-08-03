@@ -1,6 +1,6 @@
 program test_fci_boundary_patch_mortar
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_fci_boundary_patch_mortar, &
+    use fortfem_fci_boundary_patch_mortar, only: assemble_fci_boundary_patch_mortar, &
         assemble_fci_boundary_patch_mortar_jvp, &
         assemble_fci_boundary_patch_mortar_vjp
     use fortfem_kinds, only: dp

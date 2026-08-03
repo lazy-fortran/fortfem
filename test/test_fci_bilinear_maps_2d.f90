@@ -1,6 +1,6 @@
 program test_fci_bilinear_maps_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fci_interpolation_map, only: &
         build_fci_bilinear_interpolation_maps_2d, &
         build_fci_bilinear_interpolation_maps_2d_jvp, &
         build_fci_bilinear_interpolation_maps_2d_vjp

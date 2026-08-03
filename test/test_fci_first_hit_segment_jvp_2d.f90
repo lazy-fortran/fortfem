@@ -1,6 +1,6 @@
 program test_fci_first_hit_segment_jvp_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fci_terminal_segment_2d, only: &
         find_fci_first_hit_segment_2d, find_fci_first_hit_segment_2d_jvp
     use fortfem_kinds, only: dp
     implicit none
