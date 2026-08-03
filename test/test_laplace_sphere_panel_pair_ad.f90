@@ -1,6 +1,6 @@
 program test_laplace_sphere_panel_pair_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         integrate_laplace_sphere_panel_p0_3d, &
         integrate_laplace_sphere_panel_p0_3d_jvp, &
         integrate_laplace_sphere_panel_p0_3d_vjp

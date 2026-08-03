@@ -66,6 +66,9 @@ module fortfem_boundary
     use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
         solve_elasticity_curved_acoustic_ntd_p1
     use fortfem_laplace_symmetric_coupling_2d, only: &
+        assemble_helmholtz_symmetric_coupling_p1_p0, &
+        assemble_laplace_symmetric_coupling_p1_p0, &
+        solve_helmholtz_symmetric_coupling_p1_p0, &
         solve_laplace_symmetric_coupling_p1_p0
     use fortfem_planar_helmholtz_dtn, only: &
         apply_planar_helmholtz_dtn, &
@@ -259,6 +262,10 @@ module fortfem_boundary
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d, &
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_jvp, &
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_vjp
+    use fortfem_helmholtz_sphere_panel_pair_ad_3d, only: &
+        integrate_helmholtz_sphere_panel_p0_3d, &
+        integrate_helmholtz_sphere_panel_p0_3d_jvp, &
+        integrate_helmholtz_sphere_panel_p0_3d_vjp
     use fortfem_helmholtz_bem_state_ad_3d, only: &
         solve_helmholtz_dirichlet_p0_3d_jvp, &
         solve_helmholtz_dirichlet_p0_3d_vjp
@@ -281,6 +288,10 @@ module fortfem_boundary
         integrate_laplace_single_layer_regular_panel_pair_p0_3d, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
+    use fortfem_laplace_sphere_panel_pair_ad_3d, only: &
+        integrate_laplace_sphere_panel_p0_3d, &
+        integrate_laplace_sphere_panel_p0_3d_jvp, &
+        integrate_laplace_sphere_panel_p0_3d_vjp
     use fortfem_laplace_bem_state_ad_3d, only: &
         solve_laplace_dirichlet_p0_3d_jvp, &
         solve_laplace_dirichlet_p0_3d_vjp
@@ -427,6 +438,9 @@ module fortfem_boundary
     public :: evaluate_helmholtz_combined_potential_adaptive_constant
     public :: solve_helmholtz_cfie_constant
     public :: solve_laplace_symmetric_coupling_p1_p0
+    public :: assemble_helmholtz_symmetric_coupling_p1_p0
+    public :: assemble_laplace_symmetric_coupling_p1_p0
+    public :: solve_helmholtz_symmetric_coupling_p1_p0
     public :: assemble_free_boundary_port_residual
     public :: assemble_free_boundary_port_residual_jvp
     public :: assemble_free_boundary_port_residual_vjp
@@ -460,6 +474,9 @@ module fortfem_boundary
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_jvp
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_vjp
+    public :: integrate_helmholtz_sphere_panel_p0_3d
+    public :: integrate_helmholtz_sphere_panel_p0_3d_jvp
+    public :: integrate_helmholtz_sphere_panel_p0_3d_vjp
     public :: solve_helmholtz_dirichlet_p0_3d_jvp
     public :: solve_helmholtz_dirichlet_p0_3d_vjp
     public :: assemble_helmholtz_calderon_p1_p0_3d
@@ -470,6 +487,9 @@ module fortfem_boundary
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp
     public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
+    public :: integrate_laplace_sphere_panel_p0_3d
+    public :: integrate_laplace_sphere_panel_p0_3d_jvp
+    public :: integrate_laplace_sphere_panel_p0_3d_vjp
     public :: solve_laplace_dirichlet_p0_3d_jvp
     public :: solve_laplace_dirichlet_p0_3d_vjp
     public :: assemble_laplace_calderon_p1_p0_3d
