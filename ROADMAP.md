@@ -510,14 +510,13 @@ The degree-six clipped-polygon moment milestone is integrated as `e8dac912`,
 with inventory refresh `5e8afc37`. Its 64 raw moments, conservation identity,
 fixed-topology JVP/VJP, and degenerate-cell rejection pass independently; the
 3-D high-order cut and curved-cell moment layers remain active.
-The attempted `cut_tetra_fifth` dispatch was returned without a commit: the
-source extension did not reach its independent test/facade handoff within the
-bound, so the partial worktree was discarded. The 3-D degree-five cut-moment
-milestone remains queued and must return with a complete value/JVP/VJP oracle.
-The bounded retry `cut_tetra_fifth_retry` is now the sole active FortFEM
-worktree; it must write the independent test before touching the shared
-tetrahedral implementation and will be discarded if the handoff is
-incomplete.
+The first `cut_tetra_fifth` dispatch was returned without a commit because its
+bounded source-only attempt did not reach an independent test and facade. The
+bounded retry completed as `f21c08ac`: degree-five tetrahedral cut moments now
+have public core/API value and fixed-topology JVP procedures, with exact
+simplex, side-conservation, and central-difference tests. The retry worktree
+was removed after `fo test` and `git diff --check` passed. Degree-six tetrahedral
+moments and curved-cell extensions remain active.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
@@ -750,6 +749,7 @@ single commit for integration. The recent implementation slices are:
 | `4f3654a` | Multipatch signed-trace CSC assembly | Sparse HDG delegation, fixed-map JVP/VJP, duplicate/sign validation, and sparse adjoint oracle |
 | `6e63bb5` | Public degree-five cut polygon moments | Green-theorem degree-five value/JVP/VJP, polynomial, symmetry, transpose, and degenerate-topology oracle |
 | `e8dac912` | Public degree-six cut polygon moments | 64 Green-theorem raw moments, conservation, central-difference JVP, real-adjoint VJP, and degenerate-topology oracle |
+| `f21c08ac` | Public degree-five cut tetrahedral moments | Exact rank-five side moments, parent conservation, fixed-topology central-difference JVP, and public core/API visibility |
 | `bdbefa1` | Communicator-free MPI trace exchange schedule | Ownership/rank/offset validation, packed owner/ghost value/JVP/VJP maps, and independent exchange oracle |
 | `8b99e41` | Oriented arbitrary patch-graph trace contraction | Periodic/self-edge cycle contractions, weighted value/JVP/VJP, incidence closure, and transpose oracle |
 | `6a2ebfd` + `56720e9` | FortSym-generated degree-seven curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent degree-nine Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; generated source is byte-checked when the locked FortSym checkout is available |
