@@ -1,7 +1,8 @@
 program test_tetra_nedelec_pml_sparse
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_nedelec_pml_csc, &
-        build_tetra_edge_dof_map, cartesian_curl_curl_pml_coefficients
+    use fortfem_feec, only: assemble_tetra_nedelec_pml_csc, &
+        build_tetra_edge_dof_map
+    use fortfem_boundary, only: cartesian_curl_curl_pml_coefficients
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_z_t, fortsparse_status_t
     implicit none
