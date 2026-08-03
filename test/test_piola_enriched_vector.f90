@@ -1,6 +1,6 @@
 program test_piola_enriched_vector
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_piola_enriched_vector_values, &
         evaluate_piola_enriched_vector_values_jvp, &
         evaluate_piola_enriched_vector_values_vjp, &

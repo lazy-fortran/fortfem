@@ -1,6 +1,6 @@
 program test_xfem_blending_correction
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_blending_corrected_enrichment, &
+    use fortfem_feec, only: evaluate_blending_corrected_enrichment, &
         evaluate_blending_corrected_enrichment_jvp, &
         evaluate_blending_corrected_enrichment_vjp
     use fortfem_kinds, only: dp
