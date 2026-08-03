@@ -1,6 +1,6 @@
 program test_tetra_rt_load_samples_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: assemble_tetra_rt_vector_load_samples, &
+    use fortfem_feec, only: assemble_tetra_rt_vector_load_samples, &
         assemble_tetra_rt_vector_load_samples_jvp, &
         assemble_tetra_rt_vector_load_samples_vjp, tetra_duffy_quadrature
     use fortfem_kinds, only: dp
