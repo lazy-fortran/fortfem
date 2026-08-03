@@ -584,6 +584,15 @@ modal, geometry, and derivative tests pass serially. The full `fo` checks
 retain only the pre-existing no-fail-test lint diagnostics in the two legacy
 property-style tests; this roadmap does not silently classify those as fixed.
 
+The current continuation adds Cartesian/curvilinear PML geometry consumers
+(`fb83d20`, inventory `22327f0`), three IGA/JOREK spline consumers
+(`8fc2991`, inventory `d4cadd4`), and six sparse ILUT/ICHOL/retained-Schur
+consumers (`5dae976`). Each slice was rebased from the latest `main`, kept
+its implementation in the owning facade, and passed its independent focused
+coefficient, de Rham, derivative, factor/apply, or solver oracle. The sparse
+batch also confirms the short timeout path for each selected factor/solver
+test; the generated inventory must be refreshed once more after this batch.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
