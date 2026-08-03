@@ -1,6 +1,6 @@
 program test_volume_balance_ledger
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_volume_balance_ledger, &
+    use fortfem_feec, only: assemble_volume_balance_ledger, &
         assemble_volume_balance_ledger_jvp, assemble_volume_balance_ledger_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

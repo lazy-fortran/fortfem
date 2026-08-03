@@ -6,6 +6,24 @@ module fortfem_feec
     !! used by direct H(curl) solves, while leaving element and assembly
     !! implementations in their existing lower-layer modules.  In
     !! particular, this module deliberately does not import ``fortfem_api``.
+    use fortfem_edge_moment_orientation, only: apply_edge_moment_orientation
+    use fortfem_fci_terminal_boundary_ledger, only: &
+        assemble_fci_terminal_boundary_ledger, &
+        assemble_fci_terminal_boundary_ledger_jvp, &
+        assemble_fci_terminal_boundary_ledger_vjp
+    use fortfem_surface_edge_balance, only: &
+        assemble_surface_edge_flux_balance, &
+        assemble_surface_edge_flux_balance_jvp, &
+        assemble_surface_edge_flux_balance_vjp
+    use fortfem_surface_edge_flux, only: &
+        assemble_surface_edge_flux, assemble_surface_edge_flux_jvp, &
+        assemble_surface_edge_flux_vjp
+    use fortfem_volume_balance_ledger, only: &
+        assemble_volume_balance_ledger, assemble_volume_balance_ledger_jvp, &
+        assemble_volume_balance_ledger_vjp
+    use fortfem_solver_resource_budget, only: &
+        solver_resource_budget_t, initialize_solver_resource_budget, &
+        validate_solver_resource_budget, evaluate_solver_resource_usage
     use fortfem_feec_exact_sequence, only: &
         assemble_feec_exact_sequence, &
         assemble_feec_exact_sequence_jvp, &
@@ -1480,6 +1498,23 @@ module fortfem_feec
     public :: evaluate_surface_shape_objective
     public :: evaluate_surface_shape_objective_jvp
     public :: evaluate_surface_shape_objective_vjp
+    public :: apply_edge_moment_orientation
+    public :: assemble_fci_terminal_boundary_ledger
+    public :: assemble_fci_terminal_boundary_ledger_jvp
+    public :: assemble_fci_terminal_boundary_ledger_vjp
+    public :: assemble_surface_edge_flux_balance
+    public :: assemble_surface_edge_flux_balance_jvp
+    public :: assemble_surface_edge_flux_balance_vjp
+    public :: assemble_surface_edge_flux
+    public :: assemble_surface_edge_flux_jvp
+    public :: assemble_surface_edge_flux_vjp
+    public :: assemble_volume_balance_ledger
+    public :: assemble_volume_balance_ledger_jvp
+    public :: assemble_volume_balance_ledger_vjp
+    public :: solver_resource_budget_t
+    public :: initialize_solver_resource_budget
+    public :: validate_solver_resource_budget
+    public :: evaluate_solver_resource_usage
     public :: solver_options_t
     public :: solver_options
 

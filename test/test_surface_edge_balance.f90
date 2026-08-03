@@ -1,6 +1,6 @@
 program test_surface_edge_balance
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_surface_edge_flux_balance, &
+    use fortfem_feec, only: assemble_surface_edge_flux_balance, &
         assemble_surface_edge_flux_balance_jvp, &
         assemble_surface_edge_flux_balance_vjp
     use fortfem_kinds, only: dp
