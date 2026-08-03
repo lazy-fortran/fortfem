@@ -554,6 +554,13 @@ consumers now use `fortfem_core`, six Laplace BEM consumers use
 consumers use `fortfem_feec`; their focused independent oracles and API gates
 pass.
 
+The remaining BEM and sphere continuation is integrated as `cbb5bad`,
+`ddf799c` (with the ownership conflict resolved in `6f8753f`/`ff91812`), and
+`f04f356` (inventory `d20ec84`). Twelve Laplace/Helmholtz BEM panel, state,
+Calderón, Costabel, hypersingular, and representation consumers plus six
+curved-sphere Maxwell solve/trace consumers now use canonical facades; panel
+and state derivative tests were explicitly re-run after integration.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
