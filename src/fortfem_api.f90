@@ -995,6 +995,11 @@ module fortfem_api
         validate_physical_trace_reconciliation, physical_trace_reconciliation_maps, &
         reconcile_physical_trace_values, reconcile_physical_trace_values_jvp, &
         reconcile_physical_trace_values_vjp
+    use fortfem_physical_trace_owner_selection, only: &
+        physical_trace_owner_selection_t, initialize_physical_trace_owner_selection, &
+        validate_physical_trace_owner_selection, physical_trace_owner_selection_maps, &
+        gather_physical_trace_values, gather_physical_trace_values_jvp, &
+        gather_physical_trace_values_vjp
     use fortfem_feec_commuting_projection, only: &
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
@@ -1749,6 +1754,13 @@ module fortfem_api
     public :: reconcile_physical_trace_values
     public :: reconcile_physical_trace_values_jvp
     public :: reconcile_physical_trace_values_vjp
+    public :: physical_trace_owner_selection_t
+    public :: initialize_physical_trace_owner_selection
+    public :: validate_physical_trace_owner_selection
+    public :: physical_trace_owner_selection_maps
+    public :: gather_physical_trace_values
+    public :: gather_physical_trace_values_jvp
+    public :: gather_physical_trace_values_vjp
     public :: assemble_pseudo_arclength_residual
     public :: assemble_pseudo_arclength_residual_jvp
     public :: assemble_pseudo_arclength_residual_vjp
