@@ -1,6 +1,6 @@
 program test_mortar_trace_coupling
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_mortar_trace_coupling
+    use fortfem_feec, only: assemble_mortar_trace_coupling
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

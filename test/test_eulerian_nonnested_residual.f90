@@ -1,6 +1,6 @@
 program test_eulerian_nonnested_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_eulerian_nonnested_residual, &
         assemble_eulerian_nonnested_residual_jvp, &
         assemble_eulerian_nonnested_residual_vjp, &
