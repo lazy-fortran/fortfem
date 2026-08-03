@@ -1,6 +1,6 @@
 program test_fci_plane_vcycle
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_plane_two_level_vcycle
+    use fortfem_feec, only: apply_fci_plane_two_level_vcycle
     use fortfem_kinds, only: dp
     use fortfem_sparse_direct, only: sparse_direct_solve_csc
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t

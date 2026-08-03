@@ -1,6 +1,6 @@
 program test_fci_quadratic_interpolation_maps_1d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_fci_quadratic_interpolation_maps_1d, &
         build_fci_quadratic_interpolation_maps_1d_jvp, &
         build_fci_quadratic_interpolation_maps_1d_vjp

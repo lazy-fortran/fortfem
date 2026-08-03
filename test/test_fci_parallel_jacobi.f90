@@ -1,6 +1,6 @@
 program test_fci_parallel_jacobi
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_parallel_jacobi_preconditioner
+    use fortfem_feec, only: apply_fci_parallel_jacobi_preconditioner
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

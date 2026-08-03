@@ -1,6 +1,6 @@
 program test_fci_plane_vcycle_factored
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         apply_fci_plane_two_level_vcycle_factored, &
         factor_fci_plane_coarse_operator
     use fortfem_kinds, only: dp
