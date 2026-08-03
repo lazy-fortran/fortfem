@@ -175,6 +175,8 @@ module fortfem_feec
         evaluate_field_aligned_constitutive_tensor, &
         evaluate_field_aligned_constitutive_tensor_jvp, &
         evaluate_field_aligned_constitutive_tensor_vjp
+    use fortfem_tensor_power_split, only: evaluate_tensor_power_split, &
+        evaluate_tensor_power_split_jvp, evaluate_tensor_power_split_vjp
     use fortfem_tensor_diffusion_matrix, only: &
         assemble_tensor_diffusion_matrix, &
         assemble_tensor_diffusion_matrix_jvp, &
@@ -494,6 +496,9 @@ module fortfem_feec
     public :: evaluate_field_aligned_constitutive_tensor
     public :: evaluate_field_aligned_constitutive_tensor_jvp
     public :: evaluate_field_aligned_constitutive_tensor_vjp
+    public :: evaluate_tensor_power_split
+    public :: evaluate_tensor_power_split_jvp
+    public :: evaluate_tensor_power_split_vjp
     public :: evaluate_periodic_bspline_basis
     public :: evaluate_tetra_nedelec_first_kind
     public :: evaluate_tetra_nedelec_first_kind_jvp
