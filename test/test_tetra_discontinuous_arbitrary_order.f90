@@ -1,6 +1,6 @@
 program test_tetra_discontinuous_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_discontinuous, &
+    use fortfem_feec, only: evaluate_tetra_discontinuous, &
         initialize_tetra_discontinuous, &
         tetra_discontinuous_dof_count, tetra_discontinuous_t, &
         tetra_duffy_quadrature

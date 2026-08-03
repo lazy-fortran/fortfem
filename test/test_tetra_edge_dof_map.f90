@@ -1,6 +1,6 @@
 program test_tetra_edge_dof_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_tetra_edge_dof_map
+    use fortfem_feec, only: build_tetra_edge_dof_map
     implicit none
 
     integer, allocatable :: edges(:, :), global_dofs(:, :), orientations(:, :)

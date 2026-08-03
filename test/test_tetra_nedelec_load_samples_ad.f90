@@ -1,9 +1,10 @@
 program test_tetra_nedelec_load_samples_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: assemble_tetra_nedelec_vector_load_samples, &
+    use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_vector_load_samples, &
         assemble_tetra_nedelec_vector_load_samples_jvp, &
-        assemble_tetra_nedelec_vector_load_samples_vjp, &
-        tetra_duffy_quadrature
+        assemble_tetra_nedelec_vector_load_samples_vjp
+    use fortfem_feec, only: tetra_duffy_quadrature
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

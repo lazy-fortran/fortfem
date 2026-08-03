@@ -1,6 +1,6 @@
 program test_tetra_duffy_quadrature
     use check, only: check_condition, check_summary
-    use fortfem_api, only: tetra_duffy_quadrature
+    use fortfem_feec, only: tetra_duffy_quadrature
     use fortfem_kinds, only: dp
     implicit none
 
