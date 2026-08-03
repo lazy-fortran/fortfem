@@ -153,7 +153,8 @@ module fortfem_boundary
         solve_helmholtz_cfie_p0_hierarchical_3d, &
         solve_helmholtz_dirichlet_p0_hierarchical_3d
     use fortfem_helmholtz_representation_3d, only: &
-        evaluate_helmholtz_representation_triangles_3d
+        evaluate_helmholtz_representation_triangles_3d, &
+        evaluate_helmholtz_representation_torus_curved_3d
     use fortfem_laplace_galerkin_3d, only: &
         assemble_laplace_single_layer_p0_3d, &
         assemble_laplace_single_layer_p0_adaptive_3d, &
@@ -163,7 +164,6 @@ module fortfem_boundary
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_helmholtz_torus_curved_bem_3d, only: &
         solve_helmholtz_bem_dtn_torus_curved_3d
     use fortfem_helmholtz_torus_curved_fem_bem_coupling_3d, only: &
@@ -297,9 +297,9 @@ module fortfem_boundary
     public :: apply_laplace_single_layer_p0_hierarchical_3d
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: evaluate_helmholtz_representation_triangles_3d
+    public :: evaluate_helmholtz_representation_torus_curved_3d
     public :: evaluate_laplace_representation_triangles_3d
     public :: evaluate_laplace_representation_torus_curved_3d
-    public :: triangle_duffy_quadrature
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: solve_helmholtz_cfie_p0_3d
