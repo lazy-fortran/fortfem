@@ -51,9 +51,9 @@ contains
             permutation(panel) = panel
         end do
         call build_node( &
-            1, size(triangles, 2), leaf_size, centers, permutation, first, &
-            last, first_child, second_child, node_centers, radii, node_count, &
-            node)
+            1, size(triangles, 2), leaf_size, vertices, triangles, centers, &
+            permutation, first, last, first_child, second_child, node_centers, &
+            radii, node_count, node)
         do position = 1, size(permutation)
             inverse_position(permutation(position)) = position
         end do
@@ -61,10 +61,12 @@ contains
     end subroutine build_panel_cluster_tree_3d
 
     recursive subroutine build_node( &
-            range_first, range_last, leaf_size, centers, permutation, first, &
-            last, first_child, second_child, node_centers, radii, node_count, &
-            node)
+            range_first, range_last, leaf_size, vertices, triangles, centers, &
+            permutation, first, last, first_child, second_child, node_centers, &
+            radii, node_count, node)
         integer, intent(in) :: range_first, range_last, leaf_size
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
         real(dp), intent(in) :: centers(:, :)
         integer, intent(inout) :: permutation(:), first(:), last(:)
         integer, intent(inout) :: first_child(:), second_child(:), node_count
@@ -72,7 +74,8 @@ contains
         integer, intent(out) :: node
 
         real(dp) :: spans(3)
-        integer :: axis, midpoint, position
+        integer :: axis, midpoint, panel, position, vertex
+        real(dp) :: lower(3), upper(3)
 
         node_count = node_count + 1
         node = node_count
@@ -80,17 +83,24 @@ contains
         last(node) = range_last
         first_child(node) = 0
         second_child(node) = 0
-        node_centers(:, node) = 0.0_dp
+        lower = huge(1.0_dp)
+        upper = -huge(1.0_dp)
         do position = range_first, range_last
-            node_centers(:, node) = node_centers(:, node) + &
-                centers(:, permutation(position))
+            panel = permutation(position)
+            do vertex = 1, size(triangles, 1)
+                lower = min(lower, vertices(:, triangles(vertex, panel)))
+                upper = max(upper, vertices(:, triangles(vertex, panel)))
+            end do
         end do
-        node_centers(:, node) = node_centers(:, node)/ &
-            real(range_last - range_first + 1, dp)
+        node_centers(:, node) = 0.5_dp*(lower + upper)
         radii(node) = 0.0_dp
         do position = range_first, range_last
-            radii(node) = max(radii(node), norm2( &
-                centers(:, permutation(position)) - node_centers(:, node)))
+            panel = permutation(position)
+            do vertex = 1, size(triangles, 1)
+                radii(node) = max(radii(node), norm2( &
+                    vertices(:, triangles(vertex, panel)) - &
+                    node_centers(:, node)))
+            end do
         end do
         if (range_last - range_first + 1 <= leaf_size) return
 
@@ -104,13 +114,13 @@ contains
             range_first, range_last, axis, centers, permutation)
         midpoint = (range_first + range_last)/2
         call build_node( &
-            range_first, midpoint, leaf_size, centers, permutation, first, &
-            last, first_child, second_child, node_centers, radii, node_count, &
-            first_child(node))
+            range_first, midpoint, leaf_size, vertices, triangles, centers, &
+            permutation, first, last, first_child, second_child, node_centers, &
+            radii, node_count, first_child(node))
         call build_node( &
-            midpoint + 1, range_last, leaf_size, centers, permutation, first, &
-            last, first_child, second_child, node_centers, radii, node_count, &
-            second_child(node))
+            midpoint + 1, range_last, leaf_size, vertices, triangles, centers, &
+            permutation, first, last, first_child, second_child, node_centers, &
+            radii, node_count, second_child(node))
     end subroutine build_node
 
     pure subroutine sort_range( &
