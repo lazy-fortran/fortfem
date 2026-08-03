@@ -469,10 +469,11 @@ spaces (`2d54659`), and Maxwell/open-boundary consumers
 (`4253419`) are now on `main`, with the generated inventory refreshed after
 each integration.
 
-The next bounded dispatch is explicitly tracked here so API work does not
-silently turn into a broad rename. The current `/mnt/storage` worktrees are
+The bounded dispatch is explicitly tracked here so API work does not
+silently turn into a broad rename. The recent `/mnt/storage` worktrees
 `fci_hendecic` (FortSym-generated degree-eleven curved FCI edge measures) and
-`api_tensor_consumer` (a no-umbrella tensor-pressure/anisotropy consumer).
+`api_tensor_consumer` (a no-umbrella tensor-pressure/anisotropy consumer) are
+complete and removed; their hashes are recorded below.
 Each owns only its generator/source and test slice, writes an independent
 behavioral oracle first, and hands back one commit before integration. The
 integrator alone updates this document and the generated API inventory.
@@ -509,6 +510,9 @@ The degree-six clipped-polygon moment milestone is integrated as `e8dac912`,
 with inventory refresh `5e8afc37`. Its 64 raw moments, conservation identity,
 fixed-topology JVP/VJP, and degenerate-cell rejection pass independently; the
 3-D high-order cut and curved-cell moment layers remain active.
+The current bounded `/mnt/storage` worktree is `cut_tetra_fifth`, implementing
+the next independent 3-D degree-five cut-moment slice. It owns only geometry,
+facade, and test files and will be removed after its focused handoff.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
