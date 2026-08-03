@@ -1,9 +1,9 @@
 program test_maxwell_torus_curved_mfie_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
-        assemble_maxwell_torus_curved_rwg_rbc_pairing, &
-        generate_torus_surface_mesh
+        assemble_maxwell_torus_curved_rwg_rbc_pairing
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

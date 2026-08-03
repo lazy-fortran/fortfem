@@ -224,7 +224,13 @@ module fortfem_boundary
         assemble_maxwell_torus_efie_wave_number_jvp, &
         assemble_maxwell_torus_efie_wave_number_vjp, &
         assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
+        assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
+        assemble_maxwell_torus_mfie_offset_geometry_jvp, &
+        assemble_maxwell_torus_mfie_offset_geometry_vjp, &
         assemble_maxwell_torus_curved_mfie_rwg_rbc_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_jvp, &
+        assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_vjp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
@@ -668,7 +674,13 @@ module fortfem_boundary
     public :: assemble_maxwell_torus_efie_wave_number_jvp
     public :: assemble_maxwell_torus_efie_wave_number_vjp
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
+    public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
+    public :: assemble_maxwell_torus_mfie_offset_geometry_jvp
+    public :: assemble_maxwell_torus_mfie_offset_geometry_vjp
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_jvp
+    public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
