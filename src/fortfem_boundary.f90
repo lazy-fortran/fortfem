@@ -161,13 +161,20 @@ module fortfem_boundary
         condense_wall_response_blocks_vjp
     use fortfem_maxwell_torus_curved_rwg, only: &
         assemble_maxwell_torus_curved_efie_rwg_3d, &
+        assemble_maxwell_torus_curved_efie_imaginary_rwg_3d, &
+        assemble_maxwell_torus_efie_imaginary_impedance_jvp, &
+        assemble_maxwell_torus_efie_imaginary_impedance_vjp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp, &
         assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp, &
         assemble_maxwell_torus_curved_potential_operators_rwg_3d, &
         assemble_maxwell_torus_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
+        assemble_maxwell_torus_curved_rwg_mass_matrix_jvp, &
+        assemble_maxwell_torus_curved_rwg_mass_matrix_vjp, &
         assemble_maxwell_torus_curved_rwg_rbc_pairing, &
+        assemble_maxwell_torus_curved_rwg_rbc_pairing_jvp, &
+        assemble_maxwell_torus_curved_rwg_rbc_pairing_vjp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp, &
         evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp, &
@@ -399,13 +406,20 @@ module fortfem_boundary
     public :: evaluate_maxwell_torus_magnetic_geometry_jvp
     public :: evaluate_maxwell_torus_magnetic_geometry_vjp
     public :: assemble_maxwell_torus_curved_efie_rwg_3d
+    public :: assemble_maxwell_torus_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_torus_efie_imaginary_impedance_jvp
+    public :: assemble_maxwell_torus_efie_imaginary_impedance_vjp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_jvp
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_rwg_3d_vjp
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_torus_curved_rwg_mass_matrix
+    public :: assemble_maxwell_torus_curved_rwg_mass_matrix_jvp
+    public :: assemble_maxwell_torus_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_torus_curved_rwg_rbc_pairing
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_jvp
+    public :: assemble_maxwell_torus_curved_rwg_rbc_pairing_vjp
     public :: solve_helmholtz_cfie_p0_3d
     public :: solve_helmholtz_cfie_p0_hierarchical_3d
     public :: solve_helmholtz_dirichlet_p0_3d
