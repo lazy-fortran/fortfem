@@ -1,6 +1,6 @@
 program test_sparse_constrained_derivatives
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: sparse_direct_solve_constrained, &
+    use fortfem_sparse_direct, only: sparse_direct_solve_constrained, &
         sparse_direct_solve_constrained_jvp, &
         sparse_direct_solve_constrained_vjp
     use fortfem_kinds, only: dp

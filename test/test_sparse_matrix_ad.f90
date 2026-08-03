@@ -1,7 +1,7 @@
 program test_sparse_matrix_ad
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
-    use fortfem_api, only: &
+    use fortfem_sparse_matrix, only: &
         sparse_from_dense, sparse_matrix_t, spmv, spmv_jvp, spmv_vjp
     implicit none
 

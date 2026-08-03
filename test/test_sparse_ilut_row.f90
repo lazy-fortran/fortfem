@@ -1,6 +1,6 @@
 program test_sparse_ilut_row
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
+    use fortfem_sparse_ilut, only: apply_sparse_ilut, apply_sparse_ilut_jvp, &
         apply_sparse_ilut_vjp, build_sparse_ilut, build_sparse_ilut_row, &
         sparse_ilut_factor_t
     use fortfem_kinds, only: dp

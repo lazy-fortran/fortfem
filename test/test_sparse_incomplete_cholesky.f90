@@ -1,6 +1,6 @@
 program test_sparse_incomplete_cholesky
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_sparse_incomplete_cholesky, &
+    use fortfem_sparse_incomplete_cholesky, only: apply_sparse_incomplete_cholesky, &
         apply_sparse_incomplete_cholesky_jvp, &
         apply_sparse_incomplete_cholesky_vjp, build_sparse_incomplete_cholesky, &
         sparse_incomplete_cholesky_factor_t

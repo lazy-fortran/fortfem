@@ -1,6 +1,6 @@
 program test_sparse_incomplete_lu
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_sparse_incomplete_lu, &
+    use fortfem_sparse_incomplete_lu, only: apply_sparse_incomplete_lu, &
         apply_sparse_incomplete_lu_jvp, apply_sparse_incomplete_lu_vjp, &
         build_sparse_incomplete_lu, sparse_incomplete_lu_factor_t
     use fortfem_kinds, only: dp
