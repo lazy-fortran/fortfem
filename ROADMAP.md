@@ -706,6 +706,12 @@ core/FEEC/plot/boundary owners. It adds only existing-symbol facade wiring;
 all seven focused tests and the release gate pass. The umbrella import audit
 is now 184 test files.
 
+The Maxwell sphere/torus handoff `61ece44` (rebased from `beb4e06`) migrates
+the remaining six CFIE/EFIE/Mie/MFIE/curved-torus reciprocity consumers and
+adds only the missing existing-symbol boundary exports. Their bounded focused
+tests pass, including the 41.38 s torus reciprocity slow target; no full-suite
+wait was required. The umbrella audit is now 178 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
