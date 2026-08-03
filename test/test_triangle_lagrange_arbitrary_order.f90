@@ -1,6 +1,6 @@
 program test_triangle_lagrange_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_triangle_lagrange_basis, &
+    use fortfem_feec, only: evaluate_triangle_lagrange_basis, &
         initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
         triangle_lagrange_nodes
     use fortfem_kinds, only: dp

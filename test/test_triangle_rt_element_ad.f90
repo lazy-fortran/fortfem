@@ -1,6 +1,6 @@
 program test_triangle_rt_element_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_triangle_rt_div_mass_element, &
+    use fortfem_feec, only: assemble_triangle_rt_div_mass_element, &
         assemble_triangle_rt_div_mass_element_jvp, &
         assemble_triangle_rt_div_mass_element_vjp
     use fortfem_kinds, only: dp

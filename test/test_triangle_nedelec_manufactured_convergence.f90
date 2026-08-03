@@ -1,10 +1,10 @@
 program test_triangle_nedelec_manufactured_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_triangle_nedelec_interpolant, &
         initialize_triangle_nedelec_first_kind, interpolate_triangle_nedelec, &
         triangle_duffy_quadrature, triangle_nedelec_first_kind_t
-    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
+    use fortfem_core, only: mesh_t, unit_square_mesh
     use fortfem_kinds, only: dp
     implicit none
 

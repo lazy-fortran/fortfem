@@ -1,6 +1,6 @@
 program test_triangle_nedelec_curl_mass_csc_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_triangle_nedelec_curl_mass_csc, &
+    use fortfem_feec, only: assemble_triangle_nedelec_curl_mass_csc, &
         assemble_triangle_nedelec_curl_mass_csc_jvp, &
         assemble_triangle_nedelec_curl_mass_csc_vjp
     use fortfem_kinds, only: dp

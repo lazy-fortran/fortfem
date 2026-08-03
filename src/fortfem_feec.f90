@@ -607,6 +607,9 @@ module fortfem_feec
         assemble_scalar_numerical_flux_jvp, &
         assemble_scalar_numerical_flux_vjp
     use fortfem_vector_numerical_flux, only: &
+        assemble_vector_numerical_flux, &
+        assemble_vector_numerical_flux_jvp, &
+        assemble_vector_numerical_flux_vjp, &
         assemble_vector_entropy_stable_flux, &
         assemble_vector_entropy_stable_flux_jvp, &
         assemble_vector_entropy_stable_flux_vjp
@@ -642,6 +645,7 @@ module fortfem_feec
         assemble_retained_coupled_schur_jvp, &
         assemble_retained_coupled_schur_vjp
     use fortfem_api_spaces, only: &
+        cell_coefficient, cell_coefficient_t, &
         cell_tensor_coefficient, cell_tensor_coefficient_t, &
         cell_vector_source, cell_vector_source_t, constant, function, &
         function_space, vector_function_space, vector_function_space_t, &
@@ -655,7 +659,8 @@ module fortfem_feec
         function_t
     use fortfem_api_forms, only: &
         compile_mixed_form_csc, compile_tetra_mixed_form_csc, &
-        compile_vector_form_element, compile_vector_form_rhs, curl, div, dx, &
+        compile_vector_form_csc, compile_vector_form_element, &
+        compile_vector_form_rhs, curl, div, dx, &
         form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
     use fortfem_edge_interpolation_2d, only: &
@@ -749,6 +754,8 @@ module fortfem_feec
         interpolate_triangle_nedelec_second_kind, interpolate_triangle_rt
     use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
         assemble_triangle_nedelec_curl_mass_csc, &
+        assemble_triangle_nedelec_curl_mass_csc_jvp, &
+        assemble_triangle_nedelec_curl_mass_csc_vjp, &
         assemble_triangle_nedelec_curl_csc, &
         assemble_triangle_nedelec_curl_mass_element, &
         assemble_triangle_nedelec_curl_mass_element_jvp, &
@@ -1339,6 +1346,9 @@ module fortfem_feec
     public :: assemble_scalar_numerical_flux
     public :: assemble_scalar_numerical_flux_jvp
     public :: assemble_scalar_numerical_flux_vjp
+    public :: assemble_vector_numerical_flux
+    public :: assemble_vector_numerical_flux_jvp
+    public :: assemble_vector_numerical_flux_vjp
     public :: assemble_vector_entropy_stable_flux
     public :: assemble_vector_entropy_stable_flux_jvp
     public :: assemble_vector_entropy_stable_flux_vjp
@@ -1375,6 +1385,8 @@ module fortfem_feec
     public :: assemble_retained_coupled_schur_jvp
     public :: assemble_retained_coupled_schur_vjp
     public :: function_space
+    public :: cell_coefficient
+    public :: cell_coefficient_t
     public :: cell_tensor_coefficient
     public :: cell_tensor_coefficient_t
     public :: cell_vector_source
@@ -1399,6 +1411,7 @@ module fortfem_feec
     public :: vector_trial_function_t
     public :: compile_tetra_mixed_form_csc
     public :: compile_mixed_form_csc
+    public :: compile_vector_form_csc
     public :: compile_vector_form_element
     public :: compile_vector_form_rhs
     public :: div
@@ -1488,6 +1501,8 @@ module fortfem_feec
     public :: interpolate_triangle_bdm
     public :: interpolate_triangle_nedelec_second_kind
     public :: assemble_triangle_nedelec_curl_mass_csc
+    public :: assemble_triangle_nedelec_curl_mass_csc_jvp
+    public :: assemble_triangle_nedelec_curl_mass_csc_vjp
     public :: assemble_triangle_nedelec_curl_csc
     public :: assemble_triangle_nedelec_curl_mass_element
     public :: assemble_triangle_nedelec_curl_mass_element_jvp

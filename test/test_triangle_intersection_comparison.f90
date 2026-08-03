@@ -12,7 +12,9 @@ program test_triangle_intersection_comparison
     !    - Produce triangulations with no edge crossing the constraints.
     !
     use fortfem_kinds, only : dp
-    use fortfem_api,  only : mesh_t, mesh_from_arrays, mesh_from_triangle_files, plot
+    use fortfem_core, only : mesh_t
+    use fortfem_api_mesh, only : mesh_from_arrays, mesh_from_triangle_files
+    use fortfem_plot, only : plot
     use triangulation_fortran, only : triangulation_result_t, triangulate_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available
     use check, only : check_condition, check_summary
