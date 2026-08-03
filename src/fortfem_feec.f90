@@ -14,6 +14,10 @@ module fortfem_feec
         assemble_feec_commuting_projection, &
         assemble_feec_commuting_projection_jvp, &
         assemble_feec_commuting_projection_vjp
+    use fortfem_block_graph_residual, only: &
+        assemble_block_graph_residual, &
+        assemble_block_graph_residual_jvp, &
+        assemble_block_graph_residual_vjp
     use fortfem_tetra_nedelec_arbitrary_order, only: &
         evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_kind_jvp, &
@@ -187,6 +191,9 @@ module fortfem_feec
 
     public :: apply_tree_cotree_prolongation
     public :: apply_tree_cotree_restriction
+    public :: assemble_block_graph_residual
+    public :: assemble_block_graph_residual_jvp
+    public :: assemble_block_graph_residual_vjp
     public :: assemble_feec_commuting_projection
     public :: assemble_feec_commuting_projection_jvp
     public :: assemble_feec_commuting_projection_vjp
