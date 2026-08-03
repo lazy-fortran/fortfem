@@ -1,6 +1,6 @@
 program test_toroidal_spectral_trace_grid_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_spectral_trace, evaluate_toroidal_spectral_trace_grid, &
         evaluate_toroidal_spectral_trace_grid_jvp, &
         evaluate_toroidal_spectral_trace_grid_vjp
