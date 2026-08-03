@@ -1,5 +1,7 @@
 program test_clean_mesh_api
-    use fortfem_api
+    use fortfem_core, only: mesh_t, boundary_t, unit_square_mesh, &
+        rectangle_mesh, unit_disk_mesh, circle_boundary, rectangle_boundary, &
+        l_shape_boundary, mesh_from_boundary
     use fortfem_kinds
     implicit none
 

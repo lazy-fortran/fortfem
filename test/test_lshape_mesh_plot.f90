@@ -1,7 +1,8 @@
 program test_lshape_mesh_plot
     use fortfem_kinds, only: dp
-    use fortfem_api, only: mesh_t, boundary_t, l_shape_boundary,          &
-        mesh_from_boundary, plot
+    use fortfem_core, only: mesh_t, boundary_t, l_shape_boundary, &
+        mesh_from_boundary
+    use fortfem_plot, only: plot
     use check, only: check_condition, check_summary
     implicit none
 
@@ -33,4 +34,3 @@ program test_lshape_mesh_plot
     call check_summary("L-shape Delaunay Mesh Plot")
 
 end program test_lshape_mesh_plot
-
