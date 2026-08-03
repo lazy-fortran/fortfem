@@ -319,7 +319,11 @@ module fortfem_feec
     use fortfem_api_forms, only: &
         compile_tetra_mixed_form_csc, curl, div, dx, form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
-    use fortfem_mixed_poisson_2d, only: solve_symbolic_mixed_poisson_rt
+    use fortfem_mixed_poisson_2d, only: &
+        solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
+        solve_symbolic_mixed_poisson_rt
+    use fortfem_mixed_rt_system, only: solve_mixed_rt_system, &
+        solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
     use fortfem_tetra_mixed_poisson_3d, only: &
         solve_symbolic_tetra_mixed_poisson_rt
     use fortfem_tetra_discontinuous_arbitrary_order, only: &
@@ -682,6 +686,11 @@ module fortfem_feec
     public :: grad
     public :: curl
     public :: solve
+    public :: solve_mixed_poisson_rt0
+    public :: solve_mixed_poisson_rt
+    public :: solve_mixed_rt_system
+    public :: solve_mixed_rt_system_jvp
+    public :: solve_mixed_rt_system_vjp
     public :: solve_symbolic_mixed_poisson_rt
     public :: solve_symbolic_tetra_mixed_poisson_rt
     public :: evaluate_tetra_discontinuous

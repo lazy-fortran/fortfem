@@ -1,11 +1,12 @@
 program test_mixed_poisson_rt1_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: mesh_t, rectangle_mesh
+    use fortfem_feec, only: &
         build_triangle_discontinuous_dof_map, &
         build_triangle_trimmed_dof_map, evaluate_triangle_lagrange_basis, &
         evaluate_triangle_rt_interpolant, initialize_triangle_lagrange_basis, &
-        initialize_triangle_raviart_thomas, mesh_t, rectangle_mesh, &
-        solve_mixed_poisson_rt, triangle_duffy_quadrature, &
+        initialize_triangle_raviart_thomas, solve_mixed_poisson_rt, &
+        triangle_duffy_quadrature, &
         triangle_lagrange_basis_t, triangle_rt_basis_t
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
