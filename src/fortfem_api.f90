@@ -853,6 +853,10 @@ module fortfem_api
         apply_fci_plane_two_level_vcycles, apply_fci_plane_two_level_vcycles_ragged
     use fortfem_fci_field_split_preconditioner, only: &
         apply_fci_additive_field_split_preconditioner
+    use fortfem_fci_coupled_field_split_ledger, only: &
+        evaluate_fci_coupled_field_split_ledger, &
+        evaluate_fci_coupled_field_split_ledger_jvp, &
+        evaluate_fci_coupled_field_split_ledger_vjp
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4
     use fortfem_fci_field_line_tracer, only: trace_fci_field_line_rk4_jvp
     use fortfem_fci_interpolation_map, only: &
@@ -3098,6 +3102,9 @@ module fortfem_api
     public :: apply_fci_plane_two_level_vcycles
     public :: apply_fci_plane_two_level_vcycles_ragged
     public :: apply_fci_additive_field_split_preconditioner
+    public :: evaluate_fci_coupled_field_split_ledger
+    public :: evaluate_fci_coupled_field_split_ledger_jvp
+    public :: evaluate_fci_coupled_field_split_ledger_vjp
     public :: trace_fci_field_line_rk4
     public :: trace_fci_field_line_rk4_jvp
     public :: build_fci_linear_interpolation_map_1d
