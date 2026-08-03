@@ -1,6 +1,6 @@
 program test_tetra_nedelec_pml_state_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_nedelec_pml_csc, &
+    use fortfem_feec, only: assemble_tetra_nedelec_pml_csc, &
         solve_tetra_nedelec_pml, solve_tetra_nedelec_pml_jvp, &
         solve_tetra_nedelec_pml_vjp
     use fortfem_kinds, only: dp

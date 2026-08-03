@@ -137,7 +137,18 @@ module fortfem_feec
     use fortfem_tetra_nedelec_interpolation, only: &
         interpolate_reference_tetra_nedelec
     use fortfem_tetra_vector_evaluation, only: &
-        evaluate_tetra_nedelec_interpolant_at_point
+        evaluate_tetra_nedelec_interpolant, &
+        evaluate_tetra_nedelec_interpolant_jvp, &
+        evaluate_tetra_nedelec_interpolant_vjp, &
+        evaluate_tetra_nedelec_interpolant_at_point, &
+        evaluate_tetra_nedelec_interpolant_at_point_jvp, &
+        evaluate_tetra_nedelec_interpolant_at_point_vjp, &
+        evaluate_tetra_rt_interpolant, &
+        evaluate_tetra_rt_interpolant_jvp, &
+        evaluate_tetra_rt_interpolant_vjp, &
+        evaluate_tetra_rt_interpolant_at_point, &
+        evaluate_tetra_rt_interpolant_at_point_jvp, &
+        evaluate_tetra_rt_interpolant_at_point_vjp
     use fortfem_tetra_edge_dof_map, only: build_tetra_edge_dof_map
     use fortfem_barycentric_surface_refinement, only: &
         barycentric_refine_surface_mesh
@@ -267,7 +278,8 @@ module fortfem_feec
         assemble_tetra_lagrange_geometry_pml_csc_jvp, &
         assemble_tetra_lagrange_geometry_pml_csc_vjp
     use fortfem_tetra_rt_arbitrary_order, only: &
-        evaluate_tetra_rt, initialize_tetra_rt, tetra_rt_dof_count, tetra_rt_t
+        evaluate_tetra_rt, evaluate_tetra_rt_jvp, evaluate_tetra_rt_vjp, &
+        initialize_tetra_rt, tetra_rt_dof_count, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
     use fortfem_tetra_rt_interpolation, only: &
@@ -290,6 +302,7 @@ module fortfem_feec
         assemble_tetra_rt_div_mass_element, &
         assemble_tetra_rt_div_mass_element_jvp, &
         assemble_tetra_rt_div_mass_element_vjp, &
+        assemble_tetra_rt_divergence_csc, &
         assemble_tetra_rt_vector_load_samples, &
         assemble_tetra_rt_vector_load_samples_jvp, &
         assemble_tetra_rt_vector_load_samples_vjp
@@ -417,6 +430,12 @@ module fortfem_feec
         apply_fci_additive_field_split_preconditioner
     use fortfem_tetra_nedelec_solver_3d, only: &
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
+    use fortfem_tetra_nedelec_pml_state_3d, only: &
+        solve_tetra_nedelec_pml_jvp, solve_tetra_nedelec_pml_vjp
+    use fortfem_tetra_nedelec_sampled_state_3d, only: &
+        solve_tetra_nedelec_sampled_state, &
+        solve_tetra_nedelec_sampled_state_jvp, &
+        solve_tetra_nedelec_sampled_state_vjp
     use fortfem_magnetic_box_3d, only: solve_magnetic_box_3d
     use fortfem_fci_field_line_tracer, only: &
         trace_fci_field_line_rk4, trace_fci_field_line_rk4_jvp
@@ -825,10 +844,15 @@ module fortfem_feec
         sparse_incomplete_cholesky_factor_t, apply_sparse_incomplete_cholesky, &
         apply_sparse_incomplete_cholesky_jvp, apply_sparse_incomplete_cholesky_vjp
     use fortfem_assembly_tetra_nedelec_3d, only: &
+        assemble_tetra_nedelec_curl_mass_csc, &
+        assemble_tetra_nedelec_curl_mass_csc_jvp, &
+        assemble_tetra_nedelec_curl_mass_csc_vjp, &
         assemble_tetra_nedelec_curl_mass_element, &
         assemble_tetra_nedelec_curl_mass_element_jvp, &
         assemble_tetra_nedelec_curl_mass_element_vjp, &
         assemble_tetra_nedelec_pml_element, &
+        assemble_tetra_nedelec_pml_element_jvp, &
+        assemble_tetra_nedelec_pml_element_vjp, &
         assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp
@@ -992,7 +1016,12 @@ module fortfem_feec
     public :: evaluate_tetra_nedelec_first_order
     public :: evaluate_tetra_nedelec_first_kind_jvp
     public :: evaluate_tetra_nedelec_first_kind_vjp
+    public :: evaluate_tetra_nedelec_interpolant
+    public :: evaluate_tetra_nedelec_interpolant_jvp
+    public :: evaluate_tetra_nedelec_interpolant_vjp
     public :: evaluate_tetra_nedelec_interpolant_at_point
+    public :: evaluate_tetra_nedelec_interpolant_at_point_jvp
+    public :: evaluate_tetra_nedelec_interpolant_at_point_vjp
     public :: initialize_tetra_nedelec_first_kind
     public :: interpolate_reference_tetra_nedelec
     public :: map_tetra_nedelec_covariant
@@ -1007,6 +1036,11 @@ module fortfem_feec
     public :: tetra_nedelec_first_kind_t
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
+    public :: solve_tetra_nedelec_pml_jvp
+    public :: solve_tetra_nedelec_pml_vjp
+    public :: solve_tetra_nedelec_sampled_state
+    public :: solve_tetra_nedelec_sampled_state_jvp
+    public :: solve_tetra_nedelec_sampled_state_vjp
     public :: solve_magnetic_box_3d
     public :: tetra_duffy_quadrature
     public :: evaluate_tetra_lagrange
@@ -1058,9 +1092,17 @@ module fortfem_feec
     public :: assemble_tetra_lagrange_geometry_pml_csc_jvp
     public :: assemble_tetra_lagrange_geometry_pml_csc_vjp
     public :: evaluate_tetra_rt
+    public :: evaluate_tetra_rt_jvp
+    public :: evaluate_tetra_rt_vjp
     public :: initialize_tetra_rt
     public :: tetra_rt_dof_count
     public :: tetra_rt_t
+    public :: evaluate_tetra_rt_interpolant
+    public :: evaluate_tetra_rt_interpolant_jvp
+    public :: evaluate_tetra_rt_interpolant_vjp
+    public :: evaluate_tetra_rt_interpolant_at_point
+    public :: evaluate_tetra_rt_interpolant_at_point_jvp
+    public :: evaluate_tetra_rt_interpolant_at_point_vjp
     public :: build_tetra_rt_basis_transform
     public :: build_tetra_rt_dof_map
     public :: interpolate_physical_tetra_rt
@@ -1080,6 +1122,7 @@ module fortfem_feec
     public :: assemble_tetra_rt_div_mass_element
     public :: assemble_tetra_rt_div_mass_element_jvp
     public :: assemble_tetra_rt_div_mass_element_vjp
+    public :: assemble_tetra_rt_divergence_csc
     public :: assemble_tetra_rt_vector_load_samples
     public :: assemble_tetra_rt_vector_load_samples_jvp
     public :: assemble_tetra_rt_vector_load_samples_vjp
@@ -1594,11 +1637,16 @@ module fortfem_feec
     public :: assemble_generalized_eigen_residual
     public :: assemble_generalized_eigen_residual_jvp
     public :: assemble_generalized_eigen_residual_vjp
+    public :: assemble_tetra_nedelec_curl_mass_csc
+    public :: assemble_tetra_nedelec_curl_mass_csc_jvp
+    public :: assemble_tetra_nedelec_curl_mass_csc_vjp
     public :: assemble_tetra_nedelec_pml_csc
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_curl_mass_element_jvp
     public :: assemble_tetra_nedelec_curl_mass_element_vjp
     public :: assemble_tetra_nedelec_pml_element
+    public :: assemble_tetra_nedelec_pml_element_jvp
+    public :: assemble_tetra_nedelec_pml_element_vjp
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
     public :: assemble_tetra_dg_source_load_samples

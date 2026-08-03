@@ -1,6 +1,6 @@
 program test_tetra_rt_piola_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: map_tetra_rt_contravariant
+    use fortfem_feec, only: map_tetra_rt_contravariant
     use fortfem_kinds, only: dp
     implicit none
 
