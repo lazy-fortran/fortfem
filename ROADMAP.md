@@ -724,6 +724,13 @@ consumers, adding only existing canonical Fourier/FEEC exports. Their focused
 analytical, modal, topology, and derivative tests pass; the release gate is
 green and the umbrella audit is now 168 test files.
 
+The objective/continuation handoff `8afa525` (from `fd03acf`) migrates 14
+block-residual, compiled-form, equation/objective-registry, deflation,
+pseudo-arclength/transient, merit, and surface-shape consumers. It adds only
+minimal FEEC/time exports for existing contracts, keeps continuation event
+ownership explicit, and passes all 14 bounded focused tests plus the release
+gate. The umbrella audit is now 154 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
