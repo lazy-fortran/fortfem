@@ -718,6 +718,7 @@ single commit for integration. The recent implementation slices are:
 | `7e773cac` + `a90600e` | Complex distributed trace value/JVP/VJP reduction over the validated owner/ghost ledger, with canonical FEEC/umbrella exports | Independent aggregation matrices, complete central reassembly, real-part complex adjoint, shape, and finite-value rejection oracles |
 | `9d574f70` + `d5f4802` | FortSym-pinned nonic curved Bézier polygon edge-area value/JVP/VJP kernels and canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value, central JVP, real VJP, straight-edge, and degenerate-topology oracles; byte-current regeneration |
 | `1fa911a` + `492d8df` + `558a5c7` | BEM panel-cluster centers/radii now enclose complete triangle supports rather than panel centroids, with the canonical boundary facade export | Independent node-range vertex-enclosure/area/permutation oracle plus hierarchical Galerkin and CFIE scaling tests |
+| `f034ae8` + `0d4d113` | Field-aligned Hall tensor consumer migrated from generated implementation modules to the canonical FEEC constitutive facade | Independent skew-power, central-difference JVP, and real dot-product VJP oracles |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
