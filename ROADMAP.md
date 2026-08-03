@@ -681,6 +681,7 @@ single commit for integration. The recent implementation slices are:
 | `b414074` | Multipatch signed trace assembly validation | Per-patch duplicate-ID/orientation checks with delegated HDG value/JVP/VJP oracle |
 | `6b6e5b8` | Point-first tensor enrichment Gram diagnostics | SPD metric, fixed active mask, nested-loop/FD/adjoint, rank, and invalid-weight oracle |
 | `4b80b2f` | External-oracle performance comparison ledger | Manifest provenance, weighted timing/memory/tolerance means, JVP/VJP, and invalid-record oracle |
+| `4f3654a` | Multipatch signed-trace CSC assembly | Sparse HDG delegation, fixed-map JVP/VJP, duplicate/sign validation, and sparse adjoint oracle |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -1989,6 +1990,8 @@ remain caller-owned.
 The compatible spatial core now also has a validated multipatch signed-trace
 assembly wrapper around the existing HDG kernel and a point-first tensor
 enrichment Gram/rank diagnostic for Piola/XIGA vector or tensor supports.
+The same signed-map wrapper now exposes a sparse CSC path without dense global
+assembly, retaining fixed-topology JVP/VJP and duplicate/sign checks.
 
 The external oracle ladder now has a weighted performance ledger over validated
 manifest provenance: phase timings, total time, peak memory, tolerances,
