@@ -69,6 +69,9 @@ module fortfem_fourier
         apply_toroidal_modal_convolution, &
         apply_toroidal_modal_convolution_jvp, &
         apply_toroidal_modal_convolution_vjp
+    use fortfem_harmonic_period_normalization, only: &
+        normalize_harmonic_one_forms, normalize_harmonic_one_forms_jvp, &
+        normalize_harmonic_one_forms_vjp
     implicit none
     private
 
@@ -135,6 +138,9 @@ module fortfem_fourier
     public :: apply_toroidal_modal_convolution
     public :: apply_toroidal_modal_convolution_jvp
     public :: apply_toroidal_modal_convolution_vjp
+    public :: normalize_harmonic_one_forms
+    public :: normalize_harmonic_one_forms_jvp
+    public :: normalize_harmonic_one_forms_vjp
     public :: validate_fourier_mode_registry
     public :: validate_axis_regular_mode_table
 

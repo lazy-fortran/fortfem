@@ -1,7 +1,7 @@
 program test_fourier_mode_registry
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_fourier_mode, evaluate_fourier_mode_jvp, &
         evaluate_fourier_mode_vjp, find_fourier_mode, &
         build_fourier_mode_padded_registry, build_fourier_mode_triad_map, &

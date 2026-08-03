@@ -1,6 +1,6 @@
 program test_harmonic_period_normalization
     use check, only: check_condition, check_summary
-    use fortfem_api, only: normalize_harmonic_one_forms, &
+    use fortfem_fourier, only: normalize_harmonic_one_forms, &
         normalize_harmonic_one_forms_jvp, normalize_harmonic_one_forms_vjp
     use fortfem_kinds, only: dp
     implicit none
