@@ -1,6 +1,6 @@
 program test_sparse_direct_complex_derivatives
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: sparse_direct_factor_adjoint_csc, &
+    use fortfem_sparse_direct, only: sparse_direct_factor_adjoint_csc, &
         sparse_direct_factor_csc, sparse_direct_factor_t, sparse_direct_free, &
         sparse_direct_solve_csc, sparse_direct_solve_factored, &
         sparse_direct_solve_factored_jvp, sparse_direct_solve_factored_vjp
