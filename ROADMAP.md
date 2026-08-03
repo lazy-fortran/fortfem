@@ -1,6 +1,6 @@
 # FortFEM roadmap
 
-Status: living architecture and verification plan, 2026-08-02
+Status: living architecture and verification plan, 2026-08-03
 
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
