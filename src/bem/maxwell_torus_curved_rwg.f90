@@ -48,6 +48,8 @@ module fortfem_maxwell_torus_curved_rwg
     public :: assemble_maxwell_torus_mfie_offset_geometry_vjp
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp
+    public :: assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp
     public :: assemble_maxwell_torus_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_torus_curved_plane_wave_rhs_bc_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
@@ -2915,6 +2917,47 @@ contains
         end do
         status = 0
     end subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp
+
+    subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, quadrature_degree, tolerance, max_depth, &
+            decaying_kernel, vector_potential_bar, scalar_potential_bar, &
+            wave_number_bar, status)
+        real(dp), intent(in) :: vertices(:, :), parameters(:, :)
+        real(dp), intent(in) :: major_radius, minor_radius, wave_number
+        real(dp), intent(in) :: tolerance
+        integer, intent(in) :: triangles(:, :), quadrature_degree, max_depth
+        logical, intent(in) :: decaying_kernel
+        complex(dp), intent(in) :: vector_potential_bar(:, :)
+        complex(dp), intent(in) :: scalar_potential_bar(:, :)
+        real(dp), intent(out) :: wave_number_bar
+        integer, intent(out) :: status
+
+        complex(dp), allocatable :: scalar_potential(:, :)
+        complex(dp), allocatable :: scalar_potential_dot(:, :)
+        complex(dp), allocatable :: vector_potential(:, :)
+        complex(dp), allocatable :: vector_potential_dot(:, :)
+
+        wave_number_bar = 0.0_dp
+        call assemble_maxwell_torus_curved_potential_operators_rwg_3d_jvp( &
+            vertices, triangles, parameters, major_radius, minor_radius, &
+            wave_number, 1.0_dp, quadrature_degree, tolerance, max_depth, &
+            decaying_kernel, vector_potential, scalar_potential, &
+            vector_potential_dot, scalar_potential_dot, status)
+        if (status /= 0) return
+        if (any(shape(vector_potential_bar) /= shape(vector_potential_dot))) then
+            status = 1
+            return
+        end if
+        if (any(shape(scalar_potential_bar) /= shape(scalar_potential_dot))) then
+            status = 1
+            return
+        end if
+        wave_number_bar = real( &
+            sum(conjg(vector_potential_bar)*vector_potential_dot) + &
+            sum(conjg(scalar_potential_bar)*scalar_potential_dot), dp)
+        status = 0
+    end subroutine assemble_maxwell_torus_curved_potential_operators_rwg_3d_vjp
 
     subroutine integrate_maxwell_torus_curved_adjacent_rwg_pair_3d( &
             vertices, triangles, parameters, edge_vertices, edge_triangles, &
