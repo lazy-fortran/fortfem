@@ -2189,6 +2189,11 @@ Since this audit, the neutral implementation now includes:
   `gen_surface_shape_objective_products`, and `check_generated.sh` compares the
   committed generated kernel byte-for-byte when the locked FortSym revision is
   available.
+- `assemble_metric_force_balance_residual` now composes caller-owned volume,
+  boundary, and sheet force samples with positive quadrature weights and a
+  positive volume Jacobian, propagating the metric product through exact JVP/VJP
+  actions. An independent weighted-loop, central-difference, and real-adjoint
+  oracle covers this geometry layer; force laws and profiles remain external.
 - The seeded `test_surface_shape_objective_properties` fixture samples 1-D,
   2-D, and 3-D fixed-topology surfaces, compares the weighted-loop value and
   product-rule JVP against independent arithmetic and centered differences,
