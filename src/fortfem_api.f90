@@ -1022,6 +1022,10 @@ module fortfem_api
         validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
         pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, pack_mpi_trace_exchange_vjp, &
         unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp
+    use fortfem_patch_graph_trace_contraction, only: &
+        assemble_patch_graph_trace_contraction, &
+        assemble_patch_graph_trace_contraction_jvp, &
+        assemble_patch_graph_trace_contraction_vjp
     use fortfem_physical_trace_ownership, only: &
         physical_trace_ownership_t, initialize_physical_trace_ownership, &
         validate_physical_trace_ownership, physical_trace_ownership_maps, &
@@ -1786,6 +1790,9 @@ module fortfem_api
     public :: unpack_mpi_trace_exchange
     public :: unpack_mpi_trace_exchange_jvp
     public :: unpack_mpi_trace_exchange_vjp
+    public :: assemble_patch_graph_trace_contraction
+    public :: assemble_patch_graph_trace_contraction_jvp
+    public :: assemble_patch_graph_trace_contraction_vjp
     public :: physical_trace_ownership_t
     public :: initialize_physical_trace_ownership
     public :: validate_physical_trace_ownership
