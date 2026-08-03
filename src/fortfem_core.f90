@@ -43,6 +43,11 @@ module fortfem_core
         validate_physical_trace_owner_selection, physical_trace_owner_selection_maps, &
         gather_physical_trace_values, gather_physical_trace_values_jvp, &
         gather_physical_trace_values_vjp
+    use fortfem_mpi_trace_exchange, only: &
+        mpi_trace_exchange_schedule_t, initialize_mpi_trace_exchange_schedule, &
+        validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
+        pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, pack_mpi_trace_exchange_vjp, &
+        unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
@@ -254,6 +259,16 @@ module fortfem_core
     public :: initialize_physical_trace_owner_selection
     public :: validate_physical_trace_owner_selection
     public :: physical_trace_owner_selection_maps
+    public :: mpi_trace_exchange_schedule_t
+    public :: initialize_mpi_trace_exchange_schedule
+    public :: validate_mpi_trace_exchange_schedule
+    public :: mpi_trace_exchange_schedule_maps
+    public :: pack_mpi_trace_exchange
+    public :: pack_mpi_trace_exchange_jvp
+    public :: pack_mpi_trace_exchange_vjp
+    public :: unpack_mpi_trace_exchange
+    public :: unpack_mpi_trace_exchange_jvp
+    public :: unpack_mpi_trace_exchange_vjp
     public :: gather_physical_trace_values
     public :: gather_physical_trace_values_jvp
     public :: gather_physical_trace_values_vjp
