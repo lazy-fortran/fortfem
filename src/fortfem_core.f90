@@ -14,7 +14,9 @@ module fortfem_core
         toroidal_point_to_cartesian_jvp, toroidal_point_to_cartesian_vjp
     use fortfem_tetra_affine_map, only: invert_tetra_affine_map
     use fortfem_axis_regular_radial_basis, only: &
-        evaluate_axis_regular_radial_basis
+        evaluate_axis_regular_radial_basis, &
+        evaluate_axis_regular_radial_basis_jvp, &
+        evaluate_axis_regular_radial_basis_vjp
     use fortfem_nested_surface_geometry, only: evaluate_nested_surface_geometry
     use fortfem_sphere_surface_mesh, only: generate_sphere_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
@@ -45,6 +47,8 @@ module fortfem_core
     public :: rectangle_mesh
     public :: circle_boundary
     public :: evaluate_axis_regular_radial_basis
+    public :: evaluate_axis_regular_radial_basis_jvp
+    public :: evaluate_axis_regular_radial_basis_vjp
     public :: evaluate_nested_surface_geometry
     public :: initialize_cell_complex
     public :: invert_tetra_affine_map

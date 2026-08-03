@@ -1,7 +1,7 @@
 program test_axis_regular_radial_basis
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_axis_regular_radial_basis, &
         evaluate_axis_regular_radial_basis_jvp, &
         evaluate_axis_regular_radial_basis_vjp
