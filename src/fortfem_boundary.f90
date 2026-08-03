@@ -249,6 +249,9 @@ module fortfem_boundary
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d, &
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_jvp, &
         integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_vjp
+    use fortfem_helmholtz_bem_state_ad_3d, only: &
+        solve_helmholtz_dirichlet_p0_3d_jvp, &
+        solve_helmholtz_dirichlet_p0_3d_vjp
     use fortfem_helmholtz_hierarchical_3d, only: &
         apply_helmholtz_cfie_p0_hierarchical_3d, &
         apply_helmholtz_single_layer_p0_hierarchical_3d, &
@@ -447,6 +450,8 @@ module fortfem_boundary
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_jvp
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d_vjp
+    public :: solve_helmholtz_dirichlet_p0_3d_jvp
+    public :: solve_helmholtz_dirichlet_p0_3d_vjp
     public :: assemble_helmholtz_calderon_p1_p0_3d
     public :: assemble_laplace_single_layer_p0_3d
     public :: assemble_laplace_single_layer_p0_adaptive_3d
