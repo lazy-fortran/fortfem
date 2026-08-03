@@ -395,6 +395,8 @@ module fortfem_boundary
         solve_laplace_fem_bem_johnson_nedelec_3d
     use fortfem_laplace_hierarchical_3d, only: &
         apply_laplace_single_layer_p0_hierarchical_3d
+    use fortfem_panel_cluster_tree_3d, only: &
+        build_panel_cluster_tree_3d
     use fortfem_laplace_representation_3d, only: &
         evaluate_laplace_representation_triangles_3d, &
         evaluate_laplace_representation_torus_curved_3d
@@ -656,6 +658,7 @@ module fortfem_boundary
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
     public :: apply_laplace_single_layer_p0_hierarchical_3d
+    public :: build_panel_cluster_tree_3d
     public :: evaluate_helmholtz_cfie_p0_3d
     public :: assemble_helmholtz_fem_bem_costabel_3d
     public :: solve_helmholtz_fem_bem_costabel_3d

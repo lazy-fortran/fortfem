@@ -8,7 +8,7 @@ program test_panel_cluster_tree_3d
     !! vertex distances from the returned node centre.
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
-    use fortfem_panel_cluster_tree_3d, only: build_panel_cluster_tree_3d
+    use fortfem_boundary, only: build_panel_cluster_tree_3d
     implicit none
 
     real(dp) :: vertices(3, 12)
