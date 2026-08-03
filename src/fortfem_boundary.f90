@@ -341,6 +341,7 @@ module fortfem_boundary
         solve_maxwell_pec_sphere_curved_regularized_cfie_rwg_3d
     use fortfem_helmholtz_galerkin_3d, only: &
         assemble_helmholtz_calderon_p1_p0_3d, &
+        assemble_helmholtz_double_layer_p0_3d, &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
         evaluate_helmholtz_cfie_p0_3d, solve_helmholtz_cfie_p0_3d, &
@@ -422,6 +423,10 @@ module fortfem_boundary
         integrate_laplace_torus_panel_p0_3d, &
         integrate_laplace_torus_panel_p0_3d_jvp, &
         integrate_laplace_torus_panel_p0_3d_vjp
+    use fortfem_helmholtz_torus_panel_pair_ad_3d, only: &
+        integrate_helmholtz_torus_panel_p0_3d, &
+        integrate_helmholtz_torus_panel_p0_3d_jvp, &
+        integrate_helmholtz_torus_panel_p0_3d_vjp
     use fortfem_laplace_torus_curved_bem_ad_3d, only: &
         assemble_laplace_torus_curved_dtn_3d_geometry_jvp, &
         assemble_laplace_torus_curved_dtn_3d_geometry_vjp
@@ -616,6 +621,7 @@ module fortfem_boundary
     public :: evaluate_resistive_wall_energy_balance
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_helmholtz_single_layer_p0_adaptive_3d
+    public :: assemble_helmholtz_double_layer_p0_3d
     public :: assemble_helmholtz_single_layer_p0_3d_jvp
     public :: assemble_helmholtz_single_layer_p0_3d_vjp
     public :: integrate_helmholtz_single_layer_regular_panel_pair_p0_3d
@@ -657,6 +663,9 @@ module fortfem_boundary
     public :: integrate_laplace_torus_panel_p0_3d
     public :: integrate_laplace_torus_panel_p0_3d_jvp
     public :: integrate_laplace_torus_panel_p0_3d_vjp
+    public :: integrate_helmholtz_torus_panel_p0_3d
+    public :: integrate_helmholtz_torus_panel_p0_3d_jvp
+    public :: integrate_helmholtz_torus_panel_p0_3d_vjp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_curved_far_field_rwg_3d_vjp
