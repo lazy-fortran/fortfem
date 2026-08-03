@@ -535,6 +535,12 @@ orientation, EFIE, localized-RWG, mass, and magnetic-field consumers to the
 FEEC/boundary facades. All six focused behavioral tests pass; the remaining
 planar/spherical Maxwell DtN consumers are isolated in the next worktree.
 
+The planar/spherical Maxwell DtN batch (`816054d`) and the toroidal complex
+RWG/EFIE derivative batch (`ee50ccc`, inventory `ccbeca2`) are now integrated.
+Seven DtN/system/adjoint tests and six toroidal complex/JVP/VJP/RWG tests pass
+with the canonical ownership split; no new solver implementation or external
+physics data was introduced.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
