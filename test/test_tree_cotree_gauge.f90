@@ -1,6 +1,6 @@
 program test_tree_cotree_gauge
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_tree_cotree_prolongation, &
+    use fortfem_feec, only: apply_tree_cotree_prolongation, &
         apply_tree_cotree_restriction, build_tree_cotree_gauge, &
         build_tree_cotree_dof_map, &
         reduce_tree_cotree_dense_system, reduce_tree_cotree_dense_system_jvp, &

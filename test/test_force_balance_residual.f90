@@ -1,6 +1,6 @@
 program test_force_balance_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_force_balance_residual, &
+    use fortfem_feec, only: assemble_force_balance_residual, &
         assemble_force_balance_residual_jvp, assemble_force_balance_residual_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

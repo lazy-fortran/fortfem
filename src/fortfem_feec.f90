@@ -118,7 +118,13 @@ module fortfem_feec
         assemble_eulerian_nonnested_residual_jvp
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
-        evaluate_force_balance_objective_jvp
+        evaluate_force_balance_objective_jvp, &
+        evaluate_force_balance_objective_vjp, &
+        evaluate_force_balance_objective_hvp
+    use fortfem_force_balance_residual, only: &
+        assemble_force_balance_residual, &
+        assemble_force_balance_residual_jvp, &
+        assemble_force_balance_residual_vjp
     use fortfem_shifted_enriched_space, only: evaluate_shifted_enriched_space
     use fortfem_shifted_vector_enriched_space, only: &
         evaluate_shifted_vector_enriched_space
@@ -157,6 +163,10 @@ module fortfem_feec
         sparse_direct_factor_transpose_csc, sparse_direct_free, &
         sparse_direct_solve_factored, sparse_direct_solve_factored_jvp, &
         sparse_direct_solve_factored_vjp, solve
+    use fortfem_sparse_direct, only: &
+        sparse_direct_solve_tree_cotree, &
+        sparse_direct_solve_tree_cotree_jvp, &
+        sparse_direct_solve_tree_cotree_vjp
     use fortfem_sparse_ilut, only: &
         build_sparse_ilut_row, sparse_ilut_factor_t, apply_sparse_ilut
     use fortfem_sparse_incomplete_cholesky, only: &
@@ -278,6 +288,11 @@ module fortfem_feec
     public :: assemble_eulerian_nonnested_residual_jvp
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
+    public :: evaluate_force_balance_objective_vjp
+    public :: evaluate_force_balance_objective_hvp
+    public :: assemble_force_balance_residual
+    public :: assemble_force_balance_residual_jvp
+    public :: assemble_force_balance_residual_vjp
     public :: evaluate_shifted_enriched_space
     public :: evaluate_shifted_vector_enriched_space
     public :: assemble_singular_layer_matching
@@ -330,6 +345,9 @@ module fortfem_feec
     public :: sparse_direct_solve_factored
     public :: sparse_direct_solve_factored_jvp
     public :: sparse_direct_solve_factored_vjp
+    public :: sparse_direct_solve_tree_cotree
+    public :: sparse_direct_solve_tree_cotree_jvp
+    public :: sparse_direct_solve_tree_cotree_vjp
     public :: build_sparse_ilut_row
     public :: sparse_ilut_factor_t
     public :: apply_sparse_ilut

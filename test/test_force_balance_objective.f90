@@ -1,6 +1,6 @@
 program test_force_balance_objective
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
         evaluate_force_balance_objective_vjp, &
