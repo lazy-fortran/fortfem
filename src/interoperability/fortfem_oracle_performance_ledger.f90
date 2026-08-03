@@ -120,7 +120,8 @@ contains
 
     subroutine evaluate_oracle_performance_ledger_vjp( &
             manifests, weights, phase_bar, total_bar, memory_bar, tolerance_bar, &
-            phase_metric_bar, total_metric_bar, memory_metric_bar, tolerance_metric_bar, &
+            phase_metric_bar, total_metric_bar, memory_metric_bar, &
+            tolerance_metric_bar, &
             weights_bar, status)
         type(oracle_manifest_t), intent(in) :: manifests(:)
         real(dp), intent(in) :: weights(:)
@@ -144,7 +145,8 @@ contains
         weights_bar = 0.0_dp
         status = 1
         if (size(phase_bar) /= 6 .or. size(tolerance_bar) /= 4 .or. &
-            size(phase_metric_bar, 1) /= 6 .or. size(tolerance_metric_bar, 1) /= 4) return
+            size(phase_metric_bar, 1) /= 6 .or. &
+            size(tolerance_metric_bar, 1) /= 4) return
         if (.not. ieee_is_finite(total_bar) .or. .not. ieee_is_finite(memory_bar) .or. &
             .not. finite_real(phase_bar) .or. .not. finite_real(tolerance_bar)) return
         if (.not. validate_records(manifests, weights, repetition_count)) return
@@ -155,7 +157,8 @@ contains
             size(weights_bar) /= size(manifests)) return
         call extract_values(manifests, phase_values, total_values, memory_values, &
             tolerance_values)
-        call weighted_means(phase_values, total_values, memory_values, tolerance_values, &
+        call weighted_means(phase_values, total_values, memory_values, &
+            tolerance_values, &
             weights, phase_mean, total_mean, memory_mean, tolerance_mean)
         weight_sum = sum(weights)
         do run = 1, size(manifests)
@@ -163,13 +166,17 @@ contains
             total_metric_bar(run) = weights(run)*total_bar/weight_sum
             memory_metric_bar(run) = weights(run)*memory_bar/weight_sum
             tolerance_metric_bar(:, run) = weights(run)*tolerance_bar/weight_sum
-            weights_bar(run) = (dot_product(phase_bar, phase_values(:, run)-phase_mean) + &
+            weights_bar(run) = (dot_product(phase_bar, &
+                phase_values(:, run)-phase_mean) + &
                 total_bar*(total_values(run)-total_mean) + &
                 memory_bar*(memory_values(run)-memory_mean) + &
-                dot_product(tolerance_bar, tolerance_values(:, run)-tolerance_mean))/weight_sum
+                dot_product(tolerance_bar, tolerance_values(:, run)- &
+                tolerance_mean))/weight_sum
         end do
-        if (.not. finite_real(phase_metric_bar) .or. .not. finite_real(total_metric_bar) .or. &
-            .not. finite_real(memory_metric_bar) .or. .not. finite_real(tolerance_metric_bar) .or. &
+        if (.not. finite_real(phase_metric_bar) .or. &
+            .not. finite_real(total_metric_bar) .or. &
+            .not. finite_real(memory_metric_bar) .or. &
+            .not. finite_real(tolerance_metric_bar) .or. &
             .not. finite_real(weights_bar)) then
             phase_metric_bar = 0.0_dp
             total_metric_bar = 0.0_dp
@@ -181,7 +188,8 @@ contains
         status = 0
     end subroutine evaluate_oracle_performance_ledger_vjp
 
-    logical function validate_records(manifests, weights, repetition_count) result(valid)
+    logical function validate_records( &
+            manifests, weights, repetition_count) result(valid)
         type(oracle_manifest_t), intent(in) :: manifests(:)
         real(dp), intent(in) :: weights(:)
         integer, intent(out) :: repetition_count
@@ -198,7 +206,8 @@ contains
         repetition_count = manifests(1)%timing%repetition_count
         do run = 2, size(manifests)
             if (manifests(run)%timing%repetition_count /= repetition_count .or. &
-                manifests(run)%timing%warmup_count /= manifests(1)%timing%warmup_count) return
+                manifests(run)%timing%warmup_count /= &
+                manifests(1)%timing%warmup_count) return
             if (.not. same_provenance(manifests(1), manifests(run))) return
         end do
         valid = .true.
