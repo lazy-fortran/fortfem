@@ -425,7 +425,8 @@ an independent behavioral test before implementation, avoid ROADMAP and
 generated-inventory edits, use the smallest canonical facade, run the bounded
 `fo` gate, and hand off one commit. The integrator regenerates the inventory
 and updates this ledger after each verified slice. No FortFEM worktree is
-active at this checkpoint.
+active from the completed nonic/complex/BEM wave at this checkpoint; the
+unrelated downstream `fortfem-pr56` worktree remains preserved.
 
 Recent closure-neutral waves are recorded in the handoff table below; they do
 not reopen the completed consumer migration queue or duplicate its exports.
@@ -668,9 +669,13 @@ under `/mnt/storage/code/lazy-fortran/worktrees/`, then integrated to `main`:
 `699ac8d`/`bdbefa1` add the communicator-free MPI-ready trace exchange
 schedule and public core/FEEC exports, and `72afc29`/`8b99e41` add oriented
 arbitrary patch-graph trace contraction and public core exports. Their focused
-independent value/JVP/VJP oracles pass. No FortFEM implementation worktree is
-active at this checkpoint; the unrelated downstream `fortfem-pr56` worktree
-is preserved. Any new parallel slice must create a disjoint branch under
+independent value/JVP/VJP oracles pass. The latest continuation adds complex
+distributed trace reduction (`7e773cac`/`a90600e2`), FortSym-generated nonic
+curved-edge moments (`9d574f70`/`d5f48029`), and a panel-cluster geometry fix
+(`1fa911a`/`492d8df9`). Their focused matrix, Gauss--Green, complex-adjoint,
+and BEM support-enclosure oracles pass. No implementation worktree from this
+wave remains active; the unrelated downstream `fortfem-pr56` worktree is
+preserved. Any new parallel slice must create a disjoint branch under
 `/mnt/storage/code/lazy-fortran/worktrees/`, rebase from current `main`, avoid
 ROADMAP and inventory edits, run a bounded independent oracle, and hand off a
 single commit for integration. The recent implementation slices are:
@@ -710,6 +715,9 @@ single commit for integration. The recent implementation slices are:
 | `f4cdba38` + `7d50fa5` | Complex owner/ghost MPI-ready trace exchange with canonical core/umbrella exports | Independent exact packing, central-re-evaluation JVP, real-part complex adjoints, nonfinite rejection, and invalid-shape checks; no MPI dependency added |
 | `43c36cea` + `05307fa` | Neutral complex FEM/DtN source-to-trace residual with canonical boundary/umbrella exports | Independent manual value, full central reassembly JVP, real-part complex VJP, positive-weight, shape, and finite-value rejection oracles |
 | `ea624330` + `05307fa` | Complex geometry-mortar component coupling with canonical FEEC/umbrella exports | Independent nested-loop value, central matrix/weight JVP, real-part complex VJP, output-shape, nonfinite, and positive-geometry validation oracles |
+| `7e773cac` + `a90600e` | Complex distributed trace value/JVP/VJP reduction over the validated owner/ghost ledger, with canonical FEEC/umbrella exports | Independent aggregation matrices, complete central reassembly, real-part complex adjoint, shape, and finite-value rejection oracles |
+| `9d574f70` + `d5f4802` | FortSym-pinned nonic curved Bézier polygon edge-area value/JVP/VJP kernels and canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value, central JVP, real VJP, straight-edge, and degenerate-topology oracles; byte-current regeneration |
+| `1fa911a` + `492d8df` | BEM panel-cluster centers/radii now enclose complete triangle supports rather than panel centroids | Independent node-range vertex-enclosure/area/permutation oracle plus hierarchical Galerkin and CFIE scaling tests |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -2021,6 +2029,13 @@ owner-selection ledger and a separate MPI-ready exchange schedule:
 independently ordered partitions are checked by global ID and coordinate
 tolerance, exactly one owned copy is selected per row, and packed
 gather/exchange JVP/VJP operations expose fixed maps for a later MPI backend.
+The complex trace path now applies the same fixed topology to real/imaginary
+channels with a real-part complex VJP, so frequency-domain FEM/BEM/DtN and
+mortar consumers can reuse the owner ledger without an MPI dependency. FCI
+curved-support geometry now has a FortSym-generated nonic Bézier edge-area
+contract with byte-current regeneration and independent Gauss--Green/JVP/VJP
+oracles. These are generated/neutral ingredients only; communicators and
+application-specific field assembly remain external.
 The neutral oriented patch-graph trace contraction now consumes arbitrary
 region-interface cycle bases, including periodic/self-identification edges,
 and returns weighted cycle ledgers with exact derivatives. Higher-order cut
