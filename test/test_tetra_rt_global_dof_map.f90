@@ -1,6 +1,6 @@
 program test_tetra_rt_global_dof_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_tetra_rt_basis_transform, build_tetra_rt_dof_map
     use fortfem_tetra_face_moment_transforms, only: &
         transform_tetra_rt_face_moments

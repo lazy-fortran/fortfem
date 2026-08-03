@@ -1,6 +1,6 @@
 program test_tetra_rt_interpolation_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: initialize_tetra_rt, interpolate_physical_tetra_rt, &
+    use fortfem_feec, only: initialize_tetra_rt, interpolate_physical_tetra_rt, &
         interpolate_sampled_physical_tetra_rt, &
         interpolate_sampled_physical_tetra_rt_jvp, &
         interpolate_sampled_physical_tetra_rt_vjp, &

@@ -81,6 +81,33 @@ module fortfem_feec
         map_maxwell_rwg_to_tetra_nedelec_edges
     use fortfem_maxwell_efie_rwg_3d, only: assemble_maxwell_efie_rwg_3d
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
+    use fortfem_tetra_rt_arbitrary_order, only: &
+        initialize_tetra_rt, tetra_rt_t
+    use fortfem_tetra_rt_global_dof_map, only: &
+        build_tetra_rt_basis_transform, build_tetra_rt_dof_map
+    use fortfem_tetra_rt_interpolation, only: &
+        interpolate_physical_tetra_rt, &
+        interpolate_sampled_physical_tetra_rt, &
+        interpolate_sampled_physical_tetra_rt_jvp, &
+        interpolate_sampled_physical_tetra_rt_vjp, &
+        tetra_rt_interpolation_points
+    use fortfem_tetra_vector_samples, only: &
+        tetra_vector_sample_gradients_t, tetra_vector_samples_t, &
+        zero_tetra_vector_samples_like
+    use fortfem_tetra_piola_maps, only: &
+        map_tetra_rt_contravariant, &
+        map_tetra_rt_contravariant_jvp, &
+        map_tetra_rt_contravariant_vjp
+    use fortfem_assembly_tetra_rt_arbitrary_order_3d, only: &
+        assemble_tetra_rt_div_mass_csc, &
+        assemble_tetra_rt_div_mass_csc_jvp, &
+        assemble_tetra_rt_div_mass_csc_vjp, &
+        assemble_tetra_rt_div_mass_element, &
+        assemble_tetra_rt_div_mass_element_jvp, &
+        assemble_tetra_rt_div_mass_element_vjp, &
+        assemble_tetra_rt_vector_load_samples, &
+        assemble_tetra_rt_vector_load_samples_jvp, &
+        assemble_tetra_rt_vector_load_samples_vjp
     use fortfem_tetra_nedelec_global_dof_map, only: build_tetra_nedelec_dof_map
     use fortfem_tetra_piola_maps, only: map_tetra_nedelec_covariant
     use fortfem_assembly_bspline_polar_2d, only: &
@@ -397,6 +424,30 @@ module fortfem_feec
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
     public :: tetra_duffy_quadrature
+    public :: initialize_tetra_rt
+    public :: tetra_rt_t
+    public :: build_tetra_rt_basis_transform
+    public :: build_tetra_rt_dof_map
+    public :: interpolate_physical_tetra_rt
+    public :: interpolate_sampled_physical_tetra_rt
+    public :: interpolate_sampled_physical_tetra_rt_jvp
+    public :: interpolate_sampled_physical_tetra_rt_vjp
+    public :: tetra_rt_interpolation_points
+    public :: tetra_vector_sample_gradients_t
+    public :: tetra_vector_samples_t
+    public :: zero_tetra_vector_samples_like
+    public :: map_tetra_rt_contravariant
+    public :: map_tetra_rt_contravariant_jvp
+    public :: map_tetra_rt_contravariant_vjp
+    public :: assemble_tetra_rt_div_mass_csc
+    public :: assemble_tetra_rt_div_mass_csc_jvp
+    public :: assemble_tetra_rt_div_mass_csc_vjp
+    public :: assemble_tetra_rt_div_mass_element
+    public :: assemble_tetra_rt_div_mass_element_jvp
+    public :: assemble_tetra_rt_div_mass_element_vjp
+    public :: assemble_tetra_rt_vector_load_samples
+    public :: assemble_tetra_rt_vector_load_samples_jvp
+    public :: assemble_tetra_rt_vector_load_samples_vjp
     public :: assemble_bspline_polar_h1_operator_csc
     public :: assemble_bspline_polar_hcurl_operator_csc
     public :: assemble_bspline_polar_l2_mass_csc

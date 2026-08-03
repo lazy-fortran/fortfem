@@ -1,6 +1,6 @@
 program test_tetra_rt_div_mass_csc_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_rt_div_mass_csc, &
+    use fortfem_feec, only: assemble_tetra_rt_div_mass_csc, &
         assemble_tetra_rt_div_mass_csc_jvp, assemble_tetra_rt_div_mass_csc_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_t, fortsparse_status_t
