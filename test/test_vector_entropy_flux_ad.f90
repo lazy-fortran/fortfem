@@ -1,6 +1,6 @@
 program test_vector_entropy_flux_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_vector_entropy_stable_flux, &
+    use fortfem_feec, only: assemble_vector_entropy_stable_flux, &
         assemble_vector_entropy_stable_flux_jvp, &
         assemble_vector_entropy_stable_flux_vjp
     use fortfem_kinds, only: dp

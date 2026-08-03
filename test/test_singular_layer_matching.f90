@@ -1,7 +1,7 @@
 program test_singular_layer_matching
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp, &
         assemble_singular_layer_matching_vjp
