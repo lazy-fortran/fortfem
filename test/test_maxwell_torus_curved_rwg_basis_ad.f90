@@ -1,11 +1,11 @@
 program test_maxwell_torus_curved_rwg_basis_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: generate_torus_surface_mesh
+    use fortfem_feec, only: &
         build_maxwell_rwg_surface_space, &
         evaluate_maxwell_torus_curved_rwg_basis, &
         evaluate_maxwell_torus_curved_rwg_basis_jvp, &
-        evaluate_maxwell_torus_curved_rwg_basis_vjp, &
-        generate_torus_surface_mesh
+        evaluate_maxwell_torus_curved_rwg_basis_vjp
     use fortfem_kinds, only: dp
     implicit none
 

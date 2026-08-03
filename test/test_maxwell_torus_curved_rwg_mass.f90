@@ -1,13 +1,14 @@
 program test_maxwell_torus_curved_rwg_mass
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_torus_curved_rwg_mass_matrix, &
         assemble_maxwell_torus_curved_rwg_mass_matrix_jvp, &
-        assemble_maxwell_torus_curved_rwg_mass_matrix_vjp, &
-        evaluate_maxwell_torus_curved_rwg_basis, generate_torus_surface_mesh
+        assemble_maxwell_torus_curved_rwg_mass_matrix_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
+    use fortfem_feec, only: &
+        build_maxwell_rwg_surface_space, evaluate_maxwell_torus_curved_rwg_basis, &
+        triangle_duffy_quadrature
     use fortfem_kinds, only: dp
-    use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
 
     real(dp), parameter :: major_radius = 2.0_dp, minor_radius = 0.6_dp
