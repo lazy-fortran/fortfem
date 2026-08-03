@@ -1,14 +1,14 @@
 program test_solver_integration
     use fortfem_kinds
     use fortfem_core, only: mesh_t, function_space_t, &
-        vector_function_space_t, dirichlet_bc_t, vector_bc_t, unit_square_mesh
+        vector_function_space_t, dirichlet_bc_t, unit_square_mesh
     use fortfem_feec, only: trial_function_t, test_function_t, function_t, &
         form_expr_t, vector_trial_function_t, &
         vector_test_function_t, vector_function_t, function_space, &
         vector_function_space, trial_function, test_function, constant, &
         dirichlet_bc, function, vector_function, vector_trial_function, &
         vector_test_function, vector_bc, inner, grad, curl, dx, operator(*), &
-        operator(+), operator(==)
+        operator(+), operator(==), vector_bc_t
     use fortfem_api_solvers, only: solve, assemble_laplacian_system, &
         solver_options_t, solver_stats_t, solver_options
     use check

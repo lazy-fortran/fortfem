@@ -60,7 +60,7 @@ module fortfem_core
         evaluate_level_set_triangle_cut_fourth_moments_2d, &
         evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
     use fortfem_api_types, only: mesh_t, function_space_t, &
-        vector_function_space_t, dirichlet_bc_t, vector_bc_t
+        vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh, &
         structured_quad_mesh
     implicit none
@@ -102,7 +102,6 @@ module fortfem_core
     public :: function_space_t
     public :: vector_function_space_t
     public :: dirichlet_bc_t
-    public :: vector_bc_t
     public :: unit_square_mesh
     public :: rectangle_mesh
     public :: structured_quad_mesh
