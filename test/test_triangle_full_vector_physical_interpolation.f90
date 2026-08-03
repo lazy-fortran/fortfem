@@ -1,6 +1,6 @@
 program test_triangle_full_vector_physical_interpolation
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_triangle_bdm_interpolant, &
         evaluate_triangle_nedelec_second_kind_interpolant, &
         initialize_triangle_bdm, initialize_triangle_nedelec_second_kind, &

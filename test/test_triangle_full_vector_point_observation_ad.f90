@@ -1,6 +1,6 @@
 program test_triangle_full_vector_point_observation_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_triangle_bdm_interpolant_at_point, &
         evaluate_triangle_bdm_interpolant_at_point_jvp, &
         evaluate_triangle_bdm_interpolant_at_point_vjp, &
