@@ -1,6 +1,6 @@
 program test_dissipative_cayley
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_time, only: &
         advance_dissipative_cayley, advance_dissipative_cayley_jvp, &
         advance_dissipative_cayley_vjp
     use fortfem_kinds, only: dp
