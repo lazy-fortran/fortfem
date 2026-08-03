@@ -1,6 +1,6 @@
 program test_free_boundary_port_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_free_boundary_port_residual, &
+    use fortfem_boundary, only: assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
     use fortfem_kinds, only: dp

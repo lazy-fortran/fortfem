@@ -8,6 +8,12 @@ module fortfem_core
     use fortfem_cell_complex, only: &
         cell_complex_betti_numbers, cell_complex_euler_characteristic, &
         cell_complex_t, initialize_cell_complex, validate_cell_complex
+    use fortfem_boundary_region_graph, only: &
+        boundary_region_graph_t, initialize_boundary_region_graph, &
+        validate_boundary_region_graph, boundary_region_graph_incidence, &
+        boundary_region_graph_components, boundary_region_graph_cycle_basis, &
+        boundary_region_graph_interface_samples, &
+        boundary_region_graph_interface_metadata
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
@@ -113,5 +119,13 @@ module fortfem_core
     public :: toroidal_vector_to_cartesian_jvp
     public :: toroidal_vector_to_cartesian_vjp
     public :: validate_cell_complex
+    public :: boundary_region_graph_t
+    public :: initialize_boundary_region_graph
+    public :: validate_boundary_region_graph
+    public :: boundary_region_graph_incidence
+    public :: boundary_region_graph_components
+    public :: boundary_region_graph_cycle_basis
+    public :: boundary_region_graph_interface_samples
+    public :: boundary_region_graph_interface_metadata
 
 end module fortfem_core
