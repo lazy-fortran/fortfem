@@ -933,6 +933,9 @@ module fortfem_api
         compute_fci_octic_curved_polygon_cell_areas_2d, &
         compute_fci_octic_curved_polygon_cell_areas_2d_jvp, &
         compute_fci_octic_curved_polygon_cell_areas_2d_vjp, &
+        compute_fci_nonic_curved_polygon_cell_areas_2d, &
+        compute_fci_nonic_curved_polygon_cell_areas_2d_jvp, &
+        compute_fci_nonic_curved_polygon_cell_areas_2d_vjp, &
         compute_fci_curved_quadrilateral_cell_areas_2d, &
         compute_fci_curved_quadrilateral_cell_areas_2d_jvp, &
         compute_fci_curved_quadrilateral_cell_areas_2d_vjp
@@ -3217,6 +3220,9 @@ module fortfem_api
     public :: compute_fci_octic_curved_polygon_cell_areas_2d
     public :: compute_fci_octic_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_octic_curved_polygon_cell_areas_2d_vjp
+    public :: compute_fci_nonic_curved_polygon_cell_areas_2d
+    public :: compute_fci_nonic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_nonic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
