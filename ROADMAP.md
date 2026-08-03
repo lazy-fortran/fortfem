@@ -678,6 +678,21 @@ re-export wiring was added; all eight focused tests pass and the release gate
 remains green. The umbrella-consumer count is now 191 test files, down from
 the 730-file starting audit.
 
+#### Active worktrees after the latest handoff
+
+The current queue is intentionally disjoint and short-feedback:
+
+| Worktree | Scope | Required handoff |
+| --- | --- | --- |
+| `add_team_external_adapter_wave8` | Metadata-only exact TEAM-3/7/13/20 sister-data adapter and shell oracle; no benchmark arrays/readers | Explicit absent-data skip, synthetic checksum/provenance/tamper checks, solution-first SVG/CSV, no repository bloat |
+| `migrate_maxwell_sphere_wave9` | Six remaining curved-sphere/toroidal Maxwell CFIE/EFIE/MFIE/DtN consumers | Focused analytical, reciprocity, curvature, and JVP/VJP tests; minimal canonical exports only |
+| `migrate_scalar_mesh_wave10` | Mesh/Piola/refinement and cell-source consumers | Focused topology, interpolation, and derivative oracles; core/FEEC ownership only |
+
+Each agent rebases from the latest `main`, edits only its listed files, and
+hands off a commit without waiting for the full test or Pages workflow. The
+integrator regenerates the public inventory and runs the fast release gate
+after every handoff.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
