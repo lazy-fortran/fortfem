@@ -1,9 +1,9 @@
 program test_torus_curved_helmholtz_costabel_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_helmholtz_fem_bem_costabel_torus_curved_3d, &
-        generate_solid_torus_tetra_mesh, &
         solve_helmholtz_fem_bem_costabel_torus_curved_3d
+    use fortfem_core, only: generate_solid_torus_tetra_mesh
     use fortfem_kinds, only: dp
     implicit none
 

@@ -1,8 +1,9 @@
 program test_torus_curved_helmholtz_bem_dtn_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        evaluate_torus_curved_panel, generate_torus_surface_mesh, &
+    use fortfem_boundary, only: &
+        evaluate_torus_curved_panel, &
         solve_helmholtz_bem_dtn_torus_curved_3d
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
