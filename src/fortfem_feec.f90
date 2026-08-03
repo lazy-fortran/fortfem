@@ -535,7 +535,10 @@ module fortfem_feec
         compute_fci_octic_curved_polygon_cell_areas_2d_vjp, &
         compute_fci_nonic_curved_polygon_cell_areas_2d, &
         compute_fci_nonic_curved_polygon_cell_areas_2d_jvp, &
-        compute_fci_nonic_curved_polygon_cell_areas_2d_vjp
+        compute_fci_nonic_curved_polygon_cell_areas_2d_vjp, &
+        compute_fci_decic_curved_polygon_cell_areas_2d, &
+        compute_fci_decic_curved_polygon_cell_areas_2d_jvp, &
+        compute_fci_decic_curved_polygon_cell_areas_2d_vjp
     use fortfem_fci_terminal_boundary_flux, only: &
         assemble_fci_terminal_boundary_flux, &
         assemble_fci_terminal_boundary_flux_jvp, &
@@ -1390,6 +1393,9 @@ module fortfem_feec
     public :: compute_fci_nonic_curved_polygon_cell_areas_2d
     public :: compute_fci_nonic_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_nonic_curved_polygon_cell_areas_2d_vjp
+    public :: compute_fci_decic_curved_polygon_cell_areas_2d
+    public :: compute_fci_decic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_decic_curved_polygon_cell_areas_2d_vjp
     public :: assemble_fci_terminal_boundary_flux
     public :: assemble_fci_terminal_boundary_flux_jvp
     public :: assemble_fci_terminal_boundary_flux_vjp
