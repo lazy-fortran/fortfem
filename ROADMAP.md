@@ -547,6 +547,13 @@ complex-kernel, magnetic-target, sphere-impedance, RBC, and RWG-mass consumers
 now use the canonical facades; all focused behavioral tests and the release
 gate pass.
 
+The cut/BEM/FCI continuation is integrated as `9ff699d`, `0771687`, and
+`1623340` (inventory `1ae879e`). Six tetrahedral level-set/cut quadrature
+consumers now use `fortfem_core`, six Laplace BEM consumers use
+`fortfem_boundary`/`fortfem_core`, and six FCI interpolation/curved-geometry
+consumers use `fortfem_feec`; their focused independent oracles and API gates
+pass.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
