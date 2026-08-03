@@ -100,6 +100,64 @@ grep -Fq "SOLUTION_FIRST: wrote verified TEAM gallery" <<<"$gallery_output"
 test -s "$temporary_dir/gallery/TEAM-3/solution.svg"
 test -s "$temporary_dir/gallery/TEAM-3/solution.csv"
 grep -Fq "TEAM-3 exact-data solution" "$temporary_dir/gallery/TEAM-3/solution.svg"
+python3 - "$temporary_dir/gallery/TEAM-3/solution.csv" \
+    "$temporary_dir/gallery/TEAM-3/solution.svg" \
+    "$temporary_dir/gallery/TEAM-3/provenance.json" <<'PY'
+import csv
+import json
+import pathlib
+import sys
+
+rows = list(csv.DictReader(pathlib.Path(sys.argv[1]).open(encoding="utf-8")))
+assert [float(row["solution"]) for row in rows] == [0.0, 1.0, 2.0]
+svg = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+assert svg.count("<polygon ") == 1
+assert svg.count("<circle ") == 3
+metadata = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding="utf-8"))
+assert metadata["comparison_mode"] == "external-benchmark-payload"
+assert metadata["analytical_reference"].startswith("provenance-only")
+assert metadata["solution_first"] is True
+PY
+
+# A provenance-valid payload still must describe drawable elements.  Reject a
+# duplicate-node element before it can produce a misleading solution plot.
+cp "$temporary_dir/$artifact_name" "$temporary_dir/degenerate-team-payload.json"
+python3 - "$temporary_dir/degenerate-team-payload.json" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+document = json.loads(path.read_text(encoding="utf-8"))
+document["cases"]["TEAM-3"]["geometry"]["elements"] = [[0, 0, 1]]
+path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+PY
+degenerate_digest=$(sha256sum "$temporary_dir/degenerate-team-payload.json" | cut -d ' ' -f1)
+python3 - "$temporary_dir/data-manifest.json" "$temporary_dir/degenerate-data-manifest.json" \
+    "$degenerate_digest" <<'PY'
+import json
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+target = pathlib.Path(sys.argv[2])
+digest = sys.argv[3]
+document = json.loads(source.read_text(encoding="utf-8"))
+document["artifact_file"] = "degenerate-team-payload.json"
+document["artifact_uri"] = document["artifact_uri"].replace(
+    "synthetic-team-payload.json", "degenerate-team-payload.json")
+document["archive_sha256"] = digest
+target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+PY
+if python3 "$gallery" \
+    --contract "$temporary_dir/ready-contract.json" \
+    --data-manifest "$temporary_dir/degenerate-data-manifest.json" \
+    --data-root "$temporary_dir" \
+    --case-id TEAM-3 --output-dir "$temporary_dir/degenerate-gallery" \
+    >/dev/null 2>&1; then
+    echo "degenerate TEAM element unexpectedly rendered" >&2
+    exit 1
+fi
 
 # A checksum mismatch must stop consumption before the payload is rendered.
 printf '\n' >> "$temporary_dir/$artifact_name"
