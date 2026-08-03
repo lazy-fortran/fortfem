@@ -628,7 +628,9 @@ module fortfem_api
         evaluate_level_set_tetra_cut_third_moments_3d, &
         evaluate_level_set_tetra_cut_third_moments_3d_jvp, &
         evaluate_level_set_tetra_cut_fourth_moments_3d, &
-        evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
+        evaluate_level_set_tetra_cut_fourth_moments_3d_jvp, &
+        evaluate_level_set_tetra_cut_fifth_moments_3d, &
+        evaluate_level_set_tetra_cut_fifth_moments_3d_jvp
     use fortfem_fci_terminal_segment_2d, only: &
         find_fci_first_hit_segment_2d, find_fci_first_hit_segment_2d_jvp
     use fortfem_fci_terminal_triangle_3d, only: &
@@ -2539,6 +2541,8 @@ module fortfem_api
     public :: evaluate_level_set_tetra_cut_third_moments_3d_jvp
     public :: evaluate_level_set_tetra_cut_fourth_moments_3d
     public :: evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
+    public :: evaluate_level_set_tetra_cut_fifth_moments_3d
+    public :: evaluate_level_set_tetra_cut_fifth_moments_3d_jvp
     public :: find_fci_first_hit_segment_2d
     public :: find_fci_first_hit_segment_2d_jvp
     public :: find_fci_first_hit_triangle_3d
