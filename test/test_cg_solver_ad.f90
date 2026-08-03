@@ -1,6 +1,6 @@
 program test_cg_solver_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cg_solve, cg_solve_jvp, cg_solve_vjp, &
+    use fortfem_advanced_solvers, only: cg_solve, cg_solve_jvp, cg_solve_vjp, &
         solver_options_t, solver_stats_t
     use fortfem_kinds, only: dp
     implicit none
