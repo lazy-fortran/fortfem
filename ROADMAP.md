@@ -655,6 +655,12 @@ redistributable in-tree examples are deliberately method-faithful or
 manufactured and never claim paper-data reproduction without a pinned,
 independently licensed sister-repository payload.
 
+The topology/layout handoff `5bfad83` is also integrated: cell-complex,
+homology/identification, partition ownership, distributed trace, internal
+manifold, and physical-surface-geometry consumers now use their core/FEEC
+facades. Its seven focused tests and the 506-target `fo check` passed; the
+generated public inventory and release gate were refreshed afterward.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
