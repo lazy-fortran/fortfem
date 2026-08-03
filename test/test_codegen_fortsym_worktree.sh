@@ -107,4 +107,32 @@ printf '%s\n' "dirty" >> "$pinned_worktree/revision.txt"
 run_negative dirty-worktree "uncommitted changes" \
     env FORTSYM_DIR="$pinned_worktree" "$checker"
 
+# The generated-kernel checker also needs a storage-root override so local
+# provenance checks do not consume the shared /tmp filesystem.  Use a fake
+# generator that copies the repository's already-checked-in generated files;
+# this tests staging and cleanup without rebuilding FortSym.
+check_repository="$fixture_root/check-repository"
+check_codegen="$check_repository/tools/codegen"
+mkdir -p "$check_codegen" "$check_repository/src"
+ln -s "$repository_dir/src/generated" "$check_repository/src/generated"
+cp "$repository_dir/tools/codegen/check_generated.sh" "$check_codegen/"
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'repository_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)' \
+    'cp "$repository_dir"/src/generated/*.f90 "$FORTFEM_CODEGEN_OUTPUT_DIR/"' \
+    > "$check_codegen/generate.sh"
+chmod +x "$check_codegen/generate.sh" "$check_codegen/check_generated.sh"
+storage_tmp="$fixture_root/storage-tmp"
+FORTFEM_CODEGEN_TMP_ROOT="$storage_tmp" \
+    "$check_codegen/check_generated.sh"
+[[ -d "$storage_tmp" ]] || {
+    echo "codegen checker did not create its configured storage root" >&2
+    exit 1
+}
+if find "$storage_tmp" -mindepth 1 -print -quit | grep -q .; then
+    echo "codegen checker left staging files behind" >&2
+    exit 1
+fi
+
 echo "FortSym pinned-worktree provenance gate passed"

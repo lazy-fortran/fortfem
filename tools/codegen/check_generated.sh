@@ -3,7 +3,24 @@ set -euo pipefail
 
 codegen_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repository_dir=$(cd "$codegen_dir/../.." && pwd)
-temporary_dir=$(mktemp -d)
+temporary_root=${FORTFEM_CODEGEN_TMP_ROOT:-/mnt/storage}
+if [[ -e "$temporary_root" ]]; then
+    root_is_usable=false
+    if [[ -d "$temporary_root" && -w "$temporary_root" ]]; then
+        root_is_usable=true
+    fi
+else
+    root_parent=$(dirname "$temporary_root")
+    root_is_usable=false
+    if [[ -d "$root_parent" && -w "$root_parent" ]]; then
+        root_is_usable=true
+    fi
+fi
+if [[ "$root_is_usable" != true ]]; then
+    temporary_root=${TMPDIR:-/tmp}
+fi
+mkdir -p "$temporary_root"
+temporary_dir=$(mktemp -d "$temporary_root/fortfem-codegen-check.XXXXXX")
 trap 'rm -rf -- "$temporary_dir"' EXIT
 
 (
