@@ -1,6 +1,6 @@
 program test_maxwell_pml_plane_wave_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_tetra_edge_dof_map, &
+    use fortfem_feec, only: build_tetra_edge_dof_map, &
         solve_tetra_nedelec_pml
     use fortfem_kinds, only: dp
     implicit none

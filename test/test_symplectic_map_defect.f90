@@ -1,6 +1,6 @@
 program test_symplectic_map_defect
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_symplectic_map_defect, &
+    use fortfem_time, only: assemble_symplectic_map_defect, &
         assemble_symplectic_map_defect_jvp, assemble_symplectic_map_defect_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
