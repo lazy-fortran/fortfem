@@ -1,6 +1,6 @@
 program test_complex_interchange_sample_derivatives
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         compare_complex_interchange_samples, &
         compare_complex_interchange_samples_jvp, &
         compare_complex_interchange_samples_vjp, &

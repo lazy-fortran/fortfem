@@ -1,7 +1,7 @@
 program test_interchange_samples
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         compare_interchange_samples, initialize_interchange_samples, &
         interchange_sample_set_t, validate_interchange_samples
     implicit none

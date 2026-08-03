@@ -1,11 +1,14 @@
 program test_paper_magnetic_t1
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_coefficient, cell_coefficient_t, curl, dx, &
-        form_expr_t, init_measures, inner, mesh_t, operator(*), operator(+), &
-        operator(==), rectangle_mesh, solve, vector_bc_edge_moments, &
-        vector_bc_t, vector_function, vector_function_space, &
-        vector_function_space_t, vector_function_t, vector_test_function, &
+    use fortfem_feec, only: curl, dx, &
+        form_expr_t, init_measures, inner, operator(*), operator(+), &
+        operator(==), solve, vector_bc_edge_moments, &
+        vector_bc_t, vector_function, vector_function_space, vector_function_t, &
+        vector_test_function, &
         vector_test_function_t, vector_trial_function, vector_trial_function_t
+    use fortfem_api_spaces, only: cell_coefficient, cell_coefficient_t, &
+        vector_function_space_t
+    use fortfem_core, only: mesh_t, rectangle_mesh
     use fortfem_assembly_nedelec_2d, only: assemble_nedelec_weighted
     use fortfem_gauss_quadrature_2d, only: &
         gauss_quadrature_triangle_t, get_gauss_quadrature_triangle
