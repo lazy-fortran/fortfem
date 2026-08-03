@@ -50,6 +50,10 @@ module fortfem_boundary
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
+    use fortfem_complex_boundary_trace_residual, only: &
+        assemble_complex_boundary_trace_residual, &
+        assemble_complex_boundary_trace_residual_jvp, &
+        assemble_complex_boundary_trace_residual_vjp
     use fortfem_adaptive_surface_bem, only: &
         estimate_helmholtz_p0_two_level_residual_3d, &
         estimate_laplace_p0_two_level_residual_3d, &
@@ -217,6 +221,9 @@ module fortfem_boundary
     public :: assemble_free_boundary_port_residual
     public :: assemble_free_boundary_port_residual_jvp
     public :: assemble_free_boundary_port_residual_vjp
+    public :: assemble_complex_boundary_trace_residual
+    public :: assemble_complex_boundary_trace_residual_jvp
+    public :: assemble_complex_boundary_trace_residual_vjp
     public :: assemble_maxwell_fem_bem_torus_curved_system_3d
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
     public :: condense_wall_response_blocks
