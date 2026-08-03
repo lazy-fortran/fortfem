@@ -1,9 +1,9 @@
 program test_torus_curved_laplace_representation
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        cartesian_to_toroidal, evaluate_laplace_representation_torus_curved_3d, &
-        evaluate_toroidal_harmonic_p, generate_torus_surface_mesh, &
-        toroidal_point_to_cartesian, &
+    use fortfem_core, only: cartesian_to_toroidal, generate_torus_surface_mesh, &
+        toroidal_point_to_cartesian
+    use fortfem_boundary, only: evaluate_laplace_representation_torus_curved_3d
+    use fortfem_fourier, only: evaluate_toroidal_harmonic_p, &
         toroidal_poisson_exterior_dtn_p
     use fortfem_kinds, only: dp
     implicit none

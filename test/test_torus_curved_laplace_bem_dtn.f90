@@ -1,9 +1,11 @@
 program test_torus_curved_laplace_bem_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        cartesian_to_toroidal, evaluate_toroidal_harmonic_p, &
-        evaluate_torus_curved_panel, generate_torus_surface_mesh, &
-        solve_laplace_bem_dtn_torus_curved_3d, &
+    use fortfem_core, only: &
+        cartesian_to_toroidal, evaluate_torus_curved_panel, &
+        generate_torus_surface_mesh
+    use fortfem_boundary, only: solve_laplace_bem_dtn_torus_curved_3d
+    use fortfem_fourier, only: &
+        evaluate_toroidal_harmonic_p, &
         toroidal_poisson_exterior_dtn_p
     use fortfem_kinds, only: dp
     implicit none

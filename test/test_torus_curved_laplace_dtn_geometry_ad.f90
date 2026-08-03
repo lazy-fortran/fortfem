@@ -1,10 +1,10 @@
 program test_torus_curved_laplace_dtn_geometry_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_laplace_torus_curved_dtn_3d, &
         assemble_laplace_torus_curved_dtn_3d_geometry_jvp, &
-        assemble_laplace_torus_curved_dtn_3d_geometry_vjp, &
-        generate_torus_surface_mesh
+        assemble_laplace_torus_curved_dtn_3d_geometry_vjp
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

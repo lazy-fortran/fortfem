@@ -28,6 +28,7 @@ module fortfem_core
     use fortfem_structured_tetra_box_mesh, only: &
         generate_structured_tetra_box_mesh
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
+    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_api_types, only: mesh_t, function_space_t, &
         vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, unit_square_mesh, rectangle_mesh
@@ -44,6 +45,7 @@ module fortfem_core
     public :: generate_sphere_surface_mesh
     public :: generate_structured_tetra_box_mesh
     public :: generate_torus_surface_mesh
+    public :: evaluate_torus_curved_panel
     public :: mesh_t
     public :: function_space_t
     public :: vector_function_space_t
