@@ -225,6 +225,8 @@ module fortfem_boundary
         assemble_maxwell_torus_efie_wave_number_vjp, &
         assemble_maxwell_torus_curved_efie_bc_imaginary_3d, &
         assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d, &
+        assemble_maxwell_torus_mfie_offset_jvp, &
+        assemble_maxwell_torus_mfie_offset_vjp, &
         assemble_maxwell_torus_mfie_offset_geometry_jvp, &
         assemble_maxwell_torus_mfie_offset_geometry_vjp, &
         assemble_maxwell_torus_curved_mfie_rwg_rbc_3d, &
@@ -261,7 +263,9 @@ module fortfem_boundary
         evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp, &
         evaluate_maxwell_magnetic_field_rwg_3d_vjp
     use fortfem_maxwell_cfie_regularized_3d, only: &
-        assemble_maxwell_regularized_cfie_rwg_3d
+        assemble_maxwell_regularized_cfie_rwg_3d, &
+        solve_maxwell_pec_regularized_cfie_rwg_3d, &
+        solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
     use fortfem_maxwell_mfie_rwg_rbc_3d, only: &
         assemble_maxwell_mfie_rwg_rbc_3d
     use fortfem_maxwell_efie_bc_3d, only: &
@@ -273,7 +277,10 @@ module fortfem_boundary
         build_maxwell_bc_to_refined_rwg
     use fortfem_maxwell_efie_rwg_3d, only: &
         assemble_maxwell_rwg_potential_operators_3d, &
-        evaluate_maxwell_efie_field_rwg_3d
+        assemble_maxwell_plane_wave_rhs_rwg_3d, &
+        evaluate_maxwell_efie_far_field_rwg_3d, &
+        evaluate_maxwell_efie_field_rwg_3d, &
+        solve_maxwell_pec_efie_rwg_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_bc_imaginary_3d, &
@@ -298,6 +305,7 @@ module fortfem_boundary
         assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp, &
         assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
+        assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
@@ -614,6 +622,8 @@ module fortfem_boundary
     public :: evaluate_maxwell_magnetic_field_rwg_3d_targets_vjp
     public :: evaluate_maxwell_magnetic_field_rwg_3d_vjp
     public :: assemble_maxwell_regularized_cfie_rwg_3d
+    public :: solve_maxwell_pec_regularized_cfie_rwg_3d
+    public :: solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
     public :: assemble_maxwell_mfie_rwg_rbc_3d
     public :: assemble_maxwell_bc_potential_operators_3d
     public :: assemble_maxwell_bc_scalar_potential_3d
@@ -623,6 +633,9 @@ module fortfem_boundary
     public :: build_maxwell_bc_to_refined_rwg
     public :: assemble_maxwell_rwg_potential_operators_3d
     public :: evaluate_maxwell_efie_field_rwg_3d
+    public :: assemble_maxwell_plane_wave_rhs_rwg_3d
+    public :: evaluate_maxwell_efie_far_field_rwg_3d
+    public :: solve_maxwell_pec_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
@@ -646,6 +659,7 @@ module fortfem_boundary
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
+    public :: assemble_maxwell_sphere_curved_mfie_rwg_rbc_3d
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
@@ -675,6 +689,8 @@ module fortfem_boundary
     public :: assemble_maxwell_torus_efie_wave_number_vjp
     public :: assemble_maxwell_torus_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_torus_curved_mfie_offset_trace_rwg_rbc_3d
+    public :: assemble_maxwell_torus_mfie_offset_jvp
+    public :: assemble_maxwell_torus_mfie_offset_vjp
     public :: assemble_maxwell_torus_mfie_offset_geometry_jvp
     public :: assemble_maxwell_torus_mfie_offset_geometry_vjp
     public :: assemble_maxwell_torus_curved_mfie_rwg_rbc_3d

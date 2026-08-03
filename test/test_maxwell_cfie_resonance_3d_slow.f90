@@ -1,11 +1,11 @@
 program test_maxwell_cfie_resonance_3d_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_efie_rwg_3d, &
+    use fortfem_boundary, only: &
         assemble_maxwell_regularized_cfie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
-        assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
-        generate_sphere_surface_mesh
+        assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
+    use fortfem_feec, only: assemble_maxwell_efie_rwg_3d
     use fortfem_kinds, only: dp
     implicit none
 

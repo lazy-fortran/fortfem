@@ -1,11 +1,12 @@
 program test_maxwell_pec_sphere_mie_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_efie_far_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
-        generate_sphere_surface_mesh, solve_maxwell_pec_efie_rwg_3d, &
+        solve_maxwell_pec_efie_rwg_3d, &
         solve_maxwell_pec_regularized_cfie_rwg_3d, &
         solve_maxwell_pec_sphere_curved_efie_rwg_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none

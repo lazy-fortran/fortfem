@@ -1,8 +1,8 @@
 program test_maxwell_torus_reciprocity_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_maxwell_efie_far_field_rwg_3d, &
-        generate_torus_surface_mesh, &
+    use fortfem_boundary, only: evaluate_maxwell_efie_far_field_rwg_3d, &
         solve_maxwell_pec_regularized_cfie_rwg_multiple_3d
+    use fortfem_core, only: generate_torus_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
