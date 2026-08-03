@@ -601,6 +601,14 @@ owned by `fortfem_boundary`, form/function constructors by `fortfem_feec`,
 mesh topology by `fortfem_core`, and rendering by `fortfem_plot`; no duplicate
 wrapper was added. The API inventory is refreshed after these integrations.
 
+The latest FEEC/boundary continuation adds six tetrahedral Lagrange consumers
+(`83b6d48`), six FCI geometry/flux consumers (`d46b960`), and six spherical
+Maxwell boundary consumers (`77695f2`). Their analytical basis/state,
+interpolation/flux, trace, far-field, and JVP/VJP oracles pass in serial
+focused runs. The three batches were rebased from the same clean `main`, and
+the generated inventory/release gate is green after their additive facade
+exports.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
