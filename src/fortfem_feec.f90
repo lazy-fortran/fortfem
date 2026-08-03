@@ -448,8 +448,6 @@ module fortfem_feec
         vector_bc_t
     use fortfem_api_types, only: cell_tensor_coefficient_t, cell_vector_source_t, &
         function_t
-    use fortfem_magnetic_curvilinear_coefficients_2d, only: &
-        scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_api_forms, only: &
         compile_tetra_mixed_form_csc, curl, div, dx, form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
@@ -864,7 +862,6 @@ module fortfem_feec
     public :: apply_fci_anisotropic_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_anisotropic_diffusion_field_vjp
-    public :: scalar_reluctivity_curvilinear_fourier_coefficients
     public :: evaluate_fci_power_flux_ledger
     public :: evaluate_fci_power_flux_ledger_jvp
     public :: evaluate_fci_power_flux_ledger_vjp
@@ -1007,7 +1004,6 @@ module fortfem_feec
     public :: constant
     public :: function
     public :: vector_function_space
-    public :: vector_function_space_t
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
@@ -1023,10 +1019,6 @@ module fortfem_feec
     public :: trial_function_t
     public :: vector_test_function_t
     public :: vector_trial_function_t
-    public :: cell_tensor_coefficient
-    public :: cell_tensor_coefficient_t
-    public :: cell_vector_source
-    public :: cell_vector_source_t
     public :: compile_tetra_mixed_form_csc
     public :: div
     public :: dx

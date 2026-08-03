@@ -1,6 +1,6 @@
 program test_magnetic_curvilinear_coefficients_2d
     use check, only: check_condition, check_summary
-    use fortfem_feec, only: &
+    use fortfem_fourier, only: &
         scalar_reluctivity_curvilinear_fourier_coefficients
     use fortfem_kinds, only: dp
     implicit none
