@@ -1,6 +1,6 @@
 program test_toroidal_poisson_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_fourier, only: &
         evaluate_toroidal_harmonic_p, toroidal_poisson_exterior_dtn_p
     use fortfem_kinds, only: dp
     implicit none
