@@ -1,6 +1,6 @@
 program test_cartesian_helmholtz_pml
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cartesian_curl_curl_pml_coefficients, &
+    use fortfem_boundary, only: cartesian_curl_curl_pml_coefficients, &
         cartesian_curl_curl_pml_coefficients_jvp, &
         cartesian_curl_curl_pml_coefficients_vjp, &
         cartesian_scalar_helmholtz_pml_coefficients, &

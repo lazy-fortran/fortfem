@@ -24,6 +24,10 @@ module fortfem_boundary
         validate_boundary_operator_contract
     use fortfem_circular_dtn_2d, only: &
         apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
+    use fortfem_circular_dtn_2d_ad, only: &
+        apply_circular_helmholtz_dtn_jvp, apply_circular_helmholtz_dtn_vjp, &
+        circular_helmholtz_dtn_eigenvalue_jvp, &
+        circular_helmholtz_dtn_eigenvalue_vjp
     use fortfem_curved_acoustic_displacement_ntd_2d, only: &
         apply_curved_acoustic_displacement_ntd_2d, &
         assemble_curved_acoustic_displacement_ntd_form_2d
@@ -72,6 +76,20 @@ module fortfem_boundary
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
         assemble_scalar_helmholtz_pml_slab_1d_matrix, &
         solve_scalar_helmholtz_pml_slab_1d
+    use fortfem_cartesian_helmholtz_pml, only: &
+        cartesian_curl_curl_pml_coefficients, &
+        cartesian_curl_curl_pml_coefficients_jvp, &
+        cartesian_curl_curl_pml_coefficients_vjp, &
+        cartesian_scalar_helmholtz_pml_coefficients, &
+        cartesian_scalar_helmholtz_pml_coefficients_jvp, &
+        cartesian_scalar_helmholtz_pml_coefficients_vjp
+    use fortfem_curvilinear_helmholtz_pml, only: &
+        curvilinear_curl_curl_pml_coefficients, &
+        curvilinear_curl_curl_pml_coefficients_jvp, &
+        curvilinear_curl_curl_pml_coefficients_vjp, &
+        curvilinear_scalar_helmholtz_pml_coefficients, &
+        curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
+        curvilinear_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_maxwell_fem_bem_coupling_3d, only: &
         assemble_maxwell_fem_bem_torus_curved_system_3d, &
         solve_maxwell_fem_bem_torus_curved_system_3d
@@ -138,7 +156,11 @@ module fortfem_boundary
     public :: assemble_planar_helmholtz_dtn_form_jvp
     public :: assemble_planar_helmholtz_dtn_form_vjp
     public :: apply_circular_helmholtz_dtn
+    public :: apply_circular_helmholtz_dtn_jvp
+    public :: apply_circular_helmholtz_dtn_vjp
     public :: circular_helmholtz_dtn_eigenvalue
+    public :: circular_helmholtz_dtn_eigenvalue_jvp
+    public :: circular_helmholtz_dtn_eigenvalue_vjp
     public :: apply_curved_acoustic_displacement_ntd_2d
     public :: assemble_curved_acoustic_displacement_ntd_form_2d
     public :: estimate_helmholtz_p0_two_level_residual_3d
@@ -158,6 +180,18 @@ module fortfem_boundary
     public :: pullback_planar_maxwell_dtn_form_vjp
     public :: assemble_scalar_helmholtz_pml_slab_1d_matrix
     public :: solve_scalar_helmholtz_pml_slab_1d
+    public :: cartesian_curl_curl_pml_coefficients
+    public :: cartesian_curl_curl_pml_coefficients_jvp
+    public :: cartesian_curl_curl_pml_coefficients_vjp
+    public :: cartesian_scalar_helmholtz_pml_coefficients
+    public :: cartesian_scalar_helmholtz_pml_coefficients_jvp
+    public :: cartesian_scalar_helmholtz_pml_coefficients_vjp
+    public :: curvilinear_curl_curl_pml_coefficients
+    public :: curvilinear_curl_curl_pml_coefficients_jvp
+    public :: curvilinear_curl_curl_pml_coefficients_vjp
+    public :: curvilinear_scalar_helmholtz_pml_coefficients
+    public :: curvilinear_scalar_helmholtz_pml_coefficients_jvp
+    public :: curvilinear_scalar_helmholtz_pml_coefficients_vjp
     public :: assemble_laplace_single_layer_constant
     public :: assemble_laplace_hypersingular_linear
     public :: assemble_helmholtz_double_layer_constant
