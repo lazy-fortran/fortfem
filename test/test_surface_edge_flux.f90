@@ -1,6 +1,6 @@
 program test_surface_edge_flux
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_surface_edge_flux, &
+    use fortfem_feec, only: assemble_surface_edge_flux, &
         assemble_surface_edge_flux_jvp, assemble_surface_edge_flux_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

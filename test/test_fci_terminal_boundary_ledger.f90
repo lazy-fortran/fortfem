@@ -1,6 +1,6 @@
 program test_fci_terminal_boundary_ledger
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_fci_terminal_boundary_ledger, &
+    use fortfem_feec, only: assemble_fci_terminal_boundary_ledger, &
         assemble_fci_terminal_boundary_ledger_jvp, &
         assemble_fci_terminal_boundary_ledger_vjp
     use fortfem_kinds, only: dp

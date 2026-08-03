@@ -1,6 +1,6 @@
 program test_edge_moment_orientation_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_edge_moment_orientation
+    use fortfem_feec, only: apply_edge_moment_orientation
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none

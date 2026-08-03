@@ -2,10 +2,11 @@ program test_lshape_hole_refinement_comparison
     !> Compare FortFEM vs Triangle on an L-shaped domain with a hole,
     !> including one level of uniform mesh refinement, and write plots.
     use fortfem_kinds, only : dp
-    use fortfem_api,  only : mesh_t, boundary_t, l_shape_boundary,          &
-        mesh_from_boundary, mesh_from_arrays,          &
-        mesh_from_triangle_files, refine_uniform,      &
-        plot
+    use fortfem_boundary, only : boundary_t
+    use fortfem_core, only : mesh_t, l_shape_boundary, mesh_from_boundary, &
+        refine_uniform
+    use fortfem_api_mesh, only : mesh_from_arrays, mesh_from_triangle_files
+    use fortfem_plot, only : plot
     use triangulation_fortran, only : triangulation_result_t,               &
         triangulate_with_hole_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available
@@ -191,4 +192,3 @@ contains
     end subroutine run_triangle_binary
 
 end program test_lshape_hole_refinement_comparison
-

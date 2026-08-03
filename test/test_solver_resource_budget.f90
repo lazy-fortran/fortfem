@@ -2,7 +2,7 @@ program test_solver_resource_budget
     !! Independent contract test for caller-owned solver resource budgets.
     use, intrinsic :: iso_fortran_env, only: int64, real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         initialize_solver_resource_budget, &
         evaluate_solver_resource_usage, &
         solver_resource_budget_t

@@ -1,7 +1,7 @@
 program test_lshape_cdt_hole
     use fortfem_kinds, only: dp
-    use fortfem_api, only: boundary_t, mesh_t, l_shape_boundary,              &
-        mesh_from_boundary
+    use fortfem_boundary, only: boundary_t
+    use fortfem_core, only: mesh_t, l_shape_boundary, mesh_from_boundary
     use check, only: check_condition, check_summary
     implicit none
 
