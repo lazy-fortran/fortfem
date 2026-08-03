@@ -1036,6 +1036,10 @@ module fortfem_api
         assemble_distributed_trace_reduction, &
         assemble_distributed_trace_reduction_jvp, &
         assemble_distributed_trace_reduction_vjp
+    use fortfem_complex_distributed_trace_reduction, only: &
+        assemble_complex_distributed_trace_reduction, &
+        assemble_complex_distributed_trace_reduction_jvp, &
+        assemble_complex_distributed_trace_reduction_vjp
     use fortfem_mpi_trace_exchange, only: &
         mpi_trace_exchange_schedule_t, initialize_mpi_trace_exchange_schedule, &
         validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
@@ -1812,6 +1816,9 @@ module fortfem_api
     public :: assemble_distributed_trace_reduction
     public :: assemble_distributed_trace_reduction_jvp
     public :: assemble_distributed_trace_reduction_vjp
+    public :: assemble_complex_distributed_trace_reduction
+    public :: assemble_complex_distributed_trace_reduction_jvp
+    public :: assemble_complex_distributed_trace_reduction_vjp
     public :: mpi_trace_exchange_schedule_t
     public :: initialize_mpi_trace_exchange_schedule
     public :: validate_mpi_trace_exchange_schedule

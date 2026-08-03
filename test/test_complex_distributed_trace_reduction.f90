@@ -1,14 +1,14 @@
 program test_complex_distributed_trace_reduction
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
     use check, only: check_condition, check_summary
-    use fortfem_complex_distributed_trace_reduction, only: &
+    use fortfem_feec, only: &
         assemble_complex_distributed_trace_reduction, &
         assemble_complex_distributed_trace_reduction_jvp, &
         assemble_complex_distributed_trace_reduction_vjp
-    use fortfem_distributed_trace_ownership, only: &
+    use fortfem_feec, only: &
         distributed_trace_layout_t, initialize_distributed_trace_layout
     use fortfem_kinds, only: dp
-    use fortfem_partition_layout, only: &
+    use fortfem_feec, only: &
         initialize_partition_layout, partition_layout_t
     use fortsparse, only: FORTSPARSE_OK, fortsparse_status_t
     implicit none

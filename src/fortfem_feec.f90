@@ -190,6 +190,10 @@ module fortfem_feec
         distributed_trace_layout_partition_count, &
         distributed_trace_layout_t, initialize_distributed_trace_layout, &
         validate_distributed_trace_layout
+    use fortfem_complex_distributed_trace_reduction, only: &
+        assemble_complex_distributed_trace_reduction, &
+        assemble_complex_distributed_trace_reduction_jvp, &
+        assemble_complex_distributed_trace_reduction_vjp
     use fortfem_internal_manifold_graph, only: &
         initialize_internal_manifold_graph, internal_manifold_graph_closed, &
         internal_manifold_graph_components, &
@@ -1009,6 +1013,9 @@ module fortfem_feec
     public :: distributed_trace_layout_t
     public :: initialize_distributed_trace_layout
     public :: validate_distributed_trace_layout
+    public :: assemble_complex_distributed_trace_reduction
+    public :: assemble_complex_distributed_trace_reduction_jvp
+    public :: assemble_complex_distributed_trace_reduction_vjp
     public :: initialize_internal_manifold_graph
     public :: internal_manifold_graph_closed
     public :: internal_manifold_graph_components
