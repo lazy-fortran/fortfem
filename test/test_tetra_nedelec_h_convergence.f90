@@ -1,11 +1,12 @@
 program test_tetra_nedelec_h_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_nedelec_first_kind, &
-        generate_structured_tetra_box_mesh, &
-        initialize_tetra_nedelec_first_kind, &
-        interpolate_physical_tetra_nedelec, map_tetra_nedelec_covariant, &
+    use fortfem_core, only: generate_structured_tetra_box_mesh
+    use fortfem_feec, only: evaluate_tetra_nedelec_first_kind, &
+        initialize_tetra_nedelec_first_kind, map_tetra_nedelec_covariant, &
         tetra_duffy_quadrature, tetra_nedelec_dof_count, &
         tetra_nedelec_first_kind_t
+    use fortfem_tetra_nedelec_interpolation, only: &
+        interpolate_physical_tetra_nedelec
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3
     implicit none

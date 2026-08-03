@@ -1,6 +1,6 @@
 program test_tetra_nedelec_arbitrary_order_assembly_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_nedelec_curl_mass_element, &
+    use fortfem_feec, only: assemble_tetra_nedelec_curl_mass_element, &
         tetra_duffy_quadrature, triangle_duffy_quadrature
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab

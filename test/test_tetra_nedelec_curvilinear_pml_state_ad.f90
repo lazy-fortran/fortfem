@@ -1,8 +1,12 @@
 program test_tetra_nedelec_curvilinear_pml_state_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curvilinear_pml_csc, &
-        solve_tetra_nedelec_curvilinear_pml, &
+        assemble_tetra_nedelec_curvilinear_pml_csc_jvp, &
+        assemble_tetra_nedelec_curvilinear_pml_csc_vjp
+    use fortfem_tetra_nedelec_solver_3d, only: &
+        solve_tetra_nedelec_curvilinear_pml
+    use fortfem_tetra_nedelec_pml_state_3d, only: &
         solve_tetra_nedelec_curvilinear_pml_jvp, &
         solve_tetra_nedelec_curvilinear_pml_vjp
     use fortfem_kinds, only: dp

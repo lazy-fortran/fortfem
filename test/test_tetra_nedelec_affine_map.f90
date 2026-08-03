@@ -1,6 +1,6 @@
 program test_tetra_nedelec_affine_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_nedelec_first_order, &
+    use fortfem_feec, only: evaluate_tetra_nedelec_first_order, &
         map_tetra_nedelec_covariant
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: inv3
