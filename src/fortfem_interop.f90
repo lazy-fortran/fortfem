@@ -57,6 +57,10 @@ module fortfem_interop
         compare_boundary_operator_parity_jvp, &
         compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity
+    use fortfem_surface_trace_parity_ledger, only: &
+        evaluate_surface_trace_parity_ledger, &
+        evaluate_surface_trace_parity_ledger_jvp, &
+        evaluate_surface_trace_parity_ledger_vjp
     use fortfem_larger_domain_parity, only: &
         larger_domain_parity_t, compare_larger_domain_solution, &
         compare_larger_domain_solution_jvp, validate_larger_domain_parity
@@ -140,6 +144,9 @@ module fortfem_interop
     public :: compare_boundary_operator_parity
     public :: compare_boundary_operator_parity_jvp
     public :: compare_boundary_operator_parity_vjp
+    public :: evaluate_surface_trace_parity_ledger
+    public :: evaluate_surface_trace_parity_ledger_jvp
+    public :: evaluate_surface_trace_parity_ledger_vjp
     public :: compare_complex_interchange_samples
     public :: compare_complex_interchange_samples_jvp
     public :: compare_complex_interchange_samples_vjp

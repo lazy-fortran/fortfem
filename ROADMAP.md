@@ -675,6 +675,9 @@ single commit for integration. The recent implementation slices are:
 | `63f634f` | Metric-aware volume/boundary/sheet force-balance residual | Weighted-loop, central-difference, and real-adjoint oracle |
 | `d47c4e7` | Physical trace reconciliation for independently ordered FEM/BEM/DtN/IGA rows | ID permutation, orientation-sign, coordinate-tolerance, JVP, and real-adjoint oracle |
 | `59b3dbe` | Deterministic physical owner selection and packed trace gather | Coordinate consistency, duplicate-owner rejection, owner gather, JVP, VJP, and ghost-zero oracle |
+| `5cbc152` | Mixed-wave energy, helicity, and signed-port ledger | Nested-loop, finite-difference JVP, real-adjoint VJP, signed-power, and invalid-weight oracle |
+| `c268e53` | Force-balance representation parity | Volume/boundary/sheet residual-difference, finite-difference, real-adjoint, and shape-rejection oracle |
+| `bb24eff` | Weighted surface FEM/BEM/DtN/PML trace parity ledger | Weighted norm/error, reciprocity/work defect, complex JVP/VJP, topology, and positive-weight oracle |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -1972,6 +1975,13 @@ named application or its plasma closure.
 | MHD-17 | **active** | Add the DESC-like direct nested-surface force-balance/optimization foundation without implementing DESC physics: inverse toroidal-flux coordinates \((R,Z,\lambda)\), Fourier--Zernike or equivalent axis-regular radial bases, parity and axis regularity, collocation force components, profile/objective/constraint callback registries, exact JVP/VJP and Hessian-vector hooks, perturbation/continuation/deflation, flux-surface averages/Boozer-transform hooks, near-axis data hooks, and fixed/free-boundary external-field and sheet-current residual ports. The neutral `build_axis_regular_mode_table` validator reports scalar \(\rho\)-power/parity requirements and deterministic conjugate-safe mode ordering; `evaluate_axis_regular_radial_basis` now evaluates caller-selected finite complex radial polynomials with exact coefficient/rho JVP/VJP products and the same minimum-power/parity contract; `evaluate_flux_surface_average` supplies weighted diagnostic reduction; nested geometry supplies coordinate-sample JVP/VJP products; `evaluate_force_balance_objective` now provides a positive-weighted direct-force least-squares value/JVP/VJP contract plus an exact residual/weight Hessian-vector action through `evaluate_force_balance_objective_hvp`; `assemble_free_boundary_port_residual` supplies fixed-topology trace/exterior-target/sheet-jump composition; vector/tensor shifts remain caller-owned | Manufactured axisymmetric and 3D toroidal states show axis regularity, exponential radial/mode convergence, direct force residual closure, objective/constraint derivatives (including weighted averages and coordinate adjoints), and direct-force Hessian-vector finite-difference parity; perturbation and continuation parity, and free-boundary/sheet-current boundary residuals; all profile laws, readers, and production optimization remain external |
 
 The MHD-02 owner/ghost foundation now includes a communicator-free physical owner-selection ledger: independently ordered partitions are checked by global ID and coordinate tolerance, exactly one owned copy is selected per row, and packed gather/JVP/VJP operations expose the fixed map for a later MPI transport backend. MPI exchange and general patch-graph assembly remain open.
+
+The latest neutral structure-preserving slices add a mixed-wave energy/helicity/
+signed-port ledger, explicit force-balance parity across volume/boundary/sheet
+representations, and a weighted complex surface-trace parity ledger for
+FEM/BEM/DtN/PML or fitted/cut/DG/IGA comparisons. They remain closure-neutral;
+their physical fields, meshes, constitutive laws, and external-code adapters
+remain caller-owned.
 
 The direct-force campaign is now also a physical-first gallery fixture: it renders a
 manufactured toroidal state with a visible force-vector field before its parameter

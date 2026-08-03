@@ -202,6 +202,10 @@ module fortfem_api
         compare_boundary_operator_parity_jvp, &
         compare_boundary_operator_parity_vjp, &
         validate_boundary_operator_parity
+    use fortfem_surface_trace_parity_ledger, only: &
+        evaluate_surface_trace_parity_ledger, &
+        evaluate_surface_trace_parity_ledger_jvp, &
+        evaluate_surface_trace_parity_ledger_vjp
     use fortfem_boundary_response_diagnostics, only: &
         evaluate_weighted_boundary_response_diagnostics
     use fortfem_source_trace_map, only: &
@@ -3386,6 +3390,9 @@ module fortfem_api
     public :: compare_boundary_operator_parity
     public :: compare_boundary_operator_parity_jvp
     public :: compare_boundary_operator_parity_vjp
+    public :: evaluate_surface_trace_parity_ledger
+    public :: evaluate_surface_trace_parity_ledger_jvp
+    public :: evaluate_surface_trace_parity_ledger_vjp
     public :: validate_boundary_operator_parity
     public :: evaluate_weighted_boundary_response_diagnostics
     public :: evaluate_source_trace_map
