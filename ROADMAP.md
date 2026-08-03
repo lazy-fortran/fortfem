@@ -3402,6 +3402,12 @@ gallery example.
   skew, and total power identities, and exercises near-unit acceptance and
   non-unit rejection bounds. This adds randomized constitutive coverage while
   keeping the closure-neutral tensor contract and the short feedback path.
+- The metric-aware `pullback_field_aligned_tensor` contract now maps the
+  field-aligned tensor through an oriented 3-D Jacobian using the generated
+  FortNum determinant/inverse products. Exact fixed-topology JVP/VJP actions,
+  an independent cofactor oracle, central differences, transpose checks, and
+  orientation-reversal rejection cover the FEEC/IGA geometry layer without
+  selecting a plasma closure.
 - `assemble_tensor_diffusion_matrix` now provides the neutral quadrature
   contraction `grad(test)^T K grad(trial)` for strongly anisotropic scalar,
   elastic, resistive, and compatible-field clients, with full tensor,
