@@ -119,6 +119,7 @@ run_codegen gen_fci_septic_bezier_edge_area_products
 run_codegen gen_fci_octic_bezier_edge_area_products
 run_codegen gen_fci_nonic_bezier_edge_area_products
 run_codegen gen_fci_decic_bezier_edge_area_products
+run_codegen gen_fci_hendecic_bezier_edge_area_products
 run_codegen gen_cgl_pressure_tensor_products
 run_codegen gen_cgl_pressure_divergence_products
 run_codegen gen_fci_support_volume_products
@@ -170,6 +171,7 @@ fo fmt "$generated_dir/fortfem_fci_septic_bezier_edge_area_products.f90"
 fo fmt "$generated_dir/fortfem_fci_octic_bezier_edge_area_products.f90"
 fo fmt "$generated_dir/fortfem_fci_nonic_bezier_edge_area_products.f90"
 fo fmt "$generated_dir/fortfem_fci_decic_bezier_edge_area_products.f90"
+fo fmt "$generated_dir/fortfem_fci_hendecic_bezier_edge_area_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_tensor_products.f90"
 fo fmt "$generated_dir/fortfem_cgl_pressure_divergence_products.f90"
 fo fmt "$generated_dir/fortfem_fci_support_volume_products.f90"
