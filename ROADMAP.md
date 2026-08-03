@@ -571,12 +571,13 @@ physics implementation was added.
 The symmetric/spherical BEM continuation is integrated as `0031333` with the
 inventory refresh `8e513f3`. Six Laplace/Helmholtz symmetric-coupling and
 spherical-panel AD consumers now use `fortfem_boundary`; analytical,
-convergence, JVP, and VJP checks pass. The next API-07 hand-offs are kept on
-unique worktrees: triangle RT assembly/interpolation
-(`api07-migrate-triangle-rt-clean`) and tetrahedral mixed-Poisson state derivatives
-(`api07-migrate-tetra-mixed-clean`). Each must touch only its assigned tests
-and facade exports, rebase from current `main`, and land as one focused commit
-with the independent behavioral oracle before the next inventory refresh.
+convergence, JVP, and VJP checks pass. Triangle RT assembly/interpolation and
+sampled-state consumers are now integrated as `35aaf7e`, and tetrahedral
+mixed-Poisson state/JVP/VJP consumers as `8c2fc1b`; the API inventory was
+refreshed in `9a02348` and `c6b555e`. The ordinary RT tests pass in the fast
+path, while `test_symbolic_tetra_mixed_poisson_slow` is explicitly bounded in
+the slow lane and passed at 45.20 s. These batches were kept on unique
+worktrees and touched only their assigned tests plus FEEC facade exports.
 
 ## 2. Current baseline
 
