@@ -561,6 +561,13 @@ Calderón, Costabel, hypersingular, and representation consumers plus six
 curved-sphere Maxwell solve/trace consumers now use canonical facades; panel
 and state derivative tests were explicitly re-run after integration.
 
+The next FEEC/open-boundary batch is integrated as `a3d352e`, `745a6ef`, and
+`8fe724c` (inventory `45cc274`). Six triangle cut-cell consumers now use the
+core facade, six mixed-Poisson/RT consumers use core plus FEEC, and six
+toroidal Maxwell EFIE/MFIE/Green-pair consumers use boundary/core/FEEC. Their
+focused tests pass; the toroidal slow CFIE path is bounded and no external
+physics implementation was added.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
