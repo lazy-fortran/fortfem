@@ -501,6 +501,12 @@ spaces (`2d54659`), and Maxwell/open-boundary consumers
 (`4253419`) are now on `main`, with the generated inventory refreshed after
 each integration.
 
+The follow-up geometry batch adds six tetrahedral RT/FEEC clients
+(`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
+six toroidal-coordinate/harmonic/DtN clients (`82b0547`). Their focused
+Piola, orientation, modal, special-function, and derivative oracles pass;
+remaining clients are still queued in disjoint capability batches.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
