@@ -1,6 +1,6 @@
 program test_fci_retained_cycle_composition
     use check, only: check_condition, check_summary
-    use fortfem_fci_retained_cycle_composition, only: &
+    use fortfem_feec, only: &
         evaluate_fci_retained_cycle_composition, &
         evaluate_fci_retained_cycle_composition_jvp, &
         evaluate_fci_retained_cycle_composition_vjp
