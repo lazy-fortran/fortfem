@@ -3903,6 +3903,8 @@ official documentation, or official repositories where possible.
 - [Bíró and Preis, 3-D eddy-current vector-potential formulation](https://doi.org/10.1109/20.34388)
 - [On the tree gauge in magnetostatics](https://doi.org/10.3390/jrfm5010004)
 - [Tree--cotree decomposition of isogeometric mortared H(curl) spaces](https://doi.org/10.1016/j.cma.2022.114920)
+- [Bíró, Magele, and Vrisk, TEAM benchmark problem 13](https://tugraz.elsevierpure.com/en/publications/solution-of-team-benchmark-problem-13-3d-nonlinear-magnetostatic-)
+- [Mally et al., tree--cotree tearing and interconnecting](https://doi.org/10.1016/j.cma.2025.117737)
 - [TEAM workshops and benchmark problems](https://www.osti.gov/servlets/purl/7179128)
 - [TEAM Workshop 13 neutral benchmark description](https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html)
 - [Fitzpatrick, bifurcated resistive-wall steady states](https://doi.org/10.1088/0029-5515/33/7/I08)
