@@ -524,6 +524,12 @@ The Bíró gallery README now documents the exact-data adapter contract; absent
 paper arrays still produce an explicit provenance-gated skip rather than an
 unverifiable reproduction.
 
+The curved-torus Maxwell batch (`eeb29b9`, integrated as `331ac81`)
+subsequently moved six RWG/FE--BEM/CFIE/wave/RBC consumers to the boundary,
+FEEC, and core facades. The slow CFIE, vector-field, far-field, reciprocity,
+and trace tests pass after the additive export merge; inventory refresh and
+the release gate remain mandatory after each boundary batch.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
