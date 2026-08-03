@@ -485,6 +485,12 @@ The tensor consumer slice is now integrated as `c9c3c544`, with the inventory
 refresh in `9591b0d5`; its focused gate is part of the fast API release gate.
 This closes one representative API-07-TENSOR client, not the full tensor
 gallery or constitutive-physics roadmap row.
+The degree-eleven curved FCI edge-area slice is now integrated as
+`096bf423`, with generated inventory refresh `05dfee71`. Its pinned FortSym
+primal/JVP/VJP kernels and independent Gauss--Green/finite-difference/
+real-adjoint/degeneracy oracle pass after a clean build. This closes the
+specific hendecic measure milestone; moving connectivity, topology-event
+rebuilds, and higher interpolation maps remain active.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
@@ -3710,12 +3716,12 @@ gallery example.
   Generated quadratic, cubic, quartic, quintic, sextic, septic, and octic
   Bezier-edge area maps now supply fixed-topology curved-cell value/JVP/VJP
   contracts with independent Gauss--Green oracles; quadratic through sextic
-  are also sampled in the boundary gallery, while septic and octic remain
-  generated-kernel and high-order cut-cell regression fixtures.
+  are also sampled in the boundary gallery, while septic through hendecic
+  remain generated-kernel and high-order cut-cell regression fixtures.
 - The batched 2D bilinear endpoint-to-map adapter now connects traced
   forward/backward endpoints to the support-operator tensor contract and
   carries fixed-topology source-grid and endpoint JVP/VJP actions. Moving
-  connectivity, higher-order curved measures beyond sextic, and stencil
+  connectivity, higher-order curved measures beyond hendecic, and stencil
   rebuilds at topology events remain planned; the generic straight polygon map and
   quadratic Bezier-edge quadrilateral map are now the unstructured-cell
   baselines. The deterministic composed map fixture also guards this adapter
