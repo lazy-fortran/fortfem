@@ -1,10 +1,12 @@
 program test_maxwell_pec_efie_solve_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_maxwell_efie_rwg_3d, assemble_maxwell_plane_wave_rhs_rwg_3d, &
-        build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis, &
+    use fortfem_boundary, only: &
+        assemble_maxwell_plane_wave_rhs_rwg_3d, &
         evaluate_maxwell_efie_far_field_rwg_3d, &
         evaluate_maxwell_efie_field_rwg_3d, solve_maxwell_pec_efie_rwg_3d
+    use fortfem_feec, only: &
+        assemble_maxwell_efie_rwg_3d, &
+        build_maxwell_rwg_surface_space, evaluate_maxwell_rwg_basis
     use fortfem_kinds, only: dp
     implicit none
 
