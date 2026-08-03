@@ -656,11 +656,18 @@ re-export wiring was added; all eight focused tests pass and the release gate
 remains green. The umbrella-consumer count is now 191 test files, down from
 the 730-file starting audit.
 
-#### Active worktrees after the latest handoff
+#### Worktree handoff policy after the latest handoff
 
-The API migration queue above is complete through the current facade audit;
-there are no active FortFEM worktrees at this checkpoint. Any new parallel
-slice must create a disjoint branch under
+The API migration queue above is complete through the current facade audit.
+The latest bounded implementation wave was developed in disjoint worktrees
+under `/mnt/storage/code/lazy-fortran/worktrees/`, then integrated to `main`:
+`20ee0c2`/`6e63bb5` add degree-five cut-cell moments and public FEEC exports,
+`699ac8d`/`bdbefa1` add the communicator-free MPI-ready trace exchange
+schedule and public core/FEEC exports, and `72afc29`/`8b99e41` add oriented
+arbitrary patch-graph trace contraction and public core exports. Their focused
+independent value/JVP/VJP oracles pass. No FortFEM implementation worktree is
+active at this checkpoint; the unrelated downstream `fortfem-pr56` worktree
+is preserved. Any new parallel slice must create a disjoint branch under
 `/mnt/storage/code/lazy-fortran/worktrees/`, rebase from current `main`, avoid
 ROADMAP and inventory edits, run a bounded independent oracle, and hand off a
 single commit for integration. The recent implementation slices are:
@@ -682,6 +689,9 @@ single commit for integration. The recent implementation slices are:
 | `6b6e5b8` | Point-first tensor enrichment Gram diagnostics | SPD metric, fixed active mask, nested-loop/FD/adjoint, rank, and invalid-weight oracle |
 | `4b80b2f` | External-oracle performance comparison ledger | Manifest provenance, weighted timing/memory/tolerance means, JVP/VJP, and invalid-record oracle |
 | `4f3654a` | Multipatch signed-trace CSC assembly | Sparse HDG delegation, fixed-map JVP/VJP, duplicate/sign validation, and sparse adjoint oracle |
+| `6e63bb5` | Public degree-five cut polygon moments | Green-theorem degree-five value/JVP/VJP, polynomial, symmetry, transpose, and degenerate-topology oracle |
+| `bdbefa1` | Communicator-free MPI trace exchange schedule | Ownership/rank/offset validation, packed owner/ghost value/JVP/VJP maps, and independent exchange oracle |
+| `8b99e41` | Oriented arbitrary patch-graph trace contraction | Periodic/self-edge cycle contractions, weighted value/JVP/VJP, incidence closure, and transpose oracle |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
@@ -1978,7 +1988,17 @@ named application or its plasma closure.
 | MHD-16 | **active** | Finish the MHD gallery and benchmark contract in increasing complexity, with physical solution first: 1D slab, 2D circle/cylinder, 3D sphere/torus, vector arrows/surfaces/field lines, mesh completeness, convergence, invariants, and timings. Simple Poisson, tetrahedral H1, tetrahedral Nédélec, regularized sheet-current, CGL tensor, 3-D CGL pressure/traction, linear response, neutral singular-layer matching, nested-torus, FCI/SOL, Eulerian-island, mixed-elasticity, mixed pressure--displacement waves, `biro_tree_cotree_benchmark`, `biro_tree_cotree_3d_gallery`, `team3_neutral_benchmark`, `team7_neutral_benchmark`, `team13_neutral_benchmark`, `team20_neutral_benchmark`, `free_boundary_port_gallery`, and `maxwell_vector_open_boundary_parity_gallery` now lead with physical plots; the exact-data Biro gallery renderer is provenance-gated and skips absent paper arrays. The tetrahedral previews record physical-before-diagnostics execution order, with readable sampled scalar/vector fields, mesh edges, and quiver arrows, while the toroidal Maxwell radiation preview uses a connected periodic surface rather than an unordered point cloud. The remaining exact paper geometries and external-code parity remain sister-data work. All pages retain ignored generated media plus CSV/JSON provenance | Every page has a solution preview before diagnostics, generated FortPlot media, CSV/JSON provenance, no checked-in images, and a bounded memory/timeout record |
 | MHD-17 | **active** | Add the DESC-like direct nested-surface force-balance/optimization foundation without implementing DESC physics: inverse toroidal-flux coordinates \((R,Z,\lambda)\), Fourier--Zernike or equivalent axis-regular radial bases, parity and axis regularity, collocation force components, profile/objective/constraint callback registries, exact JVP/VJP and Hessian-vector hooks, perturbation/continuation/deflation, flux-surface averages/Boozer-transform hooks, near-axis data hooks, and fixed/free-boundary external-field and sheet-current residual ports. The neutral `build_axis_regular_mode_table` validator reports scalar \(\rho\)-power/parity requirements and deterministic conjugate-safe mode ordering; `evaluate_axis_regular_radial_basis` now evaluates caller-selected finite complex radial polynomials with exact coefficient/rho JVP/VJP products and the same minimum-power/parity contract; `evaluate_flux_surface_average` supplies weighted diagnostic reduction; nested geometry supplies coordinate-sample JVP/VJP products; `evaluate_force_balance_objective` now provides a positive-weighted direct-force least-squares value/JVP/VJP contract plus an exact residual/weight Hessian-vector action through `evaluate_force_balance_objective_hvp`; `assemble_free_boundary_port_residual` supplies fixed-topology trace/exterior-target/sheet-jump composition; vector/tensor shifts remain caller-owned | Manufactured axisymmetric and 3D toroidal states show axis regularity, exponential radial/mode convergence, direct force residual closure, objective/constraint derivatives (including weighted averages and coordinate adjoints), and direct-force Hessian-vector finite-difference parity; perturbation and continuation parity, and free-boundary/sheet-current boundary residuals; all profile laws, readers, and production optimization remain external |
 
-The MHD-02 owner/ghost foundation now includes a communicator-free physical owner-selection ledger: independently ordered partitions are checked by global ID and coordinate tolerance, exactly one owned copy is selected per row, and packed gather/JVP/VJP operations expose the fixed map for a later MPI transport backend. MPI exchange and general patch-graph assembly remain open.
+The MHD-02 owner/ghost foundation now includes a communicator-free physical
+owner-selection ledger and a separate MPI-ready exchange schedule:
+independently ordered partitions are checked by global ID and coordinate
+tolerance, exactly one owned copy is selected per row, and packed
+gather/exchange JVP/VJP operations expose fixed maps for a later MPI backend.
+The neutral oriented patch-graph trace contraction now consumes arbitrary
+region-interface cycle bases, including periodic/self-identification edges,
+and returns weighted cycle ledgers with exact derivatives. Higher-order cut
+geometry now includes a degree-five polygon moment oracle. Actual MPI
+communicators, geometry-aware physical assembly, and higher-order 3-D/cut-IGA
+construction remain open.
 
 The latest neutral structure-preserving slices add a mixed-wave energy/helicity/
 signed-port ledger, explicit force-balance parity across volume/boundary/sheet
@@ -2957,8 +2977,11 @@ gallery example.
   conforming meshes, DG/HDG, cut cells, and multipatch IGA. Sparse global
   ownership now has the duplicate-compressed `assemble_glued_feec_sequence_csc`
   counterpart with local-matrix JVP/VJP scatter and a dense-action oracle;
-  distributed owner/ghost exchange and higher-order map construction remain
-  separate work.
+  the communicator-free MPI-ready `mpi_trace_exchange_schedule_t` now
+  supplies validated packed owner/ghost value/JVP/VJP maps; degree-five
+  polygon moments and oriented patch-graph trace contraction are also public.
+  Actual communicator transport and higher-order 3-D/cut-IGA construction
+  remain separate work.
   The sparse path also exposes duplicate-compressed `curl(grad)` and
   `div(curl)` products with independent product-rule JVP/VJP diagnostics.
   The topology-only `build_multipatch_signed_dof_map` now supplies signed
@@ -2966,7 +2989,7 @@ gallery example.
   orientation cycles. Its 2D and 3D B-spline compositions now lift the same
   contract to H1/H(curl)/H(div) face traces, including axis swaps and
   reversals. Geometry/trace-map construction, physical patch-graph assembly,
-  and distributed owner/ghost exchange remain active work.
+  and communicator-backed owner/ghost exchange remain active work.
 
 ### Phase 4: Open boundaries and vector operators: **active**
 
