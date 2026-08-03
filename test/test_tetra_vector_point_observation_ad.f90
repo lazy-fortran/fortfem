@@ -1,6 +1,6 @@
 program test_tetra_vector_point_observation_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_tetra_nedelec_interpolant_at_point, &
         evaluate_tetra_nedelec_interpolant_at_point_jvp, &
         evaluate_tetra_nedelec_interpolant_at_point_vjp, &

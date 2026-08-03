@@ -1,6 +1,6 @@
 program test_tetra_rt_arbitrary_order_assembly_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tetra_rt_div_mass_csc, assemble_tetra_rt_div_mass_element, &
         assemble_tetra_rt_divergence_csc, build_tetra_rt_dof_map
     use fortfem_kinds, only: dp

@@ -1,6 +1,6 @@
 program test_tetra_vector_interpolant_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: evaluate_tetra_nedelec_interpolant, &
+    use fortfem_feec, only: evaluate_tetra_nedelec_interpolant, &
         evaluate_tetra_nedelec_interpolant_jvp, &
         evaluate_tetra_nedelec_interpolant_vjp, &
         evaluate_tetra_rt_interpolant, evaluate_tetra_rt_interpolant_jvp, &

@@ -1,6 +1,6 @@
 program test_tetra_nedelec_sampled_state_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: solve_tetra_nedelec_sampled_state, &
+    use fortfem_feec, only: solve_tetra_nedelec_sampled_state, &
         solve_tetra_nedelec_sampled_state_jvp, &
         solve_tetra_nedelec_sampled_state_vjp, tetra_duffy_quadrature
     use fortfem_kinds, only: dp

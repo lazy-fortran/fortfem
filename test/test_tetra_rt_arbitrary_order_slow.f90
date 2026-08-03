@@ -1,6 +1,6 @@
 program test_tetra_rt_arbitrary_order_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_tetra_rt, initialize_tetra_rt, &
+    use fortfem_feec, only: evaluate_tetra_rt, initialize_tetra_rt, &
         tetra_duffy_quadrature, tetra_rt_dof_count, tetra_rt_t
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab

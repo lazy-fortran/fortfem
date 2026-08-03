@@ -1,6 +1,6 @@
 program test_tetra_nedelec_sparse_assembly_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_tetra_nedelec_curl_mass_csc, &
+    use fortfem_feec, only: assemble_tetra_nedelec_curl_mass_csc, &
         build_tetra_edge_dof_map, build_tetra_nedelec_dof_map
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t

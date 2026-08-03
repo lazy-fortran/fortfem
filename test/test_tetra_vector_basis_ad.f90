@@ -1,6 +1,6 @@
 program test_tetra_vector_basis_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: evaluate_tetra_nedelec_first_kind, &
+    use fortfem_feec, only: evaluate_tetra_nedelec_first_kind, &
         evaluate_tetra_nedelec_first_kind_jvp, &
         evaluate_tetra_nedelec_first_kind_vjp, evaluate_tetra_rt, &
         evaluate_tetra_rt_jvp, evaluate_tetra_rt_vjp, &
