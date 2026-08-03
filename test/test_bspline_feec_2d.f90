@@ -1,6 +1,6 @@
 program test_bspline_feec_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
         build_bspline_feec_3d_operators, evaluate_bspline_basis, &
         build_bspline_feec_3d_operators_csc, &

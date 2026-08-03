@@ -40,7 +40,33 @@ module fortfem_feec
         assemble_bspline_h1_operator_csc, &
         assemble_bspline_h1_operator_csc_jvp, &
         assemble_bspline_h1_operator_csc_vjp
-    use fortfem_bspline_feec, only: evaluate_bspline_basis
+    use fortfem_assembly_bspline_3d, only: &
+        build_bspline_feec_3d_operators_csc, &
+        assemble_bspline_h1_operator_3d_csc, &
+        assemble_bspline_hcurl_operator_3d_csc, &
+        assemble_bspline_hdiv_operator_3d_csc, &
+        assemble_bspline_l2_mass_3d_csc, &
+        assemble_bspline_hdiv_l2_divergence_3d_csc, &
+        assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
+    use fortfem_assembly_bspline_multipatch_2d, only: &
+        build_bspline_feec_2d_two_patch_operators_csc
+    use fortfem_assembly_bspline_multipatch_3d, only: &
+        build_bspline_feec_3d_two_patch_operators_csc
+    use fortfem_bspline_feec, only: &
+        build_bspline_derivative_matrix, build_bspline_feec_2d_operators, &
+        build_bspline_feec_3d_operators, evaluate_bspline_basis, &
+        evaluate_nurbs_surface_geometry, evaluate_nurbs_surface_geometry_jvp, &
+        evaluate_nurbs_surface_geometry_vjp, evaluate_nurbs_volume_geometry, &
+        evaluate_nurbs_volume_geometry_jvp, evaluate_nurbs_volume_geometry_vjp, &
+        map_isogeometric_h1_gradient, map_isogeometric_hcurl, &
+        map_isogeometric_hdiv, map_isogeometric_l2
+    use fortfem_bspline_multipatch, only: &
+        BSPLINE_FACE_X_MIN, BSPLINE_FACE_X_MAX, BSPLINE_FACE_Y_MIN, &
+        BSPLINE_FACE_Y_MAX, BSPLINE_FACE_Z_MIN, BSPLINE_FACE_Z_MAX, &
+        build_bspline_feec_2d_interface_dofs, &
+        build_bspline_feec_2d_multipatch_maps, &
+        build_bspline_feec_3d_interface_dofs, &
+        build_bspline_feec_3d_multipatch_maps
     use fortfem_bspline_polar, only: &
         build_bspline_polar_feec_2d_operators, &
         build_bspline_polar_feec_2d_extractions, &
@@ -266,6 +292,38 @@ module fortfem_feec
     public :: assemble_bspline_h1_operator_csc
     public :: assemble_bspline_h1_operator_csc_jvp
     public :: assemble_bspline_h1_operator_csc_vjp
+    public :: build_bspline_derivative_matrix
+    public :: build_bspline_feec_2d_operators
+    public :: build_bspline_feec_3d_operators
+    public :: build_bspline_feec_2d_interface_dofs
+    public :: build_bspline_feec_2d_multipatch_maps
+    public :: build_bspline_feec_3d_interface_dofs
+    public :: build_bspline_feec_3d_multipatch_maps
+    public :: build_bspline_feec_2d_two_patch_operators_csc
+    public :: build_bspline_feec_3d_two_patch_operators_csc
+    public :: build_bspline_feec_3d_operators_csc
+    public :: assemble_bspline_h1_operator_3d_csc
+    public :: assemble_bspline_hcurl_operator_3d_csc
+    public :: assemble_bspline_hdiv_operator_3d_csc
+    public :: assemble_bspline_l2_mass_3d_csc
+    public :: assemble_bspline_hdiv_l2_divergence_3d_csc
+    public :: assemble_bspline_l2_hdiv_adjoint_divergence_3d_csc
+    public :: evaluate_nurbs_surface_geometry
+    public :: evaluate_nurbs_surface_geometry_jvp
+    public :: evaluate_nurbs_surface_geometry_vjp
+    public :: evaluate_nurbs_volume_geometry
+    public :: evaluate_nurbs_volume_geometry_jvp
+    public :: evaluate_nurbs_volume_geometry_vjp
+    public :: map_isogeometric_h1_gradient
+    public :: map_isogeometric_hcurl
+    public :: map_isogeometric_hdiv
+    public :: map_isogeometric_l2
+    public :: BSPLINE_FACE_X_MIN
+    public :: BSPLINE_FACE_X_MAX
+    public :: BSPLINE_FACE_Y_MIN
+    public :: BSPLINE_FACE_Y_MAX
+    public :: BSPLINE_FACE_Z_MIN
+    public :: BSPLINE_FACE_Z_MAX
     public :: apply_fci_parallel_gradient
     public :: apply_fci_parallel_gradient_jvp
     public :: apply_fci_parallel_gradient_vjp

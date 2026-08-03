@@ -1,6 +1,6 @@
 program test_bspline_multipatch
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         BSPLINE_FACE_X_MAX, BSPLINE_FACE_X_MIN, BSPLINE_FACE_Y_MAX, &
         build_bspline_feec_2d_interface_dofs, &
         build_bspline_feec_2d_operators, &
