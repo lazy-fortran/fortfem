@@ -2021,6 +2021,11 @@ profiles, equilibrium selection, and input readers stay outside FortFEM.
    products.  Its independent matrix, central-difference, and transpose tests
    make the source-to-port path reusable without selecting a BEM, DtN, PML,
    NESTOR, or equilibrium convention.
+   The canonical `fortfem_fourier` facade now owns a neutral NESTOR/BIEST-like
+   toroidal modal response map for caller-selected P/Q branches, with exact
+   complex-coefficient JVP/VJP actions and a real reciprocity diagnostic. An
+   independent radial, finite-difference, adjoint, Q-branch, and invalid-scale
+   fixture covers the map without exporting a duplicate boundary-facade owner.
 3. **Moving-surface shape calculus.**  Differentiate point positions, tangent
    frames, normals, measures, periodic seam identifications, and singular or
    coincident-panel quadrature consistently for a fixed region topology.  Report
