@@ -31,7 +31,12 @@ benchmark output.
 Generated, uncommitted artifacts are:
 
 - `maxwell_torus_solution_2d.png`: reconstructed scattered magnetic-field
-  magnitude in a physical (x)-(z) slice through the torus hole;
+  magnitude in a physical (x)-(z) slice through the torus hole, with arrows
+  showing the real instantaneous (H_x,H_z) vector components of the solved
+  nonzero scattering field (the first gallery plot is therefore the solution,
+  not a convergence diagnostic);
+- `scattered_field.csv`: the same physical slice samples, including the
+  reconstructed vector components and complex-field magnitude;
 - `maxwell_torus_rcs_1d.png`: equatorial bistatic radar-cross-section cut;
 - `maxwell_torus_rcs_2d.png`: angular radar-cross-section map;
 - `maxwell_torus_rcs_3d.png`: normalized three-dimensional radiation surface;
@@ -41,6 +46,12 @@ Generated, uncommitted artifacts are:
 - `benchmark.txt`: unknown counts, CFIE, weak-DtN, and field-reconstruction
   timings, quadrature, reciprocity error, DtN response norm, and peak radar
   cross section.
+
+`provenance.json` records the method references and makes clear that this is a
+solver-generated torus fixture rather than a redistribution of external
+scattering data.  Setting `MAXWELL_TORUS_FAST=1` selects a two-by-two curved
+surface mesh for the independent ten-second output/data oracle; the reference
+gallery keeps the three-by-three mesh and the same physical operator.
 
 GitHub Actions generates these files and publishes them in the example
 gallery. No rendered image is checked into the repository.

@@ -1,0 +1,24 @@
+{
+  "fixture": "maxwell_torus_curved_scattering",
+  "problem": "time-harmonic PEC scattering on an exact parametric torus",
+  "discretization": "regularized Maxwell CFIE with RWG and Buffa-Christiansen traces",
+  "field_observable": "complex scattered magnetic field reconstructed from the solved RWG current",
+  "boundary_operator": "curved Maxwell DtN assembled on the same torus trace space",
+  "exact_reproduction": false,
+  "data_status": "solver-generated nonzero scattering state; no external reference arrays redistributed",
+  "references": [
+    {
+      "title": "Software frameworks for integral equations in electromagnetic scattering based on Calderon identities",
+      "url": "https://arxiv.org/abs/1703.10900"
+    },
+    {
+      "title": "An operator preconditioned combined field integral equation for electromagnetic scattering",
+      "url": "https://doi.org/10.1137/23M1581674"
+    },
+    {
+      "title": "A dual finite element complex on the barycentric refinement",
+      "url": "https://doi.org/10.1090/S0025-5718-07-01965-5"
+    }
+  ],
+  "license_note": "Only generated geometry, fields, and diagnostics are emitted; external paper data are not copied."
+}
