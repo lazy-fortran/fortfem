@@ -1,10 +1,10 @@
 program test_maxwell_sphere_curved_magnetic_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp, &
-        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp, &
-        generate_sphere_surface_mesh
+        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

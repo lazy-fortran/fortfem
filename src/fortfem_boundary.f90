@@ -188,12 +188,26 @@ module fortfem_boundary
         evaluate_maxwell_magnetic_field_rwg_3d
     use fortfem_maxwell_sphere_curved_rwg, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
+        assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
+        assemble_maxwell_sphere_efie_propagating_impedance_jvp, &
+        assemble_maxwell_sphere_efie_propagating_impedance_vjp, &
+        assemble_maxwell_sphere_efie_imaginary_impedance_jvp, &
+        assemble_maxwell_sphere_efie_imaginary_impedance_vjp, &
+        assemble_maxwell_sphere_efie_wave_number_jvp, &
+        assemble_maxwell_sphere_efie_wave_number_vjp, &
+        assemble_maxwell_sphere_efie_imaginary_decay_jvp, &
+        assemble_maxwell_sphere_efie_imaginary_decay_vjp, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
+        assemble_maxwell_sphere_curved_rwg_mass_matrix, &
         assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
+        assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
+        assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
-        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d, &
+        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp, &
+        evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
     use fortfem_helmholtz_galerkin_3d, only: &
         assemble_helmholtz_single_layer_p0_adaptive_3d, &
         assemble_helmholtz_single_layer_p0_3d, &
@@ -395,12 +409,26 @@ module fortfem_boundary
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_magnetic_field_rwg_3d
     public :: assemble_maxwell_sphere_curved_efie_rwg_3d
+    public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_propagating_impedance_vjp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_jvp
+    public :: assemble_maxwell_sphere_efie_imaginary_impedance_vjp
+    public :: assemble_maxwell_sphere_efie_wave_number_jvp
+    public :: assemble_maxwell_sphere_efie_wave_number_vjp
+    public :: assemble_maxwell_sphere_efie_imaginary_decay_jvp
+    public :: assemble_maxwell_sphere_efie_imaginary_decay_vjp
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
+    public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
+    public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp
+    public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_torus_curved_magnetic_field_rwg_3d_vjp
     public :: evaluate_maxwell_torus_magnetic_geometry_jvp
