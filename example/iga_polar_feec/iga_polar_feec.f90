@@ -243,10 +243,14 @@ contains
         arrow_u(:arrow_count) = 0.075_dp*arrow_u(:arrow_count)/gradient_scale
         arrow_v(:arrow_count) = 0.075_dp*arrow_v(:arrow_count)/gradient_scale
         call figure(figsize=[8.0_dp, 7.0_dp])
+        ! Draw the physical element lines first.  The solution samples are
+        ! intentionally dense, but without the mapped ring/spoke curves the
+        ! first gallery image reads as a polar point cloud and hides the
+        ! curvilinear geometry that the FEEC operators actually assemble on.
+        call draw_physical_mesh(0.70_dp, 0.55_dp)
         call add_scatter(x(:count), y(:count), c=values(:count), &
             cmap="coolwarm", marker=".", markersize=10.0_dp, &
             label="computed polar FEEC scalar solution")
-        call draw_physical_mesh(0.18_dp, 0.35_dp)
         call quiver(arrow_x(:arrow_count), arrow_y(:arrow_count), &
             arrow_u(:arrow_count), arrow_v(:arrow_count), scale=1.0_dp, &
             scale_units="xy", angles="xy", color="black", width=0.003_dp, &
@@ -293,7 +297,57 @@ contains
         call ylim(-1.08_dp, 1.08_dp)
         call title("Curvilinear physical mesh from periodic polar splines")
         call savefig(output_directory//"/polar_curvilinear_mesh_2d.png")
+        call write_mesh_geometry()
     end subroutine render_mesh
+
+    subroutine write_mesh_geometry()
+        !! Emit the actual mapped line paths used by the mesh plot.
+        !!
+        !! Keeping this small numerical oracle beside the image makes it
+        !! possible to test that every ring and spoke reaches both endpoints
+        !! without inspecting renderer-specific pixels.
+        real(dp) :: point_x, point_y, coordinate_r, coordinate_a
+        real(dp) :: jacobian(2, 2)
+        integer :: local_azimuth, local_radial, sample, local_status, unit
+
+        open (newunit=unit, file=output_directory// &
+            "/polar_curvilinear_mesh_2d.csv", status="replace", &
+            action="write")
+        write (unit, "(a)") "line_kind,line_index,sample,parameter,x,y"
+        do local_radial = 2, radial_count
+            coordinate_r = real(local_radial - 1, dp)/ &
+                real(radial_count - 1, dp)
+            do sample = 1, plot_line_samples
+                coordinate_a = real(sample - 1, dp)/ &
+                    real(plot_line_samples - 1, dp)
+                call evaluate_polar_point( &
+                    coordinate_r, coordinate_a, point_x, point_y, jacobian, &
+                    local_status)
+                if (local_status /= 0) &
+                    error stop "polar ring geometry evaluation failed"
+                write (unit, "(a,',',i0,',',i0,',',es24.16e3,',', &
+                    es24.16e3,',',es24.16e3)") "ring", local_radial, &
+                    sample, coordinate_a, point_x, point_y
+            end do
+        end do
+        do local_azimuth = 1, azimuth_count
+            coordinate_a = real(local_azimuth - 1, dp)/ &
+                real(azimuth_count, dp)
+            do sample = 1, plot_line_samples
+                coordinate_r = real(sample - 1, dp)/ &
+                    real(plot_line_samples - 1, dp)
+                call evaluate_polar_point( &
+                    coordinate_r, coordinate_a, point_x, point_y, jacobian, &
+                    local_status)
+                if (local_status /= 0) &
+                    error stop "polar spoke geometry evaluation failed"
+                write (unit, "(a,',',i0,',',i0,',',es24.16e3,',', &
+                    es24.16e3,',',es24.16e3)") "spoke", local_azimuth, &
+                    sample, coordinate_r, point_x, point_y
+            end do
+        end do
+        close (unit)
+    end subroutine write_mesh_geometry
 
     subroutine draw_physical_mesh(line_alpha, line_width)
         real(dp), intent(in) :: line_alpha, line_width
