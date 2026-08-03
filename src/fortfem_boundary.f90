@@ -258,13 +258,21 @@ module fortfem_boundary
         assemble_maxwell_sphere_efie_imaginary_decay_vjp, &
         assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d, &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
+        assemble_maxwell_sphere_curved_vector_potential_rwg_3d, &
         assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
+        assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp, &
+        assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp, &
+        assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp, &
         assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp, &
         evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp, &
@@ -568,6 +576,9 @@ module fortfem_boundary
     public :: assemble_maxwell_sphere_curved_efie_bc_imaginary_3d
     public :: assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d
     public :: assemble_maxwell_sphere_curved_plane_wave_rhs_rwg_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_jvp
+    public :: assemble_maxwell_sphere_curved_plane_wave_rhs_bc_3d_vjp
     public :: assemble_maxwell_sphere_efie_propagating_impedance_jvp
     public :: assemble_maxwell_sphere_efie_propagating_impedance_vjp
     public :: assemble_maxwell_sphere_efie_imaginary_impedance_jvp
@@ -578,13 +589,18 @@ module fortfem_boundary
     public :: assemble_maxwell_sphere_efie_imaginary_decay_vjp
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rwg_3d
     public :: assemble_maxwell_sphere_curved_potential_operators_rwg_3d
+    public :: assemble_maxwell_sphere_curved_vector_potential_rwg_3d
     public :: assemble_maxwell_sphere_curved_regularized_cfie_rhs_rwg_3d
     public :: assemble_maxwell_sphere_curved_rwg_mass_matrix
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp
+    public :: assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp
     public :: assemble_maxwell_sphere_curved_mfie_exterior_trace_rwg_rbc_3d
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp
     public :: assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
     public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp
+    public :: evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_jvp
     public :: evaluate_maxwell_sphere_curved_magnetic_field_rwg_3d_vjp
