@@ -1,10 +1,10 @@
 program test_maxwell_sphere_curved_rbc_pairing_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing, &
         assemble_maxwell_sphere_curved_rwg_rbc_pairing_jvp, &
-        assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp, &
-        generate_sphere_surface_mesh
+        assemble_maxwell_sphere_curved_rwg_rbc_pairing_vjp
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 

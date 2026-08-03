@@ -1,13 +1,13 @@
 program test_maxwell_sphere_curved_efie_kernel_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_sphere_curved_efie_rwg_3d, &
         assemble_maxwell_sphere_curved_efie_imaginary_rwg_3d, &
         assemble_maxwell_sphere_efie_wave_number_jvp, &
         assemble_maxwell_sphere_efie_wave_number_vjp, &
         assemble_maxwell_sphere_efie_imaginary_decay_jvp, &
-        assemble_maxwell_sphere_efie_imaginary_decay_vjp, &
-        generate_sphere_surface_mesh
+        assemble_maxwell_sphere_efie_imaginary_decay_vjp
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
