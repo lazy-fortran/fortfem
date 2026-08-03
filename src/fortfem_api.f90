@@ -1041,6 +1041,10 @@ module fortfem_api
         assemble_patch_graph_trace_contraction, &
         assemble_patch_graph_trace_contraction_jvp, &
         assemble_patch_graph_trace_contraction_vjp
+    use fortfem_patch_graph_complex_trace_contraction, only: &
+        assemble_patch_graph_complex_trace_contraction, &
+        assemble_patch_graph_complex_trace_contraction_jvp, &
+        assemble_patch_graph_complex_trace_contraction_vjp
     use fortfem_physical_trace_ownership, only: &
         physical_trace_ownership_t, initialize_physical_trace_ownership, &
         validate_physical_trace_ownership, physical_trace_ownership_maps, &
@@ -1810,6 +1814,9 @@ module fortfem_api
     public :: assemble_patch_graph_trace_contraction
     public :: assemble_patch_graph_trace_contraction_jvp
     public :: assemble_patch_graph_trace_contraction_vjp
+    public :: assemble_patch_graph_complex_trace_contraction
+    public :: assemble_patch_graph_complex_trace_contraction_jvp
+    public :: assemble_patch_graph_complex_trace_contraction_vjp
     public :: physical_trace_ownership_t
     public :: initialize_physical_trace_ownership
     public :: validate_physical_trace_ownership

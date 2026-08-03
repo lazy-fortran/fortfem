@@ -52,6 +52,10 @@ module fortfem_core
         assemble_patch_graph_trace_contraction, &
         assemble_patch_graph_trace_contraction_jvp, &
         assemble_patch_graph_trace_contraction_vjp
+    use fortfem_patch_graph_complex_trace_contraction, only: &
+        assemble_patch_graph_complex_trace_contraction, &
+        assemble_patch_graph_complex_trace_contraction_jvp, &
+        assemble_patch_graph_complex_trace_contraction_vjp
     use fortfem_toroidal_coordinates, only: &
         cartesian_to_toroidal, cartesian_to_toroidal_jvp, &
         cartesian_to_toroidal_vjp, toroidal_point_to_cartesian, &
@@ -276,6 +280,9 @@ module fortfem_core
     public :: assemble_patch_graph_trace_contraction
     public :: assemble_patch_graph_trace_contraction_jvp
     public :: assemble_patch_graph_trace_contraction_vjp
+    public :: assemble_patch_graph_complex_trace_contraction
+    public :: assemble_patch_graph_complex_trace_contraction_jvp
+    public :: assemble_patch_graph_complex_trace_contraction_vjp
     public :: gather_physical_trace_values
     public :: gather_physical_trace_values_jvp
     public :: gather_physical_trace_values_vjp
