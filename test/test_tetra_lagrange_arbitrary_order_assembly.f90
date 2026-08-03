@@ -1,6 +1,6 @@
 program test_tetra_lagrange_arbitrary_order_assembly
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tetra_lagrange_stiffness_csc, &
         assemble_tetra_lagrange_stiffness_element, &
         build_tetra_lagrange_dof_map, initialize_tetra_lagrange, &

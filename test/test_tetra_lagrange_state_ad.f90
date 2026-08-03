@@ -1,6 +1,6 @@
 program test_tetra_lagrange_state_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: solve_tetra_lagrange_state, &
+    use fortfem_feec, only: solve_tetra_lagrange_state, &
         solve_tetra_lagrange_state_jvp, solve_tetra_lagrange_state_vjp
     use fortfem_kinds, only: dp
     implicit none

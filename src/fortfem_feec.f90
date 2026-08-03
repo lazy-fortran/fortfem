@@ -103,6 +103,40 @@ module fortfem_feec
         evaluate_maxwell_torus_curved_rwg_basis_vjp
     use fortfem_maxwell_efie_rwg_3d, only: assemble_maxwell_efie_rwg_3d
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
+    use fortfem_tetra_lagrange_arbitrary_order, only: &
+        evaluate_tetra_lagrange, evaluate_tetra_lagrange_jvp, &
+        evaluate_tetra_lagrange_vjp, initialize_tetra_lagrange, &
+        tetra_lagrange_barycentric_indices, tetra_lagrange_dof_count, &
+        tetra_lagrange_nodes, tetra_lagrange_t
+    use fortfem_tetra_lagrange_global_dof_map, only: &
+        build_tetra_lagrange_dof_map
+    use fortfem_tetra_lagrange_solver_3d, only: &
+        evaluate_tetra_lagrange_solution, &
+        evaluate_tetra_lagrange_solution_jvp, &
+        evaluate_tetra_lagrange_solution_vjp, &
+        evaluate_tetra_lagrange_solution_at_point, &
+        evaluate_tetra_lagrange_solution_at_point_jvp, &
+        evaluate_tetra_lagrange_solution_at_point_vjp, &
+        evaluate_tetra_lagrange_solution_prepared, &
+        initialize_tetra_lagrange_solution_evaluator, &
+        solve_tetra_lagrange_diffusion_reaction, solve_tetra_lagrange_poisson, &
+        tetra_lagrange_solution_evaluator_t
+    use fortfem_tetra_lagrange_state_3d, only: &
+        solve_tetra_lagrange_state, solve_tetra_lagrange_state_jvp, &
+        solve_tetra_lagrange_state_vjp, solve_tetra_lagrange_sampled_state, &
+        solve_tetra_lagrange_sampled_state_jvp, &
+        solve_tetra_lagrange_sampled_state_vjp
+    use fortfem_assembly_tetra_lagrange_arbitrary_order_3d, only: &
+        assemble_tetra_lagrange_scalar_load, &
+        assemble_tetra_lagrange_scalar_load_samples, &
+        assemble_tetra_lagrange_scalar_load_samples_jvp, &
+        assemble_tetra_lagrange_scalar_load_samples_vjp, &
+        assemble_tetra_lagrange_stiffness_csc, &
+        assemble_tetra_lagrange_stiffness_csc_jvp, &
+        assemble_tetra_lagrange_stiffness_csc_vjp, &
+        assemble_tetra_lagrange_stiffness_element, &
+        assemble_tetra_lagrange_stiffness_element_jvp, &
+        assemble_tetra_lagrange_stiffness_element_vjp
     use fortfem_tetra_rt_arbitrary_order, only: &
         initialize_tetra_rt, tetra_rt_t
     use fortfem_tetra_rt_global_dof_map, only: &
@@ -601,6 +635,42 @@ module fortfem_feec
     public :: solve_tetra_nedelec_curl_mass
     public :: solve_tetra_nedelec_pml
     public :: tetra_duffy_quadrature
+    public :: evaluate_tetra_lagrange
+    public :: evaluate_tetra_lagrange_jvp
+    public :: evaluate_tetra_lagrange_vjp
+    public :: initialize_tetra_lagrange
+    public :: tetra_lagrange_barycentric_indices
+    public :: tetra_lagrange_dof_count
+    public :: tetra_lagrange_nodes
+    public :: tetra_lagrange_t
+    public :: build_tetra_lagrange_dof_map
+    public :: evaluate_tetra_lagrange_solution
+    public :: evaluate_tetra_lagrange_solution_jvp
+    public :: evaluate_tetra_lagrange_solution_vjp
+    public :: evaluate_tetra_lagrange_solution_at_point
+    public :: evaluate_tetra_lagrange_solution_at_point_jvp
+    public :: evaluate_tetra_lagrange_solution_at_point_vjp
+    public :: evaluate_tetra_lagrange_solution_prepared
+    public :: initialize_tetra_lagrange_solution_evaluator
+    public :: solve_tetra_lagrange_diffusion_reaction
+    public :: solve_tetra_lagrange_poisson
+    public :: tetra_lagrange_solution_evaluator_t
+    public :: solve_tetra_lagrange_state
+    public :: solve_tetra_lagrange_state_jvp
+    public :: solve_tetra_lagrange_state_vjp
+    public :: solve_tetra_lagrange_sampled_state
+    public :: solve_tetra_lagrange_sampled_state_jvp
+    public :: solve_tetra_lagrange_sampled_state_vjp
+    public :: assemble_tetra_lagrange_scalar_load
+    public :: assemble_tetra_lagrange_scalar_load_samples
+    public :: assemble_tetra_lagrange_scalar_load_samples_jvp
+    public :: assemble_tetra_lagrange_scalar_load_samples_vjp
+    public :: assemble_tetra_lagrange_stiffness_csc
+    public :: assemble_tetra_lagrange_stiffness_csc_jvp
+    public :: assemble_tetra_lagrange_stiffness_csc_vjp
+    public :: assemble_tetra_lagrange_stiffness_element
+    public :: assemble_tetra_lagrange_stiffness_element_jvp
+    public :: assemble_tetra_lagrange_stiffness_element_vjp
     public :: initialize_tetra_rt
     public :: tetra_rt_t
     public :: build_tetra_rt_basis_transform
