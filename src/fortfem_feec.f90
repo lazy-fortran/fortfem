@@ -677,6 +677,7 @@ module fortfem_feec
     use fortfem_api_types, only: cell_tensor_coefficient_t, cell_vector_source_t, &
         function_t
     use fortfem_api_forms, only: &
+        compile_form_matrix, compile_form_vector, &
         compile_mixed_form_csc, compile_tetra_mixed_form_csc, &
         compile_vector_form_csc, compile_vector_form_element, &
         compile_vector_form_rhs, curl, div, dx, &
@@ -1453,6 +1454,8 @@ module fortfem_feec
     public :: vector_test_function_t
     public :: vector_trial_function_t
     public :: compile_tetra_mixed_form_csc
+    public :: compile_form_matrix
+    public :: compile_form_vector
     public :: compile_mixed_form_csc
     public :: compile_vector_form_csc
     public :: compile_vector_form_element

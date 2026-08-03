@@ -1,6 +1,6 @@
 program test_scalar_form_compiler
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compile_form_matrix, compile_form_vector, &
+    use fortfem_feec, only: compile_form_matrix, compile_form_vector, &
         constant, dx, form_expr_t, function_t, grad, init_measures, inner, &
         operator(*), operator(+), test_function_t, trial_function_t
     use fortfem_kinds, only: dp
