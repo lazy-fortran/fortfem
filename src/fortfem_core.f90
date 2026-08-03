@@ -47,7 +47,10 @@ module fortfem_core
         mpi_trace_exchange_schedule_t, initialize_mpi_trace_exchange_schedule, &
         validate_mpi_trace_exchange_schedule, mpi_trace_exchange_schedule_maps, &
         pack_mpi_trace_exchange, pack_mpi_trace_exchange_jvp, pack_mpi_trace_exchange_vjp, &
-        unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp
+        unpack_mpi_trace_exchange, unpack_mpi_trace_exchange_jvp, unpack_mpi_trace_exchange_vjp, &
+        pack_complex_mpi_trace_exchange, pack_complex_mpi_trace_exchange_jvp, &
+        pack_complex_mpi_trace_exchange_vjp, unpack_complex_mpi_trace_exchange, &
+        unpack_complex_mpi_trace_exchange_jvp, unpack_complex_mpi_trace_exchange_vjp
     use fortfem_patch_graph_trace_contraction, only: &
         assemble_patch_graph_trace_contraction, &
         assemble_patch_graph_trace_contraction_jvp, &
@@ -277,6 +280,12 @@ module fortfem_core
     public :: unpack_mpi_trace_exchange
     public :: unpack_mpi_trace_exchange_jvp
     public :: unpack_mpi_trace_exchange_vjp
+    public :: pack_complex_mpi_trace_exchange
+    public :: pack_complex_mpi_trace_exchange_jvp
+    public :: pack_complex_mpi_trace_exchange_vjp
+    public :: unpack_complex_mpi_trace_exchange
+    public :: unpack_complex_mpi_trace_exchange_jvp
+    public :: unpack_complex_mpi_trace_exchange_vjp
     public :: assemble_patch_graph_trace_contraction
     public :: assemble_patch_graph_trace_contraction_jvp
     public :: assemble_patch_graph_trace_contraction_vjp
