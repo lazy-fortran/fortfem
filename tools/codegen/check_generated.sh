@@ -139,6 +139,10 @@ filename="fortfem_fci_septic_bezier_edge_area_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_fci_octic_bezier_edge_area_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_surface_integral_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
