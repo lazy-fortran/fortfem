@@ -1,6 +1,6 @@
 program test_toroidal_ampere_field
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_toroidal_ampere_field_p
+    use fortfem_fourier, only: evaluate_toroidal_ampere_field_p
     use fortfem_kinds, only: dp
     implicit none
 
