@@ -252,8 +252,16 @@ module fortfem_boundary
         solve_laplace_dirichlet_p0_3d
     use fortfem_laplace_panel_pair_3d, only: &
         assemble_laplace_single_layer_p0_3d_jvp, &
-        assemble_laplace_single_layer_p0_3d_vjp
+        assemble_laplace_single_layer_p0_3d_vjp, &
+        integrate_laplace_single_layer_regular_panel_pair_p0_3d, &
+        integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp, &
+        integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
+    use fortfem_laplace_bem_state_ad_3d, only: &
+        solve_laplace_dirichlet_p0_3d_jvp, &
+        solve_laplace_dirichlet_p0_3d_vjp
     use fortfem_laplace_fem_bem_coupling_3d, only: &
+        assemble_laplace_fem_bem_costabel_3d, &
+        solve_laplace_fem_bem_costabel_3d, &
         solve_laplace_fem_bem_johnson_nedelec_3d
     use fortfem_laplace_hierarchical_3d, only: &
         apply_laplace_single_layer_p0_hierarchical_3d
@@ -424,6 +432,11 @@ module fortfem_boundary
     public :: assemble_laplace_single_layer_p0_adaptive_3d
     public :: assemble_laplace_single_layer_p0_3d_jvp
     public :: assemble_laplace_single_layer_p0_3d_vjp
+    public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d
+    public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp
+    public :: integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp
+    public :: solve_laplace_dirichlet_p0_3d_jvp
+    public :: solve_laplace_dirichlet_p0_3d_vjp
     public :: assemble_laplace_calderon_p1_p0_3d
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
     public :: apply_helmholtz_single_layer_p0_hierarchical_3d
@@ -500,6 +513,8 @@ module fortfem_boundary
     public :: solve_helmholtz_dirichlet_p0_3d
     public :: solve_helmholtz_dirichlet_p0_hierarchical_3d
     public :: solve_laplace_dirichlet_p0_3d
+    public :: assemble_laplace_fem_bem_costabel_3d
+    public :: solve_laplace_fem_bem_costabel_3d
     public :: solve_laplace_fem_bem_johnson_nedelec_3d
     public :: solve_maxwell_fem_bem_torus_curved_system_3d
     public :: solve_maxwell_fem_bem_system_3d

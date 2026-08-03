@@ -1,9 +1,10 @@
 program test_laplace_representation_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_laplace_representation_triangles_3d, &
-        cartesian_to_toroidal, evaluate_toroidal_ampere_field_p, &
-        evaluate_toroidal_harmonic_p, generate_torus_surface_mesh, &
+    use fortfem_boundary, only: evaluate_laplace_representation_triangles_3d
+    use fortfem_core, only: cartesian_to_toroidal, generate_torus_surface_mesh, &
         toroidal_point_to_cartesian, toroidal_vector_to_cartesian
+    use fortfem_fourier, only: evaluate_toroidal_ampere_field_p, &
+        evaluate_toroidal_harmonic_p
     use fortfem_kinds, only: dp
     implicit none
 

@@ -1,6 +1,6 @@
 program test_laplace_bem_panel_pair_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_laplace_single_layer_p0_3d, &
+    use fortfem_boundary, only: assemble_laplace_single_layer_p0_3d, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_jvp, &
         integrate_laplace_single_layer_regular_panel_pair_p0_3d_vjp

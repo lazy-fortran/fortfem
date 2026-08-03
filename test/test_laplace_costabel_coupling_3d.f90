@@ -1,8 +1,9 @@
 program test_laplace_costabel_coupling_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
-        assemble_laplace_fem_bem_costabel_3d, generate_sphere_surface_mesh, &
+    use fortfem_boundary, only: &
+        assemble_laplace_fem_bem_costabel_3d, &
         solve_laplace_fem_bem_costabel_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
