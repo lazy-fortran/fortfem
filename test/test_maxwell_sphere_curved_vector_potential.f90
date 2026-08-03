@@ -1,10 +1,11 @@
 program test_maxwell_sphere_curved_vector_potential
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_sphere_curved_vector_potential_rwg_3d, &
-        build_maxwell_rwg_surface_space, generate_sphere_surface_mesh, &
         integrate_maxwell_sphere_curved_adjacent_rwg_pair_3d, &
         integrate_maxwell_sphere_curved_coincident_rwg_pair_3d
+    use fortfem_core, only: generate_sphere_surface_mesh
+    use fortfem_feec, only: build_maxwell_rwg_surface_space
     use fortfem_kinds, only: dp
     implicit none
 

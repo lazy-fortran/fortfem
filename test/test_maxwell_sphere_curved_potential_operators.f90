@@ -1,8 +1,9 @@
 program test_maxwell_sphere_curved_potential_operators
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_sphere_curved_potential_operators_rwg_3d, &
-        assemble_maxwell_sphere_curved_vector_potential_rwg_3d, &
+        assemble_maxwell_sphere_curved_vector_potential_rwg_3d
+    use fortfem_core, only: &
         generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none

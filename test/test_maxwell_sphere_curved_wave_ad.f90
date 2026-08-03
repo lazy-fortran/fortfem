@@ -1,12 +1,13 @@
 program test_maxwell_sphere_curved_wave_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d, &
         evaluate_maxwell_sphere_curved_far_field_rwg_3d_jvp, &
-        evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp, &
+        evaluate_maxwell_sphere_curved_far_field_rwg_3d_vjp
+    use fortfem_core, only: &
         generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
-    use fortfem_maxwell_rwg_surface, only: build_maxwell_rwg_surface_space
+    use fortfem_feec, only: build_maxwell_rwg_surface_space
     implicit none
 
     real(dp), parameter :: radius = 1.0_dp, wave_number = 0.45_dp
