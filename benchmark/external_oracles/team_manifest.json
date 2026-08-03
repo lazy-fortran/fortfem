@@ -1,0 +1,65 @@
+{
+  "schema": "fortfem-team-external-adapter-1",
+  "benchmark_family": "TEAM",
+  "paper": {
+    "citation": "TEAM workshop benchmark catalogue, Argonne National Laboratory report CONF-9503116 (1995)",
+    "provenance_uri": "https://www.osti.gov/biblio/7179128",
+    "provenance_links": [
+      "https://www.osti.gov/biblio/7179128",
+      "https://www.osti.gov/servlets/purl/7179128"
+    ],
+    "content_policy": "TEAM geometry, B-H curves, source arrays, meshes, and measurement data are not redistributed; obtain a separately licensed sister-repository artifact before running an exact case."
+  },
+  "cases": [
+    {
+      "id": "TEAM-3",
+      "title": "C-core and air-gap magnetostatic problem",
+      "provenance_links": ["https://www.osti.gov/biblio/7179128"],
+      "arrays": ["geometry", "material", "source", "observables"]
+    },
+    {
+      "id": "TEAM-7",
+      "title": "Coil/plate eddy-current problem",
+      "provenance_links": ["https://www.osti.gov/biblio/7179128"],
+      "arrays": ["geometry", "material", "source", "observables"]
+    },
+    {
+      "id": "TEAM-13",
+      "title": "Coil/channel/plate electromagnetic problem",
+      "provenance_links": [
+        "https://www.osti.gov/biblio/7179128",
+        "https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html"
+      ],
+      "arrays": ["geometry", "material", "source", "observables"]
+    },
+    {
+      "id": "TEAM-20",
+      "title": "Three-dimensional solenoid static-force problem",
+      "provenance_links": [
+        "https://www.osti.gov/biblio/7179128",
+        "https://www.simscale.com/docs/validation-cases/team-20-magnetostatics/"
+      ],
+      "arrays": ["geometry", "material", "source", "observables"]
+    }
+  ],
+  "external_data": {
+    "repository_uri": "https://github.com/lazy-fortran/fortfem-benchmark-data",
+    "manifest_uri": null,
+    "archive_sha256": null,
+    "availability": "absent",
+    "license": "external artifact only; license and redistribution permission must be reviewed before enabling",
+    "payload_schema": "fortfem-team-payload-1"
+  },
+  "adapter": {
+    "status": "skipped",
+    "skip_reason": "the reviewed sister-repository artifact is not present; the four in-tree neutral galleries remain manufactured foundation oracles",
+    "runner": "benchmark/external_oracles/run_team_adapter.py"
+  },
+  "gallery": {
+    "status": "skipped",
+    "skip_reason": "exact TEAM payloads are absent; no exact solution plots are generated",
+    "runner": "benchmark/external_oracles/run_team_gallery.py",
+    "payload_schema": "fortfem-team-payload-1",
+    "plot": "solution-first-svg"
+  }
+}

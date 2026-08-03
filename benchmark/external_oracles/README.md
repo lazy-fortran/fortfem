@@ -40,3 +40,30 @@ not a claim that FortFEM contains the paper's application data or solver.
 The checked-in contract remains `SKIP`; the in-tree
 `example/biro_tree_cotree_3d_gallery` is the manufactured, method-faithful
 tree--cotree oracle and is labeled separately.
+
+## TEAM exact-data boundary
+
+The four TEAM cases used by the neutral galleries are tracked by
+`team_manifest.json`: TEAM-3 (C-core/air gap), TEAM-7 (coil/plate
+eddy-current), TEAM-13 (coil/channel/plate), and TEAM-20 (3-D solenoid
+static force).  Their provenance points to the public [TEAM catalogue and
+workshop report](https://www.osti.gov/biblio/7179128) (and, where useful, the
+public TEAM-13 and TEAM-20 descriptions).  No TEAM mesh, B--H curve, source,
+probe, or force array is copied into this repository.
+
+The metadata-only contract is intentionally `availability: absent` and its
+adapter therefore prints an explicit `SKIP`:
+
+```text
+python3 benchmark/external_oracles/run_team_adapter.py
+python3 benchmark/external_oracles/run_team_gallery.py
+```
+
+An independently licensed checkout of
+`lazy-fortran/fortfem-benchmark-data` can supply a pinned
+`fortfem-team-data-1` manifest and archive.  The adapter verifies every TEAM
+case ID, HTTPS provenance, payload schema, license declaration, repository URI,
+and SHA-256 before the gallery consumes it.  It never downloads or invokes an
+external solver.  With a verified payload, the gallery writes one
+solution-first `solution.svg`, `solution.csv`, and `provenance.json` per case
+under `--output-dir/TEAM-*`; the exact arrays remain outside FortFEM.
