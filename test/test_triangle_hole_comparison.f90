@@ -9,7 +9,9 @@ program test_triangle_hole_comparison
     !    5. Checks that both meshes have no triangles whose centroid lies inside the hole
     !
     use fortfem_kinds, only : dp
-    use fortfem_api,  only : mesh_t, mesh_from_arrays, mesh_from_triangle_files, plot
+    use fortfem_core, only : mesh_t
+    use fortfem_api_mesh, only : mesh_from_arrays, mesh_from_triangle_files
+    use fortfem_plot, only : plot
     use triangulation_fortran, only : triangulation_result_t,                 &
         triangulate_with_hole_fortran
     use triangle_io, only : write_triangle_poly_file, ensure_triangle_available

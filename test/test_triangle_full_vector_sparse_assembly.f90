@@ -1,7 +1,7 @@
 program test_triangle_full_vector_sparse_assembly
     use check, only: check_condition, check_summary
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_bdm_div_mass_csc, &
         assemble_triangle_nedelec_second_curl_mass_csc, &
         build_triangle_full_vector_dof_map, interpolate_triangle_bdm, &
