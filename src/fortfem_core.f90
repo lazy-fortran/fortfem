@@ -21,6 +21,10 @@ module fortfem_core
         boundary_region_graph_components, boundary_region_graph_cycle_basis, &
         boundary_region_graph_interface_samples, &
         boundary_region_graph_interface_metadata
+    use fortfem_region_interface_graph, only: &
+        region_interface_graph_t, initialize_region_interface_graph, &
+        validate_region_interface_graph, region_interface_graph_incidence, &
+        region_interface_graph_components, region_interface_graph_cycle_basis
     use fortfem_physical_trace_ownership, only: &
         physical_trace_ownership_t, initialize_physical_trace_ownership, &
         validate_physical_trace_ownership, physical_trace_ownership_maps, &
@@ -191,6 +195,12 @@ module fortfem_core
     public :: boundary_region_graph_cycle_basis
     public :: boundary_region_graph_interface_samples
     public :: boundary_region_graph_interface_metadata
+    public :: region_interface_graph_t
+    public :: initialize_region_interface_graph
+    public :: validate_region_interface_graph
+    public :: region_interface_graph_incidence
+    public :: region_interface_graph_components
+    public :: region_interface_graph_cycle_basis
     public :: physical_trace_ownership_t
     public :: initialize_physical_trace_ownership
     public :: validate_physical_trace_ownership

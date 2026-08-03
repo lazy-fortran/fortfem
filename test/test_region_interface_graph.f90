@@ -1,6 +1,6 @@
 program test_region_interface_graph
     use check, only: check_condition, check_summary
-    use fortfem_api, only: initialize_region_interface_graph, &
+    use fortfem_core, only: initialize_region_interface_graph, &
         region_interface_graph_components, region_interface_graph_incidence, &
         region_interface_graph_cycle_basis, region_interface_graph_t, &
         validate_region_interface_graph

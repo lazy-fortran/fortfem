@@ -598,7 +598,10 @@ module fortfem_feec
     use fortfem_mixed_rt_system, only: solve_mixed_rt_system, &
         solve_mixed_rt_system_jvp, solve_mixed_rt_system_vjp
     use fortfem_tetra_mixed_poisson_3d, only: &
-        solve_symbolic_tetra_mixed_poisson_rt
+        solve_symbolic_tetra_mixed_poisson_rt, &
+        assemble_tetra_dg_source_load_samples, &
+        assemble_tetra_dg_source_load_samples_jvp, &
+        assemble_tetra_dg_source_load_samples_vjp
     use fortfem_tetra_mixed_poisson_state_3d, only: &
         solve_tetra_mixed_poisson_state, &
         solve_tetra_mixed_poisson_state_jvp, &
@@ -725,6 +728,22 @@ module fortfem_feec
         assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp
+    use fortfem_interface_jump_penalty, only: &
+        assemble_interface_jump_penalty, &
+        assemble_interface_jump_penalty_jvp, &
+        assemble_interface_jump_penalty_vjp
+    use fortfem_nitsche_interface, only: &
+        assemble_symmetric_nitsche_interface, &
+        assemble_symmetric_nitsche_interface_jvp, &
+        assemble_symmetric_nitsche_interface_vjp
+    use fortfem_scalar_sipg_interface, only: &
+        assemble_scalar_sipg_interface, &
+        assemble_scalar_sipg_interface_jvp, &
+        assemble_scalar_sipg_interface_vjp
+    use fortfem_vector_jump_penalty, only: &
+        assemble_vector_sipg_interface, &
+        assemble_vector_sipg_interface_jvp, &
+        assemble_vector_sipg_interface_vjp
     implicit none
     private
 
@@ -1396,6 +1415,21 @@ module fortfem_feec
     public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
+    public :: assemble_tetra_dg_source_load_samples
+    public :: assemble_tetra_dg_source_load_samples_jvp
+    public :: assemble_tetra_dg_source_load_samples_vjp
+    public :: assemble_interface_jump_penalty
+    public :: assemble_interface_jump_penalty_jvp
+    public :: assemble_interface_jump_penalty_vjp
+    public :: assemble_symmetric_nitsche_interface
+    public :: assemble_symmetric_nitsche_interface_jvp
+    public :: assemble_symmetric_nitsche_interface_vjp
+    public :: assemble_scalar_sipg_interface
+    public :: assemble_scalar_sipg_interface_jvp
+    public :: assemble_scalar_sipg_interface_vjp
+    public :: assemble_vector_sipg_interface
+    public :: assemble_vector_sipg_interface_jvp
+    public :: assemble_vector_sipg_interface_vjp
     public :: assemble_block_2x2_residual
     public :: assemble_block_2x2_residual_jvp
     public :: assemble_block_2x2_residual_vjp

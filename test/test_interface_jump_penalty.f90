@@ -1,6 +1,6 @@
 program test_interface_jump_penalty
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_interface_jump_penalty
+    use fortfem_feec, only: assemble_interface_jump_penalty
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

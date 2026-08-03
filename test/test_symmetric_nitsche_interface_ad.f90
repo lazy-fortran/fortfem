@@ -1,6 +1,6 @@
 program test_symmetric_nitsche_interface_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_symmetric_nitsche_interface, &
+    use fortfem_feec, only: assemble_symmetric_nitsche_interface, &
         assemble_symmetric_nitsche_interface_jvp, &
         assemble_symmetric_nitsche_interface_vjp
     use fortfem_kinds, only: dp

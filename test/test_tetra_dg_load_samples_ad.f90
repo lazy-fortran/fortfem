@@ -1,6 +1,6 @@
 program test_tetra_dg_load_samples_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_tetra_dg_source_load_samples, &
         assemble_tetra_dg_source_load_samples_jvp, &
         assemble_tetra_dg_source_load_samples_vjp
