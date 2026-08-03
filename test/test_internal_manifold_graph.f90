@@ -1,6 +1,6 @@
 program test_internal_manifold_graph
     use check, only: check_condition, check_summary
-    use fortfem_api, only: initialize_internal_manifold_graph, &
+    use fortfem_feec, only: initialize_internal_manifold_graph, &
         internal_manifold_graph_closed, internal_manifold_graph_components, &
         internal_manifold_graph_junction_incidence, &
         internal_manifold_graph_region_incidence, internal_manifold_graph_t, &

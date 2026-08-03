@@ -1,6 +1,6 @@
 program test_physical_surface_geometry
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         sample_physical_surface_geometry, &
         sample_physical_surface_geometry_jvp, &
         sample_physical_surface_geometry_vjp

@@ -1,6 +1,6 @@
 program test_partition_layout
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_partitioned_sum, assemble_partitioned_sum_jvp, &
+    use fortfem_feec, only: assemble_partitioned_sum, assemble_partitioned_sum_jvp, &
         assemble_partitioned_sum_vjp, initialize_partition_layout, &
         partition_layout_ghost_count, partition_layout_global_count, &
         partition_layout_maps, partition_layout_owned_count, partition_layout_t

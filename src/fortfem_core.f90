@@ -6,8 +6,15 @@ module fortfem_core
     !! available for compatibility; new clients can depend on this low-risk
     !! core surface without importing application-specific operators.
     use fortfem_cell_complex, only: &
-        cell_complex_betti_numbers, cell_complex_euler_characteristic, &
-        cell_complex_t, initialize_cell_complex, validate_cell_complex
+        cell_complex_betti_numbers, cell_complex_cocycle_basis, &
+        cell_complex_cohomology_cocycle_basis, cell_complex_cycle_basis, &
+        cell_complex_homology_cycle_basis, cell_complex_harmonic_one_forms, &
+        cell_complex_euler_characteristic, cell_complex_t, &
+        initialize_cell_complex, quotient_cell_complex, validate_cell_complex
+    use fortfem_physical_surface_geometry, only: &
+        sample_physical_surface_geometry, &
+        sample_physical_surface_geometry_jvp, &
+        sample_physical_surface_geometry_vjp
     use fortfem_boundary_region_graph, only: &
         boundary_region_graph_t, initialize_boundary_region_graph, &
         validate_boundary_region_graph, boundary_region_graph_incidence, &
@@ -87,7 +94,12 @@ module fortfem_core
     public :: cartesian_to_toroidal_jvp
     public :: cartesian_to_toroidal_vjp
     public :: cell_complex_betti_numbers
+    public :: cell_complex_cocycle_basis
+    public :: cell_complex_cohomology_cocycle_basis
+    public :: cell_complex_cycle_basis
     public :: cell_complex_euler_characteristic
+    public :: cell_complex_homology_cycle_basis
+    public :: cell_complex_harmonic_one_forms
     public :: cell_complex_t
     public :: generate_solid_torus_tetra_mesh
     public :: generate_sphere_surface_mesh
@@ -134,6 +146,9 @@ module fortfem_core
     public :: arc_segment
     public :: l_shape_boundary
     public :: mesh_from_boundary
+    public :: sample_physical_surface_geometry
+    public :: sample_physical_surface_geometry_jvp
+    public :: sample_physical_surface_geometry_vjp
     public :: evaluate_axis_regular_radial_basis
     public :: evaluate_axis_regular_radial_basis_jvp
     public :: evaluate_axis_regular_radial_basis_vjp
@@ -156,6 +171,7 @@ module fortfem_core
     public :: toroidal_vector_to_cartesian_jvp
     public :: toroidal_vector_to_cartesian_vjp
     public :: validate_cell_complex
+    public :: quotient_cell_complex
     public :: boundary_region_graph_t
     public :: initialize_boundary_region_graph
     public :: validate_boundary_region_graph

@@ -1,6 +1,6 @@
 program test_cell_complex_homology
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_complex_cohomology_cocycle_basis, &
+    use fortfem_core, only: cell_complex_cohomology_cocycle_basis, &
         cell_complex_homology_cycle_basis, cell_complex_t, initialize_cell_complex
     use fortfem_kinds, only: dp
     implicit none
