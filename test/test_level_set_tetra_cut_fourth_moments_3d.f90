@@ -1,6 +1,6 @@
 program test_level_set_tetra_cut_fourth_moments_3d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         evaluate_level_set_tetra_cut_fourth_moments_3d, &
         evaluate_level_set_tetra_cut_fourth_moments_3d_jvp
     use fortfem_kinds, only: dp
