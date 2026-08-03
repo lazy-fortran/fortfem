@@ -1,6 +1,6 @@
 program test_heaviside_enrichment
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_shifted_heaviside_enrichment, &
+    use fortfem_feec, only: evaluate_shifted_heaviside_enrichment, &
         evaluate_shifted_heaviside_enrichment_jvp, &
         evaluate_shifted_heaviside_enrichment_vjp
     use fortfem_kinds, only: dp

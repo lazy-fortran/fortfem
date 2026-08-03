@@ -209,9 +209,30 @@ module fortfem_feec
         evaluate_force_balance_product, &
         evaluate_force_balance_product_jvp, &
         evaluate_force_balance_product_vjp
-    use fortfem_shifted_enriched_space, only: evaluate_shifted_enriched_space
+    use fortfem_heaviside_enrichment, only: &
+        evaluate_shifted_heaviside_enrichment, &
+        evaluate_shifted_heaviside_enrichment_jvp, &
+        evaluate_shifted_heaviside_enrichment_vjp
+    use fortfem_shifted_enriched_basis, only: &
+        evaluate_shifted_enriched_basis, &
+        evaluate_shifted_enriched_basis_jvp, &
+        evaluate_shifted_enriched_basis_vjp
+    use fortfem_shifted_enriched_space, only: &
+        evaluate_shifted_enriched_space, &
+        evaluate_shifted_enriched_space_jvp, &
+        evaluate_shifted_enriched_space_vjp
+    use fortfem_shifted_vector_enriched_basis, only: &
+        evaluate_shifted_vector_enriched_basis, &
+        evaluate_shifted_vector_enriched_basis_jvp, &
+        evaluate_shifted_vector_enriched_basis_vjp
     use fortfem_shifted_vector_enriched_space, only: &
-        evaluate_shifted_vector_enriched_space
+        evaluate_shifted_vector_enriched_space, &
+        evaluate_shifted_vector_enriched_space_jvp, &
+        evaluate_shifted_vector_enriched_space_vjp
+    use fortfem_enriched_feec_sequence, only: &
+        assemble_enriched_feec_sequence, &
+        assemble_enriched_feec_sequence_jvp, &
+        assemble_enriched_feec_sequence_vjp
     use fortfem_singular_layer_matching, only: &
         assemble_singular_layer_matching, &
         assemble_singular_layer_matching_jvp
@@ -466,8 +487,24 @@ module fortfem_feec
     public :: evaluate_force_balance_product
     public :: evaluate_force_balance_product_jvp
     public :: evaluate_force_balance_product_vjp
+    public :: evaluate_shifted_heaviside_enrichment
+    public :: evaluate_shifted_heaviside_enrichment_jvp
+    public :: evaluate_shifted_heaviside_enrichment_vjp
+    public :: evaluate_shifted_enriched_basis
+    public :: evaluate_shifted_enriched_basis_jvp
+    public :: evaluate_shifted_enriched_basis_vjp
     public :: evaluate_shifted_enriched_space
+    public :: evaluate_shifted_enriched_space_jvp
+    public :: evaluate_shifted_enriched_space_vjp
+    public :: evaluate_shifted_vector_enriched_basis
+    public :: evaluate_shifted_vector_enriched_basis_jvp
+    public :: evaluate_shifted_vector_enriched_basis_vjp
     public :: evaluate_shifted_vector_enriched_space
+    public :: evaluate_shifted_vector_enriched_space_jvp
+    public :: evaluate_shifted_vector_enriched_space_vjp
+    public :: assemble_enriched_feec_sequence
+    public :: assemble_enriched_feec_sequence_jvp
+    public :: assemble_enriched_feec_sequence_vjp
     public :: assemble_singular_layer_matching
     public :: assemble_singular_layer_matching_jvp
     public :: function_space
