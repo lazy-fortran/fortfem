@@ -7,9 +7,8 @@ program test_plot_facade
     !! plotting itself is intentionally not called, so this test writes no
     !! media files.
     use check, only: check_condition, check_summary
-    use fortfem_api_mesh, only: mesh_t, unit_square_mesh
-    use fortfem_api_spaces, only: function, function_space, function_space_t, &
-        function_t
+    use fortfem_core, only: mesh_t, unit_square_mesh, function, function_space, &
+        function_space_t, function_t
     use fortfem_kinds, only: dp
     use fortfem_plot, only: build_mesh_edge_path, compute_scalar_plot_grid
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan

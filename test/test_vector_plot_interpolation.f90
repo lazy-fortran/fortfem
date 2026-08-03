@@ -1,8 +1,8 @@
 program test_vector_plot_interpolation
-    use fortfem_api, only: mesh_t, unit_square_mesh, vector_function, &
+    use fortfem_core, only: mesh_t, unit_square_mesh, vector_function, &
         vector_function_space, vector_function_space_t, vector_function_t
     use fortfem_edge_interpolation_2d, only: interpolate_rt_edge_dofs
-    use fortfem_api_plot_interpolation, only: compute_vector_plot_grid
+    use fortfem_plot, only: compute_vector_plot_grid
     use fortfem_kinds, only: dp
     use check, only: check_condition, check_summary
     implicit none

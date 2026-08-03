@@ -1,7 +1,6 @@
 program test_mesh_boundaries_module
     use fortfem_kinds, only: dp
-    use fortfem_boundary, only: boundary_t
-    use fortfem_api_mesh_boundaries, only: circle_boundary, &
+    use fortfem_core, only: boundary_t, circle_boundary, &
         rectangle_boundary, line_segment, &
         arc_segment, l_shape_boundary
     use check, only: check_condition, check_summary
@@ -82,4 +81,3 @@ program test_mesh_boundaries_module
     call check_summary("fortfem_api_mesh_boundaries")
 
 end program test_mesh_boundaries_module
-

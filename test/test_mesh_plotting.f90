@@ -1,7 +1,8 @@
 program test_mesh_plotting
     ! TDD test for mesh plotting functionality
-    use fortfem_api
-    use fortfem_api_plot_mesh, only: prepare_mesh_plot
+    use fortfem_core, only: mesh_t, unit_square_mesh, structured_quad_mesh, &
+        rectangle_mesh
+    use fortfem_plot, only: plot, prepare_mesh_plot
     use fortfem_kinds
     use fortplot_figure, only: figure_t
     implicit none
