@@ -3707,6 +3707,12 @@ gallery example.
   converged odd membrane series at mode 399, keeping the reference and curl
   checks while bringing that fast-suite target below the short feedback
   budget. Higher truncation studies remain an explicit benchmark concern.
+- The provenance-gated Biro and TEAM external gallery renderers now reject
+  repeated-node or zero-area elements before plotting, validate polygon/node
+  counts and solution CSV values independently, and label external payloads
+  separately from the provenance-only analytical reference. This keeps the
+  exact-paper boundary honest while making every accepted solution plot
+  geometrically drawable and auditable.
 - `doc/examples/primary_plots.txt` is the gallery's explicit visual contract:
   each example names its physical solution, field, geometry, or mesh artifact.
   The documentation generator copies that artifact to `primary.png` and emits
