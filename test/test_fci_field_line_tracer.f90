@@ -1,6 +1,6 @@
 program test_fci_field_line_tracer
     use check, only: check_condition, check_summary
-    use fortfem_api, only: trace_fci_field_line_rk4
+    use fortfem_feec, only: trace_fci_field_line_rk4
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

@@ -1,6 +1,6 @@
 program test_fci_power_flux_ledger
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_fci_power_flux_ledger, &
+    use fortfem_feec, only: evaluate_fci_power_flux_ledger, &
         evaluate_fci_power_flux_ledger_jvp, evaluate_fci_power_flux_ledger_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
