@@ -1,7 +1,7 @@
 program test_period_constraints
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_period_constraints, only: &
         assemble_period_constraints, assemble_period_constraints_jvp, &
         assemble_period_constraints_vjp
     implicit none

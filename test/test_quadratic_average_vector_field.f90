@@ -1,6 +1,6 @@
 program test_quadratic_average_vector_field
     use check, only: check_condition, check_summary
-    use fortfem_api, only: advance_quadratic_avf, &
+    use fortfem_quadratic_average_vector_field, only: advance_quadratic_avf, &
         advance_quadratic_avf_jvp, advance_quadratic_avf_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

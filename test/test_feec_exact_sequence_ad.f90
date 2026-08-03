@@ -1,6 +1,6 @@
 program test_feec_exact_sequence_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_feec_exact_sequence, &
+    use fortfem_feec, only: assemble_feec_exact_sequence, &
         assemble_feec_exact_sequence_jvp, assemble_feec_exact_sequence_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
