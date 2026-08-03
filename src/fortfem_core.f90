@@ -90,7 +90,9 @@ module fortfem_core
         vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, rectangle_boundary, &
         line_segment, arc_segment, l_shape_boundary, unit_square_mesh, &
-        rectangle_mesh, unit_disk_mesh, mesh_from_boundary, structured_quad_mesh
+        rectangle_mesh, unit_disk_mesh, mesh_from_boundary, mesh_from_domain, &
+        structured_quad_mesh, refine_uniform, refine_adaptive, &
+        compute_gradient_indicators, find_triangle_edges
     implicit none
     private
 
@@ -150,6 +152,11 @@ module fortfem_core
     public :: arc_segment
     public :: l_shape_boundary
     public :: mesh_from_boundary
+    public :: mesh_from_domain
+    public :: refine_uniform
+    public :: refine_adaptive
+    public :: compute_gradient_indicators
+    public :: find_triangle_edges
     public :: sample_physical_surface_geometry
     public :: sample_physical_surface_geometry_jvp
     public :: sample_physical_surface_geometry_vjp

@@ -491,10 +491,18 @@ module fortfem_feec
         function_t
     use fortfem_api_forms, only: &
         compile_mixed_form_csc, compile_tetra_mixed_form_csc, &
-        compile_vector_form_element, curl, div, dx, form_expr_t, init_measures, &
+        compile_vector_form_element, compile_vector_form_rhs, curl, div, dx, &
+        form_expr_t, init_measures, &
         grad, inner, operator(*), operator(+), operator(==)
     use fortfem_edge_interpolation_2d, only: &
         interpolate_nedelec_edge_dofs, interpolate_rt_edge_dofs
+    use fortfem_triangle_piola_maps, only: &
+        map_triangle_nedelec_covariant, &
+        map_triangle_nedelec_covariant_jvp, &
+        map_triangle_nedelec_covariant_vjp, &
+        map_triangle_rt_contravariant, &
+        map_triangle_rt_contravariant_jvp, &
+        map_triangle_rt_contravariant_vjp
     use fortfem_mixed_poisson_2d, only: &
         solve_mixed_poisson_rt, solve_mixed_poisson_rt0, &
         solve_symbolic_mixed_poisson_rt
@@ -1110,6 +1118,7 @@ module fortfem_feec
     public :: compile_tetra_mixed_form_csc
     public :: compile_mixed_form_csc
     public :: compile_vector_form_element
+    public :: compile_vector_form_rhs
     public :: div
     public :: dx
     public :: form_expr_t
@@ -1131,6 +1140,12 @@ module fortfem_feec
     public :: solve_symbolic_tetra_mixed_poisson_rt
     public :: interpolate_nedelec_edge_dofs
     public :: interpolate_rt_edge_dofs
+    public :: map_triangle_nedelec_covariant
+    public :: map_triangle_nedelec_covariant_jvp
+    public :: map_triangle_nedelec_covariant_vjp
+    public :: map_triangle_rt_contravariant
+    public :: map_triangle_rt_contravariant_jvp
+    public :: map_triangle_rt_contravariant_vjp
     public :: solve_tetra_mixed_poisson_state
     public :: solve_tetra_mixed_poisson_state_jvp
     public :: solve_tetra_mixed_poisson_state_vjp

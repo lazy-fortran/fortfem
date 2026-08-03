@@ -1,6 +1,6 @@
 program test_arbitrary_order_piola_maps
     use check, only: check_condition, check_summary
-    use fortfem_api, only: map_triangle_nedelec_covariant, &
+    use fortfem_feec, only: map_triangle_nedelec_covariant, &
         map_triangle_rt_contravariant
     use fortfem_kinds, only: dp
     implicit none

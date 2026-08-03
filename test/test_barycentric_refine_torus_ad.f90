@@ -1,6 +1,6 @@
 program test_barycentric_refine_torus_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         barycentric_refine_torus_surface_mesh, &
         barycentric_refine_torus_surface_mesh_jvp, &
         barycentric_refine_torus_surface_mesh_vjp, &

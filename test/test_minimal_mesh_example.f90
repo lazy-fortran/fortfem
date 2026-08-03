@@ -1,7 +1,9 @@
 program test_minimal_mesh_example
     ! TDD test for minimal mesh generation example that should work
-    use fortfem_api
-    use fortfem_kinds
+    use fortfem_boundary, only: boundary_t
+    use fortfem_core, only: mesh_t, unit_square_mesh
+    use fortfem_kinds, only: dp
+    use fortfem_plot, only: plot
     implicit none
 
     integer :: test_count = 0, passed_tests = 0

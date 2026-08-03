@@ -1,7 +1,10 @@
 program test_mesh_integration
     ! Test integration between frontend mesh API and Delaunay backend
-    use fortfem_api
-    use fortfem_kinds
+    use fortfem_boundary, only: boundary_t
+    use fortfem_core, only: circle_boundary, mesh_from_boundary, &
+        mesh_from_domain, mesh_t, rectangle_boundary, unit_disk_mesh
+    use fortfem_kinds, only: dp
+    use fortfem_plot, only: plot
     implicit none
 
     integer :: test_count = 0, passed_tests = 0

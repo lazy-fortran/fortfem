@@ -1,8 +1,12 @@
 program test_mesh_refinement
-    use fortfem_kinds
-    use fortfem_api
-    use fortfem_api_mesh, only: compute_gradient_indicators
-    use check
+    use fortfem_core, only: compute_gradient_indicators, dirichlet_bc_t, &
+        function_space_t, mesh_t, refine_adaptive, refine_uniform, &
+        unit_square_mesh
+    use fortfem_feec, only: form_expr_t, function, function_t, function_space, &
+        test_function_t, trial_function_t
+    use fortfem_kinds, only: dp
+    use fortfem_plot, only: plot
+    use check, only: check_condition, check_summary
     implicit none
 
     write(*,*) "Testing mesh refinement implementation..."
