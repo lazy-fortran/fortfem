@@ -611,10 +611,15 @@ exports.
 
 The next operator wave adds six sheet-current/pressure/delta/virtual-casing
 consumers (`cd6372b`), six DG/XFEM/enrichment consumers (`8e0457e`), and six
-tetrahedral Nédélec/PML consumers (`56b2caa`, pending final rebase onto the
-latest documentation commit). These retain independent jump, flux,
+tetrahedral Nédélec/PML consumers (`c77e2a6`). These retain independent jump, flux,
 enrichment, curl--curl, PML, larger-domain, and derivative oracles; no
 application closure or external benchmark data is introduced.
+
+The Nédélec/PML hand-off is now integrated as `c77e2a6` (inventory refreshed
+after integration). All six focused tetrahedral tests pass serially, and the
+pending note above is closed; the owning split is `fortfem_core` for geometry,
+`fortfem_feec` for curl--curl element/state operators, and `fortfem_boundary`
+for PML boundary contracts.
 
 ## 2. Current baseline
 
