@@ -486,6 +486,10 @@ module fortfem_api
         evaluate_force_balance_representation_parity, &
         evaluate_force_balance_representation_parity_jvp, &
         evaluate_force_balance_representation_parity_vjp
+    use fortfem_cut_polygon_fifth_moments_2d, only: &
+        evaluate_cut_polygon_fifth_moments_2d, &
+        evaluate_cut_polygon_fifth_moments_2d_jvp, &
+        evaluate_cut_polygon_fifth_moments_2d_vjp
     use fortfem_force_balance_objective, only: &
         evaluate_force_balance_objective, &
         evaluate_force_balance_objective_jvp, &
@@ -2008,6 +2012,9 @@ module fortfem_api
     public :: evaluate_force_balance_representation_parity
     public :: evaluate_force_balance_representation_parity_jvp
     public :: evaluate_force_balance_representation_parity_vjp
+    public :: evaluate_cut_polygon_fifth_moments_2d
+    public :: evaluate_cut_polygon_fifth_moments_2d_jvp
+    public :: evaluate_cut_polygon_fifth_moments_2d_vjp
     public :: evaluate_force_balance_objective
     public :: evaluate_force_balance_objective_jvp
     public :: evaluate_force_balance_objective_vjp

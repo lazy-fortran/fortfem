@@ -1,6 +1,6 @@
 program test_cut_polygon_fifth_moments_2d
     use check, only: check_condition, check_summary
-    use fortfem_cut_polygon_fifth_moments_2d, only: &
+    use fortfem_feec, only: &
         evaluate_cut_polygon_fifth_moments_2d, &
         evaluate_cut_polygon_fifth_moments_2d_jvp, &
         evaluate_cut_polygon_fifth_moments_2d_vjp
