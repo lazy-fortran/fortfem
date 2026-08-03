@@ -693,6 +693,13 @@ hands off a commit without waiting for the full test or Pages workflow. The
 integrator regenerates the public inventory and runs the fast release gate
 after every handoff.
 
+The TEAM external-data handoff `02c5053` is complete. It adds a
+standard-library-only manifest/adapter/gallery for TEAM-3, TEAM-7, TEAM-13,
+and TEAM-20, with explicit OSTI provenance, license/checksum/schema checks,
+tamper rejection, solution-first SVG/CSV rendering, and a successful absent
+data `SKIP`. It contains no TEAM mesh, B-H curve, reader, or solver source;
+the four neutral Fortran galleries remain the fast in-tree examples.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
