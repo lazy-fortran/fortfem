@@ -22,6 +22,10 @@ probe curve. CSV and diagnostic files are generated under
 The provenance target is the [TEAM workshop report](https://www.osti.gov/servlets/purl/7179128)
 and the public [TEAM 13 reproduction description](https://docs.feelpp.org/toolboxes/latest/maxwell/Tws/index.html).
 
+Exact TEAM-13 arrays are not redistributed here; the optional sister-data
+adapter and solution-first renderer are documented in
+[`benchmark/external_oracles`](../../benchmark/external_oracles/README.md).
+
 Run with:
 
 ```text

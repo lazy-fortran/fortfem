@@ -194,7 +194,10 @@ program biro_tree_cotree_3d_gallery
             vertex_y(second_node) - vertex_y(first_node), &
             vertex_z(second_node) - vertex_z(first_node)]
         edge_length = sqrt(dot_product(tangent, tangent))
-        scale = 0.34_dp*edge_solution(edge)/max(edge_length, 1.0e-12_dp)
+        ! Keep the solved edge-potential direction legible in the first
+        ! physical view; the line length is a display scale, not a change to
+        ! the edge integral stored in ``solution.csv``.
+        scale = 0.68_dp*edge_solution(edge)/max(edge_length, 1.0e-12_dp)
         arrow_x(edge) = scale*tangent(1)
         arrow_y(edge) = scale*tangent(2)
         arrow_z(edge) = scale*tangent(3)

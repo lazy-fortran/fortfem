@@ -28,6 +28,10 @@ fixture is intended to exercise FortFEM's 2-D vector-field plotting, analytic
 manufactured forcing, and diagnostic hooks before a specialized solver is
 added.
 
+Exact TEAM-7 arrays are intentionally out of tree.  If a separately licensed
+sister-repository artifact is available, use the provenance/checksum-gated
+adapter documented in [`benchmark/external_oracles`](../../benchmark/external_oracles/README.md).
+
 Run it with:
 
 ```text
