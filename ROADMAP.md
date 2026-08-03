@@ -684,9 +684,13 @@ The current queue is intentionally disjoint and short-feedback:
 
 | Worktree | Scope | Required handoff |
 | --- | --- | --- |
-| `add_team_external_adapter_wave8` | Metadata-only exact TEAM-3/7/13/20 sister-data adapter and shell oracle; no benchmark arrays/readers | Explicit absent-data skip, synthetic checksum/provenance/tamper checks, solution-first SVG/CSV, no repository bloat |
-| `migrate_maxwell_sphere_wave9` | Six remaining curved-sphere/toroidal Maxwell CFIE/EFIE/MFIE/DtN consumers | Focused analytical, reciprocity, curvature, and JVP/VJP tests; minimal canonical exports only |
-| `migrate_scalar_mesh_wave10` | Mesh/Piola/refinement and cell-source consumers | Focused topology, interpolation, and derivative oracles; core/FEEC ownership only |
+| `migrate_special_functions_wave11` | FortNum spherical/toroidal harmonics, Fourier Hessian, Debye/eigen, and toroidal Neumann consumers | Focused special-function, modal, topology, and JVP/VJP oracles; Fourier/FEEC ownership only |
+| `migrate_objective_continuation_wave12` | Block residual, equation/objective registry, continuation, pseudo-arclength/transient, and shape-objective consumers | Independent residual/objective/continuation derivative oracles; FEEC/time/interop ownership only |
+| `migrate_iga_graph_wave13` | B-spline geometry-adjoint and multipatch signed-graph consumers | Geometry/orientation/JVP/VJP parity; core/FEEC ownership only |
+
+The preceding TEAM adapter, Maxwell sphere/torus, and scalar/mesh worktrees
+are integrated as `02c5053`, `61ece44`, and `e58c663` respectively; they are
+kept in the handoff ledger above and must not be reopened or duplicated.
 
 Each agent rebases from the latest `main`, edits only its listed files, and
 hands off a commit without waiting for the full test or Pages workflow. The
