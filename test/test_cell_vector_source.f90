@@ -1,9 +1,10 @@
 program test_cell_vector_source
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_vector_source, cell_vector_source_t, &
+    use fortfem_core, only: mesh_t, rectangle_mesh, vector_function_space_t
+    use fortfem_feec, only: cell_vector_source, cell_vector_source_t, &
         compile_vector_form_rhs, dx, form_expr_t, init_measures, inner, &
-        mesh_t, operator(*), rectangle_mesh, vector_function_space, &
-        vector_function_space_t, vector_test_function, vector_test_function_t
+        operator(*), vector_function_space, vector_test_function, &
+        vector_test_function_t
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none

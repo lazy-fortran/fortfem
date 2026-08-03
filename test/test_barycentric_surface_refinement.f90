@@ -1,6 +1,6 @@
 program test_barycentric_surface_refinement
     use check, only: check_condition, check_summary
-    use fortfem_api, only: barycentric_refine_surface_mesh
+    use fortfem_feec, only: barycentric_refine_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
 
