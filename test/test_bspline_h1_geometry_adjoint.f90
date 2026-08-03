@@ -1,6 +1,6 @@
 program test_bspline_h1_geometry_adjoint
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: assemble_bspline_h1_operator_csc, &
+    use fortfem_feec, only: assemble_bspline_h1_operator_csc, &
         assemble_bspline_h1_operator_csc_jvp, &
         assemble_bspline_h1_operator_csc_vjp, sparse_direct_factor_csc, &
         sparse_direct_factor_t, sparse_direct_factor_transpose_csc, &
