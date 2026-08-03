@@ -1,7 +1,7 @@
 program test_boundary_operator_contract
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         BOUNDARY_OPERATOR_BACKEND_BEM, &
         BOUNDARY_OPERATOR_BACKEND_DTN, &
         boundary_operator_contract_t, &

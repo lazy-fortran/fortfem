@@ -1,6 +1,6 @@
 program test_geometry_mortar_trace_coupling
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         assemble_geometry_mortar_trace_coupling, &
         assemble_geometry_mortar_trace_coupling_jvp, &
         assemble_geometry_mortar_trace_coupling_vjp

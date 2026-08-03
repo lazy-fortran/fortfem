@@ -82,6 +82,10 @@ module fortfem_core
         evaluate_level_set_triangle_cut_third_moments_2d_jvp, &
         evaluate_level_set_triangle_cut_fourth_moments_2d, &
         evaluate_level_set_triangle_cut_fourth_moments_2d_jvp
+    use fortfem_geometry_mortar_trace_coupling, only: &
+        assemble_geometry_mortar_trace_coupling, &
+        assemble_geometry_mortar_trace_coupling_jvp, &
+        assemble_geometry_mortar_trace_coupling_vjp
     use fortfem_api_types, only: mesh_t, function_space_t, &
         vector_function_space_t, dirichlet_bc_t
     use fortfem_api_mesh, only: circle_boundary, rectangle_boundary, &
@@ -188,5 +192,8 @@ module fortfem_core
     public :: physical_trace_ownership_point_count
     public :: physical_trace_ownership_rank
     public :: compare_physical_trace_coordinates
+    public :: assemble_geometry_mortar_trace_coupling
+    public :: assemble_geometry_mortar_trace_coupling_jvp
+    public :: assemble_geometry_mortar_trace_coupling_vjp
 
 end module fortfem_core

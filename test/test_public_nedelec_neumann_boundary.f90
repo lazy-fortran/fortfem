@@ -1,13 +1,14 @@
 program test_public_nedelec_neumann_boundary
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: mesh_t, unit_square_mesh, vector_function_space_t
+    use fortfem_feec, only: &
         cell_vector_source, cell_vector_source_t, curl, dx, form_expr_t, &
-        inner, mesh_t, operator(*), operator(+), operator(==), solve, &
-        unit_square_mesh, vector_bc_on_edges, vector_bc_t, vector_function, &
-        vector_function_space, vector_function_space_t, vector_function_t, &
-        vector_neumann_bc_on_edges, vector_neumann_bc_t, &
+        inner, operator(*), operator(+), operator(==), solve, &
+        vector_bc_t, vector_function, vector_function_space, vector_function_t, &
         vector_test_function, vector_test_function_t, vector_trial_function, &
         vector_trial_function_t
+    use fortfem_api_spaces, only: vector_bc_on_edges, &
+        vector_neumann_bc_on_edges, vector_neumann_bc_t
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortfem_triangle_global_dof_map, only: &
