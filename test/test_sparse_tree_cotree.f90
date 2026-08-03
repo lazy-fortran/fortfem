@@ -1,6 +1,6 @@
 program test_sparse_tree_cotree
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_tree_cotree_gauge, &
+    use fortfem_feec, only: build_tree_cotree_gauge, &
         sparse_direct_solve_tree_cotree, sparse_direct_solve_tree_cotree_jvp, &
         sparse_direct_solve_tree_cotree_vjp, tree_cotree_gauge_t
     use fortfem_kinds, only: dp
