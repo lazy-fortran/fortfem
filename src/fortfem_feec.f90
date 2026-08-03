@@ -79,6 +79,13 @@ module fortfem_feec
     use fortfem_maxwell_rwg_surface, only: &
         assemble_maxwell_rwg_mass_matrix, build_maxwell_rwg_surface_space, &
         map_maxwell_rwg_to_tetra_nedelec_edges
+    use fortfem_maxwell_sphere_curved_rwg, only: &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis, &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp, &
+        evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp, &
+        evaluate_maxwell_sphere_curved_rwg_basis, &
+        evaluate_maxwell_sphere_curved_rwg_basis_jvp, &
+        evaluate_maxwell_sphere_curved_rwg_basis_vjp
     use fortfem_maxwell_efie_rwg_3d, only: assemble_maxwell_efie_rwg_3d
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_tetra_rt_arbitrary_order, only: &
@@ -400,6 +407,12 @@ module fortfem_feec
     public :: assemble_maxwell_rwg_mass_matrix
     public :: build_maxwell_rwg_surface_space
     public :: map_maxwell_rwg_to_tetra_nedelec_edges
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_jvp
+    public :: evaluate_maxwell_sphere_curved_localized_rwg_basis_vjp
+    public :: evaluate_maxwell_sphere_curved_rwg_basis
+    public :: evaluate_maxwell_sphere_curved_rwg_basis_jvp
+    public :: evaluate_maxwell_sphere_curved_rwg_basis_vjp
     public :: assemble_maxwell_efie_rwg_3d
     public :: build_bspline_polar_feec_2d_operators
     public :: build_bspline_polar_feec_2d_extractions
