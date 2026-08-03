@@ -2,7 +2,7 @@ program test_fortfem_toroidal_harmonics
     ! Public-adapter oracle for Hobson toroidal P/Q harmonics.
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use, intrinsic :: iso_fortran_env, only: dp => real64, error_unit
-    use fortfem_api, only: toroidal_p, toroidal_q, &
+    use fortfem_fourier, only: toroidal_p, toroidal_q, &
         toroidal_p_derivative, toroidal_q_derivative, &
         toroidal_p_second_derivative, toroidal_q_second_derivative
     implicit none
