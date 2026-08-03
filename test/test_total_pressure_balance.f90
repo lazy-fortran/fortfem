@@ -1,6 +1,6 @@
 program test_total_pressure_balance
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_total_pressure_jump, assemble_total_pressure_jump_jvp, &
         assemble_total_pressure_jump_vjp
     use fortfem_kinds, only: dp

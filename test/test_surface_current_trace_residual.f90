@@ -1,6 +1,6 @@
 program test_surface_current_trace_residual
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_surface_current_trace_residual, &
         assemble_surface_current_trace_residual_jvp, &
         assemble_surface_current_trace_residual_vjp

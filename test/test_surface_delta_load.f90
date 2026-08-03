@@ -1,6 +1,6 @@
 program test_surface_delta_load
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_surface_delta_load, &
+    use fortfem_boundary, only: assemble_surface_delta_load, &
         assemble_surface_delta_load_jvp, assemble_surface_delta_load_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

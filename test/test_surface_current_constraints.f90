@@ -1,6 +1,6 @@
 program test_surface_current_constraints
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_surface_current_loop_constraints, &
         assemble_surface_current_loop_constraints_jvp, &
         assemble_surface_current_loop_constraints_vjp
