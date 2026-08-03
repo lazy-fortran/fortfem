@@ -3,7 +3,7 @@ program test_nestor_fourier_response
     use, intrinsic :: iso_fortran_env, only: real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use check, only: check_condition, check_summary
-    use fortfem_boundary, only: &
+    use fortfem_fourier, only: &
         apply_nestor_fourier_response_map, &
         apply_nestor_fourier_response_map_jvp, &
         apply_nestor_fourier_response_map_vjp, &
