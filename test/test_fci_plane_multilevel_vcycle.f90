@@ -1,6 +1,6 @@
 program test_fci_plane_multilevel_vcycle
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_plane_multilevel_vcycle, &
+    use fortfem_feec, only: apply_fci_plane_multilevel_vcycle, &
         apply_fci_plane_multilevel_wcycle
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t

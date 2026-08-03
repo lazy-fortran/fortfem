@@ -1,6 +1,6 @@
 program test_fci_plane_vcycles_ragged
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_plane_two_level_vcycles_ragged
+    use fortfem_feec, only: apply_fci_plane_two_level_vcycles_ragged
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
     implicit none

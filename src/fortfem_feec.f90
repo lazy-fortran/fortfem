@@ -378,9 +378,18 @@ module fortfem_feec
         apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &
         apply_fci_parallel_gradient_vjp, compute_fci_parallel_diffusion_diagonal, &
         compute_fci_anisotropic_diffusion_diagonal, &
+        apply_fci_parallel_jacobi_preconditioner, &
         apply_fci_anisotropic_jacobi_preconditioner, &
         apply_fci_anisotropic_diffusion, &
         apply_fci_anisotropic_diffusion_field_vjp
+    use fortfem_fci_plane_multigrid, only: &
+        apply_fci_plane_two_level_vcycle, &
+        factor_fci_plane_coarse_operator, &
+        apply_fci_plane_two_level_vcycle_factored, &
+        apply_fci_plane_multilevel_vcycle, &
+        apply_fci_plane_multilevel_wcycle, &
+        apply_fci_plane_two_level_vcycles, &
+        apply_fci_plane_two_level_vcycles_ragged
     use fortfem_fci_power_flux_ledger, only: &
         evaluate_fci_power_flux_ledger, &
         evaluate_fci_power_flux_ledger_jvp, &
@@ -399,17 +408,25 @@ module fortfem_feec
         build_fci_quadratic_interpolation_map_1d, &
         build_fci_quadratic_interpolation_map_1d_jvp, &
         build_fci_quadratic_interpolation_map_1d_vjp, &
+        build_fci_quadratic_interpolation_maps_1d, &
+        build_fci_quadratic_interpolation_maps_1d_jvp, &
+        build_fci_quadratic_interpolation_maps_1d_vjp, &
         build_fci_bilinear_interpolation_map_2d, &
         build_fci_bilinear_interpolation_map_2d_jvp, &
         build_fci_bilinear_interpolation_map_2d_vjp, &
         build_fci_cubic_interpolation_map_1d, &
         build_fci_cubic_interpolation_map_1d_jvp, &
-        build_fci_cubic_interpolation_map_1d_vjp
+        build_fci_cubic_interpolation_map_1d_vjp, &
+        build_fci_quartic_interpolation_map_1d, &
+        build_fci_quartic_interpolation_map_1d_jvp, &
+        build_fci_quartic_interpolation_map_1d_vjp
     use fortfem_fci_support_geometry, only: &
         compute_fci_staggered_flux_box_volumes, &
         compute_fci_staggered_flux_box_volumes_jvp, &
         compute_fci_staggered_flux_box_volumes_vjp, &
         compute_fci_quadrilateral_cell_areas_2d, &
+        compute_fci_quadrilateral_cell_areas_2d_jvp, &
+        compute_fci_quadrilateral_cell_areas_2d_vjp, &
         compute_fci_curved_quadrilateral_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d_jvp, &
@@ -423,6 +440,8 @@ module fortfem_feec
         compute_fci_curved_quadrilateral_cell_areas_2d_jvp, &
         compute_fci_curved_quadrilateral_cell_areas_2d_vjp, &
         compute_fci_quartic_curved_polygon_cell_areas_2d, &
+        compute_fci_quartic_curved_polygon_cell_areas_2d_jvp, &
+        compute_fci_quartic_curved_polygon_cell_areas_2d_vjp, &
         compute_fci_quintic_curved_polygon_cell_areas_2d, &
         compute_fci_sextic_curved_polygon_cell_areas_2d
     use fortfem_fci_terminal_boundary_flux, only: &
@@ -1079,9 +1098,17 @@ module fortfem_feec
     public :: apply_fci_parallel_gradient_vjp
     public :: compute_fci_parallel_diffusion_diagonal
     public :: compute_fci_anisotropic_diffusion_diagonal
+    public :: apply_fci_parallel_jacobi_preconditioner
     public :: apply_fci_anisotropic_jacobi_preconditioner
     public :: apply_fci_anisotropic_diffusion
     public :: apply_fci_anisotropic_diffusion_field_vjp
+    public :: apply_fci_plane_two_level_vcycle
+    public :: factor_fci_plane_coarse_operator
+    public :: apply_fci_plane_two_level_vcycle_factored
+    public :: apply_fci_plane_multilevel_vcycle
+    public :: apply_fci_plane_multilevel_wcycle
+    public :: apply_fci_plane_two_level_vcycles
+    public :: apply_fci_plane_two_level_vcycles_ragged
     public :: evaluate_fci_power_flux_ledger
     public :: evaluate_fci_power_flux_ledger_jvp
     public :: evaluate_fci_power_flux_ledger_vjp
@@ -1094,16 +1121,24 @@ module fortfem_feec
     public :: build_fci_quadratic_interpolation_map_1d
     public :: build_fci_quadratic_interpolation_map_1d_jvp
     public :: build_fci_quadratic_interpolation_map_1d_vjp
+    public :: build_fci_quadratic_interpolation_maps_1d
+    public :: build_fci_quadratic_interpolation_maps_1d_jvp
+    public :: build_fci_quadratic_interpolation_maps_1d_vjp
     public :: build_fci_bilinear_interpolation_map_2d
     public :: build_fci_bilinear_interpolation_map_2d_jvp
     public :: build_fci_bilinear_interpolation_map_2d_vjp
     public :: build_fci_cubic_interpolation_map_1d
     public :: build_fci_cubic_interpolation_map_1d_jvp
     public :: build_fci_cubic_interpolation_map_1d_vjp
+    public :: build_fci_quartic_interpolation_map_1d
+    public :: build_fci_quartic_interpolation_map_1d_jvp
+    public :: build_fci_quartic_interpolation_map_1d_vjp
     public :: compute_fci_staggered_flux_box_volumes
     public :: compute_fci_staggered_flux_box_volumes_jvp
     public :: compute_fci_staggered_flux_box_volumes_vjp
     public :: compute_fci_quadrilateral_cell_areas_2d
+    public :: compute_fci_quadrilateral_cell_areas_2d_jvp
+    public :: compute_fci_quadrilateral_cell_areas_2d_vjp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
     public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
@@ -1117,6 +1152,8 @@ module fortfem_feec
     public :: compute_fci_cubic_curved_polygon_cell_areas_2d_jvp
     public :: compute_fci_cubic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_quartic_curved_polygon_cell_areas_2d
+    public :: compute_fci_quartic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_quartic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_quintic_curved_polygon_cell_areas_2d
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d
     public :: assemble_fci_terminal_boundary_flux
