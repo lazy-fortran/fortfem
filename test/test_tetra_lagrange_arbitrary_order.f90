@@ -1,6 +1,6 @@
 program test_tetra_lagrange_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_tetra_lagrange, initialize_tetra_lagrange, &
         tetra_lagrange_dof_count, tetra_lagrange_nodes, tetra_lagrange_t
     use fortfem_kinds, only: dp

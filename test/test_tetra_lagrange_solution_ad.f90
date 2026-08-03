@@ -1,6 +1,6 @@
 program test_tetra_lagrange_solution_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: evaluate_tetra_lagrange_solution, &
+    use fortfem_feec, only: evaluate_tetra_lagrange_solution, &
         evaluate_tetra_lagrange_solution_jvp, &
         evaluate_tetra_lagrange_solution_vjp, initialize_tetra_lagrange, &
         tetra_lagrange_dof_count, tetra_lagrange_t
