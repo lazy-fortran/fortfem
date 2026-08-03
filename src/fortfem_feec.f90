@@ -294,12 +294,24 @@ module fortfem_feec
         build_triangle_discontinuous_dof_map
     use fortfem_triangle_global_dof_map, only: build_triangle_trimmed_dof_map
     use fortfem_triangle_lagrange_arbitrary_order, only: &
-        evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
-        triangle_lagrange_basis_t
+        assignment(=), evaluate_triangle_lagrange_basis, &
+        initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
+        triangle_lagrange_nodes
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        assignment(=), evaluate_triangle_nedelec_first_kind, &
+        evaluate_triangle_nedelec_first_kind_jvp, &
+        evaluate_triangle_nedelec_first_kind_vjp, &
+        initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
+        triangle_nedelec_first_kind_t
+    use fortfem_triangle_feec_operators, only: &
+        build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
         initialize_triangle_raviart_thomas, triangle_rt_basis_t
     use fortfem_triangle_vector_interpolation, only: &
-        evaluate_triangle_rt_interpolant
+        evaluate_triangle_rt_interpolant, interpolate_triangle_nedelec
+    use fortfem_assembly_nedelec_arbitrary_order_2d, only: &
+        assemble_triangle_nedelec_curl_mass_csc, &
+        assemble_triangle_nedelec_curl_mass_element
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_api_solvers, only: &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
@@ -618,6 +630,18 @@ module fortfem_feec
     public :: evaluate_triangle_lagrange_basis
     public :: initialize_triangle_lagrange_basis
     public :: triangle_lagrange_basis_t
+    public :: triangle_lagrange_nodes
+    public :: assignment(=)
+    public :: build_triangle_discrete_gradient
+    public :: evaluate_triangle_nedelec_first_kind
+    public :: evaluate_triangle_nedelec_first_kind_jvp
+    public :: evaluate_triangle_nedelec_first_kind_vjp
+    public :: initialize_triangle_nedelec_first_kind
+    public :: triangle_nedelec_dof_count
+    public :: triangle_nedelec_first_kind_t
+    public :: interpolate_triangle_nedelec
+    public :: assemble_triangle_nedelec_curl_mass_csc
+    public :: assemble_triangle_nedelec_curl_mass_element
     public :: initialize_triangle_raviart_thomas
     public :: triangle_rt_basis_t
     public :: evaluate_triangle_rt_interpolant

@@ -1,6 +1,6 @@
 program test_triangle_nedelec_arbitrary_order_assembly
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_triangle_nedelec_curl_mass_element, &
         build_triangle_discrete_gradient, initialize_triangle_lagrange_basis, &
         triangle_lagrange_basis_t, triangle_lagrange_nodes

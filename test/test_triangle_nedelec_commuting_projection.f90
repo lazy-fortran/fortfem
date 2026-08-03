@@ -1,6 +1,6 @@
 program test_triangle_nedelec_commuting_projection
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         build_triangle_discrete_gradient, &
         initialize_triangle_lagrange_basis, interpolate_triangle_nedelec, &
         triangle_lagrange_basis_t, triangle_lagrange_nodes
