@@ -1,6 +1,6 @@
 program test_bspline_3d_sparse_assembly
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_bspline_h1_operator_3d_csc, &
         assemble_bspline_hcurl_operator_3d_csc, &
         assemble_bspline_hdiv_operator_3d_csc, &
