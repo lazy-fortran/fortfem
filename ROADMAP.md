@@ -507,6 +507,14 @@ six toroidal-coordinate/harmonic/DtN clients (`82b0547`). Their focused
 Piola, orientation, modal, special-function, and derivative oracles pass;
 remaining clients are still queued in disjoint capability batches.
 
+The boundary-ownership follow-up adds seven planar/spherical scalar DtN
+clients (`1f4d989`), six toroidal Laplace BEM/DtN/Calderón/Costabel clients
+(`5d3fe0c`), and six toroidal Helmholtz BEM/DtN/Calderón/Costabel clients
+(`d2e3b60`). Their focused analytical, geometry-derivative, larger-domain,
+and slow-kernel oracles pass. Representation and panel symbols now have one
+canonical owner (`0c82e1b`, `7bac61b`); the generated inventory and duplicate
+export gate are clean.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
