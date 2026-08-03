@@ -4,7 +4,8 @@ program test_eulerian_nonnested_residual
         assemble_eulerian_nonnested_residual, &
         assemble_eulerian_nonnested_residual_jvp, &
         assemble_eulerian_nonnested_residual_vjp, &
-        CONTINUATION_EVENT_NONE, CONTINUATION_EVENT_SIGN_CROSSING
+        CONTINUATION_EVENT_NONE
+    use fortfem_time, only: CONTINUATION_EVENT_SIGN_CROSSING
     use fortfem_kinds, only: dp
     use fortsparse, only: FORTSPARSE_INVALID_MATRIX, FORTSPARSE_OK, &
         fortsparse_status_t
