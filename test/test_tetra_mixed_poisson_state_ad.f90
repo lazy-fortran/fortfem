@@ -1,6 +1,6 @@
 program test_tetra_mixed_poisson_state_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: solve_tetra_mixed_poisson_state, &
+    use fortfem_feec, only: solve_tetra_mixed_poisson_state, &
         solve_tetra_mixed_poisson_state_jvp, &
         solve_tetra_mixed_poisson_state_vjp
     use fortfem_kinds, only: dp

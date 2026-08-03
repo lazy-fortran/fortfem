@@ -1,11 +1,11 @@
 program test_tetra_mixed_poisson_sampled_state_ad
     use, intrinsic :: iso_fortran_env, only: error_unit
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         solve_tetra_mixed_poisson_sampled_state, &
         solve_tetra_mixed_poisson_sampled_state_jvp, &
-        solve_tetra_mixed_poisson_sampled_state_vjp
+        solve_tetra_mixed_poisson_sampled_state_vjp, &
+        tetra_duffy_quadrature
     use fortfem_kinds, only: dp
-    use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     implicit none
 
     integer, parameter :: degree = 1, quadrature_degree = 4

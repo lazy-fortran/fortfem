@@ -1,8 +1,9 @@
 program test_symbolic_tetra_mixed_poisson_slow
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: generate_structured_tetra_box_mesh
+    use fortfem_feec, only: &
         compile_tetra_mixed_form_csc, div, dx, &
-        generate_structured_tetra_box_mesh, init_measures, inner, operator(*), &
+        init_measures, inner, operator(*), &
         solve_symbolic_tetra_mixed_poisson_rt, test_function_t, &
         trial_function_t, vector_test_function_t, vector_trial_function_t
     use fortfem_kinds, only: dp
