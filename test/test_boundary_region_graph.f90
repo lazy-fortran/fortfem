@@ -1,6 +1,6 @@
 program test_boundary_region_graph
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: &
         boundary_region_graph_components, boundary_region_graph_cycle_basis, &
         boundary_region_graph_incidence, boundary_region_graph_interface_samples, &
         boundary_region_graph_interface_metadata, &

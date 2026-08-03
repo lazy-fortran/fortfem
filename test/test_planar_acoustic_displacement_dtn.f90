@@ -1,6 +1,6 @@
 program test_planar_acoustic_displacement_dtn
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_planar_acoustic_displacement_dtn, &
+    use fortfem_boundary, only: apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
     use fortfem_kinds, only: dp
     implicit none

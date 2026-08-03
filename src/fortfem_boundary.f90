@@ -53,6 +53,9 @@ module fortfem_boundary
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
+    use fortfem_planar_acoustic_displacement_dtn, only: &
+        apply_planar_acoustic_displacement_dtn, &
+        assemble_planar_acoustic_displacement_dtn_form
     use fortfem_complex_boundary_trace_residual, only: &
         assemble_complex_boundary_trace_residual, &
         assemble_complex_boundary_trace_residual_jvp, &
@@ -381,6 +384,8 @@ module fortfem_boundary
     public :: refine_surface_mesh_marked
     public :: solve_elasticity_planar_acoustic_dtn_p1
     public :: solve_elasticity_curved_acoustic_ntd_p1
+    public :: apply_planar_acoustic_displacement_dtn
+    public :: assemble_planar_acoustic_displacement_dtn_form
     public :: apply_planar_maxwell_dtn
     public :: apply_planar_maxwell_dtn_jvp
     public :: apply_planar_maxwell_dtn_vjp
