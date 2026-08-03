@@ -1,6 +1,6 @@
 program test_pseudo_arclength_tangent
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         normalize_pseudo_arclength_tangent, &
         normalize_pseudo_arclength_tangent_jvp, &
         normalize_pseudo_arclength_tangent_vjp

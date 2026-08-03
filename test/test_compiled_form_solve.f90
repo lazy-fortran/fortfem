@@ -1,6 +1,11 @@
 program test_compiled_form_solve
     use check, only: check_condition, check_summary
-    use fortfem_api
+    use fortfem_core, only: dirichlet_bc_t, function_space_t, mesh_t, &
+        unit_square_mesh
+    use fortfem_feec, only: constant, dirichlet_bc, dx, form_expr_t, function, &
+        function_space, function_t, grad, inner, operator(*), operator(==), &
+        solve, solver_options, solver_options_t, test_function, test_function_t, &
+        trial_function, trial_function_t
     use fortfem_kinds, only: dp
     implicit none
 

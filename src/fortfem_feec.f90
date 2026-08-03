@@ -59,6 +59,55 @@ module fortfem_feec
         assemble_coupled_field_residual, &
         assemble_coupled_field_residual_jvp, &
         assemble_coupled_field_residual_vjp
+    use fortfem_block_2x2_residual, only: &
+        assemble_block_2x2_residual, &
+        assemble_block_2x2_residual_jvp, &
+        assemble_block_2x2_residual_vjp
+    use fortfem_block_graph_csc, only: assemble_block_graph_csc
+    use fortfem_pseudo_arclength_residual, only: &
+        assemble_pseudo_arclength_residual, &
+        assemble_pseudo_arclength_residual_jvp, &
+        assemble_pseudo_arclength_residual_vjp
+    use fortfem_deflated_residual, only: &
+        assemble_deflated_residual, &
+        assemble_deflated_residual_jvp, &
+        assemble_deflated_residual_vjp
+    use fortfem_pseudo_arclength_tangent, only: &
+        normalize_pseudo_arclength_tangent, &
+        normalize_pseudo_arclength_tangent_jvp, &
+        normalize_pseudo_arclength_tangent_vjp
+    use fortfem_pseudo_transient_residual, only: &
+        assemble_pseudo_transient_residual, &
+        assemble_pseudo_transient_residual_jvp, &
+        assemble_pseudo_transient_residual_vjp
+    use fortfem_residual_merit, only: &
+        evaluate_residual_merit, evaluate_residual_merit_jvp, &
+        evaluate_residual_merit_vjp
+    use fortfem_equation_objective_metadata, only: &
+        OBJECTIVE_METADATA_KIND_EQUATION, OBJECTIVE_METADATA_KIND_OBJECTIVE, &
+        OBJECTIVE_METADATA_KIND_CONSTRAINT, OBJECTIVE_METADATA_UNSET_ID, &
+        equation_objective_metadata_t, initialize_equation_objective_metadata, &
+        validate_equation_objective_metadata, clear_equation_objective_metadata
+    use fortfem_equation_objective_merit, only: &
+        evaluate_equation_objective_merit, &
+        evaluate_equation_objective_merit_jvp, &
+        evaluate_equation_objective_merit_vjp
+    use fortfem_equation_objective_registry, only: &
+        equation_objective_block_t, equation_objective_registry_t, &
+        initialize_equation_objective_registry, &
+        validate_equation_objective_registry, equation_objective_registry_block, &
+        equation_objective_registry_block_count, equation_objective_registry_total_rows, &
+        pack_equation_objective_values, pack_equation_objective_values_jvp, &
+        pack_equation_objective_values_vjp, unpack_equation_objective_values, &
+        REGISTRY_KIND_EQUATION, REGISTRY_KIND_OBJECTIVE, REGISTRY_KIND_CONSTRAINT
+    use fortfem_equation_objective_callbacks, only: &
+        evaluate_equation_objective_callbacks, &
+        evaluate_equation_objective_callbacks_jvp, &
+        evaluate_equation_objective_callbacks_vjp
+    use fortfem_surface_shape_objective, only: &
+        evaluate_surface_shape_objective, &
+        evaluate_surface_shape_objective_jvp, &
+        evaluate_surface_shape_objective_vjp
     use fortfem_tetra_nedelec_first_order, only: &
         evaluate_tetra_nedelec_first_order
     use fortfem_tetra_nedelec_arbitrary_order, only: &
@@ -624,11 +673,13 @@ module fortfem_feec
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_api_solvers, only: &
         assemble_laplacian_system, sparse_from_dense, sparse_matrix_t, &
-        sparse_direct_factor_t, sparse_direct_factor_csc, &
+        sparse_direct_factor_t, sparse_direct_factor_csc, solver_options, &
+        solver_options_t, &
         sparse_direct_factor_transpose_csc, sparse_direct_free, &
         sparse_direct_solve_factored, sparse_direct_solve_factored_jvp, &
         sparse_direct_solve_factored_vjp, solve, solver_stats_t
     use fortfem_sparse_direct, only: &
+        sparse_direct_factor_adjoint_csc, &
         sparse_direct_solve_tree_cotree, &
         sparse_direct_solve_tree_cotree_jvp, &
         sparse_direct_solve_tree_cotree_vjp
@@ -1258,6 +1309,7 @@ module fortfem_feec
     public :: sparse_from_dense
     public :: sparse_matrix_t
     public :: sparse_direct_factor_t
+    public :: sparse_direct_factor_adjoint_csc
     public :: sparse_direct_factor_csc
     public :: sparse_direct_factor_transpose_csc
     public :: sparse_direct_free
@@ -1295,5 +1347,57 @@ module fortfem_feec
     public :: assemble_tetra_nedelec_pml_element
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
+    public :: assemble_block_2x2_residual
+    public :: assemble_block_2x2_residual_jvp
+    public :: assemble_block_2x2_residual_vjp
+    public :: assemble_block_graph_csc
+    public :: assemble_pseudo_arclength_residual
+    public :: assemble_pseudo_arclength_residual_jvp
+    public :: assemble_pseudo_arclength_residual_vjp
+    public :: assemble_deflated_residual
+    public :: assemble_deflated_residual_jvp
+    public :: assemble_deflated_residual_vjp
+    public :: normalize_pseudo_arclength_tangent
+    public :: normalize_pseudo_arclength_tangent_jvp
+    public :: normalize_pseudo_arclength_tangent_vjp
+    public :: assemble_pseudo_transient_residual
+    public :: assemble_pseudo_transient_residual_jvp
+    public :: assemble_pseudo_transient_residual_vjp
+    public :: evaluate_residual_merit
+    public :: evaluate_residual_merit_jvp
+    public :: evaluate_residual_merit_vjp
+    public :: OBJECTIVE_METADATA_KIND_EQUATION
+    public :: OBJECTIVE_METADATA_KIND_OBJECTIVE
+    public :: OBJECTIVE_METADATA_KIND_CONSTRAINT
+    public :: OBJECTIVE_METADATA_UNSET_ID
+    public :: equation_objective_metadata_t
+    public :: initialize_equation_objective_metadata
+    public :: validate_equation_objective_metadata
+    public :: clear_equation_objective_metadata
+    public :: evaluate_equation_objective_merit
+    public :: evaluate_equation_objective_merit_jvp
+    public :: evaluate_equation_objective_merit_vjp
+    public :: equation_objective_block_t
+    public :: equation_objective_registry_t
+    public :: initialize_equation_objective_registry
+    public :: validate_equation_objective_registry
+    public :: equation_objective_registry_block
+    public :: equation_objective_registry_block_count
+    public :: equation_objective_registry_total_rows
+    public :: pack_equation_objective_values
+    public :: pack_equation_objective_values_jvp
+    public :: pack_equation_objective_values_vjp
+    public :: unpack_equation_objective_values
+    public :: REGISTRY_KIND_EQUATION
+    public :: REGISTRY_KIND_OBJECTIVE
+    public :: REGISTRY_KIND_CONSTRAINT
+    public :: evaluate_equation_objective_callbacks
+    public :: evaluate_equation_objective_callbacks_jvp
+    public :: evaluate_equation_objective_callbacks_vjp
+    public :: evaluate_surface_shape_objective
+    public :: evaluate_surface_shape_objective_jvp
+    public :: evaluate_surface_shape_objective_vjp
+    public :: solver_options_t
+    public :: solver_options
 
 end module fortfem_feec

@@ -1,6 +1,6 @@
 program test_equation_objective_callbacks
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         equation_objective_block_t, equation_objective_registry_t, &
         initialize_equation_objective_registry, &
         evaluate_equation_objective_callbacks, &

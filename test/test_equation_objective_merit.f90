@@ -2,7 +2,7 @@ program test_equation_objective_merit
     !! Independent weighted objective/constraint merit oracle.
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         OBJECTIVE_METADATA_KIND_OBJECTIVE, &
         equation_objective_metadata_t, &
         evaluate_equation_objective_merit, &
