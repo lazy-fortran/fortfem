@@ -1,6 +1,6 @@
 program test_enrichment_support_activation
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_enrichment_support_activation, &
         evaluate_enrichment_support_activation_jvp, &
         evaluate_enrichment_support_activation_vjp

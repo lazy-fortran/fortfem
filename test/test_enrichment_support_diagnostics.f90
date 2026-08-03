@@ -1,6 +1,6 @@
 program test_enrichment_support_diagnostics
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_enrichment_support_gram, &
+    use fortfem_feec, only: evaluate_enrichment_support_gram, &
         evaluate_enrichment_support_gram_jvp, &
         evaluate_enrichment_support_gram_vjp, &
         evaluate_enrichment_support_rank_condition

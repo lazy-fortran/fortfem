@@ -482,6 +482,27 @@ module fortfem_feec
         evaluate_shifted_heaviside_enrichment, &
         evaluate_shifted_heaviside_enrichment_jvp, &
         evaluate_shifted_heaviside_enrichment_vjp
+    use fortfem_batched_vector_enrichment_differential_3d, only: &
+        evaluate_batched_vector_enrichment_differential_3d, &
+        evaluate_batched_vector_enrichment_differential_3d_jvp, &
+        evaluate_batched_vector_enrichment_differential_3d_vjp
+    use fortfem_vector_enrichment_differential_3d, only: &
+        evaluate_vector_enrichment_differential_3d, &
+        evaluate_vector_enrichment_differential_3d_jvp, &
+        evaluate_vector_enrichment_differential_3d_vjp
+    use fortfem_enrichment_support_activation, only: &
+        evaluate_enrichment_support_activation, &
+        evaluate_enrichment_support_activation_jvp, &
+        evaluate_enrichment_support_activation_vjp
+    use fortfem_enrichment_support_diagnostics, only: &
+        evaluate_enrichment_support_gram, &
+        evaluate_enrichment_support_gram_jvp, &
+        evaluate_enrichment_support_gram_vjp, &
+        evaluate_enrichment_support_rank_condition
+    use fortfem_enrichment_support_vector_diagnostics, only: &
+        evaluate_enrichment_support_vector_gram, &
+        evaluate_enrichment_support_vector_gram_jvp, &
+        evaluate_enrichment_support_vector_gram_vjp
     use fortfem_shifted_enriched_basis, only: &
         evaluate_shifted_enriched_basis, &
         evaluate_shifted_enriched_basis_jvp, &
@@ -525,6 +546,12 @@ module fortfem_feec
         evaluate_piola_enriched_vector_values, &
         evaluate_piola_enriched_vector_values_jvp, &
         evaluate_piola_enriched_vector_values_vjp, &
+        evaluate_piola_enriched_vector_differential_2d, &
+        evaluate_piola_enriched_vector_differential_2d_jvp, &
+        evaluate_piola_enriched_vector_differential_2d_vjp, &
+        evaluate_piola_enriched_vector_differential_3d, &
+        evaluate_piola_enriched_vector_differential_3d_jvp, &
+        evaluate_piola_enriched_vector_differential_3d_vjp, &
         PIOLA_COVARIANT, PIOLA_CONTRAVARIANT
     use fortfem_retained_field_split, only: &
         apply_retained_complex_field_split, &
@@ -1107,6 +1134,22 @@ module fortfem_feec
     public :: evaluate_shifted_heaviside_enrichment
     public :: evaluate_shifted_heaviside_enrichment_jvp
     public :: evaluate_shifted_heaviside_enrichment_vjp
+    public :: evaluate_batched_vector_enrichment_differential_3d
+    public :: evaluate_batched_vector_enrichment_differential_3d_jvp
+    public :: evaluate_batched_vector_enrichment_differential_3d_vjp
+    public :: evaluate_vector_enrichment_differential_3d
+    public :: evaluate_vector_enrichment_differential_3d_jvp
+    public :: evaluate_vector_enrichment_differential_3d_vjp
+    public :: evaluate_enrichment_support_activation
+    public :: evaluate_enrichment_support_activation_jvp
+    public :: evaluate_enrichment_support_activation_vjp
+    public :: evaluate_enrichment_support_gram
+    public :: evaluate_enrichment_support_gram_jvp
+    public :: evaluate_enrichment_support_gram_vjp
+    public :: evaluate_enrichment_support_rank_condition
+    public :: evaluate_enrichment_support_vector_gram
+    public :: evaluate_enrichment_support_vector_gram_jvp
+    public :: evaluate_enrichment_support_vector_gram_vjp
     public :: evaluate_shifted_enriched_basis
     public :: evaluate_shifted_enriched_basis_jvp
     public :: evaluate_shifted_enriched_basis_vjp
@@ -1140,6 +1183,12 @@ module fortfem_feec
     public :: evaluate_piola_enriched_vector_values
     public :: evaluate_piola_enriched_vector_values_jvp
     public :: evaluate_piola_enriched_vector_values_vjp
+    public :: evaluate_piola_enriched_vector_differential_2d
+    public :: evaluate_piola_enriched_vector_differential_2d_jvp
+    public :: evaluate_piola_enriched_vector_differential_2d_vjp
+    public :: evaluate_piola_enriched_vector_differential_3d
+    public :: evaluate_piola_enriched_vector_differential_3d_jvp
+    public :: evaluate_piola_enriched_vector_differential_3d_vjp
     public :: PIOLA_COVARIANT
     public :: PIOLA_CONTRAVARIANT
     public :: retained_field_split_t

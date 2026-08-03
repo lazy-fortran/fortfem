@@ -1,7 +1,7 @@
 program test_batched_vector_enrichment_differential_3d
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_batched_vector_enrichment_differential_3d, &
         evaluate_batched_vector_enrichment_differential_3d_jvp, &
         evaluate_batched_vector_enrichment_differential_3d_vjp

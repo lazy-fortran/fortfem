@@ -1,6 +1,6 @@
 program test_piola_enriched_differential_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_piola_enriched_vector_differential_2d, &
         evaluate_piola_enriched_vector_differential_2d_jvp, &
         evaluate_piola_enriched_vector_differential_2d_vjp, &
