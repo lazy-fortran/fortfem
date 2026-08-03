@@ -672,7 +672,7 @@ arbitrary patch-graph trace contraction and public core exports. Their focused
 independent value/JVP/VJP oracles pass. The latest continuation adds complex
 distributed trace reduction (`7e773cac`/`a90600e2`), FortSym-generated nonic
 curved-edge moments (`9d574f70`/`d5f48029`), and a panel-cluster geometry fix
-(`1fa911a`/`492d8df9`). Their focused matrix, Gauss--Green, complex-adjoint,
+(`1fa911a`/`492d8df9`/`558a5c73`). Their focused matrix, Gauss--Green, complex-adjoint,
 and BEM support-enclosure oracles pass. No implementation worktree from this
 wave remains active; the unrelated downstream `fortfem-pr56` worktree is
 preserved. Any new parallel slice must create a disjoint branch under
@@ -717,7 +717,7 @@ single commit for integration. The recent implementation slices are:
 | `ea624330` + `05307fa` | Complex geometry-mortar component coupling with canonical FEEC/umbrella exports | Independent nested-loop value, central matrix/weight JVP, real-part complex VJP, output-shape, nonfinite, and positive-geometry validation oracles |
 | `7e773cac` + `a90600e` | Complex distributed trace value/JVP/VJP reduction over the validated owner/ghost ledger, with canonical FEEC/umbrella exports | Independent aggregation matrices, complete central reassembly, real-part complex adjoint, shape, and finite-value rejection oracles |
 | `9d574f70` + `d5f4802` | FortSym-pinned nonic curved Bézier polygon edge-area value/JVP/VJP kernels and canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value, central JVP, real VJP, straight-edge, and degenerate-topology oracles; byte-current regeneration |
-| `1fa911a` + `492d8df` | BEM panel-cluster centers/radii now enclose complete triangle supports rather than panel centroids | Independent node-range vertex-enclosure/area/permutation oracle plus hierarchical Galerkin and CFIE scaling tests |
+| `1fa911a` + `492d8df` + `558a5c7` | BEM panel-cluster centers/radii now enclose complete triangle supports rather than panel centroids, with the canonical boundary facade export | Independent node-range vertex-enclosure/area/permutation oracle plus hierarchical Galerkin and CFIE scaling tests |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.

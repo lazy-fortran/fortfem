@@ -14,7 +14,7 @@ python3 tools/generate_api_public_inventory.py
 
 ## Scope and interpretation
 
-The inventory contains **1868 unique exported symbols** (3705 declarations, including wrapper duplicates).
+The inventory contains **1869 unique exported symbols** (3706 declarations, including wrapper duplicates).
 The `Defining module/file` column follows wrapper re-exports through `use`
 associations where they are explicit. `unresolved` means that the source
 does not expose an explicit `only:` mapping; it is deliberately not guessed.
@@ -1899,6 +1899,7 @@ generated headers or explicit `fortfem_generated_*` imports.
 | solve_generic_problem | `fortfem_api_solvers (src/fortfem_api_solvers.f90)`; `fortfem_api_solvers_laplacian (src/fortfem_api_solvers_laplacian.f90)` | `fortfem_solvers_laplacian` / `src/solvers/fortfem_solvers_laplacian.f90` | fortfem_feec | same | — | — | hand-written / no generator link in defining file |
 | solve_generic_vector_problem | `fortfem_api_solvers (src/fortfem_api_solvers.f90)`; `fortfem_api_solvers_vector (src/fortfem_api_solvers_vector.f90)` | `fortfem_api_solvers_vector` / `src/fortfem_api_solvers_vector.f90` | fortfem_feec | same | — | — | hand-written / no generator link in defining file |
 | assemble_scalar_helmholtz_pml_slab_1d_matrix | `fortfem_boundary (src/fortfem_boundary.f90)` | `fortfem_scalar_helmholtz_pml_slab_1d` / `src/solvers/scalar_helmholtz_pml_slab_1d.f90` | fortfem_boundary | same | — | — | hand-written / no generator link in defining file |
+| build_panel_cluster_tree_3d | `fortfem_boundary (src/fortfem_boundary.f90)` | `fortfem_panel_cluster_tree_3d` / `src/bem/panel_cluster_tree_3d.f90` | fortfem_boundary | same | — | `test/test_panel_cluster_tree_3d.f90` | hand-written / no generator link in defining file |
 | assemble_metric_force_balance_residual | `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_force_balance_metric_residual` / `src/operators/force_balance_metric_residual.f90` | fortfem_feec | same | JVP, VJP | `test/test_force_balance_metric_residual.f90` | hand-written / no generator link in defining file |
 | assemble_metric_force_balance_residual_jvp | `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_force_balance_metric_residual` / `src/operators/force_balance_metric_residual.f90` | fortfem_feec | same | JVP | `test/test_force_balance_metric_residual.f90` | hand-written / no generator link in defining file |
 | assemble_metric_force_balance_residual_vjp | `fortfem_feec (src/fortfem_feec.f90)` | `fortfem_force_balance_metric_residual` / `src/operators/force_balance_metric_residual.f90` | fortfem_feec | same | VJP | `test/test_force_balance_metric_residual.f90` | hand-written / no generator link in defining file |
