@@ -1,6 +1,15 @@
 program test_neumann_boundary_conditions
     use fortfem_kinds
-    use fortfem_api
+    use fortfem_core, only: mesh_t, unit_square_mesh
+    use fortfem_api_spaces, only: &
+        function_space_t, function_t, dirichlet_bc_t, neumann_bc_t, &
+        function_space, function, constant, dirichlet_bc_on_boundary, &
+        neumann_bc_constant, neumann_bc_on_boundary, test_function, &
+        trial_function, test_function_t, trial_function_t
+    use fortfem_api_forms, only: form_expr_t, dx, inner, grad, &
+        operator(*), operator(+), operator(==)
+    use fortfem_api_solvers_laplacian, only: solve_mixed_bc, solve_neumann, &
+        compute_boundary_integral
     use check
     implicit none
 

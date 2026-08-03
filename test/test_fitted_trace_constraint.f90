@@ -1,6 +1,6 @@
 program test_fitted_trace_constraint
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_fitted_trace_constraint, &
+    use fortfem_feec, only: assemble_fitted_trace_constraint, &
         assemble_fitted_trace_constraint_jvp, assemble_fitted_trace_constraint_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t

@@ -2,7 +2,7 @@ program test_boundary_operator_parity_properties
     use, intrinsic :: iso_fortran_env, only: int32
     use check, only: check_condition, check_property, check_summary, &
         property_random_unit, property_rng_initialize, property_rng_t
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         BOUNDARY_OPERATOR_BACKEND_BEM, &
         BOUNDARY_OPERATOR_BACKEND_DTN, &
         BOUNDARY_OPERATOR_BACKEND_FEM, &

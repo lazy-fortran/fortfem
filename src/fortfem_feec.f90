@@ -104,6 +104,10 @@ module fortfem_feec
         assemble_mortar_trace_coupling, &
         assemble_mortar_trace_coupling_jvp, &
         assemble_mortar_trace_coupling_vjp
+    use fortfem_fitted_trace_constraint, only: &
+        assemble_fitted_trace_constraint, &
+        assemble_fitted_trace_constraint_jvp, &
+        assemble_fitted_trace_constraint_vjp
     use fortfem_maxwell_bc_surface, only: &
         assemble_maxwell_rwg_rbc_pairing, build_maxwell_bc_transformation, &
         differentiate_maxwell_bc_transformation_jvp, &
@@ -717,6 +721,9 @@ module fortfem_feec
     public :: assemble_mortar_trace_coupling
     public :: assemble_mortar_trace_coupling_jvp
     public :: assemble_mortar_trace_coupling_vjp
+    public :: assemble_fitted_trace_constraint
+    public :: assemble_fitted_trace_constraint_jvp
+    public :: assemble_fitted_trace_constraint_vjp
     public :: assemble_maxwell_rwg_rbc_pairing
     public :: build_maxwell_bc_transformation
     public :: differentiate_maxwell_bc_transformation_jvp
