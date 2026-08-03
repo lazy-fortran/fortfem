@@ -1,6 +1,6 @@
 program test_helmholtz_symmetric_coupling_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_helmholtz_symmetric_coupling_p1_p0
+    use fortfem_boundary, only: solve_helmholtz_symmetric_coupling_p1_p0
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none

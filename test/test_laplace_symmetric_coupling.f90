@@ -1,6 +1,6 @@
 program test_laplace_symmetric_coupling
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_laplace_double_layer_mixed_linear, &
+    use fortfem_boundary, only: assemble_laplace_double_layer_mixed_linear, &
         assemble_laplace_hypersingular_linear, &
         assemble_laplace_single_layer_constant, &
         assemble_laplace_symmetric_coupling_p1_p0, &

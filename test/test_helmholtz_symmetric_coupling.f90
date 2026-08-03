@@ -1,6 +1,6 @@
 program test_helmholtz_symmetric_coupling
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_helmholtz_symmetric_coupling_p1_p0, &
+    use fortfem_boundary, only: assemble_helmholtz_symmetric_coupling_p1_p0, &
         assemble_laplace_symmetric_coupling_p1_p0
     use fortfem_kinds, only: dp
     implicit none
