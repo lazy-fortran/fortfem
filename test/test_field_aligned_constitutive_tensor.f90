@@ -1,7 +1,7 @@
 program test_field_aligned_constitutive_tensor
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         evaluate_field_aligned_constitutive_tensor, &
         evaluate_field_aligned_constitutive_tensor_jvp, &
         evaluate_field_aligned_constitutive_tensor_vjp
