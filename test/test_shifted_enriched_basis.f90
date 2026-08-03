@@ -1,6 +1,6 @@
 program test_shifted_enriched_basis
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_shifted_enriched_basis, &
+    use fortfem_feec, only: evaluate_shifted_enriched_basis, &
         evaluate_shifted_enriched_basis_jvp, evaluate_shifted_enriched_basis_vjp
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
