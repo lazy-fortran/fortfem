@@ -3,8 +3,8 @@ program test_torus_curved_laplace_costabel
     use fortfem_core, only: evaluate_torus_curved_panel, &
         generate_solid_torus_tetra_mesh
     use fortfem_boundary, only: &
-        solve_laplace_fem_bem_costabel_torus_curved_3d, &
-        triangle_duffy_quadrature
+        solve_laplace_fem_bem_costabel_torus_curved_3d
+    use fortfem_feec, only: triangle_duffy_quadrature
     use fortfem_kinds, only: dp
     implicit none
 

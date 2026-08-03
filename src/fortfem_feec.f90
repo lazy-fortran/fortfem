@@ -333,10 +333,6 @@ module fortfem_feec
         assemble_tetra_nedelec_pml_csc, &
         assemble_tetra_nedelec_pml_csc_jvp, &
         assemble_tetra_nedelec_pml_csc_vjp
-    use fortfem_helmholtz_representation_3d, only: &
-        evaluate_helmholtz_representation_torus_curved_3d
-    use fortfem_laplace_representation_3d, only: &
-        evaluate_laplace_representation_torus_curved_3d
     implicit none
     private
 
@@ -669,7 +665,5 @@ module fortfem_feec
     public :: assemble_tetra_nedelec_curl_mass_element
     public :: assemble_tetra_nedelec_pml_csc_jvp
     public :: assemble_tetra_nedelec_pml_csc_vjp
-    public :: evaluate_helmholtz_representation_torus_curved_3d
-    public :: evaluate_laplace_representation_torus_curved_3d
 
 end module fortfem_feec
