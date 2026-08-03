@@ -202,12 +202,25 @@ module fortfem_feec
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     use fortfem_fci_field_line_tracer, only: &
         trace_fci_field_line_rk4, trace_fci_field_line_rk4_jvp
+    use fortfem_fci_interpolation_map, only: &
+        build_fci_bilinear_interpolation_map_2d, &
+        build_fci_bilinear_interpolation_map_2d_jvp, &
+        build_fci_bilinear_interpolation_map_2d_vjp, &
+        build_fci_cubic_interpolation_map_1d, &
+        build_fci_cubic_interpolation_map_1d_jvp, &
+        build_fci_cubic_interpolation_map_1d_vjp
     use fortfem_fci_support_geometry, only: &
         compute_fci_quadrilateral_cell_areas_2d, &
         compute_fci_curved_quadrilateral_cell_areas_2d, &
         compute_fci_polygon_cell_areas_2d, &
         compute_fci_curved_polygon_cell_areas_2d, &
+        compute_fci_curved_polygon_cell_areas_2d_jvp, &
+        compute_fci_curved_polygon_cell_areas_2d_vjp, &
         compute_fci_cubic_curved_polygon_cell_areas_2d, &
+        compute_fci_cubic_curved_polygon_cell_areas_2d_jvp, &
+        compute_fci_cubic_curved_polygon_cell_areas_2d_vjp, &
+        compute_fci_curved_quadrilateral_cell_areas_2d_jvp, &
+        compute_fci_curved_quadrilateral_cell_areas_2d_vjp, &
         compute_fci_quartic_curved_polygon_cell_areas_2d, &
         compute_fci_quintic_curved_polygon_cell_areas_2d, &
         compute_fci_sextic_curved_polygon_cell_areas_2d
@@ -561,11 +574,23 @@ module fortfem_feec
     public :: apply_fci_additive_field_split_preconditioner
     public :: trace_fci_field_line_rk4
     public :: trace_fci_field_line_rk4_jvp
+    public :: build_fci_bilinear_interpolation_map_2d
+    public :: build_fci_bilinear_interpolation_map_2d_jvp
+    public :: build_fci_bilinear_interpolation_map_2d_vjp
+    public :: build_fci_cubic_interpolation_map_1d
+    public :: build_fci_cubic_interpolation_map_1d_jvp
+    public :: build_fci_cubic_interpolation_map_1d_vjp
     public :: compute_fci_quadrilateral_cell_areas_2d
     public :: compute_fci_curved_quadrilateral_cell_areas_2d
+    public :: compute_fci_curved_quadrilateral_cell_areas_2d_jvp
+    public :: compute_fci_curved_quadrilateral_cell_areas_2d_vjp
     public :: compute_fci_polygon_cell_areas_2d
     public :: compute_fci_curved_polygon_cell_areas_2d
+    public :: compute_fci_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_cubic_curved_polygon_cell_areas_2d
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d_jvp
+    public :: compute_fci_cubic_curved_polygon_cell_areas_2d_vjp
     public :: compute_fci_quartic_curved_polygon_cell_areas_2d
     public :: compute_fci_quintic_curved_polygon_cell_areas_2d
     public :: compute_fci_sextic_curved_polygon_cell_areas_2d

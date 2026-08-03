@@ -1,6 +1,6 @@
 program test_fci_bilinear_interpolation_map
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_fci_bilinear_interpolation_map_2d
+    use fortfem_feec, only: build_fci_bilinear_interpolation_map_2d
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
