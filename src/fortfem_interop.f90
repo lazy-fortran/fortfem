@@ -18,6 +18,22 @@ module fortfem_interop
         complex_interchange_sample_set_t, &
         initialize_complex_interchange_samples, &
         validate_complex_interchange_samples
+    use fortfem_complex_low_rank_response, only: &
+        apply_complex_low_rank_matrix, &
+        apply_complex_low_rank_matrix_jvp, &
+        apply_complex_low_rank_matrix_vjp, &
+        compress_complex_matrix_cross, &
+        complex_low_rank_matrix_t, &
+        initialize_complex_low_rank_matrix, &
+        materialize_complex_low_rank_matrix, &
+        validate_complex_low_rank_matrix
+    use fortfem_wave_reflection_diagnostics, only: &
+        evaluate_weighted_complex_error, &
+        evaluate_weighted_complex_error_jvp, &
+        evaluate_weighted_complex_error_vjp, &
+        evaluate_weighted_reflection_coefficient, &
+        evaluate_weighted_reflection_coefficient_jvp, &
+        evaluate_weighted_reflection_coefficient_vjp
     use fortfem_oracle_manifest, only: &
         oracle_manifest_schema_magic, oracle_manifest_schema_version, &
         oracle_manifest_t, oracle_normalization_t, oracle_timing_t, &
@@ -181,6 +197,20 @@ module fortfem_interop
     public :: resistive_mhd_branch_history_t
     public :: validate_resistive_mhd_branch_history
     public :: complex_interchange_sample_set_t
+    public :: complex_low_rank_matrix_t
+    public :: apply_complex_low_rank_matrix
+    public :: apply_complex_low_rank_matrix_jvp
+    public :: apply_complex_low_rank_matrix_vjp
+    public :: compress_complex_matrix_cross
+    public :: initialize_complex_low_rank_matrix
+    public :: materialize_complex_low_rank_matrix
+    public :: validate_complex_low_rank_matrix
+    public :: evaluate_weighted_complex_error
+    public :: evaluate_weighted_complex_error_jvp
+    public :: evaluate_weighted_complex_error_vjp
+    public :: evaluate_weighted_reflection_coefficient
+    public :: evaluate_weighted_reflection_coefficient_jvp
+    public :: evaluate_weighted_reflection_coefficient_vjp
     public :: initialize_boundary_operator_contract
     public :: initialize_boundary_operator_trace_metadata
     public :: initialize_complex_interchange_samples

@@ -1,6 +1,6 @@
 program test_wave_reflection_diagnostics_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         evaluate_weighted_complex_error, &
         evaluate_weighted_complex_error_jvp, &
         evaluate_weighted_complex_error_vjp, &

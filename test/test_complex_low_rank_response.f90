@@ -1,7 +1,7 @@
 program test_complex_low_rank_response
     use, intrinsic :: iso_fortran_env, only: real64
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_interop, only: &
         apply_complex_low_rank_matrix, &
         apply_complex_low_rank_matrix_jvp, &
         apply_complex_low_rank_matrix_vjp, &

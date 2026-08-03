@@ -78,6 +78,10 @@ module fortfem_boundary
     use fortfem_maxwell_curved_dtn, only: &
         apply_maxwell_trace_to_flux_map, &
         assemble_maxwell_torus_curved_dtn_rwg_3d
+    use fortfem_wall_response_condensation, only: &
+        condense_wall_response_blocks, &
+        condense_wall_response_blocks_jvp, &
+        condense_wall_response_blocks_vjp
     use fortfem_maxwell_torus_curved_rwg, only: &
         evaluate_maxwell_torus_curved_far_field_rwg_3d, &
         evaluate_maxwell_torus_curved_magnetic_field_rwg_3d, &
@@ -167,6 +171,9 @@ module fortfem_boundary
     public :: assemble_free_boundary_port_residual_vjp
     public :: assemble_maxwell_fem_bem_torus_curved_system_3d
     public :: assemble_maxwell_torus_curved_dtn_rwg_3d
+    public :: condense_wall_response_blocks
+    public :: condense_wall_response_blocks_jvp
+    public :: condense_wall_response_blocks_vjp
     public :: assemble_helmholtz_single_layer_p0_3d
     public :: assemble_laplace_single_layer_p0_3d
     public :: apply_helmholtz_cfie_p0_hierarchical_3d
