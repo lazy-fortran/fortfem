@@ -721,6 +721,8 @@ single commit for integration. The recent implementation slices are:
 | `f034ae8` + `0d4d113` | Field-aligned Hall tensor consumer migrated from generated implementation modules to the canonical FEEC constitutive facade | Independent skew-power, central-difference JVP, and real dot-product VJP oracles |
 | `eaaa2a7` + `c53a6de4` + `b2cfa945` | Neutral complex anisotropic tensor power `x^H K x` with canonical FEEC exports and real-part complex JVP/VJP convention | Independent nested-loop value, central-difference JVP, real-part adjoint, shape, and finite-value rejection oracles |
 | `a81ff34` + `b28dd772` | FortSym-pinned degree-ten (decic) curved Bézier FCI polygon measures with canonical FEEC/umbrella exports | Independent eleven-point Gauss--Green value, central JVP, real VJP, straight-edge, degenerate-topology, and byte-current generation oracles |
+| `9410c10c` | Tetrahedral Nédélec gallery now leads with the complete 3-D reconstructed vector solution; the 2-D slice remains available for readable component arrows | Bounded physical-first shell oracle checks the 3-D PNG, complete stage order, slice CSV, and non-empty diagnostics |
+| `2a69dfc6` | IGA polar gallery now draws mapped curvilinear rings and spokes before the solution samples and emits their physical line paths | Bounded geometry oracle checks all 4 rings and 64 spokes, 121 samples per path, closed rings, radial endpoints, and finite coordinates |
 
 These are closure-neutral foundations only; production physics, readers, and
 external benchmark payloads remain outside FortFEM.
