@@ -1,12 +1,11 @@
 program test_maxwell_sphere_curved_rwg
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: generate_sphere_surface_mesh
+    use fortfem_feec, only: &
         build_maxwell_rwg_surface_space, &
         evaluate_maxwell_sphere_curved_localized_rwg_basis, &
-        evaluate_maxwell_sphere_curved_rwg_basis, &
-        generate_sphere_surface_mesh
+        evaluate_maxwell_sphere_curved_rwg_basis, triangle_duffy_quadrature
     use fortfem_kinds, only: dp
-    use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     implicit none
 
     integer, allocatable :: edge_triangles(:, :), edge_vertices(:, :)
