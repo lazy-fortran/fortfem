@@ -593,6 +593,14 @@ coefficient, de Rham, derivative, factor/apply, or solver oracle. The sparse
 batch also confirms the short timeout path for each selected factor/solver
 test; the generated inventory must be refreshed once more after this batch.
 
+The vector/trace/plot continuation is integrated as triangle vector/FEEC
+consumers (`b5bb832`), mesh/plot consumers (`716a225` with ownership cleanup
+`74fdeb3`), and boundary-trace consumers (`6782bd8`). The six focused tests
+in each slice pass, and the release gate confirms that `boundary_t` remains
+owned by `fortfem_boundary`, form/function constructors by `fortfem_feec`,
+mesh topology by `fortfem_core`, and rendering by `fortfem_plot`; no duplicate
+wrapper was added. The API inventory is refreshed after these integrations.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
