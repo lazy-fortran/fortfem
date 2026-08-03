@@ -7,8 +7,9 @@ program test_advanced_solvers
     use fortfem_sparse_matrix, only: sparse_matrix_t, sparse_from_dense, &
         spmv
     use fortsparse, only: csc_is_valid
-    use fortfem_api, only: mesh_t, function_space_t, dirichlet_bc_t, &
-        unit_square_mesh, function_space, dirichlet_bc, &
+    use fortfem_core, only: mesh_t, function_space_t, dirichlet_bc_t, &
+        unit_square_mesh
+    use fortfem_feec, only: function_space, dirichlet_bc, &
         assemble_laplacian_system
     use check
     implicit none
