@@ -700,6 +700,12 @@ tamper rejection, solution-first SVG/CSV rendering, and a successful absent
 data `SKIP`. It contains no TEAM mesh, B-H curve, reader, or solver source;
 the four neutral Fortran galleries remain the fast in-tree examples.
 
+The scalar/mesh handoff `e58c663` (rebased from `1ba30fd`) then migrates
+seven mesh, Piola, torus-refinement, vector-form, and plotting consumers to
+core/FEEC/plot/boundary owners. It adds only existing-symbol facade wiring;
+all seven focused tests and the release gate pass. The umbrella import audit
+is now 184 test files.
+
 ## 2. Current baseline
 
 The following capabilities are already on FortFEM `main` or in the verified
