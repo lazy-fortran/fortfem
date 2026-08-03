@@ -505,6 +505,10 @@ fixtures live under `tools/fixtures` rather than the package test root, while
 the checker still exercises all six malformed trees. The API release gate
 now includes a bounded `fpm test --list` oracle, and the former missing
 `bad_plot_application` discovery failure is gone.
+The degree-six clipped-polygon moment milestone is integrated as `e8dac912`,
+with inventory refresh `5e8afc37`. Its 64 raw moments, conservation identity,
+fixed-topology JVP/VJP, and degenerate-cell rejection pass independently; the
+3-D high-order cut and curved-cell moment layers remain active.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
@@ -703,6 +707,7 @@ The API migration queue above is complete through the current facade audit.
 The latest bounded implementation wave was developed in disjoint worktrees
 under `/mnt/storage/code/lazy-fortran/worktrees/`, then integrated to `main`:
 `20ee0c2`/`6e63bb5` add degree-five cut-cell moments and public FEEC exports,
+`e8dac912` adds the degree-six clipped-polygon moment contract,
 `699ac8d`/`bdbefa1` add the communicator-free MPI-ready trace exchange
 schedule and public core/FEEC exports, and `72afc29`/`8b99e41` add oriented
 arbitrary patch-graph trace contraction and public core exports. Their focused
@@ -3029,7 +3034,10 @@ gallery example.
   also exposes an exact degree-four raw-moment tensor and fixed-topology JVP
   through its oriented fan and barycentric multinomial primitive, with the
   same independent simplex-moment, conservation, and central-difference
-  oracles; curved-cell moment-fitting rules remain. A weighted
+  oracles. The 2-D polygon path now adds exact degree-five and degree-six
+  raw moments with conservation, central-difference, and real-adjoint
+  oracles; curved-cell moment-fitting rules and higher-dimensional
+  higher-order moments remain. A weighted
   enrichment-support Gram contract now exposes value/JVP/VJP actions with a
   fixed activation mask, and a symmetric-Jacobi rank/condition diagnostic
   reports the active enrichment rank and singularity with an independent
