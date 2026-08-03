@@ -5,6 +5,45 @@ codegen_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repository_dir=$(cd "$codegen_dir/../.." && pwd)
 generated_dir=${FORTFEM_CODEGEN_OUTPUT_DIR:-"$repository_dir/src/generated"}
 export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
+fortsym_override=false
+if [[ -n "${FORTSYM_DIR:-}" ]]; then
+    fortsym_dir=$FORTSYM_DIR
+    fortsym_override=true
+else
+    fortsym_dir="$codegen_dir/../../../fortsym"
+fi
+if [[ ! -d "$fortsym_dir" ]]; then
+    echo "FortSym checkout does not exist: $fortsym_dir" >&2
+    exit 1
+fi
+fortsym_dir=$(cd "$fortsym_dir" && pwd)
+export FORTSYM_DIR="$fortsym_dir"
+
+# FPM dependency paths are declared in the manifest, so an explicit FortSym
+# worktree is built from a small, disposable mirror of this codegen project.
+# The mirror keeps the checked-in relative dependency unchanged and points its
+# expected sibling path at the selected clean, pinned worktree.
+build_codegen_dir="$codegen_dir"
+codegen_workspace=
+cleanup() {
+    if [[ -n "$codegen_workspace" ]]; then
+        rm -rf "$codegen_workspace"
+    fi
+}
+trap cleanup EXIT
+
+if [[ "$fortsym_override" == true ]]; then
+    workspace_parent="$repository_dir/build/codegen-workspaces"
+    mkdir -p "$workspace_parent"
+    codegen_workspace=$(mktemp -d "$workspace_parent/fortsym-override.XXXXXX")
+    staged_lazy_fortran="$codegen_workspace/lazy-fortran"
+    build_codegen_dir="$staged_lazy_fortran/fortfem/tools/codegen"
+    mkdir -p "$build_codegen_dir"
+    cp -R "$codegen_dir/app" "$codegen_dir/src" "$build_codegen_dir/"
+    cp "$codegen_dir/fpm.toml" "$codegen_dir/fortsym.lock" \
+        "$build_codegen_dir/"
+    ln -s "$fortsym_dir" "$staged_lazy_fortran/fortsym"
+fi
 
 # The generator builds FortSym and many independent Fortran applications.
 # Host-wide parallelism can exhaust memory on CI runners and make the
@@ -31,8 +70,8 @@ run_codegen() {
     fi
 }
 
-cd "$codegen_dir"
-./check_fortsym_revision.sh
+"$codegen_dir/check_fortsym_revision.sh"
+cd "$build_codegen_dir"
 if [[ "$codegen_runner" == "fpm" ]]; then
     fpm build --profile release
 else
