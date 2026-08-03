@@ -98,6 +98,10 @@ module fortfem_boundary
         assemble_free_boundary_port_residual, &
         assemble_free_boundary_port_residual_jvp, &
         assemble_free_boundary_port_residual_vjp
+    use fortfem_free_boundary_source_response, only: &
+        assemble_free_boundary_source_response, &
+        assemble_free_boundary_source_response_jvp, &
+        assemble_free_boundary_source_response_vjp
     use fortfem_planar_acoustic_displacement_dtn, only: &
         apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
@@ -578,6 +582,9 @@ module fortfem_boundary
     public :: assemble_free_boundary_port_residual
     public :: assemble_free_boundary_port_residual_jvp
     public :: assemble_free_boundary_port_residual_vjp
+    public :: assemble_free_boundary_source_response
+    public :: assemble_free_boundary_source_response_jvp
+    public :: assemble_free_boundary_source_response_vjp
     public :: assemble_complex_boundary_trace_residual
     public :: assemble_complex_boundary_trace_residual_jvp
     public :: assemble_complex_boundary_trace_residual_vjp
