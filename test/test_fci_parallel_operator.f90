@@ -1,6 +1,6 @@
 program test_fci_parallel_operator
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_feec, only: &
         assemble_fci_parallel_gradient_csc, &
         assemble_fci_parallel_support_divergence_csc, &
         apply_fci_parallel_gradient, apply_fci_parallel_gradient_jvp, &

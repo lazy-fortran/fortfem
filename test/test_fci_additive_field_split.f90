@@ -1,6 +1,6 @@
 program test_fci_additive_field_split
     use check, only: check_condition, check_summary
-    use fortfem_api, only: apply_fci_additive_field_split_preconditioner
+    use fortfem_feec, only: apply_fci_additive_field_split_preconditioner
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_from_triplet, csc_t, fortsparse_status_t
     implicit none

@@ -1,6 +1,6 @@
 program test_fci_parallel_diagonal
     use check, only: check_condition, check_summary
-    use fortfem_api, only: compute_fci_parallel_diffusion_diagonal
+    use fortfem_feec, only: compute_fci_parallel_diffusion_diagonal
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
