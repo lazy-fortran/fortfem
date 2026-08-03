@@ -88,7 +88,7 @@ program test_laplace_bem_galerkin_3d
         vertices, triangles, 0.7_dp, 8, helmholtz_dense, status)
     helmholtz_dense_action = matmul(helmholtz_dense, complex_density)
     call apply_helmholtz_single_layer_p0_hierarchical_3d( &
-        vertices, triangles, complex_density, 0.7_dp, 0.45_dp, 6, &
+        vertices, triangles, complex_density, 0.7_dp, 0.50_dp, 6, &
         helmholtz_fast_action, status, interaction_count)
     call record_condition(status == 0 .and. norm2(abs( &
         helmholtz_fast_action - helmholtz_dense_action))/ &
