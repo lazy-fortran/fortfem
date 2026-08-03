@@ -1,14 +1,12 @@
 program test_patch_graph_trace_contraction
     use check, only: check_condition, check_summary
-    use fortfem_boundary_region_graph, only: &
+    use fortfem_core, only: &
         boundary_region_graph_cycle_basis, boundary_region_graph_incidence, &
         boundary_region_graph_interface_samples, boundary_region_graph_t, &
-        initialize_boundary_region_graph
-    use fortfem_kinds, only: dp
-    use fortfem_patch_graph_trace_contraction, only: &
-        assemble_patch_graph_trace_contraction, &
+        initialize_boundary_region_graph, assemble_patch_graph_trace_contraction, &
         assemble_patch_graph_trace_contraction_jvp, &
         assemble_patch_graph_trace_contraction_vjp
+    use fortfem_kinds, only: dp
     implicit none
 
     type(boundary_region_graph_t) :: graph
