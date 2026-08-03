@@ -1,6 +1,6 @@
 program test_scalar_helmholtz_pml_2d
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_scalar_helmholtz_pml_p1_2d
+    use fortfem_boundary, only: solve_scalar_helmholtz_pml_p1_2d
     use fortfem_kinds, only: dp
     implicit none
 

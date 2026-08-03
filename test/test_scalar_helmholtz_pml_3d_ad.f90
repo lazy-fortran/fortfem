@@ -1,6 +1,6 @@
 program test_scalar_helmholtz_pml_3d_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         solve_scalar_helmholtz_pml_p1_3d, &
         solve_scalar_helmholtz_pml_p1_3d_jvp, &
         solve_scalar_helmholtz_pml_p1_3d_vjp

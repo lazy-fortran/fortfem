@@ -95,6 +95,19 @@ module fortfem_boundary
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
         assemble_scalar_helmholtz_pml_slab_1d_matrix, &
         solve_scalar_helmholtz_pml_slab_1d
+    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d_jvp, &
+        solve_scalar_helmholtz_pml_slab_1d_vjp
+    use fortfem_scalar_helmholtz_pml_2d, only: &
+        solve_scalar_helmholtz_pml_p1_2d
+    use fortfem_scalar_helmholtz_pml_2d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_2d_jvp, &
+        solve_scalar_helmholtz_pml_p1_2d_vjp
+    use fortfem_scalar_helmholtz_pml_3d, only: &
+        solve_scalar_helmholtz_pml_p1_3d
+    use fortfem_scalar_helmholtz_pml_3d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_3d_jvp, &
+        solve_scalar_helmholtz_pml_p1_3d_vjp
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_curl_curl_pml_coefficients, &
         cartesian_curl_curl_pml_coefficients_jvp, &
@@ -246,6 +259,14 @@ module fortfem_boundary
     public :: pullback_planar_maxwell_dtn_form_vjp
     public :: assemble_scalar_helmholtz_pml_slab_1d_matrix
     public :: solve_scalar_helmholtz_pml_slab_1d
+    public :: solve_scalar_helmholtz_pml_slab_1d_jvp
+    public :: solve_scalar_helmholtz_pml_slab_1d_vjp
+    public :: solve_scalar_helmholtz_pml_p1_2d
+    public :: solve_scalar_helmholtz_pml_p1_2d_jvp
+    public :: solve_scalar_helmholtz_pml_p1_2d_vjp
+    public :: solve_scalar_helmholtz_pml_p1_3d
+    public :: solve_scalar_helmholtz_pml_p1_3d_jvp
+    public :: solve_scalar_helmholtz_pml_p1_3d_vjp
     public :: cartesian_curl_curl_pml_coefficients
     public :: cartesian_curl_curl_pml_coefficients_jvp
     public :: cartesian_curl_curl_pml_coefficients_vjp
