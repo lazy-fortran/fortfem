@@ -1,6 +1,6 @@
 program test_scalar_helmholtz_planar_dtn_convergence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: solve_scalar_helmholtz_planar_dtn_p1
+    use fortfem_boundary, only: solve_scalar_helmholtz_planar_dtn_p1
     use fortfem_kinds, only: dp
     implicit none
 

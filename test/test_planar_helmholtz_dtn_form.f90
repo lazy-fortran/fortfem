@@ -1,6 +1,6 @@
 program test_planar_helmholtz_dtn_form
     use check, only: check_condition, check_summary
-    use fortfem_api, only: assemble_planar_helmholtz_dtn_form
+    use fortfem_boundary, only: assemble_planar_helmholtz_dtn_form
     use fortfem_kinds, only: dp
     implicit none
 
