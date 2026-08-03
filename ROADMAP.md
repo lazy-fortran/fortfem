@@ -2015,6 +2015,12 @@ profiles, equilibrium selection, and input readers stay outside FortFEM.
    self/near-panel regularization status, retained response blocks, and
    shape/parameter actions remain explicit follow-up metadata.  This is a
    numerical map, not a coil or vessel model.
+   The new `assemble_free_boundary_source_response` composition now chains a
+   caller-owned source basis to the physical trace and weighted free-boundary
+   residual, including an optional sheet/jump target and complete real JVP/VJP
+   products.  Its independent matrix, central-difference, and transpose tests
+   make the source-to-port path reusable without selecting a BEM, DtN, PML,
+   NESTOR, or equilibrium convention.
 3. **Moving-surface shape calculus.**  Differentiate point positions, tangent
    frames, normals, measures, periodic seam identifications, and singular or
    coincident-panel quadrature consistently for a fixed region topology.  Report
