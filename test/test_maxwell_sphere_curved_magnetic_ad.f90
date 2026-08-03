@@ -102,7 +102,7 @@ contains
     subroutine build_maxwell_rwg_surface_space_wrapper( &
             surface_vertices, surface_triangles, edge_vertices, edge_triangles, &
             local_status)
-        use fortfem_api, only: build_maxwell_rwg_surface_space
+        use fortfem_feec, only: build_maxwell_rwg_surface_space
         real(dp), intent(in) :: surface_vertices(:, :)
         integer, intent(in) :: surface_triangles(:, :)
         integer, allocatable, intent(out) :: edge_vertices(:, :)

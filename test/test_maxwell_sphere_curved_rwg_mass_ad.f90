@@ -1,9 +1,10 @@
 program test_maxwell_sphere_curved_rwg_mass_ad
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_boundary, only: &
         assemble_maxwell_sphere_curved_rwg_mass_matrix, &
         assemble_maxwell_sphere_curved_rwg_mass_matrix_jvp, &
-        assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp, &
+        assemble_maxwell_sphere_curved_rwg_mass_matrix_vjp
+    use fortfem_core, only: &
         generate_sphere_surface_mesh
     use fortfem_kinds, only: dp
     implicit none
