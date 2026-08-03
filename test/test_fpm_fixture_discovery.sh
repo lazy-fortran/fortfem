@@ -23,5 +23,5 @@ if ! command -v fpm >/dev/null 2>&1; then
 fi
 
 timeout --foreground "${FPM_FIXTURE_DISCOVERY_TIMEOUT:-10}s" \
-    fpm test --list >/dev/null
+    fpm test --list >/dev/null 2>&1
 echo "fpm test discovery excludes module-layer negative fixtures"
