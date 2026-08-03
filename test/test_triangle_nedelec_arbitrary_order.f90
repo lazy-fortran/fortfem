@@ -1,6 +1,6 @@
 program test_triangle_nedelec_arbitrary_order
     use check, only: check_condition, check_summary
-    use fortfem_api, only: evaluate_triangle_nedelec_first_kind, &
+    use fortfem_feec, only: evaluate_triangle_nedelec_first_kind, &
         initialize_triangle_nedelec_first_kind, triangle_duffy_quadrature, &
         triangle_nedelec_dof_count, triangle_nedelec_first_kind_t
     use fortfem_kinds, only: dp

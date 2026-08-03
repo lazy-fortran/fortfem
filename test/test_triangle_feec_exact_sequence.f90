@@ -1,6 +1,6 @@
 program test_triangle_feec_exact_sequence
     use check, only: check_condition, check_summary
-    use fortfem_api, only: build_triangle_discrete_gradient, &
+    use fortfem_feec, only: build_triangle_discrete_gradient, &
         evaluate_triangle_nedelec_first_kind, &
         initialize_triangle_nedelec_first_kind, triangle_duffy_quadrature, &
         triangle_nedelec_first_kind_t
