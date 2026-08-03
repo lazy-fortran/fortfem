@@ -17,6 +17,7 @@ Pages contain the complete source, usage command, and generated plots.
 - [xfem_interface_solution](xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [regularized_surface_current_layer](regularized_surface_current_layer.html) - This physical-first slab example resolves a tangential surface current
 - [sheet_current_parity](sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet
+- [sheet_current_surface_gallery](sheet_current_surface_gallery.html) - This physical-first gallery samples the same caller-owned Ampère trace on a
 - [curl_curl](curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [cgl_pressure_3d_gallery](cgl_pressure_3d_gallery.html) - This neutral manufactured gallery is the physical-first 3-D fixture for a

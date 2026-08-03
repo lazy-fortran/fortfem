@@ -136,6 +136,17 @@ fpm run --example <example_name>
 <p>This physical-first slab gallery fixture compares the same tangential sheet</p>
 </div>
 </article>
+<article class="example-card" data-example="sheet_current_surface_gallery">
+<a class="example-card-preview" href="generated/sheet_current_surface_gallery.html">
+<img class="example-card-image"
+ src="../media/examples/sheet_current_surface_gallery/primary.png"
+ alt="Plot preview for sheet_current_surface_gallery" loading="lazy">
+</a>
+<div class="example-card-body">
+<h3><a href="generated/sheet_current_surface_gallery.html">sheet_current_surface_gallery</a></h3>
+<p>This physical-first gallery samples the same caller-owned Ampère trace on a</p>
+</div>
+</article>
 <article class="example-card" data-example="curl_curl">
 <a class="example-card-preview" href="generated/curl_curl.html">
 <img class="example-card-image"
@@ -763,6 +774,7 @@ fpm run --example <example_name>
 - [xfem_interface_solution](generated/xfem_interface_solution.html) - This physical-first gallery fixture constructs a manufactured scalar and
 - [regularized_surface_current_layer](generated/regularized_surface_current_layer.html) - This physical-first slab example resolves a tangential surface current
 - [sheet_current_parity](generated/sheet_current_parity.html) - This physical-first slab gallery fixture compares the same tangential sheet
+- [sheet_current_surface_gallery](generated/sheet_current_surface_gallery.html) - This physical-first gallery samples the same caller-owned Ampère trace on a
 - [curl_curl](generated/curl_curl.html) - This example solves a manufactured three-dimensional curl-curl problem with
 - [cgl_pressure_tensor](generated/cgl_pressure_tensor.html) - This manufactured profile evaluates the gyrotropic CGL pressure tensor
 - [cgl_pressure_3d_gallery](generated/cgl_pressure_3d_gallery.html) - This neutral manufactured gallery is the physical-first 3-D fixture for a
