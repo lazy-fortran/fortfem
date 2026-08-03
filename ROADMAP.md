@@ -516,7 +516,9 @@ bounded retry completed as `f21c08ac`: degree-five tetrahedral cut moments now
 have public core/API value and fixed-topology JVP procedures, with exact
 simplex, side-conservation, and central-difference tests. The retry worktree
 was removed after `fo test` and `git diff --check` passed. Degree-six tetrahedral
-moments and curved-cell extensions remain active.
+moments are now integrated as `c069e312`, with matching public exports and
+simplex, side-conservation, and central-difference tests. Curved-cell
+extensions remain active.
 
 The follow-up geometry batch adds six tetrahedral RT/FEEC clients
 (`4749774`), six triangular H(curl)/exact-sequence clients (`601e941`), and
@@ -750,6 +752,7 @@ single commit for integration. The recent implementation slices are:
 | `6e63bb5` | Public degree-five cut polygon moments | Green-theorem degree-five value/JVP/VJP, polynomial, symmetry, transpose, and degenerate-topology oracle |
 | `e8dac912` | Public degree-six cut polygon moments | 64 Green-theorem raw moments, conservation, central-difference JVP, real-adjoint VJP, and degenerate-topology oracle |
 | `f21c08ac` | Public degree-five cut tetrahedral moments | Exact rank-five side moments, parent conservation, fixed-topology central-difference JVP, and public core/API visibility |
+| `c069e312` | Public degree-six cut tetrahedral moments | Exact rank-six side moments, parent conservation, fixed-topology central-difference JVP, and public core/API visibility |
 | `bdbefa1` | Communicator-free MPI trace exchange schedule | Ownership/rank/offset validation, packed owner/ghost value/JVP/VJP maps, and independent exchange oracle |
 | `8b99e41` | Oriented arbitrary patch-graph trace contraction | Periodic/self-edge cycle contractions, weighted value/JVP/VJP, incidence closure, and transpose oracle |
 | `6a2ebfd` + `56720e9` | FortSym-generated degree-seven curved Bézier polygon measures, with canonical FEEC/umbrella exports | Independent degree-nine Gauss--Green value oracle, central-difference JVP, real VJP, straight-edge and degenerate-topology rejection; generated source is byte-checked when the locked FortSym checkout is available |
@@ -3046,8 +3049,10 @@ gallery example.
   same independent simplex-moment, conservation, and central-difference
   oracles. The 2-D polygon path now adds exact degree-five and degree-six
   raw moments with conservation, central-difference, and real-adjoint
-  oracles; curved-cell moment-fitting rules and higher-dimensional
-  higher-order moments remain. A weighted
+  oracles. The 3-D tetrahedral path now also exposes exact degree-five and
+  degree-six rank moments with conservation and central-difference oracles;
+  curved-cell moment-fitting rules and higher-dimensional higher-order
+  moments remain. A weighted
   enrichment-support Gram contract now exposes value/JVP/VJP actions with a
   fixed activation mask, and a symmetric-Jacobi rank/condition diagnostic
   reports the active enrichment rank and singularity with an independent
