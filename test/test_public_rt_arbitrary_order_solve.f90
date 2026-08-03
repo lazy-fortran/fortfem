@@ -1,8 +1,9 @@
 program test_public_rt_arbitrary_order_solve
     use check, only: check_condition, check_summary
-    use fortfem_api, only: cell_vector_source, cell_vector_source_t, div, &
-        dx, form_expr_t, inner, mesh_t, &
-        operator(*), operator(+), operator(==), solve, unit_square_mesh, &
+    use fortfem_core, only: mesh_t, unit_square_mesh
+    use fortfem_feec, only: cell_vector_source, cell_vector_source_t, div, &
+        dx, form_expr_t, inner, &
+        operator(*), operator(+), operator(==), solve, &
         vector_bc, vector_bc_t, vector_function, vector_function_space, &
         vector_function_space_t, vector_function_t, vector_test_function, &
         vector_test_function_t, vector_trial_function, &
