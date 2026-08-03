@@ -1,6 +1,7 @@
 program test_curl_curl_solution_field
     use check, only: check_condition, check_summary
-    use fortfem_api, only: &
+    use fortfem_core, only: invert_tetra_affine_map
+    use fortfem_feec, only: &
         evaluate_tetra_nedelec_interpolant_at_point, &
         initialize_tetra_nedelec_first_kind, solve_tetra_nedelec_curl_mass, &
         tetra_nedelec_first_kind_t
@@ -100,8 +101,6 @@ contains
 
     subroutine reference_coordinates(cell_vertices, physical_point, &
             local_reference, local_status)
-        use fortfem_api, only: invert_tetra_affine_map
-
         real(dp), intent(in) :: cell_vertices(3, 4), physical_point(3)
         real(dp), intent(out) :: local_reference(3)
         integer, intent(out) :: local_status
