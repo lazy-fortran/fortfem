@@ -208,6 +208,10 @@ contains
             control_4_y * 3.5000000000000000E+001_dp + control_5_y * &
             2.1000000000000000E+001_dp - control_6_y * 7.0000000000000000E+000_dp + y_end &
             - y_start
+        t27_d = y_start_d
+        t27 = y_start
+        t28_d = x_start_d
+        t28 = x_start
         edge_area_d = (t2_d * t4 + t2 * t4_d - (t6_d * t8 + t6 * t8_d)) * &
             5.0000000000000000E-001_dp / 3.0000000000000000E+000_dp + ((-t2_d) * t4 + &
             (-t2) * t4_d + (t6_d * t8 + t6 * t8_d)) * 5.0000000000000000E-001_dp * &
@@ -291,17 +295,15 @@ contains
             * t24_d)) * 5.0000000000000000E-001_dp * 7.0000000000000000E+000_dp / &
             1.3000000000000000E+001_dp + ((-t23_d) * t26 + (-t23) * t26_d + (t25_d * t24 &
             + t25 * t24_d)) * 5.0000000000000000E-001_dp * 6.0000000000000000E+000_dp / &
-            1.3000000000000000E+001_dp + ((-t2_d) * y_start + (-t2) * y_start_d + (t8_d * &
-            x_start + t8 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t23_d) * y_start &
-            + (-t23) * y_start_d + (t24_d * x_start + t24 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t16_d) * y_start + (-t16) * y_start_d + &
-            (t18_d * x_start + t18 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t25_d) &
-            * y_start + (-t25) * y_start_d + (t26_d * x_start + t26 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t6_d) * y_start + (-t6) * y_start_d + (t4_d * &
-            x_start + t4 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t14_d) * y_start &
-            + (-t14) * y_start_d + (t11_d * x_start + t11 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t22_d) * y_start + (-t22) * y_start_d + &
-            (t20_d * x_start + t20 * x_start_d)) * 5.0000000000000000E-001_dp
+            1.3000000000000000E+001_dp + ((-t2_d) * t27 + (-t2) * t27_d + (t8_d * t28 + &
+            t8 * t28_d)) * 5.0000000000000000E-001_dp + ((-t23_d) * t27 + (-t23) * t27_d &
+            + (t24_d * t28 + t24 * t28_d)) * 5.0000000000000000E-001_dp + ((-t16_d) * t27 &
+            + (-t16) * t27_d + (t18_d * t28 + t18 * t28_d)) * 5.0000000000000000E-001_dp &
+            + ((-t25_d) * t27 + (-t25) * t27_d + (t26_d * t28 + t26 * t28_d)) * &
+            5.0000000000000000E-001_dp + ((-t6_d) * t27 + (-t6) * t27_d + (t4_d * t28 + &
+            t4 * t28_d)) * 5.0000000000000000E-001_dp + ((-t14_d) * t27 + (-t14) * t27_d &
+            + (t11_d * t28 + t11 * t28_d)) * 5.0000000000000000E-001_dp + ((-t22_d) * t27 &
+            + (-t22) * t27_d + (t20_d * t28 + t20 * t28_d)) * 5.0000000000000000E-001_dp
     end subroutine fortfem_fci_septic_bezier_edge_area_jvp_fortad
 
 end module fortfem_fortad_fci_septic_bezier_edge_area_jvp
