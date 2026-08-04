@@ -17,11 +17,14 @@ root=$(cd "$here/../.." && pwd)
 cd "$root"
 fortad_repo=${FORTAD_REPO:-"$root/../fortad"}
 
-fortad_bin=$(find "$fortad_repo/build" -name fortad -type f -perm -u+x 2>/dev/null | head -1)
-if [ -z "$fortad_bin" ]; then
-    ( cd "$fortad_repo" && fpm build >/dev/null )
-    fortad_bin=$(find "$fortad_repo/build" -name fortad -type f -perm -u+x | head -1)
+# fo is the build driver, and using it here is not only convention: fpm leaves
+# an app binary unrelinked often enough that a stale fortad silently regenerates
+# the previous kernels, which then differ from the source they claim to come
+# from and pass the equivalence test anyway.
+if [ ! -x "$fortad_repo/build/fo/bin/fortad" ]; then
+    ( cd "$fortad_repo" && fo build >/dev/null )
 fi
+fortad_bin="$fortad_repo/build/fo/bin/fortad"
 
 python3 "$here/extract.py"
 FORTAD_BIN="$fortad_bin" python3 "$here/emit.py"
