@@ -63,7 +63,7 @@ contains
         theta_b = 0.0_dp
         phi_b = 0.0_dp
         point_b_in = point_b
-        fad_t1 = point_b_in(3) * (1.0_dp / (cosh(eta) - cos(theta)))
+        fad_t1 = point_b_in(3) * (-(1.0_dp / (cos(theta) - cosh(eta))))
         scale_b = scale_b + fad_t1 * sin(theta)
         theta_b = theta_b + fad_t1 * scale * cos(theta)
         fad_t5 = point_b_in(3) * ((-(scale * sin(theta))) / (cosh(eta) - cos(theta)) &
@@ -71,7 +71,7 @@ contains
         eta_b = eta_b + fad_t5 * sinh(eta)
         theta_b = theta_b + fad_t5 * (-1.0_dp) * (-sin(theta))
         point_b_in(3) = 0.0_dp
-        fad_t9 = point_b_in(2) * (1.0_dp / (cosh(eta) - cos(theta)))
+        fad_t9 = point_b_in(2) * (-(1.0_dp / (cos(theta) - cosh(eta))))
         scale_b = scale_b + fad_t9 * t1_v1 * sin(phi)
         phi_b = phi_b + fad_t9 * t1_v1 * scale * cos(phi)
         t1_v1_b = t1_v1_b + fad_t9 * (scale * sin(phi))
@@ -80,7 +80,7 @@ contains
         eta_b = eta_b + fad_t15 * sinh(eta)
         theta_b = theta_b + fad_t15 * (-1.0_dp) * (-sin(theta))
         point_b_in(2) = 0.0_dp
-        fad_t19 = point_b_in(1) * (1.0_dp / (cosh(eta) - cos(theta)))
+        fad_t19 = point_b_in(1) * (-(1.0_dp / (cos(theta) - cosh(eta))))
         scale_b = scale_b + fad_t19 * t1_v1 * cos(phi)
         phi_b = phi_b - fad_t19 * t1_v1 * scale * sin(phi)
         t1_v1_b = t1_v1_b + fad_t19 * (scale * cos(phi))
