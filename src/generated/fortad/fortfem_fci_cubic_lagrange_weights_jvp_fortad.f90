@@ -62,22 +62,22 @@ contains
             (node_1_d - node_4_d)) / (node_1 - node_4) ** 2
         weight_2_d = ((((((target_d - node_1_d) * t5 + t8 * (target_d - node_3_d)) * &
             t6 + t8 * t5 * (target_d - node_4_d)) * (node_2 - node_1) - t8 * t5 * t6 * &
-            (node_2_d - node_1_d)) / (node_2 - node_1) ** 2 * (node_2 - node_3) - t8 * t5 &
-            * t6 / (node_2 - node_1) * (node_2_d - node_3_d)) / (node_2 - node_3) ** 2 * &
-            (node_2 - node_4) - t8 * t5 * t6 / (node_2 - node_1) / (node_2 - node_3) * &
-            (node_2_d - node_4_d)) / (node_2 - node_4) ** 2
+            (node_2_d - node_1_d)) / (node_2 - node_1) ** 2 * (node_2 - node_3) + t8 * t5 &
+            * t6 / (node_1 - node_2) * (node_2_d - node_3_d)) / (node_2 - node_3) ** 2 * &
+            (node_2 - node_4) - (-(t8 * t5 * t6 / (node_1 - node_2))) / (node_2 - node_3) &
+            * (node_2_d - node_4_d)) / (node_2 - node_4) ** 2
         weight_3_d = ((((((target_d - node_1_d) * t4 + t8 * (target_d - node_2_d)) * &
             t6 + t8 * t4 * (target_d - node_4_d)) * (node_3 - node_1) - t8 * t4 * t6 * &
-            (node_3_d - node_1_d)) / (node_3 - node_1) ** 2 * (node_3 - node_2) - t8 * t4 &
-            * t6 / (node_3 - node_1) * (node_3_d - node_2_d)) / (node_3 - node_2) ** 2 * &
-            (node_3 - node_4) - t8 * t4 * t6 / (node_3 - node_1) / (node_3 - node_2) * &
-            (node_3_d - node_4_d)) / (node_3 - node_4) ** 2
+            (node_3_d - node_1_d)) / (node_3 - node_1) ** 2 * (node_3 - node_2) + t8 * t4 &
+            * t6 / (node_1 - node_3) * (node_3_d - node_2_d)) / (node_3 - node_2) ** 2 * &
+            (node_3 - node_4) + (-(t8 * t4 * t6 / (node_1 - node_3))) / (node_2 - node_3) &
+            * (node_3_d - node_4_d)) / (node_3 - node_4) ** 2
         weight_4_d = ((((((target_d - node_1_d) * t4 + t8 * (target_d - node_2_d)) * &
             t5 + t8 * t4 * (target_d - node_3_d)) * (node_4 - node_1) - t8 * t4 * t5 * &
-            (node_4_d - node_1_d)) / (node_4 - node_1) ** 2 * (node_4 - node_2) - t8 * t4 &
-            * t5 / (node_4 - node_1) * (node_4_d - node_2_d)) / (node_4 - node_2) ** 2 * &
-            (node_4 - node_3) - t8 * t4 * t5 / (node_4 - node_1) / (node_4 - node_2) * &
-            (node_4_d - node_3_d)) / (node_4 - node_3) ** 2
+            (node_4_d - node_1_d)) / (node_4 - node_1) ** 2 * (node_4 - node_2) + t8 * t4 &
+            * t5 / (node_1 - node_4) * (node_4_d - node_2_d)) / (node_4 - node_2) ** 2 * &
+            (node_4 - node_3) + (-(t8 * t4 * t5 / (node_1 - node_4))) / (node_2 - node_4) &
+            * (node_4_d - node_3_d)) / (node_4 - node_3) ** 2
     end subroutine fortfem_fci_cubic_lagrange_weights_jvp_fortad
 
 end module fortfem_fortad_fci_cubic_lagrange_weights_jvp

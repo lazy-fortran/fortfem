@@ -93,58 +93,61 @@ contains
         weight_2_d = (((((((((t12_d * t7 + t12 * t7_d) * t8 + t12 * t7 * t8_d) * t9 + &
             t12 * t7 * t8 * t9_d) * t10 + t12 * t7 * t8 * t9 * t10_d) * (node_2 - node_1) &
             - t12 * t7 * t8 * t9 * t10 * (node_2_d - node_1_d)) / (node_2 - node_1) ** 2 &
-            * (node_2 - node_3) - t12 * t7 * t8 * t9 * t10 / (node_2 - node_1) * &
-            (node_2_d - node_3_d)) / (node_2 - node_3) ** 2 * (node_2 - node_4) - t12 * &
-            t7 * t8 * t9 * t10 / (node_2 - node_1) / (node_2 - node_3) * (node_2_d - &
-            node_4_d)) / (node_2 - node_4) ** 2 * (node_2 - node_5) - t12 * t7 * t8 * t9 &
-            * t10 / (node_2 - node_1) / (node_2 - node_3) / (node_2 - node_4) * (node_2_d &
-            - node_5_d)) / (node_2 - node_5) ** 2 * (node_2 - node_6) - t12 * t7 * t8 * &
-            t9 * t10 / (node_2 - node_1) / (node_2 - node_3) / (node_2 - node_4) / &
-            (node_2 - node_5) * (node_2_d - node_6_d)) / (node_2 - node_6) ** 2
+            * (node_2 - node_3) + t12 * t7 * t8 * t9 * t10 / (node_1 - node_2) * &
+            (node_2_d - node_3_d)) / (node_2 - node_3) ** 2 * (node_2 - node_4) - (-(t12 &
+            * t7 * t8 * t9 * t10 / (node_1 - node_2))) / (node_2 - node_3) * (node_2_d - &
+            node_4_d)) / (node_2 - node_4) ** 2 * (node_2 - node_5) - (-(t12 * t7 * t8 * &
+            t9 * t10 / (node_1 - node_2))) / (node_2 - node_3) / (node_2 - node_4) * &
+            (node_2_d - node_5_d)) / (node_2 - node_5) ** 2 * (node_2 - node_6) - (-(t12 &
+            * t7 * t8 * t9 * t10 / (node_1 - node_2))) / (node_2 - node_3) / (node_2 - &
+            node_4) / (node_2 - node_5) * (node_2_d - node_6_d)) / (node_2 - node_6) ** 2
         weight_3_d = (((((((((t12_d * t6 + t12 * t6_d) * t8 + t12 * t6 * t8_d) * t9 + &
             t12 * t6 * t8 * t9_d) * t10 + t12 * t6 * t8 * t9 * t10_d) * (node_3 - node_1) &
             - t12 * t6 * t8 * t9 * t10 * (node_3_d - node_1_d)) / (node_3 - node_1) ** 2 &
-            * (node_3 - node_2) - t12 * t6 * t8 * t9 * t10 / (node_3 - node_1) * &
-            (node_3_d - node_2_d)) / (node_3 - node_2) ** 2 * (node_3 - node_4) - t12 * &
-            t6 * t8 * t9 * t10 / (node_3 - node_1) / (node_3 - node_2) * (node_3_d - &
-            node_4_d)) / (node_3 - node_4) ** 2 * (node_3 - node_5) - t12 * t6 * t8 * t9 &
-            * t10 / (node_3 - node_1) / (node_3 - node_2) / (node_3 - node_4) * (node_3_d &
-            - node_5_d)) / (node_3 - node_5) ** 2 * (node_3 - node_6) - t12 * t6 * t8 * &
-            t9 * t10 / (node_3 - node_1) / (node_3 - node_2) / (node_3 - node_4) / &
-            (node_3 - node_5) * (node_3_d - node_6_d)) / (node_3 - node_6) ** 2
+            * (node_3 - node_2) + t12 * t6 * t8 * t9 * t10 / (node_1 - node_3) * &
+            (node_3_d - node_2_d)) / (node_3 - node_2) ** 2 * (node_3 - node_4) + (-(t12 &
+            * t6 * t8 * t9 * t10 / (node_1 - node_3))) / (node_2 - node_3) * (node_3_d - &
+            node_4_d)) / (node_3 - node_4) ** 2 * (node_3 - node_5) - (-((-(t12 * t6 * t8 &
+            * t9 * t10 / (node_1 - node_3))) / (node_2 - node_3))) / (node_3 - node_4) * &
+            (node_3_d - node_5_d)) / (node_3 - node_5) ** 2 * (node_3 - node_6) - &
+            (-((-(t12 * t6 * t8 * t9 * t10 / (node_1 - node_3))) / (node_2 - node_3))) / &
+            (node_3 - node_4) / (node_3 - node_5) * (node_3_d - node_6_d)) / (node_3 - &
+            node_6) ** 2
         weight_4_d = (((((((((t12_d * t6 + t12 * t6_d) * t7 + t12 * t6 * t7_d) * t9 + &
             t12 * t6 * t7 * t9_d) * t10 + t12 * t6 * t7 * t9 * t10_d) * (node_4 - node_1) &
             - t12 * t6 * t7 * t9 * t10 * (node_4_d - node_1_d)) / (node_4 - node_1) ** 2 &
-            * (node_4 - node_2) - t12 * t6 * t7 * t9 * t10 / (node_4 - node_1) * &
-            (node_4_d - node_2_d)) / (node_4 - node_2) ** 2 * (node_4 - node_3) - t12 * &
-            t6 * t7 * t9 * t10 / (node_4 - node_1) / (node_4 - node_2) * (node_4_d - &
-            node_3_d)) / (node_4 - node_3) ** 2 * (node_4 - node_5) - t12 * t6 * t7 * t9 &
-            * t10 / (node_4 - node_1) / (node_4 - node_2) / (node_4 - node_3) * (node_4_d &
-            - node_5_d)) / (node_4 - node_5) ** 2 * (node_4 - node_6) - t12 * t6 * t7 * &
-            t9 * t10 / (node_4 - node_1) / (node_4 - node_2) / (node_4 - node_3) / &
-            (node_4 - node_5) * (node_4_d - node_6_d)) / (node_4 - node_6) ** 2
+            * (node_4 - node_2) + t12 * t6 * t7 * t9 * t10 / (node_1 - node_4) * &
+            (node_4_d - node_2_d)) / (node_4 - node_2) ** 2 * (node_4 - node_3) + (-(t12 &
+            * t6 * t7 * t9 * t10 / (node_1 - node_4))) / (node_2 - node_4) * (node_4_d - &
+            node_3_d)) / (node_4 - node_3) ** 2 * (node_4 - node_5) + (-((-(t12 * t6 * t7 &
+            * t9 * t10 / (node_1 - node_4))) / (node_2 - node_4))) / (node_3 - node_4) * &
+            (node_4_d - node_5_d)) / (node_4 - node_5) ** 2 * (node_4 - node_6) - &
+            (-((-((-(t12 * t6 * t7 * t9 * t10 / (node_1 - node_4))) / (node_2 - node_4))) &
+            / (node_3 - node_4))) / (node_4 - node_5) * (node_4_d - node_6_d)) / (node_4 &
+            - node_6) ** 2
         weight_5_d = (((((((((t12_d * t6 + t12 * t6_d) * t7 + t12 * t6 * t7_d) * t8 + &
             t12 * t6 * t7 * t8_d) * t10 + t12 * t6 * t7 * t8 * t10_d) * (node_5 - node_1) &
             - t12 * t6 * t7 * t8 * t10 * (node_5_d - node_1_d)) / (node_5 - node_1) ** 2 &
-            * (node_5 - node_2) - t12 * t6 * t7 * t8 * t10 / (node_5 - node_1) * &
-            (node_5_d - node_2_d)) / (node_5 - node_2) ** 2 * (node_5 - node_3) - t12 * &
-            t6 * t7 * t8 * t10 / (node_5 - node_1) / (node_5 - node_2) * (node_5_d - &
-            node_3_d)) / (node_5 - node_3) ** 2 * (node_5 - node_4) - t12 * t6 * t7 * t8 &
-            * t10 / (node_5 - node_1) / (node_5 - node_2) / (node_5 - node_3) * (node_5_d &
-            - node_4_d)) / (node_5 - node_4) ** 2 * (node_5 - node_6) - t12 * t6 * t7 * &
-            t8 * t10 / (node_5 - node_1) / (node_5 - node_2) / (node_5 - node_3) / &
-            (node_5 - node_4) * (node_5_d - node_6_d)) / (node_5 - node_6) ** 2
+            * (node_5 - node_2) + t12 * t6 * t7 * t8 * t10 / (node_1 - node_5) * &
+            (node_5_d - node_2_d)) / (node_5 - node_2) ** 2 * (node_5 - node_3) + (-(t12 &
+            * t6 * t7 * t8 * t10 / (node_1 - node_5))) / (node_2 - node_5) * (node_5_d - &
+            node_3_d)) / (node_5 - node_3) ** 2 * (node_5 - node_4) + (-((-(t12 * t6 * t7 &
+            * t8 * t10 / (node_1 - node_5))) / (node_2 - node_5))) / (node_3 - node_5) * &
+            (node_5_d - node_4_d)) / (node_5 - node_4) ** 2 * (node_5 - node_6) + &
+            (-((-((-(t12 * t6 * t7 * t8 * t10 / (node_1 - node_5))) / (node_2 - node_5))) &
+            / (node_3 - node_5))) / (node_4 - node_5) * (node_5_d - node_6_d)) / (node_5 &
+            - node_6) ** 2
         weight_6_d = (((((((((t12_d * t6 + t12 * t6_d) * t7 + t12 * t6 * t7_d) * t8 + &
             t12 * t6 * t7 * t8_d) * t9 + t12 * t6 * t7 * t8 * t9_d) * (node_6 - node_1) - &
             t12 * t6 * t7 * t8 * t9 * (node_6_d - node_1_d)) / (node_6 - node_1) ** 2 * &
-            (node_6 - node_2) - t12 * t6 * t7 * t8 * t9 / (node_6 - node_1) * (node_6_d - &
-            node_2_d)) / (node_6 - node_2) ** 2 * (node_6 - node_3) - t12 * t6 * t7 * t8 &
-            * t9 / (node_6 - node_1) / (node_6 - node_2) * (node_6_d - node_3_d)) / &
-            (node_6 - node_3) ** 2 * (node_6 - node_4) - t12 * t6 * t7 * t8 * t9 / &
-            (node_6 - node_1) / (node_6 - node_2) / (node_6 - node_3) * (node_6_d - &
-            node_4_d)) / (node_6 - node_4) ** 2 * (node_6 - node_5) - t12 * t6 * t7 * t8 &
-            * t9 / (node_6 - node_1) / (node_6 - node_2) / (node_6 - node_3) / (node_6 - &
-            node_4) * (node_6_d - node_5_d)) / (node_6 - node_5) ** 2
+            (node_6 - node_2) + t12 * t6 * t7 * t8 * t9 / (node_1 - node_6) * (node_6_d - &
+            node_2_d)) / (node_6 - node_2) ** 2 * (node_6 - node_3) + (-(t12 * t6 * t7 * &
+            t8 * t9 / (node_1 - node_6))) / (node_2 - node_6) * (node_6_d - node_3_d)) / &
+            (node_6 - node_3) ** 2 * (node_6 - node_4) + (-((-(t12 * t6 * t7 * t8 * t9 / &
+            (node_1 - node_6))) / (node_2 - node_6))) / (node_3 - node_6) * (node_6_d - &
+            node_4_d)) / (node_6 - node_4) ** 2 * (node_6 - node_5) + (-((-((-(t12 * t6 * &
+            t7 * t8 * t9 / (node_1 - node_6))) / (node_2 - node_6))) / (node_3 - &
+            node_6))) / (node_4 - node_6) * (node_6_d - node_5_d)) / (node_6 - node_5) ** 2
     end subroutine fortfem_fci_quintic_lagrange_weights_jvp_fortad
 
 end module fortfem_fortad_fci_quintic_lagrange_weights_jvp
