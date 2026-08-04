@@ -26,6 +26,17 @@ OUT = Path("src/generated/fortad")
 KERNELS = Path("tools/fortad/kernels")
 
 
+def same_call(label: str, lhs: str, rhs: str, tol: str) -> str:
+    """One `call same(...)`, wrapped to stay inside the free-form limit.
+
+    An operator with long argument names runs past column 132, which gfortran
+    truncates and the build treats as an error. Continuing the line keeps the
+    generated test compilable whatever the names are.
+    """
+    head = f'        call same("{label}", &'
+    return head + f"\n                  {lhs}, {rhs}, {tol}, failures)"
+
+
 def flattened(text: str) -> str:
     return re.sub(r"&\s*\n\s*", "", text)
 
@@ -365,13 +376,13 @@ def one_check(entry: dict) -> str:
     lines.append(call(f"{primal}_jvp", ref_jvp))
     lines.append(call(f"fortfem_{stem}_jvp_fortad", new_jvp))
     for name in outputs:
-        lines.append(f'        call same("{stem} jvp {name}", '
-                     f"tr_{name}, tn_{name}, {tol}, failures)")
+        lines.append(same_call(f"{stem} jvp {name}",
+                               f"tr_{name}", f"tn_{name}", tol))
     lines.append(call(f"{primal}_vjp", ref_vjp))
     lines.append(call(f"fortfem_{stem}_vjp_fortad", new_vjp))
     for name in active:
-        lines.append(f'        call same("{stem} vjp {name}", '
-                     f"gr_{name}, gn_{name}, {tol}, failures)")
+        lines.append(same_call(f"{stem} vjp {name}",
+                               f"gr_{name}", f"gn_{name}", tol))
     lines.append("    end block")
     return "\n".join(lines)
 
