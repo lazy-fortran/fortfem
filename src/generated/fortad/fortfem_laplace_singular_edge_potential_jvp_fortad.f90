@@ -120,12 +120,12 @@ contains
         t18 = (first_vertex_2 - point_2) * (second_vertex_3 - point_3) - &
             (first_vertex_3 - point_3) * (second_vertex_2 - point_2)
         value_d = ((((t7_d + t11_d + t15_d) * (t7 + t11 - t15) - (t7 + t11 + t15) * &
-            (t7_d + t11_d - t15_d)) / (t7 + t11 - t15) ** 2 / ((t7 + t11 + t15) / (t7 + &
-            t11 - t15)) * sqrt(t16 * t16 + t17 * t17 + t18 * t18) + log((t7 + t11 + t15) &
-            / (t7 + t11 - t15)) * ((2.0_dp * (t16 * t16_d) + 2.0_dp * (t17 * t17_d) + &
-            2.0_dp * (t18 * t18_d)) / (2.0_dp * sqrt(t16 * t16 + t17 * t17 + t18 * &
-            t18)))) * t15 - log((t7 + t11 + t15) / (t7 + t11 - t15)) * sqrt(t16 * t16 + &
-            t17 * t17 + t18 * t18) * t15_d) / t15 ** 2
+            (t7_d + t11_d - t15_d)) / (t7 + t11 - t15) ** 2 / (-((t7 + t11 + t15) / (t15 &
+            - (t7 + t11)))) * sqrt(t16 * t16 + t17 * t17 + t18 * t18) + log(-((t7 + t11 + &
+            t15) / (t15 - (t7 + t11)))) * ((2.0_dp * (t16 * t16_d) + 2.0_dp * (t17 * &
+            t17_d) + 2.0_dp * (t18 * t18_d)) / (2.0_dp * sqrt(t16 * t16 + t17 * t17 + t18 &
+            * t18)))) * t15 - log(-((t7 + t11 + t15) / (t15 - (t7 + t11)))) * sqrt(t16 * &
+            t16 + t17 * t17 + t18 * t18) * t15_d) / t15 ** 2
     end subroutine fortfem_laplace_singular_edge_potential_jvp_fortad
 
 end module fortfem_fortad_laplace_singular_edge_potential_jvp

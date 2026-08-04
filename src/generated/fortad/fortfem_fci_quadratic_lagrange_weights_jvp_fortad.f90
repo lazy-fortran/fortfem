@@ -50,12 +50,12 @@ contains
         weight_2_d = ((((target_d - node_1_d) * (target - node_3) + (target - node_1) &
             * (target_d - node_3_d)) * (node_2 - node_1) - (target - node_1) * (target - &
             node_3) * (node_2_d - node_1_d)) / (node_2 - node_1) ** 2 * (node_2 - node_3) &
-            - (target - node_1) * (target - node_3) / (node_2 - node_1) * (node_2_d - &
+            + (target - node_1) * (target - node_3) / (node_1 - node_2) * (node_2_d - &
             node_3_d)) / (node_2 - node_3) ** 2
         weight_3_d = ((((target_d - node_1_d) * (target - node_2) + (target - node_1) &
             * (target_d - node_2_d)) * (node_3 - node_1) - (target - node_1) * (target - &
             node_2) * (node_3_d - node_1_d)) / (node_3 - node_1) ** 2 * (node_3 - node_2) &
-            - (target - node_1) * (target - node_2) / (node_3 - node_1) * (node_3_d - &
+            + (target - node_1) * (target - node_2) / (node_1 - node_3) * (node_3_d - &
             node_2_d)) / (node_3 - node_2) ** 2
     end subroutine fortfem_fci_quadratic_lagrange_weights_jvp_fortad
 
