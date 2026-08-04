@@ -237,13 +237,16 @@ program test_fortad_fortsym_equivalence
             d_block_value, d_state_value, tr_contribution)
         call fortfem_block_graph_product_jvp_fortad(v_block_value, d_block_value, &
             v_state_value, d_state_value, tn_contribution)
-        call same("block_graph_product jvp contribution", tr_contribution, tn_contribution, TOLERANCE, failures)
+        call same("block_graph_product jvp contribution", &
+                  tr_contribution, tn_contribution, TOLERANCE, failures)
         call generated_block_graph_product_vjp(v_block_value, v_state_value, &
             seed_contribution, gr_block_value, gr_state_value)
         call fortfem_block_graph_product_vjp_fortad(v_block_value, v_state_value, &
             seed_contribution, gn_block_value, gn_state_value)
-        call same("block_graph_product vjp block_value", gr_block_value, gn_block_value, TOLERANCE, failures)
-        call same("block_graph_product vjp state_value", gr_state_value, gn_state_value, TOLERANCE, failures)
+        call same("block_graph_product vjp block_value", &
+                  gr_block_value, gn_block_value, TOLERANCE, failures)
+        call same("block_graph_product vjp state_value", &
+                  gr_state_value, gn_state_value, TOLERANCE, failures)
     end block
     ! cgl_pressure_divergence
     block
@@ -421,9 +424,12 @@ program test_fortad_fortsym_equivalence
             d_direction_gradient_31, v_direction_gradient_32, &
             d_direction_gradient_32, v_direction_gradient_33, &
             d_direction_gradient_33, tn_force_1, tn_force_2, tn_force_3)
-        call same("cgl_pressure_divergence jvp force_1", tr_force_1, tn_force_1, TOLERANCE, failures)
-        call same("cgl_pressure_divergence jvp force_2", tr_force_2, tn_force_2, TOLERANCE, failures)
-        call same("cgl_pressure_divergence jvp force_3", tr_force_3, tn_force_3, TOLERANCE, failures)
+        call same("cgl_pressure_divergence jvp force_1", &
+                  tr_force_1, tn_force_1, TOLERANCE, failures)
+        call same("cgl_pressure_divergence jvp force_2", &
+                  tr_force_2, tn_force_2, TOLERANCE, failures)
+        call same("cgl_pressure_divergence jvp force_3", &
+                  tr_force_3, tn_force_3, TOLERANCE, failures)
         call generated_cgl_pressure_divergence_vjp(v_p_parallel, &
             v_p_perpendicular, v_direction_1, v_direction_2, v_direction_3, &
             v_parallel_gradient_1, v_parallel_gradient_2, v_parallel_gradient_3, &
@@ -462,26 +468,46 @@ program test_fortad_fortsym_equivalence
             gn_direction_gradient_22, gn_direction_gradient_23, &
             gn_direction_gradient_31, gn_direction_gradient_32, &
             gn_direction_gradient_33)
-        call same("cgl_pressure_divergence vjp p_parallel", gr_p_parallel, gn_p_parallel, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp p_perpendicular", gr_p_perpendicular, gn_p_perpendicular, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_1", gr_direction_1, gn_direction_1, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_2", gr_direction_2, gn_direction_2, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_3", gr_direction_3, gn_direction_3, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp parallel_gradient_1", gr_parallel_gradient_1, gn_parallel_gradient_1, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp parallel_gradient_2", gr_parallel_gradient_2, gn_parallel_gradient_2, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp parallel_gradient_3", gr_parallel_gradient_3, gn_parallel_gradient_3, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp perpendicular_gradient_1", gr_perpendicular_gradient_1, gn_perpendicular_gradient_1, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp perpendicular_gradient_2", gr_perpendicular_gradient_2, gn_perpendicular_gradient_2, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp perpendicular_gradient_3", gr_perpendicular_gradient_3, gn_perpendicular_gradient_3, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_11", gr_direction_gradient_11, gn_direction_gradient_11, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_12", gr_direction_gradient_12, gn_direction_gradient_12, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_13", gr_direction_gradient_13, gn_direction_gradient_13, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_21", gr_direction_gradient_21, gn_direction_gradient_21, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_22", gr_direction_gradient_22, gn_direction_gradient_22, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_23", gr_direction_gradient_23, gn_direction_gradient_23, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_31", gr_direction_gradient_31, gn_direction_gradient_31, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_32", gr_direction_gradient_32, gn_direction_gradient_32, TOLERANCE, failures)
-        call same("cgl_pressure_divergence vjp direction_gradient_33", gr_direction_gradient_33, gn_direction_gradient_33, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp p_parallel", &
+                  gr_p_parallel, gn_p_parallel, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp p_perpendicular", &
+                  gr_p_perpendicular, gn_p_perpendicular, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_1", &
+                  gr_direction_1, gn_direction_1, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_2", &
+                  gr_direction_2, gn_direction_2, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_3", &
+                  gr_direction_3, gn_direction_3, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp parallel_gradient_1", &
+                  gr_parallel_gradient_1, gn_parallel_gradient_1, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp parallel_gradient_2", &
+                  gr_parallel_gradient_2, gn_parallel_gradient_2, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp parallel_gradient_3", &
+                  gr_parallel_gradient_3, gn_parallel_gradient_3, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp perpendicular_gradient_1", &
+                  gr_perpendicular_gradient_1, gn_perpendicular_gradient_1, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp perpendicular_gradient_2", &
+                  gr_perpendicular_gradient_2, gn_perpendicular_gradient_2, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp perpendicular_gradient_3", &
+                  gr_perpendicular_gradient_3, gn_perpendicular_gradient_3, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_11", &
+                  gr_direction_gradient_11, gn_direction_gradient_11, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_12", &
+                  gr_direction_gradient_12, gn_direction_gradient_12, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_13", &
+                  gr_direction_gradient_13, gn_direction_gradient_13, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_21", &
+                  gr_direction_gradient_21, gn_direction_gradient_21, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_22", &
+                  gr_direction_gradient_22, gn_direction_gradient_22, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_23", &
+                  gr_direction_gradient_23, gn_direction_gradient_23, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_31", &
+                  gr_direction_gradient_31, gn_direction_gradient_31, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_32", &
+                  gr_direction_gradient_32, gn_direction_gradient_32, TOLERANCE, failures)
+        call same("cgl_pressure_divergence vjp direction_gradient_33", &
+                  gr_direction_gradient_33, gn_direction_gradient_33, TOLERANCE, failures)
     end block
     ! cgl_pressure_tensor
     block
@@ -561,12 +587,18 @@ program test_fortad_fortsym_equivalence
             v_direction_2, d_direction_2, v_direction_3, d_direction_3, &
             tn_pressure_11, tn_pressure_22, tn_pressure_33, tn_pressure_12, &
             tn_pressure_13, tn_pressure_23)
-        call same("cgl_pressure_tensor jvp pressure_11", tr_pressure_11, tn_pressure_11, TOLERANCE, failures)
-        call same("cgl_pressure_tensor jvp pressure_22", tr_pressure_22, tn_pressure_22, TOLERANCE, failures)
-        call same("cgl_pressure_tensor jvp pressure_33", tr_pressure_33, tn_pressure_33, TOLERANCE, failures)
-        call same("cgl_pressure_tensor jvp pressure_12", tr_pressure_12, tn_pressure_12, TOLERANCE, failures)
-        call same("cgl_pressure_tensor jvp pressure_13", tr_pressure_13, tn_pressure_13, TOLERANCE, failures)
-        call same("cgl_pressure_tensor jvp pressure_23", tr_pressure_23, tn_pressure_23, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_11", &
+                  tr_pressure_11, tn_pressure_11, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_22", &
+                  tr_pressure_22, tn_pressure_22, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_33", &
+                  tr_pressure_33, tn_pressure_33, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_12", &
+                  tr_pressure_12, tn_pressure_12, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_13", &
+                  tr_pressure_13, tn_pressure_13, TOLERANCE, failures)
+        call same("cgl_pressure_tensor jvp pressure_23", &
+                  tr_pressure_23, tn_pressure_23, TOLERANCE, failures)
         call generated_cgl_pressure_tensor_vjp(v_p_parallel, v_p_perpendicular, &
             v_direction_1, v_direction_2, v_direction_3, seed_pressure_11, &
             seed_pressure_22, seed_pressure_33, seed_pressure_12, &
@@ -577,11 +609,16 @@ program test_fortad_fortsym_equivalence
             v_pressure_22, v_pressure_33, v_pressure_12, v_pressure_13, &
             v_pressure_23, seed_pressure_11, gn_p_parallel, gn_p_perpendicular, &
             gn_direction_1, gn_direction_2, gn_direction_3)
-        call same("cgl_pressure_tensor vjp p_parallel", gr_p_parallel, gn_p_parallel, TOLERANCE, failures)
-        call same("cgl_pressure_tensor vjp p_perpendicular", gr_p_perpendicular, gn_p_perpendicular, TOLERANCE, failures)
-        call same("cgl_pressure_tensor vjp direction_1", gr_direction_1, gn_direction_1, TOLERANCE, failures)
-        call same("cgl_pressure_tensor vjp direction_2", gr_direction_2, gn_direction_2, TOLERANCE, failures)
-        call same("cgl_pressure_tensor vjp direction_3", gr_direction_3, gn_direction_3, TOLERANCE, failures)
+        call same("cgl_pressure_tensor vjp p_parallel", &
+                  gr_p_parallel, gn_p_parallel, TOLERANCE, failures)
+        call same("cgl_pressure_tensor vjp p_perpendicular", &
+                  gr_p_perpendicular, gn_p_perpendicular, TOLERANCE, failures)
+        call same("cgl_pressure_tensor vjp direction_1", &
+                  gr_direction_1, gn_direction_1, TOLERANCE, failures)
+        call same("cgl_pressure_tensor vjp direction_2", &
+                  gr_direction_2, gn_direction_2, TOLERANCE, failures)
+        call same("cgl_pressure_tensor vjp direction_3", &
+                  gr_direction_3, gn_direction_3, TOLERANCE, failures)
     end block
     ! fci_cubic_bezier_edge_area
     block
@@ -647,7 +684,8 @@ program test_fortad_fortsym_equivalence
             v_y_start, d_y_start, v_control_1_x, d_control_1_x, v_control_1_y, &
             d_control_1_y, v_control_2_x, d_control_2_x, v_control_2_y, &
             d_control_2_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_cubic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_cubic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, v_x_end, &
             v_y_end, seed_edge_area, gr_x_start, gr_y_start, gr_control_1_x, &
@@ -656,14 +694,22 @@ program test_fortad_fortsym_equivalence
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, v_x_end, &
             v_y_end, seed_edge_area, gn_x_start, gn_y_start, gn_control_1_x, &
             gn_control_1_y, gn_control_2_x, gn_control_2_y, gn_x_end, gn_y_end)
-        call same("fci_cubic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_cubic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_cubic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_curved_quadrilateral_cell_area
     block
@@ -783,7 +829,8 @@ program test_fortad_fortsym_equivalence
             v_control_y_2, d_control_y_2, v_control_x_3, d_control_x_3, &
             v_control_y_3, d_control_y_3, v_control_x_4, d_control_x_4, &
             v_control_y_4, d_control_y_4, tn_area)
-        call same("fci_curved_quadrilateral_cell_area jvp area", tr_area, tn_area, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area jvp area", &
+                  tr_area, tn_area, TOLERANCE, failures)
         call generated_fci_curved_quadrilateral_cell_area_vjp(v_x_1, v_y_1, &
             v_x_2, v_y_2, v_x_3, v_y_3, v_x_4, v_y_4, v_control_x_1, &
             v_control_y_1, v_control_x_2, v_control_y_2, v_control_x_3, &
@@ -798,22 +845,38 @@ program test_fortad_fortsym_equivalence
             gn_y_1, gn_x_2, gn_y_2, gn_x_3, gn_y_3, gn_x_4, gn_y_4, &
             gn_control_x_1, gn_control_y_1, gn_control_x_2, gn_control_y_2, &
             gn_control_x_3, gn_control_y_3, gn_control_x_4, gn_control_y_4)
-        call same("fci_curved_quadrilateral_cell_area vjp x_1", gr_x_1, gn_x_1, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp y_1", gr_y_1, gn_y_1, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp x_2", gr_x_2, gn_x_2, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp y_2", gr_y_2, gn_y_2, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp x_3", gr_x_3, gn_x_3, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp y_3", gr_y_3, gn_y_3, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp x_4", gr_x_4, gn_x_4, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp y_4", gr_y_4, gn_y_4, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_x_1", gr_control_x_1, gn_control_x_1, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_y_1", gr_control_y_1, gn_control_y_1, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_x_2", gr_control_x_2, gn_control_x_2, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_y_2", gr_control_y_2, gn_control_y_2, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_x_3", gr_control_x_3, gn_control_x_3, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_y_3", gr_control_y_3, gn_control_y_3, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_x_4", gr_control_x_4, gn_control_x_4, TOLERANCE, failures)
-        call same("fci_curved_quadrilateral_cell_area vjp control_y_4", gr_control_y_4, gn_control_y_4, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp x_1", &
+                  gr_x_1, gn_x_1, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp y_1", &
+                  gr_y_1, gn_y_1, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp x_2", &
+                  gr_x_2, gn_x_2, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp y_2", &
+                  gr_y_2, gn_y_2, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp x_3", &
+                  gr_x_3, gn_x_3, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp y_3", &
+                  gr_y_3, gn_y_3, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp x_4", &
+                  gr_x_4, gn_x_4, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp y_4", &
+                  gr_y_4, gn_y_4, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_x_1", &
+                  gr_control_x_1, gn_control_x_1, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_y_1", &
+                  gr_control_y_1, gn_control_y_1, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_x_2", &
+                  gr_control_x_2, gn_control_x_2, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_y_2", &
+                  gr_control_y_2, gn_control_y_2, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_x_3", &
+                  gr_control_x_3, gn_control_x_3, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_y_3", &
+                  gr_control_y_3, gn_control_y_3, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_x_4", &
+                  gr_control_x_4, gn_control_x_4, TOLERANCE, failures)
+        call same("fci_curved_quadrilateral_cell_area vjp control_y_4", &
+                  gr_control_y_4, gn_control_y_4, TOLERANCE, failures)
     end block
     ! fci_decic_bezier_edge_area
     block
@@ -977,7 +1040,8 @@ program test_fortad_fortsym_equivalence
             d_control_7_y, v_control_8_x, d_control_8_x, v_control_8_y, &
             d_control_8_y, v_control_9_x, d_control_9_x, v_control_9_y, &
             d_control_9_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_decic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, CANCELLING_TOLERANCE, failures)
         call generated_fci_decic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -1002,28 +1066,50 @@ program test_fortad_fortsym_equivalence
             gn_control_6_x, gn_control_6_y, gn_control_7_x, gn_control_7_y, &
             gn_control_8_x, gn_control_8_y, gn_control_9_x, gn_control_9_y, &
             gn_x_end, gn_y_end)
-        call same("fci_decic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_6_x", gr_control_6_x, gn_control_6_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_6_y", gr_control_6_y, gn_control_6_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_7_x", gr_control_7_x, gn_control_7_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_7_y", gr_control_7_y, gn_control_7_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_8_x", gr_control_8_x, gn_control_8_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_8_y", gr_control_8_y, gn_control_8_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_9_x", gr_control_9_x, gn_control_9_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp control_9_y", gr_control_9_y, gn_control_9_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, CANCELLING_TOLERANCE, failures)
-        call same("fci_decic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_6_x", &
+                  gr_control_6_x, gn_control_6_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_6_y", &
+                  gr_control_6_y, gn_control_6_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_7_x", &
+                  gr_control_7_x, gn_control_7_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_7_y", &
+                  gr_control_7_y, gn_control_7_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_8_x", &
+                  gr_control_8_x, gn_control_8_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_8_y", &
+                  gr_control_8_y, gn_control_8_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_9_x", &
+                  gr_control_9_x, gn_control_9_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp control_9_y", &
+                  gr_control_9_y, gn_control_9_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, CANCELLING_TOLERANCE, failures)
+        call same("fci_decic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, CANCELLING_TOLERANCE, failures)
     end block
     ! fci_hendecic_bezier_edge_area
     block
@@ -1202,7 +1288,8 @@ program test_fortad_fortsym_equivalence
             v_control_9_y, d_control_9_y, v_control_10_x, d_control_10_x, &
             v_control_10_y, d_control_10_y, v_x_end, d_x_end, v_y_end, d_y_end, &
             tn_edge_area)
-        call same("fci_hendecic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, CANCELLING_TOLERANCE, failures)
         call generated_fci_hendecic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -1229,30 +1316,54 @@ program test_fortad_fortsym_equivalence
             gn_control_6_y, gn_control_7_x, gn_control_7_y, gn_control_8_x, &
             gn_control_8_y, gn_control_9_x, gn_control_9_y, gn_control_10_x, &
             gn_control_10_y, gn_x_end, gn_y_end)
-        call same("fci_hendecic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_6_x", gr_control_6_x, gn_control_6_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_6_y", gr_control_6_y, gn_control_6_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_7_x", gr_control_7_x, gn_control_7_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_7_y", gr_control_7_y, gn_control_7_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_8_x", gr_control_8_x, gn_control_8_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_8_y", gr_control_8_y, gn_control_8_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_9_x", gr_control_9_x, gn_control_9_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_9_y", gr_control_9_y, gn_control_9_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_10_x", gr_control_10_x, gn_control_10_x, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp control_10_y", gr_control_10_y, gn_control_10_y, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, CANCELLING_TOLERANCE, failures)
-        call same("fci_hendecic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_6_x", &
+                  gr_control_6_x, gn_control_6_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_6_y", &
+                  gr_control_6_y, gn_control_6_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_7_x", &
+                  gr_control_7_x, gn_control_7_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_7_y", &
+                  gr_control_7_y, gn_control_7_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_8_x", &
+                  gr_control_8_x, gn_control_8_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_8_y", &
+                  gr_control_8_y, gn_control_8_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_9_x", &
+                  gr_control_9_x, gn_control_9_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_9_y", &
+                  gr_control_9_y, gn_control_9_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_10_x", &
+                  gr_control_10_x, gn_control_10_x, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp control_10_y", &
+                  gr_control_10_y, gn_control_10_y, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, CANCELLING_TOLERANCE, failures)
+        call same("fci_hendecic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, CANCELLING_TOLERANCE, failures)
     end block
     ! fci_nonic_bezier_edge_area
     block
@@ -1402,7 +1513,8 @@ program test_fortad_fortsym_equivalence
             d_control_6_y, v_control_7_x, d_control_7_x, v_control_7_y, &
             d_control_7_y, v_control_8_x, d_control_8_x, v_control_8_y, &
             d_control_8_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_nonic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_nonic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -1423,26 +1535,46 @@ program test_fortad_fortsym_equivalence
             gn_control_3_y, gn_control_4_x, gn_control_4_y, gn_control_5_x, &
             gn_control_5_y, gn_control_6_x, gn_control_6_y, gn_control_7_x, &
             gn_control_7_y, gn_control_8_x, gn_control_8_y, gn_x_end, gn_y_end)
-        call same("fci_nonic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_6_x", gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_6_y", gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_7_x", gr_control_7_x, gn_control_7_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_7_y", gr_control_7_y, gn_control_7_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_8_x", gr_control_8_x, gn_control_8_x, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp control_8_y", gr_control_8_y, gn_control_8_y, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_nonic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_6_x", &
+                  gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_6_y", &
+                  gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_7_x", &
+                  gr_control_7_x, gn_control_7_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_7_y", &
+                  gr_control_7_y, gn_control_7_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_8_x", &
+                  gr_control_8_x, gn_control_8_x, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp control_8_y", &
+                  gr_control_8_y, gn_control_8_y, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_nonic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_octic_bezier_edge_area
     block
@@ -1578,7 +1710,8 @@ program test_fortad_fortsym_equivalence
             d_control_5_y, v_control_6_x, d_control_6_x, v_control_6_y, &
             d_control_6_y, v_control_7_x, d_control_7_x, v_control_7_y, &
             d_control_7_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_octic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_octic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -1599,24 +1732,42 @@ program test_fortad_fortsym_equivalence
             gn_control_4_x, gn_control_4_y, gn_control_5_x, gn_control_5_y, &
             gn_control_6_x, gn_control_6_y, gn_control_7_x, gn_control_7_y, &
             gn_x_end, gn_y_end)
-        call same("fci_octic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_6_x", gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_6_y", gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_7_x", gr_control_7_x, gn_control_7_x, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp control_7_y", gr_control_7_y, gn_control_7_y, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_octic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_6_x", &
+                  gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_6_y", &
+                  gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_7_x", &
+                  gr_control_7_x, gn_control_7_x, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp control_7_y", &
+                  gr_control_7_y, gn_control_7_y, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_octic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_cubic_lagrange_weights
     block
@@ -1680,10 +1831,14 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_cubic_lagrange_weights_jvp_fortad(v_target, d_target, &
             v_node_1, d_node_1, v_node_2, d_node_2, v_node_3, d_node_3, v_node_4, &
             d_node_4, tn_weight_1, tn_weight_2, tn_weight_3, tn_weight_4)
-        call same("fci_cubic_lagrange_weights jvp weight_1", tr_weight_1, tn_weight_1, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights jvp weight_2", tr_weight_2, tn_weight_2, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights jvp weight_3", tr_weight_3, tn_weight_3, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights jvp weight_4", tr_weight_4, tn_weight_4, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights jvp weight_1", &
+                  tr_weight_1, tn_weight_1, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights jvp weight_2", &
+                  tr_weight_2, tn_weight_2, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights jvp weight_3", &
+                  tr_weight_3, tn_weight_3, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights jvp weight_4", &
+                  tr_weight_4, tn_weight_4, TOLERANCE, failures)
         call generated_fci_cubic_lagrange_weights_vjp(v_target, v_node_1, &
             v_node_2, v_node_3, v_node_4, seed_weight_1, seed_weight_2, &
             seed_weight_3, seed_weight_4, gr_target, gr_node_1, gr_node_2, &
@@ -1691,11 +1846,16 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_cubic_lagrange_weights_vjp_fortad(v_target, v_node_1, &
             v_node_2, v_node_3, v_node_4, v_weight_2, v_weight_3, v_weight_4, &
             seed_weight_1, gn_target, gn_node_1, gn_node_2, gn_node_3, gn_node_4)
-        call same("fci_cubic_lagrange_weights vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights vjp node_1", gr_node_1, gn_node_1, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights vjp node_2", gr_node_2, gn_node_2, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights vjp node_3", gr_node_3, gn_node_3, TOLERANCE, failures)
-        call same("fci_cubic_lagrange_weights vjp node_4", gr_node_4, gn_node_4, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights vjp node_1", &
+                  gr_node_1, gn_node_1, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights vjp node_2", &
+                  gr_node_2, gn_node_2, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights vjp node_3", &
+                  gr_node_3, gn_node_3, TOLERANCE, failures)
+        call same("fci_cubic_lagrange_weights vjp node_4", &
+                  gr_node_4, gn_node_4, TOLERANCE, failures)
     end block
     ! fci_parallel_diffusion
     block
@@ -1771,8 +1931,10 @@ program test_fortad_fortsym_equivalence
             d_line_length, v_parallel_coefficient, d_parallel_coefficient, &
             v_canonical_volume, d_canonical_volume, v_staggered_volume, &
             d_staggered_volume, tn_lower_contribution, tn_upper_contribution)
-        call same("fci_parallel_diffusion jvp lower_contribution", tr_lower_contribution, tn_lower_contribution, TOLERANCE, failures)
-        call same("fci_parallel_diffusion jvp upper_contribution", tr_upper_contribution, tn_upper_contribution, TOLERANCE, failures)
+        call same("fci_parallel_diffusion jvp lower_contribution", &
+                  tr_lower_contribution, tn_lower_contribution, TOLERANCE, failures)
+        call same("fci_parallel_diffusion jvp upper_contribution", &
+                  tr_upper_contribution, tn_upper_contribution, TOLERANCE, failures)
         call generated_fci_parallel_diffusion_vjp(v_forward_value, v_upper_field, &
             v_backward_value, v_lower_field, v_line_length, &
             v_parallel_coefficient, v_canonical_volume, v_staggered_volume, &
@@ -1785,14 +1947,22 @@ program test_fortad_fortsym_equivalence
             v_upper_contribution, seed_lower_contribution, gn_forward_value, &
             gn_upper_field, gn_backward_value, gn_lower_field, gn_line_length, &
             gn_parallel_coefficient, gn_canonical_volume, gn_staggered_volume)
-        call same("fci_parallel_diffusion vjp forward_value", gr_forward_value, gn_forward_value, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp upper_field", gr_upper_field, gn_upper_field, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp backward_value", gr_backward_value, gn_backward_value, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp lower_field", gr_lower_field, gn_lower_field, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp line_length", gr_line_length, gn_line_length, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp parallel_coefficient", gr_parallel_coefficient, gn_parallel_coefficient, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp canonical_volume", gr_canonical_volume, gn_canonical_volume, TOLERANCE, failures)
-        call same("fci_parallel_diffusion vjp staggered_volume", gr_staggered_volume, gn_staggered_volume, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp forward_value", &
+                  gr_forward_value, gn_forward_value, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp upper_field", &
+                  gr_upper_field, gn_upper_field, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp backward_value", &
+                  gr_backward_value, gn_backward_value, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp lower_field", &
+                  gr_lower_field, gn_lower_field, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp line_length", &
+                  gr_line_length, gn_line_length, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp parallel_coefficient", &
+                  gr_parallel_coefficient, gn_parallel_coefficient, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp canonical_volume", &
+                  gr_canonical_volume, gn_canonical_volume, TOLERANCE, failures)
+        call same("fci_parallel_diffusion vjp staggered_volume", &
+                  gr_staggered_volume, gn_staggered_volume, TOLERANCE, failures)
     end block
     ! fci_parallel_gradient
     block
@@ -1840,7 +2010,8 @@ program test_fortad_fortsym_equivalence
             d_forward_value, v_upper_field, d_upper_field, v_backward_value, &
             d_backward_value, v_lower_field, d_lower_field, v_line_length, &
             d_line_length, tn_gradient)
-        call same("fci_parallel_gradient jvp gradient", tr_gradient, tn_gradient, TOLERANCE, failures)
+        call same("fci_parallel_gradient jvp gradient", &
+                  tr_gradient, tn_gradient, TOLERANCE, failures)
         call generated_fci_parallel_gradient_vjp(v_forward_value, v_upper_field, &
             v_backward_value, v_lower_field, v_line_length, seed_gradient, &
             gr_forward_value, gr_upper_field, gr_backward_value, gr_lower_field, &
@@ -1849,11 +2020,16 @@ program test_fortad_fortsym_equivalence
             v_upper_field, v_backward_value, v_lower_field, v_line_length, &
             seed_gradient, gn_forward_value, gn_upper_field, gn_backward_value, &
             gn_lower_field, gn_line_length)
-        call same("fci_parallel_gradient vjp forward_value", gr_forward_value, gn_forward_value, TOLERANCE, failures)
-        call same("fci_parallel_gradient vjp upper_field", gr_upper_field, gn_upper_field, TOLERANCE, failures)
-        call same("fci_parallel_gradient vjp backward_value", gr_backward_value, gn_backward_value, TOLERANCE, failures)
-        call same("fci_parallel_gradient vjp lower_field", gr_lower_field, gn_lower_field, TOLERANCE, failures)
-        call same("fci_parallel_gradient vjp line_length", gr_line_length, gn_line_length, TOLERANCE, failures)
+        call same("fci_parallel_gradient vjp forward_value", &
+                  gr_forward_value, gn_forward_value, TOLERANCE, failures)
+        call same("fci_parallel_gradient vjp upper_field", &
+                  gr_upper_field, gn_upper_field, TOLERANCE, failures)
+        call same("fci_parallel_gradient vjp backward_value", &
+                  gr_backward_value, gn_backward_value, TOLERANCE, failures)
+        call same("fci_parallel_gradient vjp lower_field", &
+                  gr_lower_field, gn_lower_field, TOLERANCE, failures)
+        call same("fci_parallel_gradient vjp line_length", &
+                  gr_line_length, gn_line_length, TOLERANCE, failures)
     end block
     ! fci_quadratic_lagrange_weights
     block
@@ -1905,19 +2081,26 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_quadratic_lagrange_weights_jvp_fortad(v_target, &
             d_target, v_node_1, d_node_1, v_node_2, d_node_2, v_node_3, d_node_3, &
             tn_weight_1, tn_weight_2, tn_weight_3)
-        call same("fci_quadratic_lagrange_weights jvp weight_1", tr_weight_1, tn_weight_1, TOLERANCE, failures)
-        call same("fci_quadratic_lagrange_weights jvp weight_2", tr_weight_2, tn_weight_2, TOLERANCE, failures)
-        call same("fci_quadratic_lagrange_weights jvp weight_3", tr_weight_3, tn_weight_3, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights jvp weight_1", &
+                  tr_weight_1, tn_weight_1, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights jvp weight_2", &
+                  tr_weight_2, tn_weight_2, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights jvp weight_3", &
+                  tr_weight_3, tn_weight_3, TOLERANCE, failures)
         call generated_fci_quadratic_lagrange_weights_vjp(v_target, v_node_1, &
             v_node_2, v_node_3, seed_weight_1, seed_weight_2, seed_weight_3, &
             gr_target, gr_node_1, gr_node_2, gr_node_3)
         call fortfem_fci_quadratic_lagrange_weights_vjp_fortad(v_target, &
             v_node_1, v_node_2, v_node_3, v_weight_2, v_weight_3, seed_weight_1, &
             gn_target, gn_node_1, gn_node_2, gn_node_3)
-        call same("fci_quadratic_lagrange_weights vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("fci_quadratic_lagrange_weights vjp node_1", gr_node_1, gn_node_1, TOLERANCE, failures)
-        call same("fci_quadratic_lagrange_weights vjp node_2", gr_node_2, gn_node_2, TOLERANCE, failures)
-        call same("fci_quadratic_lagrange_weights vjp node_3", gr_node_3, gn_node_3, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights vjp node_1", &
+                  gr_node_1, gn_node_1, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights vjp node_2", &
+                  gr_node_2, gn_node_2, TOLERANCE, failures)
+        call same("fci_quadratic_lagrange_weights vjp node_3", &
+                  gr_node_3, gn_node_3, TOLERANCE, failures)
     end block
     ! fci_polygon_edge_area
     block
@@ -1955,16 +2138,21 @@ program test_fortad_fortsym_equivalence
             v_y_end, d_x_start, d_y_start, d_x_end, d_y_end, tr_edge_area)
         call fortfem_fci_polygon_edge_area_jvp_fortad(v_x_start, d_x_start, &
             v_y_start, d_y_start, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_polygon_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_polygon_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_polygon_edge_area_vjp(v_x_start, v_y_start, v_x_end, &
             v_y_end, seed_edge_area, gr_x_start, gr_y_start, gr_x_end, gr_y_end)
         call fortfem_fci_polygon_edge_area_vjp_fortad(v_x_start, v_y_start, &
             v_x_end, v_y_end, seed_edge_area, gn_x_start, gn_y_start, gn_x_end, &
             gn_y_end)
-        call same("fci_polygon_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_polygon_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_polygon_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_polygon_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_polygon_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_polygon_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_polygon_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_polygon_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_parallel_flux_power
     block
@@ -2004,17 +2192,22 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_parallel_flux_power_jvp_fortad(v_gradient, d_gradient, &
             v_coefficient, d_coefficient, v_staggered_volume, d_staggered_volume, &
             tn_parallel_flux, tn_parallel_power)
-        call same("fci_parallel_flux_power jvp parallel_flux", tr_parallel_flux, tn_parallel_flux, TOLERANCE, failures)
-        call same("fci_parallel_flux_power jvp parallel_power", tr_parallel_power, tn_parallel_power, TOLERANCE, failures)
+        call same("fci_parallel_flux_power jvp parallel_flux", &
+                  tr_parallel_flux, tn_parallel_flux, TOLERANCE, failures)
+        call same("fci_parallel_flux_power jvp parallel_power", &
+                  tr_parallel_power, tn_parallel_power, TOLERANCE, failures)
         call generated_fci_parallel_flux_power_vjp(v_gradient, v_coefficient, &
             v_staggered_volume, seed_parallel_flux, seed_parallel_power, &
             gr_gradient, gr_coefficient, gr_staggered_volume)
         call fortfem_fci_parallel_flux_power_vjp_fortad(v_gradient, &
             v_coefficient, v_staggered_volume, v_parallel_power, &
             seed_parallel_flux, gn_gradient, gn_coefficient, gn_staggered_volume)
-        call same("fci_parallel_flux_power vjp gradient", gr_gradient, gn_gradient, TOLERANCE, failures)
-        call same("fci_parallel_flux_power vjp coefficient", gr_coefficient, gn_coefficient, TOLERANCE, failures)
-        call same("fci_parallel_flux_power vjp staggered_volume", gr_staggered_volume, gn_staggered_volume, TOLERANCE, failures)
+        call same("fci_parallel_flux_power vjp gradient", &
+                  gr_gradient, gn_gradient, TOLERANCE, failures)
+        call same("fci_parallel_flux_power vjp coefficient", &
+                  gr_coefficient, gn_coefficient, TOLERANCE, failures)
+        call same("fci_parallel_flux_power vjp staggered_volume", &
+                  gr_staggered_volume, gn_staggered_volume, TOLERANCE, failures)
     end block
     ! fci_perpendicular_power
     block
@@ -2048,16 +2241,20 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_perpendicular_power_jvp_fortad(v_field, d_field, &
             v_action, d_action, v_canonical_volume, d_canonical_volume, &
             tn_perpendicular_power)
-        call same("fci_perpendicular_power jvp perpendicular_power", tr_perpendicular_power, tn_perpendicular_power, TOLERANCE, failures)
+        call same("fci_perpendicular_power jvp perpendicular_power", &
+                  tr_perpendicular_power, tn_perpendicular_power, TOLERANCE, failures)
         call generated_fci_perpendicular_power_vjp(v_field, v_action, &
             v_canonical_volume, seed_perpendicular_power, gr_field, gr_action, &
             gr_canonical_volume)
         call fortfem_fci_perpendicular_power_vjp_fortad(v_field, v_action, &
             v_canonical_volume, seed_perpendicular_power, gn_field, gn_action, &
             gn_canonical_volume)
-        call same("fci_perpendicular_power vjp field", gr_field, gn_field, TOLERANCE, failures)
-        call same("fci_perpendicular_power vjp action", gr_action, gn_action, TOLERANCE, failures)
-        call same("fci_perpendicular_power vjp canonical_volume", gr_canonical_volume, gn_canonical_volume, TOLERANCE, failures)
+        call same("fci_perpendicular_power vjp field", &
+                  gr_field, gn_field, TOLERANCE, failures)
+        call same("fci_perpendicular_power vjp action", &
+                  gr_action, gn_action, TOLERANCE, failures)
+        call same("fci_perpendicular_power vjp canonical_volume", &
+                  gr_canonical_volume, gn_canonical_volume, TOLERANCE, failures)
     end block
     ! fci_quadratic_bezier_edge_area
     block
@@ -2110,7 +2307,8 @@ program test_fortad_fortsym_equivalence
             d_x_start, v_y_start, d_y_start, v_control_x, d_control_x, &
             v_control_y, d_control_y, v_x_end, d_x_end, v_y_end, d_y_end, &
             tn_edge_area)
-        call same("fci_quadratic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_quadratic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_x, v_control_y, v_x_end, v_y_end, seed_edge_area, &
             gr_x_start, gr_y_start, gr_control_x, gr_control_y, gr_x_end, gr_y_end)
@@ -2118,12 +2316,18 @@ program test_fortad_fortsym_equivalence
             v_y_start, v_control_x, v_control_y, v_x_end, v_y_end, &
             seed_edge_area, gn_x_start, gn_y_start, gn_control_x, gn_control_y, &
             gn_x_end, gn_y_end)
-        call same("fci_quadratic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_quadratic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_quadratic_bezier_edge_area vjp control_x", gr_control_x, gn_control_x, TOLERANCE, failures)
-        call same("fci_quadratic_bezier_edge_area vjp control_y", gr_control_y, gn_control_y, TOLERANCE, failures)
-        call same("fci_quadratic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_quadratic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp control_x", &
+                  gr_control_x, gn_control_x, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp control_y", &
+                  gr_control_y, gn_control_y, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_quadratic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_quadrilateral_cell_area
     block
@@ -2187,21 +2391,30 @@ program test_fortad_fortsym_equivalence
         call fortfem_fci_quadrilateral_cell_area_jvp_fortad(v_x_1, d_x_1, v_y_1, &
             d_y_1, v_x_2, d_x_2, v_y_2, d_y_2, v_x_3, d_x_3, v_y_3, d_y_3, v_x_4, &
             d_x_4, v_y_4, d_y_4, tn_area)
-        call same("fci_quadrilateral_cell_area jvp area", tr_area, tn_area, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area jvp area", &
+                  tr_area, tn_area, TOLERANCE, failures)
         call generated_fci_quadrilateral_cell_area_vjp(v_x_1, v_y_1, v_x_2, &
             v_y_2, v_x_3, v_y_3, v_x_4, v_y_4, seed_area, gr_x_1, gr_y_1, gr_x_2, &
             gr_y_2, gr_x_3, gr_y_3, gr_x_4, gr_y_4)
         call fortfem_fci_quadrilateral_cell_area_vjp_fortad(v_x_1, v_y_1, v_x_2, &
             v_y_2, v_x_3, v_y_3, v_x_4, v_y_4, seed_area, gn_x_1, gn_y_1, gn_x_2, &
             gn_y_2, gn_x_3, gn_y_3, gn_x_4, gn_y_4)
-        call same("fci_quadrilateral_cell_area vjp x_1", gr_x_1, gn_x_1, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp y_1", gr_y_1, gn_y_1, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp x_2", gr_x_2, gn_x_2, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp y_2", gr_y_2, gn_y_2, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp x_3", gr_x_3, gn_x_3, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp y_3", gr_y_3, gn_y_3, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp x_4", gr_x_4, gn_x_4, TOLERANCE, failures)
-        call same("fci_quadrilateral_cell_area vjp y_4", gr_y_4, gn_y_4, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp x_1", &
+                  gr_x_1, gn_x_1, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp y_1", &
+                  gr_y_1, gn_y_1, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp x_2", &
+                  gr_x_2, gn_x_2, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp y_2", &
+                  gr_y_2, gn_y_2, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp x_3", &
+                  gr_x_3, gn_x_3, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp y_3", &
+                  gr_y_3, gn_y_3, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp x_4", &
+                  gr_x_4, gn_x_4, TOLERANCE, failures)
+        call same("fci_quadrilateral_cell_area vjp y_4", &
+                  gr_y_4, gn_y_4, TOLERANCE, failures)
     end block
     ! fci_quartic_bezier_edge_area
     block
@@ -2282,7 +2495,8 @@ program test_fortad_fortsym_equivalence
             v_control_2_y, d_control_2_y, v_control_3_x, d_control_3_x, &
             v_control_3_y, d_control_3_y, v_x_end, d_x_end, v_y_end, d_y_end, &
             tn_edge_area)
-        call same("fci_quartic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_quartic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_x_end, v_y_end, seed_edge_area, &
@@ -2295,16 +2509,26 @@ program test_fortad_fortsym_equivalence
             seed_edge_area, gn_x_start, gn_y_start, gn_control_1_x, &
             gn_control_1_y, gn_control_2_x, gn_control_2_y, gn_control_3_x, &
             gn_control_3_y, gn_x_end, gn_y_end)
-        call same("fci_quartic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_quartic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_quartic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_quartic_lagrange_weights
     block
@@ -2382,11 +2606,16 @@ program test_fortad_fortsym_equivalence
             v_node_1, d_node_1, v_node_2, d_node_2, v_node_3, d_node_3, v_node_4, &
             d_node_4, v_node_5, d_node_5, tn_weight_1, tn_weight_2, tn_weight_3, &
             tn_weight_4, tn_weight_5)
-        call same("fci_quartic_lagrange_weights jvp weight_1", tr_weight_1, tn_weight_1, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights jvp weight_2", tr_weight_2, tn_weight_2, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights jvp weight_3", tr_weight_3, tn_weight_3, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights jvp weight_4", tr_weight_4, tn_weight_4, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights jvp weight_5", tr_weight_5, tn_weight_5, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights jvp weight_1", &
+                  tr_weight_1, tn_weight_1, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights jvp weight_2", &
+                  tr_weight_2, tn_weight_2, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights jvp weight_3", &
+                  tr_weight_3, tn_weight_3, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights jvp weight_4", &
+                  tr_weight_4, tn_weight_4, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights jvp weight_5", &
+                  tr_weight_5, tn_weight_5, TOLERANCE, failures)
         call generated_fci_quartic_lagrange_weights_vjp(v_target, v_node_1, &
             v_node_2, v_node_3, v_node_4, v_node_5, seed_weight_1, seed_weight_2, &
             seed_weight_3, seed_weight_4, seed_weight_5, gr_target, gr_node_1, &
@@ -2395,12 +2624,18 @@ program test_fortad_fortsym_equivalence
             v_node_2, v_node_3, v_node_4, v_node_5, v_weight_2, v_weight_3, &
             v_weight_4, v_weight_5, seed_weight_1, gn_target, gn_node_1, &
             gn_node_2, gn_node_3, gn_node_4, gn_node_5)
-        call same("fci_quartic_lagrange_weights vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights vjp node_1", gr_node_1, gn_node_1, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights vjp node_2", gr_node_2, gn_node_2, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights vjp node_3", gr_node_3, gn_node_3, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights vjp node_4", gr_node_4, gn_node_4, TOLERANCE, failures)
-        call same("fci_quartic_lagrange_weights vjp node_5", gr_node_5, gn_node_5, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp node_1", &
+                  gr_node_1, gn_node_1, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp node_2", &
+                  gr_node_2, gn_node_2, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp node_3", &
+                  gr_node_3, gn_node_3, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp node_4", &
+                  gr_node_4, gn_node_4, TOLERANCE, failures)
+        call same("fci_quartic_lagrange_weights vjp node_5", &
+                  gr_node_5, gn_node_5, TOLERANCE, failures)
     end block
     ! fci_quintic_bezier_edge_area
     block
@@ -2495,7 +2730,8 @@ program test_fortad_fortsym_equivalence
             v_control_3_y, d_control_3_y, v_control_4_x, d_control_4_x, &
             v_control_4_y, d_control_4_y, v_x_end, d_x_end, v_y_end, d_y_end, &
             tn_edge_area)
-        call same("fci_quintic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_quintic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, v_x_end, &
@@ -2509,18 +2745,30 @@ program test_fortad_fortsym_equivalence
             gn_y_start, gn_control_1_x, gn_control_1_y, gn_control_2_x, &
             gn_control_2_y, gn_control_3_x, gn_control_3_y, gn_control_4_x, &
             gn_control_4_y, gn_x_end, gn_y_end)
-        call same("fci_quintic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_quintic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_quintic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_quintic_lagrange_weights
     block
@@ -2610,12 +2858,18 @@ program test_fortad_fortsym_equivalence
             v_node_1, d_node_1, v_node_2, d_node_2, v_node_3, d_node_3, v_node_4, &
             d_node_4, v_node_5, d_node_5, v_node_6, d_node_6, tn_weight_1, &
             tn_weight_2, tn_weight_3, tn_weight_4, tn_weight_5, tn_weight_6)
-        call same("fci_quintic_lagrange_weights jvp weight_1", tr_weight_1, tn_weight_1, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights jvp weight_2", tr_weight_2, tn_weight_2, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights jvp weight_3", tr_weight_3, tn_weight_3, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights jvp weight_4", tr_weight_4, tn_weight_4, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights jvp weight_5", tr_weight_5, tn_weight_5, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights jvp weight_6", tr_weight_6, tn_weight_6, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_1", &
+                  tr_weight_1, tn_weight_1, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_2", &
+                  tr_weight_2, tn_weight_2, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_3", &
+                  tr_weight_3, tn_weight_3, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_4", &
+                  tr_weight_4, tn_weight_4, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_5", &
+                  tr_weight_5, tn_weight_5, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights jvp weight_6", &
+                  tr_weight_6, tn_weight_6, TOLERANCE, failures)
         call generated_fci_quintic_lagrange_weights_vjp(v_target, v_node_1, &
             v_node_2, v_node_3, v_node_4, v_node_5, v_node_6, seed_weight_1, &
             seed_weight_2, seed_weight_3, seed_weight_4, seed_weight_5, &
@@ -2626,13 +2880,20 @@ program test_fortad_fortsym_equivalence
             v_weight_3, v_weight_4, v_weight_5, v_weight_6, seed_weight_1, &
             gn_target, gn_node_1, gn_node_2, gn_node_3, gn_node_4, gn_node_5, &
             gn_node_6)
-        call same("fci_quintic_lagrange_weights vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_1", gr_node_1, gn_node_1, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_2", gr_node_2, gn_node_2, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_3", gr_node_3, gn_node_3, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_4", gr_node_4, gn_node_4, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_5", gr_node_5, gn_node_5, TOLERANCE, failures)
-        call same("fci_quintic_lagrange_weights vjp node_6", gr_node_6, gn_node_6, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_1", &
+                  gr_node_1, gn_node_1, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_2", &
+                  gr_node_2, gn_node_2, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_3", &
+                  gr_node_3, gn_node_3, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_4", &
+                  gr_node_4, gn_node_4, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_5", &
+                  gr_node_5, gn_node_5, TOLERANCE, failures)
+        call same("fci_quintic_lagrange_weights vjp node_6", &
+                  gr_node_6, gn_node_6, TOLERANCE, failures)
     end block
     ! fci_septic_bezier_edge_area
     block
@@ -2754,7 +3015,8 @@ program test_fortad_fortsym_equivalence
             d_control_4_y, v_control_5_x, d_control_5_x, v_control_5_y, &
             d_control_5_y, v_control_6_x, d_control_6_x, v_control_6_y, &
             d_control_6_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_septic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_septic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -2771,22 +3033,38 @@ program test_fortad_fortsym_equivalence
             gn_control_1_y, gn_control_2_x, gn_control_2_y, gn_control_3_x, &
             gn_control_3_y, gn_control_4_x, gn_control_4_y, gn_control_5_x, &
             gn_control_5_y, gn_control_6_x, gn_control_6_y, gn_x_end, gn_y_end)
-        call same("fci_septic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_6_x", gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp control_6_y", gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_septic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_6_x", &
+                  gr_control_6_x, gn_control_6_x, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp control_6_y", &
+                  gr_control_6_y, gn_control_6_y, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_septic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_sextic_bezier_edge_area
     block
@@ -2894,7 +3172,8 @@ program test_fortad_fortsym_equivalence
             d_control_3_y, v_control_4_x, d_control_4_x, v_control_4_y, &
             d_control_4_y, v_control_5_x, d_control_5_x, v_control_5_y, &
             d_control_5_y, v_x_end, d_x_end, v_y_end, d_y_end, tn_edge_area)
-        call same("fci_sextic_bezier_edge_area jvp edge_area", tr_edge_area, tn_edge_area, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area jvp edge_area", &
+                  tr_edge_area, tn_edge_area, TOLERANCE, failures)
         call generated_fci_sextic_bezier_edge_area_vjp(v_x_start, v_y_start, &
             v_control_1_x, v_control_1_y, v_control_2_x, v_control_2_y, &
             v_control_3_x, v_control_3_y, v_control_4_x, v_control_4_y, &
@@ -2911,20 +3190,34 @@ program test_fortad_fortsym_equivalence
             gn_control_2_x, gn_control_2_y, gn_control_3_x, gn_control_3_y, &
             gn_control_4_x, gn_control_4_y, gn_control_5_x, gn_control_5_y, &
             gn_x_end, gn_y_end)
-        call same("fci_sextic_bezier_edge_area vjp x_start", gr_x_start, gn_x_start, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp y_start", gr_y_start, gn_y_start, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_1_x", gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_1_y", gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_2_x", gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_2_y", gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_3_x", gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_3_y", gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_4_x", gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_4_y", gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_5_x", gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp control_5_y", gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp x_end", gr_x_end, gn_x_end, TOLERANCE, failures)
-        call same("fci_sextic_bezier_edge_area vjp y_end", gr_y_end, gn_y_end, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp x_start", &
+                  gr_x_start, gn_x_start, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp y_start", &
+                  gr_y_start, gn_y_start, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_1_x", &
+                  gr_control_1_x, gn_control_1_x, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_1_y", &
+                  gr_control_1_y, gn_control_1_y, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_2_x", &
+                  gr_control_2_x, gn_control_2_x, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_2_y", &
+                  gr_control_2_y, gn_control_2_y, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_3_x", &
+                  gr_control_3_x, gn_control_3_x, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_3_y", &
+                  gr_control_3_y, gn_control_3_y, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_4_x", &
+                  gr_control_4_x, gn_control_4_x, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_4_y", &
+                  gr_control_4_y, gn_control_4_y, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_5_x", &
+                  gr_control_5_x, gn_control_5_x, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp control_5_y", &
+                  gr_control_5_y, gn_control_5_y, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp x_end", &
+                  gr_x_end, gn_x_end, TOLERANCE, failures)
+        call same("fci_sextic_bezier_edge_area vjp y_end", &
+                  gr_y_end, gn_y_end, TOLERANCE, failures)
     end block
     ! fci_sextic_lagrange_weights
     block
@@ -3028,13 +3321,20 @@ program test_fortad_fortsym_equivalence
             d_node_4, v_node_5, d_node_5, v_node_6, d_node_6, v_node_7, d_node_7, &
             tn_weight_1, tn_weight_2, tn_weight_3, tn_weight_4, tn_weight_5, &
             tn_weight_6, tn_weight_7)
-        call same("fci_sextic_lagrange_weights jvp weight_1", tr_weight_1, tn_weight_1, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_2", tr_weight_2, tn_weight_2, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_3", tr_weight_3, tn_weight_3, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_4", tr_weight_4, tn_weight_4, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_5", tr_weight_5, tn_weight_5, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_6", tr_weight_6, tn_weight_6, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights jvp weight_7", tr_weight_7, tn_weight_7, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_1", &
+                  tr_weight_1, tn_weight_1, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_2", &
+                  tr_weight_2, tn_weight_2, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_3", &
+                  tr_weight_3, tn_weight_3, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_4", &
+                  tr_weight_4, tn_weight_4, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_5", &
+                  tr_weight_5, tn_weight_5, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_6", &
+                  tr_weight_6, tn_weight_6, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights jvp weight_7", &
+                  tr_weight_7, tn_weight_7, TOLERANCE, failures)
         call generated_fci_sextic_lagrange_weights_vjp(v_target, v_node_1, &
             v_node_2, v_node_3, v_node_4, v_node_5, v_node_6, v_node_7, &
             seed_weight_1, seed_weight_2, seed_weight_3, seed_weight_4, &
@@ -3045,14 +3345,22 @@ program test_fortad_fortsym_equivalence
             v_weight_2, v_weight_3, v_weight_4, v_weight_5, v_weight_6, &
             v_weight_7, seed_weight_1, gn_target, gn_node_1, gn_node_2, &
             gn_node_3, gn_node_4, gn_node_5, gn_node_6, gn_node_7)
-        call same("fci_sextic_lagrange_weights vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_1", gr_node_1, gn_node_1, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_2", gr_node_2, gn_node_2, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_3", gr_node_3, gn_node_3, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_4", gr_node_4, gn_node_4, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_5", gr_node_5, gn_node_5, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_6", gr_node_6, gn_node_6, TOLERANCE, failures)
-        call same("fci_sextic_lagrange_weights vjp node_7", gr_node_7, gn_node_7, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_1", &
+                  gr_node_1, gn_node_1, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_2", &
+                  gr_node_2, gn_node_2, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_3", &
+                  gr_node_3, gn_node_3, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_4", &
+                  gr_node_4, gn_node_4, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_5", &
+                  gr_node_5, gn_node_5, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_6", &
+                  gr_node_6, gn_node_6, TOLERANCE, failures)
+        call same("fci_sextic_lagrange_weights vjp node_7", &
+                  gr_node_7, gn_node_7, TOLERANCE, failures)
     end block
     ! fci_staggered_flux_box_volume
     block
@@ -3096,7 +3404,8 @@ program test_fortad_fortsym_equivalence
             v_backward_flux_expansion, d_backward_flux_expansion, &
             v_base_cell_area, d_base_cell_area, v_toroidal_field, &
             d_toroidal_field, tn_staggered_volume)
-        call same("fci_staggered_flux_box_volume jvp staggered_volume", tr_staggered_volume, tn_staggered_volume, TOLERANCE, failures)
+        call same("fci_staggered_flux_box_volume jvp staggered_volume", &
+                  tr_staggered_volume, tn_staggered_volume, TOLERANCE, failures)
         call generated_fci_staggered_flux_box_volume_vjp(&
             v_forward_flux_expansion, v_backward_flux_expansion, &
             v_base_cell_area, v_toroidal_field, seed_staggered_volume, &
@@ -3107,10 +3416,14 @@ program test_fortad_fortsym_equivalence
             v_base_cell_area, v_toroidal_field, seed_staggered_volume, &
             gn_forward_flux_expansion, gn_backward_flux_expansion, &
             gn_base_cell_area, gn_toroidal_field)
-        call same("fci_staggered_flux_box_volume vjp forward_flux_expansion", gr_forward_flux_expansion, gn_forward_flux_expansion, TOLERANCE, failures)
-        call same("fci_staggered_flux_box_volume vjp backward_flux_expansion", gr_backward_flux_expansion, gn_backward_flux_expansion, TOLERANCE, failures)
-        call same("fci_staggered_flux_box_volume vjp base_cell_area", gr_base_cell_area, gn_base_cell_area, TOLERANCE, failures)
-        call same("fci_staggered_flux_box_volume vjp toroidal_field", gr_toroidal_field, gn_toroidal_field, TOLERANCE, failures)
+        call same("fci_staggered_flux_box_volume vjp forward_flux_expansion", &
+                  gr_forward_flux_expansion, gn_forward_flux_expansion, TOLERANCE, failures)
+        call same("fci_staggered_flux_box_volume vjp backward_flux_expansion", &
+                  gr_backward_flux_expansion, gn_backward_flux_expansion, TOLERANCE, failures)
+        call same("fci_staggered_flux_box_volume vjp base_cell_area", &
+                  gr_base_cell_area, gn_base_cell_area, TOLERANCE, failures)
+        call same("fci_staggered_flux_box_volume vjp toroidal_field", &
+                  gr_toroidal_field, gn_toroidal_field, TOLERANCE, failures)
     end block
     ! field_aligned_flux
     block
@@ -3192,9 +3505,12 @@ program test_fortad_fortsym_equivalence
             v_direction_2, d_direction_2, v_direction_3, d_direction_3, &
             v_gradient_1, d_gradient_1, v_gradient_2, d_gradient_2, v_gradient_3, &
             d_gradient_3, tn_flux_1, tn_flux_2, tn_flux_3)
-        call same("field_aligned_flux jvp flux_1", tr_flux_1, tn_flux_1, TOLERANCE, failures)
-        call same("field_aligned_flux jvp flux_2", tr_flux_2, tn_flux_2, TOLERANCE, failures)
-        call same("field_aligned_flux jvp flux_3", tr_flux_3, tn_flux_3, TOLERANCE, failures)
+        call same("field_aligned_flux jvp flux_1", &
+                  tr_flux_1, tn_flux_1, TOLERANCE, failures)
+        call same("field_aligned_flux jvp flux_2", &
+                  tr_flux_2, tn_flux_2, TOLERANCE, failures)
+        call same("field_aligned_flux jvp flux_3", &
+                  tr_flux_3, tn_flux_3, TOLERANCE, failures)
         call generated_field_aligned_flux_vjp(v_parallel_coefficient, &
             v_perpendicular_coefficient, v_direction_1, v_direction_2, &
             v_direction_3, v_gradient_1, v_gradient_2, v_gradient_3, seed_flux_1, &
@@ -3207,14 +3523,22 @@ program test_fortad_fortsym_equivalence
             v_flux_3, seed_flux_1, gn_parallel_coefficient, &
             gn_perpendicular_coefficient, gn_direction_1, gn_direction_2, &
             gn_direction_3, gn_gradient_1, gn_gradient_2, gn_gradient_3)
-        call same("field_aligned_flux vjp parallel_coefficient", gr_parallel_coefficient, gn_parallel_coefficient, TOLERANCE, failures)
-        call same("field_aligned_flux vjp perpendicular_coefficient", gr_perpendicular_coefficient, gn_perpendicular_coefficient, TOLERANCE, failures)
-        call same("field_aligned_flux vjp direction_1", gr_direction_1, gn_direction_1, TOLERANCE, failures)
-        call same("field_aligned_flux vjp direction_2", gr_direction_2, gn_direction_2, TOLERANCE, failures)
-        call same("field_aligned_flux vjp direction_3", gr_direction_3, gn_direction_3, TOLERANCE, failures)
-        call same("field_aligned_flux vjp gradient_1", gr_gradient_1, gn_gradient_1, TOLERANCE, failures)
-        call same("field_aligned_flux vjp gradient_2", gr_gradient_2, gn_gradient_2, TOLERANCE, failures)
-        call same("field_aligned_flux vjp gradient_3", gr_gradient_3, gn_gradient_3, TOLERANCE, failures)
+        call same("field_aligned_flux vjp parallel_coefficient", &
+                  gr_parallel_coefficient, gn_parallel_coefficient, TOLERANCE, failures)
+        call same("field_aligned_flux vjp perpendicular_coefficient", &
+                  gr_perpendicular_coefficient, gn_perpendicular_coefficient, TOLERANCE, failures)
+        call same("field_aligned_flux vjp direction_1", &
+                  gr_direction_1, gn_direction_1, TOLERANCE, failures)
+        call same("field_aligned_flux vjp direction_2", &
+                  gr_direction_2, gn_direction_2, TOLERANCE, failures)
+        call same("field_aligned_flux vjp direction_3", &
+                  gr_direction_3, gn_direction_3, TOLERANCE, failures)
+        call same("field_aligned_flux vjp gradient_1", &
+                  gr_gradient_1, gn_gradient_1, TOLERANCE, failures)
+        call same("field_aligned_flux vjp gradient_2", &
+                  gr_gradient_2, gn_gradient_2, TOLERANCE, failures)
+        call same("field_aligned_flux vjp gradient_3", &
+                  gr_gradient_3, gn_gradient_3, TOLERANCE, failures)
     end block
     ! field_aligned_hall
     block
@@ -3268,9 +3592,12 @@ program test_fortad_fortsym_equivalence
             d_hall_coefficient, v_direction_1, d_direction_1, v_direction_2, &
             d_direction_2, v_direction_3, d_direction_3, tn_hall_direction_1, &
             tn_hall_direction_2, tn_hall_direction_3)
-        call same("field_aligned_hall jvp hall_direction_1", tr_hall_direction_1, tn_hall_direction_1, TOLERANCE, failures)
-        call same("field_aligned_hall jvp hall_direction_2", tr_hall_direction_2, tn_hall_direction_2, TOLERANCE, failures)
-        call same("field_aligned_hall jvp hall_direction_3", tr_hall_direction_3, tn_hall_direction_3, TOLERANCE, failures)
+        call same("field_aligned_hall jvp hall_direction_1", &
+                  tr_hall_direction_1, tn_hall_direction_1, TOLERANCE, failures)
+        call same("field_aligned_hall jvp hall_direction_2", &
+                  tr_hall_direction_2, tn_hall_direction_2, TOLERANCE, failures)
+        call same("field_aligned_hall jvp hall_direction_3", &
+                  tr_hall_direction_3, tn_hall_direction_3, TOLERANCE, failures)
         call generated_field_aligned_hall_vjp(v_hall_coefficient, v_direction_1, &
             v_direction_2, v_direction_3, seed_hall_direction_1, &
             seed_hall_direction_2, seed_hall_direction_3, gr_hall_coefficient, &
@@ -3279,10 +3606,14 @@ program test_fortad_fortsym_equivalence
             v_direction_1, v_direction_2, v_direction_3, v_hall_direction_2, &
             v_hall_direction_3, seed_hall_direction_1, gn_hall_coefficient, &
             gn_direction_1, gn_direction_2, gn_direction_3)
-        call same("field_aligned_hall vjp hall_coefficient", gr_hall_coefficient, gn_hall_coefficient, TOLERANCE, failures)
-        call same("field_aligned_hall vjp direction_1", gr_direction_1, gn_direction_1, TOLERANCE, failures)
-        call same("field_aligned_hall vjp direction_2", gr_direction_2, gn_direction_2, TOLERANCE, failures)
-        call same("field_aligned_hall vjp direction_3", gr_direction_3, gn_direction_3, TOLERANCE, failures)
+        call same("field_aligned_hall vjp hall_coefficient", &
+                  gr_hall_coefficient, gn_hall_coefficient, TOLERANCE, failures)
+        call same("field_aligned_hall vjp direction_1", &
+                  gr_direction_1, gn_direction_1, TOLERANCE, failures)
+        call same("field_aligned_hall vjp direction_2", &
+                  gr_direction_2, gn_direction_2, TOLERANCE, failures)
+        call same("field_aligned_hall vjp direction_3", &
+                  gr_direction_3, gn_direction_3, TOLERANCE, failures)
     end block
     ! force_balance_product
     block
@@ -3315,16 +3646,20 @@ program test_fortad_fortsym_equivalence
         call fortfem_force_balance_product_jvp_fortad(v_weight, d_weight, &
             v_test_value, d_test_value, v_force_value, d_force_value, &
             tn_contribution)
-        call same("force_balance_product jvp contribution", tr_contribution, tn_contribution, TOLERANCE, failures)
+        call same("force_balance_product jvp contribution", &
+                  tr_contribution, tn_contribution, TOLERANCE, failures)
         call generated_force_balance_product_vjp(v_weight, v_test_value, &
             v_force_value, seed_contribution, gr_weight, gr_test_value, &
             gr_force_value)
         call fortfem_force_balance_product_vjp_fortad(v_weight, v_test_value, &
             v_force_value, seed_contribution, gn_weight, gn_test_value, &
             gn_force_value)
-        call same("force_balance_product vjp weight", gr_weight, gn_weight, TOLERANCE, failures)
-        call same("force_balance_product vjp test_value", gr_test_value, gn_test_value, TOLERANCE, failures)
-        call same("force_balance_product vjp force_value", gr_force_value, gn_force_value, TOLERANCE, failures)
+        call same("force_balance_product vjp weight", &
+                  gr_weight, gn_weight, TOLERANCE, failures)
+        call same("force_balance_product vjp test_value", &
+                  gr_test_value, gn_test_value, TOLERANCE, failures)
+        call same("force_balance_product vjp force_value", &
+                  gr_force_value, gn_force_value, TOLERANCE, failures)
     end block
     ! helmholtz_single_layer_integrand
     block
@@ -3410,8 +3745,10 @@ program test_fortad_fortsym_equivalence
             d_second_point_3, v_first_jacobian, d_first_jacobian, &
             v_second_jacobian, d_second_jacobian, v_wave_number, d_wave_number, &
             v_kernel_scale, tn_value_real, tn_value_imag)
-        call same("helmholtz_single_layer_integrand jvp value_real", tr_value_real, tn_value_real, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand jvp value_imag", tr_value_imag, tn_value_imag, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand jvp value_real", &
+                  tr_value_real, tn_value_real, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand jvp value_imag", &
+                  tr_value_imag, tn_value_imag, TOLERANCE, failures)
         call generated_helmholtz_single_layer_integrand_vjp(v_first_point_1, &
             v_first_point_2, v_first_point_3, v_second_point_1, v_second_point_2, &
             v_second_point_3, v_first_jacobian, v_second_jacobian, v_wave_number, &
@@ -3426,15 +3763,24 @@ program test_fortad_fortsym_equivalence
             gn_first_point_2, gn_first_point_3, gn_second_point_1, &
             gn_second_point_2, gn_second_point_3, gn_first_jacobian, &
             gn_second_jacobian, gn_wave_number)
-        call same("helmholtz_single_layer_integrand vjp first_point_1", gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp first_point_2", gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp first_point_3", gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp second_point_1", gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp second_point_2", gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp second_point_3", gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp first_jacobian", gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp second_jacobian", gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
-        call same("helmholtz_single_layer_integrand vjp wave_number", gr_wave_number, gn_wave_number, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp first_point_1", &
+                  gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp first_point_2", &
+                  gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp first_point_3", &
+                  gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp second_point_1", &
+                  gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp second_point_2", &
+                  gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp second_point_3", &
+                  gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp first_jacobian", &
+                  gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp second_jacobian", &
+                  gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
+        call same("helmholtz_single_layer_integrand vjp wave_number", &
+                  gr_wave_number, gn_wave_number, TOLERANCE, failures)
     end block
     ! helmholtz_single_layer_smooth_integrand
     block
@@ -3520,8 +3866,10 @@ program test_fortad_fortsym_equivalence
             d_second_point_3, v_first_jacobian, d_first_jacobian, &
             v_second_jacobian, d_second_jacobian, v_wave_number, d_wave_number, &
             v_kernel_scale, tn_value_real, tn_value_imag)
-        call same("helmholtz_single_layer_smooth_integrand jvp value_real", tr_value_real, tn_value_real, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand jvp value_imag", tr_value_imag, tn_value_imag, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand jvp value_real", &
+                  tr_value_real, tn_value_real, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand jvp value_imag", &
+                  tr_value_imag, tn_value_imag, TOLERANCE, failures)
         call generated_helmholtz_single_layer_smooth_integrand_vjp(&
             v_first_point_1, v_first_point_2, v_first_point_3, v_second_point_1, &
             v_second_point_2, v_second_point_3, v_first_jacobian, &
@@ -3538,15 +3886,24 @@ program test_fortad_fortsym_equivalence
             gn_first_point_3, gn_second_point_1, gn_second_point_2, &
             gn_second_point_3, gn_first_jacobian, gn_second_jacobian, &
             gn_wave_number)
-        call same("helmholtz_single_layer_smooth_integrand vjp first_point_1", gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp first_point_2", gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp first_point_3", gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp second_point_1", gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp second_point_2", gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp second_point_3", gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp first_jacobian", gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp second_jacobian", gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
-        call same("helmholtz_single_layer_smooth_integrand vjp wave_number", gr_wave_number, gn_wave_number, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp first_point_1", &
+                  gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp first_point_2", &
+                  gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp first_point_3", &
+                  gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp second_point_1", &
+                  gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp second_point_2", &
+                  gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp second_point_3", &
+                  gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp first_jacobian", &
+                  gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp second_jacobian", &
+                  gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
+        call same("helmholtz_single_layer_smooth_integrand vjp wave_number", &
+                  gr_wave_number, gn_wave_number, TOLERANCE, failures)
     end block
     ! laplace_single_layer_integrand
     block
@@ -3618,7 +3975,8 @@ program test_fortad_fortsym_equivalence
             v_second_point_2, d_second_point_2, v_second_point_3, &
             d_second_point_3, v_first_jacobian, d_first_jacobian, &
             v_second_jacobian, d_second_jacobian, v_kernel_scale, tn_value)
-        call same("laplace_single_layer_integrand jvp value", tr_value, tn_value, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand jvp value", &
+                  tr_value, tn_value, TOLERANCE, failures)
         call generated_laplace_single_layer_integrand_vjp(v_first_point_1, &
             v_first_point_2, v_first_point_3, v_second_point_1, v_second_point_2, &
             v_second_point_3, v_first_jacobian, v_second_jacobian, &
@@ -3631,14 +3989,22 @@ program test_fortad_fortsym_equivalence
             v_kernel_scale, seed_value, gn_first_point_1, gn_first_point_2, &
             gn_first_point_3, gn_second_point_1, gn_second_point_2, &
             gn_second_point_3, gn_first_jacobian, gn_second_jacobian)
-        call same("laplace_single_layer_integrand vjp first_point_1", gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp first_point_2", gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp first_point_3", gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp second_point_1", gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp second_point_2", gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp second_point_3", gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp first_jacobian", gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
-        call same("laplace_single_layer_integrand vjp second_jacobian", gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp first_point_1", &
+                  gr_first_point_1, gn_first_point_1, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp first_point_2", &
+                  gr_first_point_2, gn_first_point_2, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp first_point_3", &
+                  gr_first_point_3, gn_first_point_3, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp second_point_1", &
+                  gr_second_point_1, gn_second_point_1, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp second_point_2", &
+                  gr_second_point_2, gn_second_point_2, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp second_point_3", &
+                  gr_second_point_3, gn_second_point_3, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp first_jacobian", &
+                  gr_first_jacobian, gn_first_jacobian, TOLERANCE, failures)
+        call same("laplace_single_layer_integrand vjp second_jacobian", &
+                  gr_second_jacobian, gn_second_jacobian, TOLERANCE, failures)
     end block
     ! laplace_singular_edge_potential
     block
@@ -3714,7 +4080,8 @@ program test_fortad_fortsym_equivalence
             d_first_vertex_2, v_first_vertex_3, d_first_vertex_3, &
             v_second_vertex_1, d_second_vertex_1, v_second_vertex_2, &
             d_second_vertex_2, v_second_vertex_3, d_second_vertex_3, tn_value)
-        call same("laplace_singular_edge_potential jvp value", tr_value, tn_value, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential jvp value", &
+                  tr_value, tn_value, TOLERANCE, failures)
         call generated_laplace_singular_edge_potential_vjp(v_point_1, v_point_2, &
             v_point_3, v_first_vertex_1, v_first_vertex_2, v_first_vertex_3, &
             v_second_vertex_1, v_second_vertex_2, v_second_vertex_3, seed_value, &
@@ -3727,15 +4094,24 @@ program test_fortad_fortsym_equivalence
             v_second_vertex_3, seed_value, gn_point_1, gn_point_2, gn_point_3, &
             gn_first_vertex_1, gn_first_vertex_2, gn_first_vertex_3, &
             gn_second_vertex_1, gn_second_vertex_2, gn_second_vertex_3)
-        call same("laplace_singular_edge_potential vjp point_1", gr_point_1, gn_point_1, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp point_2", gr_point_2, gn_point_2, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp point_3", gr_point_3, gn_point_3, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp first_vertex_1", gr_first_vertex_1, gn_first_vertex_1, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp first_vertex_2", gr_first_vertex_2, gn_first_vertex_2, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp first_vertex_3", gr_first_vertex_3, gn_first_vertex_3, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp second_vertex_1", gr_second_vertex_1, gn_second_vertex_1, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp second_vertex_2", gr_second_vertex_2, gn_second_vertex_2, TOLERANCE, failures)
-        call same("laplace_singular_edge_potential vjp second_vertex_3", gr_second_vertex_3, gn_second_vertex_3, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp point_1", &
+                  gr_point_1, gn_point_1, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp point_2", &
+                  gr_point_2, gn_point_2, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp point_3", &
+                  gr_point_3, gn_point_3, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp first_vertex_1", &
+                  gr_first_vertex_1, gn_first_vertex_1, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp first_vertex_2", &
+                  gr_first_vertex_2, gn_first_vertex_2, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp first_vertex_3", &
+                  gr_first_vertex_3, gn_first_vertex_3, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp second_vertex_1", &
+                  gr_second_vertex_1, gn_second_vertex_1, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp second_vertex_2", &
+                  gr_second_vertex_2, gn_second_vertex_2, TOLERANCE, failures)
+        call same("laplace_singular_edge_potential vjp second_vertex_3", &
+                  gr_second_vertex_3, gn_second_vertex_3, TOLERANCE, failures)
     end block
     ! regularized_surface_current
     block
@@ -3771,16 +4147,20 @@ program test_fortad_fortsym_equivalence
         call fortfem_regularized_surface_current_jvp_fortad(v_signed_distance, &
             d_signed_distance, v_sheet_current, d_sheet_current, v_thickness, &
             d_thickness, v_inverse_sqrt_pi, tn_volume_current)
-        call same("regularized_surface_current jvp volume_current", tr_volume_current, tn_volume_current, TOLERANCE, failures)
+        call same("regularized_surface_current jvp volume_current", &
+                  tr_volume_current, tn_volume_current, TOLERANCE, failures)
         call generated_regularized_surface_current_vjp(v_signed_distance, &
             v_sheet_current, v_thickness, v_inverse_sqrt_pi, seed_volume_current, &
             gr_signed_distance, gr_sheet_current, gr_thickness)
         call fortfem_regularized_surface_current_vjp_fortad(v_signed_distance, &
             v_sheet_current, v_thickness, v_inverse_sqrt_pi, seed_volume_current, &
             gn_signed_distance, gn_sheet_current, gn_thickness)
-        call same("regularized_surface_current vjp signed_distance", gr_signed_distance, gn_signed_distance, TOLERANCE, failures)
-        call same("regularized_surface_current vjp sheet_current", gr_sheet_current, gn_sheet_current, TOLERANCE, failures)
-        call same("regularized_surface_current vjp thickness", gr_thickness, gn_thickness, TOLERANCE, failures)
+        call same("regularized_surface_current vjp signed_distance", &
+                  gr_signed_distance, gn_signed_distance, TOLERANCE, failures)
+        call same("regularized_surface_current vjp sheet_current", &
+                  gr_sheet_current, gn_sheet_current, TOLERANCE, failures)
+        call same("regularized_surface_current vjp thickness", &
+                  gr_thickness, gn_thickness, TOLERANCE, failures)
     end block
     ! sphere_curved_panel
     block
@@ -3932,16 +4312,26 @@ program test_fortad_fortsym_equivalence
             tn_point_1, tn_point_2, tn_point_3, tn_tangent_xi_1, tn_tangent_xi_2, &
             tn_tangent_xi_3, tn_tangent_eta_1, tn_tangent_eta_2, &
             tn_tangent_eta_3, tn_surface_jacobian)
-        call same("sphere_curved_panel jvp point_1", tr_point_1, tn_point_1, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp point_2", tr_point_2, tn_point_2, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp point_3", tr_point_3, tn_point_3, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_xi_1", tr_tangent_xi_1, tn_tangent_xi_1, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_xi_2", tr_tangent_xi_2, tn_tangent_xi_2, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_xi_3", tr_tangent_xi_3, tn_tangent_xi_3, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_eta_1", tr_tangent_eta_1, tn_tangent_eta_1, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_eta_2", tr_tangent_eta_2, tn_tangent_eta_2, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp tangent_eta_3", tr_tangent_eta_3, tn_tangent_eta_3, TOLERANCE, failures)
-        call same("sphere_curved_panel jvp surface_jacobian", tr_surface_jacobian, tn_surface_jacobian, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp point_1", &
+                  tr_point_1, tn_point_1, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp point_2", &
+                  tr_point_2, tn_point_2, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp point_3", &
+                  tr_point_3, tn_point_3, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_xi_1", &
+                  tr_tangent_xi_1, tn_tangent_xi_1, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_xi_2", &
+                  tr_tangent_xi_2, tn_tangent_xi_2, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_xi_3", &
+                  tr_tangent_xi_3, tn_tangent_xi_3, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_eta_1", &
+                  tr_tangent_eta_1, tn_tangent_eta_1, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_eta_2", &
+                  tr_tangent_eta_2, tn_tangent_eta_2, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp tangent_eta_3", &
+                  tr_tangent_eta_3, tn_tangent_eta_3, TOLERANCE, failures)
+        call same("sphere_curved_panel jvp surface_jacobian", &
+                  tr_surface_jacobian, tn_surface_jacobian, TOLERANCE, failures)
         call generated_sphere_curved_panel_vjp(v_vertex_11, v_vertex_21, &
             v_vertex_31, v_vertex_12, v_vertex_22, v_vertex_32, v_vertex_13, &
             v_vertex_23, v_vertex_33, v_radius, v_xi, v_eta, seed_point_1, &
@@ -3958,18 +4348,30 @@ program test_fortad_fortsym_equivalence
             v_surface_jacobian, seed_point_1, gn_vertex_11, gn_vertex_21, &
             gn_vertex_31, gn_vertex_12, gn_vertex_22, gn_vertex_32, gn_vertex_13, &
             gn_vertex_23, gn_vertex_33, gn_radius, gn_xi, gn_eta)
-        call same("sphere_curved_panel vjp vertex_11", gr_vertex_11, gn_vertex_11, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_21", gr_vertex_21, gn_vertex_21, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_31", gr_vertex_31, gn_vertex_31, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_12", gr_vertex_12, gn_vertex_12, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_22", gr_vertex_22, gn_vertex_22, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_32", gr_vertex_32, gn_vertex_32, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_13", gr_vertex_13, gn_vertex_13, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_23", gr_vertex_23, gn_vertex_23, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp vertex_33", gr_vertex_33, gn_vertex_33, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp radius", gr_radius, gn_radius, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp xi", gr_xi, gn_xi, TOLERANCE, failures)
-        call same("sphere_curved_panel vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_11", &
+                  gr_vertex_11, gn_vertex_11, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_21", &
+                  gr_vertex_21, gn_vertex_21, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_31", &
+                  gr_vertex_31, gn_vertex_31, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_12", &
+                  gr_vertex_12, gn_vertex_12, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_22", &
+                  gr_vertex_22, gn_vertex_22, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_32", &
+                  gr_vertex_32, gn_vertex_32, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_13", &
+                  gr_vertex_13, gn_vertex_13, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_23", &
+                  gr_vertex_23, gn_vertex_23, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp vertex_33", &
+                  gr_vertex_33, gn_vertex_33, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp radius", &
+                  gr_radius, gn_radius, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp xi", &
+                  gr_xi, gn_xi, TOLERANCE, failures)
+        call same("sphere_curved_panel vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
     end block
     ! surface_integral_contribution
     block
@@ -3995,13 +4397,16 @@ program test_fortad_fortsym_equivalence
             d_sample, d_weight, tr_contribution)
         call fortfem_surface_integral_contribution_jvp_fortad(v_sample, d_sample, &
             v_weight, d_weight, tn_contribution)
-        call same("surface_integral_contribution jvp contribution", tr_contribution, tn_contribution, TOLERANCE, failures)
+        call same("surface_integral_contribution jvp contribution", &
+                  tr_contribution, tn_contribution, TOLERANCE, failures)
         call generated_surface_integral_contribution_vjp(v_sample, v_weight, &
             seed_contribution, gr_sample, gr_weight)
         call fortfem_surface_integral_contribution_vjp_fortad(v_sample, v_weight, &
             seed_contribution, gn_sample, gn_weight)
-        call same("surface_integral_contribution vjp sample", gr_sample, gn_sample, TOLERANCE, failures)
-        call same("surface_integral_contribution vjp weight", gr_weight, gn_weight, TOLERANCE, failures)
+        call same("surface_integral_contribution vjp sample", &
+                  gr_sample, gn_sample, TOLERANCE, failures)
+        call same("surface_integral_contribution vjp weight", &
+                  gr_weight, gn_weight, TOLERANCE, failures)
     end block
     ! surface_shape_objective_contribution
     block
@@ -4033,16 +4438,20 @@ program test_fortad_fortsym_equivalence
             v_target, v_weight, d_candidate, d_target, d_weight, tr_contribution)
         call fortfem_surface_shape_objective_contribution_jvp_fortad(v_candidate, &
             d_candidate, v_target, d_target, v_weight, d_weight, tn_contribution)
-        call same("surface_shape_objective_contribution jvp contribution", tr_contribution, tn_contribution, TOLERANCE, failures)
+        call same("surface_shape_objective_contribution jvp contribution", &
+                  tr_contribution, tn_contribution, TOLERANCE, failures)
         call generated_surface_shape_objective_contribution_vjp(v_candidate, &
             v_target, v_weight, seed_contribution, gr_candidate, gr_target, &
             gr_weight)
         call fortfem_surface_shape_objective_contribution_vjp_fortad(v_candidate, &
             v_target, v_weight, seed_contribution, gn_candidate, gn_target, &
             gn_weight)
-        call same("surface_shape_objective_contribution vjp candidate", gr_candidate, gn_candidate, TOLERANCE, failures)
-        call same("surface_shape_objective_contribution vjp target", gr_target, gn_target, TOLERANCE, failures)
-        call same("surface_shape_objective_contribution vjp weight", gr_weight, gn_weight, TOLERANCE, failures)
+        call same("surface_shape_objective_contribution vjp candidate", &
+                  gr_candidate, gn_candidate, TOLERANCE, failures)
+        call same("surface_shape_objective_contribution vjp target", &
+                  gr_target, gn_target, TOLERANCE, failures)
+        call same("surface_shape_objective_contribution vjp weight", &
+                  gr_weight, gn_weight, TOLERANCE, failures)
     end block
     ! surface_triangle_geometry_3d
     block
@@ -4167,13 +4576,20 @@ program test_fortad_fortsym_equivalence
             v_vertex_33, d_vertex_33, v_xi, d_xi, v_eta, d_eta, tn_point_1, &
             tn_point_2, tn_point_3, tn_jacobian, tn_normal_1, tn_normal_2, &
             tn_normal_3)
-        call same("surface_triangle_geometry_3d jvp point_1", tr_point_1, tn_point_1, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp point_2", tr_point_2, tn_point_2, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp point_3", tr_point_3, tn_point_3, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp jacobian", tr_jacobian, tn_jacobian, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp normal_1", tr_normal_1, tn_normal_1, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp normal_2", tr_normal_2, tn_normal_2, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d jvp normal_3", tr_normal_3, tn_normal_3, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp point_1", &
+                  tr_point_1, tn_point_1, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp point_2", &
+                  tr_point_2, tn_point_2, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp point_3", &
+                  tr_point_3, tn_point_3, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp jacobian", &
+                  tr_jacobian, tn_jacobian, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp normal_1", &
+                  tr_normal_1, tn_normal_1, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp normal_2", &
+                  tr_normal_2, tn_normal_2, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d jvp normal_3", &
+                  tr_normal_3, tn_normal_3, TOLERANCE, failures)
         call generated_surface_triangle_geometry_3d_vjp(v_vertex_11, v_vertex_21, &
             v_vertex_31, v_vertex_12, v_vertex_22, v_vertex_32, v_vertex_13, &
             v_vertex_23, v_vertex_33, v_xi, v_eta, seed_point_1, seed_point_2, &
@@ -4188,17 +4604,28 @@ program test_fortad_fortsym_equivalence
             seed_point_1, gn_vertex_11, gn_vertex_21, gn_vertex_31, gn_vertex_12, &
             gn_vertex_22, gn_vertex_32, gn_vertex_13, gn_vertex_23, gn_vertex_33, &
             gn_xi, gn_eta)
-        call same("surface_triangle_geometry_3d vjp vertex_11", gr_vertex_11, gn_vertex_11, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_21", gr_vertex_21, gn_vertex_21, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_31", gr_vertex_31, gn_vertex_31, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_12", gr_vertex_12, gn_vertex_12, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_22", gr_vertex_22, gn_vertex_22, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_32", gr_vertex_32, gn_vertex_32, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_13", gr_vertex_13, gn_vertex_13, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_23", gr_vertex_23, gn_vertex_23, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp vertex_33", gr_vertex_33, gn_vertex_33, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp xi", gr_xi, gn_xi, TOLERANCE, failures)
-        call same("surface_triangle_geometry_3d vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_11", &
+                  gr_vertex_11, gn_vertex_11, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_21", &
+                  gr_vertex_21, gn_vertex_21, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_31", &
+                  gr_vertex_31, gn_vertex_31, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_12", &
+                  gr_vertex_12, gn_vertex_12, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_22", &
+                  gr_vertex_22, gn_vertex_22, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_32", &
+                  gr_vertex_32, gn_vertex_32, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_13", &
+                  gr_vertex_13, gn_vertex_13, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_23", &
+                  gr_vertex_23, gn_vertex_23, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp vertex_33", &
+                  gr_vertex_33, gn_vertex_33, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp xi", &
+                  gr_xi, gn_xi, TOLERANCE, failures)
+        call same("surface_triangle_geometry_3d vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
     end block
     ! tensor_power_split
     block
@@ -4306,9 +4733,12 @@ program test_fortad_fortsym_equivalence
             d_tensor_33, v_vector_1, d_vector_1, v_vector_2, d_vector_2, &
             v_vector_3, d_vector_3, tn_symmetric_power, tn_skew_power, &
             tn_total_power)
-        call same("tensor_power_split jvp symmetric_power", tr_symmetric_power, tn_symmetric_power, TOLERANCE, failures)
-        call same("tensor_power_split jvp skew_power", tr_skew_power, tn_skew_power, TOLERANCE, failures)
-        call same("tensor_power_split jvp total_power", tr_total_power, tn_total_power, TOLERANCE, failures)
+        call same("tensor_power_split jvp symmetric_power", &
+                  tr_symmetric_power, tn_symmetric_power, TOLERANCE, failures)
+        call same("tensor_power_split jvp skew_power", &
+                  tr_skew_power, tn_skew_power, TOLERANCE, failures)
+        call same("tensor_power_split jvp total_power", &
+                  tr_total_power, tn_total_power, TOLERANCE, failures)
         call generated_tensor_power_split_vjp(v_tensor_11, v_tensor_12, &
             v_tensor_13, v_tensor_21, v_tensor_22, v_tensor_23, v_tensor_31, &
             v_tensor_32, v_tensor_33, v_vector_1, v_vector_2, v_vector_3, &
@@ -4323,18 +4753,30 @@ program test_fortad_fortsym_equivalence
             gn_tensor_12, gn_tensor_13, gn_tensor_21, gn_tensor_22, gn_tensor_23, &
             gn_tensor_31, gn_tensor_32, gn_tensor_33, gn_vector_1, gn_vector_2, &
             gn_vector_3)
-        call same("tensor_power_split vjp tensor_11", gr_tensor_11, gn_tensor_11, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_12", gr_tensor_12, gn_tensor_12, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_13", gr_tensor_13, gn_tensor_13, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_21", gr_tensor_21, gn_tensor_21, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_22", gr_tensor_22, gn_tensor_22, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_23", gr_tensor_23, gn_tensor_23, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_31", gr_tensor_31, gn_tensor_31, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_32", gr_tensor_32, gn_tensor_32, TOLERANCE, failures)
-        call same("tensor_power_split vjp tensor_33", gr_tensor_33, gn_tensor_33, TOLERANCE, failures)
-        call same("tensor_power_split vjp vector_1", gr_vector_1, gn_vector_1, TOLERANCE, failures)
-        call same("tensor_power_split vjp vector_2", gr_vector_2, gn_vector_2, TOLERANCE, failures)
-        call same("tensor_power_split vjp vector_3", gr_vector_3, gn_vector_3, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_11", &
+                  gr_tensor_11, gn_tensor_11, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_12", &
+                  gr_tensor_12, gn_tensor_12, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_13", &
+                  gr_tensor_13, gn_tensor_13, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_21", &
+                  gr_tensor_21, gn_tensor_21, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_22", &
+                  gr_tensor_22, gn_tensor_22, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_23", &
+                  gr_tensor_23, gn_tensor_23, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_31", &
+                  gr_tensor_31, gn_tensor_31, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_32", &
+                  gr_tensor_32, gn_tensor_32, TOLERANCE, failures)
+        call same("tensor_power_split vjp tensor_33", &
+                  gr_tensor_33, gn_tensor_33, TOLERANCE, failures)
+        call same("tensor_power_split vjp vector_1", &
+                  gr_vector_1, gn_vector_1, TOLERANCE, failures)
+        call same("tensor_power_split vjp vector_2", &
+                  gr_vector_2, gn_vector_2, TOLERANCE, failures)
+        call same("tensor_power_split vjp vector_3", &
+                  gr_vector_3, gn_vector_3, TOLERANCE, failures)
     end block
     ! cartesian_to_toroidal
     block
@@ -4386,19 +4828,26 @@ program test_fortad_fortsym_equivalence
         call fortfem_cartesian_to_toroidal_jvp_fortad(v_point_1, d_point_1, &
             v_point_2, d_point_2, v_point_3, d_point_3, v_scale, d_scale, tn_eta, &
             tn_theta, tn_phi)
-        call same("cartesian_to_toroidal jvp eta", tr_eta, tn_eta, TOLERANCE, failures)
-        call same("cartesian_to_toroidal jvp theta", tr_theta, tn_theta, TOLERANCE, failures)
-        call same("cartesian_to_toroidal jvp phi", tr_phi, tn_phi, TOLERANCE, failures)
+        call same("cartesian_to_toroidal jvp eta", &
+                  tr_eta, tn_eta, TOLERANCE, failures)
+        call same("cartesian_to_toroidal jvp theta", &
+                  tr_theta, tn_theta, TOLERANCE, failures)
+        call same("cartesian_to_toroidal jvp phi", &
+                  tr_phi, tn_phi, TOLERANCE, failures)
         call generated_cartesian_to_toroidal_vjp(v_point_1, v_point_2, v_point_3, &
             v_scale, seed_eta, seed_theta, seed_phi, gr_point_1, gr_point_2, &
             gr_point_3, gr_scale)
         call fortfem_cartesian_to_toroidal_vjp_fortad(v_point_1, v_point_2, &
             v_point_3, v_scale, v_theta, v_phi, seed_eta, gn_point_1, gn_point_2, &
             gn_point_3, gn_scale)
-        call same("cartesian_to_toroidal vjp point_1", gr_point_1, gn_point_1, TOLERANCE, failures)
-        call same("cartesian_to_toroidal vjp point_2", gr_point_2, gn_point_2, TOLERANCE, failures)
-        call same("cartesian_to_toroidal vjp point_3", gr_point_3, gn_point_3, TOLERANCE, failures)
-        call same("cartesian_to_toroidal vjp scale", gr_scale, gn_scale, TOLERANCE, failures)
+        call same("cartesian_to_toroidal vjp point_1", &
+                  gr_point_1, gn_point_1, TOLERANCE, failures)
+        call same("cartesian_to_toroidal vjp point_2", &
+                  gr_point_2, gn_point_2, TOLERANCE, failures)
+        call same("cartesian_to_toroidal vjp point_3", &
+                  gr_point_3, gn_point_3, TOLERANCE, failures)
+        call same("cartesian_to_toroidal vjp scale", &
+                  gr_scale, gn_scale, TOLERANCE, failures)
     end block
     ! toroidal_point_to_cartesian
     block
@@ -4436,16 +4885,21 @@ program test_fortad_fortsym_equivalence
             v_phi, d_scale, d_eta, d_theta, d_phi, tr_point)
         call fortfem_toroidal_point_to_cartesian_jvp_fortad(v_scale, d_scale, &
             v_eta, d_eta, v_theta, d_theta, v_phi, d_phi, tn_point)
-        call same("toroidal_point_to_cartesian jvp point", tr_point, tn_point, TOLERANCE, failures)
+        call same("toroidal_point_to_cartesian jvp point", &
+                  tr_point, tn_point, TOLERANCE, failures)
         call generated_toroidal_point_to_cartesian_vjp(v_scale, v_eta, v_theta, &
             v_phi, seed_point(1), seed_point(2), seed_point(3), gr_scale, gr_eta, &
             gr_theta, gr_phi)
         call fortfem_toroidal_point_to_cartesian_vjp_fortad(v_scale, v_eta, &
             v_theta, v_phi, seed_point, gn_scale, gn_eta, gn_theta, gn_phi)
-        call same("toroidal_point_to_cartesian vjp scale", gr_scale, gn_scale, TOLERANCE, failures)
-        call same("toroidal_point_to_cartesian vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
-        call same("toroidal_point_to_cartesian vjp theta", gr_theta, gn_theta, TOLERANCE, failures)
-        call same("toroidal_point_to_cartesian vjp phi", gr_phi, gn_phi, TOLERANCE, failures)
+        call same("toroidal_point_to_cartesian vjp scale", &
+                  gr_scale, gn_scale, TOLERANCE, failures)
+        call same("toroidal_point_to_cartesian vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
+        call same("toroidal_point_to_cartesian vjp theta", &
+                  gr_theta, gn_theta, TOLERANCE, failures)
+        call same("toroidal_point_to_cartesian vjp phi", &
+                  gr_phi, gn_phi, TOLERANCE, failures)
     end block
     ! toroidal_vector_to_cartesian
     block
@@ -4511,9 +4965,12 @@ program test_fortad_fortsym_equivalence
             v_theta, d_theta, v_phi, d_phi, v_component_1, d_component_1, &
             v_component_2, d_component_2, v_component_3, d_component_3, &
             tn_cartesian_1, tn_cartesian_2, tn_cartesian_3)
-        call same("toroidal_vector_to_cartesian jvp cartesian_1", tr_cartesian_1, tn_cartesian_1, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian jvp cartesian_2", tr_cartesian_2, tn_cartesian_2, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian jvp cartesian_3", tr_cartesian_3, tn_cartesian_3, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian jvp cartesian_1", &
+                  tr_cartesian_1, tn_cartesian_1, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian jvp cartesian_2", &
+                  tr_cartesian_2, tn_cartesian_2, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian jvp cartesian_3", &
+                  tr_cartesian_3, tn_cartesian_3, TOLERANCE, failures)
         call generated_toroidal_vector_to_cartesian_vjp(v_eta, v_theta, v_phi, &
             v_component_1, v_component_2, v_component_3, seed_cartesian_1, &
             seed_cartesian_2, seed_cartesian_3, gr_eta, gr_theta, gr_phi, &
@@ -4522,12 +4979,18 @@ program test_fortad_fortsym_equivalence
             v_phi, v_component_1, v_component_2, v_component_3, v_cartesian_2, &
             v_cartesian_3, seed_cartesian_1, gn_eta, gn_theta, gn_phi, &
             gn_component_1, gn_component_2, gn_component_3)
-        call same("toroidal_vector_to_cartesian vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian vjp theta", gr_theta, gn_theta, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian vjp phi", gr_phi, gn_phi, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian vjp component_1", gr_component_1, gn_component_1, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian vjp component_2", gr_component_2, gn_component_2, TOLERANCE, failures)
-        call same("toroidal_vector_to_cartesian vjp component_3", gr_component_3, gn_component_3, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp theta", &
+                  gr_theta, gn_theta, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp phi", &
+                  gr_phi, gn_phi, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp component_1", &
+                  gr_component_1, gn_component_1, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp component_2", &
+                  gr_component_2, gn_component_2, TOLERANCE, failures)
+        call same("toroidal_vector_to_cartesian vjp component_3", &
+                  gr_component_3, gn_component_3, TOLERANCE, failures)
     end block
     ! toroidal_poisson_products
     block
@@ -4625,12 +5088,18 @@ program test_fortad_fortsym_equivalence
             v_phi, d_phi, v_radial, d_radial, v_radial_derivative, &
             d_radial_derivative, tn_harmonic, tn_field_1, tn_field_2, tn_field_3, &
             tn_dtn_value, tn_normal_derivative)
-        call same("toroidal_poisson_products jvp harmonic", tr_harmonic, tn_harmonic, TOLERANCE, failures)
-        call same("toroidal_poisson_products jvp field_1", tr_field_1, tn_field_1, TOLERANCE, failures)
-        call same("toroidal_poisson_products jvp field_2", tr_field_2, tn_field_2, TOLERANCE, failures)
-        call same("toroidal_poisson_products jvp field_3", tr_field_3, tn_field_3, TOLERANCE, failures)
-        call same("toroidal_poisson_products jvp dtn_value", tr_dtn_value, tn_dtn_value, TOLERANCE, failures)
-        call same("toroidal_poisson_products jvp normal_derivative", tr_normal_derivative, tn_normal_derivative, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp harmonic", &
+                  tr_harmonic, tn_harmonic, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp field_1", &
+                  tr_field_1, tn_field_1, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp field_2", &
+                  tr_field_2, tn_field_2, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp field_3", &
+                  tr_field_3, tn_field_3, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp dtn_value", &
+                  tr_dtn_value, tn_dtn_value, TOLERANCE, failures)
+        call same("toroidal_poisson_products jvp normal_derivative", &
+                  tr_normal_derivative, tn_normal_derivative, TOLERANCE, failures)
         call generated_toroidal_poisson_products_vjp(v_degree, v_order, v_scale, &
             v_eta, v_theta, v_phi, v_radial, v_radial_derivative, seed_harmonic, &
             seed_field_1, seed_field_2, seed_field_3, seed_dtn_value, &
@@ -4641,14 +5110,22 @@ program test_fortad_fortsym_equivalence
             v_field_1, v_field_2, v_field_3, v_dtn_value, v_normal_derivative, &
             seed_harmonic, gn_degree, gn_order, gn_scale, gn_eta, gn_theta, &
             gn_phi, gn_radial, gn_radial_derivative)
-        call same("toroidal_poisson_products vjp degree", gr_degree, gn_degree, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp order", gr_order, gn_order, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp scale", gr_scale, gn_scale, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp theta", gr_theta, gn_theta, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp phi", gr_phi, gn_phi, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp radial", gr_radial, gn_radial, TOLERANCE, failures)
-        call same("toroidal_poisson_products vjp radial_derivative", gr_radial_derivative, gn_radial_derivative, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp degree", &
+                  gr_degree, gn_degree, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp order", &
+                  gr_order, gn_order, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp scale", &
+                  gr_scale, gn_scale, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp theta", &
+                  gr_theta, gn_theta, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp phi", &
+                  gr_phi, gn_phi, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp radial", &
+                  gr_radial, gn_radial, TOLERANCE, failures)
+        call same("toroidal_poisson_products vjp radial_derivative", &
+                  gr_radial_derivative, gn_radial_derivative, TOLERANCE, failures)
     end block
     ! torus_curved_panel
     block
@@ -4788,16 +5265,26 @@ program test_fortad_fortsym_equivalence
             d_eta, tn_point_1, tn_point_2, tn_point_3, tn_tangent_xi_1, &
             tn_tangent_xi_2, tn_tangent_xi_3, tn_tangent_eta_1, tn_tangent_eta_2, &
             tn_tangent_eta_3, tn_surface_jacobian)
-        call same("torus_curved_panel jvp point_1", tr_point_1, tn_point_1, TOLERANCE, failures)
-        call same("torus_curved_panel jvp point_2", tr_point_2, tn_point_2, TOLERANCE, failures)
-        call same("torus_curved_panel jvp point_3", tr_point_3, tn_point_3, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_xi_1", tr_tangent_xi_1, tn_tangent_xi_1, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_xi_2", tr_tangent_xi_2, tn_tangent_xi_2, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_xi_3", tr_tangent_xi_3, tn_tangent_xi_3, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_eta_1", tr_tangent_eta_1, tn_tangent_eta_1, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_eta_2", tr_tangent_eta_2, tn_tangent_eta_2, TOLERANCE, failures)
-        call same("torus_curved_panel jvp tangent_eta_3", tr_tangent_eta_3, tn_tangent_eta_3, TOLERANCE, failures)
-        call same("torus_curved_panel jvp surface_jacobian", tr_surface_jacobian, tn_surface_jacobian, TOLERANCE, failures)
+        call same("torus_curved_panel jvp point_1", &
+                  tr_point_1, tn_point_1, TOLERANCE, failures)
+        call same("torus_curved_panel jvp point_2", &
+                  tr_point_2, tn_point_2, TOLERANCE, failures)
+        call same("torus_curved_panel jvp point_3", &
+                  tr_point_3, tn_point_3, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_xi_1", &
+                  tr_tangent_xi_1, tn_tangent_xi_1, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_xi_2", &
+                  tr_tangent_xi_2, tn_tangent_xi_2, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_xi_3", &
+                  tr_tangent_xi_3, tn_tangent_xi_3, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_eta_1", &
+                  tr_tangent_eta_1, tn_tangent_eta_1, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_eta_2", &
+                  tr_tangent_eta_2, tn_tangent_eta_2, TOLERANCE, failures)
+        call same("torus_curved_panel jvp tangent_eta_3", &
+                  tr_tangent_eta_3, tn_tangent_eta_3, TOLERANCE, failures)
+        call same("torus_curved_panel jvp surface_jacobian", &
+                  tr_surface_jacobian, tn_surface_jacobian, TOLERANCE, failures)
         call generated_torus_curved_panel_vjp(v_parameter_11, v_parameter_21, &
             v_parameter_12, v_parameter_22, v_parameter_13, v_parameter_23, &
             v_major_radius, v_minor_radius, v_xi, v_eta, seed_point_1, &
@@ -4814,16 +5301,26 @@ program test_fortad_fortsym_equivalence
             v_surface_jacobian, seed_point_1, gn_parameter_11, gn_parameter_21, &
             gn_parameter_12, gn_parameter_22, gn_parameter_13, gn_parameter_23, &
             gn_major_radius, gn_minor_radius, gn_xi, gn_eta)
-        call same("torus_curved_panel vjp parameter_11", gr_parameter_11, gn_parameter_11, TOLERANCE, failures)
-        call same("torus_curved_panel vjp parameter_21", gr_parameter_21, gn_parameter_21, TOLERANCE, failures)
-        call same("torus_curved_panel vjp parameter_12", gr_parameter_12, gn_parameter_12, TOLERANCE, failures)
-        call same("torus_curved_panel vjp parameter_22", gr_parameter_22, gn_parameter_22, TOLERANCE, failures)
-        call same("torus_curved_panel vjp parameter_13", gr_parameter_13, gn_parameter_13, TOLERANCE, failures)
-        call same("torus_curved_panel vjp parameter_23", gr_parameter_23, gn_parameter_23, TOLERANCE, failures)
-        call same("torus_curved_panel vjp major_radius", gr_major_radius, gn_major_radius, TOLERANCE, failures)
-        call same("torus_curved_panel vjp minor_radius", gr_minor_radius, gn_minor_radius, TOLERANCE, failures)
-        call same("torus_curved_panel vjp xi", gr_xi, gn_xi, TOLERANCE, failures)
-        call same("torus_curved_panel vjp eta", gr_eta, gn_eta, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_11", &
+                  gr_parameter_11, gn_parameter_11, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_21", &
+                  gr_parameter_21, gn_parameter_21, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_12", &
+                  gr_parameter_12, gn_parameter_12, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_22", &
+                  gr_parameter_22, gn_parameter_22, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_13", &
+                  gr_parameter_13, gn_parameter_13, TOLERANCE, failures)
+        call same("torus_curved_panel vjp parameter_23", &
+                  gr_parameter_23, gn_parameter_23, TOLERANCE, failures)
+        call same("torus_curved_panel vjp major_radius", &
+                  gr_major_radius, gn_major_radius, TOLERANCE, failures)
+        call same("torus_curved_panel vjp minor_radius", &
+                  gr_minor_radius, gn_minor_radius, TOLERANCE, failures)
+        call same("torus_curved_panel vjp xi", &
+                  gr_xi, gn_xi, TOLERANCE, failures)
+        call same("torus_curved_panel vjp eta", &
+                  gr_eta, gn_eta, TOLERANCE, failures)
     end block
 
     if (failures == 0) then
