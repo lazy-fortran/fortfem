@@ -311,48 +311,44 @@ contains
         t16_v1_b = t16_v1_b + fad_t82 * (control_y_4 - y_4)
         x_1_b = x_1_b + t16_v1_b
         x_4_b = x_4_b + t16_v1_b
-        control_x_4_b = control_x_4_b + t16_v1_b * (-1.0_dp) * &
-            2.0000000000000000E+000_dp
+        control_x_4_b = control_x_4_b - t16_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_x_4_b = control_x_4_b + t15_v1_b
-        x_4_b = x_4_b + t15_v1_b * (-1.0_dp)
+        x_4_b = x_4_b - t15_v1_b * 1.0_dp
         y_1_b = y_1_b + t14_v1_b
         y_4_b = y_4_b + t14_v1_b
-        control_y_4_b = control_y_4_b + t14_v1_b * (-1.0_dp) * &
-            2.0000000000000000E+000_dp
+        control_y_4_b = control_y_4_b - t14_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_y_4_b = control_y_4_b + t13_v1_b
-        y_4_b = y_4_b + t13_v1_b * (-1.0_dp)
+        y_4_b = y_4_b - t13_v1_b * 1.0_dp
         x_3_b = x_3_b + t12_v1_b
         x_4_b = x_4_b + t12_v1_b
-        control_x_3_b = control_x_3_b + t12_v1_b * (-1.0_dp) * &
-            2.0000000000000000E+000_dp
+        control_x_3_b = control_x_3_b - t12_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_x_3_b = control_x_3_b + t11_v1_b
-        x_3_b = x_3_b + t11_v1_b * (-1.0_dp)
+        x_3_b = x_3_b - t11_v1_b * 1.0_dp
         y_3_b = y_3_b + t10_v1_b
         y_4_b = y_4_b + t10_v1_b
-        control_y_3_b = control_y_3_b + t10_v1_b * (-1.0_dp) * &
-            2.0000000000000000E+000_dp
+        control_y_3_b = control_y_3_b - t10_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_y_3_b = control_y_3_b + t9_v1_b
-        y_3_b = y_3_b + t9_v1_b * (-1.0_dp)
+        y_3_b = y_3_b - t9_v1_b * 1.0_dp
         x_2_b = x_2_b + t8_v1_b
         x_3_b = x_3_b + t8_v1_b
-        control_x_2_b = control_x_2_b + t8_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_x_2_b = control_x_2_b - t8_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_x_2_b = control_x_2_b + t7_v1_b
-        x_2_b = x_2_b + t7_v1_b * (-1.0_dp)
+        x_2_b = x_2_b - t7_v1_b * 1.0_dp
         y_2_b = y_2_b + t6_v1_b
         y_3_b = y_3_b + t6_v1_b
-        control_y_2_b = control_y_2_b + t6_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_y_2_b = control_y_2_b - t6_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_y_2_b = control_y_2_b + t5_v1_b
-        y_2_b = y_2_b + t5_v1_b * (-1.0_dp)
+        y_2_b = y_2_b - t5_v1_b * 1.0_dp
         x_1_b = x_1_b + t4_v1_b
         x_2_b = x_2_b + t4_v1_b
-        control_x_1_b = control_x_1_b + t4_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_x_1_b = control_x_1_b - t4_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_x_1_b = control_x_1_b + t3_v1_b
-        x_1_b = x_1_b + t3_v1_b * (-1.0_dp)
+        x_1_b = x_1_b - t3_v1_b * 1.0_dp
         y_1_b = y_1_b + t2_v1_b
         y_2_b = y_2_b + t2_v1_b
-        control_y_1_b = control_y_1_b + t2_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_y_1_b = control_y_1_b - t2_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_y_1_b = control_y_1_b + t1_v1_b
-        y_1_b = y_1_b + t1_v1_b * (-1.0_dp)
+        y_1_b = y_1_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_fci_curved_quadrilateral_cell_area_vjp_fortad
 
 end module fortfem_fortad_fci_curved_quadrilateral_cell_area_vjp

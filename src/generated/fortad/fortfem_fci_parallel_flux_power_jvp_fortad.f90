@@ -28,8 +28,8 @@ contains
 
         parallel_flux_d = (-coefficient_d) * gradient + (-coefficient) * gradient_d
         parallel_power_d = ((-coefficient_d) * staggered_volume + (-coefficient) * &
-            staggered_volume_d) * gradient ** 2 + (-coefficient) * staggered_volume * (2 &
-            * gradient * gradient_d)
+            staggered_volume_d) * gradient ** 2 - coefficient * staggered_volume * 2 * &
+            gradient * gradient_d
     end subroutine fortfem_fci_parallel_flux_power_jvp_fortad
 
 end module fortfem_fortad_fci_parallel_flux_power_jvp

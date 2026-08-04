@@ -45,8 +45,8 @@ contains
             thickness ** 2) * inverse_sqrt_pi
         fad_t5 = fad_t1 * (inverse_sqrt_pi * sheet_current) * exp((-signed_distance &
             ** 2) / thickness ** 2)
-        signed_distance_b = signed_distance_b + fad_t5 * (1.0_dp / thickness ** 2) * &
-            (-1.0_dp) * (2 * signed_distance)
+        signed_distance_b = signed_distance_b - fad_t5 * (1.0_dp / thickness ** 2) * &
+            1.0_dp * 2 * signed_distance
         thickness_b = thickness_b + fad_t5 * ((-(-signed_distance ** 2)) / thickness &
             ** 2 ** 2) * (2 * thickness)
         thickness_b = thickness_b + volume_current_b * ((-(inverse_sqrt_pi * &

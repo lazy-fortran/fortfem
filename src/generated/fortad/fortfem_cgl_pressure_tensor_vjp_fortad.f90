@@ -57,7 +57,7 @@ contains
             p_perpendicular) * (2 * direction_1)
         t1_v1_b = t1_v1_b + pressure_11_b * direction_1 ** 2
         p_parallel_b = p_parallel_b + t1_v1_b
-        p_perpendicular_b = p_perpendicular_b + t1_v1_b * (-1.0_dp)
+        p_perpendicular_b = p_perpendicular_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_cgl_pressure_tensor_vjp_fortad
 
 end module fortfem_fortad_cgl_pressure_tensor_vjp

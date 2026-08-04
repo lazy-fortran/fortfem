@@ -27,9 +27,9 @@ contains
 
         volume_current_d = ((inverse_sqrt_pi * sheet_current_d * &
             exp((-signed_distance ** 2) / thickness ** 2) + inverse_sqrt_pi * &
-            sheet_current * (exp((-signed_distance ** 2) / thickness ** 2) * (((-(2 * &
-            signed_distance * signed_distance_d)) * thickness ** 2 - (-signed_distance ** &
-            2) * (2 * thickness * thickness_d)) / thickness ** 2 ** 2))) * thickness - &
+            sheet_current * (exp((-signed_distance ** 2) / thickness ** 2) * &
+            ((signed_distance ** 2 * 2 * thickness * thickness_d - 2 * signed_distance * &
+            signed_distance_d * thickness ** 2) / thickness ** 2 ** 2))) * thickness - &
             inverse_sqrt_pi * sheet_current * exp((-signed_distance ** 2) / thickness ** &
             2) * thickness_d) / thickness ** 2
     end subroutine fortfem_regularized_surface_current_jvp_fortad

@@ -63,7 +63,7 @@ contains
             scale) ** 2 + point_3 * point_3) ** 2)
         fad_t6 = fad_t5 * (2 * (t1_v1 - scale))
         t1_v1_b = t1_v1_b + fad_t6
-        scale_b = scale_b + fad_t6 * (-1.0_dp)
+        scale_b = scale_b - fad_t6 * 1.0_dp
         t2_v1_b = t2_v1_b + fad_t5
         point_3_b = point_3_b + t2_v1_b * (2.0_dp * point_3)
         fad_t9 = t1_v1_b * (1.0_dp / (2.0_dp * sqrt(point_1 * point_1 + point_2 * &

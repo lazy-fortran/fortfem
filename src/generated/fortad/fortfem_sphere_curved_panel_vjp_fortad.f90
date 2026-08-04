@@ -166,27 +166,27 @@ contains
         xi_b = xi_b + t12_v1_b * (vertex_32 - vertex_31)
         t11_v1_b = t11_v1_b + t12_v1_b * xi
         vertex_32_b = vertex_32_b + t11_v1_b
-        vertex_31_b = vertex_31_b + t11_v1_b * (-1.0_dp)
+        vertex_31_b = vertex_31_b - t11_v1_b * 1.0_dp
         vertex_33_b = vertex_33_b + t10_v1_b
-        vertex_31_b = vertex_31_b + t10_v1_b * (-1.0_dp)
+        vertex_31_b = vertex_31_b - t10_v1_b * 1.0_dp
         vertex_21_b = vertex_21_b + t8_v1_b
         eta_b = eta_b + t8_v1_b * (vertex_23 - vertex_21)
         t6_v1_b = t6_v1_b + t8_v1_b * eta
         xi_b = xi_b + t8_v1_b * (vertex_22 - vertex_21)
         t7_v1_b = t7_v1_b + t8_v1_b * xi
         vertex_22_b = vertex_22_b + t7_v1_b
-        vertex_21_b = vertex_21_b + t7_v1_b * (-1.0_dp)
+        vertex_21_b = vertex_21_b - t7_v1_b * 1.0_dp
         vertex_23_b = vertex_23_b + t6_v1_b
-        vertex_21_b = vertex_21_b + t6_v1_b * (-1.0_dp)
+        vertex_21_b = vertex_21_b - t6_v1_b * 1.0_dp
         vertex_11_b = vertex_11_b + t4_v1_b
         eta_b = eta_b + t4_v1_b * (vertex_13 - vertex_11)
         t2_v1_b = t2_v1_b + t4_v1_b * eta
         xi_b = xi_b + t4_v1_b * (vertex_12 - vertex_11)
         t3_v1_b = t3_v1_b + t4_v1_b * xi
         vertex_12_b = vertex_12_b + t3_v1_b
-        vertex_11_b = vertex_11_b + t3_v1_b * (-1.0_dp)
+        vertex_11_b = vertex_11_b - t3_v1_b * 1.0_dp
         vertex_13_b = vertex_13_b + t2_v1_b
-        vertex_11_b = vertex_11_b + t2_v1_b * (-1.0_dp)
+        vertex_11_b = vertex_11_b - t2_v1_b * 1.0_dp
     end subroutine fortfem_sphere_curved_panel_vjp_fortad
 
 end module fortfem_fortad_sphere_curved_panel_vjp

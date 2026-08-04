@@ -62,15 +62,15 @@ contains
         fad_t5 = fad_t1 * ((-((target - node_2) * (target - node_3))) / (node_1 - &
             node_2) ** 2)
         node_1_b = node_1_b + fad_t5
-        node_2_b = node_2_b + fad_t5 * (-1.0_dp)
+        node_2_b = node_2_b - fad_t5 * 1.0_dp
         fad_t7 = weight_1_b * ((-((target - node_2) * (target - node_3) / (node_1 - &
             node_2))) / (node_1 - node_3) ** 2)
         node_1_b = node_1_b + fad_t7
-        node_3_b = node_3_b + fad_t7 * (-1.0_dp)
+        node_3_b = node_3_b - fad_t7 * 1.0_dp
         target_b = target_b + t4_v1_b
-        node_3_b = node_3_b + t4_v1_b * (-1.0_dp)
+        node_3_b = node_3_b - t4_v1_b * 1.0_dp
         target_b = target_b + t3_v1_b
-        node_2_b = node_2_b + t3_v1_b * (-1.0_dp)
+        node_2_b = node_2_b - t3_v1_b * 1.0_dp
     end subroutine fortfem_fci_quadratic_lagrange_weights_vjp_fortad
 
 end module fortfem_fortad_fci_quadratic_lagrange_weights_vjp

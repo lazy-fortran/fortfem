@@ -81,7 +81,7 @@ contains
         t1_v1 = cos(phi)
         t2_v1 = cosh(eta)
         t3_v1 = cos(theta)
-        t4_v1 = (-t3_v1) * t2_v1 + 1.0000000000000000E+000_dp
+        t4_v1 = 1.0000000000000000E+000_dp - t3_v1 * t2_v1
         t5_v1 = sin(theta)
         t6_v1 = sinh(eta)
         t1_v1_b = 0.0_dp
@@ -104,7 +104,7 @@ contains
         fad_t6 = cartesian_1_b * ((-(component_1 * t1_v1 * t4_v1)) / (t2_v1 - t3_v1) &
             ** 2)
         t2_v1_b = t2_v1_b + fad_t6
-        t3_v1_b = t3_v1_b + fad_t6 * (-1.0_dp)
+        t3_v1_b = t3_v1_b - fad_t6 * 1.0_dp
         fad_t8 = cartesian_1_b * (-1.0_dp)
         fad_t9 = fad_t8 * (1.0_dp / (t2_v1 - t3_v1))
         fad_t11 = fad_t9 * t6_v1 * t5_v1
@@ -115,18 +115,18 @@ contains
         fad_t16 = fad_t8 * ((-(component_2 * t1_v1 * t5_v1 * t6_v1)) / (t2_v1 - &
             t3_v1) ** 2)
         t2_v1_b = t2_v1_b + fad_t16
-        t3_v1_b = t3_v1_b + fad_t16 * (-1.0_dp)
+        t3_v1_b = t3_v1_b - fad_t16 * 1.0_dp
         fad_t18 = cartesian_1_b * (-1.0_dp)
         component_3_b = component_3_b + fad_t18 * sin(phi)
         t7_v1_b = t7_v1_b + fad_t18 * component_3
         phi_b = phi_b + t7_v1_b * cos(phi)
         eta_b = eta_b + t6_v1_b * cosh(eta)
         theta_b = theta_b + t5_v1_b * cos(theta)
-        t3_v1_b = t3_v1_b + t4_v1_b * t2_v1 * (-1.0_dp)
-        t2_v1_b = t2_v1_b + t4_v1_b * (-t3_v1)
-        theta_b = theta_b + t3_v1_b * (-sin(theta))
+        t3_v1_b = t3_v1_b - t4_v1_b * t2_v1 * 1.0_dp
+        t2_v1_b = t2_v1_b - t4_v1_b * t3_v1
+        theta_b = theta_b - t3_v1_b * sin(theta)
         eta_b = eta_b + t2_v1_b * sinh(eta)
-        phi_b = phi_b + t1_v1_b * (-sin(phi))
+        phi_b = phi_b - t1_v1_b * sin(phi)
     end subroutine fortfem_toroidal_vector_to_cartesian_vjp_fortad
 
 end module fortfem_fortad_toroidal_vector_to_cartesian_vjp
