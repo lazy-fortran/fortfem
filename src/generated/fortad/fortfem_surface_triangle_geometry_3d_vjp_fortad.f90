@@ -95,9 +95,9 @@ contains
         xi_b = xi_b + point_1_b * (vertex_12 - vertex_11)
         t3_v1_b = t3_v1_b + point_1_b * xi
         vertex_12_b = vertex_12_b + t3_v1_b
-        vertex_11_b = vertex_11_b + t3_v1_b * (-1.0_dp)
+        vertex_11_b = vertex_11_b - t3_v1_b * 1.0_dp
         vertex_13_b = vertex_13_b + t2_v1_b
-        vertex_11_b = vertex_11_b + t2_v1_b * (-1.0_dp)
+        vertex_11_b = vertex_11_b - t2_v1_b * 1.0_dp
     end subroutine fortfem_surface_triangle_geometry_3d_vjp_fortad
 
 end module fortfem_fortad_surface_triangle_geometry_3d_vjp

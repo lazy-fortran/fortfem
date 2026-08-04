@@ -28,10 +28,10 @@ contains
         real(dp), intent(out) :: gradient_d
         real(dp) :: gradient
 
-        gradient_d = (((-backward_value_d) * lower_field + (-backward_value) * &
-            lower_field_d + (forward_value_d * upper_field + forward_value * &
-            upper_field_d)) * line_length - ((-backward_value) * lower_field + &
-            forward_value * upper_field) * line_length_d) / line_length ** 2
+        gradient_d = ((forward_value_d * upper_field - backward_value * lower_field_d &
+            - backward_value_d * lower_field + forward_value * upper_field_d) * &
+            line_length - (forward_value * upper_field - backward_value * lower_field) * &
+            line_length_d) / line_length ** 2
     end subroutine fortfem_fci_parallel_gradient_jvp_fortad
 
 end module fortfem_fortad_fci_parallel_gradient_jvp

@@ -85,11 +85,11 @@ contains
         t2_v1_b = t2_v1_b + fad_t6 * (2.0_dp * (first_point_2 - second_point_2))
         t3_v1_b = t3_v1_b + fad_t6 * (2.0_dp * (first_point_3 - second_point_3))
         first_point_3_b = first_point_3_b + t3_v1_b
-        second_point_3_b = second_point_3_b + t3_v1_b * (-1.0_dp)
+        second_point_3_b = second_point_3_b - t3_v1_b * 1.0_dp
         first_point_2_b = first_point_2_b + t2_v1_b
-        second_point_2_b = second_point_2_b + t2_v1_b * (-1.0_dp)
+        second_point_2_b = second_point_2_b - t2_v1_b * 1.0_dp
         first_point_1_b = first_point_1_b + t1_v1_b
-        second_point_1_b = second_point_1_b + t1_v1_b * (-1.0_dp)
+        second_point_1_b = second_point_1_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_laplace_single_layer_integrand_vjp_fortad
 
 end module fortfem_fortad_laplace_single_layer_integrand_vjp

@@ -88,51 +88,51 @@ contains
         t3 = p_parallel - p_perpendicular
         t4_d = parallel_gradient_1_d - perpendicular_gradient_1_d
         t4 = parallel_gradient_1 - perpendicular_gradient_1
-        force_1_d = perpendicular_gradient_1_d + ((direction_1_d * direction_2 + &
-            direction_1 * direction_2_d) * t1 + direction_1 * direction_2 * t1_d) + &
+        force_1_d = perpendicular_gradient_1_d + (direction_1_d * direction_2 + &
+            direction_1 * direction_2_d) * t1 + direction_1 * direction_2 * t1_d + &
             ((direction_1_d * direction_3 + direction_1 * direction_3_d) * t2 + &
-            direction_1 * direction_3 * t2_d) + ((direction_1_d * direction_gradient_11 + &
+            direction_1 * direction_3 * t2_d + ((direction_1_d * direction_gradient_11 + &
             direction_1 * direction_gradient_11_d) * t3 + direction_1 * &
-            direction_gradient_11 * t3_d) * 2 + (2 * direction_1 * direction_1_d * t4 + &
-            direction_1 ** 2 * t4_d) + (t3_d * (direction_1 * direction_gradient_22 + &
-            direction_2 * direction_gradient_12) + t3 * (direction_1_d * &
+            direction_gradient_11 * t3_d) * 2) + (2 * direction_1 * direction_1_d * t4 + &
+            direction_1 ** 2 * t4_d + t3_d * (direction_1 * direction_gradient_22 + &
+            direction_2 * direction_gradient_12) + (t3 * (direction_1_d * &
             direction_gradient_22 + direction_1 * direction_gradient_22_d + &
             (direction_2_d * direction_gradient_12 + direction_2 * &
-            direction_gradient_12_d))) + (t3_d * (direction_1 * direction_gradient_33 + &
+            direction_gradient_12_d)) + t3_d * (direction_1 * direction_gradient_33 + &
             direction_3 * direction_gradient_13) + t3 * (direction_1_d * &
             direction_gradient_33 + direction_1 * direction_gradient_33_d + &
             (direction_3_d * direction_gradient_13 + direction_3 * &
-            direction_gradient_13_d)))
-        force_2_d = perpendicular_gradient_2_d + ((direction_1_d * direction_2 + &
-            direction_1 * direction_2_d) * t4 + direction_1 * direction_2 * t4_d) + &
+            direction_gradient_13_d))))
+        force_2_d = perpendicular_gradient_2_d + (direction_1_d * direction_2 + &
+            direction_1 * direction_2_d) * t4 + direction_1 * direction_2 * t4_d + &
             ((direction_2_d * direction_3 + direction_2 * direction_3_d) * t2 + &
-            direction_2 * direction_3 * t2_d) + ((direction_2_d * direction_gradient_22 + &
+            direction_2 * direction_3 * t2_d + ((direction_2_d * direction_gradient_22 + &
             direction_2 * direction_gradient_22_d) * t3 + direction_2 * &
-            direction_gradient_22 * t3_d) * 2 + (2 * direction_2 * direction_2_d * t1 + &
-            direction_2 ** 2 * t1_d) + (t3_d * (direction_1 * direction_gradient_21 + &
-            direction_2 * direction_gradient_11) + t3 * (direction_1_d * &
+            direction_gradient_22 * t3_d) * 2) + (2 * direction_2 * direction_2_d * t1 + &
+            direction_2 ** 2 * t1_d + t3_d * (direction_1 * direction_gradient_21 + &
+            direction_2 * direction_gradient_11) + (t3 * (direction_1_d * &
             direction_gradient_21 + direction_1 * direction_gradient_21_d + &
             (direction_2_d * direction_gradient_11 + direction_2 * &
-            direction_gradient_11_d))) + (t3_d * (direction_2 * direction_gradient_33 + &
+            direction_gradient_11_d)) + t3_d * (direction_2 * direction_gradient_33 + &
             direction_3 * direction_gradient_23) + t3 * (direction_2_d * &
             direction_gradient_33 + direction_2 * direction_gradient_33_d + &
             (direction_3_d * direction_gradient_23 + direction_3 * &
-            direction_gradient_23_d)))
-        force_3_d = perpendicular_gradient_3_d + ((direction_1_d * direction_3 + &
-            direction_1 * direction_3_d) * t4 + direction_1 * direction_3 * t4_d) + &
+            direction_gradient_23_d))))
+        force_3_d = perpendicular_gradient_3_d + (direction_1_d * direction_3 + &
+            direction_1 * direction_3_d) * t4 + direction_1 * direction_3 * t4_d + &
             ((direction_2_d * direction_3 + direction_2 * direction_3_d) * t1 + &
-            direction_2 * direction_3 * t1_d) + ((direction_3_d * direction_gradient_33 + &
+            direction_2 * direction_3 * t1_d + ((direction_3_d * direction_gradient_33 + &
             direction_3 * direction_gradient_33_d) * t3 + direction_3 * &
-            direction_gradient_33 * t3_d) * 2 + (2 * direction_3 * direction_3_d * t2 + &
-            direction_3 ** 2 * t2_d) + (t3_d * (direction_1 * direction_gradient_31 + &
-            direction_3 * direction_gradient_11) + t3 * (direction_1_d * &
+            direction_gradient_33 * t3_d) * 2) + (2 * direction_3 * direction_3_d * t2 + &
+            direction_3 ** 2 * t2_d + t3_d * (direction_1 * direction_gradient_31 + &
+            direction_3 * direction_gradient_11) + (t3 * (direction_1_d * &
             direction_gradient_31 + direction_1 * direction_gradient_31_d + &
             (direction_3_d * direction_gradient_11 + direction_3 * &
-            direction_gradient_11_d))) + (t3_d * (direction_2 * direction_gradient_32 + &
+            direction_gradient_11_d)) + t3_d * (direction_2 * direction_gradient_32 + &
             direction_3 * direction_gradient_22) + t3 * (direction_2_d * &
             direction_gradient_32 + direction_2 * direction_gradient_32_d + &
             (direction_3_d * direction_gradient_22 + direction_3 * &
-            direction_gradient_22_d)))
+            direction_gradient_22_d))))
     end subroutine fortfem_cgl_pressure_divergence_jvp_fortad
 
 end module fortfem_fortad_cgl_pressure_divergence_jvp

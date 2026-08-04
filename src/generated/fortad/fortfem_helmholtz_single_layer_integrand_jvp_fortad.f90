@@ -65,9 +65,9 @@ contains
             (first_point_3 - second_point_3) * (first_point_3 - second_point_3))
         t5_d = wave_number_d * t4 + wave_number * t4_d
         value_real_d = (((first_jacobian_d * kernel_scale * second_jacobian + &
-            first_jacobian * kernel_scale * second_jacobian_d) * cos(wave_number * t4) + &
-            first_jacobian * kernel_scale * second_jacobian * (-(sin(wave_number * t4) * &
-            t5_d))) * t4 - first_jacobian * kernel_scale * second_jacobian * &
+            first_jacobian * kernel_scale * second_jacobian_d) * cos(wave_number * t4) - &
+            first_jacobian * kernel_scale * second_jacobian * (sin(wave_number * t4) * &
+            t5_d)) * t4 - first_jacobian * kernel_scale * second_jacobian * &
             cos(wave_number * t4) * t4_d) / t4 ** 2
         value_imag_d = (((first_jacobian_d * kernel_scale * second_jacobian + &
             first_jacobian * kernel_scale * second_jacobian_d) * sin(wave_number * t4) + &

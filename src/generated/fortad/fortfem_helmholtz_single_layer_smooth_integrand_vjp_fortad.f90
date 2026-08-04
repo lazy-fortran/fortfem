@@ -93,8 +93,8 @@ contains
         fad_t2 = fad_t1 * (cos(wave_number * t4_v1) - 1)
         first_jacobian_b = first_jacobian_b + fad_t2 * second_jacobian * kernel_scale
         second_jacobian_b = second_jacobian_b + fad_t2 * (first_jacobian * kernel_scale)
-        t5_v1_b = t5_v1_b + fad_t1 * (first_jacobian * kernel_scale * &
-            second_jacobian) * (-sin(wave_number * t4_v1))
+        t5_v1_b = t5_v1_b - fad_t1 * first_jacobian * kernel_scale * second_jacobian &
+            * sin(wave_number * t4_v1)
         t4_v1_b = t4_v1_b + value_real_b * ((-(first_jacobian * kernel_scale * &
             second_jacobian * (cos(wave_number * t4_v1) - 1))) / t4_v1 ** 2)
         wave_number_b = wave_number_b + t5_v1_b * t4_v1
@@ -107,11 +107,11 @@ contains
         t2_v1_b = t2_v1_b + fad_t11 * (2.0_dp * (first_point_2 - second_point_2))
         t3_v1_b = t3_v1_b + fad_t11 * (2.0_dp * (first_point_3 - second_point_3))
         first_point_3_b = first_point_3_b + t3_v1_b
-        second_point_3_b = second_point_3_b + t3_v1_b * (-1.0_dp)
+        second_point_3_b = second_point_3_b - t3_v1_b * 1.0_dp
         first_point_2_b = first_point_2_b + t2_v1_b
-        second_point_2_b = second_point_2_b + t2_v1_b * (-1.0_dp)
+        second_point_2_b = second_point_2_b - t2_v1_b * 1.0_dp
         first_point_1_b = first_point_1_b + t1_v1_b
-        second_point_1_b = second_point_1_b + t1_v1_b * (-1.0_dp)
+        second_point_1_b = second_point_1_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_helmholtz_single_layer_smooth_integrand_vjp_fortad
 
 end module fortfem_fortad_helmholtz_single_layer_smooth_integrand_vjp

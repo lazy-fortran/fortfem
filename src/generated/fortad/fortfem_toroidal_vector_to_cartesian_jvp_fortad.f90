@@ -56,7 +56,7 @@ contains
         t3_d = -(sin(theta) * theta_d)
         t3 = cos(theta)
         t4_d = (-t3_d) * t2 + (-t3) * t2_d
-        t4 = (-t3) * t2 + 1.0000000000000000E+000_dp
+        t4 = 1.0000000000000000E+000_dp - t3 * t2
         t5_d = cos(theta) * theta_d
         t5 = sin(theta)
         t6_d = cosh(eta) * eta_d
@@ -67,18 +67,18 @@ contains
             component_1 * t1 * t4_d) * (t2 - t3) - component_1 * t1 * t4 * (t2_d - t3_d)) &
             / (t2 - t3) ** 2 - ((((component_2_d * t1 + component_2 * t1_d) * t5 + &
             component_2 * t1 * t5_d) * t6 + component_2 * t1 * t5 * t6_d) * (t2 - t3) - &
-            component_2 * t1 * t5 * t6 * (t2_d - t3_d)) / (t2 - t3) ** 2 - (component_3_d &
-            * t7 + component_3 * t7_d)
+            component_2 * t1 * t5 * t6 * (t2_d - t3_d)) / (t2 - t3) ** 2 - component_3_d &
+            * t7 - component_3 * t7_d
         cartesian_2_d = (((component_1_d * t7 + component_1 * t7_d) * t4 + &
             component_1 * t7 * t4_d) * (t2 - t3) - component_1 * t7 * t4 * (t2_d - t3_d)) &
             / (t2 - t3) ** 2 - ((((component_2_d * t7 + component_2 * t7_d) * t5 + &
             component_2 * t7 * t5_d) * t6 + component_2 * t7 * t5 * t6_d) * (t2 - t3) - &
             component_2 * t7 * t5 * t6 * (t2_d - t3_d)) / (t2 - t3) ** 2 + (component_3_d &
             * t1 + component_3 * t1_d)
-        cartesian_3_d = ((((-component_1_d) * t5 + (-component_1) * t5_d) * t6 + &
-            (-component_1) * t5 * t6_d) * (t2 - t3) - (-component_1) * t5 * t6 * (t2_d - &
-            t3_d)) / (t2 - t3) ** 2 - ((component_2_d * t4 + component_2 * t4_d) * (t2 - &
-            t3) - component_2 * t4 * (t2_d - t3_d)) / (t2 - t3) ** 2
+        cartesian_3_d = ((((-component_1_d) * t5 + (-component_1) * t5_d) * t6 - &
+            component_1 * t5 * t6_d) * (t2 - t3) + component_1 * t5 * t6 * (t2_d - t3_d)) &
+            / (t2 - t3) ** 2 - ((component_2_d * t4 + component_2 * t4_d) * (t2 - t3) - &
+            component_2 * t4 * (t2_d - t3_d)) / (t2 - t3) ** 2
     end subroutine fortfem_toroidal_vector_to_cartesian_jvp_fortad
 
 end module fortfem_fortad_toroidal_vector_to_cartesian_jvp
