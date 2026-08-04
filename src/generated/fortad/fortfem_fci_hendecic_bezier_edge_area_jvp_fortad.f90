@@ -391,6 +391,10 @@ contains
             control_6_y * 4.6200000000000000E+002_dp + control_7_y * &
             3.3000000000000000E+002_dp - control_8_y * 1.6500000000000000E+002_dp + &
             control_9_y * 5.5000000000000000E+001_dp + y_end - y_start
+        t53_d = y_start_d
+        t53 = y_start
+        t54_d = x_start_d
+        t54 = x_start
         edge_area_d = (t2_d * t4 + t2 * t4_d - (t6_d * t8 + t6 * t8_d)) * &
             5.0000000000000000E-001_dp / 3.0000000000000000E+000_dp + ((-t2_d) * t4 + &
             (-t2) * t4_d + (t6_d * t8 + t6 * t8_d)) * 5.0000000000000000E-001_dp * &
@@ -610,23 +614,21 @@ contains
             * t52_d)) * 5.0000000000000000E-001_dp * 1.0000000000000000E+001_dp / &
             2.1000000000000000E+001_dp + ((-t51_d) * t50 + (-t51) * t50_d + (t49_d * t52 &
             + t49 * t52_d)) * 5.0000000000000000E-001_dp * 1.1000000000000000E+001_dp / &
-            2.1000000000000000E+001_dp + ((-t51_d) * y_start + (-t51) * y_start_d + &
-            (t52_d * x_start + t52 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t49_d) &
-            * y_start + (-t49) * y_start_d + (t50_d * x_start + t50 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t2_d) * y_start + (-t2) * y_start_d + (t8_d * &
-            x_start + t8 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t17_d) * y_start &
-            + (-t17) * y_start_d + (t20_d * x_start + t20 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t42_d) * y_start + (-t42) * y_start_d + &
-            (t44_d * x_start + t44 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t31_d) &
-            * y_start + (-t31) * y_start_d + (t34_d * x_start + t34 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t6_d) * y_start + (-t6) * y_start_d + (t4_d * &
-            x_start + t4 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t14_d) * y_start &
-            + (-t14) * y_start_d + (t11_d * x_start + t11 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t48_d) * y_start + (-t48) * y_start_d + &
-            (t46_d * x_start + t46 * x_start_d)) * 5.0000000000000000E-001_dp + ((-t28_d) &
-            * y_start + (-t28) * y_start_d + (t24_d * x_start + t24 * x_start_d)) * &
-            5.0000000000000000E-001_dp + ((-t40_d) * y_start + (-t40) * y_start_d + &
-            (t37_d * x_start + t37 * x_start_d)) * 5.0000000000000000E-001_dp
+            2.1000000000000000E+001_dp + ((-t51_d) * t53 + (-t51) * t53_d + (t52_d * t54 &
+            + t52 * t54_d)) * 5.0000000000000000E-001_dp + ((-t49_d) * t53 + (-t49) * &
+            t53_d + (t50_d * t54 + t50 * t54_d)) * 5.0000000000000000E-001_dp + ((-t2_d) &
+            * t53 + (-t2) * t53_d + (t8_d * t54 + t8 * t54_d)) * &
+            5.0000000000000000E-001_dp + ((-t17_d) * t53 + (-t17) * t53_d + (t20_d * t54 &
+            + t20 * t54_d)) * 5.0000000000000000E-001_dp + ((-t42_d) * t53 + (-t42) * &
+            t53_d + (t44_d * t54 + t44 * t54_d)) * 5.0000000000000000E-001_dp + ((-t31_d) &
+            * t53 + (-t31) * t53_d + (t34_d * t54 + t34 * t54_d)) * &
+            5.0000000000000000E-001_dp + ((-t6_d) * t53 + (-t6) * t53_d + (t4_d * t54 + &
+            t4 * t54_d)) * 5.0000000000000000E-001_dp + ((-t14_d) * t53 + (-t14) * t53_d &
+            + (t11_d * t54 + t11 * t54_d)) * 5.0000000000000000E-001_dp + ((-t48_d) * t53 &
+            + (-t48) * t53_d + (t46_d * t54 + t46 * t54_d)) * 5.0000000000000000E-001_dp &
+            + ((-t28_d) * t53 + (-t28) * t53_d + (t24_d * t54 + t24 * t54_d)) * &
+            5.0000000000000000E-001_dp + ((-t40_d) * t53 + (-t40) * t53_d + (t37_d * t54 &
+            + t37 * t54_d)) * 5.0000000000000000E-001_dp
     end subroutine fortfem_fci_hendecic_bezier_edge_area_jvp_fortad
 
 end module fortfem_fortad_fci_hendecic_bezier_edge_area_jvp
