@@ -628,6 +628,8 @@ contains
             control_4_y * 3.5000000000000000E+001_dp + control_5_y * &
             2.1000000000000000E+001_dp - control_6_y * 7.0000000000000000E+000_dp + y_end &
             - y_start
+        t27_v1 = y_start
+        t28_v1 = x_start
         t1_v1_b = 0.0_dp
         t2_v1_b = 0.0_dp
         t3_v1_b = 0.0_dp
@@ -670,10 +672,11 @@ contains
         control_6_y_b = 0.0_dp
         x_end_b = 0.0_dp
         y_end_b = 0.0_dp
-        fad_t1 = edge_area_b * (1.0_dp / 3.0000000000000000E+000_dp)
-        t2_v1_b = t2_v1_b + fad_t1 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t1 * 5.0000000000000000E-001_dp * t2_v1
-        fad_t6 = fad_t1 * 5.0000000000000000E-001_dp * (-1.0_dp)
+        fad_t3 = edge_area_b * (1.0_dp / 3.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t2_v1_b = t2_v1_b + fad_t3 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t3 * t2_v1
+        fad_t6 = fad_t3 * (-1.0_dp)
         t6_v1_b = t6_v1_b + fad_t6 * t8_v1
         t8_v1_b = t8_v1_b + fad_t6 * t6_v1
         fad_t11 = edge_area_b * (1.0_dp / 3.0000000000000000E+000_dp) * &
@@ -689,11 +692,12 @@ contains
         fad_t22 = fad_t19 * (-1.0_dp)
         t14_v1_b = t14_v1_b + fad_t22 * t4_v1
         t4_v1_b = t4_v1_b + fad_t22 * t14_v1
-        fad_t25 = edge_area_b * (1.0_dp / 4.0000000000000000E+000_dp)
-        t6_v1_b = t6_v1_b + fad_t25 * 5.0000000000000000E-001_dp * t11_v1 * (-1.0_dp)
-        t11_v1_b = t11_v1_b + fad_t25 * 5.0000000000000000E-001_dp * (-t6_v1)
-        t14_v1_b = t14_v1_b + fad_t25 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t25 * 5.0000000000000000E-001_dp * t14_v1
+        fad_t27 = edge_area_b * (1.0_dp / 4.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t6_v1_b = t6_v1_b + fad_t27 * t11_v1 * (-1.0_dp)
+        t11_v1_b = t11_v1_b + fad_t27 * (-t6_v1)
+        t14_v1_b = t14_v1_b + fad_t27 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t27 * t14_v1
         fad_t35 = edge_area_b * (1.0_dp / 5.0000000000000000E+000_dp) * &
             3.0000000000000000E+000_dp * 5.0000000000000000E-001_dp
         t2_v1_b = t2_v1_b + fad_t35 * t11_v1
@@ -707,10 +711,11 @@ contains
         t11_v1_b = t11_v1_b + fad_t43 * (-t2_v1)
         t14_v1_b = t14_v1_b + fad_t43 * t8_v1
         t8_v1_b = t8_v1_b + fad_t43 * t14_v1
-        fad_t49 = edge_area_b * (1.0_dp / 5.0000000000000000E+000_dp)
-        t16_v1_b = t16_v1_b + fad_t49 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t49 * 5.0000000000000000E-001_dp * t16_v1
-        fad_t54 = fad_t49 * 5.0000000000000000E-001_dp * (-1.0_dp)
+        fad_t51 = edge_area_b * (1.0_dp / 5.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t16_v1_b = t16_v1_b + fad_t51 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t51 * t16_v1
+        fad_t54 = fad_t51 * (-1.0_dp)
         t6_v1_b = t6_v1_b + fad_t54 * t18_v1
         t18_v1_b = t18_v1_b + fad_t54 * t6_v1
         fad_t59 = edge_area_b * (1.0_dp / 5.0000000000000000E+000_dp) * &
@@ -739,11 +744,12 @@ contains
         fad_t86 = fad_t83 * (-1.0_dp)
         t22_v1_b = t22_v1_b + fad_t86 * t4_v1
         t4_v1_b = t4_v1_b + fad_t86 * t22_v1
-        fad_t89 = edge_area_b * (1.0_dp / 6.0000000000000000E+000_dp)
-        t6_v1_b = t6_v1_b + fad_t89 * 5.0000000000000000E-001_dp * t20_v1 * (-1.0_dp)
-        t20_v1_b = t20_v1_b + fad_t89 * 5.0000000000000000E-001_dp * (-t6_v1)
-        t22_v1_b = t22_v1_b + fad_t89 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t89 * 5.0000000000000000E-001_dp * t22_v1
+        fad_t91 = edge_area_b * (1.0_dp / 6.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t6_v1_b = t6_v1_b + fad_t91 * t20_v1 * (-1.0_dp)
+        t20_v1_b = t20_v1_b + fad_t91 * (-t6_v1)
+        t22_v1_b = t22_v1_b + fad_t91 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t91 * t22_v1
         fad_t99 = edge_area_b * (1.0_dp / 7.0000000000000000E+000_dp) * &
             5.0000000000000000E+000_dp * 5.0000000000000000E-001_dp
         t2_v1_b = t2_v1_b + fad_t99 * t20_v1
@@ -757,10 +763,11 @@ contains
         t20_v1_b = t20_v1_b + fad_t107 * (-t2_v1)
         t22_v1_b = t22_v1_b + fad_t107 * t8_v1
         t8_v1_b = t8_v1_b + fad_t107 * t22_v1
-        fad_t113 = edge_area_b * (1.0_dp / 7.0000000000000000E+000_dp)
-        t23_v1_b = t23_v1_b + fad_t113 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t113 * 5.0000000000000000E-001_dp * t23_v1
-        fad_t118 = fad_t113 * 5.0000000000000000E-001_dp * (-1.0_dp)
+        fad_t115 = edge_area_b * (1.0_dp / 7.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t23_v1_b = t23_v1_b + fad_t115 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t115 * t23_v1
+        fad_t118 = fad_t115 * (-1.0_dp)
         t6_v1_b = t6_v1_b + fad_t118 * t24_v1
         t24_v1_b = t24_v1_b + fad_t118 * t6_v1
         fad_t123 = edge_area_b * (1.0_dp / 7.0000000000000000E+000_dp) * &
@@ -795,10 +802,11 @@ contains
         t24_v1_b = t24_v1_b + fad_t155 * (-t2_v1)
         t23_v1_b = t23_v1_b + fad_t155 * t8_v1
         t8_v1_b = t8_v1_b + fad_t155 * t23_v1
-        fad_t161 = edge_area_b * (1.0_dp / 8.0000000000000000E+000_dp)
-        t25_v1_b = t25_v1_b + fad_t161 * 5.0000000000000000E-001_dp * t4_v1
-        t4_v1_b = t4_v1_b + fad_t161 * 5.0000000000000000E-001_dp * t25_v1
-        fad_t166 = fad_t161 * 5.0000000000000000E-001_dp * (-1.0_dp)
+        fad_t163 = edge_area_b * (1.0_dp / 8.0000000000000000E+000_dp) * &
+            5.0000000000000000E-001_dp
+        t25_v1_b = t25_v1_b + fad_t163 * t4_v1
+        t4_v1_b = t4_v1_b + fad_t163 * t25_v1
+        fad_t166 = fad_t163 * (-1.0_dp)
         t6_v1_b = t6_v1_b + fad_t166 * t26_v1
         t26_v1_b = t26_v1_b + fad_t166 * t6_v1
         fad_t171 = edge_area_b * (1.0_dp / 8.0000000000000000E+000_dp) * &
@@ -937,40 +945,40 @@ contains
         t26_v1_b = t26_v1_b + fad_t331 * (-t23_v1)
         t25_v1_b = t25_v1_b + fad_t331 * t24_v1
         t24_v1_b = t24_v1_b + fad_t331 * t25_v1
-        t2_v1_b = t2_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        t2_v1_b = t2_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t2_v1)
-        t8_v1_b = t8_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t8_v1_b = t8_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t8_v1
-        t23_v1_b = t23_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        t23_v1_b = t23_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t23_v1)
-        t24_v1_b = t24_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t24_v1_b = t24_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t24_v1
-        t16_v1_b = t16_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        t16_v1_b = t16_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t16_v1)
-        t18_v1_b = t18_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t18_v1_b = t18_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t18_v1
-        t25_v1_b = t25_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        t25_v1_b = t25_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t25_v1)
-        t26_v1_b = t26_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t26_v1_b = t26_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t26_v1
-        t6_v1_b = t6_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
-            (-1.0_dp)
-        t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t6_v1)
-        t4_v1_b = t4_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
-        t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t4_v1
-        t14_v1_b = t14_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        fad_t362 = edge_area_b * 5.0000000000000000E-001_dp
+        t6_v1_b = t6_v1_b + fad_t362 * t27_v1 * (-1.0_dp)
+        t27_v1_b = t27_v1_b + fad_t362 * (-t6_v1)
+        t4_v1_b = t4_v1_b + fad_t362 * t28_v1
+        t28_v1_b = t28_v1_b + fad_t362 * t4_v1
+        t14_v1_b = t14_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t14_v1)
-        t11_v1_b = t11_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t11_v1_b = t11_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t11_v1
-        t22_v1_b = t22_v1_b + edge_area_b * 5.0000000000000000E-001_dp * y_start * &
+        t22_v1_b = t22_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t27_v1 * &
             (-1.0_dp)
         t27_v1_b = t27_v1_b + edge_area_b * 5.0000000000000000E-001_dp * (-t22_v1)
-        t20_v1_b = t20_v1_b + edge_area_b * 5.0000000000000000E-001_dp * x_start
+        t20_v1_b = t20_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t28_v1
         t28_v1_b = t28_v1_b + edge_area_b * 5.0000000000000000E-001_dp * t20_v1
         x_start_b = x_start_b + t28_v1_b
         y_start_b = y_start_b + t27_v1_b
@@ -984,8 +992,7 @@ contains
         control_6_y_b = control_6_y_b + t26_v1_b * (-1.0_dp) * &
             7.0000000000000000E+000_dp
         y_end_b = y_end_b + t26_v1_b
-        fad_t389 = t26_v1_b * (-1.0_dp)
-        y_start_b = y_start_b + fad_t389
+        y_start_b = y_start_b + t26_v1_b * (-1.0_dp)
         t5_v1_b = t5_v1_b + t25_v1_b
         control_2_x_b = control_2_x_b + t25_v1_b * (-1.0_dp) * &
             2.1000000000000000E+001_dp
@@ -996,8 +1003,7 @@ contains
         control_6_x_b = control_6_x_b + t25_v1_b * (-1.0_dp) * &
             7.0000000000000000E+000_dp
         x_end_b = x_end_b + t25_v1_b
-        fad_t398 = t25_v1_b * (-1.0_dp)
-        x_start_b = x_start_b + fad_t398
+        x_start_b = x_start_b + t25_v1_b * (-1.0_dp)
         t7_v1_b = t7_v1_b + t24_v1_b
         control_2_y_b = control_2_y_b + t24_v1_b * 1.0500000000000000E+002_dp
         control_3_y_b = control_3_y_b + t24_v1_b * (-1.0_dp) * &
