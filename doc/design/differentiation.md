@@ -30,10 +30,17 @@ Derivative implementations are selected per kernel, not per application:
    \(\bar b=A^{-T}\bar x\) and
    \(\bar A_{ij}=-\bar b_i x_j\) on the active sparse pattern. FortFEM does not
    differentiate through a third-party factorization.
-3. Enzyme is an optional implementation oracle and performance candidate for
-   kernels that contain control flow or become impractical to generate.
-   Enzyme is not required by GCC users.
-4. Central differences, dot identities, manufactured solutions, and external
+3. Enzyme is a test oracle only. It is never selected by a caller and nothing
+   in the library links against it: it exists to produce an independent second
+   answer for the fixtures to compare against. An operator Enzyme cannot
+   differentiate limits what can be cross-checked, not what FortFEM computes.
+   Enzyme is not required by GCC users, and a derivative never needs Flang or
+   an LLVM plugin to obtain.
+4. Kernels with control flow, or that become impractical to generate
+   symbolically, are handled by fortad. `FORTFEM_AD_ENGINE` chooses between
+   the fortad and fortsym kernels; those are the two implementations, and
+   fortad is the default.
+5. Central differences, dot identities, manufactured solutions, and external
    discretization oracles test behavior independently. Agreement between
    Enzyme and FortSym alone is not accepted as a test oracle.
 
