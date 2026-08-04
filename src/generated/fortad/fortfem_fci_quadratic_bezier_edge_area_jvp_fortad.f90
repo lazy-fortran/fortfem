@@ -43,13 +43,13 @@ contains
         t4_d = x_end_d + x_start_d - control_x_d * 2.0000000000000000E+000_dp
         t4 = x_end + x_start - control_x * 2.0000000000000000E+000_dp
         edge_area_d = ((x_start_d * (control_y - y_start) + x_start * (control_y_d - &
-            y_start_d)) * 2.0000000000000000E+000_dp + (x_start_d * t2 + x_start * t2_d) &
-            - (y_start_d * (control_x - x_start) + y_start * (control_x_d - x_start_d)) * &
-            2.0000000000000000E+000_dp - (y_start_d * t4 + y_start * t4_d) + &
-            (((control_x_d - x_start_d) * t2 + (control_x - x_start) * t2_d) * &
-            2.0000000000000000E+000_dp - ((control_y_d - y_start_d) * t4 + (control_y - &
-            y_start) * t4_d) * 2.0000000000000000E+000_dp) / 3.0000000000000000E+000_dp) &
-            * 5.0000000000000000E-001_dp
+            y_start_d)) * 2.0000000000000000E+000_dp + x_start_d * t2 + (x_start * t2_d - &
+            (y_start_d * (control_x - x_start) + y_start * (control_x_d - x_start_d)) * &
+            2.0000000000000000E+000_dp) + ((((control_x_d - x_start_d) * t2 + (control_x &
+            - x_start) * t2_d) * 2.0000000000000000E+000_dp - ((control_y_d - y_start_d) &
+            * t4 + (control_y - y_start) * t4_d) * 2.0000000000000000E+000_dp) / &
+            3.0000000000000000E+000_dp - y_start * t4_d - y_start_d * t4)) * &
+            5.0000000000000000E-001_dp
     end subroutine fortfem_fci_quadratic_bezier_edge_area_jvp_fortad
 
 end module fortfem_fortad_fci_quadratic_bezier_edge_area_jvp

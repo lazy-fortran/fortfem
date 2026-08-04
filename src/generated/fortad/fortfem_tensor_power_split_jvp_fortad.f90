@@ -63,36 +63,36 @@ contains
         symmetric_power_d = (tensor_11_d * t1 + tensor_11 * t1_d) * 2 * &
             5.0000000000000000E-001_dp + (tensor_22_d * t2 + tensor_22 * t2_d) * 2 * &
             5.0000000000000000E-001_dp + (tensor_33_d * t3 + tensor_33 * t3_d) * 2 * &
-            5.0000000000000000E-001_dp + ((vector_1_d * vector_2 + vector_1 * vector_2_d) &
-            * (tensor_12 + tensor_21) + vector_1 * vector_2 * (tensor_12_d + &
+            5.0000000000000000E-001_dp + (((vector_1_d * vector_2 + vector_1 * &
+            vector_2_d) * (tensor_12 + tensor_21) + vector_1 * vector_2 * (tensor_12_d + &
             tensor_21_d)) * 2 * 5.0000000000000000E-001_dp + ((vector_1_d * vector_3 + &
             vector_1 * vector_3_d) * (tensor_13 + tensor_31) + vector_1 * vector_3 * &
             (tensor_13_d + tensor_31_d)) * 2 * 5.0000000000000000E-001_dp + ((vector_2_d &
             * vector_3 + vector_2 * vector_3_d) * (tensor_23 + tensor_32) + vector_2 * &
-            vector_3 * (tensor_23_d + tensor_32_d)) * 2 * 5.0000000000000000E-001_dp
+            vector_3 * (tensor_23_d + tensor_32_d)) * 2 * 5.0000000000000000E-001_dp)
         skew_power_d = ((vector_1_d * vector_2 + vector_1 * vector_2_d) * (tensor_12 &
             - tensor_21) + vector_1 * vector_2 * (tensor_12_d - tensor_21_d)) * &
             5.0000000000000000E-001_dp + ((vector_1_d * vector_2 + vector_1 * vector_2_d) &
             * (tensor_21 - tensor_12) + vector_1 * vector_2 * (tensor_21_d - &
             tensor_12_d)) * 5.0000000000000000E-001_dp + ((vector_1_d * vector_3 + &
             vector_1 * vector_3_d) * (tensor_13 - tensor_31) + vector_1 * vector_3 * &
-            (tensor_13_d - tensor_31_d)) * 5.0000000000000000E-001_dp + ((vector_1_d * &
+            (tensor_13_d - tensor_31_d)) * 5.0000000000000000E-001_dp + (((vector_1_d * &
             vector_3 + vector_1 * vector_3_d) * (tensor_31 - tensor_13) + vector_1 * &
             vector_3 * (tensor_31_d - tensor_13_d)) * 5.0000000000000000E-001_dp + &
             ((vector_2_d * vector_3 + vector_2 * vector_3_d) * (tensor_23 - tensor_32) + &
             vector_2 * vector_3 * (tensor_23_d - tensor_32_d)) * &
             5.0000000000000000E-001_dp + ((vector_2_d * vector_3 + vector_2 * vector_3_d) &
             * (tensor_32 - tensor_23) + vector_2 * vector_3 * (tensor_32_d - &
-            tensor_23_d)) * 5.0000000000000000E-001_dp
+            tensor_23_d)) * 5.0000000000000000E-001_dp)
         total_power_d = vector_3_d * (tensor_13 * vector_1 + tensor_23 * vector_2 + &
-            tensor_31 * vector_1 + tensor_32 * vector_2) + vector_3 * (tensor_13_d * &
+            (tensor_31 * vector_1 + tensor_32 * vector_2)) + vector_3 * (tensor_13_d * &
             vector_1 + tensor_13 * vector_1_d + (tensor_23_d * vector_2 + tensor_23 * &
-            vector_2_d) + (tensor_31_d * vector_1 + tensor_31 * vector_1_d) + &
-            (tensor_32_d * vector_2 + tensor_32 * vector_2_d)) + tensor_11_d * t1 + &
-            tensor_11 * t1_d + (tensor_12_d * vector_1 + tensor_12 * vector_1_d) * &
-            vector_2 + tensor_12 * vector_1 * vector_2_d + (tensor_21_d * vector_1 + &
-            tensor_21 * vector_1_d) * vector_2 + tensor_21 * vector_1 * vector_2_d + &
-            tensor_22_d * t2 + tensor_22 * t2_d + tensor_33_d * t3 + tensor_33 * t3_d
+            vector_2_d) + (tensor_31_d * vector_1 + tensor_31 * vector_1_d + (tensor_32_d &
+            * vector_2 + tensor_32 * vector_2_d))) + tensor_11_d * t1 + (tensor_11 * t1_d &
+            + (tensor_12_d * vector_1 + tensor_12 * vector_1_d) * vector_2 + tensor_12 * &
+            vector_1 * vector_2_d) + ((tensor_21_d * vector_1 + tensor_21 * vector_1_d) * &
+            vector_2 + tensor_21 * vector_1 * vector_2_d + tensor_22_d * t2 + (tensor_22 &
+            * t2_d + tensor_33_d * t3 + tensor_33 * t3_d))
     end subroutine fortfem_tensor_power_split_jvp_fortad
 
 end module fortfem_fortad_tensor_power_split_jvp

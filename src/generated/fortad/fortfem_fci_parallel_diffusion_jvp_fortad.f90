@@ -40,9 +40,9 @@ contains
         real(dp) :: t1
         real(dp) :: t1_d
 
-        t1_d = (-backward_value_d) * lower_field + (-backward_value) * lower_field_d &
-            + (forward_value_d * upper_field + forward_value * upper_field_d)
-        t1 = (-backward_value) * lower_field + forward_value * upper_field
+        t1_d = forward_value_d * upper_field - backward_value * lower_field_d - &
+            backward_value_d * lower_field + forward_value * upper_field_d
+        t1 = forward_value * upper_field - backward_value * lower_field
         lower_contribution_d = (((((backward_value_d * parallel_coefficient + &
             backward_value * parallel_coefficient_d) * staggered_volume + backward_value &
             * parallel_coefficient * staggered_volume_d) * t1 + backward_value * &
@@ -52,11 +52,11 @@ contains
             backward_value * parallel_coefficient * staggered_volume * t1 / &
             canonical_volume * (2 * line_length * line_length_d)) / line_length ** 2 ** 2
         upper_contribution_d = ((((((-forward_value_d) * parallel_coefficient + &
-            (-forward_value) * parallel_coefficient_d) * staggered_volume + &
-            (-forward_value) * parallel_coefficient * staggered_volume_d) * t1 + &
-            (-forward_value) * parallel_coefficient * staggered_volume * t1_d) * &
-            canonical_volume - (-forward_value) * parallel_coefficient * staggered_volume &
-            * t1 * canonical_volume_d) / canonical_volume ** 2 * line_length ** 2 - &
+            (-forward_value) * parallel_coefficient_d) * staggered_volume - forward_value &
+            * parallel_coefficient * staggered_volume_d) * t1 - forward_value * &
+            parallel_coefficient * staggered_volume * t1_d) * canonical_volume + &
+            forward_value * parallel_coefficient * staggered_volume * t1 * &
+            canonical_volume_d) / canonical_volume ** 2 * line_length ** 2 - &
             (-forward_value) * parallel_coefficient * staggered_volume * t1 / &
             canonical_volume * (2 * line_length * line_length_d)) / line_length ** 2 ** 2
     end subroutine fortfem_fci_parallel_diffusion_jvp_fortad

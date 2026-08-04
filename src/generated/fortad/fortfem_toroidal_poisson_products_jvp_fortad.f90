@@ -69,7 +69,7 @@ contains
         t3 = order * phi
         t4_d = -(sin(order * phi) * t3_d)
         t4 = cos(order * phi)
-        t5_d = sinh(eta) * eta_d - (-(sin(theta) * theta_d))
+        t5_d = sinh(eta) * eta_d + sin(theta) * theta_d
         t5 = cosh(eta) - cos(theta)
         t6_d = t5_d / (2.0_dp * sqrt(t5))
         t6 = sqrt(t5)
@@ -81,31 +81,30 @@ contains
         t8 = radial_derivative * t7 / radial + t7 / (t5 * 2)
         harmonic_d = ((radial_d * t2 + radial * t2_d) * t4 + radial * t2 * t4_d) * t6 &
             + radial * t2 * t4 * t6_d
-        field_1_d = (((((-t2_d) * t4 + (-t2) * t4_d) * t5 + (-t2) * t4 * t5_d) * &
-            (radial * t7 / (t6 * 2) + radial_derivative * t7 * t6) + (-t2) * t4 * t5 * &
-            (((radial_d * t7 + radial * t7_d) * (t6 * 2) - radial * t7 * (t6_d * 2)) / &
-            (t6 * 2) ** 2 + ((radial_derivative_d * t7 + radial_derivative * t7_d) * t6 + &
-            radial_derivative * t7 * t6_d))) * scale - (-t2) * t4 * t5 * (radial * t7 / &
-            (t6 * 2) + radial_derivative * t7 * t6) * scale_d) / scale ** 2
-        field_2_d = ((((-t4_d) * t5 + (-t4) * t5_d) * ((-degree) * radial * sin(t1) * &
-            t6 + radial * t2 * sin(theta) / (t6 * 2)) + (-t4) * t5 * ((((-degree_d) * &
-            radial + (-degree) * radial_d) * sin(t1) + (-degree) * radial * (cos(t1) * &
-            t1_d)) * t6 + (-degree) * radial * sin(t1) * t6_d + (((radial_d * t2 + radial &
-            * t2_d) * sin(theta) + radial * t2 * (cos(theta) * theta_d)) * (t6 * 2) - &
-            radial * t2 * sin(theta) * (t6_d * 2)) / (t6 * 2) ** 2)) * scale - (-t4) * t5 &
-            * ((-degree) * radial * sin(t1) * t6 + radial * t2 * sin(theta) / (t6 * 2)) * &
-            scale_d) / scale ** 2
+        field_1_d = (((((-t2_d) * t4 + (-t2) * t4_d) * t5 - t2 * t4 * t5_d) * (radial &
+            * t7 / (t6 * 2) + radial_derivative * t7 * t6) - t2 * t4 * t5 * (((radial_d * &
+            t7 + radial * t7_d) * (t6 * 2) - radial * t7 * (t6_d * 2)) / (t6 * 2) ** 2 + &
+            ((radial_derivative_d * t7 + radial_derivative * t7_d) * t6 + &
+            radial_derivative * t7 * t6_d))) * scale + t2 * t4 * t5 * (radial * t7 / (t6 &
+            * 2) + radial_derivative * t7 * t6) * scale_d) / scale ** 2
+        field_2_d = ((((-t4_d) * t5 + (-t4) * t5_d) * (radial * t2 * sin(theta) / (t6 &
+            * 2) - degree * radial * sin(t1) * t6) - t4 * t5 * ((((-degree_d) * radial + &
+            (-degree) * radial_d) * sin(t1) - degree * radial * cos(t1) * t1_d) * t6 - &
+            degree * radial * sin(t1) * t6_d + (((radial_d * t2 + radial * t2_d) * &
+            sin(theta) + radial * t2 * (cos(theta) * theta_d)) * (t6 * 2) - radial * t2 * &
+            sin(theta) * (t6_d * 2)) / (t6 * 2) ** 2)) * scale + t4 * t5 * (radial * t2 * &
+            sin(theta) / (t6 * 2) - degree * radial * sin(t1) * t6) * scale_d) / scale ** 2
         field_3_d = ((((((order_d * radial + order * radial_d) * t2 + order * radial &
             * t2_d) * sin(t3) + order * radial * t2 * (cos(t3) * t3_d)) * t6 + order * &
             radial * t2 * sin(t3) * t6_d) * t5 + order * radial * t2 * sin(t3) * t6 * &
             t5_d) * (scale * t7) - order * radial * t2 * sin(t3) * t6 * t5 * (scale_d * &
             t7 + scale * t7_d)) / (scale * t7) ** 2
-        dtn_value_d = (((-t5_d) * t8 + (-t5) * t8_d) * scale - (-t5) * t8 * scale_d) &
-            / scale ** 2
-        normal_derivative_d = (((((((-radial_d) * t2 + (-radial) * t2_d) * t4 + &
-            (-radial) * t2 * t4_d) * t6 + (-radial) * t2 * t4 * t6_d) * t5 + (-radial) * &
-            t2 * t4 * t6 * t5_d) * t8 + (-radial) * t2 * t4 * t6 * t5 * t8_d) * scale - &
-            (-radial) * t2 * t4 * t6 * t5 * t8 * scale_d) / scale ** 2
+        dtn_value_d = (((-t5_d) * t8 + (-t5) * t8_d) * scale + t5 * t8 * scale_d) / &
+            scale ** 2
+        normal_derivative_d = (((((((-radial_d) * t2 + (-radial) * t2_d) * t4 - &
+            radial * t2 * t4_d) * t6 - radial * t2 * t4 * t6_d) * t5 - radial * t2 * t4 * &
+            t6 * t5_d) * t8 - radial * t2 * t4 * t6 * t5 * t8_d) * scale + radial * t2 * &
+            t4 * t6 * t5 * t8 * scale_d) / scale ** 2
     end subroutine fortfem_toroidal_poisson_products_jvp_fortad
 
 end module fortfem_fortad_toroidal_poisson_products_jvp

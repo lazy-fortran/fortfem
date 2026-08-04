@@ -37,8 +37,8 @@ contains
         x_end_b = 0.0_dp
         y_end_b = 0.0_dp
         fad_t1 = edge_area_b * (1.0_dp / 2.0000000000000000E+000_dp)
-        x_end_b = x_end_b + fad_t1 * y_start * (-1.0_dp)
-        y_start_b = y_start_b + fad_t1 * (-x_end)
+        x_end_b = x_end_b - fad_t1 * y_start * 1.0_dp
+        y_start_b = y_start_b - fad_t1 * x_end
         x_start_b = x_start_b + fad_t1 * y_end
         y_end_b = y_end_b + fad_t1 * x_start
     end subroutine fortfem_fci_polygon_edge_area_vjp_fortad

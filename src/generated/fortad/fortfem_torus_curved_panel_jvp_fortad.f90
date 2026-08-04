@@ -104,15 +104,15 @@ contains
         real(dp) :: t22
         real(dp) :: t22_d
 
-        t4_d = parameter_21_d + (eta_d * (parameter_23 - parameter_21) + eta * &
-            (parameter_23_d - parameter_21_d)) + (xi_d * (parameter_22 - parameter_21) + &
+        t4_d = parameter_21_d + eta_d * (parameter_23 - parameter_21) + eta * &
+            (parameter_23_d - parameter_21_d) + (xi_d * (parameter_22 - parameter_21) + &
             xi * (parameter_22_d - parameter_21_d))
         t4 = parameter_21 + eta * (parameter_23 - parameter_21) + xi * (parameter_22 &
             - parameter_21)
         t5_d = -(sin(t4) * t4_d)
         t5 = cos(t4)
-        t9_d = parameter_11_d + (eta_d * (parameter_13 - parameter_11) + eta * &
-            (parameter_13_d - parameter_11_d)) + (xi_d * (parameter_12 - parameter_11) + &
+        t9_d = parameter_11_d + eta_d * (parameter_13 - parameter_11) + eta * &
+            (parameter_13_d - parameter_11_d) + (xi_d * (parameter_12 - parameter_11) + &
             xi * (parameter_12_d - parameter_11_d))
         t9 = parameter_11 + eta * (parameter_13 - parameter_11) + xi * (parameter_12 &
             - parameter_11)
@@ -124,46 +124,42 @@ contains
         t12 = sin(t4)
         t13_d = cos(t9) * t9_d
         t13 = sin(t9)
-        t14_d = (((-minor_radius_d) * t5 + (-minor_radius) * t5_d) * t13 + &
-            (-minor_radius) * t5 * t13_d) * (parameter_12 - parameter_11) + &
-            (-minor_radius) * t5 * t13 * (parameter_12_d - parameter_11_d) - ((t12_d * &
-            t11 + t12 * t11_d) * (parameter_22 - parameter_21) + t12 * t11 * &
-            (parameter_22_d - parameter_21_d))
+        t14_d = (((-minor_radius_d) * t5 + (-minor_radius) * t5_d) * t13 - &
+            minor_radius * t5 * t13_d) * (parameter_12 - parameter_11) - minor_radius * &
+            t5 * t13 * (parameter_12_d - parameter_11_d) - (t12_d * t11 + t12 * t11_d) * &
+            (parameter_22 - parameter_21) - t12 * t11 * (parameter_22_d - parameter_21_d)
         t14 = (-minor_radius) * t5 * t13 * (parameter_12 - parameter_11) - t12 * t11 &
             * (parameter_22 - parameter_21)
-        t15_d = (((-minor_radius_d) * t13 + (-minor_radius) * t13_d) * t12 + &
-            (-minor_radius) * t13 * t12_d) * (parameter_12 - parameter_11) + &
-            (-minor_radius) * t13 * t12 * (parameter_12_d - parameter_11_d) + ((t5_d * &
-            t11 + t5 * t11_d) * (parameter_22 - parameter_21) + t5 * t11 * &
-            (parameter_22_d - parameter_21_d))
-        t15 = (-minor_radius) * t13 * t12 * (parameter_12 - parameter_11) + t5 * t11 &
-            * (parameter_22 - parameter_21)
+        t15_d = (((-minor_radius_d) * t13 + (-minor_radius) * t13_d) * t12 - &
+            minor_radius * t13 * t12_d) * (parameter_12 - parameter_11) - minor_radius * &
+            t13 * t12 * (parameter_12_d - parameter_11_d) + ((t5_d * t11 + t5 * t11_d) * &
+            (parameter_22 - parameter_21) + t5 * t11 * (parameter_22_d - parameter_21_d))
+        t15 = t5 * t11 * (parameter_22 - parameter_21) - minor_radius * t13 * t12 * &
+            (parameter_12 - parameter_11)
         t16_d = (minor_radius_d * t10 + minor_radius * t10_d) * (parameter_12 - &
             parameter_11) + minor_radius * t10 * (parameter_12_d - parameter_11_d) + &
             (parameter_22_d - parameter_21_d) * 0.0000000000000000E+000_dp
         t16 = minor_radius * t10 * (parameter_12 - parameter_11) + (parameter_22 - &
             parameter_21) * 0.0000000000000000E+000_dp
-        t17_d = (((-minor_radius_d) * t5 + (-minor_radius) * t5_d) * t13 + &
-            (-minor_radius) * t5 * t13_d) * (parameter_13 - parameter_11) + &
-            (-minor_radius) * t5 * t13 * (parameter_13_d - parameter_11_d) - ((t12_d * &
-            t11 + t12 * t11_d) * (parameter_23 - parameter_21) + t12 * t11 * &
-            (parameter_23_d - parameter_21_d))
+        t17_d = (((-minor_radius_d) * t5 + (-minor_radius) * t5_d) * t13 - &
+            minor_radius * t5 * t13_d) * (parameter_13 - parameter_11) - minor_radius * &
+            t5 * t13 * (parameter_13_d - parameter_11_d) - (t12_d * t11 + t12 * t11_d) * &
+            (parameter_23 - parameter_21) - t12 * t11 * (parameter_23_d - parameter_21_d)
         t17 = (-minor_radius) * t5 * t13 * (parameter_13 - parameter_11) - t12 * t11 &
             * (parameter_23 - parameter_21)
-        t18_d = (((-minor_radius_d) * t13 + (-minor_radius) * t13_d) * t12 + &
-            (-minor_radius) * t13 * t12_d) * (parameter_13 - parameter_11) + &
-            (-minor_radius) * t13 * t12 * (parameter_13_d - parameter_11_d) + ((t5_d * &
-            t11 + t5 * t11_d) * (parameter_23 - parameter_21) + t5 * t11 * &
-            (parameter_23_d - parameter_21_d))
-        t18 = (-minor_radius) * t13 * t12 * (parameter_13 - parameter_11) + t5 * t11 &
-            * (parameter_23 - parameter_21)
+        t18_d = (((-minor_radius_d) * t13 + (-minor_radius) * t13_d) * t12 - &
+            minor_radius * t13 * t12_d) * (parameter_13 - parameter_11) - minor_radius * &
+            t13 * t12 * (parameter_13_d - parameter_11_d) + ((t5_d * t11 + t5 * t11_d) * &
+            (parameter_23 - parameter_21) + t5 * t11 * (parameter_23_d - parameter_21_d))
+        t18 = t5 * t11 * (parameter_23 - parameter_21) - minor_radius * t13 * t12 * &
+            (parameter_13 - parameter_11)
         t19_d = (minor_radius_d * t10 + minor_radius * t10_d) * (parameter_13 - &
             parameter_11) + minor_radius * t10 * (parameter_13_d - parameter_11_d) + &
             (parameter_23_d - parameter_21_d) * 0.0000000000000000E+000_dp
         t19 = minor_radius * t10 * (parameter_13 - parameter_11) + (parameter_23 - &
             parameter_21) * 0.0000000000000000E+000_dp
         t20 = t16 * t17 - t19 * t14
-        t21 = (-t16) * t18 + t19 * t15
+        t21 = t19 * t15 - t16 * t18
         t22 = t14 * t18 - t17 * t15
         point_1_d = t5_d * t11 + t5 * t11_d
         point_2_d = t12_d * t11 + t12 * t11_d
@@ -174,11 +170,10 @@ contains
         tangent_eta_1_d = t17_d
         tangent_eta_2_d = t18_d
         tangent_eta_3_d = t19_d
-        surface_jacobian_d = (2.0_dp * (t20 * (t16_d * t17 + t16 * t17_d - (t19_d * &
-            t14 + t19 * t14_d))) + 2.0_dp * (t21 * ((-t16_d) * t18 + (-t16) * t18_d + &
-            (t19_d * t15 + t19 * t15_d))) + 2.0_dp * (t22 * (t14_d * t18 + t14 * t18_d - &
-            (t17_d * t15 + t17 * t15_d)))) / (2.0_dp * sqrt(t20 * t20 + t21 * t21 + t22 * &
-            t22))
+        surface_jacobian_d = (2.0_dp * (t20 * (t16_d * t17 + t16 * t17_d - t19_d * &
+            t14 - t19 * t14_d)) + 2.0_dp * (t21 * (t19_d * t15 - t16 * t18_d - t16_d * &
+            t18 + t19 * t15_d)) + 2.0_dp * (t22 * (t14_d * t18 + t14 * t18_d - t17_d * &
+            t15 - t17 * t15_d))) / (2.0_dp * sqrt(t20 * t20 + t21 * t21 + t22 * t22))
     end subroutine fortfem_torus_curved_panel_jvp_fortad
 
 end module fortfem_fortad_torus_curved_panel_jvp

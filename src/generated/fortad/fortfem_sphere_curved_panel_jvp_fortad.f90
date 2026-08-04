@@ -112,24 +112,24 @@ contains
         real(dp) :: t24
         real(dp) :: t24_d
 
-        t4_d = vertex_11_d + (eta_d * (vertex_13 - vertex_11) + eta * (vertex_13_d - &
-            vertex_11_d)) + (xi_d * (vertex_12 - vertex_11) + xi * (vertex_12_d - &
+        t4_d = vertex_11_d + eta_d * (vertex_13 - vertex_11) + eta * (vertex_13_d - &
+            vertex_11_d) + (xi_d * (vertex_12 - vertex_11) + xi * (vertex_12_d - &
             vertex_11_d))
         t4 = vertex_11 + eta * (vertex_13 - vertex_11) + xi * (vertex_12 - vertex_11)
-        t8_d = vertex_21_d + (eta_d * (vertex_23 - vertex_21) + eta * (vertex_23_d - &
-            vertex_21_d)) + (xi_d * (vertex_22 - vertex_21) + xi * (vertex_22_d - &
+        t8_d = vertex_21_d + eta_d * (vertex_23 - vertex_21) + eta * (vertex_23_d - &
+            vertex_21_d) + (xi_d * (vertex_22 - vertex_21) + xi * (vertex_22_d - &
             vertex_21_d))
         t8 = vertex_21 + eta * (vertex_23 - vertex_21) + xi * (vertex_22 - vertex_21)
-        t12_d = vertex_31_d + (eta_d * (vertex_33 - vertex_31) + eta * (vertex_33_d - &
-            vertex_31_d)) + (xi_d * (vertex_32 - vertex_31) + xi * (vertex_32_d - &
+        t12_d = vertex_31_d + eta_d * (vertex_33 - vertex_31) + eta * (vertex_33_d - &
+            vertex_31_d) + (xi_d * (vertex_32 - vertex_31) + xi * (vertex_32_d - &
             vertex_31_d))
         t12 = vertex_31 + eta * (vertex_33 - vertex_31) + xi * (vertex_32 - vertex_31)
         t13_d = (2.0_dp * (t4 * t4_d) + 2.0_dp * (t8 * t8_d) + 2.0_dp * (t12 * &
             t12_d)) / (2.0_dp * sqrt(t4 * t4 + t8 * t8 + t12 * t12))
         t13 = sqrt(t4 * t4 + t8 * t8 + t12 * t12)
         t14_d = t4_d * (vertex_12 - vertex_11) + t4 * (vertex_12_d - vertex_11_d) + &
-            (t8_d * (vertex_22 - vertex_21) + t8 * (vertex_22_d - vertex_21_d)) + (t12_d &
-            * (vertex_32 - vertex_31) + t12 * (vertex_32_d - vertex_31_d))
+            t8_d * (vertex_22 - vertex_21) + (t8 * (vertex_22_d - vertex_21_d) + t12_d * &
+            (vertex_32 - vertex_31) + t12 * (vertex_32_d - vertex_31_d))
         t14 = t4 * (vertex_12 - vertex_11) + t8 * (vertex_22 - vertex_21) + t12 * &
             (vertex_32 - vertex_31)
         t15_d = ((vertex_12_d - vertex_11_d) * t13 - (vertex_12 - vertex_11) * t13_d) &
@@ -145,8 +145,8 @@ contains
             (2.0_dp * (t13 * t13_d) * t13 + t13 * t13 * t13_d)) / (t13 * t13 * t13) ** 2
         t17 = (vertex_32 - vertex_31) / t13 - t12 * t14 / (t13 * t13 * t13)
         t18_d = t4_d * (vertex_13 - vertex_11) + t4 * (vertex_13_d - vertex_11_d) + &
-            (t8_d * (vertex_23 - vertex_21) + t8 * (vertex_23_d - vertex_21_d)) + (t12_d &
-            * (vertex_33 - vertex_31) + t12 * (vertex_33_d - vertex_31_d))
+            t8_d * (vertex_23 - vertex_21) + (t8 * (vertex_23_d - vertex_21_d) + t12_d * &
+            (vertex_33 - vertex_31) + t12 * (vertex_33_d - vertex_31_d))
         t18 = t4 * (vertex_13 - vertex_11) + t8 * (vertex_23 - vertex_21) + t12 * &
             (vertex_33 - vertex_31)
         t19_d = ((vertex_13_d - vertex_11_d) * t13 - (vertex_13 - vertex_11) * t13_d) &
@@ -162,14 +162,14 @@ contains
             (2.0_dp * (t13 * t13_d) * t13 + t13 * t13 * t13_d)) / (t13 * t13 * t13) ** 2
         t21 = (vertex_33 - vertex_31) / t13 - t12 * t18 / (t13 * t13 * t13)
         t22 = radius * radius * t15 * t20 - radius * radius * t19 * t16
-        t23_d = (((-radius_d) * radius + (-radius) * radius_d) * t15 + (-radius) * &
-            radius * t15_d) * t21 + (-radius) * radius * t15 * t21_d + ((2.0_dp * (radius &
-            * radius_d) * t19 + radius * radius * t19_d) * t17 + radius * radius * t19 * &
+        t23_d = (((-radius_d) * radius + (-radius) * radius_d) * t15 - radius * &
+            radius * t15_d) * t21 - radius * radius * t15 * t21_d + ((2.0_dp * (radius * &
+            radius_d) * t19 + radius * radius * t19_d) * t17 + radius * radius * t19 * &
             t17_d)
-        t23 = (-radius) * radius * t15 * t21 + radius * radius * t19 * t17
+        t23 = radius * radius * t19 * t17 - radius * radius * t15 * t21
         t24_d = (2.0_dp * (radius * radius_d) * t16 + radius * radius * t16_d) * t21 &
-            + radius * radius * t16 * t21_d - ((2.0_dp * (radius * radius_d) * t20 + &
-            radius * radius * t20_d) * t17 + radius * radius * t20 * t17_d)
+            + radius * radius * t16 * t21_d - (2.0_dp * (radius * radius_d) * t20 + &
+            radius * radius * t20_d) * t17 - radius * radius * t20 * t17_d
         t24 = radius * radius * t16 * t21 - radius * radius * t20 * t17
         point_1_d = ((radius_d * t4 + radius * t4_d) * t13 - radius * t4 * t13_d) / &
             t13 ** 2
@@ -184,9 +184,9 @@ contains
         tangent_eta_2_d = radius_d * t20 + radius * t20_d
         tangent_eta_3_d = radius_d * t21 + radius * t21_d
         surface_jacobian_d = (2.0_dp * (t22 * ((2.0_dp * (radius * radius_d) * t15 + &
-            radius * radius * t15_d) * t20 + radius * radius * t15 * t20_d - ((2.0_dp * &
-            (radius * radius_d) * t19 + radius * radius * t19_d) * t16 + radius * radius &
-            * t19 * t16_d))) + 2.0_dp * (t23 * t23_d) + 2.0_dp * (t24 * t24_d)) / (2.0_dp &
+            radius * radius * t15_d) * t20 + radius * radius * t15 * t20_d - (2.0_dp * &
+            (radius * radius_d) * t19 + radius * radius * t19_d) * t16 - radius * radius &
+            * t19 * t16_d)) + 2.0_dp * (t23 * t23_d) + 2.0_dp * (t24 * t24_d)) / (2.0_dp &
             * sqrt(t22 * t22 + t23 * t23 + t24 * t24))
     end subroutine fortfem_sphere_curved_panel_jvp_fortad
 

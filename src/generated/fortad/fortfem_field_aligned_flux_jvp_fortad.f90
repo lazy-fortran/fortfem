@@ -45,7 +45,7 @@ contains
         real(dp) :: t2_d
 
         t2_d = direction_1_d * gradient_1 + direction_1 * gradient_1_d + &
-            (direction_2_d * gradient_2 + direction_2 * gradient_2_d) + (direction_3_d * &
+            direction_2_d * gradient_2 + (direction_2 * gradient_2_d + direction_3_d * &
             gradient_3 + direction_3 * gradient_3_d)
         t2 = direction_1 * gradient_1 + direction_2 * gradient_2 + direction_3 * &
             gradient_3

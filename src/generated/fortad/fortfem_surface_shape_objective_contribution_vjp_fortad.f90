@@ -38,7 +38,7 @@ contains
         fad_t4 = contribution_b * 5.0000000000000000E-001_dp * weight * (2 * &
             (candidate - target))
         candidate_b = candidate_b + fad_t4
-        target_b = target_b + fad_t4 * (-1.0_dp)
+        target_b = target_b - fad_t4 * 1.0_dp
     end subroutine fortfem_surface_shape_objective_contribution_vjp_fortad
 
 end module fortfem_fortad_surface_shape_objective_contribution_vjp

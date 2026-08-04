@@ -80,21 +80,21 @@ contains
         fad_t8 = fad_t2 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4))) / (node_1 - node_2) ** 2)
         node_1_b = node_1_b + fad_t8
-        node_2_b = node_2_b + fad_t8 * (-1.0_dp)
+        node_2_b = node_2_b - fad_t8 * 1.0_dp
         fad_t10 = fad_t1 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) / (node_1 - node_2))) / (node_1 - node_3) ** 2)
         node_1_b = node_1_b + fad_t10
-        node_3_b = node_3_b + fad_t10 * (-1.0_dp)
+        node_3_b = node_3_b - fad_t10 * 1.0_dp
         fad_t12 = weight_1_b * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) / (node_1 - node_2) / (node_1 - node_3))) / (node_1 - node_4) ** 2)
         node_1_b = node_1_b + fad_t12
-        node_4_b = node_4_b + fad_t12 * (-1.0_dp)
+        node_4_b = node_4_b - fad_t12 * 1.0_dp
         target_b = target_b + t6_v1_b
-        node_4_b = node_4_b + t6_v1_b * (-1.0_dp)
+        node_4_b = node_4_b - t6_v1_b * 1.0_dp
         target_b = target_b + t5_v1_b
-        node_3_b = node_3_b + t5_v1_b * (-1.0_dp)
+        node_3_b = node_3_b - t5_v1_b * 1.0_dp
         target_b = target_b + t4_v1_b
-        node_2_b = node_2_b + t4_v1_b * (-1.0_dp)
+        node_2_b = node_2_b - t4_v1_b * 1.0_dp
     end subroutine fortfem_fci_cubic_lagrange_weights_vjp_fortad
 
 end module fortfem_fortad_fci_cubic_lagrange_weights_vjp

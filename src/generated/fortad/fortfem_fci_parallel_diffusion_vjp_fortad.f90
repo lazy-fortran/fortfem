@@ -57,7 +57,7 @@ contains
         real(dp) :: fad_t15
         real(dp) :: fad_t16
 
-        t1_v1 = (-backward_value) * lower_field + forward_value * upper_field
+        t1_v1 = forward_value * upper_field - backward_value * lower_field
         t1_v1_b = 0.0_dp
         forward_value_b = 0.0_dp
         upper_field_b = 0.0_dp
@@ -81,8 +81,8 @@ contains
         line_length_b = line_length_b + lower_contribution_b * ((-(backward_value * &
             parallel_coefficient * staggered_volume * t1_v1 / canonical_volume)) / &
             line_length ** 2 ** 2) * (2 * line_length)
-        backward_value_b = backward_value_b + t1_v1_b * lower_field * (-1.0_dp)
-        lower_field_b = lower_field_b + t1_v1_b * (-backward_value)
+        backward_value_b = backward_value_b - t1_v1_b * lower_field * 1.0_dp
+        lower_field_b = lower_field_b - t1_v1_b * backward_value
         forward_value_b = forward_value_b + t1_v1_b * upper_field
         upper_field_b = upper_field_b + t1_v1_b * forward_value
     end subroutine fortfem_fci_parallel_diffusion_vjp_fortad

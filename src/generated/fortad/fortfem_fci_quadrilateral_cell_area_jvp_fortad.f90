@@ -34,10 +34,10 @@ contains
         real(dp), intent(out) :: area_d
         real(dp) :: area
 
-        area_d = (x_1_d * y_2 + x_1 * y_2_d - (x_1_d * y_4 + x_1 * y_4_d) - (x_2_d * &
-            y_1 + x_2 * y_1_d) + (x_2_d * y_3 + x_2 * y_3_d) - (x_3_d * y_2 + x_3 * &
-            y_2_d) + (x_3_d * y_4 + x_3 * y_4_d) + (x_4_d * y_1 + x_4 * y_1_d) - (x_4_d * &
-            y_3 + x_4 * y_3_d)) / 2.0000000000000000E+000_dp
+        area_d = (x_1_d * y_2 + x_1 * y_2_d - x_1_d * y_4 - x_1 * y_4_d + (x_2_d * &
+            y_3 - x_2 * y_1_d - x_2_d * y_1 + x_2 * y_3_d) + (x_3_d * y_4 - x_3 * y_2_d - &
+            x_3_d * y_2 + x_3 * y_4_d + (x_4_d * y_1 + x_4 * y_1_d - x_4_d * y_3 - x_4 * &
+            y_3_d))) / 2.0000000000000000E+000_dp
     end subroutine fortfem_fci_quadrilateral_cell_area_jvp_fortad
 
 end module fortfem_fortad_fci_quadrilateral_cell_area_jvp

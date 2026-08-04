@@ -129,14 +129,14 @@ contains
         t11_v1 = sqrt((second_vertex_1 - point_1) * (second_vertex_1 - point_1) + &
             (second_vertex_2 - point_2) * (second_vertex_2 - point_2) + (second_vertex_3 &
             - point_3) * (second_vertex_3 - point_3))
-        t12_v1 = point_1 * (-1.0d0 + 1.0d0) + second_vertex_1 - first_vertex_1
-        t13_v1 = point_2 * (-1.0d0 + 1.0d0) + second_vertex_2 - first_vertex_2
-        t14_v1 = point_3 * (-1.0d0 + 1.0d0) + second_vertex_3 - first_vertex_3
+        t12_v1 = point_1 * (1.0d0 - 1.0d0) + second_vertex_1 - first_vertex_1
+        t13_v1 = point_2 * (1.0d0 - 1.0d0) + second_vertex_2 - first_vertex_2
+        t14_v1 = point_3 * (1.0d0 - 1.0d0) + second_vertex_3 - first_vertex_3
         t15_v1 = sqrt(t12_v1 * t12_v1 + t13_v1 * t13_v1 + t14_v1 * t14_v1)
         t16_v1 = (first_vertex_1 - point_1) * (second_vertex_2 - point_2) - &
             (first_vertex_2 - point_2) * (second_vertex_1 - point_1)
-        t17_v1 = (-(first_vertex_1 - point_1)) * (second_vertex_3 - point_3) + &
-            (first_vertex_3 - point_3) * (second_vertex_1 - point_1)
+        t17_v1 = (first_vertex_3 - point_3) * (second_vertex_1 - point_1) - &
+            (first_vertex_1 - point_1) * (second_vertex_3 - point_3)
         t18_v1 = (first_vertex_2 - point_2) * (second_vertex_3 - point_3) - &
             (first_vertex_3 - point_3) * (second_vertex_2 - point_2)
         t2_v1_b = 0.0_dp
@@ -174,7 +174,7 @@ contains
             ** 2)
         t7_v1_b = t7_v1_b + fad_t5
         t11_v1_b = t11_v1_b + fad_t5
-        t15_v1_b = t15_v1_b + fad_t5 * (-1.0_dp)
+        t15_v1_b = t15_v1_b - fad_t5 * 1.0_dp
         fad_t8 = fad_t1 * log((t7_v1 + t11_v1 + t15_v1) / (t7_v1 + t11_v1 - t15_v1)) &
             * (1.0_dp / (2.0_dp * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + t18_v1 * &
             t18_v1)))
@@ -189,8 +189,8 @@ contains
         fad_t15 = t18_v1_b * (-1.0_dp)
         t6_v1_b = t6_v1_b + fad_t15 * (second_vertex_2 - point_2)
         t9_v1_b = t9_v1_b + fad_t15 * (first_vertex_3 - point_3)
-        t2_v1_b = t2_v1_b + t17_v1_b * (second_vertex_3 - point_3) * (-1.0_dp)
-        t10_v1_b = t10_v1_b + t17_v1_b * (-(first_vertex_1 - point_1))
+        t2_v1_b = t2_v1_b - t17_v1_b * (second_vertex_3 - point_3) * 1.0_dp
+        t10_v1_b = t10_v1_b - t17_v1_b * (first_vertex_1 - point_1)
         t6_v1_b = t6_v1_b + t17_v1_b * (second_vertex_1 - point_1)
         t8_v1_b = t8_v1_b + t17_v1_b * (first_vertex_3 - point_3)
         t2_v1_b = t2_v1_b + t16_v1_b * (second_vertex_2 - point_2)
@@ -204,14 +204,14 @@ contains
         t13_v1_b = t13_v1_b + fad_t28 * (2.0_dp * t13_v1)
         t14_v1_b = t14_v1_b + fad_t28 * (2.0_dp * t14_v1)
         second_vertex_3_b = second_vertex_3_b + t14_v1_b
-        point_3_b = point_3_b + t14_v1_b * (-1.0_dp)
-        t6_v1_b = t6_v1_b + t14_v1_b * (-1.0_dp)
+        point_3_b = point_3_b - t14_v1_b * 1.0_dp
+        t6_v1_b = t6_v1_b - t14_v1_b * 1.0_dp
         second_vertex_2_b = second_vertex_2_b + t13_v1_b
-        point_2_b = point_2_b + t13_v1_b * (-1.0_dp)
-        t4_v1_b = t4_v1_b + t13_v1_b * (-1.0_dp)
+        point_2_b = point_2_b - t13_v1_b * 1.0_dp
+        t4_v1_b = t4_v1_b - t13_v1_b * 1.0_dp
         second_vertex_1_b = second_vertex_1_b + t12_v1_b
-        point_1_b = point_1_b + t12_v1_b * (-1.0_dp)
-        t2_v1_b = t2_v1_b + t12_v1_b * (-1.0_dp)
+        point_1_b = point_1_b - t12_v1_b * 1.0_dp
+        t2_v1_b = t2_v1_b - t12_v1_b * 1.0_dp
         fad_t38 = t11_v1_b * (1.0_dp / (2.0_dp * sqrt((second_vertex_1 - point_1) * &
             (second_vertex_1 - point_1) + (second_vertex_2 - point_2) * (second_vertex_2 &
             - point_2) + (second_vertex_3 - point_3) * (second_vertex_3 - point_3))))
@@ -219,11 +219,11 @@ contains
         t9_v1_b = t9_v1_b + fad_t38 * (2.0_dp * (second_vertex_2 - point_2))
         t10_v1_b = t10_v1_b + fad_t38 * (2.0_dp * (second_vertex_3 - point_3))
         second_vertex_3_b = second_vertex_3_b + t10_v1_b
-        point_3_b = point_3_b + t10_v1_b * (-1.0_dp)
+        point_3_b = point_3_b - t10_v1_b * 1.0_dp
         second_vertex_2_b = second_vertex_2_b + t9_v1_b
-        point_2_b = point_2_b + t9_v1_b * (-1.0_dp)
+        point_2_b = point_2_b - t9_v1_b * 1.0_dp
         second_vertex_1_b = second_vertex_1_b + t8_v1_b
-        point_1_b = point_1_b + t8_v1_b * (-1.0_dp)
+        point_1_b = point_1_b - t8_v1_b * 1.0_dp
         fad_t45 = t7_v1_b * (1.0_dp / (2.0_dp * sqrt((first_vertex_1 - point_1) * &
             (first_vertex_1 - point_1) + (first_vertex_2 - point_2) * (first_vertex_2 - &
             point_2) + (first_vertex_3 - point_3) * (first_vertex_3 - point_3))))
@@ -231,11 +231,11 @@ contains
         t4_v1_b = t4_v1_b + fad_t45 * (2.0_dp * (first_vertex_2 - point_2))
         t6_v1_b = t6_v1_b + fad_t45 * (2.0_dp * (first_vertex_3 - point_3))
         first_vertex_3_b = first_vertex_3_b + t6_v1_b
-        point_3_b = point_3_b + t6_v1_b * (-1.0_dp)
+        point_3_b = point_3_b - t6_v1_b * 1.0_dp
         first_vertex_2_b = first_vertex_2_b + t4_v1_b
-        point_2_b = point_2_b + t4_v1_b * (-1.0_dp)
+        point_2_b = point_2_b - t4_v1_b * 1.0_dp
         first_vertex_1_b = first_vertex_1_b + t2_v1_b
-        point_1_b = point_1_b + t2_v1_b * (-1.0_dp)
+        point_1_b = point_1_b - t2_v1_b * 1.0_dp
     end subroutine fortfem_laplace_singular_edge_potential_vjp_fortad
 
 end module fortfem_fortad_laplace_singular_edge_potential_vjp

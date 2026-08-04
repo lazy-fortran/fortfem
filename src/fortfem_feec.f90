@@ -458,6 +458,10 @@ module fortfem_feec
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     use fortfem_tetra_nedelec_pml_state_3d, only: &
         solve_tetra_nedelec_pml_jvp, solve_tetra_nedelec_pml_vjp
+    use fortfem_triangle_nedelec_sampled_state_2d, only: &
+        solve_triangle_nedelec_sampled_state, &
+        solve_triangle_nedelec_sampled_state_jvp, &
+        solve_triangle_nedelec_sampled_state_vjp
     use fortfem_tetra_nedelec_sampled_state_3d, only: &
         solve_tetra_nedelec_sampled_state, &
         solve_tetra_nedelec_sampled_state_jvp, &
@@ -809,7 +813,10 @@ module fortfem_feec
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
-        evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas_jvp, &
+        evaluate_triangle_raviart_thomas_vjp, &
+        initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_triangle_vector_interpolation, only: &
         evaluate_triangle_bdm_interpolant, &
@@ -1123,6 +1130,9 @@ module fortfem_feec
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_nedelec_pml_jvp
     public :: solve_tetra_nedelec_pml_vjp
+    public :: solve_triangle_nedelec_sampled_state
+    public :: solve_triangle_nedelec_sampled_state_jvp
+    public :: solve_triangle_nedelec_sampled_state_vjp
     public :: solve_tetra_nedelec_sampled_state
     public :: solve_tetra_nedelec_sampled_state_jvp
     public :: solve_tetra_nedelec_sampled_state_vjp
@@ -1697,6 +1707,8 @@ module fortfem_feec
     public :: assemble_triangle_nedelec_second_vector_load_samples_vjp
     public :: initialize_triangle_raviart_thomas
     public :: evaluate_triangle_raviart_thomas
+    public :: evaluate_triangle_raviart_thomas_jvp
+    public :: evaluate_triangle_raviart_thomas_vjp
     public :: triangle_rt_basis_t
     public :: triangle_rt_dof_count
     public :: evaluate_triangle_rt_interpolant

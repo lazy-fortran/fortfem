@@ -33,8 +33,8 @@ contains
         gradient_b = 0.0_dp
         coefficient_b = 0.0_dp
         staggered_volume_b = 0.0_dp
-        coefficient_b = coefficient_b + parallel_flux_b * gradient * (-1.0_dp)
-        gradient_b = gradient_b + parallel_flux_b * (-coefficient)
+        coefficient_b = coefficient_b - parallel_flux_b * gradient * 1.0_dp
+        gradient_b = gradient_b - parallel_flux_b * coefficient
     end subroutine fortfem_fci_parallel_flux_power_vjp_fortad
 
 end module fortfem_fortad_fci_parallel_flux_power_vjp

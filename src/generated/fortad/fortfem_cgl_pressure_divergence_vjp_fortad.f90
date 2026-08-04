@@ -169,13 +169,13 @@ contains
         direction_3_b = direction_3_b + fad_t24 * direction_gradient_13
         direction_gradient_13_b = direction_gradient_13_b + fad_t24 * direction_3
         parallel_gradient_1_b = parallel_gradient_1_b + t4_v1_b
-        perpendicular_gradient_1_b = perpendicular_gradient_1_b + t4_v1_b * (-1.0_dp)
+        perpendicular_gradient_1_b = perpendicular_gradient_1_b - t4_v1_b * 1.0_dp
         p_parallel_b = p_parallel_b + t3_v1_b
-        p_perpendicular_b = p_perpendicular_b + t3_v1_b * (-1.0_dp)
+        p_perpendicular_b = p_perpendicular_b - t3_v1_b * 1.0_dp
         parallel_gradient_3_b = parallel_gradient_3_b + t2_v1_b
-        perpendicular_gradient_3_b = perpendicular_gradient_3_b + t2_v1_b * (-1.0_dp)
+        perpendicular_gradient_3_b = perpendicular_gradient_3_b - t2_v1_b * 1.0_dp
         parallel_gradient_2_b = parallel_gradient_2_b + t1_v1_b
-        perpendicular_gradient_2_b = perpendicular_gradient_2_b + t1_v1_b * (-1.0_dp)
+        perpendicular_gradient_2_b = perpendicular_gradient_2_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_cgl_pressure_divergence_vjp_fortad
 
 end module fortfem_fortad_cgl_pressure_divergence_vjp
