@@ -1,0 +1,1484 @@
+[
+  {
+    "stem": "block_graph_product",
+    "primal": "generated_block_graph_product",
+    "active": [
+      "block_value",
+      "state_value"
+    ],
+    "outputs": [
+      "contribution"
+    ],
+    "dims": {
+      "block_value": "",
+      "state_value": "",
+      "contribution": ""
+    },
+    "file": "fortfem_block_graph_products.f90"
+  },
+  {
+    "stem": "cgl_pressure_divergence",
+    "primal": "generated_cgl_pressure_divergence",
+    "active": [
+      "p_parallel",
+      "p_perpendicular",
+      "direction_1",
+      "direction_2",
+      "direction_3",
+      "parallel_gradient_1",
+      "parallel_gradient_2",
+      "parallel_gradient_3",
+      "perpendicular_gradient_1",
+      "perpendicular_gradient_2",
+      "perpendicular_gradient_3",
+      "direction_gradient_11",
+      "direction_gradient_12",
+      "direction_gradient_13",
+      "direction_gradient_21",
+      "direction_gradient_22",
+      "direction_gradient_23",
+      "direction_gradient_31",
+      "direction_gradient_32",
+      "direction_gradient_33"
+    ],
+    "outputs": [
+      "force_1",
+      "force_2",
+      "force_3"
+    ],
+    "dims": {
+      "p_parallel": "",
+      "p_perpendicular": "",
+      "direction_1": "",
+      "direction_2": "",
+      "direction_3": "",
+      "parallel_gradient_1": "",
+      "parallel_gradient_2": "",
+      "parallel_gradient_3": "",
+      "perpendicular_gradient_1": "",
+      "perpendicular_gradient_2": "",
+      "perpendicular_gradient_3": "",
+      "direction_gradient_11": "",
+      "direction_gradient_12": "",
+      "direction_gradient_13": "",
+      "direction_gradient_21": "",
+      "direction_gradient_22": "",
+      "direction_gradient_23": "",
+      "direction_gradient_31": "",
+      "direction_gradient_32": "",
+      "direction_gradient_33": "",
+      "force_1": "",
+      "force_2": "",
+      "force_3": ""
+    },
+    "file": "fortfem_cgl_pressure_divergence_products.f90"
+  },
+  {
+    "stem": "cgl_pressure_tensor",
+    "primal": "generated_cgl_pressure_tensor",
+    "active": [
+      "p_parallel",
+      "p_perpendicular",
+      "direction_1",
+      "direction_2",
+      "direction_3"
+    ],
+    "outputs": [
+      "pressure_11",
+      "pressure_22",
+      "pressure_33",
+      "pressure_12",
+      "pressure_13",
+      "pressure_23"
+    ],
+    "dims": {
+      "p_parallel": "",
+      "p_perpendicular": "",
+      "direction_1": "",
+      "direction_2": "",
+      "direction_3": "",
+      "pressure_11": "",
+      "pressure_22": "",
+      "pressure_33": "",
+      "pressure_12": "",
+      "pressure_13": "",
+      "pressure_23": ""
+    },
+    "file": "fortfem_cgl_pressure_tensor_products.f90"
+  },
+  {
+    "stem": "fci_cubic_bezier_edge_area",
+    "primal": "generated_fci_cubic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_cubic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_curved_quadrilateral_cell_area",
+    "primal": "generated_fci_curved_quadrilateral_cell_area",
+    "active": [
+      "x_1",
+      "y_1",
+      "x_2",
+      "y_2",
+      "x_3",
+      "y_3",
+      "x_4",
+      "y_4",
+      "control_x_1",
+      "control_y_1",
+      "control_x_2",
+      "control_y_2",
+      "control_x_3",
+      "control_y_3",
+      "control_x_4",
+      "control_y_4"
+    ],
+    "outputs": [
+      "area"
+    ],
+    "dims": {
+      "x_1": "",
+      "y_1": "",
+      "x_2": "",
+      "y_2": "",
+      "x_3": "",
+      "y_3": "",
+      "x_4": "",
+      "y_4": "",
+      "control_x_1": "",
+      "control_y_1": "",
+      "control_x_2": "",
+      "control_y_2": "",
+      "control_x_3": "",
+      "control_y_3": "",
+      "control_x_4": "",
+      "control_y_4": "",
+      "area": ""
+    },
+    "file": "fortfem_fci_curved_quadrilateral_area_products.f90"
+  },
+  {
+    "stem": "fci_decic_bezier_edge_area",
+    "primal": "generated_fci_decic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "control_6_x",
+      "control_6_y",
+      "control_7_x",
+      "control_7_y",
+      "control_8_x",
+      "control_8_y",
+      "control_9_x",
+      "control_9_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "control_6_x": "",
+      "control_6_y": "",
+      "control_7_x": "",
+      "control_7_y": "",
+      "control_8_x": "",
+      "control_8_y": "",
+      "control_9_x": "",
+      "control_9_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_decic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_hendecic_bezier_edge_area",
+    "primal": "generated_fci_hendecic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "control_6_x",
+      "control_6_y",
+      "control_7_x",
+      "control_7_y",
+      "control_8_x",
+      "control_8_y",
+      "control_9_x",
+      "control_9_y",
+      "control_10_x",
+      "control_10_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "control_6_x": "",
+      "control_6_y": "",
+      "control_7_x": "",
+      "control_7_y": "",
+      "control_8_x": "",
+      "control_8_y": "",
+      "control_9_x": "",
+      "control_9_y": "",
+      "control_10_x": "",
+      "control_10_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_hendecic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_nonic_bezier_edge_area",
+    "primal": "generated_fci_nonic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "control_6_x",
+      "control_6_y",
+      "control_7_x",
+      "control_7_y",
+      "control_8_x",
+      "control_8_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "control_6_x": "",
+      "control_6_y": "",
+      "control_7_x": "",
+      "control_7_y": "",
+      "control_8_x": "",
+      "control_8_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_nonic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_octic_bezier_edge_area",
+    "primal": "generated_fci_octic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "control_6_x",
+      "control_6_y",
+      "control_7_x",
+      "control_7_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "control_6_x": "",
+      "control_6_y": "",
+      "control_7_x": "",
+      "control_7_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_octic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_cubic_lagrange_weights",
+    "primal": "generated_fci_cubic_lagrange_weights",
+    "active": [
+      "target",
+      "node_1",
+      "node_2",
+      "node_3",
+      "node_4"
+    ],
+    "outputs": [
+      "weight_1",
+      "weight_2",
+      "weight_3",
+      "weight_4"
+    ],
+    "dims": {
+      "target": "",
+      "node_1": "",
+      "node_2": "",
+      "node_3": "",
+      "node_4": "",
+      "weight_1": "",
+      "weight_2": "",
+      "weight_3": "",
+      "weight_4": ""
+    },
+    "file": "fortfem_fci_parallel_products.f90"
+  },
+  {
+    "stem": "fci_parallel_diffusion",
+    "primal": "generated_fci_parallel_diffusion",
+    "active": [
+      "forward_value",
+      "upper_field",
+      "backward_value",
+      "lower_field",
+      "line_length",
+      "parallel_coefficient",
+      "canonical_volume",
+      "staggered_volume"
+    ],
+    "outputs": [
+      "lower_contribution",
+      "upper_contribution"
+    ],
+    "dims": {
+      "forward_value": "",
+      "upper_field": "",
+      "backward_value": "",
+      "lower_field": "",
+      "line_length": "",
+      "parallel_coefficient": "",
+      "canonical_volume": "",
+      "staggered_volume": "",
+      "lower_contribution": "",
+      "upper_contribution": ""
+    },
+    "file": "fortfem_fci_parallel_products.f90"
+  },
+  {
+    "stem": "fci_parallel_gradient",
+    "primal": "generated_fci_parallel_gradient",
+    "active": [
+      "forward_value",
+      "upper_field",
+      "backward_value",
+      "lower_field",
+      "line_length"
+    ],
+    "outputs": [
+      "gradient"
+    ],
+    "dims": {
+      "forward_value": "",
+      "upper_field": "",
+      "backward_value": "",
+      "lower_field": "",
+      "line_length": "",
+      "gradient": ""
+    },
+    "file": "fortfem_fci_parallel_products.f90"
+  },
+  {
+    "stem": "fci_quadratic_lagrange_weights",
+    "primal": "generated_fci_quadratic_lagrange_weights",
+    "active": [
+      "target",
+      "node_1",
+      "node_2",
+      "node_3"
+    ],
+    "outputs": [
+      "weight_1",
+      "weight_2",
+      "weight_3"
+    ],
+    "dims": {
+      "target": "",
+      "node_1": "",
+      "node_2": "",
+      "node_3": "",
+      "weight_1": "",
+      "weight_2": "",
+      "weight_3": ""
+    },
+    "file": "fortfem_fci_parallel_products.f90"
+  },
+  {
+    "stem": "fci_polygon_edge_area",
+    "primal": "generated_fci_polygon_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_polygon_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_parallel_flux_power",
+    "primal": "generated_fci_parallel_flux_power",
+    "active": [
+      "gradient",
+      "coefficient",
+      "staggered_volume"
+    ],
+    "outputs": [
+      "parallel_flux",
+      "parallel_power"
+    ],
+    "dims": {
+      "gradient": "",
+      "coefficient": "",
+      "staggered_volume": "",
+      "parallel_flux": "",
+      "parallel_power": ""
+    },
+    "file": "fortfem_fci_power_flux_products.f90"
+  },
+  {
+    "stem": "fci_perpendicular_power",
+    "primal": "generated_fci_perpendicular_power",
+    "active": [
+      "field",
+      "action",
+      "canonical_volume"
+    ],
+    "outputs": [
+      "perpendicular_power"
+    ],
+    "dims": {
+      "field": "",
+      "action": "",
+      "canonical_volume": "",
+      "perpendicular_power": ""
+    },
+    "file": "fortfem_fci_power_flux_products.f90"
+  },
+  {
+    "stem": "fci_quadratic_bezier_edge_area",
+    "primal": "generated_fci_quadratic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_x",
+      "control_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_x": "",
+      "control_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_quadratic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_quadrilateral_cell_area",
+    "primal": "generated_fci_quadrilateral_cell_area",
+    "active": [
+      "x_1",
+      "y_1",
+      "x_2",
+      "y_2",
+      "x_3",
+      "y_3",
+      "x_4",
+      "y_4"
+    ],
+    "outputs": [
+      "area"
+    ],
+    "dims": {
+      "x_1": "",
+      "y_1": "",
+      "x_2": "",
+      "y_2": "",
+      "x_3": "",
+      "y_3": "",
+      "x_4": "",
+      "y_4": "",
+      "area": ""
+    },
+    "file": "fortfem_fci_quadrilateral_area_products.f90"
+  },
+  {
+    "stem": "fci_quartic_bezier_edge_area",
+    "primal": "generated_fci_quartic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_quartic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_quartic_lagrange_weights",
+    "primal": "generated_fci_quartic_lagrange_weights",
+    "active": [
+      "target",
+      "node_1",
+      "node_2",
+      "node_3",
+      "node_4",
+      "node_5"
+    ],
+    "outputs": [
+      "weight_1",
+      "weight_2",
+      "weight_3",
+      "weight_4",
+      "weight_5"
+    ],
+    "dims": {
+      "target": "",
+      "node_1": "",
+      "node_2": "",
+      "node_3": "",
+      "node_4": "",
+      "node_5": "",
+      "weight_1": "",
+      "weight_2": "",
+      "weight_3": "",
+      "weight_4": "",
+      "weight_5": ""
+    },
+    "file": "fortfem_fci_quartic_lagrange.f90"
+  },
+  {
+    "stem": "fci_quintic_bezier_edge_area",
+    "primal": "generated_fci_quintic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_quintic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_quintic_lagrange_weights",
+    "primal": "generated_fci_quintic_lagrange_weights",
+    "active": [
+      "target",
+      "node_1",
+      "node_2",
+      "node_3",
+      "node_4",
+      "node_5",
+      "node_6"
+    ],
+    "outputs": [
+      "weight_1",
+      "weight_2",
+      "weight_3",
+      "weight_4",
+      "weight_5",
+      "weight_6"
+    ],
+    "dims": {
+      "target": "",
+      "node_1": "",
+      "node_2": "",
+      "node_3": "",
+      "node_4": "",
+      "node_5": "",
+      "node_6": "",
+      "weight_1": "",
+      "weight_2": "",
+      "weight_3": "",
+      "weight_4": "",
+      "weight_5": "",
+      "weight_6": ""
+    },
+    "file": "fortfem_fci_quintic_lagrange.f90"
+  },
+  {
+    "stem": "fci_septic_bezier_edge_area",
+    "primal": "generated_fci_septic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "control_6_x",
+      "control_6_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "control_6_x": "",
+      "control_6_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_septic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_sextic_bezier_edge_area",
+    "primal": "generated_fci_sextic_bezier_edge_area",
+    "active": [
+      "x_start",
+      "y_start",
+      "control_1_x",
+      "control_1_y",
+      "control_2_x",
+      "control_2_y",
+      "control_3_x",
+      "control_3_y",
+      "control_4_x",
+      "control_4_y",
+      "control_5_x",
+      "control_5_y",
+      "x_end",
+      "y_end"
+    ],
+    "outputs": [
+      "edge_area"
+    ],
+    "dims": {
+      "x_start": "",
+      "y_start": "",
+      "control_1_x": "",
+      "control_1_y": "",
+      "control_2_x": "",
+      "control_2_y": "",
+      "control_3_x": "",
+      "control_3_y": "",
+      "control_4_x": "",
+      "control_4_y": "",
+      "control_5_x": "",
+      "control_5_y": "",
+      "x_end": "",
+      "y_end": "",
+      "edge_area": ""
+    },
+    "file": "fortfem_fci_sextic_bezier_edge_area_products.f90"
+  },
+  {
+    "stem": "fci_sextic_lagrange_weights",
+    "primal": "generated_fci_sextic_lagrange_weights",
+    "active": [
+      "target",
+      "node_1",
+      "node_2",
+      "node_3",
+      "node_4",
+      "node_5",
+      "node_6",
+      "node_7"
+    ],
+    "outputs": [
+      "weight_1",
+      "weight_2",
+      "weight_3",
+      "weight_4",
+      "weight_5",
+      "weight_6",
+      "weight_7"
+    ],
+    "dims": {
+      "target": "",
+      "node_1": "",
+      "node_2": "",
+      "node_3": "",
+      "node_4": "",
+      "node_5": "",
+      "node_6": "",
+      "node_7": "",
+      "weight_1": "",
+      "weight_2": "",
+      "weight_3": "",
+      "weight_4": "",
+      "weight_5": "",
+      "weight_6": "",
+      "weight_7": ""
+    },
+    "file": "fortfem_fci_sextic_lagrange.f90"
+  },
+  {
+    "stem": "fci_staggered_flux_box_volume",
+    "primal": "generated_fci_staggered_flux_box_volume",
+    "active": [
+      "forward_flux_expansion",
+      "backward_flux_expansion",
+      "base_cell_area",
+      "toroidal_field"
+    ],
+    "outputs": [
+      "staggered_volume"
+    ],
+    "dims": {
+      "forward_flux_expansion": "",
+      "backward_flux_expansion": "",
+      "base_cell_area": "",
+      "toroidal_field": "",
+      "staggered_volume": ""
+    },
+    "file": "fortfem_fci_support_volume_products.f90"
+  },
+  {
+    "stem": "field_aligned_flux",
+    "primal": "generated_field_aligned_flux",
+    "active": [
+      "parallel_coefficient",
+      "perpendicular_coefficient",
+      "direction_1",
+      "direction_2",
+      "direction_3",
+      "gradient_1",
+      "gradient_2",
+      "gradient_3"
+    ],
+    "outputs": [
+      "flux_1",
+      "flux_2",
+      "flux_3"
+    ],
+    "dims": {
+      "parallel_coefficient": "",
+      "perpendicular_coefficient": "",
+      "direction_1": "",
+      "direction_2": "",
+      "direction_3": "",
+      "gradient_1": "",
+      "gradient_2": "",
+      "gradient_3": "",
+      "flux_1": "",
+      "flux_2": "",
+      "flux_3": ""
+    },
+    "file": "fortfem_field_aligned_flux_products.f90"
+  },
+  {
+    "stem": "field_aligned_hall",
+    "primal": "generated_field_aligned_hall",
+    "active": [
+      "hall_coefficient",
+      "direction_1",
+      "direction_2",
+      "direction_3"
+    ],
+    "outputs": [
+      "hall_direction_1",
+      "hall_direction_2",
+      "hall_direction_3"
+    ],
+    "dims": {
+      "hall_coefficient": "",
+      "direction_1": "",
+      "direction_2": "",
+      "direction_3": "",
+      "hall_direction_1": "",
+      "hall_direction_2": "",
+      "hall_direction_3": ""
+    },
+    "file": "fortfem_field_aligned_hall_products.f90"
+  },
+  {
+    "stem": "force_balance_product",
+    "primal": "generated_force_balance_product",
+    "active": [
+      "weight",
+      "test_value",
+      "force_value"
+    ],
+    "outputs": [
+      "contribution"
+    ],
+    "dims": {
+      "weight": "",
+      "test_value": "",
+      "force_value": "",
+      "contribution": ""
+    },
+    "file": "fortfem_force_balance_products.f90"
+  },
+  {
+    "stem": "helmholtz_single_layer_integrand",
+    "primal": "generated_helmholtz_single_layer_integrand",
+    "active": [
+      "first_point_1",
+      "first_point_2",
+      "first_point_3",
+      "second_point_1",
+      "second_point_2",
+      "second_point_3",
+      "first_jacobian",
+      "second_jacobian",
+      "wave_number"
+    ],
+    "outputs": [
+      "value_real",
+      "value_imag"
+    ],
+    "dims": {
+      "first_point_1": "",
+      "first_point_2": "",
+      "first_point_3": "",
+      "second_point_1": "",
+      "second_point_2": "",
+      "second_point_3": "",
+      "first_jacobian": "",
+      "second_jacobian": "",
+      "wave_number": "",
+      "kernel_scale": "",
+      "value_real": "",
+      "value_imag": ""
+    },
+    "file": "fortfem_helmholtz_bem_kernel_products.f90"
+  },
+  {
+    "stem": "helmholtz_single_layer_smooth_integrand",
+    "primal": "generated_helmholtz_single_layer_smooth_integrand",
+    "active": [
+      "first_point_1",
+      "first_point_2",
+      "first_point_3",
+      "second_point_1",
+      "second_point_2",
+      "second_point_3",
+      "first_jacobian",
+      "second_jacobian",
+      "wave_number"
+    ],
+    "outputs": [
+      "value_real",
+      "value_imag"
+    ],
+    "dims": {
+      "first_point_1": "",
+      "first_point_2": "",
+      "first_point_3": "",
+      "second_point_1": "",
+      "second_point_2": "",
+      "second_point_3": "",
+      "first_jacobian": "",
+      "second_jacobian": "",
+      "wave_number": "",
+      "kernel_scale": "",
+      "value_real": "",
+      "value_imag": ""
+    },
+    "file": "fortfem_helmholtz_bem_smooth_products.f90"
+  },
+  {
+    "stem": "laplace_single_layer_integrand",
+    "primal": "generated_laplace_single_layer_integrand",
+    "active": [
+      "first_point_1",
+      "first_point_2",
+      "first_point_3",
+      "second_point_1",
+      "second_point_2",
+      "second_point_3",
+      "first_jacobian",
+      "second_jacobian"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "first_point_1": "",
+      "first_point_2": "",
+      "first_point_3": "",
+      "second_point_1": "",
+      "second_point_2": "",
+      "second_point_3": "",
+      "first_jacobian": "",
+      "second_jacobian": "",
+      "kernel_scale": "",
+      "value": ""
+    },
+    "file": "fortfem_laplace_bem_kernel_products.f90"
+  },
+  {
+    "stem": "laplace_singular_edge_potential",
+    "primal": "generated_laplace_singular_edge_potential",
+    "active": [
+      "point_1",
+      "point_2",
+      "point_3",
+      "first_vertex_1",
+      "first_vertex_2",
+      "first_vertex_3",
+      "second_vertex_1",
+      "second_vertex_2",
+      "second_vertex_3"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "point_1": "",
+      "point_2": "",
+      "point_3": "",
+      "first_vertex_1": "",
+      "first_vertex_2": "",
+      "first_vertex_3": "",
+      "second_vertex_1": "",
+      "second_vertex_2": "",
+      "second_vertex_3": "",
+      "value": ""
+    },
+    "file": "fortfem_laplace_singular_edge_products.f90"
+  },
+  {
+    "stem": "regularized_surface_current",
+    "primal": "generated_regularized_surface_current",
+    "active": [
+      "signed_distance",
+      "sheet_current",
+      "thickness"
+    ],
+    "outputs": [
+      "volume_current"
+    ],
+    "dims": {
+      "signed_distance": "",
+      "sheet_current": "",
+      "thickness": "",
+      "inverse_sqrt_pi": "",
+      "volume_current": ""
+    },
+    "file": "fortfem_regularized_surface_current_products.f90"
+  },
+  {
+    "stem": "sphere_curved_panel",
+    "primal": "generated_sphere_curved_panel",
+    "active": [
+      "vertex_11",
+      "vertex_21",
+      "vertex_31",
+      "vertex_12",
+      "vertex_22",
+      "vertex_32",
+      "vertex_13",
+      "vertex_23",
+      "vertex_33",
+      "radius",
+      "xi",
+      "eta"
+    ],
+    "outputs": [
+      "point_1",
+      "point_2",
+      "point_3",
+      "tangent_xi_1",
+      "tangent_xi_2",
+      "tangent_xi_3",
+      "tangent_eta_1",
+      "tangent_eta_2",
+      "tangent_eta_3",
+      "surface_jacobian"
+    ],
+    "dims": {
+      "vertex_11": "",
+      "vertex_21": "",
+      "vertex_31": "",
+      "vertex_12": "",
+      "vertex_22": "",
+      "vertex_32": "",
+      "vertex_13": "",
+      "vertex_23": "",
+      "vertex_33": "",
+      "radius": "",
+      "xi": "",
+      "eta": "",
+      "point_1": "",
+      "point_2": "",
+      "point_3": "",
+      "tangent_xi_1": "",
+      "tangent_xi_2": "",
+      "tangent_xi_3": "",
+      "tangent_eta_1": "",
+      "tangent_eta_2": "",
+      "tangent_eta_3": "",
+      "surface_jacobian": ""
+    },
+    "file": "fortfem_sphere_curved_panel_products.f90"
+  },
+  {
+    "stem": "surface_integral_contribution",
+    "primal": "generated_surface_integral_contribution",
+    "active": [
+      "sample",
+      "weight"
+    ],
+    "outputs": [
+      "contribution"
+    ],
+    "dims": {
+      "sample": "",
+      "weight": "",
+      "contribution": ""
+    },
+    "file": "fortfem_surface_integral_products.f90"
+  },
+  {
+    "stem": "surface_shape_objective_contribution",
+    "primal": "generated_surface_shape_objective_contribution",
+    "active": [
+      "candidate",
+      "target",
+      "weight"
+    ],
+    "outputs": [
+      "contribution"
+    ],
+    "dims": {
+      "candidate": "",
+      "target": "",
+      "weight": "",
+      "contribution": ""
+    },
+    "file": "fortfem_surface_shape_objective_products.f90"
+  },
+  {
+    "stem": "surface_triangle_geometry_3d",
+    "primal": "generated_surface_triangle_geometry_3d",
+    "active": [
+      "vertex_11",
+      "vertex_21",
+      "vertex_31",
+      "vertex_12",
+      "vertex_22",
+      "vertex_32",
+      "vertex_13",
+      "vertex_23",
+      "vertex_33",
+      "xi",
+      "eta"
+    ],
+    "outputs": [
+      "point_1",
+      "point_2",
+      "point_3",
+      "jacobian",
+      "normal_1",
+      "normal_2",
+      "normal_3"
+    ],
+    "dims": {
+      "vertex_11": "",
+      "vertex_21": "",
+      "vertex_31": "",
+      "vertex_12": "",
+      "vertex_22": "",
+      "vertex_32": "",
+      "vertex_13": "",
+      "vertex_23": "",
+      "vertex_33": "",
+      "xi": "",
+      "eta": "",
+      "point_1": "",
+      "point_2": "",
+      "point_3": "",
+      "jacobian": "",
+      "normal_1": "",
+      "normal_2": "",
+      "normal_3": ""
+    },
+    "file": "fortfem_surface_triangle_geometry_products.f90"
+  },
+  {
+    "stem": "tensor_power_split",
+    "primal": "generated_tensor_power_split",
+    "active": [
+      "tensor_11",
+      "tensor_12",
+      "tensor_13",
+      "tensor_21",
+      "tensor_22",
+      "tensor_23",
+      "tensor_31",
+      "tensor_32",
+      "tensor_33",
+      "vector_1",
+      "vector_2",
+      "vector_3"
+    ],
+    "outputs": [
+      "symmetric_power",
+      "skew_power",
+      "total_power"
+    ],
+    "dims": {
+      "tensor_11": "",
+      "tensor_12": "",
+      "tensor_13": "",
+      "tensor_21": "",
+      "tensor_22": "",
+      "tensor_23": "",
+      "tensor_31": "",
+      "tensor_32": "",
+      "tensor_33": "",
+      "vector_1": "",
+      "vector_2": "",
+      "vector_3": "",
+      "symmetric_power": "",
+      "skew_power": "",
+      "total_power": ""
+    },
+    "file": "fortfem_tensor_power_split_products.f90"
+  },
+  {
+    "stem": "cartesian_to_toroidal",
+    "primal": "generated_cartesian_to_toroidal",
+    "active": [
+      "point_1",
+      "point_2",
+      "point_3",
+      "scale"
+    ],
+    "outputs": [
+      "eta",
+      "theta",
+      "phi"
+    ],
+    "dims": {
+      "point_1": "",
+      "point_2": "",
+      "point_3": "",
+      "scale": "",
+      "eta": "",
+      "theta": "",
+      "phi": ""
+    },
+    "file": "fortfem_toroidal_coordinates.f90"
+  },
+  {
+    "stem": "toroidal_point_to_cartesian",
+    "primal": "generated_toroidal_point_to_cartesian",
+    "active": [
+      "scale",
+      "eta",
+      "theta",
+      "phi"
+    ],
+    "outputs": [
+      "point"
+    ],
+    "dims": {
+      "scale": "",
+      "eta": "",
+      "theta": "",
+      "phi": "",
+      "point": "3"
+    },
+    "file": "fortfem_toroidal_coordinates.f90"
+  },
+  {
+    "stem": "toroidal_vector_to_cartesian",
+    "primal": "generated_toroidal_vector_to_cartesian",
+    "active": [
+      "eta",
+      "theta",
+      "phi",
+      "component_1",
+      "component_2",
+      "component_3"
+    ],
+    "outputs": [
+      "cartesian_1",
+      "cartesian_2",
+      "cartesian_3"
+    ],
+    "dims": {
+      "eta": "",
+      "theta": "",
+      "phi": "",
+      "component_1": "",
+      "component_2": "",
+      "component_3": "",
+      "cartesian_1": "",
+      "cartesian_2": "",
+      "cartesian_3": ""
+    },
+    "file": "fortfem_toroidal_coordinates.f90"
+  },
+  {
+    "stem": "toroidal_poisson_products",
+    "primal": "generated_toroidal_poisson_products",
+    "active": [
+      "degree",
+      "order",
+      "scale",
+      "eta",
+      "theta",
+      "phi",
+      "radial",
+      "radial_derivative"
+    ],
+    "outputs": [
+      "harmonic",
+      "field_1",
+      "field_2",
+      "field_3",
+      "dtn_value",
+      "normal_derivative"
+    ],
+    "dims": {
+      "degree": "",
+      "order": "",
+      "scale": "",
+      "eta": "",
+      "theta": "",
+      "phi": "",
+      "radial": "",
+      "radial_derivative": "",
+      "harmonic": "",
+      "field_1": "",
+      "field_2": "",
+      "field_3": "",
+      "dtn_value": "",
+      "normal_derivative": ""
+    },
+    "file": "fortfem_toroidal_poisson_products.f90"
+  },
+  {
+    "stem": "torus_curved_panel",
+    "primal": "generated_torus_curved_panel",
+    "active": [
+      "parameter_11",
+      "parameter_21",
+      "parameter_12",
+      "parameter_22",
+      "parameter_13",
+      "parameter_23",
+      "major_radius",
+      "minor_radius",
+      "xi",
+      "eta"
+    ],
+    "outputs": [
+      "point_1",
+      "point_2",
+      "point_3",
+      "tangent_xi_1",
+      "tangent_xi_2",
+      "tangent_xi_3",
+      "tangent_eta_1",
+      "tangent_eta_2",
+      "tangent_eta_3",
+      "surface_jacobian"
+    ],
+    "dims": {
+      "parameter_11": "",
+      "parameter_21": "",
+      "parameter_12": "",
+      "parameter_22": "",
+      "parameter_13": "",
+      "parameter_23": "",
+      "major_radius": "",
+      "minor_radius": "",
+      "xi": "",
+      "eta": "",
+      "point_1": "",
+      "point_2": "",
+      "point_3": "",
+      "tangent_xi_1": "",
+      "tangent_xi_2": "",
+      "tangent_xi_3": "",
+      "tangent_eta_1": "",
+      "tangent_eta_2": "",
+      "tangent_eta_3": "",
+      "surface_jacobian": ""
+    },
+    "file": "fortfem_torus_curved_panel_products.f90"
+  }
+]
