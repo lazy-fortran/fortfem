@@ -99,14 +99,14 @@ contains
         t4_v1_b = t4_v1_b + fad_t19 * (control_y - y_start)
         x_end_b = x_end_b + t4_v1_b
         x_start_b = x_start_b + t4_v1_b
-        control_x_b = control_x_b + t4_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_x_b = control_x_b - t4_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_x_b = control_x_b + t3_v1_b
-        x_start_b = x_start_b + t3_v1_b * (-1.0_dp)
+        x_start_b = x_start_b - t3_v1_b * 1.0_dp
         y_end_b = y_end_b + t2_v1_b
         y_start_b = y_start_b + t2_v1_b
-        control_y_b = control_y_b + t2_v1_b * (-1.0_dp) * 2.0000000000000000E+000_dp
+        control_y_b = control_y_b - t2_v1_b * 1.0_dp * 2.0000000000000000E+000_dp
         control_y_b = control_y_b + t1_v1_b
-        y_start_b = y_start_b + t1_v1_b * (-1.0_dp)
+        y_start_b = y_start_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_fci_quadratic_bezier_edge_area_vjp_fortad
 
 end module fortfem_fortad_fci_quadratic_bezier_edge_area_vjp

@@ -42,12 +42,12 @@ contains
         lower_field_b = 0.0_dp
         line_length_b = 0.0_dp
         fad_t1 = gradient_b * (1.0_dp / line_length)
-        backward_value_b = backward_value_b + fad_t1 * lower_field * (-1.0_dp)
-        lower_field_b = lower_field_b + fad_t1 * (-backward_value)
+        backward_value_b = backward_value_b - fad_t1 * lower_field * 1.0_dp
+        lower_field_b = lower_field_b - fad_t1 * backward_value
         forward_value_b = forward_value_b + fad_t1 * upper_field
         upper_field_b = upper_field_b + fad_t1 * forward_value
-        line_length_b = line_length_b + gradient_b * ((-((-backward_value) * &
-            lower_field + forward_value * upper_field)) / line_length ** 2)
+        line_length_b = line_length_b + gradient_b * ((-(forward_value * upper_field &
+            - backward_value * lower_field)) / line_length ** 2)
     end subroutine fortfem_fci_parallel_gradient_vjp_fortad
 
 end module fortfem_fortad_fci_parallel_gradient_vjp

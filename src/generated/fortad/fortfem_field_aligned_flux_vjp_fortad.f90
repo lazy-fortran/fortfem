@@ -85,7 +85,7 @@ contains
         direction_3_b = direction_3_b + t2_v1_b * gradient_3
         gradient_3_b = gradient_3_b + t2_v1_b * direction_3
         parallel_coefficient_b = parallel_coefficient_b + t1_v1_b
-        perpendicular_coefficient_b = perpendicular_coefficient_b + t1_v1_b * (-1.0_dp)
+        perpendicular_coefficient_b = perpendicular_coefficient_b - t1_v1_b * 1.0_dp
     end subroutine fortfem_field_aligned_flux_vjp_fortad
 
 end module fortfem_fortad_field_aligned_flux_vjp

@@ -82,7 +82,7 @@ contains
         point_b_in(2) = 0.0_dp
         fad_t19 = point_b_in(1) * (1.0_dp / (cosh(eta) - cos(theta)))
         scale_b = scale_b + fad_t19 * t1_v1 * cos(phi)
-        phi_b = phi_b + fad_t19 * t1_v1 * scale * (-sin(phi))
+        phi_b = phi_b - fad_t19 * t1_v1 * scale * sin(phi)
         t1_v1_b = t1_v1_b + fad_t19 * (scale * cos(phi))
         fad_t25 = point_b_in(1) * ((-(scale * cos(phi) * t1_v1)) / (cosh(eta) - &
             cos(theta)) ** 2)

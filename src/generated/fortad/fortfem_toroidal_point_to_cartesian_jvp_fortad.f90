@@ -28,15 +28,15 @@ contains
 
         t1_d = cosh(eta) * eta_d
         t1 = sinh(eta)
-        point_d(1) = (((scale_d * cos(phi) + scale * (-(sin(phi) * phi_d))) * t1 + &
-            scale * cos(phi) * t1_d) * (cosh(eta) - cos(theta)) - scale * cos(phi) * t1 * &
-            (sinh(eta) * eta_d - (-(sin(theta) * theta_d)))) / (cosh(eta) - cos(theta)) ** 2
+        point_d(1) = (((scale_d * cos(phi) - scale * (sin(phi) * phi_d)) * t1 + scale &
+            * cos(phi) * t1_d) * (cosh(eta) - cos(theta)) - scale * cos(phi) * t1 * &
+            (sinh(eta) * eta_d + sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
         point_d(2) = (((scale_d * sin(phi) + scale * (cos(phi) * phi_d)) * t1 + scale &
             * sin(phi) * t1_d) * (cosh(eta) - cos(theta)) - scale * sin(phi) * t1 * &
-            (sinh(eta) * eta_d - (-(sin(theta) * theta_d)))) / (cosh(eta) - cos(theta)) ** 2
+            (sinh(eta) * eta_d + sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
         point_d(3) = ((scale_d * sin(theta) + scale * (cos(theta) * theta_d)) * &
-            (cosh(eta) - cos(theta)) - scale * sin(theta) * (sinh(eta) * eta_d - &
-            (-(sin(theta) * theta_d)))) / (cosh(eta) - cos(theta)) ** 2
+            (cosh(eta) - cos(theta)) - scale * sin(theta) * (sinh(eta) * eta_d + &
+            sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
     end subroutine fortfem_toroidal_point_to_cartesian_jvp_fortad
 
 end module fortfem_fortad_toroidal_point_to_cartesian_jvp

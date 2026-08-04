@@ -82,32 +82,31 @@ contains
         real(dp) :: t13_d
 
         t10_d = (vertex_12_d - vertex_11_d) * (vertex_23 - vertex_21) + (vertex_12 - &
-            vertex_11) * (vertex_23_d - vertex_21_d) - ((vertex_13_d - vertex_11_d) * &
-            (vertex_22 - vertex_21) + (vertex_13 - vertex_11) * (vertex_22_d - vertex_21_d))
+            vertex_11) * (vertex_23_d - vertex_21_d) - (vertex_13_d - vertex_11_d) * &
+            (vertex_22 - vertex_21) - (vertex_13 - vertex_11) * (vertex_22_d - vertex_21_d)
         t10 = (vertex_12 - vertex_11) * (vertex_23 - vertex_21) - (vertex_13 - &
             vertex_11) * (vertex_22 - vertex_21)
-        t11_d = (-(vertex_12_d - vertex_11_d)) * (vertex_33 - vertex_31) + &
-            (-(vertex_12 - vertex_11)) * (vertex_33_d - vertex_31_d) + ((vertex_13_d - &
-            vertex_11_d) * (vertex_32 - vertex_31) + (vertex_13 - vertex_11) * &
-            (vertex_32_d - vertex_31_d))
-        t11 = (-(vertex_12 - vertex_11)) * (vertex_33 - vertex_31) + (vertex_13 - &
-            vertex_11) * (vertex_32 - vertex_31)
+        t11_d = (vertex_13_d - vertex_11_d) * (vertex_32 - vertex_31) - (vertex_12 - &
+            vertex_11) * (vertex_33_d - vertex_31_d) - (vertex_12_d - vertex_11_d) * &
+            (vertex_33 - vertex_31) + (vertex_13 - vertex_11) * (vertex_32_d - vertex_31_d)
+        t11 = (vertex_13 - vertex_11) * (vertex_32 - vertex_31) - (vertex_12 - &
+            vertex_11) * (vertex_33 - vertex_31)
         t12_d = (vertex_22_d - vertex_21_d) * (vertex_33 - vertex_31) + (vertex_22 - &
-            vertex_21) * (vertex_33_d - vertex_31_d) - ((vertex_23_d - vertex_21_d) * &
-            (vertex_32 - vertex_31) + (vertex_23 - vertex_21) * (vertex_32_d - vertex_31_d))
+            vertex_21) * (vertex_33_d - vertex_31_d) - (vertex_23_d - vertex_21_d) * &
+            (vertex_32 - vertex_31) - (vertex_23 - vertex_21) * (vertex_32_d - vertex_31_d)
         t12 = (vertex_22 - vertex_21) * (vertex_33 - vertex_31) - (vertex_23 - &
             vertex_21) * (vertex_32 - vertex_31)
         t13_d = (2.0_dp * (t10 * t10_d) + 2.0_dp * (t11 * t11_d) + 2.0_dp * (t12 * &
             t12_d)) / (2.0_dp * sqrt(t10 * t10 + t11 * t11 + t12 * t12))
         t13 = sqrt(t10 * t10 + t11 * t11 + t12 * t12)
-        point_1_d = vertex_11_d + (eta_d * (vertex_13 - vertex_11) + eta * &
-            (vertex_13_d - vertex_11_d)) + (xi_d * (vertex_12 - vertex_11) + xi * &
+        point_1_d = vertex_11_d + eta_d * (vertex_13 - vertex_11) + eta * &
+            (vertex_13_d - vertex_11_d) + (xi_d * (vertex_12 - vertex_11) + xi * &
             (vertex_12_d - vertex_11_d))
-        point_2_d = vertex_21_d + (eta_d * (vertex_23 - vertex_21) + eta * &
-            (vertex_23_d - vertex_21_d)) + (xi_d * (vertex_22 - vertex_21) + xi * &
+        point_2_d = vertex_21_d + eta_d * (vertex_23 - vertex_21) + eta * &
+            (vertex_23_d - vertex_21_d) + (xi_d * (vertex_22 - vertex_21) + xi * &
             (vertex_22_d - vertex_21_d))
-        point_3_d = vertex_31_d + (eta_d * (vertex_33 - vertex_31) + eta * &
-            (vertex_33_d - vertex_31_d)) + (xi_d * (vertex_32 - vertex_31) + xi * &
+        point_3_d = vertex_31_d + eta_d * (vertex_33 - vertex_31) + eta * &
+            (vertex_33_d - vertex_31_d) + (xi_d * (vertex_32 - vertex_31) + xi * &
             (vertex_32_d - vertex_31_d))
         jacobian_d = t13_d
         normal_1_d = (t12_d * t13 - t12 * t13_d) / t13 ** 2

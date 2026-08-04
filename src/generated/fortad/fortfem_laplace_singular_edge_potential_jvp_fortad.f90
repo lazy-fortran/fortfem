@@ -92,31 +92,31 @@ contains
         t11 = sqrt((second_vertex_1 - point_1) * (second_vertex_1 - point_1) + &
             (second_vertex_2 - point_2) * (second_vertex_2 - point_2) + (second_vertex_3 &
             - point_3) * (second_vertex_3 - point_3))
-        t12 = point_1 * (-1.0d0 + 1.0d0) + second_vertex_1 - first_vertex_1
-        t13 = point_2 * (-1.0d0 + 1.0d0) + second_vertex_2 - first_vertex_2
-        t14 = point_3 * (-1.0d0 + 1.0d0) + second_vertex_3 - first_vertex_3
-        t15_d = (2.0_dp * (t12 * (second_vertex_1_d - point_1_d - (first_vertex_1_d - &
-            point_1_d))) + 2.0_dp * (t13 * (second_vertex_2_d - point_2_d - &
-            (first_vertex_2_d - point_2_d))) + 2.0_dp * (t14 * (second_vertex_3_d - &
-            point_3_d - (first_vertex_3_d - point_3_d)))) / (2.0_dp * sqrt(t12 * t12 + &
+        t12 = point_1 * (1.0d0 - 1.0d0) + second_vertex_1 - first_vertex_1
+        t13 = point_2 * (1.0d0 - 1.0d0) + second_vertex_2 - first_vertex_2
+        t14 = point_3 * (1.0d0 - 1.0d0) + second_vertex_3 - first_vertex_3
+        t15_d = (2.0_dp * (t12 * (second_vertex_1_d - point_1_d + (point_1_d - &
+            first_vertex_1_d))) + 2.0_dp * (t13 * (second_vertex_2_d - point_2_d + &
+            (point_2_d - first_vertex_2_d))) + 2.0_dp * (t14 * (second_vertex_3_d - &
+            point_3_d + (point_3_d - first_vertex_3_d)))) / (2.0_dp * sqrt(t12 * t12 + &
             t13 * t13 + t14 * t14))
         t15 = sqrt(t12 * t12 + t13 * t13 + t14 * t14)
         t16_d = (first_vertex_1_d - point_1_d) * (second_vertex_2 - point_2) + &
             (first_vertex_1 - point_1) * (second_vertex_2_d - point_2_d) - &
-            ((first_vertex_2_d - point_2_d) * (second_vertex_1 - point_1) + &
-            (first_vertex_2 - point_2) * (second_vertex_1_d - point_1_d))
+            (first_vertex_2_d - point_2_d) * (second_vertex_1 - point_1) - &
+            (first_vertex_2 - point_2) * (second_vertex_1_d - point_1_d)
         t16 = (first_vertex_1 - point_1) * (second_vertex_2 - point_2) - &
             (first_vertex_2 - point_2) * (second_vertex_1 - point_1)
-        t17_d = (-(first_vertex_1_d - point_1_d)) * (second_vertex_3 - point_3) + &
-            (-(first_vertex_1 - point_1)) * (second_vertex_3_d - point_3_d) + &
-            ((first_vertex_3_d - point_3_d) * (second_vertex_1 - point_1) + &
-            (first_vertex_3 - point_3) * (second_vertex_1_d - point_1_d))
-        t17 = (-(first_vertex_1 - point_1)) * (second_vertex_3 - point_3) + &
-            (first_vertex_3 - point_3) * (second_vertex_1 - point_1)
+        t17_d = (first_vertex_3_d - point_3_d) * (second_vertex_1 - point_1) - &
+            (first_vertex_1 - point_1) * (second_vertex_3_d - point_3_d) - &
+            (first_vertex_1_d - point_1_d) * (second_vertex_3 - point_3) + &
+            (first_vertex_3 - point_3) * (second_vertex_1_d - point_1_d)
+        t17 = (first_vertex_3 - point_3) * (second_vertex_1 - point_1) - &
+            (first_vertex_1 - point_1) * (second_vertex_3 - point_3)
         t18_d = (first_vertex_2_d - point_2_d) * (second_vertex_3 - point_3) + &
             (first_vertex_2 - point_2) * (second_vertex_3_d - point_3_d) - &
-            ((first_vertex_3_d - point_3_d) * (second_vertex_2 - point_2) + &
-            (first_vertex_3 - point_3) * (second_vertex_2_d - point_2_d))
+            (first_vertex_3_d - point_3_d) * (second_vertex_2 - point_2) - &
+            (first_vertex_3 - point_3) * (second_vertex_2_d - point_2_d)
         t18 = (first_vertex_2 - point_2) * (second_vertex_3 - point_3) - &
             (first_vertex_3 - point_3) * (second_vertex_2 - point_2)
         value_d = ((((t7_d + t11_d + t15_d) * (t7 + t11 - t15) - (t7 + t11 + t15) * &

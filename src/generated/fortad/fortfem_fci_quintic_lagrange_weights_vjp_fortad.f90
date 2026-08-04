@@ -119,37 +119,37 @@ contains
         fad_t14 = fad_t4 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) * (target - node_5) * (target - node_6))) / (node_1 - node_2) ** 2)
         node_1_b = node_1_b + fad_t14
-        node_2_b = node_2_b + fad_t14 * (-1.0_dp)
+        node_2_b = node_2_b - fad_t14 * 1.0_dp
         fad_t16 = fad_t3 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) * (target - node_5) * (target - node_6) / (node_1 - node_2))) / &
             (node_1 - node_3) ** 2)
         node_1_b = node_1_b + fad_t16
-        node_3_b = node_3_b + fad_t16 * (-1.0_dp)
+        node_3_b = node_3_b - fad_t16 * 1.0_dp
         fad_t18 = fad_t2 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) * (target - node_5) * (target - node_6) / (node_1 - node_2) / (node_1 &
             - node_3))) / (node_1 - node_4) ** 2)
         node_1_b = node_1_b + fad_t18
-        node_4_b = node_4_b + fad_t18 * (-1.0_dp)
+        node_4_b = node_4_b - fad_t18 * 1.0_dp
         fad_t20 = fad_t1 * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) * (target - node_5) * (target - node_6) / (node_1 - node_2) / (node_1 &
             - node_3) / (node_1 - node_4))) / (node_1 - node_5) ** 2)
         node_1_b = node_1_b + fad_t20
-        node_5_b = node_5_b + fad_t20 * (-1.0_dp)
+        node_5_b = node_5_b - fad_t20 * 1.0_dp
         fad_t22 = weight_1_b * ((-((target - node_2) * (target - node_3) * (target - &
             node_4) * (target - node_5) * (target - node_6) / (node_1 - node_2) / (node_1 &
             - node_3) / (node_1 - node_4) / (node_1 - node_5))) / (node_1 - node_6) ** 2)
         node_1_b = node_1_b + fad_t22
-        node_6_b = node_6_b + fad_t22 * (-1.0_dp)
+        node_6_b = node_6_b - fad_t22 * 1.0_dp
         target_b = target_b + t10_v1_b
-        node_6_b = node_6_b + t10_v1_b * (-1.0_dp)
+        node_6_b = node_6_b - t10_v1_b * 1.0_dp
         target_b = target_b + t9_v1_b
-        node_5_b = node_5_b + t9_v1_b * (-1.0_dp)
+        node_5_b = node_5_b - t9_v1_b * 1.0_dp
         target_b = target_b + t8_v1_b
-        node_4_b = node_4_b + t8_v1_b * (-1.0_dp)
+        node_4_b = node_4_b - t8_v1_b * 1.0_dp
         target_b = target_b + t7_v1_b
-        node_3_b = node_3_b + t7_v1_b * (-1.0_dp)
+        node_3_b = node_3_b - t7_v1_b * 1.0_dp
         target_b = target_b + t6_v1_b
-        node_2_b = node_2_b + t6_v1_b * (-1.0_dp)
+        node_2_b = node_2_b - t6_v1_b * 1.0_dp
     end subroutine fortfem_fci_quintic_lagrange_weights_vjp_fortad
 
 end module fortfem_fortad_fci_quintic_lagrange_weights_vjp

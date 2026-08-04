@@ -138,26 +138,26 @@ contains
         major_radius_b = major_radius_b + t11_v1_b
         minor_radius_b = minor_radius_b + t11_v1_b * t10_v1
         t10_v1_b = t10_v1_b + t11_v1_b * minor_radius
-        t9_v1_b = t9_v1_b + t10_v1_b * (-sin(t9_v1))
+        t9_v1_b = t9_v1_b - t10_v1_b * sin(t9_v1)
         parameter_11_b = parameter_11_b + t9_v1_b
         eta_b = eta_b + t9_v1_b * (parameter_13 - parameter_11)
         t7_v1_b = t7_v1_b + t9_v1_b * eta
         xi_b = xi_b + t9_v1_b * (parameter_12 - parameter_11)
         t8_v1_b = t8_v1_b + t9_v1_b * xi
         parameter_12_b = parameter_12_b + t8_v1_b
-        parameter_11_b = parameter_11_b + t8_v1_b * (-1.0_dp)
+        parameter_11_b = parameter_11_b - t8_v1_b * 1.0_dp
         parameter_13_b = parameter_13_b + t7_v1_b
-        parameter_11_b = parameter_11_b + t7_v1_b * (-1.0_dp)
-        t4_v1_b = t4_v1_b + t5_v1_b * (-sin(t4_v1))
+        parameter_11_b = parameter_11_b - t7_v1_b * 1.0_dp
+        t4_v1_b = t4_v1_b - t5_v1_b * sin(t4_v1)
         parameter_21_b = parameter_21_b + t4_v1_b
         eta_b = eta_b + t4_v1_b * (parameter_23 - parameter_21)
         t2_v1_b = t2_v1_b + t4_v1_b * eta
         xi_b = xi_b + t4_v1_b * (parameter_22 - parameter_21)
         t3_v1_b = t3_v1_b + t4_v1_b * xi
         parameter_22_b = parameter_22_b + t3_v1_b
-        parameter_21_b = parameter_21_b + t3_v1_b * (-1.0_dp)
+        parameter_21_b = parameter_21_b - t3_v1_b * 1.0_dp
         parameter_23_b = parameter_23_b + t2_v1_b
-        parameter_21_b = parameter_21_b + t2_v1_b * (-1.0_dp)
+        parameter_21_b = parameter_21_b - t2_v1_b * 1.0_dp
     end subroutine fortfem_torus_curved_panel_vjp_fortad
 
 end module fortfem_fortad_torus_curved_panel_vjp

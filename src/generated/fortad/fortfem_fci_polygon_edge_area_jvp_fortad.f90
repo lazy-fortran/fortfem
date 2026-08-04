@@ -25,8 +25,8 @@ contains
         real(dp), intent(out) :: edge_area_d
         real(dp) :: edge_area
 
-        edge_area_d = ((-x_end_d) * y_start + (-x_end) * y_start_d + (x_start_d * &
-            y_end + x_start * y_end_d)) / 2.0000000000000000E+000_dp
+        edge_area_d = (x_start_d * y_end - x_end * y_start_d - x_end_d * y_start + &
+            x_start * y_end_d) / 2.0000000000000000E+000_dp
     end subroutine fortfem_fci_polygon_edge_area_jvp_fortad
 
 end module fortfem_fortad_fci_polygon_edge_area_jvp

@@ -101,10 +101,10 @@ contains
         t5_v1_b = t5_v1_b + t6_v1_b * (1.0_dp / (2.0_dp * sqrt(t5_v1)))
         eta_b = eta_b + t5_v1_b * sinh(eta)
         theta_b = theta_b + t5_v1_b * (-1.0_dp) * (-sin(theta))
-        t3_v1_b = t3_v1_b + t4_v1_b * (-sin(order * phi))
+        t3_v1_b = t3_v1_b - t4_v1_b * sin(order * phi)
         order_b = order_b + t3_v1_b * phi
         phi_b = phi_b + t3_v1_b * order
-        t1_v1_b = t1_v1_b + t2_v1_b * (-sin(degree * theta))
+        t1_v1_b = t1_v1_b - t2_v1_b * sin(degree * theta)
         degree_b = degree_b + t1_v1_b * theta
         theta_b = theta_b + t1_v1_b * degree
     end subroutine fortfem_toroidal_poisson_products_vjp_fortad
