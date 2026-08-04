@@ -165,8 +165,8 @@ contains
         second_vertex_3_b = 0.0_dp
         fad_t1 = value_b * (1.0_dp / t15_v1)
         fad_t3 = fad_t1 * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + t18_v1 * t18_v1) * &
-            (1.0_dp / ((t7_v1 + t11_v1 + t15_v1) / (t7_v1 + t11_v1 - t15_v1)))
-        fad_t4 = fad_t3 * (1.0_dp / (t7_v1 + t11_v1 - t15_v1))
+            (1.0_dp / (-((t7_v1 + t11_v1 + t15_v1) / (t15_v1 - (t7_v1 + t11_v1)))))
+        fad_t4 = fad_t3 * (-(1.0_dp / (t15_v1 - (t7_v1 + t11_v1))))
         t7_v1_b = t7_v1_b + fad_t4
         t11_v1_b = t11_v1_b + fad_t4
         t15_v1_b = t15_v1_b + fad_t4
@@ -175,14 +175,14 @@ contains
         t7_v1_b = t7_v1_b + fad_t5
         t11_v1_b = t11_v1_b + fad_t5
         t15_v1_b = t15_v1_b - fad_t5 * 1.0_dp
-        fad_t8 = fad_t1 * log((t7_v1 + t11_v1 + t15_v1) / (t7_v1 + t11_v1 - t15_v1)) &
-            * (1.0_dp / (2.0_dp * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + t18_v1 * &
-            t18_v1)))
+        fad_t8 = fad_t1 * log(-((t7_v1 + t11_v1 + t15_v1) / (t15_v1 - (t7_v1 + &
+            t11_v1)))) * (1.0_dp / (2.0_dp * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + &
+            t18_v1 * t18_v1)))
         t16_v1_b = t16_v1_b + fad_t8 * (2.0_dp * t16_v1)
         t17_v1_b = t17_v1_b + fad_t8 * (2.0_dp * t17_v1)
         t18_v1_b = t18_v1_b + fad_t8 * (2.0_dp * t18_v1)
-        t15_v1_b = t15_v1_b + value_b * ((-(log((t7_v1 + t11_v1 + t15_v1) / (t7_v1 + &
-            t11_v1 - t15_v1)) * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + t18_v1 * &
+        t15_v1_b = t15_v1_b + value_b * ((-(log(-((t7_v1 + t11_v1 + t15_v1) / (t15_v1 &
+            - (t7_v1 + t11_v1)))) * sqrt(t16_v1 * t16_v1 + t17_v1 * t17_v1 + t18_v1 * &
             t18_v1))) / t15_v1 ** 2)
         t4_v1_b = t4_v1_b + t18_v1_b * (second_vertex_3 - point_3)
         t10_v1_b = t10_v1_b + t18_v1_b * (first_vertex_2 - point_2)
