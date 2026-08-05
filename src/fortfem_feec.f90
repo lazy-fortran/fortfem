@@ -18,6 +18,9 @@ module fortfem_feec
     use fortfem_surface_edge_flux, only: &
         assemble_surface_edge_flux, assemble_surface_edge_flux_jvp, &
         assemble_surface_edge_flux_vjp
+    use fortfem_vector_jump_penalty, only: &
+        assemble_vector_jump_penalty, assemble_vector_jump_penalty_jvp, &
+        assemble_vector_jump_penalty_vjp
     use fortfem_volume_balance_ledger, only: &
         assemble_volume_balance_ledger, assemble_volume_balance_ledger_jvp, &
         assemble_volume_balance_ledger_vjp
@@ -1569,6 +1572,7 @@ module fortfem_feec
     public :: constant
     public :: function
     public :: vector_function_space
+    public :: vector_function_space_t
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
@@ -1860,6 +1864,9 @@ module fortfem_feec
     public :: assemble_surface_edge_flux
     public :: assemble_surface_edge_flux_jvp
     public :: assemble_surface_edge_flux_vjp
+    public :: assemble_vector_jump_penalty
+    public :: assemble_vector_jump_penalty_jvp
+    public :: assemble_vector_jump_penalty_vjp
     public :: assemble_volume_balance_ledger
     public :: assemble_volume_balance_ledger_jvp
     public :: assemble_volume_balance_ledger_vjp

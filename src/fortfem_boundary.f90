@@ -405,6 +405,10 @@ module fortfem_boundary
         evaluate_laplace_representation_torus_curved_3d_vjp, &
         evaluate_laplace_representation_torus_curved_3d_geometry_jvp, &
         evaluate_laplace_representation_torus_curved_3d_geometry_vjp
+    use fortfem_torus_curved_panel, only: &
+        evaluate_torus_curved_panel, &
+        evaluate_torus_curved_panel_jvp, &
+        evaluate_torus_curved_panel_vjp
     use fortfem_helmholtz_torus_curved_bem_3d, only: &
         assemble_helmholtz_torus_curved_calderon_3d, &
         assemble_helmholtz_torus_curved_dtn_3d, &
@@ -798,6 +802,9 @@ module fortfem_boundary
     public :: assemble_helmholtz_torus_curved_dtn_3d_geometry_jvp
     public :: assemble_helmholtz_torus_curved_dtn_3d_geometry_vjp
     public :: assemble_helmholtz_fem_bem_costabel_torus_curved_3d
+    public :: evaluate_torus_curved_panel
+    public :: evaluate_torus_curved_panel_jvp
+    public :: evaluate_torus_curved_panel_vjp
     public :: solve_helmholtz_bem_dtn_torus_curved_3d
     public :: solve_helmholtz_fem_bem_costabel_torus_curved_3d
     public :: solve_laplace_bem_dtn_torus_curved_3d
