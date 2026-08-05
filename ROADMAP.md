@@ -2,6 +2,73 @@
 
 Status: living architecture and verification plan, 2026-08-03
 
+## Open work as of 2026-08-05
+
+### fortad derivative path (PR #63, branch `fortad-path`)
+
+The branch is functionally complete and green locally: `fo test` reports
+733 passed, 0 failed, exit 0, and `fo lint` reports no issues. It is not
+merged, because CI is red for reasons that do not reproduce.
+
+What the branch contains: `src/fortfem_ad_backend.f90` selecting the engine
+as a named constant so the compiler folds the unused branch;
+`src/generated/fortad/` holding the fortad H1 geometry JVP and VJP; the
+assembly path branching on the engine because fortad interleaves value and
+tangent where fortsym groups tangents after values; and Enzyme reframed
+throughout the documentation as a test oracle rather than a user-facing
+backend.
+
+Three facade re-export gaps were fixed on this branch and are worth
+recording, because one of them was responsible for sixteen apparent test
+failures:
+
+- `fortfem_boundary` did not re-export `evaluate_torus_curved_panel`, so
+  `test_torus_curved_helmholtz_bem_dtn_slow` failed to compile. Under
+  `-fmax-errors=1` that aborted the whole build, and the sixteen tests
+  whose modules had not been produced yet were reported as failures with
+  no output and a 0.00s runtime. One cause, sixteen symptoms.
+- `fortfem_feec` imported `vector_function_space_t` but never made it
+  public.
+- `fortfem_feec` exposed neither `assemble_vector_jump_penalty` nor its
+  jvp and vjp forms.
+
+Both facades keep their layering: every added symbol comes from a
+lower-layer module, never from `fortfem_api`.
+
+### CI blockers, not reproducible locally
+
+Two distinct failures, both needing work on the runner itself rather than
+in this repository's sources:
+
+1. `fo` builds all 733 targets, then every test fails to compile with
+   `f951: Fatal Error: Reading module build/fo/mod/fortfem_feec.mod at
+   line 181 column 54: Expected right parenthesis`. That is a truncated
+   module file written by gfortran 13.3 under fo's build. The workflow
+   already sets `FO_JOBS: 1` specifically for this class of problem, with
+   a comment saying the hosted gfortran front end can emit a module before
+   its dependency diagnostics settle, and it still happens.
+2. The workflow's fpm retry path then gets through the entire suite with a
+   single failure: `test_equation_objective_registry`, exit code 2.
+
+Neither reproduces. In an `ubuntu:24.04` container with the runner's exact
+gfortran 13.3.0, `fpm build --profile release` completes and that test
+passes 18 of 18. All 733 tests pass locally through `fo`. Local gfortran is
+16.1.1, which is why the container check was necessary and why it should be
+the first step for anyone continuing this.
+
+Note that `main` is red on its own account, at an earlier point: a
+line-truncation error in `src/topology/mpi_trace_exchange.f90` that the
+`fortad-path` branch already fixes.
+
+### Sources fo cannot scan
+
+`example/iga_polar_feec/iga_polar_feec.f90` lines 328 and 344 hold a
+`write` whose format string is continued across lines. fortfront mis-lexes
+the continued literal as code, so fo drops the file. This is a fortfront
+lexer gap, recorded in that repository's roadmap, and predates the current
+parser work. It matters here because a dropped file is never compiled and
+the build still reports success.
+
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
 mathematical ingredients from which three-dimensional equilibrium, linear
