@@ -14,16 +14,21 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `caf3203`, documented at `82fa035`.
+The current ffc compiler-path pin is `de04a46`, documented at `1cd5492`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
-integer, BLOCK/DO CONCURRENT, DO WHILE, and GOTO lowering extraction, the
-integer(8) external-call guard, bare-DIMENSION #2848, and GCC14-safe
-descendant exports. Clean validation is `fo clean && fo build` 447/447;
-focused structured-control, integer, and gfortran differential/link oracles
-pass locally. The ffc pull-request formatter/full-suite jobs retain their
-known baseline failures/cancellation, and no aggregate corpus PASS is claimed.
-ffc is not a FortFEM build dependency; this line records the exact
-cross-repository handoff only.
+integer, BLOCK/DO CONCURRENT, DO WHILE, GOTO, FORALL, WHERE, and SELECT
+lowering extraction, the integer(8) external-call guard, bare-DIMENSION #2848,
+and GCC14-safe descendant exports. The FORALL/WHERE focused oracles cover
+masked assignment, ELSEWHERE, reductions, and rank behavior; SELECT covers
+case/default, type, rank, runtime, and derived dispatch. The production
+inventory is now 54 `.inc` files (70,951 lines), down from the pre-wave
+snapshot. Focused structured-control, integer, and gfortran differential/link
+oracles pass locally. Aggregate clean-build validation is not claimed: the
+current ffc CI cold-link check reports twelve unresolved WHERE-submodule host
+exports pending the corresponding repair. The ffc pull-request formatter and
+full-suite jobs also retain their known baseline failures/cancellation, and no
+aggregate corpus PASS is claimed. ffc is not a FortFEM build dependency; this
+line records the exact cross-repository handoff only.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
