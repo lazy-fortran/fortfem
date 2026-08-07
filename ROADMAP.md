@@ -8,20 +8,22 @@ The current FortFront semantic code pin is `c0a32743`, the merged procedure-name
 semantic-boundary fix after the #2980 result-inference tranche. Its focused
 procedure-name oracle covers explicit-interface and `ENTRY` identifiers; the
 downstream ffc rejection oracle passes against this revision. The merged
-handoff is documented at `d8c8769a`; run
+handoff markers are `0a082664` and `d8c8769`; run
 [31147308041](https://github.com/lazy-fortran/fortfront/actions/runs/31147308041)
 has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `a8f788c`, documented at `e7209f8`. It
-includes typed ISO C-pointer and inferred-symbol extraction, the integer(8)
-external-call guard, the bare-DIMENSION #2848 fix, and the TRANSFER lowering
-extraction with its GCC14 descendant-link exports. Clean validation is
-`fo clean && fo build` 443/443; focused TRANSFER, DIMENSION, and Lazy-array
-tests pass with independent GNU Fortran differentials. ffc is not a FortFEM
-build dependency; this line records the exact cross-repository handoff only,
-and its aggregate suite remains open.
+The current ffc compiler-path pin is `cc91e32`, documented at `843b203d`.
+It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
+and integer lowering extraction, the integer(8) external-call guard, the
+bare-DIMENSION #2848 fix, and GCC14-safe descendant exports. Clean validation
+is `fo clean && fo build` 444/444; focused integer accepted/rejected and
+integer-kind/gfortran differential tests, plus the full integer-intrinsic link
+oracle, pass locally. The ffc pull-request formatter/full-suite jobs retain
+their known baseline failures/cancellation, and no aggregate corpus PASS is
+claimed. ffc is not a FortFEM build dependency; this line records the exact
+cross-repository handoff only.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
