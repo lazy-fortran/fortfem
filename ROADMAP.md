@@ -8,13 +8,13 @@ The current FortFront semantic code pin is `c0a32743`, the merged procedure-name
 semantic-boundary fix after the #2980 result-inference tranche. Its focused
 procedure-name oracle covers explicit-interface and `ENTRY` identifiers; the
 downstream ffc rejection oracle passes against this revision. The merged
-handoff markers are `0a082664` and `d8c8769`; run
+handoff markers are `0689f81c` and `d8c8769`; run
 [31147308041](https://github.com/lazy-fortran/fortfront/actions/runs/31147308041)
 has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `cc91e32`, documented at `843b203d`.
+The current ffc compiler-path pin is `cc91e32`, documented at `968ae4a`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
 and integer lowering extraction, the integer(8) external-call guard, the
 bare-DIMENSION #2848 fix, and GCC14-safe descendant exports. Clean validation
