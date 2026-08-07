@@ -14,7 +14,7 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `338fea4`, documented at `e25dbc9`.
+The current ffc compiler-path pin is `338fea4`, documented at `f7664d5`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
 integer, BLOCK/DO CONCURRENT, DO WHILE, GOTO, FORALL, WHERE, and SELECT
 lowering extraction, complex, intrinsic-extra, and reduction-expression
@@ -27,9 +27,11 @@ snapshot. The repaired current-head gate is a local cold `fo clean && fo build`
 at 455/455 on the final extraction batch; five focused compiler tests pass, and independent gfortran
 differentials produce exact WHERE output `2 3 30 40` and SELECT output `27`.
 The earlier WHERE cold-link defect is repaired by the host exports in `fc3ea15`;
-the PR aggregate CI and formatter/full-suite baseline remain separate observed
-gates, so no aggregate corpus PASS is claimed. ffc is not a FortFEM build
-dependency; this line records the exact cross-repository handoff only.
+the final ffc union measurement covers 11,053 cases: 2,919 PASS (26.41%
+observed; 24.03% excluding 263 NOREF), with 304 FAIL, 285 XPASS, 5,240 XFAIL,
+and 2,305 SKIP. Its shard summaries are not provenance-verified and are not a
+FortFEM gate. ffc is not a FortFEM build dependency; this line records the
+exact cross-repository handoff only.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
