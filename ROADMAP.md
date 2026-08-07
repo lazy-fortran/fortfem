@@ -7,20 +7,21 @@ Status: living architecture and verification plan, 2026-08-07
 The current FortFront semantic code pin is `c0a32743`, the merged procedure-name
 semantic-boundary fix after the #2980 result-inference tranche. Its focused
 procedure-name oracle covers explicit-interface and `ENTRY` identifiers; the
-downstream ffc rejection oracle passes against this revision. The latest
-procedure-name observation [31144062538](https://github.com/lazy-fortran/fortfront/actions/runs/31144062538)
-has a successful Ubuntu job while Windows remains in progress with the known
-portability set. The current-main push [31144447791](https://github.com/lazy-fortran/fortfront/actions/runs/31144447791)
-is also still in progress, so no aggregate FortFront PASS is claimed here.
+downstream ffc rejection oracle passes against this revision. The merged
+handoff is documented at `d8c8769a`; run
+[31147308041](https://github.com/lazy-fortran/fortfront/actions/runs/31147308041)
+has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
+regression. Windows retains the documented nine-test portability baseline, so
+no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `f7adff5`, which includes typed ISO C
-pointer extraction `aab7ef9`, the rebased integer(8)/descriptor dispatch
-guard, the bare-DIMENSION #2848 fix, and its one-line host export needed for
-clean linking. Clean validation is `fo clean && fo build` 442/442; the focused
-DIMENSION/Lazy-array tests pass and the gfortran differential gauntlet is
-PASS=1/XFAIL=0/FAIL=0. No XFAIL or manifest changed in this link-export
-follow-up. ffc is not a FortFEM build dependency; this line records the exact
-cross-repository handoff only, and its aggregate suite remains open.
+The current ffc compiler-path pin is `a8f788c`, documented at `e7209f8`. It
+includes typed ISO C-pointer and inferred-symbol extraction, the integer(8)
+external-call guard, the bare-DIMENSION #2848 fix, and the TRANSFER lowering
+extraction with its GCC14 descendant-link exports. Clean validation is
+`fo clean && fo build` 443/443; focused TRANSFER, DIMENSION, and Lazy-array
+tests pass with independent GNU Fortran differentials. ffc is not a FortFEM
+build dependency; this line records the exact cross-repository handoff only,
+and its aggregate suite remains open.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
@@ -29,10 +30,11 @@ is historical evidence for the `ca26bf9d` parent, not a current-head gate.
 
 The remote accelerator check verified NVHPC 23.9 and 26.5 under
 `faepkub4:/var/tmp/ert` (85 GiB free). A driver-matched NVHPC 23.9 OpenACC
-smoke passed on the `acluster` Tesla T4 (CUDA 12.2); the `scluster` Slurm
-smoke (job 1033639) was cancelled while pending resources, without an
-allocation. This records toolchain/device availability only and does not
-close FortFEM's full multi-compiler or GPU application gates.
+smoke passed on the `acluster` Tesla T4 (CUDA 12.2), and the `scluster` Slurm
+smoke (job 1033712) allocated an NVIDIA RTX PRO 6000 Blackwell Max-Q and
+printed `GPU_SMOKE_PASS` under driver 590.48.01. This records toolchain/device
+availability only and does not close FortFEM's full multi-compiler or GPU
+application gates.
 
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
