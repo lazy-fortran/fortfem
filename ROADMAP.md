@@ -18,7 +18,7 @@ The current ffc compiler-path pin is `caf3203`, documented at `82fa035`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
 integer, BLOCK/DO CONCURRENT, DO WHILE, and GOTO lowering extraction, the
 integer(8) external-call guard, bare-DIMENSION #2848, and GCC14-safe
-descendant exports. Clean validation is `fo clean && fo build` 446/446;
+descendant exports. Clean validation is `fo clean && fo build` 447/447;
 focused structured-control, integer, and gfortran differential/link oracles
 pass locally. The ffc pull-request formatter/full-suite jobs retain their
 known baseline failures/cancellation, and no aggregate corpus PASS is claimed.
