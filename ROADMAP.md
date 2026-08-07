@@ -14,7 +14,7 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `fc3ea15`, documented at `f13906b`.
+The current ffc compiler-path pin is `fc3ea15`, documented at `66295c7`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
 integer, BLOCK/DO CONCURRENT, DO WHILE, GOTO, FORALL, WHERE, and SELECT
 lowering extraction, the integer(8) external-call guard, bare-DIMENSION #2848,
