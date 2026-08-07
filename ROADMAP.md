@@ -14,15 +14,15 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `cc91e32`, documented at `968ae4a`.
+The current ffc compiler-path pin is `caf3203`, documented at `ec87e25`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
-and integer lowering extraction, the integer(8) external-call guard, the
-bare-DIMENSION #2848 fix, and GCC14-safe descendant exports. Clean validation
-is `fo clean && fo build` 444/444; focused integer accepted/rejected and
-integer-kind/gfortran differential tests, plus the full integer-intrinsic link
-oracle, pass locally. The ffc pull-request formatter/full-suite jobs retain
-their known baseline failures/cancellation, and no aggregate corpus PASS is
-claimed. ffc is not a FortFEM build dependency; this line records the exact
+integer, BLOCK/DO CONCURRENT, DO WHILE, and GOTO lowering extraction, the
+integer(8) external-call guard, bare-DIMENSION #2848, and GCC14-safe
+descendant exports. Clean validation is `fo clean && fo build` 446/446;
+focused structured-control, integer, and gfortran differential/link oracles
+pass locally. The ffc pull-request formatter/full-suite jobs retain their
+known baseline failures/cancellation, and no aggregate corpus PASS is claimed.
+ffc is not a FortFEM build dependency; this line records the exact
 cross-repository handoff only.
 
 The former source-discovery and continuation-lexer blockers were closed at
