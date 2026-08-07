@@ -1,6 +1,25 @@
 # FortFEM roadmap
 
-Status: living architecture and verification plan, 2026-08-03
+Status: living architecture and verification plan, 2026-08-07
+
+## Current compiler handoff (2026-08-07)
+
+The current FortFront semantic code pin is `193457a9`, with roadmap/documentation
+head `2179929e`. The former source-discovery and continuation-lexer blockers
+are closed at that pin; focused frontend oracles are green locally. FortFront
+merge run [31136187566](https://github.com/lazy-fortran/fortfront/actions/runs/31136187566)
+was cancelled, while documentation merge
+[31136399036](https://github.com/lazy-fortran/fortfront/actions/runs/31136399036)
+was queued at this snapshot. The completed aggregate run
+[31134675652](https://github.com/lazy-fortran/fortfront/actions/runs/31134675652)
+is historical evidence for the `ca26bf9d` parent, not a current-head gate.
+
+The remote accelerator check verified NVHPC 23.9 and 26.5 under
+`faepkub4:/var/tmp/ert` (85 GiB free). A driver-matched NVHPC 23.9 OpenACC
+smoke passed on the `acluster` Tesla T4 (CUDA 12.2); the `scluster` Slurm
+smoke (job 1033639) was cancelled while pending resources, without an
+allocation. This records toolchain/device availability only and does not
+close FortFEM's full multi-compiler or GPU application gates.
 
 FortFEM is a Fortran library for finite-element, boundary-element, and
 compatible discretizations. The long-term goal is to provide the reusable
