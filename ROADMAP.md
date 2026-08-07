@@ -4,13 +4,22 @@ Status: living architecture and verification plan, 2026-08-07
 
 ## Current compiler handoff (2026-08-07)
 
-The current FortFront semantic code pin is `193457a9`, with roadmap/documentation
-head `2179929e`. The former source-discovery and continuation-lexer blockers
-are closed at that pin; focused frontend oracles are green locally. FortFront
-merge run [31136187566](https://github.com/lazy-fortran/fortfront/actions/runs/31136187566)
-was cancelled, while documentation merge
-[31136399036](https://github.com/lazy-fortran/fortfront/actions/runs/31136399036)
-was queued at this snapshot. The completed aggregate run
+The current FortFront semantic code pin is `c0a32743`, the merged procedure-name
+semantic-boundary fix after the #2980 result-inference tranche. Its focused
+procedure-name oracle covers explicit-interface and `ENTRY` identifiers; the
+downstream ffc rejection oracle passes against this revision. The latest
+procedure-name observation [31144062538](https://github.com/lazy-fortran/fortfront/actions/runs/31144062538)
+has a successful Ubuntu job while Windows remains in progress with the known
+portability set. The current-main push [31144447791](https://github.com/lazy-fortran/fortfront/actions/runs/31144447791)
+is also still in progress, so no aggregate FortFront PASS is claimed here.
+
+The current ffc compiler-path pin is `7dc6059`, which includes typed ISO C
+pointer extraction `aab7ef9` and the rebased integer(8)/descriptor dispatch
+guard. ffc is not a FortFEM build dependency; this line records the exact
+cross-repository handoff only, and its aggregate suite remains open.
+
+The former source-discovery and continuation-lexer blockers were closed at
+the older `193457a9`/`2179929e` snapshot. The completed aggregate run
 [31134675652](https://github.com/lazy-fortran/fortfront/actions/runs/31134675652)
 is historical evidence for the `ca26bf9d` parent, not a current-head gate.
 
