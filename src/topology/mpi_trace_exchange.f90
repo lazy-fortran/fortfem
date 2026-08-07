@@ -187,7 +187,8 @@ contains
             any(schedule%row_offsets(2:) <= schedule%row_offsets(:schedule%partition_count)) .or. &
             size(schedule%local_to_global) /= schedule%local_count .or. size(schedule%owner_rank) /= schedule%local_count .or. &
             size(schedule%owned) /= schedule%local_count .or. size(schedule%owner_buffer_index) /= schedule%local_count .or. &
-            size(schedule%ghost_buffer_index) /= schedule%local_count .or. size(schedule%global_owner_index) /= schedule%global_count) return
+            size(schedule%ghost_buffer_index) /= schedule%local_count .or. &
+            size(schedule%global_owner_index) /= schedule%global_count) return
         if (any(schedule%local_to_global < 1) .or. any(schedule%local_to_global > schedule%global_count) .or. &
             any(schedule%owner_rank < 0) .or. any(schedule%global_owner_index < 1)) return
         if (count(schedule%owned) /= schedule%owner_count .or. count(.not. schedule%owned) /= schedule%ghost_count) return
@@ -505,7 +506,8 @@ contains
         valid = .true.
     end function valid_pack_inputs
 
-    logical function valid_pack_bar_inputs(schedule, offsets, owner_values_bar, ghost_values_bar, local_values_bar, status) result(valid)
+    logical function valid_pack_bar_inputs(schedule, offsets, owner_values_bar, &
+            ghost_values_bar, local_values_bar, status) result(valid)
         type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
         integer, intent(in) :: offsets(:)
         real(dp), intent(in) :: owner_values_bar(:, :), ghost_values_bar(:, :), local_values_bar(:, :)
@@ -545,7 +547,8 @@ contains
         valid = .true.
     end function valid_unpack_inputs
 
-    logical function valid_unpack_bar_inputs(schedule, offsets, local_values_bar, owner_values_bar, ghost_values_bar, status) result(valid)
+    logical function valid_unpack_bar_inputs(schedule, offsets, local_values_bar, &
+            owner_values_bar, ghost_values_bar, status) result(valid)
         type(mpi_trace_exchange_schedule_t), intent(in) :: schedule
         integer, intent(in) :: offsets(:)
         real(dp), intent(in) :: local_values_bar(:, :), owner_values_bar(:, :), ghost_values_bar(:, :)

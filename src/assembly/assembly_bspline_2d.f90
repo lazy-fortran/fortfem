@@ -5,6 +5,9 @@ module fortfem_assembly_bspline_2d
         evaluate_nurbs_surface_geometry, &
         evaluate_nurbs_surface_geometry_jvp, &
         evaluate_nurbs_surface_geometry_vjp
+    use fortfem_ad_backend, only: FORTFEM_AD_ENGINE, FORTFEM_AD_FORTAD
+    use fortfem_fortad_h1_geometry_jvp, only: fortfem_h1_geometry_jvp_fortad
+    use fortfem_fortad_h1_geometry_vjp, only: fortfem_h1_geometry_vjp_fortad
     use fortfem_generated_bspline_h1_geometry_jvp, only: &
         generated_bspline_h1_geometry_jvp
     use fortfem_generated_bspline_h1_geometry_vjp, only: &
@@ -2099,6 +2102,25 @@ contains
                                     local_row, span_x, span_y, degree_x, &
                                     degree_y, value_x, derivative_x, value_y, &
                                     derivative_y, basis_row, gradient_row)
+                                if (FORTFEM_AD_ENGINE == FORTFEM_AD_FORTAD) then
+                                    ! fortad interleaves each value with its
+                                    ! tangent; the fortsym rule groups the
+                                    ! tangents after the values.
+                                    call fortfem_h1_geometry_jvp_fortad( &
+                                        geometry_jacobian(1, 1), &
+                                        geometry_jacobian_dot(1, 1), &
+                                        geometry_jacobian(2, 1), &
+                                        geometry_jacobian_dot(2, 1), &
+                                        geometry_jacobian(1, 2), &
+                                        geometry_jacobian_dot(1, 2), &
+                                        geometry_jacobian(2, 2), &
+                                        geometry_jacobian_dot(2, 2), &
+                                        gradient_row(1), gradient_row(2), &
+                                        gradient_column(1), gradient_column(2), &
+                                        basis_row, basis_column, &
+                                        stiffness_weight, mass_weight, &
+                                        quadrature_weight, contribution_dot)
+                                else
                                 call generated_bspline_h1_geometry_jvp( &
                                     geometry_jacobian(1, 1), &
                                     geometry_jacobian(2, 1), &
@@ -2113,6 +2135,7 @@ contains
                                     geometry_jacobian_dot(1, 2), &
                                     geometry_jacobian_dot(2, 2), &
                                     contribution_dot)
+                                end if
                                 local_matrix_dot(local_row, local_column) = &
                                     local_matrix_dot(local_row, local_column) + &
                                     contribution_dot

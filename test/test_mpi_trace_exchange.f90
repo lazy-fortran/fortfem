@@ -57,7 +57,8 @@ program test_mpi_trace_exchange
         0.6_dp, 0.1_dp, -0.2_dp, 0.7_dp, -0.4_dp], shape(local_values_dot))
     call pack_mpi_trace_exchange(schedule, offsets, local_values, owner_values, ghost_values, status)
     call record_condition(status%code == 0 .and. &
-        maxval(abs(owner_values - reshape([1.0_dp, 2.0_dp, 0.6_dp, 0.7_dp, 0.8_dp, 1.2_dp], [owner_count, component_count]))) < 1.0e-14_dp .and. &
+        maxval(abs(owner_values - reshape([1.0_dp, 2.0_dp, 0.6_dp, 0.7_dp, 0.8_dp, 1.2_dp], &
+            [owner_count, component_count]))) < 1.0e-14_dp .and. &
         maxval(abs(ghost_values - reshape([3.0_dp, 0.5_dp, 0.9_dp, 1.1_dp], [ghost_count, component_count]))) < 1.0e-14_dp, &
         "trace packing follows deterministic owner/ghost row order")
 
