@@ -14,16 +14,17 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `fc3ea15`, documented at `66295c7`.
+The current ffc compiler-path pin is `338fea4`, documented at `e25dbc9`.
 It includes typed ISO C-pointer, inferred-symbol, TRANSFER, rank-1 deep-copy,
 integer, BLOCK/DO CONCURRENT, DO WHILE, GOTO, FORALL, WHERE, and SELECT
-lowering extraction, the integer(8) external-call guard, bare-DIMENSION #2848,
+lowering extraction, complex, intrinsic-extra, and reduction-expression
+extraction, the integer(8) external-call guard, bare-DIMENSION #2848,
 and GCC14-safe descendant exports. The FORALL/WHERE focused oracles cover
 masked assignment, ELSEWHERE, reductions, and rank behavior; SELECT covers
 case/default, type, rank, runtime, and derived dispatch. The production
-inventory is now 54 `.inc` files (70,951 lines), down from the pre-wave
+inventory is now 51 `.inc` files (67,182 lines), down from the pre-wave
 snapshot. The repaired current-head gate is a local cold `fo clean && fo build`
-at 453/453; five focused compiler tests pass, and independent gfortran
+at 455/455 on the final extraction batch; five focused compiler tests pass, and independent gfortran
 differentials produce exact WHERE output `2 3 30 40` and SELECT output `27`.
 The earlier WHERE cold-link defect is repaired by the host exports in `fc3ea15`;
 the PR aggregate CI and formatter/full-suite baseline remain separate observed
