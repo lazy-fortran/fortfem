@@ -14,14 +14,17 @@ has a successful Ubuntu job, including the #2975 nested-associate owner-boundary
 regression. Windows retains the documented nine-test portability baseline, so
 no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `a8f788c`, documented at `e7209f8`. It
-includes typed ISO C-pointer and inferred-symbol extraction, the integer(8)
-external-call guard, the bare-DIMENSION #2848 fix, and the TRANSFER lowering
-extraction with its GCC14 descendant-link exports. Clean validation is
-`fo clean && fo build` 443/443; focused TRANSFER, DIMENSION, and Lazy-array
-tests pass with independent GNU Fortran differentials. ffc is not a FortFEM
-build dependency; this line records the exact cross-repository handoff only,
-and its aggregate suite remains open.
+The current ffc compiler-path pin is `cc91e32`, documented at
+`843b203d`. It includes typed ISO C-pointer and inferred-symbol extraction,
+the integer(8) external-call guard, the bare-DIMENSION #2848 fix, TRANSFER
+lowering extraction with its GCC14 descendant-link exports, bounded rank-1
+derived-allocatable deep-copy assignment, and typed integer lowering
+extraction. Clean validation is `fo clean && fo build` 444/444; focused
+TRANSFER, DIMENSION, Lazy-array, deep-copy, and integer tests pass with
+independent GNU Fortran differentials. The merged-wave CI retained the known
+formatter/full-suite and corpus baseline failures; ffc is not a FortFEM build
+dependency, and its aggregate suite remains open. This line records the exact
+cross-repository handoff only.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
