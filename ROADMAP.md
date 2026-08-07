@@ -13,13 +13,14 @@ has a successful Ubuntu job while Windows remains in progress with the known
 portability set. The current-main push [31144447791](https://github.com/lazy-fortran/fortfront/actions/runs/31144447791)
 is also still in progress, so no aggregate FortFront PASS is claimed here.
 
-The current ffc compiler-path pin is `8a43a3c`, which includes typed ISO C
+The current ffc compiler-path pin is `f7adff5`, which includes typed ISO C
 pointer extraction `aab7ef9`, the rebased integer(8)/descriptor dispatch
-guard, and the bare-DIMENSION #2848 fix. Its independent gfortran-backed
-`issue_2848_dimension_statement` gauntlet is PASS=1/XFAIL=0/XPASS=0/FAIL=0;
-only that now-green XFAIL row was removed. ffc is not a FortFEM build
-dependency; this line records the exact cross-repository handoff only, and
-its aggregate suite remains open.
+guard, the bare-DIMENSION #2848 fix, and its one-line host export needed for
+clean linking. Clean validation is `fo clean && fo build` 442/442; the focused
+DIMENSION/Lazy-array tests pass and the gfortran differential gauntlet is
+PASS=1/XFAIL=0/FAIL=0. No XFAIL or manifest changed in this link-export
+follow-up. ffc is not a FortFEM build dependency; this line records the exact
+cross-repository handoff only, and its aggregate suite remains open.
 
 The former source-discovery and continuation-lexer blockers were closed at
 the older `193457a9`/`2179929e` snapshot. The completed aggregate run
