@@ -14,7 +14,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["lapack", "blas", "superlu"]
+link = ["superlu"]
 
 [install]
 library = true
@@ -56,6 +56,7 @@ css = "doc/fortfem.css"
 md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markdown.extensions.fenced_code", "markdown.extensions.codehilite"]
 
 [dependencies]
+blas = "*"
 fortplot = { git = "https://github.com/lazy-fortran/fortplot.git" }
 fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "3920109d5125f2395358e577908b467488027241" }
 fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "3c19c978b914edde02ff58704feec0830008c162" }
