@@ -18,6 +18,9 @@ module fortfem_feec
     use fortfem_surface_edge_flux, only: &
         assemble_surface_edge_flux, assemble_surface_edge_flux_jvp, &
         assemble_surface_edge_flux_vjp
+    use fortfem_vector_jump_penalty, only: &
+        assemble_vector_jump_penalty, assemble_vector_jump_penalty_jvp, &
+        assemble_vector_jump_penalty_vjp
     use fortfem_volume_balance_ledger, only: &
         assemble_volume_balance_ledger, assemble_volume_balance_ledger_jvp, &
         assemble_volume_balance_ledger_vjp
@@ -458,6 +461,10 @@ module fortfem_feec
         solve_tetra_nedelec_curl_mass, solve_tetra_nedelec_pml
     use fortfem_tetra_nedelec_pml_state_3d, only: &
         solve_tetra_nedelec_pml_jvp, solve_tetra_nedelec_pml_vjp
+    use fortfem_triangle_nedelec_sampled_state_2d, only: &
+        solve_triangle_nedelec_sampled_state, &
+        solve_triangle_nedelec_sampled_state_jvp, &
+        solve_triangle_nedelec_sampled_state_vjp
     use fortfem_tetra_nedelec_sampled_state_3d, only: &
         solve_tetra_nedelec_sampled_state, &
         solve_tetra_nedelec_sampled_state_jvp, &
@@ -809,7 +816,10 @@ module fortfem_feec
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
-        evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas_jvp, &
+        evaluate_triangle_raviart_thomas_vjp, &
+        initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_triangle_vector_interpolation, only: &
         evaluate_triangle_bdm_interpolant, &
@@ -1123,6 +1133,9 @@ module fortfem_feec
     public :: solve_tetra_nedelec_pml
     public :: solve_tetra_nedelec_pml_jvp
     public :: solve_tetra_nedelec_pml_vjp
+    public :: solve_triangle_nedelec_sampled_state
+    public :: solve_triangle_nedelec_sampled_state_jvp
+    public :: solve_triangle_nedelec_sampled_state_vjp
     public :: solve_tetra_nedelec_sampled_state
     public :: solve_tetra_nedelec_sampled_state_jvp
     public :: solve_tetra_nedelec_sampled_state_vjp
@@ -1559,6 +1572,7 @@ module fortfem_feec
     public :: constant
     public :: function
     public :: vector_function_space
+    public :: vector_function_space_t
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
@@ -1697,6 +1711,8 @@ module fortfem_feec
     public :: assemble_triangle_nedelec_second_vector_load_samples_vjp
     public :: initialize_triangle_raviart_thomas
     public :: evaluate_triangle_raviart_thomas
+    public :: evaluate_triangle_raviart_thomas_jvp
+    public :: evaluate_triangle_raviart_thomas_vjp
     public :: triangle_rt_basis_t
     public :: triangle_rt_dof_count
     public :: evaluate_triangle_rt_interpolant
@@ -1848,6 +1864,9 @@ module fortfem_feec
     public :: assemble_surface_edge_flux
     public :: assemble_surface_edge_flux_jvp
     public :: assemble_surface_edge_flux_vjp
+    public :: assemble_vector_jump_penalty
+    public :: assemble_vector_jump_penalty_jvp
+    public :: assemble_vector_jump_penalty_vjp
     public :: assemble_volume_balance_ledger
     public :: assemble_volume_balance_ledger_jvp
     public :: assemble_volume_balance_ledger_vjp
