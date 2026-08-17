@@ -102,7 +102,7 @@ contains
                 temp_points(1:mesh%npoints) = mesh%points(1:mesh%npoints)
             end if
             deallocate(mesh%points)
-            mesh%points = temp_points
+            call move_alloc(temp_points, mesh%points)
             mesh%max_points = new_max_points
         end if
 
@@ -113,7 +113,7 @@ contains
                 temp_triangles(1:mesh%ntriangles) = mesh%triangles(1:mesh%ntriangles)
             end if
             deallocate(mesh%triangles)
-            mesh%triangles = temp_triangles
+            call move_alloc(temp_triangles, mesh%triangles)
             mesh%max_triangles = new_max_triangles
         end if
 
@@ -124,7 +124,7 @@ contains
                 temp_edges(1:mesh%nedges) = mesh%edges(1:mesh%nedges)
             end if
             deallocate(mesh%edges)
-            mesh%edges = temp_edges
+            call move_alloc(temp_edges, mesh%edges)
             mesh%max_edges = new_max_edges
         end if
     end subroutine resize_mesh

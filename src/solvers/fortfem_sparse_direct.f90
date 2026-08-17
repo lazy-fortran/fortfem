@@ -1080,6 +1080,11 @@ contains
         matrix%nrow = n
         matrix%ncol = n
         matrix%nnz = size(values)
+        if (allocated(matrix%col_ptr)) deallocate(matrix%col_ptr)
+        if (allocated(matrix%row_idx)) deallocate(matrix%row_idx)
+        if (allocated(matrix%val)) deallocate(matrix%val)
+        allocate(matrix%col_ptr(size(col_ptr)), matrix%row_idx(size(row_ind)), &
+            matrix%val(size(values)))
         matrix%col_ptr = col_ptr
         matrix%row_idx = row_ind
         matrix%val = values
@@ -1106,6 +1111,11 @@ contains
         matrix%nrow = n
         matrix%ncol = n
         matrix%nnz = size(values)
+        if (allocated(matrix%col_ptr)) deallocate(matrix%col_ptr)
+        if (allocated(matrix%row_idx)) deallocate(matrix%row_idx)
+        if (allocated(matrix%val)) deallocate(matrix%val)
+        allocate(matrix%col_ptr(size(col_ptr)), matrix%row_idx(size(row_ind)), &
+            matrix%val(size(values)))
         matrix%col_ptr = col_ptr
         matrix%row_idx = row_ind
         matrix%val = values
@@ -1158,6 +1168,8 @@ contains
         matrix%nrow = n
         matrix%ncol = n
         matrix%nnz = size(values)
+        allocate(matrix%col_ptr(size(col_ptr)), matrix%row_idx(size(row_ind)), &
+            matrix%val(size(values)))
         matrix%col_ptr = col_ptr
         matrix%row_idx = row_ind
         matrix%val = values
@@ -1177,6 +1189,8 @@ contains
         matrix%nrow = n
         matrix%ncol = n
         matrix%nnz = size(values)
+        allocate(matrix%col_ptr(size(col_ptr)), matrix%row_idx(size(row_ind)), &
+            matrix%val(size(values)))
         matrix%col_ptr = col_ptr
         matrix%row_idx = row_ind
         matrix%val = values
