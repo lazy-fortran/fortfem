@@ -5,6 +5,7 @@ module fortfem_boundary
     !! open-boundary primitives are re-exported from their canonical modules
     !! so clients can depend on this small boundary surface without importing
     !! the umbrella ``fortfem_api`` (or any parity/comparison implementation).
+    use fortfem_boundary_types, only: boundary_t
     use fortfem_boundary_operator_contract, only: &
         BOUNDARY_OPERATOR_BACKEND_BEM, &
         BOUNDARY_OPERATOR_BACKEND_DTN, &
@@ -806,13 +807,5 @@ module fortfem_boundary
     public :: assemble_laplace_torus_curved_dtn_3d_geometry_jvp
     public :: assemble_laplace_torus_curved_dtn_3d_geometry_vjp
     public :: solve_laplace_fem_bem_costabel_torus_curved_3d
-
-    ! Boundary type for defining domains
-    type :: boundary_t
-        integer :: n_points = 0
-        real(dp), allocatable :: points(:,:) ! (2, n_points)
-        integer, allocatable :: labels(:) ! (n_points-1) segment labels
-        logical :: is_closed = .false.
-    end type boundary_t
 
 end module fortfem_boundary
