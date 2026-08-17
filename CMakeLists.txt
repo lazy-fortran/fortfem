@@ -56,7 +56,7 @@ set(FORTFEM_CAPI_SOURCES
     src/basis/basis_rt_2d.f90
     src/bindings/fortfem_capi_mesh.f90
     src/bindings/fortfem_capi_solver.f90
-    src/fortfem_boundary.f90
+    src/boundary/boundary_types.f90
     src/interpolation/nedelec_field_2d.f90
     src/interpolation/rt_field_2d.f90
     src/mesh/mesh_2d.f90
@@ -64,6 +64,7 @@ set(FORTFEM_CAPI_SOURCES
     src/mesh/triangle_io.f90
     src/quadrature/gauss_quadrature_2d.f90
     src/solvers/fortfem_sparse_direct.f90
+    src/topology/tree_cotree_gauge.f90
     src/triangulation/bowyer_watson.f90
     src/triangulation/constrained_delaunay.f90
     src/triangulation/delaunay_types.f90
