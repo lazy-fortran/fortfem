@@ -68,6 +68,7 @@ module fortfem_boundary
         evaluate_source_trace_map, evaluate_source_trace_map_jvp, &
         evaluate_source_trace_map_vjp, &
         evaluate_weighted_source_trace_reciprocity_defect
+    use fortfem_torus_curved_panel, only: evaluate_torus_curved_panel
     use fortfem_circular_dtn_2d, only: &
         apply_circular_helmholtz_dtn, circular_helmholtz_dtn_eigenvalue
     use fortfem_circular_dtn_2d_ad, only: &
@@ -794,6 +795,7 @@ module fortfem_boundary
     public :: solve_maxwell_pec_torus_curved_regularized_cfie_rwg_multiple_3d
     public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_jvp
     public :: evaluate_helmholtz_representation_torus_curved_3d_geometry_vjp
+    public :: evaluate_torus_curved_panel
     public :: assemble_helmholtz_torus_curved_calderon_3d
     public :: assemble_helmholtz_torus_curved_dtn_3d
     public :: assemble_helmholtz_torus_curved_dtn_3d_geometry_jvp

@@ -809,7 +809,8 @@ module fortfem_feec
     use fortfem_triangle_feec_operators, only: &
         build_triangle_discrete_gradient
     use fortfem_triangle_rt_arbitrary_order, only: &
-        evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
+        evaluate_triangle_raviart_thomas, evaluate_triangle_raviart_thomas_jvp, &
+        evaluate_triangle_raviart_thomas_vjp, initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_triangle_vector_interpolation, only: &
         evaluate_triangle_bdm_interpolant, &
@@ -883,6 +884,10 @@ module fortfem_feec
         solve_triangle_rt_sampled_state, &
         solve_triangle_rt_sampled_state_jvp, &
         solve_triangle_rt_sampled_state_vjp
+    use fortfem_triangle_nedelec_sampled_state_2d, only: &
+        solve_triangle_nedelec_sampled_state, &
+        solve_triangle_nedelec_sampled_state_jvp, &
+        solve_triangle_nedelec_sampled_state_vjp
     use fortfem_triangle_full_vector_sampled_state_2d, only: &
         solve_triangle_bdm_sampled_state, &
         solve_triangle_bdm_sampled_state_jvp, &
@@ -936,6 +941,9 @@ module fortfem_feec
         assemble_scalar_sipg_interface_jvp, &
         assemble_scalar_sipg_interface_vjp
     use fortfem_vector_jump_penalty, only: &
+        assemble_vector_jump_penalty, &
+        assemble_vector_jump_penalty_jvp, &
+        assemble_vector_jump_penalty_vjp, &
         assemble_vector_sipg_interface, &
         assemble_vector_sipg_interface_jvp, &
         assemble_vector_sipg_interface_vjp
@@ -1559,6 +1567,7 @@ module fortfem_feec
     public :: constant
     public :: function
     public :: vector_function_space
+    public :: vector_function_space_t
     public :: vector_function
     public :: vector_function_t
     public :: vector_bc
@@ -1697,6 +1706,8 @@ module fortfem_feec
     public :: assemble_triangle_nedelec_second_vector_load_samples_vjp
     public :: initialize_triangle_raviart_thomas
     public :: evaluate_triangle_raviart_thomas
+    public :: evaluate_triangle_raviart_thomas_jvp
+    public :: evaluate_triangle_raviart_thomas_vjp
     public :: triangle_rt_basis_t
     public :: triangle_rt_dof_count
     public :: evaluate_triangle_rt_interpolant
@@ -1725,6 +1736,9 @@ module fortfem_feec
     public :: solve_triangle_nedelec_second_sampled_state
     public :: solve_triangle_nedelec_second_sampled_state_jvp
     public :: solve_triangle_nedelec_second_sampled_state_vjp
+    public :: solve_triangle_nedelec_sampled_state
+    public :: solve_triangle_nedelec_sampled_state_jvp
+    public :: solve_triangle_nedelec_sampled_state_vjp
     public :: triangle_duffy_quadrature
     public :: assemble_laplacian_system
     public :: sparse_from_dense
@@ -1788,6 +1802,9 @@ module fortfem_feec
     public :: assemble_vector_sipg_interface
     public :: assemble_vector_sipg_interface_jvp
     public :: assemble_vector_sipg_interface_vjp
+    public :: assemble_vector_jump_penalty
+    public :: assemble_vector_jump_penalty_jvp
+    public :: assemble_vector_jump_penalty_vjp
     public :: assemble_block_2x2_residual
     public :: assemble_block_2x2_residual_jvp
     public :: assemble_block_2x2_residual_vjp

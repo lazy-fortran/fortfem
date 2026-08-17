@@ -8,7 +8,7 @@ program test_maxwell_fem_bem_state_ad
     implicit none
 
     integer, parameter :: n = 4
-    real(dp), parameter :: step = 2.0e-7_dp
+    real(dp), parameter :: step = 2.0e-5_dp
     complex(dp) :: matrix(n, n), matrix_dot(n, n)
     complex(dp) :: rhs(n), rhs_dot(n), state_bar(n)
     complex(dp), allocatable :: state(:), state_dot(:)
