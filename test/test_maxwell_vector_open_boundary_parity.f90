@@ -182,7 +182,7 @@ contains
             error = huge(1.0_dp)
             return
         end if
-        epsilon = 2.0e-6_dp
+        epsilon = 2.0e-5_dp
         call apply_maxwell_trace_to_flux( &
             electric, magnetic, mass, trace, flux_base, local_status)
         call apply_maxwell_trace_to_flux( &
