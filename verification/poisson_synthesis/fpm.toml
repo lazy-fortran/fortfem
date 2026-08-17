@@ -1,0 +1,26 @@
+name = "fortfem-poisson-synthesis"
+version = "0.1.0"
+license = "MIT"
+author = "Christopher Albert"
+maintainer = "albert@tugraz.at"
+copyright = "Copyright 2025, Christopher Albert"
+description = "Pilot Fortran synthesis for weak-form derivation and verified P1 Poisson element kernels (issue #62)"
+homepage = "https://github.com/lazy-fortran/fortfem"
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = false
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[library]
+source-dir = "src"
+
+[[executable]]
+name = "gen_poisson_p1_kernel"
+source-dir = "app"
+main = "gen_poisson_p1_kernel.f90"
