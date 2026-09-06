@@ -120,7 +120,7 @@ if(FORTFEM_ENABLE_ENZYME)
     # fixture support is included.
     FetchContent_Declare(fortnum_enzyme_support
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
-        GIT_TAG 92cfc0b913237ef7ada6c4911df8a2693f842369
+        GIT_TAG bf0b0c5a859d7ed78e4ae17ee3a9011c8de5b088
         GIT_SHALLOW FALSE
         SOURCE_SUBDIR cmake/enzyme-support)
     FetchContent_MakeAvailable(fortnum_enzyme_support)
