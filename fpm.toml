@@ -14,7 +14,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["superlu"]
+link = ["superlu", "lapack"]
 
 [install]
 library = true
