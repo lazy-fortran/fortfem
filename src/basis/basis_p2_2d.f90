@@ -1,5 +1,6 @@
 module basis_p2_2d_module
     use fortfem_kinds
+    use fortfem_generated_p2_basis, only: generated_p2_jet
     implicit none
     private
 
@@ -38,154 +39,24 @@ contains
         class(basis_p2_2d_t), intent(in) :: this
         integer, intent(in) :: i
         real(dp), intent(in) :: xi, eta
-        real(dp) :: val
-        real(dp) :: lambda1, lambda2, lambda3
-
-        ! Barycentric coordinates
-        lambda1 = 1.0_dp - xi - eta
-        lambda2 = xi
-        lambda3 = eta
-
-        select case (i)
-        case (1)
-            ! Vertex 1: phi_1 = lambda1 * (2*lambda1 - 1)
-            val = lambda1 * (2.0_dp * lambda1 - 1.0_dp)
-        case (2)
-            ! Vertex 2: phi_2 = lambda2 * (2*lambda2 - 1)
-            val = lambda2 * (2.0_dp * lambda2 - 1.0_dp)
-        case (3)
-            ! Vertex 3: phi_3 = lambda3 * (2*lambda3 - 1)
-            val = lambda3 * (2.0_dp * lambda3 - 1.0_dp)
-        case (4)
-            ! Edge 1-2 midpoint: phi_4 = 4 * lambda1 * lambda2
-            val = 4.0_dp * lambda1 * lambda2
-        case (5)
-            ! Edge 2-3 midpoint: phi_5 = 4 * lambda2 * lambda3
-            val = 4.0_dp * lambda2 * lambda3
-        case (6)
-            ! Edge 3-1 midpoint: phi_6 = 4 * lambda3 * lambda1
-            val = 4.0_dp * lambda3 * lambda1
-        case default
-            val = 0.0_dp
-        end select
-
+        real(dp) :: val, g(2), h(2, 2)
+        call generated_p2_jet(i, xi, eta, val, g, h)
     end function eval
 
     pure function grad(this, i, xi, eta) result(gradient)
         class(basis_p2_2d_t), intent(in) :: this
         integer, intent(in) :: i
         real(dp), intent(in) :: xi, eta
-        real(dp) :: gradient(2)
-        real(dp) :: lambda1, lambda2, lambda3
-        real(dp) :: d_lambda1_dxi, d_lambda1_deta
-        real(dp) :: d_lambda2_dxi, d_lambda2_deta
-        real(dp) :: d_lambda3_dxi, d_lambda3_deta
-
-        ! Barycentric coordinates
-        lambda1 = 1.0_dp - xi - eta
-        lambda2 = xi
-        lambda3 = eta
-
-        ! Gradients of barycentric coordinates
-        d_lambda1_dxi = -1.0_dp
-        d_lambda1_deta = -1.0_dp
-        d_lambda2_dxi = 1.0_dp
-        d_lambda2_deta = 0.0_dp
-        d_lambda3_dxi = 0.0_dp
-        d_lambda3_deta = 1.0_dp
-
-        select case (i)
-        case (1)
-            ! grad(phi_1) = grad(lambda1 * (2*lambda1 - 1))
-            gradient(1) = d_lambda1_dxi * (4.0_dp * lambda1 - 1.0_dp)
-            gradient(2) = d_lambda1_deta * (4.0_dp * lambda1 - 1.0_dp)
-        case (2)
-            ! grad(phi_2) = grad(lambda2 * (2*lambda2 - 1))
-            gradient(1) = d_lambda2_dxi * (4.0_dp * lambda2 - 1.0_dp)
-            gradient(2) = d_lambda2_deta * (4.0_dp * lambda2 - 1.0_dp)
-        case (3)
-            ! grad(phi_3) = grad(lambda3 * (2*lambda3 - 1))
-            gradient(1) = d_lambda3_dxi * (4.0_dp * lambda3 - 1.0_dp)
-            gradient(2) = d_lambda3_deta * (4.0_dp * lambda3 - 1.0_dp)
-        case (4)
-            ! grad(phi_4) = grad(4 * lambda1 * lambda2)
-            gradient(1) = 4.0_dp * (d_lambda1_dxi * lambda2 + lambda1 * d_lambda2_dxi)
-            gradient(2) = 4.0_dp * (d_lambda1_deta * lambda2 + lambda1 * d_lambda2_deta)
-        case (5)
-            ! grad(phi_5) = grad(4 * lambda2 * lambda3)
-            gradient(1) = 4.0_dp * (d_lambda2_dxi * lambda3 + lambda2 * d_lambda3_dxi)
-            gradient(2) = 4.0_dp * (d_lambda2_deta * lambda3 + lambda2 * d_lambda3_deta)
-        case (6)
-            ! grad(phi_6) = grad(4 * lambda3 * lambda1)
-            gradient(1) = 4.0_dp * (d_lambda3_dxi * lambda1 + lambda3 * d_lambda1_dxi)
-            gradient(2) = 4.0_dp * (d_lambda3_deta * lambda1 + lambda3 * d_lambda1_deta)
-        case default
-            gradient = [0.0_dp, 0.0_dp]
-        end select
-
+        real(dp) :: gradient(2), v, h(2, 2)
+        call generated_p2_jet(i, xi, eta, v, gradient, h)
     end function grad
 
     pure function hessian(this, i, xi, eta) result(hess)
         class(basis_p2_2d_t), intent(in) :: this
         integer, intent(in) :: i
         real(dp), intent(in) :: xi, eta
-        real(dp) :: hess(2,2)
-        real(dp) :: d2_lambda1_dxi2, d2_lambda1_dxideta, d2_lambda1_deta2
-        real(dp) :: d2_lambda2_dxi2, d2_lambda2_dxideta, d2_lambda2_deta2
-        real(dp) :: d2_lambda3_dxi2, d2_lambda3_dxideta, d2_lambda3_deta2
-
-        ! Second derivatives of barycentric coordinates (all zero for linear functions)
-        d2_lambda1_dxi2 = 0.0_dp
-        d2_lambda1_dxideta = 0.0_dp
-        d2_lambda1_deta2 = 0.0_dp
-        d2_lambda2_dxi2 = 0.0_dp
-        d2_lambda2_dxideta = 0.0_dp
-        d2_lambda2_deta2 = 0.0_dp
-        d2_lambda3_dxi2 = 0.0_dp
-        d2_lambda3_dxideta = 0.0_dp
-        d2_lambda3_deta2 = 0.0_dp
-
-        select case (i)
-        case (1)
-            ! hess(phi_1) = hess(lambda1 * (2*lambda1 - 1))
-            hess(1,1) = 4.0_dp * (-1.0_dp) * (-1.0_dp) ! d2/dxi2
-            hess(1,2) = 4.0_dp * (-1.0_dp) * (-1.0_dp) ! d2/dxideta
-            hess(2,1) = hess(1,2) ! d2/detadxi
-            hess(2,2) = 4.0_dp * (-1.0_dp) * (-1.0_dp) ! d2/deta2
-        case (2)
-            ! hess(phi_2) = hess(lambda2 * (2*lambda2 - 1))
-            hess(1,1) = 4.0_dp * 1.0_dp * 1.0_dp ! d2/dxi2
-            hess(1,2) = 0.0_dp ! d2/dxideta
-            hess(2,1) = 0.0_dp ! d2/detadxi
-            hess(2,2) = 0.0_dp ! d2/deta2
-        case (3)
-            ! hess(phi_3) = hess(lambda3 * (2*lambda3 - 1))
-            hess(1,1) = 0.0_dp ! d2/dxi2
-            hess(1,2) = 0.0_dp ! d2/dxideta
-            hess(2,1) = 0.0_dp ! d2/detadxi
-            hess(2,2) = 4.0_dp * 1.0_dp * 1.0_dp ! d2/deta2
-        case (4)
-            ! hess(phi_4) = hess(4 * lambda1 * lambda2)
-            hess(1,1) = 0.0_dp ! d2/dxi2
-            hess(1,2) = 4.0_dp * (-1.0_dp) * 1.0_dp ! d2/dxideta
-            hess(2,1) = hess(1,2) ! d2/detadxi
-            hess(2,2) = 0.0_dp ! d2/deta2
-        case (5)
-            ! hess(phi_5) = hess(4 * lambda2 * lambda3)
-            hess(1,1) = 0.0_dp ! d2/dxi2
-            hess(1,2) = 4.0_dp * 1.0_dp * 1.0_dp ! d2/dxideta
-            hess(2,1) = hess(1,2) ! d2/detadxi
-            hess(2,2) = 0.0_dp ! d2/deta2
-        case (6)
-            ! hess(phi_6) = hess(4 * lambda3 * lambda1)
-            hess(1,1) = 0.0_dp ! d2/dxi2
-            hess(1,2) = 4.0_dp * 1.0_dp * (-1.0_dp) ! d2/dxideta
-            hess(2,1) = hess(1,2) ! d2/detadxi
-            hess(2,2) = 0.0_dp ! d2/deta2
-        case default
-            hess = 0.0_dp
-        end select
-
+        real(dp) :: hess(2, 2), v, g(2)
+        call generated_p2_jet(i, xi, eta, v, g, hess)
     end function hessian
 
     pure subroutine transform_to_physical(this, xi, eta, vertices, x, y)

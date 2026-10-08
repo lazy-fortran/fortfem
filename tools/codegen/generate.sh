@@ -77,6 +77,7 @@ if [[ "$codegen_runner" == "fpm" ]]; then
 else
     fo build
 fi
+run_codegen gen_reference_basis_products
 run_codegen gen_tetra_nedelec_candidates
 run_codegen gen_tetra_modal_vector_identities
 run_codegen gen_tetra_rt_candidates
@@ -180,3 +181,5 @@ fo fmt "$generated_dir/fortfem_field_aligned_hall_products.f90"
 fo fmt "$generated_dir/fortfem_block_graph_products.f90"
 fo fmt "$generated_dir/fortfem_force_balance_products.f90"
 fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"
+
+fo fmt "$generated_dir/fortfem_reference_basis_products.f90"

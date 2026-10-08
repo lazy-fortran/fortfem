@@ -1,5 +1,6 @@
 module basis_p1_2d_module
     use fortfem_kinds
+    use fortfem_generated_p1_basis, only: generated_p1_jet
     implicit none
     private
 
@@ -25,45 +26,16 @@ contains
         class(basis_p1_2d_t), intent(in) :: this
         integer, intent(in) :: i
         real(dp), intent(in) :: xi, eta
-        real(dp) :: val
-
-        select case (i)
-        case (1)
-            ! phi_1 = 1 - xi - eta
-            val = 1.0_dp - xi - eta
-        case (2)
-            ! phi_2 = xi
-            val = xi
-        case (3)
-            ! phi_3 = eta
-            val = eta
-        case default
-            val = 0.0_dp
-        end select
-
+        real(dp) :: val, g(2), h(2, 2)
+        call generated_p1_jet(i, xi, eta, val, g, h)
     end function eval
 
     pure function grad(this, i, xi, eta) result(gradient)
         class(basis_p1_2d_t), intent(in) :: this
         integer, intent(in) :: i
         real(dp), intent(in) :: xi, eta
-        real(dp) :: gradient(2)
-
-        ! P1 gradients are constant
-        select case (i)
-        case (1)
-            ! grad(phi_1) = [-1, -1]
-            gradient = [-1.0_dp, -1.0_dp]
-        case (2)
-            ! grad(phi_2) = [1, 0]
-            gradient = [1.0_dp, 0.0_dp]
-        case (3)
-            ! grad(phi_3) = [0, 1]
-            gradient = [0.0_dp, 1.0_dp]
-        case default
-            gradient = [0.0_dp, 0.0_dp]
-        end select
-
+        real(dp) :: gradient(2), v, h(2, 2)
+        call generated_p1_jet(i, xi, eta, v, gradient, h)
     end function grad
 
     pure subroutine transform_to_physical(this, xi, eta, vertices, x, y)

@@ -1,6 +1,7 @@
 module fortfem_basis_edge_2d
     use fortfem_kinds
     use fortfem_mesh_2d
+    use fortfem_generated_edge_basis, only: generated_edge_jet
     implicit none
     private
 
@@ -72,39 +73,28 @@ contains
     end function edge_basis_n_dofs
 
     ! Evaluate edge basis functions at reference coordinates
-    subroutine evaluate_edge_basis_2d(xi, eta, triangle_area, values)
-        real(dp), intent(in) :: xi, eta, triangle_area
-        real(dp), intent(out) :: values(2, 3) ! 2D vectors, 3 edges
-
-        ! The reference triangle vertices are (0,0), (1,0), and (0,1).
-        ! Edges are oriented 1->2, 2->3, and 3->1. With barycentric
-        ! coordinates lambda_i, the basis is
-        ! lambda_i*grad(lambda_j) - lambda_j*grad(lambda_i).
-        if (triangle_area <= 0.0_dp) then
-            error stop "evaluate_edge_basis_2d: triangle area must be positive"
-        end if
-
-        values(:, 1) = [1.0_dp - eta, xi]
-        values(:, 2) = [-eta, xi]
-        values(:, 3) = [-eta, xi - 1.0_dp]
+    pure subroutine evaluate_edge_basis_2d(xi, eta, triangle_area, values)
+        real(dp), intent(in) :: xi,eta,triangle_area
+        real(dp), intent(out) :: values(2,3)
+        real(dp) :: divergence,curl
+        integer :: i
+        if (triangle_area <= 0.0_dp) error stop "triangle area must be positive"
+        do i=1,3
+            call generated_edge_jet(i,xi,eta,values(:,i),divergence,curl)
+        end do
     end subroutine evaluate_edge_basis_2d
 
     ! Evaluate curl of edge basis functions
-    subroutine evaluate_edge_basis_curl_2d(xi, eta, triangle_area, curls)
-        real(dp), intent(in) :: xi, eta, triangle_area
-        real(dp), intent(out) :: curls(3) ! Scalar curl in 2D
-
-        if (triangle_area <= 0.0_dp) then
-            error stop "evaluate_edge_basis_curl_2d: triangle area must be positive"
-        end if
-
-        ! Every reference curl equals two. The affine covariant Piola map
-        ! divides curl by det(J) = 2*area.
-        curls = 1.0_dp / triangle_area
-
-        associate (unused_coordinates => [xi, eta])
-            if (size(unused_coordinates) /= 2) error stop
-        end associate
+    pure subroutine evaluate_edge_basis_curl_2d(xi, eta, triangle_area, curls)
+        real(dp), intent(in) :: xi,eta,triangle_area
+        real(dp), intent(out) :: curls(3)
+        real(dp) :: v(2),divergence,curl
+        integer :: i
+        if (triangle_area <= 0.0_dp) error stop "triangle area must be positive"
+        do i=1,3
+            call generated_edge_jet(i,xi,eta,v,divergence,curl)
+            curls(i) = curl/(2*triangle_area)
+        end do
     end subroutine evaluate_edge_basis_curl_2d
 
     ! Evaluate edge basis functions with Piola transformation
@@ -153,12 +143,14 @@ contains
     ! Evaluate divergence of edge basis functions
     subroutine evaluate_edge_basis_div_2d(xi, eta, triangle_area, divs)
         real(dp), intent(in) :: xi, eta, triangle_area
-        real(dp), intent(out) :: divs(3) ! Divergence values
-
-        ! Divergence of Nédélec elements (should be zero for H(curl))
-        divs(1) = 0.0_dp
-        divs(2) = 0.0_dp
-        divs(3) = 0.0_dp
+        real(dp), intent(out) :: divs(3)
+        real(dp) :: v(2),curl
+        integer :: i
+        ! Reference Whitney divergence; physical covariant-Piola divergence
+        ! requires the full metric and is not defined by area alone.
+        do i=1,3
+            call generated_edge_jet(i,xi,eta,v,divs(i),curl)
+        end do
     end subroutine evaluate_edge_basis_div_2d
 
 end module fortfem_basis_edge_2d

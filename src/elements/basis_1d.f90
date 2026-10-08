@@ -1,5 +1,6 @@
 module fortfem_basis_1d
     use fortfem_kinds
+    use fortfem_generated_line_basis, only: generated_line_jet
     implicit none
     private
 
@@ -18,38 +19,21 @@ module fortfem_basis_1d
 contains
 
     function p1_basis(i, xi) result(phi)
-        integer, intent(in) :: i ! Basis function index (1 or 2)
-        real(dp), intent(in) :: xi ! Local coordinate in [0,1]
-        real(dp) :: phi
-
-        select case(i)
-        case(1)
-            phi = 1.0_dp - xi
-        case(2)
-            phi = xi
-        case default
-            error stop "Invalid basis function index"
-        end select
-
+        integer, intent(in) :: i
+        real(dp), intent(in) :: xi
+        real(dp) :: phi, v,g(2),h(2,2)
+        if (i < 1 .or. i > 2) error stop "Invalid basis function index"
+        call generated_line_jet(i,xi,0.0_dp,v,g,h)
+        phi = v
     end function p1_basis
 
     function p1_basis_derivative(i, xi) result(dphi)
-        integer, intent(in) :: i ! Basis function index (1 or 2)
-        real(dp), intent(in) :: xi ! Local coordinate (not used for P1)
-        real(dp) :: dphi
-
-        associate(dummy => xi)
-        end associate
-
-        select case(i)
-        case(1)
-            dphi = -1.0_dp
-        case(2)
-            dphi = 1.0_dp
-        case default
-            error stop "Invalid basis function index"
-        end select
-
+        integer, intent(in) :: i
+        real(dp), intent(in) :: xi
+        real(dp) :: dphi, v,g(2),h(2,2)
+        if (i < 1 .or. i > 2) error stop "Invalid basis function index"
+        call generated_line_jet(i,xi,0.0_dp,v,g,h)
+        dphi = g(1)
     end function p1_basis_derivative
 
     subroutine init_basis_1d(this, mesh)
