@@ -16,13 +16,15 @@ contains
         real(dp), intent(in) :: x, y, z, phi, dx, dy, dz, x_dot, y_dot, z_dot, phi_dot, dx_dot, dy_dot, &
             dz_dot
         real(dp), intent(out) :: cross_values_dot(3,3), cross_curls_dot(3,3)
-        real(dp) :: t1, t2, t3, t4, t5
+        real(dp) :: t1, t2, t3, t4, t5, t6, t7
 
         t1 = phi*x_dot + phi_dot*x
         t2 = -phi*z_dot - phi_dot*z
-        t3 = dy*y_dot
-        t4 = dy_dot*y
-        t5 = phi_dot*2
+        t3 = dx*x_dot
+        t4 = dx_dot*x
+        t5 = -phi_dot
+        t6 = -dz*z_dot
+        t7 = -dz_dot*z
         cross_values_dot(1,1) = -phi*y_dot - phi_dot*y
         cross_values_dot(2,1) = t1
         cross_values_dot(3,1) = 0
@@ -34,11 +36,11 @@ contains
         cross_values_dot(3,3) = phi*y_dot + phi_dot*y
         cross_curls_dot(1,1) = -dz*x_dot - dz_dot*x
         cross_curls_dot(2,1) = -dz*y_dot - dz_dot*y
-        cross_curls_dot(3,1) = dx*x_dot + dx_dot*x + t3 + t4 + t5
+        cross_curls_dot(3,1) = phi_dot + t3 + t4 - (-dy*y_dot - dy_dot*y - phi_dot)
         cross_curls_dot(1,2) = dy*x_dot + dy_dot*x
-        cross_curls_dot(2,2) = -dx*x_dot - dx_dot*x - dz*z_dot - dz_dot*z - phi_dot*2
+        cross_curls_dot(2,2) = t6 - dz_dot*z - phi_dot - (phi_dot + t3 + t4)
         cross_curls_dot(3,2) = dy*z_dot + dy_dot*z
-        cross_curls_dot(1,3) = t3 + t4 + dz*z_dot + dz_dot*z + t5
+        cross_curls_dot(1,3) = phi_dot + dy*y_dot + dy_dot*y - (t6 - dz_dot*z - phi_dot)
         cross_curls_dot(2,3) = -dx*y_dot - dx_dot*y
         cross_curls_dot(3,3) = -dx*z_dot - dx_dot*z
 
