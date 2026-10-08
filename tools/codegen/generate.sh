@@ -78,6 +78,7 @@ else
     fo build
 fi
 run_codegen gen_reference_basis_products
+run_codegen gen_tetra_whitney_products
 run_codegen gen_tetra_nedelec_candidates
 run_codegen gen_tetra_modal_vector_identities
 run_codegen gen_tetra_rt_candidates
@@ -185,3 +186,5 @@ fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"
 
 fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
 fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"
+
+fo fmt "$generated_dir/fortfem_tetra_whitney_products.f90"
