@@ -231,6 +231,9 @@ cmp -- "$repository_dir/src/generated/$filename" \
 filename="fortfem_reference_basis_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
+filename="fortfem_triangle_level_geometry.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
 filename="fortfem_lagrange_product_jets.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
