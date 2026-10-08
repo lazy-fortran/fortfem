@@ -1,6 +1,7 @@
 module basis_p1_2d_module
     use fortfem_kinds
     use fortfem_generated_p1_basis, only: generated_p1_jet
+    use fortfem_generated_affine_triangle_geometry, only: generated_affine_triangle_geometry
     implicit none
     private
 
@@ -43,43 +44,18 @@ contains
         real(dp), intent(in) :: xi, eta
         real(dp), intent(in) :: vertices(2,3)
         real(dp), intent(out) :: x, y
-        integer :: i
-
-        x = 0.0_dp
-        y = 0.0_dp
-
-        ! Linear transformation using basis functions
-        do i = 1, 3
-            x = x + vertices(1,i) * this%eval(i, xi, eta)
-            y = y + vertices(2,i) * this%eval(i, xi, eta)
-        end do
-
+        real(dp) :: mapped(2), jacobian(2,2), determinant
+        call generated_affine_triangle_geometry(xi, eta, vertices, mapped, jacobian, determinant)
+        x=mapped(1)
+        y=mapped(2)
     end subroutine transform_to_physical
 
     pure subroutine compute_jacobian(this, vertices, jac, det_j)
         class(basis_p1_2d_t), intent(in) :: this
         real(dp), intent(in) :: vertices(2,3)
-        real(dp), intent(out) :: jac(2,2)
-        real(dp), intent(out) :: det_j
-        integer :: i
-        real(dp) :: grad_ref(2)
-
-        ! Initialize Jacobian
-        jac = 0.0_dp
-
-        ! Jacobian of transformation
-        ! J = sum_i vertices_i * grad(phi_i)^T
-        do i = 1, 3
-            grad_ref = this%grad(i, 0.0_dp, 0.0_dp) ! Constant for P1
-            jac(1,1) = jac(1,1) + vertices(1,i) * grad_ref(1)
-            jac(1,2) = jac(1,2) + vertices(1,i) * grad_ref(2)
-            jac(2,1) = jac(2,1) + vertices(2,i) * grad_ref(1)
-            jac(2,2) = jac(2,2) + vertices(2,i) * grad_ref(2)
-        end do
-
-        ! Determinant
-        det_j = jac(1,1) * jac(2,2) - jac(1,2) * jac(2,1)
-
+        real(dp), intent(out) :: jac(2,2), det_j
+        real(dp) :: mapped(2)
+        call generated_affine_triangle_geometry(0.0_dp, 0.0_dp, vertices, mapped, jac, det_j)
     end subroutine compute_jacobian
 
 end module basis_p1_2d_module

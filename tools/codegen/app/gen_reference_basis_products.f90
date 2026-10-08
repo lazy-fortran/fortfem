@@ -50,8 +50,53 @@ program gen_reference_basis_products
     call scalar_family('line',line)
     call vector_family('edge',edge)
     call vector_family('rt',rt)
+    call affine_geometry()
     close(unit)
 contains
+    subroutine affine_geometry()
+        type(expr_t)::vertices(2,3),mapped(2),jacobian(2,2),products(7)
+        character(4)::row_text,column_text
+        integer::row,column,k
+        do column=1,3
+            do row=1,2
+                write(row_text,'(i0)')row;write(column_text,'(i0)')column
+                vertices(row,column)=sym(arena,'vertices('//trim(row_text)//','//trim(column_text)//')')
+            end do
+        end do
+        do row=1,2
+            mapped(row)=vertices(row,1)+(vertices(row,2)-vertices(row,1))*x+ &
+                (vertices(row,3)-vertices(row,1))*y
+            jacobian(row,1)=diff(mapped(row),x)
+            jacobian(row,2)=diff(mapped(row),y)
+        end do
+        products(1:2)=mapped
+        products(3:6)=reshape(jacobian,[4])
+        products(7)=jacobian(1,1)*jacobian(2,2)-jacobian(1,2)*jacobian(2,1)
+        spec=kernel_spec_t()
+        spec%name=str('generated_affine_triangle_geometry')
+        spec%module_name=str('fortfem_generated_affine_triangle_geometry')
+        spec%mode=KERNEL_SUBROUTINE
+        spec%generator=str('gen_reference_basis_products')
+        spec%generator_revision=str(fortsym_revision())
+        spec%regenerate_command=str('cd tools/codegen && ./generate.sh')
+        spec%pure_procedure=.true.
+        spec%args=[str('xi'),str('eta'),str('vertices')]
+        spec%arg_shapes=[str(''),str(''),str('(2,3)')]
+        spec%outputs=[str('mapped'),str('jacobian'),str('determinant')]
+        spec%output_shapes=[str('(2)'),str('(2,2)'),str('')]
+        allocate(spec%output_references(7))
+        spec%output_references(1:2)=[str('mapped(1)'),str('mapped(2)')]
+        k=2
+        do column=1,2
+            do row=1,2
+                k=k+1
+                write(row_text,'(i0)')row;write(column_text,'(i0)')column
+                spec%output_references(k)=str('jacobian('//trim(row_text)//','//trim(column_text)//')')
+            end do
+        end do
+        spec%output_references(7)=str('determinant')
+        call emit(products)
+    end subroutine affine_geometry
     subroutine scalar_family(family, values)
         character(*), intent(in) :: family
         type(expr_t), intent(in) :: values(:)
