@@ -1,4 +1,6 @@
 module fortfem_tetra_nedelec_arbitrary_order
+    use fortfem_generated_tetra_modal_component_curls_jvp, only: &
+        evaluate_tetra_modal_component_curls_jvp
     use fortfem_generated_tetra_modal_vector_identities, only: &
         evaluate_tetra_modal_vector_identities
     use fortfem_generated_tetra_modal_vector_identities_jvp, only: &
@@ -511,6 +513,7 @@ contains
         real(dp), intent(inout) :: values_dot(:, :), curls_dot(:, :)
 
         real(dp) :: gradient(3), gradient_dot(3), hessian(3, 3), value_dot
+        real(dp) :: component_curls_dot(3, 3)
 
         call tetrahedron_koornwinder_gradient( &
             first_degree, second_degree, third_degree, &
@@ -521,17 +524,9 @@ contains
         value_dot = dot_product(gradient, point_dot)
         gradient_dot = matmul(hessian, point_dot)
         values_dot(component, candidate) = value_dot
-        select case (component)
-        case (1)
-            curls_dot(:, candidate) = &
-                [0.0_dp, gradient_dot(3), -gradient_dot(2)]
-        case (2)
-            curls_dot(:, candidate) = &
-                [-gradient_dot(3), 0.0_dp, gradient_dot(1)]
-        case (3)
-            curls_dot(:, candidate) = &
-                [gradient_dot(2), -gradient_dot(1), 0.0_dp]
-        end select
+        call evaluate_tetra_modal_component_curls_jvp( &
+            gradient_dot(1), gradient_dot(2), gradient_dot(3), component_curls_dot)
+        curls_dot(:, candidate) = component_curls_dot(:, component)
     end subroutine add_modal_component_candidate_jvp
 
     pure subroutine add_modal_cross_candidate_jvp( &
