@@ -1,5 +1,6 @@
 module basis_q1_quad_2d_module
     use fortfem_kinds, only: dp
+    use fortfem_generated_q1_basis, only: generated_q1_jet
     implicit none
     private
 
@@ -13,26 +14,22 @@ contains
     pure subroutine q1_shape_functions(xi, eta, N)
         real(dp), intent(in) :: xi, eta
         real(dp), intent(out) :: N(4)
-        ! Q1 bilinear shape functions on reference square [-1,1] x [-1,1]
-        N(1) = 0.25_dp * (1.0_dp - xi) * (1.0_dp - eta)
-        N(2) = 0.25_dp * (1.0_dp + xi) * (1.0_dp - eta)
-        N(3) = 0.25_dp * (1.0_dp + xi) * (1.0_dp + eta)
-        N(4) = 0.25_dp * (1.0_dp - xi) * (1.0_dp + eta)
+        real(dp) :: g(2), h(2,2)
+        integer :: i
+        do i=1,4
+            call generated_q1_jet(i,xi,eta,N(i),g,h)
+        end do
     end subroutine q1_shape_functions
 
     pure subroutine q1_shape_derivatives(xi, eta, dN_dxi, dN_deta)
         real(dp), intent(in) :: xi, eta
         real(dp), intent(out) :: dN_dxi(4), dN_deta(4)
-
-        dN_dxi(1) = -0.25_dp * (1.0_dp - eta)
-        dN_dxi(2) =  0.25_dp * (1.0_dp - eta)
-        dN_dxi(3) =  0.25_dp * (1.0_dp + eta)
-        dN_dxi(4) = -0.25_dp * (1.0_dp + eta)
-
-        dN_deta(1) = -0.25_dp * (1.0_dp - xi)
-        dN_deta(2) = -0.25_dp * (1.0_dp + xi)
-        dN_deta(3) =  0.25_dp * (1.0_dp + xi)
-        dN_deta(4) =  0.25_dp * (1.0_dp - xi)
+        real(dp) :: v,g(2),h(2,2)
+        integer :: i
+        do i=1,4
+            call generated_q1_jet(i,xi,eta,v,g,h)
+            dN_dxi(i)=g(1); dN_deta(i)=g(2)
+        end do
     end subroutine q1_shape_derivatives
 
     pure subroutine q1_jacobian(xi, eta, coords, jac, det_jac, inv_jac, success)

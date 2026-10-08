@@ -1,6 +1,7 @@
 module fortfem_basis_rt_2d
     use fortfem_kinds, only: dp
     use fortfem_mesh_2d, only: mesh_2d_t
+    use fortfem_generated_rt_basis, only: generated_rt_jet
     implicit none
     private
 
@@ -11,32 +12,26 @@ module fortfem_basis_rt_2d
 contains
 
     pure subroutine evaluate_rt_basis_2d(xi, eta, triangle_area, values)
-        real(dp), intent(in) :: xi, eta, triangle_area
-        real(dp), intent(out) :: values(2, 3)
-
-        if (triangle_area <= 0.0_dp) then
-            error stop "evaluate_rt_basis_2d: triangle area must be positive"
-        end if
-
-        values(:, 1) = [xi, eta - 1.0_dp]
-        values(:, 2) = [xi, eta]
-        values(:, 3) = [xi - 1.0_dp, eta]
+        real(dp), intent(in) :: xi,eta,triangle_area
+        real(dp), intent(out) :: values(2,3)
+        real(dp) :: divergence,curl
+        integer :: i
+        if (triangle_area <= 0.0_dp) error stop "triangle area must be positive"
+        do i=1,3
+            call generated_rt_jet(i,xi,eta,values(:,i),divergence,curl)
+        end do
     end subroutine evaluate_rt_basis_2d
 
-    pure subroutine evaluate_rt_basis_div_2d( &
-            xi, eta, triangle_area, divergences)
-        real(dp), intent(in) :: xi, eta, triangle_area
+    pure subroutine evaluate_rt_basis_div_2d(xi, eta, triangle_area, divergences)
+        real(dp), intent(in) :: xi,eta,triangle_area
         real(dp), intent(out) :: divergences(3)
-
-        if (triangle_area <= 0.0_dp) then
-            error stop "evaluate_rt_basis_div_2d: triangle area must be positive"
-        end if
-
-        divergences = 1.0_dp / triangle_area
-
-        associate (unused_coordinates => [xi, eta])
-            if (size(unused_coordinates) /= 2) error stop
-        end associate
+        real(dp) :: v(2),divergence,curl
+        integer :: i
+        if (triangle_area <= 0.0_dp) error stop "triangle area must be positive"
+        do i=1,3
+            call generated_rt_jet(i,xi,eta,v,divergence,curl)
+            divergences(i) = divergence/(2*triangle_area)
+        end do
     end subroutine evaluate_rt_basis_div_2d
 
     subroutine evaluate_rt_basis_2d_piola( &
