@@ -146,6 +146,7 @@ contains
         call evaluate_bspline_basis( &
             knots_y, degree_y, coordinate_y, value_y, derivative_y, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point)) return
         if (size(control_points, 2) /= size(value_x) .or. &
             size(control_points, 3) /= size(value_y)) return
@@ -212,6 +213,7 @@ contains
         call evaluate_bspline_basis( &
             knots_y, degree_y, coordinate_y, value_y, derivative_y, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point_dot)) return
         if (any(shape(control_points_dot) /= shape(control_points))) return
         if (any(shape(weights_dot) /= shape(weights))) return
@@ -315,6 +317,7 @@ contains
         call evaluate_bspline_basis( &
             knots_y, degree_y, coordinate_y, value_y, derivative_y, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point_bar)) return
         if (any(shape(control_points_bar) /= shape(control_points))) return
         if (any(shape(weights_bar) /= shape(weights))) return
@@ -418,6 +421,7 @@ contains
         call evaluate_bspline_basis( &
             knots_z, degree_z, coordinate_z, vz, dz, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point)) return
         if (any(shape(control_points(1, :, :, :)) /= &
             [size(vx), size(vy), size(vz)])) return
@@ -501,6 +505,7 @@ contains
         call evaluate_bspline_basis( &
             knots_z, degree_z, coordinate_z, vz, dz, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point_dot)) return
         if (any(shape(control_points_dot) /= shape(control_points))) return
         if (any(shape(weights_dot) /= shape(weights))) return
@@ -631,6 +636,7 @@ contains
         call evaluate_bspline_basis( &
             knots_z, degree_z, coordinate_z, vz, dz, status)
         if (status /= 0) return
+        status = 1
         if (size(control_points, 1) /= size(point_bar)) return
         if (any(shape(control_points_bar) /= shape(control_points))) return
         if (any(shape(weights_bar) /= shape(weights))) return
