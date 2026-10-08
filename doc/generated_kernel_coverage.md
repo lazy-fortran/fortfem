@@ -20,13 +20,14 @@ oracles.
 | Arbitrary-degree triangle/tetrahedron scalar Lagrange jets | Generated | Degree 0–7 polynomial reproduction and signed AD products |
 | Arbitrary-degree triangle first/second-kind Nedelec candidate jets | Remaining | Existing moment and AD tests; migration pending |
 | Arbitrary-degree tetrahedron Nedelec/RT modal jets | Mixed generated/manual | Existing generated modal primitives; remaining derivative composition requires audit |
-| Affine triangle/tetrahedron maps and Piola products | Remaining | Existing finite differences and adjoint identities; invalid-geometry status regression |
+| Triangle Piola values, tangent and reverse products | Generated | Oriented line/normal moments, differentiated conservation, FD and adjoint products |
+| Affine triangle/tetrahedron maps and tetrahedron Piola products | Remaining | Existing finite differences and adjoint identities; invalid-geometry status regression |
 | B-spline recurrence, polar/multipatch products | Mixed generated/manual | Geometry products generated; recurrence/operator audit pending |
 | Nested mapped geometry, cut-cell moments and differential jets | Mixed generated/manual | Source-level inventory and focused oracle review pending |
 | Weak operators and element/assembly products | Mixed generated/manual | Individual generated products exist; whole-owner audit pending |
 
-The current owner inventory has 475 runtime Fortran files, including 60 generated
-files, and 52 generator programs before the Whitney increment. These counts are
+The owner inventory at the pinned `91a7eb7` baseline had 475 runtime Fortran
+files, including 60 generated files, and 52 generator programs. These counts are
 an inventory, not a claim that every nongenerated file contains symbolic math.
 Mesh topology, variable-degree iteration, shape/status checks, sparse assembly,
 and linear algebra delegated to FortNum remain ordinary Fortran orchestration.
