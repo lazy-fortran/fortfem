@@ -297,3 +297,8 @@ main = "gen_affine_map_products.f90"
 name = "gen_tetra_piola_products"
 source-dir = "app"
 main = "gen_tetra_piola_products.f90"
+
+[[executable]]
+name = "gen_polynomial_candidate_jets"
+source-dir = "app"
+main = "gen_polynomial_candidate_jets.f90"

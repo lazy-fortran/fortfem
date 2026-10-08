@@ -282,3 +282,43 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 filename="fortfem_tetra_contravariant_vjp.inc"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
+
+filename="fortfem_polynomial_candidate_jets.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_power_multiply.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_monomial_jet3_order2.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_monomial_jet3_order1.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_monomial_jet2_order2.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_monomial_jet2_order1.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_cached_power_jet.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate3_order2.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate3_order1.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate2_order2.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate2_order1.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate1_order2.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_candidate1_order1.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+

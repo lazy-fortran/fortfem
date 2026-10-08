@@ -3,6 +3,8 @@ module fortfem_triangle_nedelec_arbitrary_order
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_linalg, only: dense_solve
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortfem_polynomial_candidate_jets, only: evaluate_monomial_jet2, &
+        integer_power => evaluate_integer_power
     implicit none
 
     private
@@ -268,104 +270,53 @@ contains
         status = 0
     end subroutine build_nedelec_moment_matrix
 
-    pure subroutine evaluate_nedelec_candidates( &
-            basis, xi, eta, values, curls)
+    pure subroutine evaluate_nedelec_candidates(basis, xi, eta, values, curls)
         type(triangle_nedelec_first_kind_t), intent(in) :: basis
         real(dp), intent(in) :: xi, eta
         real(dp), intent(out) :: values(:, :), curls(:)
-
-        real(dp) :: monomial
-        integer :: candidate, kind, x_degree, y_degree
-
-        values = 0.0_dp
-        curls = 0.0_dp
-        do candidate = 1, basis%dof_count
-            kind = basis%candidate_kind(candidate)
-            x_degree = basis%powers(1, candidate)
-            y_degree = basis%powers(2, candidate)
-            monomial = integer_power(xi, x_degree) * integer_power(eta, y_degree)
-            select case (kind)
-            case (1)
-                values(1, candidate) = monomial
-                if (y_degree > 0) then
-                    curls(candidate) = -real(y_degree, dp) * &
-                        integer_power(xi, x_degree) * &
-                        integer_power(eta, y_degree - 1)
-                end if
-            case (2)
-                values(2, candidate) = monomial
-                if (x_degree > 0) then
-                    curls(candidate) = real(x_degree, dp) * &
-                        integer_power(xi, x_degree - 1) * &
-                        integer_power(eta, y_degree)
-                end if
-            case (3)
-                values(1, candidate) = -eta * monomial
-                values(2, candidate) = xi * monomial
-                curls(candidate) = real(x_degree + y_degree + 2, dp) * monomial
+        real(dp) :: monomial, gradient(2)
+        integer :: candidate, kind
+        values=0.0_dp
+        curls=0.0_dp
+        do candidate=1,basis%dof_count
+            kind=basis%candidate_kind(candidate)
+            call evaluate_monomial_jet2([xi,eta],basis%powers(:,candidate), &
+                monomial,gradient)
+            select case(kind)
+            case(1)
+                include '../generated/fortfem_triangle_candidate1_order1.inc'
+            case(2)
+                include '../generated/fortfem_triangle_candidate2_order1.inc'
+            case(3)
+                include '../generated/fortfem_triangle_candidate3_order1.inc'
             end select
         end do
     end subroutine evaluate_nedelec_candidates
 
-    pure subroutine evaluate_nedelec_candidates_jvp( &
-            basis, xi, eta, xi_dot, eta_dot, values_dot, curls_dot)
+    pure subroutine evaluate_nedelec_candidates_jvp(basis, xi, eta, xi_dot, eta_dot, values_dot, curls_dot)
         type(triangle_nedelec_first_kind_t), intent(in) :: basis
-        real(dp), intent(in) :: xi, eta, xi_dot, eta_dot
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(in) :: xi_dot, eta_dot
         real(dp), intent(out) :: values_dot(:, :), curls_dot(:)
-
-        real(dp) :: monomial, monomial_dot
-        integer :: candidate, kind, x_degree, y_degree
-
-        values_dot = 0.0_dp
-        curls_dot = 0.0_dp
-        do candidate = 1, basis%dof_count
-            kind = basis%candidate_kind(candidate)
-            x_degree = basis%powers(1, candidate)
-            y_degree = basis%powers(2, candidate)
-            monomial = integer_power(xi, x_degree)* &
-                integer_power(eta, y_degree)
-            monomial_dot = monomial_jvp( &
-                xi, eta, x_degree, y_degree, xi_dot, eta_dot)
-            select case (kind)
-            case (1)
-                values_dot(1, candidate) = monomial_dot
-                if (y_degree > 0) then
-                    curls_dot(candidate) = -real(y_degree, dp)*monomial_jvp( &
-                        xi, eta, x_degree, y_degree - 1, xi_dot, eta_dot)
-                end if
-            case (2)
-                values_dot(2, candidate) = monomial_dot
-                if (x_degree > 0) then
-                    curls_dot(candidate) = real(x_degree, dp)*monomial_jvp( &
-                        xi, eta, x_degree - 1, y_degree, xi_dot, eta_dot)
-                end if
-            case (3)
-                values_dot(1, candidate) = &
-                    -eta_dot*monomial - eta*monomial_dot
-                values_dot(2, candidate) = &
-                    xi_dot*monomial + xi*monomial_dot
-                curls_dot(candidate) = &
-                    real(x_degree + y_degree + 2, dp)*monomial_dot
+        real(dp) :: monomial, gradient(2), hessian(2,2)
+        integer :: candidate, kind
+        values_dot=0.0_dp
+        curls_dot=0.0_dp
+        do candidate=1,basis%dof_count
+            kind=basis%candidate_kind(candidate)
+            call evaluate_monomial_jet2([xi,eta],basis%powers(:,candidate), &
+                monomial,gradient,hessian)
+            select case(kind)
+            case(1)
+                include '../generated/fortfem_triangle_candidate1_order2.inc'
+            case(2)
+                include '../generated/fortfem_triangle_candidate2_order2.inc'
+            case(3)
+                include '../generated/fortfem_triangle_candidate3_order2.inc'
             end select
         end do
     end subroutine evaluate_nedelec_candidates_jvp
 
-    pure function monomial_jvp( &
-            xi, eta, x_degree, y_degree, xi_dot, eta_dot) result(value_dot)
-        real(dp), intent(in) :: xi, eta, xi_dot, eta_dot
-        integer, intent(in) :: x_degree, y_degree
-        real(dp) :: value_dot
-
-        value_dot = 0.0_dp
-        if (x_degree > 0) then
-            value_dot = value_dot + real(x_degree, dp)*xi_dot* &
-                integer_power(xi, x_degree - 1)*integer_power(eta, y_degree)
-        end if
-        if (y_degree > 0) then
-            value_dot = value_dot + real(y_degree, dp)*eta_dot* &
-                integer_power(xi, x_degree)*integer_power(eta, y_degree - 1)
-        end if
-    end function monomial_jvp
 
     pure logical function valid_evaluation_shapes( &
             basis, values, curls) result(valid)
@@ -443,18 +394,6 @@ contains
         value = current
     end function shifted_legendre
 
-    pure function integer_power(base, exponent) result(value)
-        real(dp), intent(in) :: base
-        integer, intent(in) :: exponent
-        real(dp) :: value
-
-        integer :: factor
-
-        value = 1.0_dp
-        do factor = 1, exponent
-            value = value * base
-        end do
-    end function integer_power
 
     subroutine assign_triangle_nedelec_first_kind(left, right)
         type(triangle_nedelec_first_kind_t), intent(out) :: left

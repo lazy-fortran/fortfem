@@ -18,7 +18,7 @@ oracles.
 | Triangle Whitney/RT0 values, curl/divergence | Generated | Oriented line/flux moments |
 | Tetrahedron Whitney first-order values and curls | Generated | Oriented edge moments, rigid-rotation reproduction, all face Stokes fluxes |
 | Arbitrary-degree triangle/tetrahedron scalar Lagrange jets | Generated | Degree 0–7 polynomial reproduction and signed AD products |
-| Arbitrary-degree triangle first/second-kind Nedelec candidate jets | Remaining | Existing moment and AD tests; migration pending |
+| Arbitrary-degree triangle first/second-kind Nedelec candidate jets | Generated | Exact oriented moments, degree 0–12 analytic monomial jets, zero-axis/vertex tangent and adjoint tests; RT/BDM inherit by rotation |
 | Arbitrary-degree tetrahedron Nedelec/RT modal jets | Mixed generated/manual | Existing generated modal primitives; remaining derivative composition requires audit |
 | Triangle Piola values, tangent and reverse products | Generated | Oriented line/normal moments, differentiated conservation, FD and adjoint products |
 | Affine triangle/tetrahedron geometry and inverse-map products | Generated | Prescribed barycentric coordinates, joint-motion and translation invariance, large exact translations, FD and adjoint identities |
