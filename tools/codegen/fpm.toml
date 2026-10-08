@@ -277,3 +277,8 @@ main = "gen_reference_basis_products.f90"
 name = "gen_lagrange_product_jets"
 source-dir = "app"
 main = "gen_lagrange_product_jets.f90"
+
+[[executable]]
+name = "gen_tetra_whitney_products"
+source-dir = "app"
+main = "gen_tetra_whitney_products.f90"
