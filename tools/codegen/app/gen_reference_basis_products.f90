@@ -1,12 +1,14 @@
 program gen_reference_basis_products
     use fortsym_arena, only: arena_t
-    use fortsym_engine, only: engine_result_t
+    use fortsym_engine, only: engine_result_t, VERDICT_TRUE
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
-        operator(*), operator(/)
+        operator(*), operator(/), operator(**)
     use fortsym_diff, only: diff
     use fortsym_subs, only: subs_many
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
+    use fortsym_rigorous_emit, only: rigorous_kernel_spec_t, interval_runtime, &
+        emit_rigorous_kernel
     use fortsym_string, only: chars, str
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
@@ -56,7 +58,159 @@ program gen_reference_basis_products
     call nodal_scalar_coefficients("p1", p1)
     call nodal_scalar_coefficients("p2", p2)
     close(unit)
+    call interval_affine_p2()
 contains
+    subroutine interval_affine_p2()
+        type(expr_t) :: r, z, vertex_r(3), vertex_z(3), nodes(6), field
+        type(expr_t) :: determinant, xi, eta, mapped, roots_interval(4)
+        type(expr_t) :: locations_x(6), locations_y(6), oracle, recovered
+        type(expr_t) :: centered(5), differences(5), coefficients(5), symbols(5)
+        type(expr_t) :: polynomial, origin(2), coefficient_roots(5)
+        type(rigorous_kernel_spec_t) :: interval_spec
+        character(1) :: digit
+        integer :: node, degree_x, degree_y
+
+        locations_x = [num(arena,0), num(arena,1), num(arena,0), &
+            num(arena,1)/2, num(arena,1)/2, num(arena,0)]
+        locations_y = [num(arena,0), num(arena,0), num(arena,1), &
+            num(arena,0), num(arena,1)/2, num(arena,1)/2]
+        do degree_x = 0, 2
+            do degree_y = 0, 2-degree_x
+                oracle = x**degree_x*y**degree_y
+                recovered = num(arena,0)
+                do node = 1, 6
+                    recovered = recovered + p2(node)*subs_many(oracle, &
+                        [x,y], [locations_x(node),locations_y(node)])
+                end do
+                result = engine%zero_test(recovered-oracle)
+                if (result%verdict /= VERDICT_TRUE) &
+                    error stop 'P2 polynomial reproduction unproved'
+            end do
+        end do
+        r = sym(arena,'r'); z = sym(arena,'z')
+        do node = 1, 3
+            write(digit,'(i0)') node
+            vertex_r(node) = sym(arena,'r'//digit)
+            vertex_z(node) = sym(arena,'z'//digit)
+        end do
+        do node = 1, 6
+            write(digit,'(i0)') node
+            nodes(node) = sym(arena,'u'//digit)
+        end do
+        determinant = (vertex_r(2)-vertex_r(1))*(vertex_z(3)-vertex_z(1)) &
+            -(vertex_r(3)-vertex_r(1))*(vertex_z(2)-vertex_z(1))
+        xi = ((r-vertex_r(1))*(vertex_z(3)-vertex_z(1)) &
+            -(z-vertex_z(1))*(vertex_r(3)-vertex_r(1)))/determinant
+        eta = ((vertex_r(2)-vertex_r(1))*(z-vertex_z(1)) &
+            -(vertex_z(2)-vertex_z(1))*(r-vertex_r(1)))/determinant
+        result = engine%zero_test(vertex_r(1)+(vertex_r(2)-vertex_r(1))*xi &
+            +(vertex_r(3)-vertex_r(1))*eta-r)
+        if (result%verdict /= VERDICT_TRUE) error stop 'affine R inverse unproved'
+        result = engine%zero_test(vertex_z(1)+(vertex_z(2)-vertex_z(1))*xi &
+            +(vertex_z(3)-vertex_z(1))*eta-z)
+        if (result%verdict /= VERDICT_TRUE) error stop 'affine Z inverse unproved'
+        field = num(arena,0)
+        do node = 1, 5
+            write(digit,'(i0)') node+1
+            centered(node) = sym(arena,'d'//digit)
+            differences(node) = nodes(node+1)-nodes(1)
+            field = field + centered(node)*p2(node+1)
+        end do
+        origin = num(arena,0)
+        coefficients(1) = subs_many(diff(field,x),[x,y],origin)
+        coefficients(2) = subs_many(diff(field,y),[x,y],origin)
+        coefficients(3) = subs_many(diff(diff(field,x),x)/2,[x,y],origin)
+        coefficients(4) = subs_many(diff(diff(field,x),y),[x,y],origin)
+        coefficients(5) = subs_many(diff(diff(field,y),y)/2,[x,y],origin)
+        do node = 1, 5
+            result = engine%simplify(coefficients(node))
+            if (.not. result%ok) error stop 'P2 interval coefficient derivation failed'
+            coefficients(node) = result%value
+        end do
+        polynomial = coefficients(1)*x+coefficients(2)*y &
+            +coefficients(3)*x**2+coefficients(4)*x*y+coefficients(5)*y**2
+        result = engine%zero_test(field-polynomial)
+        if (result%verdict /= VERDICT_TRUE) &
+            error stop 'P2 coefficient identity unproved'
+        result = engine%zero_test(diff(field,x)-diff(polynomial,x))
+        if (result%verdict /= VERDICT_TRUE) error stop 'P2 xi derivative unproved'
+        result = engine%zero_test(diff(field,y)-diff(polynomial,y))
+        if (result%verdict /= VERDICT_TRUE) error stop 'P2 eta derivative unproved'
+        recovered = subs_many(polynomial,[x,y],[xi,eta])
+        oracle = subs_many(field,[x,y],[xi,eta])
+        result = engine%zero_test(diff(oracle,r)-diff(recovered,r))
+        if (result%verdict /= VERDICT_TRUE) &
+            error stop 'P2 physical R derivative unproved'
+        result = engine%zero_test(diff(oracle,z)-diff(recovered,z))
+        if (result%verdict /= VERDICT_TRUE) &
+            error stop 'P2 physical Z derivative unproved'
+        do node = 1, 5
+            coefficient_roots(node) = subs_many(coefficients(node),centered,differences)
+        end do
+        open(newunit=unit, &
+            file=generated_path('fortfem_reference_scalar_intervals.f90'), &
+            status='replace',action='write')
+        write(unit,'(a)') '! Generated from canonical reference P2 basis; do not edit.'
+        write(unit,'(a)') 'module fortfem_reference_scalar_intervals'
+        write(unit,'(a)') 'use fortnum_interval, only: interval_t'
+        write(unit,'(a)') 'implicit none'
+        write(unit,'(a)') 'private'
+        write(unit,'(a)') 'public :: generated_affine_p2_scalar_interval'
+        write(unit,'(a)') 'contains'
+        interval_spec%name = str('generated_p2_centered_coefficients_interval')
+        interval_spec%generator = str( &
+            'gen_reference_basis_products; '//fortsym_revision())
+        interval_spec%runtime = interval_runtime('fortnum_interval','interval_t')
+        interval_spec%horner = .false.
+        interval_spec%args = [str('u1'),str('u2'),str('u3'),str('u4'), &
+            str('u5'),str('u6')]
+        interval_spec%outputs = [str('lx'),str('ly'),str('a'),str('b'),str('c')]
+        call emit_interval(coefficient_roots,interval_spec)
+        symbols = [sym(arena,'lx'),sym(arena,'ly'),sym(arena,'a'), &
+            sym(arena,'b'),sym(arena,'c')]
+        mapped = nodes(1)+symbols(1)*xi+symbols(2)*eta+symbols(3)*xi**2 &
+            +symbols(4)*xi*eta+symbols(5)*eta**2
+        roots_interval = [mapped,diff(mapped,r),diff(mapped,z),determinant]
+        interval_spec%name = str('generated_affine_p2_polynomial_interval')
+        interval_spec%horner = .true.
+        interval_spec%args = [str('r'),str('z'),str('r1'),str('z1'),str('r2'), &
+            str('z2'),str('r3'),str('z3'),str('u1'),str('lx'),str('ly'), &
+            str('a'),str('b'),str('c')]
+        interval_spec%outputs = [str('value'),str('grad_r'),str('grad_z'),str('det')]
+        call emit_interval(roots_interval,interval_spec)
+        write(unit,'(a)') 'pure subroutine generated_affine_p2_scalar_interval( &'
+        write(unit,'(a)') &
+            'r,z,r1,z1,r2,z2,r3,z3,u1,u2,u3,u4,u5,u6,value,grad_r,grad_z,det)'
+        write(unit,'(a)') 'type(interval_t), intent(in) :: r,z,r1,z1,r2,z2,r3,z3'
+        write(unit,'(a)') 'type(interval_t), intent(in) :: u1,u2,u3,u4,u5,u6'
+        write(unit,'(a)') 'type(interval_t), intent(out) :: value,grad_r,grad_z,det'
+        write(unit,'(a)') 'type(interval_t) :: lx,ly,a,b,c'
+        write(unit,'(a)') 'call generated_p2_centered_coefficients_interval( &'
+        write(unit,'(a)') 'u1,u2,u3,u4,u5,u6,lx,ly,a,b,c)'
+        write(unit,'(a)') 'call generated_affine_p2_polynomial_interval( &'
+        write(unit,'(a)') &
+            'r,z,r1,z1,r2,z2,r3,z3,u1,lx,ly,a,b,c,value,grad_r,grad_z,det)'
+        write(unit,'(a)') 'end subroutine generated_affine_p2_scalar_interval'
+        write(unit,'(a)') 'end module fortfem_reference_scalar_intervals'
+        close(unit)
+        print '(a)', 'PASS: 13 exact affine P2 polynomial/map/derivative ' // &
+            'identities; zero probes'
+    end subroutine interval_affine_p2
+
+    subroutine emit_interval(expressions,interval_spec)
+        type(expr_t), intent(in) :: expressions(:)
+        type(rigorous_kernel_spec_t), intent(in) :: interval_spec
+        character(:), allocatable :: interval_code, message
+        logical :: ok
+        interval_code = chars(emit_rigorous_kernel(expressions,interval_spec, &
+            ok=ok,message=message))
+        if (.not. ok) then
+            print *, message
+            error stop 'P2 interval generation failed'
+        end if
+        write(unit,'(a)') interval_code
+    end subroutine emit_interval
+
     subroutine nodal_scalar_coefficients(family, basis)
         character(*), intent(in) :: family
         type(expr_t), intent(in) :: basis(:)

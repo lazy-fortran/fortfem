@@ -193,6 +193,7 @@ fo fmt "$generated_dir/fortfem_force_balance_products.f90"
 fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"
 
 fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
+fo fmt "$generated_dir/fortfem_reference_scalar_intervals.f90"
 fo fmt "$generated_dir/fortfem_triangle_level_geometry.f90"
 fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"
 

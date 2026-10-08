@@ -228,6 +228,9 @@ filename="fortfem_regularized_surface_current_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_reference_scalar_intervals.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
 filename="fortfem_reference_basis_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
