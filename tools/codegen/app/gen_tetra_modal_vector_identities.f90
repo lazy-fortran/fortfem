@@ -21,6 +21,8 @@ program gen_tetra_modal_vector_identities
     type(expr_t) :: dx_dot, dy_dot, dz_dot, phi_dot
     type(expr_t) :: x_dot, y_dot, z_dot
     type(expr_t) :: shift(3), shift_zero(3), local_phi, local_field(3), local_curl(3)
+    type(expr_t) :: component_roots_dot(9), radial_roots(4), radial_dot(4)
+    type(expr_t) :: local_divergence
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code, filename
     integer :: column, component, ios, root, unit
@@ -159,7 +161,91 @@ program gen_tetra_modal_vector_identities
     write(unit, "(a)") code(:len(code) - 1)
     close(unit)
 
+    root = 0
+    do column = 1, 3
+        do component = 1, 3
+            root = root + 1
+            component_roots_dot(root) = directional_derivative( &
+                component_curls(component, column))
+        end do
+    end do
+    call write_product(component_roots_dot, &
+        "tetra_modal_component_curls_jvp", &
+        [str("dx_dot"), str("dy_dot"), str("dz_dot")], &
+        [str("component_curls_dot")], [str("(3,3)")], &
+        [str("component_curls_dot(1,1)"), str("component_curls_dot(2,1)"), &
+         str("component_curls_dot(3,1)"), str("component_curls_dot(1,2)"), &
+         str("component_curls_dot(2,2)"), str("component_curls_dot(3,2)"), &
+         str("component_curls_dot(1,3)"), str("component_curls_dot(2,3)"), &
+         str("component_curls_dot(3,3)")])
+
+    ! Derive the radial field and its divergence from the same spatial jet.
+    local_field = [(x + shift(1))*local_phi, (y + shift(2))*local_phi, &
+        (z + shift(3))*local_phi]
+    local_divergence = zero
+    do component = 1, 3
+        radial_roots(component) = subs_many(local_field(component), shift, shift_zero)
+        local_divergence = local_divergence + &
+            diff(local_field(component), shift(component))
+    end do
+    radial_roots(4) = subs_many(local_divergence, shift, shift_zero)
+    call write_product(radial_roots, "tetra_modal_radial_products", &
+        [str("x"), str("y"), str("z"), str("phi"), &
+         str("dx"), str("dy"), str("dz")], &
+        [str("radial_values"), str("radial_divergence")], &
+        [str("(3)"), str("")], &
+        [str("radial_values(1)"), str("radial_values(2)"), &
+         str("radial_values(3)"), str("radial_divergence")])
+    do component = 1, 4
+        radial_dot(component) = directional_derivative(radial_roots(component))
+    end do
+    call write_product(radial_dot, "tetra_modal_radial_products_jvp", &
+        [str("x"), str("y"), str("z"), str("phi"), &
+         str("dx"), str("dy"), str("dz"), str("x_dot"), str("y_dot"), &
+         str("z_dot"), str("phi_dot"), str("dx_dot"), str("dy_dot"), str("dz_dot")], &
+        [str("radial_values_dot"), str("radial_divergence_dot")], &
+        [str("(3)"), str("")], &
+        [str("radial_values_dot(1)"), str("radial_values_dot(2)"), &
+         str("radial_values_dot(3)"), str("radial_divergence_dot")])
+
 contains
+    subroutine write_product(expressions, name, args, outputs, shapes, references)
+        use fortsym_string, only: str_t
+        type(expr_t), intent(inout) :: expressions(:)
+        character(*), intent(in) :: name
+        type(str_t), intent(in) :: args(:), outputs(:), shapes(:), references(:)
+        type(kernel_spec_t) :: product_spec
+        character(:), allocatable :: product_code, product_filename, message
+        logical :: ok
+        integer :: product_unit, product_ios
+
+        call simplify_all(expressions)
+        product_spec%name = str("evaluate_"//name)
+        product_spec%module_name = str("fortfem_generated_"//name)
+        product_spec%mode = KERNEL_SUBROUTINE
+        product_spec%temp_prefix = str("t")
+        product_spec%generator = str("gen_tetra_modal_vector_identities")
+        product_spec%generator_revision = str(fortsym_revision())
+        product_spec%regenerate_command = str("cd tools/codegen && ./generate.sh")
+        product_spec%pure_procedure = .true.
+        product_spec%args = args
+        product_spec%outputs = outputs
+        product_spec%output_shapes = shapes
+        product_spec%output_references = references
+        product_code = chars(emit_kernel( &
+            expressions, product_spec, ok=ok, message=message))
+        if (.not. ok) then
+            print *, message
+            error stop "native modal differential product emission failed"
+        end if
+        product_filename = generated_path("fortfem_"//name//".f90")
+        open(newunit=product_unit, file=product_filename, status="replace", &
+            action="write", iostat=product_ios)
+        if (product_ios /= 0) error stop "cannot write modal differential product"
+        write(product_unit, "(a)") product_code(:len(product_code) - 1)
+        close(product_unit)
+    end subroutine write_product
+
     function spatial_curl(field) result(curl)
         type(expr_t),intent(in)::field(3)
         type(expr_t)::curl(3)

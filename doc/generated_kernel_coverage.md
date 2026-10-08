@@ -20,7 +20,8 @@ oracles.
 | Arbitrary-degree triangle/tetrahedron scalar Lagrange jets | Generated | Degree 0–7 polynomial reproduction and signed AD products |
 | Arbitrary-degree triangle first/second-kind Nedelec candidate jets | Generated | Exact oriented moments, degree 0–12 analytic monomial jets, zero-axis/vertex tangent and adjoint tests; RT/BDM inherit by rotation |
 | Tetrahedron Nedelec/RT monomial fallback values, gradients and Hessians; scalar-component curls/tangents | Generated | Analytic monomial jets, degree-five/six boundary FD/adjoints, edge/face/cell moments and interpolation |
-| Arbitrary-degree tetrahedron Koornwinder derivative composition | Mixed generated/manual | Generated scalar-component modal primitives; remaining fallback composition and FortNum recurrence ownership require audit |
+| Tetrahedron modal component-curl tangents and radial H(div) products | Generated | Independent quartic fields and spatial/directional finite differences; public degree-five/six moments, tangents and adjoints |
+| Arbitrary-degree tetrahedron Koornwinder scalar recurrence/jet provider | Audit pending | Runtime uses FortNum gradient/Hessian providers and generic linear-algebra contractions; recurrence ownership still requires review |
 | Triangle Piola values, tangent and reverse products | Generated | Oriented line/normal moments, differentiated conservation, FD and adjoint products |
 | Affine triangle/tetrahedron geometry and inverse-map products | Generated | Prescribed barycentric coordinates, joint-motion and translation invariance, large exact translations, FD and adjoint identities |
 | Tetrahedron Piola values, tangent and reverse products | Generated | Oriented line and face flux moments, differentiated conservation, FD and adjoint products, invalid-geometry status regression |

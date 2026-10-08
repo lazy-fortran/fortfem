@@ -1,4 +1,8 @@
 module fortfem_tetra_rt_arbitrary_order
+    use fortfem_generated_tetra_modal_radial_products, only: &
+        evaluate_tetra_modal_radial_products
+    use fortfem_generated_tetra_modal_radial_products_jvp, only: &
+        evaluate_tetra_modal_radial_products_jvp
     use fortfem_polynomial_candidate_jets, only: evaluate_monomial_jet3
     use fortfem_kinds, only: dp
     use fortfem_generated_tetra_rt_candidates_degree_0, only: &
@@ -342,9 +346,10 @@ contains
                         x_degree, y_degree, z_degree, &
                         point(1), point(2), point(3), gradient)
                 end if
-                values(:, candidate) = point*value
-                divergences(candidate) = &
-                    3.0_dp*value + dot_product(point, gradient)
+                call evaluate_tetra_modal_radial_products( &
+                    point(1), point(2), point(3), value, &
+                    gradient(1), gradient(2), gradient(3), &
+                    values(:, candidate), divergences(candidate))
             end do
         end do
     end subroutine evaluate_runtime_candidates
@@ -388,9 +393,12 @@ contains
                 call scalar_modal_derivatives( &
                     degree, powers, point, point_dot, value, value_dot, &
                     gradient, gradient_dot)
-                values_dot(:, candidate) = point_dot*value + point*value_dot
-                divergences_dot(candidate) = &
-                    4.0_dp*value_dot + dot_product(point, gradient_dot)
+                call evaluate_tetra_modal_radial_products_jvp( &
+                    point(1), point(2), point(3), value, &
+                    gradient(1), gradient(2), gradient(3), &
+                    point_dot(1), point_dot(2), point_dot(3), value_dot, &
+                    gradient_dot(1), gradient_dot(2), gradient_dot(3), &
+                    values_dot(:, candidate), divergences_dot(candidate))
             end do
         end do
     end subroutine evaluate_runtime_candidates_jvp

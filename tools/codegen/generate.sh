@@ -139,6 +139,9 @@ run_codegen gen_lagrange_product_jets
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
 fo fmt "$generated_dir/fortfem_tetra_modal_vector_identities.f90"
+fo fmt "$generated_dir/fortfem_tetra_modal_component_curls_jvp.f90"
+fo fmt "$generated_dir/fortfem_tetra_modal_radial_products.f90"
+fo fmt "$generated_dir/fortfem_tetra_modal_radial_products_jvp.f90"
 fo fmt "$generated_dir/fortfem_tetra_nedelec_coefficients.f90"
 fo fmt "$generated_dir"/fortfem_tetra_rt_candidates_degree_*.f90
 fo fmt "$generated_dir/fortfem_tetra_rt_coefficients.f90"
