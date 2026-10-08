@@ -263,3 +263,22 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
 filename="fortfem_tetra_geometry_vjp.inc"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_covariant.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_covariant_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_covariant_vjp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_contravariant.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_contravariant_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_contravariant_vjp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+

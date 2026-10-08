@@ -48,10 +48,7 @@ contains
         if (inverse_status /= 0) return
 
         do basis = 1, dof_count
-            physical_values(:, basis) = matmul( &
-                transpose(inverse_jacobian), reference_values(:, basis))
-            physical_curls(:, basis) = &
-                matmul(jacobian, reference_curls(:, basis)) / determinant
+            include "../generated/fortfem_tetra_covariant.inc"
         end do
         status = 0
     end subroutine map_tetra_nedelec_covariant
@@ -70,8 +67,8 @@ contains
 
         real(dp) :: determinant, determinant_dot
         real(dp) :: inverse_jacobian(3, 3), inverse_jacobian_dot(3, 3)
-        real(dp) :: mapped_curls(3, size(reference_curls, 2)), tolerance
-        integer :: inverse_status
+        real(dp) :: tolerance
+        integer :: basis, inverse_status
 
         physical_values_dot = 0.0_dp
         physical_curls_dot = 0.0_dp
@@ -94,14 +91,9 @@ contains
             jacobian, jacobian_dot, inverse_jacobian, inverse_jacobian_dot, &
             inverse_status)
         if (inverse_status /= 0) return
-        physical_values_dot = &
-            matmul(transpose(inverse_jacobian_dot), reference_values) + &
-            matmul(transpose(inverse_jacobian), reference_values_dot)
-        mapped_curls = matmul(jacobian, reference_curls)
-        physical_curls_dot = ( &
-            matmul(jacobian_dot, reference_curls) + &
-            matmul(jacobian, reference_curls_dot))/determinant - &
-            mapped_curls*determinant_dot/determinant**2
+        do basis = 1, size(reference_values, 2)
+            include "../generated/fortfem_tetra_covariant_jvp.inc"
+        end do
         status = 0
     end subroutine map_tetra_nedelec_covariant_jvp
 
@@ -122,9 +114,11 @@ contains
         real(dp) :: determinant_jacobian_bar(3, 3)
         real(dp) :: inverse_jacobian(3, 3), inverse_jacobian_bar(3, 3)
         real(dp) :: inverse_jacobian_jacobian_bar(3, 3)
-        real(dp) :: mapped_curls(3, size(reference_curls, 2))
-        real(dp) :: mapped_curls_bar(3, size(reference_curls, 2)), tolerance
-        integer :: inverse_status
+        real(dp) :: tolerance
+        real(dp) :: inverse_jacobian_bar_local(3, 3)
+        real(dp) :: direct_jacobian_bar(3, 3), direct_jacobian_bar_local(3, 3)
+        real(dp) :: determinant_bar_local
+        integer :: basis, inverse_status
 
         jacobian_bar = 0.0_dp
         reference_values_bar = 0.0_dp
@@ -146,25 +140,21 @@ contains
 
         call inv3(jacobian, inverse_jacobian, inverse_status)
         if (inverse_status /= 0) return
-        reference_values_bar = &
-            matmul(inverse_jacobian, physical_values_bar)
-        inverse_jacobian_bar = &
-            matmul(reference_values, transpose(physical_values_bar))
-        call inv3_vjp( &
-            jacobian, inverse_jacobian_bar, inverse_jacobian, &
+        inverse_jacobian_bar = 0.0_dp
+        direct_jacobian_bar = 0.0_dp
+        determinant_bar = 0.0_dp
+        do basis = 1, size(reference_values, 2)
+            include "../generated/fortfem_tetra_covariant_vjp.inc"
+            inverse_jacobian_bar = inverse_jacobian_bar + inverse_jacobian_bar_local
+            direct_jacobian_bar = direct_jacobian_bar + direct_jacobian_bar_local
+            determinant_bar = determinant_bar + determinant_bar_local
+        end do
+        call inv3_vjp(jacobian, inverse_jacobian_bar, inverse_jacobian, &
             inverse_jacobian_jacobian_bar, inverse_status)
         if (inverse_status /= 0) return
-
-        mapped_curls = matmul(jacobian, reference_curls)
-        mapped_curls_bar = physical_curls_bar/determinant
-        reference_curls_bar = &
-            matmul(transpose(jacobian), mapped_curls_bar)
-        jacobian_bar = inverse_jacobian_jacobian_bar + &
-            matmul(mapped_curls_bar, transpose(reference_curls))
-        determinant_bar = &
-            -sum(physical_curls_bar*mapped_curls)/determinant**2
         call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
-        jacobian_bar = jacobian_bar + determinant_jacobian_bar
+        jacobian_bar = inverse_jacobian_jacobian_bar + direct_jacobian_bar + &
+            determinant_jacobian_bar
         status = 0
     end subroutine map_tetra_nedelec_covariant_vjp
 
@@ -213,10 +203,8 @@ contains
         if (determinant <= tolerance) return
 
         do basis = 1, dof_count
-            physical_values(:, basis) = &
-                matmul(jacobian, reference_values(:, basis))/determinant
+            include "../generated/fortfem_tetra_contravariant.inc"
         end do
-        physical_divergences = reference_divergences/determinant
         status = 0
     end subroutine map_tetra_rt_contravariant
 
@@ -233,8 +221,9 @@ contains
         real(dp), intent(out) :: physical_divergences_dot(:)
         integer, intent(out) :: status
 
+        integer :: basis
         real(dp) :: determinant, determinant_dot
-        real(dp) :: mapped_values(3, size(reference_values, 2)), tolerance
+        real(dp) :: tolerance
 
         physical_values_dot = 0.0_dp
         physical_divergences_dot = 0.0_dp
@@ -256,14 +245,9 @@ contains
             return
         end if
         call det3_jvp(jacobian, jacobian_dot, determinant_dot)
-        mapped_values = matmul(jacobian, reference_values)
-        physical_values_dot = ( &
-            matmul(jacobian_dot, reference_values) + &
-            matmul(jacobian, reference_values_dot))/determinant - &
-            mapped_values*determinant_dot/determinant**2
-        physical_divergences_dot = &
-            reference_divergences_dot/determinant - &
-            reference_divergences*determinant_dot/determinant**2
+        do basis = 1, size(reference_values, 2)
+            include "../generated/fortfem_tetra_contravariant_jvp.inc"
+        end do
         status = 0
     end subroutine map_tetra_rt_contravariant_jvp
 
@@ -281,10 +265,11 @@ contains
         real(dp), intent(out) :: reference_divergences_bar(:)
         integer, intent(out) :: status
 
+        real(dp) :: direct_jacobian_bar_local(3, 3), determinant_bar_local
         real(dp) :: determinant, determinant_bar
         real(dp) :: determinant_jacobian_bar(3, 3)
-        real(dp) :: mapped_values(3, size(reference_values, 2))
-        real(dp) :: mapped_values_bar(3, size(reference_values, 2)), tolerance
+        real(dp) :: tolerance
+        integer :: basis
 
         jacobian_bar = 0.0_dp
         reference_values_bar = 0.0_dp
@@ -306,16 +291,12 @@ contains
             status = 1
             return
         end if
-        mapped_values = matmul(jacobian, reference_values)
-        mapped_values_bar = physical_values_bar/determinant
-        jacobian_bar = &
-            matmul(mapped_values_bar, transpose(reference_values))
-        reference_values_bar = &
-            matmul(transpose(jacobian), mapped_values_bar)
-        reference_divergences_bar = physical_divergences_bar/determinant
-        determinant_bar = &
-            -sum(physical_values_bar*mapped_values)/determinant**2 - &
-            sum(physical_divergences_bar*reference_divergences)/determinant**2
+        determinant_bar = 0.0_dp
+        do basis = 1, size(reference_values, 2)
+            include "../generated/fortfem_tetra_contravariant_vjp.inc"
+            jacobian_bar = jacobian_bar + direct_jacobian_bar_local
+            determinant_bar = determinant_bar + determinant_bar_local
+        end do
         call det3_vjp(jacobian, determinant_bar, determinant_jacobian_bar)
         jacobian_bar = jacobian_bar + determinant_jacobian_bar
         status = 0
