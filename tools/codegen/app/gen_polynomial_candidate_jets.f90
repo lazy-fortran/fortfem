@@ -25,6 +25,11 @@ program gen_polynomial_candidate_jets
             call candidate_jet(kind,order)
         end do
     end do
+    do kind=1,3
+        do order=1,2
+            call tetra_component_jet(kind,order)
+        end do
+    end do
     close(unit)
     call multiply_power()
 contains
@@ -54,11 +59,18 @@ contains
         type(expr_t),intent(inout)::r(:)
         type(kernel_spec_t),intent(in)::spec
         character(:),allocatable::code
+        character(:),allocatable::message
+        logical::ok
         integer::i
         do i=1,size(r)
             r(i)=simplify(r(i))
         end do
-        code=chars(emit_kernel(r,spec));write(unit,'(a)')code(:len(code)-1)
+        code=chars(emit_kernel(r,spec,ok=ok,message=message))
+        if(.not.ok)then
+            print *,message
+            error stop 'Polynomial jet kernel emission failed'
+        end if
+        write(unit,'(a)')code(:len(code)-1)
     end subroutine
     subroutine emit_inline(roots,spec,filename)
         type(expr_t),intent(inout)::roots(:)
@@ -157,6 +169,68 @@ contains
         call emit(r,spec)
         call emit_inline(r,spec,'fortfem_monomial_jet'//text(d)//'_order'//text(o)//'.inc')
     end subroutine
+    subroutine tetra_component_jet(component,o)
+        integer,intent(in)::component,o
+        type(expr_t)::t(3),zero(3),m,f(3),curl(3),r(3),direction(3),base(3)
+        type(kernel_spec_t)::spec
+        integer::i,j,k,other(2)
+        do i=1,3
+            t(i)=sym(arena,'t'//text(i))
+            direction(i)=sym(arena,'point_dot('//text(i)//')')
+        end do
+        zero=num(arena,0)
+        m=sym(arena,'value')
+        do i=1,3
+            m=m+sym(arena,'gradient('//text(i)//')')*t(i)
+            if(o/=2)cycle
+            m=m+sym(arena,'hessian('//text(i)//','//text(i)//')')*t(i)*t(i)/2
+            do j=i+1,3
+                m=m+sym(arena,'hessian('//text(i)//','//text(j)//')')*t(i)*t(j)
+            end do
+        end do
+        f=num(arena,0);f(component)=sym(arena,'coefficient')*m
+        curl=[diff(f(3),t(2))-diff(f(2),t(3)), &
+            diff(f(1),t(3))-diff(f(3),t(1)),diff(f(2),t(1))-diff(f(1),t(2))]
+        k=0
+        do i=1,3
+            if(i==component)cycle
+            k=k+1;other(k)=i
+        end do
+        base=[f(component),curl(other(1)),curl(other(2))];r=base
+        if(o==2)then
+            do i=1,3
+                r(i)=num(arena,0)
+                do j=1,3
+                    r(i)=r(i)+diff(base(i),t(j))*direction(j)
+                end do
+            end do
+        end if
+        do i=1,3
+            r(i)=subs_many(r(i),t,zero)
+        end do
+        call initialize(spec,'tetra_component'//text(component)//'_order'//text(o))
+        spec%args=[str('value'),str('gradient'),str('coefficient'), &
+            str('value_accumulator'),str('curl_accumulators')]
+        spec%arg_shapes=[str(''),str('(3)'),str(''),str(''),str('(3)')]
+        if(o==2)then
+            spec%args=[spec%args,str('hessian'),str('point_dot')]
+            spec%arg_shapes=[spec%arg_shapes,str('(3,3)'),str('(3)')]
+        end if
+        if(o==1)then
+            spec%outputs=[str('values'),str('curls')]
+        else
+            spec%outputs=[str('values_dot'),str('curls_dot')]
+        end if
+        spec%output_shapes=[str('(3,:)'),str('(3,:)')]
+        allocate(spec%output_references(3))
+        spec%output_references(1)=str(chars(spec%outputs(1))//'('//text(component)//',candidate)')
+        r(1)=r(1)+sym(arena,'value_accumulator')
+        do i=1,2
+            spec%output_references(i+1)=str(chars(spec%outputs(2))//'('//text(other(i))//',candidate)')
+            r(i+1)=r(i+1)+sym(arena,'curl_accumulators('//text(other(i))//')')
+        end do
+        call emit_inline(r,spec,'fortfem_tetra_component'//text(component)//'_order'//text(o)//'.inc')
+    end subroutine tetra_component_jet
     subroutine candidate_jet(kind,o)
         integer,intent(in)::kind,o
         type(expr_t)::t(2),zero(2),m,f(2),curl,r(3),base(3),direction(2)

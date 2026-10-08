@@ -1,4 +1,5 @@
 module fortfem_tetra_rt_arbitrary_order
+    use fortfem_polynomial_candidate_jets, only: evaluate_monomial_jet3
     use fortfem_kinds, only: dp
     use fortfem_generated_tetra_rt_candidates_degree_0, only: &
         evaluate_rt_candidates_degree_0
@@ -310,9 +311,7 @@ contains
                         candidate = candidate + 1
                         if (degree <= 5) then
                             powers = [x_degree, y_degree, z_degree]
-                            value = monomial(point, powers)
-                            gradient(component) = monomial_derivative( &
-                                point, powers, component)
+                            call evaluate_monomial_jet3(point,powers,value,gradient)
                         else
                             value = tetrahedron_koornwinder( &
                                 x_degree, y_degree, z_degree, &
@@ -334,11 +333,7 @@ contains
                 candidate = candidate + 1
                 if (degree <= 5) then
                     powers = [x_degree, y_degree, z_degree]
-                    value = monomial(point, powers)
-                    do component = 1, 3
-                        gradient(component) = monomial_derivative( &
-                            point, powers, component)
-                    end do
+                    call evaluate_monomial_jet3(point,powers,value,gradient)
                 else
                     value = tetrahedron_koornwinder( &
                         x_degree, y_degree, z_degree, &
@@ -408,17 +403,9 @@ contains
         real(dp), intent(out) :: value, value_dot, gradient(3), gradient_dot(3)
 
         real(dp) :: hessian(3, 3)
-        integer :: column, row
 
         if (degree <= 5) then
-            value = monomial(point, powers)
-            do row = 1, 3
-                gradient(row) = monomial_derivative(point, powers, row)
-                do column = 1, 3
-                    hessian(row, column) = monomial_second_derivative( &
-                        point, powers, row, column)
-                end do
-            end do
+            call evaluate_monomial_jet3(point,powers,value,gradient,hessian)
         else
             value = tetrahedron_koornwinder( &
                 powers(1), powers(2), powers(3), &
@@ -463,51 +450,7 @@ contains
         end if
     end function moment_value_tetrahedron
 
-    pure real(dp) function monomial(point, powers) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3)
 
-        value = point(1)**powers(1)*point(2)**powers(2)* &
-            point(3)**powers(3)
-    end function monomial
-
-    pure real(dp) function monomial_derivative( &
-            point, powers, direction) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3), direction
-
-        integer :: reduced(3)
-
-        if (powers(direction) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        reduced = powers
-        reduced(direction) = reduced(direction) - 1
-        value = real(powers(direction), dp)*monomial(point, reduced)
-    end function monomial_derivative
-
-    pure real(dp) function monomial_second_derivative( &
-            point, powers, first, second) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3), first, second
-        integer :: reduced(3), coefficient
-
-        reduced = powers
-        if (reduced(first) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        coefficient = reduced(first)
-        reduced(first) = reduced(first) - 1
-        if (reduced(second) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        coefficient = coefficient*reduced(second)
-        reduced(second) = reduced(second) - 1
-        value = real(coefficient, dp)*monomial(point, reduced)
-    end function monomial_second_derivative
 
     pure subroutine reference_face(face, u, v, point, area_normal)
         integer, intent(in) :: face

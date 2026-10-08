@@ -322,3 +322,10 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 filename="fortfem_triangle_candidate1_order1.inc"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
+
+for component in 1 2 3; do
+    for order in 1 2; do
+        filename="fortfem_tetra_component${component}_order${order}.inc"
+        cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+    done
+done

@@ -13,6 +13,7 @@ module fortfem_tetra_nedelec_arbitrary_order
         evaluate_candidates_order_4
     use fortfem_generated_tetra_nedelec_coefficients, only: &
         load_tetra_nedelec_coefficients
+    use fortfem_polynomial_candidate_jets, only: evaluate_monomial_jet3
     use fortfem_kinds, only: dp
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
@@ -486,37 +487,18 @@ contains
         real(dp), intent(in) :: coefficient, point(3), point_dot(3)
         real(dp), intent(inout) :: values_dot(:, :), curls_dot(:, :)
 
-        real(dp) :: derivative_dot(3), gradient(3)
-        integer :: first, second
+        real(dp) :: gradient(3), hessian(3,3), value, value_accumulator, curl_accumulators(3)
 
-        do first = 1, 3
-            gradient(first) = coefficient* &
-                monomial_derivative(point, powers, first)
-            derivative_dot(first) = 0.0_dp
-            do second = 1, 3
-                derivative_dot(first) = derivative_dot(first) + &
-                    coefficient*monomial_second_derivative( &
-                    point, powers, first, second)*point_dot(second)
-            end do
-        end do
-        values_dot(component, candidate) = &
-            values_dot(component, candidate) + dot_product(gradient, point_dot)
-        select case (component)
-        case (1)
-            curls_dot(2, candidate) = &
-                curls_dot(2, candidate) + derivative_dot(3)
-            curls_dot(3, candidate) = &
-                curls_dot(3, candidate) - derivative_dot(2)
-        case (2)
-            curls_dot(1, candidate) = &
-                curls_dot(1, candidate) - derivative_dot(3)
-            curls_dot(3, candidate) = &
-                curls_dot(3, candidate) + derivative_dot(1)
-        case (3)
-            curls_dot(1, candidate) = &
-                curls_dot(1, candidate) + derivative_dot(2)
-            curls_dot(2, candidate) = &
-                curls_dot(2, candidate) - derivative_dot(1)
+        call evaluate_monomial_jet3(point,powers,value,gradient,hessian)
+        value_accumulator=values_dot(component,candidate)
+        curl_accumulators=curls_dot(:,candidate)
+        select case(component)
+        case(1)
+            include '../generated/fortfem_tetra_component1_order2.inc'
+        case(2)
+            include '../generated/fortfem_tetra_component2_order2.inc'
+        case(3)
+            include '../generated/fortfem_tetra_component3_order2.inc'
         end select
     end subroutine add_candidate_term_jvp
 
@@ -674,72 +656,20 @@ contains
         real(dp), intent(in) :: coefficient, point(3)
         real(dp), intent(inout) :: values(:, :), curls(:, :)
 
-        real(dp) :: derivative(3), value
-        integer :: direction
+        real(dp) :: gradient(3), value, value_accumulator, curl_accumulators(3)
 
-        value = coefficient*monomial(point, powers)
-        do direction = 1, 3
-            derivative(direction) = coefficient* &
-                monomial_derivative(point, powers, direction)
-        end do
-        values(component, candidate) = values(component, candidate) + value
-        select case (component)
-        case (1)
-            curls(2, candidate) = curls(2, candidate) + derivative(3)
-            curls(3, candidate) = curls(3, candidate) - derivative(2)
-        case (2)
-            curls(1, candidate) = curls(1, candidate) - derivative(3)
-            curls(3, candidate) = curls(3, candidate) + derivative(1)
-        case (3)
-            curls(1, candidate) = curls(1, candidate) + derivative(2)
-            curls(2, candidate) = curls(2, candidate) - derivative(1)
+        call evaluate_monomial_jet3(point,powers,value,gradient)
+        value_accumulator=values(component,candidate)
+        curl_accumulators=curls(:,candidate)
+        select case(component)
+        case(1)
+            include '../generated/fortfem_tetra_component1_order1.inc'
+        case(2)
+            include '../generated/fortfem_tetra_component2_order1.inc'
+        case(3)
+            include '../generated/fortfem_tetra_component3_order1.inc'
         end select
     end subroutine add_candidate_term
-
-    pure real(dp) function monomial(point, powers) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3)
-
-        value = point(1)**powers(1)*point(2)**powers(2)* &
-            point(3)**powers(3)
-    end function monomial
-
-    pure real(dp) function monomial_derivative( &
-            point, powers, direction) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3), direction
-        integer :: reduced(3)
-
-        if (powers(direction) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        reduced = powers
-        reduced(direction) = reduced(direction) - 1
-        value = real(powers(direction), dp)*monomial(point, reduced)
-    end function monomial_derivative
-
-    pure real(dp) function monomial_second_derivative( &
-            point, powers, first, second) result(value)
-        real(dp), intent(in) :: point(3)
-        integer, intent(in) :: powers(3), first, second
-        integer :: coefficient, reduced(3)
-
-        reduced = powers
-        if (reduced(first) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        coefficient = reduced(first)
-        reduced(first) = reduced(first) - 1
-        if (reduced(second) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        coefficient = coefficient*reduced(second)
-        reduced(second) = reduced(second) - 1
-        value = real(coefficient, dp)*monomial(point, reduced)
-    end function monomial_second_derivative
 
     pure function shifted_legendre(degree, parameter) result(value)
         integer, intent(in) :: degree
