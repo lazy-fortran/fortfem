@@ -129,6 +129,7 @@ run_codegen gen_field_aligned_hall_products
 run_codegen gen_block_graph_products
 run_codegen gen_force_balance_products
 run_codegen gen_regularized_surface_current_products
+run_codegen gen_lagrange_product_jets
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -183,3 +184,4 @@ fo fmt "$generated_dir/fortfem_force_balance_products.f90"
 fo fmt "$generated_dir/fortfem_regularized_surface_current_products.f90"
 
 fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
+fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"

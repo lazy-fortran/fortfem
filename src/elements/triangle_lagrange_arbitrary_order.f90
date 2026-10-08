@@ -1,6 +1,10 @@
 module fortfem_triangle_lagrange_arbitrary_order
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: dense_solve
+    use fortfem_generated_barycentric_jet2, only: generated_barycentric_jet2
+    use fortfem_generated_product_jet1_order1, only: generated_product_jet1_order1
+    use fortfem_generated_factor_product_jet2_order1, only: &
+        generated_factor_product_jet2_order1
     implicit none
 
     private
@@ -140,73 +144,38 @@ contains
         real(dp), intent(in) :: xi, eta
         real(dp), intent(out) :: values(:), gradients(:, :)
 
-        real(dp) :: barycentric(3), coefficient
-        integer :: dof, first_power, second_power, third_power
+        real(dp) :: barycentric(3), barycentric_gradients(2, 3), coefficient
+        real(dp) :: factors(3), derivatives(3), next_value, next_derivative
+        integer :: dof, first_power, second_power, third_power, component, factor
 
-        barycentric(1) = 1.0_dp - xi - eta
-        barycentric(2) = xi
-        barycentric(3) = eta
+        call generated_barycentric_jet2(xi, eta, &
+            barycentric(1), barycentric_gradients(1, 1), barycentric_gradients(2, 1), &
+            barycentric(2), barycentric_gradients(1, 2), barycentric_gradients(2, 2), &
+            barycentric(3), barycentric_gradients(1, 3), barycentric_gradients(2, 3))
         do dof = 1, basis%dof_count
             first_power = basis%barycentric_powers(1, dof)
             second_power = basis%barycentric_powers(2, dof)
             third_power = basis%barycentric_powers(3, dof)
             coefficient = multinomial_coefficient( &
                 basis%degree, first_power, second_power, third_power)
-            values(dof) = coefficient * &
-                integer_power(barycentric(1), first_power) * &
-                integer_power(barycentric(2), second_power) * &
-                integer_power(barycentric(3), third_power)
-            gradients(1, dof) = coefficient * ( &
-                -power_derivative( &
-                barycentric, first_power, second_power, third_power, 1) + &
-                power_derivative( &
-                barycentric, first_power, second_power, third_power, 2))
-            gradients(2, dof) = coefficient * ( &
-                -power_derivative( &
-                barycentric, first_power, second_power, third_power, 1) + &
-                power_derivative( &
-                barycentric, first_power, second_power, third_power, 3))
+            factors = 1.0_dp
+            factors(1) = coefficient
+            derivatives = 0.0_dp
+            do component = 1, 3
+                do factor = 1, basis%barycentric_powers(component, dof)
+                    call generated_product_jet1_order1(factors(component), &
+                        derivatives(component), barycentric(component), 1.0_dp, &
+                        next_value, next_derivative)
+                    factors(component) = next_value
+                    derivatives(component) = next_derivative
+                end do
+            end do
+            call generated_factor_product_jet2_order1( &
+                factors(1), derivatives(1), factors(2), derivatives(2), &
+                factors(3), derivatives(3), values(dof), gradients(1, dof), &
+                gradients(2, dof))
         end do
     end subroutine evaluate_bernstein_polynomials
-
-    pure function power_derivative( &
-            barycentric, first_power, second_power, third_power, &
-            differentiated_coordinate) result(value)
-        real(dp), intent(in) :: barycentric(3)
-        integer, intent(in) :: first_power, second_power, third_power
-        integer, intent(in) :: differentiated_coordinate
-        real(dp) :: value
-
-        integer :: powers(3)
-
-        powers(1) = first_power
-        powers(2) = second_power
-        powers(3) = third_power
-        if (powers(differentiated_coordinate) == 0) then
-            value = 0.0_dp
-            return
-        end if
-        value = real(powers(differentiated_coordinate), dp)
-        powers(differentiated_coordinate) = &
-            powers(differentiated_coordinate) - 1
-        value = value * &
-            integer_power(barycentric(1), powers(1)) * &
-            integer_power(barycentric(2), powers(2)) * &
-            integer_power(barycentric(3), powers(3))
-    end function power_derivative
-
-    pure function integer_power(base, exponent) result(value)
-        real(dp), intent(in) :: base
-        integer, intent(in) :: exponent
-        real(dp) :: value
-
-        integer :: factor
-
-        value = 1.0_dp
-        do factor = 1, exponent
-            value = value * base
-        end do
-    end function integer_power
 
     pure function multinomial_coefficient( &
             degree, first_power, second_power, third_power) result(value)
