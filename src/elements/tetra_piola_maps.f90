@@ -84,6 +84,7 @@ contains
             status = 1
             return
         end if
+        status = 1
         determinant = det3(jacobian)
         tolerance = 64.0_dp*epsilon(1.0_dp)* &
             max(1.0_dp, maxval(abs(jacobian))**3)
@@ -137,6 +138,7 @@ contains
             status = 1
             return
         end if
+        status = 1
         determinant = det3(jacobian)
         tolerance = 64.0_dp*epsilon(1.0_dp)* &
             max(1.0_dp, maxval(abs(jacobian))**3)
