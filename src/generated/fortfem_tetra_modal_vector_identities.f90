@@ -15,12 +15,13 @@ contains
         implicit none
         real(dp), intent(in) :: x, y, z, phi, dx, dy, dz
         real(dp), intent(out) :: component_curls(3,3), cross_values(3,3), cross_curls(3,3)
-        real(dp) :: t1, t2, t3, t4
+        real(dp) :: t1, t2, t3, t4, t5
 
         t1 = phi*x
         t2 = -phi*z
-        t3 = dy*y
-        t4 = phi*2
+        t3 = dx*x
+        t4 = -phi
+        t5 = -dz*z
         component_curls(1,1) = 0
         component_curls(2,1) = dz
         component_curls(3,1) = -dy
@@ -41,11 +42,11 @@ contains
         cross_values(3,3) = phi*y
         cross_curls(1,1) = -dz*x
         cross_curls(2,1) = -dz*y
-        cross_curls(3,1) = dx*x + t3 + t4
+        cross_curls(3,1) = phi + t3 - (-dy*y - phi)
         cross_curls(1,2) = dy*x
-        cross_curls(2,2) = -dx*x - dz*z - phi*2
+        cross_curls(2,2) = t5 - phi - (phi + t3)
         cross_curls(3,2) = dy*z
-        cross_curls(1,3) = t3 + dz*z + t4
+        cross_curls(1,3) = phi + dy*y - (t5 - phi)
         cross_curls(2,3) = -dx*y
         cross_curls(3,3) = -dx*z
 

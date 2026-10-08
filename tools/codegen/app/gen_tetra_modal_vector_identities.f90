@@ -1,6 +1,8 @@
 program gen_tetra_modal_vector_identities
     use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
+    use fortsym_subs, only: subs_many
+    use fortsym_products, only: jvp
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), &
@@ -18,6 +20,7 @@ program gen_tetra_modal_vector_identities
     type(expr_t) :: dx, dy, dz, phi, x, y, z, zero
     type(expr_t) :: dx_dot, dy_dot, dz_dot, phi_dot
     type(expr_t) :: x_dot, y_dot, z_dot
+    type(expr_t) :: shift(3), shift_zero(3), local_phi, local_field(3), local_curl(3)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code, filename
     integer :: column, component, ios, root, unit
@@ -40,25 +43,36 @@ program gen_tetra_modal_vector_identities
     dz_dot = sym(arena, "dz_dot")
     zero = num(arena, 0)
 
-    component_curls = zero
-    component_curls(:, 1) = [zero, dz, -dy]
-    component_curls(:, 2) = [-dz, zero, dx]
-    component_curls(:, 3) = [dy, -dx, zero]
-
-    cross_values(:, 1) = [-y*phi, x*phi, zero]
-    cross_values(:, 2) = [-z*phi, zero, x*phi]
-    cross_values(:, 3) = [zero, -z*phi, y*phi]
-    cross_curls(:, 1) = [ &
-        -x*dz, -y*dz, 2*phi + x*dx + y*dy]
-    cross_curls(:, 2) = [ &
-        x*dy, -2*phi - x*dx - z*dz, z*dy]
-    cross_curls(:, 3) = [ &
-        2*phi + y*dy + z*dz, -y*dx, -z*dx]
+    shift=[sym(arena,'shift_x'),sym(arena,'shift_y'),sym(arena,'shift_z')]
+    shift_zero=zero
+    local_phi=phi+dx*shift(1)+dy*shift(2)+dz*shift(3)
+    do column=1,3
+        local_field=zero
+        local_field(column)=local_phi
+        local_curl=spatial_curl(local_field)
+        do component=1,3
+            component_curls(component,column)=subs_many(local_curl(component),shift,shift_zero)
+        end do
+        select case(column)
+        case(1)
+            local_field=[-(y+shift(2))*local_phi,(x+shift(1))*local_phi,zero]
+        case(2)
+            local_field=[-(z+shift(3))*local_phi,zero,(x+shift(1))*local_phi]
+        case(3)
+            local_field=[zero,-(z+shift(3))*local_phi,(y+shift(2))*local_phi]
+        end select
+        local_curl=spatial_curl(local_field)
+        do component=1,3
+            cross_values(component,column)=subs_many(local_field(component),shift,shift_zero)
+            cross_curls(component,column)=subs_many(local_curl(component),shift,shift_zero)
+        end do
+    end do
 
     root = 0
     call append_matrix(component_curls)
     call append_matrix(cross_values)
     call append_matrix(cross_curls)
+    call simplify_all(roots)
 
     spec%name = str("evaluate_tetra_modal_vector_identities")
     spec%module_name = str("fortfem_generated_tetra_modal_vector_identities")
@@ -146,6 +160,13 @@ program gen_tetra_modal_vector_identities
     close(unit)
 
 contains
+    function spatial_curl(field) result(curl)
+        type(expr_t),intent(in)::field(3)
+        type(expr_t)::curl(3)
+        curl=[diff(field(3),shift(2))-diff(field(2),shift(3)), &
+            diff(field(1),shift(3))-diff(field(3),shift(1)), &
+            diff(field(2),shift(1))-diff(field(1),shift(2))]
+    end function spatial_curl
 
     subroutine append_matrix(matrix)
         type(expr_t), intent(in) :: matrix(3, 3)
@@ -175,10 +196,10 @@ contains
         type(expr_t), intent(in) :: expression
         type(expr_t) :: value
 
-        value = diff(expression, x)*x_dot + diff(expression, y)*y_dot + &
-            diff(expression, z)*z_dot + diff(expression, phi)*phi_dot + &
-            diff(expression, dx)*dx_dot + diff(expression, dy)*dy_dot + &
-            diff(expression, dz)*dz_dot
+        type(expr_t)::roots(1)
+        roots=jvp([expression],[x,y,z,phi,dx,dy,dz], &
+            [x_dot,y_dot,z_dot,phi_dot,dx_dot,dy_dot,dz_dot])
+        value=roots(1)
     end function directional_derivative
 
     subroutine simplify_all(expressions)
@@ -189,7 +210,8 @@ contains
 
         do expression = 1, size(expressions)
             result = engine%simplify(expressions(expression))
-            if (result%ok) expressions(expression) = result%value
+            if (.not. result%ok) error stop "native modal simplification failed"
+            expressions(expression) = result%value
         end do
     end subroutine simplify_all
 
