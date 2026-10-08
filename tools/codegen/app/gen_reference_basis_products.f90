@@ -2,8 +2,10 @@ program gen_reference_basis_products
     use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), operator(/)
+    use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
+        operator(*), operator(/)
     use fortsym_diff, only: diff
+    use fortsym_subs, only: subs_many
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: chars, str
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
@@ -51,8 +53,68 @@ program gen_reference_basis_products
     call vector_family('edge',edge)
     call vector_family('rt',rt)
     call affine_geometry()
+    call nodal_scalar_coefficients("p1", p1)
+    call nodal_scalar_coefficients("p2", p2)
     close(unit)
 contains
+    subroutine nodal_scalar_coefficients(family, basis)
+        character(*), intent(in) :: family
+        type(expr_t), intent(in) :: basis(:)
+        type(expr_t) :: field, coefficients(6), variables(2), origin(2)
+        type(kernel_spec_t) :: coefficient_spec
+        character(:), allocatable :: coefficient_code, message
+        character(8) :: node_text, count_text
+        logical :: ok
+        integer :: node, coefficient
+
+        variables = [x, y]
+        origin = num(arena, 0)
+        field = num(arena, 0)
+        ! The caller centers on node one before invoking this product.
+        do node = 2, size(basis)
+            write(node_text, '(i0)') node
+            field = field + sym(arena, &
+                'centered_nodes('//trim(node_text)//')')*basis(node)
+        end do
+        coefficients(1) = subs_many(field, variables, origin)
+        coefficients(2) = subs_many(diff(field, x), variables, origin)
+        coefficients(3) = subs_many(diff(field, y), variables, origin)
+        coefficients(4) = subs_many(diff(diff(field, x), x)/2, variables, origin)
+        coefficients(5) = subs_many(diff(diff(field, x), y), variables, origin)
+        coefficients(6) = subs_many(diff(diff(field, y), y)/2, variables, origin)
+        do coefficient = 1, 6
+            result = engine%simplify(coefficients(coefficient))
+            if (.not. result%ok) error stop 'native scalar coefficient simplification failed'
+            coefficients(coefficient) = result%value
+        end do
+        coefficient_spec%name = str('generated_reference_'//family//'_scalar_coefficients')
+        coefficient_spec%module_name = str( &
+            'fortfem_generated_reference_'//family//'_scalar_coefficients')
+        coefficient_spec%mode = KERNEL_SUBROUTINE
+        coefficient_spec%generator = str('gen_reference_basis_products')
+        coefficient_spec%generator_revision = str(fortsym_revision())
+        coefficient_spec%regenerate_command = str('cd tools/codegen && ./generate.sh')
+        coefficient_spec%pure_procedure = .true.
+        write(count_text, '(i0)') size(basis)
+        coefficient_spec%args = [str('centered_nodes')]
+        coefficient_spec%arg_shapes = [str('('//trim(count_text)//')')]
+        coefficient_spec%outputs = [str('coefficients')]
+        coefficient_spec%output_shapes = [str('(6)')]
+        allocate(coefficient_spec%output_references(6))
+        do coefficient = 1, 6
+            write(node_text, '(i0)') coefficient
+            coefficient_spec%output_references(coefficient) = &
+                str('coefficients('//trim(node_text)//')')
+        end do
+        coefficient_code = chars(emit_kernel( &
+            coefficients, coefficient_spec, ok=ok, message=message))
+        if (.not. ok) then
+            print *, message
+            error stop 'native scalar coefficient generation failed'
+        end if
+        write(unit, '(a)') coefficient_code(:len(coefficient_code) - 1)
+    end subroutine nodal_scalar_coefficients
+
     subroutine affine_geometry()
         type(expr_t)::vertices(2,3),mapped(2),jacobian(2,2),products(7)
         character(4)::row_text,column_text

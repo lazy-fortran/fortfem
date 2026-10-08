@@ -302,3 +302,8 @@ main = "gen_tetra_piola_products.f90"
 name = "gen_polynomial_candidate_jets"
 source-dir = "app"
 main = "gen_polynomial_candidate_jets.f90"
+
+[[executable]]
+name = "gen_triangle_level_geometry"
+source-dir = "app"
+main = "gen_triangle_level_geometry.f90"

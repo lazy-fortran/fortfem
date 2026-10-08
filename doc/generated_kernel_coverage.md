@@ -25,6 +25,7 @@ oracles.
 | Triangle Piola values, tangent and reverse products | Generated | Oriented line/normal moments, differentiated conservation, FD and adjoint products |
 | Affine triangle/tetrahedron geometry and inverse-map products | Generated | Prescribed barycentric coordinates, joint-motion and translation invariance, large exact translations, FD and adjoint identities |
 | Tetrahedron Piola values, tangent and reverse products | Generated | Oriented line and face flux moments, differentiated conservation, FD and adjoint products, invalid-geometry status regression |
+| Quadratic-level triangle scalar restrictions, discriminant, nodal coefficients and positive interval measures | Generated | Exact cut areas/ramps, polar disk/annulus moments, gauge/scaling, vector cancellation, retained trace, explicit budgets and empirical estimator checks |
 | B-spline recurrence, polar/multipatch products | Mixed generated/manual | Geometry products generated; recurrence/operator audit pending |
 | Nested mapped geometry, cut-cell moments and differential jets | Mixed generated/manual | Source-level inventory and focused oracle review pending |
 | Weak operators and element/assembly products | Mixed generated/manual | Individual generated products exist; whole-owner audit pending |
