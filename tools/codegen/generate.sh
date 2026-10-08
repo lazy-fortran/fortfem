@@ -228,3 +228,9 @@ fo fmt "$generated_dir/fortfem_triangle_candidate2_order2.inc"
 fo fmt "$generated_dir/fortfem_triangle_candidate2_order1.inc"
 fo fmt "$generated_dir/fortfem_triangle_candidate1_order2.inc"
 fo fmt "$generated_dir/fortfem_triangle_candidate1_order1.inc"
+
+for component in 1 2 3; do
+    for order in 1 2; do
+        fo fmt "$generated_dir/fortfem_tetra_component${component}_order${order}.inc"
+    done
+done
