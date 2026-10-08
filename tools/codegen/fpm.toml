@@ -287,3 +287,8 @@ main = "gen_tetra_whitney_products.f90"
 name = "gen_triangle_piola_products"
 source-dir = "app"
 main = "gen_triangle_piola_products.f90"
+
+[[executable]]
+name = "gen_affine_map_products"
+source-dir = "app"
+main = "gen_affine_map_products.f90"

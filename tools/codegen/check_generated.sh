@@ -242,3 +242,24 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
 filename="fortfem_triangle_contravariant_jvp.inc"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_affine_map_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_geometry.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_geometry_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_geometry_vjp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_geometry.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_geometry_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_tetra_geometry_vjp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
