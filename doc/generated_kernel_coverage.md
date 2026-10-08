@@ -21,7 +21,8 @@ oracles.
 | Arbitrary-degree triangle first/second-kind Nedelec candidate jets | Remaining | Existing moment and AD tests; migration pending |
 | Arbitrary-degree tetrahedron Nedelec/RT modal jets | Mixed generated/manual | Existing generated modal primitives; remaining derivative composition requires audit |
 | Triangle Piola values, tangent and reverse products | Generated | Oriented line/normal moments, differentiated conservation, FD and adjoint products |
-| Affine triangle/tetrahedron maps and tetrahedron Piola products | Remaining | Existing finite differences and adjoint identities; invalid-geometry status regression |
+| Affine triangle/tetrahedron geometry and inverse-map products | Generated | Prescribed barycentric coordinates, joint-motion and translation invariance, large exact translations, FD and adjoint identities |
+| Tetrahedron Piola products | Remaining | Existing finite differences and adjoint identities; invalid-geometry status regression |
 | B-spline recurrence, polar/multipatch products | Mixed generated/manual | Geometry products generated; recurrence/operator audit pending |
 | Nested mapped geometry, cut-cell moments and differential jets | Mixed generated/manual | Source-level inventory and focused oracle review pending |
 | Weak operators and element/assembly products | Mixed generated/manual | Individual generated products exist; whole-owner audit pending |
