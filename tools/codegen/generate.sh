@@ -78,6 +78,7 @@ else
     fo build
 fi
 run_codegen gen_reference_basis_products
+run_codegen gen_polynomial_candidate_jets
 run_codegen gen_tetra_piola_products
 run_codegen gen_affine_map_products
 run_codegen gen_triangle_piola_products
@@ -212,3 +213,18 @@ fo fmt "$generated_dir/fortfem_tetra_covariant_vjp.inc"
 fo fmt "$generated_dir/fortfem_tetra_contravariant.inc"
 fo fmt "$generated_dir/fortfem_tetra_contravariant_jvp.inc"
 fo fmt "$generated_dir/fortfem_tetra_contravariant_vjp.inc"
+
+fo fmt "$generated_dir/fortfem_polynomial_candidate_jets.f90"
+fo fmt "$generated_dir/fortfem_power_multiply.inc"
+
+fo fmt "$generated_dir/fortfem_monomial_jet3_order2.inc"
+fo fmt "$generated_dir/fortfem_monomial_jet3_order1.inc"
+fo fmt "$generated_dir/fortfem_monomial_jet2_order2.inc"
+fo fmt "$generated_dir/fortfem_monomial_jet2_order1.inc"
+fo fmt "$generated_dir/fortfem_cached_power_jet.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate3_order2.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate3_order1.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate2_order2.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate2_order1.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate1_order2.inc"
+fo fmt "$generated_dir/fortfem_triangle_candidate1_order1.inc"
