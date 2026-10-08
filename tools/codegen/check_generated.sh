@@ -227,3 +227,18 @@ echo "generated FortFEM kernels match committed sources"
 
 filename="fortfem_tetra_whitney_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_piola_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_covariant_primal.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_contravariant_primal.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_covariant_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_triangle_contravariant_jvp.inc"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"

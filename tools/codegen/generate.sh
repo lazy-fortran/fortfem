@@ -78,6 +78,7 @@ else
     fo build
 fi
 run_codegen gen_reference_basis_products
+run_codegen gen_triangle_piola_products
 run_codegen gen_tetra_whitney_products
 run_codegen gen_tetra_nedelec_candidates
 run_codegen gen_tetra_modal_vector_identities
@@ -188,3 +189,9 @@ fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
 fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"
 
 fo fmt "$generated_dir/fortfem_tetra_whitney_products.f90"
+
+fo fmt "$generated_dir/fortfem_triangle_piola_products.f90"
+fo fmt "$generated_dir/fortfem_triangle_covariant_primal.inc"
+fo fmt "$generated_dir/fortfem_triangle_contravariant_primal.inc"
+fo fmt "$generated_dir/fortfem_triangle_covariant_jvp.inc"
+fo fmt "$generated_dir/fortfem_triangle_contravariant_jvp.inc"

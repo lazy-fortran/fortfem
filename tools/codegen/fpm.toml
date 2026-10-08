@@ -282,3 +282,8 @@ main = "gen_lagrange_product_jets.f90"
 name = "gen_tetra_whitney_products"
 source-dir = "app"
 main = "gen_tetra_whitney_products.f90"
+
+[[executable]]
+name = "gen_triangle_piola_products"
+source-dir = "app"
+main = "gen_triangle_piola_products.f90"
