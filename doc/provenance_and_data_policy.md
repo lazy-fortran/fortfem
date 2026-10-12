@@ -93,7 +93,10 @@ The public provenance links used by the current adapters are:
 - [Bíró, Preis, and Richter vector-potential formulation](https://doi.org/10.1109/20.497322);
 - [Manges and Cendes generalized tree--cotree gauge](https://doi.org/10.1109/20.376275);
 - [Park et al. resonant-layer preprint](https://conferences.iaea.org/event/392/papers/35712/files/13694-ParkJK_FEC2025.pdf);
-- [Waltz and Waelbroeck resonant perturbations](https://doi.org/10.1063/1.3692222).
+- [Waltz and Waelbroeck resonant perturbations](https://doi.org/10.1063/1.3692222);
+- [Albert, Lainer, and Bíró per-mode Fourier finite element formulation, Comput. Phys. Commun. 277 (2022) 108401](https://doi.org/10.1016/j.cpc.2022.108401), reference for the per-n meridian FEEC complex and the toroidal-mode boundary operators;
+- [Lainer et al. MEPHIT, J. Phys.: Conf. Ser. 2397 (2022) 012014](https://doi.org/10.1088/1742-6596/2397/1/012014);
+- Albert, Bíró, Heyn, Kernbichler, Kasilov, and Lainer, dimensionality reduction using an edge finite element method for periodic magnetostatic fields (8th FreeFem++ Workshop, 2016 slides).
 
 These links support provenance and method selection. They do not grant
 redistribution rights for attached files or numerical data.

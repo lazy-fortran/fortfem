@@ -2,6 +2,14 @@ module fortfem_toroidal_mode_kernel
     !! Toroidal-mode Green's function of the Laplacian on the meridional half
     !! plane (R > 0) and the coil flux it gives per mode number n.
     !!
+    !! The operator is the scalar form of the paper's per-mode reduction
+    !! (Albert, Lainer and Biro, Comput. Phys. Commun. 277 (2022) 108401,
+    !! doi:10.1016/j.cpc.2022.108401): grad U -> grad_t U + i n U e^3
+    !! (Eq. (34)), div U -> div_t u + i n U^3 (Eq. (35)), with sqrt(g) g^{tt}
+    !! = R and sqrt(g) g^{33} = 1/R in cylindrical coordinates (Eqs. (7), (44)),
+    !! so -div(R grad u) + n^2 u / R is the e^{i n phi} component, with the
+    !! Fourier convention of Eqs. (31)-(32).
+    !!
     !! Normalisation (derived, and checked against a direct phi-quadrature in
     !! the tests).  The Laplace Green's function 1/(4 pi |x - x'|) has the
     !! toroidal expansion (Heine; Cohl and Tohline 1999)
