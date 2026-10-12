@@ -13,7 +13,8 @@ module fortfem_toroidal_mode_kernel
     !! e^{i n phi'} f(R', Z') through
     !!
     !!     u(R, Z) = int G_n(R, Z; R', Z') f(R', Z') R' dR' dZ',
-    !!     G_n = int_0^{2 pi} e^{-i n D} dD/(4 pi r(D)) = Q_{|n|-1/2}(chi)/(2 pi sqrt(R R')),
+    !!     G_n = int_0^{2 pi} e^{-i n D} dD/(4 pi r(D))
+    !!         = Q_{|n|-1/2}(chi)/(2 pi sqrt(R R')),
     !!
     !! (D = phi - phi'; the factor 2 pi of the phi' integral turns the 1/pi of
     !! the expansion into 1/(2 pi)).  G_n is real, even in n, symmetric in
