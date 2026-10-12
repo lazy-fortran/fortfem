@@ -122,6 +122,13 @@ module fortfem_meridian_feec_n
         type(csc_t) :: mass(0:3)             !! physical L2(R dR dZ) masses
     end type meridian_feec_t
 
+    !> Reference bases for evaluation of the complex at arbitrary points.
+    type, public :: meridian_point_basis_t
+        type(triangle_lagrange_basis_t) :: lb, db, gb
+        type(triangle_nedelec_first_kind_t) :: nb
+        type(triangle_rt_basis_t) :: rb
+    end type meridian_point_basis_t
+
     abstract interface
         subroutine meridian_field_i(x, v)
             !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
@@ -147,6 +154,9 @@ module fortfem_meridian_feec_n
     public :: meridian_zcsc_matmul
     public :: meridian_real_to_complex
     public :: meridian_lagrange_nodes
+    public :: meridian_qpoint
+    public :: meridian_point_basis_init
+    public :: meridian_point_basis
 
     real(dp), parameter :: tiny_entry = 1.0e-12_dp
     !> Triangle count below which assembly loops stay serial.
@@ -545,41 +555,149 @@ contains
         integer, intent(in) :: space, q
         real(dp), intent(in) :: x(2), jac(2, 2), det
         real(dp), intent(out) :: phi(:, :)
-        real(dp) :: jit(2, 2), v(2), rr
+
+        call physical_basis(space, metric_radius(fs, x), jac, det, &
+            fs%tl(:, q), fs%tn(:, :, q), fs%tr(:, :, q), fs%td(:, q), phi)
+    end subroutine point_basis
+
+    pure subroutine physical_basis(space, rr, jac, det, tl, tn, tr, td, phi)
+        !! Piola maps of the reference values: covariant for Nedelec,
+        !! contravariant (and 1/R) for RT, density for DG; R A_phi and the
+        !! Lagrange space are plain values.  rr is the metric radius R (the
+        !! coordinate R, or R0 on the cylinder chart).
+        integer, intent(in) :: space
+        real(dp), intent(in) :: rr, jac(2, 2), det
+        real(dp), intent(in) :: tl(:), tn(:, :), tr(:, :), td(:)
+        real(dp), intent(out) :: phi(:, :)
+        real(dp) :: jit(2, 2), v(2)
         integer :: i, nln
 
-        rr = metric_radius(fs, x)
-        nln = fs%nln
+        nln = size(tn, 2)
         phi = 0.0_dp
         select case (space)
         case (0)
-            phi(1, :) = fs%tl(:, q)
+            phi(1, :) = tl
         case (1)
             jit(1, 1) = jac(2, 2)/det
             jit(2, 1) = -jac(1, 2)/det
             jit(1, 2) = -jac(2, 1)/det
             jit(2, 2) = jac(1, 1)/det
             do i = 1, nln
-                v = matmul(jit, fs%tn(:, i, q))
+                v = matmul(jit, tn(:, i))
                 phi(1, i) = v(1)
                 phi(3, i) = v(2)
             end do
-            do i = 1, fs%nl0
-                phi(2, nln + i) = fs%tl(i, q)/rr
+            do i = 1, size(tl)
+                phi(2, nln + i) = tl(i)/rr
             end do
         case (2)
             do i = 1, nln
-                v = matmul(jac, fs%tr(:, i, q))/(det*rr)
+                v = matmul(jac, tr(:, i))/(det*rr)
                 phi(1, i) = v(1)
                 phi(3, i) = v(2)
             end do
-            do i = 1, fs%nld
-                phi(2, nln + i) = fs%td(i, q)/det
+            do i = 1, size(td)
+                phi(2, nln + i) = td(i)/det
             end do
         case (3)
-            phi(1, :) = fs%td(:, q)/(det*rr)
+            phi(1, :) = td/(det*rr)
         end select
-    end subroutine point_basis
+    end subroutine physical_basis
+
+    subroutine meridian_qpoint(fs, space, t, q, x, wq, phi, status)
+        !! Quadrature point q of triangle t: physical point x = (R, Z), weight
+        !! wq of the measure R dR dZ and the physical basis fields phi(3, nloc)
+        !! of the space (local, without the orientation signs sp%sgn).
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: space, t, q
+        real(dp), intent(out) :: x(2), wq
+        real(dp), intent(out) :: phi(:, :)
+        integer, intent(out) :: status
+        real(dp) :: jac(2, 2), det
+
+        status = 1
+        call point_geometry(fs, t, q, x, jac, det)
+        if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) return
+        call point_basis(fs, space, q, x, jac, det, phi)
+        wq = fs%qw(q)*det*metric_radius(fs, x)
+        status = 0
+    end subroutine meridian_qpoint
+
+    subroutine meridian_point_basis_init(fs, pb, status)
+        !! Reference bases of the complex of fs for evaluation at arbitrary
+        !! reference points.
+        type(meridian_feec_t), intent(in) :: fs
+        type(meridian_point_basis_t), intent(out) :: pb
+        integer, intent(out) :: status
+
+        call initialize_triangle_lagrange_basis(fs%k, pb%lb, status)
+        if (status /= 0) return
+        call initialize_triangle_lagrange_basis(fs%k - 1, pb%db, status)
+        if (status /= 0) return
+        call initialize_triangle_lagrange_basis(fs%g, pb%gb, status)
+        if (status /= 0) return
+        call initialize_triangle_nedelec_first_kind(fs%k, pb%nb, status)
+        if (status /= 0) return
+        call initialize_triangle_raviart_thomas(fs%k - 1, pb%rb, status)
+    end subroutine meridian_point_basis_init
+
+    subroutine meridian_point_basis(fs, pb, space, t, xi, eta, x, phi, &
+            status, ref)
+        !! Physical point x and basis fields phi(3, nloc) of the space at the
+        !! reference point (xi, eta) of triangle t (local, without the
+        !! orientation signs).  With ref, ref(2, nln) returns the reference
+        !! RT values (space 2) or Nedelec values (space 1), whose normal and
+        !! tangential traces on an edge are geometry independent.
+        type(meridian_feec_t), intent(in) :: fs
+        type(meridian_point_basis_t), intent(in) :: pb
+        integer, intent(in) :: space, t
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(out) :: x(2)
+        real(dp), intent(out) :: phi(:, :)
+        integer, intent(out) :: status
+        real(dp), intent(out), optional :: ref(:, :)
+
+        real(dp), allocatable :: gv(:), gg(:, :), tl(:), tlg(:, :), tn(:, :)
+        real(dp), allocatable :: tr(:, :), td(:), dg(:, :), cur(:)
+        real(dp) :: jac(2, 2), det
+        integer :: i, ngeo
+
+        ngeo = size(fs%mm%nodes, 2)
+        allocate (gv(ngeo), gg(2, ngeo), tl(fs%nl0), tlg(2, fs%nl0))
+        allocate (tn(2, fs%nln), tr(2, fs%nln), td(fs%nld), dg(2, fs%nld))
+        allocate (cur(fs%nln))
+        call evaluate_triangle_lagrange_basis(pb%gb, xi, eta, gv, gg, status)
+        if (status /= 0) return
+        x = 0.0_dp
+        jac = 0.0_dp
+        do i = 1, ngeo
+            x = x + gv(i)*fs%mm%nodes(:, i, t)
+            jac(:, 1) = jac(:, 1) + gg(1, i)*fs%mm%nodes(:, i, t)
+            jac(:, 2) = jac(:, 2) + gg(2, i)*fs%mm%nodes(:, i, t)
+        end do
+        det = jac(1, 1)*jac(2, 2) - jac(1, 2)*jac(2, 1)
+        status = 1
+        if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) return
+        call evaluate_triangle_lagrange_basis(pb%lb, xi, eta, tl, tlg, status)
+        if (status /= 0) return
+        call evaluate_triangle_lagrange_basis(pb%db, xi, eta, td, dg, status)
+        if (status /= 0) return
+        call evaluate_triangle_nedelec_first_kind(pb%nb, xi, eta, tn, cur, &
+            status)
+        if (status /= 0) return
+        call evaluate_triangle_raviart_thomas(pb%rb, xi, eta, tr, cur, status)
+        if (status /= 0) return
+        call physical_basis(space, metric_radius(fs, x), jac, det, tl, tn, tr, &
+            td, phi)
+        if (present(ref)) then
+            if (space == 2) then
+                ref = tr
+            else
+                ref = tn
+            end if
+        end if
+        status = 0
+    end subroutine meridian_point_basis
 
     ! ------------------------------------------------------------------
     ! Differential operators
