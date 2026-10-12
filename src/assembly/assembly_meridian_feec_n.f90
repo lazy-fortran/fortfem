@@ -19,16 +19,37 @@ module fortfem_meridian_feec_n
     !!   curl_n A = (rot90(grad a - i n A_pol), -rot A_pol)   [q, s]
     !!   div_n B  = div q + i n s                            [g]
     !!
-    !! These are the physical operators: (grad f)_phi = i n f / R, B_pol =
-    !! q / R = (1/R)(i n A_pol^perp + rot(R A_phi)) up to the sign convention
-    !! of rot90, B_phi = d_Z A_R - d_R A_Z, div B = g / R.  In these
-    !! variables the operators are metric free: each is a + i n b with real
-    !! sparse a, b, so curl_n grad_n = 0 and div_n curl_n = 0 hold as exact
-    !! matrix identities for every n (they reduce to the 2D identities
-    !! curl grad = 0, div rot90 = -rot, div grad-free).  The metric (1/R and
-    !! R factors, curved Jacobians) lives only in the mass matrices
+    !! These are the physical operators: (grad f)_phi = i n f / R,
+    !! B_pol = q / R = (1/R) rot90(grad a - i n A_pol) and B_phi = d_Z A_R -
+    !! d_R A_Z = -rot A_pol, div B = g / R.  In these variables the operators
+    !! are metric free: each is a + i n b with real sparse a, b, so
+    !! curl_n grad_n = 0 and div_n curl_n = 0 hold as exact matrix identities
+    !! for every n (they reduce to the 2D identities rot90 grad = grad^perp
+    !! with rot grad = 0 and div rot90 = -rot).  The metric (1/R and R
+    !! factors, curved Jacobians) lives only in the mass matrices
     !! M_j = (phi_i, phi_j)_{R dR dZ} of the physical fields, which are real
     !! and independent of n.
+    !!
+    !! Correspondence with Albert, Lainer and Biro, Comput. Phys. Commun. 277
+    !! (2022) 108401, doi:10.1016/j.cpc.2022.108401 (the paper), for the
+    !! right-handed coordinates (x1, x2, x3) = (Z, R, phi) and Fourier
+    !! convention f = sum_n f_n exp(i n x3) (paper Eq. (31)):
+    !!   grad_n  = Eq. (34): grad_t U + i n U e^3 (covariant a = A_3 = R A_phi);
+    !!   curl_n  = Eq. (36) with Eqs. (38)-(39): B^3 = curl_t A, b = -i n
+    !!             eps_t A + curl_t A_3 (q = R B_pol is the contravariant
+    !!             density, s = B_phi = B^3 the scalar density);
+    !!   div_n   = Eq. (35): div_t b + i n B^3.
+    !! With nu = 1 the curl-curl form K = curl_n^H M_2 curl_n equals the
+    !! weak form Eq. (69) in the gauge A_3 = 0 (Eq. (37)): nu_33 = nu R,
+    !! bar nu_t = nu / R (Eqs. (28), (44)), i.e. int R |B_phi|^2 + (n^2 / R)
+    !! |A_pol|^2 for the unweighted measure dR dZ, and the same form as Eq.
+    !! (11) of Lainer et al., J. Phys.: Conf. Ser. 2397 (2022) 012014,
+    !! doi:10.1088/1742-6596/2397/1/012014 (MEPHIT).  The n = 0 Poisson form
+    !! Eq. (47), -div_t(bar nu grad_t A_3) = J^3, is meridian_gs_stiffness
+    !! (bar nu = nu / R).  Spaces: A in H(curl_t) by Nedelec elements, b and
+    !! J in H(div_t) by Raviart-Thomas elements (paper Sec. 2.5).  The
+    !! mode-by-mode reduction is also presented in Albert et al., 8th FreeFem++
+    !! Workshop, 2016 (Eqs. (17)-(20) of the slides).
     !!
     !! Element-parallel (OpenMP) assembly into per-element triplet slices.
     use fortfem_kinds, only: dp

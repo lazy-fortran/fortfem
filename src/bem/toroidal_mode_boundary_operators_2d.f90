@@ -9,6 +9,15 @@ module fortfem_toroidal_mode_boundary_operators_2d
     !! the panel quadrature rules and the operator container are those of
     !! fortfem_axisymmetric_gs_boundary_operators_2d.
     !!
+    !! Reference.  The weight R and the n^2/R term are those of the per-mode
+    !! reduction of Albert, Lainer and Biro, Comput. Phys. Commun. 277 (2022)
+    !! 108401, doi:10.1016/j.cpc.2022.108401 (Eqs. (34)-(36), (44), (47)); the
+    !! Fourier convention f = sum_n f_n exp(i n phi) is its Eq. (31) and that
+    !! of the MEPHIT paper, J. Phys.: Conf. Ser. 2397 (2022) 012014
+    !! (doi:10.1088/1742-6596/2397/1/012014), Eq. (10).  The Poincare-Steklov
+    !! operator S_n is the exterior closure that paper names as future work
+    !! for the homogeneous Dirichlet box of its Eq. (11).
+    !!
     !! Conventions.  Gamma is counter-clockwise, the unit normal n points out
     !! of the enclosed region (into the exterior), ds is arc length and the
     !! conormal derivative is R d_n.  With G_n of fortfem_toroidal_mode_kernel
