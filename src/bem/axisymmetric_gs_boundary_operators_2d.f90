@@ -346,7 +346,8 @@ contains
             prv_oa(:), prv_ob(:)
         real(dp) :: lens(curve%n_panels)
         real(dp) :: cen(2, curve%n_panels)
-        integer :: np, nx, ny, nl, a, b, kind
+        integer :: np, nx, ny, nl, a, b, kind, ncol, col_a, col_b, ia, ib
+        integer, allocatable :: members(:, :), count_col(:)
         logical :: want_w
 
         status = 1
@@ -379,23 +380,57 @@ contains
 
         call panel_summary(lens, cen)
         call assemble_mass()
+        ! Panel-pair parity colouring.  Panels p and p + 2 share no trace
+        ! node, so all pairs (a, b) with a in one colour class and b in one
+        ! colour class write disjoint entries of V, K, K', W and Kxx.  The
+        ! classes run in a fixed order and each matrix entry receives its
+        ! contributions in the same order for any thread count, so the
+        ! result is bitwise independent of the number of threads.
+        ncol = 2
+        if (mod(np, 2) == 1) ncol = 3
+        allocate(members(np, ncol), count_col(ncol))
+        count_col = 0
         do a = 1, np
-            do b = 1, np
-                if (b == a) then
-                    kind = 1
-                else if (b == mod(a, np) + 1) then
-                    kind = 2
-                else if (a == mod(b, np) + 1) then
-                    kind = 3
-                else
-                    kind = 0
-                end if
-                call integrate_pair(a, b, kind)
+            col_a = panel_colour(a)
+            count_col(col_a) = count_col(col_a) + 1
+            members(count_col(col_a), col_a) = a
+        end do
+        do col_a = 1, ncol
+            do col_b = 1, ncol
+                !$omp parallel do schedule(dynamic, 1) &
+                !$omp& default(shared) private(ia, ib, a, b, kind)
+                do ib = 1, count_col(col_b)
+                    do ia = 1, count_col(col_a)
+                        a = members(ia, col_a)
+                        b = members(ib, col_b)
+                        if (b == a) then
+                            kind = 1
+                        else if (b == mod(a, np) + 1) then
+                            kind = 2
+                        else if (a == mod(b, np) + 1) then
+                            kind = 3
+                        else
+                            kind = 0
+                        end if
+                        call integrate_pair(a, b, kind)
+                    end do
+                end do
+                !$omp end parallel do
             end do
         end do
         status = 0
 
     contains
+
+        pure function panel_colour(p) result(c)
+            !! Odd panel counts need a third colour for the last panel,
+            !! which is adjacent to both the first and the second-to-last.
+            integer, intent(in) :: p
+            integer :: c
+
+            c = 1 + mod(p - 1, 2)
+            if (mod(np, 2) == 1 .and. p == np) c = 3
+        end function panel_colour
 
         subroutine panel_summary(len_p, cen_p)
             real(dp), intent(out) :: len_p(:), cen_p(:, :)
