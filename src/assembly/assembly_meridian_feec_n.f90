@@ -51,6 +51,23 @@ module fortfem_meridian_feec_n
     !! mode-by-mode reduction is also presented in Albert et al., 8th FreeFem++
     !! Workshop, 2016 (Eqs. (17)-(20) of the slides).
     !!
+    !! Periodic-cylinder chart.  A straight cylinder with axial coordinate z
+    !! periodic with period 2 pi R0 is the same complex with the constant
+    !! metric radius R0 in place of R: phi = z / R0 is the ignorable angle,
+    !! the mode exp(i n phi) has axial wavenumber k = n / R0, and the meridian
+    !! plane (x1, x2) = (R, Z) slots hold the Cartesian cross-section (x, y),
+    !! which may contain the axis x = y = 0 and negative x1.  The metric is
+    !! ds^2 = dx^2 + dy^2 + R0^2 dphi^2, so (grad f)_z = i n f / R0, the
+    !! measure is R0 dx dy, and in the variables above
+    !!
+    !!   a = R0 A_z,  q = R0 B_pol,  s = B_z,  g = R0 div B
+    !!
+    !! the operators grad_n, curl_n and div_n are unchanged (they are metric
+    !! free); only the masses, loads, error norms and the Piola 1/R factors
+    !! use R0.  Select it with the optional cylinder_r0 argument of
+    !! meridian_feec_build (cylinder_r0 > 0); the default is the axisymmetric
+    !! chart of the (R, Z) meridian plane.
+    !!
     !! Element-parallel (OpenMP) assembly into per-element triplet slices.
     use fortfem_kinds, only: dp
     use fortfem_meridian_curved_mesh, only: meridian_mesh_t
@@ -91,6 +108,7 @@ module fortfem_meridian_feec_n
         integer :: k = 0                       !! polynomial order
         integer :: g = 1                       !! geometry order
         integer :: nq = 0
+        real(dp) :: cyl_r0 = 0.0_dp          !! > 0: periodic-cylinder chart, R = R0
         integer :: n0 = 0, nn = 0, nd = 0      !! Lagrange, Nedelec/RT, DG dofs
         integer :: nl0 = 0, nln = 0, nld = 0   !! local counts
         type(meridian_space_t) :: sp(0:3)
@@ -140,18 +158,28 @@ contains
     ! Construction
     ! ------------------------------------------------------------------
 
-    subroutine meridian_feec_build(mm, k, fs, status, quad_degree)
+    subroutine meridian_feec_build(mm, k, fs, status, quad_degree, &
+            cylinder_r0)
+        !! Build the complex of order k on the meridional mesh mm.  With
+        !! cylinder_r0 > 0 the mesh is a cross-section (x, y) of a straight
+        !! cylinder of axial period 2 pi cylinder_r0 (see the module header);
+        !! otherwise it is an (R, Z) half-plane mesh with R > 0.
         type(meridian_mesh_t), intent(in) :: mm
         integer, intent(in) :: k
         type(meridian_feec_t), intent(out) :: fs
         integer, intent(out) :: status
         integer, intent(in), optional :: quad_degree
+        real(dp), intent(in), optional :: cylinder_r0
 
         integer :: nt, qdeg, i
 
         status = 1
         if (k < 1 .or. k > 6) return
         if (.not. allocated(mm%nodes)) return
+        if (present(cylinder_r0)) then
+            if (.not. (cylinder_r0 > 0.0_dp)) return
+            fs%cyl_r0 = cylinder_r0
+        end if
         fs%mm = mm
         fs%k = k
         fs%g = mm%geo_order
@@ -482,6 +510,19 @@ contains
     ! Geometry and physical basis functions
     ! ------------------------------------------------------------------
 
+    pure function metric_radius(fs, x) result(r)
+        !! The metric radius R: the coordinate R, or R0 on the cylinder chart.
+        type(meridian_feec_t), intent(in) :: fs
+        real(dp), intent(in) :: x(2)
+        real(dp) :: r
+
+        if (fs%cyl_r0 > 0.0_dp) then
+            r = fs%cyl_r0
+        else
+            r = x(1)
+        end if
+    end function metric_radius
+
     pure subroutine point_geometry(fs, t, q, x, jac, det)
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: t, q
@@ -507,7 +548,7 @@ contains
         real(dp) :: jit(2, 2), v(2), rr
         integer :: i, nln
 
-        rr = x(1)
+        rr = metric_radius(fs, x)
         nln = fs%nln
         phi = 0.0_dp
         select case (space)
@@ -836,14 +877,14 @@ contains
             ml = 0.0_dp
             do q = 1, fs%nq
                 call point_geometry(fs, t, q, x, jac, det)
-                if (det <= 0.0_dp .or. x(1) <= 0.0_dp) then
+                if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) then
                     bad = 1
                     cycle
                 end if
                 call point_basis(fs, space, q, x, jac, det, phi)
                 extra = 1.0_dp
                 if (present(weight)) extra = weight(x)
-                wq = fs%qw(q)*det*x(1)*extra
+                wq = fs%qw(q)*det*metric_radius(fs, x)*extra
                 do j = 1, nl
                     do i = 1, nl
                         ml(i, j) = ml(i, j) + wq*(phi(1, i)*phi(1, j) &
@@ -895,7 +936,7 @@ contains
             ml = 0.0_dp
             do q = 1, fs%nq
                 call point_geometry(fs, t, q, x, jac, det)
-                if (det <= 0.0_dp .or. x(1) <= 0.0_dp) then
+                if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) then
                     bad = 1
                     cycle
                 end if
@@ -904,7 +945,7 @@ contains
                 jit(1, 2) = -jac(2, 1)/det
                 jit(2, 2) = jac(1, 1)/det
                 gp = matmul(jit, fs%tlg(:, :, q))
-                wq = fs%qw(q)*det/x(1)
+                wq = fs%qw(q)*det/metric_radius(fs, x)
                 do j = 1, nl
                     do i = 1, nl
                         ml(i, j) = ml(i, j) + wq*(gp(1, i)*gp(1, j) &
@@ -1113,13 +1154,13 @@ contains
             bl(:, t) = (0.0_dp, 0.0_dp)
             do q = 1, fs%nq
                 call point_geometry(fs, t, q, x, jac, det)
-                if (det <= 0.0_dp .or. x(1) <= 0.0_dp) then
+                if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) then
                     bad = 1
                     cycle
                 end if
                 call point_basis(fs, space, q, x, jac, det, phi)
                 call fun(x, f)
-                wq = fs%qw(q)*det*x(1)
+                wq = fs%qw(q)*det*metric_radius(fs, x)
                 do i = 1, nl
                     bl(i, t) = bl(i, t) + wq*(f(1)*phi(1, i) &
                         + f(2)*phi(2, i) + f(3)*phi(3, i))
@@ -1173,7 +1214,7 @@ contains
             end do
             do q = 1, fs%nq
                 call point_geometry(fs, t, q, x, jac, det)
-                if (det <= 0.0_dp .or. x(1) <= 0.0_dp) then
+                if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) then
                     bad = 1
                     cycle
                 end if
@@ -1187,7 +1228,7 @@ contains
                 end do
                 acc = abs(u(1) - f(1))**2 + abs(u(2) - f(2))**2 &
                     + abs(u(3) - f(3))**2
-                tot = tot + fs%qw(q)*det*x(1)*acc
+                tot = tot + fs%qw(q)*det*metric_radius(fs, x)*acc
             end do
         end do
         !$omp end do
