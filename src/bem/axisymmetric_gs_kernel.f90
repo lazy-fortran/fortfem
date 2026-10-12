@@ -70,6 +70,7 @@ module fortfem_axisymmetric_gs_kernel
     public :: gs_green_jvp, gs_green_vjp
     public :: gs_green_gradient_jvp, gs_green_gradient_vjp
     public :: gs_rect_coil_flux
+    public :: gs_rect_coil_flux_table
     public :: gs_rect_coil_flux_gradient
     public :: gs_rect_coil_flux_converged
     public :: gs_rect_coil_flux_jvp, gs_rect_coil_flux_vjp
@@ -245,6 +246,27 @@ contains
         end do
         psi = 0.25_dp*gs_mu0*coil%turns*psi
     end function gs_rect_coil_flux
+
+    subroutine gs_rect_coil_flux_table(coils, r, z, nr, nz, psi)
+        !! psi(i, k) = gs_rect_coil_flux(coils(k), r(i), z(i), nr, nz) for
+        !! all points and coils, evaluated in parallel over the entries.  Each
+        !! entry is computed independently, so the table is bitwise
+        !! independent of the number of threads.
+        type(gs_rect_coil_t), intent(in) :: coils(:)
+        real(dp), intent(in) :: r(:), z(:)
+        integer, intent(in) :: nr, nz
+        real(dp), intent(out) :: psi(size(r), size(coils))
+        integer :: i, k
+
+        !$omp parallel do collapse(2) schedule(static) default(shared) &
+        !$omp& private(i, k)
+        do k = 1, size(coils)
+            do i = 1, size(r)
+                psi(i, k) = gs_rect_coil_flux(coils(k), r(i), z(i), nr, nz)
+            end do
+        end do
+        !$omp end parallel do
+    end subroutine gs_rect_coil_flux_table
 
     subroutine gs_rect_coil_flux_gradient(coil, r, z, nr, nz, psi, grad)
         !! Flux and its gradient with respect to
