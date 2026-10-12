@@ -97,6 +97,10 @@ module fortfem_axisymmetric_gs_boundary_operators_2d
     public :: gs_bem_trace_value
     public :: gs_bem_flux_value
     public :: gs_bem_trace_node_index
+    !> Panel basis functions and singular quadrature rules, shared with the
+    !! per-mode operators of fortfem_toroidal_mode_boundary_operators_2d.
+    public :: p2_basis, flux_basis, gauss_unit, graded_rule
+    public :: build_self_rule, build_corner_rule
 
     interface
         subroutine dpotrf(uplo, n, a, lda, info)
