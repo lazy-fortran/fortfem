@@ -52,16 +52,14 @@ module fortfem_toroidal_mode_kernel
     !! Accuracy.  Q_{n-1/2} comes from fortnum (toroidal_q_sequence).  Close
     !! to coincidence t = (chi - 1)/2 = d^2/(4 R R') < t_s the logarithmic
     !! decomposition Q = L(t) p(t) + r(t), L = -ln(t)/2, with p = P_{n-1/2} and
-    !! r analytic, is summed from its Taylor series in t.  Its coefficients
-    !! follow from the Legendre equation t (1 + t) y'' + (1 + 2 t) y' = lam y,
-    !! lam = n^2 - 1/4:
-    !!     c_0 = 1,  c_{k+1} = c_k (lam - k (k + 1))/(k + 1)^2,
-    !!     e_0 = -gamma - psi(n + 1/2) = 2 ln 2 - sum_{j<=n} 2/(2 j - 1),
-    !!     (k + 1)^2 e_{k+1} = (k + 1) c_{k+1} + (k + 1/2) c_k
-    !!                         + (lam - k (k + 1)) e_k,
-    !! p = sum c_k t^k, r = sum e_k t^k.  This keeps Q and dQ/dchi accurate
-    !! down to t = 1e-20 where the difference formulas of the recurrences lose
-    !! all digits.  Second derivatives use the Legendre equation.
+    !! r analytic, comes from fortnum's toroidal_q_log_split with its
+    !! derivatives dp/dchi, dr/dchi (Taylor series near the cut), which keeps
+    !! Q and dQ/dchi accurate where the difference formulas of the recurrences
+    !! lose all digits.  chi = 1 + 2 t is formed in double precision, so p, r
+    !! and their derivatives carry an absolute error of about lam * 1e-16,
+    !! lam = n^2 - 1/4, for t below that; the logarithm and the 1/t term use
+    !! t itself.  Coincident points (t = 0) are evaluated at chi = 1 + eps.
+    !! Second derivatives use the Legendre equation.
     !!
     !! Point order.  Gradients and Hessians are with respect to
     !! (R, Z, R', Z') in this order.  R and R' must be positive; the kernel is
@@ -81,14 +79,12 @@ module fortfem_toroidal_mode_kernel
         ieee_value
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre
-    use fortnum_special_toroidal, only: toroidal_q_sequence
+    use fortnum_special_toroidal, only: toroidal_q_log_split, &
+        toroidal_q_sequence
     implicit none
     private
 
     real(dp), parameter :: pi = 3.14159265358979323846264338327950288_dp
-    real(dp), parameter :: ln2 = 0.693147180559945309417232121458176568_dp
-    !> Largest t for which the log split is evaluated at all.
-    real(dp), parameter :: split_t_max = 0.5_dp
 
     !> Rectangular coil cross-section: centre (r, z), full sizes dr, dz and
     !> the number of turns carrying the circuit current.
@@ -247,12 +243,17 @@ contains
         real(dp), intent(in) :: r, z, rp, zp
         real(dp), intent(out) :: coeff, dcoeff(4), smooth, dsmooth(4)
         real(dp) :: zeta, t, p, pt, rr, rt, w, wa(3), lg, lga(3), ta(3)
+        real(dp) :: ps(0:abs(n)), pts(0:abs(n)), rs(0:abs(n)), rts(0:abs(n))
         real(dp) :: c_t(3), s_t(3), inner
         integer :: a
 
         zeta = z - zp
         t = ((r - rp)**2 + zeta**2)/(4.0_dp*r*rp)
-        call log_split_series(abs(n), t, p, pt, rr, rt)
+        call log_split_pieces(abs(n), t, ps, pts, rs, rts)
+        p = ps(abs(n))
+        pt = pts(abs(n))
+        rr = rs(abs(n))
+        rt = rts(abs(n))
         w = weight(r, rp)
         wa = [-0.5_dp*w/r, -0.5_dp*w/rp, 0.0_dp]
         lg = 0.5_dp*log(4.0_dp*r*rp)
@@ -275,16 +276,16 @@ contains
         integer, intent(in) :: nmax
         real(dp), intent(in) :: r, z, rp, zp
         real(dp), intent(out) :: coeff(0:nmax), smooth(0:nmax)
-        real(dp) :: t, p, pt, rr, rt, w, lg
+        real(dp) :: t, w, lg, p(0:nmax), pt(0:nmax), rr(0:nmax), rt(0:nmax)
         integer :: m
 
         t = ((r - rp)**2 + (z - zp)**2)/(4.0_dp*r*rp)
+        call log_split_pieces(nmax, t, p, pt, rr, rt)
         w = weight(r, rp)
         lg = 0.5_dp*log(4.0_dp*r*rp)
         do m = 0, nmax
-            call log_split_series(m, t, p, pt, rr, rt)
-            coeff(m) = w*p
-            smooth(m) = w*(lg*p + rr)
+            coeff(m) = w*p(m)
+            smooth(m) = w*(lg*p(m) + rr(m))
         end do
     end subroutine tm_green_modes_log_split
 
@@ -502,7 +503,7 @@ contains
         integer, intent(in) :: nmax
         real(dp), intent(in) :: r, rp, zeta
         real(dp), intent(out) :: q(0:nmax), qx(0:nmax)
-        real(dp) :: t, chi, p, pt, rr, rt
+        real(dp) :: t, chi, p(0:nmax), pt(0:nmax), rr(0:nmax), rt(0:nmax)
         integer :: m
 
         t = ((r - rp)**2 + zeta**2)/(4.0_dp*r*rp)
@@ -512,11 +513,11 @@ contains
             return
         end if
         if (t < tm_log_split_limit(nmax)) then
+            call log_split_pieces(nmax, t, p, pt, rr, rt)
             do m = 0, nmax
-                call log_split_series(m, t, p, pt, rr, rt)
-                q(m) = -0.5_dp*log(t)*p + rr
+                q(m) = -0.5_dp*log(t)*p(m) + rr(m)
                 ! dQ/dchi = (1/2) dQ/dt, dQ/dt = -p/(2 t) - ln(t) pt/2 + rt
-                qx(m) = 0.5_dp*(-0.5_dp*p/t - 0.5_dp*log(t)*pt + rt)
+                qx(m) = 0.5_dp*(-0.5_dp*p(m)/t - 0.5_dp*log(t)*pt(m) + rt(m))
             end do
         else
             chi = (r*r + rp*rp + zeta*zeta)/(2.0_dp*r*rp)
@@ -579,55 +580,19 @@ contains
         end do
     end subroutine mode_jet
 
-    pure subroutine log_split_series(m, t, p, pt, r, rt)
-        !! Taylor sums of p_m(t) = P_{m-1/2}(1 + 2 t) and the analytic part
-        !! r_m(t) of Q_{m-1/2}(1 + 2 t) = -ln(t) p_m/2 + r_m, and their
-        !! t-derivatives pt, rt; see the module header for the recurrences.
-        integer, intent(in) :: m
+    pure subroutine log_split_pieces(nmax, t, p, pt, r, rt)
+        !! p_m(t) = P_{m-1/2}(1 + 2 t), the analytic part r_m(t) of
+        !! Q_{m-1/2}(1 + 2 t) = -ln(t) p_m/2 + r_m and their t derivatives pt,
+        !! rt for m = 0..nmax, from fortnum with d/dt = 2 d/dchi.
+        integer, intent(in) :: nmax
         real(dp), intent(in) :: t
-        real(dp), intent(out) :: p, pt, r, rt
-        real(dp) :: lam, c, cn, e, en, tk, kk, a, d1, d2, ratio
-        integer :: k, j
+        real(dp), intent(out) :: p(0:nmax), pt(0:nmax), r(0:nmax), rt(0:nmax)
+        real(dp) :: chi
 
-        lam = real(m, dp)**2 - 0.25_dp
-        c = 1.0_dp
-        e = 2.0_dp*ln2
-        do j = 1, m
-            e = e - 2.0_dp/real(2*j - 1, dp)
-        end do
-        tk = 1.0_dp
-        p = 0.0_dp
-        pt = 0.0_dp
-        r = 0.0_dp
-        rt = 0.0_dp
-        if (.not. (t < split_t_max)) then
-            p = ieee_value(1.0_dp, ieee_quiet_nan)
-            pt = p
-            r = p
-            rt = p
-            return
-        end if
-        do k = 0, 300
-            kk = real(k, dp)
-            a = lam - kk*(kk + 1.0_dp)
-            cn = c*a/(kk + 1.0_dp)**2
-            en = ((kk + 1.0_dp)*cn + (kk + 0.5_dp)*c + a*e)/(kk + 1.0_dp)**2
-            p = p + c*tk
-            r = r + e*tk
-            d1 = (kk + 1.0_dp)*cn*tk
-            d2 = (kk + 1.0_dp)*en*tk
-            pt = pt + d1
-            rt = rt + d2
-            ratio = abs(a)*t/(kk + 1.0_dp)**2
-            tk = tk*t
-            c = cn
-            e = en
-            if (ratio < 0.5_dp .and. k >= 2) then
-                if (abs(d1) <= 1.0e-18_dp*abs(pt) .and. &
-                    abs(d2) <= 1.0e-18_dp*abs(rt) .and. &
-                    abs(c*tk) <= 1.0e-18_dp*abs(p)) exit
-            end if
-        end do
-    end subroutine log_split_series
+        chi = 1.0_dp + 2.0_dp*max(t, 0.5_dp*epsilon(1.0_dp))
+        call toroidal_q_log_split(nmax, chi, p, r, pt, rt)
+        pt = 2.0_dp*pt
+        rt = 2.0_dp*rt
+    end subroutine log_split_pieces
 
 end module fortfem_toroidal_mode_kernel
