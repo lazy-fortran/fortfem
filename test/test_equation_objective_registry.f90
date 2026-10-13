@@ -1,5 +1,4 @@
 program test_equation_objective_registry
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use check, only: check_condition, check_summary
     use fortfem_feec, only: &
         equation_objective_block_t, equation_objective_registry_t, &
@@ -149,8 +148,7 @@ program test_equation_objective_registry
 
     call pack_equation_objective_values( &
         copied, values, packed, status)
-    call record_condition(status%code /= 0 .and. &
-        ieee_is_finite(packed(1)), &
+    call record_condition(status%code /= 0 .and. size(packed) == 0, &
         "registry rejects packing against incompatible copied metadata")
 
     call equation_objective_registry_block(registry, 0, block, status)

@@ -26,7 +26,7 @@ program test_maxwell_bc_transformation_ad
     integer, allocatable :: triangles(:, :), refined_triangles(:, :)
     integer, allocatable :: refined_triangles_minus(:, :)
     integer, allocatable :: refined_triangles_plus(:, :)
-    integer :: status, status_minus, status_plus, vertex
+    integer :: row, status, status_minus, status_plus, vertex
     logical :: all_passed
 
     all_passed = .true.
@@ -71,10 +71,10 @@ program test_maxwell_bc_transformation_ad
         transformation_bar(size(transformation, 1), size(transformation, 2)), &
         refined_vertices_bar(size(refined_vertices, 1), size(refined_vertices, 2)))
     do vertex = 1, size(transformation_bar, 2)
-        transformation_bar(:, vertex) = [ &
-            0.007_dp*sin(real(vertex, dp)), &
-            -0.005_dp*cos(real(2*vertex, dp)), &
-            0.006_dp*sin(real(3*vertex, dp))]
+        do row = 1, size(transformation_bar, 1)
+            transformation_bar(row, vertex) = 0.007_dp*sin(real(row + vertex, dp)) &
+                - 0.005_dp*cos(real(2*row - vertex, dp))
+        end do
     end do
     call differentiate_maxwell_bc_transformation_vjp( &
         vertices, triangles, refined_vertices, refined_triangles, &
