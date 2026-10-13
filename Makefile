@@ -1,7 +1,7 @@
 # FortFEM Makefile
 # Main targets for building, testing, and benchmarking
 
-.PHONY: all build test test-slow test-all benchmark clean help doc
+.PHONY: all build test test-debug test-slow test-all benchmark clean help doc
 
 # Default target
 all: build
@@ -22,6 +22,12 @@ build:
 test:
 	@echo "Running FortFEM tests..."
 	scripts/run_tests.sh fast
+
+# Run the standard tests in the debug profile (bounds, allocation and
+# floating-point checks); a violation of a procedure contract aborts the test
+test-debug:
+	@echo "Running FortFEM tests with runtime checks..."
+	FPM_PROFILE=debug scripts/run_tests.sh fast
 
 # Run only the slow tests
 test-slow:
@@ -87,6 +93,7 @@ help:
 	@echo "Available targets:"
 	@echo "  build      - Build the FortFEM project"
 	@echo "  test       - Run the standard tests (everything except *_slow)"
+	@echo "  test-debug - Run the standard tests with debug-profile runtime checks"
 	@echo "  test-slow  - Run the *_slow tests"
 	@echo "  test-all   - Run the fast and the slow tests"
 	@echo "  benchmark  - Run curl-curl benchmark comparison (FortFEM vs FreeFEM)"
