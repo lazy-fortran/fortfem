@@ -182,8 +182,9 @@ contains
             .not. allocated(schedule%local_to_global) .or. .not. allocated(schedule%owner_rank) .or. &
             .not. allocated(schedule%owned) .or. .not. allocated(schedule%owner_buffer_index) .or. &
             .not. allocated(schedule%ghost_buffer_index) .or. .not. allocated(schedule%global_owner_index)) return
-        if (size(schedule%row_offsets) /= schedule%partition_count + 1 .or. &
-            schedule%row_offsets(1) /= 1 .or. schedule%row_offsets(schedule%partition_count + 1) /= schedule%local_count + 1 .or. &
+        if (size(schedule%row_offsets) /= schedule%partition_count + 1) return
+        if (schedule%row_offsets(1) /= 1 .or. &
+            schedule%row_offsets(schedule%partition_count + 1) /= schedule%local_count + 1 .or. &
             any(schedule%row_offsets(2:) <= schedule%row_offsets(:schedule%partition_count)) .or. &
             size(schedule%local_to_global) /= schedule%local_count .or. size(schedule%owner_rank) /= schedule%local_count .or. &
             size(schedule%owned) /= schedule%local_count .or. size(schedule%owner_buffer_index) /= schedule%local_count .or. &

@@ -6,6 +6,7 @@ program test_cell_identification
         identify_boundary_matrix, cell_identification_t, &
         initialize_cell_identification, validate_cell_identification
     implicit none
+    logical :: shape_ok
 
     type(cell_complex_t) :: interval, quotient, invalid_complex
     type(cell_identification_t) :: identity, periodic, lower, upper, invalid
@@ -50,10 +51,11 @@ program test_cell_identification
         upper, [1], [1], status)
     call identify_boundary_matrix( &
         lower, upper, boundary, quotient_boundary, status)
-    call check_condition(status == 0 .and. &
-        size(quotient_boundary, 1) == 1 .and. &
-        size(quotient_boundary, 2) == 1 .and. &
-        quotient_boundary(1, 1) == 0, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(quotient_boundary, 1) == 1 .and. &
+        size(quotient_boundary, 2) == 1
+    if (shape_ok) shape_ok = quotient_boundary(1, 1) == 0
+    call check_condition(shape_ok, &
         "endpoint identification maps an interval boundary to a circle")
 
     deallocate(representative, orientation, boundary)

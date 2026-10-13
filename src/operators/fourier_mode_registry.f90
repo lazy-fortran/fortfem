@@ -89,10 +89,12 @@ contains
         call status_set(status, FORTSPARSE_INVALID_MATRIX, &
             "Fourier mode registry received incompatible optional arrays")
         if (size(poloidal_modes) /= size(toroidal_modes)) return
-        if (present(radial_powers) .and. &
-            size(radial_powers) /= size(poloidal_modes)) return
-        if (present(normalization) .and. &
-            size(normalization) /= size(poloidal_modes)) return
+        if (present(radial_powers)) then
+            if (size(radial_powers) /= size(poloidal_modes)) return
+        end if
+        if (present(normalization)) then
+            if (size(normalization) /= size(poloidal_modes)) return
+        end if
         registry%field_periods = field_periods
         registry%poloidal_phase = poloidal_phase
         registry%toroidal_phase = toroidal_phase

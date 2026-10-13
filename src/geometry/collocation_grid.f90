@@ -297,8 +297,12 @@ contains
             any(.not. ieee_is_finite(first_weights)) .or. &
             any(.not. ieee_is_finite(second_weights))) return
         if (any(first_weights <= 0.0_dp) .or. any(second_weights <= 0.0_dp)) return
-        if (size(first_nodes) > 1 .and. any(first_nodes(2:) <= first_nodes(:size(first_nodes)-1))) return
-        if (size(second_nodes) > 1 .and. any(second_nodes(2:) <= second_nodes(:size(second_nodes)-1))) return
+        if (size(first_nodes) > 1) then
+            if (any(first_nodes(2:) <= first_nodes(:size(first_nodes) - 1))) return
+        end if
+        if (size(second_nodes) > 1) then
+            if (any(second_nodes(2:) <= second_nodes(:size(second_nodes) - 1))) return
+        end if
         if (grid_kind == COLLOCATION_GRID_CONCENTRIC .and. any(first_nodes < 0.0_dp)) return
         if (present(periodic_endpoint_map)) then
             if (size(periodic_endpoint_map) /= size(second_nodes)) return
@@ -318,9 +322,11 @@ contains
         integer, intent(in) :: mapping(:)
         integer :: index
 
-        valid = size(mapping) > 0 .and. all(mapping >= 1) .and. &
-            all(mapping <= size(mapping))
-        if (.not. valid) return
+        valid = .false.
+        if (size(mapping) < 1) return
+        if (any(mapping < 1)) return
+        if (any(mapping > size(mapping))) return
+        valid = .true.
         do index = 1, size(mapping)
             if (mapping(mapping(index)) /= mapping(index)) then
                 valid = .false.

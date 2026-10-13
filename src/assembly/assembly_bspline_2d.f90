@@ -1138,8 +1138,8 @@ contains
         ny = size(knots_y) - degree_y - 1
         if (nx < degree_x + 1 .or. ny < degree_y + 1) return
         if (any(shape(weights) /= [nx, ny])) return
-        if (size(control_points, 1) /= 2 .or. &
-            any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
         local_count = degree_x*degree_y
         max_entries = positive_span_count(knots_x, degree_x, nx)* &
             positive_span_count(knots_y, degree_y, ny)*local_count**2
@@ -1320,8 +1320,8 @@ contains
         ny = size(knots_y) - degree_y - 1
         if (nx < degree_x + 1 .or. ny < degree_y + 1) return
         if (any(shape(weights) /= [nx, ny])) return
-        if (size(control_points, 1) /= 2 .or. &
-            any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
         divergence_weight = 1.0_dp
         mass_weight = 0.0_dp
         if (present(divergence_coefficient)) then
@@ -1505,8 +1505,8 @@ contains
         ny = size(knots_y) - degree_y - 1
         if (nx < degree_x + 1 .or. ny < degree_y + 1) return
         if (any(shape(weights) /= [nx, ny])) return
-        if (size(control_points, 1) /= 2 .or. &
-            any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
         curl_weight = 1.0_dp
         mass_weight = 0.0_dp
         if (present(curl_coefficient)) curl_weight = curl_coefficient
@@ -1793,8 +1793,8 @@ contains
         ny = size(knots_y) - degree_y - 1
         if (nx < degree_x + 1 .or. ny < degree_y + 1) return
         if (any(shape(weights) /= [nx, ny])) return
-        if (size(control_points, 1) /= 2 .or. &
-            any(shape(control_points(1, :, :)) /= [nx, ny])) return
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= [nx, ny])) return
         stiffness_weight = 1.0_dp
         mass_weight = 0.0_dp
         if (present(stiffness_coefficient)) then

@@ -8,6 +8,7 @@ program test_boundary_region_graph
         validate_boundary_region_graph
     use fortfem_kinds, only: dp
     implicit none
+    logical :: shape_ok
 
     type(boundary_region_graph_t) :: graph
     integer :: plus_region(2), minus_region(2), interface_genus(2)
@@ -58,8 +59,11 @@ program test_boundary_region_graph
         maxval(abs(weights - sample_weights(1:2))) < 2.0e-14_dp, &
         "boundary region graph extracts per-interface sample ranges")
     call boundary_region_graph_interface_samples(graph, 2, points, normals, weights, status)
-    call record_condition(status == 0 .and. size(points, 2) == 1 .and. &
-        maxval(abs(points(:, 1) - sample_points(:, 3))) < 2.0e-14_dp, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(points, 2) == 1
+    if (shape_ok) shape_ok = &
+        maxval(abs(points(:, 1) - sample_points(:, 3))) < 2.0e-14_dp
+    call record_condition(shape_ok, &
         "boundary region graph extracts exterior interface samples")
     call boundary_region_graph_interface_metadata( &
         graph, genus_copy, exterior_copy, status)

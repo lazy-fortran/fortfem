@@ -8,6 +8,7 @@ program test_axis_regular_fourier_modes
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
+    logical :: shape_ok
 
     type(fourier_mode_registry_t) :: registry, bad_registry
     type(fourier_mode_registry_t) :: reordered, complex_registry
@@ -30,12 +31,14 @@ program test_axis_regular_fourier_modes
         "axis-regular mode table validates the registry")
     call record(table%field_periods == 3 .and. table%real_packed, &
         "axis-regular table preserves field-period and packing metadata")
-    call record(size(table%modes) == 5 .and. &
+    shape_ok = size(table%modes) == 5
+    if (shape_ok) shape_ok = &
         table%modes(1)%poloidal_mode == 0 .and. &
         table%modes(2)%poloidal_mode == 1 .and. &
         table%modes(3)%poloidal_mode == -1 .and. &
         table%modes(4)%poloidal_mode == 2 .and. &
-        table%modes(5)%poloidal_mode == -2, &
+        table%modes(5)%poloidal_mode == -2
+    call record(shape_ok, &
         "axis-regular table puts each conjugate pair in deterministic order")
     call record(table%modes(2)%conjugate_order_index == 3 .and. &
         table%modes(3)%conjugate_order_index == 2 .and. &

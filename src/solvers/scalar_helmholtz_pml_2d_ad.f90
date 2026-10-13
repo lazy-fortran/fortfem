@@ -552,7 +552,8 @@ contains
         status = 1
         do constraint = 1, size(dirichlet_nodes)
             node = dirichlet_nodes(constraint)
-            if (node < 1 .or. node > vertex_count .or. constrained(node)) return
+            if (node < 1 .or. node > vertex_count) return
+            if (constrained(node)) return
             constrained(node) = .true.
             constraint_index(node) = constraint
         end do

@@ -86,7 +86,9 @@ contains
                 return
             end if
             line = adjustl(line)
-            if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+            if (len_trim(line) > 0) then
+                if (line(1:1) /= '#') exit
+            end if
         end do
 
         ! Parse header: n_vertices dimension n_attributes n_boundary_markers
@@ -113,7 +115,9 @@ contains
                     return
                 end if
                 line = adjustl(line)
-                if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+                if (len_trim(line) > 0) then
+                    if (line(1:1) /= '#') exit
+                end if
             end do
 
             read(line, *, iostat=stat) idx, x, y
@@ -169,7 +173,9 @@ contains
                 return
             end if
             line = adjustl(line)
-            if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+            if (len_trim(line) > 0) then
+                if (line(1:1) /= '#') exit
+            end if
         end do
 
         ! Parse header: n_triangles nodes_per_triangle n_attributes
@@ -196,7 +202,9 @@ contains
                     return
                 end if
                 line = adjustl(line)
-                if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+                if (len_trim(line) > 0) then
+                    if (line(1:1) /= '#') exit
+                end if
             end do
 
             read(line, *, iostat=stat) idx, v1, v2, v3
@@ -260,7 +268,9 @@ contains
                 return
             end if
             line = adjustl(line)
-            if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+            if (len_trim(line) > 0) then
+                if (line(1:1) /= '#') exit
+            end if
         end do
 
         read(line, *, iostat=stat) n_vertices, dim, n_attr, n_bm
@@ -280,7 +290,9 @@ contains
                         return
                     end if
                     line = adjustl(line)
-                    if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+                    if (len_trim(line) > 0) then
+                        if (line(1:1) /= '#') exit
+                    end if
                 end do
                 read(line, *, iostat=stat) idx, x, y
                 if (stat /= 0) then
@@ -300,7 +312,9 @@ contains
                 return
             end if
             line = adjustl(line)
-            if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+            if (len_trim(line) > 0) then
+                if (line(1:1) /= '#') exit
+            end if
         end do
 
         read(line, *, iostat=stat) n_segments, n_bm
@@ -319,7 +333,9 @@ contains
                         return
                     end if
                     line = adjustl(line)
-                    if (len_trim(line) > 0 .and. line(1:1) /= '#') exit
+                    if (len_trim(line) > 0) then
+                        if (line(1:1) /= '#') exit
+                    end if
                 end do
                 read(line, *, iostat=stat) idx, v1, v2
                 if (stat /= 0) then
