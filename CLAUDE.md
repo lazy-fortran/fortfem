@@ -22,7 +22,9 @@ FortFEM is a modern Fortran finite element library designed for ease of use, ins
 - **Use `fpm run --example <name>` to run examples**
 
 ### Test Commands
-- **Run all tests**: `fpm test`
+- **Run the standard tests**: `make test` (everything except `*_slow`; as in CI)
+- **Run the slow tests**: `make test-slow`
+- **Run one test**: `fpm test test-name` (do not use a bare `fpm test`: it starts every test program at once and oversubscribes the machine)
 - **Run specific test**: `fpm test test-name`
 - **Run tests with coverage**: `fpm test --flag "--coverage"`
 - **List available tests**: `fpm test --list`
