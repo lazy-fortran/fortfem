@@ -178,13 +178,21 @@ contains
     subroutine check_products(label)
         character(*), intent(in) :: label
 
+        real(dp) :: scalar_fd, value_fd(2)
+
+        ! The central difference carries a rounding error of about
+        ! epsilon*|f|/step, so the tolerance scales with the size of the
+        ! derivative; the divergence of a second-order Raviart-Thomas
+        ! interpolant reaches O(10) on this triangle.
+        value_fd = (value_plus - value_minus)/(2.0_dp*step)
+        scalar_fd = (scalar_plus - scalar_minus)/(2.0_dp*step)
         call check(status == 0, label//" interpolant JVP succeeds")
-        call check(maxval(abs( &
-            value_dot - (value_plus - value_minus)/(2.0_dp*step))) < &
-            2.0e-8_dp, label//" interpolant value JVP matches re-evaluation")
-        call check(abs( &
-            scalar_dot - (scalar_plus - scalar_minus)/(2.0_dp*step)) < &
-            2.0e-8_dp, label//" interpolant scalar JVP matches re-evaluation")
+        call check(maxval(abs(value_dot - value_fd)) < &
+            2.0e-8_dp*(1.0_dp + maxval(abs(value_fd))), &
+            label//" interpolant value JVP matches re-evaluation")
+        call check(abs(scalar_dot - scalar_fd) < &
+            2.0e-8_dp*(1.0_dp + abs(scalar_fd)), &
+            label//" interpolant scalar JVP matches re-evaluation")
     end subroutine check_products
 
     subroutine check(condition, label)
