@@ -59,7 +59,7 @@ contains
         end if
     end subroutine sparse_from_dense
 
-    pure subroutine spmv_csc(matrix, vector, product)
+    subroutine spmv_csc(matrix, vector, product)
         type(sparse_matrix_t), intent(in) :: matrix
         real(dp), intent(in) :: vector(:)
         real(dp), intent(out) :: product(:)
@@ -73,7 +73,7 @@ contains
         product = csc_matvec(matrix, vector)
     end subroutine spmv_csc
 
-    pure subroutine spmv_jvp_csc( &
+    subroutine spmv_jvp_csc( &
             matrix, vector, matrix_values_dot, vector_dot, product_dot)
         !! Forward product with the CSC value array and input vector active.
         type(sparse_matrix_t), intent(in) :: matrix
@@ -107,7 +107,7 @@ contains
         end do
     end subroutine spmv_jvp_csc
 
-    pure subroutine spmv_vjp_csc( &
+    subroutine spmv_vjp_csc( &
             matrix, vector, product_bar, matrix_values_bar, vector_bar)
         !! Real adjoint of CSC value/vector multiplication.
         type(sparse_matrix_t), intent(in) :: matrix
