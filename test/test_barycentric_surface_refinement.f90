@@ -8,7 +8,7 @@ program test_barycentric_surface_refinement
     integer, allocatable :: edge_midpoints(:), face_centroids(:)
     integer, allocatable :: parent_faces(:), primal_edges(:, :), sectors(:)
     real(dp), allocatable :: refined_vertices(:, :)
-    real(dp) :: normal(3), vertices(3, 4)
+    real(dp) :: normal(3), vertices(3, 4), midpoint_distance
     integer :: boundary_triangles(3, 4), local_sector, triangle
     logical :: all_passed
 
@@ -38,9 +38,14 @@ program test_barycentric_surface_refinement
             3.0_dp*[0.25_dp, 0.25_dp, 0.25_dp]) > 0.0_dp, &
             "Barycentric surface refinement preserves outward orientation")
     end do
-    call record_condition(minval(sqrt(sum(( &
-        refined_vertices(:, 5:) - spread( &
-        [0.5_dp, 0.0_dp, 0.0_dp], 2, 10))**2, dim=1))) < 2.0e-14_dp, &
+    ! A loop rather than spread(): gfortran's bounds check wrongly rejects the
+    ! array expression that combines a section with spread().
+    midpoint_distance = huge(1.0_dp)
+    do triangle = 5, size(refined_vertices, 2)
+        midpoint_distance = min(midpoint_distance, norm2( &
+            refined_vertices(:, triangle) - [0.5_dp, 0.0_dp, 0.0_dp]))
+    end do
+    call record_condition(midpoint_distance < 2.0e-14_dp, &
         "Barycentric refinement contains the analytical edge midpoint")
     call record_condition(size(primal_edges, 2) == 6 .and. &
         all(edge_midpoints == [(triangle, triangle=5, 10)]) .and. &
