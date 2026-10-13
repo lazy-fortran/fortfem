@@ -155,6 +155,7 @@ module fortfem_meridian_feec_n
     public :: meridian_real_to_complex
     public :: meridian_lagrange_nodes
     public :: meridian_qpoint
+    public :: meridian_qgrad
     public :: meridian_point_basis_init
     public :: meridian_point_basis
 
@@ -622,6 +623,30 @@ contains
         wq = fs%qw(q)*det*metric_radius(fs, x)
         status = 0
     end subroutine meridian_qpoint
+
+    subroutine meridian_qgrad(fs, t, q, x, wq, val, grad, status)
+        !! Quadrature point q of triangle t for V0: physical point x = (R, Z),
+        !! weight wq of the measure R dR dZ, Lagrange values val(nl0) and
+        !! physical in-plane gradients grad(2, nl0) = (d_R, d_Z).
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: t, q
+        real(dp), intent(out) :: x(2), wq
+        real(dp), intent(out) :: val(:), grad(:, :)
+        integer, intent(out) :: status
+        real(dp) :: jac(2, 2), det, jit(2, 2)
+
+        status = 1
+        call point_geometry(fs, t, q, x, jac, det)
+        if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) return
+        jit(1, 1) = jac(2, 2)/det
+        jit(2, 1) = -jac(1, 2)/det
+        jit(1, 2) = -jac(2, 1)/det
+        jit(2, 2) = jac(1, 1)/det
+        val = fs%tl(:, q)
+        grad = matmul(jit, fs%tlg(:, :, q))
+        wq = fs%qw(q)*det*metric_radius(fs, x)
+        status = 0
+    end subroutine meridian_qgrad
 
     subroutine meridian_point_basis_init(fs, pb, status)
         !! Reference bases of the complex of fs for evaluation at arbitrary
