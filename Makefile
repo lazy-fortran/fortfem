@@ -1,7 +1,7 @@
 # FortFEM Makefile
 # Main targets for building, testing, and benchmarking
 
-.PHONY: all build test benchmark clean help doc
+.PHONY: all build test test-slow test-all benchmark clean help doc
 
 # Default target
 all: build
@@ -11,10 +11,26 @@ build:
 	@echo "Building FortFEM..."
 	fpm build
 
-# Run all tests
-test: build
+# Test targets follow the CI split: `*_slow` programs and the `run_*` drivers
+# are not part of the standard suite. `fpm test` starts every test program at
+# once, so several hundred OpenMP programs oversubscribe the machine and time
+# out although each runs in about a second alone; scripts/run_tests.sh builds
+# with fpm and runs the programs with bounded parallelism
+# (TEST_JOBS, OMP_NUM_THREADS, TEST_TIMEOUT).
+
+# Run the standard (fast) tests
+test:
 	@echo "Running FortFEM tests..."
-	fpm test
+	scripts/run_tests.sh fast
+
+# Run only the slow tests
+test-slow:
+	@echo "Running FortFEM slow tests..."
+	scripts/run_tests.sh slow
+
+# Run the fast and the slow tests
+test-all:
+	scripts/run_tests.sh all
 
 # Run benchmark comparison against FreeFEM
 benchmark: build benchmark-fortfem benchmark-freefem compare-results
@@ -70,7 +86,9 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  build      - Build the FortFEM project"
-	@echo "  test       - Run all tests"
+	@echo "  test       - Run the standard tests (everything except *_slow)"
+	@echo "  test-slow  - Run the *_slow tests"
+	@echo "  test-all   - Run the fast and the slow tests"
 	@echo "  benchmark  - Run curl-curl benchmark comparison (FortFEM vs FreeFEM)"
 	@echo "  doc        - Build documentation with FORD"
 	@echo "  clean      - Clean build artifacts and logs"
