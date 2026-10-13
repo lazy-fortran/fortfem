@@ -40,6 +40,11 @@ source-dir = "benchmark"
 main = "fortfem_dg_curved_scaling.f90"
 
 [[executable]]
+name = "fortfem_fourier_apply_bench"
+source-dir = "benchmark"
+main = "fortfem_fourier_apply_bench.f90"
+
+[[executable]]
 name = "fortfem_toroidal_mode_bem_scaling"
 source-dir = "benchmark"
 main = "fortfem_toroidal_mode_bem_scaling.f90"
