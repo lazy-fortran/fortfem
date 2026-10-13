@@ -219,12 +219,13 @@ contains
         if (size(interchange%boundary_offsets) /= interchange%boundary_count + 1 .or. &
             size(interchange%boundary_names) /= interchange%boundary_count .or. &
             size(interchange%boundary_coordinates, 1) /= interchange%spatial_dimension) return
-        if (interchange%boundary_offsets(1) /= 1 .or. &
-            interchange%boundary_offsets(interchange%boundary_count + 1) /= &
+        if (interchange%boundary_offsets(1) /= 1) return
+        if (interchange%boundary_offsets(interchange%boundary_count + 1) /= &
             size(interchange%boundary_coordinates, 2) + 1) return
-        if (any(interchange%boundary_offsets < 1) .or. &
-            any(interchange%boundary_offsets > size(interchange%boundary_coordinates, 2) + 1) .or. &
-            any(interchange%boundary_offsets(2:) < interchange%boundary_offsets(: &
+        if (any(interchange%boundary_offsets < 1)) return
+        if (any(interchange%boundary_offsets > &
+            size(interchange%boundary_coordinates, 2) + 1)) return
+        if (any(interchange%boundary_offsets(2:) < interchange%boundary_offsets(: &
             size(interchange%boundary_offsets) - 1))) return
         if (.not. finite_normalization(interchange%normalization)) return
         if (.not. all(ieee_is_finite(interchange%mapped_coordinates)) .or. &

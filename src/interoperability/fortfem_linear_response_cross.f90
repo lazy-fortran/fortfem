@@ -71,8 +71,8 @@ contains
         if (size(retained_indices) < 1 .or. &
             size(response_labels) /= size(retained_indices) .or. &
             shielding_trace_count < 0) return
-        if (any(retained_indices < 1) .or. &
-            .not. unique_indices(retained_indices)) return
+        if (any(retained_indices < 1)) return
+        if (.not. unique_indices(retained_indices)) return
         if (.not. unique_labels(response_labels)) return
 
         metadata%normalization_label = trim(normalization_label)
@@ -108,9 +108,9 @@ contains
             .not. allocated(metadata%response_labels)) return
         if (size(metadata%retained_indices) /= metadata%retained_response_count .or. &
             size(metadata%response_labels) /= metadata%retained_response_count) return
-        if (any(metadata%retained_indices < 1) .or. &
-            .not. unique_indices(metadata%retained_indices) .or. &
-            .not. unique_labels(metadata%response_labels)) return
+        if (any(metadata%retained_indices < 1)) return
+        if (.not. unique_indices(metadata%retained_indices)) return
+        if (.not. unique_labels(metadata%response_labels)) return
         valid = .true.
         status = 0
     end function validate_linear_response_cross_metadata

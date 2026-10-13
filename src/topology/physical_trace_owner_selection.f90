@@ -195,17 +195,20 @@ contains
         real(dp), intent(in) :: local_values(:, :), global_values(:, :)
         type(fortsparse_status_t), intent(out) :: status
         integer :: partition, global_id, row
+        logical :: incompatible
 
         validate_gather_inputs = .false.
         call validate_physical_trace_owner_selection(selection, status)
         if (status%code /= FORTSPARSE_OK) return
-        if (size(offsets) /= selection%partition_count + 1 .or. offsets(1) /= 1 .or. &
+        incompatible = size(offsets) /= selection%partition_count + 1
+        if (.not. incompatible) incompatible = offsets(1) /= 1 .or. &
             any(offsets(2:) <= offsets(:selection%partition_count)) .or. &
             offsets(size(offsets)) - 1 /= size(local_values, 1) .or. &
             size(local_values, 2) /= selection%component_dimension .or. &
             size(global_values, 1) /= selection%global_count .or. &
             size(global_values, 2) /= selection%component_dimension .or. &
-            any(.not. ieee_is_finite(local_values))) then
+            any(.not. ieee_is_finite(local_values))
+        if (incompatible) then
             call status_set(status, FORTSPARSE_INVALID_MATRIX, "physical trace gather has incompatible values")
             return
         end if
@@ -225,17 +228,20 @@ contains
         integer, intent(in) :: offsets(:)
         real(dp), intent(in) :: global_values_bar(:, :), local_values_bar(:, :)
         type(fortsparse_status_t), intent(out) :: status
+        logical :: incompatible
 
         validate_gather_vjp_inputs = .false.
         call validate_physical_trace_owner_selection(selection, status)
         if (status%code /= FORTSPARSE_OK) return
-        if (size(offsets) /= selection%partition_count + 1 .or. offsets(1) /= 1 .or. &
+        incompatible = size(offsets) /= selection%partition_count + 1
+        if (.not. incompatible) incompatible = offsets(1) /= 1 .or. &
             any(offsets(2:) <= offsets(:selection%partition_count)) .or. &
             size(global_values_bar, 1) /= selection%global_count .or. &
             size(global_values_bar, 2) /= selection%component_dimension .or. &
             offsets(size(offsets)) - 1 /= size(local_values_bar, 1) .or. &
             size(local_values_bar, 2) /= selection%component_dimension .or. &
-            any(.not. ieee_is_finite(global_values_bar))) then
+            any(.not. ieee_is_finite(global_values_bar))
+        if (incompatible) then
             call status_set(status, FORTSPARSE_INVALID_MATRIX, "physical trace gather VJP has incompatible values")
             return
         end if

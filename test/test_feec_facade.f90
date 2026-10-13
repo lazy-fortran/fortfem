@@ -8,6 +8,7 @@ program test_feec_facade
     use fortfem_kinds, only: dp
     use fortsparse, only: fortsparse_status_t
     implicit none
+    logical :: shape_ok
 
     integer, parameter :: incidence(3, 3) = reshape([ &
         -1, 1, 0, 0, -1, 1, -1, 0, 1], [3, 3])
@@ -72,9 +73,11 @@ program test_feec_facade
     call apply_tree_cotree_restriction(gauge, [10.0_dp, 20.0_dp, 30.0_dp], &
         reduced, gauge_status)
     call apply_tree_cotree_prolongation(gauge, reduced, prolonged, gauge_status)
-    call check_condition(gauge_status == 0 .and. size(reduced) == 1 .and. &
-        abs(reduced(1) - 30.0_dp) < 1.0e-14_dp .and. &
-        maxval(abs(prolonged - [0.0_dp, 0.0_dp, 30.0_dp])) < 1.0e-14_dp, &
+    shape_ok = gauge_status == 0
+    if (shape_ok) shape_ok = size(reduced) == 1
+    if (shape_ok) shape_ok = abs(reduced(1) - 30.0_dp) < 1.0e-14_dp .and. &
+        maxval(abs(prolonged - [0.0_dp, 0.0_dp, 30.0_dp])) < 1.0e-14_dp
+    call check_condition(shape_ok, &
         "canonical FEEC facade exposes a structure-preserving tree gauge")
 
     call check_summary("FEEC canonical facade")

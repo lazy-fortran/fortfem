@@ -9,6 +9,7 @@ program test_tree_cotree_gauge
         tree_cotree_gauge_t, validate_tree_cotree_gauge
     use fortfem_kinds, only: dp
     implicit none
+    logical :: shape_ok
 
     integer, parameter :: triangle_incidence(3, 3) = reshape([ &
         -1, 1, 0, 0, -1, 1, -1, 0, 1], [3, 3])
@@ -52,16 +53,20 @@ program test_tree_cotree_gauge
 
     call apply_tree_cotree_restriction(gauge, full_vector, reduced, status)
     call apply_tree_cotree_prolongation(gauge, reduced, prolonged, status)
-    call check_condition(status == 0 .and. size(reduced) == 1 .and. &
-        abs(reduced(1) - 30.0_dp) < 1.0e-14_dp .and. &
-        maxval(abs(prolonged - [0.0_dp, 0.0_dp, 30.0_dp])) < 1.0e-14_dp, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(reduced) == 1
+    if (shape_ok) shape_ok = abs(reduced(1) - 30.0_dp) < 1.0e-14_dp .and. &
+        maxval(abs(prolonged - [0.0_dp, 0.0_dp, 30.0_dp])) < 1.0e-14_dp
+    call check_condition(shape_ok, &
         "fixed tree gauge restricts and prolongs cotree coefficients")
 
     call reduce_tree_cotree_dense_system( &
         gauge, full_matrix, full_rhs, reduced_matrix, reduced_rhs, status)
-    call check_condition(status == 0 .and. size(reduced_matrix, 1) == 1 .and. &
-        abs(reduced_matrix(1, 1) - 4.0_dp) < 1.0e-14_dp .and. &
-        abs(reduced_rhs(1) - 3.0_dp) < 1.0e-14_dp, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(reduced_matrix, 1) == 1
+    if (shape_ok) shape_ok = abs(reduced_matrix(1, 1) - 4.0_dp) < 1.0e-14_dp .and. &
+        abs(reduced_rhs(1) - 3.0_dp) < 1.0e-14_dp
+    call check_condition(shape_ok, &
         "tree-cotree reduction extracts the direct cotree system")
 
     call reduce_tree_cotree_dense_system_jvp( &

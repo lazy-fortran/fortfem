@@ -400,8 +400,8 @@ contains
         if (radial_degree < 1 .or. azimuth_degree < 1 .or. &
             quadrature_order < 1) return
         if (radial_count < 5 .or. azimuth_count < azimuth_degree + 1) return
-        if (size(control_points, 1) /= 2 .or. &
-            any(shape(control_points(1, :, :)) /= &
+        if (size(control_points, 1) /= 2) return
+        if (any(shape(control_points(1, :, :)) /= &
             [azimuth_count, radial_count])) return
         if (any(shape(weights) /= [azimuth_count, radial_count])) return
         if (any(weights <= 0.0_dp)) return

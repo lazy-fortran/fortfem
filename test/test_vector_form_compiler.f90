@@ -7,6 +7,7 @@ program test_vector_form_compiler
         vector_test_function_t, vector_trial_function_t
     use fortfem_kinds, only: dp
     implicit none
+    logical :: shape_ok
 
     type(form_expr_t) :: form
     type(vector_test_function_t) :: test_field
@@ -27,16 +28,20 @@ program test_vector_form_compiler
         3.0_dp * inner(trial_field, test_field)) * dx
     call compile_vector_form_element( &
         form, "Nedelec", 1, vertices, 4, matrix, status)
-    call record_condition(status == 0 .and. size(matrix, 1) == 3 .and. &
-        abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(matrix, 1) == 3
+    if (shape_ok) shape_ok = abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp
+    call record_condition(shape_ok, &
         "Compiled Nedelec form reproduces exact curl and mass energy")
 
     form = (2.0_dp * inner(div(trial_field), div(test_field)) + &
         3.0_dp * inner(trial_field, test_field)) * dx
     call compile_vector_form_element( &
         form, "RT", 0, vertices, 4, matrix, status)
-    call record_condition(status == 0 .and. size(matrix, 1) == 3 .and. &
-        abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp, &
+    shape_ok = status == 0
+    if (shape_ok) shape_ok = size(matrix, 1) == 3
+    if (shape_ok) shape_ok = abs(matrix(2, 2) - 4.5_dp) < 2.0e-13_dp
+    call record_condition(shape_ok, &
         "Compiled RT form reproduces exact divergence and mass energy")
 
     form = (2.0_dp * inner(curl(trial_field), curl(test_field)) + &

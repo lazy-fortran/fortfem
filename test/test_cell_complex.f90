@@ -6,6 +6,7 @@ program test_cell_complex
         initialize_cell_complex, validate_cell_complex
     use fortfem_kinds, only: dp
     implicit none
+    logical :: shape_ok
 
     type(cell_complex_t) :: interval, circle, sphere, torus, invalid
     real(dp), allocatable :: cycles(:, :), harmonic(:, :), edge_metric(:, :)
@@ -49,9 +50,11 @@ program test_cell_complex
         all(betti == [1, 1, 0, 0]), &
         "circle Euler and Betti numbers match the loop oracle")
     call cell_complex_cycle_basis(circle, cycles, cycle_count, status)
-    call check_condition(status == 0 .and. cycle_count == 1 .and. &
-        size(cycles, 1) == 1 .and. abs(abs(cycles(1, 1)) - 1.0_dp) < 1.0e-14_dp .and. &
-        maxval(abs(matmul(real(boundary_1, dp), cycles))) < 1.0e-14_dp, &
+    shape_ok = status == 0 .and. cycle_count == 1
+    if (shape_ok) shape_ok = size(cycles, 1) == 1
+    if (shape_ok) shape_ok = abs(abs(cycles(1, 1)) - 1.0_dp) < 1.0e-14_dp .and. &
+        maxval(abs(matmul(real(boundary_1, dp), cycles))) < 1.0e-14_dp
+    call check_condition(shape_ok, &
         "circle cycle basis spans the exact integer kernel")
     call cell_complex_cocycle_basis(circle, cycles, cocycle_count, status)
     call check_condition(status == 0 .and. cocycle_count == 1 .and. &

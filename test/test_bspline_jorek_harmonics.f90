@@ -13,6 +13,7 @@ program test_bspline_jorek_harmonics
     use fortfem_kinds, only: dp
     use fortsparse, only: csc_matvec, csc_t, fortsparse_status_t
     implicit none
+    logical :: shape_ok
 
     real(dp), parameter :: knots_r(8) = [ &
         0.0_dp, 0.0_dp, 0.0_dp, 0.3_dp, 0.7_dp, 1.0_dp, 1.0_dp, 1.0_dp]
@@ -228,10 +229,11 @@ program test_bspline_jorek_harmonics
     call advance_bspline_jorek_poloidal_flux_midpoint_steps( &
         knots_r, knots_z, 2, 2, control_points, weights, potential, 5, &
         0.02_dp, 100, flux_state, sparse_status, flux_history)
-    call check_condition( &
-        size(flux_history, 2) == 101 .and. &
+    shape_ok = size(flux_history, 2) == 101
+    if (shape_ok) shape_ok = &
         maxval(abs(flux_history(:, 1) - flux_initial)) < 2.0e-14_dp .and. &
-        maxval(abs(flux_history(:, 101) - flux_state)) < 2.0e-14_dp, &
+        maxval(abs(flux_history(:, 101) - flux_state)) < 2.0e-14_dp
+    call check_condition(shape_ok, &
         "JOREK midpoint trajectory contains both exact endpoints")
     call check_condition(abs(dot_product( &
         flux_state, csc_matvec(mass, flux_state)) - initial_norm) < 2.0e-11_dp, &
