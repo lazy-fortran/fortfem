@@ -251,6 +251,31 @@ jobs:
         echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
         exit 1
 
+  debug-checks:
+    name: tests with runtime checks (debug profile)
+    runs-on: ubuntu-latest
+    env:
+      TEST_TIMEOUT: 600s
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev \
+          libsuperlu-dev
+
+    - name: Setup Fortran Package Manager
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+        chmod +x fpm-0.12.0-linux-x86_64-gcc-12
+        sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+
+    - name: Run the standard tests with bounds and floating-point checks
+      run: make test-debug
+
   enzyme:
     name: released Flang 22 + pinned Enzyme
     runs-on: ubuntu-24.04
@@ -313,17 +338,22 @@ jobs:
   # Summary job for branch protection - must be named 'test' for PR checks
   test:
     name: test
-    needs: [build-test, enzyme, generated]
+    needs: [build-test, debug-checks, enzyme, generated]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
           echo "Build-test result: ${{ needs.build-test.result }}"
+          echo "Debug-checks result: ${{ needs.debug-checks.result }}"
           echo "Enzyme result: ${{ needs.enzyme.result }}"
           echo "Generated-source result: ${{ needs.generated.result }}"
           if [ "${{ needs.build-test.result }}" != "success" ]; then
             echo "::error::Tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.debug-checks.result }}" != "success" ]; then
+            echo "::error::Tests with runtime checks failed"
             exit 1
           fi
           if [ "${{ needs.generated.result }}" != "success" ]; then
