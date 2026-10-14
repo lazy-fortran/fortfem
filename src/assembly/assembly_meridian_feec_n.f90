@@ -971,10 +971,13 @@ contains
         real(dp), allocatable, intent(inout) :: vals(:)
         integer :: j, p, n
 
-        if (pos == 0 .and. .not. (allocated(rows) .and. &
-            size(rows) >= a%nnz)) then
-            if (allocated(rows)) deallocate (rows, cols, vals)
-            allocate (rows(a%nnz), cols(a%nnz), vals(a%nnz))
+        if (pos == 0) then
+            if (allocated(rows)) then
+                if (size(rows) < a%nnz) deallocate (rows, cols, vals)
+            end if
+            if (.not. allocated(rows)) then
+                allocate (rows(a%nnz), cols(a%nnz), vals(a%nnz))
+            end if
         end if
         n = pos
         do j = 1, a%ncol
