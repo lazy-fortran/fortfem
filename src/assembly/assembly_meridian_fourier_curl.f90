@@ -140,8 +140,9 @@ contains
         integer, allocatable :: rows(:), cols(:), gdof(:)
         real(dp), allocatable :: vals(:), ml(:, :), gl(:, :), phi(:, :)
         real(dp), allocatable :: kp(:, :), xq(:, :), w(:), kt(:, :, :)
-        real(dp), allocatable :: phis(:, :, :), tr(:)
-        real(dp) :: x(2), c
+        real(dp), allocatable :: phis(:, :, :), tr(:), tt(:, :), h(:, :)
+        real(dp), allocatable :: hb(:, :)
+        real(dp) :: x(2)
         type(fortsparse_status_t) :: fst
         integer :: nt, nl, nb, ml_n, t, q, j, p, i, b, b2, base, bad, st, np
         integer :: ndof
@@ -156,13 +157,26 @@ contains
         ml_n = nl*nb
         np = fs%nq*nphi
         allocate (rows(ml_n*ml_n*nt), cols(ml_n*ml_n*nt), vals(ml_n*ml_n*nt))
+        ! The quadrature angles phi_j are the same at every meridian point,
+        ! so the phi sum factorises: H_j = sum_q w_q/nphi phi_q^T K phi_q,
+        ! then block (b, b2) = sum_j tr_b(phi_j) tr_b2(phi_j) H_j, one GEMM
+        ! with the angle table tt(j, (b, b2)).
+        allocate (tt(nphi, nb*nb), tr(nb))
+        do j = 1, nphi
+            call trig_values(modes, 2*pi*(j - 1)/nphi, tr)
+            do b2 = 0, nb - 1
+                do b = 0, nb - 1
+                    tt(j, b2*nb + b + 1) = tr(b + 1)*tr(b2 + 1)
+                end do
+            end do
+        end do
         bad = 0
         !$omp parallel if(nt >= par_min) default(shared) &
-        !$omp private(t, q, j, p, i, b, b2, c, base, st, ml, gl, phi, kp, xq, &
-        !$omp w, kt, phis, tr, gdof, x) reduction(max:bad)
+        !$omp private(t, q, j, p, i, b, b2, base, st, ml, gl, phi, kp, xq, &
+        !$omp w, kt, phis, gdof, x, h, hb) reduction(max:bad)
         allocate (ml(ml_n, ml_n), gl(nl, nl), phi(3, nl), kp(3, nl), &
             xq(3, np), w(fs%nq), kt(3, 3, np), phis(3, nl, fs%nq), &
-            tr(nb), gdof(ml_n))
+            gdof(ml_n), h(nl*nl, nphi), hb(nl*nl, nb*nb))
         !$omp do schedule(dynamic, 4)
         do t = 1, nt
             ml = 0.0_dp
@@ -182,20 +196,20 @@ contains
                 bad = 1
                 cycle
             end if
+            h = 0.0_dp
             do q = 1, fs%nq
                 do j = 1, nphi
                     p = (q - 1)*nphi + j
                     kp = matmul(kt(:, :, p), phis(:, :, q))
                     gl = matmul(transpose(phis(:, :, q)), kp)
-                    call trig_values(modes, xq(3, p), tr)
-                    do b2 = 0, nb - 1
-                        do b = 0, nb - 1
-                            c = (w(q)/nphi)*tr(b + 1)*tr(b2 + 1)
-                            ml(b*nl + 1:(b + 1)*nl, b2*nl + 1:(b2 + 1)*nl) = &
-                                ml(b*nl + 1:(b + 1)*nl, b2*nl + 1:(b2 + 1)*nl) &
-                                + c*gl
-                        end do
-                    end do
+                    h(:, j) = h(:, j) + (w(q)/nphi)*reshape(gl, [nl*nl])
+                end do
+            end do
+            hb = matmul(h, tt)
+            do b2 = 0, nb - 1
+                do b = 0, nb - 1
+                    ml(b*nl + 1:(b + 1)*nl, b2*nl + 1:(b2 + 1)*nl) = &
+                        reshape(hb(:, b2*nb + b + 1), [nl, nl])
                 end do
             end do
             do b = 0, nb - 1
