@@ -85,10 +85,42 @@ contains
     ! 2. Metric identities: g^-1 g = I and det(g) = J^2 on a distorted triangle.
     subroutine check_metric_identities()
         real(dp) :: xy(3, 2), jac, g(2, 2), ginv(2, 2), inverse_b(2, 2)
-        real(dp) :: prod(2, 2), det_g
+        real(dp) :: prod(2, 2), det_g, edge(2, 2), edge_g(2, 2)
+        real(dp) :: ref_grad(3, 2), phys(3, 2), lambda(3), err_map
+        integer :: i, j
 
         xy = distorted_triangle()
         call poisson_p1_metric(xy, jac, g, ginv, inverse_b)
+        ! g(i, j) = e_i . e_j for the edge vectors e_1 = x1 - x0, e_2 = x2 - x0
+        ! of the map x = x0 + B xi; the transposed product differs here.
+        edge(:, 1) = xy(2, :) - xy(1, :)
+        edge(:, 2) = xy(3, :) - xy(1, :)
+        do j = 1, 2
+            do i = 1, 2
+                edge_g(i, j) = dot_product(edge(:, i), edge(:, j))
+            end do
+        end do
+        call report( &
+            maxval(abs(g - edge_g)) < 1.0e-14_dp*maxval(abs(edge_g)), &
+            "g(i, j) = e_i . e_j on a distorted triangle")
+        ! g^-1 carries reference gradients to physical inner products:
+        ! grad_x phi_i . grad_x phi_j = grad_xi phi_i . g^-1 grad_xi phi_j.
+        call poisson_p1_reference_basis(0.0_dp, 0.0_dp, lambda, ref_grad)
+        phys = transpose(matmul(inverse_b, transpose(ref_grad)))
+        err_map = 0.0_dp
+        do j = 1, 3
+            do i = 1, 3
+                err_map = max(err_map, abs(dot_product(phys(i, :), phys(j, :)) &
+                    - dot_product(ref_grad(i, :), matmul(ginv, ref_grad(j, :)))))
+            end do
+        end do
+        call report(err_map < 1.0e-13_dp, &
+            "g^-1 reproduces the physical gradient inner products")
+        ! The physical gradients of the P1 basis are exact: phi_1 = lambda_1
+        ! is affine in x and its gradient must satisfy grad phi_1 . e_k = delta_1k.
+        call report( &
+            maxval(abs(matmul(phys(2:3, :), edge) - identity2())) < 1.0e-13_dp, &
+            "grad_x phi_i . e_k = delta_ik for the mapped P1 basis")
         prod = matmul(ginv, g)
         call report( &
             maxval(abs(prod - identity2())) < 1.0e-14_dp, &
