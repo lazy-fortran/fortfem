@@ -145,6 +145,7 @@ run_codegen gen_equilibrated_nonconforming_products
 run_codegen gen_hcurl_bound_products
 
 cd "$repository_dir"
+fo fmt "$generated_dir/fortfem_mapped_oscillation_products.f90"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
 fo fmt "$generated_dir/fortfem_tetra_modal_vector_identities.f90"
 fo fmt "$generated_dir/fortfem_tetra_modal_component_curls_jvp.f90"

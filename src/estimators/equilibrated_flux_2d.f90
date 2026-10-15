@@ -42,9 +42,11 @@ module fortfem_equilibrated_flux_2d
     !! |||v|||^2 = int A |grad v|^2 and C_F a caller-supplied Friedrichs constant
     !! ||v|| <= C_F |||v||| on that space. The oscillation term is, per affine
     !! (hence convex) cell, (h_T/pi) A_T,min^(-1/2) ||f - Pi f||_T (Payne--
-    !! Weinberger, A_T,min a caller-supplied lower bound of A on T), and for
-    !! every isoparametric (possibly non-convex) cell the unconditional
-    !! C_F ||f - Pi f||_K, from int_K (f - Pi f) v <= ||f - Pi f||_K ||v||_K;
+    !! Weinberger, A_T,min a caller-supplied lower bound of A on T).
+    !! Isoparametric cells use a local pullback constant if the Bernstein
+    !! determinant hull is positive (see mapped_oscillation_bound);
+    !! otherwise they retain the
+    !! unconditional C_F ||f - Pi f||_K. The smaller valid constant is used;
     !! the two groups are summed in quadrature separately. The Neumann term is
     !! sqrt(sum_T (C_T sum_e ||g - sigma.n||_e)^2) over the Neumann edges e of
     !! the (affine) cell T, with the guaranteed trace constant
@@ -89,6 +91,14 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_jacobian_p2
     use fortfem_generated_equilibrated_jacobian_p3, only: &
         generated_equilibrated_jacobian_p3
+    use fortfem_generated_equilibrated_bernstein_midpoint, only: &
+        generated_equilibrated_bernstein_midpoint
+    use fortfem_generated_equilibrated_relative_jacobian_norm, only: &
+        generated_equilibrated_relative_jacobian_norm
+    use fortfem_generated_equilibrated_determinant_controls, only: &
+        generated_equilibrated_determinant_controls
+    use fortfem_generated_equilibrated_mapped_poincare, only: &
+        generated_equilibrated_mapped_poincare
     use fortfem_generated_equilibrated_determinant, only: &
         generated_equilibrated_determinant
     use fortfem_generated_equilibrated_inverse_transpose, only: &
@@ -125,6 +135,8 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_tensor_min_eigenvalue
     use fortfem_generated_equilibrated_oscillation_integrand, only: &
         generated_equilibrated_oscillation_integrand
+    use fortfem_generated_equilibrated_reference_oscillation, only: &
+        generated_equilibrated_reference_oscillation
     use fortfem_generated_equilibrated_divergence_integrand, only: &
         generated_equilibrated_divergence_integrand
     use fortfem_generated_equilibrated_edge_legendre, only: &
@@ -187,6 +199,9 @@ module fortfem_equilibrated_flux_2d
         real(dp), allocatable :: hat(:, :)                  !< (3, nq)
         !> Reference gradients of the geometry shape functions, (nloc, 2, nq).
         real(dp), allocatable :: geo_grad(:, :, :)
+        !> Geometry gradients at vertices and edge midpoints for the Bernstein
+        !> hull of the Jacobian (degree <= 2), (nloc, 2, 6).
+        real(dp), allocatable :: geo_bound_grad(:, :, :)
         !> Edge rule on [0, 1], per reference edge: hat values (3, nq1), RT normal
         !> trace sigma^.n of every RT function (nrt, nq1), shifted Legendre
         !> values (nedge, nq1).
@@ -344,7 +359,7 @@ contains
         type(topology_t) :: topo
         type(problem_t) :: prob
         real(dp), allocatable :: projection(:, :), contribution(:, :, :)
-        real(dp), allocatable :: divergence_sq(:), source_sq(:)
+        real(dp), allocatable :: divergence_sq(:), source_sq(:), reference_sq(:)
         real(dp), allocatable :: edge_points(:), edge_rule(:)
         integer :: nv, nt, nloc, a, t, failed, nodes_status, nq1
         logical :: cells_ok, has_neumann
@@ -422,18 +437,22 @@ contains
         end if
 
         allocate (projection(ref%nk, nt), estimate%cell_oscillation(nt))
-        allocate (contribution(ref%nrt, 3, nt), source_sq(nt))
+        allocate (contribution(ref%nrt, 3, nt), source_sq(nt), reference_sq(nt))
         contribution = 0.0_dp
         failed = 0
         !$omp parallel do schedule(static)
         do t = 1, nt
-            call project_source(ref, prob%nodes(:, :, t), source(:, t), &
-                projection(:, t), source_sq(t))
             if (prob%affine(t)) then
+                call project_source(ref, prob%nodes(:, :, t), source(:, t), &
+                    projection(:, t), source_sq(t))
                 estimate%cell_oscillation(t) = cell_diameter(prob%nodes(:, 1:3, t)) &
                     /acos(-1.0_dp)*sqrt(source_sq(t)/coefficient_lower(t))
             else
-                estimate%cell_oscillation(t) = friedrichs_constant*sqrt(source_sq(t))
+                call project_source(ref, prob%nodes(:, :, t), source(:, t), &
+                    projection(:, t), source_sq(t), reference_sq(t))
+                estimate%cell_oscillation(t) = mapped_oscillation_bound(ref, &
+                    prob%nodes(:, :, t), coefficient_lower(t), &
+                    friedrichs_constant, source_sq(t), reference_sq(t))
             end if
         end do
         !$omp end parallel do
@@ -583,6 +602,7 @@ contains
         real(dp), allocatable :: lagrange_nodes(:, :), lagrange_value(:)
         real(dp), allocatable :: lagrange_grad(:, :)
         real(dp) :: targets(2, nloc), point(2), legendre(7), normal(2)
+        real(dp) :: control_points(2, 6)
         real(dp), allocatable :: rt_edge(:, :), div_edge(:)
         integer :: q, i, j, e, order(nloc), geometry_degree
 
@@ -629,6 +649,20 @@ contains
             if (status /= 0) return
             do i = 1, nloc
                 ref%geo_grad(i, :, q) = lagrange_grad(:, order(i))
+            end do
+        end do
+        ! A P2/P3 geometry map has an affine/quadratic Jacobian. Its
+        ! Bernstein controls need only these six geometry samples, shared by
+        ! every cell; no cellwise allocation or basis evaluation is needed.
+        call reference_geometry_nodes(6, control_points)
+        allocate (ref%geo_bound_grad(nloc, 2, 6))
+        do q = 1, 6
+            call evaluate_triangle_lagrange_basis(geometry_basis, &
+                control_points(1, q), control_points(2, q), lagrange_value, &
+                lagrange_grad, status)
+            if (status /= 0) return
+            do i = 1, nloc
+                ref%geo_bound_grad(i, :, q) = lagrange_grad(:, order(i))
             end do
         end do
         ref%nq1 = size(edge_xi)
@@ -739,12 +773,67 @@ contains
             values, divergences, status)
     end subroutine physical_rt
 
-    subroutine project_source(ref, nodes, f, coefficients, source_sq)
+    real(dp) function mapped_oscillation_bound(ref, nodes, lower, global, &
+            source_sq, reference_sq) result(bound)
+        !! Let G = F o F0^(-1) map the straight vertex triangle T0 to K.
+        !! Bernstein hulls bound L >= sup ||DG||_2 and dmin <= det DF.
+        !! Pull back g = f-Pi f, whose integral vanishes, subtract the mean of
+        !! v o G on T0 and apply Payne--Weinberger there. With rhat = det DF g,
+        !! |int_K g v| <= h0/pi * L/sqrt(dmin) ||rhat||_ref ||grad v||_K.
+        !! Divide by sqrt(A_min) for the energy norm. No convexity of K is
+        !! required; F must be an injective cell map, as for the FE space itself.
+        !! If the determinant hull is not positive, retain global C_F ||g||_K.
+        !! Arithmetic and source projection quadrature remain approximate.
+        type(reference_t), intent(in) :: ref
+        real(dp), intent(in) :: nodes(:, :), lower, global, source_sq, reference_sq
+        real(dp) :: jac(2, 2, 6), affine(2, 2), invt(2, 2), det
+        real(dp) :: control(2, 2), norm_bound, value, local, det_controls(15)
+        integer :: q, e
+
+        bound = global*sqrt(source_sq)
+        call generated_equilibrated_jacobian_p1(nodes(:, 1:3), p1_gradient, affine)
+        call generated_equilibrated_determinant(affine, det)
+        if (.not. (det > 0.0_dp)) return
+        call generated_equilibrated_inverse_transpose(affine, det, invt)
+        do q = 1, 6
+            select case (ref%nloc)
+            case (3)
+                call generated_equilibrated_jacobian_p1(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            case (6)
+                call generated_equilibrated_jacobian_p2(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            case default
+                call generated_equilibrated_jacobian_p3(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            end select
+        end do
+        norm_bound = 0.0_dp
+        do q = 1, 6
+            control = jac(:, :, q)
+            if (q > 3) then
+                e = q - 3
+                call generated_equilibrated_bernstein_midpoint(jac(:, :, q), &
+                    jac(:, :, e), jac(:, :, mod(e, 3) + 1), control)
+                jac(:, :, q) = control
+            end if
+            call generated_equilibrated_relative_jacobian_norm(control, invt, value)
+            norm_bound = max(norm_bound, value)
+        end do
+        call generated_equilibrated_determinant_controls(jac, det_controls)
+        if (.not. (minval(det_controls) > 0.0_dp)) return
+        call generated_equilibrated_mapped_poincare(cell_diameter(nodes(:, 1:3)), &
+            norm_bound, minval(det_controls), lower, acos(-1.0_dp), local)
+        bound = min(bound, local*sqrt(reference_sq))
+    end function mapped_oscillation_bound
+
+    subroutine project_source(ref, nodes, f, coefficients, source_sq, reference_sq)
         !! Reference-cell L2 projection of det J f onto P_k(T^), so that
         !! Pi f = (coefficients . P_k)/det J, and ||f - Pi f||_K^2.
         type(reference_t), intent(in) :: ref
         real(dp), intent(in) :: nodes(:, :), f(:)
         real(dp), intent(out) :: coefficients(:), source_sq
+        real(dp), intent(out), optional :: reference_sq
         real(dp) :: jac(2, 2), det, mass(ref%nk, ref%nk), rhs(ref%nk, 1)
         real(dp) :: integrand
         integer :: q, l, ipiv(ref%nk), info
@@ -761,13 +850,22 @@ contains
         call dgesv(ref%nk, 1, mass, ref%nk, ipiv, rhs, ref%nk, info)
         coefficients = rhs(:, 1)
         source_sq = 0.0_dp
+        if (present(reference_sq)) reference_sq = 0.0_dp
         do q = 1, ref%nq
             call jacobian_at(ref, nodes, q, jac, det)
             call generated_equilibrated_oscillation_integrand(f(q), &
                 dot_product(coefficients, ref%poly(:, q)), det, integrand)
             source_sq = source_sq + ref%weights(q)*integrand
+            if (present(reference_sq)) then
+                call generated_equilibrated_reference_oscillation(f(q), &
+                    dot_product(coefficients, ref%poly(:, q)), det, integrand)
+                reference_sq = reference_sq + ref%weights(q)*integrand
+            end if
         end do
-        if (info /= 0) source_sq = huge(1.0_dp)
+        if (info /= 0) then
+            source_sq = huge(1.0_dp)
+            if (present(reference_sq)) reference_sq = huge(1.0_dp)
+        end if
     end subroutine project_source
 
     subroutine solve_patch(ref, topo, prob, a, coefficient, source, &
