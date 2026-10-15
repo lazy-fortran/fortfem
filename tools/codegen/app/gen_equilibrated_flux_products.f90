@@ -1,14 +1,15 @@
 program gen_equilibrated_flux_products
     !! Pointwise leaves of the patchwise equilibrated-flux estimator: cell
     !! geometry (Lagrange P1/P2/P3 Jacobians, determinant, inverse transpose,
-    !! hat gradients), reference monomials and the quadrature integrands
-    !! (densities per unit reference area). Contractions over
-    !! runtime sizes, patch topology and the dense solves stay handwritten in
-    !! the estimator.
+    !! hat gradients), reference monomials, the quadrature integrands
+    !! (densities per unit reference area) and the Neumann edge leaves
+    !! (shifted Legendre moments, edge speed, normal trace, edge integrands).
+    !! Contractions over runtime sizes, patch topology and the dense solves
+    !! stay handwritten in the estimator.
     use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, num, operator(*), operator(+), &
+    use fortsym_expr, only: expr_t, num, sqrt, operator(*), operator(+), &
         operator(-), operator(/), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: chars, str, str_t
@@ -78,6 +79,33 @@ program gen_equilibrated_flux_products
         [str("divergence"), str("projection"), str("determinant")], &
         [str(""), str(""), str("")], &
         [str("value")], [str("")], [str("value")], divergence_roots())
+
+    call emit("equilibrated_edge_legendre", &
+        [str("s")], [str("")], [str("values")], [str("(7)")], &
+        [str("values(1)"), str("values(2)"), str("values(3)"), str("values(4)"), &
+        str("values(5)"), str("values(6)"), str("values(7)")], legendre_roots())
+
+    call emit("equilibrated_edge_speed", &
+        [str("jacobian"), str("reference_tangent")], [str("(2,2)"), str("(2)")], &
+        [str("speed")], [str("")], [str("speed")], edge_speed_roots())
+
+    call emit("equilibrated_reference_normal", &
+        [str("reference_tangent")], [str("(2)")], &
+        [str("normal")], [str("(2)")], &
+        [str("normal(1)"), str("normal(2)")], reference_normal_roots())
+
+    call emit("equilibrated_flux_normal_component", &
+        [str("reference_value"), str("normal")], [str("(2)"), str("(2)")], &
+        [str("value")], [str("")], [str("value")], normal_component_roots())
+
+    call emit("equilibrated_neumann_target", &
+        [str("psi"), str("data"), str("speed")], [str(""), str(""), str("")], &
+        [str("value")], [str("")], [str("value")], neumann_target_roots())
+
+    call emit("equilibrated_neumann_defect_integrand", &
+        [str("data"), str("reference_flux"), str("speed")], &
+        [str(""), str(""), str("")], [str("value")], [str("")], &
+        [str("value")], neumann_defect_roots())
 
     close(unit)
 
@@ -224,6 +252,59 @@ contains
         d = ex("determinant")*ex("divergence") + ex("projection")
         roots(1) = d*d/ex("determinant")
     end function divergence_roots
+
+    function legendre_roots() result(roots)
+        !! Shifted Legendre polynomials P_0..P_6 on [0,1] by Bonnet's recurrence
+        !! in x = 2 s - 1, the edge-moment basis of the Nedelec/RT dofs.
+        type(expr_t) :: roots(7), x
+        integer :: j
+
+        x = num(arena, 2)*ex("s") - num(arena, 1)
+        roots(1) = num(arena, 1)
+        roots(2) = x
+        do j = 1, 5
+            roots(j + 2) = (num(arena, 2*j + 1)*x*roots(j + 1) &
+                - num(arena, j)*roots(j))/num(arena, j + 1)
+        end do
+    end function legendre_roots
+
+    function edge_speed_roots() result(roots)
+        !! |J t| for the reference edge tangent t: edge length per parameter.
+        type(expr_t) :: roots(1), t1, t2
+        t1 = ex("jacobian(1,1)")*ex("reference_tangent(1)") + &
+            ex("jacobian(1,2)")*ex("reference_tangent(2)")
+        t2 = ex("jacobian(2,1)")*ex("reference_tangent(1)") + &
+            ex("jacobian(2,2)")*ex("reference_tangent(2)")
+        roots(1) = sqrt(t1*t1 + t2*t2)
+    end function edge_speed_roots
+
+    function reference_normal_roots() result(roots)
+        !! Outward reference normal (t_y, -t_x) of a counter-clockwise edge with
+        !! tangent t: the direction of the RT normal-trace moments.
+        type(expr_t) :: roots(2)
+        roots(1) = ex("reference_tangent(2)")
+        roots(2) = -ex("reference_tangent(1)")
+    end function reference_normal_roots
+
+    function normal_component_roots() result(roots)
+        type(expr_t) :: roots(1)
+        roots(1) = ex("reference_value(1)")*ex("normal(1)") + &
+            ex("reference_value(2)")*ex("normal(2)")
+    end function normal_component_roots
+
+    function neumann_target_roots() result(roots)
+        !! psi g |x'(s)|: the flux per unit edge parameter to be projected.
+        type(expr_t) :: roots(1)
+        roots(1) = ex("psi")*ex("data")*ex("speed")
+    end function neumann_target_roots
+
+    function neumann_defect_roots() result(roots)
+        !! (g - q/speed)^2 speed: squared L2(edge) density per unit parameter,
+        !! q the reconstructed flux per unit parameter.
+        type(expr_t) :: roots(1), d
+        d = ex("data") - ex("reference_flux")/ex("speed")
+        roots(1) = d*d*ex("speed")
+    end function neumann_defect_roots
 
     subroutine emit(name, args, arg_shapes, outs, out_shapes, refs, roots)
         character(*), intent(in) :: name

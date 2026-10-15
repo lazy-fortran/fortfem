@@ -12,11 +12,11 @@ program test_equilibrated_flux_curved_2d
     use fortfem_kinds, only: dp
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_triangle_rt_arbitrary_order, only: triangle_rt_basis_t, &
-        initialize_triangle_raviart_thomas, evaluate_triangle_raviart_thomas
+        evaluate_triangle_raviart_thomas
     use fortfem_equilibrated_flux_2d, only: equilibrated_flux_estimate, &
         equilibrated_flux_estimate_t, EQUILIBRATION_OK
     use equilibrated_test_mesh, only: test_mesh_t, build_test_mesh, cell_point, &
-        galerkin_solve
+        galerkin_solve, random_rt_flux, edge_jump
     implicit none
     real(dp), parameter :: pi = acos(-1.0_dp)
     real(dp), parameter :: amplitude = 0.06_dp
@@ -74,66 +74,25 @@ contains
     end subroutine rule
 
     subroutine recovery(m, k0, n, res, normal_jump, stat)
-        !! Global RT_k0 flux from random edge moments (one array per global
-        !! edge, flipped on cells traversing it backwards for even Legendre
-        !! degrees) and random interior moments, mapped by the pointwise Piola
-        !! transformation of the isoparametric cells. A = 1, f = -div sigma.
+        !! Random global RT_k0 flux (see random_rt_flux), mapped by the pointwise
+        !! Piola transformation of the isoparametric cells. A = 1, f = -div sigma.
         integer, intent(in) :: m, k0, n
         type(equilibrated_flux_estimate_t), intent(out) :: res
         real(dp), intent(out) :: normal_jump
         integer, intent(out) :: stat
         type(test_mesh_t) :: mesh
         type(triangle_rt_basis_t) :: rt
-        real(dp), allocatable :: xi(:), eta(:), w(:), dofs(:, :), edge_val(:, :)
+        real(dp), allocatable :: xi(:), eta(:), w(:), dofs(:, :)
         real(dp), allocatable :: coef(:, :), f(:, :), flux(:, :, :), lower(:)
         real(dp), allocatable :: phi(:), gref(:, :), rt_val(:, :), rt_div(:)
-        integer, allocatable :: edge_id(:, :), cell_edge(:, :), cell_sign(:, :, :)
-        integer :: nrt0, nedge0, nint0, nt, nedges, t, e, a, b, j, i, q
+        integer :: nrt0, nt, t, e, a, b, j, i, q
         real(dp) :: x(2), jac(2, 2), det, sigma(2), divergence, curvature
 
         call build_test_mesh(n, m, amplitude, mesh, stat)
         if (stat /= 0) error stop "mesh"
-        call initialize_triangle_raviart_thomas(k0, rt, stat)
-        if (stat /= 0) error stop "rt"
-        nedge0 = k0 + 1
-        nint0 = k0*(k0 + 1)
-        nrt0 = (k0 + 1)*(k0 + 3)
+        call random_rt_flux(mesh, k0, rt, dofs)
+        nrt0 = size(dofs, 1)
         nt = mesh%nt
-        allocate (edge_id(mesh%nv, mesh%nv), cell_edge(3, nt), cell_sign(nedge0, 3, nt))
-        edge_id = 0
-        nedges = 0
-        do t = 1, nt
-            do e = 1, 3
-                a = mesh%triangles(e, t)
-                b = mesh%triangles(mod(e, 3) + 1, t)
-                if (edge_id(min(a, b), max(a, b)) == 0) then
-                    nedges = nedges + 1
-                    edge_id(min(a, b), max(a, b)) = nedges
-                end if
-                cell_edge(e, t) = edge_id(min(a, b), max(a, b))
-                do j = 1, nedge0
-                    cell_sign(j, e, t) = 1
-                    if (a > b .and. mod(j, 2) == 1) cell_sign(j, e, t) = -1
-                end do
-            end do
-        end do
-        allocate (edge_val(nedge0, nedges), dofs(nrt0, nt))
-        do e = 1, nedges
-            do j = 1, nedge0
-                edge_val(j, e) = sin(2.3_dp*e + 1.1_dp*j)
-            end do
-        end do
-        do t = 1, nt
-            do e = 1, 3
-                do j = 1, nedge0
-                    dofs((e - 1)*nedge0 + j, t) = cell_sign(j, e, t) &
-                        *edge_val(j, cell_edge(e, t))
-                end do
-            end do
-            do i = 1, nint0
-                dofs(3*nedge0 + i, t) = 0.5_dp*sin(0.7_dp*t + 1.3_dp*i)
-            end do
-        end do
 
         ! Normal-flux continuity across every interior edge, own geometry.
         normal_jump = 0.0_dp
@@ -183,51 +142,6 @@ contains
             eta, w, coef, f, flux, lower, 1.0_dp/pi, res, stat, mesh%nodes)
 
     end subroutine recovery
-
-    real(dp) function edge_jump(mesh, rt, dofs, t1, e1, t2, e2) result(jmp)
-        !! Max over sample points of q_1(s) + q_2(1 - s), q the flux per unit
-        !! edge parameter along the outward normal (t_y, -t_x).
-        type(test_mesh_t), intent(in) :: mesh
-        type(triangle_rt_basis_t), intent(in) :: rt
-        real(dp), intent(in) :: dofs(:, :)
-        integer, intent(in) :: t1, e1, t2, e2
-        real(dp), parameter :: s(3) = [0.2_dp, 0.5_dp, 0.9_dp]
-        integer :: l
-
-        jmp = 0.0_dp
-        do l = 1, 3
-            jmp = max(jmp, abs(edge_flux(mesh, rt, dofs, t1, e1, s(l)) &
-                + edge_flux(mesh, rt, dofs, t2, e2, 1.0_dp - s(l))))
-        end do
-    end function edge_jump
-
-    real(dp) function edge_flux(mesh, rt, dofs, tc, ec, s) result(qq)
-        type(test_mesh_t), intent(in) :: mesh
-        type(triangle_rt_basis_t), intent(in) :: rt
-        real(dp), intent(in) :: dofs(:, :), s
-        integer, intent(in) :: tc, ec
-        real(dp) :: p(2), tref(2), tphys(2), xx(2), jj(2, 2), dd, sg(2)
-        real(dp) :: phi(mesh%nb), gref(2, mesh%nb), rt_val(2, size(dofs, 1))
-        real(dp) :: rt_div(size(dofs, 1))
-        integer :: stat
-
-        select case (ec)
-        case (1)
-            p = [s, 0.0_dp]
-            tref = [1.0_dp, 0.0_dp]
-        case (2)
-            p = [1.0_dp - s, s]
-            tref = [-1.0_dp, 1.0_dp]
-        case default
-            p = [0.0_dp, 1.0_dp - s]
-            tref = [0.0_dp, -1.0_dp]
-        end select
-        call cell_point(mesh, tc, p(1), p(2), xx, jj, dd, phi, gref)
-        call evaluate_triangle_raviart_thomas(rt, p(1), p(2), rt_val, rt_div, stat)
-        sg = matmul(jj, matmul(rt_val, dofs(:, tc)))/dd
-        tphys = matmul(jj, tref)
-        qq = sg(1)*tphys(2) - sg(2)*tphys(1)
-    end function edge_flux
 
 
     subroutine manufactured(m, degree, n, res, energy_error, stat)
