@@ -92,5 +92,42 @@ program gen_meridian_hcurl_equilibration_products
         status="replace", action="write", iostat=ios)
     if (ios /= 0) error stop "cannot write meridian H(curl) products"
     write (unit, "(a)") code(:len(code) - 1)
+
+    ! Scaled potential s = sigma/R (sheet and trace loads prescribe R s):
+    ! s and grad s from sigma, grad sigma, R and grad R.
+    block
+        type(expr_t) :: sv(6), so(3)
+        type(kernel_spec_t) :: sspec
+        character(len=*), parameter :: sin_names(6) = [character(len=5) :: &
+            "rr", "grr1", "grr2", "sig", "gsig1", "gsig2"]
+        character(len=*), parameter :: sout_names(3) = [character(len=3) :: &
+            "s", "gs1", "gs2"]
+        do i = 1, 6
+            sv(i) = sym(arena, trim(sin_names(i)))
+        end do
+        so(1) = sv(4)/sv(1)
+        so(2) = sv(5)/sv(1) - sv(4)*sv(2)/(sv(1)*sv(1))
+        so(3) = sv(6)/sv(1) - sv(4)*sv(3)/(sv(1)*sv(1))
+        do root = 1, 3
+            result = engine%simplify(so(root))
+            if (result%ok) so(root) = result%value
+        end do
+        sspec%name = str("generated_meridian_hcurl_scaled_potential")
+        sspec%module_name = str("fortfem_generated_meridian_hcurl_scaled_potential")
+        sspec%mode = KERNEL_SUBROUTINE
+        sspec%generator = str("gen_meridian_hcurl_equilibration_products")
+        sspec%generator_revision = str(fortsym_revision())
+        sspec%regenerate_command = str("cd tools/codegen && ./generate.sh")
+        sspec%pure_procedure = .true.
+        allocate (sspec%args(6), sspec%outputs(3))
+        do i = 1, 6
+            sspec%args(i) = str(trim(sin_names(i)))
+        end do
+        do i = 1, 3
+            sspec%outputs(i) = str(trim(sout_names(i)))
+        end do
+        code = chars(emit_kernel(so, sspec))
+        write (unit, "(a)") code(:len(code) - 1)
+    end block
     close (unit)
 end program gen_meridian_hcurl_equilibration_products

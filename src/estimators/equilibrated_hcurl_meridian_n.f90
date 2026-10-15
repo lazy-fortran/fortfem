@@ -76,11 +76,41 @@ module fortfem_equilibrated_hcurl_meridian_n
     !! curl_n^* H|^2)^(1/2), since ||e/sqrt(R)|| <= ||curl_n e||/|n| for a = 0;
     !! it is not needed because H(s) is exactly equilibrated.)
     !!
-    !! Consumers.  The Steklov (exterior) term is not part of this module; it
-    !! adds a boundary functional to the right-hand side, which would
-    !! constrain R s on the boundary (a prescribed boundary trace of s) and
-    !! drop the free boundary treatment.  Both solvers could take prescribed
-    !! values for the boundary nodes of s; that hook is not implemented.
+    !! Edge (sheet) loads and the free trace.  Let the load also contain
+    !! L(v) = int_E G (v . t) dl over oriented mesh edges E (G per unit
+    !! length, t the unit tangent of the edge orientation), e.g. a toroidal
+    !! sheet current on an interior curve, R K_t = G.  For real v and a
+    !! piecewise continuous potential, integration by parts cell by cell gives
+    !!
+    !!   (curl_n v, H(s)) = (v, J) - sum_K oint_dK (R s) v . t_K dl,
+    !!
+    !! t_K counter-clockwise for K, so the continuous construction carries
+    !! over when sigma = R s jumps across the loaded interior edges by
+    !! [sigma] = sigma_left - sigma_right = -G (left: the cell for which the
+    !! edge runs counter-clockwise).  Without the trace condition v x n = 0
+    !! (free_trace: a coupled exterior such as the Steklov-Poincare closure
+    !! (curl_n v, curl_n A) + <C v, S^{-1} C A> = (v, J) + L(v), C = C2 curl_n)
+    !! the boundary term must be cancelled by the exterior one: with the
+    !! boundary loads G_b defined by int G_b (v . t) dl = -<C v, mu>, the
+    !! prescribed trace sigma = -G_b on the boundary gives
+    !!
+    !!   |||A - A_h|||^2 <= ||H(sigma) - curl_n A_h||^2 + ||mu - S^{-1} C A_h||_S^2,
+    !!
+    !! |||v|||^2 = ||curl_n v||^2 + <C v, S^{-1} C v>; with mu = S^{-1} C A_h
+    !! the exterior term vanishes and the bound refers to the problem with
+    !! that (discrete) exterior operator.  The caller supplies G_b and owns
+    !! the exterior term; any remainder of an approximated exterior operator
+    !! is outside this bound.
+    !!
+    !! With edge loads or free_trace the potential is sigma = R s in V0 of fsd
+    !! (sigma = sigma_0 + w, sigma_0 continuous and zero on the boundary with
+    !! free_trace, w the fixed broken lift: the interpolant of the jump data
+    !! on the side cells of the interior loaded edges plus the interpolant of
+    !! the boundary data).  The jump and trace are then those of the
+    !! interpolant I G of G at the V0 nodes of the loaded edges, so the bound
+    !! is for the problem with the loads I G; est%load_defect reports the
+    !! relative L2 (edge parameter) size of G - I G as an indicator (its
+    !! H^(-1/2) effect is not bounded).  Only HCURL_GLOBAL supports loads.
     !!
     !! Requirements: fs and fsd are built on the same mesh (equal geometry
     !! order) with the same quadrature degree; the source callback is called
@@ -89,18 +119,22 @@ module fortfem_equilibrated_hcurl_meridian_n
     use fortfem_kinds, only: dp
     use fortfem_generated_meridian_hcurl_equilibration, only: &
         generated_meridian_hcurl_residual
+    use fortfem_generated_meridian_hcurl_scaled_potential, only: &
+        generated_meridian_hcurl_scaled_potential
     use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_field_i, &
         meridian_op_complex, meridian_qgrad, meridian_qpoint
     use fortfem_equilibrated_flux_topology, only: vertex_stars
     use fortfem_triangle_lagrange_arbitrary_order, only: &
         initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
-        triangle_lagrange_nodes
+        triangle_lagrange_nodes, evaluate_triangle_lagrange_basis
+    use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_z_t, &
         fortsparse_status_t, sparse_solve_once, status_ok
     implicit none
     private
 
     public :: meridian_hcurl_estimate_t, meridian_hcurl_equilibrated_bound
+    public :: meridian_edge_load_i
 
     integer, parameter, public :: HCURL_OK = 0
     integer, parameter, public :: HCURL_BAD_INPUT = 1
@@ -117,9 +151,30 @@ module fortfem_equilibrated_hcurl_meridian_n
         real(dp) :: field_norm = 0.0_dp !! ||curl_n A_h||_M2
         !> Per triangle: (int_T |H(s) - curl_n A_h|^2 R dR dZ)^(1/2).
         real(dp), allocatable :: cell_indicator(:)
-        !> Coefficients of s = H_phi in V0 of fsd.
+        !> Coefficients of s = H_phi in V0 of fsd (with edge loads or a free
+        !> trace: of the continuous part sigma_0 of sigma = R s).
         complex(dp), allocatable :: potential(:)
+        !> Potential sigma = R s with a broken lift (edge loads, free trace).
+        logical :: scaled_potential = .false.
+        !> Boundary trace of sigma prescribed (free_trace).
+        logical :: trace_fixed = .false.
+        !> Relative L2 (edge parameter) size of G - I G over the loaded edges.
+        real(dp) :: load_defect = 0.0_dp
+        !> Largest relative disagreement of the load data at shared nodes.
+        real(dp) :: lift_mismatch = 0.0_dp
     end type meridian_hcurl_estimate_t
+
+    abstract interface
+        subroutine meridian_edge_load_i(cell, edge, tau, g)
+            !! Load density G at parameter tau in [0, 1] of local edge edge of
+            !! triangle cell (from local vertex edge to vertex mod(edge, 3) +
+            !! 1), L(v) = int G (v . t) dl with t along that orientation.
+            import :: dp
+            integer, intent(in) :: cell, edge
+            real(dp), intent(in) :: tau
+            complex(dp), intent(out) :: g
+        end subroutine meridian_edge_load_i
+    end interface
 
     interface
         subroutine zposv(uplo, n, nrhs, a, lda, b, ldb, info)
@@ -134,12 +189,20 @@ module fortfem_equilibrated_hcurl_meridian_n
 contains
 
     subroutine meridian_hcurl_equilibrated_bound(fs, fsd, n, a_h, source, est, &
-            status, method)
+            status, method, edge_cell, edge_local, edge_load, free_trace, side)
         !! Bound on ||curl_n (A - A_h)||_M2 for the gauge-fixed problem with
         !! mu0-scaled current source(x) = J (components 1 = R, 3 = Z used).
         !! fs: primal complex (V1 holds a_h); fsd: complex whose Lagrange
         !! space V0 carries the potential s (same mesh and quadrature).
         !! method: HCURL_GLOBAL (default) or HCURL_PATCHWISE.
+        !! Optional edge loads (all three together): the oriented edges
+        !! (edge_cell(i), edge_local(i)) carry the density edge_load (called
+        !! serially).  Interior loaded edges must separate the mesh: side(nt)
+        !! marks the cells on one side (default: the cells connected to the
+        !! first interior edge_cell without crossing a loaded edge).  Boundary
+        !! loaded edges require free_trace (default .false.: v x n = 0, the
+        !! tangential trace of A is fixed; .true.: the trace is free and sigma
+        !! is prescribed on the whole boundary, zero on unloaded edges).
         type(meridian_feec_t), intent(in) :: fs, fsd
         integer, intent(in) :: n
         complex(dp), intent(in) :: a_h(:)
@@ -147,18 +210,33 @@ contains
         type(meridian_hcurl_estimate_t), intent(out) :: est
         integer, intent(out) :: status
         integer, intent(in), optional :: method
+        integer, intent(in), optional :: edge_cell(:), edge_local(:)
+        procedure(meridian_edge_load_i), optional :: edge_load
+        logical, intent(in), optional :: free_trace
+        logical, intent(in), optional :: side(:)
 
         complex(dp), allocatable :: c2(:), s(:), ke(:, :, :), be(:, :, :)
+        complex(dp), allocatable :: wfix(:, :)
         real(dp), allocatable :: lamv(:, :), cell2(:)
+        logical, allocatable :: fixed(:)
+        integer, allocatable :: vstart(:), vcell(:), vslot(:)
         type(csc_z_t) :: op
         real(dp) :: amax, tot, fnorm
         integer :: nt, nl0, st, bad, mth
+        logical :: loaded, ftrace, scaled
 
         status = HCURL_BAD_INPUT
         mth = HCURL_GLOBAL
         if (present(method)) mth = method
         if (mth /= HCURL_GLOBAL .and. mth /= HCURL_PATCHWISE) return
         if (n == 0) return
+        loaded = present(edge_cell)
+        if (present(edge_local) .neqv. loaded) return
+        if (present(edge_load) .neqv. loaded) return
+        ftrace = .false.
+        if (present(free_trace)) ftrace = free_trace
+        scaled = loaded .or. ftrace
+        if (scaled .and. mth /= HCURL_GLOBAL) return
         call check_consistent(fs, fsd, status)
         if (status /= HCURL_OK) return
         status = HCURL_BAD_INPUT
@@ -178,6 +256,19 @@ contains
         if (st /= 0) return
         c2 = csc_matvec(op, a_h)
         call vertex_weights(fsd, lamv)
+        allocate (wfix(nl0, nt), fixed(fsd%n0))
+        wfix = (0.0_dp, 0.0_dp)
+        fixed = .false.
+        est%scaled_potential = scaled
+        est%trace_fixed = ftrace
+        if (ftrace) fixed = fsd%sp(0)%bnd
+        if (loaded) then
+            call build_lifts(edge_load, st)
+            if (st /= 0) then
+                status = HCURL_BAD_INPUT
+                return
+            end if
+        end if
 
         allocate (ke(nl0, nl0, nt), be(nl0, 0:3, nt))
         call element_systems(bad)
@@ -217,7 +308,7 @@ contains
             integer, intent(out) :: bad_out
             real(dp), allocatable :: phi(:, :), val(:), grad(:, :)
             complex(dp) :: g(3, nl0), d1(3), d2(3, 2), ds(3), jp(2), jv(3), bp(2), &
-                bh(3), r(3), zero2(2)
+                bh(3), r(3), zero2(2), sf, gsf(2)
             real(dp) :: x(2), xq(2), wq, wq2, rr, grr(2), psi, gpsi(2)
             integer :: t, q, i, j, sl, stq
 
@@ -225,7 +316,7 @@ contains
             zero2 = (0.0_dp, 0.0_dp)
             !$omp parallel default(shared) &
             !$omp private(t, q, i, j, sl, stq, phi, val, grad, g, d1, d2, ds, jp, &
-            !$omp jv, bp, bh, r, x, xq, wq, wq2, rr, grr, psi, gpsi) &
+            !$omp jv, bp, bh, r, x, xq, wq, wq2, rr, grr, psi, gpsi, sf, gsf) &
             !$omp reduction(max:bad_out)
             allocate (phi(3, fs%sp(2)%nloc), val(nl0), grad(2, nl0))
             !$omp do schedule(static)
@@ -247,9 +338,16 @@ contains
                     call source(x, jv)
                     jp = [jv(1), jv(3)]
                     call radius(x, rr, grr)
+                    ! fixed lift of the potential (zero without loads)
+                    sf = sum(wfix(:, t)*val)
+                    gsf = matmul(grad, wfix(:, t))
+                    if (scaled) then
+                        call scale_potential(rr, grr, sf, gsf)
+                        call scale_basis(rr, grr, val, grad)
+                    end if
                     ! data part: d = psi D1 + d_R(psi) D2(:, 1) + d_Z(psi) D2(:, 2)
                     call residual(real(n, dp), rr, grr, 1.0_dp, [0.0_dp, 0.0_dp], &
-                        (0.0_dp, 0.0_dp), zero2, jp, bh(3), bp, d1)
+                        sf, gsf, jp, bh(3), bp, d1)
                     call residual(real(n, dp), rr, grr, 0.0_dp, [1.0_dp, 0.0_dp], &
                         (0.0_dp, 0.0_dp), zero2, zero2, bh(3), zero2, d2(:, 1))
                     call residual(real(n, dp), rr, grr, 0.0_dp, [0.0_dp, 1.0_dp], &
@@ -296,14 +394,17 @@ contains
             integer, allocatable :: ri(:), ci(:)
             integer :: t, i, j, cnt
 
-            allocate (ri(nl0*nl0*nt), ci(nl0*nl0*nt), vals(nl0*nl0*nt))
+            allocate (ri(nl0*nl0*nt + fsd%n0), ci(nl0*nl0*nt + fsd%n0))
+            allocate (vals(nl0*nl0*nt + fsd%n0))
             allocate (rhs(fsd%n0))
             rhs = (0.0_dp, 0.0_dp)
             cnt = 0
             do t = 1, nt
                 do j = 1, nl0
+                    if (fixed(fsd%sp(0)%dof(j, t))) cycle
                     rhs(fsd%sp(0)%dof(j, t)) = rhs(fsd%sp(0)%dof(j, t)) + be(j, 0, t)
                     do i = 1, nl0
+                        if (fixed(fsd%sp(0)%dof(i, t))) cycle
                         cnt = cnt + 1
                         ri(cnt) = fsd%sp(0)%dof(i, t)
                         ci(cnt) = fsd%sp(0)%dof(j, t)
@@ -311,8 +412,17 @@ contains
                     end do
                 end do
             end do
+            ! Fixed (boundary) dofs of sigma_0 vanish: identity rows.
+            do i = 1, fsd%n0
+                if (.not. fixed(i)) cycle
+                cnt = cnt + 1
+                ri(cnt) = i
+                ci(cnt) = i
+                vals(cnt) = (1.0_dp, 0.0_dp)
+            end do
             info = 1
-            call csc_from_triplet(fsd%n0, fsd%n0, ri, ci, vals, gm, fst)
+            call csc_from_triplet(fsd%n0, fsd%n0, ri(:cnt), ci(:cnt), vals(:cnt), &
+                gm, fst)
             if (.not. status_ok(fst)) return
             call sparse_solve_once(gm, rhs, s, fst)
             if (.not. status_ok(fst)) return
@@ -445,9 +555,10 @@ contains
                     sq = (0.0_dp, 0.0_dp)
                     gsq = (0.0_dp, 0.0_dp)
                     do j = 1, nl0
-                        sq = sq + s(fsd%sp(0)%dof(j, t))*val(j)
-                        gsq = gsq + s(fsd%sp(0)%dof(j, t))*grad(:, j)
+                        sq = sq + (s(fsd%sp(0)%dof(j, t)) + wfix(j, t))*val(j)
+                        gsq = gsq + (s(fsd%sp(0)%dof(j, t)) + wfix(j, t))*grad(:, j)
                     end do
+                    if (scaled) call scale_potential(rr, grr, sq, gsq)
                     call residual(real(n, dp), rr, grr, 1.0_dp, [0.0_dp, 0.0_dp], &
                         sq, gsq, jp, bh(3), bp, r)
                     acc = acc + wq*sum(abs(r)**2)
@@ -460,6 +571,173 @@ contains
             !$omp end do
             !$omp end parallel
         end subroutine evaluate_bound
+
+        subroutine build_lifts(load, info)
+            !! Broken lift wfix of the potential sigma = R s from the edge
+            !! loads: -G (left) / +G (right) on the side cells of interior
+            !! loaded edges, -G minus the side lift on boundary loaded edges;
+            !! interpolated at the V0 nodes of the edges (see the header).
+            procedure(meridian_edge_load_i) :: load
+            integer, intent(out) :: info
+            type(triangle_lagrange_basis_t) :: basis
+            integer, allocatable :: nb(:), stack(:), hits(:)
+            logical, allocatable :: region(:), cut(:, :)
+            complex(dp), allocatable :: wint(:), wbnd(:), first(:)
+            real(dp), allocatable :: tq(:), wtq(:), bval(:), bgrad(:, :)
+            complex(dp) :: g, gi
+            real(dp) :: xi, eta, defect2, norm2_, gmax
+            integer :: ne, ie, t, e, j, nv, top, c, ee, cn, dof, start, pass, q
+            integer :: ng, stb
+
+            info = 1
+            ne = size(edge_cell)
+            if (size(edge_local) /= ne .or. ne < 1) return
+            if (any(edge_cell < 1) .or. any(edge_cell > nt)) return
+            if (any(edge_local < 1) .or. any(edge_local > 3)) return
+            nv = fsd%mm%topology%n_vertices
+            call vertex_stars(nv, fsd%mm%topology%triangles(1:3, :), vstart, &
+                vcell, vslot)
+            allocate (nb(ne), cut(3, nt))
+            cut = .false.
+            do ie = 1, ne
+                nb(ie) = neighbour(edge_cell(ie), edge_local(ie), ee)
+                cut(edge_local(ie), edge_cell(ie)) = .true.
+                if (nb(ie) > 0) cut(ee, nb(ie)) = .true.
+            end do
+            if (.not. ftrace .and. any(nb == 0)) return
+            allocate (region(nt))
+            region = .false.
+            if (any(nb > 0)) then
+                if (present(side)) then
+                    if (size(side) /= nt) return
+                    region = side
+                else
+                    ! flood fill from the first interior loaded edge
+                    start = edge_cell(findloc(nb > 0, .true., dim=1))
+                    allocate (stack(nt))
+                    top = 1
+                    stack(1) = start
+                    region(start) = .true.
+                    do while (top > 0)
+                        c = stack(top)
+                        top = top - 1
+                        do e = 1, 3
+                            if (cut(e, c)) cycle
+                            cn = neighbour(c, e, ee)
+                            if (cn == 0) cycle
+                            if (region(cn)) cycle
+                            region(cn) = .true.
+                            top = top + 1
+                            stack(top) = cn
+                        end do
+                    end do
+                end if
+                do ie = 1, ne
+                    if (nb(ie) == 0) cycle
+                    if (region(edge_cell(ie)) .eqv. region(nb(ie))) return
+                end do
+            end if
+            allocate (wint(fsd%n0), wbnd(fsd%n0), first(fsd%n0), hits(fsd%n0))
+            wint = (0.0_dp, 0.0_dp)
+            wbnd = (0.0_dp, 0.0_dp)
+            gmax = 0.0_dp
+            ! pass 1: interior jumps, pass 2: boundary traces
+            do pass = 1, 2
+                hits = 0
+                do ie = 1, ne
+                    if ((nb(ie) > 0) .neqv. (pass == 1)) cycle
+                    t = edge_cell(ie)
+                    e = edge_local(ie)
+                    do j = 1, nl0
+                        if (lamv(mod(e + 1, 3) + 1, j) > 0.0_dp) cycle
+                        call load(t, e, edge_tau(e, j), g)
+                        gmax = max(gmax, abs(g))
+                        dof = fsd%sp(0)%dof(j, t)
+                        if (pass == 1) then
+                            if (.not. region(t)) g = -g
+                        else if (region(t)) then
+                            g = g + wint(dof)
+                        end if
+                        if (hits(dof) == 0) first(dof) = -g
+                        est%lift_mismatch = max(est%lift_mismatch, &
+                            abs(-g - first(dof)))
+                        hits(dof) = hits(dof) + 1
+                        if (pass == 1) then
+                            wint(dof) = wint(dof) + (-g - wint(dof))/hits(dof)
+                        else
+                            wbnd(dof) = wbnd(dof) + (-g - wbnd(dof))/hits(dof)
+                        end if
+                    end do
+                end do
+            end do
+            if (gmax > 0.0_dp) est%lift_mismatch = est%lift_mismatch/gmax
+            do t = 1, nt
+                do j = 1, nl0
+                    dof = fsd%sp(0)%dof(j, t)
+                    wfix(j, t) = wbnd(dof)
+                    if (region(t)) wfix(j, t) = wfix(j, t) + wint(dof)
+                end do
+            end do
+            ! load_defect: G - I G at Gauss points of every loaded edge
+            call initialize_triangle_lagrange_basis(fsd%k, basis, stb)
+            if (stb /= 0) return
+            ng = fsd%k + 2
+            allocate (tq(ng), wtq(ng), bval(nl0), bgrad(2, nl0))
+            call gauss_legendre_ab(ng, 0.0_dp, 1.0_dp, tq, wtq)
+            defect2 = 0.0_dp
+            norm2_ = 0.0_dp
+            do ie = 1, ne
+                t = edge_cell(ie)
+                e = edge_local(ie)
+                do q = 1, ng
+                    call edge_reference_point(e, tq(q), xi, eta)
+                    call evaluate_triangle_lagrange_basis(basis, xi, eta, bval, &
+                        bgrad, stb)
+                    if (stb /= 0) return
+                    gi = (0.0_dp, 0.0_dp)
+                    do j = 1, nl0
+                        if (lamv(mod(e + 1, 3) + 1, j) > 0.0_dp) cycle
+                        call load(t, e, edge_tau(e, j), g)
+                        gi = gi + g*bval(j)
+                    end do
+                    call load(t, e, tq(q), g)
+                    defect2 = defect2 + wtq(q)*abs(g - gi)**2
+                    norm2_ = norm2_ + wtq(q)*abs(g)**2
+                end do
+            end do
+            if (norm2_ > 0.0_dp) est%load_defect = sqrt(defect2/norm2_)
+            info = 0
+        end subroutine build_lifts
+
+        integer function neighbour(t, e, e_other) result(cn)
+            !! Cell across local edge e of t (0 on the boundary) and the local
+            !! index e_other of that edge in it.
+            integer, intent(in) :: t, e
+            integer, intent(out) :: e_other
+            integer :: a, b, k2, c, sl
+
+            a = fs%mm%topology%triangles(e, t)
+            b = fs%mm%topology%triangles(mod(e, 3) + 1, t)
+            cn = 0
+            e_other = 0
+            do k2 = vstart(b), vstart(b + 1) - 1
+                c = vcell(k2)
+                if (c == t) cycle
+                sl = vslot(k2)
+                ! edge b -> a in c: local edge sl ends at mod(sl, 3) + 1
+                if (fs%mm%topology%triangles(mod(sl, 3) + 1, c) == a) then
+                    cn = c
+                    e_other = sl
+                end if
+            end do
+        end function neighbour
+
+        real(dp) function edge_tau(e, j) result(tau)
+            !! Parameter of local node j on local edge e: the barycentric
+            !! coordinate of the end vertex mod(e, 3) + 1.
+            integer, intent(in) :: e, j
+            tau = lamv(mod(e, 3) + 1, j)
+        end function edge_tau
 
         subroutine field_at(t, phi, bp_out, bh_out)
             !! Poloidal (R, Z) components bp_out and toroidal component
@@ -494,6 +772,56 @@ contains
         end subroutine radius
 
     end subroutine meridian_hcurl_equilibrated_bound
+
+    pure subroutine scale_potential(rr, grr, s, gs)
+        !! (sigma, grad sigma) -> (s, grad s) for s = sigma/R (generated leaf,
+        !! real and imaginary parts).
+        real(dp), intent(in) :: rr, grr(2)
+        complex(dp), intent(inout) :: s, gs(2)
+        real(dp) :: re(3), im(3)
+
+        call generated_meridian_hcurl_scaled_potential(rr, grr(1), grr(2), &
+            real(s, dp), real(gs(1), dp), real(gs(2), dp), re(1), re(2), re(3))
+        call generated_meridian_hcurl_scaled_potential(rr, grr(1), grr(2), &
+            aimag(s), aimag(gs(1)), aimag(gs(2)), im(1), im(2), im(3))
+        s = cmplx(re(1), im(1), dp)
+        gs = cmplx(re(2:3), im(2:3), dp)
+    end subroutine scale_potential
+
+    pure subroutine scale_basis(rr, grr, val, grad)
+        !! Basis values and gradients of sigma -> those of s = sigma/R.
+        real(dp), intent(in) :: rr, grr(2)
+        real(dp), intent(inout) :: val(:), grad(:, :)
+        real(dp) :: o(3)
+        integer :: j
+
+        do j = 1, size(val)
+            call generated_meridian_hcurl_scaled_potential(rr, grr(1), grr(2), &
+                val(j), grad(1, j), grad(2, j), o(1), o(2), o(3))
+            val(j) = o(1)
+            grad(:, j) = o(2:3)
+        end do
+    end subroutine scale_basis
+
+    pure subroutine edge_reference_point(edge, tau, xi, eta)
+        !! Reference point at parameter tau of local edge edge (vertex edge ->
+        !! vertex mod(edge, 3) + 1; vertices (0,0), (1,0), (0,1)).
+        integer, intent(in) :: edge
+        real(dp), intent(in) :: tau
+        real(dp), intent(out) :: xi, eta
+
+        select case (edge)
+        case (1)
+            xi = tau
+            eta = 0.0_dp
+        case (2)
+            xi = 1.0_dp - tau
+            eta = tau
+        case default
+            xi = 0.0_dp
+            eta = 1.0_dp - tau
+        end select
+    end subroutine edge_reference_point
 
     pure subroutine residual(n, rr, grr, psi, gpsi, s, gs, jp, sh, bp, r)
         !! Generated pointwise residual (complex wrapper of the FortSym leaf).
