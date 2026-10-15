@@ -32,6 +32,8 @@ module fortfem_equilibrated_flux_2d
     private
 
     public :: equilibrated_flux_estimate_t, equilibrated_flux_estimate
+    ! Shared with the non-conforming estimators (equilibrated_nonconforming_2d).
+    public :: reference_t, build_reference, project_source
 
     integer, parameter, public :: EQUILIBRATION_OK = 0
     integer, parameter, public :: EQUILIBRATION_BAD_INPUT = 1
@@ -78,7 +80,7 @@ contains
 
     subroutine equilibrated_flux_estimate(vertices, triangles, degree, xi, eta, &
             weights, coefficient, source, discrete_flux, coefficient_lower, &
-            friedrichs_constant, estimate, status)
+            friedrichs_constant, estimate, status, load_flux)
         !! Data arrays are sampled at the affine images of the reference
         !! points (xi, eta) of each cell (weights sum to 1/2); the rule must
         !! integrate polynomials of degree 2k + 2 exactly for the local
@@ -94,6 +96,11 @@ contains
         real(dp), intent(in) :: friedrichs_constant
         type(equilibrated_flux_estimate_t), intent(out) :: estimate
         integer, intent(out) :: status
+        !> Optional flux (2, nq, nt) used instead of discrete_flux in the
+        !> divergence constraints of the patch problems, i.e. in
+        !> Pi_k(f psi_a - load_flux . grad psi_a) (DG residual lifting). The
+        !> minimised target stays psi_a * discrete_flux.
+        real(dp), intent(in), optional :: load_flux(:, :, :)
         type(reference_t) :: ref
         type(topology_t) :: topo
         real(dp), allocatable :: projection(:, :), contribution(:, :, :)
@@ -113,6 +120,11 @@ contains
         if (size(discrete_flux, 2) /= size(xi)) return
         if (size(discrete_flux, 3) /= nt) return
         if (size(coefficient_lower) /= nt) return
+        if (present(load_flux)) then
+            if (size(load_flux, 1) /= 2) return
+            if (size(load_flux, 2) /= size(xi)) return
+            if (size(load_flux, 3) /= nt) return
+        end if
         if (any(.not. (coefficient_lower > 0.0_dp))) return
         if (any(.not. (coefficient > 0.0_dp))) return
         if (.not. (friedrichs_constant >= 0.0_dp)) return
@@ -143,8 +155,13 @@ contains
         !$omp parallel do schedule(dynamic, 16) reduction(max:failed)
         do a = 1, nv
             if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
-            call solve_patch(ref, topo, a, vertices, triangles, coefficient, &
-                source, discrete_flux, contribution, failed)
+            if (present(load_flux)) then
+                call solve_patch(ref, topo, a, vertices, triangles, coefficient, &
+                    source, discrete_flux, load_flux, contribution, failed)
+            else
+                call solve_patch(ref, topo, a, vertices, triangles, coefficient, &
+                    source, discrete_flux, discrete_flux, contribution, failed)
+            end if
         end do
         !$omp end parallel do
         if (failed /= 0) then
@@ -363,12 +380,12 @@ contains
     end subroutine project_source
 
     subroutine solve_patch(ref, topo, a, vertices, triangles, coefficient, source, &
-            discrete_flux, contribution, failed)
+            discrete_flux, load_flux, contribution, failed)
         type(reference_t), intent(in) :: ref
         type(topology_t), intent(in) :: topo
         integer, intent(in) :: a, triangles(:, :)
         real(dp), intent(in) :: vertices(:, :), coefficient(:, :), source(:, :)
-        real(dp), intent(in) :: discrete_flux(:, :, :)
+        real(dp), intent(in) :: discrete_flux(:, :, :), load_flux(:, :, :)
         real(dp), intent(inout) :: contribution(:, :, :)
         integer, intent(inout) :: failed
         integer :: edges(2*(topo%vertex_start(a + 1) - topo%vertex_start(a)))
@@ -438,7 +455,7 @@ contains
                 ainv = 1.0_dp/coefficient(q, t)
                 psi = ref%hat(s, q)
                 load = source(q, t)*psi &
-                    - dot_product(discrete_flux(:, q, t), hat_grad(:, s))
+                    - dot_product(load_flux(:, q, t), hat_grad(:, s))
                 do k = 1, ref%nrt
                     if (map(k, i) == 0) cycle
                     rhs(map(k, i), 1) = rhs(map(k, i), 1) + wdet*sgn(k, i)*psi &

@@ -241,6 +241,10 @@ filename="fortfem_lagrange_product_jets.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_equilibrated_nonconforming_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 echo "generated FortFEM kernels match committed sources"
 
 filename="fortfem_tetra_whitney_products.f90"
