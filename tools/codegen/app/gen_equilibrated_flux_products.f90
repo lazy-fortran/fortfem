@@ -19,9 +19,39 @@ program gen_equilibrated_flux_products
     type(native_engine_t) :: engine
     integer :: unit, degree, l
     character(:), allocatable :: text
+    logical :: mapped_output
 
+    mapped_output = .true.
     call arena%init()
     engine = make_native_engine(arena)
+    open(newunit=unit, file=generated_path("fortfem_mapped_oscillation_products.f90"), &
+        status="replace", action="write")
+
+    call emit("equilibrated_bernstein_midpoint", &
+        [str("midpoint"), str("left"), str("right")], &
+        [str("(2,2)"), str("(2,2)"), str("(2,2)")], &
+        [str("control")], [str("(2,2)")], &
+        [str("control(1,1)"), str("control(2,1)"), &
+        str("control(1,2)"), str("control(2,2)")], midpoint_roots())
+    call emit("equilibrated_relative_jacobian_norm", &
+        [str("jacobian"), str("inverse_transpose")], &
+        [str("(2,2)"), str("(2,2)")], &
+        [str("value")], [str("")], [str("value")], relative_norm_roots())
+    call emit("equilibrated_mapped_poincare", &
+        [str("diameter"), str("norm_bound"), str("det_min"), &
+        str("lower"), str("pi")], &
+        [str(""), str(""), str(""), str(""), str("")], &
+        [str("value")], [str("")], [str("value")], poincare_roots())
+
+    call determinant_control_kernel()
+
+    call emit("equilibrated_reference_oscillation", &
+        [str("source"), str("projection"), str("determinant")], &
+        [str(""), str(""), str("")], &
+        [str("value")], [str("")], [str("value")], reference_oscillation_roots())
+
+    close(unit)
+    mapped_output = .false.
     open(newunit=unit, file=generated_path("fortfem_equilibrated_flux_products.f90"), &
         status="replace", action="write")
 
@@ -145,6 +175,7 @@ contains
         integer, intent(in) :: i
         integer, intent(in), optional :: j
         character(:), allocatable :: text
+    logical :: mapped_output
         text = name//"("//itxt(i)
         if (present(j)) text = text//","//itxt(j)
         text = text//")"
@@ -153,6 +184,7 @@ contains
     function itxt(v) result(text)
         integer, intent(in) :: v
         character(:), allocatable :: text
+    logical :: mapped_output
         character(16) :: buffer
         write(buffer, "(i0)") v
         text = trim(buffer)
@@ -181,6 +213,91 @@ contains
             [str("(2,"//itxt(count)//")"), str("("//itxt(count)//",2)")], &
             [str("jacobian")], [str("(2,2)")], refs, roots)
     end subroutine jacobian_kernel
+
+    function midpoint_roots() result(roots)
+        ! Quadratic Bernstein edge control from midpoint and endpoint values.
+        type(expr_t) :: roots(4)
+        integer :: i, j, n
+        n = 0
+        do j = 1, 2
+            do i = 1, 2
+                n = n + 1
+                roots(n) = num(arena, 2)*ex(ix("midpoint", i, j)) &
+                    - (ex(ix("left", i, j)) + ex(ix("right", i, j)))/num(arena, 2)
+            end do
+        end do
+    end function midpoint_roots
+
+    function relative_norm_roots() result(roots)
+        ! Spectral norm of J J0^(-1), from the larger eigenvalue of M^T M.
+        type(expr_t) :: roots(1), entry(2, 2), aa, bb, cc
+        integer :: i, j, m
+        do j = 1, 2
+            do i = 1, 2
+                entry(i, j) = num(arena, 0)
+                do m = 1, 2
+                    entry(i, j) = entry(i, j) + ex(ix("jacobian", i, m)) &
+                        *ex(ix("inverse_transpose", j, m))
+                end do
+            end do
+        end do
+        aa = entry(1,1)*entry(1,1) + entry(2,1)*entry(2,1)
+        bb = entry(1,1)*entry(1,2) + entry(2,1)*entry(2,2)
+        cc = entry(1,2)*entry(1,2) + entry(2,2)*entry(2,2)
+        roots(1) = sqrt((aa + cc + sqrt((aa - cc)*(aa - cc) &
+            + num(arena, 4)*bb*bb))/num(arena, 2))
+    end function relative_norm_roots
+
+    function poincare_roots() result(roots)
+        ! Pullback of Payne--Weinberger on the straight vertex triangle:
+        ! h/pi * sup ||DG|| / sqrt(det_min A_min), for the reference residual.
+        type(expr_t) :: roots(1)
+        roots(1) = ex("diameter")*ex("norm_bound") &
+            /(ex("pi")*sqrt(ex("det_min")*ex("lower")))
+    end function poincare_roots
+
+    subroutine determinant_control_kernel()
+        ! Exact Bernstein product in barycentric coordinates: a quadratic
+        ! Jacobian has a quartic determinant. Controls follow vertices then
+        ! edge midpoints; determinant controls use lexicographic powers.
+        type(expr_t) :: roots(15), term
+        type(str_t) :: refs(15)
+        integer :: powers(3, 6), weights(6), a, b, i, j, n, weight4
+        powers = reshape([2,0,0, 0,2,0, 0,0,2, 1,1,0, 0,1,1, 1,0,1], [3,6])
+        weights = [1, 1, 1, 2, 2, 2]
+        n = 0
+        do a = 0, 4
+            do b = 0, 4 - a
+                n = n + 1
+                refs(n) = str("controls("//itxt(n)//")")
+                roots(n) = num(arena, 0)
+                weight4 = factorial(4)/(factorial(a)*factorial(b)*factorial(4-a-b))
+                do i = 1, 6
+                    do j = 1, 6
+                        if (any(powers(:, i) + powers(:, j) /= [a, b, 4-a-b])) cycle
+                        term = ex("jacobians(1,1,"//itxt(i)//")") &
+                            *ex("jacobians(2,2,"//itxt(j)//")") &
+                            - ex("jacobians(1,2,"//itxt(i)//")") &
+                            *ex("jacobians(2,1,"//itxt(j)//")")
+                        roots(n) = roots(n) + num(arena, weights(i)*weights(j)) &
+                            *term/num(arena, weight4)
+                    end do
+                end do
+            end do
+        end do
+        call emit("equilibrated_determinant_controls", &
+            [str("jacobians")], [str("(2,2,6)")], &
+            [str("controls")], [str("(15)")], refs, roots)
+    end subroutine determinant_control_kernel
+
+    integer function factorial(n) result(value)
+        integer, intent(in) :: n
+        integer :: i
+        value = 1
+        do i = 2, n
+            value = value*i
+        end do
+    end function factorial
 
     function determinant_roots() result(roots)
         type(expr_t) :: roots(1)
@@ -307,6 +424,12 @@ contains
         roots(1) = d*d/ex("determinant")
     end function oscillation_roots
 
+    function reference_oscillation_roots() result(roots)
+        type(expr_t) :: roots(1), d
+        d = ex("determinant")*ex("source") - ex("projection")
+        roots(1) = d*d
+    end function reference_oscillation_roots
+
     function divergence_roots() result(roots)
         !! (div sigma + Pi f)^2 det, div sigma the physical divergence.
         type(expr_t) :: roots(1), d
@@ -405,7 +528,38 @@ contains
         spec%output_shapes = out_shapes
         spec%output_references = refs
         code = chars(emit_kernel(simplified, spec))
-        write(unit, "(a)") code(:len(code) - 1)
+        if (mapped_output) then
+            call write_wrapped(code(:len(code) - 1))
+        else
+            write(unit, "(a)") code(:len(code) - 1)
+        end if
     end subroutine emit_roots
+
+    subroutine write_wrapped(code)
+        ! The pinned emitter uses 100 columns. Wrap the new products at token
+        ! boundaries, leaving margin for the standard formatter's whitespace.
+        character(*), intent(in) :: code
+        character(:), allocatable :: line
+        integer :: first, last, cut
+        first = 1
+        do while (first <= len(code))
+            last = index(code(first:), achar(10))
+            if (last == 0) then
+                last = len(code)
+            else
+                last = first + last - 2
+            end if
+            line = code(first:last)
+            do while (len_trim(line) > 80)
+                cut = scan(line(:78), ' ', back=.true.)
+                if (cut <= len(line) - len_trim(adjustl(line))) &
+                    error stop "no generated token boundary"
+                write(unit, '(a)') line(:cut - 1)//' &'
+                line = '            '//trim(adjustl(line(cut + 1:)))
+            end do
+            write(unit, '(a)') line
+            first = last + 2
+        end do
+    end subroutine write_wrapped
 
 end program gen_equilibrated_flux_products
