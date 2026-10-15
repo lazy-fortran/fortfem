@@ -70,6 +70,29 @@ program gen_equilibrated_flux_products
         [str("(2)"), str(""), str("")], &
         [str("value")], [str("")], [str("value")], flux_defect_roots())
 
+    ! Symmetric positive definite tensor coefficient A (anisotropic case):
+    ! A^(-1), its action, the A^(-1)-weighted defect density and the smaller
+    ! eigenvalue (pointwise check of the caller's lower bound).
+    call emit("equilibrated_tensor_inverse", &
+        [str("coefficient")], [str("(2,2)")], &
+        [str("inverse")], [str("(2,2)")], &
+        [str("inverse(1,1)"), str("inverse(2,1)"), str("inverse(1,2)"), &
+        str("inverse(2,2)")], tensor_inverse_roots())
+
+    call emit("equilibrated_tensor_apply", &
+        [str("matrix"), str("vector")], [str("(2,2)"), str("(2)")], &
+        [str("value")], [str("(2)")], [str("value(1)"), str("value(2)")], &
+        tensor_apply_roots())
+
+    call emit("equilibrated_tensor_flux_defect_integrand", &
+        [str("residual"), str("inverse"), str("determinant")], &
+        [str("(2)"), str("(2,2)"), str("")], &
+        [str("value")], [str("")], [str("value")], tensor_flux_defect_roots())
+
+    call emit("equilibrated_tensor_min_eigenvalue", &
+        [str("coefficient")], [str("(2,2)")], &
+        [str("value")], [str("")], [str("value")], tensor_min_eigenvalue_roots())
+
     call emit("equilibrated_oscillation_integrand", &
         [str("source"), str("projection"), str("determinant")], &
         [str(""), str(""), str("")], &
@@ -237,6 +260,44 @@ contains
         roots(1) = (ex("residual(1)")*ex("residual(1)") + &
             ex("residual(2)")*ex("residual(2)"))*ex("determinant")/ex("coefficient")
     end function flux_defect_roots
+
+    function tensor_inverse_roots() result(roots)
+        !! Inverse of the symmetrised 2x2 coefficient, column-major order.
+        type(expr_t) :: roots(4), b, det
+        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(arena, 2)
+        det = ex("coefficient(1,1)")*ex("coefficient(2,2)") - b*b
+        roots(1) = ex("coefficient(2,2)")/det
+        roots(2) = -b/det
+        roots(3) = -b/det
+        roots(4) = ex("coefficient(1,1)")/det
+    end function tensor_inverse_roots
+
+    function tensor_apply_roots() result(roots)
+        type(expr_t) :: roots(2)
+        roots(1) = ex("matrix(1,1)")*ex("vector(1)") + ex("matrix(1,2)")*ex("vector(2)")
+        roots(2) = ex("matrix(2,1)")*ex("vector(1)") + ex("matrix(2,2)")*ex("vector(2)")
+    end function tensor_apply_roots
+
+    function tensor_flux_defect_roots() result(roots)
+        !! r . A^(-1) r det, r = sigma - A grad u_h: energy density per
+        !! reference area of the A^(-1)-weighted flux defect.
+        type(expr_t) :: roots(1), r1, r2
+        r1 = ex("residual(1)")
+        r2 = ex("residual(2)")
+        roots(1) = (ex("inverse(1,1)")*r1*r1 + (ex("inverse(1,2)") &
+            + ex("inverse(2,1)"))*r1*r2 + ex("inverse(2,2)")*r2*r2) &
+            *ex("determinant")
+    end function tensor_flux_defect_roots
+
+    function tensor_min_eigenvalue_roots() result(roots)
+        !! Smaller eigenvalue (a + c)/2 - sqrt(((a - c)/2)^2 + b^2) of the
+        !! symmetrised coefficient [[a, b], [b, c]].
+        type(expr_t) :: roots(1), b, h
+        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(arena, 2)
+        h = (ex("coefficient(1,1)") - ex("coefficient(2,2)"))/num(arena, 2)
+        roots(1) = (ex("coefficient(1,1)") + ex("coefficient(2,2)"))/num(arena, 2) &
+            - sqrt(h*h + b*b)
+    end function tensor_min_eigenvalue_roots
 
     function oscillation_roots() result(roots)
         !! (f - Pi f)^2 det with Pi f = projection/det, the projection being the

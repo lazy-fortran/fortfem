@@ -55,6 +55,20 @@ module fortfem_equilibrated_flux_2d
     !! their quadrature error, and positivity of det J between the quadrature
     !! points of isoparametric cells, are not enclosed.
     !!
+    !! Anisotropic coefficient (equilibrated_flux_estimate_tensor): A(x) a
+    !! symmetric positive definite 2x2 tensor sampled at the quadrature
+    !! points. Everything above holds verbatim with |||v|||^2 = int grad v .
+    !! A grad v, the patch minimisation and the flux defect measured in the
+    !! A^(-1) inner product, ||A^(-1/2) tau||^2 = int tau . A^(-1) tau, and
+    !! A_T,min a lower bound of the smaller eigenvalue of A on T (then
+    !! ||grad v||_T <= A_T,min^(-1/2) |||v|||_T, which is all the oscillation
+    !! and Neumann trace terms use). The caller's A_T,min is checked against
+    !! the pointwise smaller eigenvalue at the quadrature points (a necessary
+    !! condition only; it must bound A on the whole cell). The bound is
+    !! guaranteed for any anisotropy; its efficiency is not uniform in the
+    !! eigenvalue ratio (the oscillation and Friedrichs terms carry
+    !! A_min^(-1/2)).
+    !!
     !! Pointwise leaves (geometry, hat gradients, P_k monomials and the
     !! integrands) come from the FortSym-generated module
     !! fortfem_equilibrated_flux_products; the cell diameter, patch topology,
@@ -100,6 +114,14 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_load_integrand
     use fortfem_generated_equilibrated_flux_defect_integrand, only: &
         generated_equilibrated_flux_defect_integrand
+    use fortfem_generated_equilibrated_tensor_inverse, only: &
+        generated_equilibrated_tensor_inverse
+    use fortfem_generated_equilibrated_tensor_apply, only: &
+        generated_equilibrated_tensor_apply
+    use fortfem_generated_equilibrated_tensor_flux_defect_integrand, only: &
+        generated_equilibrated_tensor_flux_defect_integrand
+    use fortfem_generated_equilibrated_tensor_min_eigenvalue, only: &
+        generated_equilibrated_tensor_min_eigenvalue
     use fortfem_generated_equilibrated_oscillation_integrand, only: &
         generated_equilibrated_oscillation_integrand
     use fortfem_generated_equilibrated_divergence_integrand, only: &
@@ -123,6 +145,7 @@ module fortfem_equilibrated_flux_2d
     private
 
     public :: equilibrated_flux_estimate_t, equilibrated_flux_estimate
+    public :: equilibrated_flux_estimate_tensor
     ! Shared with the non-conforming estimators (equilibrated_nonconforming_2d).
     public :: reference_t, build_reference, project_source
 
@@ -184,6 +207,92 @@ contains
             weights, coefficient, source, discrete_flux, coefficient_lower, &
             friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
             neumann_flux, edge_xi, edge_weights, load_flux)
+        !! Scalar coefficient A (nq, nt); see estimate_core for the arguments.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: xi(:), eta(:), weights(:)
+        real(dp), intent(in) :: coefficient(:, :)
+        real(dp), intent(in) :: source(:, :)
+        real(dp), intent(in) :: discrete_flux(:, :, :)
+        real(dp), intent(in) :: coefficient_lower(:)
+        real(dp), intent(in) :: friedrichs_constant
+        type(equilibrated_flux_estimate_t), intent(out) :: estimate
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: geometry_nodes(:, :, :)
+        logical, intent(in), optional :: neumann_edge(:, :)
+        real(dp), intent(in), optional :: neumann_flux(:, :, :)
+        real(dp), intent(in), optional :: edge_xi(:), edge_weights(:)
+        real(dp), intent(in), optional :: load_flux(:, :, :)
+
+        call estimate_core(vertices, triangles, degree, xi, eta, weights, &
+            coefficient, source, discrete_flux, coefficient_lower, &
+            friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
+            neumann_flux, edge_xi, edge_weights, load_flux)
+    end subroutine equilibrated_flux_estimate
+
+    subroutine equilibrated_flux_estimate_tensor(vertices, triangles, degree, xi, &
+            eta, weights, coefficient_tensor, source, discrete_flux, &
+            coefficient_lower, friedrichs_constant, estimate, status, &
+            geometry_nodes, neumann_edge, neumann_flux, edge_xi, edge_weights, &
+            load_flux)
+        !! Symmetric positive definite tensor coefficient A, sampled as
+        !! coefficient_tensor(2, 2, nq, nt); discrete_flux is A grad u_h and
+        !! coefficient_lower(t) a lower bound of the smaller eigenvalue of A on
+        !! cell t (checked at the quadrature points). The other arguments are
+        !! those of equilibrated_flux_estimate.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :)
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: xi(:), eta(:), weights(:)
+        real(dp), intent(in) :: coefficient_tensor(:, :, :, :)
+        real(dp), intent(in) :: source(:, :)
+        real(dp), intent(in) :: discrete_flux(:, :, :)
+        real(dp), intent(in) :: coefficient_lower(:)
+        real(dp), intent(in) :: friedrichs_constant
+        type(equilibrated_flux_estimate_t), intent(out) :: estimate
+        integer, intent(out) :: status
+        real(dp), intent(in), optional :: geometry_nodes(:, :, :)
+        logical, intent(in), optional :: neumann_edge(:, :)
+        real(dp), intent(in), optional :: neumann_flux(:, :, :)
+        real(dp), intent(in), optional :: edge_xi(:), edge_weights(:)
+        real(dp), intent(in), optional :: load_flux(:, :, :)
+        real(dp), allocatable :: smallest(:, :)
+        real(dp) :: scale
+        integer :: nq, nt, q, t
+
+        status = EQUILIBRATION_BAD_INPUT
+        nq = size(xi)
+        nt = size(triangles, 2)
+        if (size(coefficient_tensor, 1) /= 2) return
+        if (size(coefficient_tensor, 2) /= 2) return
+        if (size(coefficient_tensor, 3) /= nq) return
+        if (size(coefficient_tensor, 4) /= nt) return
+        if (size(coefficient_lower) /= nt) return
+        allocate (smallest(nq, nt))
+        do t = 1, nt
+            do q = 1, nq
+                associate (a => coefficient_tensor(:, :, q, t))
+                    scale = maxval(abs(a))
+                    if (.not. (abs(a(1, 2) - a(2, 1)) <= 1.0e-12_dp*scale)) return
+                    call generated_equilibrated_tensor_min_eigenvalue(a, &
+                        smallest(q, t))
+                end associate
+            end do
+            ! A necessary condition for a lower bound on the whole cell.
+            if (.not. (coefficient_lower(t) <= minval(smallest(:, t)) &
+                *(1.0_dp + 64*epsilon(1.0_dp)))) return
+        end do
+        call estimate_core(vertices, triangles, degree, xi, eta, weights, &
+            smallest, source, discrete_flux, coefficient_lower, &
+            friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
+            neumann_flux, edge_xi, edge_weights, load_flux, coefficient_tensor)
+    end subroutine equilibrated_flux_estimate_tensor
+
+    subroutine estimate_core(vertices, triangles, degree, xi, eta, &
+            weights, coefficient, source, discrete_flux, coefficient_lower, &
+            friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
+            neumann_flux, edge_xi, edge_weights, load_flux, tensor)
         !! Data arrays are sampled at the (mapped) reference points (xi, eta)
         !! of each cell (weights sum to 1/2); the rule must integrate
         !! polynomials of degree 2k + 2 exactly for the local problems to be
@@ -224,6 +333,9 @@ contains
         !> Pi_k(f psi_a - load_flux . grad psi_a) (DG residual lifting). The
         !> minimised target stays psi_a * discrete_flux.
         real(dp), intent(in), optional :: load_flux(:, :, :)
+        !> Optional tensor coefficient (2, 2, nq, nt); coefficient then holds
+        !> its pointwise smaller eigenvalue and serves validation only.
+        real(dp), intent(in), optional :: tensor(:, :, :, :)
         type(reference_t) :: ref
         type(topology_t) :: topo
         type(problem_t) :: prob
@@ -327,10 +439,10 @@ contains
             if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
             if (present(load_flux)) then
                 call solve_patch(ref, topo, prob, a, coefficient, source, &
-                    discrete_flux, load_flux, contribution, failed)
+                    discrete_flux, load_flux, contribution, failed, tensor)
             else
                 call solve_patch(ref, topo, prob, a, coefficient, source, &
-                    discrete_flux, discrete_flux, contribution, failed)
+                    discrete_flux, discrete_flux, contribution, failed, tensor)
             end if
         end do
         !$omp end parallel do
@@ -344,10 +456,17 @@ contains
         !$omp parallel do schedule(static)
         do t = 1, nt
             estimate%flux_coefficients(:, t) = sum(contribution(:, :, t), dim=2)
-            call cell_defects(ref, prob%nodes(:, :, t), coefficient(:, t), &
-                discrete_flux(:, :, t), projection(:, t), &
-                estimate%flux_coefficients(:, t), estimate%cell_flux(t), &
-                divergence_sq(t))
+            if (present(tensor)) then
+                call cell_defects(ref, prob%nodes(:, :, t), coefficient(:, t), &
+                    discrete_flux(:, :, t), projection(:, t), &
+                    estimate%flux_coefficients(:, t), estimate%cell_flux(t), &
+                    divergence_sq(t), tensor(:, :, :, t))
+            else
+                call cell_defects(ref, prob%nodes(:, :, t), coefficient(:, t), &
+                    discrete_flux(:, :, t), projection(:, t), &
+                    estimate%flux_coefficients(:, t), estimate%cell_flux(t), &
+                    divergence_sq(t))
+            end if
         end do
         !$omp end parallel do
         estimate%flux_defect = sqrt(sum(estimate%cell_flux**2))
@@ -370,7 +489,7 @@ contains
         estimate%bound = estimate%flux_defect + estimate%oscillation &
             + estimate%divergence_defect + estimate%neumann_oscillation
         status = EQUILIBRATION_OK
-    end subroutine equilibrated_flux_estimate
+    end subroutine estimate_core
 
     subroutine setup_geometry(vertices, triangles, geometry_nodes, nloc, prob, &
             status)
@@ -648,7 +767,7 @@ contains
     end subroutine project_source
 
     subroutine solve_patch(ref, topo, prob, a, coefficient, source, &
-            discrete_flux, load_flux, contribution, failed)
+            discrete_flux, load_flux, contribution, failed, tensor)
         type(reference_t), intent(in) :: ref
         type(topology_t), intent(in) :: topo
         type(problem_t), intent(in) :: prob
@@ -657,12 +776,14 @@ contains
         real(dp), intent(in) :: discrete_flux(:, :, :), load_flux(:, :, :)
         real(dp), intent(inout) :: contribution(:, :, :)
         integer, intent(inout) :: failed
+        real(dp), intent(in), optional :: tensor(:, :, :, :)
         integer :: edges(2*(topo%vertex_start(a + 1) - topo%vertex_start(a)))
         integer, allocatable :: map(:, :), sgn(:, :), ipiv(:)
         real(dp), allocatable :: kkt(:, :), rhs(:, :), qint(:)
         real(dp) :: jac(2, 2), det, hat_grad(2, 3), wdet, ainv, psi
         real(dp) :: phi(2, ref%nrt), div(ref%nrt), load, mean, area
         real(dp) :: moments(ref%nedge), neumann_total
+        real(dp) :: inverse(2, 2), weighted(2), weighted_phi(2, ref%nrt)
         real(dp), allocatable :: fixed_value(:)
         logical, allocatable :: fixed(:)
         integer :: m, nedges, nsigma, nlam, n, i, j, k, l, t, s, e, ee, moment
@@ -739,19 +860,34 @@ contains
                     return
                 end if
                 wdet = ref%weights(q)*det
-                ainv = 1.0_dp/coefficient(q, t)
                 psi = ref%hat(s, q)
+                ! A^(-1) applied to the target flux and to the RT functions.
+                if (present(tensor)) then
+                    ainv = 1.0_dp
+                    call generated_equilibrated_tensor_inverse(tensor(:, :, q, t), &
+                        inverse)
+                    call generated_equilibrated_tensor_apply(inverse, &
+                        discrete_flux(:, q, t), weighted)
+                    do k = 1, ref%nrt
+                        call generated_equilibrated_tensor_apply(inverse, &
+                            phi(:, k), weighted_phi(:, k))
+                    end do
+                else
+                    ainv = 1.0_dp/coefficient(q, t)
+                    weighted = discrete_flux(:, q, t)
+                    weighted_phi = phi
+                end if
                 call generated_equilibrated_load_integrand(source(q, t), psi, &
                     load_flux(:, q, t), hat_grad(:, s), load)
                 do k = 1, ref%nrt
                     if (map(k, i) == 0) cycle
                     rhs(map(k, i), 1) = rhs(map(k, i), 1) + wdet*sgn(k, i)*psi &
-                        *ainv*dot_product(discrete_flux(:, q, t), phi(:, k))
+                        *ainv*dot_product(weighted, phi(:, k))
                     do j = 1, ref%nrt
                         if (map(j, i) == 0) cycle
                         kkt(map(j, i), map(k, i)) = kkt(map(j, i), map(k, i)) &
                             + wdet*sgn(j, i)*sgn(k, i)*ainv &
-                            *dot_product(phi(:, j), phi(:, k))
+                            *dot_product(phi(:, j), weighted_phi(:, k))
                     end do
                     do l = 1, ref%nk
                         kkt(lam0 + l, map(k, i)) = kkt(lam0 + l, map(k, i)) &
@@ -879,12 +1015,15 @@ contains
     end subroutine neumann_defect
 
     subroutine cell_defects(ref, nodes, coefficient, discrete_flux, projection, &
-            sigma, flux_defect, divergence_sq)
+            sigma, flux_defect, divergence_sq, tensor)
         type(reference_t), intent(in) :: ref
         real(dp), intent(in) :: nodes(:, :), coefficient(:)
         real(dp), intent(in) :: discrete_flux(:, :), projection(:), sigma(:)
         real(dp), intent(out) :: flux_defect, divergence_sq
+        !> Optional tensor coefficient of the cell, (2, 2, nq).
+        real(dp), intent(in), optional :: tensor(:, :, :)
         real(dp) :: jac(2, 2), det, phi(2, ref%nrt), div(ref%nrt), value(2)
+        real(dp) :: inverse(2, 2)
         real(dp) :: integrand
         integer :: q, stat
 
@@ -894,8 +1033,14 @@ contains
             call jacobian_at(ref, nodes, q, jac, det)
             call physical_rt(ref, jac, q, phi, div, stat)
             value = matmul(phi, sigma) - discrete_flux(:, q)
-            call generated_equilibrated_flux_defect_integrand(value, coefficient(q), &
-                det, integrand)
+            if (present(tensor)) then
+                call generated_equilibrated_tensor_inverse(tensor(:, :, q), inverse)
+                call generated_equilibrated_tensor_flux_defect_integrand(value, &
+                    inverse, det, integrand)
+            else
+                call generated_equilibrated_flux_defect_integrand(value, &
+                    coefficient(q), det, integrand)
+            end if
             flux_defect = flux_defect + ref%weights(q)*integrand
             call generated_equilibrated_divergence_integrand(dot_product(div, sigma), &
                 dot_product(projection, ref%poly(:, q)), det, integrand)
