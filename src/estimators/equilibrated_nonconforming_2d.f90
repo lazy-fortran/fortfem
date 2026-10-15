@@ -404,7 +404,7 @@ contains
         integer, allocatable :: vslot(:)
         logical, allocatable :: boundary_node(:)
         real(dp), allocatable :: contribution(:, :, :)
-        integer :: nt, nv, nl, nq, m, a, t, s, i, failed, st
+        integer :: nt, nv, nl, nq, m, a, i, failed, st
 
         status = NONCONFORMING_BAD_INPUT
         nt = size(triangles, 2)
@@ -622,7 +622,7 @@ contains
 
         call equilibrated_flux_estimate(space%mm%topology%vertices, triangles, k, &
             xi, eta, wq, acoef, fsrc, broken_flux, coefficient_lower, &
-            friedrichs_constant, flux, st, load_flux)
+            friedrichs_constant, flux, st, load_flux=load_flux)
         if (st /= EQUILIBRATION_OK) then
             status = st
             return
