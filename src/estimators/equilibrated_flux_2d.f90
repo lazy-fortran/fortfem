@@ -63,8 +63,9 @@ module fortfem_equilibrated_flux_2d
     !! A_T,min a lower bound of the smaller eigenvalue of A on T (then
     !! ||grad v||_T <= A_T,min^(-1/2) |||v|||_T, which is all the oscillation
     !! and Neumann trace terms use). The caller's A_T,min is checked against
-    !! the pointwise smaller eigenvalue at the quadrature points (a necessary
-    !! condition only; it must bound A on the whole cell). The bound is
+    !! the pointwise smaller eigenvalue at the quadrature points up to its
+    !! rounding, 64 eps times the larger eigenvalue (a necessary condition
+    !! only; it must bound A on the whole cell). The bound is
     !! guaranteed for any anisotropy; its efficiency is not uniform in the
     !! eigenvalue ratio (the oscillation and Friedrichs terms carry
     !! A_min^(-1/2)).
@@ -258,7 +259,7 @@ contains
         real(dp), intent(in), optional :: edge_xi(:), edge_weights(:)
         real(dp), intent(in), optional :: load_flux(:, :, :)
         real(dp), allocatable :: smallest(:, :)
-        real(dp) :: scale
+        real(dp) :: scale, largest
         integer :: nq, nt, q, t
 
         status = EQUILIBRATION_BAD_INPUT
@@ -271,17 +272,20 @@ contains
         if (size(coefficient_lower) /= nt) return
         allocate (smallest(nq, nt))
         do t = 1, nt
+            largest = 0.0_dp
             do q = 1, nq
                 associate (a => coefficient_tensor(:, :, q, t))
                     scale = maxval(abs(a))
                     if (.not. (abs(a(1, 2) - a(2, 1)) <= 1.0e-12_dp*scale)) return
                     call generated_equilibrated_tensor_min_eigenvalue(a, &
                         smallest(q, t))
+                    largest = max(largest, a(1, 1) + a(2, 2))
                 end associate
             end do
-            ! A necessary condition for a lower bound on the whole cell.
+            ! A necessary condition for a lower bound on the whole cell, up to
+            ! the rounding of the smaller eigenvalue (relative to the larger).
             if (.not. (coefficient_lower(t) <= minval(smallest(:, t)) &
-                *(1.0_dp + 64*epsilon(1.0_dp)))) return
+                + 64*epsilon(1.0_dp)*largest)) return
         end do
         call estimate_core(vertices, triangles, degree, xi, eta, weights, &
             smallest, source, discrete_flux, coefficient_lower, &
