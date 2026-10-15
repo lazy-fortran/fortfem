@@ -171,5 +171,15 @@ end program
   spaces, physical interpolation, global orientations, sparse assembly,
   public div-div-plus-mass solves, and symbolic mixed Poisson run through
   degree five. The RT5--DG5 solve conserves the source on every tetrahedron.
+- **Verified**: `fortfem_equilibrated_flux_2d` builds a patchwise RT_k
+  equilibrated flux for `-div(A grad u) = f` (scalar `A > 0`, homogeneous
+  Dirichlet data, affine counter-clockwise triangles) and returns the
+  Prager--Synge energy bound with local Payne--Weinberger oscillation and a
+  caller-supplied Friedrichs constant for the measured divergence defect.
+  Each vertex patch is an independent dense saddle-point solve (OpenMP), so
+  the cost is linear in the mesh size. It reproduces an exact RT_4 flux to
+  rounding and bounds the energy error of a non-Galerkin interpolant with
+  variable `A`. Integrals use the caller's quadrature rule without an
+  enclosed remainder.
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, and higher-order high-level solves
