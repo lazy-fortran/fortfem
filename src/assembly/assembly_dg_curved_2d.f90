@@ -43,7 +43,8 @@ module fortfem_dg_curved_2d
 
     integer, parameter, public :: DG_FORM_CONSERVATIVE = 1
     integer, parameter, public :: DG_FORM_ADVECTIVE = 2
-    real(dp), parameter :: default_penalty = 4.0_dp
+    real(dp), parameter, public :: DG_DEFAULT_PENALTY = 4.0_dp
+    real(dp), parameter :: default_penalty = DG_DEFAULT_PENALTY
     integer, parameter :: par_min = 32
 
     type, public :: dg_curved_space_t
@@ -100,6 +101,7 @@ module fortfem_dg_curved_2d
     public :: dg_curved_assemble
     public :: dg_curved_rhs
     public :: dg_curved_qpoint
+    public :: penalty_factor
 
 contains
 
