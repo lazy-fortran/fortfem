@@ -36,6 +36,16 @@ module fortfem_meridian_fourier_equilibration
     private
     public :: meridian_fourier_equilibrated_estimate, fourier_equilibrated_t
 
+    interface
+        subroutine dpotrf(uplo, n, a, lda, info)
+            import :: dp
+            character(len=1), intent(in) :: uplo
+            integer, intent(in) :: n, lda
+            real(dp), intent(inout) :: a(lda, *)
+            integer, intent(out) :: info
+        end subroutine dpotrf
+    end interface
+
     type :: fourier_equilibrated_t
         real(dp) :: bound = huge(1.0_dp)
         real(dp) :: flux_defect = 0, oscillation = 0, divergence_defect = 0
@@ -68,7 +78,7 @@ contains
         real(dp), allocatable :: xq(:, :), kt(:, :, :), f0(:), fl(:, :)
         real(dp), allocatable :: val(:), grad(:, :), um(:, :), gm(:, :)
         real(dp), allocatable :: samples(:, :), jm(:, :), fm(:)
-        real(dp) :: x(2), wq, rr, g(3), sc, ss
+        real(dp) :: x(2), wq, rr, g(3), sc, ss, s(3, 3)
         integer :: nb, nt, nl, nq, np, t, q, j, b, n, off, st, failed, c
         real(dp), parameter :: pi = acos(-1.0_dp)
 
@@ -92,7 +102,7 @@ contains
         failed = 0
         !$omp parallel default(shared) private(t, q, j, b, n, off, st, x, wq, &
         !$omp rr, g, sc, ss, xq, kt, f0, fl, val, grad, um, gm, samples, jm, fm, &
-        !$omp work, z, c) &
+        !$omp work, z, c, s) &
         !$omp reduction(max:failed)
         allocate (xq(3, np), kt(3, 3, np), f0(np), fl(3, np))
         allocate (val(nl), grad(2, nl), um(nl, nb), gm(3, nb))
@@ -117,6 +127,22 @@ contains
             if (.not. all(ieee_is_finite(kt)) .or. &
                 .not. all(ieee_is_finite(f0)) .or. &
                 .not. all(ieee_is_finite(fl))) then
+                failed = 1
+                cycle
+            end if
+            ! A necessary condition for K >= chi_lower I: Cholesky of the
+            ! sampled sym(K) - chi_lower I, up to the rounding of its smallest
+            ! eigenvalue (64 eps times the trace).
+            do j = 1, np
+                s = 0.5_dp*(kt(:, :, j) + transpose(kt(:, :, j)))
+                sc = chi_lower - 64*epsilon(1.0_dp)*abs(s(1, 1) + s(2, 2) + s(3, 3))
+                do c = 1, 3
+                    s(c, c) = s(c, c) - sc
+                end do
+                call dpotrf('L', 3, s, 3, st)
+                if (st /= 0) exit
+            end do
+            if (st /= 0) then
                 failed = 1
                 cycle
             end if
