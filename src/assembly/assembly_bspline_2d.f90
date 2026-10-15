@@ -2121,20 +2121,20 @@ contains
                                         stiffness_weight, mass_weight, &
                                         quadrature_weight, contribution_dot)
                                 else
-                                call generated_bspline_h1_geometry_jvp( &
-                                    geometry_jacobian(1, 1), &
-                                    geometry_jacobian(2, 1), &
-                                    geometry_jacobian(1, 2), &
-                                    geometry_jacobian(2, 2), gradient_row(1), &
-                                    gradient_row(2), gradient_column(1), &
-                                    gradient_column(2), basis_row, basis_column, &
-                                    stiffness_weight, mass_weight, &
-                                    quadrature_weight, &
-                                    geometry_jacobian_dot(1, 1), &
-                                    geometry_jacobian_dot(2, 1), &
-                                    geometry_jacobian_dot(1, 2), &
-                                    geometry_jacobian_dot(2, 2), &
-                                    contribution_dot)
+                                    call generated_bspline_h1_geometry_jvp( &
+                                        geometry_jacobian(1, 1), &
+                                        geometry_jacobian(2, 1), &
+                                        geometry_jacobian(1, 2), &
+                                        geometry_jacobian(2, 2), gradient_row(1), &
+                                        gradient_row(2), gradient_column(1), &
+                                        gradient_column(2), basis_row, basis_column, &
+                                        stiffness_weight, mass_weight, &
+                                        quadrature_weight, &
+                                        geometry_jacobian_dot(1, 1), &
+                                        geometry_jacobian_dot(2, 1), &
+                                        geometry_jacobian_dot(1, 2), &
+                                        geometry_jacobian_dot(2, 2), &
+                                        contribution_dot)
                                 end if
                                 local_matrix_dot(local_row, local_column) = &
                                     local_matrix_dot(local_row, local_column) + &
@@ -2265,19 +2265,35 @@ contains
                                 contribution_bar = csc_entry_value( &
                                     matrix_bar, local_dofs(local_row), &
                                     local_dofs(local_column))
-                                call generated_bspline_h1_geometry_vjp( &
-                                    geometry_jacobian(1, 1), &
-                                    geometry_jacobian(2, 1), &
-                                    geometry_jacobian(1, 2), &
-                                    geometry_jacobian(2, 2), gradient_row(1), &
-                                    gradient_row(2), gradient_column(1), &
-                                    gradient_column(2), basis_row, basis_column, &
-                                    stiffness_weight, mass_weight, &
-                                    quadrature_weight, contribution_bar, &
-                                    geometry_jacobian_bar_entry(1, 1), &
-                                    geometry_jacobian_bar_entry(2, 1), &
-                                    geometry_jacobian_bar_entry(1, 2), &
-                                    geometry_jacobian_bar_entry(2, 2))
+                                if (FORTFEM_AD_ENGINE == FORTFEM_AD_FORTAD) then
+                                    call fortfem_h1_geometry_vjp_fortad( &
+                                        geometry_jacobian(1, 1), &
+                                        geometry_jacobian(2, 1), &
+                                        geometry_jacobian(1, 2), &
+                                        geometry_jacobian(2, 2), gradient_row(1), &
+                                        gradient_row(2), gradient_column(1), &
+                                        gradient_column(2), basis_row, basis_column, &
+                                        stiffness_weight, mass_weight, &
+                                        quadrature_weight, contribution_bar, &
+                                        geometry_jacobian_bar_entry(1, 1), &
+                                        geometry_jacobian_bar_entry(2, 1), &
+                                        geometry_jacobian_bar_entry(1, 2), &
+                                        geometry_jacobian_bar_entry(2, 2))
+                                else
+                                    call generated_bspline_h1_geometry_vjp( &
+                                        geometry_jacobian(1, 1), &
+                                        geometry_jacobian(2, 1), &
+                                        geometry_jacobian(1, 2), &
+                                        geometry_jacobian(2, 2), gradient_row(1), &
+                                        gradient_row(2), gradient_column(1), &
+                                        gradient_column(2), basis_row, basis_column, &
+                                        stiffness_weight, mass_weight, &
+                                        quadrature_weight, contribution_bar, &
+                                        geometry_jacobian_bar_entry(1, 1), &
+                                        geometry_jacobian_bar_entry(2, 1), &
+                                        geometry_jacobian_bar_entry(1, 2), &
+                                        geometry_jacobian_bar_entry(2, 2))
+                                end if
                                 geometry_jacobian_bar = &
                                     geometry_jacobian_bar + &
                                     geometry_jacobian_bar_entry
