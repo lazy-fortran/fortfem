@@ -1,28 +1,48 @@
 module fortfem_equilibrated_flux_2d
     !! Patchwise equilibrated-flux (Prager--Synge) energy-error bound for
-    !! -div(A grad u) = f on an affine triangle mesh, u = 0 on the whole
-    !! boundary, scalar A > 0, conforming discrete u_h with u_h = 0 there.
+    !! -div(A grad u) = f on a triangle mesh, u = 0 on the whole boundary,
+    !! scalar A > 0, conforming discrete u_h with u_h = 0 there. Cells are
+    !! affine or isoparametric (Lagrange P2/P3 geometry, see below).
     !!
-    !! For every vertex a with hat function psi_a, the local problem on its
-    !! patch finds sigma_a in RT_k (zero normal trace on the patch boundary
-    !! away from the domain boundary) minimizing ||A^(-1/2)(sigma_a -
-    !! psi_a A grad u_h)|| subject to -div sigma_a = Pi_k(f psi_a - A grad u_h
-    !! . grad psi_a) - c_a, with c_a the patch mean of that load on interior
-    !! patches (zero for a Galerkin solution in exact arithmetic) and c_a = 0
-    !! on boundary patches. sigma = sum_a sigma_a lies in H(div) and, for all
-    !! v in H^1_0, a(u - u_h, v) = int (f - Pi_k f) v - int d v
-    !! + int (sigma - A grad u_h) . grad v, d = div sigma + Pi_k f, hence
+    !! Every cell K = F_K(T^) carries RT_k through the contravariant Piola map
+    !! sigma = J sigma^/det J, div sigma = div^ sigma^/det J, with the Jacobian J
+    !! evaluated pointwise (constant for affine cells). Edge degrees of freedom
+    !! are the moments of the flux per unit reference-edge parameter, which the
+    !! Piola map leaves unchanged, so the normal trace is continuous across a
+    !! (possibly curved) shared edge exactly as for straight edges.
     !!
-    !!   |||u - u_h||| <= ||A^(-1/2)(sigma - A grad u_h)||
-    !!       + (sum_T (h_T/pi)^2 / A_T,min ||f - Pi_k f||_T^2)^(1/2)
-    !!       + C_F ||d||,
+    !! For every vertex a with hat function psi_a (the reference barycentric
+    !! function pulled back by F_K, a conforming partition of unity), the local
+    !! problem on its patch finds sigma_a in RT_k (zero normal trace on the
+    !! patch boundary away from the domain boundary; free normal trace on
+    !! domain-boundary edges at Dirichlet vertices) minimizing
+    !! ||A^(-1/2)(sigma_a - psi_a A grad u_h)|| subject to the divergence
+    !! constraint posed in the reference cell,
     !!
-    !! |||v|||^2 = int A |grad v|^2, h_T the diameter (Payne--Weinberger on
-    !! the convex cell), A_T,min a caller-supplied lower bound of A on T and
-    !! C_F a caller-supplied Friedrichs constant ||v|| <= C_F |||v||| on
-    !! H^1_0. The bound holds for any sigma in H(div), so local solve errors
-    !! only loosen it: d is measured from the assembled sigma. Integrals use
-    !! the caller's reference rule; their quadrature error is not enclosed.
+    !!   div^ sigma^_a = -Pi^_k(det J (f psi_a - A grad u_h . grad psi_a)) + c_a
+    !!                                                         Pi^_k(det J),
+    !!
+    !! with Pi^_k the L2(T^) projection onto P_k, c_a the patch mean of the load
+    !! on interior patches (zero for a Galerkin solution in exact arithmetic) and
+    !! c_a = 0 on boundary patches. Then sigma = sum_a sigma_a lies in H(div),
+    !! div sigma + Pi f = d with Pi f := Pi^_k(det J f)/det J, and for all
+    !! v in H^1_0, a(u - u_h, v) = int (f - Pi f) v + int d v
+    !! + int (sigma - A grad u_h) . grad v, hence
+    !!
+    !!   |||u - u_h||| <= ||A^(-1/2)(sigma - A grad u_h)|| + osc + C_F ||d||,
+    !!
+    !! |||v|||^2 = int A |grad v|^2 and C_F a caller-supplied Friedrichs constant
+    !! ||v|| <= C_F |||v||| on H^1_0. The oscillation term is, per affine
+    !! (hence convex) cell, (h_T/pi) A_T,min^(-1/2) ||f - Pi f||_T (Payne--
+    !! Weinberger, A_T,min a caller-supplied lower bound of A on T), and for
+    !! every isoparametric (possibly non-convex) cell the unconditional
+    !! C_F ||f - Pi f||_K, from int_K (f - Pi f) v <= ||f - Pi f||_K ||v||_K;
+    !! the two groups are summed in quadrature separately. The bound holds for
+    !! any sigma in H(div), so local solve errors only loosen it: d is measured
+    !! from the assembled sigma. Integrals use the caller's reference rule;
+    !! their quadrature error, and positivity of det J between the quadrature
+    !! points of isoparametric cells, are not enclosed.
+    !!
     !! Pointwise leaves (geometry, hat gradients, P_k monomials and the
     !! integrands) come from the FortSym-generated module
     !! fortfem_equilibrated_flux_products; the cell diameter, patch topology,
@@ -33,8 +53,15 @@ module fortfem_equilibrated_flux_2d
         initialize_triangle_raviart_thomas, evaluate_triangle_raviart_thomas, &
         triangle_rt_dof_count
     use fortfem_triangle_piola_maps, only: map_triangle_rt_contravariant
+    use fortfem_triangle_lagrange_arbitrary_order, only: triangle_lagrange_basis_t, &
+        initialize_triangle_lagrange_basis, evaluate_triangle_lagrange_basis, &
+        triangle_lagrange_nodes
     use fortfem_generated_equilibrated_jacobian_p1, only: &
         generated_equilibrated_jacobian_p1
+    use fortfem_generated_equilibrated_jacobian_p2, only: &
+        generated_equilibrated_jacobian_p2
+    use fortfem_generated_equilibrated_jacobian_p3, only: &
+        generated_equilibrated_jacobian_p3
     use fortfem_generated_equilibrated_determinant, only: &
         generated_equilibrated_determinant
     use fortfem_generated_equilibrated_inverse_transpose, only: &
@@ -75,9 +102,6 @@ module fortfem_equilibrated_flux_2d
     integer, parameter, public :: EQUILIBRATION_BAD_CELL = 2
     integer, parameter, public :: EQUILIBRATION_PATCH_FAILED = 3
     integer, parameter :: max_degree = 6
-    !> Reference gradients of the P1 geometry functions, grad(node, component).
-    real(dp), parameter :: p1_gradient(3, 2) = reshape( &
-        [-1.0_dp, 1.0_dp, 0.0_dp, -1.0_dp, 0.0_dp, 1.0_dp], [3, 2])
 
     type :: equilibrated_flux_estimate_t
         real(dp) :: bound = huge(1.0_dp)        !< sum of the three terms
@@ -101,12 +125,20 @@ module fortfem_equilibrated_flux_2d
 
     !> Reference data shared by all cells.
     type :: reference_t
-        integer :: degree = 0, nrt = 0, nk = 0, nq = 0, nedge = 0
+        integer :: degree = 0, nrt = 0, nk = 0, nq = 0, nedge = 0, nloc = 3
         real(dp), allocatable :: weights(:)
         real(dp), allocatable :: rt(:, :, :), rt_div(:, :)  !< (2,nrt,nq),(nrt,nq)
         real(dp), allocatable :: poly(:, :)                 !< (nk, nq), P_k
         real(dp), allocatable :: hat(:, :)                  !< (3, nq)
+        !> Reference gradients of the geometry shape functions, (nloc, 2, nq).
+        real(dp), allocatable :: geo_grad(:, :, :)
     end type reference_t
+
+    !> Cell geometry: Lagrange nodes (vertices first) and an affinity flag.
+    type :: problem_t
+        real(dp), allocatable :: nodes(:, :, :)  !< (2, nloc, nt)
+        logical, allocatable :: affine(:)        !< (nt)
+    end type problem_t
 
     !> Mesh topology: vertex -> cells, cell edges, boundary vertices.
     type :: topology_t
@@ -119,14 +151,21 @@ contains
 
     subroutine equilibrated_flux_estimate(vertices, triangles, degree, xi, eta, &
             weights, coefficient, source, discrete_flux, coefficient_lower, &
-            friedrichs_constant, estimate, status)
-        !! Data arrays are sampled at the affine images of the reference
-        !! points (xi, eta) of each cell (weights sum to 1/2); the rule must
-        !! integrate polynomials of degree 2k + 2 exactly for the local
-        !! problems to be well posed. triangles must be counter-clockwise.
+            friedrichs_constant, estimate, status, geometry_nodes)
+        !! Data arrays are sampled at the (mapped) reference points (xi, eta)
+        !! of each cell (weights sum to 1/2); the rule must integrate
+        !! polynomials of degree 2k + 2 exactly for the local problems to be
+        !! well posed. triangles must be counter-clockwise.
+        !! Optional geometry_nodes(2, nloc, nt), nloc = 3, 6 or 10, gives the
+        !! Lagrange geometry nodes of each cell: the vertices
+        !! vertices(:, triangles(:, t)) first, then the nloc = 6 edge midpoints
+        !! or the nloc = 10 two nodes per edge (ordered from local vertex e to
+        !! e + 1, edges 1-2, 2-3, 3-1) followed by the centroid node. Nodes
+        !! shared by neighbouring cells must coincide. A cell whose nodes lie on
+        !! the straight-edge Lagrange positions is treated as affine.
         real(dp), intent(in) :: vertices(:, :)          !< (2, nv)
         integer, intent(in) :: triangles(:, :)          !< (3, nt)
-        integer, intent(in) :: degree                   !< k >= 0
+        integer, intent(in) :: degree                   !< 0 <= k <= 6
         real(dp), intent(in) :: xi(:), eta(:), weights(:)
         real(dp), intent(in) :: coefficient(:, :)       !< A, (nq, nt)
         real(dp), intent(in) :: source(:, :)            !< f, (nq, nt)
@@ -135,11 +174,14 @@ contains
         real(dp), intent(in) :: friedrichs_constant
         type(equilibrated_flux_estimate_t), intent(out) :: estimate
         integer, intent(out) :: status
+        real(dp), intent(in), optional :: geometry_nodes(:, :, :)
         type(reference_t) :: ref
         type(topology_t) :: topo
+        type(problem_t) :: prob
         real(dp), allocatable :: projection(:, :), contribution(:, :, :)
-        real(dp), allocatable :: divergence_sq(:)
-        integer :: nv, nt, a, t, failed
+        real(dp), allocatable :: divergence_sq(:), source_sq(:)
+        integer :: nv, nt, nloc, a, t, failed, nodes_status
+        logical :: cells_ok
 
         status = EQUILIBRATION_BAD_INPUT
         nv = size(vertices, 2)
@@ -159,33 +201,47 @@ contains
         if (any(.not. (coefficient > 0.0_dp))) return
         if (.not. (friedrichs_constant >= 0.0_dp)) return
 
-        call build_reference(degree, xi, eta, weights, ref, status)
+        nloc = 3
+        if (present(geometry_nodes)) nloc = size(geometry_nodes, 2)
+        if (nloc /= 3 .and. nloc /= 6 .and. nloc /= 10) return
+        call setup_geometry(vertices, triangles, geometry_nodes, nloc, prob, &
+            nodes_status)
+        if (nodes_status /= 0) return
+
+        call build_reference(degree, nloc, xi, eta, weights, ref, status)
         if (status /= 0) then
             status = EQUILIBRATION_BAD_INPUT
             return
         end if
         status = EQUILIBRATION_BAD_CELL
+        cells_ok = .true.
         do t = 1, nt
-            if (.not. (cell_determinant(vertices, triangles(:, t)) > 0.0_dp)) return
+            if (.not. positive_determinant(ref, prob%nodes(:, :, t))) cells_ok = .false.
         end do
+        if (.not. cells_ok) return
         call build_topology(nv, triangles, topo)
 
         allocate (projection(ref%nk, nt), estimate%cell_oscillation(nt))
-        allocate (contribution(ref%nrt, 3, nt))
+        allocate (contribution(ref%nrt, 3, nt), source_sq(nt))
         contribution = 0.0_dp
         failed = 0
         !$omp parallel do schedule(static)
         do t = 1, nt
-            call project_source(ref, vertices, triangles(:, t), source(:, t), &
-                coefficient_lower(t), projection(:, t), &
-                estimate%cell_oscillation(t))
+            call project_source(ref, prob%nodes(:, :, t), source(:, t), &
+                projection(:, t), source_sq(t))
+            if (prob%affine(t)) then
+                estimate%cell_oscillation(t) = cell_diameter(prob%nodes(:, 1:3, t)) &
+                    /acos(-1.0_dp)*sqrt(source_sq(t)/coefficient_lower(t))
+            else
+                estimate%cell_oscillation(t) = friedrichs_constant*sqrt(source_sq(t))
+            end if
         end do
         !$omp end parallel do
 
         !$omp parallel do schedule(dynamic, 16) reduction(max:failed)
         do a = 1, nv
             if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
-            call solve_patch(ref, topo, a, vertices, triangles, coefficient, &
+            call solve_patch(ref, topo, prob, a, triangles, coefficient, &
                 source, discrete_flux, contribution, failed)
         end do
         !$omp end parallel do
@@ -199,27 +255,109 @@ contains
         !$omp parallel do schedule(static)
         do t = 1, nt
             estimate%flux_coefficients(:, t) = sum(contribution(:, :, t), dim=2)
-            call cell_defects(ref, vertices, triangles(:, t), coefficient(:, t), &
+            call cell_defects(ref, prob%nodes(:, :, t), coefficient(:, t), &
                 discrete_flux(:, :, t), projection(:, t), &
                 estimate%flux_coefficients(:, t), estimate%cell_flux(t), &
                 divergence_sq(t))
         end do
         !$omp end parallel do
         estimate%flux_defect = sqrt(sum(estimate%cell_flux**2))
-        estimate%oscillation = sqrt(sum(estimate%cell_oscillation**2))
+        estimate%oscillation = sqrt(sum(estimate%cell_oscillation**2, &
+            mask=prob%affine)) + sqrt(sum(estimate%cell_oscillation**2, &
+            mask=.not. prob%affine))
         estimate%divergence_defect = friedrichs_constant*sqrt(sum(divergence_sq))
         estimate%bound = estimate%flux_defect + estimate%oscillation &
             + estimate%divergence_defect
         status = EQUILIBRATION_OK
     end subroutine equilibrated_flux_estimate
 
-    subroutine build_reference(degree, xi, eta, weights, ref, status)
-        integer, intent(in) :: degree
+    subroutine setup_geometry(vertices, triangles, geometry_nodes, nloc, prob, &
+            status)
+        !! Lagrange nodes of every cell (affine nodes from the vertices when
+        !! geometry_nodes is absent) and the affinity flags.
+        real(dp), intent(in) :: vertices(:, :)
+        integer, intent(in) :: triangles(:, :), nloc
+        real(dp), intent(in), optional :: geometry_nodes(:, :, :)
+        type(problem_t), intent(out) :: prob
+        integer, intent(out) :: status
+        real(dp), allocatable :: straight(:, :)
+        real(dp) :: reference(2, nloc), diameter
+        integer :: nt, t, i
+
+        status = 1
+        nt = size(triangles, 2)
+        allocate (prob%nodes(2, nloc, nt), prob%affine(nt))
+        call reference_geometry_nodes(nloc, reference)
+        if (present(geometry_nodes)) then
+            if (size(geometry_nodes, 1) /= 2 .or. size(geometry_nodes, 3) /= nt) return
+            prob%nodes = geometry_nodes
+        else
+            do t = 1, nt
+                prob%nodes(:, :, t) = vertices(:, triangles(:, t))
+            end do
+        end if
+        allocate (straight(2, nloc))
+        do t = 1, nt
+            if (any(abs(prob%nodes(:, 1:3, t) - vertices(:, triangles(:, t))) &
+                > 0.0_dp)) return
+            do i = 1, nloc
+                straight(:, i) = prob%nodes(:, 1, t) &
+                    + reference(1, i)*(prob%nodes(:, 2, t) - prob%nodes(:, 1, t)) &
+                    + reference(2, i)*(prob%nodes(:, 3, t) - prob%nodes(:, 1, t))
+            end do
+            diameter = cell_diameter(prob%nodes(:, 1:3, t))
+            prob%affine(t) = all(abs(prob%nodes(:, :, t) - straight) &
+                <= 1.0e-13_dp*diameter)
+        end do
+        status = 0
+    end subroutine setup_geometry
+
+    pure subroutine reference_geometry_nodes(nloc, nodes)
+        !! Reference positions of the Lagrange geometry nodes: vertices, then
+        !! per edge e (local vertex e to e + 1) its interior nodes, then the
+        !! centroid for P3.
+        integer, intent(in) :: nloc
+        real(dp), intent(out) :: nodes(2, nloc)
+        real(dp), parameter :: third = 1.0_dp/3.0_dp
+
+        nodes(:, 1:3) = reshape([0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], &
+            [2, 3])
+        if (nloc == 6) then
+            nodes(:, 4:6) = reshape([0.5_dp, 0.0_dp, 0.5_dp, 0.5_dp, 0.0_dp, &
+                0.5_dp], [2, 3])
+        else if (nloc == 10) then
+            nodes(:, 4:9) = reshape([third, 0.0_dp, 2*third, 0.0_dp, &
+                2*third, third, third, 2*third, 0.0_dp, 2*third, 0.0_dp, third], &
+                [2, 6])
+            nodes(:, 10) = [third, third]
+        end if
+    end subroutine reference_geometry_nodes
+
+    logical function positive_determinant(ref, nodes) result(ok)
+        !! det J > 0 at every quadrature point of the cell.
+        type(reference_t), intent(in) :: ref
+        real(dp), intent(in) :: nodes(:, :)
+        real(dp) :: jac(2, 2), det
+        integer :: q
+
+        ok = .true.
+        do q = 1, ref%nq
+            call jacobian_at(ref, nodes, q, jac, det)
+            if (.not. (det > 0.0_dp)) ok = .false.
+        end do
+    end function positive_determinant
+
+    subroutine build_reference(degree, nloc, xi, eta, weights, ref, status)
+        integer, intent(in) :: degree, nloc
         real(dp), intent(in) :: xi(:), eta(:), weights(:)
         type(reference_t), intent(out) :: ref
         integer, intent(out) :: status
         type(triangle_rt_basis_t) :: basis
-        integer :: q
+        type(triangle_lagrange_basis_t) :: geometry_basis
+        real(dp), allocatable :: lagrange_nodes(:, :), lagrange_value(:)
+        real(dp), allocatable :: lagrange_grad(:, :)
+        real(dp) :: targets(2, nloc)
+        integer :: q, i, j, order(nloc), geometry_degree
 
         call initialize_triangle_raviart_thomas(degree, basis, status)
         if (status /= 0) return
@@ -228,15 +366,43 @@ contains
         ref%nk = (degree + 1)*(degree + 2)/2
         ref%nq = size(xi)
         ref%nedge = degree + 1
+        ref%nloc = nloc
         ref%weights = weights
         allocate (ref%rt(2, ref%nrt, ref%nq), ref%rt_div(ref%nrt, ref%nq))
         allocate (ref%poly(ref%nk, ref%nq), ref%hat(3, ref%nq))
+        allocate (ref%geo_grad(nloc, 2, ref%nq))
+        ! Geometry shape functions in the node order of the module header: the
+        ! Lagrange basis uses its own ordering, matched here by node position.
+        geometry_degree = merge(1, merge(2, 3, nloc == 6), nloc == 3)
+        call initialize_triangle_lagrange_basis(geometry_degree, geometry_basis, &
+            status)
+        if (status /= 0) return
+        call triangle_lagrange_nodes(geometry_basis, lagrange_nodes)
+        call reference_geometry_nodes(nloc, targets)
+        do i = 1, nloc
+            order(i) = 0
+            do j = 1, nloc
+                if (maxval(abs(lagrange_nodes(:, j) - targets(:, i))) < 1.0e-12_dp) &
+                    order(i) = j
+            end do
+            if (order(i) == 0) then
+                status = 1
+                return
+            end if
+        end do
+        allocate (lagrange_value(nloc), lagrange_grad(2, nloc))
         do q = 1, ref%nq
             call evaluate_triangle_raviart_thomas(basis, xi(q), eta(q), &
                 ref%rt(:, :, q), ref%rt_div(:, q), status)
             if (status /= 0) return
             call reference_monomials(degree, xi(q), eta(q), ref%poly(:, q))
             call generated_equilibrated_hat_values(xi(q), eta(q), ref%hat(:, q))
+            call evaluate_triangle_lagrange_basis(geometry_basis, xi(q), eta(q), &
+                lagrange_value, lagrange_grad, status)
+            if (status /= 0) return
+            do i = 1, nloc
+                ref%geo_grad(i, :, q) = lagrange_grad(:, order(i))
+            end do
         end do
         status = 0
     end subroutine build_reference
@@ -349,29 +515,46 @@ contains
         end do
     end function shared_edge
 
-    pure real(dp) function cell_determinant(vertices, cell) result(det)
-        real(dp), intent(in) :: vertices(:, :)
-        integer, intent(in) :: cell(3)
-        real(dp) :: jac(2, 2)
+    pure subroutine jacobian_at(ref, nodes, q, jac, det)
+        !! Jacobian of the cell map at quadrature point q and its determinant.
+        type(reference_t), intent(in) :: ref
+        real(dp), intent(in) :: nodes(:, :)
+        integer, intent(in) :: q
+        real(dp), intent(out) :: jac(2, 2), det
 
-        call generated_equilibrated_jacobian_p1(vertices(:, cell), p1_gradient, jac)
+        select case (ref%nloc)
+        case (3)
+            call generated_equilibrated_jacobian_p1(nodes, ref%geo_grad(:, :, q), jac)
+        case (6)
+            call generated_equilibrated_jacobian_p2(nodes, ref%geo_grad(:, :, q), jac)
+        case default
+            call generated_equilibrated_jacobian_p3(nodes, ref%geo_grad(:, :, q), jac)
+        end select
         call generated_equilibrated_determinant(jac, det)
-    end function cell_determinant
+    end subroutine jacobian_at
 
-    pure subroutine cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
-        real(dp), intent(in) :: vertices(:, :)
-        integer, intent(in) :: cell(3)
-        real(dp), intent(out) :: jac(2, 2), det, hat_grad(2, 3), diameter
+    pure subroutine geometry_at(ref, nodes, q, jac, det, hat_grad)
+        !! Pointwise Jacobian, determinant and physical hat gradients.
+        type(reference_t), intent(in) :: ref
+        real(dp), intent(in) :: nodes(:, :)
+        integer, intent(in) :: q
+        real(dp), intent(out) :: jac(2, 2), det, hat_grad(2, 3)
         real(dp) :: inv_t(2, 2)
 
-        call generated_equilibrated_jacobian_p1(vertices(:, cell), p1_gradient, jac)
-        call generated_equilibrated_determinant(jac, det)
+        call jacobian_at(ref, nodes, q, jac, det)
         ! J^(-T) maps reference gradients to physical ones.
         call generated_equilibrated_inverse_transpose(jac, det, inv_t)
         call generated_equilibrated_hat_gradients(inv_t, hat_grad)
-        diameter = max(norm2(jac(:, 1)), norm2(jac(:, 2)), &
-            norm2(jac(:, 2) - jac(:, 1)))
-    end subroutine cell_geometry
+    end subroutine geometry_at
+
+    pure real(dp) function cell_diameter(vertex_nodes) result(diameter)
+        !! Longest vertex distance of the (straight-edge) cell.
+        real(dp), intent(in) :: vertex_nodes(:, :)
+
+        diameter = max(norm2(vertex_nodes(:, 2) - vertex_nodes(:, 1)), &
+            norm2(vertex_nodes(:, 3) - vertex_nodes(:, 1)), &
+            norm2(vertex_nodes(:, 3) - vertex_nodes(:, 2)))
+    end function cell_diameter
 
     subroutine physical_rt(ref, jac, q, values, divergences, status)
         type(reference_t), intent(in) :: ref
@@ -384,53 +567,51 @@ contains
             values, divergences, status)
     end subroutine physical_rt
 
-    subroutine project_source(ref, vertices, cell, f, a_lower, coefficients, &
-            oscillation)
-        !! L2 projection of f onto P_k(T) and the oscillation term
-        !! (h_T/pi) A_T,min^(-1/2) ||f - Pi_k f||_T.
+    subroutine project_source(ref, nodes, f, coefficients, source_sq)
+        !! Reference-cell L2 projection of det J f onto P_k(T^), so that
+        !! Pi f = (coefficients . P_k)/det J, and ||f - Pi f||_K^2.
         type(reference_t), intent(in) :: ref
-        real(dp), intent(in) :: vertices(:, :), f(:), a_lower
-        integer, intent(in) :: cell(3)
-        real(dp), intent(out) :: coefficients(:), oscillation
-        real(dp) :: jac(2, 2), det, hat_grad(2, 3), diameter, wdet, rest
-        real(dp) :: mass(ref%nk, ref%nk), rhs(ref%nk, 1), integrand
+        real(dp), intent(in) :: nodes(:, :), f(:)
+        real(dp), intent(out) :: coefficients(:), source_sq
+        real(dp) :: jac(2, 2), det, mass(ref%nk, ref%nk), rhs(ref%nk, 1)
+        real(dp) :: integrand
         integer :: q, l, ipiv(ref%nk), info
 
-        call cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
         mass = 0.0_dp
         rhs = 0.0_dp
         do q = 1, ref%nq
-            wdet = ref%weights(q)*det
+            call jacobian_at(ref, nodes, q, jac, det)
             do l = 1, ref%nk
-                mass(:, l) = mass(:, l) + wdet*ref%poly(:, q)*ref%poly(l, q)
+                mass(:, l) = mass(:, l) + ref%weights(q)*ref%poly(:, q)*ref%poly(l, q)
             end do
-            rhs(:, 1) = rhs(:, 1) + wdet*f(q)*ref%poly(:, q)
+            rhs(:, 1) = rhs(:, 1) + ref%weights(q)*det*f(q)*ref%poly(:, q)
         end do
         call dgesv(ref%nk, 1, mass, ref%nk, ipiv, rhs, ref%nk, info)
         coefficients = rhs(:, 1)
-        rest = 0.0_dp
+        source_sq = 0.0_dp
         do q = 1, ref%nq
+            call jacobian_at(ref, nodes, q, jac, det)
             call generated_equilibrated_oscillation_integrand(f(q), &
-                dot_product(coefficients, ref%poly(:, q)), integrand)
-            rest = rest + ref%weights(q)*det*integrand
+                dot_product(coefficients, ref%poly(:, q)), det, integrand)
+            source_sq = source_sq + ref%weights(q)*integrand
         end do
-        oscillation = diameter/acos(-1.0_dp)*sqrt(rest/a_lower)
-        if (info /= 0) oscillation = huge(1.0_dp)
+        if (info /= 0) source_sq = huge(1.0_dp)
     end subroutine project_source
 
-    subroutine solve_patch(ref, topo, a, vertices, triangles, coefficient, source, &
+    subroutine solve_patch(ref, topo, prob, a, triangles, coefficient, source, &
             discrete_flux, contribution, failed)
         type(reference_t), intent(in) :: ref
         type(topology_t), intent(in) :: topo
+        type(problem_t), intent(in) :: prob
         integer, intent(in) :: a, triangles(:, :)
-        real(dp), intent(in) :: vertices(:, :), coefficient(:, :), source(:, :)
+        real(dp), intent(in) :: coefficient(:, :), source(:, :)
         real(dp), intent(in) :: discrete_flux(:, :, :)
         real(dp), intent(inout) :: contribution(:, :, :)
         integer, intent(inout) :: failed
         integer :: edges(2*(topo%vertex_start(a + 1) - topo%vertex_start(a)))
         integer, allocatable :: map(:, :), sgn(:, :), ipiv(:)
         real(dp), allocatable :: kkt(:, :), rhs(:, :), qint(:)
-        real(dp) :: jac(2, 2), det, hat_grad(2, 3), diameter, wdet, ainv, psi
+        real(dp) :: jac(2, 2), det, hat_grad(2, 3), wdet, ainv, psi
         real(dp) :: phi(2, ref%nrt), div(ref%nrt), load, mean, area
         integer :: m, nedges, nsigma, nlam, n, i, j, k, l, t, s, e, ee, moment
         integer :: q, cell_dofs, interior, slot_edge(2), info, stat, lam0
@@ -481,10 +662,9 @@ contains
                     + (i - 1)*cell_dofs + interior
             end do
 
-            call cell_geometry(vertices, triangles(:, t), jac, det, hat_grad, &
-                diameter)
             lam0 = nsigma + (i - 1)*ref%nk
             do q = 1, ref%nq
+                call geometry_at(ref, prob%nodes(:, :, t), q, jac, det, hat_grad)
                 call physical_rt(ref, jac, q, phi, div, stat)
                 if (stat /= 0) then
                     failed = 1
@@ -553,30 +733,28 @@ contains
         end do
     end subroutine solve_patch
 
-    subroutine cell_defects(ref, vertices, cell, coefficient, discrete_flux, &
-            projection, sigma, flux_defect, divergence_sq)
+    subroutine cell_defects(ref, nodes, coefficient, discrete_flux, projection, &
+            sigma, flux_defect, divergence_sq)
         type(reference_t), intent(in) :: ref
-        real(dp), intent(in) :: vertices(:, :), coefficient(:)
-        integer, intent(in) :: cell(3)
+        real(dp), intent(in) :: nodes(:, :), coefficient(:)
         real(dp), intent(in) :: discrete_flux(:, :), projection(:), sigma(:)
         real(dp), intent(out) :: flux_defect, divergence_sq
-        real(dp) :: jac(2, 2), det, hat_grad(2, 3), diameter, wdet
-        real(dp) :: phi(2, ref%nrt), div(ref%nrt), value(2), integrand
+        real(dp) :: jac(2, 2), det, phi(2, ref%nrt), div(ref%nrt), value(2)
+        real(dp) :: integrand
         integer :: q, stat
 
-        call cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
         flux_defect = 0.0_dp
         divergence_sq = 0.0_dp
         do q = 1, ref%nq
+            call jacobian_at(ref, nodes, q, jac, det)
             call physical_rt(ref, jac, q, phi, div, stat)
-            wdet = ref%weights(q)*det
             value = matmul(phi, sigma) - discrete_flux(:, q)
             call generated_equilibrated_flux_defect_integrand(value, coefficient(q), &
-                integrand)
-            flux_defect = flux_defect + wdet*integrand
+                det, integrand)
+            flux_defect = flux_defect + ref%weights(q)*integrand
             call generated_equilibrated_divergence_integrand(dot_product(div, sigma), &
-                dot_product(projection, ref%poly(:, q)), integrand)
-            divergence_sq = divergence_sq + wdet*integrand
+                dot_product(projection, ref%poly(:, q)), det, integrand)
+            divergence_sq = divergence_sq + ref%weights(q)*integrand
         end do
         flux_defect = sqrt(flux_defect)
     end subroutine cell_defects
