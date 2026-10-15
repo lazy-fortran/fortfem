@@ -1,8 +1,10 @@
 module fortfem_triangle_lagrange_arbitrary_order
     use fortfem_kinds, only: dp
-    use fortnum_linalg, only: dense_solve
+    use fortfem_generated_p1_basis, only: generated_p1_jet
+    use fortfem_generated_p2_basis, only: generated_p2_jet
     use fortfem_generated_barycentric_jet2, only: generated_barycentric_jet2
-    use fortfem_generated_product_jet1_order1, only: generated_product_jet1_order1
+    use fortfem_generated_cardinal_product_jet1_order1, only: &
+        generated_cardinal_product_jet1_order1
     use fortfem_generated_factor_product_jet2_order1, only: &
         generated_factor_product_jet2_order1
     implicit none
@@ -20,7 +22,6 @@ module fortfem_triangle_lagrange_arbitrary_order
         integer :: degree = -1
         integer :: dof_count = 0
         integer, allocatable :: barycentric_powers(:, :)
-        real(dp), allocatable :: coefficients(:, :)
         real(dp), allocatable :: nodes(:, :)
     end type triangle_lagrange_basis_t
 
@@ -35,9 +36,7 @@ contains
         type(triangle_lagrange_basis_t), intent(out) :: basis
         integer, intent(out) :: status
 
-        real(dp), allocatable :: bernstein_values(:), gradients(:, :)
-        real(dp), allocatable :: inverse(:, :), vandermonde(:, :)
-        integer :: dof, first_power, info, second_power, third_power
+        integer :: dof, first_power, second_power, third_power
 
         status = 1
         if (degree < 0) return
@@ -45,12 +44,7 @@ contains
         basis%degree = degree
         basis%dof_count = (degree + 1) * (degree + 2) / 2
         allocate(basis%barycentric_powers(3, basis%dof_count))
-        allocate(basis%coefficients(basis%dof_count, basis%dof_count))
         allocate(basis%nodes(2, basis%dof_count))
-        allocate(bernstein_values(basis%dof_count))
-        allocate(gradients(2, basis%dof_count))
-        allocate(vandermonde(basis%dof_count, basis%dof_count))
-        allocate(inverse(basis%dof_count, basis%dof_count))
 
         if (degree == 0) then
             basis%barycentric_powers(:, 1) = 0
@@ -72,22 +66,6 @@ contains
             end do
         end if
 
-        do dof = 1, basis%dof_count
-            call evaluate_bernstein_polynomials( &
-                basis, basis%nodes(1, dof), basis%nodes(2, dof), &
-                bernstein_values, gradients)
-            vandermonde(dof, :) = bernstein_values
-        end do
-        basis%coefficients = 0.0_dp
-        do dof = 1, basis%dof_count
-            basis%coefficients(dof, dof) = 1.0_dp
-        end do
-        call dense_solve(vandermonde, basis%coefficients, inverse, info)
-        if (info /= 0) then
-            status = 2
-            return
-        end if
-        basis%coefficients = inverse
         status = 0
     end subroutine initialize_triangle_lagrange_basis
 
@@ -98,9 +76,12 @@ contains
         real(dp), intent(out) :: values(:), gradients(:, :)
         integer, intent(out) :: status
 
-        real(dp), allocatable :: bernstein_gradients(:, :)
-        real(dp), allocatable :: bernstein_values(:)
-        integer :: basis_dof, modal_dof
+        real(dp) :: barycentric(3), barycentric_gradients(2, 3)
+        real(dp) :: factors(3), derivatives(3), normalization
+        real(dp) :: next_value, next_derivative, hessian(2, 2)
+        integer, parameter :: p1_order(3) = [3, 2, 1]
+        integer, parameter :: p2_order(6) = [3, 5, 2, 6, 4, 1]
+        integer :: basis_dof, component, factor
 
         values = 0.0_dp
         gradients = 0.0_dp
@@ -113,19 +94,57 @@ contains
             eta < -64.0_dp * epsilon(1.0_dp)) return
         if (xi + eta > 1.0_dp + 64.0_dp * epsilon(1.0_dp)) return
 
-        allocate(bernstein_values(basis%dof_count))
-        allocate(bernstein_gradients(2, basis%dof_count))
-        call evaluate_bernstein_polynomials( &
-            basis, xi, eta, bernstein_values, bernstein_gradients)
-        do basis_dof = 1, basis%dof_count
-            do modal_dof = 1, basis%dof_count
-                values(basis_dof) = values(basis_dof) + &
-                    basis%coefficients(modal_dof, basis_dof) * &
-                    bernstein_values(modal_dof)
-                gradients(:, basis_dof) = gradients(:, basis_dof) + &
-                    basis%coefficients(modal_dof, basis_dof) * &
-                    bernstein_gradients(:, modal_dof)
+        ! Dispatch the common orders to their retained generated jets. The
+        ! permutations translate vertex/edge numbering to barycentric order.
+        select case (basis%degree)
+        case (0)
+            values = 1.0_dp
+            status = 0
+            return
+        case (1)
+            do basis_dof = 1, 3
+                call generated_p1_jet(p1_order(basis_dof), xi, eta, &
+                    values(basis_dof), gradients(:, basis_dof), hessian)
             end do
+            status = 0
+            return
+        case (2)
+            do basis_dof = 1, 6
+                call generated_p2_jet(p2_order(basis_dof), xi, eta, &
+                    values(basis_dof), gradients(:, basis_dof), hessian)
+            end do
+            status = 0
+            return
+        end select
+
+        ! Equispaced simplex nodal polynomials are products of the cardinal
+        ! factors (k lambda - j)/(j + 1). Reuse the generated jet also used
+        ! by tetrahedra; no modal transform or per-query allocation is needed.
+        call generated_barycentric_jet2(xi, eta, &
+            barycentric(1), barycentric_gradients(1, 1), barycentric_gradients(2, 1), &
+            barycentric(2), barycentric_gradients(1, 2), barycentric_gradients(2, 2), &
+            barycentric(3), barycentric_gradients(1, 3), barycentric_gradients(2, 3))
+        do basis_dof = 1, basis%dof_count
+            factors = 1.0_dp
+            derivatives = 0.0_dp
+            do component = 1, 3
+                normalization = 1.0_dp
+                do factor = 0, basis%barycentric_powers(component, basis_dof) - 1
+                    normalization = normalization*real(factor + 1, dp)
+                    call generated_cardinal_product_jet1_order1( &
+                        factors(component), derivatives(component), &
+                        real(basis%degree, dp), real(factor, dp), &
+                        barycentric(component), next_value, next_derivative)
+                    factors(component) = next_value
+                    derivatives(component) = next_derivative
+                end do
+                factors(component) = factors(component)/normalization
+                derivatives(component) = derivatives(component)/normalization
+            end do
+            call generated_factor_product_jet2_order1( &
+                factors(1), derivatives(1), factors(2), derivatives(2), &
+                factors(3), derivatives(3), values(basis_dof), &
+                gradients(1, basis_dof), gradients(2, basis_dof))
         end do
         status = 0
     end subroutine evaluate_triangle_lagrange_basis
@@ -138,67 +157,6 @@ contains
         nodes = basis%nodes
     end subroutine triangle_lagrange_nodes
 
-    pure subroutine evaluate_bernstein_polynomials( &
-            basis, xi, eta, values, gradients)
-        type(triangle_lagrange_basis_t), intent(in) :: basis
-        real(dp), intent(in) :: xi, eta
-        real(dp), intent(out) :: values(:), gradients(:, :)
-
-        real(dp) :: barycentric(3), barycentric_gradients(2, 3), coefficient
-        real(dp) :: factors(3), derivatives(3), next_value, next_derivative
-        integer :: dof, first_power, second_power, third_power, component, factor
-
-        call generated_barycentric_jet2(xi, eta, &
-            barycentric(1), barycentric_gradients(1, 1), barycentric_gradients(2, 1), &
-            barycentric(2), barycentric_gradients(1, 2), barycentric_gradients(2, 2), &
-            barycentric(3), barycentric_gradients(1, 3), barycentric_gradients(2, 3))
-        do dof = 1, basis%dof_count
-            first_power = basis%barycentric_powers(1, dof)
-            second_power = basis%barycentric_powers(2, dof)
-            third_power = basis%barycentric_powers(3, dof)
-            coefficient = multinomial_coefficient( &
-                basis%degree, first_power, second_power, third_power)
-            factors = 1.0_dp
-            factors(1) = coefficient
-            derivatives = 0.0_dp
-            do component = 1, 3
-                do factor = 1, basis%barycentric_powers(component, dof)
-                    call generated_product_jet1_order1(factors(component), &
-                        derivatives(component), barycentric(component), 1.0_dp, &
-                        next_value, next_derivative)
-                    factors(component) = next_value
-                    derivatives(component) = next_derivative
-                end do
-            end do
-            call generated_factor_product_jet2_order1( &
-                factors(1), derivatives(1), factors(2), derivatives(2), &
-                factors(3), derivatives(3), values(dof), gradients(1, dof), &
-                gradients(2, dof))
-        end do
-    end subroutine evaluate_bernstein_polynomials
-
-    pure function multinomial_coefficient( &
-            degree, first_power, second_power, third_power) result(value)
-        integer, intent(in) :: degree, first_power, second_power, third_power
-        real(dp) :: value
-
-        value = factorial(degree) / ( &
-            factorial(first_power) * factorial(second_power) * &
-            factorial(third_power))
-    end function multinomial_coefficient
-
-    pure function factorial(n) result(value)
-        integer, intent(in) :: n
-        real(dp) :: value
-
-        integer :: factor
-
-        value = 1.0_dp
-        do factor = 2, n
-            value = value * real(factor, dp)
-        end do
-    end function factorial
-
     subroutine assign_triangle_lagrange_basis(left, right)
         type(triangle_lagrange_basis_t), intent(out) :: left
         type(triangle_lagrange_basis_t), intent(in) :: right
@@ -210,11 +168,6 @@ contains
                 size(right%barycentric_powers, 1), &
                 size(right%barycentric_powers, 2)))
             left%barycentric_powers = right%barycentric_powers
-        end if
-        if (allocated(right%coefficients)) then
-            allocate(left%coefficients( &
-                size(right%coefficients, 1), size(right%coefficients, 2)))
-            left%coefficients = right%coefficients
         end if
         if (allocated(right%nodes)) then
             allocate(left%nodes(size(right%nodes, 1), size(right%nodes, 2)))
