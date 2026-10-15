@@ -55,6 +55,24 @@ def body(text: str, name: str) -> str | None:
     return "\n".join(ln[indent:] if ln.strip() else "" for ln in kept)
 
 
+def top_level_items(declarations: str) -> list[str]:
+    """Split an entity list on the commas outside parentheses.
+
+    A rank-2 dummy such as `jacobian(2,2)` keeps its whole shape.
+    """
+    items, depth, start = [], 0, 0
+    for k, char in enumerate(declarations):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "," and depth == 0:
+            items.append(declarations[start:k])
+            start = k + 1
+    items.append(declarations[start:])
+    return items
+
+
 def dimensions(source: str, names: list[str]) -> dict[str, str]:
     """The declared shape of each dummy, empty for a scalar.
 
@@ -67,7 +85,7 @@ def dimensions(source: str, names: list[str]) -> dict[str, str]:
         stripped = line.split("!", 1)[0].strip()
         if "::" not in stripped or not stripped.startswith("real"):
             continue
-        for item in stripped.split("::", 1)[1].split(","):
+        for item in top_level_items(stripped.split("::", 1)[1]):
             item = item.strip()
             if "(" not in item:
                 continue
