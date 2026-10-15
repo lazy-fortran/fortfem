@@ -10,11 +10,10 @@ program test_triangle_lagrange_arbitrary_order
     real(dp), allocatable :: gradients(:, :), nodes(:, :), values(:)
     real(dp), allocatable :: nodal_coefficients(:)
     real(dp) :: expected_gradient(2), expected_value, point(2)
-    integer :: degree, dof, status, x_degree, y_degree
+    integer :: degree, dof, status, x_degree, y_degree, sample
     logical :: all_passed
 
     all_passed = .true.
-    point = [0.23_dp, 0.31_dp]
     do degree = 0, 4
         call initialize_triangle_lagrange_basis(degree, basis, status)
         call record_condition(status == 0, &
@@ -32,27 +31,41 @@ program test_triangle_lagrange_arbitrary_order
                 "Generated triangle basis has Kronecker nodal values")
         end do
 
-        call evaluate_triangle_lagrange_basis( &
-            basis, point(1), point(2), values, gradients, status)
-        call record_condition(abs(sum(values) - 1.0_dp) < 2.0e-13_dp .and. &
-            maxval(abs(sum(gradients, dim=2))) < 5.0e-13_dp, &
-            "Triangle basis satisfies partition of unity and zero gradient sum")
+        do sample = 1, 5
+            select case (sample)
+            case (1)
+                point = [0.23_dp, 0.31_dp]
+            case (2)
+                point = [0.0_dp, 0.0_dp]
+            case (3)
+                point = [1.0_dp, 0.0_dp]
+            case (4)
+                point = [0.0_dp, 1.0_dp]
+            case (5)
+                point = [0.5_dp, 0.5_dp]
+            end select
+            call evaluate_triangle_lagrange_basis( &
+                basis, point(1), point(2), values, gradients, status)
+            call record_condition(abs(sum(values) - 1.0_dp) < 2.0e-13_dp .and. &
+                maxval(abs(sum(gradients, dim=2))) < 5.0e-13_dp, &
+                "Triangle basis satisfies partition of unity and zero gradient sum")
 
-        do x_degree = 0, degree
-            do y_degree = 0, degree - x_degree
-                nodal_coefficients = nodes(1, :)**x_degree * &
-                    nodes(2, :)**y_degree
-                expected_value = point(1)**x_degree * point(2)**y_degree
-                expected_gradient = monomial_gradient( &
-                    point, x_degree, y_degree)
-                call record_condition(abs(dot_product( &
-                    nodal_coefficients, values) - expected_value) < &
-                    2.0e-12_dp, &
-                    "Triangle interpolation reproduces a polynomial value")
-                call record_condition(maxval(abs(matmul( &
-                    gradients, nodal_coefficients) - expected_gradient)) < &
-                    8.0e-12_dp, &
-                    "Triangle interpolation reproduces a polynomial gradient")
+            do x_degree = 0, degree
+                do y_degree = 0, degree - x_degree
+                    nodal_coefficients = nodes(1, :)**x_degree * &
+                        nodes(2, :)**y_degree
+                    expected_value = point(1)**x_degree * point(2)**y_degree
+                    expected_gradient = monomial_gradient( &
+                        point, x_degree, y_degree)
+                    call record_condition(abs(dot_product( &
+                        nodal_coefficients, values) - expected_value) < &
+                        2.0e-12_dp, &
+                        "Triangle interpolation reproduces a polynomial value")
+                    call record_condition(maxval(abs(matmul( &
+                        gradients, nodal_coefficients) - expected_gradient)) < &
+                        8.0e-12_dp, &
+                        "Triangle interpolation reproduces a polynomial gradient")
+                end do
             end do
         end do
 
