@@ -1,5 +1,39 @@
 [
   {
+    "stem": "tetra_affine",
+    "primal": "generated_tetra_affine",
+    "active": [
+      "jacobian",
+      "relative"
+    ],
+    "outputs": [
+      "reference"
+    ],
+    "dims": {
+      "jacobian": "3,3",
+      "relative": "3",
+      "reference": "3"
+    },
+    "file": "fortfem_affine_map_products.f90"
+  },
+  {
+    "stem": "triangle_affine",
+    "primal": "generated_triangle_affine",
+    "active": [
+      "jacobian",
+      "relative"
+    ],
+    "outputs": [
+      "reference"
+    ],
+    "dims": {
+      "jacobian": "2,2",
+      "relative": "2",
+      "reference": "2"
+    },
+    "file": "fortfem_affine_map_products.f90"
+  },
+  {
     "stem": "block_graph_product",
     "primal": "generated_block_graph_product",
     "active": [
