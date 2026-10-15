@@ -12,6 +12,7 @@ module meridian_test_meshes
     real(dp), save :: ann_r0 = 3.0_dp
 
     public :: make_annulus_mesh, make_warped_rectangle_mesh
+    public :: make_bubble_rectangle_mesh
 
 contains
 
@@ -29,6 +30,18 @@ contains
         x(1) = p(1) + 0.12_dp*sin(2.0_dp*p(2)) + 0.05_dp*p(2)*p(1)
         x(2) = p(2) + 0.10_dp*sin(3.0_dp*p(1)) - 0.04_dp*p(1)*p(2)
     end subroutine warp_map
+
+    subroutine bubble_map(p, x)
+        !! Interior warp of [2, 3] x [-0.5, 0.5] that is the identity on the
+        !! boundary, so the curved-element mesh covers the rectangle exactly.
+        real(dp), intent(in) :: p(2)
+        real(dp), intent(out) :: x(2)
+        real(dp) :: b
+
+        b = (p(1) - 2.0_dp)*(3.0_dp - p(1))*(p(2) + 0.5_dp)*(0.5_dp - p(2))
+        x(1) = p(1) + 0.9_dp*b*sin(3.0_dp*p(2) + p(1))
+        x(2) = p(2) + 0.9_dp*b*cos(2.0_dp*p(1) - p(2))
+    end subroutine bubble_map
 
     subroutine make_annulus_mesh(nr, nth, r1, r2, r0, geo, mm)
         !! Annulus r1 < |x - (r0, 0)| < r2 with nr radial and nth angular
@@ -75,6 +88,29 @@ contains
         call meridian_mesh_from_map(topo, pv, geo, mm, status, annulus_map)
         if (status /= 0) error stop "annulus mesh failed"
     end subroutine make_annulus_mesh
+
+    subroutine make_bubble_rectangle_mesh(nx, geo, mm)
+        !! Exactly the rectangle [2, 3] x [-0.5, 0.5], curved interior
+        !! elements of geometry order geo (see bubble_map).
+        integer, intent(in) :: nx, geo
+        type(meridian_mesh_t), intent(out) :: mm
+        type(mesh_2d_t) :: topo, pmesh
+        real(dp), allocatable :: pv(:, :, :)
+        integer :: t, v, status
+
+        call pmesh%create_rectangular(nx + 1, nx + 1, 2.0_dp, 3.0_dp, &
+            -0.5_dp, 0.5_dp)
+        topo = pmesh
+        allocate (pv(2, 3, topo%n_triangles))
+        do t = 1, topo%n_triangles
+            pv(:, :, t) = pmesh%vertices(:, pmesh%triangles(:, t))
+        end do
+        do v = 1, topo%n_vertices
+            call bubble_map(pmesh%vertices(:, v), topo%vertices(:, v))
+        end do
+        call meridian_mesh_from_map(topo, pv, geo, mm, status, bubble_map)
+        if (status /= 0) error stop "bubble rectangle mesh failed"
+    end subroutine make_bubble_rectangle_mesh
 
     subroutine make_warped_rectangle_mesh(nx, geo, mm)
         !! Warped image of [2, 3] x [-0.5, 0.5] with nx x nx cells.

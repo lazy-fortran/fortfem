@@ -94,6 +94,7 @@ run_codegen gen_tetra_nedelec_coefficients
 run_codegen gen_toroidal_coordinates
 run_codegen gen_torus_curved_panel_products
 run_codegen gen_toroidal_poisson_products
+run_codegen gen_meridian_hcurl_equilibration_products
 run_codegen gen_sphere_curved_panel_products
 run_codegen gen_interoperability_oracles
 run_codegen gen_tetra_h1_oracle
@@ -152,6 +153,7 @@ fo fmt "$generated_dir/fortfem_tetra_rt_coefficients.f90"
 fo fmt "$generated_dir/fortfem_toroidal_coordinates.f90"
 fo fmt "$generated_dir/fortfem_torus_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_toroidal_poisson_products.f90"
+fo fmt "$generated_dir/fortfem_meridian_hcurl_equilibration_products.f90"
 fo fmt "$generated_dir/fortfem_sphere_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_interoperability_oracles.f90"
 fo fmt "$generated_dir/fortfem_tetra_h1_oracle.f90"

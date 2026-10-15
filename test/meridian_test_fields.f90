@@ -17,8 +17,10 @@ module meridian_test_fields
 
     public :: scalar_f, grad_f, vec_a, curl_a, vec_b, div_b
     public :: project, solve_z, zero_rows, zadd
+    logical, public :: rect_chi = .false.
     public :: ann_c, ann_r1, ann_r2, fun_astar, fun_bstar, fun_f1, fun_bs, &
-        fun_dbs, fun_f2, fun_fs, fun_gfs, fun_f0
+        fun_dbs, fun_f2, fun_fs, fun_gfs, fun_f0, fun_a0star, fun_b0star, &
+        fun_j0star
 
 contains
 
@@ -112,6 +114,11 @@ contains
     pure function chi(x) result(c)
         real(dp), intent(in) :: x(2)
         real(dp) :: c, rho2
+        if (rect_chi) then
+            ! vanishes on the boundary of [2, 3] x [-0.5, 0.5]
+            c = (x(1) - 2.0_dp)*(3.0_dp - x(1))*(x(2) + 0.5_dp)*(0.5_dp - x(2))
+            return
+        end if
         rho2 = (x(1) - ann_c)**2 + x(2)**2
         c = (rho2 - ann_r1**2)*(ann_r2**2 - rho2)
     end function chi
@@ -151,6 +158,14 @@ contains
             call fd_div(8, x, v)
             call eval_id(7, x, w)
             v = -v + w
+        case (10)
+            ! gauge-fixed (A_phi = 0) potential, its curl and curl curl
+            call vec_a(x, w)
+            v = chi(x)*[w(1), (0.0_dp, 0.0_dp), w(3)]
+        case (11)
+            call fd_curl(10, x, v)
+        case (12)
+            call fd_curl(11, x, v)
         case default
             v = (0.0_dp, 0.0_dp)
         end select
@@ -252,6 +267,21 @@ contains
         complex(dp), intent(out) :: v(3)
         call eval_id(8, x, v)
     end subroutine fun_gfs
+    subroutine fun_a0star(x, v)
+        real(dp), intent(in) :: x(2)
+        complex(dp), intent(out) :: v(3)
+        call eval_id(10, x, v)
+    end subroutine fun_a0star
+    subroutine fun_b0star(x, v)
+        real(dp), intent(in) :: x(2)
+        complex(dp), intent(out) :: v(3)
+        call eval_id(11, x, v)
+    end subroutine fun_b0star
+    subroutine fun_j0star(x, v)
+        real(dp), intent(in) :: x(2)
+        complex(dp), intent(out) :: v(3)
+        call eval_id(12, x, v)
+    end subroutine fun_j0star
     subroutine fun_f0(x, v)
         real(dp), intent(in) :: x(2)
         complex(dp), intent(out) :: v(3)
