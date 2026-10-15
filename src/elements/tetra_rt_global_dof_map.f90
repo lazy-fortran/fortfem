@@ -23,6 +23,8 @@ contains
 
         integer, allocatable :: temporary_faces(:, :)
         integer :: canonical_vertices(3), cell_dof_count, dof
+        integer :: parameter_vertices(3, 4), parameter_local(3)
+        integer :: outward_permutation(3)
         integer :: dof_count, face, face_count, face_dof_count
         integer :: local_face, local_face_vertices(3, 4), local_vertices(3)
         integer :: start, tetrahedron, vertex
@@ -51,6 +53,12 @@ contains
         local_face_vertices(:, 2) = [1, 2, 4]
         local_face_vertices(:, 3) = [1, 3, 2]
         local_face_vertices(:, 4) = [2, 3, 4]
+        ! Vertex order of the reference-face parametrisation (u, v) of the RT
+        ! face moments (reference_face in tetra_rt_arbitrary_order). It is the
+        ! outward-oriented order above except on face 1, whose moments run
+        ! over (y, z) = (v3, v4); the outward orientation sign is unchanged.
+        parameter_vertices = local_face_vertices
+        parameter_vertices(:, 1) = [1, 3, 4]
 
         face_count = 0
         do tetrahedron = 1, size(tetrahedra, 2)
@@ -73,14 +81,17 @@ contains
                     face = face_count
                     temporary_faces(:, face) = canonical_vertices
                 end if
+                parameter_local = tetrahedra( &
+                    parameter_vertices(:, local_face), tetrahedron)
                 do vertex = 1, 3
                     face_permutations(vertex, local_face, tetrahedron) = &
                         canonical_position( &
+                        parameter_local(vertex), canonical_vertices)
+                    outward_permutation(vertex) = canonical_position( &
                         local_vertices(vertex), canonical_vertices)
                 end do
                 face_orientations(local_face, tetrahedron) = &
-                    permutation_sign( &
-                    face_permutations(:, local_face, tetrahedron))
+                    permutation_sign(outward_permutation)
                 start = (local_face - 1)*face_dof_count
                 do dof = 1, face_dof_count
                     global_dofs(start + dof, tetrahedron) = &

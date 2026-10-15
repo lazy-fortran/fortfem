@@ -28,15 +28,16 @@ module fortfem_equilibrated_flux_2d
         initialize_triangle_raviart_thomas, evaluate_triangle_raviart_thomas, &
         triangle_rt_dof_count
     use fortfem_triangle_piola_maps, only: map_triangle_rt_contravariant
+    use fortfem_equilibrated_flux_topology, only: vertex_stars, &
+        EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
+        EQUILIBRATION_PATCH_FAILED
     implicit none
     private
 
     public :: equilibrated_flux_estimate_t, equilibrated_flux_estimate
 
-    integer, parameter, public :: EQUILIBRATION_OK = 0
-    integer, parameter, public :: EQUILIBRATION_BAD_INPUT = 1
-    integer, parameter, public :: EQUILIBRATION_BAD_CELL = 2
-    integer, parameter, public :: EQUILIBRATION_PATCH_FAILED = 3
+    public :: EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
+        EQUILIBRATION_PATCH_FAILED
 
     type :: equilibrated_flux_estimate_t
         real(dp) :: bound = huge(1.0_dp)        !< sum of the three terms
@@ -212,32 +213,11 @@ contains
         !! vertex has the smaller global index.
         integer, intent(in) :: nv, triangles(:, :)
         type(topology_t), intent(out) :: topo
-        integer, allocatable :: fill(:)
         integer :: nt, t, s, e, a, b, k, other, oe, nedges
 
         nt = size(triangles, 2)
-        allocate (topo%vertex_start(nv + 1), fill(nv))
-        topo%vertex_start = 0
-        do t = 1, nt
-            do s = 1, 3
-                a = triangles(s, t)
-                topo%vertex_start(a + 1) = topo%vertex_start(a + 1) + 1
-            end do
-        end do
-        topo%vertex_start(1) = 1
-        do a = 1, nv
-            topo%vertex_start(a + 1) = topo%vertex_start(a + 1) + topo%vertex_start(a)
-        end do
-        allocate (topo%vertex_cell(3*nt), topo%vertex_slot(3*nt))
-        fill = topo%vertex_start(1:nv)
-        do t = 1, nt
-            do s = 1, 3
-                a = triangles(s, t)
-                topo%vertex_cell(fill(a)) = t
-                topo%vertex_slot(fill(a)) = s
-                fill(a) = fill(a) + 1
-            end do
-        end do
+        call vertex_stars(nv, triangles, topo%vertex_start, topo%vertex_cell, &
+            topo%vertex_slot)
 
         allocate (topo%cell_edge(3, nt), topo%cell_orientation(3, nt))
         allocate (topo%boundary_vertex(nv))
