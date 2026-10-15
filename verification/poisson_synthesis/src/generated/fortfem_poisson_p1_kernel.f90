@@ -9,8 +9,9 @@
 !   strong form : -Delta u = f in Omega,  u = g on boundary
 !   weak form   : int grad(u).grad(v) = int f v  for all v in V0
 !   P1 basis    : barycentric coordinates on the reference triangle
-!   affine map  : x = x0 + B xi,  J = det(B),  g = B^T B,  det(g) = J^2
-!   chain rule  : grad_x phi = B^-1 grad_xi phi (map x = x0 + B^T xi)
+!   affine map  : x = x0 + B xi,  B = [x1 - x0, x2 - x0] (edge columns),
+!                 J = det(B),  g = B^T B,  det(g) = J^2
+!   chain rule  : grad_x phi = B^-T grad_xi phi
 !   kernel      : K[i,j] = (|J|/2) grad_x phi_i . grad_x phi_j
 !   residual    : R(u) = K u - b,  Jacobian dR/du = K (symmetric)
 
@@ -42,8 +43,9 @@ contains
         grad_xi(3, :) = [0.0_dp, 1.0_dp]
     end subroutine poisson_p1_reference_basis
 
-    ! Affine map data: B (rows are the edge vectors), Jacobian J = det(B),
-    ! metric g = B B^T, its inverse, and the inverse of B.  det(g) = J^2.
+    ! Affine map data.  b = B^T holds the edge vectors as rows, so the
+    ! metric g = B^T B = b b^T has g(i, j) = e_i . e_j.  Returns J = det(B),
+    ! g, g^-1 and inverse_b = b^-1 = B^-T.  det(g) = J^2.
     pure subroutine poisson_p1_metric(xy, jac, g, ginv, inverse_b)
         real(dp), intent(in) :: xy(3, 2)
         real(dp), intent(out) :: jac
@@ -60,7 +62,7 @@ contains
             inverse_b = 0.0_dp
             return
         end if
-        g = matmul(transpose(b), b)
+        g = matmul(b, transpose(b))
         det_g = g(1, 1)*g(2, 2) - g(1, 2)*g(2, 1)
         ginv(1, 1) = g(2, 2)/det_g
         ginv(2, 2) = g(1, 1)/det_g
@@ -72,8 +74,9 @@ contains
         inverse_b(2, 2) = b(1, 1)/jac
     end subroutine poisson_p1_metric
 
-    ! Physical gradients grad_x phi_i = B^-1 grad_xi phi_i (the affine
-    ! symmetric element stiffness  K[i,j] = (|J|/2) grad_i . grad_j.
+    ! Physical gradients grad_x phi_i = B^-T grad_xi phi_i (constant on the
+    ! affine element) and the symmetric element stiffness
+    ! K[i,j] = (|J|/2) grad_i . grad_j.
     pure subroutine poisson_p1_stiffness(xy, ke)
         real(dp), intent(in) :: xy(3, 2)
         real(dp), intent(out) :: ke(3, 3)
@@ -114,7 +117,8 @@ contains
         b = 0.0_dp
         do q = 1, 3
             call poisson_p1_reference_basis(xi(q), eta(q), lambda, grad_xi)
-            x = xy(1, :) + xi(q)*(xy(2, :) - xy(1, :)) + eta(q)*(xy(3, :) - xy(1, :))
+            x = xy(1, :) + xi(q)*(xy(2, :) - xy(1, :)) &
+                + eta(q)*(xy(3, :) - xy(1, :))
             b = b + abs(jac)*w(q)*f(x(1), x(2))*lambda
         end do
     end subroutine poisson_p1_load

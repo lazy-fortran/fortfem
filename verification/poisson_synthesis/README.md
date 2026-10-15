@@ -22,8 +22,9 @@ For the canonical 2D scalar Poisson problem on P1 (linear) triangles:
    a dependency-free module with the element metric, stiffness, load, residual,
    and Jacobian, from the chain-rule physical gradients.
 4. **Verified invariants** — the test checks partition of unity, `g^-1 g = I`,
-   `det(g) = J^2`, symmetry of the bilinear form, residual/Jacobian consistency
-   by finite differences, and the constant-field patch test.
+   `det(g) = J^2`, `g` against the edge vectors and the gradient map, symmetry
+   of the bilinear form, residual/Jacobian consistency by finite differences,
+   and the constant-field patch test.
 5. **Source readback** — the committed `.f90` is re-read from disk and its
    kernel is compared against an independent adjugate-metric derivation, so the
    generated translation is validated against a second arithmetic path.
@@ -53,12 +54,20 @@ out-of-tree provenance checks.
 
 ## What the verification caught
 
-During development the naive chain-rule implementation used
-`grad_x phi = B^-T grad_xi phi`, which is correct only for axis-aligned right
-triangles (where `B^-1 = B^-T`).  The independent adjugate-metric readback
-check and the convergence suite both flagged the discrepancy on the 45-degree
-corner triangles of the mesh.  The correct identity, with the map
-`x = x0 + B^T xi`, is `grad_x phi = B^-1 grad_xi phi`.  This is exactly the
+The kernel uses one matrix convention throughout: `B = [x1 - x0, x2 - x0]`
+has the edge vectors as columns, the map is `x = x0 + B xi`, the metric is
+`g = B^T B` (so `g(i, j) = e_i . e_j`), and physical gradients are
+`grad_x phi = B^-T grad_xi phi`.  The code stores `b = B^T` row-wise, so the
+gradient operator it applies is `b^-1`.
+
+During development the chain rule applied the untransposed inverse, which
+agrees with `B^-T` only when `B` is symmetric (for example on axis-aligned right
+triangles).  The independent adjugate-metric readback check and the convergence
+suite both flagged the discrepancy on the 45-degree corner triangles of the
+mesh.  A later review found the returned metric still used the transposed
+product, which differs on non-orthogonal triangles even though the stiffness
+did not use it; the metric test now checks `g(i, j) = e_i . e_j` and that
+`g^-1` reproduces the physical gradient inner products.  This is exactly the
 class of subtle geometry bug the issue's verification split is meant to catch.
 
 ## Trusted boundary and later scope

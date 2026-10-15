@@ -15,8 +15,9 @@
 !                    lambda0 = 1 - xi - eta,  lambda1 = xi,  lambda2 = eta
 !   Reference maps   grad_xi lambda0 = (-1,-1), grad_xi lambda1 = (1,0),
 !                    grad_xi lambda2 = (0,1);  sum_i lambda_i = 1
-!   Affine map       x = x0 + B xi,  J = det(B),  g = B^T B,  det(g) = J^2
-!   Chain rule       grad_x phi = B^-1 grad_xi phi (map x = x0 + B^T xi)
+!   Affine map       x = x0 + B xi,  B = [x1 - x0, x2 - x0] (edge columns),
+!                    J = det(B),  g = B^T B,  det(g) = J^2
+!   Chain rule       grad_x phi = B^-T grad_xi phi
 !   Element kernel   K[i,j] = (|J|/2) grad_x phi_i . grad_x phi_j
 !                    b[i]    = |J| sum_q w_q f(x_q) phi_i(xi_q)
 !                    R(u)    = K u - b,   dR/du = K (linear, symmetric)
@@ -98,8 +99,9 @@ contains
         write(unit, "(a)") "!   strong form : -Delta u = f in Omega,  u = g on boundary"
         write(unit, "(a)") "!   weak form   : int grad(u).grad(v) = int f v  for all v in V0"
         write(unit, "(a)") "!   P1 basis    : barycentric coordinates on the reference triangle"
-        write(unit, "(a)") "!   affine map  : x = x0 + B xi,  J = det(B),  g = B^T B,  det(g) = J^2"
-        write(unit, "(a)") "!   chain rule  : grad_x phi = B^-1 grad_xi phi (map x = x0 + B^T xi)"
+        write(unit, "(a)") "!   affine map  : x = x0 + B xi,  B = [x1 - x0, x2 - x0] (edge columns),"
+        write(unit, "(a)") "!                 J = det(B),  g = B^T B,  det(g) = J^2"
+        write(unit, "(a)") "!   chain rule  : grad_x phi = B^-T grad_xi phi"
         write(unit, "(a)") "!   kernel      : K[i,j] = (|J|/2) grad_x phi_i . grad_x phi_j"
         write(unit, "(a)") "!   residual    : R(u) = K u - b,  Jacobian dR/du = K (symmetric)"
         write(unit, "(a)") ""
@@ -131,8 +133,9 @@ contains
         write(unit, "(a)") "        grad_xi(3, :) = [0.0_dp, 1.0_dp]"
         write(unit, "(a)") "    end subroutine poisson_p1_reference_basis"
         write(unit, "(a)") ""
-        write(unit, "(a)") "    ! Affine map data: B (rows are the edge vectors), Jacobian J = det(B),"
-        write(unit, "(a)") "    ! metric g = B B^T, its inverse, and the inverse of B.  det(g) = J^2."
+        write(unit, "(a)") "    ! Affine map data.  b = B^T holds the edge vectors as rows, so the"
+        write(unit, "(a)") "    ! metric g = B^T B = b b^T has g(i, j) = e_i . e_j.  Returns J = det(B),"
+        write(unit, "(a)") "    ! g, g^-1 and inverse_b = b^-1 = B^-T.  det(g) = J^2."
         write(unit, "(a)") "    pure subroutine poisson_p1_metric(xy, jac, g, ginv, inverse_b)"
         write(unit, "(a)") "        real(dp), intent(in) :: xy(3, 2)"
         write(unit, "(a)") "        real(dp), intent(out) :: jac"
@@ -149,7 +152,7 @@ contains
         write(unit, "(a)") "            inverse_b = 0.0_dp"
         write(unit, "(a)") "            return"
         write(unit, "(a)") "        end if"
-        write(unit, "(a)") "        g = matmul(transpose(b), b)"
+        write(unit, "(a)") "        g = matmul(b, transpose(b))"
         write(unit, "(a)") "        det_g = g(1, 1)*g(2, 2) - g(1, 2)*g(2, 1)"
         write(unit, "(a)") "        ginv(1, 1) = g(2, 2)/det_g"
         write(unit, "(a)") "        ginv(2, 2) = g(1, 1)/det_g"
@@ -161,8 +164,9 @@ contains
         write(unit, "(a)") "        inverse_b(2, 2) = b(1, 1)/jac"
         write(unit, "(a)") "    end subroutine poisson_p1_metric"
         write(unit, "(a)") ""
-        write(unit, "(a)") "    ! Physical gradients grad_x phi_i = B^-1 grad_xi phi_i (the affine"
-        write(unit, "(a)") "    ! symmetric element stiffness  K[i,j] = (|J|/2) grad_i . grad_j."
+        write(unit, "(a)") "    ! Physical gradients grad_x phi_i = B^-T grad_xi phi_i (constant on the"
+        write(unit, "(a)") "    ! affine element) and the symmetric element stiffness"
+        write(unit, "(a)") "    ! K[i,j] = (|J|/2) grad_i . grad_j."
         write(unit, "(a)") "    pure subroutine poisson_p1_stiffness(xy, ke)"
         write(unit, "(a)") "        real(dp), intent(in) :: xy(3, 2)"
         write(unit, "(a)") "        real(dp), intent(out) :: ke(3, 3)"
@@ -203,7 +207,8 @@ contains
         write(unit, "(a)") "        b = 0.0_dp"
         write(unit, "(a)") "        do q = 1, 3"
         write(unit, "(a)") "            call poisson_p1_reference_basis(xi(q), eta(q), lambda, grad_xi)"
-        write(unit, "(a)") "            x = xy(1, :) + xi(q)*(xy(2, :) - xy(1, :)) + eta(q)*(xy(3, :) - xy(1, :))"
+        write(unit, "(a)") "            x = xy(1, :) + xi(q)*(xy(2, :) - xy(1, :)) &"
+        write(unit, "(a)") "                + eta(q)*(xy(3, :) - xy(1, :))"
         write(unit, "(a)") "            b = b + abs(jac)*w(q)*f(x(1), x(2))*lambda"
         write(unit, "(a)") "        end do"
         write(unit, "(a)") "    end subroutine poisson_p1_load"
