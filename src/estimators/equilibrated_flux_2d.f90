@@ -116,8 +116,8 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_neumann_target
     use fortfem_generated_equilibrated_neumann_defect_integrand, only: &
         generated_equilibrated_neumann_defect_integrand
-    use fortfem_equilibrated_flux_topology, only: vertex_stars, &
-        EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
+    use fortfem_equilibrated_flux_topology, only: topology_t, build_topology, &
+        dgesv, EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
         EQUILIBRATION_PATCH_FAILED
     implicit none
     private
@@ -153,15 +153,6 @@ module fortfem_equilibrated_flux_2d
         real(dp), allocatable :: cell_neumann(:)
     end type equilibrated_flux_estimate_t
 
-    interface
-        subroutine dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-            import :: dp
-            integer, intent(in) :: n, nrhs, lda, ldb
-            integer, intent(out) :: ipiv(*), info
-            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
-        end subroutine dgesv
-    end interface
-
     !> Reference data shared by all cells.
     type :: reference_t
         integer :: degree = 0, nrt = 0, nk = 0, nq = 0, nedge = 0, nloc = 3
@@ -186,14 +177,6 @@ module fortfem_equilibrated_flux_2d
         logical, allocatable :: neumann(:, :)    !< (3, nt) flagged edges
         real(dp), allocatable :: flux(:, :, :)   !< g at the edge points (nq1, 3, nt)
     end type problem_t
-
-    !> Mesh topology: vertex -> cells, cell edges, boundary vertices.
-    type :: topology_t
-        integer, allocatable :: vertex_start(:), vertex_cell(:), vertex_slot(:)
-        integer, allocatable :: cell_edge(:, :), cell_orientation(:, :)
-        !> Vertex lies on a boundary edge that is not a Neumann edge.
-        logical, allocatable :: dirichlet_vertex(:)
-    end type topology_t
 
 contains
 
@@ -316,7 +299,7 @@ contains
             if (.not. positive_determinant(ref, prob%nodes(:, :, t))) cells_ok = .false.
         end do
         if (.not. cells_ok) return
-        call build_topology(nv, triangles, prob%neumann, topo, nodes_status)
+        call build_topology(nv, triangles, topo, nodes_status, prob%neumann)
         if (nodes_status /= 0) then
             status = EQUILIBRATION_BAD_INPUT
             return
@@ -580,81 +563,6 @@ contains
             call generated_equilibrated_monomials_degree6(xi, eta, values)
         end select
     end subroutine reference_monomials
-
-    subroutine build_topology(nv, triangles, neumann, topo, status)
-        !! Edges are numbered by first appearance; local edge e of a cell runs
-        !! from its local vertex e to vertex mod(e, 3) + 1 (the FortFEM RT
-        !! reference-edge convention) and has orientation +1 when that start
-        !! vertex has the smaller global index.
-        !! A vertex is a Dirichlet vertex when it lies on a boundary edge that is
-        !! not flagged in `neumann`; a flagged edge must be a boundary edge.
-        integer, intent(in) :: nv, triangles(:, :)
-        logical, intent(in) :: neumann(:, :)
-        type(topology_t), intent(out) :: topo
-        integer, intent(out) :: status
-        integer :: nt, t, s, e, a, b, k, other, oe, nedges
-
-        status = 1
-        nt = size(triangles, 2)
-        call vertex_stars(nv, triangles, topo%vertex_start, topo%vertex_cell, &
-            topo%vertex_slot)
-
-        allocate (topo%cell_edge(3, nt), topo%cell_orientation(3, nt))
-        allocate (topo%dirichlet_vertex(nv))
-        topo%cell_edge = 0
-        topo%dirichlet_vertex = .false.
-        nedges = 0
-        do t = 1, nt
-            do e = 1, 3
-                a = triangles(e, t)
-                b = triangles(mod(e, 3) + 1, t)
-                topo%cell_orientation(e, t) = merge(1, -1, a < b)
-                other = 0
-                oe = 0
-                do k = topo%vertex_start(a), topo%vertex_start(a + 1) - 1
-                    if (topo%vertex_cell(k) == t) cycle
-                    oe = shared_edge(triangles(:, topo%vertex_cell(k)), a, b)
-                    if (oe /= 0) then
-                        other = topo%vertex_cell(k)
-                        exit
-                    end if
-                end do
-                if (other == 0) then
-                    if (.not. neumann(e, t)) then
-                        topo%dirichlet_vertex(a) = .true.
-                        topo%dirichlet_vertex(b) = .true.
-                    end if
-                else
-                    if (neumann(e, t)) return
-                end if
-                if (other /= 0) then
-                    if (other < t) then
-                        topo%cell_edge(e, t) = topo%cell_edge(oe, other)
-                        cycle
-                    end if
-                end if
-                nedges = nedges + 1
-                topo%cell_edge(e, t) = nedges
-            end do
-        end do
-        status = 0
-    end subroutine build_topology
-
-    pure integer function shared_edge(cell, a, b) result(edge)
-        !! Local edge of `cell` joining global vertices a and b, or 0.
-        integer, intent(in) :: cell(3), a, b
-        integer :: e, p, q
-
-        edge = 0
-        do e = 1, 3
-            p = cell(e)
-            q = cell(mod(e, 3) + 1)
-            if ((p == a .and. q == b) .or. (p == b .and. q == a)) then
-                edge = e
-                return
-            end if
-        end do
-    end function shared_edge
 
     pure subroutine jacobian_at(ref, nodes, q, jac, det)
         !! Jacobian of the cell map at quadrature point q and its determinant.
