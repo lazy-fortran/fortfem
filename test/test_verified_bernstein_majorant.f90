@@ -223,6 +223,8 @@ contains
                 cells(3 + j, t) = nv + e
             end do
         end do
+        ! Keep only defined values: the audit rejects any non-finite entry.
+        nodal = nodal(1:nv + n)
     end subroutine number_nodes
 
     pure subroutine shape_gradients(degree, s, r, jac, det, grads)
