@@ -136,6 +136,7 @@ run_codegen gen_block_graph_products
 run_codegen gen_force_balance_products
 run_codegen gen_regularized_surface_current_products
 run_codegen gen_lagrange_product_jets
+run_codegen gen_equilibrated_flux_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
@@ -196,6 +197,7 @@ fo fmt "$generated_dir/fortfem_reference_basis_products.f90"
 fo fmt "$generated_dir/fortfem_reference_scalar_intervals.f90"
 fo fmt "$generated_dir/fortfem_triangle_level_geometry.f90"
 fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"
+fo fmt "$generated_dir/fortfem_equilibrated_flux_products.f90"
 
 fo fmt "$generated_dir/fortfem_tetra_whitney_products.f90"
 
