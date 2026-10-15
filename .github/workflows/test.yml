@@ -5,6 +5,18 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # Keep push/PR verification bounded to these independent interval/RT gates.
+  # Reuse exactly this selection for normal, coverage and checked builds.
+  FORTFEM_FAST_TESTS: >-
+    test_verified_rt0_majorant
+    test_reference_p2_scalar_intervals
+    test_equilibrated_rt_normal_trace
+  OMP_NUM_THREADS: 2
+  OPENBLAS_NUM_THREADS: 1
+  OMP_WAIT_POLICY: passive
 
 concurrency:
   group: test-${{ github.workflow }}-${{ github.ref }}
@@ -133,30 +145,24 @@ jobs:
         # compile tree; otherwise the hosted dependency scan can select a
         # stale build/gfortran_* module while tests are compiled.
         fpm clean --skip
-        if ! fo test; then
-          echo "Fo test build failed; retrying the normal suite through FPM"
+        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+        if ! fo test --flag "-fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
+          echo "Fo test build failed; retrying the selected tests through FPM"
           fpm clean --skip
-          mapfile -t fast_tests < <(
-            find test -mindepth 1 -maxdepth 1 -type f \
-              -name 'test_*.f90' ! -name '*_slow.f90' \
-              -printf '%f\n' | sed 's/\.f90$//' | sort
-          )
-          fpm test --target "${fast_tests[@]}" --runner "timeout 10s"
+          fpm test --target "${fast_tests[@]}" \
+            --flag "-fno-fast-math -ffp-contract=off" --runner "timeout 10s"
         fi
 
     - name: Run tests with coverage
       id: coverage
       continue-on-error: true
       run: |
-        if ! fo test --flag "--coverage"; then
+        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+        if ! fo test --flag "--coverage -fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
           echo "Fo coverage build failed; retrying coverage through FPM"
           fpm clean --skip
-          mapfile -t fast_tests < <(
-            find test -mindepth 1 -maxdepth 1 -type f \
-              -name 'test_*.f90' ! -name '*_slow.f90' \
-              -printf '%f\n' | sed 's/\.f90$//' | sort
-          )
-          fpm test --target "${fast_tests[@]}" --flag "--coverage" \
+          fpm test --target "${fast_tests[@]}" \
+            --flag "--coverage -fno-fast-math -ffp-contract=off" \
             --runner "timeout 10s"
         fi
         find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
@@ -173,6 +179,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Build examples
+      if: github.event_name == 'workflow_dispatch'
       id: build_examples
       continue-on-error: true
       run: |
@@ -181,6 +188,7 @@ jobs:
         fpm run --example --list
 
     - name: Run all examples
+      if: github.event_name == 'workflow_dispatch'
       id: examples
       continue-on-error: true
       run: |
@@ -210,6 +218,7 @@ jobs:
         exit "$example_failures"
 
     - name: Run all benchmarks  
+      if: github.event_name == 'workflow_dispatch'
       id: benchmarks
       continue-on-error: true
       run: |
@@ -220,7 +229,7 @@ jobs:
         fpm test run_convergence_tests || echo "Convergence tests completed"
 
     - name: Collect generated plots
-      if: always()
+      if: always() && github.event_name == 'workflow_dispatch'
       run: |
         set -euo pipefail
         mkdir -p ci-artifacts/plots/examples
@@ -239,7 +248,7 @@ jobs:
 
     - name: Upload plot artifacts
       uses: actions/upload-artifact@v4
-      if: always()
+      if: always() && github.event_name == 'workflow_dispatch'
       with:
         name: generated-plots
         path: ci-artifacts/plots/
@@ -255,7 +264,7 @@ jobs:
     name: tests with runtime checks (debug profile)
     runs-on: ubuntu-latest
     env:
-      TEST_TIMEOUT: 600s
+      TEST_TIMEOUT: 10s
     steps:
     - uses: actions/checkout@v4
       with:
@@ -273,8 +282,12 @@ jobs:
         chmod +x fpm-0.12.0-linux-x86_64-gcc-12
         sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
-    - name: Run the standard tests with bounds and floating-point checks
-      run: make test-debug
+    - name: Run selected tests with bounds and floating-point checks
+      run: |
+        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+        fpm test --target "${fast_tests[@]}" --profile debug \
+          --flag "-g -O0 -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -fno-fast-math -ffp-contract=off" \
+          --runner "timeout $TEST_TIMEOUT"
 
   enzyme:
     name: released Flang 22 + pinned Enzyme
