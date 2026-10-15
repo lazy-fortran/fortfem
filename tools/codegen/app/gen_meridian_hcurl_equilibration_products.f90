@@ -22,6 +22,7 @@ program gen_meridian_hcurl_equilibration_products
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
         operator(/), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
+    use fortsym_products, only: jvp, vjp
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
@@ -129,5 +130,95 @@ program gen_meridian_hcurl_equilibration_products
         code = chars(emit_kernel(so, sspec))
         write (unit, "(a)") code(:len(code) - 1)
     end block
+    block
+        type(expr_t) :: lv(8), lo(3), tau
+        character(len=4), parameter :: names(8) = &
+            ["la  ", "lb  ", "ga1 ", "ga2 ", "gb1 ", "gb2 ", "r   ", "dr  "]
+        do i = 1, 8
+            lv(i) = sym(arena, trim(names(i)))
+        end do
+        tau = lv(2)/(lv(1) + lv(2))
+        call emit_family('edge_coordinate', lv(:2), names(:2), [tau])
+        ! sigma = -(lambda_a + lambda_b)^4 r(tau), tau = lambda_b/(la+lb).
+        ! r vanishes at the endpoints: the lift is zero on the other edges.
+        ! Fourth-power attenuation keeps the oscillatory interpolation
+        ! residual near its edge instead of extending it through the cell.
+        lo(1) = -(lv(1) + lv(2))*(lv(1) + lv(2)) &
+            *(lv(1) + lv(2))*(lv(1) + lv(2))*lv(7)
+        lo(2) = -(lv(1) + lv(2))*(lv(1) + lv(2))*(lv(1) + lv(2)) &
+            *(4*(lv(3) + lv(5))*lv(7) &
+            + ((1 - tau)*lv(5) - tau*lv(3))*lv(8))
+        lo(3) = -(lv(1) + lv(2))*(lv(1) + lv(2))*(lv(1) + lv(2)) &
+            *(4*(lv(4) + lv(6))*lv(7) &
+            + ((1 - tau)*lv(6) - tau*lv(4))*lv(8))
+        call emit_family('edge_lift', lv, names, lo)
+    end block
     close (unit)
+contains
+    subroutine emit_family(name, inputs, names, roots)
+        character(len=*), intent(in) :: name, names(:)
+        type(expr_t), intent(in) :: inputs(:), roots(:)
+        type(expr_t) :: dots(size(inputs)), bars(size(roots))
+        type(str_t) :: args(2*size(inputs)), adjargs(size(inputs) + size(roots))
+        integer :: j
+        do j = 1, size(inputs)
+            args(j) = str(trim(names(j)))
+            args(size(inputs) + j) = str(trim(names(j))//'_dot')
+            dots(j) = sym(arena, chars(args(size(inputs) + j)))
+        end do
+        adjargs(:size(inputs)) = args(:size(inputs))
+        do j = 1, size(roots)
+            bars(j) = sym(arena, 'bar'//achar(iachar('0') + j))
+            adjargs(size(inputs) + j) = str('bar'//achar(iachar('0') + j))
+        end do
+        call emit_one(name, roots, args(:size(inputs)))
+        call emit_one(name//'_jvp', jvp(roots, inputs, dots), args)
+        call emit_one(name//'_vjp', vjp(roots, inputs, bars), adjargs)
+    end subroutine emit_family
+
+    subroutine emit_one(name, roots, args)
+        character(len=*), intent(in) :: name
+        type(expr_t), intent(in) :: roots(:)
+        type(str_t), intent(in) :: args(:)
+        type(kernel_spec_t) :: local_spec
+        integer :: j
+        local_spec%name = str('generated_meridian_'//name)
+        local_spec%module_name = str('fortfem_generated_meridian_'//name)
+        local_spec%mode = KERNEL_SUBROUTINE
+        local_spec%generator = str('gen_meridian_hcurl_equilibration_products')
+        local_spec%generator_revision = str(fortsym_revision())
+        local_spec%regenerate_command = str('cd tools/codegen && ./generate.sh')
+        local_spec%pure_procedure = .true.
+        local_spec%args = args
+        allocate(local_spec%outputs(size(roots)))
+        do j = 1, size(roots)
+            local_spec%outputs(j) = str('out'//achar(iachar('0') + j))
+        end do
+        code = chars(emit_kernel(roots, local_spec))
+        call write_wrapped(code(:len(code) - 1))
+    end subroutine emit_one
+
+    subroutine write_wrapped(source)
+        character(len=*), intent(in) :: source
+        character(len=:), allocatable :: line
+        integer :: first, next, cut, k
+        first = 1
+        do while (first <= len(source))
+            next = index(source(first:), new_line('a'))
+            if (next == 0) next = len(source) - first + 2
+            line = source(first:first + next - 2)
+            do while (len_trim(line) > 84)
+                if (index(adjustl(line), '!') == 1) exit
+                cut = 0
+                do k = 1, 80
+                    if (line(k:k) == ',' .or. line(k:k) == ' ') cut = k
+                end do
+                if (cut <= 8) error stop 'cannot wrap generated token'
+                write(unit, '(a)') trim(line(:cut))//' &'
+                line = '        '//trim(adjustl(line(cut + 1:)))
+            end do
+            write(unit, '(a)') line
+            first = first + next
+        end do
+    end subroutine write_wrapped
 end program gen_meridian_hcurl_equilibration_products

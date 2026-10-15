@@ -121,6 +121,10 @@ module fortfem_equilibrated_hcurl_meridian_n
         generated_meridian_hcurl_residual
     use fortfem_generated_meridian_hcurl_scaled_potential, only: &
         generated_meridian_hcurl_scaled_potential
+    use fortfem_generated_meridian_edge_coordinate, only: &
+        generated_meridian_edge_coordinate
+    use fortfem_generated_meridian_edge_lift, only: generated_meridian_edge_lift
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_field_i, &
         meridian_op_complex, meridian_qgrad, meridian_qpoint
     use fortfem_equilibrated_flux_topology, only: vertex_stars
@@ -128,6 +132,7 @@ module fortfem_equilibrated_hcurl_meridian_n
         initialize_triangle_lagrange_basis, triangle_lagrange_basis_t, &
         triangle_lagrange_nodes, evaluate_triangle_lagrange_basis
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_polynomial, only: lagrange_weights, lagrange_deriv_weights
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_z_t, &
         fortsparse_status_t, sparse_solve_once, status_ok
     implicit none
@@ -135,6 +140,7 @@ module fortfem_equilibrated_hcurl_meridian_n
 
     public :: meridian_hcurl_estimate_t, meridian_hcurl_equilibrated_bound
     public :: meridian_edge_load_i
+    public :: meridian_hcurl_edge_remainder
 
     integer, parameter, public :: HCURL_OK = 0
     integer, parameter, public :: HCURL_BAD_INPUT = 1
@@ -187,6 +193,152 @@ module fortfem_equilibrated_hcurl_meridian_n
     end interface
 
 contains
+
+    subroutine meridian_hcurl_edge_remainder(fsd, n, cells, edges, load, &
+            load_derivative, bound, status)
+        !! Energy majorant of the correction from I_k G to the actual G,
+        !! using the same gauge and metric as meridian_hcurl_equilibrated_bound.
+        !! load_derivative returns dG/dtau, NOT the arc-length derivative.
+        !! Each physical loaded edge occurs once, oriented CCW in its listed
+        !! cell. Callbacks must be thread-safe and G must be H^1 on each edge.
+        !!
+        !! Proof: r=G-I_k G vanishes at both edge endpoints. In the listed
+        !! cell put sigma=-(la+lb)^4*r(lb/(la+lb)), zero in the other cells.
+        !! This H^1 lift is zero on the two other edges and jumps by -r.
+        !! Sum the lifts before evaluating H=(grad(sigma)/(i*n),sigma/R).
+        !! Integration by parts gives (curl_n v,H)=L_r(v). Thus
+        !! |||A_G-A_IG||| <= ||H|| with constant ONE, also with any positive
+        !! exterior energy form. No trace or mesh-dependent constant enters.
+        !!
+        !! The returned norm uses sampled volume quadrature and ordinary
+        !! arithmetic: practical, NOT an enclosed/verified numerical radius.
+        !! Cost O(N + nq*number_of_loaded_cells) at fixed order, OpenMP.
+        type(meridian_feec_t), intent(in) :: fsd
+        integer, intent(in) :: n, cells(:), edges(:)
+        procedure(meridian_edge_load_i) :: load, load_derivative
+        real(dp), intent(out) :: bound
+        integer, intent(out) :: status
+        integer, allocatable :: lookup(:, :), active(:)
+        complex(dp), allocatable :: coeff(:, :)
+        real(dp), allocatable :: lamv(:, :), val(:), grad(:, :), nodes(:), iv(:), di(:)
+        real(dp) :: x(2), wq, rr, grr(2), lam(3), glam(2, 3), tau
+        real(dp) :: sr, si, gsr(2), gsi(2), total
+        complex(dp) :: g, dg, gi, dgi, r, dr, sig, gs(2), h(3), zero2(2)
+        integer :: nt, ne, nl, m, ie, t, e, a, b, j, q, st, bad, ic, nactive
+
+        status = HCURL_BAD_INPUT
+        bound = huge(1.0_dp)
+        if (n == 0 .or. fsd%k < 1) return
+        ne = size(cells)
+        if (size(edges) /= ne) return
+        nt = fsd%mm%topology%n_triangles
+        if (any(cells < 1) .or. any(cells > nt)) return
+        if (any(edges < 1) .or. any(edges > 3)) return
+        allocate(lookup(3, nt), active(ne))
+        lookup = 0
+        nactive = 0
+        do ie = 1, ne
+            if (lookup(edges(ie), cells(ie)) /= 0) return
+            if (all(lookup(:, cells(ie)) == 0)) then
+                nactive = nactive + 1
+                active(nactive) = cells(ie)
+            end if
+            lookup(edges(ie), cells(ie)) = ie
+        end do
+        call vertex_weights(fsd, lamv)
+        nl = fsd%nl0
+        m = fsd%k + 1
+        allocate(coeff(m, ne), nodes(m))
+        nodes = [(real(j - 1, dp)/fsd%k, j=1, m)]
+        coeff = (0.0_dp, 0.0_dp)
+        bad = 0
+        !$omp parallel do default(shared) private(ie,t,e,j,g,tau) &
+        !$omp reduction(max:bad) schedule(static)
+        do ie = 1, ne
+            t = cells(ie)
+            e = edges(ie)
+            do j = 1, m
+                tau = nodes(j)
+                call load(t, e, tau, g)
+                if (.not. finite_complex(g)) bad = 1
+                coeff(j, ie) = g
+            end do
+        end do
+        !$omp end parallel do
+        if (bad /= 0) return
+        total = 0.0_dp
+        zero2 = (0.0_dp, 0.0_dp)
+        !$omp parallel default(shared) &
+        !$omp private(ic,t,q,e,ie,a,b,j,st,x,wq,val,grad,iv,di,rr,grr,lam,glam, &
+        !$omp tau,g,dg,gi,dgi,r,dr,sr,si,gsr,gsi,sig,gs,h) &
+        !$omp reduction(+:total) reduction(max:bad)
+        allocate(val(nl), grad(2, nl), iv(m), di(m))
+        !$omp do schedule(static)
+        do ic = 1, nactive
+            t = active(ic)
+            do q = 1, fsd%nq
+                call meridian_qgrad(fsd, t, q, x, wq, val, grad, st)
+                if (st /= 0) then
+                    bad = 1
+                    cycle
+                end if
+                lam = matmul(lamv, val)
+                glam = matmul(grad, transpose(lamv))
+                sig = (0.0_dp, 0.0_dp)
+                gs = (0.0_dp, 0.0_dp)
+                do e = 1, 3
+                    ie = lookup(e, t)
+                    if (ie == 0) cycle
+                    a = e
+                    b = mod(e, 3) + 1
+                    if (lam(a) + lam(b) <= 0.0_dp) then
+                        bad = 1
+                        cycle
+                    end if
+                    call generated_meridian_edge_coordinate(lam(a), lam(b), tau)
+                    call lagrange_weights(m, tau, nodes, iv)
+                    call lagrange_deriv_weights(m, tau, nodes, di)
+                    gi = sum(coeff(:, ie)*iv)
+                    dgi = sum(coeff(:, ie)*di)
+                    call load(t, e, tau, g)
+                    call load_derivative(t, e, tau, dg)
+                    if (.not. finite_complex(g)) bad = 1
+                    if (.not. finite_complex(dg)) bad = 1
+                    r = g - gi
+                    dr = dg - dgi
+                    call generated_meridian_edge_lift(lam(a), lam(b), &
+                        glam(1, a), glam(2, a), glam(1, b), glam(2, b), &
+                        real(r, dp), real(dr, dp), sr, gsr(1), gsr(2))
+                    call generated_meridian_edge_lift(lam(a), lam(b), &
+                        glam(1, a), glam(2, a), glam(1, b), glam(2, b), &
+                        aimag(r), aimag(dr), si, gsi(1), gsi(2))
+                    sig = sig + cmplx(sr, si, dp)
+                    gs = gs + cmplx(gsr, gsi, dp)
+                end do
+                rr = x(1)
+                grr = [1.0_dp, 0.0_dp]
+                if (fsd%cyl_r0 > 0.0_dp) then
+                    rr = fsd%cyl_r0
+                    grr = 0.0_dp
+                end if
+                call scale_potential(rr, grr, sig, gs)
+                call residual(real(n, dp), rr, grr, 0.0_dp, [0.0_dp, 0.0_dp], &
+                    sig, gs, zero2, (0.0_dp, 0.0_dp), zero2, h)
+                total = total + wq*real(dot_product(h, h), dp)
+            end do
+        end do
+        !$omp end do
+        !$omp end parallel
+        if (bad /= 0) return
+        if (.not. ieee_is_finite(total)) return
+        bound = sqrt(max(0.0_dp, total))
+        status = HCURL_OK
+    end subroutine meridian_hcurl_edge_remainder
+
+    pure logical function finite_complex(z) result(ok)
+        complex(dp), intent(in) :: z
+        ok = ieee_is_finite(real(z, dp)) .and. ieee_is_finite(aimag(z))
+    end function finite_complex
 
     subroutine meridian_hcurl_equilibrated_bound(fs, fsd, n, a_h, source, est, &
             status, method, edge_cell, edge_local, edge_load, free_trace, side)
