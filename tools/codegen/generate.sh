@@ -84,6 +84,7 @@ run_codegen gen_tetra_piola_products
 run_codegen gen_affine_map_products
 run_codegen gen_triangle_piola_products
 run_codegen gen_tetra_whitney_products
+run_codegen gen_equilibrated_flux_3d_products
 run_codegen gen_tetra_nedelec_candidates
 run_codegen gen_tetra_modal_vector_identities
 run_codegen gen_tetra_rt_candidates
@@ -201,6 +202,7 @@ fo fmt "$generated_dir/fortfem_lagrange_product_jets.f90"
 fo fmt "$generated_dir/fortfem_equilibrated_flux_products.f90"
 
 fo fmt "$generated_dir/fortfem_tetra_whitney_products.f90"
+fo fmt "$generated_dir/fortfem_equilibrated_flux_3d_products.f90"
 
 fo fmt "$generated_dir/fortfem_triangle_piola_products.f90"
 fo fmt "$generated_dir/fortfem_triangle_covariant_primal.inc"

@@ -317,3 +317,8 @@ main = "gen_triangle_level_geometry.f90"
 name = "gen_equilibrated_flux_products"
 source-dir = "app"
 main = "gen_equilibrated_flux_products.f90"
+
+[[executable]]
+name = "gen_equilibrated_flux_3d_products"
+source-dir = "app"
+main = "gen_equilibrated_flux_3d_products.f90"
