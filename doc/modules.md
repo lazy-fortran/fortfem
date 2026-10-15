@@ -181,5 +181,16 @@ end program
   rounding and bounds the energy error of a non-Galerkin interpolant with
   variable `A`. Integrals use the caller's quadrature rule without an
   enclosed remainder.
+- **Verified**: `fortfem_equilibrated_hcurl_meridian_n` bounds the energy error
+  `||curl_n (A - A_h)||` of the gauge-fixed (`a = 0`, `n /= 0`) per-mode
+  meridian curl-curl problem with tangential Dirichlet data by the
+  Prager--Synge quantity `||H(s) - curl_n A_h||`, `H(s) = ((grad(R s) + R
+  rot90 J)/(i n), s)` for a continuous scalar `s`. The constraint holds for
+  every `s`, so the bound is guaranteed without a Friedrichs constant (up to
+  quadrature); `s` is the global least-squares minimizer (sparse HPD solve,
+  efficiency 1.00-1.01 for potential order k+1) or an OpenMP patchwise sum
+  (valid, efficient only for `n h` of order one or larger). The exterior
+  Steklov term is not included. FortSym generates the pointwise residual
+  leaf.
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, and higher-order high-level solves
