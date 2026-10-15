@@ -136,6 +136,7 @@ run_codegen gen_block_graph_products
 run_codegen gen_force_balance_products
 run_codegen gen_regularized_surface_current_products
 run_codegen gen_lagrange_product_jets
+run_codegen gen_equilibrated_nonconforming_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
