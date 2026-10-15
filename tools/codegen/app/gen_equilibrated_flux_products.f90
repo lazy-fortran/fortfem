@@ -1,7 +1,8 @@
 program gen_equilibrated_flux_products
     !! Pointwise leaves of the patchwise equilibrated-flux estimator: cell
-    !! geometry (Jacobian, determinant, inverse transpose, hat gradients),
-    !! reference monomials and the quadrature integrands. Contractions over
+    !! geometry (Lagrange P1/P2/P3 Jacobians, determinant, inverse transpose,
+    !! hat gradients), reference monomials and the quadrature integrands
+    !! (densities per unit reference area). Contractions over
     !! runtime sizes, patch topology and the dense solves stay handwritten in
     !! the estimator.
     use fortsym_arena, only: arena_t
@@ -23,8 +24,11 @@ program gen_equilibrated_flux_products
     open(newunit=unit, file=generated_path("fortfem_equilibrated_flux_products.f90"), &
         status="replace", action="write")
 
-    ! Lagrange geometry Jacobian of affine (P1) cells.
+    ! Lagrange geometry Jacobian for P1 (affine), P2 and P3 isoparametric
+    ! cells (vertices first).
     call jacobian_kernel(3, "p1")
+    call jacobian_kernel(6, "p2")
+    call jacobian_kernel(10, "p3")
 
     call emit("equilibrated_determinant", &
         [str("jacobian")], [str("(2,2)")], &
@@ -61,15 +65,18 @@ program gen_equilibrated_flux_products
         [str("value")], [str("")], [str("value")], load_roots())
 
     call emit("equilibrated_flux_defect_integrand", &
-        [str("residual"), str("coefficient")], [str("(2)"), str("")], &
+        [str("residual"), str("coefficient"), str("determinant")], &
+        [str("(2)"), str(""), str("")], &
         [str("value")], [str("")], [str("value")], flux_defect_roots())
 
     call emit("equilibrated_oscillation_integrand", &
-        [str("source"), str("projection")], [str(""), str("")], &
+        [str("source"), str("projection"), str("determinant")], &
+        [str(""), str(""), str("")], &
         [str("value")], [str("")], [str("value")], oscillation_roots())
 
     call emit("equilibrated_divergence_integrand", &
-        [str("divergence"), str("projection")], [str(""), str("")], &
+        [str("divergence"), str("projection"), str("determinant")], &
+        [str(""), str(""), str("")], &
         [str("value")], [str("")], [str("value")], divergence_roots())
 
     close(unit)
@@ -197,21 +204,25 @@ contains
     end function load_roots
 
     function flux_defect_roots() result(roots)
+        !! A^(-1) |sigma - A grad u_h|^2 det: energy density per reference area.
         type(expr_t) :: roots(1)
         roots(1) = (ex("residual(1)")*ex("residual(1)") + &
-            ex("residual(2)")*ex("residual(2)"))/ex("coefficient")
+            ex("residual(2)")*ex("residual(2)"))*ex("determinant")/ex("coefficient")
     end function flux_defect_roots
 
     function oscillation_roots() result(roots)
+        !! (f - Pi f)^2 det with Pi f = projection/det, the projection being the
+        !! reference-cell L2 projection of det f onto P_k.
         type(expr_t) :: roots(1), d
-        d = ex("source") - ex("projection")
-        roots(1) = d*d
+        d = ex("determinant")*ex("source") - ex("projection")
+        roots(1) = d*d/ex("determinant")
     end function oscillation_roots
 
     function divergence_roots() result(roots)
+        !! (div sigma + Pi f)^2 det, div sigma the physical divergence.
         type(expr_t) :: roots(1), d
-        d = ex("divergence") + ex("projection")
-        roots(1) = d*d
+        d = ex("determinant")*ex("divergence") + ex("projection")
+        roots(1) = d*d/ex("determinant")
     end function divergence_roots
 
     subroutine emit(name, args, arg_shapes, outs, out_shapes, refs, roots)
