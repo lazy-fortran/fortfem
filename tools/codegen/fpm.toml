@@ -14,6 +14,11 @@ implicit-external = false
 source-form = "free"
 
 [[executable]]
+name = "gen_verified_rt0_products"
+source-dir = "app"
+main = "gen_verified_rt0_products.f90"
+
+[[executable]]
 name = "gen_tetra_nedelec_candidates"
 source-dir = "app"
 main = "gen_tetra_nedelec_candidates.f90"

@@ -78,6 +78,7 @@ else
     fo build
 fi
 run_codegen gen_reference_basis_products
+run_codegen gen_verified_rt0_products
 run_codegen gen_triangle_level_geometry
 run_codegen gen_polynomial_candidate_jets
 run_codegen gen_tetra_piola_products

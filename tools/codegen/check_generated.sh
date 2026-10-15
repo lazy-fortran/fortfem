@@ -40,6 +40,10 @@ for degree in 0 1 2 3 4; do
         "$temporary_dir/$filename"
 done
 
+filename="fortfem_verified_rt0_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_tetra_rt_coefficients.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
