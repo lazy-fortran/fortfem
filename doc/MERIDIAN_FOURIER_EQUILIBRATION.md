@@ -50,7 +50,10 @@ supplied Friedrichs inequality give
 This argument does not discard coefficient coupling: K acts on the full
 candidate gradient before projection. It also does not require separate
 mode solves or a global coupled reconstruction solve. The guaranteed
-ellipticity constant is a caller contract, not inferred from samples.
+ellipticity constant is a caller contract, not inferred from samples. As a
+necessary condition only, the estimator rejects (`EQUILIBRATION_BAD_INPUT`) a
+sampled K for which `sym(K) - chi_lower I` fails Cholesky, up to rounding
+of 64 eps times the trace.
 Efficiency can deteriorate with anisotropy because the defect norm uses
 `(R chi_lower)^-1`, rather than the inverse coupled tensor.
 

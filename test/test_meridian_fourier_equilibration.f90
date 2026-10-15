@@ -85,6 +85,7 @@ program test_meridian_fourier_equilibration
     use fortfem_meridian_fourier_equilibration, only: fourier_equilibrated_t, &
         meridian_fourier_equilibrated_estimate
     use fortsparse, only: csc_t, sparse_solve_once, fortsparse_status_t, status_ok
+    use fortfem_equilibrated_flux_2d, only: EQUILIBRATION_BAD_INPUT
     use, intrinsic :: iso_fortran_env, only: int64
     implicit none
     type(mesh_2d_t) :: mesh
@@ -125,6 +126,11 @@ program test_meridian_fourier_equilibration
     if (maxval(est%mode_divergence) > 2.0e-9_dp) error stop 'mode balance'
     call estimate(9)
     if (est%bound > 2.0e-9_dp) error stop 'odd-grid exact recovery'
+    ! The sampled K drops below 1: a declared chi_lower = 1 is rejected.
+    call meridian_fourier_equilibrated_estimate(fs, modes, nphi, coef, src, u, &
+        1.0_dp, mesh%vertices, mesh%triangles, xi, eta, w, lower, &
+        1/(pi*sqrt(2*chi)), est, st)
+    if (st /= EQUILIBRATION_BAD_INPUT) error stop 'ellipticity contract'
     deallocate (u)
 
     prev = huge(1.0_dp)
