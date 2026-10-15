@@ -181,5 +181,13 @@ end program
   rounding and bounds the energy error of a non-Galerkin interpolant with
   variable `A`. Integrals use the caller's quadrature rule without an
   enclosed remainder.
+- **Verified**: `fortfem_hcurl_equilibrated_2d` bounds the energy error of an
+  order-one Nedelec solution of `curl(nu curl u) + kappa u = f`, `u x n = 0`
+  (scalar `nu, kappa > 0`, planar affine triangles) with the reaction-type
+  majorant `||nu^-1/2(h - nu curl u_h)||^2 + ||kappa^-1/2(f - kappa u_h -
+  rot h)||^2` for a continuous P2 field `h` built from independent patch
+  solves (OpenMP, FortSym-generated leaves). It is exact for a Nedelec field
+  and has efficiency index 1.14 on a variable-coefficient manufactured
+  problem at the energy rate; no Friedrichs constant is needed.
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, and higher-order high-level solves
