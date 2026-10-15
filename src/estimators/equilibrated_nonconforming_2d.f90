@@ -14,14 +14,19 @@ module fortfem_equilibrated_nonconforming_2d
     !! rule) is not enclosed.
     !!
     !! 1. Mixed RT_k-DG_k (mixed_poisson_flux_bound), A = 1, sigma_h = -grad u
-    !!    in RT_k with div sigma_h = Pi_k f (up to quadrature). Reconstruction
-    !!    s: per cell the P_(k+1) function minimising int |sigma_h + grad s|^2
-    !!    with mean s = mean p_h (Arbogast--Chen / Stenberg postprocessing),
-    !!    made H^1_0-conforming by Oswald nodal averaging; local, O(N), no
-    !!    global solve. With X = ||sigma_h + grad s|| (the flux defect):
+    !!    in RT_k with div sigma_h = Pi_k f (up to quadrature). The potential
+    !!    s in H^1_0 is local and O(N), no global solve. ptilde is the cellwise
+    !!    P_(k+1) function minimising int |sigma_h + grad ptilde|^2 with mean
+    !!    ptilde = mean p_h (Arbogast--Chen / Stenberg postprocessing). Default
+    !!    s: vertex-patch H^1 projection of grad(psi_a ptilde) into P_(k+2) with
+    !!    partition of unity (Ern--Vohralik), exact when ptilde is exact;
+    !!    option: Oswald nodal average of ptilde in P_(k+1) (efficiency 2-3
+    !!    instead of 1.04-1.5). With X = ||sigma_h + grad s|| (flux defect):
     !!      ||sigma - sigma_h|| <= sqrt(X^2 + E^2)         (flux error)
     !!      |||u - s|||          <= X + sqrt(X^2 + E^2)    (potential error)
-    !!    (error^2 = X^2 + 2 (f - div sigma_h, w) - |||w|||^2 <= X^2 + E^2).
+    !!    (error^2 = X^2 + 2 (f - div sigma_h, w) - |||w|||^2 <= X^2 + E^2,
+    !!    w = u - s). A global least-squares s would give X <= error; a poor
+    !!    local s only loosens the bound.
     !!
     !! 2. SIPG (sipg_energy_bound): flux sigma from the vertex-patch RT
     !!    equilibration of the broken flux A grad_h u_h with the DG residual
