@@ -116,6 +116,9 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_neumann_target
     use fortfem_generated_equilibrated_neumann_defect_integrand, only: &
         generated_equilibrated_neumann_defect_integrand
+    use fortfem_equilibrated_flux_topology, only: vertex_stars, &
+        EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
+        EQUILIBRATION_PATCH_FAILED
     implicit none
     private
 
@@ -123,10 +126,8 @@ module fortfem_equilibrated_flux_2d
     ! Shared with the non-conforming estimators (equilibrated_nonconforming_2d).
     public :: reference_t, build_reference, project_source
 
-    integer, parameter, public :: EQUILIBRATION_OK = 0
-    integer, parameter, public :: EQUILIBRATION_BAD_INPUT = 1
-    integer, parameter, public :: EQUILIBRATION_BAD_CELL = 2
-    integer, parameter, public :: EQUILIBRATION_PATCH_FAILED = 3
+    public :: EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, EQUILIBRATION_BAD_CELL, &
+        EQUILIBRATION_PATCH_FAILED
     integer, parameter :: max_degree = 6
     !> Reference gradients of the P1 geometry functions, grad(node, component).
     real(dp), parameter :: p1_gradient(3, 2) = reshape( &
@@ -591,33 +592,12 @@ contains
         logical, intent(in) :: neumann(:, :)
         type(topology_t), intent(out) :: topo
         integer, intent(out) :: status
-        integer, allocatable :: fill(:)
         integer :: nt, t, s, e, a, b, k, other, oe, nedges
 
         status = 1
         nt = size(triangles, 2)
-        allocate (topo%vertex_start(nv + 1), fill(nv))
-        topo%vertex_start = 0
-        do t = 1, nt
-            do s = 1, 3
-                a = triangles(s, t)
-                topo%vertex_start(a + 1) = topo%vertex_start(a + 1) + 1
-            end do
-        end do
-        topo%vertex_start(1) = 1
-        do a = 1, nv
-            topo%vertex_start(a + 1) = topo%vertex_start(a + 1) + topo%vertex_start(a)
-        end do
-        allocate (topo%vertex_cell(3*nt), topo%vertex_slot(3*nt))
-        fill = topo%vertex_start(1:nv)
-        do t = 1, nt
-            do s = 1, 3
-                a = triangles(s, t)
-                topo%vertex_cell(fill(a)) = t
-                topo%vertex_slot(fill(a)) = s
-                fill(a) = fill(a) + 1
-            end do
-        end do
+        call vertex_stars(nv, triangles, topo%vertex_start, topo%vertex_cell, &
+            topo%vertex_slot)
 
         allocate (topo%cell_edge(3, nt), topo%cell_orientation(3, nt))
         allocate (topo%dirichlet_vertex(nv))
