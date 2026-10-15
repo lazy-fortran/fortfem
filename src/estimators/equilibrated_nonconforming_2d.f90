@@ -58,6 +58,7 @@ module fortfem_equilibrated_nonconforming_2d
         equilibrated_flux_estimate_t, reference_t, build_reference, &
         project_source, EQUILIBRATION_OK, EQUILIBRATION_BAD_INPUT, &
         EQUILIBRATION_BAD_CELL
+    use fortfem_equilibrated_flux_topology, only: vertex_stars
     use fortfem_oswald_average_2d, only: lagrange_continuous_numbering, &
         oswald_average_homogeneous
     use fortfem_triangle_discontinuous_dof_map, only: &
@@ -414,29 +415,7 @@ contains
         call lagrange_continuous_numbering(triangles, m, bary, node_id, &
             boundary_node, st)
         if (st /= 0) return
-        allocate (vstart(nv + 1), vcell(3*nt), vslot(3*nt))
-        vstart = 0
-        do t = 1, nt
-            do s = 1, 3
-                vstart(triangles(s, t) + 1) = vstart(triangles(s, t) + 1) + 1
-            end do
-        end do
-        vstart(1) = 1
-        do a = 1, nv
-            vstart(a + 1) = vstart(a + 1) + vstart(a)
-        end do
-        block
-            integer :: fill(nv)
-            fill = vstart(1:nv)
-            do t = 1, nt
-                do s = 1, 3
-                    a = triangles(s, t)
-                    vcell(fill(a)) = t
-                    vslot(fill(a)) = s
-                    fill(a) = fill(a) + 1
-                end do
-            end do
-        end block
+        call vertex_stars(nv, triangles, vstart, vcell, vslot)
         allocate (contribution(nl, 3, nt))
         contribution = 0.0_dp
         failed = 0
