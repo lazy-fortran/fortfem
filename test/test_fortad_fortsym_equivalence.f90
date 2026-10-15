@@ -15,6 +15,14 @@ program test_fortad_fortsym_equivalence
     !! written by hand would be forty-four chances to get an order wrong and
     !! have the test pass anyway on a symmetric point.
     use, intrinsic :: iso_fortran_env, only: dp => real64
+    use fortfem_generated_tetra_affine_jvp, only: generated_tetra_affine_jvp
+    use fortfem_generated_tetra_affine_vjp, only: generated_tetra_affine_vjp
+    use fortfem_fortad_tetra_affine_jvp, only: fortfem_tetra_affine_jvp_fortad
+    use fortfem_fortad_tetra_affine_vjp, only: fortfem_tetra_affine_vjp_fortad
+    use fortfem_generated_triangle_affine_jvp, only: generated_triangle_affine_jvp
+    use fortfem_generated_triangle_affine_vjp, only: generated_triangle_affine_vjp
+    use fortfem_fortad_triangle_affine_jvp, only: fortfem_triangle_affine_jvp_fortad
+    use fortfem_fortad_triangle_affine_vjp, only: fortfem_triangle_affine_vjp_fortad
     use fortfem_generated_block_graph_product_jvp, only: generated_block_graph_product_jvp
     use fortfem_generated_block_graph_product_vjp, only: generated_block_graph_product_vjp
     use fortfem_fortad_block_graph_product_jvp, only: fortfem_block_graph_product_jvp_fortad
@@ -213,6 +221,76 @@ program test_fortad_fortsym_equivalence
     integer :: failures
 
     failures = 0
+    ! tetra_affine
+    block
+        real(dp) :: v_jacobian(3,3)
+        real(dp) :: v_relative(3)
+        real(dp) :: v_reference(3)
+        real(dp) :: d_jacobian(3,3)
+        real(dp) :: gr_jacobian(3,3)
+        real(dp) :: gn_jacobian(3,3)
+        real(dp) :: d_relative(3)
+        real(dp) :: gr_relative(3)
+        real(dp) :: gn_relative(3)
+        real(dp) :: tr_reference(3)
+        real(dp) :: tn_reference(3)
+        real(dp) :: seed_reference(3)
+        call fill_point(v_jacobian, 1)
+        call fill_point(v_relative, 2)
+        call fill_point(v_reference, 3)
+        call fill_direction(d_jacobian, 1)
+        call fill_direction(d_relative, 2)
+        seed_reference = 1.3_dp
+        call generated_tetra_affine_jvp(v_jacobian, v_relative, d_jacobian, &
+            d_relative, tr_reference)
+        call fortfem_tetra_affine_jvp_fortad(v_jacobian, d_jacobian, v_relative, &
+            d_relative, tn_reference)
+        call same("tetra_affine jvp reference", &
+                  tr_reference, tn_reference, TOLERANCE, failures)
+        call generated_tetra_affine_vjp(v_jacobian, v_relative, seed_reference, &
+            gr_jacobian, gr_relative)
+        call fortfem_tetra_affine_vjp_fortad(v_jacobian, v_relative, &
+            seed_reference, gn_jacobian, gn_relative)
+        call same("tetra_affine vjp jacobian", &
+                  gr_jacobian, gn_jacobian, TOLERANCE, failures)
+        call same("tetra_affine vjp relative", &
+                  gr_relative, gn_relative, TOLERANCE, failures)
+    end block
+    ! triangle_affine
+    block
+        real(dp) :: v_jacobian(2,2)
+        real(dp) :: v_relative(2)
+        real(dp) :: v_reference(2)
+        real(dp) :: d_jacobian(2,2)
+        real(dp) :: gr_jacobian(2,2)
+        real(dp) :: gn_jacobian(2,2)
+        real(dp) :: d_relative(2)
+        real(dp) :: gr_relative(2)
+        real(dp) :: gn_relative(2)
+        real(dp) :: tr_reference(2)
+        real(dp) :: tn_reference(2)
+        real(dp) :: seed_reference(2)
+        call fill_point(v_jacobian, 1)
+        call fill_point(v_relative, 2)
+        call fill_point(v_reference, 3)
+        call fill_direction(d_jacobian, 1)
+        call fill_direction(d_relative, 2)
+        seed_reference = 1.3_dp
+        call generated_triangle_affine_jvp(v_jacobian, v_relative, d_jacobian, &
+            d_relative, tr_reference)
+        call fortfem_triangle_affine_jvp_fortad(v_jacobian, d_jacobian, &
+            v_relative, d_relative, tn_reference)
+        call same("triangle_affine jvp reference", &
+                  tr_reference, tn_reference, TOLERANCE, failures)
+        call generated_triangle_affine_vjp(v_jacobian, v_relative, &
+            seed_reference, gr_jacobian, gr_relative)
+        call fortfem_triangle_affine_vjp_fortad(v_jacobian, v_relative, &
+            seed_reference, gn_jacobian, gn_relative)
+        call same("triangle_affine vjp jacobian", &
+                  gr_jacobian, gn_jacobian, TOLERANCE, failures)
+        call same("triangle_affine vjp relative", &
+                  gr_relative, gn_relative, TOLERANCE, failures)
+    end block
     ! block_graph_product
     block
         real(dp) :: v_block_value

@@ -1,4 +1,6 @@
 [
+  "tetra_affine",
+  "triangle_affine",
   "block_graph_product",
   "cgl_pressure_divergence",
   "cgl_pressure_tensor",
