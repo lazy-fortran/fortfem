@@ -23,11 +23,48 @@ module fortfem_equilibrated_flux_2d
     !! H^1_0. The bound holds for any sigma in H(div), so local solve errors
     !! only loosen it: d is measured from the assembled sigma. Integrals use
     !! the caller's reference rule; their quadrature error is not enclosed.
+    !! Pointwise leaves (geometry, hat gradients, P_k monomials and the
+    !! integrands) come from the FortSym-generated module
+    !! fortfem_equilibrated_flux_products; the cell diameter, patch topology,
+    !! gather/scatter and the dense solves stay handwritten. Degrees up to 6
+    !! are supported.
     use fortfem_kinds, only: dp
     use fortfem_triangle_rt_arbitrary_order, only: triangle_rt_basis_t, &
         initialize_triangle_raviart_thomas, evaluate_triangle_raviart_thomas, &
         triangle_rt_dof_count
     use fortfem_triangle_piola_maps, only: map_triangle_rt_contravariant
+    use fortfem_generated_equilibrated_jacobian_p1, only: &
+        generated_equilibrated_jacobian_p1
+    use fortfem_generated_equilibrated_determinant, only: &
+        generated_equilibrated_determinant
+    use fortfem_generated_equilibrated_inverse_transpose, only: &
+        generated_equilibrated_inverse_transpose
+    use fortfem_generated_equilibrated_hat_gradients, only: &
+        generated_equilibrated_hat_gradients
+    use fortfem_generated_equilibrated_hat_values, only: &
+        generated_equilibrated_hat_values
+    use fortfem_generated_equilibrated_monomials_degree0, only: &
+        generated_equilibrated_monomials_degree0
+    use fortfem_generated_equilibrated_monomials_degree1, only: &
+        generated_equilibrated_monomials_degree1
+    use fortfem_generated_equilibrated_monomials_degree2, only: &
+        generated_equilibrated_monomials_degree2
+    use fortfem_generated_equilibrated_monomials_degree3, only: &
+        generated_equilibrated_monomials_degree3
+    use fortfem_generated_equilibrated_monomials_degree4, only: &
+        generated_equilibrated_monomials_degree4
+    use fortfem_generated_equilibrated_monomials_degree5, only: &
+        generated_equilibrated_monomials_degree5
+    use fortfem_generated_equilibrated_monomials_degree6, only: &
+        generated_equilibrated_monomials_degree6
+    use fortfem_generated_equilibrated_load_integrand, only: &
+        generated_equilibrated_load_integrand
+    use fortfem_generated_equilibrated_flux_defect_integrand, only: &
+        generated_equilibrated_flux_defect_integrand
+    use fortfem_generated_equilibrated_oscillation_integrand, only: &
+        generated_equilibrated_oscillation_integrand
+    use fortfem_generated_equilibrated_divergence_integrand, only: &
+        generated_equilibrated_divergence_integrand
     implicit none
     private
 
@@ -37,6 +74,10 @@ module fortfem_equilibrated_flux_2d
     integer, parameter, public :: EQUILIBRATION_BAD_INPUT = 1
     integer, parameter, public :: EQUILIBRATION_BAD_CELL = 2
     integer, parameter, public :: EQUILIBRATION_PATCH_FAILED = 3
+    integer, parameter :: max_degree = 6
+    !> Reference gradients of the P1 geometry functions, grad(node, component).
+    real(dp), parameter :: p1_gradient(3, 2) = reshape( &
+        [-1.0_dp, 1.0_dp, 0.0_dp, -1.0_dp, 0.0_dp, 1.0_dp], [3, 2])
 
     type :: equilibrated_flux_estimate_t
         real(dp) :: bound = huge(1.0_dp)        !< sum of the three terms
@@ -103,7 +144,8 @@ contains
         status = EQUILIBRATION_BAD_INPUT
         nv = size(vertices, 2)
         nt = size(triangles, 2)
-        if (degree < 0 .or. nt < 1 .or. size(vertices, 1) /= 2) return
+        if (degree < 0 .or. degree > max_degree) return
+        if (nt < 1 .or. size(vertices, 1) /= 2) return
         if (size(triangles, 1) /= 3) return
         if (any(triangles < 1) .or. any(triangles > nv)) return
         if (size(eta) /= size(xi) .or. size(weights) /= size(xi)) return
@@ -177,7 +219,7 @@ contains
         type(reference_t), intent(out) :: ref
         integer, intent(out) :: status
         type(triangle_rt_basis_t) :: basis
-        integer :: q, i, j, l
+        integer :: q
 
         call initialize_triangle_raviart_thomas(degree, basis, status)
         if (status /= 0) return
@@ -193,17 +235,35 @@ contains
             call evaluate_triangle_raviart_thomas(basis, xi(q), eta(q), &
                 ref%rt(:, :, q), ref%rt_div(:, q), status)
             if (status /= 0) return
-            l = 0
-            do i = 0, degree
-                do j = 0, degree - i
-                    l = l + 1
-                    ref%poly(l, q) = xi(q)**i*eta(q)**j
-                end do
-            end do
-            ref%hat(:, q) = [1.0_dp - xi(q) - eta(q), xi(q), eta(q)]
+            call reference_monomials(degree, xi(q), eta(q), ref%poly(:, q))
+            call generated_equilibrated_hat_values(xi(q), eta(q), ref%hat(:, q))
         end do
         status = 0
     end subroutine build_reference
+
+    pure subroutine reference_monomials(degree, xi, eta, values)
+        !! xi**i eta**j, i = 0..degree, j = 0..degree-i, in that nesting order.
+        integer, intent(in) :: degree
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(out) :: values(:)
+
+        select case (degree)
+        case (0)
+            call generated_equilibrated_monomials_degree0(xi, eta, values)
+        case (1)
+            call generated_equilibrated_monomials_degree1(xi, eta, values)
+        case (2)
+            call generated_equilibrated_monomials_degree2(xi, eta, values)
+        case (3)
+            call generated_equilibrated_monomials_degree3(xi, eta, values)
+        case (4)
+            call generated_equilibrated_monomials_degree4(xi, eta, values)
+        case (5)
+            call generated_equilibrated_monomials_degree5(xi, eta, values)
+        case default
+            call generated_equilibrated_monomials_degree6(xi, eta, values)
+        end select
+    end subroutine reference_monomials
 
     subroutine build_topology(nv, triangles, topo)
         !! Edges are numbered by first appearance; local edge e of a cell runs
@@ -294,9 +354,8 @@ contains
         integer, intent(in) :: cell(3)
         real(dp) :: jac(2, 2)
 
-        jac(:, 1) = vertices(:, cell(2)) - vertices(:, cell(1))
-        jac(:, 2) = vertices(:, cell(3)) - vertices(:, cell(1))
-        det = jac(1, 1)*jac(2, 2) - jac(1, 2)*jac(2, 1)
+        call generated_equilibrated_jacobian_p1(vertices(:, cell), p1_gradient, jac)
+        call generated_equilibrated_determinant(jac, det)
     end function cell_determinant
 
     pure subroutine cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
@@ -305,15 +364,11 @@ contains
         real(dp), intent(out) :: jac(2, 2), det, hat_grad(2, 3), diameter
         real(dp) :: inv_t(2, 2)
 
-        jac(:, 1) = vertices(:, cell(2)) - vertices(:, cell(1))
-        jac(:, 2) = vertices(:, cell(3)) - vertices(:, cell(1))
-        det = jac(1, 1)*jac(2, 2) - jac(1, 2)*jac(2, 1)
+        call generated_equilibrated_jacobian_p1(vertices(:, cell), p1_gradient, jac)
+        call generated_equilibrated_determinant(jac, det)
         ! J^(-T) maps reference gradients to physical ones.
-        inv_t(1, :) = [jac(2, 2), -jac(2, 1)]/det
-        inv_t(2, :) = [-jac(1, 2), jac(1, 1)]/det
-        hat_grad(:, 1) = matmul(inv_t, [-1.0_dp, -1.0_dp])
-        hat_grad(:, 2) = matmul(inv_t, [1.0_dp, 0.0_dp])
-        hat_grad(:, 3) = matmul(inv_t, [0.0_dp, 1.0_dp])
+        call generated_equilibrated_inverse_transpose(jac, det, inv_t)
+        call generated_equilibrated_hat_gradients(inv_t, hat_grad)
         diameter = max(norm2(jac(:, 1)), norm2(jac(:, 2)), &
             norm2(jac(:, 2) - jac(:, 1)))
     end subroutine cell_geometry
@@ -338,7 +393,7 @@ contains
         integer, intent(in) :: cell(3)
         real(dp), intent(out) :: coefficients(:), oscillation
         real(dp) :: jac(2, 2), det, hat_grad(2, 3), diameter, wdet, rest
-        real(dp) :: mass(ref%nk, ref%nk), rhs(ref%nk, 1)
+        real(dp) :: mass(ref%nk, ref%nk), rhs(ref%nk, 1), integrand
         integer :: q, l, ipiv(ref%nk), info
 
         call cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
@@ -355,8 +410,9 @@ contains
         coefficients = rhs(:, 1)
         rest = 0.0_dp
         do q = 1, ref%nq
-            rest = rest + ref%weights(q)*det &
-                *(f(q) - dot_product(coefficients, ref%poly(:, q)))**2
+            call generated_equilibrated_oscillation_integrand(f(q), &
+                dot_product(coefficients, ref%poly(:, q)), integrand)
+            rest = rest + ref%weights(q)*det*integrand
         end do
         oscillation = diameter/acos(-1.0_dp)*sqrt(rest/a_lower)
         if (info /= 0) oscillation = huge(1.0_dp)
@@ -437,8 +493,8 @@ contains
                 wdet = ref%weights(q)*det
                 ainv = 1.0_dp/coefficient(q, t)
                 psi = ref%hat(s, q)
-                load = source(q, t)*psi &
-                    - dot_product(discrete_flux(:, q, t), hat_grad(:, s))
+                call generated_equilibrated_load_integrand(source(q, t), psi, &
+                    discrete_flux(:, q, t), hat_grad(:, s), load)
                 do k = 1, ref%nrt
                     if (map(k, i) == 0) cycle
                     rhs(map(k, i), 1) = rhs(map(k, i), 1) + wdet*sgn(k, i)*psi &
@@ -505,7 +561,7 @@ contains
         real(dp), intent(in) :: discrete_flux(:, :), projection(:), sigma(:)
         real(dp), intent(out) :: flux_defect, divergence_sq
         real(dp) :: jac(2, 2), det, hat_grad(2, 3), diameter, wdet
-        real(dp) :: phi(2, ref%nrt), div(ref%nrt), value(2)
+        real(dp) :: phi(2, ref%nrt), div(ref%nrt), value(2), integrand
         integer :: q, stat
 
         call cell_geometry(vertices, cell, jac, det, hat_grad, diameter)
@@ -515,9 +571,12 @@ contains
             call physical_rt(ref, jac, q, phi, div, stat)
             wdet = ref%weights(q)*det
             value = matmul(phi, sigma) - discrete_flux(:, q)
-            flux_defect = flux_defect + wdet*dot_product(value, value)/coefficient(q)
-            divergence_sq = divergence_sq + wdet*(dot_product(div, sigma) &
-                + dot_product(projection, ref%poly(:, q)))**2
+            call generated_equilibrated_flux_defect_integrand(value, coefficient(q), &
+                integrand)
+            flux_defect = flux_defect + wdet*integrand
+            call generated_equilibrated_divergence_integrand(dot_product(div, sigma), &
+                dot_product(projection, ref%poly(:, q)), integrand)
+            divergence_sq = divergence_sq + wdet*integrand
         end do
         flux_defect = sqrt(flux_defect)
     end subroutine cell_defects
