@@ -1,7 +1,8 @@
 module fortfem_equilibrated_flux_2d
     !! Patchwise equilibrated-flux (Prager--Synge) energy-error bound for
-    !! -div(A grad u) = f on a triangle mesh, u = 0 on the whole boundary,
-    !! scalar A > 0, conforming discrete u_h with u_h = 0 there. Cells are
+    !! -div(A grad u) = f on a triangle mesh, u = 0 on the Dirichlet part of the
+    !! boundary and A grad u . n = g on an optional Neumann part, scalar A > 0,
+    !! conforming discrete u_h with u_h = 0 on the Dirichlet part. Cells are
     !! affine or isoparametric (Lagrange P2/P3 geometry, see below).
     !!
     !! Every cell K = F_K(T^) carries RT_k through the contravariant Piola map
@@ -15,29 +16,40 @@ module fortfem_equilibrated_flux_2d
     !! function pulled back by F_K, a conforming partition of unity), the local
     !! problem on its patch finds sigma_a in RT_k (zero normal trace on the
     !! patch boundary away from the domain boundary; free normal trace on
-    !! domain-boundary edges at Dirichlet vertices) minimizing
+    !! Dirichlet boundary edges; on Neumann edges the trace is prescribed as the
+    !! moments of psi_a g, see below) minimizing
     !! ||A^(-1/2)(sigma_a - psi_a A grad u_h)|| subject to the divergence
     !! constraint posed in the reference cell,
     !!
     !!   div^ sigma^_a = -Pi^_k(det J (f psi_a - A grad u_h . grad psi_a)) + c_a
     !!                                                         Pi^_k(det J),
     !!
-    !! with Pi^_k the L2(T^) projection onto P_k, c_a the patch mean of the load
-    !! on interior patches (zero for a Galerkin solution in exact arithmetic) and
-    !! c_a = 0 on boundary patches. Then sigma = sum_a sigma_a lies in H(div),
-    !! div sigma + Pi f = d with Pi f := Pi^_k(det J f)/det J, and for all
-    !! v in H^1_0, a(u - u_h, v) = int (f - Pi f) v + int d v
-    !! + int (sigma - A grad u_h) . grad v, hence
+    !! with Pi^_k the L2(T^) projection onto P_k and c_a = (int det J load_a +
+    !! int_GammaN psi_a g)/|omega_a| on patches touching no Dirichlet edge
+    !! (interior vertices and vertices inside the Neumann part; zero for a
+    !! Galerkin solution in exact arithmetic), c_a = 0 elsewhere. On a Neumann
+    !! edge the normal flux of sigma_a is the L2(0,1) projection onto P_k of
+    !! psi_a g |x'(s)| (edge parameter s), i.e. its Legendre moments are the
+    !! prescribed edge degrees of freedom. Then sigma = sum_a sigma_a lies in
+    !! H(div), div sigma + Pi f = d with Pi f := Pi^_k(det J f)/det J, and for
+    !! all v in H^1 vanishing on the Dirichlet part,
+    !! a(u - u_h, v) = int (f - Pi f) v + int d v + int (sigma - A grad u_h) . grad v
+    !! + int_GammaN (g - sigma.n) v, hence
     !!
-    !!   |||u - u_h||| <= ||A^(-1/2)(sigma - A grad u_h)|| + osc + C_F ||d||,
+    !!   |||u - u_h||| <= ||A^(-1/2)(sigma - A grad u_h)|| + osc + C_F ||d||
+    !!                    + neumann,
     !!
     !! |||v|||^2 = int A |grad v|^2 and C_F a caller-supplied Friedrichs constant
-    !! ||v|| <= C_F |||v||| on H^1_0. The oscillation term is, per affine
+    !! ||v|| <= C_F |||v||| on that space. The oscillation term is, per affine
     !! (hence convex) cell, (h_T/pi) A_T,min^(-1/2) ||f - Pi f||_T (Payne--
     !! Weinberger, A_T,min a caller-supplied lower bound of A on T), and for
     !! every isoparametric (possibly non-convex) cell the unconditional
     !! C_F ||f - Pi f||_K, from int_K (f - Pi f) v <= ||f - Pi f||_K ||v||_K;
-    !! the two groups are summed in quadrature separately. The bound holds for
+    !! the two groups are summed in quadrature separately. The Neumann term is
+    !! sqrt(sum_T (C_T sum_e ||g - sigma.n||_e)^2) over the Neumann edges e of
+    !! the (affine) cell T, with the guaranteed trace constant
+    !! C_T = h_T sqrt((1 + 3/pi^2)/(r_T A_T,min)), r_T the inradius (derivation
+    !! in neumann_defect). The bound holds for
     !! any sigma in H(div), so local solve errors only loosen it: d is measured
     !! from the assembled sigma. Integrals use the caller's reference rule;
     !! their quadrature error, and positivity of det J between the quadrature
@@ -92,6 +104,18 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_oscillation_integrand
     use fortfem_generated_equilibrated_divergence_integrand, only: &
         generated_equilibrated_divergence_integrand
+    use fortfem_generated_equilibrated_edge_legendre, only: &
+        generated_equilibrated_edge_legendre
+    use fortfem_generated_equilibrated_edge_speed, only: &
+        generated_equilibrated_edge_speed
+    use fortfem_generated_equilibrated_reference_normal, only: &
+        generated_equilibrated_reference_normal
+    use fortfem_generated_equilibrated_flux_normal_component, only: &
+        generated_equilibrated_flux_normal_component
+    use fortfem_generated_equilibrated_neumann_target, only: &
+        generated_equilibrated_neumann_target
+    use fortfem_generated_equilibrated_neumann_defect_integrand, only: &
+        generated_equilibrated_neumann_defect_integrand
     implicit none
     private
 
@@ -102,16 +126,28 @@ module fortfem_equilibrated_flux_2d
     integer, parameter, public :: EQUILIBRATION_BAD_CELL = 2
     integer, parameter, public :: EQUILIBRATION_PATCH_FAILED = 3
     integer, parameter :: max_degree = 6
+    !> Reference gradients of the P1 geometry functions, grad(node, component).
+    real(dp), parameter :: p1_gradient(3, 2) = reshape( &
+        [-1.0_dp, 1.0_dp, 0.0_dp, -1.0_dp, 0.0_dp, 1.0_dp], [3, 2])
+    !> Counter-clockwise reference edge tangents; edge e runs from local vertex
+    !> e to e + 1 and is parametrized by s in [0, 1].
+    real(dp), parameter :: edge_tangent(2, 3) = reshape( &
+        [1.0_dp, 0.0_dp, -1.0_dp, 1.0_dp, 0.0_dp, -1.0_dp], [2, 3])
 
     type :: equilibrated_flux_estimate_t
         real(dp) :: bound = huge(1.0_dp)        !< sum of the three terms
         real(dp) :: flux_defect = 0.0_dp        !< ||A^(-1/2)(sigma - A grad u_h)||
         real(dp) :: oscillation = 0.0_dp        !< data-oscillation term
         real(dp) :: divergence_defect = 0.0_dp  !< C_F ||div sigma + Pi_k f||
+        !> Neumann term sqrt(sum_T (C_T sum_e ||g - sigma.n||_e)^2), zero without
+        !> Neumann edges.
+        real(dp) :: neumann_oscillation = 0.0_dp
         !> Per cell: flux-defect and oscillation contributions (not squared).
         real(dp), allocatable :: cell_flux(:), cell_oscillation(:)
         !> Element-local physical RT_k coefficients of sigma, (dofs, cells).
         real(dp), allocatable :: flux_coefficients(:, :)
+        !> Per cell: C_T sum_e ||g - sigma.n||_e over its Neumann edges.
+        real(dp), allocatable :: cell_neumann(:)
     end type equilibrated_flux_estimate_t
 
     interface
@@ -126,32 +162,42 @@ module fortfem_equilibrated_flux_2d
     !> Reference data shared by all cells.
     type :: reference_t
         integer :: degree = 0, nrt = 0, nk = 0, nq = 0, nedge = 0, nloc = 3
+        integer :: nq1 = 0
         real(dp), allocatable :: weights(:)
         real(dp), allocatable :: rt(:, :, :), rt_div(:, :)  !< (2,nrt,nq),(nrt,nq)
         real(dp), allocatable :: poly(:, :)                 !< (nk, nq), P_k
         real(dp), allocatable :: hat(:, :)                  !< (3, nq)
         !> Reference gradients of the geometry shape functions, (nloc, 2, nq).
         real(dp), allocatable :: geo_grad(:, :, :)
+        !> Edge rule on [0, 1], per reference edge: hat values (3, nq1), RT normal
+        !> trace sigma^.n of every RT function (nrt, nq1), shifted Legendre
+        !> values (nedge, nq1).
+        real(dp), allocatable :: edge_weights(:), edge_hat(:, :, :)
+        real(dp), allocatable :: edge_flux(:, :, :), edge_legendre(:, :)
     end type reference_t
 
     !> Cell geometry: Lagrange nodes (vertices first) and an affinity flag.
     type :: problem_t
         real(dp), allocatable :: nodes(:, :, :)  !< (2, nloc, nt)
         logical, allocatable :: affine(:)        !< (nt)
+        logical, allocatable :: neumann(:, :)    !< (3, nt) flagged edges
+        real(dp), allocatable :: flux(:, :, :)   !< g at the edge points (nq1, 3, nt)
     end type problem_t
 
     !> Mesh topology: vertex -> cells, cell edges, boundary vertices.
     type :: topology_t
         integer, allocatable :: vertex_start(:), vertex_cell(:), vertex_slot(:)
         integer, allocatable :: cell_edge(:, :), cell_orientation(:, :)
-        logical, allocatable :: boundary_vertex(:)
+        !> Vertex lies on a boundary edge that is not a Neumann edge.
+        logical, allocatable :: dirichlet_vertex(:)
     end type topology_t
 
 contains
 
     subroutine equilibrated_flux_estimate(vertices, triangles, degree, xi, eta, &
             weights, coefficient, source, discrete_flux, coefficient_lower, &
-            friedrichs_constant, estimate, status, geometry_nodes)
+            friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
+            neumann_flux, edge_xi, edge_weights)
         !! Data arrays are sampled at the (mapped) reference points (xi, eta)
         !! of each cell (weights sum to 1/2); the rule must integrate
         !! polynomials of degree 2k + 2 exactly for the local problems to be
@@ -163,6 +209,15 @@ contains
         !! e + 1, edges 1-2, 2-3, 3-1) followed by the centroid node. Nodes
         !! shared by neighbouring cells must coincide. A cell whose nodes lie on
         !! the straight-edge Lagrange positions is treated as affine.
+        !! Optional Neumann data (all four together): neumann_edge(3, nt) flags
+        !! local edge e of cell t (from local vertex e to e + 1) as a boundary
+        !! edge carrying the prescribed outward flux g = A grad u . n,
+        !! neumann_flux(nq1, 3, nt) samples g at the points edge_xi(nq1) in
+        !! [0, 1] of that edge (quadrature weights edge_weights, summing to 1;
+        !! exact for polynomials of degree k + 1 + deg g). Flagged edges must be
+        !! boundary edges of affine cells; the other boundary edges are Dirichlet,
+        !! and friedrichs_constant must then bound ||v|| <= C_F |||v||| for the
+        !! H^1 functions vanishing on the Dirichlet edges only.
         real(dp), intent(in) :: vertices(:, :)          !< (2, nv)
         integer, intent(in) :: triangles(:, :)          !< (3, nt)
         integer, intent(in) :: degree                   !< 0 <= k <= 6
@@ -175,13 +230,17 @@ contains
         type(equilibrated_flux_estimate_t), intent(out) :: estimate
         integer, intent(out) :: status
         real(dp), intent(in), optional :: geometry_nodes(:, :, :)
+        logical, intent(in), optional :: neumann_edge(:, :)
+        real(dp), intent(in), optional :: neumann_flux(:, :, :)
+        real(dp), intent(in), optional :: edge_xi(:), edge_weights(:)
         type(reference_t) :: ref
         type(topology_t) :: topo
         type(problem_t) :: prob
         real(dp), allocatable :: projection(:, :), contribution(:, :, :)
         real(dp), allocatable :: divergence_sq(:), source_sq(:)
-        integer :: nv, nt, nloc, a, t, failed, nodes_status
-        logical :: cells_ok
+        real(dp), allocatable :: edge_points(:), edge_rule(:)
+        integer :: nv, nt, nloc, a, t, failed, nodes_status, nq1
+        logical :: cells_ok, has_neumann
 
         status = EQUILIBRATION_BAD_INPUT
         nv = size(vertices, 2)
@@ -207,8 +266,33 @@ contains
         call setup_geometry(vertices, triangles, geometry_nodes, nloc, prob, &
             nodes_status)
         if (nodes_status /= 0) return
+        has_neumann = present(neumann_edge)
+        if (present(neumann_flux) .neqv. has_neumann) return
+        if (present(edge_xi) .neqv. has_neumann) return
+        if (present(edge_weights) .neqv. has_neumann) return
+        allocate (prob%neumann(3, nt))
+        prob%neumann = .false.
+        nq1 = 0
+        if (has_neumann) then
+            nq1 = size(edge_xi)
+            if (nq1 < 1 .or. size(edge_weights) /= nq1) return
+            if (size(neumann_edge, 1) /= 3 .or. size(neumann_edge, 2) /= nt) return
+            if (size(neumann_flux, 1) /= nq1) return
+            if (size(neumann_flux, 2) /= 3 .or. size(neumann_flux, 3) /= nt) return
+            prob%neumann = neumann_edge
+            do t = 1, nt
+                if (any(prob%neumann(:, t)) .and. .not. prob%affine(t)) return
+            end do
+            allocate (edge_points(nq1), edge_rule(nq1))
+            edge_points = edge_xi
+            edge_rule = edge_weights
+            prob%flux = neumann_flux
+        else
+            allocate (edge_points(0), edge_rule(0), prob%flux(0, 3, nt))
+        end if
 
-        call build_reference(degree, nloc, xi, eta, weights, ref, status)
+        call build_reference(degree, nloc, xi, eta, weights, edge_points, &
+            edge_rule, ref, status)
         if (status /= 0) then
             status = EQUILIBRATION_BAD_INPUT
             return
@@ -219,7 +303,11 @@ contains
             if (.not. positive_determinant(ref, prob%nodes(:, :, t))) cells_ok = .false.
         end do
         if (.not. cells_ok) return
-        call build_topology(nv, triangles, topo)
+        call build_topology(nv, triangles, prob%neumann, topo, nodes_status)
+        if (nodes_status /= 0) then
+            status = EQUILIBRATION_BAD_INPUT
+            return
+        end if
 
         allocate (projection(ref%nk, nt), estimate%cell_oscillation(nt))
         allocate (contribution(ref%nrt, 3, nt), source_sq(nt))
@@ -241,8 +329,8 @@ contains
         !$omp parallel do schedule(dynamic, 16) reduction(max:failed)
         do a = 1, nv
             if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
-            call solve_patch(ref, topo, prob, a, triangles, coefficient, &
-                source, discrete_flux, contribution, failed)
+            call solve_patch(ref, topo, prob, a, coefficient, source, &
+                discrete_flux, contribution, failed)
         end do
         !$omp end parallel do
         if (failed /= 0) then
@@ -266,8 +354,20 @@ contains
             mask=prob%affine)) + sqrt(sum(estimate%cell_oscillation**2, &
             mask=.not. prob%affine))
         estimate%divergence_defect = friedrichs_constant*sqrt(sum(divergence_sq))
+        allocate (estimate%cell_neumann(nt))
+        estimate%cell_neumann = 0.0_dp
+        if (has_neumann) then
+            !$omp parallel do schedule(static)
+            do t = 1, nt
+                if (.not. any(prob%neumann(:, t))) cycle
+                call neumann_defect(ref, prob, t, estimate%flux_coefficients(:, t), &
+                    coefficient_lower(t), estimate%cell_neumann(t))
+            end do
+            !$omp end parallel do
+        end if
+        estimate%neumann_oscillation = sqrt(sum(estimate%cell_neumann**2))
         estimate%bound = estimate%flux_defect + estimate%oscillation &
-            + estimate%divergence_defect
+            + estimate%divergence_defect + estimate%neumann_oscillation
         status = EQUILIBRATION_OK
     end subroutine equilibrated_flux_estimate
 
@@ -347,17 +447,20 @@ contains
         end do
     end function positive_determinant
 
-    subroutine build_reference(degree, nloc, xi, eta, weights, ref, status)
+    subroutine build_reference(degree, nloc, xi, eta, weights, edge_xi, &
+            edge_weights, ref, status)
         integer, intent(in) :: degree, nloc
-        real(dp), intent(in) :: xi(:), eta(:), weights(:)
+        real(dp), intent(in) :: xi(:), eta(:), weights(:), edge_xi(:)
+        real(dp), intent(in) :: edge_weights(:)
         type(reference_t), intent(out) :: ref
         integer, intent(out) :: status
         type(triangle_rt_basis_t) :: basis
         type(triangle_lagrange_basis_t) :: geometry_basis
         real(dp), allocatable :: lagrange_nodes(:, :), lagrange_value(:)
         real(dp), allocatable :: lagrange_grad(:, :)
-        real(dp) :: targets(2, nloc)
-        integer :: q, i, j, order(nloc), geometry_degree
+        real(dp) :: targets(2, nloc), point(2), legendre(7), normal(2)
+        real(dp), allocatable :: rt_edge(:, :), div_edge(:)
+        integer :: q, i, j, e, order(nloc), geometry_degree
 
         call initialize_triangle_raviart_thomas(degree, basis, status)
         if (status /= 0) return
@@ -404,6 +507,35 @@ contains
                 ref%geo_grad(i, :, q) = lagrange_grad(:, order(i))
             end do
         end do
+        ref%nq1 = size(edge_xi)
+        ref%edge_weights = edge_weights
+        allocate (ref%edge_hat(3, ref%nq1, 3), ref%edge_flux(ref%nrt, ref%nq1, 3))
+        allocate (ref%edge_legendre(ref%nedge, ref%nq1))
+        allocate (rt_edge(2, ref%nrt), div_edge(ref%nrt))
+        do e = 1, 3
+            call generated_equilibrated_reference_normal(edge_tangent(:, e), normal)
+            do q = 1, ref%nq1
+                select case (e)
+                case (1)
+                    point = [edge_xi(q), 0.0_dp]
+                case (2)
+                    point = [1.0_dp - edge_xi(q), edge_xi(q)]
+                case default
+                    point = [0.0_dp, 1.0_dp - edge_xi(q)]
+                end select
+                call generated_equilibrated_hat_values(point(1), point(2), &
+                    ref%edge_hat(:, q, e))
+                call evaluate_triangle_raviart_thomas(basis, point(1), point(2), &
+                    rt_edge, div_edge, status)
+                if (status /= 0) return
+                do i = 1, ref%nrt
+                    call generated_equilibrated_flux_normal_component(rt_edge(:, i), &
+                        normal, ref%edge_flux(i, q, e))
+                end do
+                call generated_equilibrated_edge_legendre(edge_xi(q), legendre)
+                ref%edge_legendre(:, q) = legendre(1:ref%nedge)
+            end do
+        end do
         status = 0
     end subroutine build_reference
 
@@ -431,16 +563,21 @@ contains
         end select
     end subroutine reference_monomials
 
-    subroutine build_topology(nv, triangles, topo)
+    subroutine build_topology(nv, triangles, neumann, topo, status)
         !! Edges are numbered by first appearance; local edge e of a cell runs
         !! from its local vertex e to vertex mod(e, 3) + 1 (the FortFEM RT
         !! reference-edge convention) and has orientation +1 when that start
         !! vertex has the smaller global index.
+        !! A vertex is a Dirichlet vertex when it lies on a boundary edge that is
+        !! not flagged in `neumann`; a flagged edge must be a boundary edge.
         integer, intent(in) :: nv, triangles(:, :)
+        logical, intent(in) :: neumann(:, :)
         type(topology_t), intent(out) :: topo
+        integer, intent(out) :: status
         integer, allocatable :: fill(:)
         integer :: nt, t, s, e, a, b, k, other, oe, nedges
 
+        status = 1
         nt = size(triangles, 2)
         allocate (topo%vertex_start(nv + 1), fill(nv))
         topo%vertex_start = 0
@@ -466,9 +603,9 @@ contains
         end do
 
         allocate (topo%cell_edge(3, nt), topo%cell_orientation(3, nt))
-        allocate (topo%boundary_vertex(nv))
+        allocate (topo%dirichlet_vertex(nv))
         topo%cell_edge = 0
-        topo%boundary_vertex = .false.
+        topo%dirichlet_vertex = .false.
         nedges = 0
         do t = 1, nt
             do e = 1, 3
@@ -486,17 +623,24 @@ contains
                     end if
                 end do
                 if (other == 0) then
-                    topo%boundary_vertex(a) = .true.
-                    topo%boundary_vertex(b) = .true.
-                end if
-                if (other /= 0 .and. other < t) then
-                    topo%cell_edge(e, t) = topo%cell_edge(oe, other)
+                    if (.not. neumann(e, t)) then
+                        topo%dirichlet_vertex(a) = .true.
+                        topo%dirichlet_vertex(b) = .true.
+                    end if
                 else
-                    nedges = nedges + 1
-                    topo%cell_edge(e, t) = nedges
+                    if (neumann(e, t)) return
                 end if
+                if (other /= 0) then
+                    if (other < t) then
+                        topo%cell_edge(e, t) = topo%cell_edge(oe, other)
+                        cycle
+                    end if
+                end if
+                nedges = nedges + 1
+                topo%cell_edge(e, t) = nedges
             end do
         end do
+        status = 0
     end subroutine build_topology
 
     pure integer function shared_edge(cell, a, b) result(edge)
@@ -598,12 +742,12 @@ contains
         if (info /= 0) source_sq = huge(1.0_dp)
     end subroutine project_source
 
-    subroutine solve_patch(ref, topo, prob, a, triangles, coefficient, source, &
+    subroutine solve_patch(ref, topo, prob, a, coefficient, source, &
             discrete_flux, contribution, failed)
         type(reference_t), intent(in) :: ref
         type(topology_t), intent(in) :: topo
         type(problem_t), intent(in) :: prob
-        integer, intent(in) :: a, triangles(:, :)
+        integer, intent(in) :: a
         real(dp), intent(in) :: coefficient(:, :), source(:, :)
         real(dp), intent(in) :: discrete_flux(:, :, :)
         real(dp), intent(inout) :: contribution(:, :, :)
@@ -613,12 +757,17 @@ contains
         real(dp), allocatable :: kkt(:, :), rhs(:, :), qint(:)
         real(dp) :: jac(2, 2), det, hat_grad(2, 3), wdet, ainv, psi
         real(dp) :: phi(2, ref%nrt), div(ref%nrt), load, mean, area
+        real(dp) :: moments(ref%nedge), neumann_total
+        real(dp), allocatable :: fixed_value(:)
+        logical, allocatable :: fixed(:)
         integer :: m, nedges, nsigma, nlam, n, i, j, k, l, t, s, e, ee, moment
         integer :: q, cell_dofs, interior, slot_edge(2), info, stat, lam0
-        logical :: interior_patch
+        logical :: needs_mean
 
         m = topo%vertex_start(a + 1) - topo%vertex_start(a)
-        interior_patch = .not. topo%boundary_vertex(a)
+        ! Patches touching no Dirichlet edge (interior vertices and vertices
+        ! inside a Neumann part) need the compatibility shift c_a.
+        needs_mean = .not. topo%dirichlet_vertex(a)
         cell_dofs = ref%degree*(ref%degree + 1)
         ! Edges of the patch incident to a: local edges s and s - 1 of each cell.
         nedges = 0
@@ -635,9 +784,12 @@ contains
         end do
         nsigma = nedges*ref%nedge + m*cell_dofs
         nlam = m*ref%nk
-        n = nsigma + nlam + merge(1, 0, interior_patch)
+        n = nsigma + nlam + merge(1, 0, needs_mean)
         allocate (map(ref%nrt, m), sgn(ref%nrt, m), kkt(n, n), rhs(n, 1))
-        allocate (ipiv(n), qint(nlam))
+        allocate (ipiv(n), qint(nlam), fixed(n), fixed_value(n))
+        fixed = .false.
+        fixed_value = 0.0_dp
+        neumann_total = 0.0_dp
         map = 0
         sgn = 1
         kkt = 0.0_dp
@@ -656,6 +808,17 @@ contains
                     if (topo%cell_orientation(e, t) == -1 .and. &
                         mod(moment, 2) == 1) sgn(k, i) = -1
                 end do
+                if (prob%neumann(e, t)) then
+                    ! Prescribed trace: the moments of psi_a g, in the patch
+                    ! orientation (local = sgn * patch).
+                    call neumann_moments(ref, prob, t, e, s, moments)
+                    neumann_total = neumann_total + moments(1)
+                    do moment = 1, ref%nedge
+                        k = (e - 1)*ref%nedge + moment
+                        fixed(map(k, i)) = .true.
+                        fixed_value(map(k, i)) = sgn(k, i)*moments(moment)
+                    end do
+                end if
             end do
             do interior = 1, cell_dofs
                 map(3*ref%nedge + interior, i) = nedges*ref%nedge &
@@ -700,11 +863,12 @@ contains
         ! Symmetric saddle point: copy the constraint block above the diagonal.
         kkt(1:nsigma, nsigma + 1:nsigma + nlam) = &
             transpose(kkt(nsigma + 1:nsigma + nlam, 1:nsigma))
-        if (interior_patch) then
-            ! Remove the patch mean of the load (the Galerkin residual at psi_a)
-            ! and fix the constant multiplier with one extra mean constraint.
+        if (needs_mean) then
+            ! Remove the patch mean of the load plus the prescribed boundary flux
+            ! (the Galerkin residual at psi_a) and fix the constant multiplier
+            ! with one extra mean constraint.
             area = 0.0_dp
-            mean = 0.0_dp
+            mean = neumann_total
             do i = 1, m
                 area = area + qint((i - 1)*ref%nk + 1)
                 mean = mean + rhs(nsigma + (i - 1)*ref%nk + 1, 1)
@@ -715,6 +879,14 @@ contains
             kkt(nsigma + 1:nsigma + nlam, n) = qint
             kkt(n, nsigma + 1:nsigma + nlam) = qint
         end if
+        do j = 1, nsigma
+            if (.not. fixed(j)) cycle
+            rhs(:, 1) = rhs(:, 1) - kkt(:, j)*fixed_value(j)
+            kkt(j, :) = 0.0_dp
+            kkt(:, j) = 0.0_dp
+            kkt(j, j) = 1.0_dp
+            rhs(j, 1) = fixed_value(j)
+        end do
         call dgesv(n, 1, kkt, n, ipiv, rhs, n, info)
         if (info /= 0) then
             failed = 1
@@ -732,6 +904,74 @@ contains
             end do
         end do
     end subroutine solve_patch
+
+    subroutine neumann_moments(ref, prob, t, e, slot, moments)
+        !! Moments int_0^1 psi(s) g(s) |x'(s)| P_j(s) ds, j = 0..k, of the flux
+        !! per unit parameter on local edge e of cell t, psi the hat function of
+        !! the cell's local vertex `slot`: the edge degrees of freedom of the
+        !! L2 projection of psi g onto P_k.
+        type(reference_t), intent(in) :: ref
+        type(problem_t), intent(in) :: prob
+        integer, intent(in) :: t, e, slot
+        real(dp), intent(out) :: moments(:)
+        real(dp) :: jac(2, 2), speed, target_value
+        integer :: i
+
+        call generated_equilibrated_jacobian_p1(prob%nodes(:, 1:3, t), p1_gradient, &
+            jac)
+        call generated_equilibrated_edge_speed(jac, edge_tangent(:, e), speed)
+        moments = 0.0_dp
+        do i = 1, ref%nq1
+            call generated_equilibrated_neumann_target(ref%edge_hat(slot, i, e), &
+                prob%flux(i, e, t), speed, target_value)
+            moments = moments + ref%edge_weights(i)*target_value*ref%edge_legendre(:, i)
+        end do
+    end subroutine neumann_moments
+
+    subroutine neumann_defect(ref, prob, t, sigma, a_lower, value)
+        !! C_T sum_e ||g - sigma.n||_e over the flagged edges of the affine cell
+        !! t. For rho = g - sigma.n orthogonal to constants on the edge and any
+        !! constant c, int_e rho v = int_e rho (v - c) <= ||rho||_e ||v - c||_e.
+        !! With c the cell mean of v, Payne--Weinberger gives ||v - c||_T <= (h_T/pi)
+        !! ||grad v||_T, and the divergence theorem for w^2 (x - x0) with the
+        !! incenter x0 (so (x - x0).n = r_T on every edge, |x - x0| <= h_T) gives
+        !! r_T ||w||^2_dT <= 3 ||w||_T^2 + h_T^2 ||grad w||_T^2 for w = v - c, hence
+        !!   ||v - c||_e^2 <= h_T^2 (1 + 3/pi^2) / (r_T A_T,min) |||v|||_T^2.
+        !! (Cf. Carstensen--Funken 2000, Veeser--Verfuerth 2012 for such traces.)
+        type(reference_t), intent(in) :: ref
+        type(problem_t), intent(in) :: prob
+        integer, intent(in) :: t
+        real(dp), intent(in) :: sigma(:), a_lower
+        real(dp), intent(out) :: value
+        real(dp) :: jac(2, 2), det, speed, integrand, flux_value, defect, rho
+        real(dp) :: diameter, inradius, perimeter, constant
+        real(dp), parameter :: pi = acos(-1.0_dp)
+        integer :: e, i
+
+        call generated_equilibrated_jacobian_p1(prob%nodes(:, 1:3, t), p1_gradient, &
+            jac)
+        call generated_equilibrated_determinant(jac, det)
+        diameter = cell_diameter(prob%nodes(:, 1:3, t))
+        perimeter = norm2(prob%nodes(:, 2, t) - prob%nodes(:, 1, t)) &
+            + norm2(prob%nodes(:, 3, t) - prob%nodes(:, 2, t)) &
+            + norm2(prob%nodes(:, 1, t) - prob%nodes(:, 3, t))
+        inradius = det/perimeter
+        constant = diameter*sqrt((1.0_dp + 3.0_dp/pi**2)/(inradius*a_lower))
+        rho = 0.0_dp
+        do e = 1, 3
+            if (.not. prob%neumann(e, t)) cycle
+            call generated_equilibrated_edge_speed(jac, edge_tangent(:, e), speed)
+            defect = 0.0_dp
+            do i = 1, ref%nq1
+                flux_value = dot_product(sigma, ref%edge_flux(:, i, e))
+                call generated_equilibrated_neumann_defect_integrand( &
+                    prob%flux(i, e, t), flux_value, speed, integrand)
+                defect = defect + ref%edge_weights(i)*integrand
+            end do
+            rho = rho + sqrt(defect)
+        end do
+        value = constant*rho
+    end subroutine neumann_defect
 
     subroutine cell_defects(ref, nodes, coefficient, discrete_flux, projection, &
             sigma, flux_defect, divergence_sq)

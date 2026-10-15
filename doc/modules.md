@@ -172,14 +172,20 @@ end program
   public div-div-plus-mass solves, and symbolic mixed Poisson run through
   degree five. The RT5--DG5 solve conserves the source on every tetrahedron.
 - **Verified**: `fortfem_equilibrated_flux_2d` builds a patchwise RT_k
-  equilibrated flux for `-div(A grad u) = f` (scalar `A > 0`, homogeneous
-  Dirichlet data, affine counter-clockwise triangles) and returns the
-  Prager--Synge energy bound with local Payne--Weinberger oscillation and a
-  caller-supplied Friedrichs constant for the measured divergence defect.
-  Each vertex patch is an independent dense saddle-point solve (OpenMP), so
-  the cost is linear in the mesh size. It reproduces an exact RT_4 flux to
-  rounding and bounds the energy error of a non-Galerkin interpolant with
-  variable `A`. Integrals use the caller's quadrature rule without an
-  enclosed remainder.
+  equilibrated flux for `-div(A grad u) = f` (scalar `A > 0`, counter-clockwise
+  affine or isoparametric P2/P3 triangles with the contravariant Piola map and
+  a reference-cell divergence constraint; homogeneous Dirichlet data plus
+  optional Neumann flux data `g` on flagged affine boundary edges) and returns
+  the Prager--Synge energy bound with local Payne--Weinberger oscillation on
+  affine cells, a Friedrichs-constant oscillation on curved cells, a guaranteed
+  trace-constant Neumann term and a caller-supplied Friedrichs constant for the
+  measured divergence defect. Pointwise leaves are FortSym-generated
+  (`fortfem_equilibrated_flux_products`). Each vertex patch is an independent
+  dense saddle-point solve (OpenMP), so the cost is linear in the mesh size.
+  It reproduces an exact RT_4 flux, a Piola-mapped flux on a curved mesh and
+  Neumann flux traces to rounding, and bounds the energy error of non-Galerkin
+  interpolants and of P1/P2/P3 Galerkin solutions on curved and mixed
+  Dirichlet/Neumann problems with efficiency 1.0--1.2. Integrals use the
+  caller's quadrature rule without an enclosed remainder.
 - **Planned**: Mixed-form compilation, general pointwise vector sources,
   tensor and complex coefficients, and higher-order high-level solves
