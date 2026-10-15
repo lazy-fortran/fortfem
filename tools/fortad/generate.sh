@@ -17,14 +17,38 @@ root=$(cd "$here/../.." && pwd)
 cd "$root"
 fortad_repo=${FORTAD_REPO:-"$root/../fortad"}
 
+# The committed kernels are reproducible only from the locked toolchain.
+while read -r name revision; do
+    case "$name" in ''|'#'*) continue ;; esac
+    if [ "$name" = fortad ]; then
+        checkout=$fortad_repo
+    else
+        checkout="$fortad_repo/../$name"
+    fi
+    actual=$(git -C "$checkout" rev-parse HEAD)
+    if [ "$actual" != "$revision" ]; then
+        echo "$name checkout $checkout is at $actual, fortad.lock wants $revision" >&2
+        exit 1
+    fi
+    if [ -n "$(git -C "$checkout" status --porcelain --untracked-files=no)" ]; then
+        echo "$name checkout $checkout has uncommitted changes" >&2
+        exit 1
+    fi
+done < "$here/fortad.lock"
+
 # fo is the build driver, and using it here is not only convention: fpm leaves
 # an app binary unrelinked often enough that a stale fortad silently regenerates
 # the previous kernels, which then differ from the source they claim to come
 # from and pass the equivalence test anyway.
-if [ ! -x "$fortad_repo/build/fo/bin/fortad" ]; then
-    ( cd "$fortad_repo" && fo build >/dev/null )
+# FORTAD_BIN may name a binary already built from the locked checkout.
+if [ -n "${FORTAD_BIN:-}" ]; then
+    fortad_bin=$FORTAD_BIN
+else
+    if [ ! -x "$fortad_repo/build/fo/bin/fortad" ]; then
+        ( cd "$fortad_repo" && fo build >/dev/null )
+    fi
+    fortad_bin="$fortad_repo/build/fo/bin/fortad"
 fi
-fortad_bin="$fortad_repo/build/fo/bin/fortad"
 
 python3 "$here/extract.py"
 FORTAD_BIN="$fortad_bin" python3 "$here/emit.py"
