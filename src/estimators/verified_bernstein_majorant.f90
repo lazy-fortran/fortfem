@@ -557,7 +557,11 @@ contains
 
     elemental logical function valid(value)
         type(interval_t), intent(in) :: value
-        valid = ieee_is_finite(value%lo) .and. ieee_is_finite(value%hi) &
-                .and. value%lo <= value%hi
+        ! Test finiteness before the ordered comparison: Fortran .and. need
+        ! not short-circuit, and an ordered comparison with NaN signals invalid.
+        valid = .false.
+        if (.not. ieee_is_finite(value%lo)) return
+        if (.not. ieee_is_finite(value%hi)) return
+        valid = value%lo <= value%hi
     end function valid
 end module fortfem_verified_bernstein_majorant
