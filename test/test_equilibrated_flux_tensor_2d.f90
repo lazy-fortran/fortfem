@@ -23,6 +23,7 @@ program test_equilibrated_flux_tensor_2d
     real(dp) :: a(2, 2), error, previous, index_value, ratios(3), caps(3)
     real(dp) :: previous_index
     integer :: status, n, k, r
+    real(dp) :: corrected_error, first_bound
 
     call triangle_duffy_quadrature(12, xi, eta, w, status)
     call check_condition(status == 0, "quadrature")
@@ -80,6 +81,38 @@ program test_equilibrated_flux_tensor_2d
         end do
     end do
 
+    ! Divergence-free correction: independent exact recovery, containment,
+    ! convergence, and improvement over the unchanged reconstruction.
+    call square_mesh(4, vertices, triangles)
+    call polynomial_case(4, a, est, status, 2)
+    call check_condition(status == EQUILIBRATION_OK, "corrected exact flux")
+    call check_condition(est%bound < 1.0e-9_dp, "corrected exact recovery")
+    first_bound = 0.0_dp
+    do n = 8, 32, 8
+        if (n == 24) cycle
+        call square_mesh(n, vertices, triangles)
+        call galerkin_case(2, 1.0e4_dp, pi/6, .false., ref_est, error, status)
+        call check_condition(status == EQUILIBRATION_OK, "uncorrected reference")
+        call galerkin_case(2, 1.0e4_dp, pi/6, .false., est, corrected_error, &
+            status, 8)
+        call check_condition(status == EQUILIBRATION_OK, "corrected tensor")
+        call check_condition(est%bound >= corrected_error, "corrected containment")
+        call check_condition(est%bound < ref_est%bound, "correction improves bound")
+        call check_condition(est%flux_defect < ref_est%flux_defect, &
+            "correction decreases weighted flux defect")
+        print '(a,es12.4)', "baseline divergence ", ref_est%divergence_defect
+        call check_condition(est%divergence_defect < 1.0e-8_dp, &
+            "correction preserves equilibration")
+        call check_condition(est%bound/corrected_error < 5.0_dp, &
+            "corrected constant-tensor efficiency")
+        if (n == 8) first_bound = est%bound
+        if (n == 32) call check_condition(first_bound/est%bound > 3.0_dp, &
+            "corrected bound converges at least at order 0.79")
+        print '(a,i3,3(a,es12.4))', "corrected n", n, " index", &
+            est%bound/corrected_error, " baseline", ref_est%bound/error, &
+            " div", est%divergence_defect
+    end do
+
     call square_mesh(4, vertices, triangles)
     call rejected_lower_bound(status)
     call check_condition(status == EQUILIBRATION_BAD_INPUT, &
@@ -132,12 +165,13 @@ contains
             - sqrt(0.25_dp*(m(1, 1) - m(2, 2))**2 + m(1, 2)**2)
     end function smallest_eigenvalue
 
-    subroutine polynomial_case(degree, coef, res, stat)
+    subroutine polynomial_case(degree, coef, res, stat, sweeps)
         !! Constant A, u = x(1-x)y(1-y), exact flux A grad u (degree 3).
         integer, intent(in) :: degree
         real(dp), intent(in) :: coef(2, 2)
         type(equilibrated_flux_estimate_t), intent(out) :: res
         integer, intent(out) :: stat
+        integer, intent(in), optional :: sweeps
         real(dp), allocatable :: tensor(:, :, :, :), f(:, :), flux(:, :, :), lower(:)
         real(dp) :: x(2), grad(2), hess(2, 2)
         integer :: t, q, nt
@@ -160,10 +194,12 @@ contains
             end do
         end do
         call equilibrated_flux_estimate_tensor(vertices, triangles, degree, xi, eta, &
-            w, tensor, f, flux, lower, friedrichs/sqrt(lower(1)), res, stat)
+            w, tensor, f, flux, lower, friedrichs/sqrt(lower(1)), res, stat, &
+            correction_sweeps=sweeps)
     end subroutine polynomial_case
 
-    subroutine galerkin_case(degree, ratio, angle, scalar, res, energy_error, stat)
+    subroutine galerkin_case(degree, ratio, angle, scalar, res, energy_error, &
+            stat, sweeps)
         !! A = Q diag(1, 1/ratio) Q^T (Q the rotation by angle), u = sin(pi x)
         !! sin(pi y), u_h the P1 Galerkin solution with homogeneous Dirichlet
         !! data. With scalar (ratio 1 only) the scalar estimator is called.
@@ -173,6 +209,7 @@ contains
         type(equilibrated_flux_estimate_t), intent(out) :: res
         real(dp), intent(out) :: energy_error
         integer, intent(out) :: stat
+        integer, intent(in), optional :: sweeps
         real(dp), allocatable :: tensor(:, :, :, :), f(:, :), flux(:, :, :)
         real(dp), allocatable :: lower(:), coefficient(:, :), u(:)
         real(dp) :: coef(2, 2), rot(2, 2), x(2), grad(2), hess(2, 2), e(2)
@@ -213,7 +250,8 @@ contains
                 w, coefficient, f, flux, lower, friedrichs/sqrt(lower(1)), res, stat)
         else
             call equilibrated_flux_estimate_tensor(vertices, triangles, degree, xi, &
-                eta, w, tensor, f, flux, lower, friedrichs/sqrt(lower(1)), res, stat)
+                eta, w, tensor, f, flux, lower, friedrichs/sqrt(lower(1)), res, stat, &
+                correction_sweeps=sweeps)
         end if
     end subroutine galerkin_case
 

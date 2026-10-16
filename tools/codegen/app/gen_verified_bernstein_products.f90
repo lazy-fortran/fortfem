@@ -11,7 +11,7 @@ program gen_verified_bernstein_products
     use, intrinsic :: iso_fortran_env, only: int64
     use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, num, rat, operator(+), operator(-), &
-                            operator(*), operator(/), operator(**)
+                            operator(*), operator(/), operator(**), sqrt
     use fortsym_diff, only: diff
     use fortsym_subs, only: subs
     use fortsym_engine_native, only: make_native_engine, native_engine_t
@@ -21,7 +21,7 @@ program gen_verified_bernstein_products
     use fortsym_string, only: chars, str
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    integer, parameter :: max_product = 5, max_gradient = 3, max_square = 6
+    integer, parameter :: max_product = 5, max_gradient = 4, max_square = 6
     integer, parameter :: max_power = 4
     type(arena_t), target :: arena
     type(native_engine_t) :: engine
@@ -59,6 +59,8 @@ program gen_verified_bernstein_products
         call chord(m)
     end do
     call lagrange_p2()
+    call lagrange_p3()
+    call source_remainder()
     call dispatchers()
     write (unit, '(a)') 'end module fortfem_verified_bernstein_products'
     close (unit)
@@ -436,6 +438,71 @@ contains
         call set_names('verified_bernstein_lagrange_p2', names('u', 6), names('b', 6))
         call emit(b)
     end subroutine lagrange_p2
+
+    subroutine lagrange_p3()
+        !! Vertices, two nodes per directed edge (1-2, 2-3, 3-1), centroid.
+        type(expr_t) :: u(10), b(10), edge(6), p, at
+        integer :: j, next, k, a(3), powers(3, 10)
+        powers = reshape([3,0,0, 0,3,0, 0,0,3, 2,1,0, 1,2,0, &
+                          0,2,1, 0,1,2, 1,0,2, 2,0,1, 1,1,1], [3,10])
+        do k = 1, 10
+            u(k) = sym(arena, 'u'//itoa(k))
+        end do
+        do j = 1, 3
+            next = mod(j, 3) + 1
+            k = 2*j + 2
+            edge(2*j - 1) = (-5*u(j) + 18*u(k) - 9*u(k + 1) + 2*u(next))/6
+            edge(2*j) = (2*u(j) - 9*u(k) + 18*u(k + 1) - 5*u(next))/6
+            a = 0; a(j) = 3
+            b(position(3, a)) = u(j)
+            a(j) = 2; a(next) = 1
+            b(position(3, a)) = edge(2*j - 1)
+            a(j) = 1; a(next) = 2
+            b(position(3, a)) = edge(2*j)
+        end do
+        b(position(3, [1,1,1])) = (27*u(10) - u(1) - u(2) - u(3) &
+                                   - 3*sum_expr(edge))/6
+        p = polynomial(3, b)
+        do k = 1, 10
+            at = p
+            do j = 1, 3
+                at = subs(at, l(j), rat(arena, int(powers(j,k), int64), 3_int64))
+            end do
+            call prove(at - u(k), 'P3 interpolation node '//itoa(k))
+        end do
+        call set_names('verified_bernstein_lagrange_p3', names('u', 10), names('b', 10))
+        call emit(b)
+    end subroutine lagrange_p3
+
+    function sum_expr(values) result(total)
+        type(expr_t), intent(in) :: values(:)
+        type(expr_t) :: total
+        integer :: k
+        total = num(arena, 0)
+        do k = 1, size(values)
+            total = total + values(k)
+        end do
+    end function sum_expr
+
+    subroutine source_remainder()
+        !! Minkowski: ||r + delta/w^m||_T <= ||r||_T + rho sqrt(|T|)/wmin^m.
+        type(expr_t) :: square, rho, determinant, wmin
+        integer :: m
+        square = sym(arena, 'square'); rho = sym(arena, 'rho')
+        determinant = sym(arena, 'determinant'); wmin = sym(arena, 'wmin')
+        do m = 0, 2
+            if (m == 0) then
+                call set_names('verified_bernstein_source_tail_0', &
+                    [character(16) :: 'square', 'rho', 'determinant'], &
+                    [character(16) :: 'enclosure'])
+            else
+                call set_names('verified_bernstein_source_tail_'//itoa(m), &
+                    [character(16) :: 'square', 'rho', 'determinant', 'wmin'], &
+                    [character(16) :: 'enclosure'])
+            end if
+            call emit([(sqrt(square) + rho*sqrt(determinant/2)/wmin**m)**2])
+        end do
+    end subroutine source_remainder
 
     subroutine dispatchers()
         !! Array front ends over the fixed-degree scalar leaves.

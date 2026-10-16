@@ -253,6 +253,10 @@ filename="fortfem_lagrange_product_jets.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_mapped_oscillation_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_equilibrated_flux_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
@@ -375,3 +379,6 @@ for component in 1 2 3; do
         cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
     done
 done
+
+filename="fortfem_meridian_fourier_equilibration_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"

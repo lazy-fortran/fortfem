@@ -1,8 +1,9 @@
 module fortfem_verified_bernstein_majorant
     !! Outward-rounded Prager--Synge audit of a sampled RT_k equilibrated flux
-    !! (k = 1, 2) on affine triangles, for -div(A grad u) = f with
+    !! (k = 1, 2, 3) on affine triangles, for -div(A grad u) = f with
     !! A = 1/w, w > 0 affine on every cell (vertex values), f = s/w^m with s a
-    !! polynomial supplied by its Bernstein coefficients (m = 0, 1, 2), and
+    !! polynomial supplied by its Bernstein coefficients (m = 0, 1, 2), or
+    !! s = polynomial + delta with a caller-proved |delta| <= rho per cell, and
     !! u = 0 on the whole boundary. For conforming u_h in H1_0 and any sigma
     !! in H(div),
     !!
@@ -28,8 +29,8 @@ module fortfem_verified_bernstein_majorant
     !! FortSym-generated module fortfem_verified_bernstein_products.
     !!
     !! The caller guarantees a conforming, nonoverlapping, counter-clockwise
-    !! affine mesh, a discrete solution vanishing on the boundary, an exact
-    !! numerator polynomial and a valid Friedrichs enclosure C_F with
+    !! affine mesh, a discrete solution vanishing on the boundary, valid source
+    !! coefficient/remainder enclosures and a valid Friedrichs enclosure C_F with
     !! ||v|| <= C_F ||v||_A on H1_0. Mixed or Neumann boundaries are outside
     !! this audit.
     use fortfem_kinds, only: dp
@@ -45,10 +46,13 @@ module fortfem_verified_bernstein_majorant
         verified_bernstein_corner, verified_bernstein_affine_product, &
         verified_bernstein_elevate, verified_bernstein_gradient, &
         verified_bernstein_square_integral, verified_bernstein_chord, &
-        verified_bernstein_reciprocal, verified_bernstein_lagrange_p2
+        verified_bernstein_reciprocal, verified_bernstein_lagrange_p2, &
+        verified_bernstein_lagrange_p3, verified_bernstein_source_tail_0, &
+        verified_bernstein_source_tail_1, verified_bernstein_source_tail_2
     implicit none
     private
     public :: verified_bernstein_majorant, verified_bernstein_source
+    public :: verified_bernstein_source_remainder
 
     integer, parameter, public :: VERIFIED_BERNSTEIN_OK = 0
     integer, parameter, public :: VERIFIED_BERNSTEIN_BAD_INPUT = 1
@@ -58,14 +62,25 @@ module fortfem_verified_bernstein_majorant
 
     abstract interface
         subroutine verified_bernstein_source(cell, coefficients, ok)
-            !! Outward enclosures of the Bernstein coefficients of the source
-            !! numerator s on the cell (vertex order of `triangles`). Called
+            !! Outward Bernstein coefficients of the polynomial numerator (or
+            !! its approximation when source_remainder is supplied), using
+            !! the vertex order of `triangles`. Called
             !! concurrently from OpenMP threads.
             import :: interval_t
             integer, intent(in) :: cell
             type(interval_t), intent(out) :: coefficients(:)
             logical, intent(out) :: ok
         end subroutine verified_bernstein_source
+        subroutine verified_bernstein_source_remainder(cell, radius, ok)
+            !! Nonnegative outward upper bound radius%hi for the absolute
+            !! numerator remainder on the WHOLE cell, not sampled points.
+            !! The source polynomial is supplied by verified_bernstein_source.
+            !! The caller proves this contract. Called concurrently.
+            import :: interval_t
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: radius
+            logical, intent(out) :: ok
+        end subroutine verified_bernstein_source_remainder
     end interface
 
     !> Floating fit from RT_k coefficients to Bernstein coefficients.
@@ -81,16 +96,18 @@ contains
     subroutine verified_bernstein_majorant(vertices, triangles, degree, &
             flux_coefficients, solution_cells, solution, weight, source, &
             source_degree, weight_power, friedrichs, bound, flux_squared, &
-            residual_squared, status)
+            residual_squared, status, source_remainder)
         !! degree: k of the RT_k flux (equilibrated_flux_estimate_t,
         !! flux_coefficients(dofs, cells)). solution_cells(nloc, nt) indexes the
-        !! Lagrange values of u_h in `solution`: nloc = 3 (P1 vertices) or 6
-        !! (P2: vertices, then midpoints of edges 1-2, 2-3, 3-1).
+        !! Lagrange values of u_h in `solution`: nloc = 3 (P1), 6 (P2), or 10
+        !! (P3): vertices, then edge nodes along 1-2, 2-3, 3-1, then centroid.
+        !! P3 has two edge nodes at 1/3 and 2/3 along each directed edge.
         real(dp), intent(in) :: vertices(:, :), flux_coefficients(:, :)
         real(dp), intent(in) :: solution(:), weight(:)
         integer, intent(in) :: triangles(:, :), solution_cells(:, :)
         integer, intent(in) :: degree, source_degree, weight_power
         procedure(verified_bernstein_source) :: source
+        procedure(verified_bernstein_source_remainder), optional :: source_remainder
         type(interval_t), intent(in) :: friedrichs
         type(interval_t), intent(out) :: bound, flux_squared, residual_squared
         integer, intent(out) :: status
@@ -108,11 +125,11 @@ contains
         if (size(vertices, 1) /= 2 .or. size(triangles, 1) /= 3) return
         nv = size(vertices, 2); nt = size(triangles, 2)
         if (nv < 3 .or. nt < 1) return
-        if (degree < 1 .or. degree > 2) return
+        if (degree < 1 .or. degree > 3) return
         if (weight_power < 0 .or. weight_power > 2) return
         if (source_degree < 0) return
         if (max(source_degree, degree + weight_power) > 6) return
-        if (size(solution_cells, 1) /= 3 .and. size(solution_cells, 1) /= 6) return
+        if (all(size(solution_cells, 1) /= [3, 6, 10])) return
         if (size(solution_cells, 2) /= nt .or. size(flux_coefficients, 2) /= nt) return
         if (size(weight) /= nv) return
         if (any(triangles < 1) .or. any(triangles > nv)) return
@@ -161,7 +178,7 @@ contains
         !$omp do schedule(static)
         do t = 1, nt
             if (thread_failed /= 0) cycle
-            call audit_cell(t, cell_flux, cell_residual, cell_status)
+            call audit_cell(t, cell_flux, cell_residual, cell_status, source_remainder)
             if (cell_status /= 0) then
                 thread_failed = cell_status
                 cycle
@@ -260,18 +277,19 @@ contains
             end do
         end subroutine fitted_coefficients
 
-        subroutine audit_cell(cell, flux_value, residual_value, cell_status)
+        subroutine audit_cell(cell, flux_value, residual_value, cell_status, tail)
             integer, intent(in) :: cell
             type(interval_t), intent(out) :: flux_value, residual_value
             integer, intent(out) :: cell_status
+            procedure(verified_bernstein_source_remainder), optional :: tail
             real(dp) :: c(2, max_coefficients)
             type(interval_t) :: xy(2, 3), det, g(4), normal(2, 3), w(3), chord(3)
             type(interval_t) :: sx(max_coefficients), sy(max_coefficients)
             type(interval_t) :: qx(max_coefficients), qy(max_coefficients)
             type(interval_t) :: ux(max_coefficients), uy(max_coefficients)
-            type(interval_t) :: u(6), b(6), tmp(max_coefficients)
+            type(interval_t) :: u(10), b(10), tmp(max_coefficients)
             type(interval_t) :: div(max_coefficients), dyy(max_coefficients)
-            type(interval_t) :: s(max_coefficients), part
+            type(interval_t) :: s(max_coefficients), part, rho, enclosed
             real(dp) :: wmin, wmax
             integer :: j, k, n, nq, local, lo, hi, v, e1, e2, j1, j2, a(3)
             integer :: zero, nloc, pu, ns, nt_degree
@@ -325,7 +343,12 @@ contains
             do j = 1, nloc
                 u(j) = interval(solution(solution_cells(j, cell)))
             end do
-            if (nloc == 6) then
+            if (nloc == 10) then
+                pu = 3
+                call verified_bernstein_lagrange_p3(u(1), u(2), u(3), u(4), &
+                    u(5), u(6), u(7), u(8), u(9), u(10), b(1), b(2), b(3), &
+                    b(4), b(5), b(6), b(7), b(8), b(9), b(10))
+            else if (nloc == 6) then
                 pu = 2
                 call verified_bernstein_lagrange_p2(u(1), u(2), u(3), u(4), &
                     u(5), u(6), b(1), b(2), b(3), b(4), b(5), b(6))
@@ -393,6 +416,32 @@ contains
             end if
             call verified_bernstein_square_integral(ns, s, chord, part)
             residual_value = part*det
+            if (present(tail)) then
+                call tail(cell, rho, ok)
+                cell_status = VERIFIED_BERNSTEIN_BAD_SOURCE
+                if (.not. ok) return
+                if (.not. valid(rho)) return
+                if (rho%lo < 0) return
+                ! Minkowski and |delta/w^m| <= rho/wmin^m. The squared
+                ! residual is enclosed by [0, upper], since delta may cancel
+                ! the polynomial residual. No claim of a positive lower bound.
+                if (.not. valid(residual_value)) return
+                residual_value%lo = max(0.0_dp, residual_value%lo)
+                select case (weight_power)
+                case (0)
+                    call verified_bernstein_source_tail_0(residual_value, rho, &
+                        det, enclosed)
+                case (1)
+                    call verified_bernstein_source_tail_1(residual_value, rho, &
+                        det, interval(wmin), enclosed)
+                case (2)
+                    call verified_bernstein_source_tail_2(residual_value, rho, &
+                        det, interval(wmin), enclosed)
+                end select
+                if (.not. valid(enclosed)) return
+                if (enclosed%hi < 0) return
+                residual_value = interval(0.0_dp, enclosed%hi)
+            end if
             if (.not. (valid(flux_value) .and. valid(residual_value))) return
             flux_value%lo = max(0.0_dp, flux_value%lo)
             residual_value%lo = max(0.0_dp, residual_value%lo)

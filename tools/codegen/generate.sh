@@ -143,8 +143,10 @@ run_codegen gen_lagrange_product_jets
 run_codegen gen_equilibrated_flux_products
 run_codegen gen_equilibrated_nonconforming_products
 run_codegen gen_hcurl_bound_products
+run_codegen gen_meridian_fourier_equilibration_products
 
 cd "$repository_dir"
+fo fmt "$generated_dir/fortfem_mapped_oscillation_products.f90"
 fo fmt "$generated_dir/fortfem_tetra_face_moment_transforms.f90"
 fo fmt "$generated_dir/fortfem_tetra_modal_vector_identities.f90"
 fo fmt "$generated_dir/fortfem_tetra_modal_component_curls_jvp.f90"
@@ -157,6 +159,7 @@ fo fmt "$generated_dir/fortfem_toroidal_coordinates.f90"
 fo fmt "$generated_dir/fortfem_torus_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_toroidal_poisson_products.f90"
 fo fmt "$generated_dir/fortfem_meridian_hcurl_equilibration_products.f90"
+fo fmt "$generated_dir/fortfem_meridian_fourier_equilibration_products.f90"
 fo fmt "$generated_dir/fortfem_sphere_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_interoperability_oracles.f90"
 fo fmt "$generated_dir/fortfem_tetra_h1_oracle.f90"
