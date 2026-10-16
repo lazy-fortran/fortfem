@@ -5,7 +5,7 @@ module fortfem_sparse_direct
     use fortsparse, only: csc_t, csc_z_t, fortsparse_status_t, &
         sparse_direct_factor_t => sparse_solver_t, sparse_destroy, &
         csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_solve, &
-        sparse_solve_jvp, sparse_solve_once, sparse_solve_vjp
+        sparse_solve_jvp, sparse_solve_vjp, FORTSPARSE_BACKEND_NATIVE
     implicit none
     private
 
@@ -868,6 +868,7 @@ contains
         call initialize_csc_real( &
             n, col_ptr, row_ind, values, matrix, status)
         if (status /= 0) return
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
         call sparse_factor(factor, matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_csc_real
@@ -886,6 +887,7 @@ contains
         call initialize_csc_complex( &
             n, col_ptr, row_ind, values, matrix, status)
         if (status /= 0) return
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
         call sparse_factor(factor, matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_csc_complex
@@ -909,6 +911,7 @@ contains
             status = solver_status%code
             return
         end if
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
         call sparse_factor(factor, transpose_matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_transpose_csc
@@ -932,6 +935,7 @@ contains
             status = solver_status%code
             return
         end if
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
         call sparse_factor(factor, adjoint_matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_adjoint_csc
@@ -1072,6 +1076,7 @@ contains
 
         type(csc_t) :: matrix
         type(fortsparse_status_t) :: solver_status
+        type(sparse_direct_factor_t) :: factor
 
         call validate_csc_dimensions( &
             n, col_ptr, row_ind, size(values), rhs, solution, status)
@@ -1089,7 +1094,12 @@ contains
         matrix%row_idx = row_ind
         matrix%val = values
 
-        call sparse_solve_once(matrix, rhs, solution, solver_status)
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call sparse_factor(factor, matrix, solver_status)
+        if (solver_status%code == 0) then
+            call sparse_solve(factor, rhs, solution, solver_status)
+        end if
+        call sparse_destroy(factor)
         status = solver_status%code
     end subroutine sparse_direct_solve_csc_real
 
@@ -1103,6 +1113,7 @@ contains
 
         type(csc_z_t) :: matrix
         type(fortsparse_status_t) :: solver_status
+        type(sparse_direct_factor_t) :: factor
 
         call validate_csc_dimensions( &
             n, col_ptr, row_ind, size(values), rhs, solution, status)
@@ -1120,7 +1131,12 @@ contains
         matrix%row_idx = row_ind
         matrix%val = values
 
-        call sparse_solve_once(matrix, rhs, solution, solver_status)
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call sparse_factor(factor, matrix, solver_status)
+        if (solver_status%code == 0) then
+            call sparse_solve(factor, rhs, solution, solver_status)
+        end if
+        call sparse_destroy(factor)
         status = solver_status%code
     end subroutine sparse_direct_solve_csc_complex
 
