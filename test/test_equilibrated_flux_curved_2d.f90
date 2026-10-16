@@ -152,6 +152,7 @@ contains
         real(dp), intent(out) :: energy_error
         integer, intent(out) :: stat
         type(test_mesh_t) :: mesh
+        type(equilibrated_flux_estimate_t) :: wider
         real(dp), allocatable :: xi(:), eta(:), w(:), coef(:, :), f(:, :)
         real(dp), allocatable :: flux(:, :, :), lower(:), u(:), extra(:)
         real(dp), allocatable :: phi(:), gref(:, :), grad(:, :), xe(:), ee(:), we(:)
@@ -204,6 +205,17 @@ contains
         end do
         call equilibrated_flux_estimate(mesh%vertices, mesh%triangles, degree, xi, &
             eta, w, coef, f, flux, lower, 1.0_dp/pi, res, stat, mesh%nodes)
+
+        if (m == 3 .and. degree == 3 .and. n == 12) then
+            ! A valid but looser global C_F must not inflate the local source
+            ! oscillation. This fails when curved cells always use C_F.
+            call equilibrated_flux_estimate(mesh%vertices, mesh%triangles, degree, &
+                xi, eta, w, coef, f, flux, lower, 2.0_dp/pi, wider, stat, mesh%nodes)
+            call check_condition(stat == EQUILIBRATION_OK, "looser C_F solve")
+            call check_condition(res%oscillation > 0.0_dp, "nonzero oscillation")
+            call check_condition(abs(wider%oscillation - res%oscillation) &
+                < 1.0e-12_dp*res%oscillation, "mapped oscillation uses local constant")
+        end if
 
         call rule(24, xe, ee, we)
         energy_error = 0.0_dp

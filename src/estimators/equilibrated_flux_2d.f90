@@ -42,9 +42,11 @@ module fortfem_equilibrated_flux_2d
     !! |||v|||^2 = int A |grad v|^2 and C_F a caller-supplied Friedrichs constant
     !! ||v|| <= C_F |||v||| on that space. The oscillation term is, per affine
     !! (hence convex) cell, (h_T/pi) A_T,min^(-1/2) ||f - Pi f||_T (Payne--
-    !! Weinberger, A_T,min a caller-supplied lower bound of A on T), and for
-    !! every isoparametric (possibly non-convex) cell the unconditional
-    !! C_F ||f - Pi f||_K, from int_K (f - Pi f) v <= ||f - Pi f||_K ||v||_K;
+    !! Weinberger, A_T,min a caller-supplied lower bound of A on T).
+    !! Isoparametric cells use a local pullback constant if the Bernstein
+    !! determinant hull is positive (see mapped_oscillation_bound);
+    !! otherwise they retain the
+    !! unconditional C_F ||f - Pi f||_K. The smaller valid constant is used;
     !! the two groups are summed in quadrature separately. The Neumann term is
     !! sqrt(sum_T (C_T sum_e ||g - sigma.n||_e)^2) over the Neumann edges e of
     !! the (affine) cell T, with the guaranteed trace constant
@@ -89,6 +91,14 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_jacobian_p2
     use fortfem_generated_equilibrated_jacobian_p3, only: &
         generated_equilibrated_jacobian_p3
+    use fortfem_generated_equilibrated_bernstein_midpoint, only: &
+        generated_equilibrated_bernstein_midpoint
+    use fortfem_generated_equilibrated_relative_jacobian_norm, only: &
+        generated_equilibrated_relative_jacobian_norm
+    use fortfem_generated_equilibrated_determinant_controls, only: &
+        generated_equilibrated_determinant_controls
+    use fortfem_generated_equilibrated_mapped_poincare, only: &
+        generated_equilibrated_mapped_poincare
     use fortfem_generated_equilibrated_determinant, only: &
         generated_equilibrated_determinant
     use fortfem_generated_equilibrated_inverse_transpose, only: &
@@ -125,6 +135,8 @@ module fortfem_equilibrated_flux_2d
         generated_equilibrated_tensor_min_eigenvalue
     use fortfem_generated_equilibrated_oscillation_integrand, only: &
         generated_equilibrated_oscillation_integrand
+    use fortfem_generated_equilibrated_reference_oscillation, only: &
+        generated_equilibrated_reference_oscillation
     use fortfem_generated_equilibrated_divergence_integrand, only: &
         generated_equilibrated_divergence_integrand
     use fortfem_generated_equilibrated_edge_legendre, only: &
@@ -187,6 +199,9 @@ module fortfem_equilibrated_flux_2d
         real(dp), allocatable :: hat(:, :)                  !< (3, nq)
         !> Reference gradients of the geometry shape functions, (nloc, 2, nq).
         real(dp), allocatable :: geo_grad(:, :, :)
+        !> Geometry gradients at vertices and edge midpoints for the Bernstein
+        !> hull of the Jacobian (degree <= 2), (nloc, 2, 6).
+        real(dp), allocatable :: geo_bound_grad(:, :, :)
         !> Edge rule on [0, 1], per reference edge: hat values (3, nq1), RT normal
         !> trace sigma^.n of every RT function (nrt, nq1), shifted Legendre
         !> values (nedge, nq1).
@@ -236,12 +251,16 @@ contains
             eta, weights, coefficient_tensor, source, discrete_flux, &
             coefficient_lower, friedrichs_constant, estimate, status, &
             geometry_nodes, neumann_edge, neumann_flux, edge_xi, edge_weights, &
-            load_flux)
+            load_flux, correction_sweeps)
         !! Symmetric positive definite tensor coefficient A, sampled as
         !! coefficient_tensor(2, 2, nq, nt); discrete_flux is A grad u_h and
         !! coefficient_lower(t) a lower bound of the smaller eigenvalue of A on
         !! cell t (checked at the quadrature points). The other arguments are
-        !! those of equilibrated_flux_estimate.
+        !! those of equilibrated_flux_estimate. Optional correction_sweeps >= 0
+        !! (default zero) adds damped divergence-free vertex corrections for a
+        !! fully Dirichlet boundary. Each sweep costs another patch pass, with
+        !! O(N) work/storage at fixed degree and number of sweeps. It decreases
+        !! the flux defect in exact arithmetic but is not anisotropy robust.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :)
         integer, intent(in) :: degree
@@ -258,11 +277,20 @@ contains
         real(dp), intent(in), optional :: neumann_flux(:, :, :)
         real(dp), intent(in), optional :: edge_xi(:), edge_weights(:)
         real(dp), intent(in), optional :: load_flux(:, :, :)
+        integer, intent(in), optional :: correction_sweeps
         real(dp), allocatable :: smallest(:, :)
         real(dp) :: scale, largest
-        integer :: nq, nt, q, t
+        integer :: nq, nt, q, t, sweeps
 
         status = EQUILIBRATION_BAD_INPUT
+        sweeps = 0
+        if (present(correction_sweeps)) sweeps = correction_sweeps
+        if (sweeps < 0) return
+        if (sweeps > 0) then
+            if (present(neumann_edge)) then
+                if (any(neumann_edge)) return
+            end if
+        end if
         nq = size(xi)
         nt = size(triangles, 2)
         if (size(coefficient_tensor, 1) /= 2) return
@@ -290,13 +318,13 @@ contains
         call estimate_core(vertices, triangles, degree, xi, eta, weights, &
             smallest, source, discrete_flux, coefficient_lower, &
             friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
-            neumann_flux, edge_xi, edge_weights, load_flux, coefficient_tensor)
+            neumann_flux, edge_xi, edge_weights, load_flux, coefficient_tensor, sweeps)
     end subroutine equilibrated_flux_estimate_tensor
 
     subroutine estimate_core(vertices, triangles, degree, xi, eta, &
             weights, coefficient, source, discrete_flux, coefficient_lower, &
             friedrichs_constant, estimate, status, geometry_nodes, neumann_edge, &
-            neumann_flux, edge_xi, edge_weights, load_flux, tensor)
+            neumann_flux, edge_xi, edge_weights, load_flux, tensor, correction_sweeps)
         !! Data arrays are sampled at the (mapped) reference points (xi, eta)
         !! of each cell (weights sum to 1/2); the rule must integrate
         !! polynomials of degree 2k + 2 exactly for the local problems to be
@@ -340,15 +368,21 @@ contains
         !> Optional tensor coefficient (2, 2, nq, nt); coefficient then holds
         !> its pointwise smaller eigenvalue and serves validation only.
         real(dp), intent(in), optional :: tensor(:, :, :, :)
+        integer, intent(in), optional :: correction_sweeps
         type(reference_t) :: ref
         type(topology_t) :: topo
         type(problem_t) :: prob
         real(dp), allocatable :: projection(:, :), contribution(:, :, :)
-        real(dp), allocatable :: divergence_sq(:), source_sq(:)
+        real(dp), allocatable :: divergence_sq(:), source_sq(:), reference_sq(:)
         real(dp), allocatable :: edge_points(:), edge_rule(:)
         integer :: nv, nt, nloc, a, t, failed, nodes_status, nq1
-        logical :: cells_ok, has_neumann
+        logical :: cells_ok, has_neumann, tensor_correction
 
+        tensor_correction = .false.
+        if (present(tensor)) then
+            if (present(correction_sweeps)) &
+                tensor_correction = correction_sweeps > 0
+        end if
         status = EQUILIBRATION_BAD_INPUT
         nv = size(vertices, 2)
         nt = size(triangles, 2)
@@ -422,18 +456,22 @@ contains
         end if
 
         allocate (projection(ref%nk, nt), estimate%cell_oscillation(nt))
-        allocate (contribution(ref%nrt, 3, nt), source_sq(nt))
+        allocate (contribution(ref%nrt, 3, nt), source_sq(nt), reference_sq(nt))
         contribution = 0.0_dp
         failed = 0
         !$omp parallel do schedule(static)
         do t = 1, nt
-            call project_source(ref, prob%nodes(:, :, t), source(:, t), &
-                projection(:, t), source_sq(t))
             if (prob%affine(t)) then
+                call project_source(ref, prob%nodes(:, :, t), source(:, t), &
+                    projection(:, t), source_sq(t))
                 estimate%cell_oscillation(t) = cell_diameter(prob%nodes(:, 1:3, t)) &
                     /acos(-1.0_dp)*sqrt(source_sq(t)/coefficient_lower(t))
             else
-                estimate%cell_oscillation(t) = friedrichs_constant*sqrt(source_sq(t))
+                call project_source(ref, prob%nodes(:, :, t), source(:, t), &
+                    projection(:, t), source_sq(t), reference_sq(t))
+                estimate%cell_oscillation(t) = mapped_oscillation_bound(ref, &
+                    prob%nodes(:, :, t), coefficient_lower(t), &
+                    friedrichs_constant, source_sq(t), reference_sq(t))
             end if
         end do
         !$omp end parallel do
@@ -443,10 +481,12 @@ contains
             if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
             if (present(load_flux)) then
                 call solve_patch(ref, topo, prob, a, coefficient, source, &
-                    discrete_flux, load_flux, contribution, failed, tensor)
+                    discrete_flux, load_flux, contribution, failed, tensor, &
+                    .false., tensor_correction)
             else
                 call solve_patch(ref, topo, prob, a, coefficient, source, &
-                    discrete_flux, discrete_flux, contribution, failed, tensor)
+                    discrete_flux, discrete_flux, contribution, failed, tensor, &
+                    .false., tensor_correction)
             end if
         end do
         !$omp end parallel do
@@ -455,6 +495,18 @@ contains
             return
         end if
 
+        if (present(tensor)) then
+            if (present(correction_sweeps)) then
+                if (correction_sweeps > 0) then
+                    call correct_tensor_flux(ref, topo, prob, coefficient, source, &
+                        discrete_flux, tensor, contribution, failed, correction_sweeps)
+                    if (failed /= 0) then
+                        status = EQUILIBRATION_PATCH_FAILED
+                        return
+                    end if
+                end if
+            end if
+        end if
         allocate (estimate%flux_coefficients(ref%nrt, nt), estimate%cell_flux(nt))
         allocate (divergence_sq(nt))
         !$omp parallel do schedule(static)
@@ -583,6 +635,7 @@ contains
         real(dp), allocatable :: lagrange_nodes(:, :), lagrange_value(:)
         real(dp), allocatable :: lagrange_grad(:, :)
         real(dp) :: targets(2, nloc), point(2), legendre(7), normal(2)
+        real(dp) :: control_points(2, 6)
         real(dp), allocatable :: rt_edge(:, :), div_edge(:)
         integer :: q, i, j, e, order(nloc), geometry_degree
 
@@ -629,6 +682,20 @@ contains
             if (status /= 0) return
             do i = 1, nloc
                 ref%geo_grad(i, :, q) = lagrange_grad(:, order(i))
+            end do
+        end do
+        ! A P2/P3 geometry map has an affine/quadratic Jacobian. Its
+        ! Bernstein controls need only these six geometry samples, shared by
+        ! every cell; no cellwise allocation or basis evaluation is needed.
+        call reference_geometry_nodes(6, control_points)
+        allocate (ref%geo_bound_grad(nloc, 2, 6))
+        do q = 1, 6
+            call evaluate_triangle_lagrange_basis(geometry_basis, &
+                control_points(1, q), control_points(2, q), lagrange_value, &
+                lagrange_grad, status)
+            if (status /= 0) return
+            do i = 1, nloc
+                ref%geo_bound_grad(i, :, q) = lagrange_grad(:, order(i))
             end do
         end do
         ref%nq1 = size(edge_xi)
@@ -739,12 +806,67 @@ contains
             values, divergences, status)
     end subroutine physical_rt
 
-    subroutine project_source(ref, nodes, f, coefficients, source_sq)
+    real(dp) function mapped_oscillation_bound(ref, nodes, lower, global, &
+            source_sq, reference_sq) result(bound)
+        !! Let G = F o F0^(-1) map the straight vertex triangle T0 to K.
+        !! Bernstein hulls bound L >= sup ||DG||_2 and dmin <= det DF.
+        !! Pull back g = f-Pi f, whose integral vanishes, subtract the mean of
+        !! v o G on T0 and apply Payne--Weinberger there. With rhat = det DF g,
+        !! |int_K g v| <= h0/pi * L/sqrt(dmin) ||rhat||_ref ||grad v||_K.
+        !! Divide by sqrt(A_min) for the energy norm. No convexity of K is
+        !! required; F must be an injective cell map, as for the FE space itself.
+        !! If the determinant hull is not positive, retain global C_F ||g||_K.
+        !! Arithmetic and source projection quadrature remain approximate.
+        type(reference_t), intent(in) :: ref
+        real(dp), intent(in) :: nodes(:, :), lower, global, source_sq, reference_sq
+        real(dp) :: jac(2, 2, 6), affine(2, 2), invt(2, 2), det
+        real(dp) :: control(2, 2), norm_bound, value, local, det_controls(15)
+        integer :: q, e
+
+        bound = global*sqrt(source_sq)
+        call generated_equilibrated_jacobian_p1(nodes(:, 1:3), p1_gradient, affine)
+        call generated_equilibrated_determinant(affine, det)
+        if (.not. (det > 0.0_dp)) return
+        call generated_equilibrated_inverse_transpose(affine, det, invt)
+        do q = 1, 6
+            select case (ref%nloc)
+            case (3)
+                call generated_equilibrated_jacobian_p1(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            case (6)
+                call generated_equilibrated_jacobian_p2(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            case default
+                call generated_equilibrated_jacobian_p3(nodes, &
+                    ref%geo_bound_grad(:, :, q), jac(:, :, q))
+            end select
+        end do
+        norm_bound = 0.0_dp
+        do q = 1, 6
+            control = jac(:, :, q)
+            if (q > 3) then
+                e = q - 3
+                call generated_equilibrated_bernstein_midpoint(jac(:, :, q), &
+                    jac(:, :, e), jac(:, :, mod(e, 3) + 1), control)
+                jac(:, :, q) = control
+            end if
+            call generated_equilibrated_relative_jacobian_norm(control, invt, value)
+            norm_bound = max(norm_bound, value)
+        end do
+        call generated_equilibrated_determinant_controls(jac, det_controls)
+        if (.not. (minval(det_controls) > 0.0_dp)) return
+        call generated_equilibrated_mapped_poincare(cell_diameter(nodes(:, 1:3)), &
+            norm_bound, minval(det_controls), lower, acos(-1.0_dp), local)
+        bound = min(bound, local*sqrt(reference_sq))
+    end function mapped_oscillation_bound
+
+    subroutine project_source(ref, nodes, f, coefficients, source_sq, reference_sq)
         !! Reference-cell L2 projection of det J f onto P_k(T^), so that
         !! Pi f = (coefficients . P_k)/det J, and ||f - Pi f||_K^2.
         type(reference_t), intent(in) :: ref
         real(dp), intent(in) :: nodes(:, :), f(:)
         real(dp), intent(out) :: coefficients(:), source_sq
+        real(dp), intent(out), optional :: reference_sq
         real(dp) :: jac(2, 2), det, mass(ref%nk, ref%nk), rhs(ref%nk, 1)
         real(dp) :: integrand
         integer :: q, l, ipiv(ref%nk), info
@@ -761,17 +883,27 @@ contains
         call dgesv(ref%nk, 1, mass, ref%nk, ipiv, rhs, ref%nk, info)
         coefficients = rhs(:, 1)
         source_sq = 0.0_dp
+        if (present(reference_sq)) reference_sq = 0.0_dp
         do q = 1, ref%nq
             call jacobian_at(ref, nodes, q, jac, det)
             call generated_equilibrated_oscillation_integrand(f(q), &
                 dot_product(coefficients, ref%poly(:, q)), det, integrand)
             source_sq = source_sq + ref%weights(q)*integrand
+            if (present(reference_sq)) then
+                call generated_equilibrated_reference_oscillation(f(q), &
+                    dot_product(coefficients, ref%poly(:, q)), det, integrand)
+                reference_sq = reference_sq + ref%weights(q)*integrand
+            end if
         end do
-        if (info /= 0) source_sq = huge(1.0_dp)
+        if (info /= 0) then
+            source_sq = huge(1.0_dp)
+            if (present(reference_sq)) reference_sq = huge(1.0_dp)
+        end if
     end subroutine project_source
 
     subroutine solve_patch(ref, topo, prob, a, coefficient, source, &
-            discrete_flux, load_flux, contribution, failed, tensor)
+            discrete_flux, load_flux, contribution, failed, tensor, correction, &
+            equilibrate)
         type(reference_t), intent(in) :: ref
         type(topology_t), intent(in) :: topo
         type(problem_t), intent(in) :: prob
@@ -781,14 +913,15 @@ contains
         real(dp), intent(inout) :: contribution(:, :, :)
         integer, intent(inout) :: failed
         real(dp), intent(in), optional :: tensor(:, :, :, :)
+        logical, intent(in) :: correction, equilibrate
         integer :: edges(2*(topo%vertex_start(a + 1) - topo%vertex_start(a)))
         integer, allocatable :: map(:, :), sgn(:, :), ipiv(:)
         real(dp), allocatable :: kkt(:, :), rhs(:, :), qint(:)
         real(dp) :: jac(2, 2), det, hat_grad(2, 3), wdet, ainv, psi
         real(dp) :: phi(2, ref%nrt), div(ref%nrt), load, mean, area
-        real(dp) :: moments(ref%nedge), neumann_total
+        real(dp) :: moments(ref%nedge), neumann_total, row_scale
         real(dp) :: inverse(2, 2), weighted(2), weighted_phi(2, ref%nrt)
-        real(dp), allocatable :: fixed_value(:)
+        real(dp), allocatable :: fixed_value(:), solve_scale(:)
         logical, allocatable :: fixed(:)
         integer :: m, nedges, nsigma, nlam, n, i, j, k, l, t, s, e, ee, moment
         integer :: q, cell_dofs, interior, slot_edge(2), info, stat, lam0
@@ -865,6 +998,7 @@ contains
                 end if
                 wdet = ref%weights(q)*det
                 psi = ref%hat(s, q)
+                if (correction) psi = 1.0_dp
                 ! A^(-1) applied to the target flux and to the RT functions.
                 if (present(tensor)) then
                     ainv = 1.0_dp
@@ -881,8 +1015,11 @@ contains
                     weighted = discrete_flux(:, q, t)
                     weighted_phi = phi
                 end if
-                call generated_equilibrated_load_integrand(source(q, t), psi, &
-                    load_flux(:, q, t), hat_grad(:, s), load)
+                load = 0.0_dp
+                if (.not. correction) then
+                    call generated_equilibrated_load_integrand(source(q, t), psi, &
+                        load_flux(:, q, t), hat_grad(:, s), load)
+                end if
                 do k = 1, ref%nrt
                     if (map(k, i) == 0) cycle
                     rhs(map(k, i), 1) = rhs(map(k, i), 1) + wdet*sgn(k, i)*psi &
@@ -932,11 +1069,40 @@ contains
             kkt(j, j) = 1.0_dp
             rhs(j, 1) = fixed_value(j)
         end do
+        if (equilibrate) then
+            ! Symmetric equilibration of flux, divergence and gauge blocks.
+            ! Tensor units otherwise leave tiny constraint rows beside the
+            ! large A^(-1) mass, losing equilibrium even at moderate ratios.
+            allocate (solve_scale(n))
+            do j = 1, nsigma
+                if (.not. (abs(kkt(j, j)) > 0.0_dp)) then
+                    failed = 1
+                    return
+                end if
+                solve_scale(j) = 1.0_dp/sqrt(abs(kkt(j, j)))
+            end do
+            do j = nsigma + 1, nsigma + nlam
+                row_scale = maxval(abs(kkt(j, :nsigma)*solve_scale(:nsigma)))
+                solve_scale(j) = 1.0_dp
+                if (row_scale > 0.0_dp) solve_scale(j) = 1.0_dp/row_scale
+            end do
+            if (needs_mean) then
+                row_scale = maxval(abs(kkt(n, nsigma + 1:n - 1) &
+                    *solve_scale(nsigma + 1:n - 1)))
+                solve_scale(n) = 1.0_dp
+                if (row_scale > 0.0_dp) solve_scale(n) = 1.0_dp/row_scale
+            end if
+            do j = 1, n
+                kkt(:, j) = kkt(:, j)*solve_scale*solve_scale(j)
+            end do
+            rhs(:, 1) = rhs(:, 1)*solve_scale
+        end if
         call dgesv(n, 1, kkt, n, ipiv, rhs, n, info)
         if (info /= 0) then
             failed = 1
             return
         end if
+        if (equilibrate) rhs(:, 1) = rhs(:, 1)*solve_scale
         do i = 1, m
             t = topo%vertex_cell(topo%vertex_start(a) + i - 1)
             s = topo%vertex_slot(topo%vertex_start(a) + i - 1)
@@ -949,6 +1115,65 @@ contains
             end do
         end do
     end subroutine solve_patch
+
+    subroutine correct_tensor_flux(ref, topo, prob, coefficient, source, &
+            discrete_flux, tensor, contribution, failed, sweeps)
+        !! Damped additive Schwarz in the divergence-free RT subspace. Each
+        !! local correction is the quadrature A^(-1) projection of the flux defect,
+        !! with zero divergence and zero normal trace on artificial patch edges.
+        !! At most three vertex patches overlap in a cell. With damping 1/3,
+        !! ||e + sum(delta_a)/3||^2 <= ||e||^2 - sum(||delta_a||^2)/3:
+        !! <e,delta_a> = -||delta_a||^2 by the local projection and
+        !! ||sum(delta_a)||^2 <= 3 sum(||delta_a||^2). Thus the flux defect
+        !! cannot grow in exact arithmetic and equilibration is unchanged.
+        !! This does not prove a contraction uniform in h or tensor anisotropy.
+        type(reference_t), intent(in) :: ref
+        type(topology_t), intent(in) :: topo
+        type(problem_t), intent(in) :: prob
+        real(dp), intent(in) :: coefficient(:, :), source(:, :)
+        real(dp), intent(in) :: discrete_flux(:, :, :), tensor(:, :, :, :)
+        real(dp), intent(inout) :: contribution(:, :, :)
+        integer, intent(inout) :: failed
+        integer, intent(in) :: sweeps
+        real(dp), allocatable :: defect(:, :, :), delta(:, :, :)
+        real(dp) :: jac(2, 2), det, phi(2, ref%nrt), div(ref%nrt)
+        real(dp) :: sigma(ref%nrt)
+        integer :: t, q, a, sweep, stat
+        allocate (defect(2, ref%nq, size(source, 2)))
+        allocate (delta, mold=contribution)
+        do sweep = 1, sweeps
+            !$omp parallel do schedule(static) &
+            !$omp private(t, q, jac, det, phi, div, sigma, stat) reduction(max:failed)
+            do t = 1, size(source, 2)
+                delta(:, :, t) = 0.0_dp
+                sigma = sum(contribution(:, :, t), dim=2)
+                do q = 1, ref%nq
+                    call jacobian_at(ref, prob%nodes(:, :, t), q, jac, det)
+                    call physical_rt(ref, jac, q, phi, div, stat)
+                    if (stat /= 0) then
+                        failed = 1
+                        cycle
+                    end if
+                    defect(:, q, t) = discrete_flux(:, q, t) - matmul(phi, sigma)
+                end do
+            end do
+            !$omp end parallel do
+            if (failed /= 0) return
+            !$omp parallel do schedule(dynamic, 16) reduction(max:failed)
+            do a = 1, size(topo%vertex_start) - 1
+                if (topo%vertex_start(a + 1) == topo%vertex_start(a)) cycle
+                call solve_patch(ref, topo, prob, a, coefficient, source, &
+                    defect, discrete_flux, delta, failed, tensor, .true., .true.)
+            end do
+            !$omp end parallel do
+            if (failed /= 0) return
+            !$omp parallel do schedule(static)
+            do t = 1, size(source, 2)
+                contribution(:, :, t) = contribution(:, :, t) + delta(:, :, t)/3.0_dp
+            end do
+            !$omp end parallel do
+        end do
+    end subroutine correct_tensor_flux
 
     subroutine neumann_moments(ref, prob, t, e, slot, moments)
         !! Moments int_0^1 psi(s) g(s) |x'(s)| P_j(s) ds, j = 0..k, of the flux

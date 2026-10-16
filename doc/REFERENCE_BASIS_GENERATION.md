@@ -35,6 +35,12 @@ Generate with `tools/codegen/generate.sh`, and compare reproducible outputs with
 `tools/codegen/check_generated.sh`. Generation is reproducibility evidence;
 independent polynomial and integral checks establish behavior.
 
-Arbitrary-order triangle/tetrahedron recurrences are separate from these six
-legacy modules. Their derivative-product leaves need the generic generated-jet
-migration; this document does not claim those paths have already been replaced.
+Arbitrary-order triangle/tetrahedron recurrences use the product jets from
+`tools/codegen/app/gen_lagrange_product_jets.f90`. Triangle Lagrange evaluation
+now dispatches P1/P2 to the retained generated basis jets and uses generated
+cardinal factors directly at higher orders, as tetrahedra do, instead
+of a dense Bernstein-to-nodal transform. It retains nodal ordering and domain
+checks, allocates no per-query scratch, and requires no Vandermonde solve at
+initialization. The independent degree-0--4 polynomial value/gradient oracle
+includes vertices, an edge midpoint and an interior point (421 checks).
+Production-consumer timings live in KIN6D, which owns those scientific cases.

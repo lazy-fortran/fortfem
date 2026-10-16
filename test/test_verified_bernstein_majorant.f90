@@ -1,5 +1,5 @@
 program test_verified_bernstein_majorant
-    !! Verified Bernstein audit of sampled RT_k equilibrated fluxes (k = 1, 2).
+    !! Verified Bernstein audit of sampled RT_k equilibrated fluxes (k = 1, 2, 3).
     !! Independent oracles: Duffy-quadrature energy errors and the sampled
     !! estimator's own exactly integrated flux defect; shared-edge repair,
     !! exact zero data and rejections.
@@ -21,7 +21,7 @@ program test_verified_bernstein_majorant
     type(equilibrated_flux_estimate_t) :: est
     type(interval_t) :: bound, flux, residual, cf
     real(dp) :: error, sampled
-    integer :: status, k, mode
+    integer :: status, k, mode, tail_mode, power
 
     ! C_F = 1/(sqrt(2) pi sqrt(A_min)) with A_min = 1/2; 0.3184 > 1/pi.
     cf = interval(0.3184_dp)
@@ -74,6 +74,30 @@ program test_verified_bernstein_majorant
             bound, flux, residual, status)
         call check_condition(status == VERIFIED_BERNSTEIN_OK .and. &
                              bound%hi <= 1.0e-100_dp, "zero containment")
+        tail_mode = 0
+        call verified_bernstein_majorant(vertices, triangles, k, &
+            est%flux_coefficients, cells, nodal, weight, numerator, 0, 0, cf, &
+            bound, flux, residual, status, source_remainder=tail)
+        call check_condition(status == VERIFIED_BERNSTEIN_OK .and. &
+                             bound%hi <= 1.0e-100_dp, "zero source tail")
+        tail_mode = 1
+        weight = 2
+        do power = 0, 2
+            call verified_bernstein_majorant(vertices, triangles, k, &
+                est%flux_coefficients, cells, nodal, weight, numerator, 0, power, cf, &
+                bound, flux, residual, status, source_remainder=tail)
+            call check_condition(status == VERIFIED_BERNSTEIN_OK, "source tail audit")
+            sampled = 4.0_dp/4.0_dp**power
+            call check_condition(residual%hi >= sampled .and. &
+                residual%hi < sampled + 1.0e-10_dp, "weighted constant tail L2 norm")
+        end do
+        do tail_mode = 2, 4
+            call verified_bernstein_majorant(vertices, triangles, k, &
+                est%flux_coefficients, cells, nodal, weight, numerator, 0, 0, cf, &
+                bound, flux, residual, status, source_remainder=tail)
+            call check_condition(status == VERIFIED_BERNSTEIN_BAD_SOURCE, &
+                                 "invalid source tail rejected")
+        end do
         mode = 4
         call verified_bernstein_majorant(vertices, triangles, k, &
             est%flux_coefficients, cells, nodal, weight, numerator, 0, 0, cf, &
@@ -87,13 +111,64 @@ program test_verified_bernstein_majorant
             bound, flux, residual, status)
         call check_condition(status /= VERIFIED_BERNSTEIN_OK, "nonpositive weight")
     end do
-    call verified_bernstein_majorant(vertices, triangles, 3, &
+    call verified_bernstein_majorant(vertices, triangles, 4, &
         est%flux_coefficients, cells, nodal, weight, numerator, 0, 0, cf, &
         bound, flux, residual, status)
     call check_condition(status /= VERIFIED_BERNSTEIN_OK, "unsupported degree")
+    call cubic_recovery()
     call check_summary("verified_bernstein_majorant")
 
 contains
+
+    subroutine cubic_recovery()
+        !! Nonzero exact P3 state on one triangle: u = xy(1-x-y),
+        !! f = 2(x+y), A = 1. Its quadratic gradient is inside RT_3.
+        real(dp) :: points(2, 3), values(10), a(size(w), 1), f(size(w), 1)
+        real(dp) :: dflux(2, size(w), 1), lower(1), xx, yy
+        integer :: tri(3, 1), nodes(10, 1), q, stat, j
+        type(equilibrated_flux_estimate_t) :: recovered
+        type(interval_t) :: radius, flux2, residual2
+
+        points = reshape([0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, 1.0_dp], [2, 3])
+        tri(:, 1) = [1, 2, 3]
+        nodes(:, 1) = [(j, j = 1, 10)]
+        values = 0; values(10) = 1.0_dp/27
+        a = 1; lower = 1
+        do q = 1, size(w)
+            xx = xi(q); yy = eta(q)
+            f(q, 1) = 2*(xx + yy)
+            dflux(:, q, 1) = [yy*(1 - 2*xx - yy), xx*(1 - xx - 2*yy)]
+        end do
+        call equilibrated_flux_estimate(points, tri, 3, xi, eta, w, a, f, &
+            dflux, lower, 1.0_dp, recovered, stat)
+        call check_condition(stat == EQUILIBRATION_OK, "cubic exact reconstruction")
+        call verified_bernstein_majorant(points, tri, 3, &
+            recovered%flux_coefficients, nodes, values, [1.0_dp, 1.0_dp, 1.0_dp], &
+            cubic_numerator, 1, 0, interval(1.0_dp), radius, flux2, residual2, stat)
+        call check_condition(stat == VERIFIED_BERNSTEIN_OK, "cubic exact audit")
+        call check_condition(radius%hi < 1.0e-11_dp, "nonzero cubic exact recovery")
+        print '(a,es13.5)', 'cubic exact radius ', radius%hi
+    end subroutine cubic_recovery
+
+    subroutine cubic_numerator(cell, coefficients, ok)
+        integer, intent(in) :: cell
+        type(interval_t), intent(out) :: coefficients(:)
+        logical, intent(out) :: ok
+        coefficients = interval([0.0_dp, 2.0_dp, 2.0_dp])
+        ok = cell == 1
+    end subroutine cubic_numerator
+
+    subroutine tail(cell, radius, ok)
+        use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+        integer, intent(in) :: cell
+        type(interval_t), intent(out) :: radius
+        logical, intent(out) :: ok
+        ok = tail_mode /= 3 .and. cell > 0
+        radius = interval(0.0_dp)
+        if (tail_mode == 1) radius = interval(2.0_dp)
+        if (tail_mode == 2) radius = interval(-1.0_dp)
+        if (tail_mode == 4) radius%hi = ieee_value(0.0_dp, ieee_quiet_nan)
+    end subroutine tail
 
     subroutine square_mesh(n, points, cells)
         integer, intent(in) :: n
