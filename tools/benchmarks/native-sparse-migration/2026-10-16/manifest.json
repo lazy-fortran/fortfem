@@ -1,0 +1,34 @@
+{
+  "fortfem_baseline": "72a2c44bac62d61f08541359c79590b1dfcf99ab",
+  "fortfem_native": "4ed292ffac67d6d8dc7357e93942493b9a01d6c3",
+  "fortsparse_shared": "8dfac488ba5384f7a577beeac2d6f7c23ba6ac16",
+  "drivers_source": "72a2c44bac62d61f08541359c79590b1dfcf99ab",
+  "compiler": "GNU Fortran16.2.1 20260810",
+  "fortran_release_flags": "-O2 -g -fcheck=all -fbacktrace",
+  "c_release_flags": "-O3 -DNDEBUG",
+  "threads": 1,
+  "cpu_affinity": 0,
+  "cpu": "AMD Ryzen9 5950X",
+  "binary_files": {
+    "frozen/baseline/libfortfem.so": "4fbeead8c1f8d924f01b8dbfbfd27a39767e56a6fdf963b7ea8ea734eb860b97",
+    "frozen/baseline/test_capi_solver": "3f95d25ab61a277d97e4d7ac0c3f9ef0c8dab0ce0299f95e970893f1335b32f6",
+    "frozen/baseline/test_sparse_constrained_derivatives": "b55e0d944b80a9d3fac803fc2adda6d9e028208abb357f91233c51a2f0830bb9",
+    "frozen/baseline/test_sparse_direct_backend": "110d60845fefc4ae6711ecf798768d7b754149ec23763e2756bb9c9460dfdd12",
+    "frozen/baseline/test_sparse_direct_complex_derivatives": "caa231c01f7a592bbb332a43c3a66ef40f3d82f897854890d14c99b0e5c59360",
+    "frozen/baseline/test_sparse_direct_derivatives": "2126fbc3b7041919e42ffe7ffe0942dce768f817277eb1767e820a8b20f3a62f",
+    "frozen/native/libfortfem.so": "7ea137edd65a08ef3a51a43358325bb160c28d82231c7d543818a55174351c22",
+    "frozen/native/test_capi_solver": "298d8fbe10f71c9046ad082fa39351d93d3a8973c3e692f7c495fc0ee26fcb1a",
+    "frozen/native/test_sparse_constrained_derivatives": "c8fcb3e62e9aed2a706d66b7907a0613d755dca8bfd73b7e705e047cac64b83a",
+    "frozen/native/test_sparse_direct_backend": "f03fda88371f64b06296cd5e7733465d9cdf36b2d0c8093f7d467e7a21627f69",
+    "frozen/native/test_sparse_direct_complex_derivatives": "e61026745c8992b294999e955282e924812e8a38b1df9b6bde12da67c6748a2c",
+    "frozen/native/test_sparse_direct_derivatives": "1a039f17619ba0d8a098619d0bc79c431238db90989cd92a91ca84f7d951e120"
+  },
+  "driver_sha256": {
+    "test_sparse_direct_backend.f90": "9e231c27a9a64eecd7f83e19341bb2792b6818ab77dd3cfbd6e7d627e4b97c86",
+    "test_sparse_direct_derivatives.f90": "52051cdb28973dad1465d08378e2ffa43609d92e486f4e442906f32c63a81880",
+    "test_sparse_direct_complex_derivatives.f90": "05bdb5081aa1c8de667dd8a22a824da95ad782e8b3a2b3c493266d8d3dc70b3c",
+    "test_sparse_constrained_derivatives.f90": "3668298445bb88cf13d611b201f6679ded1e7b7587d04509ff18942c2a314de3",
+    "test_capi_solver.f90": "bc66b589cb9c25f082f2954562aac37b5e442d943fc4acdcc033c3df149c3c7a",
+    "check.f90": "114912e5d2648456153d68a117924ffce5bf41f4bc3aa58046de0842216b1b09"
+  }
+}

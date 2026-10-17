@@ -8,6 +8,9 @@ include(CMakePackageConfigHelpers)
 
 option(FORTFEM_FETCH_DEPENDENCIES
     "Fetch pinned dependencies when targets are not already available" ON)
+option(FORTFEM_BUILD_TESTING "Build focused C API and sparse adapter tests" OFF)
+option(FORTFEM_NATIVE_SPARSE_ONLY
+    "Build with project-owned sparse solvers and no external sparse libraries" ON)
 option(FORTFEM_ENABLE_ENZYME
     "Enable optional Flang/Enzyme element-kernel tournaments" OFF)
 option(FORTFEM_ENZYME_REQUIRED
@@ -39,12 +42,18 @@ if(NOT TARGET fortsparse)
         message(FATAL_ERROR
             "fortsparse target is required when dependency fetching is disabled")
     endif()
+    if(FORTFEM_NATIVE_SPARSE_ONLY)
+        set(FORTSPARSE_ENABLE_SUPERLU OFF CACHE BOOL "" FORCE)
+        set(FORTSPARSE_ENABLE_UMFPACK_IPC OFF CACHE BOOL "" FORCE)
+        set(FORTSPARSE_ENABLE_MUMPS OFF CACHE BOOL "" FORCE)
+        set(FORTSPARSE_ENABLE_NATIVE_CUDA OFF CACHE BOOL "" FORCE)
+    endif()
     set(FORTSPARSE_BUILD_TESTING OFF CACHE BOOL "" FORCE)
     set(FORTSPARSE_INSTALL_HELPER OFF CACHE BOOL "" FORCE)
     set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG a96c148651af0cab7205618ba17bab9c75159529
+        GIT_TAG 1cc17e31a01f5fa3ec5db58f5f399e2f7eb97955
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
@@ -138,4 +147,25 @@ if(FORTFEM_ENABLE_ENZYME)
             cmake/enzyme/h1_geometry_products.f90
         MODE forward
         OPT_LEVEL O2)
+endif()
+
+if(FORTFEM_BUILD_TESTING)
+    enable_testing()
+    add_library(fortfem_test_check STATIC test/check.f90)
+    set_target_properties(fortfem_test_check PROPERTIES
+        Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/test_modules")
+    target_include_directories(fortfem_test_check PUBLIC
+        "${PROJECT_BINARY_DIR}/test_modules")
+    foreach(test_name IN ITEMS sparse_direct_backend sparse_constrained_derivatives
+            sparse_direct_derivatives sparse_direct_complex_derivatives
+            capi_solver)
+        add_executable(test_${test_name} test/test_${test_name}.f90)
+        target_include_directories(test_${test_name} PRIVATE
+            "${PROJECT_BINARY_DIR}/modules")
+        target_link_libraries(test_${test_name} PRIVATE
+            fortfem_capi fortfem_test_check fortsparse)
+        add_test(NAME fortfem_${test_name} COMMAND test_${test_name})
+        set_tests_properties(fortfem_${test_name} PROPERTIES
+            LABELS "sparse;fast" ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    endforeach()
 endif()

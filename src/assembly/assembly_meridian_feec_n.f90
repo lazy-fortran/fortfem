@@ -1236,7 +1236,7 @@ contains
         integer, intent(out) :: status
 
         type(csc_z_t) :: z, zh, mz, mm
-        integer :: st
+        integer :: st, column, entry, row, low, high, middle
 
         status = 1
         select case (space)
@@ -1256,6 +1256,39 @@ contains
         call csc_conj_transpose_z(z, zh, st)
         if (st /= 0) return
         call meridian_zcsc_matmul(zh, mz, kmat, status)
+        if (status /= 0) return
+        ! The physical mass defines a Hermitian form. Two rounded sparse
+        ! products need not give identical conjugate entries. Keep one
+        ! canonical triangle of that form and mirror it without changing
+        ! its sparsity or allocating another matrix. A missing mirror is a
+        ! structural error, rather than a tolerance-based symmetry repair.
+        do column = 1, kmat%ncol
+            do entry = kmat%col_ptr(column), kmat%col_ptr(column + 1) - 1
+                row = kmat%row_idx(entry)
+                if (row < column) cycle
+                if (row == column) then
+                    kmat%val(entry) = cmplx(real(kmat%val(entry), dp), 0.0_dp, dp)
+                    cycle
+                end if
+                low = kmat%col_ptr(row)
+                high = kmat%col_ptr(row + 1) - 1
+                do while (low <= high)
+                    middle = low + (high - low)/2
+                    if (kmat%row_idx(middle) < column) then
+                        low = middle + 1
+                    else if (kmat%row_idx(middle) > column) then
+                        high = middle - 1
+                    else
+                        kmat%val(middle) = conjg(kmat%val(entry))
+                        exit
+                    end if
+                end do
+                if (low > high) then
+                    status = 2
+                    return
+                end if
+            end do
+        end do
     end subroutine meridian_stiffness
 
     subroutine csc_conj_transpose_z(a, ah, status)
