@@ -8,9 +8,10 @@ on:
   workflow_dispatch:
 
 env:
-  # Keep push/PR verification bounded to these independent interval/RT gates.
+  # Keep push/PR verification bounded to these independent form/interval/RT gates.
   # Reuse exactly this selection for normal, coverage and checked builds.
   FORTFEM_FAST_TESTS: >-
+    test_meridian_hermitian_forms
     test_verified_rt0_majorant
     test_verified_bernstein_majorant
     test_reference_p2_scalar_intervals
