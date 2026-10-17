@@ -94,14 +94,32 @@ fpm test
 fpm run --example simple_poisson
 ```
 
+Sparse direct solves explicitly select FortSparse's native CPU backend for real
+and complex matrices, including retained transpose/adjoint factors and the
+constrained/tree--cotree derivative paths. They do not fall back to another
+sparse solver. Dense BLAS/LAPACK remain system dependencies.
+
 For C and C++ consumers, CMake builds the focused shared API and fetches the
-pinned `fortsparse` dependency when needed:
+pinned `fortsparse` dependency when needed. The default
+`FORTFEM_NATIVE_SPARSE_ONLY=ON` disables SuperLU, UMFPACK, MUMPS and native CUDA
+in that fetched dependency:
 
 ```bash
 cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
 cmake --build build/cmake
 cmake --install build/cmake --prefix /desired/prefix
 ```
+
+Run the affected native adapter, real/complex derivative and C API tests with:
+
+```bash
+cmake -S . -B build/cmake -DFORTFEM_BUILD_TESTING=ON
+cmake --build build/cmake -j2
+ctest --test-dir build/cmake -L sparse --output-on-failure -j2
+```
+
+The fpm dependency also builds native CPU solvers without external sparse
+libraries. Its sparse tests continue to use the same public Fortran contracts.
 
 Downstream CMake projects can then use `find_package(fortfem CONFIG REQUIRED)`
 and link `fortfem::capi`. The installed

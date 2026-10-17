@@ -109,8 +109,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev \
-          libsuperlu-dev
+        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
 
     - name: Setup Fortran Package Manager
       run: |
@@ -126,6 +125,14 @@ jobs:
           fpm install --profile release --prefix "$HOME/.local"
         )
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Check native sparse C API and derivatives
+      run: |
+        cmake -S . -B build/native-capi -DCMAKE_BUILD_TYPE=Debug \
+          -DFORTFEM_BUILD_TESTING=ON -DFORTSPARSE_ENABLE_AMD=OFF \
+          -DFORTSPARSE_ENABLE_METIS=OFF
+        cmake --build build/native-capi -j2
+        ctest --test-dir build/native-capi -L sparse --output-on-failure -j2
 
     - name: Build
       run: fpm build --profile release
@@ -274,8 +281,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev \
-          libsuperlu-dev
+        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
 
     - name: Setup Fortran Package Manager
       run: |
@@ -304,7 +310,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           ca-certificates cmake curl g++ gfortran git gnupg \
-          libblas-dev liblapack-dev libsuitesparse-dev libsuperlu-dev \
+          libblas-dev liblapack-dev libsuitesparse-dev \
           lsb-release ninja-build software-properties-common
 
     - name: Install released LLVM and Flang
