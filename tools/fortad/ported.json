@@ -7,6 +7,8 @@
   "block_graph_product",
   "cgl_pressure_divergence",
   "cgl_pressure_tensor",
+  "current_segment",
+  "exterior_gram_density",
   "fci_cubic_bezier_edge_area",
   "fci_curved_quadrilateral_cell_area",
   "fci_decic_bezier_edge_area",
