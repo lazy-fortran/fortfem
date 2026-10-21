@@ -1,22 +1,15 @@
 name: Deploy Documentation to GitHub Pages
 
 on:
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-    inputs:
-      artifact_run_id:
-        description: "Completed test run ID whose generated-plots artifact should be reused"
-        required: false
-        type: string
-  
-  # Run after test/interoperability workflows complete.  The test workflow
-  # deliberately publishes example artifacts even when verification failures
-  # keep its conclusion red.
-  workflow_run:
-    workflows: ["test", "interoperability"]
-    types:
-      - completed
+  # Generate the physical gallery from the exact commit being published.
+  push:
     branches: [main]
+  workflow_dispatch:
+
+env:
+  OMP_NUM_THREADS: 2
+  OPENBLAS_NUM_THREADS: 1
+  MPLBACKEND: Agg
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -33,79 +26,37 @@ concurrency:
 jobs:
   # Build job
   build:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
+    runs-on: [self-hosted, itp-ubuntu24]
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
-      - name: Download example plots from triggering test run
-        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'test' }}
-        uses: dawidd6/action-download-artifact@v3
         with:
-          run_id: ${{ github.event.workflow_run.id }}
-          name: generated-plots
-          path: ./artifacts/plots/
-          if_no_artifact_found: ignore
-        continue-on-error: true
-
-      - name: Download example plots from selected test run
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != '' }}
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          run_id: ${{ inputs.artifact_run_id }}
-          name: generated-plots
-          path: ./artifacts/plots/
-          if_no_artifact_found: ignore
-        continue-on-error: true
-
-      - name: Download latest successful example plots
-        if: ${{ (github.event_name != 'workflow_run' && inputs.artifact_run_id == '') || (github.event_name == 'workflow_run' && github.event.workflow_run.name != 'test') }}
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          name: generated-plots
-          path: ./artifacts/plots/
-          workflow: test.yml
-          branch: main
-          workflow_conclusion: success
-          if_no_artifact_found: ignore
-        continue-on-error: true
-
-      - name: Download latest interoperability plots
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          name: generated-interoperability-plots-.*
-          name_is_regexp: true
-          path: ./artifacts/plots/examples/interoperability_benchmarks/
-          workflow: interoperability.yml
-          branch: main
-          workflow_conclusion: success
-          if_no_artifact_found: ignore
-        continue-on-error: true
-        
-      - name: Create empty plots directory if no artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p ./artifacts/plots/
-          interoperability_dir=./artifacts/plots/examples/interoperability_benchmarks
-          if [[ -d "$interoperability_dir" ]]; then
-            shopt -s nullglob
-            nested=("$interoperability_dir"/generated-interoperability-plots-*)
-            if [[ "${#nested[@]}" -gt 0 ]]; then
-              test "${#nested[@]}" -eq 1
-              find "${nested[0]}" -maxdepth 1 -type f \
-                -exec mv {} "$interoperability_dir/" \;
-              rmdir "${nested[0]}"
-            fi
-          fi
-          find ./artifacts/plots/ -maxdepth 4 -type f -print
+          ref: ${{ github.sha }}
+          submodules: recursive
         
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            curl gfortran liblapack-dev libsuitesparse-dev make python3-venv
+          mkdir -p "$RUNNER_TEMP/fortfem-bin"
+          curl -fsSL -o "$RUNNER_TEMP/fortfem-bin/fpm" \
+            https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          chmod +x "$RUNNER_TEMP/fortfem-bin/fpm"
+          echo "$RUNNER_TEMP/fortfem-bin" >> "$GITHUB_PATH"
           # Ford's search-index builder uses BeautifulSoup's lxml parser;
           # install it explicitly so a clean runner does not fall back to the
           # much slower pure-Python parser for this large generated API.
-          pip install ford lxml
+          python3 -m venv "$RUNNER_TEMP/fortfem-docs-venv"
+          "$RUNNER_TEMP/fortfem-docs-venv/bin/pip" install ford lxml
+          echo "$RUNNER_TEMP/fortfem-docs-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Generate physical primary plots
+        run: |
+          bash test/test_primary_plot_generation.sh
+          bash test/test_interoperability_primary_plot.sh
+          bash scripts/generate_primary_plots.sh
         
       - name: Generate example documentation pages
         run: |
@@ -123,8 +74,6 @@ jobs:
           source_dir=artifacts/plots/examples
           test -d "$source_dir"
           test "$(find "$source_dir" -name '*.png' | wc -l)" -gt 0
-          test "$(find "$source_dir/interoperability_benchmarks" \
-            -maxdepth 1 -name '*.png' | wc -l)" -ge 5
           test -s "$source_dir/interoperability_benchmarks/primary.png"
           chmod +x scripts/stage_gallery_media.sh
           scripts/stage_gallery_media.sh \
@@ -143,13 +92,14 @@ jobs:
         with:
           # Upload only the documentation directory
           path: './build/doc'
+          retention-days: 1
           
   # Deploy job
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
     needs: build
     steps:
       - name: Deploy to GitHub Pages
