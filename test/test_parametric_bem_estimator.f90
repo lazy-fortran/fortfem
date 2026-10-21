@@ -26,6 +26,13 @@ program test_parametric_bem_estimator
         'energy uses the fine single-layer quadratic form')
     call record(maxval(abs(indicator-[1.0_dp, 2.0_dp])) < 1.e-12_dp, &
         'parent marking indicators include area and parent length')
+    fine%v(1, 2) = 0.5_dp
+    fine%v(2, 1) = 0.5_dp
+    call estimate()
+    call record(status == 0 .and. abs(energy-sqrt(30.0_dp)) < 1.e-12_dp, &
+        'energy includes symmetric off-diagonal interactions')
+    fine%v(1, 2) = 0.0_dp
+    fine%v(2, 1) = 0.0_dp
     fine_flux = coarse_flux(parent)
     call estimate()
     call record(status == 0 .and. energy == 0.0_dp, &
@@ -54,6 +61,10 @@ program test_parametric_bem_estimator
     call estimate()
     call record(status /= 0, 'nonsymmetric energy operator is rejected')
     fine%v(1, 2) = 0.0_dp
+    fine%v(4, 4) = ieee_value(0.0_dp, ieee_quiet_nan)
+    call estimate()
+    call record(status /= 0, 'nonfinite energy operator is rejected')
+    fine%v(4, 4) = 4.0_dp
     fine%v = -fine%v
     call estimate()
     call record(status /= 0, 'negative energy is rejected without absolute value')
