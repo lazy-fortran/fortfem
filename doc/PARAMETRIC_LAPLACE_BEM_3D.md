@@ -200,5 +200,5 @@ Generated P1/P2 basis jets and generated product/JVP/VJP leaves supply the
 pointwise mathematics. Assembled geometry derivatives remain unavailable.
 The independent pair test uses analytic signed-edge source potentials and
 refined target quadrature; the slow sphere audit measures continuous flux
-error and exterior energy for degrees 1 and 2, observed mesh order, and
+error and exterior energy for degrees 1 and 2, observed order under nominal dyadic mesh refinement, and
 1/2/4/8-thread assembly scaling.

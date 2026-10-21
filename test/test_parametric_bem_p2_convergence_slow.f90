@@ -71,13 +71,17 @@ program test_parametric_bem_p2_convergence_slow
             exact_energy=(l+1)*4*acos(-1.0_dp)/real(2*l+1,dp)
             errors(level,l)=sqrt(integral/(exact_energy*(l+1)))
             energy_error=abs(dot_product(u,load)/exact_energy-1)
-            write(*,'(a,3i7,3es17.8)') 'BEM3D P2 harmonic level l panels flux energy ', &
+            write(*,'(a,3i7,3es17.8)') &
+                'BEM3D P2 harmonic level l panels flux energy ', &
                 level,l,size(sphere%faces,2),errors(level,l),energy_error, &
                 dot_product(u,load)
-            call record(energy_error<0.15_dp,'spherical harmonic energy has correct scale')
+            call record(energy_error<0.15_dp, &
+                'spherical harmonic energy has correct scale')
             if (level==3) then
-                call record(errors(level,l)<0.03_dp,'refined P1 flux reaches physical accuracy')
-                call record(energy_error<0.03_dp,'refined P2 energy reaches physical accuracy')
+                call record(errors(level,l)<0.03_dp, &
+                    'refined P1 flux reaches physical accuracy')
+                call record(energy_error<0.03_dp, &
+                    'refined P2 energy reaches physical accuracy')
             end if
         end do
         deallocate(u,q,load)
@@ -99,7 +103,8 @@ program test_parametric_bem_p2_convergence_slow
             trace_dofs,flux_dofs,report,status)
         elapsed=omp_get_wtime()-start
         if (status/=0) error stop 'P2 scaling assembly'
-        write(*,'(a,2(1x,i12),4(1x,es17.8))') 'BEM3D P2 scaling threads evaluations seconds V W ', &
+        write(*,'(a,2(1x,i12),4(1x,es17.8))') &
+            'BEM3D P2 scaling threads evaluations seconds V W ', &
             threads,report%kernel_evaluations,elapsed,sum(op%v),sum(abs(op%w)), &
             report%error_ratio
     end do
