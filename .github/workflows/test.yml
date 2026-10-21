@@ -23,6 +23,8 @@ env:
     test_verified_mapped_majorant
     test_reference_p2_scalar_intervals
     test_parametric_bem_high_order
+    test_bem_circulant_modes
+    test_parametric_bem_circulant
     test_parametric_bem_pair_accuracy
     test_equilibrated_rt_normal_trace
     test_parametric_bem_estimator
