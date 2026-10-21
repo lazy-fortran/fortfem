@@ -387,3 +387,7 @@ for extension in f90 cuh; do
     filename="fortfem_element_precision_products.$extension"
     cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 done
+
+filename="fortfem_parametric_bem_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
