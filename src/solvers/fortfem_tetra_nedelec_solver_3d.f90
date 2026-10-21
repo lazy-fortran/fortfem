@@ -1,4 +1,5 @@
 module fortfem_tetra_nedelec_solver_3d
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     use fortfem_assembly_tetra_nedelec_3d, only: &
         assemble_tetra_nedelec_curl_mass_csc, &
         assemble_tetra_nedelec_curvilinear_pml_csc, &
@@ -12,7 +13,7 @@ module fortfem_tetra_nedelec_solver_3d
         build_tetra_nedelec_dof_map
     use fortsparse, only: csc_from_triplet, csc_t, csc_z_t, &
         FORTSPARSE_INTERNAL_ERROR, FORTSPARSE_INVALID_MATRIX, &
-        fortsparse_status_t, sparse_solve_once, status_set
+        fortsparse_status_t, status_set
     implicit none
 
     private
@@ -217,7 +218,7 @@ contains
             sparse_status)
         if (sparse_status%code /= 0) return
         allocate(solution(matrix%nrow))
-        call sparse_solve_once( &
+        call sparse_direct_solve_once( &
             constrained_matrix, right_hand_side, solution, sparse_status)
         if (sparse_status%code /= 0) then
             status = 2
@@ -349,7 +350,7 @@ contains
             sparse_status)
         if (sparse_status%code /= 0) return
         allocate(solution(matrix%nrow))
-        call sparse_solve_once( &
+        call sparse_direct_solve_once( &
             constrained_matrix, right_hand_side, solution, sparse_status)
         if (sparse_status%code /= 0) then
             status = 2
