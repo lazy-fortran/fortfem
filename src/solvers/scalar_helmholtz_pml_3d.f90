@@ -1,11 +1,11 @@
 module fortfem_scalar_helmholtz_pml_3d
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     !! P1 tetrahedral scalar Helmholtz solver with diagonal complex stretch.
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_scalar_helmholtz_pml_coefficients
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: det3, inv3
-    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
-        sparse_solve_once
+    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t
     implicit none
     private
 
@@ -138,7 +138,7 @@ contains
             sparse_status)
         if (sparse_status%code /= 0) return
         allocate(solution(vertex_count))
-        call sparse_solve_once( &
+        call sparse_direct_solve_once( &
             constrained_matrix, right_hand_side, solution, sparse_status)
         if (sparse_status%code /= 0) then
             status = 2

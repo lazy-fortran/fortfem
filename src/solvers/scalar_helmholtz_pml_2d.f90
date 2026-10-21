@@ -1,10 +1,10 @@
 module fortfem_scalar_helmholtz_pml_2d
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     !! P1 scalar Helmholtz assembly with elementwise diagonal complex stretch.
     use fortfem_cartesian_helmholtz_pml, only: &
         cartesian_scalar_helmholtz_pml_coefficients
     use fortfem_kinds, only: dp
-    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
-        sparse_solve_once
+    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t
     implicit none
     private
 
@@ -123,7 +123,7 @@ contains
             vertex_count, vertex_count, rows(:entry), columns(:entry), &
             triplet_values(:entry), sparse_matrix, sparse_status)
         if (sparse_status%code /= 0) return
-        call sparse_solve_once( &
+        call sparse_direct_solve_once( &
             sparse_matrix, right_hand_side, solution, sparse_status)
         if (sparse_status%code /= 0) return
         status = 0

@@ -116,6 +116,7 @@ module fortfem_equilibrated_hcurl_meridian_n
     !! order) with the same quadrature degree; the source callback is called
     !! from OpenMP threads and must be thread-safe.  The integrals use that
     !! rule; their quadrature error is not enclosed.
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     use fortfem_kinds, only: dp
     use fortfem_generated_meridian_hcurl_equilibration, only: &
         generated_meridian_hcurl_residual
@@ -134,7 +135,7 @@ module fortfem_equilibrated_hcurl_meridian_n
     use fortnum_quadrature, only: gauss_legendre_ab
     use fortnum_polynomial, only: lagrange_weights, lagrange_deriv_weights
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_z_t, &
-        fortsparse_status_t, sparse_solve_once, status_ok
+        fortsparse_status_t, status_ok
     implicit none
     private
 
@@ -576,7 +577,7 @@ contains
             call csc_from_triplet(fsd%n0, fsd%n0, ri(:cnt), ci(:cnt), vals(:cnt), &
                 gm, fst)
             if (.not. status_ok(fst)) return
-            call sparse_solve_once(gm, rhs, s, fst)
+            call sparse_direct_solve_once(gm, rhs, s, fst)
             if (.not. status_ok(fst)) return
             info = 0
         end subroutine solve_global
