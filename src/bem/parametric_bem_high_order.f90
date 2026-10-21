@@ -392,7 +392,7 @@ contains
         type(point_t), allocatable :: points(:,:,:)
         type(block_t) :: block
         type(bem_pair_report_t) :: pair_report
-        integer :: nf,nt,nv,ne,i,j,l,t,a,b,local_status,errors,dmax
+        integer :: nf,nt,nv,ne,i,j,l,t,a,b,local_status,errors,dmax,geometry_errors
         integer(int64) :: evaluations
         real(dp) :: value,ratio
         report=bem_pair_report_t()
@@ -436,10 +436,10 @@ contains
                 end do
             end do
         end do
-        evaluations=0; dmax=0; ratio=0
+        evaluations=0; dmax=0; ratio=0; geometry_errors=0
         !$omp parallel do default(shared) schedule(dynamic,1) &
         !$omp private(i,j,a,b,block,pair_report,local_status) &
-        !$omp reduction(+:errors,evaluations) reduction(max:dmax,ratio)
+        !$omp reduction(+:errors,evaluations,geometry_errors) reduction(max:dmax,ratio)
         do i=1,nf
             do j=1,nf
                 call converge_pair(surface,i,j,options,bank,points(:,i,:), &
@@ -449,6 +449,7 @@ contains
                 ratio=max(ratio,pair_report%error_ratio)
                 if (local_status/=0) then
                     errors=errors+1
+                    if (local_status==2) geometry_errors=geometry_errors+1
                     cycle
                 end if
                 op%v(flux_dofs(:,i),flux_dofs(:,j))=block%v
@@ -472,6 +473,7 @@ contains
         report%kernel_evaluations=evaluations
         report%error_ratio=ratio
         status=3
+        if (geometry_errors/=0) status=2
         if (errors/=0) return
         if (.not. all(ieee_is_finite(op%v))) then
             status=2
