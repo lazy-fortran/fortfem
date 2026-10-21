@@ -19,6 +19,7 @@ env:
     test_verified_bernstein_majorant
     test_reference_p2_scalar_intervals
     test_equilibrated_rt_normal_trace
+    test_harmonic_field_energy
     test_parametric_bem_estimator
   OMP_NUM_THREADS: 2
   OPENBLAS_NUM_THREADS: 1
