@@ -54,6 +54,11 @@ name = "fortfem_element_precision_scaling"
 source-dir = "benchmark"
 main = "fortfem_element_precision_scaling.f90"
 
+[[executable]]
+name = "bem_residual_study"
+source-dir = "benchmark"
+main = "bem_residual_study.f90"
+
 [fortran]
 implicit-typing = false
 implicit-external = false

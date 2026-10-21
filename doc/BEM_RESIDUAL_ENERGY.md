@@ -56,7 +56,7 @@ quadrature and arithmetic bounds.
 
 `fpm test test_bem_residual_energy --flag '-fopenmp'` checks exact recovery,
 the Fourier tail, an analytically invertible non-diagonal SPD matrix and
-input rejection. `fpm run --example bem_residual_study --profile release
+input rejection. `fpm run bem_residual_study --profile release
 --flag '-fopenmp'` measures setup, solve and repeated diagnostic cost on a
 synthetic dense SPD fixture, with 1/2/4 threads and three repetitions.
 It is a kernel cost study, not a GS error-efficiency measurement.
