@@ -4,6 +4,8 @@ program gen_parametric_bem_products
         operator(*), operator(/), sqrt
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp
+    use fortsym_engine_native, only: native_engine_t, make_native_engine
+    use fortsym_engine, only: engine_result_t, VERDICT_TRUE
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
@@ -12,8 +14,13 @@ program gen_parametric_bem_products
     type(str_t) :: tn(6), dn(6), an(8)
     type(expr_t) :: pv(11), products(3)
     type(str_t) :: pn(11)
+    type(native_engine_t) :: engine
+    type(engine_result_t) :: identity
+    type(expr_t) :: flux(2), difference(2)
+    type(str_t) :: flux_names(2)
     integer :: unit, i
     call arena%init()
+    engine = make_native_engine(arena)
     tn = [str('a1'), str('a2'), str('a3'), str('b1'), str('b2'), str('b3')]
     dn = [str('d1'), str('d2'), str('d3'), str('n1'), str('n2'), str('n3')]
     an(:6) = tn
@@ -50,6 +57,15 @@ program gen_parametric_bem_products
         pv(1)*(pv(6)*pv(9)+pv(7)*pv(10)+pv(8)*pv(11))]
     call emit('bem_pair_product', pn, pv, products, &
         [str('single_value'),str('double_value'),str('hyper_value')])
+    flux_names = [str('fine'), str('coarse')]
+    flux = [sym(arena, 'fine'), sym(arena, 'coarse')]
+    difference(1) = flux(1)-flux(2)
+    difference(2) = difference(1)*difference(1)
+    identity = engine%zero_test(difference(2) - &
+        (flux(1)*flux(1)-2*flux(1)*flux(2)+flux(2)*flux(2)))
+    if (identity%verdict /= VERDICT_TRUE) error stop 'refinement square identity'
+    call emit('bem_refinement_product', flux_names, flux, difference, &
+        [str('difference'), str('square')])
     close(unit)
 contains
     subroutine emit(name, names, variables, roots, outputs)
