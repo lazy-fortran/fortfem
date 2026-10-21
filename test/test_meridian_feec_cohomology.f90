@@ -53,12 +53,10 @@ contains
         call check_condition(c, d)
     end subroutine record
 
-    subroutine dense_restricted(z, keep_row, keep_col, a)
-        !! Dense restriction of z.  A subroutine rather than an allocatable
-        !! function result: gfortran 12 mishandles the latter here.
+    function dense_restricted(z, keep_row, keep_col) result(a)
         type(csc_z_t), intent(in) :: z
         logical, intent(in) :: keep_row(:), keep_col(:)
-        complex(dp), allocatable, intent(out) :: a(:, :)
+        complex(dp), allocatable :: a(:, :)
         integer, allocatable :: ri(:), ci(:)
         integer :: i, j, p, nr, nc
 
@@ -87,7 +85,7 @@ contains
                     a(ri(z%row_idx(p)), ci(j)) = z%val(p)
             end do
         end do
-    end subroutine dense_restricted
+    end function dense_restricted
 
     function leaked(z, keep_row, keep_col) result(m)
         !! Largest entry mapping retained columns into dropped rows.
@@ -109,7 +107,7 @@ contains
         complex(dp), intent(inout) :: a(:, :)
         integer :: r
         real(dp), allocatable :: s(:), rwork(:)
-        complex(dp), allocatable :: work(:), u(:, :), vt(:, :)
+        complex(dp), allocatable :: work(:), u(:, :), vt(:, :), ap(:, :)
         complex(dp) :: wq(1)
         integer :: m, n, info
 
@@ -118,9 +116,15 @@ contains
         r = 0
         if (m == 0 .or. n == 0) return
         allocate (s(min(m, n)), rwork(5*min(m, n)), u(1, 1), vt(1, 1))
-        call zgesvd('N', 'N', m, n, a, m, s, u, 1, vt, 1, wq, -1, rwork, info)
+        ! One spare column: the zgemv kernel of OpenBLAS 0.3.21 (Debian 12,
+        ! the cluster BLAS) reads past the end of the matrix and crashes when
+        ! that read crosses into an unmapped page.
+        allocate (ap(m, n + 1))
+        ap(:, :n) = a
+        ap(:, n + 1) = (0.0_dp, 0.0_dp)
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
         allocate (work(max(1, int(real(wq(1))))))
-        call zgesvd('N', 'N', m, n, a, m, s, u, 1, vt, 1, work, size(work), &
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
             rwork, info)
         r = count(s > 1.0e-8_dp*s(1))
     end function matrix_rank
@@ -162,14 +166,14 @@ contains
                 call meridian_op_complex(fs%curl, ns(i), d1, status)
                 call meridian_op_complex(fs%div, ns(i), d2, status)
                 if (rel == 0) then
-                    call dense_restricted(d0, all1, all0, a0)
-                    call dense_restricted(d1, all2, all1, a1)
-                    call dense_restricted(d2, all3, all2, a2)
+                    a0 = dense_restricted(d0, all1, all0)
+                    a1 = dense_restricted(d1, all2, all1)
+                    a2 = dense_restricted(d2, all3, all2)
                     leak = 0.0_dp
                 else
-                    call dense_restricted(d0, in1, in0, a0)
-                    call dense_restricted(d1, in2, in1, a1)
-                    call dense_restricted(d2, in3, in2, a2)
+                    a0 = dense_restricted(d0, in1, in0)
+                    a1 = dense_restricted(d1, in2, in1)
+                    a2 = dense_restricted(d2, in3, in2)
                     leak = max(leaked(d0, in1, in0), leaked(d1, in2, in1), &
                         leaked(d2, in3, in2))
                 end if
