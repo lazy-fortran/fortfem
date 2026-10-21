@@ -18,7 +18,7 @@ program test_parametric_bem_p2_convergence_slow
     type(bem_pair_report_t) :: report
     integer, allocatable :: trace_dofs(:,:),flux_dofs(:,:)
     real(dp), allocatable :: u(:),q(:),load(:),xi(:),eta(:),qw(:)
-    real(dp) :: errors(0:2,2),energy_error,exact_energy,order,start,elapsed
+    real(dp) :: errors(1:3,2),energy_error,exact_energy,order,start,elapsed
     real(dp) :: x(3),a(3),b(3),normal(3),basis(3),g(2),h(2,2),value,integral
     real(dp), parameter :: nodes(2,6)=reshape( &
         [0.0_dp,0.0_dp,1.0_dp,0.0_dp,0.0_dp,1.0_dp, &
@@ -32,7 +32,7 @@ program test_parametric_bem_p2_convergence_slow
     call triangle_duffy_quadrature(32,xi,eta,qw,status)
     if (status/=0) error stop 'audit rule'
     call omp_set_num_threads(8)
-    do level=0,2
+    do level=1,3
         call generate_sphere_surface_mesh(1.0_dp,level,sphere%vertices,sphere%faces)
         call assemble_parametric_bem_p2(sphere,sphere%faces,options,op, &
             trace_dofs,flux_dofs,report,status)
@@ -75,7 +75,7 @@ program test_parametric_bem_p2_convergence_slow
                 level,l,size(sphere%faces,2),errors(level,l),energy_error, &
                 dot_product(u,load)
             call record(energy_error<0.15_dp,'spherical harmonic energy has correct scale')
-            if (level==2) then
+            if (level==3) then
                 call record(errors(level,l)<0.03_dp,'refined P1 flux reaches physical accuracy')
                 call record(energy_error<0.03_dp,'refined P2 energy reaches physical accuracy')
             end if
@@ -83,9 +83,9 @@ program test_parametric_bem_p2_convergence_slow
         deallocate(u,q,load)
     end do
     do l=1,2
-        order=log(errors(1,l)/errors(2,l))/log(2.0_dp)
+        order=log(errors(2,l)/errors(3,l))/log(2.0_dp)
         write(*,'(a,i3,es17.8)') 'BEM3D P2 observed_flux_order ',l,order
-        call record(all(errors(1:2,l)<errors(0:1,l)), &
+        call record(all(errors(2:3,l)<errors(1:2,l)), &
             'continuous spherical harmonic flux error decreases')
         call record(order>1.2_dp,'observed high-order flux convergence exceeds P0')
     end do
@@ -99,7 +99,7 @@ program test_parametric_bem_p2_convergence_slow
             trace_dofs,flux_dofs,report,status)
         elapsed=omp_get_wtime()-start
         if (status/=0) error stop 'P2 scaling assembly'
-        write(*,'(a,2i8,4es17.8)') 'BEM3D P2 scaling threads evaluations seconds V W ', &
+        write(*,'(a,2(1x,i12),4(1x,es17.8))') 'BEM3D P2 scaling threads evaluations seconds V W ', &
             threads,report%kernel_evaluations,elapsed,sum(op%v),sum(abs(op%w)), &
             report%error_ratio
     end do
