@@ -4,7 +4,8 @@ on:
   merge_group:
     types: [checks_requested]
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -52,8 +53,8 @@ jobs:
       - name: Run native checks in the build container
         if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
-          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: |-
           ci/run.sh test-generated
       - name: Install system dependencies
@@ -105,6 +106,8 @@ jobs:
           fo exec verify_polar_complex
 
         if: ${{ github.event.pull_request.head.repo.fork }}
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   build-test:
     runs-on: ${{ matrix.os }}
     env:
@@ -294,6 +297,8 @@ jobs:
           echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
           exit 1
 
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   debug-checks:
     name: tests with runtime checks (debug profile)
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","itp-build"]') }}
@@ -309,8 +314,8 @@ jobs:
       - name: Run native checks in the build container
         if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
-          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: |-
           ci/run.sh test-debug-checks
       - name: Install dependencies
@@ -334,6 +339,8 @@ jobs:
             --runner "timeout $TEST_TIMEOUT"
 
         if: ${{ github.event.pull_request.head.repo.fork }}
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   enzyme:
     name: released Flang 22 + pinned Enzyme
     runs-on: ubuntu-24.04
@@ -394,10 +401,13 @@ jobs:
           ctest --test-dir build-enzyme --output-on-failure -R fortfem_enzyme
 
   # Summary job for branch protection - must be named 'test' for PR checks
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   test:
     name: test
     needs: [build-test, debug-checks, enzyme, generated]
-    if: always()
+    if: >-
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (always())
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
