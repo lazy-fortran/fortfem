@@ -1,6 +1,102 @@
 # FortFEM roadmap
 
-Status: living architecture and verification plan, 2026-08-07
+Status: living architecture and verification plan, 2026-10-21
+
+## Library completion handoff (2026-10-21)
+
+This dated checkpoint records the verified FortFEM work and its shared-library
+CI dependencies at the controller handoff. Later live queue results supersede
+pending statuses below. Numerical source, workflows and raw campaign data are
+unchanged by this documentation update.
+
+### FortFEM scientific state
+
+- [Exterior harmonic fields #95](https://github.com/lazy-fortran/fortfem/pull/95)
+  merged as 77c6b8c2862009bd6c7dfd969abfad5da54b6467. Native Release job
+  21816969_0 and Debug job 21817117 passed the 54-check physical suite;
+  the independent tangent suite passed 4/4. Normal leakage was 0.00911163
+  against the unchanged 0.03 bound. Reconstruction limits remain documented.
+- [AD catalogue #101](https://github.com/lazy-fortran/fortfem/pull/101) remains
+  draft at ce962db71ce1ee569977ae58c552043a778e2ab4. Native job 21817278
+  passed 557 independent FortSym-versus-AD JVP/VJP entry comparisons across
+  52 pairs, and two fresh generations were identical. These are manufactured
+  point/direction checks, not a global derivative proof or a dot-product
+  identity claim. Source-authored refusal checks preserve previously admitted
+  pairs. FortFront pin 17b6bdb5 repairs AST-copy compatibility; FortAD 7d058399
+  and FortGen ea422 remain the recorded producer revisions.
+- [Scaling report #102](https://github.com/lazy-fortran/fortfem/pull/102)
+  remains draft at f0fe5730408864ea5e5fa45a01fe12f9ed2b0080. Native job
+  21817118 completed the same-binary requested-thread sweep: assembly times
+  1440.245, 724.321, 378.359 and 197.135 seconds for 1, 2, 4 and 8 requested
+  threads. All 16 physical assertions passed. These are single shared-host
+  observations; actual team sizes and run-to-run variation were not measured.
+  The inspected plot and report are updated; no robust speedup is claimed.
+- The unchanged KIN6D consumer gate using the merged producer passed 6/7
+  tests in job 21817424; Landreman full-surface assembly timed out at 1800.12
+  seconds. The coupled derivative test passed in 587.14 seconds. A separate
+  271-second censored diagnostic, job 21817533, located work in adaptive
+  assembly and consumer geometry contractions, with about eight active cores.
+  This diagnosis is not qualification. Consumer-only optimization d34d080e
+  passed 8/8 independent old-path/finite-difference geometry controls in
+  21817540; unchanged slow gates 21817541 were active at handoff. Keep the
+  producer pin and original deadlines; generic producer caching remains held.
+
+### Shared source and CI checkpoint
+
+Each linked proposal records its scope and evidence. Merge SHAs below denote
+completed promotions; open heads remain subject to actual required native gates.
+
+| Project | Verified or pending state at handoff |
+| --- | --- |
+| [FortNum](https://github.com/lazy-fortran/fortnum) | Fixture-only #108 merged 71a9de09c025336bf91babcbc9b1975047f9c062; ordinary/read-only checker cases and negative oracles pass. [CI #107](https://github.com/lazy-fortran/fortnum/pull/107), head 8f2afab2, has four native gates green; compiler retry 39640706155 awaits capacity. |
+| [FortSym](https://github.com/lazy-fortran/fortsym) | Fixture-only #109 merged 050d8fff90fd117bb6a845f75e8ea919b8369486. [CI #107](https://github.com/lazy-fortran/fortsym/pull/107), head 835e690a, repairs five further executable fixtures without changing assertions; focused job 21817542 passes 5/5 and full owned Tier1 job 119383412718 has no failures across 136 tests (four optional skips). Tier2 remains pending in 39646517758. |
+| [FortFEM CI #100](https://github.com/lazy-fortran/fortfem/pull/100) | Head 80d40f4b; generated gate passes, GNU/Debug remain active in 39640702621. Flang failed during root-proxy provisioning before compiler qualification. Native fpm polar proof passed 21817127 with 2/2 exact identities. |
+| [FortSparse](https://github.com/lazy-fortran/fortsparse) | [CI #24](https://github.com/lazy-fortran/fortsparse/pull/24) merged 0a625bad57e3829e47ea040dd3a77a1e57440594. Native EPYC Slurm jobs 3322337/3322338 pass 20/20 and 4/4 with unchanged one-second gates. Numerical/performance follow-up has its separate owner. |
+| [FortGen](https://github.com/lazy-fortran/fortgen) | [CI #26](https://github.com/lazy-fortran/fortgen/pull/26) merged 21f2bbbd48fd804357ef9bd4cb65e703b0a6318b; owned job 119372820182 passes native fpm, CMake 15/15 and installed SymPy 2/2. |
+| [FortAD](https://github.com/lazy-fortran/fortad) | [Hygiene #27](https://github.com/lazy-fortran/fortad/pull/27) merged bd9d4064e6bf504984fc8ea50f1f33053f5a69fa; owned job 119373256529 passes. This proposal changes only two shared-leaf pins. |
+| [FortBench](https://github.com/lazy-fortran/fortbench) | [CI #5](https://github.com/lazy-fortran/fortbench/pull/5) merged ce967440036b2acad185603bc9ca53b056879ac2; actual owned native job 119372876912 passes 62 tests in 5.678 s. |
+| [FortIO](https://github.com/lazy-fortran/fortio) | [CI #77](https://github.com/lazy-fortran/fortio/pull/77), head f5798656, is queued in 39643476443; CMake/TSAN pass, downstream/GNU/performance await capacity. Hosted Windows failure is advisory. Independent hygiene #76 remains separate. |
+| [FortArray](https://github.com/lazy-fortran/fortarray) | [CI #9](https://github.com/lazy-fortran/fortarray/pull/9), head 437a9dbe, is active in 39643481238; fpm/TSAN pass and CMake remains active. Independent hygiene #8 remains separate. |
+| [Fx](https://github.com/lazy-fortran/fx) | [CI #66](https://github.com/lazy-fortran/fx/pull/66) remains draft at 667aa19e947473f885ffab8ede6adb3d5c7a7308. It retains the three reviewed portability changes. The initial GNU failures came from a scratch-root safety-allowlist mismatch; the workflow now uses a private /var/tmp child, with guards unchanged. Pilot 39647931717 must qualify GNU 12/GNU 14/Flang 21; main-only test evidence does not qualify this head. |
+
+FortSym's controlled benchmark report retains 3693 agreements, 188 differences,
+535 independent-oracle disagreements, 180 missing cases and one timeout across
+4597 cases. The 384 scripts comprise 377 produced, six unsupported and one
+unavailable. Full parity remains open. GLISS/FortSparse scientific plots were
+refreshed from source-matched job 3321625 by their owner; do not restore the older
+LS5 product 3306614 results. Raw scientific outputs and checksums remain outside
+Git; canonical reports/plots retain their explicit qualification limits.
+
+### Continuation order
+
+1. Preserve healthy queued heads and active jobs. Required native checks and
+   their ancestors use owned hardware; hosted Windows/Intel macOS are advisory.
+   All PR events skip required CI. Merge-group execution is authoritative;
+   manual dispatch remains available for explicit development qualification.
+2. The CI owner confirmed and added the authorized required contexts using
+   actual check-run emitters: FortSparse native parallel analysis, FortIO GNU
+   and native performance, all three Fx compilers, and FortSym compatibility
+   provenance. Existing queue/bypass policy is preserved; corpus remains
+   report-only. FortFEM's required `test` aggregate covers GNU, Debug, generated
+   and Enzyme. Real native execution must still pass before promotion.
+3. Root-proxy provisioning passed actual pipeline 39647605098 with sudo
+   wget/curl public access and unchanged private-network denial. Num's
+   failed-only retry is already accepted. Retry failed FortFEM provisioning
+   gates normally after its active workflow terminates; the job-specific API
+   rejected a retry while healthy jobs were active. Do not cancel them.
+4. Hold FortFEM #101/#102 until #100 passes and lands. Integrate main, verify
+   tested src/test/tools tree equivalence and the final independent diff, then
+   use the controller's conditional normal SQUASH-queue approval. Preserve
+   deterministic generation; do not hand-format generated products.
+5. After the initial FortFEM/FortNum CI heads land, apply strict PR-skip and
+   shared-hygiene 104634c01aa669d542e8a26a34a50b6471fc19ce follow-ups without
+   rewriting healthy queue history. Do not condition the reusable hygiene
+   caller: its required emitted context must remain unchanged.
+
+The bounded read-only log collector remains active at handoff and records exact
+run SHA, attempt, runner identity and terminal log checksums. It cannot start
+jobs, push changes or promote a proposal. No new repairs or campaigns were
+started for the controller switch.
 
 ## Current compiler handoff (2026-08-07)
 
