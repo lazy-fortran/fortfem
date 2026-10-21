@@ -112,7 +112,8 @@ contains
         type(rule_bank_t), intent(out) :: bank
         integer, intent(out) :: status
         real(dp), allocatable :: xi(:),eta(:),weights(:)
-        integer :: levels,maxq,maxn,l,n,d
+        integer, allocatable :: degrees(:)
+        integer :: levels,maxq,maxn,l,n,d,used,previous_nodes
         status=1
         if (.not. ieee_is_finite(options%relative_tolerance)) return
         if (.not. ieee_is_finite(options%absolute_tolerance)) return
@@ -123,14 +124,27 @@ contains
         if (options%maximum_evaluations<1) return
         levels=1+(options%maximum_degree-options%initial_degree+ &
             options%degree_increment-1)/options%degree_increment
+        ! Polynomial-degree requests can select identical Gauss rules.
+        ! Count actual rule changes, including a capped final degree.
+        allocate(degrees(levels))
+        used=0; previous_nodes=0
+        do l=1,levels
+            d=min(options%maximum_degree, &
+                options%initial_degree+(l-1)*options%degree_increment)
+            n=(d+3)/2
+            if (n==previous_nodes) cycle
+            used=used+1
+            degrees(used)=d
+            previous_nodes=n
+        end do
+        levels=used
         maxn=(options%maximum_degree+3)/2
         maxq=maxn**2
         allocate(bank%uv(2,maxq,levels),bank%weights(maxq,levels), &
             bank%nodes(maxn,levels),bank%line_w(maxn,levels), &
             bank%count(levels),bank%line_count(levels),bank%degree(levels))
         do l=1,levels
-            d=min(options%maximum_degree, &
-                options%initial_degree+(l-1)*options%degree_increment)
+            d=degrees(l)
             call triangle_duffy_quadrature(d,xi,eta,weights,status)
             if (status/=0) return
             n=size(weights)
