@@ -50,7 +50,7 @@ case "$tier" in
   test-generated)
     python3 -m venv "$root/venv"
     . "$root/venv/bin/activate"
-    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator"
+    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator test_exterior_harmonic_fields test_exterior_harmonic_energy test_fortad_fortsym_equivalence"
     export OMP_NUM_THREADS="2"
     export OPENBLAS_NUM_THREADS="1"
     export OMP_WAIT_POLICY="passive"
@@ -75,7 +75,7 @@ tools/codegen/check_generated.sh
     (
 cd verification/fortsym
 export PATH="$HOME/.local/bin:$PATH"
-fo exec verify_polar_complex
+fpm run --target verify_polar_complex --compiler "${FC:-gfortran}" --profile release --flag "-fopenmp -foffload=disable -finline-matmul-limit=0"
 
     )
     load_job_environment
@@ -83,7 +83,7 @@ fo exec verify_polar_complex
   test-debug-checks)
     python3 -m venv "$root/venv"
     . "$root/venv/bin/activate"
-    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator"
+    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator test_exterior_harmonic_fields test_exterior_harmonic_energy test_fortad_fortsym_equivalence"
     export OMP_NUM_THREADS="2"
     export OPENBLAS_NUM_THREADS="1"
     export OMP_WAIT_POLICY="passive"

@@ -27,6 +27,7 @@ env:
     test_parametric_bem_pair_accuracy
     test_equilibrated_rt_normal_trace
     test_parametric_bem_estimator
+    test_fortad_fortsym_equivalence
   OMP_NUM_THREADS: 2
   OPENBLAS_NUM_THREADS: 1
   OMP_WAIT_POLICY: passive
@@ -39,7 +40,7 @@ concurrency:
 jobs:
   generated:
     name: generated sources are current
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","itp-build"]') }}
+    runs-on: ${{ github.event.pull_request.head.repo.fork && fromJSON('["self-hosted","itp-ubuntu24"]') || fromJSON('["self-hosted","itp-build"]') }}
     env:
       # Code generation includes a large exact RT solve; keep the compiler
       # graph bounded so hosted runners do not segfault under oversubscription.
@@ -105,13 +106,13 @@ jobs:
         working-directory: verification/fortsym
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          fo exec verify_polar_complex
+          fpm run --target verify_polar_complex --compiler "${FC:-gfortran}" --profile release --flag "-fopenmp -foffload=disable -finline-matmul-limit=0"
 
         if: ${{ github.event.pull_request.head.repo.fork }}
     if: >-
       github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   build-test:
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, itp-ubuntu24]
     env:
       # Keep the ten-second per-target contract reliable on large runners;
       # unconstrained host-wide parallelism makes independent numerical tests
@@ -303,7 +304,7 @@ jobs:
       github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   debug-checks:
     name: tests with runtime checks (debug profile)
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","itp-build"]') }}
+    runs-on: ${{ github.event.pull_request.head.repo.fork && fromJSON('["self-hosted","itp-ubuntu24"]') || fromJSON('["self-hosted","itp-build"]') }}
     env:
       TEST_TIMEOUT: 10s
     steps:
@@ -345,7 +346,7 @@ jobs:
       github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   enzyme:
     name: released Flang 22 + pinned Enzyme
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     env:
       LLVM_MAJOR: "22"
       ENZYME_REVISION: c96508349d9f121957292308c646b4a1fd53c507
@@ -410,7 +411,7 @@ jobs:
     needs: [build-test, debug-checks, enzyme, generated]
     if: >-
       (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (always())
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
     steps:
       - name: Check test results
         run: |
