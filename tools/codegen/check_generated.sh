@@ -394,3 +394,7 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 filename="fortfem_parametric_bem_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
+
+filename="fortfem_harmonic_field_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"

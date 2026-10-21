@@ -79,3 +79,62 @@ Taylor remainder by a geometric-series identity, and checks containment,
 efficiency and rate on every P1/P2/P3 mesh. Its separate `slow` study retains
 repeated 1/2/4-thread timings. Mapped cells and Neumann traces still require
 separate geometry and boundary enclosures.
+
+## Mapped audit
+
+`verified_mapped_bernstein_majorant` accepts P1/P2/P3 Lagrange geometry
+`geometry_nodes(2,n_geometry_nodes,n_cells)` and a cell-major flattened array
+of weight values at those geometry nodes. The source callback supplies a
+polynomial in **reference** Bernstein coordinates. The solution order can
+differ from the geometry order. All cells use the supplied isoparametric map;
+a consumer with a mixture of affine and higher-order maps must establish that
+these are its actual maps before using this entry point.
+
+The floating fit and shared normal repair take place on the reference
+triangle. Each shared edge selects one reference flux per Bernstein position
+in global vertex order. Reference outward normals include edge-parameter
+length, rather than unit length. Identical high-order edge nodes, checked
+in global orientation, define identical physical edge parametrizations.
+The contravariant Piola transform then gives an exactly H(div) field on the
+mapped mesh. Nonmatching maps fail; small floating discrepancies are never
+accepted as exact conformity.
+
+For J=DF, D=det(J), reference field S and candidate U, form the polynomials
+
+```
+Q = w J S - adj(J)^T grad U,
+T = s D + w^m div S.
+```
+
+The physical flux and residual integrals become `integral |Q|^2/(w D)`
+and `integral T^2/(w^(2m) D)` on the reference triangle. The generator checks
+the Piola divergence identity with independent first/second map jets and
+independent flux jets, including equality of mixed map partials. It also checks
+the transformed energy identity symbolically. These are exact identities;
+reproduction of generated output supplies separate provenance evidence.
+
+Bernstein control hulls enclose D and w throughout the cell. Both must have
+strictly positive lower endpoints. Exact polynomial square moments are
+evaluated outwardly and divided by positive denominator hulls. Thus both
+returned squared-norm intervals enclose the full rational integrals and their
+arithmetic error. Their widths are explicit integration budgets; no sampled
+quadrature or unproved exactness is used. Hull division can be conservative
+on strongly curved or highly weighted cells. Failure of a hull positivity
+test is inconclusive about the geometry, and fails closed.
+
+The optional source remainder uses Minkowski with cell area at most
+`D_max/2` and denominator at least `min(w^m)`. Callback and geometry failures
+retain the unavailable bound. The caller still proves nonoverlap, the
+conforming homogeneous candidate trace and the Friedrichs bound for the
+**mapped domain**. A box of Lagrange nodes alone need not contain that domain;
+coordinate Bernstein hulls do. Neumann data and nonlinear stability remain
+outside this theorem.
+
+All cell and edge work is OpenMP-parallel. Polynomial buffers have at most
+66 coefficients (degree ten), with fixed-size thread scratch and no allocation
+in the cell loops. Setup allocations scale linearly with cells and edges.
+The new regression covers curved P2/P3 bubble candidates with known exact zero
+solution, independently integrated energy errors and reported effectivity,
+amplitude refinement order, nonzero Piola flux/divergence on shared curved
+meshes, the affine limit, and fail-closed geometry checks. Amplitude order is
+not evidence of Galerkin mesh-convergence order.

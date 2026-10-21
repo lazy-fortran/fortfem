@@ -115,7 +115,8 @@ program test_equilibrated_sipg_2d
     use fortfem_triangle_lagrange_arbitrary_order, only: &
         evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
         triangle_lagrange_basis_t
-    use fortsparse, only: csc_z_t, fortsparse_status_t, sparse_solve_once, &
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
+    use fortsparse, only: csc_z_t, fortsparse_status_t, &
         status_ok
     implicit none
 
@@ -224,7 +225,7 @@ contains
         if (st /= 0) error stop "assemble"
         call dg_curved_rhs(space, coef, data, DG_FORM_CONSERVATIVE, rhs, st)
         if (st /= 0) error stop "rhs"
-        call sparse_solve_once(a, rhs, u, fst)
+        call sparse_direct_solve_once(a, rhs, u, fst)
         if (.not. status_ok(fst)) error stop "solve"
         lower = 1.0_dp
         call sipg_energy_bound(space, coef, data, u, 2*degree + 8, lower, &
