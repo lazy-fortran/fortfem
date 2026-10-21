@@ -5,7 +5,7 @@ module tc_qtest
     !! contraction) mirrors the oracle binary so Steiner point coordinates
     !! agree bitwise.
     use, intrinsic :: iso_fortran_env, only: dp => real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_fma
+    use tc_fma_mod, only: tc_fma
     use tc_state
     use tc_alloc
     use tc_predicates, only: tc_counterclockwise
@@ -123,7 +123,7 @@ contains
         type(tc_state_t), intent(in) :: s
         integer, intent(in) :: eorg, edest, eapex
         real(dp) :: d
-        d = ieee_fma(s%vx(eorg) - s%vx(eapex), s%vx(edest) - s%vx(eapex), &
+        d = tc_fma(s%vx(eorg) - s%vx(eapex), s%vx(edest) - s%vx(eapex), &
                      (s%vy(eorg) - s%vy(eapex))*(s%vy(edest) - s%vy(eapex)))
     end function lens_dot
 
@@ -131,7 +131,7 @@ contains
         type(tc_state_t), intent(in) :: s
         integer, intent(in) :: va, vb
         real(dp) :: d
-        d = ieee_fma(s%vx(va) - s%vx(vb), s%vx(va) - s%vx(vb), &
+        d = tc_fma(s%vx(va) - s%vx(vb), s%vx(va) - s%vx(vb), &
                      (s%vy(va) - s%vy(vb))*(s%vy(va) - s%vy(vb)))
     end function sq_dist
 
@@ -166,21 +166,21 @@ contains
 
         if ((apexlen < orglen) .and. (apexlen < destlen)) then
             minedge = apexlen
-            angle = ieee_fma(dxda, dxao, dyda*dyao)
+            angle = tc_fma(dxda, dxao, dyda*dyao)
             angle = angle*angle/(orglen*destlen)
             base1 = torg
             base2 = tdest
             tri1 = testtri
         else if (orglen < destlen) then
             minedge = orglen
-            angle = ieee_fma(dxod, dxao, dyod*dyao)
+            angle = tc_fma(dxod, dxao, dyod*dyao)
             angle = angle*angle/(apexlen*destlen)
             base1 = tdest
             base2 = tapex
             tri1 = t_lnext(testtri)
         else
             minedge = destlen
-            angle = ieee_fma(dxod, dxda, dyod*dyda)
+            angle = tc_fma(dxod, dxda, dyod*dyda)
             angle = angle*angle/(apexlen*orglen)
             base1 = tapex
             base2 = torg
@@ -399,33 +399,33 @@ contains
         ydo = s%vy(tdest) - s%vy(torg)
         xao = s%vx(tapex) - s%vx(torg)
         yao = s%vy(tapex) - s%vy(torg)
-        dodist = ieee_fma(xdo, xdo, ydo*ydo)
-        aodist = ieee_fma(xao, xao, yao*yao)
-        dadist = ieee_fma(s%vx(tdest) - s%vx(tapex), s%vx(tdest) - s%vx(tapex), &
+        dodist = tc_fma(xdo, xdo, ydo*ydo)
+        aodist = tc_fma(xao, xao, yao*yao)
+        dadist = tc_fma(s%vx(tdest) - s%vx(tapex), s%vx(tdest) - s%vx(tapex), &
                           (s%vy(tdest) - s%vy(tapex))* &
                           (s%vy(tdest) - s%vy(tapex)))
         denominator = 0.5_dp/tc_counterclockwise(s%vx(tdest), s%vy(tdest), &
                                                  s%vx(tapex), s%vy(tapex), &
                                                  s%vx(torg), s%vy(torg))
-        dx = ieee_fma(yao, dodist, -(ydo*aodist))*denominator
-        dy = ieee_fma(xdo, aodist, -(xao*dodist))*denominator
+        dx = tc_fma(yao, dodist, -(ydo*aodist))*denominator
+        dy = tc_fma(xdo, aodist, -(xao*dodist))*denominator
 
         if ((dodist < aodist) .and. (dodist < dadist)) then
             if (offcenter .and. (s%offconstant > 0.0_dp)) then
-                dxoff = ieee_fma(0.5_dp, xdo, -(s%offconstant*ydo))
-                dyoff = ieee_fma(0.5_dp, ydo, s%offconstant*xdo)
-                if (ieee_fma(dxoff, dxoff, dyoff*dyoff) < &
-                    ieee_fma(dx, dx, dy*dy)) then
+                dxoff = tc_fma(0.5_dp, xdo, -(s%offconstant*ydo))
+                dyoff = tc_fma(0.5_dp, ydo, s%offconstant*xdo)
+                if (tc_fma(dxoff, dxoff, dyoff*dyoff) < &
+                    tc_fma(dx, dx, dy*dy)) then
                     dx = dxoff
                     dy = dyoff
                 end if
             end if
         else if (aodist < dadist) then
             if (offcenter .and. (s%offconstant > 0.0_dp)) then
-                dxoff = ieee_fma(0.5_dp, xao, s%offconstant*yao)
-                dyoff = ieee_fma(0.5_dp, yao, -(s%offconstant*xao))
-                if (ieee_fma(dxoff, dxoff, dyoff*dyoff) < &
-                    ieee_fma(dx, dx, dy*dy)) then
+                dxoff = tc_fma(0.5_dp, xao, s%offconstant*yao)
+                dyoff = tc_fma(0.5_dp, yao, -(s%offconstant*xao))
+                if (tc_fma(dxoff, dxoff, dyoff*dyoff) < &
+                    tc_fma(dx, dx, dy*dy)) then
                     dx = dxoff
                     dy = dyoff
                 end if
@@ -434,10 +434,10 @@ contains
             if (offcenter .and. (s%offconstant > 0.0_dp)) then
                 dxa = s%vx(tapex) - s%vx(tdest)
                 dya = s%vy(tapex) - s%vy(tdest)
-                dxoff = ieee_fma(0.5_dp, dxa, -(s%offconstant*dya))
-                dyoff = ieee_fma(0.5_dp, dya, s%offconstant*dxa)
-                if (ieee_fma(dxoff, dxoff, dyoff*dyoff) < &
-                    ieee_fma(dx - xdo, dx - xdo, (dy - ydo)*(dy - ydo))) then
+                dxoff = tc_fma(0.5_dp, dxa, -(s%offconstant*dya))
+                dyoff = tc_fma(0.5_dp, dya, s%offconstant*dxa)
+                if (tc_fma(dxoff, dxoff, dyoff*dyoff) < &
+                    tc_fma(dx - xdo, dx - xdo, (dy - ydo)*(dy - ydo))) then
                     dx = xdo + dxoff
                     dy = ydo + dyoff
                 end if
@@ -446,8 +446,8 @@ contains
 
         ccx = s%vx(torg) + dx
         ccy = s%vy(torg) + dy
-        xi = (denominator + denominator)*ieee_fma(yao, dx, -(xao*dy))
-        eta = (denominator + denominator)*ieee_fma(xdo, dy, -(ydo*dx))
+        xi = (denominator + denominator)*tc_fma(yao, dx, -(xao*dy))
+        eta = (denominator + denominator)*tc_fma(xdo, dy, -(ydo*dx))
     end subroutine findcircumcenter
 
 end module tc_qtest

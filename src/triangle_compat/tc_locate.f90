@@ -2,7 +2,7 @@ module tc_locate
     !! Point location by random sampling plus directed walk, mirroring the
     !! reference implementation including its sampling RNG consumption.
     use, intrinsic :: iso_fortran_env, only: dp => real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_fma
+    use tc_fma_mod, only: tc_fma
     use tc_state
     use tc_geom, only: ccw_p
     implicit none
@@ -54,7 +54,7 @@ contains
             orgorient = ccw_p(s, fapex, fdest, px, py)
             if (destorient > 0.0_dp) then
                 if (orgorient > 0.0_dp) then
-                    moveleft = ieee_fma(s%vx(fapex) - px, &
+                    moveleft = tc_fma(s%vx(fapex) - px, &
                                         s%vx(fdest) - s%vx(forg), &
                                         (s%vy(fapex) - py)* &
                                         (s%vy(fdest) - s%vy(forg))) > 0.0_dp
@@ -117,7 +117,7 @@ contains
         integer :: population, totalpopulation, blockstart
 
         torg = t_org(s, searchtri)
-        searchdist = ieee_fma(px - s%vx(torg), px - s%vx(torg), &
+        searchdist = tc_fma(px - s%vx(torg), px - s%vx(torg), &
                               (py - s%vy(torg))*(py - s%vy(torg)))
 
         if (s%recent >= 0) then
@@ -128,7 +128,7 @@ contains
                     code = LOC_ONVERTEX
                     return
                 end if
-                dist = ieee_fma(px - s%vx(torg), px - s%vx(torg), &
+                dist = tc_fma(px - s%vx(torg), px - s%vx(torg), &
                                 (py - s%vy(torg))*(py - s%vy(torg)))
                 if (dist < searchdist) then
                     searchtri = s%recent
@@ -153,7 +153,7 @@ contains
                 sampleslot = blockstart + tc_random(s, population) + 1
                 if (.not. s%tdead(sampleslot)) then
                     sampleorg = t_org(s, t_make(sampleslot, 0))
-                    dist = ieee_fma(px - s%vx(sampleorg), px - s%vx(sampleorg), &
+                    dist = tc_fma(px - s%vx(sampleorg), px - s%vx(sampleorg), &
                                     (py - s%vy(sampleorg))* &
                                     (py - s%vy(sampleorg)))
                     if (dist < searchdist) then
