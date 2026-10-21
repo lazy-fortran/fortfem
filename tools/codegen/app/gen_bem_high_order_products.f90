@@ -1,7 +1,7 @@
 program gen_bem_high_order_products
     use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), &
-        operator(/), operator(**)
+        operator(/), operator(**), sqrt
     use fortsym_diff, only: diff
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
@@ -14,6 +14,7 @@ program gen_bem_high_order_products
     type(expr_t) :: v(7), product(1), x, y, z, phi(6), l(3), total
     type(expr_t) :: poly, lap, euler, rr, primitive, legendre
     type(expr_t) :: fan(9), mapped(3), signed_jacobian
+    type(expr_t) :: normal_gap,radial_distance,radial_norm
     type(str_t) :: fan_names(9)
     type(str_t) :: names(7)
     type(native_engine_t) :: engine
@@ -87,6 +88,14 @@ program gen_bem_high_order_products
         'squared radial fan Jacobian')
     call emit('bem_fan_map',fan_names,fan,mapped, &
         [str('uv1'),str('uv2'),str('weight')])
+    ! For normal_gap>0 this primitive has endpoint difference one on
+    ! [0,infinity); angular integration gives the double-layer jump 1/2.
+    normal_gap=sym(arena,'normal_gap')
+    radial_distance=sym(arena,'radial_distance')
+    radial_norm=sqrt(normal_gap*normal_gap+radial_distance*radial_distance)
+    call prove(diff(-normal_gap/radial_norm,radial_distance)- &
+        normal_gap*radial_distance/(radial_norm**3), &
+        'near-normal peak radial antiderivative')
     close(unit)
 contains
     subroutine prove(expression,label)
