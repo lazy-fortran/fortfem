@@ -49,6 +49,11 @@ name = "fortfem_toroidal_mode_bem_scaling"
 source-dir = "benchmark"
 main = "fortfem_toroidal_mode_bem_scaling.f90"
 
+[[executable]]
+name = "fortfem_element_precision_scaling"
+source-dir = "benchmark"
+main = "fortfem_element_precision_scaling.f90"
+
 [fortran]
 implicit-typing = false
 implicit-external = false

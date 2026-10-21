@@ -11,6 +11,7 @@ module fortfem_element_to_csr
     !! The node-to-element map is kept in the matrix. Every pass over rows is
     !! row-parallel (OpenMP) and sums each row in a fixed order (ascending element,
     !! then local indices), so the values are bitwise independent of the thread count.
+    use, intrinsic :: iso_fortran_env, only: real32
     use fortfem_kinds, only: dp
     implicit none
     private
@@ -18,6 +19,7 @@ module fortfem_element_to_csr
     public :: csr_matrix_t
     public :: csr_build_pattern
     public :: csr_assemble_blocks
+    public :: csr_assemble_batched
     public :: csr_find_entry
     public :: csr_element_colouring
     public :: build_node_to_element
@@ -33,6 +35,10 @@ module fortfem_element_to_csr
         integer, allocatable :: elem_ptr(:) ! (n+1), node-to-element map
         integer, allocatable :: elem_idx(:) ! elements of dof i, ascending
     end type csr_matrix_t
+
+    interface csr_assemble_batched
+        module procedure csr_assemble_batched_fp64, csr_assemble_batched_fp32
+    end interface
 
 contains
 
@@ -283,6 +289,72 @@ contains
             if (scale > 0.0_dp) row_sum_defect = defect/scale
         end if
     end subroutine csr_assemble_blocks
+
+    subroutine csr_assemble_batched_fp64(matrix, conn, blocks)
+        type(csr_matrix_t), intent(inout) :: matrix
+        integer, intent(in) :: conn(:, :)
+        real(dp), intent(in) :: blocks(:, :, :)
+        ! Same connectivity contract as csr_assemble_blocks. SoA cell storage
+        ! stays narrow; conversion occurs in registers before fp64 accumulation.
+        integer :: a, b, e, i, j, k, p
+
+        if (size(blocks,1) /= size(conn,2) .or. &
+            size(blocks,2) /= matrix%nloc .or. &
+            size(blocks,3) /= matrix%nloc .or. &
+            size(conn,1) /= matrix%nloc) &
+            error stop 'csr_assemble_batched: shape mismatch'
+        !$omp parallel do default(none) shared(matrix, conn, blocks) &
+        !$omp private(i, k, e, a, b, j, p) schedule(static)
+        do i = 1, matrix%n
+            matrix%val(matrix%rowptr(i):matrix%rowptr(i+1)-1) = 0.0_dp
+            do k = matrix%elem_ptr(i), matrix%elem_ptr(i+1)-1
+                e = matrix%elem_idx(k)
+                do a = 1, matrix%nloc
+                    if (conn(a,e) /= i) cycle
+                    do b = 1, matrix%nloc
+                        j = conn(b,e)
+                        if (matrix%exchange .and. j == i) cycle
+                        p = csr_find_entry(matrix,i,j)
+                        matrix%val(p) = matrix%val(p) + real(blocks(e,a,b),dp)
+                    end do
+                end do
+            end do
+        end do
+        !$omp end parallel do
+    end subroutine csr_assemble_batched_fp64
+
+    subroutine csr_assemble_batched_fp32(matrix, conn, blocks)
+        type(csr_matrix_t), intent(inout) :: matrix
+        integer, intent(in) :: conn(:, :)
+        real(real32), intent(in) :: blocks(:, :, :)
+        ! Same connectivity contract as csr_assemble_blocks. SoA cell storage
+        ! stays narrow; conversion occurs in registers before fp64 accumulation.
+        integer :: a, b, e, i, j, k, p
+
+        if (size(blocks,1) /= size(conn,2) .or. &
+            size(blocks,2) /= matrix%nloc .or. &
+            size(blocks,3) /= matrix%nloc .or. &
+            size(conn,1) /= matrix%nloc) &
+            error stop 'csr_assemble_batched: shape mismatch'
+        !$omp parallel do default(none) shared(matrix, conn, blocks) &
+        !$omp private(i, k, e, a, b, j, p) schedule(static)
+        do i = 1, matrix%n
+            matrix%val(matrix%rowptr(i):matrix%rowptr(i+1)-1) = 0.0_dp
+            do k = matrix%elem_ptr(i), matrix%elem_ptr(i+1)-1
+                e = matrix%elem_idx(k)
+                do a = 1, matrix%nloc
+                    if (conn(a,e) /= i) cycle
+                    do b = 1, matrix%nloc
+                        j = conn(b,e)
+                        if (matrix%exchange .and. j == i) cycle
+                        p = csr_find_entry(matrix,i,j)
+                        matrix%val(p) = matrix%val(p) + real(blocks(e,a,b),dp)
+                    end do
+                end do
+            end do
+        end do
+        !$omp end parallel do
+    end subroutine csr_assemble_batched_fp32
 
     subroutine csr_element_colouring(matrix, conn, colour, n_colours)
         !! Greedy element colouring: elements sharing a dof get different colours.

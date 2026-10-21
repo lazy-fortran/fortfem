@@ -37,6 +37,67 @@ if(FORTFEM_TRIANGLE_COMPAT_ONLY)
     return()
 endif()
 
+option(FORTFEM_ELEMENT_KERNELS_ONLY
+    "Build the dependency-free batched element and CSR interface only" OFF)
+option(FORTFEM_ENABLE_CUDA "Build batched CUDA element kernels" OFF)
+set(FORTFEM_CUDA_ARCHITECTURES "" CACHE STRING "Explicit CUDA architecture list")
+find_package(OpenMP REQUIRED COMPONENTS Fortran)
+add_library(fortfem_element_kernels STATIC
+    src/utils/kinds.f90
+    src/generated/fortfem_element_precision_products.f90
+    src/assembly/element_batch.f90
+    src/assembly/element_to_csr.f90)
+add_library(fortfem::element_kernels ALIAS fortfem_element_kernels)
+set_target_properties(fortfem_element_kernels PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/element_modules")
+target_include_directories(fortfem_element_kernels PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/element_modules>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
+target_link_libraries(fortfem_element_kernels PUBLIC OpenMP::OpenMP_Fortran)
+if(FORTFEM_BUILD_TESTING)
+    enable_testing()
+    add_executable(test_element_precision_batch
+        test/check.f90 test/test_element_precision_batch.f90)
+    target_link_libraries(test_element_precision_batch PRIVATE
+        fortfem_element_kernels)
+    add_test(NAME fortfem_element_precision_batch
+        COMMAND test_element_precision_batch)
+    set_tests_properties(fortfem_element_precision_batch PROPERTIES
+        LABELS "element;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+option(FORTFEM_BUILD_BENCHMARKS "Build element scaling benchmark" OFF)
+if(FORTFEM_BUILD_BENCHMARKS)
+    add_executable(fortfem_element_precision_scaling
+        benchmark/fortfem_element_precision_scaling.f90)
+    target_link_libraries(fortfem_element_precision_scaling PRIVATE
+        fortfem_element_kernels)
+endif()
+if(FORTFEM_ENABLE_CUDA)
+    if(NOT FORTFEM_CUDA_ARCHITECTURES)
+        message(FATAL_ERROR "FORTFEM_CUDA_ARCHITECTURES must be explicit")
+    endif()
+    set(CMAKE_CUDA_ARCHITECTURES ${FORTFEM_CUDA_ARCHITECTURES})
+    enable_language(CUDA)
+    add_library(fortfem_element_cuda STATIC src/cuda/element_batch.cu)
+    target_include_directories(fortfem_element_cuda PUBLIC include
+        PRIVATE src/generated)
+    set_target_properties(fortfem_element_cuda PROPERTIES
+        CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)
+    if(FORTFEM_BUILD_TESTING)
+        add_executable(test_element_precision_cuda
+            test/test_element_precision_cuda.cu)
+        target_link_libraries(test_element_precision_cuda PRIVATE
+            fortfem_element_cuda)
+        add_test(NAME fortfem_element_precision_cuda
+            COMMAND test_element_precision_cuda)
+        set_tests_properties(fortfem_element_precision_cuda PROPERTIES
+            LABELS "element;cuda" SKIP_RETURN_CODE 77)
+    endif()
+endif()
+if(FORTFEM_ELEMENT_KERNELS_ONLY)
+    return()
+endif()
+
 if(NOT TARGET fortsparse)
     if(NOT FORTFEM_FETCH_DEPENDENCIES)
         message(FATAL_ERROR

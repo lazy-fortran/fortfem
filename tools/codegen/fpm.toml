@@ -342,3 +342,8 @@ main = "gen_equilibrated_flux_3d_products.f90"
 name = "gen_hcurl_bound_products"
 source-dir = "app"
 main = "gen_hcurl_bound_products.f90"
+
+[[executable]]
+name = "gen_element_precision_products"
+source-dir = "app"
+main = "gen_element_precision_products.f90"
