@@ -18,6 +18,8 @@ env:
     test_verified_rt0_majorant
     test_verified_bernstein_majorant
     test_reference_p2_scalar_intervals
+    test_parametric_bem_high_order
+    test_parametric_bem_pair_accuracy
     test_equilibrated_rt_normal_trace
     test_parametric_bem_estimator
   OMP_NUM_THREADS: 2

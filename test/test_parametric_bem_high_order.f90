@@ -17,7 +17,7 @@ program test_parametric_bem_high_order
     integer, allocatable :: trace_dofs(:, :), flux_dofs(:, :)
     real(dp), allocatable :: u(:), q(:), load(:)
     real(dp) :: v(3,3), k(3,6), w(6,6), correction(3,6)
-    integer :: status, n, i
+    integer :: status, n
     logical :: passed
     passed = .true.
     call generate_sphere_surface_mesh(1.0_dp, 0, sphere%vertices, sphere%faces)
@@ -33,6 +33,8 @@ program test_parametric_bem_high_order
     options%maximum_degree = 32
     call assemble_parametric_bem_p2(sphere, sphere%faces, options, op, &
         trace_dofs, flux_dofs, report, status)
+    write(*,'(a,3i8,es16.7)') 'P2 quadrature status failed degree ratio ', &
+        status,report%failed_pairs,report%maximum_degree_used,report%error_ratio
     call record(status == 0, 'tolerance-controlled curved P2/P1 assembly succeeds')
     if (status /= 0) error stop 1
     call record(all(shape(op%v) == [24,24]), 'V acts on discontinuous P1 fluxes')
