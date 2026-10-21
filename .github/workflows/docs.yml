@@ -8,7 +8,7 @@ on:
         description: "Completed test run ID whose generated-plots artifact should be reused"
         required: false
         type: string
-  
+
   # Run after test/interoperability workflows complete.  The test workflow
   # deliberately publishes example artifacts even when verification failures
   # keep its conclusion red.
@@ -33,12 +33,12 @@ concurrency:
 jobs:
   # Build job
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Download example plots from triggering test run
         if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'test' }}
         uses: dawidd6/action-download-artifact@v3
@@ -82,7 +82,7 @@ jobs:
           workflow_conclusion: success
           if_no_artifact_found: ignore
         continue-on-error: true
-        
+
       - name: Create empty plots directory if no artifacts
         run: |
           set -euo pipefail
@@ -99,21 +99,21 @@ jobs:
             fi
           fi
           find ./artifacts/plots/ -maxdepth 4 -type f -print
-        
+
       - name: Install dependencies
         run: |
           # Ford's search-index builder uses BeautifulSoup's lxml parser;
           # install it explicitly so a clean runner does not fall back to the
           # much slower pure-Python parser for this large generated API.
           pip install ford lxml
-        
+
       - name: Generate example documentation pages
         run: |
           chmod +x scripts/generate_example_docs.sh
           ./scripts/generate_example_docs.sh
           bash test/test_example_docs.sh
           bash test/test_gallery_media_staging.sh
-        
+
       - name: Build documentation
         run: make doc
 
@@ -134,22 +134,22 @@ jobs:
 
       - name: Validate complete examples page
         run: bash test/test_example_pages.sh
-        
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload only the documentation directory
           path: './build/doc'
-          
+
   # Deploy job
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
     needs: build
     steps:
       - name: Deploy to GitHub Pages

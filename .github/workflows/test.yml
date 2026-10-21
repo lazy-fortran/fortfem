@@ -4,9 +4,10 @@ on:
   merge_group:
     types: [checks_requested]
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -26,6 +27,7 @@ env:
     test_parametric_bem_pair_accuracy
     test_equilibrated_rt_normal_trace
     test_parametric_bem_estimator
+    test_fortad_fortsym_equivalence
   OMP_NUM_THREADS: 2
   OPENBLAS_NUM_THREADS: 1
   OMP_WAIT_POLICY: passive
@@ -38,7 +40,7 @@ concurrency:
 jobs:
   generated:
     name: generated sources are current
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && fromJSON('["self-hosted","itp-ubuntu24"]') || fromJSON('["self-hosted","itp-build"]') }}
     env:
       # Code generation includes a large exact RT solve; keep the compiler
       # graph bounded so hosted runners do not segfault under oversubscription.
@@ -46,53 +48,71 @@ jobs:
       FO_BUILD_TIMEOUT: 600
       FORTFEM_CODEGEN_RUNNER: fpm
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          cmake \
-          g++ \
-          gfortran \
-          libflint-dev \
-          libgmp-dev \
-          libmpfr-dev \
-          ninja-build
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run native checks in the build container
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        env:
+          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |-
+          ci/run.sh test-generated
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            g++ \
+            gfortran \
+            libflint-dev \
+            libgmp-dev \
+            libmpfr-dev \
+            ninja-build
 
-    - name: Install pinned SymEngine
-      run: scripts/ci/install_symengine.sh
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Install pinned SymEngine
+        run: scripts/ci/install_symengine.sh
 
-    - name: Install fpm and fo
-      run: |
-        sudo curl -L -o /usr/local/bin/fpm \
-          https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
-        sudo chmod +x /usr/local/bin/fpm
-        git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
-        (
-          cd /tmp/fo
-          fpm install --profile release --prefix "$HOME/.local"
-        )
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Install fpm and fo
+        run: |
+          sudo curl -L -o /usr/local/bin/fpm \
+            https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          sudo chmod +x /usr/local/bin/fpm
+          git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+          (
+            cd /tmp/fo
+            fpm install --profile release --prefix "$HOME/.local"
+          )
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-    - name: Checkout locked fortsym revision
-      run: |
-        git clone https://github.com/lazy-fortran/fortsym.git ../fortsym
-        git -C ../fortsym checkout "$(cat tools/codegen/fortsym.lock)"
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Checkout locked fortsym revision
+        run: |
+          git clone https://github.com/lazy-fortran/fortsym.git ../fortsym
+          git -C ../fortsym checkout "$(cat tools/codegen/fortsym.lock)"
 
-    - name: Check generated sources
-      run: |
-        export PATH="$HOME/.local/bin:$PATH"
-        tools/codegen/check_generated.sh
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Check generated sources
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          tools/codegen/check_generated.sh
 
-    - name: Prove polar-complex identities with FortSym
-      working-directory: verification/fortsym
-      run: |
-        export PATH="$HOME/.local/bin:$PATH"
-        fo exec verify_polar_complex
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Prove polar-complex identities with FortSym
+        working-directory: verification/fortsym
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          fpm run --target verify_polar_complex --compiler "${FC:-gfortran}" --profile release --flag "-fopenmp -foffload=disable -finline-matmul-limit=0"
 
+        if: ${{ github.event.pull_request.head.repo.fork }}
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   build-test:
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, itp-ubuntu24]
     env:
       # Keep the ten-second per-target contract reliable on large runners;
       # unconstrained host-wide parallelism makes independent numerical tests
@@ -114,265 +134,284 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
 
-    - name: Setup Fortran Package Manager
-      run: |
-        wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
-        chmod +x fpm-0.13.0-linux-x86_64-gcc-12
-        sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+      - name: Setup Fortran Package Manager
+        run: |
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.13.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
-    - name: Install fo test runner
-      run: |
-        git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
-        (
-          cd /tmp/fo
-          fpm install --profile release --prefix "$HOME/.local"
-        )
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install fo test runner
+        run: |
+          git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+          (
+            cd /tmp/fo
+            fpm install --profile release --prefix "$HOME/.local"
+          )
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-    - name: Check native sparse C API and derivatives
-      run: |
-        cmake -S . -B build/native-capi -DCMAKE_BUILD_TYPE=Debug \
-          -DFORTFEM_BUILD_TESTING=ON -DFORTSPARSE_ENABLE_AMD=OFF \
-          -DFORTSPARSE_ENABLE_METIS=OFF
-        cmake --build build/native-capi -j2
-        ctest --test-dir build/native-capi -L "sparse|element" --output-on-failure -j2
+      - name: Check native sparse C API and derivatives
+        run: |
+          cmake -S . -B build/native-capi -DCMAKE_BUILD_TYPE=Debug \
+            -DFORTFEM_BUILD_TESTING=ON -DFORTSPARSE_ENABLE_AMD=OFF \
+            -DFORTSPARSE_ENABLE_METIS=OFF
+          cmake --build build/native-capi -j2
+          ctest --test-dir build/native-capi -L "sparse|element" --output-on-failure -j2
 
-    - name: Build
-      run: fpm build --profile release
+      - name: Build
+        run: fpm build --profile release
 
-    - name: Set up uv for the external IGA oracle
-      uses: astral-sh/setup-uv@v6
+      - name: Set up uv for the external IGA oracle
+        uses: astral-sh/setup-uv@v6
 
-    - name: Verify IGA operators against Nutils
-      run: |
-        uv run --with nutils==9.2 \
-          python test/reference/nutils_iga_oracle.py
+      - name: Verify IGA operators against Nutils
+        run: |
+          uv run --with nutils==9.2 \
+            python test/reference/nutils_iga_oracle.py
 
-    - name: Run tests
-      id: unit_tests
-      continue-on-error: true
-      run: |
-        # Keep Fo's native module graph separate from the preceding FPM
-        # compile tree; otherwise the hosted dependency scan can select a
-        # stale build/gfortran_* module while tests are compiled.
-        fpm clean --skip
-        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
-        if ! fo test --flag "-fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
-          echo "Fo test build failed; retrying the selected tests through FPM"
+      - name: Run tests
+        id: unit_tests
+        continue-on-error: true
+        run: |
+          # Keep Fo's native module graph separate from the preceding FPM
+          # compile tree; otherwise the hosted dependency scan can select a
+          # stale build/gfortran_* module while tests are compiled.
           fpm clean --skip
-          fpm test --target "${fast_tests[@]}" \
-            --flag "-fno-fast-math -ffp-contract=off" --runner "timeout 10s"
-        fi
-
-    - name: Run tests with coverage
-      id: coverage
-      continue-on-error: true
-      run: |
-        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
-        if ! fo test --flag "--coverage -fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
-          echo "Fo coverage build failed; retrying coverage through FPM"
-          fpm clean --skip
-          fpm test --target "${fast_tests[@]}" \
-            --flag "--coverage -fno-fast-math -ffp-contract=off" \
-            --runner "timeout 10s"
-        fi
-        find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
-          gcov -o "$dir" src/*.f90 || true
-        done
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-    - name: Build examples
-      if: github.event_name == 'workflow_dispatch'
-      id: build_examples
-      continue-on-error: true
-      run: |
-        # fpm has no `build --example` option. Listing example targets also
-        # rebuilds stale candidates and gives us a valid compile-only gate.
-        fpm run --example --list
-
-    - name: Run all examples
-      if: github.event_name == 'workflow_dispatch'
-      id: examples
-      continue-on-error: true
-      run: |
-        set -euo pipefail
-        echo "Running all examples..."
-        example_failures=0
-        mapfile -t example_sources < <(
-          find example -mindepth 1 -maxdepth 2 -type f -name '*.f90' | sort
-        )
-        for example_source in "${example_sources[@]}"; do
-          example_name=$(basename "$example_source" .f90)
-          if [[ "$example_name" == "interoperability_benchmarks" ]]; then
-            echo "Skipping $example_name: external solver artifacts required"
-            continue
+          read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+          if ! fo test --flag "-fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
+            echo "Fo test build failed; retrying the selected tests through FPM"
+            fpm clean --skip
+            fpm test --target "${fast_tests[@]}" \
+              --flag "-fno-fast-math -ffp-contract=off" --runner "timeout 10s"
           fi
-          echo "Running example: $example_name"
-          if ! timeout --foreground "${EXAMPLE_TIMEOUT}s" \
-              fpm run --example "$example_name"; then
-            echo "::error::example timed out or failed: $example_name"
-            example_failures=1
-            continue
+
+      - name: Run tests with coverage
+        id: coverage
+        continue-on-error: true
+        run: |
+          read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+          if ! fo test --flag "--coverage -fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
+            echo "Fo coverage build failed; retrying coverage through FPM"
+            fpm clean --skip
+            fpm test --target "${fast_tests[@]}" \
+              --flag "--coverage -fno-fast-math -ffp-contract=off" \
+              --runner "timeout 10s"
           fi
-          mkdir -p "output/example/$example_name"
-          find . -maxdepth 1 -type f -name '*.png' \
-            -exec mv {} "output/example/$example_name/" \;
-        done
-        exit "$example_failures"
+          find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
+            gcov -o "$dir" src/*.f90 || true
+          done
 
-    - name: Run all benchmarks  
-      if: github.event_name == 'workflow_dispatch'
-      id: benchmarks
-      continue-on-error: true
-      run: |
-        echo "Running FortFEM benchmarks..."
-        fpm run --example plotting || echo "Plotting demo completed"
-        
-        echo "Running convergence benchmarks..."
-        fpm test run_convergence_tests || echo "Convergence tests completed"
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./*.gcov
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
 
-    - name: Collect generated plots
-      if: always() && github.event_name == 'workflow_dispatch'
-      run: |
-        set -euo pipefail
-        mkdir -p ci-artifacts/plots/examples
+      - name: Build examples
+        if: github.event_name == 'workflow_dispatch'
+        id: build_examples
+        continue-on-error: true
+        run: |
+          # fpm has no `build --example` option. Listing example targets also
+          # rebuilds stale candidates and gives us a valid compile-only gate.
+          fpm run --example --list
 
-        # Preserve the producing example in the artifact path so equally named
-        # plots cannot overwrite one another and gallery ownership is exact.
-        if [[ -d output/example ]]; then
-          scripts/collect_example_plots.sh \
-            output/example ci-artifacts/plots/examples
-        else
-          echo "::warning::No output/example directory was produced"
-        fi
+      - name: Run all examples
+        if: github.event_name == 'workflow_dispatch'
+        id: examples
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          echo "Running all examples..."
+          example_failures=0
+          mapfile -t example_sources < <(
+            find example -mindepth 1 -maxdepth 2 -type f -name '*.f90' | sort
+          )
+          for example_source in "${example_sources[@]}"; do
+            example_name=$(basename "$example_source" .f90)
+            if [[ "$example_name" == "interoperability_benchmarks" ]]; then
+              echo "Skipping $example_name: external solver artifacts required"
+              continue
+            fi
+            echo "Running example: $example_name"
+            if ! timeout --foreground "${EXAMPLE_TIMEOUT}s" \
+                fpm run --example "$example_name"; then
+              echo "::error::example timed out or failed: $example_name"
+              example_failures=1
+              continue
+            fi
+            mkdir -p "output/example/$example_name"
+            find . -maxdepth 1 -type f -name '*.png' \
+              -exec mv {} "output/example/$example_name/" \;
+          done
+          exit "$example_failures"
 
-        total_plots=$(find ci-artifacts/plots/ -type f -iname "*.png" | wc -l)
-        echo "Collected $total_plots generated PNG plots"
+      - name: Run all benchmarks
+        if: github.event_name == 'workflow_dispatch'
+        id: benchmarks
+        continue-on-error: true
+        run: |
+          echo "Running FortFEM benchmarks..."
+          fpm run --example plotting || echo "Plotting demo completed"
 
-    - name: Upload plot artifacts
-      uses: actions/upload-artifact@v4
-      if: always() && github.event_name == 'workflow_dispatch'
-      with:
-        name: generated-plots
-        path: ci-artifacts/plots/
-        retention-days: 30
+          echo "Running convergence benchmarks..."
+          fpm test run_convergence_tests || echo "Convergence tests completed"
 
-    - name: Report verification failures after publishing artifacts
-      if: always() && (steps.unit_tests.outcome == 'failure' || steps.coverage.outcome == 'failure' || steps.build_examples.outcome == 'failure' || steps.examples.outcome == 'failure' || steps.benchmarks.outcome == 'failure')
-      run: |
-        echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
-        exit 1
+      - name: Collect generated plots
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          mkdir -p ci-artifacts/plots/examples
 
+          # Preserve the producing example in the artifact path so equally named
+          # plots cannot overwrite one another and gallery ownership is exact.
+          if [[ -d output/example ]]; then
+            scripts/collect_example_plots.sh \
+              output/example ci-artifacts/plots/examples
+          else
+            echo "::warning::No output/example directory was produced"
+          fi
+
+          total_plots=$(find ci-artifacts/plots/ -type f -iname "*.png" | wc -l)
+          echo "Collected $total_plots generated PNG plots"
+
+      - name: Upload plot artifacts
+        uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch'
+        with:
+          name: generated-plots
+          path: ci-artifacts/plots/
+          retention-days: 30
+
+      - name: Report verification failures after publishing artifacts
+        if: always() && (steps.unit_tests.outcome == 'failure' || steps.coverage.outcome == 'failure' || steps.build_examples.outcome == 'failure' || steps.examples.outcome == 'failure' || steps.benchmarks.outcome == 'failure')
+        run: |
+          echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
+          exit 1
+
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   debug-checks:
     name: tests with runtime checks (debug profile)
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && fromJSON('["self-hosted","itp-ubuntu24"]') || fromJSON('["self-hosted","itp-build"]') }}
     env:
       TEST_TIMEOUT: 10s
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run native checks in the build container
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        env:
+          SCI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          SCI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |-
+          ci/run.sh test-debug-checks
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
 
-    - name: Setup Fortran Package Manager
-      run: |
-        wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
-        chmod +x fpm-0.13.0-linux-x86_64-gcc-12
-        sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Setup Fortran Package Manager
+        run: |
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.13.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
-    - name: Run selected tests with bounds and floating-point checks
-      run: |
-        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
-        fpm test --target "${fast_tests[@]}" --profile debug \
-          --flag "-g -O0 -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -fno-fast-math -ffp-contract=off" \
-          --runner "timeout $TEST_TIMEOUT"
+        if: ${{ github.event.pull_request.head.repo.fork }}
+      - name: Run selected tests with bounds and floating-point checks
+        run: |
+          read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+          fpm test --target "${fast_tests[@]}" --profile debug \
+            --flag "-g -O0 -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -fno-fast-math -ffp-contract=off" \
+            --runner "timeout $TEST_TIMEOUT"
 
+        if: ${{ github.event.pull_request.head.repo.fork }}
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   enzyme:
     name: released Flang 22 + pinned Enzyme
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     env:
       LLVM_MAJOR: "22"
       ENZYME_REVISION: c96508349d9f121957292308c646b4a1fd53c507
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          ca-certificates cmake curl g++ gfortran git gnupg \
-          libblas-dev liblapack-dev libsuitesparse-dev \
-          lsb-release ninja-build software-properties-common
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates cmake curl g++ gfortran git gnupg \
+            libblas-dev liblapack-dev libsuitesparse-dev \
+            lsb-release ninja-build software-properties-common
 
-    - name: Install released LLVM and Flang
-      run: |
-        curl -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh
-        chmod +x /tmp/llvm.sh
-        sudo /tmp/llvm.sh "$LLVM_MAJOR"
-        sudo apt-get install -y --no-install-recommends \
-          "flang-$LLVM_MAJOR" \
-          "libclang-$LLVM_MAJOR-dev" \
-          "llvm-$LLVM_MAJOR-dev"
-        mkdir -p "$RUNNER_TEMP/llvm-bin"
-        for tool in clang flang-new llvm-link opt; do
-          ln -s "/usr/bin/$tool-$LLVM_MAJOR" "$RUNNER_TEMP/llvm-bin/$tool"
-        done
-        echo "$RUNNER_TEMP/llvm-bin" >> "$GITHUB_PATH"
+      - name: Install released LLVM and Flang
+        run: |
+          curl -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh
+          chmod +x /tmp/llvm.sh
+          sudo /tmp/llvm.sh "$LLVM_MAJOR"
+          sudo apt-get install -y --no-install-recommends \
+            "flang-$LLVM_MAJOR" \
+            "libclang-$LLVM_MAJOR-dev" \
+            "llvm-$LLVM_MAJOR-dev"
+          mkdir -p "$RUNNER_TEMP/llvm-bin"
+          for tool in clang flang-new llvm-link opt; do
+            ln -s "/usr/bin/$tool-$LLVM_MAJOR" "$RUNNER_TEMP/llvm-bin/$tool"
+          done
+          echo "$RUNNER_TEMP/llvm-bin" >> "$GITHUB_PATH"
 
-    - name: Build pinned Enzyme plugin
-      run: |
-        git clone https://github.com/EnzymeAD/Enzyme.git "$RUNNER_TEMP/enzyme"
-        git -C "$RUNNER_TEMP/enzyme" checkout "$ENZYME_REVISION"
-        cmake -S "$RUNNER_TEMP/enzyme/enzyme" \
-          -B "$RUNNER_TEMP/enzyme-build" -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DLLVM_DIR="/usr/lib/llvm-$LLVM_MAJOR/lib/cmake/llvm"
-        cmake --build "$RUNNER_TEMP/enzyme-build" \
-          --target "LLVMEnzyme-$LLVM_MAJOR" -j 2
-        echo "FORTFEM_CI_ENZYME_PLUGIN=$RUNNER_TEMP/enzyme-build/Enzyme/LLVMEnzyme-$LLVM_MAJOR.so" \
-          >> "$GITHUB_ENV"
+      - name: Build pinned Enzyme plugin
+        run: |
+          git clone https://github.com/EnzymeAD/Enzyme.git "$RUNNER_TEMP/enzyme"
+          git -C "$RUNNER_TEMP/enzyme" checkout "$ENZYME_REVISION"
+          cmake -S "$RUNNER_TEMP/enzyme/enzyme" \
+            -B "$RUNNER_TEMP/enzyme-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_DIR="/usr/lib/llvm-$LLVM_MAJOR/lib/cmake/llvm"
+          cmake --build "$RUNNER_TEMP/enzyme-build" \
+            --target "LLVMEnzyme-$LLVM_MAJOR" -j 2
+          echo "FORTFEM_CI_ENZYME_PLUGIN=$RUNNER_TEMP/enzyme-build/Enzyme/LLVMEnzyme-$LLVM_MAJOR.so" \
+            >> "$GITHUB_ENV"
 
-    - name: Configure required Enzyme tournament
-      run: |
-        cmake -S . -B build-enzyme -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DFORTFEM_ENABLE_ENZYME=ON \
-          -DFORTFEM_ENZYME_REQUIRED=ON \
-          -DFORTNUM_ENZYME_PLUGIN="$FORTFEM_CI_ENZYME_PLUGIN"
+      - name: Configure required Enzyme tournament
+        run: |
+          cmake -S . -B build-enzyme -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFORTFEM_ENABLE_ENZYME=ON \
+            -DFORTFEM_ENZYME_REQUIRED=ON \
+            -DFORTNUM_ENZYME_PLUGIN="$FORTFEM_CI_ENZYME_PLUGIN"
 
-    - name: Build and test real Enzyme products
-      run: |
-        cmake --build build-enzyme \
-          --target fortfem_enzyme_h1_geometry_products_build -j 2
-        ctest --test-dir build-enzyme --output-on-failure -R fortfem_enzyme
+      - name: Build and test real Enzyme products
+        run: |
+          cmake --build build-enzyme \
+            --target fortfem_enzyme_h1_geometry_products_build -j 2
+          ctest --test-dir build-enzyme --output-on-failure -R fortfem_enzyme
 
   # Summary job for branch protection - must be named 'test' for PR checks
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
   test:
     name: test
     needs: [build-test, debug-checks, enzyme, generated]
-    if: always()
-    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (always())
+    runs-on: [self-hosted, itp-ubuntu24]
     steps:
       - name: Check test results
         run: |

@@ -1,0 +1,102 @@
+#!/bin/bash
+# The same native test selection runs in a build container or a heavy Slurm tier.
+set -euo pipefail
+src=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$src"
+if [ -n "${SLURM_JOB_ID:-}" ]; then
+    root=$(dirname "$src")
+    tier=$(cat "$root/tier.txt")
+    . "$root/task.env"
+    . /home/ert/opt/kin6d-env.sh
+    export PATH=/home/ert/.local/bin:$PATH
+else
+    tier=${1:?usage: ci/run.sh TIER}
+    root=$(mktemp -d "${RUNNER_TEMP:-/tmp}/native-ci.XXXXXX")
+    export FC=/usr/bin/gfortran CC=/usr/bin/gcc CXX=/usr/bin/g++
+    export OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg
+fi
+unset DISPLAY
+export CMAKE_TOOLCHAIN_FILE=$src/ci/cluster-toolchain.cmake
+if [ -d "$root/mirrors" ]; then
+    export GIT_CONFIG_GLOBAL=$root/gitconfig
+    : > "$GIT_CONFIG_GLOBAL"
+    git config --global protocol.file.allow always
+    shopt -s nullglob
+    for mirror in "$root"/mirrors/*/*.git; do
+        slug=${mirror#"$root/mirrors/"}; slug=${slug%.git}
+        git config --global --add "url.file://$mirror.insteadOf" "https://github.com/$slug.git"
+        git config --global --add "url.file://$mirror.insteadOf" "https://github.com/$slug"
+        git config --global --add "url.file://$mirror.insteadOf" "git@github.com:$slug.git"
+    done
+fi
+export GITHUB_WORKSPACE=$src
+export GITHUB_ENV=$root/github-env GITHUB_PATH=$root/github-path GITHUB_OUTPUT=$root/github-output
+: > "$GITHUB_ENV"; : > "$GITHUB_PATH"; : > "$GITHUB_OUTPUT"
+export SCI_CPUS=${SCI_CPUS:-8}
+export CMAKE_BUILD_PARALLEL_LEVEL=$SCI_CPUS CTEST_PARALLEL_LEVEL=$SCI_CPUS
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
+export RUNNER_TEMP=$root/tmp
+mkdir -p "$RUNNER_TEMP" ci-out
+# FPM executes configure probes; /tmp is deliberately mounted noexec.
+export TMPDIR=$RUNNER_TEMP
+{ hostname; /usr/bin/gfortran --version | head -1; git rev-parse HEAD; } | tee ci-out/toolchain.txt
+load_job_environment() {
+    while IFS='=' read -r key value; do
+        [[ $key =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && export "$key=$value"
+    done < "$GITHUB_ENV"
+    while IFS= read -r item; do [ -z "$item" ] || export PATH="$item:$PATH"; done < "$GITHUB_PATH"
+}
+case "$tier" in
+  test-generated)
+    python3 -m venv "$root/venv"
+    . "$root/venv/bin/activate"
+    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator test_exterior_harmonic_fields test_exterior_harmonic_energy test_fortad_fortsym_equivalence"
+    export OMP_NUM_THREADS="2"
+    export OPENBLAS_NUM_THREADS="1"
+    export OMP_WAIT_POLICY="passive"
+    export FO_JOBS="1"
+    export FO_BUILD_TIMEOUT="600"
+    export FORTFEM_CODEGEN_RUNNER="fpm"
+    echo 'Checkout locked fortsym revision'
+    (
+git clone https://github.com/lazy-fortran/fortsym.git ../fortsym
+git -C ../fortsym checkout "$(cat tools/codegen/fortsym.lock)"
+
+    )
+    load_job_environment
+    echo 'Check generated sources'
+    (
+export PATH="$HOME/.local/bin:$PATH"
+tools/codegen/check_generated.sh
+
+    )
+    load_job_environment
+    echo 'Prove polar-complex identities with FortSym'
+    (
+cd verification/fortsym
+export PATH="$HOME/.local/bin:$PATH"
+fpm run --target verify_polar_complex --compiler "${FC:-gfortran}" --profile release --flag "-fopenmp -foffload=disable -finline-matmul-limit=0"
+
+    )
+    load_job_environment
+    ;;
+  test-debug-checks)
+    python3 -m venv "$root/venv"
+    . "$root/venv/bin/activate"
+    export FORTFEM_FAST_TESTS="test_harmonic_field_energy test_element_precision_batch test_meridian_hermitian_forms test_verified_rt0_majorant test_verified_bernstein_majorant test_verified_mapped_majorant test_reference_p2_scalar_intervals test_parametric_bem_high_order test_parametric_bem_pair_accuracy test_equilibrated_rt_normal_trace test_parametric_bem_estimator test_exterior_harmonic_fields test_exterior_harmonic_energy test_fortad_fortsym_equivalence"
+    export OMP_NUM_THREADS="2"
+    export OPENBLAS_NUM_THREADS="1"
+    export OMP_WAIT_POLICY="passive"
+    export TEST_TIMEOUT="10s"
+    echo 'Run selected tests with bounds and floating-point checks'
+    (
+read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
+fpm test --target "${fast_tests[@]}" --profile debug \
+  --flag "-g -O0 -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -fno-fast-math -ffp-contract=off" \
+  --runner "timeout $TEST_TIMEOUT"
+
+    )
+    load_job_environment
+    ;;
+  *) echo "unknown CI tier: $tier" >&2; exit 2 ;;
+esac
