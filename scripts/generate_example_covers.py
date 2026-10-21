@@ -16,6 +16,7 @@ PALETTES = {
     "Structure-preserving dynamics": ("#124559", "#598392", "#d9f0f7"),
     "Open boundaries": ("#3d348b", "#7678ed", "#e7e6fa"),
     "Verification and performance": ("#7f4f24", "#f28e2b", "#f9e7d2"),
+    "Linear-response foundations": ("#1b4332", "#40916c", "#d8f3dc"),
     "Boundary elements and coupling": ("#5f0f40", "#9a348e", "#f1deee"),
     "Advanced geometry": ("#183a37", "#4b7f52", "#dcebdd"),
 }
