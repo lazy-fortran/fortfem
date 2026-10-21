@@ -175,7 +175,10 @@ call assemble_parametric_bem_p2(surface, faces, options, op, &
 
 [V] Pair refinement increases both target and source quadrature degrees.
 Repeated degree labels that select the same Gauss rule are skipped; only
-distinct rules count as refinements. All source integrals use a projected,
+distinct rules count as refinements. An interior closest-point normal peak
+must also be sampled within its local distance scale before two rules may
+claim convergence; unresolved peaks return status 3 at the caps. All source
+integrals use a projected,
 squared-radial Duffy fan, including
 coincident, edge-touching, vertex-touching and separated pairs. For each
 local V, K, W and constant-subtraction block, acceptance requires the maximum

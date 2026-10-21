@@ -263,25 +263,53 @@ contains
     end subroutine
 
     pure subroutine integrate_rule(surface,target_panel,source_panel,bank,l, &
-            target_points,block,evaluations,status)
+            target_points,block,evaluations,resolved,status)
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: target_panel,source_panel,l
         type(rule_bank_t), intent(in) :: bank
         type(point_t), intent(in) :: target_points(:)
         type(block_t), intent(out) :: block
         integer(int64), intent(out) :: evaluations
+        logical, intent(out) :: resolved
         integer, intent(out) :: status
         type(point_t) :: source
         real(dp) :: apex(2),e1(2),e2(2),det,uv(2),factor,fan_weight
+        real(dp) :: probe_x(3),probe_a(3),probe_b(3),distance,length_scale
         integer :: t,edge,i,j,n
         call clear(block)
         evaluations=0
+        resolved=.true.
         n=bank%line_count(l)
         do t=1,bank%count(l)
             apex=bank%uv(:,t,l)
             if (target_panel/=source_panel) then
                 call closest(surface,source_panel,target_points(t)%x,apex,status)
                 if (status/=0) return
+                if (minval(apex)>64*epsilon(1.0_dp) .and. &
+                    sum(apex)<1-64*epsilon(1.0_dp)) then
+                    ! An interior normal peak has physical width distance.
+                    ! The squared-radial fan must sample within that scale;
+                    ! otherwise two rules can agree while both miss the peak.
+                    call surface%evaluate(source_panel,apex,probe_x, &
+                        probe_a,probe_b,status)
+                    if (status/=0) return
+                    status=2
+                    if (.not. all(ieee_is_finite(probe_x))) return
+                    if (.not. all(ieee_is_finite(probe_a))) return
+                    if (.not. all(ieee_is_finite(probe_b))) return
+                    length_scale=max(norm2(probe_a),norm2(probe_b))
+                    distance=norm2(target_points(t)%x-probe_x)
+                    if (.not. ieee_is_finite(length_scale)) return
+                    if (.not. ieee_is_finite(distance)) return
+                    if (length_scale<=tiny(1.0_dp)) return
+                    if (distance>0 .and. &
+                        distance<2*length_scale*bank%nodes(1,l)**2) then
+                        resolved=.false.
+                        status=0
+                        return
+                    end if
+                    status=0
+                end if
             end if
             do edge=1,3
                 e1=corners(:,edge)-apex
@@ -332,21 +360,27 @@ contains
         type(block_t) :: previous
         integer(int64) :: bound,evaluations
         integer :: l
+        logical :: resolved,have_previous
         call clear(block)
         report=bem_pair_report_t()
         report%error_ratio=huge(1.0_dp)
+        have_previous=.false.
         do l=1,size(bank%degree)
             bound=3_int64*bank%count(l)*int(bank%line_count(l),int64)**2
             if (bound>options%maximum_evaluations-report%kernel_evaluations) exit
             call integrate_rule(surface,i,j,bank,l,points(:,l),block, &
-                evaluations,status)
+                evaluations,resolved,status)
             report%kernel_evaluations=report%kernel_evaluations+evaluations
             report%maximum_degree_used=bank%degree(l)
             if (status/=0) then
                 report%failed_pairs=1
                 return
             end if
-            if (l>1) then
+            if (.not. resolved) then
+                have_previous=.false.
+                cycle
+            end if
+            if (have_previous) then
                 report%error_ratio=difference_ratio(block,previous,options)
                 if (.not. ieee_is_finite(report%error_ratio)) then
                     status=2
@@ -360,6 +394,7 @@ contains
                 end if
             end if
             previous=block
+            have_previous=.true.
         end do
         status=3
         report%failed_pairs=1
