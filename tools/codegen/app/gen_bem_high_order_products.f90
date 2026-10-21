@@ -1,6 +1,7 @@
 program gen_bem_high_order_products
     use fortsym_arena, only: arena_t
-    use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*)
+    use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), &
+        operator(/), operator(**)
     use fortsym_diff, only: diff
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
@@ -10,11 +11,12 @@ program gen_bem_high_order_products
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
     type(arena_t), target :: arena
-    type(expr_t) :: v(7), product(1), x, y, phi(6), l(3), total
+    type(expr_t) :: v(7), product(1), x, y, z, phi(6), l(3), total
+    type(expr_t) :: poly, lap, euler, rr, primitive, legendre
     type(str_t) :: names(7)
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
-    integer :: i, unit
+    integer :: i, unit, degree, exponent
     call arena%init()
     engine = make_native_engine(arena)
     x = sym(arena, 'x'); y = sym(arena, 'y')
@@ -29,6 +31,30 @@ program gen_bem_high_order_products
     call prove(l(1)+l(2)+l(3)-1,'P1 partition of unity')
     call prove(diff(total,x),'P2 constant xi derivative')
     call prove(diff(total,y),'P2 constant eta derivative')
+    ! For harmonic homogeneous P_l, u=P_l/r**(2*l+1) is exterior harmonic.
+    ! Product/chain rule: r**(2-s) Laplacian(r**s P) =
+    ! r**2 Laplacian(P)+2*s*x.grad(P)+s*(s+1)*P. Domain r>0.
+    z=sym(arena,'z'); rr=x*x+y*y+z*z
+    do degree=1,2
+        poly=z
+        if (degree==2) poly=(2*z*z-x*x-y*y)/2
+        lap=diff(diff(poly,x),x)+diff(diff(poly,y),y)+diff(diff(poly,z),z)
+        euler=x*diff(poly,x)+y*diff(poly,y)+z*diff(poly,z)
+        call prove(lap,'solid spherical harmonic Laplacian')
+        call prove(euler-degree*poly,'solid harmonic Euler identity')
+        exponent=-(2*degree+1)
+        call prove(rr*lap+2*exponent*euler+exponent*(exponent+1)*poly, &
+            'exterior spherical harmonic Laplacian')
+        call prove(euler+exponent*poly+(degree+1)*poly, &
+            'sphere exterior DtN eigenvalue')
+        legendre=z; primitive=z**3/3
+        if (degree==2) then
+            legendre=(3*z*z-1)/2
+            primitive=(9*z**5/5-2*z**3+z)/4
+        end if
+        call prove(diff(primitive,z)-legendre*legendre, &
+            'sphere harmonic squared-norm antiderivative')
+    end do
     names = [str('kernel'),str('jx'),str('jy'),str('test'),str('trial'), &
         str('unused1'),str('unused2')]
     do i=1,7

@@ -152,3 +152,53 @@ consumer's established route until these gaps and its accuracy gates close.
 [V] Operator and weak-form conventions follow the
 [Bempp boundary-operator definitions](https://bempp.com/handbook/api/boundary_operators.html)
 and the existing FortFEM `toroidal_mode_boundary_operators_2d` sign conventions.
+
+## Curved P2/P1 traces and bounded pair refinement
+
+[V] `fortfem_parametric_bem_high_order` adds continuous quadratic potentials
+and discontinuous linear fluxes on the same `bem_surface_t` geometry. The
+geometry connectivity remains `faces(3,npanels)`. The returned
+`trace_dofs(6,npanels)` numbers vertices followed by shared edge midpoints
+in local edge order (1,2), (2,3), (3,1); `flux_dofs(3,npanels)` numbers
+three independent reference-P1 coefficients per panel. Geometry order and
+trace order are independent. Maps must agree on shared edges.
+
+```fortran
+type(bem_pair_options_t) :: options
+type(bem_pair_report_t) :: report
+options%relative_tolerance = 1.e-3_dp
+options%absolute_tolerance = 1.e-9_dp
+call assemble_parametric_bem_p2(surface, faces, options, op, &
+    trace_dofs, flux_dofs, report, status)
+! Use build_exterior_dtn and exterior%apply as above, with the new DOF counts.
+```
+
+[V] Pair refinement increases both target and source quadrature degrees.
+All source integrals use a projected, squared-radial Duffy fan, including
+coincident, edge-touching, vertex-touching and separated pairs. For each
+local V, K, W and constant-subtraction block, acceptance requires the maximum
+entry change to be at most `absolute_tolerance + relative_tolerance *
+maxval(abs(current_block))`. The tolerances apply to local blocks, not to
+the final solution. Degree and kernel-evaluation caps are per pair;
+status 3 reports failure to meet this criterion. Invalid options/topology
+return 1; invalid geometry/nonfinite data return 2. An unsuccessful operator
+must be discarded. `maximum_degree` is limited to 128.
+
+[V] This is an observed quadrature error estimate, not a rigorous error
+bound. Repeated rules can share an unresolved bias; independently refine
+quadrature and the mesh for a new geometry. `report` retains work counts,
+the largest accepted error ratio and raw V/W symmetry defects measured
+before averaging. The raw local-pair API
+`integrate_parametric_bem_p2_pair` returns V, K, W and the target-side
+constant subtraction without averaging or adding a closed-surface jump.
+
+[V] Assembly batches the target samples before parallel pair integration;
+there are no allocations in pair loops. W scatter uses OpenMP atomics.
+`op%area` retains geometric panel areas, while V has three rows per panel.
+The P0 parent-injection estimator must not be used for these flux DOFs.
+Generated P1/P2 basis jets and generated product/JVP/VJP leaves supply the
+pointwise mathematics. Assembled geometry derivatives remain unavailable.
+The independent pair test uses analytic signed-edge source potentials and
+refined target quadrature; the slow sphere audit measures continuous flux
+error and exterior energy for degrees 1 and 2, observed mesh order, and
+1/2/4/8-thread assembly scaling.
