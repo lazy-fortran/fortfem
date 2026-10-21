@@ -83,8 +83,8 @@ md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markd
 [dependencies]
 blas = "*"
 fortplot = { git = "https://github.com/lazy-fortran/fortplot.git" }
-fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "acc8dce4e9798d346a8bbe311bf8d2d6e8589669" }
-fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "1cc17e31a01f5fa3ec5db58f5f399e2f7eb97955" }
+fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "1cfe3cba327e9a32743ed10292e75a1311a6ced4" }
+fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "7f16e38aaf5ebdfa56b0b8b4f5f57c0c31de212c" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
