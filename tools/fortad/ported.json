@@ -1,6 +1,9 @@
 [
   "tetra_affine",
   "triangle_affine",
+  "bem_fan_map",
+  "bem_hyper_product",
+  "bem_trace_product",
   "block_graph_product",
   "cgl_pressure_divergence",
   "cgl_pressure_tensor",
@@ -30,6 +33,7 @@
   "field_aligned_flux",
   "field_aligned_hall",
   "force_balance_product",
+  "field_inner_product",
   "helmholtz_single_layer_integrand",
   "helmholtz_single_layer_smooth_integrand",
   "laplace_single_layer_integrand",

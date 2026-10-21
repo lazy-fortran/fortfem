@@ -60,6 +60,9 @@ def run(args: list[str], out: Path) -> bool:
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     catalogue = json.loads(Path("tools/fortad/catalogue.json").read_text())
+    # Previously ported pairs are mandatory; retaining an old file is not generation.
+    ported_path = Path("tools/fortad/ported.json")
+    expected = set(json.loads(ported_path.read_text()))
     made = []
     refused = []
 
@@ -83,7 +86,13 @@ def main() -> int:
         else:
             refused.append((stem, "jvp" if not jvp_ok else "vjp"))
 
-    Path("tools/fortad/ported.json").write_text(
+    missing = expected.difference(e["stem"] for e in made)
+    if missing:
+        print("refused expected operator pairs: " + ", ".join(sorted(missing)),
+              file=sys.stderr)
+        return 1
+
+    ported_path.write_text(
         json.dumps([e["stem"] for e in made], indent=2) + "\n")
     write_test(made)
     print(f"generated {len(made)} operator pairs")

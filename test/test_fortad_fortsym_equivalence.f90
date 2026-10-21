@@ -23,6 +23,18 @@ program test_fortad_fortsym_equivalence
     use fortfem_generated_triangle_affine_vjp, only: generated_triangle_affine_vjp
     use fortfem_fortad_triangle_affine_jvp, only: fortfem_triangle_affine_jvp_fortad
     use fortfem_fortad_triangle_affine_vjp, only: fortfem_triangle_affine_vjp_fortad
+    use fortfem_generated_bem_fan_map_jvp, only: bem_fan_map_jvp
+    use fortfem_generated_bem_fan_map_vjp, only: bem_fan_map_vjp
+    use fortfem_fortad_bem_fan_map_jvp, only: fortfem_bem_fan_map_jvp_fortad
+    use fortfem_fortad_bem_fan_map_vjp, only: fortfem_bem_fan_map_vjp_fortad
+    use fortfem_generated_bem_hyper_product_jvp, only: bem_hyper_product_jvp
+    use fortfem_generated_bem_hyper_product_vjp, only: bem_hyper_product_vjp
+    use fortfem_fortad_bem_hyper_product_jvp, only: fortfem_bem_hyper_product_jvp_fortad
+    use fortfem_fortad_bem_hyper_product_vjp, only: fortfem_bem_hyper_product_vjp_fortad
+    use fortfem_generated_bem_trace_product_jvp, only: bem_trace_product_jvp
+    use fortfem_generated_bem_trace_product_vjp, only: bem_trace_product_vjp
+    use fortfem_fortad_bem_trace_product_jvp, only: fortfem_bem_trace_product_jvp_fortad
+    use fortfem_fortad_bem_trace_product_vjp, only: fortfem_bem_trace_product_vjp_fortad
     use fortfem_generated_block_graph_product_jvp, only: generated_block_graph_product_jvp
     use fortfem_generated_block_graph_product_vjp, only: generated_block_graph_product_vjp
     use fortfem_fortad_block_graph_product_jvp, only: fortfem_block_graph_product_jvp_fortad
@@ -139,6 +151,10 @@ program test_fortad_fortsym_equivalence
     use fortfem_generated_force_balance_product_vjp, only: generated_force_balance_product_vjp
     use fortfem_fortad_force_balance_product_jvp, only: fortfem_force_balance_product_jvp_fortad
     use fortfem_fortad_force_balance_product_vjp, only: fortfem_force_balance_product_vjp_fortad
+    use fortfem_generated_field_inner_product_jvp, only: field_inner_product_jvp
+    use fortfem_generated_field_inner_product_vjp, only: field_inner_product_vjp
+    use fortfem_fortad_field_inner_product_jvp, only: fortfem_field_inner_product_jvp_fortad
+    use fortfem_fortad_field_inner_product_vjp, only: fortfem_field_inner_product_vjp_fortad
     use fortfem_generated_helmholtz_single_layer_integrand_jvp, only: generated_helmholtz_single_layer_integrand_jvp
     use fortfem_generated_helmholtz_single_layer_integrand_vjp, only: generated_helmholtz_single_layer_integrand_vjp
     use fortfem_fortad_helmholtz_single_layer_integrand_jvp, only: fortfem_helmholtz_single_layer_integrand_jvp_fortad
@@ -290,6 +306,256 @@ program test_fortad_fortsym_equivalence
                   gr_jacobian, gn_jacobian, TOLERANCE, failures)
         call same("triangle_affine vjp relative", &
                   gr_relative, gn_relative, TOLERANCE, failures)
+    end block
+    ! bem_fan_map
+    block
+        real(dp) :: v_apex1
+        real(dp) :: v_apex2
+        real(dp) :: v_e1u
+        real(dp) :: v_e1v
+        real(dp) :: v_e2u
+        real(dp) :: v_e2v
+        real(dp) :: v_radius
+        real(dp) :: v_angle
+        real(dp) :: v_determinant
+        real(dp) :: v_uv1
+        real(dp) :: v_uv2
+        real(dp) :: v_weight
+        real(dp) :: d_apex1
+        real(dp) :: gr_apex1
+        real(dp) :: gn_apex1
+        real(dp) :: d_apex2
+        real(dp) :: gr_apex2
+        real(dp) :: gn_apex2
+        real(dp) :: d_e1u
+        real(dp) :: gr_e1u
+        real(dp) :: gn_e1u
+        real(dp) :: d_e1v
+        real(dp) :: gr_e1v
+        real(dp) :: gn_e1v
+        real(dp) :: d_e2u
+        real(dp) :: gr_e2u
+        real(dp) :: gn_e2u
+        real(dp) :: d_e2v
+        real(dp) :: gr_e2v
+        real(dp) :: gn_e2v
+        real(dp) :: d_radius
+        real(dp) :: gr_radius
+        real(dp) :: gn_radius
+        real(dp) :: d_angle
+        real(dp) :: gr_angle
+        real(dp) :: gn_angle
+        real(dp) :: d_determinant
+        real(dp) :: gr_determinant
+        real(dp) :: gn_determinant
+        real(dp) :: tr_uv1
+        real(dp) :: tn_uv1
+        real(dp) :: tr_uv2
+        real(dp) :: tn_uv2
+        real(dp) :: tr_weight
+        real(dp) :: tn_weight
+        real(dp) :: seed_uv1
+        real(dp) :: seed_uv2
+        real(dp) :: seed_weight
+        call fill_point(v_apex1, 1)
+        call fill_point(v_apex2, 2)
+        call fill_point(v_e1u, 3)
+        call fill_point(v_e1v, 4)
+        call fill_point(v_e2u, 5)
+        call fill_point(v_e2v, 6)
+        call fill_point(v_radius, 7)
+        call fill_point(v_angle, 8)
+        call fill_point(v_determinant, 9)
+        call fill_point(v_uv1, 10)
+        call fill_point(v_uv2, 11)
+        call fill_point(v_weight, 12)
+        call fill_direction(d_apex1, 1)
+        call fill_direction(d_apex2, 2)
+        call fill_direction(d_e1u, 3)
+        call fill_direction(d_e1v, 4)
+        call fill_direction(d_e2u, 5)
+        call fill_direction(d_e2v, 6)
+        call fill_direction(d_radius, 7)
+        call fill_direction(d_angle, 8)
+        call fill_direction(d_determinant, 9)
+        seed_uv1 = 1.3_dp
+        seed_uv2 = 0.0_dp
+        seed_weight = 0.0_dp
+        call bem_fan_map_jvp(v_apex1, v_apex2, v_e1u, v_e1v, v_e2u, v_e2v, &
+            v_radius, v_angle, v_determinant, d_apex1, d_apex2, d_e1u, d_e1v, &
+            d_e2u, d_e2v, d_radius, d_angle, d_determinant, tr_uv1, tr_uv2, &
+            tr_weight)
+        call fortfem_bem_fan_map_jvp_fortad(v_apex1, d_apex1, v_apex2, d_apex2, &
+            v_e1u, d_e1u, v_e1v, d_e1v, v_e2u, d_e2u, v_e2v, d_e2v, v_radius, &
+            d_radius, v_angle, d_angle, v_determinant, d_determinant, tn_uv1, &
+            tn_uv2, tn_weight)
+        call same("bem_fan_map jvp uv1", &
+                  tr_uv1, tn_uv1, TOLERANCE, failures)
+        call same("bem_fan_map jvp uv2", &
+                  tr_uv2, tn_uv2, TOLERANCE, failures)
+        call same("bem_fan_map jvp weight", &
+                  tr_weight, tn_weight, TOLERANCE, failures)
+        call bem_fan_map_vjp(v_apex1, v_apex2, v_e1u, v_e1v, v_e2u, v_e2v, &
+            v_radius, v_angle, v_determinant, seed_uv1, seed_uv2, seed_weight, &
+            gr_apex1, gr_apex2, gr_e1u, gr_e1v, gr_e2u, gr_e2v, gr_radius, &
+            gr_angle, gr_determinant)
+        call fortfem_bem_fan_map_vjp_fortad(v_apex1, v_apex2, v_e1u, v_e1v, &
+            v_e2u, v_e2v, v_radius, v_angle, v_determinant, v_uv2, v_weight, &
+            seed_uv1, gn_apex1, gn_apex2, gn_e1u, gn_e1v, gn_e2u, gn_e2v, &
+            gn_radius, gn_angle, gn_determinant)
+        call same("bem_fan_map vjp apex1", &
+                  gr_apex1, gn_apex1, TOLERANCE, failures)
+        call same("bem_fan_map vjp apex2", &
+                  gr_apex2, gn_apex2, TOLERANCE, failures)
+        call same("bem_fan_map vjp e1u", &
+                  gr_e1u, gn_e1u, TOLERANCE, failures)
+        call same("bem_fan_map vjp e1v", &
+                  gr_e1v, gn_e1v, TOLERANCE, failures)
+        call same("bem_fan_map vjp e2u", &
+                  gr_e2u, gn_e2u, TOLERANCE, failures)
+        call same("bem_fan_map vjp e2v", &
+                  gr_e2v, gn_e2v, TOLERANCE, failures)
+        call same("bem_fan_map vjp radius", &
+                  gr_radius, gn_radius, TOLERANCE, failures)
+        call same("bem_fan_map vjp angle", &
+                  gr_angle, gn_angle, TOLERANCE, failures)
+        call same("bem_fan_map vjp determinant", &
+                  gr_determinant, gn_determinant, TOLERANCE, failures)
+    end block
+    ! bem_hyper_product
+    block
+        real(dp) :: v_green
+        real(dp) :: v_tx
+        real(dp) :: v_ty
+        real(dp) :: v_tz
+        real(dp) :: v_sx
+        real(dp) :: v_sy
+        real(dp) :: v_sz
+        real(dp) :: v_value
+        real(dp) :: d_green
+        real(dp) :: gr_green
+        real(dp) :: gn_green
+        real(dp) :: d_tx
+        real(dp) :: gr_tx
+        real(dp) :: gn_tx
+        real(dp) :: d_ty
+        real(dp) :: gr_ty
+        real(dp) :: gn_ty
+        real(dp) :: d_tz
+        real(dp) :: gr_tz
+        real(dp) :: gn_tz
+        real(dp) :: d_sx
+        real(dp) :: gr_sx
+        real(dp) :: gn_sx
+        real(dp) :: d_sy
+        real(dp) :: gr_sy
+        real(dp) :: gn_sy
+        real(dp) :: d_sz
+        real(dp) :: gr_sz
+        real(dp) :: gn_sz
+        real(dp) :: tr_value
+        real(dp) :: tn_value
+        real(dp) :: seed_value
+        call fill_point(v_green, 1)
+        call fill_point(v_tx, 2)
+        call fill_point(v_ty, 3)
+        call fill_point(v_tz, 4)
+        call fill_point(v_sx, 5)
+        call fill_point(v_sy, 6)
+        call fill_point(v_sz, 7)
+        call fill_point(v_value, 8)
+        call fill_direction(d_green, 1)
+        call fill_direction(d_tx, 2)
+        call fill_direction(d_ty, 3)
+        call fill_direction(d_tz, 4)
+        call fill_direction(d_sx, 5)
+        call fill_direction(d_sy, 6)
+        call fill_direction(d_sz, 7)
+        seed_value = 1.3_dp
+        call bem_hyper_product_jvp(v_green, v_tx, v_ty, v_tz, v_sx, v_sy, v_sz, &
+            d_green, d_tx, d_ty, d_tz, d_sx, d_sy, d_sz, tr_value)
+        call fortfem_bem_hyper_product_jvp_fortad(v_green, d_green, v_tx, d_tx, &
+            v_ty, d_ty, v_tz, d_tz, v_sx, d_sx, v_sy, d_sy, v_sz, d_sz, tn_value)
+        call same("bem_hyper_product jvp value", &
+                  tr_value, tn_value, TOLERANCE, failures)
+        call bem_hyper_product_vjp(v_green, v_tx, v_ty, v_tz, v_sx, v_sy, v_sz, &
+            seed_value, gr_green, gr_tx, gr_ty, gr_tz, gr_sx, gr_sy, gr_sz)
+        call fortfem_bem_hyper_product_vjp_fortad(v_green, v_tx, v_ty, v_tz, &
+            v_sx, v_sy, v_sz, seed_value, gn_green, gn_tx, gn_ty, gn_tz, gn_sx, &
+            gn_sy, gn_sz)
+        call same("bem_hyper_product vjp green", &
+                  gr_green, gn_green, TOLERANCE, failures)
+        call same("bem_hyper_product vjp tx", &
+                  gr_tx, gn_tx, TOLERANCE, failures)
+        call same("bem_hyper_product vjp ty", &
+                  gr_ty, gn_ty, TOLERANCE, failures)
+        call same("bem_hyper_product vjp tz", &
+                  gr_tz, gn_tz, TOLERANCE, failures)
+        call same("bem_hyper_product vjp sx", &
+                  gr_sx, gn_sx, TOLERANCE, failures)
+        call same("bem_hyper_product vjp sy", &
+                  gr_sy, gn_sy, TOLERANCE, failures)
+        call same("bem_hyper_product vjp sz", &
+                  gr_sz, gn_sz, TOLERANCE, failures)
+    end block
+    ! bem_trace_product
+    block
+        real(dp) :: v_kernel
+        real(dp) :: v_jx
+        real(dp) :: v_jy
+        real(dp) :: v_test
+        real(dp) :: v_trial
+        real(dp) :: v_value
+        real(dp) :: d_kernel
+        real(dp) :: gr_kernel
+        real(dp) :: gn_kernel
+        real(dp) :: d_jx
+        real(dp) :: gr_jx
+        real(dp) :: gn_jx
+        real(dp) :: d_jy
+        real(dp) :: gr_jy
+        real(dp) :: gn_jy
+        real(dp) :: d_test
+        real(dp) :: gr_test
+        real(dp) :: gn_test
+        real(dp) :: d_trial
+        real(dp) :: gr_trial
+        real(dp) :: gn_trial
+        real(dp) :: tr_value
+        real(dp) :: tn_value
+        real(dp) :: seed_value
+        call fill_point(v_kernel, 1)
+        call fill_point(v_jx, 2)
+        call fill_point(v_jy, 3)
+        call fill_point(v_test, 4)
+        call fill_point(v_trial, 5)
+        call fill_point(v_value, 6)
+        call fill_direction(d_kernel, 1)
+        call fill_direction(d_jx, 2)
+        call fill_direction(d_jy, 3)
+        call fill_direction(d_test, 4)
+        call fill_direction(d_trial, 5)
+        seed_value = 1.3_dp
+        call bem_trace_product_jvp(v_kernel, v_jx, v_jy, v_test, v_trial, &
+            d_kernel, d_jx, d_jy, d_test, d_trial, tr_value)
+        call fortfem_bem_trace_product_jvp_fortad(v_kernel, d_kernel, v_jx, d_jx, &
+            v_jy, d_jy, v_test, d_test, v_trial, d_trial, tn_value)
+        call same("bem_trace_product jvp value", &
+                  tr_value, tn_value, TOLERANCE, failures)
+        call bem_trace_product_vjp(v_kernel, v_jx, v_jy, v_test, v_trial, &
+            seed_value, gr_kernel, gr_jx, gr_jy, gr_test, gr_trial)
+        call fortfem_bem_trace_product_vjp_fortad(v_kernel, v_jx, v_jy, v_test, &
+            v_trial, seed_value, gn_kernel, gn_jx, gn_jy, gn_test, gn_trial)
+        call same("bem_trace_product vjp kernel", &
+                  gr_kernel, gn_kernel, TOLERANCE, failures)
+        call same("bem_trace_product vjp jx", &
+                  gr_jx, gn_jx, TOLERANCE, failures)
+        call same("bem_trace_product vjp jy", &
+                  gr_jy, gn_jy, TOLERANCE, failures)
+        call same("bem_trace_product vjp test", &
+                  gr_test, gn_test, TOLERANCE, failures)
+        call same("bem_trace_product vjp trial", &
+                  gr_trial, gn_trial, TOLERANCE, failures)
     end block
     ! block_graph_product
     block
@@ -3738,6 +4004,83 @@ program test_fortad_fortsym_equivalence
                   gr_test_value, gn_test_value, TOLERANCE, failures)
         call same("force_balance_product vjp force_value", &
                   gr_force_value, gn_force_value, TOLERANCE, failures)
+    end block
+    ! field_inner_product
+    block
+        real(dp) :: v_weight
+        real(dp) :: v_a1
+        real(dp) :: v_a2
+        real(dp) :: v_a3
+        real(dp) :: v_b1
+        real(dp) :: v_b2
+        real(dp) :: v_b3
+        real(dp) :: v_value
+        real(dp) :: d_weight
+        real(dp) :: gr_weight
+        real(dp) :: gn_weight
+        real(dp) :: d_a1
+        real(dp) :: gr_a1
+        real(dp) :: gn_a1
+        real(dp) :: d_a2
+        real(dp) :: gr_a2
+        real(dp) :: gn_a2
+        real(dp) :: d_a3
+        real(dp) :: gr_a3
+        real(dp) :: gn_a3
+        real(dp) :: d_b1
+        real(dp) :: gr_b1
+        real(dp) :: gn_b1
+        real(dp) :: d_b2
+        real(dp) :: gr_b2
+        real(dp) :: gn_b2
+        real(dp) :: d_b3
+        real(dp) :: gr_b3
+        real(dp) :: gn_b3
+        real(dp) :: tr_value
+        real(dp) :: tn_value
+        real(dp) :: seed_value
+        call fill_point(v_weight, 1)
+        call fill_point(v_a1, 2)
+        call fill_point(v_a2, 3)
+        call fill_point(v_a3, 4)
+        call fill_point(v_b1, 5)
+        call fill_point(v_b2, 6)
+        call fill_point(v_b3, 7)
+        call fill_point(v_value, 8)
+        call fill_direction(d_weight, 1)
+        call fill_direction(d_a1, 2)
+        call fill_direction(d_a2, 3)
+        call fill_direction(d_a3, 4)
+        call fill_direction(d_b1, 5)
+        call fill_direction(d_b2, 6)
+        call fill_direction(d_b3, 7)
+        seed_value = 1.3_dp
+        call field_inner_product_jvp(v_weight, v_a1, v_a2, v_a3, v_b1, v_b2, &
+            v_b3, d_weight, d_a1, d_a2, d_a3, d_b1, d_b2, d_b3, tr_value)
+        call fortfem_field_inner_product_jvp_fortad(v_weight, d_weight, v_a1, &
+            d_a1, v_a2, d_a2, v_a3, d_a3, v_b1, d_b1, v_b2, d_b2, v_b3, d_b3, &
+            tn_value)
+        call same("field_inner_product jvp value", &
+                  tr_value, tn_value, TOLERANCE, failures)
+        call field_inner_product_vjp(v_weight, v_a1, v_a2, v_a3, v_b1, v_b2, &
+            v_b3, seed_value, gr_weight, gr_a1, gr_a2, gr_a3, gr_b1, gr_b2, gr_b3)
+        call fortfem_field_inner_product_vjp_fortad(v_weight, v_a1, v_a2, v_a3, &
+            v_b1, v_b2, v_b3, seed_value, gn_weight, gn_a1, gn_a2, gn_a3, gn_b1, &
+            gn_b2, gn_b3)
+        call same("field_inner_product vjp weight", &
+                  gr_weight, gn_weight, TOLERANCE, failures)
+        call same("field_inner_product vjp a1", &
+                  gr_a1, gn_a1, TOLERANCE, failures)
+        call same("field_inner_product vjp a2", &
+                  gr_a2, gn_a2, TOLERANCE, failures)
+        call same("field_inner_product vjp a3", &
+                  gr_a3, gn_a3, TOLERANCE, failures)
+        call same("field_inner_product vjp b1", &
+                  gr_b1, gn_b1, TOLERANCE, failures)
+        call same("field_inner_product vjp b2", &
+                  gr_b2, gn_b2, TOLERANCE, failures)
+        call same("field_inner_product vjp b3", &
+                  gr_b3, gn_b3, TOLERANCE, failures)
     end block
     ! helmholtz_single_layer_integrand
     block
