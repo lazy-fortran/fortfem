@@ -107,7 +107,7 @@ contains
         complex(dp), intent(inout) :: a(:, :)
         integer :: r
         real(dp), allocatable :: s(:), rwork(:)
-        complex(dp), allocatable :: work(:), u(:, :), vt(:, :)
+        complex(dp), allocatable :: work(:), u(:, :), vt(:, :), ap(:, :)
         complex(dp) :: wq(1)
         integer :: m, n, info
 
@@ -116,9 +116,15 @@ contains
         r = 0
         if (m == 0 .or. n == 0) return
         allocate (s(min(m, n)), rwork(5*min(m, n)), u(1, 1), vt(1, 1))
-        call zgesvd('N', 'N', m, n, a, m, s, u, 1, vt, 1, wq, -1, rwork, info)
+        ! One spare column: the zgemv kernel of OpenBLAS 0.3.21 (Debian 12,
+        ! the cluster BLAS) reads past the end of the matrix and crashes when
+        ! that read crosses into an unmapped page.
+        allocate (ap(m, n + 1))
+        ap(:, :n) = a
+        ap(:, n + 1) = (0.0_dp, 0.0_dp)
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
         allocate (work(max(1, int(real(wq(1))))))
-        call zgesvd('N', 'N', m, n, a, m, s, u, 1, vt, 1, work, size(work), &
+        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
             rwork, info)
         r = count(s > 1.0e-8_dp*s(1))
     end function matrix_rank
