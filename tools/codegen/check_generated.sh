@@ -391,3 +391,6 @@ done
 filename="fortfem_parametric_bem_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
+
+filename="fortfem_bem_high_order_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
