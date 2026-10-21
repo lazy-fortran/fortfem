@@ -53,10 +53,12 @@ contains
         call check_condition(c, d)
     end subroutine record
 
-    function dense_restricted(z, keep_row, keep_col) result(a)
+    subroutine dense_restricted(z, keep_row, keep_col, a)
+        !! Dense restriction of z.  A subroutine rather than an allocatable
+        !! function result: gfortran 12 mishandles the latter here.
         type(csc_z_t), intent(in) :: z
         logical, intent(in) :: keep_row(:), keep_col(:)
-        complex(dp), allocatable :: a(:, :)
+        complex(dp), allocatable, intent(out) :: a(:, :)
         integer, allocatable :: ri(:), ci(:)
         integer :: i, j, p, nr, nc
 
@@ -85,7 +87,7 @@ contains
                     a(ri(z%row_idx(p)), ci(j)) = z%val(p)
             end do
         end do
-    end function dense_restricted
+    end subroutine dense_restricted
 
     function leaked(z, keep_row, keep_col) result(m)
         !! Largest entry mapping retained columns into dropped rows.
@@ -160,14 +162,14 @@ contains
                 call meridian_op_complex(fs%curl, ns(i), d1, status)
                 call meridian_op_complex(fs%div, ns(i), d2, status)
                 if (rel == 0) then
-                    a0 = dense_restricted(d0, all1, all0)
-                    a1 = dense_restricted(d1, all2, all1)
-                    a2 = dense_restricted(d2, all3, all2)
+                    call dense_restricted(d0, all1, all0, a0)
+                    call dense_restricted(d1, all2, all1, a1)
+                    call dense_restricted(d2, all3, all2, a2)
                     leak = 0.0_dp
                 else
-                    a0 = dense_restricted(d0, in1, in0)
-                    a1 = dense_restricted(d1, in2, in1)
-                    a2 = dense_restricted(d2, in3, in2)
+                    call dense_restricted(d0, in1, in0, a0)
+                    call dense_restricted(d1, in2, in1, a1)
+                    call dense_restricted(d2, in3, in2, a2)
                     leak = max(leaked(d0, in1, in0), leaked(d1, in2, in1), &
                         leaked(d2, in3, in2))
                 end if
