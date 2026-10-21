@@ -16,11 +16,13 @@ module fortfem_parametric_bem_high_order
     use fortfem_generated_bem_hyper_product, only: bem_hyper_product
     use fortfem_generated_bem_fan_map, only: bem_fan_map
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_bem_circulant, only: bem_circulant_t, circulant_matrix_t
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
     private
     public :: bem_pair_options_t, bem_pair_report_t, build_p2_trace_connectivity
     public :: assemble_parametric_bem_p2, integrate_parametric_bem_p2_pair
+    public :: assemble_parametric_bem_p2_circulant
     public :: assignment(=)
     type :: bem_pair_options_t
         real(dp) :: relative_tolerance = 1.e-3_dp
@@ -548,5 +550,254 @@ contains
         op%w=0.5_dp*(op%w+transpose(op%w))
         op%adjoint=transpose(op%k)
         status=0
+    end subroutine
+
+    subroutine sector_trace_map(td, nphi, map, local, sector, status)
+        !! Infer the trace rotation from corresponding local panel DOFs.
+        !! A free cyclic action is required (no fixed-axis trace DOFs).
+        integer, intent(in) :: td(:, :), nphi
+        integer, allocatable, intent(out) :: map(:, :), local(:), sector(:)
+        integer, intent(out) :: status
+        integer, allocatable :: rotation(:)
+        integer :: nt, np, nf, i, j, a, q, r, count
+        status = 1
+        nf = size(td, 2); nt = maxval(td)
+        if (nphi < 1) return
+        if (mod(nf, nphi) /= 0 .or. mod(nt, nphi) /= 0) return
+        np = nf/nphi
+        allocate (rotation(nt), map(nt/nphi, nphi), local(nt), sector(nt))
+        rotation = 0; local = 0; sector = 0
+        do i = 1, nf
+            j = modulo(i - 1 + np, nf) + 1
+            do a = 1, 6
+                q = td(a, i); r = td(a, j)
+                if (rotation(q) /= 0) then
+                    if (rotation(q) /= r) return
+                end if
+                rotation(q) = r
+            end do
+        end do
+        if (any(rotation < 1)) return
+        count = 0
+        do i = 1, nt
+            if (local(i) /= 0) cycle
+            count = count + 1
+            if (count > nt/nphi) return
+            q = i
+            do r = 1, nphi
+                if (local(q) /= 0) return
+                map(count, r) = q; local(q) = count; sector(q) = r
+                q = rotation(q)
+            end do
+            if (q /= i) return
+        end do
+        if (count /= nt/nphi) return
+        status = 0
+    end subroutine
+
+    subroutine check_sector_geometry(surface, np, nphi, status)
+        !! Validate the declared z rotation at vertices, edge midpoints and
+        !! centroid, including tangents. Exact symmetry between these samples
+        !! remains the caller's geometry contract.
+        class(bem_surface_t), intent(in) :: surface
+        integer, intent(in) :: np, nphi
+        integer, intent(out) :: status
+        real(dp), parameter :: uv(2, 7) = reshape( &
+                               [0._dp, 0._dp, 1._dp, 0._dp, 0._dp, 1._dp, &
+                    .5_dp, 0._dp, .5_dp, .5_dp, 0._dp, .5_dp, 1._dp/3, 1._dp/3], [2, 7])
+        real(dp) :: reference(3, 3), actual(3, 3), rotated(3, 3), angle, c, s
+        integer :: i, j, t, k, local_status
+        status = 1
+        do j = 1, nphi - 1
+            angle = 2*acos(-1._dp)*real(j, dp)/real(nphi, dp)
+            c = cos(angle); s = sin(angle)
+            do i = 1, np
+                do t = 1, 7
+                    call surface%evaluate(i, uv(:, t), reference(:, 1), &
+                                         reference(:, 2), reference(:, 3), local_status)
+                    if (local_status /= 0) then
+                        status = 2
+                        return
+                    end if
+                    call surface%evaluate(i + j*np, uv(:, t), actual(:, 1), &
+                                          actual(:, 2), actual(:, 3), local_status)
+                    if (local_status /= 0) then
+                        status = 2
+                        return
+                    end if
+                    if (.not. all(ieee_is_finite(reference))) then
+                        status = 2
+                        return
+                    end if
+                    if (.not. all(ieee_is_finite(actual))) then
+                        status = 2
+                        return
+                    end if
+                    rotated = reference
+                    rotated(1, :) = c*reference(1, :) - s*reference(2, :)
+                    rotated(2, :) = s*reference(1, :) + c*reference(2, :)
+                    do k = 1, 3
+                        if (norm2(actual(:, k) - rotated(:, k)) > &
+                            1.e-10_dp*max(1._dp, norm2(reference(:, k)))) return
+                    end do
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine
+
+    subroutine initialize_sector_matrix(matrix, rows, columns)
+        type(circulant_matrix_t), intent(out) :: matrix
+        integer, intent(in) :: rows(:, :), columns(:, :)
+        matrix%row_dofs = rows; matrix%column_dofs = columns
+        allocate (matrix%blocks(size(rows, 1), size(columns, 1), size(rows, 2)))
+        matrix%blocks = 0._dp
+    end subroutine
+
+    subroutine assemble_parametric_bem_p2_circulant(surface, faces, nphi, options, &
+                                              op, trace_dofs, flux_dofs, report, status)
+        !! Consecutive identical sectors, with corresponding local panel
+        !! vertices in the same order. Only target-sector-zero pairs are
+        !! integrated. Reports count actual evaluated pairs, not their copies.
+        class(bem_surface_t), intent(in) :: surface
+        integer, intent(in) :: faces(:, :), nphi
+        type(bem_pair_options_t), intent(in) :: options
+        type(bem_circulant_t), intent(out) :: op
+        integer, allocatable, intent(out) :: trace_dofs(:, :), flux_dofs(:, :)
+        type(bem_pair_report_t), intent(out) :: report
+        integer, intent(out) :: status
+        type(rule_bank_t) :: bank
+        type(point_t), allocatable :: points(:, :, :)
+        type(block_t) :: block
+        type(bem_pair_report_t) :: pair_report
+        integer, allocatable :: trace_map(:, :), local(:), sector(:), flux_map(:, :)
+        integer :: nf, np, nt, nv, ne, i, j, l, t, a, b, ia, ib, sa, sb, js, jl
+        integer :: local_status, errors, dmax, geometry_errors
+        integer(int64) :: evaluations
+        real(dp) :: value, ratio
+        report = bem_pair_report_t()
+        status = 1
+        if (nphi < 1) return
+        if (mod(size(faces, 2), nphi) /= 0) return
+        call build_p2_trace_connectivity(faces, trace_dofs, flux_dofs, status)
+        if (status /= 0) return
+        call sector_trace_map(trace_dofs, nphi, trace_map, local, sector, status)
+        if (status /= 0) return
+        nf = size(faces, 2); np = nf/nphi
+        call check_sector_geometry(surface, np, nphi, status)
+        if (status /= 0) return
+        call make_bank(options, bank, status)
+        if (status /= 0) return
+        nt = maxval(trace_dofs); nv = maxval(faces); ne = nt - nv
+        op%genus = (2 - nv + ne - nf)/2
+        allocate (flux_map(3*np, nphi))
+        do j = 1, nphi
+            do i = 1, 3*np
+                flux_map(i, j) = i + 3*np*(j - 1)
+            end do
+        end do
+        call initialize_sector_matrix(op%v, flux_map, flux_map)
+        call initialize_sector_matrix(op%k, flux_map, trace_map)
+        call initialize_sector_matrix(op%w, trace_map, trace_map)
+        call initialize_sector_matrix(op%mass, flux_map, trace_map)
+        allocate (op%area(nf), &
+                  points(size(bank%weights, 1), np, size(bank%degree)))
+        op%area = 0._dp
+        errors = 0
+        !$omp parallel do default(shared) private(i,l,t,local_status) &
+        !$omp reduction(+:errors) schedule(static)
+        do i = 1, np
+            do l = 1, size(bank%degree)
+                do t = 1, bank%count(l)
+                call sample(surface, i, bank%uv(:, t, l), points(t, i, l), local_status)
+                    if (local_status /= 0) errors = errors + 1
+                end do
+            end do
+        end do
+        !$omp end parallel do
+        status = 2
+        if (errors /= 0) return
+        l = size(bank%degree)
+        do i = 1, np
+            do t = 1, bank%count(l)
+                op%area(i) = op%area(i) + bank%weights(t, l)*points(t, i, l)%jacobian
+                do b = 1, 6
+                    ib = local(trace_dofs(b, i)); sb = sector(trace_dofs(b, i))
+                    do a = 1, 3
+                        call bem_trace_product(bank%weights(t, l), &
+                              points(t, i, l)%jacobian, 1._dp, points(t, i, l)%psi(a), &
+                                               points(t, i, l)%phi(b), value)
+                        op%mass%blocks(flux_dofs(a, i), ib, sb) = &
+                            op%mass%blocks(flux_dofs(a, i), ib, sb) + value
+                    end do
+                end do
+            end do
+        end do
+        do j = 1, nphi - 1
+            do i = 1, np
+                op%area(j*np + i) = op%area(i)
+            end do
+        end do
+        evaluations = 0; dmax = 0; ratio = 0; geometry_errors = 0
+        !$omp parallel do collapse(2) default(shared) schedule(dynamic,1) &
+        !$omp private(i,j,a,b,ia,ib,sa,sb,js,jl,block,pair_report,local_status) &
+        !$omp reduction(+:errors,evaluations,geometry_errors) reduction(max:dmax,ratio)
+        do i = 1, np
+            do j = 1, nf
+                call converge_pair(surface, i, j, options, bank, points(:, i, :), &
+                                   block, pair_report, local_status)
+                evaluations = evaluations + pair_report%kernel_evaluations
+                dmax = max(dmax, pair_report%maximum_degree_used)
+                ratio = max(ratio, pair_report%error_ratio)
+                if (local_status /= 0) then
+                    errors = errors + 1
+                    if (local_status == 2) geometry_errors = geometry_errors + 1
+                    cycle
+                end if
+                js = (j - 1)/np + 1; jl = modulo(j - 1, np)
+                do b = 1, 3
+                    do a = 1, 3
+                        op%v%blocks(flux_dofs(a, i), 3*jl + b, js) = block%v(a, b)
+                    end do
+                end do
+                do b = 1, 6
+                    ib = local(trace_dofs(b, j)); sb = sector(trace_dofs(b, j))
+                    do a = 1, 3
+                        !$omp atomic update
+                        op%k%blocks(flux_dofs(a, i), ib, sb) = &
+                            op%k%blocks(flux_dofs(a, i), ib, sb) + block%k(a, b)
+                    end do
+                    do a = 1, 6
+                        ia = local(trace_dofs(a, i)); sa = sector(trace_dofs(a, i))
+                        !$omp atomic update
+                        op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) = &
+                          op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) + block%w(a, b)
+                    end do
+                    ib = local(trace_dofs(b, i)); sb = sector(trace_dofs(b, i))
+                    do a = 1, 3
+                        !$omp atomic update
+                        op%k%blocks(flux_dofs(a, i), ib, sb) = &
+                            op%k%blocks(flux_dofs(a, i), ib, sb) - block%c(a, b)
+                    end do
+                end do
+            end do
+        end do
+        !$omp end parallel do
+        report%failed_pairs = errors
+        report%accepted_pairs = np*nf - errors
+        report%maximum_degree_used = dmax
+        report%kernel_evaluations = evaluations
+        report%error_ratio = ratio
+        status = 3
+        if (geometry_errors /= 0) status = 2
+        if (errors /= 0) return
+        status = 2
+        if (.not. op%v%valid()) return
+        if (.not. op%k%valid()) return
+        if (.not. op%w%valid()) return
+        op%k%blocks = op%k%blocks - .5_dp*op%mass%blocks
+        call op%v%symmetrize(report%raw_v_symmetry)
+        call op%w%symmetrize(report%raw_w_symmetry)
+        status = 0
     end subroutine
 end module fortfem_parametric_bem_high_order
