@@ -5,13 +5,16 @@ program test_sparse_direct_backend
         sparse_direct_factor_adjoint_csc, sparse_direct_free, &
         sparse_direct_solve_constrained, sparse_direct_solve_csc, &
         sparse_direct_solve_factored
-    use fortsparse, only: csc_t, FORTSPARSE_BACKEND_NATIVE
+    use fortsparse, only: csc_t, FORTSPARSE_BACKEND_NATIVE, sparse_options_t, &
+        native_ordering_available, FORTSPARSE_ORDER_AMD, FORTSPARSE_ORDER_ND, &
+        FORTSPARSE_LU_SCALAR, FORTSPARSE_LU_SUPERNODAL
     use check, only: check_condition, check_summary
     implicit none
 
     logical :: all_passed
 
     all_passed = .true.
+    call test_selection_and_limits()
     call test_real_solve()
     call test_nonzero_constraint_elimination()
     call test_complex_solve()
@@ -22,6 +25,52 @@ program test_sparse_direct_backend
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_selection_and_limits()
+        integer, parameter :: ptr(3) = [1, 3, 5]
+        integer, parameter :: rows(4) = [1, 2, 1, 2]
+        real(dp), parameter :: values(4) = [4.0_dp, 2.0_dp, 1.0_dp, 3.0_dp]
+        type(sparse_direct_factor_t) :: factor
+        type(sparse_options_t) :: options
+        real(dp) :: solution(2)
+        integer :: status, expected_method
+
+        expected_method = FORTSPARSE_LU_SCALAR
+        if (native_ordering_available(FORTSPARSE_ORDER_AMD) .or. &
+                native_ordering_available(FORTSPARSE_ORDER_ND)) then
+            expected_method = FORTSPARSE_LU_SUPERNODAL
+        end if
+        factor%options%nthreads = 1
+        call sparse_direct_factor_csc(factor, 2, ptr, rows, values, status)
+        call record_condition(status == 0, "Default selected factor succeeds")
+        call record_condition(factor%options%lu_method == expected_method, &
+            "Default uses supernodal LU when graph ordering is available")
+        call record_condition(factor%options%nthreads == 1, &
+            "Default selection preserves the caller thread budget")
+        call sparse_direct_free(factor)
+
+        ! Explicit options retain the scalar, natural-order control.
+        options%lu_method = FORTSPARSE_LU_SCALAR
+        call sparse_direct_factor_csc( &
+            factor, 2, ptr, rows, values, status, options)
+        call sparse_direct_solve_factored( &
+            factor, [6.0_dp, 8.0_dp], solution, status)
+        call record_condition(status == 0 .and. &
+            maxval(abs(solution - [1.0_dp, 2.0_dp])) < 1.0e-13_dp, &
+            "Explicit scalar natural-order solve preserves the exact solution")
+        call sparse_direct_free(factor)
+
+        options%host_memory_limit_bytes = 1
+        call sparse_direct_solve_csc(2, ptr, rows, values, &
+            [6.0_dp, 8.0_dp], solution, status, options)
+        call record_condition(status /= 0, &
+            "One-shot options enforce an insufficient host payload cap")
+        factor%options%host_memory_limit_bytes = 1
+        call sparse_direct_factor_csc(factor, 2, ptr, rows, values, status)
+        call record_condition(status /= 0, &
+            "Default selection preserves an insufficient retained host cap")
+        call sparse_direct_free(factor)
+    end subroutine test_selection_and_limits
 
     subroutine test_real_solve()
         integer, parameter :: col_ptr(3) = [1, 3, 5]

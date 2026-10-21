@@ -61,11 +61,171 @@ program gen_verified_bernstein_products
     call lagrange_p2()
     call lagrange_p3()
     call source_remainder()
+    call mapped_kernels()
     call dispatchers()
     write (unit, '(a)') 'end module fortfem_verified_bernstein_products'
     close (unit)
 
 contains
+
+    subroutine mapped_kernels()
+        !! Bernstein multiplication and moments are finite coefficient
+        !! schedules. Their rational factors follow from B_a B_b =
+        !! C(n,a) C(m,b)/C(n+m,a+b) B_(a+b), and
+        !! integral B_a^n = 1/((n+1)(n+2)). Retain integer factors until
+        !! the outward interval division. Degrees <=20 fit signed int64.
+        type(expr_t) :: a, b, c, d, lo, hi
+        integer :: k
+        call prove_mapped_identities()
+        a = sym(arena, 'a'); b = sym(arena, 'b')
+        c = sym(arena, 'numerator'); d = sym(arena, 'denominator')
+        lo = sym(arena, 'lower'); hi = sym(arena, 'upper')
+        call prove((a*b*c/d)*d - a*b*c, 'mapped rational coefficient')
+        call set_names('verified_mapped_product_term', &
+                       [character(16) :: 'a', 'b', 'numerator', 'denominator'], &
+                       [character(16) :: 'term'])
+        call emit([a*b*c/d])
+        call set_names('verified_mapped_divide', &
+                      [character(16) :: 'a', 'denominator'], [character(16) :: 'value'])
+        call emit([a/d])
+        call set_names('verified_mapped_tail', &
+                       [character(16) :: 'a', 'b', 'upper', 'lower'], &
+                       [character(16) :: 'value'])
+        call emit([(sqrt(a) + b*sqrt(hi/2)/lo)**2])
+        write (unit, '(a)') 'pure function mapped_multinomial(n, a) result(v)'
+        write (unit, '(a)') 'use, intrinsic :: iso_fortran_env, only: int64'
+        write (unit, '(a)') 'integer, intent(in) :: n, a(3)'
+        write (unit, '(a)') 'integer(int64) :: v'
+        write (unit, '(a)') 'integer(int64), parameter :: f(0:20) = [ &'
+        do k = 0, 20
+            if (k < 20) then
+                write (unit, '(a)') itoa64(factorial(k))//'_int64, &'
+            else
+                write (unit, '(a)') itoa64(factorial(k))//'_int64 ]'
+            end if
+        end do
+        write (unit, '(a)') 'v = f(n)/(f(a(1))*f(a(2))*f(a(3)))'
+        write (unit, '(a)') 'end function'
+        write (unit, '(a)') 'pure integer function mapped_position(a) result(k)'
+        write (unit, '(a)') 'integer, intent(in) :: a(3)'
+        write (unit, '(a)') 'integer :: r'
+        write (unit, '(a)') 'r = a(2)+a(3)'
+        write (unit, '(a)') 'k = r*(r+1)/2+a(3)+1'
+        write (unit, '(a)') 'end function'
+        write (unit, '(a)') 'pure subroutine mapped_indices(n, a)'
+        write (unit, '(a)') 'integer, intent(in) :: n'
+        write (unit, '(a)') 'integer, intent(out) :: a(3, (n+1)*(n+2)/2)'
+        write (unit, '(a)') 'integer :: i, j, k'
+        write (unit, '(a)') 'k = 0'
+        write (unit, '(a)') 'do i=n,0,-1'
+        write (unit, '(a)') 'do j=n-i,0,-1'
+        write (unit, '(a)') 'k=k+1; a(:,k)=[i,j,n-i-j]'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end subroutine'
+        write (unit, '(a)') 'pure subroutine mapped_product(n,m,a,b,c)'
+        write (unit, '(a)') 'use fortfem_kinds, only: dp'
+        write (unit, '(a)') 'use fortnum_interval, only: interval, operator(+)'
+        write (unit, '(a)') 'integer, intent(in) :: n,m'
+        write (unit, '(a)') 'type(interval_t), intent(in) :: a(:),b(:)'
+        write (unit, '(a)') 'type(interval_t), intent(out) :: c(:)'
+        write (unit, '(a)') 'integer :: ai(3,66),bi(3,66)'
+        write (unit, '(a)') 'integer :: i,j,k'
+        write (unit, '(a)') 'type(interval_t) :: term'
+        write (unit, '(a)') 'call mapped_indices(n,ai); call mapped_indices(m,bi)'
+        write (unit, '(a)') 'c=interval(0.0_dp)'
+        write (unit, '(a)') 'do j=1,(m+1)*(m+2)/2'
+        write (unit, '(a)') 'do i=1,(n+1)*(n+2)/2'
+        write (unit, '(a)') 'k=mapped_position(ai(:,i)+bi(:,j))'
+        write (unit, '(a)') 'call verified_mapped_product_term(a(i),b(j), &'
+        write (unit, '(a)') 'interval(real(mapped_multinomial(n,ai(:,i))* &'
+        write (unit, '(a)') 'mapped_multinomial(m,bi(:,j)),dp)), &'
+  write (unit, '(a)') 'interval(real(mapped_multinomial(n+m,ai(:,i)+bi(:,j)),dp)),term)'
+        write (unit, '(a)') 'c(k)=c(k)+term'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end subroutine'
+        write (unit, '(a)') 'pure subroutine mapped_elevate(n,a,b)'
+        write (unit, '(a)') 'use fortfem_kinds, only: dp'
+        write (unit, '(a)') 'use fortnum_interval, only: interval'
+        write (unit, '(a)') 'integer, intent(in) :: n'
+        write (unit, '(a)') 'type(interval_t), intent(in) :: a(:)'
+        write (unit, '(a)') 'type(interval_t), intent(out) :: b(:)'
+        write (unit, '(a)') 'type(interval_t) :: one(3)'
+        write (unit, '(a)') 'one=interval(1.0_dp)'
+        write (unit, '(a)') 'call mapped_product(n,1,a,one,b)'
+        write (unit, '(a)') 'end subroutine'
+        write (unit, '(a)') 'pure subroutine mapped_square_integral(n,a,value)'
+        write (unit, '(a)') 'use, intrinsic :: iso_fortran_env, only: int64'
+        write (unit, '(a)') 'use fortfem_kinds, only: dp'
+        write (unit, '(a)') 'use fortnum_interval, only: interval, operator(+)'
+        write (unit, '(a)') 'integer, intent(in) :: n'
+        write (unit, '(a)') 'type(interval_t), intent(in) :: a(:)'
+        write (unit, '(a)') 'type(interval_t), intent(out) :: value'
+        write (unit, '(a)') 'integer :: ai(3,66),i,j,multiplicity'
+        write (unit, '(a)') 'type(interval_t) :: term'
+        write (unit, '(a)') 'call mapped_indices(n,ai)'
+        write (unit, '(a)') 'value=interval(0.0_dp)'
+        write (unit, '(a)') 'do j=1,(n+1)*(n+2)/2'
+        write (unit, '(a)') 'do i=1,j'
+        write (unit, '(a)') 'multiplicity=2; if(i==j) multiplicity=1'
+        write (unit, '(a)') 'call verified_mapped_product_term(a(i),a(j), &'
+       write (unit, '(a)') 'interval(real(multiplicity*mapped_multinomial(n,ai(:,i))* &'
+        write (unit, '(a)') 'mapped_multinomial(n,ai(:,j)),dp)), &'
+        write (unit, '(a)') 'interval(real(mapped_multinomial(2*n,ai(:,i)+ai(:,j))* &'
+        write (unit, '(a)') 'int((2*n+1)*(2*n+2),int64),dp)),term)'
+        write (unit, '(a)') 'value=value+term'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end do'
+        write (unit, '(a)') 'end subroutine'
+    end subroutine mapped_kernels
+
+    subroutine prove_mapped_identities()
+        type(expr_t) :: j11, j12, j21, j22, d, nx, ny, sx, sy, w, ux, uy
+        type(expr_t) :: dxi, deta, nxxi, nxeta, nyxi, nyeta
+        type(expr_t) :: divergence_numerator, qx, qy, flux_integrand
+        type(expr_t), allocatable :: s(:)
+        ! Generic local first/second map jets. Equality of the mixed partials
+        ! is the sole geometric premise, so this checks every C2 map,
+        ! including the full cubic isoparametric family. Independent flux
+        ! first jets make the identity independent of the flux degree.
+        s = symbols('piola', 16)
+        j11 = s(1); j12 = s(2); j21 = s(3); j22 = s(4)
+        d = j11*j22 - j12*j21
+        dxi = s(5)*j22 + j11*s(9) - s(6)*j21 - j12*s(8)
+        deta = s(6)*j22 + j11*s(10) - s(7)*j21 - j12*s(9)
+        sx = s(11); sy = s(14)
+        nx = j11*sx + j12*sy; ny = j21*sx + j22*sy
+        nxxi = s(5)*sx + j11*s(12) + s(6)*sy + j12*s(15)
+        nxeta = s(6)*sx + j11*s(13) + s(7)*sy + j12*s(16)
+        nyxi = s(8)*sx + j21*s(12) + s(9)*sy + j22*s(15)
+        nyeta = s(9)*sx + j21*s(13) + s(10)*sy + j22*s(16)
+        divergence_numerator = j22*(d*nxxi - nx*dxi) - j21*(d*nxeta - nx*deta) &
+                               - j12*(d*nyxi - ny*dxi) + j11*(d*nyeta - ny*deta)
+        call prove(divergence_numerator - d**2*(s(12) + s(16)), &
+                   'contravariant Piola divergence, arbitrary map and flux jets')
+        ! Independent generic first jets check the transformed energy identity.
+        s = symbols('jet', 9)
+        j11 = s(1); j12 = s(2); j21 = s(3); j22 = s(4)
+        sx = s(5); sy = s(6); ux = s(7); uy = s(8); w = s(9)
+        d = j11*j22 - j12*j21
+        nx = j11*sx + j12*sy; ny = j21*sx + j22*sy
+        qx = w*nx - (j22*ux - j21*uy)
+        qy = w*ny - (j11*uy - j12*ux)
+        flux_integrand = d*w*((nx/d - (j22*ux - j21*uy)/(w*d))**2 &
+                              + (ny/d - (j11*uy - j12*ux)/(w*d))**2)
+        call prove(flux_integrand - (qx**2 + qy**2)/(w*d), &
+                   'mapped rational flux energy')
+    end subroutine prove_mapped_identities
+
+    function itoa64(k) result(s)
+        integer(int64), intent(in) :: k
+        character(:), allocatable :: s
+        character(32) :: buffer
+        write (buffer, '(i0)') k
+        s = trim(buffer)
+    end function itoa64
+
 
     integer function count_of(degree)
         integer, intent(in) :: degree

@@ -49,9 +49,12 @@ module fortfem_verified_bernstein_majorant
         verified_bernstein_reciprocal, verified_bernstein_lagrange_p2, &
         verified_bernstein_lagrange_p3, verified_bernstein_source_tail_0, &
         verified_bernstein_source_tail_1, verified_bernstein_source_tail_2
+    use fortfem_verified_bernstein_products, only: mapped_product, mapped_elevate, &
+        mapped_square_integral, verified_mapped_divide, verified_mapped_tail
     implicit none
     private
     public :: verified_bernstein_majorant, verified_bernstein_source
+    public :: verified_mapped_bernstein_majorant
     public :: verified_bernstein_source_remainder
 
     integer, parameter, public :: VERIFIED_BERNSTEIN_OK = 0
@@ -91,7 +94,398 @@ module fortfem_verified_bernstein_majorant
         integer, allocatable :: index(:, :)      !< (3, nb) multi-indices
     end type fit_t
 
+    type :: mapped_poly_t
+        integer :: degree = 0
+        type(interval_t) :: c(66)
+    end type mapped_poly_t
+
 contains
+
+    subroutine verified_mapped_bernstein_majorant(vertices, triangles, degree, &
+                          flux_coefficients, solution_cells, solution, geometry_nodes, &
+                        weight_nodes, source, source_degree, weight_power, friedrichs, &
+                        bound, flux_squared, residual_squared, status, source_remainder)
+        !! Outward audit on conforming isoparametric P1/P2/P3 triangles.
+        !! weight_nodes is cell-major: n_geometry_nodes values for each cell.
+        !! It defines w=1/A by the same reference Lagrange interpolation as
+        !! geometry. Source supplies a reference Bernstein numerator s in
+        !! f=(s+delta)/w**weight_power, |delta|<=source_remainder on each cell.
+        !! No quadrature is sampled. Exact polynomial square moments divided
+        !! by positive denominator hulls give lower/upper integral budgets.
+        !! The caller supplies nonoverlap, a conforming H1_0 candidate and C_F.
+        !! Shared mapped edges are checked node for node, including orientation.
+        !! A nonpositive Bernstein hull fails closed (a sufficient test only).
+        real(dp), intent(in) :: vertices(:, :), flux_coefficients(:, :)
+        real(dp), intent(in) :: solution(:), geometry_nodes(:, :, :)
+        real(dp), intent(in) :: weight_nodes(:)
+        integer, intent(in) :: triangles(:, :), solution_cells(:, :)
+        integer, intent(in) :: degree, source_degree, weight_power
+        procedure(verified_bernstein_source) :: source
+        procedure(verified_bernstein_source_remainder), optional :: source_remainder
+        type(interval_t), intent(in) :: friedrichs
+        type(interval_t), intent(out) :: bound, flux_squared, residual_squared
+        integer, intent(out) :: status
+        type(topology_t) :: topo
+        type(fit_t) :: fit
+        real(dp), parameter :: normals(2, 3) = reshape( &
+                               [0._dp, -1._dp, 1._dp, 1._dp, -1._dp, 0._dp], [2, 3])
+        real(dp), allocatable :: shared(:, :), edge_nodes(:, :, :)
+        integer, allocatable :: owner(:), uses(:), turns(:)
+        type(interval_t) :: fp, rp, fc, rc
+        integer :: nt, nv, ng, pg, pu, t, e, edge, stat, j, k, slot, orient
+        integer :: failed, cell_status, thread_failed
+
+        status = VERIFIED_BERNSTEIN_BAD_INPUT
+        bound = interval(0._dp, huge(1._dp))
+        flux_squared = bound; residual_squared = bound
+        if (size(vertices, 1) /= 2 .or. size(triangles, 1) /= 3) return
+        nv = size(vertices, 2); nt = size(triangles, 2)
+        if (nv < 3 .or. nt < 1) return
+        if (size(geometry_nodes, 1) /= 2) return
+        ng = size(geometry_nodes, 2)
+        pg = lagrange_degree(ng); pu = lagrange_degree(size(solution_cells, 1))
+        if (pg == 0 .or. pu == 0) return
+        if (degree < 1 .or. degree > 3) return
+        if (source_degree < 0 .or. source_degree > 6) return
+        if (weight_power < 0 .or. weight_power > 2) return
+        if (size(geometry_nodes, 3) /= nt) return
+        if (size(weight_nodes) /= ng*nt) return
+        if (size(solution_cells, 2) /= nt) return
+        if (size(flux_coefficients, 2) /= nt) return
+        if (any(triangles < 1) .or. any(triangles > nv)) return
+        if (any(solution_cells < 1) .or. any(solution_cells > size(solution))) return
+        if (.not. all(ieee_is_finite(vertices))) return
+        if (.not. all(ieee_is_finite(geometry_nodes))) return
+        if (.not. all(ieee_is_finite(weight_nodes))) return
+        if (.not. all(ieee_is_finite(solution))) return
+        if (.not. all(ieee_is_finite(flux_coefficients))) return
+        if (.not. valid(friedrichs)) return
+        if (friedrichs%lo < 0) return
+        call build_fit(degree, fit, stat)
+        if (stat /= 0) return
+        if (size(flux_coefficients, 1) /= fit%nrt) return
+        call build_topology(nv, triangles, topo, stat)
+        if (stat /= 0) return
+        allocate (owner(maxval(topo%cell_edge)), uses(maxval(topo%cell_edge)), &
+                  turns(maxval(topo%cell_edge)))
+        allocate (edge_nodes(2, pg + 1, size(owner)))
+        owner = 0; uses = 0; turns = 0
+        do t = 1, nt
+            if (any(geometry_nodes(:, :3, t) /= vertices(:, triangles(:, t)))) return
+            do e = 1, 3
+                edge = topo%cell_edge(e, t)
+                orient = topo%cell_orientation(e, t)
+                uses(edge) = uses(edge) + 1
+                turns(edge) = turns(edge) + orient
+                do j = 0, pg
+                    k = j
+                    if (orient < 0) k = pg - j
+                    slot = geometry_edge_slot(pg, e, k)
+                    if (owner(edge) == 0) then
+                        edge_nodes(:, j + 1, edge) = geometry_nodes(:, slot, t)
+                    else
+                        if (any(edge_nodes(:, j + 1, edge) &
+                                /= geometry_nodes(:, slot, t))) return
+                    end if
+                end do
+                if (owner(edge) == 0) owner(edge) = t
+            end do
+        end do
+        if (any(uses > 2)) return
+        if (any(uses == 2 .and. turns /= 0)) return
+        deallocate (edge_nodes)
+        allocate (shared(fit%degree + 1, size(owner)))
+        !$omp parallel do schedule(static)
+        do edge = 1, size(owner)
+            call select_normal(edge)
+        end do
+        !$omp end parallel do
+        flux_squared = interval(0._dp); residual_squared = interval(0._dp)
+        failed = 0
+        !$omp parallel private(fp,rp,fc,rc,cell_status,thread_failed)
+        fp = interval(0._dp); rp = interval(0._dp); thread_failed = 0
+        !$omp do schedule(static)
+        do t = 1, nt
+            call audit(t, fc, rc, cell_status, source_remainder)
+            if (cell_status /= 0) then
+                thread_failed = max(thread_failed, cell_status)
+            else
+                fp = fp + fc; rp = rp + rc
+            end if
+        end do
+        !$omp end do
+        !$omp critical (verified_mapped_sum)
+        flux_squared = flux_squared + fp
+        residual_squared = residual_squared + rp
+        failed = max(failed, thread_failed)
+        !$omp end critical (verified_mapped_sum)
+        !$omp end parallel
+        if (failed /= 0) then
+            status = failed
+            flux_squared = bound; residual_squared = bound
+            return
+        end if
+        flux_squared%lo = max(0._dp, flux_squared%lo)
+        residual_squared%lo = max(0._dp, residual_squared%lo)
+        bound = sqrt(flux_squared) + friedrichs*sqrt(residual_squared)
+        status = VERIFIED_BERNSTEIN_BAD_CELL
+        if (.not. valid(bound)) then
+            bound = interval(0._dp, huge(1._dp))
+            return
+        end if
+        status = VERIFIED_BERNSTEIN_OK
+    contains
+        subroutine fitted_reference(cell, c)
+            integer, intent(in) :: cell
+            real(dp), intent(out) :: c(2, max_coefficients)
+            real(dp) :: v(2, max_coefficients)
+            integer :: i, q
+            v = 0; c = 0
+            do q = 1, fit%nb
+                do i = 1, fit%nrt
+                    v(:, q) = v(:, q) + fit%rt(:, i, q)*flux_coefficients(i, cell)
+                end do
+            end do
+            do i = 1, fit%nb
+                do q = 1, fit%nb
+                    c(:, i) = c(:, i) + fit%inverse(i, q)*v(:, q)
+                end do
+            end do
+        end subroutine
+
+        integer function edge_position(cell, local, j) result(k)
+            integer, intent(in) :: cell, local, j
+            integer :: a(3), next, jj
+            next = mod(local, 3) + 1
+            jj = j
+            if (topo%cell_orientation(local, cell) < 0) jj = fit%degree - j
+            a = 0; a(local) = fit%degree - jj; a(next) = jj
+            k = position(fit, a)
+        end function
+
+        subroutine select_normal(edge)
+            integer, intent(in) :: edge
+            real(dp) :: c(2, max_coefficients)
+            integer :: cell, local, j, k
+            cell = owner(edge)
+            do local = 1, 3
+                if (topo%cell_edge(local, cell) == edge) exit
+            end do
+            call fitted_reference(cell, c)
+            do j = 0, fit%degree
+                k = edge_position(cell, local, j)
+                shared(j + 1, edge) = topo%cell_orientation(local, cell) &
+                                      *dot_product(normals(:, local), c(:, k))
+            end do
+        end subroutine
+
+        subroutine audit(cell, flux_value, residual_value, cell_status, tail)
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: flux_value, residual_value
+            integer, intent(out) :: cell_status
+            procedure(verified_bernstein_source_remainder), optional :: tail
+            type(mapped_poly_t) :: x, y, w, u, j11, j12, j21, j22, det
+            type(mapped_poly_t) :: sx, sy, ux, uy, dummy, qx, qy, dx, dy
+            type(mapped_poly_t) :: div, s, wm, r
+            type(interval_t) :: dh, wh, wmh, integral_x, integral_y, rho, enclosed
+            type(interval_t) :: normal1(2), normal2(2), value1, value2
+            real(dp) :: c(2, max_coefficients)
+            real(dp) :: values(10)
+            integer :: k, a(3), zeros, vertex, e1, e2, local, next, slot1, slot2
+            logical :: ok
+
+            cell_status = VERIFIED_BERNSTEIN_BAD_CELL
+            flux_value = interval(0._dp); residual_value = flux_value
+            call mapped_lagrange(pg, geometry_nodes(1, :, cell), x)
+            call mapped_lagrange(pg, geometry_nodes(2, :, cell), y)
+            call mapped_lagrange(pg, weight_nodes((cell - 1)*ng + 1:cell*ng), w)
+            call mapped_derivative(x, j11, j12)
+            call mapped_derivative(y, j21, j22)
+            det = mapped_difference(mapped_multiply(j11, j22), &
+                                    mapped_multiply(j12, j21))
+            dh = mapped_hull(det); wh = mapped_hull(w)
+            if (.not. valid(dh) .or. .not. valid(wh)) return
+            if (dh%lo <= 0 .or. wh%lo <= 0) return
+            call fitted_reference(cell, c)
+            sx%degree = fit%degree; sy%degree = fit%degree
+            sx%c = interval(0._dp); sy%c = interval(0._dp)
+            do k = 1, fit%nb
+                a = fit%index(:, k); zeros = count(a == 0)
+                if (zeros == 2) then
+                    vertex = maxloc(a, dim=1)
+                    e1 = vertex; e2 = mod(vertex + 1, 3) + 1
+                    slot1 = merge(fit%degree + 1, 1, &
+                              (vertex == e1 .and. topo%cell_orientation(e1, cell) < 0) &
+                                  .or. (vertex /= e1 .and. &
+                                        topo%cell_orientation(e1, cell) > 0))
+                    slot2 = merge(fit%degree + 1, 1, &
+                              (vertex == e2 .and. topo%cell_orientation(e2, cell) < 0) &
+                                  .or. (vertex /= e2 .and. &
+                                        topo%cell_orientation(e2, cell) > 0))
+                    normal1 = interval(normals(:, e1))
+                    normal2 = interval(normals(:, e2))
+                    value1 = interval(topo%cell_orientation(e1, cell) &
+                                      *shared(slot1, topo%cell_edge(e1, cell)))
+                    value2 = interval(topo%cell_orientation(e2, cell) &
+                                      *shared(slot2, topo%cell_edge(e2, cell)))
+                    call verified_bernstein_corner(value1, normal1(1), normal1(2), &
+                                       value2, normal2(1), normal2(2), sx%c(k), sy%c(k))
+                else if (zeros == 1) then
+                    local = mod(minloc(a, dim=1), 3) + 1
+                    next = mod(local, 3) + 1
+                    slot1 = a(next) + 1
+                    if (topo%cell_orientation(local, cell) < 0) &
+                        slot1 = a(local) + 1
+                    value1 = interval(topo%cell_orientation(local, cell) &
+                                      *shared(slot1, topo%cell_edge(local, cell)))
+                    normal1 = interval(normals(:, local))
+                    call verified_bernstein_edge_projection(interval(c(1, k)), &
+                                    interval(c(2, k)), value1, normal1(1), normal1(2), &
+                                                            sx%c(k), sy%c(k))
+                else
+                    sx%c(k) = interval(c(1, k)); sy%c(k) = interval(c(2, k))
+                end if
+            end do
+            do k = 1, count_of(pu)
+                values(k) = solution(solution_cells(k, cell))
+            end do
+            call mapped_lagrange(pu, values, u)
+            call mapped_derivative(u, ux, uy)
+            ! Q = w J sigma_hat - adj(J)^T grad_hat u.
+            qx = mapped_difference(mapped_multiply(w, &
+                      mapped_sum(mapped_multiply(j11, sx), mapped_multiply(j12, sy))), &
+                                   mapped_difference(mapped_multiply(j22, ux), &
+                                                     mapped_multiply(j21, uy)))
+            qy = mapped_difference(mapped_multiply(w, &
+                      mapped_sum(mapped_multiply(j21, sx), mapped_multiply(j22, sy))), &
+                                   mapped_difference(mapped_multiply(j11, uy), &
+                                                     mapped_multiply(j12, ux)))
+            call mapped_square_integral(qx%degree, qx%c, integral_x)
+            call mapped_square_integral(qy%degree, qy%c, integral_y)
+            call verified_mapped_divide(integral_x + integral_y, &
+                                        wh*dh, flux_value)
+            ! T = s det(J) + w^m div_hat sigma_hat.
+            call mapped_derivative(sx, dx, dummy)
+            call mapped_derivative(sy, dummy, dy)
+            div = mapped_sum(dx, dy)
+            s%degree = source_degree; s%c = interval(0._dp)
+            call source(cell, s%c(:count_of(source_degree)), ok)
+            cell_status = VERIFIED_BERNSTEIN_BAD_SOURCE
+            if (.not. ok) return
+            if (.not. all(valid(s%c(:count_of(source_degree))))) return
+            wm%degree = 0; wm%c = interval(0._dp); wm%c(1) = interval(1._dp)
+            do k = 1, weight_power
+                wm = mapped_multiply(wm, w)
+            end do
+            r = mapped_sum(mapped_multiply(s, det), mapped_multiply(wm, div))
+            call mapped_square_integral(r%degree, r%c, integral_x)
+            wmh = mapped_hull(wm)
+            call verified_mapped_divide(integral_x, &
+                                        wmh*wmh*dh, residual_value)
+            if (present(tail)) then
+                call tail(cell, rho, ok)
+                if (.not. ok) return
+                if (.not. valid(rho)) return
+                if (rho%lo < 0) return
+                if (.not. valid(residual_value)) return
+                residual_value%lo = max(0._dp, residual_value%lo)
+                call verified_mapped_tail(residual_value, rho, &
+                                          interval(dh%hi), interval(wmh%lo), enclosed)
+                if (.not. valid(enclosed)) return
+                residual_value = interval(0._dp, enclosed%hi)
+            end if
+            cell_status = VERIFIED_BERNSTEIN_BAD_CELL
+            if (.not. valid(flux_value) .or. .not. valid(residual_value)) return
+            if (flux_value%hi < 0 .or. residual_value%hi < 0) return
+            flux_value%lo = max(0._dp, flux_value%lo)
+            residual_value%lo = max(0._dp, residual_value%lo)
+            cell_status = VERIFIED_BERNSTEIN_OK
+        end subroutine
+    end subroutine verified_mapped_bernstein_majorant
+
+    pure integer function lagrange_degree(n) result(p)
+        integer, intent(in) :: n
+        p = 0
+        if (n == 3) p = 1
+        if (n == 6) p = 2
+        if (n == 10) p = 3
+    end function
+
+    pure integer function geometry_edge_slot(p, edge, j) result(k)
+        integer, intent(in) :: p, edge, j
+        k = 3 + (edge - 1)*(p - 1) + j
+        if (j == 0) k = edge
+        if (j == p) k = mod(edge, 3) + 1
+    end function
+
+    subroutine mapped_lagrange(p, values, b)
+        integer, intent(in) :: p
+        real(dp), intent(in) :: values(:)
+        type(mapped_poly_t), intent(out) :: b
+        type(interval_t) :: v(10)
+        b%degree = p; b%c = interval(0._dp)
+        v(:count_of(p)) = interval(values(:count_of(p)))
+        select case (p)
+        case (1)
+            b%c(:3) = v(:3)
+        case (2)
+            call verified_bernstein_lagrange_p2(v(1), v(2), v(3), v(4), v(5), &
+                                   v(6), b%c(1), b%c(2), b%c(3), b%c(4), b%c(5), b%c(6))
+        case (3)
+            call verified_bernstein_lagrange_p3(v(1), v(2), v(3), v(4), v(5), &
+                                v(6), v(7), v(8), v(9), v(10), b%c(1), b%c(2), b%c(3), &
+                                b%c(4), b%c(5), b%c(6), b%c(7), b%c(8), b%c(9), b%c(10))
+        end select
+    end subroutine
+
+    subroutine mapped_derivative(a, dx, dy)
+        type(mapped_poly_t), intent(in) :: a
+        type(mapped_poly_t), intent(out) :: dx, dy
+        type(interval_t) :: g(4)
+        dx%degree = a%degree - 1; dy%degree = a%degree - 1
+        dx%c = interval(0._dp); dy%c = interval(0._dp)
+        g = interval([1._dp, 0._dp, 0._dp, 1._dp])
+        call verified_bernstein_gradient(a%degree, a%c, g, &
+                                 dx%c(:count_of(dx%degree)), dy%c(:count_of(dy%degree)))
+    end subroutine
+
+    function mapped_multiply(a, b) result(c)
+        type(mapped_poly_t), intent(in) :: a, b
+        type(mapped_poly_t) :: c
+        c%degree = a%degree + b%degree
+        call mapped_product(a%degree, b%degree, a%c, b%c, c%c)
+    end function
+
+    function mapped_sum(a, b) result(c)
+        type(mapped_poly_t), intent(in) :: a, b
+        type(mapped_poly_t) :: c, tmp, elevated
+        c = a; tmp = b
+        do while (c%degree < tmp%degree)
+            call mapped_elevate(c%degree, c%c, elevated%c)
+            c%c = elevated%c; c%degree = c%degree + 1
+        end do
+        do while (tmp%degree < c%degree)
+            call mapped_elevate(tmp%degree, tmp%c, elevated%c)
+            tmp%c = elevated%c; tmp%degree = tmp%degree + 1
+        end do
+        c%c = c%c + tmp%c
+    end function
+
+    function mapped_difference(a, b) result(c)
+        type(mapped_poly_t), intent(in) :: a, b
+        type(mapped_poly_t) :: c, negative
+        negative = b; negative%c = -b%c
+        c = mapped_sum(a, negative)
+    end function
+
+    function mapped_hull(a) result(h)
+        type(mapped_poly_t), intent(in) :: a
+        type(interval_t) :: h
+        integer :: n
+        n = count_of(a%degree)
+        h = interval(minval(a%c(:n)%lo), maxval(a%c(:n)%hi))
+    end function
+
 
     subroutine verified_bernstein_majorant(vertices, triangles, degree, &
             flux_coefficients, solution_cells, solution, weight, source, &

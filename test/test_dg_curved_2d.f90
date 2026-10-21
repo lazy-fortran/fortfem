@@ -12,8 +12,9 @@ program test_dg_curved_2d
     use dg_curved_test_problems, only: anisotropic_tensor, l2_error, &
         mms_coef_t, mms_data_t
     use meridian_test_meshes, only: make_annulus_mesh, make_warped_rectangle_mesh
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     use fortsparse, only: csc_is_valid, csc_matvec, csc_z_t, fortsparse_status_t, &
-        sparse_solve_once, status_ok
+        status_ok
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -98,7 +99,7 @@ contains
         call dg_curved_rhs(space, c, data, form, rhs, st)
         ok = st == 0
         if (.not. ok) return
-        call sparse_solve_once(a, rhs, u, fst)
+        call sparse_direct_solve_once(a, rhs, u, fst)
         ok = status_ok(fst)
     end subroutine solve
 

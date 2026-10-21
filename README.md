@@ -97,7 +97,15 @@ fpm run --example simple_poisson
 Sparse direct solves explicitly select FortSparse's native CPU backend for real
 and complex matrices, including retained transpose/adjoint factors and the
 constrained/tree--cotree derivative paths. They do not fall back to another
-sparse solver. Dense BLAS/LAPACK remain system dependencies.
+sparse solver. With AMD or METIS available they select supernodal LU; FortSparse
+chooses ND for uncapped DEFAULT ordering and AMD for capped/LOW_MEMORY requests.
+Builds without either ordering library retain scalar execution. Pass an explicit
+FortSparse `sparse_options_t` as the optional final `options` argument to the
+one-shot or retained factor wrappers to select scalar/natural-order execution,
+AMD/ND, or a payload cap. Otherwise retained factor controls (including caps and
+thread budgets) are preserved while selecting supernodal LU. Unsupported capped
+ordering returns the FortSparse status; no cap or accuracy gate is relaxed.
+Dense BLAS/LAPACK remain system dependencies.
 
 For C and C++ consumers, CMake builds the focused shared API and fetches the
 pinned `fortsparse` dependency when needed. The default
