@@ -7,6 +7,7 @@ module fortfem_parametric_laplace_bem_3d
     use fortfem_generated_bem_kernel, only: bem_kernel
     use fortfem_generated_bem_pair_product, only: bem_pair_product
     use fortfem_generated_bem_curl_density, only: bem_curl_density
+    use fortfem_generated_bem_refinement_product, only: bem_refinement_product
     use fortfem_generated_p1_basis, only: generated_p1_jet
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_equilibrated_flux_topology, only: topology_t, build_topology
@@ -48,6 +49,7 @@ module fortfem_parametric_laplace_bem_3d
     end type
     public :: assemble_parametric_laplace_bem, build_exterior_dtn
     public :: parametric_bem_residual, assignment(=)
+    public :: parametric_bem_refinement_estimate
     interface assignment(=)
         module procedure assign_operators, assign_dtn
     end interface
@@ -442,6 +444,70 @@ contains
         if (.not. all(ieee_is_finite(trace))) return
         flux = matmul(self%flux_map, trace)
         load = matmul(self%steklov, trace)
+        status = 0
+    end subroutine
+
+    subroutine parametric_bem_refinement_estimate(fine, coarse_flux, fine_flux, &
+            parent, panel_indicator, energy_estimate, status)
+        !! Two-level P0 flux estimator on nested panels of the SAME surface.
+        !! Energy: ||q_f - I q_c||_Vf. Marking: h_T ||q_f - I q_c||_L2(T)^2,
+        !! with h_T=sqrt(area(T)). Reliability requires flux-error saturation;
+        !! neither quadrature error nor the saturation factor is certified.
+        type(bem_operators_t), intent(in) :: fine
+        real(dp), intent(in) :: coarse_flux(:), fine_flux(:)
+        integer, intent(in) :: parent(:)
+        real(dp), intent(out) :: panel_indicator(:), energy_estimate
+        integer, intent(out) :: status
+        real(dp), allocatable :: difference(:), action(:), parent_area(:)
+        real(dp) :: square, energy_squared, symmetry_scale
+        integer :: nf, nc, panel, coarse
+
+        status = 1
+        panel_indicator = 0.0_dp
+        energy_estimate = 0.0_dp
+        if (.not. allocated(fine%v)) return
+        if (.not. allocated(fine%area)) return
+        nf = size(fine_flux)
+        nc = size(coarse_flux)
+        if (min(nf, nc) < 1) return
+        if (size(parent) /= nf .or. size(fine%area) /= nf) return
+        if (size(panel_indicator) /= nc) return
+        if (any(shape(fine%v) /= [nf, nf])) return
+        if (any(parent < 1) .or. any(parent > nc)) return
+        if (.not. all(ieee_is_finite(fine%area))) return
+        if (any(fine%area <= 0.0_dp)) return
+        if (.not. all(ieee_is_finite(fine%v))) return
+        if (.not. all(ieee_is_finite(fine_flux))) return
+        if (.not. all(ieee_is_finite(coarse_flux))) return
+        symmetry_scale = max(tiny(1.0_dp), maxval(abs(fine%v)))
+        if (maxval(abs(fine%v-transpose(fine%v))) > &
+            128*epsilon(1.0_dp)*symmetry_scale) return
+        allocate(difference(nf), parent_area(nc))
+        parent_area = 0.0_dp
+        !$omp parallel do default(shared) private(panel,coarse,square)
+        do panel = 1, nf
+            coarse = parent(panel)
+            call bem_refinement_product(fine_flux(panel), coarse_flux(coarse), &
+                difference(panel), square)
+            !$omp atomic update
+            panel_indicator(coarse) = panel_indicator(coarse) + &
+                fine%area(panel)*square
+            !$omp atomic update
+            parent_area(coarse) = parent_area(coarse) + fine%area(panel)
+        end do
+        !$omp end parallel do
+        if (any(parent_area <= 0.0_dp)) then
+            panel_indicator = 0.0_dp
+            return
+        end if
+        action = matmul(fine%v, difference)
+        energy_squared = dot_product(difference, action)
+        status = 2
+        if (.not. ieee_is_finite(energy_squared)) return
+        if (energy_squared < 0.0_dp) return
+        panel_indicator = sqrt(sqrt(parent_area)*panel_indicator)
+        if (.not. all(ieee_is_finite(panel_indicator))) return
+        energy_estimate = sqrt(energy_squared)
         status = 0
     end subroutine
 
