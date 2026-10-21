@@ -147,6 +147,7 @@ run_codegen gen_hcurl_bound_products
 run_codegen gen_meridian_fourier_equilibration_products
 
 run_codegen gen_parametric_bem_products
+run_codegen gen_harmonic_field_products
 
 cd "$repository_dir"
 fo fmt "$generated_dir/fortfem_mapped_oscillation_products.f90"
