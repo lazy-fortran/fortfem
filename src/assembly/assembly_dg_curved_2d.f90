@@ -316,7 +316,7 @@ contains
 
         real(dp), allocatable :: x(:, :), w(:), gr(:, :, :), n(:, :), ws(:)
         real(dp), allocatable :: val(:, :), b(:, :)
-        complex(dp), allocatable :: f(:), kk(:, :, :), c(:)
+        complex(dp), allocatable :: f(:), kk(:, :, :), c(:), rl(:)
         complex(dp) :: kn(2), kgt
         real(dp) :: eta, beta, sig
         integer :: t, q, fc, i, j, bad, st, nl, e
@@ -330,12 +330,13 @@ contains
         rhs = (0.0_dp, 0.0_dp)
         bad = 0
         !$omp parallel if(space%nt >= par_min) default(shared) &
-        !$omp private(x, w, gr, n, ws, val, b, f, kk, c, sig, kn, kgt, beta, t, q, &
+        !$omp private(x, w, gr, n, ws, val, b, f, kk, c, rl, sig, kn, kgt, beta, t, q, &
         !$omp fc, i, j, st, e) reduction(max:bad)
         allocate (x(2, max(space%nq, space%nfq)), w(space%nq))
         allocate (gr(2, nl, max(space%nq, space%nfq)), n(2, space%nfq))
         allocate (ws(space%nfq), val(nl, space%nfq), b(2, space%nfq))
         allocate (f(max(space%nq, space%nfq)), kk(2, 2, space%nfq), c(space%nfq))
+        allocate (rl(nl))
         !$omp do schedule(dynamic, 8)
         do t = 1, space%nt
             call volume_points(space, t, x(:, :space%nq), w, gr(:, :, :space%nq), &
@@ -364,21 +365,27 @@ contains
                 cycle
             end if
             i = (t - 1)*nl
+            rl = (0.0_dp, 0.0_dp)
             do q = 1, space%nfq
                 beta = dot_product(b(:, q), n(:, q))
                 kn(1) = kk(1, 1, q)*n(1, q) + kk(1, 2, q)*n(2, q)
                 kn(2) = kk(2, 1, q)*n(1, q) + kk(2, 2, q)*n(2, q)
                 sig = penalty_factor(space, eta, space%flen(fc)/space%area(t)) &
                     *abs(dot_product(n(:, q), kn))
-                rhs(i + 1:i + nl) = rhs(i + 1:i + nl) + ws(q)*f(q)*sig*val(:, q)
+                rl = rl + ws(q)*f(q)*sig*val(:, q)
                 do j = 1, nl
                     kgt = gr(1, j, q)*kn(1) + gr(2, j, q)*kn(2)
-                    rhs(i + j) = rhs(i + j) - ws(q)*f(q)*kgt
+                    rl(j) = rl(j) - ws(q)*f(q)*kgt
                 end do
                 if (beta < 0.0_dp) then
-                    rhs(i + 1:i + nl) = rhs(i + 1:i + nl) - ws(q)*beta*f(q)*val(:, q)
+                    rl = rl - ws(q)*beta*f(q)*val(:, q)
                 end if
             end do
+            ! A corner triangle owns two boundary faces that different threads
+            ! may process at the same time; serialize the update of its rows.
+            !$omp critical (dg_curved_rhs_boundary)
+            rhs(i + 1:i + nl) = rhs(i + 1:i + nl) + rl
+            !$omp end critical (dg_curved_rhs_boundary)
         end do
         !$omp end do
         !$omp end parallel

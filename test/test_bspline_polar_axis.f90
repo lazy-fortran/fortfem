@@ -206,6 +206,8 @@ program test_bspline_polar_axis
         call check_condition(maxval(abs( &
             matmul(curl, matmul(gradient, random_state)))) < 5.0e-15_dp, &
             "Random polar exact-sequence trial preserves curl(grad)=0")
+        ! gfortran 12 -O1+ does not grow the left side of a = matmul(...).
+        if (allocated(expected)) deallocate (expected)
         expected = matmul(gradient, random_state)
         call check_condition(abs( &
             dot_product(random_state, &
@@ -215,6 +217,8 @@ program test_bspline_polar_axis
             "Physical polar grad energy commutes with the Hcurl Hodge map")
         polar_state = expected
         call random_number(polar_state)
+        ! gfortran 12 -O1+ does not grow the left side of a = matmul(...).
+        if (allocated(expected)) deallocate (expected)
         expected = matmul(curl, polar_state)
         call check_condition(abs( &
             dot_product(polar_state, &
