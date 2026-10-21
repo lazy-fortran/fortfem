@@ -10,12 +10,13 @@ program gen_reference_basis_products
     use fortsym_rigorous_emit, only: rigorous_kernel_spec_t, interval_runtime, &
         emit_rigorous_kernel
     use fortsym_string, only: chars, str
+    use fortfem_codegen_triangle_basis, only: triangle_scalar_bases
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
     type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
-    type(expr_t) :: x, y, l(3), p1(3), p2(6), q1(4), line(2)
+    type(expr_t) :: x, y, p1(3), p2(6), q1(4), line(2)
     type(expr_t) :: edge(2,3), rt(2,3), roots(6)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code, name
@@ -25,14 +26,7 @@ program gen_reference_basis_products
     call arena%init()
     engine = make_native_engine(arena)
     x = sym(arena, 'xi'); y = sym(arena, 'eta')
-    l(1)=1-x-y; l(2)=x; l(3)=y
-    do i=1,3
-        p1(i)=l(i)
-    end do
-    do i=1,3
-        p2(i)=l(i)*(2*l(i)-1)
-    end do
-    p2(4)=4*l(1)*l(2); p2(5)=4*l(2)*l(3); p2(6)=4*l(3)*l(1)
+    call triangle_scalar_bases(x,y,p1,p2)
     q1(1)=(1-x)*(1-y); q1(2)=(1+x)*(1-y)
     q1(3)=(1+x)*(1+y); q1(4)=(1-x)*(1+y)
     ! Exact rational normalization on the square reference element.

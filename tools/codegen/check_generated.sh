@@ -382,3 +382,8 @@ done
 
 filename="fortfem_meridian_fourier_equilibration_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+for extension in f90 cuh; do
+    filename="fortfem_element_precision_products.$extension"
+    cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+done
