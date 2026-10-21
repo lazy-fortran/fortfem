@@ -61,3 +61,21 @@ unlinked longitude, two handle periods, dipole decay, segment derivatives,
 and boundary energy against an exterior volume integral using elliptic fields.
 The volume oracle reports both quadrature refinement and a larger truncation
 box. These are numerical accuracy checks, not interval certificates.
+
+## Native validation checkpoint
+
+At source 024ebeaad97be1c3a13144b96490117c61d51707, GNU Fortran 12.2
+release and checked-debug runs pass all 54 assertions in the exterior field,
+exterior energy, harmonic-energy and curved P2/P1 programs. The independent
+checks include circular-loop axis values, linking periods, two handles,
+dipole decay and boundary energy against elliptic-field volume quadrature.
+The retained FortSym generator proves the off-wire identities and reproduces
+the emitted leaf byte for byte.
+
+The separate tangent-field reconstruction gives a relative normal-field L2
+error of 0.00911163, below the unchanged 0.03 gate. Its corrected Gram value
+is 2.359031529, versus 2.483421317 before the scalar correction, as required
+by energy minimization. These are numerical observations for the retained
+curved-torus fixture. They do not certify arbitrary geometry or establish
+assembled geometry derivatives. Strong-scaling measurements remain in
+progress; one eight-thread timing is insufficient to establish a speedup.
