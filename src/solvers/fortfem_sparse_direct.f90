@@ -5,10 +5,13 @@ module fortfem_sparse_direct
     use fortsparse, only: csc_t, csc_z_t, fortsparse_status_t, &
         sparse_direct_factor_t => sparse_solver_t, sparse_destroy, &
         csc_conjugate_transpose, csc_transpose, sparse_factor, sparse_solve, &
-        sparse_solve_jvp, sparse_solve_vjp, FORTSPARSE_BACKEND_NATIVE
+        sparse_solve_jvp, sparse_solve_vjp, FORTSPARSE_BACKEND_NATIVE, &
+        sparse_options_t, native_ordering_available, FORTSPARSE_ORDER_AMD, &
+        FORTSPARSE_ORDER_ND, FORTSPARSE_LU_SUPERNODAL
     implicit none
     private
 
+    public :: sparse_direct_solve_once
     public :: sparse_direct_solve_csc
     public :: sparse_direct_solve_constrained
     public :: sparse_direct_solve_constrained_jvp
@@ -25,6 +28,11 @@ module fortfem_sparse_direct
     public :: sparse_direct_solve_factored_jvp
     public :: sparse_direct_solve_factored_vjp
     public :: sparse_direct_free
+
+    interface sparse_direct_solve_once
+        module procedure sparse_direct_solve_once_real
+        module procedure sparse_direct_solve_once_complex
+    end interface sparse_direct_solve_once
 
     interface sparse_direct_solve_csc
         module procedure sparse_direct_solve_csc_real
@@ -87,6 +95,51 @@ module fortfem_sparse_direct
     end interface validate_csc_dimensions
 
 contains
+
+    subroutine select_sparse_direct_options(factor, options)
+        type(sparse_direct_factor_t), intent(inout) :: factor
+        type(sparse_options_t), intent(in), optional :: options
+
+        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        if (present(options)) then
+            factor%options = options
+        else if (native_ordering_available(FORTSPARSE_ORDER_AMD) .or. &
+                native_ordering_available(FORTSPARSE_ORDER_ND)) then
+            ! DEFAULT ordering lets FortSparse select ND without a cap, or
+            ! AMD for capped/LOW_MEMORY execution. Keep every other control.
+            factor%options%lu_method = FORTSPARSE_LU_SUPERNODAL
+        end if
+    end subroutine select_sparse_direct_options
+
+    subroutine sparse_direct_solve_once_real( &
+            matrix, rhs, solution, status, options)
+        type(csc_t), intent(in) :: matrix
+        real(dp), intent(in) :: rhs(:)
+        real(dp), intent(out) :: solution(:)
+        type(fortsparse_status_t), intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
+        type(sparse_direct_factor_t) :: factor
+
+        call select_sparse_direct_options(factor, options)
+        call sparse_factor(factor, matrix, status)
+        if (status%code == 0) call sparse_solve(factor, rhs, solution, status)
+        call sparse_destroy(factor)
+    end subroutine sparse_direct_solve_once_real
+
+    subroutine sparse_direct_solve_once_complex( &
+            matrix, rhs, solution, status, options)
+        type(csc_z_t), intent(in) :: matrix
+        complex(dp), intent(in) :: rhs(:)
+        complex(dp), intent(out) :: solution(:)
+        type(fortsparse_status_t), intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
+        type(sparse_direct_factor_t) :: factor
+
+        call select_sparse_direct_options(factor, options)
+        call sparse_factor(factor, matrix, status)
+        if (status%code == 0) call sparse_solve(factor, rhs, solution, status)
+        call sparse_destroy(factor)
+    end subroutine sparse_direct_solve_once_complex
 
     subroutine sparse_direct_solve_tree_cotree_real( &
             gauge, matrix, rhs, solution, status)
@@ -855,12 +908,13 @@ contains
     end function valid_constrained_shapes
 
     subroutine sparse_direct_factor_csc_real( &
-            factor, n, col_ptr, row_ind, values, status)
+            factor, n, col_ptr, row_ind, values, status, options)
         type(sparse_direct_factor_t), intent(inout) :: factor
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         real(dp), intent(in) :: values(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_t) :: matrix
         type(fortsparse_status_t) :: solver_status
@@ -868,18 +922,19 @@ contains
         call initialize_csc_real( &
             n, col_ptr, row_ind, values, matrix, status)
         if (status /= 0) return
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_csc_real
 
     subroutine sparse_direct_factor_csc_complex( &
-            factor, n, col_ptr, row_ind, values, status)
+            factor, n, col_ptr, row_ind, values, status, options)
         type(sparse_direct_factor_t), intent(inout) :: factor
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         complex(dp), intent(in) :: values(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_z_t) :: matrix
         type(fortsparse_status_t) :: solver_status
@@ -887,18 +942,19 @@ contains
         call initialize_csc_complex( &
             n, col_ptr, row_ind, values, matrix, status)
         if (status /= 0) return
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_csc_complex
 
     subroutine sparse_direct_factor_transpose_csc( &
-            factor, n, col_ptr, row_ind, values, status)
+            factor, n, col_ptr, row_ind, values, status, options)
         type(sparse_direct_factor_t), intent(inout) :: factor
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         real(dp), intent(in) :: values(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_t) :: matrix, transpose_matrix
         type(fortsparse_status_t) :: solver_status
@@ -911,18 +967,19 @@ contains
             status = solver_status%code
             return
         end if
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, transpose_matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_transpose_csc
 
     subroutine sparse_direct_factor_adjoint_csc( &
-            factor, n, col_ptr, row_ind, values, status)
+            factor, n, col_ptr, row_ind, values, status, options)
         type(sparse_direct_factor_t), intent(inout) :: factor
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         complex(dp), intent(in) :: values(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_z_t) :: adjoint_matrix, matrix
         type(fortsparse_status_t) :: solver_status
@@ -935,7 +992,7 @@ contains
             status = solver_status%code
             return
         end if
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, adjoint_matrix, solver_status)
         status = solver_status%code
     end subroutine sparse_direct_factor_adjoint_csc
@@ -1067,12 +1124,13 @@ contains
     end subroutine sparse_direct_free
 
     subroutine sparse_direct_solve_csc_real( &
-            n, col_ptr, row_ind, values, rhs, solution, status)
+            n, col_ptr, row_ind, values, rhs, solution, status, options)
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         real(dp), intent(in) :: values(:), rhs(:)
         real(dp), intent(out) :: solution(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_t) :: matrix
         type(fortsparse_status_t) :: solver_status
@@ -1094,7 +1152,7 @@ contains
         matrix%row_idx = row_ind
         matrix%val = values
 
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, matrix, solver_status)
         if (solver_status%code == 0) then
             call sparse_solve(factor, rhs, solution, solver_status)
@@ -1104,12 +1162,13 @@ contains
     end subroutine sparse_direct_solve_csc_real
 
     subroutine sparse_direct_solve_csc_complex( &
-            n, col_ptr, row_ind, values, rhs, solution, status)
+            n, col_ptr, row_ind, values, rhs, solution, status, options)
         integer, intent(in) :: n
         integer, intent(in) :: col_ptr(:), row_ind(:)
         complex(dp), intent(in) :: values(:), rhs(:)
         complex(dp), intent(out) :: solution(:)
         integer, intent(out) :: status
+        type(sparse_options_t), intent(in), optional :: options
 
         type(csc_z_t) :: matrix
         type(fortsparse_status_t) :: solver_status
@@ -1131,7 +1190,7 @@ contains
         matrix%row_idx = row_ind
         matrix%val = values
 
-        factor%backend_id = FORTSPARSE_BACKEND_NATIVE
+        call select_sparse_direct_options(factor, options)
         call sparse_factor(factor, matrix, solver_status)
         if (solver_status%code == 0) then
             call sparse_solve(factor, rhs, solution, solver_status)

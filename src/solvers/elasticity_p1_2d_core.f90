@@ -1,7 +1,7 @@
 module fortfem_elasticity_p1_2d_core
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     use fortfem_kinds, only: dp
-    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
-        sparse_solve_once
+    use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t
     implicit none
 
     private
@@ -163,7 +163,7 @@ contains
             dof_count, dof_count, rows(:entry), columns(:entry), &
             values(:entry), sparse_matrix, sparse_status)
         if (sparse_status%code /= 0) return
-        call sparse_solve_once( &
+        call sparse_direct_solve_once( &
             sparse_matrix, constrained_rhs, solution, sparse_status)
         if (sparse_status%code /= 0) return
         status = 0
