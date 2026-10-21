@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.22)
 
 project(fortfem VERSION 0.1.0 LANGUAGES C Fortran)
 
+# gfortran < 13 mis-optimizes an allocatable left-hand side of `x = matmul(...)`
+# at -O1 and above: the inlined matmul does not reallocate x and writes past
+# the heap block (minimal reproducer: gfortran 12.2 -O2, valgrind). Calling the
+# library matmul avoids it; newer compilers are not affected.
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU"
+   AND CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 13)
+    add_compile_options($<$<COMPILE_LANGUAGE:Fortran>:-finline-matmul-limit=0>)
+endif()
+
 include(FetchContent)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
