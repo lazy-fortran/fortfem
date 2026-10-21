@@ -10,7 +10,8 @@ program interoperability_benchmarks
     integer :: command_status
 
     if (command_argument_count() /= 2) then
-        error stop "usage: interoperability_benchmarks RECORDS_ROOT OUTPUT_DIR"
+        error stop "usage: interoperability_benchmarks "// &
+            "RECORDS_ROOT|--primary-only OUTPUT_DIR"
     end if
     call get_command_argument(1, records_root)
     call get_command_argument(2, output_directory)
@@ -19,10 +20,12 @@ program interoperability_benchmarks
     if (command_status /= 0) error stop "cannot create plot output directory"
 
     call reference_solution_figure()
-    call accuracy_figure("poisson", "Poisson", "H1")
-    call accuracy_figure("ampere", "Ampere curl-curl", "H(curl)")
-    call timing_figure("poisson", "Poisson")
-    call timing_figure("ampere", "Ampere curl-curl")
+    if (trim(records_root) /= "--primary-only") then
+        call accuracy_figure("poisson", "Poisson", "H1")
+        call accuracy_figure("ampere", "Ampere curl-curl", "H(curl)")
+        call timing_figure("poisson", "Poisson")
+        call timing_figure("ampere", "Ampere curl-curl")
+    end if
 
 contains
 
