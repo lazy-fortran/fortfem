@@ -8,7 +8,7 @@ module tc_predicates
     !! binary) and falls back to a fully exact expansion computation whose
     !! sign matches the reference adaptive evaluation.
     use, intrinsic :: iso_fortran_env, only: dp => real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_fma
+    use tc_fma_mod, only: tc_fma
     implicit none
     private
 
@@ -135,21 +135,21 @@ contains
 
         bdxcdy = bdx*cdy
         cdxbdy = cdx*bdy
-        alift = ieee_fma(adx, adx, ady*ady)
+        alift = tc_fma(adx, adx, ady*ady)
 
         cdxady = cdx*ady
         adxcdy = adx*cdy
-        blift = ieee_fma(bdx, bdx, bdy*bdy)
+        blift = tc_fma(bdx, bdx, bdy*bdy)
 
         adxbdy = adx*bdy
         bdxady = bdx*ady
-        clift = ieee_fma(cdx, cdx, cdy*cdy)
+        clift = tc_fma(cdx, cdx, cdy*cdy)
 
-        det = ieee_fma(clift, adxbdy - bdxady, &
-                       ieee_fma(alift, bdxcdy - cdxbdy, blift*(cdxady - adxcdy)))
+        det = tc_fma(clift, adxbdy - bdxady, &
+                       tc_fma(alift, bdxcdy - cdxbdy, blift*(cdxady - adxcdy)))
 
-        permanent = ieee_fma(abs(adxbdy) + abs(bdxady), clift, &
-                             ieee_fma(abs(bdxcdy) + abs(cdxbdy), alift, &
+        permanent = tc_fma(abs(adxbdy) + abs(bdxady), clift, &
+                             tc_fma(abs(bdxcdy) + abs(cdxbdy), alift, &
                                       blift*(abs(cdxady) + abs(adxcdy))))
         errbound = permanent*ICCERRBOUND_A
         if ((det > errbound) .or. (-det > errbound)) return
