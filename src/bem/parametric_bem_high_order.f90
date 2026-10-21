@@ -14,6 +14,7 @@ module fortfem_parametric_bem_high_order
     use fortfem_generated_bem_curl_density, only: bem_curl_density
     use fortfem_generated_bem_trace_product, only: bem_trace_product
     use fortfem_generated_bem_hyper_product, only: bem_hyper_product
+    use fortfem_generated_bem_fan_map, only: bem_fan_map
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
@@ -118,7 +119,8 @@ contains
         if (options%relative_tolerance<0 .or. options%absolute_tolerance<=0) return
         if (options%initial_degree<2 .or. options%maximum_degree>128) return
         if (options%maximum_degree<options%initial_degree) return
-        if (options%degree_increment<1 .or. options%maximum_evaluations<1) return
+        if (options%degree_increment<1 .or. options%degree_increment>128) return
+        if (options%maximum_evaluations<1) return
         levels=1+(options%maximum_degree-options%initial_degree+ &
             options%degree_increment-1)/options%degree_increment
         maxn=(options%maximum_degree+3)/2
@@ -256,7 +258,7 @@ contains
         integer(int64), intent(out) :: evaluations
         integer, intent(out) :: status
         type(point_t) :: source
-        real(dp) :: apex(2),e1(2),e2(2),det,r,uv(2),factor
+        real(dp) :: apex(2),e1(2),e2(2),det,uv(2),factor,fan_weight
         integer :: t,edge,i,j,n
         call clear(block)
         evaluations=0
@@ -273,13 +275,14 @@ contains
                 det=abs(e1(1)*e2(2)-e1(2)*e2(1))
                 if (det<64*epsilon(1.0_dp)) cycle
                 do i=1,n
-                    r=bank%nodes(i,l)**2
                     do j=1,n
-                        uv=apex+r*((1-bank%nodes(j,l))*e1+bank%nodes(j,l)*e2)
+                        call bem_fan_map(apex(1),apex(2),e1(1),e1(2), &
+                            e2(1),e2(2),bank%nodes(i,l),bank%nodes(j,l),det, &
+                            uv(1),uv(2),fan_weight)
                         call sample(surface,source_panel,uv,source,status)
                         if (status/=0) return
                         factor=bank%weights(t,l)*bank%line_w(i,l)* &
-                            bank%line_w(j,l)*2*bank%nodes(i,l)**3*det
+                            bank%line_w(j,l)*fan_weight
                         call add_integrand(target_points(t),source,factor, &
                             block,status)
                         evaluations=evaluations+1

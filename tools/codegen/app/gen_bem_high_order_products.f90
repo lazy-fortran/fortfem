@@ -13,6 +13,8 @@ program gen_bem_high_order_products
     type(arena_t), target :: arena
     type(expr_t) :: v(7), product(1), x, y, z, phi(6), l(3), total
     type(expr_t) :: poly, lap, euler, rr, primitive, legendre
+    type(expr_t) :: fan(9), mapped(3), signed_jacobian
+    type(str_t) :: fan_names(9)
     type(str_t) :: names(7)
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
@@ -71,6 +73,20 @@ program gen_bem_high_order_products
     end do
     product=[v(1)*(v(2)*v(5)+v(3)*v(6)+v(4)*v(7))]
     call emit('bem_hyper_product',names,v,product,[str('value')])
+    fan_names=[str('apex1'),str('apex2'),str('e1u'),str('e1v'), &
+        str('e2u'),str('e2v'),str('radius'),str('angle'),str('determinant')]
+    do i=1,9
+        fan(i)=sym(arena,chars(fan_names(i)))
+    end do
+    mapped(1)=fan(1)+fan(7)**2*((1-fan(8))*fan(3)+fan(8)*fan(5))
+    mapped(2)=fan(2)+fan(7)**2*((1-fan(8))*fan(4)+fan(8)*fan(6))
+    mapped(3)=2*fan(7)**3*fan(9)
+    signed_jacobian=diff(mapped(1),fan(7))*diff(mapped(2),fan(8))- &
+        diff(mapped(1),fan(8))*diff(mapped(2),fan(7))
+    call prove(signed_jacobian-2*fan(7)**3*(fan(3)*fan(6)-fan(4)*fan(5)), &
+        'squared radial fan Jacobian')
+    call emit('bem_fan_map',fan_names,fan,mapped, &
+        [str('uv1'),str('uv2'),str('weight')])
     close(unit)
 contains
     subroutine prove(expression,label)
