@@ -69,9 +69,63 @@ program test_parametric_bem_pair_accuracy
         call record(error<2.e-3_dp,'raw DG1 sum agrees with analytic-edge integral')
         call record(maxval(abs(k))<1.e-13_dp,'coplanar double layer vanishes')
     end do
+    ! For parallel overlapping projections, D_n G develops a narrow peak.
+    plane%vertices(:,:,2)=plane%vertices(:,:,1)
+    plane%vertices(3,:,1)=0.02_dp
+    options%relative_tolerance=3.e-3_dp
+    options%maximum_degree=48
+    call solid_angle_reference(64,reference)
+    call solid_angle_reference(96,refined)
+    call record(abs(reference-refined)<1.e-4_dp*abs(refined), &
+        'independent near-normal solid-angle reference is refined')
+    call integrate_parametric_bem_p2_pair(plane,1,2,options,v,k,w,c,report,status)
+    write(*,'(a,2i8,3es16.7)') 'BEM3D normal pair status degree K reference ratio ', &
+        status,report%maximum_degree_used,sum(k),refined,report%error_ratio
+    call record(status==0,'resolved near-normal peak reaches requested tolerance')
+    if (status==0) call record(abs(sum(k)-refined)<3.e-3_dp*abs(refined), &
+        'raw double layer agrees with independent solid-angle integral')
+    plane%vertices(3,:,1)=1.e-12_dp
+    options%relative_tolerance=0.03_dp
+    options%absolute_tolerance=1.e-7_dp
+    options%maximum_degree=24
+    call integrate_parametric_bem_p2_pair(plane,1,2,options,v,k,w,c,report,status)
+    ! h*r/(h*h+r*r)**(3/2) integrates to one on [0,infinity).
+    ! The angular factor gives 1/2 per interior target; target area is 1/2.
+    ! At h=1e-12 the O(h*log(h)) boundary correction is negligible here.
+    write(*,'(a,2i8,2es16.7)') 'BEM3D unresolved normal status degree K ratio ', &
+        status,report%maximum_degree_used,sum(k),report%error_ratio
+    call record(status==3 .or. &
+        (status==0 .and. abs(sum(k)-0.25_dp)<3.e-3_dp), &
+        'an unresolved normal peak cannot falsely claim quadrature accuracy')
     call check_summary('Independent near and touching pair integrals')
     if (.not. passed) error stop 1
 contains
+    subroutine solid_angle_reference(degree,value)
+        integer, intent(in) :: degree
+        real(dp), intent(out) :: value
+        real(dp), allocatable :: xi(:),eta(:),weights(:)
+        real(dp) :: x(3),a(3),b(3),r1(3),r2(3),r3(3),cross(3)
+        real(dp) :: numerator,denominator,n1,n2,n3
+        integer :: t,s
+        call triangle_duffy_quadrature(degree,xi,eta,weights,s)
+        if (s/=0) error stop 'solid-angle reference quadrature'
+        value=0
+        do t=1,size(weights)
+            call plane%evaluate(1,[xi(t),eta(t)],x,a,b,s)
+            r1=plane%vertices(:,1,2)-x
+            r2=plane%vertices(:,2,2)-x
+            r3=plane%vertices(:,3,2)-x
+            cross=[r2(2)*r3(3)-r2(3)*r3(2),r2(3)*r3(1)-r2(1)*r3(3), &
+                r2(1)*r3(2)-r2(2)*r3(1)]
+            n1=norm2(r1); n2=norm2(r2); n3=norm2(r3)
+            numerator=dot_product(r1,cross)
+            denominator=n1*n2*n3+dot_product(r1,r2)*n3+ &
+                dot_product(r2,r3)*n1+dot_product(r3,r1)*n2
+            value=value-weights(t)*atan2(numerator,denominator)/ &
+                (2*acos(-1.0_dp))
+        end do
+    end subroutine
+
     subroutine edge_reference(degree,value)
         integer, intent(in) :: degree
         real(dp), intent(out) :: value
