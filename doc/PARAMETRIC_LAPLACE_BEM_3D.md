@@ -207,3 +207,6 @@ The independent pair test uses analytic signed-edge source potentials and
 refined target quadrature; the slow sphere audit measures continuous flux
 error and exterior energy for degrees 1 and 2, observed order under nominal dyadic mesh refinement, and
 1/2/4/8-thread assembly scaling.
+
+Decaying exterior harmonic representatives, period compatibility and their
+energy/cross blocks are described in [EXTERIOR_HARMONIC_FIELDS.md](EXTERIOR_HARMONIC_FIELDS.md).
