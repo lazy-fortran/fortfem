@@ -66,6 +66,13 @@ program test_parametric_bem_high_order
     call integrate_parametric_bem_p2_pair(sphere, 1, 2, options, &
         v,k,w,correction,report,status)
     call record(status == 3, 'one rule cannot claim a convergence estimate')
+    options%initial_degree = 9
+    options%maximum_degree = 10
+    options%degree_increment = 1
+    call integrate_parametric_bem_p2_pair(sphere, 1, 2, options, &
+        v,k,w,correction,report,status)
+    call record(status == 3, &
+        'different degree labels with the same Gauss rule cannot converge')
     options%relative_tolerance = -1.0_dp
     call integrate_parametric_bem_p2_pair(sphere, 1, 2, options, &
         v,k,w,correction,report,status)
