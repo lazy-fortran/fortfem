@@ -123,7 +123,7 @@ if(NOT TARGET fortsparse)
     set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG 9f46696446fb1745fefa8bc6a84c099c804bff03
+        GIT_TAG 7f16e38aaf5ebdfa56b0b8b4f5f57c0c31de212c
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
