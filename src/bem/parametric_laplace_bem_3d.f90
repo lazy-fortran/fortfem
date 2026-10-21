@@ -450,7 +450,7 @@ contains
     subroutine parametric_bem_refinement_estimate(fine, coarse_flux, fine_flux, &
             parent, panel_indicator, energy_estimate, status)
         !! Two-level P0 flux estimator on nested panels of the SAME surface.
-        !! Energy: ||q_f - I q_c||_Vf. Marking: h_T ||q_f - I q_c||_L2(T)^2,
+        !! Energy: ||q_f - I q_c||_Vf. eta_T^2 = h_T ||q_f - I q_c||_L2(T)^2,
         !! with h_T=sqrt(area(T)). Reliability requires flux-error saturation;
         !! neither quadrature error nor the saturation factor is certified.
         type(bem_operators_t), intent(in) :: fine
@@ -458,9 +458,11 @@ contains
         integer, intent(in) :: parent(:)
         real(dp), intent(out) :: panel_indicator(:), energy_estimate
         integer, intent(out) :: status
-        real(dp), allocatable :: difference(:), action(:), parent_area(:)
-        real(dp) :: square, energy_squared, symmetry_scale
-        integer :: nf, nc, panel, coarse
+        real(dp), allocatable :: difference(:), parent_area(:)
+        real(dp) :: square, energy_squared, symmetry_scale, symmetry_defect
+        real(dp) :: entry, reverse_entry
+        integer :: nf, nc, panel, coarse, row
+        logical :: invalid
 
         status = 1
         panel_indicator = 0.0_dp
@@ -476,12 +478,30 @@ contains
         if (any(parent < 1) .or. any(parent > nc)) return
         if (.not. all(ieee_is_finite(fine%area))) return
         if (any(fine%area <= 0.0_dp)) return
-        if (.not. all(ieee_is_finite(fine%v))) return
         if (.not. all(ieee_is_finite(fine_flux))) return
         if (.not. all(ieee_is_finite(coarse_flux))) return
-        symmetry_scale = max(tiny(1.0_dp), maxval(abs(fine%v)))
-        if (maxval(abs(fine%v-transpose(fine%v))) > &
-            128*epsilon(1.0_dp)*symmetry_scale) return
+        symmetry_scale = tiny(1.0_dp)
+        symmetry_defect = 0.0_dp
+        invalid = .false.
+        !$omp parallel do default(shared) schedule(dynamic,16) &
+        !$omp private(panel,row,entry,reverse_entry) &
+        !$omp reduction(max:symmetry_scale,symmetry_defect) reduction(.or.:invalid)
+        do panel = 1, nf
+            do row = 1, panel
+                entry = fine%v(row, panel)
+                reverse_entry = fine%v(panel, row)
+                if (.not. ieee_is_finite(entry) .or. &
+                    .not. ieee_is_finite(reverse_entry)) then
+                    invalid = .true.
+                    cycle
+                end if
+                symmetry_scale = max(symmetry_scale, abs(entry), abs(reverse_entry))
+                symmetry_defect = max(symmetry_defect, abs(entry-reverse_entry))
+            end do
+        end do
+        !$omp end parallel do
+        if (invalid) return
+        if (symmetry_defect > 128*epsilon(1.0_dp)*symmetry_scale) return
         allocate(difference(nf), parent_area(nc))
         parent_area = 0.0_dp
         !$omp parallel do default(shared) private(panel,coarse,square)
@@ -500,8 +520,15 @@ contains
             panel_indicator = 0.0_dp
             return
         end if
-        action = matmul(fine%v, difference)
-        energy_squared = dot_product(difference, action)
+        energy_squared = 0.0_dp
+        ! Column contractions preserve contiguous storage and need no workspace.
+        !$omp parallel do default(shared) private(panel) &
+        !$omp reduction(+:energy_squared) schedule(static)
+        do panel = 1, nf
+            energy_squared = energy_squared + difference(panel)* &
+                dot_product(fine%v(:, panel), difference)
+        end do
+        !$omp end parallel do
         status = 2
         if (.not. ieee_is_finite(energy_squared)) return
         if (energy_squared < 0.0_dp) return
