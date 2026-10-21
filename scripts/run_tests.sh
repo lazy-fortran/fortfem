@@ -43,6 +43,14 @@ cores=$(env -u OMP_NUM_THREADS nproc)
 jobs=${TEST_JOBS:-$(( cores / OMP_NUM_THREADS ))}
 (( jobs < 1 )) && jobs=1
 
+# gfortran < 13 mis-optimizes `x = matmul(...)` into an allocatable x at -O1+
+# (no reallocation, heap overflow); the library matmul avoids it. CMake builds
+# get the same flag in CMakeLists.txt.
+gfver=$(gfortran -dumpfullversion 2>/dev/null | cut -d. -f1)
+if [[ -n $gfver ]] && (( gfver < 13 )); then
+    set -- "$@" --flag "-finline-matmul-limit=0"
+fi
+
 # fpm builds the selected programs and, with `echo` as the runner, prints the
 # path of each executable instead of running it.
 paths=$(fpm test --profile "${FPM_PROFILE:-release}" --target "${names[@]}" "$@" \
