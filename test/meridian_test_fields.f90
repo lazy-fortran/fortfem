@@ -5,8 +5,9 @@ module meridian_test_fields
     use fortfem_kinds, only: dp
     use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_load, &
         meridian_real_to_complex
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
     use fortsparse, only: csc_from_triplet, csc_z_t, csc_t, fortsparse_status_t, &
-        sparse_solve_once, status_ok
+        status_ok
     implicit none
     private
 
@@ -295,7 +296,7 @@ contains
         logical, intent(out) :: ok
         type(fortsparse_status_t) :: st
 
-        call sparse_solve_once(a, b, x, st)
+        call sparse_direct_solve_once(a, b, x, st)
         ok = status_ok(st)
     end subroutine solve_z
 

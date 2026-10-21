@@ -84,7 +84,8 @@ program test_meridian_fourier_equilibration
         meridian_fourier_load
     use fortfem_meridian_fourier_equilibration, only: fourier_equilibrated_t, &
         meridian_fourier_equilibrated_estimate
-    use fortsparse, only: csc_t, sparse_solve_once, fortsparse_status_t, status_ok
+    use fortfem_sparse_direct, only: sparse_direct_solve_once
+    use fortsparse, only: csc_t, fortsparse_status_t, status_ok
     use fortfem_equilibrated_flux_2d, only: EQUILIBRATION_BAD_INPUT
     use, intrinsic :: iso_fortran_env, only: int64
     implicit none
@@ -156,7 +157,7 @@ program test_meridian_fourier_equilibration
             end do
         end do
         where (mask) rhs = 0
-        call sparse_solve_once(a, rhs, u, ss)
+        call sparse_direct_solve_once(a, rhs, u, ss)
         if (.not. status_ok(ss)) error stop 'solve'
         call system_clock(c1)
         solve_time = real(c1 - c0, dp)/hz
