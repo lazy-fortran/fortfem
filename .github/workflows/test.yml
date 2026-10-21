@@ -13,13 +13,13 @@ env:
   # Keep push/PR verification bounded to these independent form/interval/RT gates.
   # Reuse exactly this selection for normal, coverage and checked builds.
   FORTFEM_FAST_TESTS: >-
+    test_harmonic_field_energy
     test_element_precision_batch
     test_meridian_hermitian_forms
     test_verified_rt0_majorant
     test_verified_bernstein_majorant
     test_reference_p2_scalar_intervals
     test_equilibrated_rt_normal_trace
-    test_harmonic_field_energy
     test_parametric_bem_estimator
   OMP_NUM_THREADS: 2
   OPENBLAS_NUM_THREADS: 1
