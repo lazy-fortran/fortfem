@@ -82,3 +82,9 @@ Measured evidence and remaining acceptance gates belong in
 `benchmark/lab/RESULTS.md`; implementation alone does not establish convergence,
 scaling or a VMEC-class time-to-solution claim. Interior/BEM coupling is a
 laboratory decision criterion, not an implemented boundary operator here.
+
+The validated periodic meshes have no dof self-identifications within a cell.
+One-cell periodic self-identifications are outside the exact-diagonal test
+scope. Coarsening of explicit periodic multigraph gather maps also needs
+separate validation because the automatic coarse constructor uses corner
+entities of a regular cell complex.
