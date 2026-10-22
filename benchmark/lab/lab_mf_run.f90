@@ -5,7 +5,8 @@ program lab_mf_run
     use fortfem_generated_lab_geometry, only: lab_geometry
     use fortfem_tensor_mesh, only: tensor_mesh_t, structured_tensor_mesh, &
                                    ogrid_tensor_mesh, build_tensor_mesh
-use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, tensor_load, &
+    use fortfem_tensor_operator, only: tensor_operator_t, &
+        build_tensor_operator, tensor_load, &
                                        assemble_tensor_operator, apply_tensor_operator
     use fortfem_tensor_solver, only: tensor_solve_info_t, solve_tensor_diffusion
     use fortfem_field_aligned_constitutive_tensor, only: &
@@ -31,7 +32,7 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     real(dp) :: ratio, err, norm, herr, hnorm, aerr, anorm, projection, value
     real(dp) :: ballerr, ballnorm, g(12), radius, phi
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
-    integer :: p, n, status, i, e, q, ws, dir, node
+    integer :: p, n, status, i, e, q, ws, dir, node, fine_nnz
     character(32) :: problem, preconditioner
     character(4096) :: arg
     call get_command_argument(1, problem)
@@ -79,6 +80,7 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
         bc(i) = exact
     end do
     solution = 0
+    fine_nnz = 0
     if (preconditioner == 'pmg') then
         call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
                                     bc=bc, maxiter=1500)
@@ -93,6 +95,7 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
         cols = csr%colidx
         call csc_from_triplet(csr%n, csr%n, rows, cols, csr%val, matrix, sparse_status)
         if (sparse_status%code /= 0) error stop 'polar CSC failed'
+        fine_nnz = matrix%nnz
         allocate (lift(mesh%ndof), action(mesh%ndof))
         lift = 0
         where (mesh%boundary) lift = bc
@@ -136,7 +139,8 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     !$omp parallel do default(shared) &
     !$omp private(e,local,values,jets,scratch1,scratch2,dir,q,x,exact,eg,source, &
     !$omp direction,inv,status,gradient,w,t) &
-    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm,projection,ballerr,ballnorm) schedule(static)
+    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm,projection) &
+    !$omp reduction(+:ballerr,ballnorm) schedule(static)
     do e = 1, mesh%nelem
         local = solution(mesh%dof(:, e))
       call tensor_contract(error_op%ni,error_op%no,b,b,b,local,values,scratch1,scratch2)
@@ -179,9 +183,10 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     !$omp end parallel do
     value = 0
     if (problem == 'L3') value = projection/norm
-    write (*, '(a,1x,i0,1x,6(es24.16,1x),i0,1x,es24.16)') 'LAB', mesh%ndof, sqrt(err/norm), &
+    write (*, '(a,1x,i0,1x,6(es24.16,1x),i0,1x,es24.16)') &
+        'LAB', mesh%ndof, sqrt(err/norm), &
         sqrt(herr/hnorm), sqrt(aerr/max(anorm, tiny(1._dp))), value, info%residual, &
-        0._dp, info%iterations, sqrt(ballerr/max(ballnorm, tiny(1._dp)))
+        real(fine_nnz,dp), info%iterations, sqrt(ballerr/max(ballnorm, tiny(1._dp)))
 contains
     function forcing_vector(operator) result(load)
         type(tensor_operator_t), intent(in) :: operator
