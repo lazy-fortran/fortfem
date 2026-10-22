@@ -5,7 +5,7 @@ module fortfem_gll_line
         generated_cardinal_product_jet1_order1
     implicit none
     private
-    public :: build_gll_line, gll_rule, gauss_rule, lagrange_table
+    public :: build_gll_line, gll_rule, gauss_rule, lagrange_table, lagrange_jet
 contains
     subroutine legendre(n, x, pn, previous)
         integer, intent(in) :: n
@@ -104,6 +104,27 @@ contains
             end do
         end do
     end subroutine lagrange_table
+
+    pure subroutine lagrange_jet(nodes, point, b, d)
+        !! Values and first derivatives of all cardinal polynomials at one point.
+        real(dp), intent(in) :: nodes(:), point
+        real(dp), intent(out) :: b(:), d(:)
+        real(dp) :: v, dv, nv, ndv
+        integer :: i, j
+        do i = 1, size(nodes)
+            v = 1.0_dp
+            dv = 0.0_dp
+            do j = 1, size(nodes)
+                if (j == i) cycle
+                call generated_cardinal_product_jet1_order1(v, dv, &
+                    1.0_dp/(nodes(i) - nodes(j)), 0.0_dp, point - nodes(j), nv, ndv)
+                v = nv
+                dv = ndv
+            end do
+            b(i) = v
+            d(i) = dv
+        end do
+    end subroutine lagrange_jet
 
     subroutine build_gll_line(p, nelem, line, status, periodic, nq, gll, x0, x1)
         integer, intent(in) :: p, nelem
