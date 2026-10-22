@@ -71,7 +71,8 @@ program fortfem_lab_neq1
     open (newunit=unit, file=trim(samples), status='old', action='read')
     open (newunit=out, file=trim(prefix)//'samples_out.txt', status='replace', &
           action='write')
-    write (out, '(a)') '# R Z psi B_R B_Z B_phi absB p iota'
+    write (out, '(a)') '# R Z psi B_R B_Z B_phi absB p iota (lab FortFEM NEQ1)'
+    write (out, '(a,es25.16e3,a)') '# psi_axis = ', system%psia, '  psi_edge = 0.0'
     cell = 0
     do
         read (unit, '(a)', iostat=ios) arg
