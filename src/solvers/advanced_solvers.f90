@@ -894,7 +894,9 @@ contains
             call matvec(p, Ap)
             pAp = dot_product(p, Ap)
 
-            if (abs(pAp) < 1.0e-14_dp) then
+            ! A positive p.Ap remains usable at small residual/RHS scales.
+            ! An absolute cutoff breaks scale invariance before convergence.
+            if (pAp <= 0.0_dp) then
                 exit
             end if
 

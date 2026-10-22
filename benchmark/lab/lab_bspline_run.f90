@@ -1,6 +1,7 @@
 program lab_bspline_run
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_generated_lab_scalar, only: lab_scalar
+    use fortfem_generated_lab_square_disk, only: lab_square_disk
     use fortfem_generated_lab_geometry, only: lab_geometry
     use fortfem_generated_lab_transport, only: lab_transport
     use fortfem_bspline_feec, only: evaluate_bspline_basis, &
@@ -24,7 +25,7 @@ program lab_bspline_run
     real(dp), allocatable :: entries(:)
     integer, allocatable :: map(:), rows(:), cols(:)
     logical, allocatable :: boundary(:)
-    real(dp) :: point(3), jac(3, 3), geom(12), data(8)
+    real(dp) :: point(3), jac(3, 3), geom(12), data(8), disk(2)
     real(dp) :: u, v, phi, err, norm, herr, hnorm
     real(dp) :: aerr, anorm, residual, pi
     integer :: p, n, nu, nv, np, nd, nfull, nlocal, nq, ios, i, j, k, c, r, entry
@@ -59,8 +60,9 @@ program lab_bspline_run
         do j = 1, nv
             do i = 1, nu
                 ! Square-to-disk map used only to position geometry controls.
-                u = (2*gu(i) - 1)*sqrt(1 - (2*gv(j) - 1)**2/2)
-                v = (2*gv(j) - 1)*sqrt(1 - (2*gu(i) - 1)**2/2)
+                call lab_square_disk(2*gu(i) - 1, 2*gv(j) - 1, disk)
+                u = disk(1)
+                v = -disk(2)
                 call lab_geometry(u, v, phi, geom)
                 controls(:, i, j, k) = [geom(1)*cos(phi), geom(1)*sin(phi), geom(2)]
                 raw = idx(i, j, k)

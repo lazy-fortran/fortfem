@@ -22,7 +22,7 @@ periods. It is an analytic shaped, phi-dependent stellarator-like test domain.
 It is not a force-balanced stellarator. Its inverse is
 `u=(R-Rc)/a`, `v=(Z-Zc)/1.3`. Define `s=u*u+v*v` without evaluating a poloidal
 angle. All physical fields below are Cartesian or cylindrical functions.
-The nonzero Jacobian in `(u,v,phi)` is `1.3*a*R`, and `R>=1.8`.
+The absolute Jacobian in `(u,v,phi)` is `1.3*a*R`, and `R>=1.8`.
 The magnetic axis is the closed curve `(Rc(phi),phi,Zc(phi))`, not `R=0`.
 A through-axis mesh contains that curve in its interior, with no duplicated
 axis degrees of freedom. The affine tetra baseline approximates the boundary
@@ -45,7 +45,9 @@ Then `div A=0` and `curl curl A + A = 2 A`. Prescribe its tangential trace
 and relative H(curl) graph errors, including tangential trace lifting cost.
 Nodal vector Poisson is not an admissible H(curl) baseline. The FortSym scalar
 product returns the components of A as outputs 6:8, and the forcing is twice
-those components. The solver adapter must use the existing Nedelec path.
+those components. The adapter uses the existing first-order Nedelec curl-mass assembler,
+edge-moment tangential trace lifting, and the covariant Piola map. Orders
+above one are rejected until their face-moment lifting is supplied.
 
 ## L3a: two-dimensional Guenter/Sovinec closed-line test (criterion 3)
 
@@ -141,7 +143,12 @@ Use exact `w=(U,2U,3U)` and `F=C*(f,2f,3f)+w` from L1.
 The Euclidean pull-back identity gives
 `1/G partial_i(G g^ij partial_j (U o X)) = (Delta U) o X`.
 This derives F independently of a chosen basis and retains the full metric,
-not a diagonal-metric approximation. In Cartesian meshes assemble the same
+not a diagonal-metric approximation. The scalar adapter diagonalises the
+constant C exactly. Its eigenvalues are 3,1,1 and the squared exact modal
+amplitudes are 4.5,0.5,9. It reuses the eigenvalue-1 solve for the two
+proportional manufactured right-hand sides. Record three-component DOFs,
+two unique assembled operators and their combined process time. This
+specialised modal solve does not measure a variable-coefficient Newton block. In Cartesian meshes assemble the same
 physical vector elliptic system. Polar-chart coefficients are singular at
 s=0, whereas the underlying physical system is regular. Do not place a
 quadrature point at s=0 or call this polar chart an axis solution.

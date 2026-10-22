@@ -17,7 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 FIELDS = ['problem', 'criterion', 'family', 'p', 'h', 'anisotropy_ratio', 'preconditioner', 'threads',
           'revision', 'executable_sha256', 'dirty', 'compiler', 'flags', 'host', 'job_id', 'size',
-          'dofs', 'rel_l2', 'rel_h1_seminorm', 'axis_rel_l2', 'chi_perp_num',
+          'dofs', 'rel_l2', 'rel_h1_seminorm', 'rel_hcurl', 'axis_rel_l2', 'chi_perp_num',
           'iterations', 'wall_s', 'peak_rss_bytes', 'rss_method', 'residual',
           'nnz', 'status', 'geometry', 'mesh_sha256', 'command']
 
@@ -64,7 +64,7 @@ def mesh(problem, n, alignment='unaligned'):
                 # Optional sheared mesh accelerator; seam closes exactly.
                 # A globally field-following mesh cannot be periodic for general
                 # sheared iota. This bounded periodic twist is a comparison only.
-                angle = 0 if alignment == 'unaligned' else (.4+.2*(u*u+v*v))*math.sin(phi)
+                angle = 0.
                 vertices.append(geometry(u*math.cos(angle)-v*math.sin(angle),
                                          u*math.sin(angle)+v*math.cos(angle), phi))
         cells = []
@@ -114,8 +114,8 @@ def write_mesh(path, problem, n, alignment):
 def run(args):
     if args.problem == 'L6':
         raise SystemExit('L6 uses KIN6D benchmarks/nested/run_reference.py; see PROBLEMS.md')
-    if args.problem == 'L2':
-        raise SystemExit(f'{args.problem} definition is available; solver adapter is pending')
+    if args.problem == 'L2' and (args.family != 'tet' or args.p != 1):
+        raise SystemExit('L2 adapter requires tetrahedral Nedelec order 1')
     if args.family == 'gll-mf':
         raise SystemExit('MF1 adapter pending; no substitute family is timed')
     if args.family == 'bspline' and args.problem not in ('L1', 'L5'):
@@ -186,7 +186,8 @@ def run(args):
                    p=args.p, h=1/n, anisotropy_ratio=args.ratio, preconditioner=args.preconditioner, threads=args.threads,
                    revision=revision, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(), dirty=dirty, compiler=compiler, flags=args.flags,
                    host=platform.node(), job_id=os.environ.get('SLURM_JOB_ID', 'none'),
-                   size=size, dofs=int(dofs), rel_l2=float(l2), rel_h1_seminorm=float(h1),
+                   size=size, dofs=int(dofs), rel_l2=float(l2), rel_h1_seminorm=float(h1) if args.problem != 'L2' else '',
+                   rel_hcurl=float(h1) if args.problem == 'L2' else '',
                    axis_rel_l2=float(axis) if args.problem != 'L3a' else '',
                    chi_perp_num=pollution, iterations=int(iterations), wall_s=wall,
                    peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024),
@@ -195,7 +196,8 @@ def run(args):
                    else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'
                          else 'nfp5-affine-tetra-approximation'), mesh_sha256=checksum,
                    command=shlex.join([f'OMP_NUM_THREADS={args.threads}', sys.executable,
-                                    str(Path(__file__).relative_to(ROOT))]+sys.argv[1:]))
+                                    str(Path(__file__).relative_to(ROOT))]+
+                                   ([args.problem] if Path(sys.argv[0]).stem != 'run' else [])+sys.argv[1:]))
         out = Path(args.output)
         exists = out.exists() and out.stat().st_size > 0
         with out.open('a', newline='') as f:
