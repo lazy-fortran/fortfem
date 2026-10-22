@@ -230,9 +230,10 @@ program lab_scalar_run
         end if
         call factor%solve(rhs, solution, status)
         if (status%code /= 0) error stop 'LDLT solve failed'
-    case ('ichol', 'ilu', 'jacobi')
+    case ('ichol', 'ichol_row', 'ilu', 'jacobi')
         opts%method = 'pcg'
         opts%preconditioner = preconditioner
+        opts%fill_level = 64
         opts%tolerance = 1.e-11_dp
         opts%max_iterations = 20000
         call solve_sparse(matrix, rhs, solution, opts, stats)

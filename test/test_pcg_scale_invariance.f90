@@ -12,7 +12,8 @@ program test_pcg_scale_invariance
     a = reshape([4._dp,1._dp,0._dp,1._dp,3._dp,1._dp,0._dp,1._dp,2._dp], [3,3])
     call sparse_from_dense(a,matrix)
     options%method = 'pcg'
-    options%preconditioner = 'jacobi'
+    options%preconditioner = 'ichol_row'
+    options%fill_level = 8
     options%tolerance = 1.e-12_dp
     do k = 0,1
         scale = 10._dp**(-8*k)

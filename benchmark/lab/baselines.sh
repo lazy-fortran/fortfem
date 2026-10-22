@@ -8,7 +8,7 @@ threads=${OMP_NUM_THREADS:-4}
 for p in 1 2 3; do
     for n in 1 2; do
         python3 benchmark/lab/L1.py --family tet --p "$p" --n "$n" \
-            --preconditioner ichol --threads "$threads" \
+            --preconditioner ichol_row --threads "$threads" \
             --executable "$LAB_EXE" --flags "$LAB_FLAGS" --output "$out"
     done
 done
@@ -27,13 +27,13 @@ done
 
 # One larger assembled point, still below a few 1e5 unknowns.
 python3 benchmark/lab/L1.py --family tet --p 3 --n 3 \
-    --preconditioner ichol --threads "$threads" \
+    --preconditioner ichol_row --threads "$threads" \
     --executable "$LAB_EXE" --flags "$LAB_FLAGS" --output "$out"
 if [[ -n ${LAB_SPLINE_EXE:-} ]]; then
     for p in 2 3 4; do
         for n in 1 2; do
             python3 benchmark/lab/L1.py --family bspline --p "$p" --n "$n" \
-                --preconditioner ichol --threads "$threads" \
+                --preconditioner ichol_row --threads "$threads" \
                 --executable "$LAB_SPLINE_EXE" --flags "$LAB_FLAGS" --output "$out"
         done
     done

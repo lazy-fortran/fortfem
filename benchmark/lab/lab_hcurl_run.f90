@@ -119,6 +119,7 @@ program lab_hcurl_run
     else
         opts%method = 'pcg'
         opts%preconditioner = preconditioner
+        opts%fill_level = 64
         opts%tolerance = 1.e-11_dp
         opts%max_iterations = 20000
         call solve_sparse(matrix, rhs, solution, opts, stats)

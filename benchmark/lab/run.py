@@ -219,7 +219,7 @@ def parser(problem=None):
     resolution = p.add_mutually_exclusive_group()
     resolution.add_argument('--n', type=int)
     resolution.add_argument('--h', type=float, default=1.)
-    p.add_argument('--preconditioner', choices=['ldlt', 'ichol', 'ilu', 'jacobi'], default='ichol')
+    p.add_argument('--preconditioner', choices=['ldlt', 'ichol', 'ichol_row', 'ilu', 'jacobi'], default='ichol_row')
     p.add_argument('--threads', type=int, default=1)
     p.add_argument('--ratio', type=float, choices=[1., 100., 10000., 1000000.], default=1.)
     p.add_argument('--alignment', choices=['unaligned', 'aligned'], default='unaligned')
