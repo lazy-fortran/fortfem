@@ -402,7 +402,7 @@ cmp -- "$repository_dir/src/generated/$filename" \
 filename="fortfem_exterior_harmonic_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
-for product in scalar geometry transport guenter_kernel; do
+for product in scalar geometry transport guenter_kernel vector square_disk; do
     filename="fortfem_lab_${product}.f90"
     cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 done

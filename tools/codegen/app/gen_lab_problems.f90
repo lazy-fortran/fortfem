@@ -24,9 +24,22 @@ program gen_lab_problems
     roots(7) = sin(z)
     roots(8) = sin(x)
     call emit('scalar', ['x  ', 'y  ', 'z  '], roots(:8))
+    roots(1) = sin(y)
+    roots(2) = sin(z)
+    roots(3) = sin(x)
+    roots(4) = -cos(z)
+    roots(5) = -cos(x)
+    roots(6) = -cos(y)
+    roots(7) = 2*sin(y)
+    roots(8) = 2*sin(z)
+    roots(9) = 2*sin(x)
+    call emit('vector', ['x  ', 'y  ', 'z  '], roots(:9))
     u = sym(arena, 'u')
     v = sym(arena, 'v')
     phi = sym(arena, 'phi')
+    roots(1) = u*sqrt(1 - v*v/2)
+    roots(2) = v*sqrt(1 - u*u/2)
+    call emit('square_disk', ['u  ', 'v  '], roots(:2))
     a = 1 + cos(5*phi)/10
     rc = 3 + cos(5*phi)/10
     zc = sin(5*phi)/10
