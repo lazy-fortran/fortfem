@@ -225,7 +225,7 @@ program lab_scalar_run
     case ('ldlt')
         call factor%factor(matrix, status)
         if (status%code /= 0) then
-            print *, status%message
+            print *, status%code
             error stop 'LDLT factor failed'
         end if
         call factor%solve(rhs, solution, status)
