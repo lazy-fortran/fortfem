@@ -85,6 +85,7 @@ set_target_properties(fortfem_tensor_lines PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
 target_include_directories(fortfem_tensor_lines PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
+target_link_libraries(fortfem_tensor_lines PUBLIC OpenMP::OpenMP_Fortran)
 if(FORTFEM_BUILD_TESTING)
     add_executable(test_lab_gll_line test/check.f90 test/test_lab_gll_line.f90)
     target_link_libraries(test_lab_gll_line PRIVATE fortfem_tensor_lines)
@@ -221,6 +222,18 @@ if(FORTFEM_BUILD_TESTING)
     add_test(NAME test_lab_tensor_solver COMMAND test_lab_tensor_solver)
     set_tests_properties(test_lab_tensor_solver PROPERTIES
         LABELS "lab" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_tensor_mms test/test_lab_tensor_mms.f90)
+    target_link_libraries(test_lab_tensor_mms PRIVATE fortfem_tensor_solver)
+    add_test(NAME test_lab_tensor_mms COMMAND test_lab_tensor_mms)
+    set_tests_properties(test_lab_tensor_mms PROPERTIES
+        LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+if(FORTFEM_BUILD_BENCHMARKS)
+    add_executable(fortfem_lab_mf1 benchmark/lab/mf1/tensor_benchmark.f90)
+    target_link_libraries(fortfem_lab_mf1 PRIVATE fortfem_tensor_solver)
 endif()
 
 install(TARGETS fortfem_capi fortfem_triangle_compat

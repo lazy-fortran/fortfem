@@ -93,3 +93,8 @@ fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "7f
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
+
+[[executable]]
+name = "fortfem_lab_mf1"
+source-dir = "benchmark/lab/mf1"
+main = "tensor_benchmark.f90"
