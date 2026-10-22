@@ -68,6 +68,11 @@ program fortfem_lab_neq1
     norm = tensor_l2_error(system%op, zero, solovev_psi)
     exact_axis_error = norm2(system%axis_x - [case%r_axis, case%z_axis])
     psia_error = abs(system%psia - case%psi_axis)/abs(case%psi_axis)
+    if (trim(samples) == 'none') then
+        t_post = wall() - t0
+        call report()
+        stop
+    end if
     open (newunit=unit, file=trim(samples), status='old', action='read')
     open (newunit=out, file=trim(prefix)//'samples_out.txt', status='replace', &
           action='write')
@@ -98,31 +103,35 @@ program fortfem_lab_neq1
     close (out)
     if (len_trim(profiles) > 0) call write_profiles(trim(profiles), npoints)
     t_post = wall() - t0
-    write (output_unit, '(a,i0,a,i0,a,i0,a,i0,a,i0,a,i0)') 'n=', n, ' p=', p, &
-        ' dofs=', system%op%mesh%ndof, ' cells=', system%op%mesh%nelem, &
-        ' threads=', threads, ' status=', info%status
-    write (output_unit, '(a,i0,a,i0,a,i0,a,i0,a,i0,a,i0)') 'newton=', info%newton, &
-        ' krylov=', info%krylov, ' residuals=', info%residuals, ' backtracks=', &
-        info%backtracks, ' guess_pcg=', guess_its, ' axis_searches=', &
-        system%axis_searches
-    write (output_unit, '(a,es12.5,a,es12.5)') 'residual0=', info%initial, &
-        ' residual=', info%residual
-    write (output_unit, '(a,*(es12.5,1x))') 'history=', &
-        info%history(0:info%newton)
-    write (output_unit, '(a,*(i0,1x))') 'krylov_history=', &
-        info%krylov_history(1:info%newton)
-    write (output_unit, '(a,es12.5,a,es12.5,a,es12.5,a,es12.5)') 't_setup=', &
-        t_setup, ' t_guess=', t_guess, ' t_newton=', t_newton, ' t_solve=', &
-        t_setup + t_guess + t_newton
-    write (output_unit, '(a,5(es12.5,1x),a,es12.5)') &
-        't_residual_linearise_jac_prec_krylov=', info%time, ' t_axis=', &
-        system%time_axis
-    write (output_unit, '(a,es12.5,a,es12.5,a,es12.5,a,es12.5)') 'rel_l2=', &
-        error/norm, ' axis_error=', exact_axis_error, ' psia_rel_error=', &
-        psia_error, ' t_post=', t_post
-    write (output_unit, '(a,es25.16e3,a,2es25.16e3)') 'psia=', system%psia, &
-        ' axis=', system%axis_x
+    call report()
 contains
+    subroutine report()
+        write (output_unit, '(a,i0,a,i0,a,i0,a,i0,a,i0,a,i0)') 'n=', n, ' p=', p, &
+            ' dofs=', system%op%mesh%ndof, ' cells=', system%op%mesh%nelem, &
+            ' threads=', threads, ' status=', info%status
+        write (output_unit, '(a,i0,a,i0,a,i0,a,i0,a,i0,a,i0)') 'newton=', info%newton, &
+            ' krylov=', info%krylov, ' residuals=', info%residuals, ' backtracks=', &
+            info%backtracks, ' guess_pcg=', guess_its, ' axis_searches=', &
+            system%axis_searches
+        write (output_unit, '(a,es12.5,a,es12.5)') 'residual0=', info%initial, &
+            ' residual=', info%residual
+        write (output_unit, '(a,*(es12.5,1x))') 'history=', &
+            info%history(0:info%newton)
+        write (output_unit, '(a,*(i0,1x))') 'krylov_history=', &
+            info%krylov_history(1:info%newton)
+        write (output_unit, '(a,es12.5,a,es12.5,a,es12.5,a,es12.5)') 't_setup=', &
+            t_setup, ' t_guess=', t_guess, ' t_newton=', t_newton, ' t_solve=', &
+            t_setup + t_guess + t_newton
+        write (output_unit, '(a,5(es12.5,1x),a,es12.5)') &
+            't_residual_linearise_jac_prec_krylov=', info%time, ' t_axis=', &
+            system%time_axis
+        write (output_unit, '(a,es12.5,a,es12.5,a,es12.5,a,es12.5)') 'rel_l2=', &
+            error/norm, ' axis_error=', exact_axis_error, ' psia_rel_error=', &
+            psia_error, ' t_post=', t_post
+        write (output_unit, '(a,es25.16e3,a,2es25.16e3)') 'psia=', system%psia, &
+            ' axis=', system%axis_x
+    end subroutine
+
     subroutine write_profiles(file, m)
         ! psiN s p iota on a uniform psiN grid; q by contour integration at
         ! interior levels, cubic extrapolation to axis and edge, and

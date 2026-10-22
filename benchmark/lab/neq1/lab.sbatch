@@ -112,6 +112,26 @@ PYEOF
     exit 0
 fi
 
+if [[ $MODE == scaling ]]; then
+    # Thread scaling of the solve phases on larger meshes (no sampling).
+    for np in "16 8" "24 6" "12 12"; do
+        for t in 1 2 4 8 16; do
+            for rep in 1 2 3; do
+                dir=$OUT/scaling-r$rep/n${np% *}-p${np#* }-t$t
+                mkdir -p "$dir"
+                OMP_NUM_THREADS=$t OMP_PROC_BIND=close OMP_PLACES=cores \
+                    "$RUN/vmec/mem_guard.sh" 64 /usr/bin/time -v \
+                    taskset -c "$(seq -s, 0 $((t - 1)))" "$BUILD/fortfem_lab_neq1" \
+                    "$CASE/case.nml" ${np% *} ${np#* } none "$dir/" 1e-10 \
+                    > "$dir/solve.log" 2> "$dir/time.txt" || echo "FAILED $dir"
+                echo "scaling n=${np% *} p=${np#* } t=$t $(grep -o 'dofs=[0-9]*' "$dir/solve.log") $(grep -o 't_setup=.*' "$dir/solve.log")"
+            done
+        done
+    done
+    touch "$OUT/complete"
+    exit 0
+fi
+
 if [[ $MODE == pilot ]]; then
     point "$CASE" 2 6 1 solovev
     point "$CASE" 4 6 8 solovev
