@@ -1,7 +1,7 @@
 program gen_bem_high_order_products
     use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), &
-        operator(/), operator(**), sqrt
+        operator(/), operator(**), sqrt, asinh, sinh, cosh
     use fortsym_diff, only: diff
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
@@ -16,10 +16,14 @@ program gen_bem_high_order_products
     type(expr_t) :: fan(9), mapped(3), signed_jacobian
     type(expr_t) :: normal_gap,radial_distance,radial_norm
     type(str_t) :: fan_names(9)
-    type(str_t) :: names(7)
+    type(str_t) :: names(7), pair_names(12)
+    type(expr_t) :: pair(12), pair_map(5), pair_det
+    type(str_t) :: angle_names(11)
+    type(expr_t) :: angle(11), angle_map(2), first(3), delta_ray(3), cross_ray(3)
+    type(expr_t) :: center, width, normsq, lower, upper, angle_t
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
-    integer :: i, unit, degree, exponent
+    integer :: i, j, unit, degree, exponent
     call arena%init()
     engine = make_native_engine(arena)
     x = sym(arena, 'x'); y = sym(arena, 'y')
@@ -88,6 +92,57 @@ program gen_bem_high_order_products
         'squared radial fan Jacobian')
     call emit('bem_fan_map',fan_names,fan,mapped, &
         [str('uv1'),str('uv2'),str('weight')])
+    ! Six sectors of the reference difference hexagon. Each sector has
+    ! affine target/source anchors and a common residual triangle coordinate.
+    ! The measure is r*(1-r)**2 dz dr ds; the weak 1/r singularity cancels.
+    pair_names=[str('z1'),str('z2'),str('r'),str('s'),str('ta1'),str('ta2'), &
+        str('tb1'),str('tb2'),str('sa1'),str('sa2'),str('sb1'),str('sb2')]
+    do i=1,12
+        pair(i)=sym(arena,chars(pair_names(i)))
+    end do
+    do j=1,2
+        pair_map(j)=(1-pair(3))*pair(j)+pair(3)* &
+            ((1-pair(4))*pair(j+4)+pair(4)*pair(j+6))
+        pair_map(j+2)=(1-pair(3))*pair(j)+pair(3)* &
+            ((1-pair(4))*pair(j+8)+pair(4)*pair(j+10))
+    end do
+    pair_map(5)=pair(3)*(1-pair(3))**2
+    ! Difference-sector Jacobian for the canonical consecutive directions
+    ! (1,0),(0,1); all six sectors have this determinant by construction.
+    pair_det=diff(pair(3)*(1-pair(4)),pair(3))* &
+        diff(pair(3)*pair(4),pair(4))- &
+        diff(pair(3)*(1-pair(4)),pair(4))* &
+        diff(pair(3)*pair(4),pair(3))
+    call prove(pair_det*(1-pair(3))**2-pair_map(5), &
+        'coincident difference-sector Jacobian')
+    call emit('bem_coincident_map',pair_names,pair,pair_map, &
+        [str('x1'),str('x2'),str('y1'),str('y2'),str('weight')], .false.)
+    ! A tangent-metric sinh map removes the narrow angular peak of skinny
+    ! panels: |first+s*delta| = |delta|*sqrt(width**2+(s-center)**2).
+    angle_names=[str('ax'),str('ay'),str('az'),str('bx'),str('by'),str('bz'), &
+        str('du1'),str('dv1'),str('du2'),str('dv2'),str('q')]
+    do i=1,11
+        angle(i)=sym(arena,chars(angle_names(i)))
+    end do
+    do j=1,3
+        first(j)=angle(j)*angle(7)+angle(j+3)*angle(8)
+        delta_ray(j)=angle(j)*(angle(9)-angle(7))+ &
+            angle(j+3)*(angle(10)-angle(8))
+    end do
+    normsq=delta_ray(1)**2+delta_ray(2)**2+delta_ray(3)**2
+    center=-(first(1)*delta_ray(1)+first(2)*delta_ray(2)+ &
+        first(3)*delta_ray(3))/normsq
+    cross_ray=[first(2)*delta_ray(3)-first(3)*delta_ray(2), &
+        first(3)*delta_ray(1)-first(1)*delta_ray(3), &
+        first(1)*delta_ray(2)-first(2)*delta_ray(1)]
+    width=sqrt(cross_ray(1)**2+cross_ray(2)**2+cross_ray(3)**2)/normsq
+    lower=asinh(-center/width); upper=asinh((1-center)/width)
+    angle_t=(1-angle(11))*lower+angle(11)*upper
+    angle_map=[center+width*sinh(angle_t),width*cosh(angle_t)*(upper-lower)]
+    call prove(diff(angle_map(1),angle(11))-angle_map(2), &
+        'metric angle Jacobian')
+    call emit('bem_self_angle',angle_names,angle,angle_map, &
+        [str('s'),str('weight')], .false.)
     ! For normal_gap>0 this primitive has endpoint difference one on
     ! [0,infinity); angular integration gives the double-layer jump 1/2.
     normal_gap=sym(arena,'normal_gap')
@@ -107,8 +162,9 @@ contains
             error stop 'BEM trace identity failed'
         end if
     end subroutine
-    subroutine emit(name, names, variables, roots, outputs)
+    subroutine emit(name, names, variables, roots, outputs, derivatives_needed)
         character(*), intent(in) :: name
+        logical, intent(in), optional :: derivatives_needed
         type(str_t), intent(in) :: names(:), outputs(:)
         type(expr_t), intent(in) :: variables(:), roots(:)
         type(kernel_spec_t) :: spec
@@ -129,6 +185,9 @@ contains
         spec%outputs = outputs
         code = chars(emit_kernel(roots, spec))
         write(unit, '(a)') code(:len(code)-1)
+        if (present(derivatives_needed)) then
+            if (.not. derivatives_needed) return
+        end if
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
             directions(k) = sym(arena, chars(dot_names(k)))
