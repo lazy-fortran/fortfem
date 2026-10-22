@@ -23,6 +23,8 @@ unset DISPLAY
 : "${LAB_P:?}" "${LAB_N:?pilot-qualified base resolution}"
 : "${LAB_MODE:?strong or weak}"
 cd "$LAB_REPO"
+preconditioner=${LAB_PRECONDITIONER:-ichol_row}
+if [[ $LAB_FAMILY == gll-mf ]]; then preconditioner=${LAB_PRECONDITIONER:-pmg}; fi
 n=$LAB_N
 case "$LAB_MODE" in
 strong) ;;
@@ -33,6 +35,6 @@ weak)
 *) exit 2 ;;
 esac
 "$MEM_GUARD" "$limit" python3 benchmark/lab/L1.py --family "$LAB_FAMILY" \
-    --p "$LAB_P" --n "$n" --preconditioner ichol_row --threads "$threads" \
+    --p "$LAB_P" --n "$n" --preconditioner "$preconditioner" --threads "$threads" \
     --executable "$LAB_EXE" --flags "$LAB_FLAGS" \
     --output "${LAB_MODE}-${LAB_FAMILY}-${SLURM_JOB_ID}-${threads}.csv"
