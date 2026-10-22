@@ -176,6 +176,13 @@ program lab_scalar_run
             end if
             local_rhs(:, c) = local_rhs(:, c) + w*source*val(:, q)
         end do
+        ! All lab tensors are symmetric. Form one triangle canonically so
+        ! FortSparse LDLT receives identical stored transposed entries.
+        do j = 1, nl
+            do i = 1, j - 1
+                local_matrix(j, i) = local_matrix(i, j)
+            end do
+        end do
         do j = 1, nl
             cc = maps(j, c)
             do i = 1, nl
@@ -225,7 +232,7 @@ program lab_scalar_run
     case ('ldlt')
         call factor%factor(matrix, status)
         if (status%code /= 0) then
-            print *, status%code
+            print *, status%msg
             error stop 'LDLT factor failed'
         end if
         call factor%solve(rhs, solution, status)
