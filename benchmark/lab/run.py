@@ -116,8 +116,10 @@ def run(args):
         raise SystemExit('L6 uses KIN6D benchmarks/nested/run_reference.py; see PROBLEMS.md')
     if args.problem in ('L2', 'L4'):
         raise SystemExit(f'{args.problem} definition is available; solver adapter is pending')
-    if args.family != 'tet':
-        raise SystemExit('spline adapter pending; no substitute family is timed')
+    if args.family == 'gll-mf':
+        raise SystemExit('MF1 adapter pending; no substitute family is timed')
+    if args.family == 'bspline' and args.problem not in ('L1', 'L5'):
+        raise SystemExit('spline transport adapter pending')
     if args.alignment != 'unaligned':
         raise SystemExit('field-aligned periodic mesh closure is pending; no false aligned label')
     if args.problem == 'L3a' and args.p != 1:
@@ -135,7 +137,8 @@ def run(args):
     with tempfile.TemporaryDirectory(prefix='ben1-', dir=args.scratch) as tmp:
         meshfile = Path(tmp)/'mesh.txt'
         size, checksum = write_mesh(meshfile, args.problem, n, args.alignment)
-        command = [str(executable), args.problem, str(args.p), str(meshfile),
+        command = [str(executable), args.problem, str(args.p),
+                   str(n) if args.family == 'bspline' else str(meshfile),
                    args.preconditioner, str(args.ratio)]
         start = time.perf_counter()
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -170,7 +173,8 @@ def run(args):
                    peak_rss_bytes=usage.ru_maxrss*(1 if sys.platform == 'darwin' else 1024),
                    rss_method='wait4.getrusage.child', residual=float(residual),
                    nnz=int(float(nnz)), status='V', geometry='square' if args.problem == 'L3a'
-                   else 'nfp5-affine-tetra-approximation', mesh_sha256=checksum,
+                   else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'
+                         else 'nfp5-affine-tetra-approximation'), mesh_sha256=checksum,
                    command=shlex.join([f'OMP_NUM_THREADS={args.threads}', sys.executable,
                                     str(Path(__file__).relative_to(ROOT))]+sys.argv[1:]))
         out = Path(args.output)

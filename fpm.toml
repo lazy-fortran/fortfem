@@ -64,6 +64,11 @@ name = "lab_scalar_run"
 source-dir = "benchmark/lab"
 main = "lab_scalar_run.f90"
 
+[[executable]]
+name = "lab_bspline_run"
+source-dir = "benchmark/lab"
+main = "lab_bspline_run.f90"
+
 [fortran]
 implicit-typing = false
 implicit-external = false
