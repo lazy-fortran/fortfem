@@ -164,9 +164,18 @@ def admission_columns(root, out, case, converged):
     ref = references[name]
     e = ref.vector(out, converged)
     e.update(reference_run=name, reference_wout_sha256=ref.wout_sha256,
-             admission_samples=1728,
-             admission_note='finest VMEC++ reference itself' if
-             out == root/'runs'/name else '')
+             admission_samples=1728)
+    reference_dir = root/'runs'/name
+    if out == reference_dir:
+        note = 'the finest VMEC++ reference itself'
+    elif (out.parent == reference_dir.parent and
+          out.name.rsplit('-t', 1)[0] == reference_dir.name.rsplit('-t', 1)[0]):
+        note = 'thread-count replicate of the finest reference'
+    else:
+        return e
+    # A run that is (a replicate of) its own reference tests no accuracy.
+    e.update(admission_note=note + '; not an independent admission')
+    e['admitted_1e-2'] = e['admitted_1e-3'] = 'reference'
     return e
 
 
