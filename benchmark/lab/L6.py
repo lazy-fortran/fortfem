@@ -10,7 +10,7 @@ import platform
 import shlex
 import subprocess
 import sys
-from run import ROOT, FIELDS
+from run import ROOT, FIELDS, append_row
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--kin6d', type=Path, default=Path.home()/'code/kin6d')
@@ -48,10 +48,5 @@ row.update(problem='L6', criterion='4', family=a.code, p='', h='',
            status='unqualified: matched physical accuracy not yet supplied',
            mesh_sha256=hashlib.sha256(case.read_bytes()).hexdigest(),
            command=shlex.join([sys.executable, str(Path(__file__).relative_to(ROOT))]+sys.argv[1:]))
-exists = a.csv.exists() and a.csv.stat().st_size > 0
-with a.csv.open('a', newline='') as f:
-    writer = csv.DictWriter(f, fieldnames=FIELDS)
-    if not exists:
-        writer.writeheader()
-    writer.writerow(row)
+append_row(a.csv, row)
 print(json.dumps(row, indent=2))

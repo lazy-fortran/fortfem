@@ -3,24 +3,34 @@ program lab_mf_run
     use fortfem_generated_lab_scalar, only: lab_scalar
     use fortfem_generated_lab_transport, only: lab_transport
     use fortfem_generated_lab_geometry, only: lab_geometry
-    use fortfem_generated_lab_square_disk, only: lab_square_disk
-    use fortfem_tensor_mesh, only: tensor_mesh_t, structured_tensor_mesh
-use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, tensor_load
+    use fortfem_tensor_mesh, only: tensor_mesh_t, structured_tensor_mesh, &
+                                   ogrid_tensor_mesh, build_tensor_mesh
+use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, tensor_load, &
+                                       assemble_tensor_operator, apply_tensor_operator
     use fortfem_tensor_solver, only: tensor_solve_info_t, solve_tensor_diffusion
     use fortfem_field_aligned_constitutive_tensor, only: &
         evaluate_field_aligned_constitutive_tensor
-    use fortsparse, only: fortsparse_status_t
+    use fortsparse, only: fortsparse_status_t, csc_t, csc_from_triplet
+    use fortfem_element_to_csr, only: csr_matrix_t
+    use fortfem_advanced_solvers, only: solve_sparse, solver_options_t, solver_stats_t
     use fortfem_tensor_contractions, only: tensor_contract
     use fortnum_linalg, only: inv3
     implicit none
-    type(tensor_mesh_t) :: mesh
+    type(tensor_mesh_t) :: mesh, original
     type(tensor_operator_t) :: op, error_op
     type(tensor_solve_info_t) :: info
+    type(csr_matrix_t) :: csr
+    type(csc_t) :: matrix
+    type(fortsparse_status_t) :: sparse_status
+    type(solver_options_t) :: options
+    type(solver_stats_t) :: stats
+    integer, allocatable :: rows(:), cols(:)
+    real(dp), allocatable :: lift(:), action(:), mapped(:, :, :)
     real(dp), allocatable :: rhs(:), solution(:), bc(:), values(:), local(:)
     real(dp), allocatable :: scratch1(:), scratch2(:), b(:, :), d(:, :), jets(:, :)
     real(dp) :: ratio, err, norm, herr, hnorm, aerr, anorm, projection, value
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
-    integer :: p, n, status, i, e, q, ws, dir
+    integer :: p, n, status, i, e, q, ws, dir, node
     character(32) :: problem, preconditioner
     character(4096) :: arg
     call get_command_argument(1, problem)
@@ -33,9 +43,30 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     read (arg, *) ratio
     if (problem /= 'L1' .and. problem /= 'L3' .and. problem /= 'L5') &
         error stop 'MF adapter supports L1/L3/L5'
-    if (preconditioner /= 'pmg') error stop 'MF adapter requires pmg'
-    call structured_tensor_mesh(3, [2*n, 2*n, 20*n], p, mesh, status, &
-                             map=geometry, periodic=[.false., .false., .true.], q=p + 2)
+    if (preconditioner /= 'pmg' .and. preconditioner /= 'ichol_row') &
+        error stop 'MF adapter requires pmg or polar ichol_row'
+    if (preconditioner == 'pmg') then
+        call ogrid_tensor_mesh(3, n, p, original, status, nphi=20*n, q=p + 2)
+        if (status /= 0) error stop 'lab O-grid failed'
+        mapped = original%geometry
+        do e = 1, original%nelem
+            do node = 1, size(mapped, 2)
+                x = original%geometry(:, node, e)
+                radius = norm2(x(:2))
+                phi = atan2(x(2), x(1))
+                call lab_geometry(radius - 3, x(3), phi, g)
+                mapped(:, node, e) = [g(1)*cos(phi), g(1)*sin(phi), g(2)]
+            end do
+        end do
+        call build_tensor_mesh(3, p, p + 2, original%vertices, mapped, mesh, status, &
+                               gather=original%dof)
+        if (status == 0) mesh%boundary = original%boundary
+    else
+        if (problem /= 'L5') error stop 'polar comparison requires L5'
+        call structured_tensor_mesh(3, [n, 8*n, 20*n], p, mesh, status, &
+                        map=polar_geometry, periodic=[.false., .true., .true.], q=p + 2)
+        if (status == 0) call collapse_polar_axis()
+    end if
     if (status /= 0) error stop 'lab MF mesh failed'
     ! Match the load quadrature to the operator used internally by MF1's solver.
     call build_tensor_operator(mesh, coefficient, op, status)
@@ -47,9 +78,41 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
         bc(i) = exact
     end do
     solution = 0
-    call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
-                                bc=bc, maxiter=1500)
-    if (info%status /= 0) then
+    if (preconditioner == 'pmg') then
+        call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
+                                    bc=bc, maxiter=1500)
+    else
+        ! The polar comparison uses the same tensor operator's assembled
+        ! oracle, avoiding a multigrid topology assumption at collapsed cells.
+        call assemble_tensor_operator(op, csr)
+        allocate (rows(size(csr%val)), cols(size(csr%val)))
+        do i = 1, csr%n
+            rows(csr%rowptr(i):csr%rowptr(i + 1) - 1) = i
+        end do
+        cols = csr%colidx
+        call csc_from_triplet(csr%n, csr%n, rows, cols, csr%val, matrix, sparse_status)
+        if (sparse_status%code /= 0) error stop 'polar CSC failed'
+        allocate (lift(mesh%ndof), action(mesh%ndof))
+        lift = 0
+        where (mesh%boundary) lift = bc
+        call apply_tensor_operator(op, lift, action, eliminate=.false.)
+        rhs = rhs - action
+        where (mesh%boundary) rhs = bc
+        options%method = 'pcg'
+        options%preconditioner = 'ichol_row'
+        options%fill_level = 64
+        options%tolerance = 1.e-10_dp
+        options%max_iterations = 20000
+        call solve_sparse(matrix, rhs, solution, options, stats)
+        info%status = 1
+        if (stats%converged) info%status = 0
+        info%iterations = stats%iterations
+        call apply_tensor_operator(op, solution, action, eliminate=.false.)
+        action = action - forcing_vector(op)
+        where (mesh%boundary) action = solution - bc
+        info%residual = norm2(action)/max(norm2(rhs), tiny(1._dp))
+    end if
+    if (info%status /= 0 .or. info%residual > 2.e-8_dp) then
         print *, info%status, info%iterations, info%residual
         error stop 'lab MF solve failed'
     end if
@@ -67,10 +130,12 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     aerr = 0
     anorm = 0
     projection = 0
+    ballerr = 0
+    ballnorm = 0
     !$omp parallel do default(shared) &
     !$omp private(e,local,values,jets,scratch1,scratch2,dir,q,x,exact,eg,source, &
     !$omp direction,inv,status,gradient,w,t) &
-    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm,projection) schedule(static)
+    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm,projection,ballerr,ballnorm) schedule(static)
     do e = 1, mesh%nelem
         local = solution(mesh%dof(:, e))
       call tensor_contract(error_op%ni,error_op%no,b,b,b,local,values,scratch1,scratch2)
@@ -100,6 +165,10 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
             hnorm = hnorm + w*sum(eg**2)
             projection = projection + w*values(q)*exact
             call lab_transport(sqrt(sum(x(:2)**2)), atan2(x(2), x(1)), x(3), t)
+            if (sum((x - [3.1_dp, 0._dp, 0._dp])**2) < .04_dp) then
+                ballerr = ballerr + w*(values(q) - exact)**2
+                ballnorm = ballnorm + w*exact**2
+            end if
             if (t(9) < .04_dp) then
                 aerr = aerr + w*(values(q) - exact)**2
                 anorm = anorm + w*exact**2
@@ -109,18 +178,58 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     !$omp end parallel do
     value = 0
     if (problem == 'L3') value = projection/norm
-    write (*, '(a,1x,i0,1x,6(es24.16,1x),i0)') 'LAB', mesh%ndof, sqrt(err/norm), &
+    write (*, '(a,1x,i0,1x,6(es24.16,1x),i0,1x,es24.16)') 'LAB', mesh%ndof, sqrt(err/norm), &
         sqrt(herr/hnorm), sqrt(aerr/max(anorm, tiny(1._dp))), value, info%residual, &
-        0._dp, info%iterations
+        0._dp, info%iterations, sqrt(ballerr/max(ballnorm, tiny(1._dp)))
 contains
-    subroutine geometry(xi, x)
+    function forcing_vector(operator) result(load)
+        type(tensor_operator_t), intent(in) :: operator
+        real(dp), allocatable :: load(:)
+        call tensor_load(operator, forcing, load)
+    end function
+    subroutine polar_geometry(xi, x)
         real(dp), intent(in) :: xi(:)
         real(dp), intent(out) :: x(:)
-        real(dp) :: disk(2), g(12), phi
-        call lab_square_disk(2*xi(1) - 1, 2*xi(2) - 1, disk)
+        real(dp) :: angle, phi, g(12)
+        angle = 2*acos(-1._dp)*xi(2)
         phi = 2*acos(-1._dp)*xi(3)
-        call lab_geometry(disk(1), -disk(2), phi, g)
+        call lab_geometry(xi(1)*cos(angle), -xi(1)*sin(angle), phi, g)
         x = [g(1)*cos(phi), g(1)*sin(phi), g(2)]
+    end subroutine
+    subroutine collapse_polar_axis()
+        integer, allocatable :: mapping(:), representative(:)
+        real(dp), allocatable :: coordinates(:, :)
+        logical, allocatable :: boundary(:)
+        integer :: nr, nt, np, ir, it, ip, old, nd, axis
+        nr = n*p + 1
+        nt = 8*n*p
+        np = 20*n*p
+        allocate (mapping(mesh%ndof), representative(mesh%ndof))
+        nd = 0
+        do ip = 0, np - 1
+            nd = nd + 1
+            axis = nd
+            representative(nd) = 1 + nr*nt*ip
+            do it = 0, nt - 1
+                mapping(1 + nr*(it + nt*ip)) = axis
+                do ir = 1, nr - 1
+                    old = 1 + ir + nr*(it + nt*ip)
+                    nd = nd + 1
+                    mapping(old) = nd
+                    representative(nd) = old
+                end do
+            end do
+        end do
+        allocate (coordinates(3, nd), boundary(nd))
+        coordinates = mesh%coordinates(:, representative(:nd))
+        boundary = mesh%boundary(representative(:nd))
+        do ip = 0, np - 1
+            boundary(mapping(1 + nr*nt*ip)) = .false.
+        end do
+       mesh%dof = reshape(mapping(reshape(mesh%dof, [size(mesh%dof)])), shape(mesh%dof))
+        call move_alloc(coordinates, mesh%coordinates)
+        call move_alloc(boundary, mesh%boundary)
+        mesh%ndof = nd
     end subroutine
     subroutine physical_data(x, u, gradient, forcing, direction)
         real(dp), intent(in) :: x(3)

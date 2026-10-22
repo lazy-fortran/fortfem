@@ -101,7 +101,10 @@ K = I + (ratio-1) b b^T
 Q = -[T_RR + T_R/R + T_phiphi/R^2 + T_ZZ]
 ```
 
-These definitions extend smoothly to the magnetic axis and satisfy
+These definitions extend smoothly to the magnetic axis. The vector
+`B=t/(1.3*a*R)` is the Piola push-forward of the divergence-free disk-coordinate
+field `(-iota*v,iota*u,1)`, so a solenoidal magnetic field has this direction.
+They satisfy
 `t dot grad s=0`. They are the push-forward of
 `d/dphi + iota(s)*(-v*d/du+u*d/dv)`. Thus `b dot grad T=0`, and Q is independent
 of ratio. `gen_lab_problems` differentiates the inverse geometry to emit Q.

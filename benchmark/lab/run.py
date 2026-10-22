@@ -17,9 +17,23 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 FIELDS = ['problem', 'criterion', 'family', 'p', 'h', 'anisotropy_ratio', 'preconditioner', 'threads',
           'revision', 'executable_sha256', 'dirty', 'compiler', 'flags', 'host', 'job_id', 'size',
-          'dofs', 'rel_l2', 'rel_h1_seminorm', 'rel_hcurl', 'axis_rel_l2', 'chi_perp_num',
+          'dofs', 'rel_l2', 'rel_h1_seminorm', 'rel_hcurl', 'axis_rel_l2', 'axis_ball_rel_l2', 'chi_perp_num',
           'iterations', 'wall_s', 'peak_rss_bytes', 'rss_method', 'residual',
           'nnz', 'status', 'geometry', 'mesh_sha256', 'command']
+
+
+def append_row(path, row):
+    path = Path(path)
+    exists = path.exists() and path.stat().st_size > 0
+    if exists:
+        with path.open(newline='') as f:
+            if next(csv.reader(f)) != FIELDS:
+                raise RuntimeError('CSV schema differs; choose a new output file')
+    with path.open('a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        if not exists:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 def geometry(u, v, phi):
@@ -114,12 +128,20 @@ def run(args):
     if args.family == 'gll-mf' and (args.problem not in ('L1', 'L3', 'L5') or
                                    args.preconditioner != 'pmg'):
         raise SystemExit('MF1 adapter supports L1/L3/L5 with pmg')
+    if args.family == 'gll-polar' and (args.problem != 'L5' or args.preconditioner != 'ichol_row'):
+        raise SystemExit('polar comparison requires L5 with ichol_row')
     if args.family == 'bspline' and args.problem not in ('L1', 'L5'):
         raise SystemExit('spline transport adapter pending')
     if args.alignment != 'unaligned':
         raise SystemExit('field-aligned periodic mesh closure is pending; no false aligned label')
     if args.problem == 'L3a' and args.p != 1:
         raise SystemExit('existing 2D tensor adapter supports P1')
+    if args.h <= 0:
+        raise SystemExit('h must be positive')
+    if args.family in ('tet', 'bspline') and args.preconditioner == 'pmg':
+        raise SystemExit('pmg requires the matrix-free GLL driver')
+    if not args.problem.startswith('L3') and args.ratio != 1:
+        raise SystemExit('anisotropy ratio applies only to L3/L3a')
     n = args.n if args.n is not None else round(1/args.h)
     if n < 1 or args.threads < 1 or args.p not in (1, 2, 3, 4):
         raise SystemExit('positive resolution/threads and degree 1..4 required')
@@ -132,13 +154,34 @@ def run(args):
     compiler = subprocess.check_output([args.compiler, '--version'], text=True).splitlines()[0]
     with tempfile.TemporaryDirectory(prefix='ben1-', dir=args.scratch) as tmp:
         meshfile = Path(tmp)/'mesh.txt'
-        if args.family in ('bspline', 'gll-mf'):
-            size, checksum = 80*n**3, ''
+        if args.family in ('bspline', 'gll-mf', 'gll-polar'):
+            size, checksum = (160 if args.family == 'gll-polar' else
+                              (100 if args.family == 'gll-mf' else 80))*n**3, ''
         else:
             size, checksum = write_mesh(meshfile, args.problem, n, args.alignment)
         command = [str(executable), args.problem, str(args.p),
-                   str(n) if args.family in ('bspline', 'gll-mf') else str(meshfile),
+                   str(n) if args.family in ('bspline', 'gll-mf', 'gll-polar') else str(meshfile),
                    args.preconditioner, str(args.ratio)]
+        base_row = dict(zip(FIELDS, ['']*len(FIELDS)))
+        base_row.update(problem=args.problem, criterion='2' if args.problem == 'L5' else
+                   ('3' if args.problem.startswith('L3') else ('4' if args.problem == 'L4' else '1')), family=args.family,
+                   p=args.p, h=1/n, anisotropy_ratio=args.ratio, preconditioner=args.preconditioner, threads=args.threads,
+                   revision=revision, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(), dirty=dirty, compiler=compiler, flags=args.flags,
+                   host=platform.node(), job_id=os.environ.get('SLURM_JOB_ID', 'none'),
+                   size=size, dofs='', rel_l2='', rel_h1_seminorm='',
+                   rel_hcurl='',
+                   axis_rel_l2='',
+                   axis_ball_rel_l2='', chi_perp_num='', iterations='', wall_s='',
+                   peak_rss_bytes='',
+                   rss_method='wait4.getrusage.child', residual='',
+                   nnz='', status='pending', geometry='square' if args.problem == 'L3a'
+                   else ('nfp5-polar-gll-approximation' if args.family == 'gll-polar'
+                         else ('nfp5-curved-gll-approximation' if args.family == 'gll-mf'
+                         else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'
+                         else 'nfp5-affine-tetra-approximation'))), mesh_sha256=checksum,
+                   command=shlex.join([f'OMP_NUM_THREADS={args.threads}', sys.executable,
+                                    str(Path(__file__).relative_to(ROOT))]+
+                                   ([args.problem] if Path(sys.argv[0]).stem != 'run' else [])+sys.argv[1:]))
         records = []
         wall, peak = 0., 0
         for mode_ratio in ([3., 1.] if args.problem == 'L4' else [args.ratio]):
@@ -153,14 +196,19 @@ def run(args):
             wall += time.perf_counter()-start
             peak = max(peak, usage.ru_maxrss)
             if proc.returncode:
-                sys.stderr.write(stdout+stderr)
+                row = base_row.copy()
+                row.update(status=f'failed: exit {proc.returncode}', wall_s=wall,
+                           peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024))
+                append_row(args.output, row)
+                sys.stderr.write(''.join((stdout+stderr).splitlines(True)[-100:]))
                 raise SystemExit(proc.returncode)
             record = [line.split()[1:] for line in stdout.splitlines()
                       if line.startswith('LAB ')]
             if len(record) != 1:
                 raise RuntimeError('expected exactly one LAB record per modal solve')
             records.append(record[0])
-        dofs, l2, h1, axis, center, residual, nnz, iterations = records[0]
+        dofs, l2, h1, axis, center, residual, nnz, iterations = records[0][:8]
+        ball = float(records[0][8]) if len(records[0]) == 9 else ''
         if args.problem == 'L4':
             # Constant SPD block diagonalises into eigenvalues 3,1,1.
             # Exact component amplitudes in this orthonormal frame have
@@ -179,32 +227,16 @@ def run(args):
                 raise RuntimeError('nonpositive central temperature')
             # chi_perp=1; cosine test has T_exact(0,0)=1.
             pollution = 1/float(center)-1
-        row = dict(zip(FIELDS, ['']*len(FIELDS)))
-        row.update(problem=args.problem, criterion='2' if args.problem == 'L5' else
-                   ('3' if args.problem.startswith('L3') else ('4' if args.problem == 'L4' else '1')), family=args.family,
-                   p=args.p, h=1/n, anisotropy_ratio=args.ratio, preconditioner=args.preconditioner, threads=args.threads,
-                   revision=revision, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(), dirty=dirty, compiler=compiler, flags=args.flags,
-                   host=platform.node(), job_id=os.environ.get('SLURM_JOB_ID', 'none'),
-                   size=size, dofs=int(dofs), rel_l2=float(l2), rel_h1_seminorm=float(h1) if args.problem != 'L2' else '',
+        row = base_row.copy()
+        row.update(dofs=int(dofs), rel_l2=float(l2),
+                   rel_h1_seminorm=float(h1) if args.problem != 'L2' else '',
                    rel_hcurl=float(h1) if args.problem == 'L2' else '',
                    axis_rel_l2=float(axis) if args.problem not in ('L3a', 'L2') else '',
-                   chi_perp_num=pollution, iterations=int(iterations), wall_s=wall,
+                   axis_ball_rel_l2=ball, chi_perp_num=pollution,
+                   iterations=int(iterations), wall_s=wall,
                    peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024),
-                   rss_method='wait4.getrusage.child', residual=float(residual),
-                   nnz=int(float(nnz)), status='V', geometry='square' if args.problem == 'L3a'
-                   else ('nfp5-curved-gll-approximation' if args.family == 'gll-mf'
-                         else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'
-                         else 'nfp5-affine-tetra-approximation')), mesh_sha256=checksum,
-                   command=shlex.join([f'OMP_NUM_THREADS={args.threads}', sys.executable,
-                                    str(Path(__file__).relative_to(ROOT))]+
-                                   ([args.problem] if Path(sys.argv[0]).stem != 'run' else [])+sys.argv[1:]))
-        out = Path(args.output)
-        exists = out.exists() and out.stat().st_size > 0
-        with out.open('a', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=FIELDS)
-            if not exists:
-                writer.writeheader()
-            writer.writerow(row)
+                   residual=float(residual), nnz=int(float(nnz)), status='V')
+        append_row(args.output, row)
         print(json.dumps(row, indent=2))
 
 
@@ -214,7 +246,7 @@ def parser(problem=None):
         p.add_argument('problem', choices=['L1', 'L2', 'L3', 'L3a', 'L4', 'L5', 'L6'])
     else:
         p.set_defaults(problem=problem)
-    p.add_argument('--family', choices=['tet', 'bspline', 'gll-mf'], default='tet')
+    p.add_argument('--family', choices=['tet', 'bspline', 'gll-mf', 'gll-polar'], default='tet')
     p.add_argument('--p', type=int, default=1)
     resolution = p.add_mutually_exclusive_group()
     resolution.add_argument('--n', type=int)
