@@ -221,6 +221,13 @@ def run(args):
             residual = max(float(residual), float(other[5]))
             nnz = int(float(nnz))+int(float(other[6]))
             iterations = int(iterations)+int(other[7])
+        measured = [float(x) for x in (l2, h1, axis, center, residual, nnz)]
+        if not all(math.isfinite(x) for x in measured):
+            row = base_row.copy()
+            row.update(status='failed: nonfinite metric', wall_s=wall,
+                       peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024))
+            append_row(args.output, row)
+            raise RuntimeError('nonfinite benchmark metric')
         pollution = ''
         if args.problem in ('L3a', 'L3'):
             if float(center) <= 0:

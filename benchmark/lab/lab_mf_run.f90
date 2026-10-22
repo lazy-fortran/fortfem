@@ -29,6 +29,7 @@ use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, ten
     real(dp), allocatable :: rhs(:), solution(:), bc(:), values(:), local(:)
     real(dp), allocatable :: scratch1(:), scratch2(:), b(:, :), d(:, :), jets(:, :)
     real(dp) :: ratio, err, norm, herr, hnorm, aerr, anorm, projection, value
+    real(dp) :: ballerr, ballnorm, g(12), radius, phi
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
     integer :: p, n, status, i, e, q, ws, dir, node
     character(32) :: problem, preconditioner

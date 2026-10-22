@@ -7,9 +7,10 @@ program test_lab_problem_definitions
     use fortfem_generated_lab_guenter, only: lab_guenter
     use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
+    integer, parameter :: qp = selected_real_kind(30)
     real(dp) :: q(3), p(3), v(8), vp(8), vm(8), g(12), t(9)
     real(dp) :: step, lap, point(3), fluxp(3), fluxm(3), div, ratio
-    real(dp) :: vector(9), vecp(9), vecm(9), dcurl(3,3), curlcurl(3)
+    real(dp) :: vector(9), vecp(9), vecm(9), dcurl(3, 3), curlcurl(3)
     integer :: i, j, k
     step = 2.0e-4_dp
     do k = 1, 4
@@ -23,12 +24,12 @@ program test_lab_problem_definitions
             call lab_vector(point(1), point(2), point(3), vecp)
             point(i) = point(i) - 2*step
             call lab_vector(point(1), point(2), point(3), vecm)
-            dcurl(:,i) = (vecp(4:6)-vecm(4:6))/(2*step)
+            dcurl(:, i) = (vecp(4:6) - vecm(4:6))/(2*step)
         end do
-        curlcurl = [dcurl(3,2)-dcurl(2,3), dcurl(1,3)-dcurl(3,1), &
-                    dcurl(2,1)-dcurl(1,2)]
-        call check_condition(maxval(abs(curlcurl+vector(:3)-vector(7:9))) < 3.e-8_dp, &
-            'L2 exact curl-curl plus mass agrees with forcing')
+        curlcurl = [dcurl(3, 2) - dcurl(2, 3), dcurl(1, 3) - dcurl(3, 1), &
+                    dcurl(2, 1) - dcurl(1, 2)]
+     call check_condition(maxval(abs(curlcurl + vector(:3) - vector(7:9))) < 3.e-8_dp, &
+                             'L2 exact curl-curl plus mass agrees with forcing')
         call lab_scalar(p(1), p(2), p(3), v)
         lap = 0
         do i = 1, 3
@@ -43,6 +44,7 @@ program test_lab_problem_definitions
         call check_condition(abs(lap + v(5)) < 3.0e-8_dp, &
                              'L1/L5 exact gradient divergence agrees with forcing')
         call lab_transport(g(1), q(3), g(2), t)
+        call check_quad_source(p, t(5))
         call check_condition(abs(t(1) - (1 - sum(q(:2)**2))) < 2.e-14_dp, &
                           'L3 inverse geometry reproduces flux surfaces including axis')
         call check_condition(abs(dot_product(t(2:4), t(6:8))) < 2.e-13_dp, &
@@ -82,6 +84,37 @@ program test_lab_problem_definitions
                          'L3a parallel exact derivative vanishes')
     call check_summary('laboratory problem definitions')
 contains
+    subroutine check_quad_source(point, forcing)
+        real(dp), intent(in) :: point(3), forcing
+        real(qp) :: x(3), shift(3), lap, h, center, values(4)
+        integer :: i, j
+        integer, parameter :: offsets(4) = [-2, -1, 1, 2]
+        x = real(point, qp)
+        h = 1.e-5_qp
+        center = reference_temperature(x)
+        lap = 0
+        do i = 1, 3
+            do j = 1, 4
+                shift = x
+                shift(i) = shift(i) + offsets(j)*h
+                values(j) = reference_temperature(shift)
+            end do
+            lap = lap + (-values(1) + 16*values(2) - 30*center + &
+                         16*values(3) - values(4))/(12*h*h)
+        end do
+        call check_condition(abs(real(-lap, dp) - forcing) < &
+                             256*epsilon(1._dp)*max(1._dp, abs(forcing)), &
+                   'L3 independent quad-precision FD forcing agrees at double roundoff')
+    end subroutine
+    pure function reference_temperature(x) result(value)
+        real(qp), intent(in) :: x(3)
+        real(qp) :: value, r, phi, u, v
+        r = sqrt(x(1)*x(1) + x(2)*x(2))
+        phi = atan2(x(2), x(1))
+        u = (r - 3._qp - cos(5*phi)/10)/(1._qp + cos(5*phi)/10)
+        v = (x(3) - sin(5*phi)/10)*10/13
+        value = 1 - u*u - v*v
+    end function
     subroutine transport_flux(x, ratio, flux)
         real(dp), intent(in) :: x(3), ratio
         real(dp), intent(out) :: flux(3)
