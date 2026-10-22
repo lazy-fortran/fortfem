@@ -49,7 +49,7 @@ program test_lab_gll_line
     call record(status /= 0, 'reject degree zero')
     call build_gll_line(2, 0, line, status)
     call record(status /= 0, 'reject empty mesh')
-    call check_summary()
+    call check_summary('GLL line')
     if (.not. passed) error stop 'GLL line tests failed'
 contains
     subroutine record(ok, message)
