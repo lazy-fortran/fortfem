@@ -55,6 +55,17 @@ program gen_triangle_piola_products
         end do
         call emit(family_name//"_vjp", vjp(mapped, inputs, bars), args(:10))
     end do
+    ! Physical 1-form/2-form L2 pairing, including the quadrature weight.
+    do i = 1, 7
+        args(i) = str(trim(input_names(i)))
+        args(7 + i) = str(trim(input_names(i))//"_dot")
+    end do
+    mapped(1) = inputs(7)*(inputs(1)*inputs(4) + &
+        inputs(2)*inputs(5) + inputs(3)*inputs(6))
+    call emit("physical_pairing", mapped(:1), args(:7))
+    call emit("physical_pairing_jvp", jvp(mapped(:1), inputs, dots), args)
+    args(8) = str("out1_bar")
+    call emit("physical_pairing_vjp", vjp(mapped(:1), inputs, bars(:1)), args(:8))
     close (unit)
 contains
     subroutine emit_inline_product(name, expressions, family_id, tangent_mode)

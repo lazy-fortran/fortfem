@@ -70,6 +70,7 @@ module fortfem_meridian_feec_n
     !!
     !! Element-parallel (OpenMP) assembly into per-element triplet slices.
     use fortfem_kinds, only: dp
+    use fortfem_generated_physical_pairing, only: generated_physical_pairing
     use fortfem_meridian_curved_mesh, only: meridian_mesh_t
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_triangle_feec_operators, only: build_triangle_discrete_gradient
@@ -994,30 +995,36 @@ contains
     ! Weak forms
     ! ------------------------------------------------------------------
 
-    subroutine meridian_mass_weighted(fs, space, m, status, weight)
+    subroutine meridian_mass_weighted(fs, space, m, status, weight, trial_space)
         !! M_ij = int phi_i . phi_j w(R, Z) R dR dZ of the physical basis
-        !! fields of the given space (weight w = 1 by default).
+        !! fields of the given space (weight w = 1 by default). With
+        !! trial_space this is rectangular: test space x trial space.
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: space
         type(csc_t), intent(out) :: m
         integer, intent(out) :: status
         procedure(meridian_weight_i), optional :: weight
+        integer, intent(in), optional :: trial_space
 
         integer, allocatable :: rows(:), cols(:)
-        real(dp), allocatable :: vals(:), phi(:, :), ml(:, :)
-        real(dp) :: x(2), jac(2, 2), det, wq, extra
-        integer :: nt, nl, t, q, i, j, base, bad
+        real(dp), allocatable :: vals(:), phi(:, :), chi(:, :), ml(:, :)
+        real(dp) :: x(2), jac(2, 2), det, wq, extra, product(1)
+        integer :: nt, nl, nc, trial, t, q, i, j, base, bad
 
         status = 1
         if (space < 0 .or. space > 3) return
+        trial = space
+        if (present(trial_space)) trial = trial_space
+        if (trial < 0 .or. trial > 3) return
+        nc = fs%sp(trial)%nloc
         nt = fs%mm%topology%n_triangles
         nl = fs%sp(space)%nloc
-        allocate (rows(nl*nl*nt), cols(nl*nl*nt), vals(nl*nl*nt))
+        allocate (rows(nl*nc*nt), cols(nl*nc*nt), vals(nl*nc*nt))
         bad = 0
         !$omp parallel if(nt >= par_min) default(shared) &
-        !$omp private(t, q, i, j, base, phi, ml, x, jac, det, wq, extra) &
+        !$omp private(t, q, i, j, base, phi, chi, ml, x, jac, det, wq, extra, product) &
         !$omp reduction(max:bad)
-        allocate (phi(3, nl), ml(nl, nl))
+        allocate (phi(3, nl), chi(3, nc), ml(nl, nc))
         !$omp do schedule(static)
         do t = 1, nt
             ml = 0.0_dp
@@ -1028,24 +1035,30 @@ contains
                     cycle
                 end if
                 call point_basis(fs, space, q, x, jac, det, phi)
+                if (trial == space) then
+                    chi = phi
+                else
+                    call point_basis(fs, trial, q, x, jac, det, chi)
+                end if
                 extra = 1.0_dp
                 if (present(weight)) extra = weight(x)
                 wq = fs%qw(q)*det*metric_radius(fs, x)*extra
-                do j = 1, nl
+                do j = 1, nc
                     do i = 1, nl
-                        ml(i, j) = ml(i, j) + wq*(phi(1, i)*phi(1, j) &
-                            + phi(2, i)*phi(2, j) + phi(3, i)*phi(3, j))
+                        call generated_physical_pairing(phi(1, i), phi(2, i), &
+                            phi(3, i), chi(1, j), chi(2, j), chi(3, j), wq, product)
+                        ml(i, j) = ml(i, j) + product(1)
                     end do
                 end do
             end do
-            base = (t - 1)*nl*nl
-            do j = 1, nl
+            base = (t - 1)*nl*nc
+            do j = 1, nc
                 do i = 1, nl
                     base = base + 1
                     rows(base) = fs%sp(space)%dof(i, t)
-                    cols(base) = fs%sp(space)%dof(j, t)
+                    cols(base) = fs%sp(trial)%dof(j, t)
                     vals(base) = real(fs%sp(space)%sgn(i, t)* &
-                        fs%sp(space)%sgn(j, t), dp)*ml(i, j)
+                        fs%sp(trial)%sgn(j, t), dp)*ml(i, j)
                     if (abs(vals(base)) < 1.0e-300_dp) vals(base) = 0.0_dp
                 end do
             end do
@@ -1053,7 +1066,7 @@ contains
         !$omp end do
         !$omp end parallel
         if (bad /= 0) return
-        call triplets_to_csc(fs%sp(space)%ndof, fs%sp(space)%ndof, rows, &
+        call triplets_to_csc(fs%sp(space)%ndof, fs%sp(trial)%ndof, rows, &
             cols, vals, m, status)
     end subroutine meridian_mass_weighted
 

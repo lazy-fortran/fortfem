@@ -42,21 +42,55 @@ module fortfem_meridian_fourier_curl
     !! block (b, b') is nonzero only if K has a harmonic of degree
     !! |n_b - n_b'| or n_b + n_b'.  Element loops are OpenMP parallel.
     use fortfem_kinds, only: dp
-    use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_qpoint
+    use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_qpoint, &
+        meridian_mass_weighted
     use fortfem_meridian_fourier_scalar, only: meridian_fourier_tensor_t
     use fortsparse, only: csc_t, csc_from_triplet, csc_matmul, csc_transpose, &
         fortsparse_status_t, status_ok
     implicit none
     private
 
+    public :: meridian_fourier_pairing, meridian_fourier_diagonal_mass
     public :: meridian_fourier_mass, meridian_fourier_curl_curl
     public :: meridian_fourier_gradient_coupling
     public :: meridian_fourier_gradient, meridian_fourier_curl
+    public :: meridian_fourier_identity_forms
 
     integer, parameter :: par_min = 32
     real(dp), parameter :: pi = acos(-1.0_dp)
 
 contains
+
+    subroutine meridian_fourier_identity_forms(fs, modes, c, s, mg, status)
+        !! Exact phi integration for K=I. The already assembled meridian
+        !! mass is copied with weights 1, 1/2, 1/2, ... . Storage is linear
+        !! in the number of real Fourier blocks, including construction.
+        !! This avoids the general tensor builder's all-mode-pair triplets.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: c, s, mg
+        integer, intent(out) :: status
+        type(csc_t) :: m, g, ct, mc
+        type(fortsparse_status_t) :: st
+        call meridian_fourier_curl(fs, modes, c, status)
+        if (status /= 0) return
+        call meridian_fourier_diagonal_mass(fs, 2, modes, m, status)
+        if (status /= 0) return
+        call csc_matmul(m, c, mc, st)
+        status = 1
+        if (.not. status_ok(st)) return
+        call csc_transpose(c, ct, st)
+        if (.not. status_ok(st)) return
+        call csc_matmul(ct, mc, s, st)
+        if (.not. status_ok(st)) return
+        call meridian_fourier_gradient(fs, modes, g, status)
+        if (status /= 0) return
+        call meridian_fourier_diagonal_mass(fs, 1, modes, m, status)
+        if (status /= 0) return
+        status = 1
+        call csc_matmul(m, g, mg, st)
+        if (status_ok(st)) status = 0
+    end subroutine
 
     subroutine block_operator(a, b, modes, op, status)
         !! Real-block operator of a + i n b on the (cos, sin) amplitudes.
@@ -126,6 +160,64 @@ contains
         if (modes < 0) return
         call block_operator(fs%curl%a, fs%curl%b, modes, c, status)
     end subroutine meridian_fourier_curl
+
+    subroutine meridian_fourier_pairing(fs, modes, m, status)
+        !! Metric-invariant 1-form/2-form pairing <A . B> on real Fourier
+        !! blocks. Covariant and contravariant Piola factors cancel under
+        !! any orientation-preserving 3D map. Nonzero modes have weight 1/2.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: m
+        integer, intent(out) :: status
+        type(csc_t) :: pair
+        status = 1
+        if (modes < 0) return
+        call meridian_mass_weighted(fs, 1, pair, status, trial_space=2)
+        if (status /= 0) return
+        call fourier_diagonal(pair, modes, m, status)
+    end subroutine meridian_fourier_pairing
+
+    subroutine meridian_fourier_diagonal_mass(fs, space, modes, m, status)
+        !! Exact Fourier orthogonality for the identity tensor: block b is
+        !! M_space for b=0 and M_space/2 otherwise. No roundoff cross-mode
+        !! entries are introduced into the sparse graph.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: space, modes
+        type(csc_t), intent(out) :: m
+        integer, intent(out) :: status
+        status = 1
+        if (space < 0 .or. space > 3 .or. modes < 0) return
+        call fourier_diagonal(fs%mass(space), modes, m, status)
+    end subroutine meridian_fourier_diagonal_mass
+
+    subroutine fourier_diagonal(pair, modes, m, status)
+        type(csc_t), intent(in) :: pair
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: m
+        integer, intent(out) :: status
+        integer :: b, j, p, offset, pos, nb, nr, nc
+        real(dp) :: weight
+        nb = 2*modes + 1; nr = pair%nrow; nc = pair%ncol
+        m%nrow = nb*nr; m%ncol = nb*nc; m%nnz = nb*pair%nnz
+        allocate (m%col_ptr(m%ncol + 1), m%row_idx(m%nnz), m%val(m%nnz))
+        !$omp parallel do default(shared) private(b, j, p, offset, pos, weight) &
+        !$omp& schedule(static)
+        do b = 0, nb - 1
+            offset = b*pair%nnz
+            weight = merge(1.0_dp, 0.5_dp, b == 0)
+            do j = 1, nc
+                m%col_ptr(b*nc + j) = pair%col_ptr(j) + offset
+                do p = pair%col_ptr(j), pair%col_ptr(j + 1) - 1
+                    pos = offset + p
+                    m%row_idx(pos) = b*nr + pair%row_idx(p)
+                    m%val(pos) = weight*pair%val(p)
+                end do
+            end do
+        end do
+        !$omp end parallel do
+        m%col_ptr(m%ncol + 1) = m%nnz + 1
+        status = 0
+    end subroutine fourier_diagonal
 
     subroutine meridian_fourier_mass(fs, space, modes, nphi, coef, m, status)
         !! M_(gi, gj) = < phi_gi . K phi_gj > on the Fourier-V1 (space = 1) or

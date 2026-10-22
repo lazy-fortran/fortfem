@@ -136,7 +136,8 @@ program test_meridian_fourier_curl
         meridian_lagrange_nodes
     use fortfem_meridian_fourier_curl, only: meridian_fourier_mass, &
         meridian_fourier_curl_curl, meridian_fourier_gradient_coupling, &
-        meridian_fourier_gradient, meridian_fourier_curl
+        meridian_fourier_gradient, meridian_fourier_curl, &
+        meridian_fourier_identity_forms, meridian_fourier_pairing
     use fortsparse, only: csc_t, csc_matvec
     use meridian_fourier_curl_fields, only: identity_t, coupled_t, field_t, &
         coupled_tensor, series, field_a, field_b, zc
@@ -149,10 +150,45 @@ program test_meridian_fourier_curl
     all_passed = .true.
     call test_reduction_symmetry_derham()
     call test_exact_forms()
+    call test_identity_forms()
     call check_summary("Meridian real Fourier curl-complex forms")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine test_identity_forms()
+        type(meridian_mesh_t) :: mm
+        type(meridian_feec_t) :: fs
+        type(identity_t) :: iso
+        type(csc_t) :: c, s, mg, reference, g
+        real(dp), allocatable :: exact(:, :), d(:, :), v(:), cv(:)
+        integer :: st, n, k, j
+        call make_warped_rectangle_mesh(2, 2, mm)
+        do k = 2, 3
+            call meridian_feec_build(mm, k, fs, st)
+            call record(st == 0, "identity forms complex builds")
+            do n = 0, 2
+                call meridian_fourier_identity_forms(fs, n, c, s, mg, st)
+                call record(st == 0, "identity Fourier forms assemble")
+                call meridian_fourier_curl_curl(fs, n, 4*n + 1, iso, reference, st)
+                call record(st == 0, "quadrature identity curl-curl assembles")
+                exact = to_dense(reference); d = to_dense(s)
+                call record(maxval(abs(d - exact)) <= &
+                    1.0e-13_dp*maxval(abs(exact)), "analytic identity curl-curl")
+                call meridian_fourier_gradient_coupling(fs, n, 4*n + 1, iso, &
+                    reference, st)
+                call record(st == 0, "quadrature identity gradient assembles")
+                exact = to_dense(reference); d = to_dense(mg)
+                call record(maxval(abs(d - exact)) <= &
+                    1.0e-13_dp*maxval(abs(exact)), "analytic identity gradient")
+                call meridian_fourier_gradient(fs, n, g, st)
+                v = [(sin(0.37_dp*j), j=1, g%ncol)]
+                cv = csc_matvec(c, csc_matvec(g, v))
+                call record(norm2(cv) < 1.0e-10_dp*norm2(v), &
+                    "identity forms retain curl grad nullspace")
+            end do
+        end do
+    end subroutine
 
     subroutine record(c, d)
         logical, intent(in) :: c
@@ -415,6 +451,13 @@ contains
         call meridian_fourier_curl(fs, modes, c, st)
         bu = csc_matvec(c, u)
         bv = csc_matvec(c, v)
+        call meridian_fourier_pairing(fs, modes, m1, st)
+        call record(st == 0, "Fourier V1-V2 pairing assembly")
+        val = dot_product(v, csc_matvec(m1, bu))
+        ref = oracle(fv, fu, 3, zc)
+        print '(a, 2es22.14)', "  helicity pairing value, exact: ", val, ref
+        call record(abs(val - ref) <= 1.0e-12_dp*max(1.0_dp, abs(ref)), &
+            "V1-V2 pairing exact on polynomial-trigonometric fields")
         call meridian_fourier_mass(fs, 2, modes, nphi, cpd, m2, st)
         call record(st == 0, "coupled V2 mass assembly")
         val = dot_product(bv, csc_matvec(m2, bu))
@@ -501,7 +544,12 @@ contains
                 do l = 0, nph - 1
                     x = [2.5_dp + 0.5_dp*xg(i), 0.5_dp*xg(j), 2*pi*l/nph]
                     call coupled_tensor(x, k)
-                    if (space == 1) then
+                    if (space == 3) then
+                        a = field_b(fu, x, zcoef)
+                        b = field_a(fv, x, zcoef)
+                        k = 0
+                        k(1,1)=1; k(2,2)=1; k(3,3)=1
+                    else if (space == 1) then
                         a = field_a(fu, x, zcoef)
                         b = field_a(fv, x, zcoef)
                     else
