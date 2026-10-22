@@ -16,7 +16,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 FIELDS = ['problem', 'criterion', 'family', 'p', 'h', 'anisotropy_ratio', 'preconditioner', 'threads',
-          'revision', 'dirty', 'compiler', 'flags', 'host', 'job_id', 'size',
+          'revision', 'executable_sha256', 'dirty', 'compiler', 'flags', 'host', 'job_id', 'size',
           'dofs', 'rel_l2', 'rel_h1_seminorm', 'axis_rel_l2', 'chi_perp_num',
           'iterations', 'wall_s', 'peak_rss_bytes', 'rss_method', 'residual',
           'nnz', 'status', 'geometry', 'mesh_sha256', 'command']
@@ -114,7 +114,7 @@ def write_mesh(path, problem, n, alignment):
 def run(args):
     if args.problem == 'L6':
         raise SystemExit('L6 uses KIN6D benchmarks/nested/run_reference.py; see PROBLEMS.md')
-    if args.problem in ('L2', 'L4'):
+    if args.problem == 'L2':
         raise SystemExit(f'{args.problem} definition is available; solver adapter is pending')
     if args.family == 'gll-mf':
         raise SystemExit('MF1 adapter pending; no substitute family is timed')
@@ -140,37 +140,56 @@ def run(args):
         command = [str(executable), args.problem, str(args.p),
                    str(n) if args.family == 'bspline' else str(meshfile),
                    args.preconditioner, str(args.ratio)]
-        start = time.perf_counter()
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, env=env)
-        # wait4 gives per-run rusage, never the maximum of earlier children.
-        pid, status, usage = os.wait4(proc.pid, 0)
-        proc.returncode = os.waitstatus_to_exitcode(status)
-        stdout, stderr = proc.communicate()
-        wall = time.perf_counter()-start
-        if proc.returncode:
-            sys.stderr.write(stdout+stderr)
-            raise SystemExit(proc.returncode)
-        records = [line.split()[1:] for line in stdout.splitlines() if line.startswith('LAB ')]
-        if len(records) != 1:
-            raise RuntimeError('expected exactly one LAB record')
+        records = []
+        wall, peak = 0., 0
+        for mode_ratio in ([3., 1.] if args.problem == 'L4' else [args.ratio]):
+            command[-1] = str(mode_ratio)
+            start = time.perf_counter()
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    text=True, env=env)
+            # Per-child rusage, never the maximum of preceding runs.
+            pid, status, usage = os.wait4(proc.pid, 0)
+            proc.returncode = os.waitstatus_to_exitcode(status)
+            stdout, stderr = proc.communicate()
+            wall += time.perf_counter()-start
+            peak = max(peak, usage.ru_maxrss)
+            if proc.returncode:
+                sys.stderr.write(stdout+stderr)
+                raise SystemExit(proc.returncode)
+            record = [line.split()[1:] for line in stdout.splitlines()
+                      if line.startswith('LAB ')]
+            if len(record) != 1:
+                raise RuntimeError('expected exactly one LAB record per modal solve')
+            records.append(record[0])
         dofs, l2, h1, axis, center, residual, nnz, iterations = records[0]
+        if args.problem == 'L4':
+            # Constant SPD block diagonalises into eigenvalues 3,1,1.
+            # Exact component amplitudes in this orthonormal frame have
+            # squared magnitudes 4.5,0.5,9; the eigenvalue-1 solve is reused.
+            other = records[1]
+            dofs = 3*int(dofs)
+            l2 = math.sqrt((4.5*float(l2)**2+9.5*float(other[1])**2)/14)
+            h1 = math.sqrt((4.5*float(h1)**2+9.5*float(other[2])**2)/14)
+            axis = math.sqrt((4.5*float(axis)**2+9.5*float(other[3])**2)/14)
+            residual = max(float(residual), float(other[5]))
+            nnz = int(float(nnz))+int(float(other[6]))
+            iterations = int(iterations)+int(other[7])
         pollution = ''
-        if args.problem == 'L3a':
+        if args.problem in ('L3a', 'L3'):
             if float(center) <= 0:
                 raise RuntimeError('nonpositive central temperature')
             # chi_perp=1; cosine test has T_exact(0,0)=1.
             pollution = 1/float(center)-1
         row = dict(zip(FIELDS, ['']*len(FIELDS)))
         row.update(problem=args.problem, criterion='2' if args.problem == 'L5' else
-                   ('3' if args.problem.startswith('L3') else '1'), family=args.family,
+                   ('3' if args.problem.startswith('L3') else ('4' if args.problem == 'L4' else '1')), family=args.family,
                    p=args.p, h=1/n, anisotropy_ratio=args.ratio, preconditioner=args.preconditioner, threads=args.threads,
-                   revision=revision, dirty=dirty, compiler=compiler, flags=args.flags,
+                   revision=revision, executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(), dirty=dirty, compiler=compiler, flags=args.flags,
                    host=platform.node(), job_id=os.environ.get('SLURM_JOB_ID', 'none'),
                    size=size, dofs=int(dofs), rel_l2=float(l2), rel_h1_seminorm=float(h1),
                    axis_rel_l2=float(axis) if args.problem != 'L3a' else '',
                    chi_perp_num=pollution, iterations=int(iterations), wall_s=wall,
-                   peak_rss_bytes=usage.ru_maxrss*(1 if sys.platform == 'darwin' else 1024),
+                   peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024),
                    rss_method='wait4.getrusage.child', residual=float(residual),
                    nnz=int(float(nnz)), status='V', geometry='square' if args.problem == 'L3a'
                    else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'

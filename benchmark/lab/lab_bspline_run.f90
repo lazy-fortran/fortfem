@@ -18,17 +18,17 @@ program lab_bspline_run
     type(solver_options_t) :: opts
     type(solver_stats_t) :: stats
     real(dp), allocatable :: ku(:), kv(:), kp(:), controls(:, :, :, :), weights(:, :, :)
-    real(dp), allocatable :: gu(:), gv(:), gp(:), vu(:), vv(:), vp(:), du(:), dv(:), dpv(:)
-    real(dp), allocatable :: coeff(:, :, :), rhs(:), solution(:), bc(:), vals(:), grads(:, :)
+ real(dp), allocatable :: gu(:), gv(:), gp(:)
+    real(dp), allocatable :: coeff(:, :, :), rhs(:), solution(:), bc(:)
     real(dp), allocatable :: bu(:, :), bv(:, :), bp(:, :), line(:), output(:)
-    real(dp), allocatable :: qx(:), qy(:), qz(:), wx(:), wy(:), wz(:), entries(:)
-    integer, allocatable :: map(:), rows(:), cols(:), dofs(:)
+    real(dp), allocatable :: entries(:)
+    integer, allocatable :: map(:), rows(:), cols(:)
     logical, allocatable :: boundary(:)
-    real(dp) :: point(3), jac(3, 3), inverse(3, 3), det, geom(12), data(8), trans(9)
-    real(dp) :: u, v, phi, weight, value, gradient(3), err, norm, herr, hnorm
-    real(dp) :: aerr, anorm, residual, pi, ratio
+    real(dp) :: point(3), jac(3, 3), geom(12), data(8)
+    real(dp) :: u, v, phi, err, norm, herr, hnorm
+    real(dp) :: aerr, anorm, residual, pi
     integer :: p, n, nu, nv, np, nd, nfull, nlocal, nq, ios, i, j, k, c, r, entry
-    integer :: su, sv, sp, iq, jq, kq, ia, ja, ka, l, raw, reduced, iterations
+    integer :: l, raw, reduced, iterations
     character(4096) :: arg
     character(32) :: problem, preconditioner
     call get_command_argument(1, problem)
@@ -80,7 +80,7 @@ program lab_bspline_run
         do j = 1, nv
             do i = 1, nu
                 call evaluate_nurbs_volume_geometry(ku, kv, kp, p, p, p, &
-                                                    controls, weights, gu(i), gv(j), gp(k), point, jac, ios)
+                                controls, weights, gu(i), gv(j), gp(k), point, jac, ios)
                 if (ios /= 0) error stop 'spline trace geometry failed'
                 call lab_scalar(point(1), point(2), point(3), data)
                 coeff(i, j, k) = data(1)
@@ -222,20 +222,18 @@ contains
     end subroutine
     subroutine integrate(measure)
         logical, intent(in) :: measure
-        integer :: cell, ncell, sx, sy, sz, ix, iy, iz, aa, bb, cc, dof, s0
+        integer :: cell, ncell, sx, sy, sz, ix, iy, iz, aa, bb, cc, dof
         integer, allocatable :: local(:)
         real(dp), allocatable :: xq(:), yq(:), zq(:), xw(:), yw(:), zw(:)
         real(dp), allocatable :: vx(:), vy(:), vz(:), dx(:), dy(:), dz(:)
         real(dp), allocatable :: bv(:), bg(:, :), load(:)
         real(dp) :: x(3), jac(3, 3), inv(3, 3), determinant, data(8), t(9)
-        real(dp) :: w, value, gradient(3), local_err, local_norm, local_herr
-        real(dp) :: local_hnorm, local_aerr, local_anorm
+        real(dp) :: w, value, gradient(3)
         integer :: status
         ncell = (2*n)**2*20*n
         !$omp parallel do default(shared) private(cell,sx,sy,sz,ix,iy,iz,aa,bb,cc, &
-        !$omp dof,s0,local,xq,yq,zq,xw,yw,zw,vx,vy,vz,dx,dy,dz,bv,bg,load, &
-        !$omp x,jac,inv,determinant,data,t,w,value,gradient,status,local_err, &
-        !$omp local_norm,local_herr,local_hnorm,local_aerr,local_anorm) &
+        !$omp dof,local,xq,yq,zq,xw,yw,zw,vx,vy,vz,dx,dy,dz,bv,bg,load, &
+        !$omp x,jac,inv,determinant,data,t,w,value,gradient,status) &
         !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm) schedule(static)
         do cell = 0, ncell - 1
             sx = p + 1 + modulo(cell, 2*n)
@@ -266,7 +264,7 @@ contains
                         call evaluate_bspline_basis(ku, p, xq(ix), vx, dx, status)
                         if (status /= 0) error stop 'spline u basis failed'
                         call evaluate_nurbs_volume_geometry(ku, kv, kp, p, p, p, &
-                                                            controls, weights, xq(ix), yq(iy), zq(iz), x, jac, status)
+                              controls, weights, xq(ix), yq(iy), zq(iz), x, jac, status)
                         if (status /= 0) error stop 'spline volume geometry failed'
                         determinant = det3(jac)
                         call inv3(jac, inv, status)
@@ -280,19 +278,19 @@ contains
                                     dof = dof + 1
                                     bv(dof) = vx(aa)*vy(bb)*vz(cc)
                                     bg(:, dof) = [dx(aa)*vy(bb)*vz(cc), &
-                                                  vx(aa)*dy(bb)*vz(cc), vx(aa)*vy(bb)*dz(cc)]
+                                             vx(aa)*dy(bb)*vz(cc), vx(aa)*vy(bb)*dz(cc)]
                                 end do
                             end do
                         end do
                         call lab_scalar(x(1), x(2), x(3), data)
                         if (measure) then
                             value = dot_product(solution(local), bv)
-                            gradient = matmul(transpose(inv), matmul(bg, solution(local)))
+                          gradient = matmul(transpose(inv), matmul(bg, solution(local)))
                             err = err + w*(value - data(1))**2
                             norm = norm + w*data(1)**2
                             herr = herr + w*sum((gradient - data(2:4))**2)
                             hnorm = hnorm + w*sum(data(2:4)**2)
-                            call lab_transport(sqrt(sum(x(:2)**2)), atan2(x(2), x(1)), x(3), t)
+                     call lab_transport(sqrt(sum(x(:2)**2)), atan2(x(2), x(1)), x(3), t)
                             if (t(9) < .04_dp) then
                                 aerr = aerr + w*(value - data(1))**2
                                 anorm = anorm + w*data(1)**2

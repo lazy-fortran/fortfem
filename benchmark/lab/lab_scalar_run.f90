@@ -4,7 +4,7 @@ program lab_scalar_run
     use fortfem_generated_lab_transport, only: lab_transport
     use fortfem_generated_lab_guenter, only: lab_guenter
     use fortfem_tetra_lagrange_arbitrary_order, only: tetra_lagrange_t, &
-                                                      initialize_tetra_lagrange, evaluate_tetra_lagrange
+                                      initialize_tetra_lagrange, evaluate_tetra_lagrange
     use fortfem_tetra_lagrange_global_dof_map, only: &
         build_tetra_lagrange_dof_map
     use fortfem_tetra_duffy_quadrature, only: tetra_duffy_quadrature
@@ -28,7 +28,7 @@ program lab_scalar_run
     integer, allocatable :: cells(:, :), faces(:, :), maps(:, :), rows(:), cols(:)
     logical, allocatable :: constrained(:)
     real(dp) :: ratio, err, norm, herr, hnorm, aerr, anorm, value, exact
-    real(dp) :: gradient(3), eg(3), b(3), source, w, point(3), t(9), center
+    real(dp) :: gradient(3), eg(3), b(3), source, w, point(3), t(9), center, projection
     real(dp) :: jac(3, 3), inverse(3, 3), det, residual
     real(dp), allocatable :: local_matrix(:, :), physical_grad(:, :), kv(:, :)
     real(dp), allocatable :: qgrad(:, :, :), kt(:, :, :), qweight(:)
@@ -90,7 +90,7 @@ program lab_scalar_run
         else
             val(:, q) = [1 - qx(q) - qy(q), qx(q), qy(q)]
             grad(:, :, q) = reshape([-1.0_dp, -1.0_dp, 0.0_dp, &
-                                     1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], [3, 3])
+                                1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp], [3, 3])
         end if
     end do
     allocate (constrained(nd), bcvalue(nd), rhs(nd), solution(nd))
@@ -251,9 +251,10 @@ program lab_scalar_run
     aerr = 0
     anorm = 0
     center = 0
+    projection = 0
     !$omp parallel do default(shared) private(c,d,jac,inverse,det,ios,q,point, &
     !$omp exact,eg,source,b,value,gradient,w,t) &
-    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm) schedule(static)
+    !$omp reduction(+:err,norm,herr,hnorm,aerr,anorm,projection) schedule(static)
     do c = 1, nc
         jac = 0
         jac(3, 3) = 1
@@ -272,6 +273,7 @@ program lab_scalar_run
             w = det*qw(q)
             err = err + w*(value - exact)**2
             norm = norm + w*exact**2
+            projection = projection + w*value*exact
             herr = herr + w*sum((gradient - eg)**2)
             hnorm = hnorm + w*sum(eg**2)
             if (dim == 3) then
@@ -285,6 +287,7 @@ program lab_scalar_run
         end do
     end do
     !$omp end parallel do
+    if (problem == 'L3') center = projection/norm
     if (problem == 'L3a') then
         do i = 1, nv
             if (sum(vertices(:2, i)**2) < 1.e-20_dp) center = solution(i)

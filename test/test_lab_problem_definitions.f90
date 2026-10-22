@@ -29,7 +29,7 @@ program test_lab_problem_definitions
                              'L1/L5 exact gradient divergence agrees with forcing')
         call lab_transport(g(1), q(3), g(2), t)
         call check_condition(abs(t(1) - (1 - sum(q(:2)**2))) < 2.e-14_dp, &
-                             'L3 inverse geometry reproduces flux surfaces including axis')
+                          'L3 inverse geometry reproduces flux surfaces including axis')
         call check_condition(abs(dot_product(t(2:4), t(6:8))) < 2.e-13_dp, &
                              'L3 field direction is tangent to exact temperature')
         do j = 0, 3
