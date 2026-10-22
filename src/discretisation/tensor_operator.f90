@@ -311,10 +311,17 @@ contains
                 call metric_at(op%jac(:, :, q, e), op%coef(:, :, q, e), &
                                op%weight(q), op%reaction(q, e), g, mass, det)
                 do b = 1, nl
-                    do a = 1, nl
+                    do a = 1, b
                         element(a, b) = element(a, b) + mass*basis(q, a)*basis(q, b) + &
                             dot_product(gradient(:, q, a), matmul(g, gradient(:, q, b)))
                     end do
+                end do
+            end do
+            ! FortSparse requires canonical, exactly symmetric CSC input.
+            ! Compute each symmetric bilinear-form entry once, then mirror it.
+            do b = 1, nl
+                do a = 1, b - 1
+                    element(b, a) = element(a, b)
                 end do
             end do
             do b = 1, nl
