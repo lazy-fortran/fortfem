@@ -20,11 +20,11 @@ lines = ['# Assembled baselines', '',
          'RSS is the child high-water mark from wait4/getrusage, in bytes in the CSV.',
          'Every measured row includes its exact command, source revision, executable SHA256,',
          'compiler and flags, host/job ID, mesh checksum and linear residual.', '',
-         '| Problem | Criterion | Family | p | 1/h | Ratio | DOFs | rel L2 | axis rel L2 | chi_perp,num | iterations | wall (s) | RSS (MiB) |',
-         '|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+         '| Problem | Criterion | Family | preconditioner | p | 1/h | Ratio | DOFs | rel L2 | axis rel L2 | chi_perp,num | iterations | wall (s) | RSS (MiB) |',
+         '|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
 for r in rows:
     fmt = lambda k: f'{float(r[k]):.4e}' if r[k] else '—'
-    lines.append(f"| {r['problem']} | {r['criterion']} | {r['family']} | {r['p']} | "
+    lines.append(f"| {r['problem']} | {r['criterion']} | {r['family']} | {r['preconditioner']} | {r['p']} | "
                  f"{1/float(r['h']):g} | {r['anisotropy_ratio']} | {r['dofs']} | "
                  f"{fmt('rel_l2')} | {fmt('axis_rel_l2')} | {fmt('chi_perp_num')} | "
                  f"{r['iterations']} | {float(r['wall_s']):.5g} | "
@@ -51,7 +51,7 @@ lines += ['', '## Axis refinement diagnostics', '',
 axis_groups = defaultdict(list)
 for r in rows:
     if r['axis_rel_l2'] and float(r['axis_rel_l2']) > 0:
-        axis_groups[r['problem'],r['family'],r['p'],r['anisotropy_ratio']].append(r)
+        axis_groups[r['problem'],r['family'],r['p'],r['anisotropy_ratio'],r['preconditioner'],r['threads']].append(r)
 for key, runs in sorted(axis_groups.items()):
     runs.sort(key=lambda r: -float(r['h']))
     for lo, hi in zip(runs, runs[1:]):

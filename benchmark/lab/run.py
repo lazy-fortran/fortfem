@@ -136,7 +136,10 @@ def run(args):
     compiler = subprocess.check_output([args.compiler, '--version'], text=True).splitlines()[0]
     with tempfile.TemporaryDirectory(prefix='ben1-', dir=args.scratch) as tmp:
         meshfile = Path(tmp)/'mesh.txt'
-        size, checksum = write_mesh(meshfile, args.problem, n, args.alignment)
+        if args.family == 'bspline':
+            size, checksum = 80*n**3, ''
+        else:
+            size, checksum = write_mesh(meshfile, args.problem, n, args.alignment)
         command = [str(executable), args.problem, str(args.p),
                    str(n) if args.family == 'bspline' else str(meshfile),
                    args.preconditioner, str(args.ratio)]
@@ -188,7 +191,7 @@ def run(args):
                    host=platform.node(), job_id=os.environ.get('SLURM_JOB_ID', 'none'),
                    size=size, dofs=int(dofs), rel_l2=float(l2), rel_h1_seminorm=float(h1) if args.problem != 'L2' else '',
                    rel_hcurl=float(h1) if args.problem == 'L2' else '',
-                   axis_rel_l2=float(axis) if args.problem != 'L3a' else '',
+                   axis_rel_l2=float(axis) if args.problem not in ('L3a', 'L2') else '',
                    chi_perp_num=pollution, iterations=int(iterations), wall_s=wall,
                    peak_rss_bytes=peak*(1 if sys.platform == 'darwin' else 1024),
                    rss_method='wait4.getrusage.child', residual=float(residual),
