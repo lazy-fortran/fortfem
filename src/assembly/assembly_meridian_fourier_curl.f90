@@ -52,11 +52,72 @@ module fortfem_meridian_fourier_curl
     public :: meridian_fourier_mass, meridian_fourier_curl_curl
     public :: meridian_fourier_gradient_coupling
     public :: meridian_fourier_gradient, meridian_fourier_curl
+    public :: meridian_fourier_identity_forms
 
     integer, parameter :: par_min = 32
     real(dp), parameter :: pi = acos(-1.0_dp)
 
 contains
+
+    subroutine meridian_fourier_identity_forms(fs, modes, c, s, mg, status)
+        !! Exact phi integration for K=I. The already assembled meridian
+        !! mass is copied with weights 1, 1/2, 1/2, ... . Storage is linear
+        !! in the number of real Fourier blocks, including construction.
+        !! This avoids the general tensor builder's all-mode-pair triplets.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: c, s, mg
+        integer, intent(out) :: status
+        type(csc_t) :: m, g, ct, mc
+        type(fortsparse_status_t) :: st
+        call meridian_fourier_curl(fs, modes, c, status)
+        if (status /= 0) return
+        call identity_mass(2, m)
+        if (status /= 0) return
+        call csc_matmul(m, c, mc, st)
+        status = 1
+        if (.not. status_ok(st)) return
+        call csc_transpose(c, ct, st)
+        if (.not. status_ok(st)) return
+        call csc_matmul(ct, mc, s, st)
+        if (.not. status_ok(st)) return
+        call meridian_fourier_gradient(fs, modes, g, status)
+        if (status /= 0) return
+        call identity_mass(1, m)
+        if (status /= 0) return
+        status = 1
+        call csc_matmul(m, g, mg, st)
+        if (status_ok(st)) status = 0
+    contains
+        subroutine identity_mass(space, matrix)
+            integer, intent(in) :: space
+            type(csc_t), intent(out) :: matrix
+            integer :: b, j, p, offset, pos, nb, nd
+            real(dp) :: weight
+            nb = 2*modes + 1; nd = fs%sp(space)%ndof
+            matrix%nrow = nb*nd; matrix%ncol = nb*nd
+            matrix%nnz = nb*fs%mass(space)%nnz
+            allocate (matrix%col_ptr(matrix%ncol + 1), &
+                matrix%row_idx(matrix%nnz), matrix%val(matrix%nnz))
+            !$omp parallel do default(shared) private(b, j, p, offset, pos, weight) &
+            !$omp& schedule(static)
+            do b = 0, nb - 1
+                offset = b*fs%mass(space)%nnz
+                weight = merge(1.0_dp, 0.5_dp, b == 0)
+                do j = 1, nd
+                    matrix%col_ptr(b*nd + j) = fs%mass(space)%col_ptr(j) + offset
+                    do p = fs%mass(space)%col_ptr(j), fs%mass(space)%col_ptr(j + 1) - 1
+                        pos = offset + p
+                        matrix%row_idx(pos) = b*nd + fs%mass(space)%row_idx(p)
+                        matrix%val(pos) = weight*fs%mass(space)%val(p)
+                    end do
+                end do
+            end do
+            !$omp end parallel do
+            matrix%col_ptr(matrix%ncol + 1) = matrix%nnz + 1
+            status = 0
+        end subroutine
+    end subroutine
 
     subroutine block_operator(a, b, modes, op, status)
         !! Real-block operator of a + i n b on the (cos, sin) amplitudes.
