@@ -76,7 +76,7 @@ if(FORTFEM_BUILD_TESTING)
 endif()
 # The laboratory line contract is also available in the dependency-free build.
 add_library(fortfem_tensor_lines STATIC
-    src/generated/fortfem_cardinal_product_jet1_order1.f90
+    src/generated/fortfem_lagrange_product_jets.f90
     src/discretisation/tensor_line_tables.f90
     src/discretisation/gll_line.f90)
 set_target_properties(fortfem_tensor_lines PROPERTIES
