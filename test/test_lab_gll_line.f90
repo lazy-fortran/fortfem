@@ -18,7 +18,7 @@ program test_lab_gll_line
         do k = 0, 2*p - 1
             exact = real(1 + (-1)**k, dp)/real(k + 1, dp)
             call record(abs(sum(w*x**k) - exact) < 1.0e-15_dp, &
-                'GLL polynomial moments through degree 2p-1')
+                        'GLL polynomial moments through degree 2p-1')
         end do
         call lagrange_table(x, x, b, d)
         do i = 1, p + 1
@@ -26,7 +26,7 @@ program test_lab_gll_line
         end do
         call record(maxval(abs(b)) < 2.0e-14_dp, 'cardinality')
         call record(maxval(abs(sum(d, dim=2))) < 1.0e-11_dp, &
-            'constant derivative vanishes')
+                    'constant derivative vanishes')
         call build_gll_line(p, 3, line, status, x0=-2.0_dp, x1=4.0_dp)
         call record(status == 0 .and. line%family == LINE_GLL, 'line builds')
         call record(line%ndof == 3*p + 1, 'nonperiodic map size')
@@ -35,9 +35,9 @@ program test_lab_gll_line
         do i = 1, line%nelem
             do k = 0, 2*p + 1
                 exact = ((2.0_dp*real(i, dp) - 2.0_dp)**(k + 1) - &
-                    (2.0_dp*real(i, dp) - 4.0_dp)**(k + 1))/real(k + 1, dp)
+                         (2.0_dp*real(i, dp) - 4.0_dp)**(k + 1))/real(k + 1, dp)
                 err = max(err, abs(sum(line%wq(:, i)*line%xq(:, i)**k) - &
-                    exact)/max(1.0_dp, abs(exact)))
+                                   exact)/max(1.0_dp, abs(exact)))
             end do
         end do
         call record(err < 3.0e-14_dp, 'Gauss moments on physical cells')

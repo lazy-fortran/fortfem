@@ -30,7 +30,7 @@ contains
         integer :: i, it
         status = 1
         if (p < 1) return
-        allocate(x(p + 1), w(p + 1))
+        allocate (x(p + 1), w(p + 1))
         x(1) = -1.0_dp
         x(p + 1) = 1.0_dp
         do i = 2, (p + 2)/2
@@ -60,7 +60,7 @@ contains
         integer :: i, it
         status = 1
         if (n < 1) return
-        allocate(x(n), w(n))
+        allocate (x(n), w(n))
         do i = 1, (n + 1)/2
             z = cos(acos(-1.0_dp)*(real(i, dp) - 0.25_dp)/(real(n, dp) + 0.5_dp))
             do it = 1, 100
@@ -86,7 +86,7 @@ contains
         real(dp), allocatable, intent(out) :: b(:, :), d(:, :)
         real(dp) :: v, dv, nv, ndv
         integer :: i, j, q
-        allocate(b(size(points), size(nodes)), d(size(points), size(nodes)))
+        allocate (b(size(points), size(nodes)), d(size(points), size(nodes)))
         do i = 1, size(nodes)
             do q = 1, size(points)
                 v = 1.0_dp
@@ -94,8 +94,8 @@ contains
                 do j = 1, size(nodes)
                     if (j == i) cycle
                     call generated_cardinal_product_jet1_order1(v, dv, &
-                        1.0_dp/(nodes(i) - nodes(j)), 0.0_dp, points(q) - nodes(j), &
-                        nv, ndv)
+                           1.0_dp/(nodes(i) - nodes(j)), 0.0_dp, points(q) - nodes(j), &
+                                                                nv, ndv)
                     v = nv
                     dv = ndv
                 end do
@@ -145,9 +145,9 @@ contains
         line%nq = count
         line%ndof = p*nelem + 1
         if (line%periodic) line%ndof = p*nelem
-        allocate(line%xq(count, nelem), line%wq(count, nelem))
-        allocate(line%b(count, p + 1, nelem), line%d(count, p + 1, nelem))
-        allocate(line%dof(p + 1, nelem))
+        allocate (line%xq(count, nelem), line%wq(count, nelem))
+        allocate (line%b(count, p + 1, nelem), line%d(count, p + 1, nelem))
+        allocate (line%dof(p + 1, nelem))
         h = (line%x1 - line%x0)/real(nelem, dp)
         do e = 1, nelem
             line%xq(:, e) = line%x0 + (real(e - 1, dp) + (x + 1.0_dp)/2.0_dp)*h
