@@ -78,7 +78,9 @@ endif()
 add_library(fortfem_tensor_lines STATIC
     src/generated/fortfem_lagrange_product_jets.f90
     src/discretisation/tensor_line_tables.f90
-    src/discretisation/gll_line.f90)
+    src/discretisation/gll_line.f90
+    src/discretisation/tensor_mesh.f90
+    src/discretisation/tensor_contractions.f90)
 set_target_properties(fortfem_tensor_lines PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
 target_include_directories(fortfem_tensor_lines PUBLIC
@@ -87,6 +89,9 @@ if(FORTFEM_BUILD_TESTING)
     add_executable(test_lab_gll_line test/check.f90 test/test_lab_gll_line.f90)
     target_link_libraries(test_lab_gll_line PRIVATE fortfem_tensor_lines)
     add_test(NAME test_lab_gll_line COMMAND test_lab_gll_line)
+    add_executable(test_lab_tensor_mesh test/test_lab_tensor_mesh.f90)
+    target_link_libraries(test_lab_tensor_mesh PRIVATE fortfem_tensor_lines)
+    add_test(NAME test_lab_tensor_mesh COMMAND test_lab_tensor_mesh)
     set_tests_properties(test_lab_gll_line PROPERTIES
         LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
