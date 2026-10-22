@@ -19,6 +19,14 @@ module fortfem_tensor_mesh
         end subroutine
     end interface
 contains
+    pure subroutine decode_index(index, base, position)
+        integer, intent(in) :: index, base
+        integer, intent(out) :: position(3)
+        position(1) = modulo(index, base)
+        position(2) = modulo(index/base, base)
+        position(3) = index/base**2
+    end subroutine
+
     subroutine build_tensor_mesh(dim, p, q, vertices, geometry, mesh, status, gather)
         integer, intent(in) :: dim, p, q, vertices(:, :)
         real(dp), intent(in) :: geometry(:, :, :)
@@ -62,12 +70,11 @@ contains
             nd = 0
             do e = 1, mesh%nelem
                 do a = 1, nl
-                    pos = [modulo(a - 1, p + 1), modulo((a - 1)/(p + 1), p + 1), &
-                           (a - 1)/(p + 1)**2]
+                    call decode_index(a - 1, p + 1, pos)
                     key = 0
                     l = 0
                     do c = 1, nv
-                        bits = [modulo(c - 1, 2), modulo((c - 1)/2, 2), (c - 1)/4]
+                        call decode_index(c - 1, 2, bits)
                         weight = 1
                         do i = 1, dim
                             weight = weight*merge(pos(i), p - pos(i), bits(i) == 1)
@@ -88,7 +95,8 @@ contains
                         end do
                     end do
                     do i = 1, l
-                        key(2*i - 1:2*i) = [vid(i), weights(i)]
+                        key(2*i - 1) = vid(i)
+                        key(2*i) = weights(i)
                     end do
                     hash = 0_int64
                     do i = 1, 16
@@ -183,21 +191,23 @@ contains
         call gll_rule(degree, x, w, status)
         if (status /= 0) return
         do e = 1, ne
-            ec = [modulo(e - 1, shape(1)), modulo((e - 1)/shape(1), shape(2)), &
-                  (e - 1)/(shape(1)*shape(2))]
+            ec(1) = modulo(e - 1, shape(1))
+            ec(2) = modulo((e - 1)/shape(1), shape(2))
+            ec(3) = (e - 1)/(shape(1)*shape(2))
             do c = 1, 2**dim
-                vc = ec + [modulo(c - 1, 2), modulo((c - 1)/2, 2), (c - 1)/4]
+                call decode_index(c - 1, 2, vc)
+                vc = ec + vc
                 vc = modulo(vc, vshape)
                 vertices(c, e) = 1 + vc(1) + vshape(1)*(vc(2) + vshape(2)*vc(3))
             end do
             do a = 1, nl
-         lc = [modulo(a - 1, p + 1), modulo((a - 1)/(p + 1), p + 1), (a - 1)/(p + 1)**2]
+                call decode_index(a - 1, p + 1, lc)
                 gc = modulo(ec*p + lc, nodes)
                 gather(a, e) = 1 + gc(1) + nodes(1)*(gc(2) + nodes(2)*gc(3))
             end do
             do a = 1, ng
-                lc = [modulo(a - 1, degree + 1) + 1, &
-              modulo((a - 1)/(degree + 1), degree + 1) + 1, (a - 1)/(degree + 1)**2 + 1]
+                call decode_index(a - 1, degree + 1, lc)
+                lc = lc + 1
                 do i = 1, dim
                     xi(i) = (real(ec(i), dp) + (x(lc(i)) + 1)/2)/real(shape(i), dp)
                 end do
@@ -210,7 +220,9 @@ contains
         do k = 0, nodes(3) - 1
             do b = 0, nodes(2) - 1
                 do a = 0, nodes(1) - 1
-                    gc = [a, b, k]
+                    gc(1) = a
+                    gc(2) = b
+                    gc(3) = k
                     c = 1 + a + nodes(1)*(b + nodes(2)*k)
                     do i = 1, dim
                         if (per(i)) cycle
@@ -255,14 +267,14 @@ contains
                         e = e + 1
                         do a = 1, ng + 2**dim
                             if (a <= ng) then
-                                local = [modulo(a - 1, degree + 1) + 1, &
-                                         modulo((a - 1)/(degree + 1), degree + 1) + 1, &
-                                         (a - 1)/(degree + 1)**2 + 1]
-                                uv = (x(local) + 1)/2
+                                call decode_index(a - 1, degree + 1, local)
+                                do i = 1, 3
+                                    uv(i) = (x(local(i) + 1) + 1)/2
+                                end do
                             else
                                 c = a - ng
-                                uv = real([modulo(c - 1, 2), &
-                                           modulo((c - 1)/2, 2), (c - 1)/4], dp)
+                                call decode_index(c - 1, 2, local)
+                                uv = real(local, dp)
                             end if
                             radial = (ix + uv(1))/n
                             tangent = 2*(iy + uv(2))/n - 1
@@ -278,13 +290,16 @@ contains
                                     tmp = rx; rx = -ry; ry = tmp
                                 end do
                             end if
-                            point = [rx, ry, 0.0_dp]
+                            point(1) = rx
+                            point(2) = ry
+                            point(3) = 0
                             if (dim == 3) then
                                 ! Smooth Cartesian deformation through the axis.
                                 shape = 1 + 0.08_dp*cos(5*phi)
-                                point = [(3 + shape*rx)*cos(phi), &
-                                         -(3 + shape*rx)*sin(phi), &
-                                    (1 - 0.06_dp*cos(5*phi))*ry + 0.04_dp*sin(5*phi)*rx]
+                                point(1) = (3 + shape*rx)*cos(phi)
+                                point(2) = -(3 + shape*rx)*sin(phi)
+                                point(3) = (1 - 0.06_dp*cos(5*phi))*ry + &
+                                           0.04_dp*sin(5*phi)*rx
                             end if
                             if (a <= ng) then
                                 geom(:, a, e) = point(1:dim)
