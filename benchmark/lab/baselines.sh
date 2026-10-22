@@ -12,7 +12,7 @@ for p in 1 2 3; do
             --executable "$LAB_EXE" --flags "$LAB_FLAGS" --output "$out"
     done
 done
-for n in 8 16 32; do
+for n in 8 16 32 64; do
     for ratio in 1 100 10000 1000000; do
         python3 benchmark/lab/L3a.py --family tet --p 1 --n "$n" \
             --ratio "$ratio" --preconditioner ldlt --threads "$threads" \
@@ -24,3 +24,17 @@ for ratio in 1 100 10000 1000000; do
         --ratio "$ratio" --preconditioner ldlt --threads "$threads" \
         --executable "$LAB_EXE" --flags "$LAB_FLAGS" --output "$out"
 done
+
+# One larger assembled point, still below a few 1e5 unknowns.
+python3 benchmark/lab/L1.py --family tet --p 3 --n 3 \
+    --preconditioner ichol --threads "$threads" \
+    --executable "$LAB_EXE" --flags "$LAB_FLAGS" --output "$out"
+if [[ -n ${LAB_SPLINE_EXE:-} ]]; then
+    for p in 2 3 4; do
+        for n in 1 2; do
+            python3 benchmark/lab/L1.py --family bspline --p "$p" --n "$n" \
+                --preconditioner ichol --threads "$threads" \
+                --executable "$LAB_SPLINE_EXE" --flags "$LAB_FLAGS" --output "$out"
+        done
+    done
+fi

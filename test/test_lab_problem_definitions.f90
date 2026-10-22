@@ -1,6 +1,7 @@
 program test_lab_problem_definitions
     use check, only: check_condition, check_summary
     use fortfem_generated_lab_scalar, only: lab_scalar
+    use fortfem_generated_lab_vector, only: lab_vector
     use fortfem_generated_lab_geometry, only: lab_geometry
     use fortfem_generated_lab_transport, only: lab_transport
     use fortfem_generated_lab_guenter, only: lab_guenter
@@ -8,12 +9,26 @@ program test_lab_problem_definitions
     implicit none
     real(dp) :: q(3), p(3), v(8), vp(8), vm(8), g(12), t(9)
     real(dp) :: step, lap, point(3), fluxp(3), fluxm(3), div, ratio
+    real(dp) :: vector(9), vecp(9), vecm(9), dcurl(3,3), curlcurl(3)
     integer :: i, j, k
     step = 2.0e-4_dp
     do k = 1, 4
         q = [0.1_dp*k, -0.07_dp*k, 0.19_dp*k]
         call lab_geometry(q(1), q(2), q(3), g)
         p = [g(1)*cos(q(3)), g(1)*sin(q(3)), g(2)]
+        call lab_vector(p(1), p(2), p(3), vector)
+        do i = 1, 3
+            point = p
+            point(i) = point(i) + step
+            call lab_vector(point(1), point(2), point(3), vecp)
+            point(i) = point(i) - 2*step
+            call lab_vector(point(1), point(2), point(3), vecm)
+            dcurl(:,i) = (vecp(4:6)-vecm(4:6))/(2*step)
+        end do
+        curlcurl = [dcurl(3,2)-dcurl(2,3), dcurl(1,3)-dcurl(3,1), &
+                    dcurl(2,1)-dcurl(1,2)]
+        call check_condition(maxval(abs(curlcurl+vector(:3)-vector(7:9))) < 3.e-8_dp, &
+            'L2 exact curl-curl plus mass agrees with forcing')
         call lab_scalar(p(1), p(2), p(3), v)
         lap = 0
         do i = 1, 3
