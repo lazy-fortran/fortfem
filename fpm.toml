@@ -59,6 +59,26 @@ name = "bem_residual_study"
 source-dir = "benchmark"
 main = "bem_residual_study.f90"
 
+[[executable]]
+name = "lab_scalar_run"
+source-dir = "benchmark/lab"
+main = "lab_scalar_run.f90"
+
+[[executable]]
+name = "lab_bspline_run"
+source-dir = "benchmark/lab"
+main = "lab_bspline_run.f90"
+
+[[executable]]
+name = "lab_hcurl_run"
+source-dir = "benchmark/lab"
+main = "lab_hcurl_run.f90"
+
+[[executable]]
+name = "lab_mf_run"
+source-dir = "benchmark/lab"
+main = "lab_mf_run.f90"
+
 [fortran]
 implicit-typing = false
 implicit-external = false
