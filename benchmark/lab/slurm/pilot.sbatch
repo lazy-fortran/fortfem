@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=01:00:00
 #SBATCH --mem=8G
-#SBATCH --output=ben1-pilot-%j.log
+#SBATCH --output=/home/%u/ben1-runs/%x-%j.log
 set -euo pipefail
 export OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 FO_JOBS=4 MPLBACKEND=Agg
 unset DISPLAY

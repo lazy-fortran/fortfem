@@ -140,7 +140,10 @@ Prebuilt external-package compiler flags remain explicitly unavailable.
 uses the reserved-core share, 4*11.8 GiB. Copy the cluster skill's guard into
 the run root, set LAB_REPO, LAB_REVISION and MEM_GUARD, and submit once.
 The pilot checks a clean immutable revision before building. Archive the job
-ID, logs, CSV and checksums. Do not wait on a queued pilot.
+ID, logs, CSV and checksums. Do not wait on a queued pilot. Both templates
+write their Slurm log to `/home/%u/ben1-runs/%x-%j.log`, outside the worktree,
+so the cleanliness check cannot see it. Run `mkdir -p ~/ben1-runs` before the
+first submission, because Slurm does not create the log directory.
 
 `slurm/scaling.sbatch` serves both strong and weak scaling for a selected
 family. Set LAB_MODE=strong or weak and LAB_THREADS to 1,2,4,8,16,32,64.

@@ -6,9 +6,11 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:30:00
 #SBATCH --mem=64G
-#SBATCH --output=ben1-scale-%j.log
+#SBATCH --output=/home/%u/ben1-runs/%x-%j.log
 set -euo pipefail
 # Submit separately with --cpus-per-task=max(threads,ceil(1.5*pilot_peak_GiB/11.8)).
+# Logs and CSVs go outside the worktree (it must stay clean); create
+# /home/$USER/ben1-runs before submitting.
 # Set LAB_THREADS in {1,2,4,8,16,32,64}; do not run with fewer allocated cores.
 : "${LAB_THREADS:?}" "${LAB_PILOT_PEAK_GIB:?measured completed pilot peak}"
 threads=$LAB_THREADS
@@ -23,6 +25,8 @@ unset DISPLAY
 : "${LAB_P:?}" "${LAB_N:?pilot-qualified base resolution}"
 : "${LAB_MODE:?strong or weak}"
 cd "$LAB_REPO"
+runroot=${LAB_RUN_ROOT:-"$HOME/ben1-runs/$SLURM_JOB_ID"}
+mkdir -p "$runroot"
 preconditioner=${LAB_PRECONDITIONER:-ichol_row}
 if [[ $LAB_FAMILY == gll-mf ]]; then preconditioner=${LAB_PRECONDITIONER:-pmg}; fi
 n=$LAB_N
@@ -37,4 +41,4 @@ esac
 "$MEM_GUARD" "$limit" python3 benchmark/lab/L1.py --family "$LAB_FAMILY" \
     --p "$LAB_P" --n "$n" --preconditioner "$preconditioner" --threads "$threads" \
     --executable "$LAB_EXE" --flags "$LAB_FLAGS" \
-    --output "${LAB_MODE}-${LAB_FAMILY}-${SLURM_JOB_ID}-${threads}.csv"
+    --output "$runroot/${LAB_MODE}-${LAB_FAMILY}-${threads}.csv"
