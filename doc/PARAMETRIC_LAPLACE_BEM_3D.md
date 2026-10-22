@@ -239,3 +239,59 @@ The pair test checks this before symmetry averaging, for aspect ratios 1 and
 40. The curved-sphere test additionally checks the exact identity D_n G=-G/2
 on the unit sphere and raw V/W symmetry at a tighter pair tolerance. Global
 sphere-harmonic mesh convergence remains the independent discretization oracle.
+
+## Rotational block-circulant P2/P1 assembly
+
+[V] `assemble_parametric_bem_p2_circulant` in
+`fortfem_parametric_bem_high_order` accepts `nphi` consecutive, identical panel
+sectors related by rotation through `2*pi/nphi` about the z axis. Corresponding
+panels must use identical local vertex order. The trace rotation is inferred
+from connectivity, including shared edges across sector boundaries; global
+vertex and edge numbers need not be contiguous within a sector. The cyclic
+action on trace DOFs must be free: fixed-axis vertices are unsupported.
+
+```fortran
+use fortfem_bem_circulant, only: bem_circulant_t
+! Other types and options are the same as for all-pairs P2 assembly.
+type(bem_circulant_t) :: circular
+call assemble_parametric_bem_p2_circulant(surface, faces, nphi, options, &
+    circular, trace_dofs, flux_dofs, report, status)
+call circular%expand(op, status) ! Existing bem_operators_t, original DOF order.
+```
+
+[V] The assembler evaluates target-sector-zero pairs against every source
+sector, using the same adaptive pair rules and tolerance/cap checks as the
+all-pairs routine. `accepted_pairs`, `failed_pairs` and `kernel_evaluations`
+count actual work. V/W symmetry averaging and the constant-subtracted K jump
+are retained. Storage and pair counts are reduced by `nphi`; dense expansion
+is optional. Geometry and tangent rotation are checked at each panel's three
+vertices, three edge midpoints and centroid. Invalid sector counts,
+connectivity/orbits or sampled symmetry return status 1; invalid/nonfinite
+geometry returns 2; unresolved pairs return 3. [H] Exact rotational symmetry
+between these samples remains a caller-owned geometry contract.
+
+[V] `circular%v`, `%k`, `%w` and `%mass` are `circulant_matrix_t` operators.
+Their `blocks(:,:,d+1)` hold the first block row B(d), with
+A(r,s)=B(modulo(s-r,nphi)). `row_dofs` and `column_dofs` map sector coordinates
+to original global DOFs. `apply(x,y,status)` uses these maps without expanding;
+`expand(matrix,status)` produces a dense matrix. `harmonics(modes,status)`
+returns the complex independent matrices in sector-frequency order 0 through
+`nphi-1`, using FortNum's FFT:
+
+    A_hat(k) = sum_d B(d) exp(+2*pi*i*k*d/nphi).
+
+Sector vectors use the negative-exponent forward DFT; the inverse carries
+`1/nphi`. `solve(rhs,x,status)` solves square operators by transforming the
+right-hand side, solving each complex system through FortNum, and transforming
+back. A nonzero solver status must be checked. The current solve factors anew
+on each call; consumers with repeated loads can retain the exposed harmonic
+matrices and factor them once. No assembled geometry derivatives are supplied.
+
+[V] `test_bem_circulant_modes` checks nonsymmetric solves for sector counts
+1–13 against an independent dense solve. `test_parametric_bem_circulant`
+compares all four BEM forms, areas, application, and interior/exterior harmonic
+Dirichlet solves against all-pairs assembly on the existing curved torus.
+`test_parametric_bem_circulant_scaling_slow` repeats at 12 sectors and reports
+all-pairs/sector assembly costs plus 1/2/4/8-thread timings, checking the same
+matrix tolerance at every thread count. Timings are measurements, not portable
+speed thresholds.
