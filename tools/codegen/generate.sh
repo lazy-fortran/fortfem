@@ -259,3 +259,5 @@ for component in 1 2 3; do
         fo fmt "$generated_dir/fortfem_tetra_component${component}_order${order}.inc"
     done
 done
+
+run_codegen gen_lab_problems
