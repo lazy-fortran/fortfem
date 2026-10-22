@@ -6,11 +6,13 @@ program test_lab_fem_bem_transmission
     use omp_lib, only: omp_get_wtime
     use fortfem_tensor_mesh, only: tensor_mesh_t, ogrid_tensor_mesh
     use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, &
-                                       tensor_load, tensor_l2_error
+                                       tensor_load, tensor_l2_error, &
+                                       apply_tensor_operator
     use fortfem_tensor_solver, only: tensor_solve_info_t
     use fortfem_tensor_fem_bem, only: tensor_fem_bem_t, build_tensor_fem_bem, &
                                       tensor_fem_bem_options_t, &
                                       solve_tensor_fem_bem, tensor_fem_bem_rhs, &
+                                      apply_tensor_fem_bem, &
                                       tensor_fem_bem_exterior_flux, &
                                       free_tensor_fem_bem, &
                                       tensor_h1_seminorm_error
@@ -24,8 +26,9 @@ program test_lab_fem_bem_transmission
     character(32) :: arg
     integer :: values(6), k
     real(dp) :: schur
-    print '(a)', 'FB1_TRANSMISSION n,nphi,p,pf,dofs,trace,its,relL2,relH1,'// &
-        'relq,relq_dtn,t_bem,t_dtn,t_mg,t_chol,t_solve'
+    print '(a)', 'FB1_TRANSMISSION n,nphi,p,pf,dofs,trace,flux,its,relL2,relH1,'// &
+        'relq,relq_dtn,t_bem,t_dtn,t_mg,t_chol,t_solve,t_apply_fem,'// &
+        't_apply_steklov,peak_rss_kib'
     if (command_argument_count() >= 3) then
         ! Scan mode: n nphi p [flux_degree target_points fan_points schur_scale]
         values = [0, 0, 0, -1, 0, 0]
@@ -56,6 +59,20 @@ program test_lab_fem_bem_transmission
     if (failures /= 0) error stop 'test_lab_fem_bem_transmission failed'
     print '(a)', 'test_lab_fem_bem_transmission passed'
 contains
+    integer function peak_rss_kib()
+        character(256) :: line
+        integer :: unit, ios
+        peak_rss_kib = -1
+        open (newunit=unit, file='/proc/self/status', action='read', iostat=ios)
+        if (ios /= 0) return
+        do
+            read (unit, '(a)', iostat=ios) line
+            if (ios /= 0) exit
+            if (line(1:6) == 'VmHWM:') read (line(7:), *) peak_rss_kib
+        end do
+        close (unit)
+    end function
+
     subroutine check(condition, label)
         logical, intent(in) :: condition
         character(*), intent(in) :: label
@@ -79,7 +96,8 @@ contains
         type(tensor_fem_bem_t) :: fb
         type(tensor_solve_info_t) :: info
         real(dp), allocatable :: load(:), rhs(:), x(:), trace(:), flux(:), zero(:)
-        real(dp) :: unorm, gnorm, qnorm, solve_time
+        real(dp) :: unorm, gnorm, qnorm, solve_time, t_fem, t_coupled
+        real(dp), allocatable :: y(:)
         integer :: status, i, nboundary
         errors = huge(1.0_dp)
         iterations = huge(1)
@@ -138,11 +156,25 @@ contains
         call bem_tensor_flux_l2_error(fb%trace%surface, fb%space, flux, &
                                       exterior_normal, errors(4), status)
         errors(4) = errors(4)/qnorm
-        print '(a,7(i0,a),4(es10.3,a),5(f9.3,a))', 'FB1_TRANSMISSION ', n, ',', &
-            nphi, ',', p, ',', fb%space%flux_degree, ',', mesh%ndof, ',', &
-            fb%trace%ntrace, ',', info%iterations, ',', errors(1), ',', errors(2), &
-            ',', errors(3), ',', errors(4), ',', fb%time_bem, ',', fb%time_dtn, &
-            ',', fb%time_mg, ',', fb%time_schur, ',', solve_time, ''
+        ! Average one matrix-free FEM apply and one coupled apply; their
+        ! difference is the dense trace-space Steklov action.
+        allocate (y(mesh%ndof))
+        t_fem = omp_get_wtime()
+        do i = 1, 5
+            call apply_tensor_operator(fb%mg%level(1)%op, x, y, eliminate=.false.)
+        end do
+        t_fem = (omp_get_wtime() - t_fem)/5
+        t_coupled = omp_get_wtime()
+        do i = 1, 5
+            call apply_tensor_fem_bem(fb, x, y)
+        end do
+        t_coupled = (omp_get_wtime() - t_coupled)/5
+        print '(a,8(i0,a),4(es10.3,a),7(es10.3,a),i0)', 'FB1_TRANSMISSION ', n, &
+            ',', nphi, ',', p, ',', fb%space%flux_degree, ',', mesh%ndof, ',', &
+            fb%trace%ntrace, ',', fb%space%nflux, ',', info%iterations, ',', &
+            errors(1), ',', errors(2), ',', errors(3), ',', errors(4), ',', &
+            fb%time_bem, ',', fb%time_dtn, ',', fb%time_mg, ',', fb%time_schur, &
+            ',', solve_time, ',', t_fem, ',', t_coupled - t_fem, ',', peak_rss_kib()
         call free_tensor_fem_bem(fb)
     end subroutine
 end program
