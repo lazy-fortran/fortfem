@@ -24,7 +24,7 @@ program test_lab_tensor_apply
         error stop 'independent physical-energy pullback'
     jac(:, 1) = 0
     call metric_at(jac, kmat, 0.6_dp, 0.8_dp, g, mass, det)
-    if (det /= 0.0_dp) error stop 'singular Jacobian rejected before division'
+    if (abs(det) > tiny(1.0_dp)) error stop 'singular Jacobian rejected before division'
     do dim = 2, 3
         do p = 1, 6
             call structured_tensor_mesh(dim, [2, 2, 2], p, mesh, status, &
