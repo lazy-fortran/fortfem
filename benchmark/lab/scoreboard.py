@@ -194,9 +194,8 @@ def write_md(rows):
     a("")
     a("The matrix-free GLL rows are the only family that reaches 1e-7 within the "
       "measured range; tet P3 and the B-spline rows were not run that far, so "
-      "\"not reached\" means \"not measured\", not \"cannot\". Tet P3 at 1/h=2 and "
-      "B-spline p4 at 1/h=2 return errors >= 1 (see full table), a solver/conditioning "
-      "outcome of the assembled ichol_row path that is recorded, not explained, here.")
+      "\"not reached\" means \"not measured\", not \"cannot\". Tet P3 reaches 5.4e-6 only at "
+      "103860 DOFs and 328 s.")
     a("")
     a("## Figure")
     a("")
