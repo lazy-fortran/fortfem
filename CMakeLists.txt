@@ -74,6 +74,44 @@ if(FORTFEM_BUILD_TESTING)
     set_tests_properties(fortfem_element_precision_batch PROPERTIES
         LABELS "element;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
+# The laboratory line contract is also available in the dependency-free build.
+add_library(fortfem_tensor_lines STATIC
+    src/generated/fortfem_lagrange_product_jets.f90
+    src/discretisation/tensor_line_tables.f90
+    src/discretisation/gll_line.f90
+    src/discretisation/tensor_mesh.f90
+    src/discretisation/tensor_contractions.f90)
+set_target_properties(fortfem_tensor_lines PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
+target_include_directories(fortfem_tensor_lines PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
+target_link_libraries(fortfem_tensor_lines PUBLIC OpenMP::OpenMP_Fortran)
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_gll_line test/check.f90 test/test_lab_gll_line.f90)
+    target_link_libraries(test_lab_gll_line PRIVATE fortfem_tensor_lines)
+    add_test(NAME test_lab_gll_line COMMAND test_lab_gll_line)
+    add_executable(test_lab_tensor_mesh test/test_lab_tensor_mesh.f90)
+    target_link_libraries(test_lab_tensor_mesh PRIVATE fortfem_tensor_lines)
+    add_test(NAME test_lab_tensor_mesh COMMAND test_lab_tensor_mesh)
+    set_tests_properties(test_lab_gll_line PROPERTIES
+        LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+add_library(fortfem_tensor_operator STATIC
+    src/generated/fortfem_tensor_metric_products.f90
+    src/discretisation/tensor_operator.f90)
+set_target_properties(fortfem_tensor_operator PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
+target_include_directories(fortfem_tensor_operator PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
+target_link_libraries(fortfem_tensor_operator PUBLIC
+    fortfem_tensor_lines fortfem_element_kernels)
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_tensor_apply test/test_lab_tensor_apply.f90)
+    target_link_libraries(test_lab_tensor_apply PRIVATE fortfem_tensor_operator)
+    add_test(NAME test_lab_tensor_apply COMMAND test_lab_tensor_apply)
+    set_tests_properties(test_lab_tensor_apply PROPERTIES
+        LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
 option(FORTFEM_BUILD_BENCHMARKS "Build element scaling benchmark" OFF)
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_element_precision_scaling
@@ -169,6 +207,34 @@ target_include_directories(fortfem_capi
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE "${PROJECT_BINARY_DIR}/modules")
 target_link_libraries(fortfem_capi PRIVATE fortsparse)
+
+add_library(fortfem_tensor_solver STATIC src/discretisation/tensor_solver.f90)
+set_target_properties(fortfem_tensor_solver PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
+target_include_directories(fortfem_tensor_solver PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>
+    PRIVATE "${PROJECT_BINARY_DIR}/modules")
+target_link_libraries(fortfem_tensor_solver PUBLIC
+    fortfem_tensor_operator fortfem_capi fortsparse)
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_tensor_solver test/test_lab_tensor_solver.f90)
+    target_link_libraries(test_lab_tensor_solver PRIVATE fortfem_tensor_solver)
+    add_test(NAME test_lab_tensor_solver COMMAND test_lab_tensor_solver)
+    set_tests_properties(test_lab_tensor_solver PROPERTIES
+        LABELS "lab" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_tensor_mms test/test_lab_tensor_mms.f90)
+    target_link_libraries(test_lab_tensor_mms PRIVATE fortfem_tensor_solver)
+    add_test(NAME test_lab_tensor_mms COMMAND test_lab_tensor_mms)
+    set_tests_properties(test_lab_tensor_mms PROPERTIES
+        LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+if(FORTFEM_BUILD_BENCHMARKS)
+    add_executable(fortfem_lab_mf1 benchmark/lab/mf1/tensor_benchmark.f90)
+    target_link_libraries(fortfem_lab_mf1 PRIVATE fortfem_tensor_solver)
+endif()
 
 install(TARGETS fortfem_capi fortfem_triangle_compat
     EXPORT fortfemTargets
