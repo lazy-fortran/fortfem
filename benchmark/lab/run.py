@@ -61,12 +61,7 @@ def mesh(problem, n, alignment='unaligned'):
         for k in range(np):
             phi = 2*math.pi*k/np
             for u, v in disk:
-                # Optional sheared mesh accelerator; seam closes exactly.
-                # A globally field-following mesh cannot be periodic for general
-                # sheared iota. This bounded periodic twist is a comparison only.
-                angle = 0.
-                vertices.append(geometry(u*math.cos(angle)-v*math.sin(angle),
-                                         u*math.sin(angle)+v*math.cos(angle), phi))
+                vertices.append(geometry(u, v, phi))
         cells = []
         nd = len(disk)
         for k in range(np):

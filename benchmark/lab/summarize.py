@@ -19,7 +19,7 @@ lines = ['# Assembled baselines', '',
          'solve and error integration. It excludes build and Python mesh preparation.',
          'RSS is the child high-water mark from wait4/getrusage, in bytes in the CSV.',
          'Every measured row includes its exact command, source revision, executable SHA256,',
-         'compiler and flags, host/job ID, mesh checksum and linear residual.', '',
+         'compiler and flags, host/job ID, tetra mesh checksum and linear residual.', '',
          '| Problem | Criterion | Family | preconditioner | p | 1/h | Ratio | DOFs | rel L2 | axis rel L2 | chi_perp,num | iterations | wall (s) | RSS (MiB) |',
          '|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
 for r in rows:
