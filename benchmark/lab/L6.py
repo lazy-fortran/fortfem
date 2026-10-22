@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Run the authoritative KIN6D N1 reference adapter without copying its cases."""
 import argparse
-import csv
 import hashlib
 import json
 import os

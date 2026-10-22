@@ -9,12 +9,13 @@ import math
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('csv', nargs='+', type=Path)
 p.add_argument('--output', type=Path, required=True)
+p.add_argument('--title', default='Assembled baselines')
 a = p.parse_args()
 rows = []
 for path in a.csv:
     rows.extend(csv.DictReader(path.open()))
 rows = [r for r in rows if r['status'] == 'V' and r['dirty'] == 'False']
-lines = ['# Assembled baselines', '',
+lines = ['# '+a.title, '',
          '[V] Process wall time includes assembly, constraints, preconditioner/factor setup,',
          'solve and error integration. It excludes build and Python mesh preparation.',
          'RSS is the child high-water mark from wait4/getrusage, in bytes in the CSV.',
@@ -63,4 +64,28 @@ for key, runs in sorted(axis_groups.items()):
         lines.append(f"| {key[0]} | {key[1]} | {key[2]} | {1/float(lo['h']):g} to "
                      f"{1/float(hi['h']):g} | {global_rate:.3f} | {axis_rate:.3f} | "
                      f"{global_rate-axis_rate:.3f} |")
+ball_groups = defaultdict(list)
+for r in rows:
+    if r['problem'] == 'L5' and r.get('axis_ball_rel_l2'):
+        ball_groups[r['family'], r['p']].append(r)
+if ball_groups:
+    lines += ['', '## Physical axis ball', '',
+              '[V] Radius 0.2 about X_axis(phi=0), with physical volume weights.',
+              'The reported norms use indicator quadrature, not certified integrals.', '',
+              '| Family | p | 1/h | global rel L2 | ball rel L2 |',
+              '|---|---:|---:|---:|---:|']
+    for key, runs in sorted(ball_groups.items()):
+        for r in sorted(runs, key=lambda r: -float(r['h'])):
+            lines.append(f"| {key[0]} | {key[1]} | {1/float(r['h']):g} | "
+                         f"{float(r['rel_l2']):.5e} | {float(r['axis_ball_rel_l2']):.5e} |")
+    lines += ['', '| Family | p | refinement | global rate | ball rate | global minus ball |',
+              '|---|---:|---|---:|---:|---:|']
+    for key, runs in sorted(ball_groups.items()):
+        runs.sort(key=lambda r: -float(r['h']))
+        for lo, hi in zip(runs, runs[1:]):
+            den = math.log(float(lo['h'])/float(hi['h']))
+            gr = math.log(float(lo['rel_l2'])/float(hi['rel_l2']))/den
+            br = math.log(float(lo['axis_ball_rel_l2'])/float(hi['axis_ball_rel_l2']))/den
+            lines.append(f"| {key[0]} | {key[1]} | {1/float(lo['h']):g} to "
+                         f"{1/float(hi['h']):g} | {gr:.3f} | {br:.3f} | {gr-br:.3f} |")
 a.output.write_text('\n'.join(lines)+'\n')

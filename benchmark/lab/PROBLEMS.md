@@ -158,7 +158,7 @@ quadrature point at s=0 or call this polar chart an axis solution.
 
 [V] KIN6D context was read in `docs/equilibrium-nonnested-nn2.md`, including
 its closed-line pollution and coupled-Newton discussion. The requested
-`docs/island-equilibrium.md` and N1 handoff were absent at inspection time.
+`docs/island-equilibrium.md` and N1 handoff were absent at initial inspection.
 L4 does not import KIN6D implementation code or redefine its Newton equations.
 
 ## L5: axis regularity (criterion 2)
@@ -169,6 +169,11 @@ families on the same physical problem. Report global L2 and H1 seminorms and
 relative L2 error in `s<0.04` (a radius-0.2 tube in disk coordinates), with
 physical volume weights. Also sample balls of physical radius 0.2 around axis
 points if a local-ball comparison is needed. A tube is not a physical ball.
+The stacked `gll-polar` comparison uses r=sqrt(s), a periodic poloidal angle,
+and the same physical map. All axis angular nodes are identified at each phi.
+This imposes the necessary single-valued trace but is not the primary regular
+mesh construction. A separate physical-ball diagnostic uses radius 0.2 about
+X_axis(phi=0); both it and the tube use sampled physical quadrature weights.
 For every norm compute rates `log(e_coarse/e_fine)/log(h_coarse/h_fine)`.
 Report rate loss as `rate_global-rate_axis` on each refinement pair and the
 axis-rate difference between the two mesh families. Missing polar rows imply

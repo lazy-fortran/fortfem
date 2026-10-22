@@ -91,9 +91,47 @@ python3 benchmark/lab/summarize.py lab.csv --output assembled-tables.md
 ```
 
 The summary reports measured DOFs and process time at relative L2 targets
-1e-3, 1e-5, 1e-7, with no extrapolation. Axis norms currently use `s<0.04`, a
-physical-volume-weighted tube. A polar-chart comparison and an aligned periodic
-mesh adapter remain required before drawing their respective conclusions.
+1e-3, 1e-5, 1e-7, with no extrapolation. The original axis norm uses `s<0.04`,
+a physical-volume-weighted tube. `lab_mf_run` also measures the physical ball
+of radius 0.2 about the axis point at phi=0. These are indicator-quadrature
+norms, not certified integrals. The polar comparison collapses all r=0 angular
+nodes at each phi, which is an explicit axis constraint used only in that
+comparison. The primary GLL path uses MF1's regular O-grid, warped by the
+analytic L1 map, and needs no axis collapse.
+
+The stacked MF consumer accepts any positive GLL degree and uses p-multigrid:
+
+```sh
+python3 benchmark/lab/L1.py --family gll-mf --p 10 --n 1 \
+  --preconditioner pmg --threads 4 --executable /absolute/lab_mf_run \
+  --flags '-O3 -funroll-loops -fopenmp' --output mf.csv
+LAB_MF_EXE=/absolute/lab_mf_run LAB_FLAGS='-O3 -funroll-loops -fopenmp' \
+  OMP_NUM_THREADS=4 bash benchmark/lab/mf_baselines.sh mf.csv
+```
+
+L5's `gll-polar` comparison uses the same operator's assembled oracle with
+`ichol_row`, because generic p-coarsening of collapsed polar cells is outside
+MF1's topology contract. A polar run has n radial, 8n angular and 20n toroidal
+cells. The regular O-grid has five cross-section patches and 20n toroidal cells.
+The MF load uses the solver's quadrature, and error integration uses p+3 points
+per direction. The initial MF adapter left `nnz=0` unreported for the polar
+runs; their memory is measured by RSS. Current runs report polar fine-matrix
+NNZ, while matrix-free rows use zero for an absent fine matrix. Coarse storage
+is included in RSS. An aligned periodic sheared mesh still needs an interface
+constraint and is explicitly rejected by the driver.
+
+The existing N1 sweep can be imported without rerunning it or copying cases:
+
+```sh
+ssh scluster 'python3 - /home/ert/n1nested-20261022 --output -' \
+  < benchmark/lab/import_n1.py > l6-n1-reference.csv
+```
+
+The importer checks the retained adapter SHA256 manifest. Its thirty rows
+include failed GVEC integer-family runs, and keep native solve, adapter and
+whole-process times separate. They retain N1's original error normalizations,
+so the new four-component L6 admission contract is not inferred from them.
+Prebuilt external-package compiler flags remain explicitly unavailable.
 
 ## Cluster recipes
 
