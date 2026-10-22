@@ -122,6 +122,17 @@ if(FORTFEM_BUILD_TESTING)
     set_tests_properties(test_lab_unstructured_mesh PROPERTIES
         LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
+# Nonlinear lab layer: Newton-Krylov driver, quadrature-point field access
+# and point location/evaluation on tensor meshes.
+add_library(fortfem_tensor_nonlinear STATIC
+    src/discretisation/newton_krylov.f90
+    src/discretisation/tensor_pointwise.f90
+    src/discretisation/tensor_points.f90)
+set_target_properties(fortfem_tensor_nonlinear PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
+target_include_directories(fortfem_tensor_nonlinear PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
+target_link_libraries(fortfem_tensor_nonlinear PUBLIC fortfem_tensor_operator)
 option(FORTFEM_BUILD_BENCHMARKS "Build element scaling benchmark" OFF)
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_element_precision_scaling
@@ -241,9 +252,39 @@ if(FORTFEM_BUILD_TESTING)
     set_tests_properties(test_lab_tensor_mms PROPERTIES
         LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_newton_krylov test/test_lab_newton_krylov.f90)
+    target_link_libraries(test_lab_newton_krylov PRIVATE
+        fortfem_tensor_nonlinear fortfem_tensor_solver)
+    add_test(NAME test_lab_newton_krylov COMMAND test_lab_newton_krylov)
+    set_tests_properties(test_lab_newton_krylov PROPERTIES
+        LABELS "lab" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+# NEQ1 Grad-Shafranov consumer (physics stays in benchmark/lab/neq1).
+if(FORTFEM_BUILD_TESTING OR FORTFEM_BUILD_BENCHMARKS)
+add_library(fortfem_lab_gs STATIC
+    benchmark/lab/neq1/generated/fortfem_lab_gs_source_products.f90
+    benchmark/lab/neq1/gs_equilibrium.f90)
+set_target_properties(fortfem_lab_gs PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/lab_gs_modules")
+target_include_directories(fortfem_lab_gs PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/lab_gs_modules>)
+target_link_libraries(fortfem_lab_gs PUBLIC
+    fortfem_tensor_nonlinear fortfem_tensor_solver)
+endif()
+if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_grad_shafranov test/test_lab_grad_shafranov.f90)
+    target_link_libraries(test_lab_grad_shafranov PRIVATE fortfem_lab_gs)
+    add_test(NAME test_lab_grad_shafranov COMMAND test_lab_grad_shafranov
+        ${PROJECT_SOURCE_DIR}/benchmark/lab/neq1/solovev_iter.nml)
+    set_tests_properties(test_lab_grad_shafranov PROPERTIES
+        LABELS "lab" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_lab_mf1 benchmark/lab/mf1/tensor_benchmark.f90)
     target_link_libraries(fortfem_lab_mf1 PRIVATE fortfem_tensor_solver)
+    add_executable(fortfem_lab_neq1 benchmark/lab/neq1/gs_benchmark.f90)
+    target_link_libraries(fortfem_lab_neq1 PRIVATE fortfem_lab_gs)
 endif()
 if(FORTFEM_BUILD_BENCHMARKS OR FORTFEM_BUILD_TESTING)
     add_executable(fortfem_lab_uns1_island benchmark/lab/uns1/island_diffusion.f90)

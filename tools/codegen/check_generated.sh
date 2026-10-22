@@ -23,9 +23,11 @@ mkdir -p "$temporary_root"
 temporary_dir=$(mktemp -d "$temporary_root/fortfem-codegen-check.XXXXXX")
 trap 'rm -rf -- "$temporary_dir"' EXIT
 
+mkdir -p "$temporary_dir/lab"
 (
     cd "$codegen_dir"
-    FORTFEM_CODEGEN_OUTPUT_DIR="$temporary_dir" ./generate.sh
+    FORTFEM_CODEGEN_OUTPUT_DIR="$temporary_dir" \
+        FORTFEM_LAB_CODEGEN_OUTPUT_DIR="$temporary_dir/lab" ./generate.sh
 )
 
 for order in 1 2 3 4; do
@@ -408,3 +410,7 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 
 filename="fortfem_tensor_metric_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+
+filename="fortfem_lab_gs_source_products.f90"
+cmp -- "$repository_dir/benchmark/lab/neq1/generated/$filename" \
+    "$temporary_dir/lab/$filename"
