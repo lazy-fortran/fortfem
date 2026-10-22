@@ -143,8 +143,11 @@ def run(args):
     if not args.problem.startswith('L3') and args.ratio != 1:
         raise SystemExit('anisotropy ratio applies only to L3/L3a')
     n = args.n if args.n is not None else round(1/args.h)
-    if n < 1 or args.threads < 1 or args.p not in (1, 2, 3, 4):
-        raise SystemExit('positive resolution/threads and degree 1..4 required')
+    max_degree = 32 if args.family in ('gll-mf', 'gll-polar') else 4
+    if n < 1 or args.threads < 1 or not 1 <= args.p <= max_degree:
+        raise SystemExit('positive resolution/threads and a supported degree required')
+    if args.family == 'bspline' and args.p < 2:
+        raise SystemExit('spline adapter requires degree 2..4')
     executable = Path(args.executable).resolve()
     env = dict(os.environ, OMP_NUM_THREADS=str(args.threads),
                OPENBLAS_NUM_THREADS='1', MPLBACKEND='Agg')
