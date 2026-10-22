@@ -77,6 +77,7 @@ if [[ "$codegen_runner" == "fpm" ]]; then
 else
     fo build
 fi
+run_codegen gen_tensor_metric_products
 run_codegen gen_element_precision_products
 run_codegen gen_reference_basis_products
 run_codegen gen_verified_rt0_products
