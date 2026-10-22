@@ -409,10 +409,13 @@ byte-for-byte. All raw rows have their commands and binary fingerprints in
 `mf-*-20261022.csv`. The initial polar rows have an unreported NNZ placeholder
 of zero, not zero matrix storage; their RSS is measured normally.
 
-[V] The final native Gremlin generation passed seven of its eight selected
-targets, but `test_lab_tensor_mms` exceeded its default 10-second CPU budget.
-That generation is not green. Focused release verification is separate from
-the Gremlin gate, and the timeout remains an explicit promotion limitation.
+[V] `test_lab_tensor_mms` exceeded the 10-second Gremlin CPU budget because
+its 3D torus ladder (levels 0..2, p = 2..6) cost about 10 of its 11 CPU seconds
+on faepmac1 (h = 4 solves 2.4 s at p = 2 and 3.5 s at p = 3; the p = 5 and 6 solves
+take 1.0 and 1.4 s). The standard case now runs every 2D ladder and the 3D
+levels 0..1 with p = 2..4 in 2.5 CPU seconds, and the full ladder is the
+registered `test_lab_tensor_mms_slow`. No asserted rate or factor changed.
+The Gremlin gate of the eight selected targets is green.
 
 [H] A genuine aligned periodic comparison still needs a nonmatching seam
 constraint for the radially varying field-line shift. The CLI rejects that
@@ -528,10 +531,9 @@ refer to the last saved native stage, not to a converged state.
 scopes. External wheel build compilers/flags were not exposed by N1 and remain
 explicitly unavailable. N1 pressure errors use its own relative-pressure norm,
 flux errors are maximum label defects, and sample positions belong to each
-candidate. They therefore do not establish the common-physical-sample L6
-contract defined in PROBLEMS.md. The QA case has no exact oracle, so its
-accuracy is not filled with a force stopping tolerance. No lab-family versus
-VMEC-class matched-accuracy speed claim is made.
+candidate. The common-physical-sample vector of PROBLEMS.md is evaluated in
+the next subsection. The QA case has no exact oracle, so its accuracy is not
+filled with a force stopping tolerance.
 
 | Code | Case | m | status / exit | DOFs | native solve (s) | adapter solve (s) | process (s) | peak RSS (MiB) | B sample error | p sample error (N1) | max flux-label defect |
 |---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -540,4 +542,105 @@ VMEC-class matched-accuracy speed claim is made.
 | gvec | landreman-integer | 4 | incomplete / 1 | 2178 | — | — | 15.79 | 240.93 | — | — | — |
 | gvec | issan-integer | 4 | incomplete / 1 | 2178 | — | — | 10.83 | 243.54 | — | — | — |
 | gvec | qa | 4 | sampled / 0 | 1089 | 17.087 | 18.882 | 19.44 | 243.41 | — | — | — |
+
+### L6: matched-accuracy admission of the N1 records (criterion 4)
+
+[V] `l6-n1-reference-20261022.csv` now carries the four-component vector of
+PROBLEMS.md for every N1 record, from `import_n1.py --admit` run as sCluster job
+3355869 (node8, 2:40, peak 606 MiB, revision b892a4a2, `slurm/l6_admission.sbatch`;
+the first run 3355859 at 99108211 differed only in the replicate labels). It
+reads each record's retained `samples.txt` (1728 equal-weight interior samples,
+three surfaces) and inverts the reference coordinates at the sample positions
+as N1's `compare_qa_final.py` does, with forward position checks below 3e-12 m.
+The reference is the finest VMEC++ run of the case: `m12-t1` for both integer
+families and N1's `m16/n12/ns201` run (8 cores, 42 s) for QA. `e_B` is the
+Cartesian B relative RMS, `e_p` uses the denominator max(RMS p_ref, B_ref,rms^2/2)
+in mu0-scaled pressure, `e_iota` uses max(RMS iota_ref, 1) on the three sample
+surfaces in input-sign convention, and `e_flux` is the RMS label defect divided
+by the unit flux range. A record is admitted at epsilon only if it converged and
+all four components are at most epsilon. Records that are the reference or its
+thread replicate are labelled and not admitted.
+
+[V] The integer-family `e_B` against the m12 reference (landreman m4/m8
+1.10e-3/3.80e-4, issan m4/m8 6.07e-4/2.53e-4) has the magnitude of N1's
+exact-oracle B error (1.12e-3/3.22e-4, 6.93e-4/6.87e-4), except for issan m8,
+where the exact-oracle error is 2.7 times larger. This confirms that the units
+and signs are aligned. The
+m12 records themselves differ from the exact oracle by 4.2e-4 (landreman) and
+5.2e-4 (issan), so the m12 reference is not exact either, and the vector is a
+difference from a finite-resolution reference, not an error bound.
+[V] e_iota is zero to roundoff for the integer families, whose iota is a
+constraint. QA has p = 0, so e_p is zero by construction.
+
+[V] Outcome at epsilon = 1e-2 and 1e-3: all eight non-reference VMEC++
+integer-family records are admitted at 1e-2 (landreman m4 and m8, issan m4);
+issan m8 is also admitted at 1e-3, and landreman m4/m8 are not, because e_flux
+(4.3e-3, 1.4e-3) exceeds it. All six VMEC++ QA records are not admitted at 1e-2:
+e_flux saturates at 1.2e-2 for m8 and m12 (1.7e-2 at m4) while e_B and e_iota
+are at most 1.5e-3 and 1.8e-3 there. The four GVEC QA records are admitted at 1e-3 (maximum
+5.3e-4 at m4 and 3.4e-4 at m8). The eight GVEC integer-family records failed and
+are not admitted. [H] The VMEC++ QA flux plateau suggests a radial-resolution
+floor at the default radial grid relative to the ns201 reference, and the GVEC
+agreement with this VMEC++ reference is a cross-code comparison rather than a
+refinement study. There is no second finer reference, so no independent
+refinement difference exists for QA.
+
+| Code | Case | m | threads | e_B | e_p | e_iota | e_flux | max | admitted |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| vmecpp | landreman-integer | 4 | 1 | 1.10e-03 | 2.95e-04 | 2.64e-16 | 4.29e-03 | 4.29e-03 | yes, 1e-2 |
+| vmecpp | landreman-integer | 4 | 8 | 1.10e-03 | 2.95e-04 | 2.64e-16 | 4.29e-03 | 4.29e-03 | yes, 1e-2 |
+| vmecpp | landreman-integer | 8 | 1 | 3.80e-04 | 9.82e-05 | 1.43e-16 | 1.43e-03 | 1.43e-03 | yes, 1e-2 |
+| vmecpp | landreman-integer | 8 | 8 | 3.80e-04 | 9.82e-05 | 1.43e-16 | 1.43e-03 | 1.43e-03 | yes, 1e-2 |
+| vmecpp | landreman-integer | 12 | 1 | 1.12e-15 | 2.08e-16 | 0.00e+00 | 3.02e-15 | 3.02e-15 | reference |
+| vmecpp | landreman-integer | 12 | 8 | 2.13e-13 | 6.06e-15 | 0.00e+00 | 8.82e-14 | 2.13e-13 | reference |
+| vmecpp | issan-integer | 4 | 1 | 6.07e-04 | 1.36e-04 | 2.64e-16 | 1.70e-03 | 1.70e-03 | yes, 1e-2 |
+| vmecpp | issan-integer | 4 | 8 | 6.07e-04 | 1.36e-04 | 2.64e-16 | 1.70e-03 | 1.70e-03 | yes, 1e-2 |
+| vmecpp | issan-integer | 8 | 1 | 2.53e-04 | 6.78e-05 | 1.43e-16 | 8.51e-04 | 8.51e-04 | yes, 1e-3 |
+| vmecpp | issan-integer | 8 | 8 | 2.53e-04 | 6.78e-05 | 1.43e-16 | 8.51e-04 | 8.51e-04 | yes, 1e-3 |
+| vmecpp | issan-integer | 12 | 1 | 1.09e-15 | 2.24e-16 | 0.00e+00 | 2.81e-15 | 2.81e-15 | reference |
+| vmecpp | issan-integer | 12 | 8 | 4.12e-13 | 5.92e-14 | 0.00e+00 | 7.43e-13 | 7.43e-13 | reference |
+| vmecpp | qa | 4 | 1 | 2.20e-03 | 0.00e+00 | 3.39e-03 | 1.71e-02 | 1.71e-02 | no |
+| vmecpp | qa | 4 | 8 | 2.20e-03 | 0.00e+00 | 3.39e-03 | 1.71e-02 | 1.71e-02 | no |
+| vmecpp | qa | 8 | 1 | 1.46e-03 | 0.00e+00 | 1.67e-03 | 1.18e-02 | 1.18e-02 | no |
+| vmecpp | qa | 8 | 8 | 1.46e-03 | 0.00e+00 | 1.67e-03 | 1.18e-02 | 1.18e-02 | no |
+| vmecpp | qa | 12 | 1 | 1.49e-03 | 0.00e+00 | 1.82e-03 | 1.20e-02 | 1.20e-02 | no |
+| vmecpp | qa | 12 | 8 | 1.49e-03 | 0.00e+00 | 1.82e-03 | 1.20e-02 | 1.20e-02 | no |
+| gvec | landreman-integer | 4 | 1 | — | — | — | — | — | no (failed) |
+| gvec | landreman-integer | 4 | 8 | — | — | — | — | — | no (failed) |
+| gvec | landreman-integer | 8 | 1 | — | — | — | — | — | no (failed) |
+| gvec | landreman-integer | 8 | 8 | — | — | — | — | — | no (failed) |
+| gvec | issan-integer | 4 | 1 | — | — | — | — | — | no (failed) |
+| gvec | issan-integer | 4 | 8 | — | — | — | — | — | no (failed) |
+| gvec | issan-integer | 8 | 1 | — | — | — | — | — | no (failed) |
+| gvec | issan-integer | 8 | 8 | — | — | — | — | — | no (failed) |
+| gvec | qa | 4 | 1 | 1.72e-04 | 0.00e+00 | 2.23e-04 | 5.25e-04 | 5.25e-04 | yes, 1e-3 |
+| gvec | qa | 4 | 8 | 1.72e-04 | 0.00e+00 | 2.23e-04 | 5.25e-04 | 5.25e-04 | yes, 1e-3 |
+| gvec | qa | 8 | 1 | 2.71e-05 | 0.00e+00 | 1.86e-05 | 3.37e-04 | 3.37e-04 | yes, 1e-3 |
+| gvec | qa | 8 | 8 | 2.71e-05 | 0.00e+00 | 1.86e-05 | 3.37e-04 | 3.37e-04 | yes, 1e-3 |
+
+Admitted records only. Cores are the requested CPU-affinity count of the N1
+sweep; wall times and peak RSS (process maximum) are N1's, and the three times
+have different scopes as stated above. External build compilers and flags
+remain unavailable.
+
+| Code | Case | m | cores | native solve (s) | adapter solve (s) | process (s) | peak RSS (MiB) | admitted |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| vmecpp | landreman-integer | 4 | 1 | 0.03069 | 1.171 | 5.97 | 434.1 | yes, 1e-2 |
+| vmecpp | landreman-integer | 4 | 8 | 0.05762 | 1.22 | 6.02 | 443.0 | yes, 1e-2 |
+| vmecpp | landreman-integer | 8 | 1 | 0.2519 | 1.37 | 7.29 | 469.6 | yes, 1e-2 |
+| vmecpp | landreman-integer | 8 | 8 | 0.1537 | 1.263 | 7.22 | 482.1 | yes, 1e-2 |
+| vmecpp | issan-integer | 4 | 1 | 0.06571 | 1.196 | 6.37 | 436.5 | yes, 1e-2 |
+| vmecpp | issan-integer | 4 | 8 | 0.06781 | 1.193 | 6.18 | 445.8 | yes, 1e-2 |
+| vmecpp | issan-integer | 8 | 1 | 0.5065 | 1.633 | 9.22 | 479.0 | yes, 1e-3 |
+| vmecpp | issan-integer | 8 | 8 | 0.2135 | 1.338 | 9.14 | 489.3 | yes, 1e-3 |
+| gvec | qa | 4 | 1 | 17.09 | 18.88 | 19.44 | 243.4 | yes, 1e-3 |
+| gvec | qa | 4 | 8 | 14.91 | 16.68 | 17.26 | 251.1 | yes, 1e-3 |
+| gvec | qa | 8 | 1 | 58.42 | 60.26 | 60.83 | 471.7 | yes, 1e-3 |
+| gvec | qa | 8 | 8 | 24.12 | 25.85 | 26.47 | 482.6 | yes, 1e-3 |
+
+[V] Admitted VMEC++ integer-family records take 0.03-0.51 s native, 5.97-9.22 s
+whole-process and 434-489 MiB, and the admitted GVEC QA records take 14.9-58.4 s
+native and 243-483 MiB, with the whole-process times of the table. They belong
+to different cases, so the table is no code ranking. No lab-family solve is
+timed against these records and no VMEC-class speed claim is made.
 <!-- BEN1 END -->

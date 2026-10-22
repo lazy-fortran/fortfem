@@ -56,6 +56,7 @@ Nedelec order one. L1/L5 spline runs use `lab_bspline_run`, with degrees 2–4.
 L4 diagonalises its constant component block and combines the modal norms.
 L6.py calls the authoritative KIN6D N1 adapter and records an **unqualified**
 external timing until all four matched-accuracy metrics have been supplied.
+`import_n1.py --admit` supplies them for the thirty retained N1 records.
 It neither copies the cases nor invents equilibrium accuracy.
 
 `ichol` retains the old dense reference setup. `ichol_row` explicitly selects
@@ -129,8 +130,12 @@ ssh scluster 'python3 - /home/ert/n1nested-20261022 --output -' \
 
 The importer checks the retained adapter SHA256 manifest. Its thirty rows
 include failed GVEC integer-family runs, and keep native solve, adapter and
-whole-process times separate. They retain N1's original error normalizations,
-so the new four-component L6 admission contract is not inferred from them.
+whole-process times separate. They retain N1's original error normalizations.
+With `--admit` it also evaluates the four-component L6 admission vector of
+PROBLEMS.md against the finest VMEC++ reference of each case, reading only the
+retained `samples.txt`, `metrics.json` and `wout_reference.nc` files. This needs
+numpy, scipy and SIMSOPT, so it runs as `slurm/l6_admission.sbatch` with the N1
+Python; `l6_admission_table.py` renders the tables of RESULTS.md from its CSV.
 Prebuilt external-package compiler flags remain explicitly unavailable.
 
 ## Cluster recipes
