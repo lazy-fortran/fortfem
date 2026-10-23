@@ -99,7 +99,10 @@ endif()
 add_library(fortfem_tensor_operator STATIC
     src/generated/fortfem_tensor_metric_products.f90
     src/discretisation/line_mesh.f90
-    src/discretisation/tensor_operator.f90)
+    src/discretisation/tensor_operator.f90
+    src/discretisation/tensor_mesh_tools.f90
+    src/discretisation/tensor_mesh_gmsh.f90
+    src/discretisation/island_quad_mesh.f90)
 set_target_properties(fortfem_tensor_operator PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
 target_include_directories(fortfem_tensor_operator PUBLIC
@@ -111,6 +114,12 @@ if(FORTFEM_BUILD_TESTING)
     target_link_libraries(test_lab_tensor_apply PRIVATE fortfem_tensor_operator)
     add_test(NAME test_lab_tensor_apply COMMAND test_lab_tensor_apply)
     set_tests_properties(test_lab_tensor_apply PROPERTIES
+        LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_executable(test_lab_unstructured_mesh test/test_lab_unstructured_mesh.f90)
+    target_link_libraries(test_lab_unstructured_mesh PRIVATE fortfem_tensor_operator)
+    add_test(NAME test_lab_unstructured_mesh COMMAND test_lab_unstructured_mesh
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    set_tests_properties(test_lab_unstructured_mesh PROPERTIES
         LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
 option(FORTFEM_BUILD_BENCHMARKS "Build element scaling benchmark" OFF)
