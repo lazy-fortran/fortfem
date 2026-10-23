@@ -1,6 +1,6 @@
 program gen_tensor_metric_products
     use fortsym_arena, only: arena_t
-    use fortsym_expr, only: expr_t, sym, real_expr, &
+    use fortsym_expr, only: expr_t, sym, real_expr, sqrt, &
                             operator(+), operator(-), operator(*), operator(/)
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: str, chars
@@ -8,6 +8,7 @@ program gen_tensor_metric_products
     implicit none
     type(arena_t), target :: arena
     type(expr_t) :: j(3, 3), k(3, 3), adj(3, 3), det, w, c, roots(11), zero
+    type(expr_t) :: ta(3), tb(3), normal(3)
     type(kernel_spec_t) :: spec
     character(8) :: name
     character(:), allocatable :: code
@@ -87,6 +88,28 @@ program gen_tensor_metric_products
     spec%name = str('generated_tensor_determinant')
     spec%module_name = str('fortfem_generated_tensor_determinant')
     code = chars(emit_kernel([det], spec))
+    write (unit, '(a)') code(:len(code) - 1)
+    ! Surface measure |x_a cross x_b| of a face map with tangents ta and tb.
+    deallocate (spec%args, spec%outputs)
+    allocate (spec%args(6), spec%outputs(1))
+    do a = 1, 3
+        write (name, '(a,i1)') 'ta', a
+        ta(a) = sym(arena, trim(name))
+        spec%args(a) = str(trim(name))
+        write (name, '(a,i1)') 'tb', a
+        tb(a) = sym(arena, trim(name))
+        spec%args(3 + a) = str(trim(name))
+    end do
+    do a = 1, 3
+        r = modulo(a, 3) + 1
+        s = modulo(r, 3) + 1
+        normal(a) = ta(r)*tb(s) - ta(s)*tb(r)
+    end do
+    spec%outputs(1) = str('jac')
+    spec%name = str('generated_tensor_surface_jacobian')
+    spec%module_name = str('fortfem_generated_tensor_surface')
+    code = chars(emit_kernel([sqrt(normal(1)*normal(1) + normal(2)*normal(2) + &
+                                   normal(3)*normal(3))], spec))
     write (unit, '(a)') code(:len(code) - 1)
     close (unit)
 end program gen_tensor_metric_products

@@ -5,6 +5,10 @@ module fortfem_tensor_solver
                      apply_tensor_operator, tensor_diagonal, assemble_tensor_operator, &
                                        diffusion_coefficient
     use fortfem_tensor_contractions, only: tensor_contract
+    use fortfem_tensor_seam, only: tensor_seam_t, identity_tensor_seam, &
+                                   coarsen_tensor_seam, seam_expand, seam_fold, &
+                                   apply_seam_operator, seam_diagonal, &
+                                   assemble_seam_operator
     use fortfem_gll_line, only: gll_rule, lagrange_table
     use fortfem_element_to_csr, only: csr_matrix_t
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
@@ -22,6 +26,8 @@ module fortfem_tensor_solver
     end type
     type :: tensor_level_t
         type(tensor_operator_t) :: op
+        !! Vectors of this level live on the seam's reduced (primary) DOFs.
+        type(tensor_seam_t) :: seam
         real(dp), allocatable :: diagonal(:), interpolation(:, :)
         integer, allocatable :: owner(:)
         real(dp) :: lambda_max = 1
@@ -46,12 +52,15 @@ module fortfem_tensor_solver
         end subroutine
     end interface
 contains
-    subroutine build_tensor_multigrid(mesh, coefficient, mg, status, external_coarse)
+    subroutine build_tensor_multigrid(mesh, coefficient, mg, status, external_coarse, &
+                                      seam)
         type(tensor_mesh_t), intent(in) :: mesh
         procedure(diffusion_coefficient) :: coefficient
         type(tensor_multigrid_t), intent(out) :: mg
         integer, intent(out) :: status
         logical, intent(in), optional :: external_coarse
+        !! Nonconforming periodic seam; coarse levels constrain consistently.
+        type(tensor_seam_t), intent(in), optional :: seam
         type(tensor_mesh_t) :: coarse_mesh
         real(dp), allocatable :: xf(:), wf(:), xc(:), wc(:), d(:, :)
         integer :: p, l, e, a, n, i
@@ -67,8 +76,13 @@ contains
         allocate (mg%level(mg%nlevels))
         call build_tensor_operator(mesh, coefficient, mg%level(1)%op, status)
         if (status /= 0) return
+        if (present(seam)) then
+            mg%level(1)%seam = seam
+        else
+            call identity_tensor_seam(mesh, mg%level(1)%seam)
+        end if
         do l = 1, mg%nlevels
-            call tensor_diagonal(mg%level(l)%op, mg%level(l)%diagonal)
+            call seam_diagonal(mg%level(l)%op, mg%level(l)%seam, mg%level(l)%diagonal)
             if (any(mg%level(l)%diagonal <= 0)) then
                 status = 3
                 return
@@ -82,6 +96,9 @@ contains
             call coarse_boundary(mg%level(l)%op%mesh, coarse_mesh)
             call build_tensor_operator(coarse_mesh, coefficient, &
                                        mg%level(l + 1)%op, status)
+            if (status /= 0) return
+            call coarsen_tensor_seam(mg%level(l)%seam, mg%level(l + 1)%op%mesh, &
+                                     mg%level(l + 1)%seam, status)
             if (status /= 0) return
             call gll_rule(mg%level(l)%op%mesh%degree, xf, wf, status)
             call gll_rule(p, xc, wc, status)
@@ -123,6 +140,7 @@ contains
         do l = 1, mg%nlevels
             call build_tensor_operator(meshes(l), coefficient, mg%level(l)%op, status)
             if (status /= 0) return
+            call identity_tensor_seam(meshes(l), mg%level(l)%seam)
             call tensor_diagonal(mg%level(l)%op, mg%level(l)%diagonal)
             if (any(mg%level(l)%diagonal <= 0)) then
                 status = 3
@@ -172,7 +190,8 @@ contains
         integer, allocatable :: ptr(:), rows(:), fill(:)
         real(dp), allocatable :: values(:)
         integer :: n, i, j, a, pos
-        call assemble_tensor_operator(mg%level(mg%nlevels)%op, mg%coarse)
+        call assemble_seam_operator(mg%level(mg%nlevels)%op, &
+                                    mg%level(mg%nlevels)%seam, mg%coarse)
         if (external) then
             status = 0
             return
@@ -235,20 +254,20 @@ contains
         real(dp), allocatable :: v(:), previous(:), work(:), product(:), scale(:)
         real(dp) :: alpha, beta, last, upper
         integer :: i, it, n
-        n = level%op%mesh%ndof
+        n = level%seam%nreduced
         allocate (v(n), previous(n), work(n), product(n))
         scale = sqrt(level%diagonal)
         do i = 1, n
             v(i) = sin(real(137*i, dp))
         end do
-        where (level%op%mesh%boundary) v = 0
+        where (level%seam%boundary) v = 0
         beta = norm2(v)
         if (beta <= tiny(1.0_dp)) return
         v = v/beta
         previous = 0; last = 0; upper = 0
         do it = 1, 12
             work = v/scale
-            call apply_tensor_operator(level%op, work, product)
+            call apply_seam_operator(level%op, level%seam, work, product)
             product = product/scale - last*previous
             alpha = dot_product(v, product)
             product = product - alpha*v
@@ -261,6 +280,34 @@ contains
     end subroutine
 
     subroutine tensor_transfer(mg, l, coarse, fine, restrict)
+        !! p-transfer between the reduced spaces of levels l and l+1:
+        !! prolongation R_f I P_c and its transpose P_c^T I^T R_f^T.
+        type(tensor_multigrid_t), intent(in) :: mg
+        integer, intent(in) :: l
+        real(dp), intent(inout) :: coarse(:), fine(:)
+        logical, intent(in) :: restrict
+        real(dp), allocatable :: cf(:), ff(:)
+        associate (sf => mg%level(l)%seam, sc => mg%level(l + 1)%seam)
+            if (sf%nslave == 0 .and. sc%nslave == 0) then
+                call transfer_full(mg, l, coarse, fine, restrict)
+                return
+            end if
+            allocate (cf(sc%nfull), ff(sf%nfull))
+            if (restrict) then
+                ff = 0
+                ff(sf%primary) = fine
+                call transfer_full(mg, l, cf, ff, .true.)
+                call seam_fold(sc, cf, coarse)
+                where (sc%boundary) coarse = 0
+            else
+                call seam_expand(sc, coarse, cf)
+                call transfer_full(mg, l, cf, ff, .false.)
+                fine = ff(sf%primary)
+            end if
+        end associate
+    end subroutine
+
+    subroutine transfer_full(mg, l, coarse, fine, restrict)
         type(tensor_multigrid_t), intent(in) :: mg
         integer, intent(in) :: l
         real(dp), intent(inout) :: coarse(:), fine(:)
@@ -369,12 +416,13 @@ contains
         end if
     end subroutine
 
-    subroutine tensor_smooth(op, diagonal, lambda_max, rhs, x, steps, chebyshev)
+    subroutine tensor_smooth(op, diagonal, lambda_max, rhs, x, steps, chebyshev, seam)
         type(tensor_operator_t), intent(in) :: op
         real(dp), intent(in) :: diagonal(:), lambda_max, rhs(:)
         real(dp), intent(inout) :: x(:)
         integer, intent(in) :: steps
         logical, intent(in) :: chebyshev
+        type(tensor_seam_t), intent(in), optional :: seam
         real(dp) :: theta, delta, omega
         real(dp), allocatable :: ax(:)
         integer :: j
@@ -385,7 +433,11 @@ contains
             omega = 1/theta
             if (chebyshev) omega = 1/(theta - delta* &
                               cos(acos(-1.0_dp)*(real(j, dp) - 0.5_dp)/real(steps, dp)))
-            call apply_tensor_operator(op, x, ax)
+            if (present(seam)) then
+                call apply_seam_operator(op, seam, x, ax)
+            else
+                call apply_tensor_operator(op, x, ax)
+            end if
             x = x + omega*(rhs - ax)/diagonal
         end do
     end subroutine
@@ -409,10 +461,11 @@ contains
             return
         end if
         allocate (r(size(rhs)), ax(size(rhs)), correction(size(rhs)), &
-                  rc(mg%level(l + 1)%op%mesh%ndof), xc(mg%level(l + 1)%op%mesh%ndof))
+                  rc(mg%level(l + 1)%seam%nreduced), xc(mg%level(l + 1)%seam%nreduced))
         call tensor_smooth(mg%level(l)%op, mg%level(l)%diagonal, &
-                           mg%level(l)%lambda_max, rhs, x, mg%smoothing, .true.)
-        call apply_tensor_operator(mg%level(l)%op, x, ax)
+                           mg%level(l)%lambda_max, rhs, x, mg%smoothing, .true., &
+                           seam=mg%level(l)%seam)
+        call apply_seam_operator(mg%level(l)%op, mg%level(l)%seam, x, ax)
         r = rhs - ax
         call tensor_transfer(mg, l, rc, r, .true.)
         call tensor_vcycle(mg, l + 1, rc, xc, status, coarse_hook)
@@ -420,11 +473,14 @@ contains
         call tensor_transfer(mg, l, xc, correction, .false.)
         x = x + correction
         call tensor_smooth(mg%level(l)%op, mg%level(l)%diagonal, &
-                           mg%level(l)%lambda_max, rhs, x, mg%smoothing, .true.)
+                           mg%level(l)%lambda_max, rhs, x, mg%smoothing, .true., &
+                           seam=mg%level(l)%seam)
     end subroutine
 
     subroutine solve_tensor_diffusion(mesh, coefficient, rhs, tol, x, info, &
-                                      bc, maxiter, coarse_hook)
+                                      bc, maxiter, coarse_hook, seam)
+        !! rhs, bc and x are full-mesh vectors also with a seam; the solve runs
+        !! on the seam's primary DOFs and returns x = P x_reduced.
         type(tensor_mesh_t), intent(in) :: mesh
         procedure(diffusion_coefficient) :: coefficient
         real(dp), intent(in) :: rhs(:), tol
@@ -433,13 +489,17 @@ contains
         real(dp), intent(in), optional :: bc(:)
         integer, intent(in), optional :: maxiter
         procedure(coarse_solver_hook), optional :: coarse_hook
+        type(tensor_seam_t), intent(in), optional :: seam
         type(tensor_multigrid_t) :: mg
         integer :: status, n
         info%status = 1
         n = mesh%ndof
         if (size(x) /= n .or. size(rhs) /= n .or. tol <= 0) return
+        if (present(seam)) then
+            if (seam%nfull /= n) return
+        end if
         call build_tensor_multigrid(mesh, coefficient, mg, status, &
-                                    external_coarse=present(coarse_hook))
+                                    external_coarse=present(coarse_hook), seam=seam)
         if (status /= 0) then
             info%status = status
             call free_tensor_multigrid(mg)
@@ -450,7 +510,8 @@ contains
     end subroutine
 
     subroutine solve_tensor_pcg(mg, rhs, tol, x, info, bc, maxiter, coarse_hook)
-        ! Multigrid-preconditioned CG on level 1 of a built hierarchy.
+        ! Multigrid-preconditioned CG on level 1 of a built hierarchy. rhs, bc
+        ! and x are full-mesh vectors; CG runs on the level's reduced DOFs.
         type(tensor_multigrid_t), intent(inout) :: mg
         real(dp), intent(in) :: rhs(:), tol
         real(dp), intent(inout) :: x(:)
@@ -458,69 +519,93 @@ contains
         real(dp), intent(in), optional :: bc(:)
         integer, intent(in), optional :: maxiter
         procedure(coarse_solver_hook), optional :: coarse_hook
-        real(dp), allocatable :: b(:), r(:), z(:), p(:), ap(:), lift(:)
+        real(dp), allocatable :: b(:), r(:), z(:), p(:), ap(:), lift(:), u(:)
         real(dp) :: rho, previous, alpha, denom, initial
-        integer :: limit, it, status, n
+        integer :: limit, it, status, n, nfull
         info%status = 1
         if (mg%nlevels < 1) return
-        n = mg%level(1)%op%mesh%ndof
-        if (size(x) /= n .or. size(rhs) /= n .or. tol <= 0) return
+        nfull = mg%level(1)%op%mesh%ndof
+        if (size(x) /= nfull .or. size(rhs) /= nfull .or. tol <= 0) return
         limit = 300
         if (present(maxiter)) limit = maxiter
-        associate (mesh => mg%level(1)%op%mesh)
-            allocate (b(n), r(n), z(n), p(n), ap(n), lift(n))
-            b = rhs; lift = 0
+        associate (level => mg%level(1))
+            n = level%seam%nreduced
+            allocate (b(n), r(n), z(n), p(n), ap(n), lift(n), u(n))
+            call reduce(rhs, b, .true.)
+            call reduce(x, u, .false.)
+            lift = 0
             if (present(bc)) then
-                if (size(bc) /= n) return
-                where (mesh%boundary) lift = bc
-                call apply_tensor_operator(mg%level(1)%op, lift, ap, eliminate=.false.)
+                if (size(bc) /= nfull) return
+                call reduce(bc, z, .false.)
+                where (level%seam%boundary) lift = z
+                call apply_seam_operator(level%op, level%seam, lift, ap, &
+                                         eliminate=.false.)
                 b = b - ap
             end if
-            where (mesh%boundary)
+            where (level%seam%boundary)
                 b = 0
-                x = 0
+                u = 0
             end where
-        end associate
-        call apply_tensor_operator(mg%level(1)%op, x, ap)
-        r = b - ap
-        initial = max(norm2(b), tiny(1.0_dp))
-        info%residual = norm2(r)/initial
-        if (info%residual <= tol) then
-            info%status = 0
-        else
-            previous = 0
-            do it = 1, limit
-                call tensor_vcycle(mg, 1, r, z, status, coarse_hook)
-                if (status /= 0) exit
-                rho = dot_product(r, z)
-                if (rho <= 0) exit
-                if (it == 1) then
-                    p = z
-                else
-                    p = z + (rho/previous)*p
-                end if
-                call apply_tensor_operator(mg%level(1)%op, p, ap)
-                denom = dot_product(p, ap)
-                if (denom <= 0) exit
-                alpha = rho/denom
-                x = x + alpha*p
-                r = r - alpha*ap
-                info%iterations = it
-                info%residual = norm2(r)/initial
-                if (info%residual <= tol) then
-                    ! Confirm using the actual operator, not only the recurrence.
-                    call apply_tensor_operator(mg%level(1)%op, x, ap)
-                    r = b - ap
+            call apply_seam_operator(level%op, level%seam, u, ap)
+            r = b - ap
+            initial = max(norm2(b), tiny(1.0_dp))
+            info%residual = norm2(r)/initial
+            if (info%residual <= tol) then
+                info%status = 0
+            else
+                previous = 0
+                do it = 1, limit
+                    call tensor_vcycle(mg, 1, r, z, status, coarse_hook)
+                    if (status /= 0) exit
+                    rho = dot_product(r, z)
+                    if (rho <= 0) exit
+                    if (it == 1) then
+                        p = z
+                    else
+                        p = z + (rho/previous)*p
+                    end if
+                    call apply_seam_operator(level%op, level%seam, p, ap)
+                    denom = dot_product(p, ap)
+                    if (denom <= 0) exit
+                    alpha = rho/denom
+                    u = u + alpha*p
+                    r = r - alpha*ap
+                    info%iterations = it
                     info%residual = norm2(r)/initial
                     if (info%residual <= tol) then
-                        info%status = 0
-                        exit
+                        ! Confirm using the actual operator, not only the recurrence.
+                        call apply_seam_operator(level%op, level%seam, u, ap)
+                        r = b - ap
+                        info%residual = norm2(r)/initial
+                        if (info%residual <= tol) then
+                            info%status = 0
+                            exit
+                        end if
                     end if
-                end if
-                previous = rho
-            end do
-        end if
-        x = x + lift
+                    previous = rho
+                end do
+            end if
+            u = u + lift
+            if (level%seam%nslave == 0) then
+                x = u
+            else
+                call seam_expand(level%seam, u, x)
+            end if
+        end associate
+    contains
+        subroutine reduce(full, reduced, fold)
+            !! Loads fold with P^T; primary values are restricted by injection.
+            real(dp), intent(in) :: full(:)
+            real(dp), intent(out) :: reduced(:)
+            logical, intent(in) :: fold
+            if (mg%level(1)%seam%nslave == 0) then
+                reduced = full
+            else if (fold) then
+                call seam_fold(mg%level(1)%seam, full, reduced)
+            else
+                reduced = full(mg%level(1)%seam%primary)
+            end if
+        end subroutine
     end subroutine
 
     subroutine free_tensor_multigrid(mg)
