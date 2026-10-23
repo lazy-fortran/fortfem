@@ -313,39 +313,44 @@ contains
         real(dp), intent(in) :: x(:)
         procedure(gradient_function) :: exact
         real(dp) :: error
-        real(dp), allocatable :: local(:), grad(:, :), t1(:), t2(:), b(:, :, :)
-        real(dp) :: g(3, 3), m, det, identity(3, 3), e(3), gx(3), unit(1, 1)
-        integer :: el, q, dir, ws, dim, mq
+        real(dp), allocatable :: local(:), grad(:, :), t1(:), t2(:)
+        real(dp) :: g(3, 3), m, det, identity(3, 3), e(3), gx(3)
+        integer :: el, q, dir, ws, dim, mq, c(3)
         dim = op%mesh%dim
         mq = product(op%no)
         ws = maxval([op%ni, op%no])**3
-        allocate (local(product(op%ni)), grad(mq, 3), t1(ws), t2(ws), &
-                  b(op%no(1), op%ni(1), 3))
+        allocate (local(product(op%ni)), grad(mq, 3), t1(ws), t2(ws))
         identity = 0
         identity(1, 1) = 1; identity(2, 2) = 1; identity(3, 3) = 1
-        unit = 1
         error = 0
         grad = 0
         do el = 1, op%mesh%nelem
             local = x(op%mesh%dof(:, el))
+            c = op%cell(:, el)
             do dir = 1, dim
-                b(:, :, 1) = op%line%b(:, :, 1)
-                b(:, :, 2) = op%line%b(:, :, 1)
-                b(:, :, 3) = op%line%b(:, :, 1)
-                b(:, :, dir) = op%line%d(:, :, 1)
-                if (dim == 2) then
-                    call tensor_contract(op%ni, op%no, b(:, :, 1), b(:, :, 2), unit, &
-                                         local, grad(:, dir), t1, t2)
-                else
-                    call tensor_contract(op%ni, op%no, b(:, :, 1), b(:, :, 2), &
-                                         b(:, :, 3), local, grad(:, dir), t1, t2)
-                end if
+                select case (dir)
+                case (1)
+                    call tensor_contract(op%ni, op%no, op%line(1)%d(:, :, c(1)), &
+                                         op%line(2)%b(:, :, c(2)), &
+                                         op%line(3)%b(:, :, c(3)), local, &
+                                         grad(:, dir), t1, t2)
+                case (2)
+                    call tensor_contract(op%ni, op%no, op%line(1)%b(:, :, c(1)), &
+                                         op%line(2)%d(:, :, c(2)), &
+                                         op%line(3)%b(:, :, c(3)), local, &
+                                         grad(:, dir), t1, t2)
+                case default
+                    call tensor_contract(op%ni, op%no, op%line(1)%b(:, :, c(1)), &
+                                         op%line(2)%b(:, :, c(2)), &
+                                         op%line(3)%d(:, :, c(3)), local, &
+                                         grad(:, dir), t1, t2)
+                end select
             end do
             do q = 1, mq
                 gx = 0
                 call exact(op%points(:, q, el), gx(1:dim))
                 e = grad(q, :) - matmul(transpose(op%jac(:, :, q, el)), gx)
-                call metric_at(op%jac(:, :, q, el), identity, op%weight(q), 0.0_dp, &
+                call metric_at(op%jac(:, :, q, el), identity, op%weight(q, el), 0.0_dp, &
                                g, m, det)
                 error = error + dot_product(e(1:dim), matmul(g(1:dim, 1:dim), e(1:dim)))
             end do
