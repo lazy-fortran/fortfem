@@ -282,7 +282,8 @@ target_link_libraries(fortfem_lab_gs PUBLIC
     fortfem_tensor_nonlinear fortfem_tensor_solver)
 endif()
 if(FORTFEM_BUILD_TESTING)
-    add_executable(test_lab_grad_shafranov test/test_lab_grad_shafranov.f90)
+    add_executable(test_lab_grad_shafranov
+        benchmark/lab/neq1/test_lab_grad_shafranov.f90)
     target_link_libraries(test_lab_grad_shafranov PRIVATE fortfem_lab_gs)
     add_test(NAME test_lab_grad_shafranov COMMAND test_lab_grad_shafranov
         ${PROJECT_SOURCE_DIR}/benchmark/lab/neq1/solovev_iter.nml)

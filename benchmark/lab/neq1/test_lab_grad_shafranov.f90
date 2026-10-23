@@ -16,7 +16,8 @@ program test_lab_grad_shafranov
     real(dp) :: errors(2), axis_errors(2)
     integer :: status, failures, k
     failures = 0
-    call get_command_argument(1, path)
+    path = 'benchmark/lab/neq1/solovev_iter.nml' ! default: run from the repository root
+    if (command_argument_count() >= 1) call get_command_argument(1, path)
     call read_gs_case(trim(path), case, status)
     call expect(status == 0, 'read case namelist')
     if (status /= 0) error stop 'test_lab_grad_shafranov failed'
