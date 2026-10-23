@@ -228,23 +228,40 @@ The overlap integrals are exact up to quadrature on curved cells. Master faces
 are split into nearly bilinear parts, whose charts invert reliably near their
 squares, and slave faces into still flatter parts. A slave part that is larger
 than an eighth of a master part it meets is halved against that master part
-only; at a quarter, fan nodes of a rigid twist fell outside the slave part. Each slave part is clipped in the chart of a master part, and a Gauss
-rule on the fan of curved triangles from the polygon centre integrates the
-overlap, so no master or slave kink lies inside a quadrature cell. Clipping a
-large, nearly affine slave face in a curved master chart, as a shear-free
-twist produces, met spurious fold preimages, and the size bound removes that
-case. A global bound, a quarter of the smallest master part for every slave
-part, built 45 million overlap nodes for the five slave faces of the p=2 L3
-seam and took 183 s; the pairwise bound keeps the refinement where the small
-master parts are. Each fan triangle uses the p+q+2 Gauss points per direction
-of the slave mass rule, where q is the geometry degree; the earlier 2p+q+4
-points changed the reproduction and operator checks only at roundoff. The fan keeps its nodes inside the nearly convex overlap, where both charts invert reliably; a node outside either
-cell fails the setup instead of entering the constraint. The discrete rims of the two faces differ by
-the geometry error of the curved boundary. A master cell on a Dirichlet rim is
-therefore not clipped on its rim side, and slave slivers beyond it see the
-polynomial extension of its trace. Without this, constants are not reproduced
-next to a curved rim. The overlap cubature depends only on the geometry, which all p-levels
-share, so `coarsen_tensor_seam` reuses it and p-multigrid restricts and
-prolongs on consistently constrained coarse spaces. The setup is dense in the
-slave rows of the seam, O(n_slave^3), which is acceptable for one cross-section
-but not for a seam with many thousands of slave DOFs.
+only; at a quarter, fan nodes of a rigid twist fell outside the slave part.
+Each slave part is clipped in the chart of a master part, and a Gauss rule on
+the fan of curved triangles from the polygon centre integrates the overlap, so
+no master or slave kink lies inside a quadrature cell. Clipping a large, nearly
+affine slave face in a curved master chart, as a shear-free twist produces, met
+spurious fold preimages, and the size bound removes that case. A global bound,
+a quarter of the smallest master part for every slave part, built 45 million
+overlap nodes for the five slave faces of the p=2 L3 seam and took 183 s; the
+pairwise bound keeps the refinement where the small master parts are. Each fan
+triangle uses the p+q+2 Gauss points per direction of the slave mass rule,
+where q is the geometry degree; the earlier 2p+q+4 points changed the
+reproduction and operator checks only at roundoff. The fan keeps its nodes
+inside the nearly convex overlap, where both charts invert reliably; a node
+outside either cell fails the setup instead of entering the constraint. The
+discrete rims of the two faces differ by the geometry error of the curved
+boundary. A master cell on a Dirichlet rim is therefore not clipped on its rim
+side, and slave slivers beyond it see the polynomial extension of its trace.
+Without this, constants are not reproduced next to a curved rim. The overlap
+cubature depends only on the geometry, which all p-levels share, so
+`coarsen_tensor_seam` reuses it and p-multigrid restricts and prolongs on
+consistently constrained coarse spaces. The setup is dense in the slave rows of
+the seam, O(n_slave^3), which is acceptable for one cross-section but not for a
+seam with many thousands of slave DOFs.
+
+L3 evidence ([V], sCluster job 3356493, `benchmark/lab/RESULTS.md` on the L3
+integration branch): on the exact unit disk with n=1 and 20 phi cells, the
+aligned O-grid with this mortar seam is not more accurate than the periodic
+O-grid at matched p, except at p=2 and ratio 1e3, and is seven times less
+accurate at p=6 and ratio 1e3 (3.5e-7 against 4.8e-8). It needs more PCG
+iterations, and its wall time is 106 to 362 times larger because seam setup
+dominates (9, 36 and 111 s at p=2, 4 and 6 on four threads, before the
+robustness fix above). Already at ratio 1 the aligned error is 1.3 to 4.4
+times the disk error. Field alignment through a nonmatching seam is therefore
+not an accelerator on this case, which is consistent with criterion 3 keeping
+alignment optional. The seam stays available for charts that need it, such as
+KIN6D field-line charts with irrational iota, and its setup cost is the open
+item (overlap cubature on finely split parts, and the dense slave solve).
