@@ -352,8 +352,7 @@ program island_diffusion
     use fortfem_tensor_mesh, only: tensor_mesh_t, ogrid_tensor_mesh
     use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, &
                                        apply_tensor_operator, tensor_load_flux, &
-                                       tensor_l2_error
-    use fortfem_tensor_contractions, only: tensor_contract
+                                       tensor_l2_error, tensor_values
     use fortfem_tensor_solver, only: tensor_solve_info_t, solve_tensor_diffusion
     use fortfem_tensor_operator, only: assemble_tensor_operator
     use fortfem_element_to_csr, only: csr_matrix_t
@@ -525,19 +524,13 @@ contains
         type(tensor_operator_t), intent(in) :: op
         real(dp), intent(in) :: x(:)
         real(dp), intent(out) :: value
-        real(dp), allocatable :: v(:), local(:), t1(:), t2(:), b(:, :)
-        real(dp) :: identity(1, 1)
-        integer :: e, q, ws
-        ws = maxval([op%ni, op%no])**3
-        allocate (v(product(op%no)), local(product(op%ni)), t1(ws), t2(ws))
-        b = op%line%b(:, :, 1)
-        identity = 1
+        real(dp), allocatable :: v(:, :)
+        integer :: e, q
+        call tensor_values(op, x, v)
         value = 0
         do e = 1, op%mesh%nelem
-            local = x(op%mesh%dof(:, e))
-            call tensor_contract(op%ni, op%no, b, b, identity, local, v, t1, t2)
             do q = 1, product(op%no)
-                value = value + op%volume(q, e)*v(q)*exact(op%points(:, q, e))
+                value = value + op%volume(q, e)*v(q, e)*exact(op%points(:, q, e))
             end do
         end do
     end subroutine
@@ -547,20 +540,15 @@ contains
         type(tensor_operator_t), intent(in) :: op
         real(dp), intent(in) :: x(:)
         character(len=*), intent(in) :: path
-        real(dp), allocatable :: v(:), local(:), t1(:), t2(:), b(:, :)
-        real(dp) :: identity(1, 1), err, area, centre(2)
-        integer :: e, q, ws, u
-        ws = maxval([op%ni, op%no])**3
-        allocate (v(product(op%no)), local(product(op%ni)), t1(ws), t2(ws))
-        b = op%line%b(:, :, 1)
-        identity = 1
+        real(dp), allocatable :: v(:, :)
+        real(dp) :: err, area, centre(2)
+        integer :: e, q, u
+        call tensor_values(op, x, v)
         open (newunit=u, file=path, action='write')
         do e = 1, op%mesh%nelem
-            local = x(op%mesh%dof(:, e))
-            call tensor_contract(op%ni, op%no, b, b, identity, local, v, t1, t2)
             err = 0; area = 0; centre = 0
             do q = 1, product(op%no)
-                err = err + op%volume(q, e)*(v(q) - exact(op%points(:, q, e)))**2
+                err = err + op%volume(q, e)*(v(q, e) - exact(op%points(:, q, e)))**2
                 area = area + op%volume(q, e)
                 centre = centre + op%volume(q, e)*op%points(:, q, e)
             end do
