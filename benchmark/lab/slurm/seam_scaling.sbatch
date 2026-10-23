@@ -33,8 +33,11 @@ exe=$(grep -E '(^|/)lab_mf_run$' "$runroot/build-driver.log" | tail -n 1)
 sha256sum "$exe" > "$runroot/executable.sha256"
 out="$runroot/seam-scaling.txt"
 echo "# p threads seam_setup_s wall_s peak_rss_kb rel_l2 iterations host" > "$out"
-for p in ${SEAM_SCALING_POINTS:-"4 6"}; do
-    for t in ${SEAM_SCALING_THREADS:-"1 2 4 8 16"}; do
+# Assign the defaults first: a quoted default inside the for list is one word.
+points=${SEAM_SCALING_POINTS:-"4 6"}
+threads=${SEAM_SCALING_THREADS:-"1 2 4 8 16"}
+for p in $points; do
+    for t in $threads; do
         log="$runroot/p${p}-t${t}.log"
         # The nodes have no /usr/bin/time: wall time and the child high-water
         # mark come from wait4, as in run.py.
