@@ -217,11 +217,15 @@ twist-shift condition ([Beer, Cowley and Hammett 1995](https://doi.org/10.1063/1
 states the same identification for a Fourier binormal coordinate, whereas a C0
 GLL space needs it in real space.
 
-The overlap integrals are exact up to quadrature on curved cells. Slave faces
-are split into nearly bilinear parts, each part is clipped in the chart of the
-larger cell, normally the unsplit master face, and a Gauss rule on the fan of
-curved triangles from the polygon centre integrates the overlap, so no master
-or slave kink lies inside a quadrature cell. The fan keeps its nodes inside the
+The overlap integrals are exact up to quadrature on curved cells. Master faces
+are split into nearly bilinear parts, whose charts invert reliably near their
+squares, and slave faces into still flatter parts no larger than a quarter of
+the smallest master part. Each slave part is clipped in the chart of a master
+part, and a Gauss rule on the fan of curved triangles from the polygon centre
+integrates the overlap, so no master or slave kink lies inside a quadrature
+cell. Clipping a large, nearly affine slave face in a curved master chart, as
+a shear-free twist produces, met spurious fold preimages; the size bound
+removes that case. The fan keeps its nodes inside the
 nearly convex overlap, where both charts invert reliably; a node outside either
 cell fails the setup instead of entering the constraint. The discrete rims of the two faces differ by
 the geometry error of the curved boundary. A master cell on a Dirichlet rim is
