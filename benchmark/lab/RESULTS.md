@@ -865,11 +865,40 @@ of the smallest master part) raised the p=2 seam setup on the workstation to
 183 s and 7.8 GB with 45 million overlap nodes. Halving a slave part only
 against each master part it meets, threading over slave parts instead of the
 five slave faces, and the p+q+2 fan rule bring it to 52 s at p=2 and 205 s at
-p=4 (four threads; errors agree with job 3356493 to 5e-12 relative). That is still about five times the
-setup of job 3356493, which predates the robustness fix. sCluster job 3357470
-measures the strong scaling of this setup on 1 to 16 threads at p=4 and 6
-(`slurm/seam_scaling.sbatch`), and job 3357471 reruns the rows above with all
-three ratios. Both were pending when this section was written.
+p=4 (four threads, errors as in job 3356493 to 5e-12 relative). That is still
+about five times the setup of job 3356493, which predates the robustness fix.
+
+[V] `seam-l3-1e6-20261023.csv` holds sCluster job 3357471 (node7, revision
+98d652af with both fixes, flags and threads as above). Errors and iterations
+at ratios 1 and 1e3 repeat job 3356493 to the printed digits, and the seam
+setup takes 40, 148 and 452 s at p=2, 4 and 6 (RSS 2.3, 6.1 and 13.1 GiB).
+The ratio-1e6 rows are:
+
+| p | layout | DOFs | rel L2 | its | wall (s) | RSS (MiB) | status |
+|---:|---|---:|---:|---:|---:|---:|---|
+| 2 | disk | 1000 | 3.554e-02 | 62 | 0.053 | 20 | V |
+| 2 | aligned | 1008 | 3.705e-02 | 324 | 41.3 | 2309 | V |
+| 4 | disk | 7120 | 1.244e-05 | 451 | 0.842 | 281 | V |
+| 4 | aligned | — | — | 1500 | 156 | 6292 | failed |
+| 6 | disk | 23160 | 4.599e-08 | 948 | 5.00 | 1540 | V |
+| 6 | aligned | — | — | 1500 | 480 | 13419 | failed |
+
+[V] The two aligned failures are not the roundoff floor: after 1500
+iterations the relative residual is still 8.2e-3 (p=4) and 3.9e-2 (p=6), so
+p-multigrid with point Chebyshev-Jacobi smoothing does not precondition the
+seam-constrained operator when the strong direction follows the mesh. [H] Line
+or semi-coarsening smoothers along the aligned direction would be needed, as
+the C1 field-line chart of KIN6D also observed. The disk layout converges at
+every p, with 948 iterations at p=6. At ratio 1e6 the aligned layout is
+therefore not usable with the present solver, which strengthens the verdict
+above.
+
+[V] sCluster job 3357470 was meant to measure strong scaling but ran a
+single case, because a quoted default in the `for` list of
+`slurm/seam_scaling.sbatch` stayed one word. Its pilot 3357469 (node20, p=2)
+gives 169 s on one thread and 44 s on four (3.8 times) with relL2 equal to
+2e-15 relative. The corrected script runs as pilot 3358067 and scaling job
+3358068 at revision bb80f3aa of this branch.
 
 ### L6: reused N1 external reference measurements
 
