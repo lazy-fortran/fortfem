@@ -32,7 +32,7 @@ program lab_mf_run
     real(dp), allocatable :: rhs(:), solution(:), bc(:), values(:), local(:)
     real(dp), allocatable :: scratch1(:), scratch2(:), b(:, :), d(:, :), jets(:, :)
     real(dp) :: ratio, err, norm, herr, hnorm, aerr, anorm, projection, value
-    real(dp) :: ballerr, ballnorm, g(12), radius, phi
+    real(dp) :: ballerr, ballnorm, g(12), radius, phi, tolerance
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
     integer :: p, n, status, i, e, q, ws, dir, node, fine_nnz
     integer(8) :: tick, tock, rate
@@ -116,11 +116,16 @@ program lab_mf_run
     end do
     solution = 0
     fine_nnz = 0
+    ! On the exact disk at ratio 1e6 the true relative residual stalls at 5e-10
+    ! to 2e-9 while the recurrence passes 1e-10, so the tolerance follows the
+    ! roundoff floor, which grows with the ratio.
+    tolerance = 1.e-10_dp
+    if (layout /= 'unaligned') tolerance = max(tolerance, 1.e-14_dp*ratio)
     if (layout == 'aligned') then
-        call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
+        call solve_tensor_diffusion(mesh, coefficient, rhs, tolerance, solution, info, &
                                     bc=bc, maxiter=1500, seam=seam)
     else if (preconditioner == 'pmg') then
-        call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
+        call solve_tensor_diffusion(mesh, coefficient, rhs, tolerance, solution, info, &
                                     bc=bc, maxiter=1500)
     else
         ! The polar comparison uses the same tensor operator's assembled
