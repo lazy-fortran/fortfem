@@ -56,10 +56,8 @@ procedure argument can replace the coarse solve, for example with AMG. PCG
 confirms convergence using a fresh operator residual. Nonzero Dirichlet values
 are lifted before solving the masked interior system.
 
-B-spline and Fourier builders plug into the line contract. The present
-isoparametric mesh and p-coarsening adapter use GLL lines, so mixed-family
-operator construction still needs an adapter selecting per-direction tables
-and transfer rules. The shared contract itself requires no changes.
+B-spline and Fourier builders plug into the same line contract and the same
+operator; see "Mixed lines in the MF operator" below.
 
 ## MF core status
 
@@ -145,3 +143,38 @@ separate extension.
 commuting identities, periodic wrapping and cardinal values, Fourier products
 and eigenvalues, and 1D and 2D mass/stiffness against the existing sparse
 B-spline assembly on an affine nonuniform patch, with a 1e-13 assembly tolerance.
+
+## Mixed lines in the MF operator
+
+`fortfem_line_mesh` builds meshes from one line table per direction and a
+per-cell 1D cell index, so GLL, B-spline (any degree and continuity, open or
+periodic) and Fourier lines and their products use one gather, one
+sum-factorised interpolation, the same generated metric kernel and one
+scatter. Cells are knot spans for splines and one global cell for Fourier.
+Geometry is stored per cell as Lagrange samples of degree q in every
+multi-cell direction. In a single-cell Fourier direction it is stored at the
+line's nq equispaced quadrature points, with the periodic spectral
+differentiation matrix, so the geometry does not depend on the number of
+retained modes and is identical on mode-coarsened levels.
+`line_ogrid_mesh` glues five open-knot patches through the axis with C0
+interfaces through the general gather map, using MF1's O-grid layout.
+`tensor_boundary_projection` supplies Dirichlet data for non-nodal bases by a
+face-wise L2 projection.
+
+`fortfem_line_hierarchy` builds nested hierarchies. B-spline levels halve the
+patch spans by knot insertion, and periodic spline phi lines halve their spans
+while at least degree+1 spans remain. Fourier levels truncate modes, and GLL
+levels lower the degree p -> (p+1)/2 on the same cells. A single B-spline box
+supports per-direction semi-coarsening for aligned anisotropy.
+`line_mesh_prolongation` forms the global prolongation from the 1D matrices,
+and `build_line_multigrid` reuses MF1's Chebyshev-Jacobi smoothing, its
+transposed restriction and its coarse LDLT. The Galerkin identity
+P^T A_fine P = A_coarse holds to roundoff for O-grid spline and Fourier
+hierarchies when geometry and quadrature agree between the levels.
+
+C1 polar splines (`fortfem_bspline_polar`, Toshniwal-Hughes extraction) enter
+only as a comparison for criterion 2. The driver assembles the tensor
+operator on the polar map, restricts it by the extraction and solves it
+directly. `fortfem_lab_igaax` writes one CSV row per run, and
+`test_lab_line_operator` and `test_lab_line_hierarchy` are the named tests.
+

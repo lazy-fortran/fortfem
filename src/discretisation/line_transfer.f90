@@ -1,8 +1,9 @@
 module fortfem_line_transfer
     ! One-dimensional nested transfers between line tables of the same family,
     ! for multigrid on line-table meshes: B-spline knot insertion (uniform span
-    ! halving, any degree/continuity, open or periodic) and Fourier mode
-    ! truncation. Matrices map coarse line dofs to fine line dofs.
+    ! halving, any degree/continuity, open or periodic), Fourier mode
+    ! truncation and GLL degree lowering on the same cells. Matrices map
+    ! coarse line dofs to fine line dofs.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_bspline_feec, only: evaluate_bspline_basis
     use fortfem_gll_line, only: gll_rule, lagrange_table
