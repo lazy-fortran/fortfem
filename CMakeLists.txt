@@ -262,7 +262,11 @@ if(FORTFEM_HAVE_HEAP_TRAMPOLINES)
         $<$<COMPILE_LANGUAGE:Fortran>:-ftrampoline-impl=heap>)
 endif()
 if(FORTFEM_BUILD_TESTING)
-    add_executable(test_lab_newton_krylov test/test_lab_newton_krylov.f90)
+    add_executable(test_lab_newton_krylov
+        test/test_lab_newton_krylov.f90
+        src/generated/fortfem_nurbs_geometry_products.f90
+        src/elements/bspline_feec.f90
+        src/discretisation/bspline_lines.f90)
     target_link_libraries(test_lab_newton_krylov PRIVATE
         fortfem_tensor_nonlinear fortfem_tensor_solver)
     add_test(NAME test_lab_newton_krylov COMMAND test_lab_newton_krylov)
