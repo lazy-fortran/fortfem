@@ -5,15 +5,21 @@
 #SBATCH --cpus-per-task=96
 #SBATCH --nodelist=node12
 #SBATCH --time=06:00:00
-#SBATCH --output=/home/ert/neq1-20261022/vmec/logs/%x-%j.log
 # VMEC++ matched-accuracy scan on the exact Solov'ev case.
-# MODE=pilot (one point) or MODE=scan (default):  sbatch --export=ALL,MODE=pilot vmec_scan.sbatch
+# MODE=pilot (one point) or MODE=scan (default); the log path cannot use shell
+# variables in #SBATCH lines, so pass it on the command line:
+#   sbatch --export=ALL,MODE=pilot --output="$RUN/vmec/logs/%x-%j.log" vmec_scan.sbatch
+# Environment (defaults relative to $HOME):
+#   RUN  run directory (default $HOME/neq1-20261022); $RUN/vmec holds mem_guard.sh,
+#        py/ (vmec_case.py and helpers), case/ (case.nml, profiles, samples) and logs/
+#   PY   Python of a virtualenv with numpy, scipy, simsopt and vmecpp
+#        (default $HOME/k6bench-20261021/venv/bin/python)
 # Points run serially on an exclusive node, each pinned to the first `threads` cores,
 # under mem_guard (64 GiB) and /usr/bin/time -v.  Resumable: finished points are skipped.
 set -Eeuo pipefail
-ROOT=/home/ert/neq1-20261022/vmec
+ROOT=${RUN:-$HOME/neq1-20261022}/vmec
 cd "$ROOT"
-PY=/home/ert/k6bench-20261021/venv/bin/python
+PY=${PY:-$HOME/k6bench-20261021/venv/bin/python}
 MODE=${MODE:-scan}
 export MEM_GUARD_INTERVAL=1 PYTHONUNBUFFERED=1 MPLBACKEND=Agg
 unset DISPLAY

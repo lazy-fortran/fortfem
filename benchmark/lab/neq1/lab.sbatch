@@ -1,19 +1,27 @@
 #!/bin/bash
 # NEQ1 lab Grad-Shafranov timing on one exclusive sCluster node.
-# Submit from anywhere:  sbatch --export=ALL,MODE=pilot|scan lab.sbatch
-# Logs go to $RUN/logs (outside the worktree); REPO must be a clean checkout.
+# Submit from anywhere (the log path cannot use shell variables in #SBATCH lines):
+#   sbatch --export=ALL,MODE=pilot|scan|caseB|scaling \
+#       --output="$RUN/logs/lab-%j.log" lab.sbatch
+# Environment (defaults relative to $HOME):
+#   RUN   run directory (default $HOME/neq1-20261022); needs vmec/mem_guard.sh, the
+#         VMEC++ case in vmec/case, and logs/ for the --output above; results go to
+#         $RUN/lab/<MODE>-<jobid>
+#   REPO  clean checkout of the revision under test (default $HOME/wt/fortfem/neq1-20261022)
+#   PY    Python of a virtualenv with numpy, scipy, simsopt and vmecpp
+#         (default $HOME/k6bench-20261021/venv/bin/python); used for l6_metric.py,
+#         vmec_case.py and the case-B profile post-processing
 #SBATCH --job-name=neq1-lab
 #SBATCH --partition=compute
 #SBATCH --exclusive
 #SBATCH --cpus-per-task=96
 #SBATCH --time=02:00:00
-#SBATCH --output=/home/ert/neq1-20261022/logs/lab-%j.log
 set -Eeuo pipefail
 export OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
 unset DISPLAY
-RUN=${RUN:-/home/ert/neq1-20261022}
-REPO=${REPO:-/home/ert/wt/fortfem/neq1-20261022}
-PY=${PY:-/home/ert/k6bench-20261021/venv/bin/python}
+RUN=${RUN:-$HOME/neq1-20261022}
+REPO=${REPO:-$HOME/wt/fortfem/neq1-20261022}
+PY=${PY:-$HOME/k6bench-20261021/venv/bin/python}
 MODE=${MODE:-pilot}
 BUILD=$RUN/lab/build
 CASE=$RUN/vmec/case
