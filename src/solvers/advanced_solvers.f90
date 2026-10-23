@@ -8,6 +8,7 @@ module fortfem_advanced_solvers
         incomplete_cholesky_factor_t
     use fortfem_sparse_incomplete_cholesky, only: &
         apply_sparse_incomplete_cholesky, build_sparse_ichol, &
+        build_sparse_ichol_row, &
         sparse_incomplete_cholesky_factor_t
     use fortfem_sparse_ilut, only: apply_sparse_ilut, build_sparse_ilut_row, &
         sparse_ilut_factor_t
@@ -894,7 +895,9 @@ contains
             call matvec(p, Ap)
             pAp = dot_product(p, Ap)
 
-            if (abs(pAp) < 1.0e-14_dp) then
+            ! A positive p.Ap remains usable at small residual/RHS scales.
+            ! An absolute cutoff breaks scale invariance before convergence.
+            if (pAp <= 0.0_dp) then
                 exit
             end if
 
@@ -1160,6 +1163,15 @@ contains
 
         case ("ichol", "ic", "ic0")
             call build_sparse_ichol(A_sparse, opts%drop_tolerance, &
+                opts%fill_level, precond%sparse_ichol, sparse_status)
+            if (sparse_status%code /= 0) then
+                precond%type = "none"
+            else
+                precond%type = "sparse_ichol"
+            end if
+
+        case ("ichol_row")
+            call build_sparse_ichol_row(A_sparse, opts%drop_tolerance, &
                 opts%fill_level, precond%sparse_ichol, sparse_status)
             if (sparse_status%code /= 0) then
                 precond%type = "none"
