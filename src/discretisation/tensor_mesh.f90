@@ -1,6 +1,7 @@
 module fortfem_tensor_mesh
     use, intrinsic :: iso_fortran_env, only: dp => real64, int64
     use fortfem_gll_line, only: gll_rule, lagrange_table
+    use fortfem_tensor_line_tables, only: tensor_line_tables_t
     implicit none
     private
     public :: tensor_mesh_t, build_tensor_mesh, structured_tensor_mesh
@@ -10,6 +11,11 @@ module fortfem_tensor_mesh
         integer, allocatable :: vertices(:, :), dof(:, :)
         real(dp), allocatable :: geometry(:, :, :), coordinates(:, :)
         logical, allocatable :: boundary(:)
+        ! Line-table discretisations (fortfem_line_mesh): per-direction 1D tables,
+        ! the 1D cell of every cell and its patch. Unallocated `cell` selects the
+        ! GLL p-nodal layout above, with geometry nodes of `geometry_degree`.
+        type(tensor_line_tables_t) :: line(3)
+        integer, allocatable :: cell(:, :), patch(:)
     end type
     abstract interface
         subroutine geometry_map(xi, x)
