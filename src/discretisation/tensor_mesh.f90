@@ -162,22 +162,27 @@ contains
         status = 0
     end subroutine
 
-    subroutine structured_tensor_mesh(dim, cells, p, mesh, status, map, periodic, q)
+    subroutine structured_tensor_mesh(dim, cells, p, mesh, status, map, periodic, q, &
+                                      dirichlet)
         integer, intent(in) :: dim, cells(3), p
         type(tensor_mesh_t), intent(out) :: mesh
         integer, intent(out) :: status
         procedure(geometry_map), optional :: map
         logical, intent(in), optional :: periodic(3)
         integer, intent(in), optional :: q
+        !! Non-periodic directions without Dirichlet ends, e.g. an open seam.
+        logical, intent(in), optional :: dirichlet(3)
         real(dp), allocatable :: x(:), w(:), geom(:, :, :)
         integer, allocatable :: vertices(:, :), gather(:, :)
         integer :: shape(3), nodes(3), vshape(3), degree, ng, e, i, a, b, k, c, &
                    ec(3), lc(3), vc(3), gc(3), ne, nl
         real(dp) :: xi(dim)
-        logical :: per(3)
+        logical :: per(3), fixed(3)
         status = 1
         if (dim < 2 .or. dim > 3 .or. p < 1) return
         if (any(cells(1:dim) < 1)) return
+        fixed = .true.
+        if (present(dirichlet)) fixed = dirichlet
         degree = p
         if (present(q)) degree = q
         if (degree < 1) return
@@ -237,7 +242,7 @@ contains
                     gc(3) = k
                     c = 1 + a + nodes(1)*(b + nodes(2)*k)
                     do i = 1, dim
-                        if (per(i)) cycle
+                        if (per(i) .or. .not. fixed(i)) cycle
                     if (gc(i) == 0 .or. gc(i) == nodes(i) - 1) mesh%boundary(c) = .true.
                     end do
                 end do
@@ -246,24 +251,32 @@ contains
     end subroutine
 
     subroutine ogrid_tensor_mesh(dim, n, p, mesh, status, nphi, q, boundary, &
-                                 center, core_half)
+                                 center, core_half, map, periodic)
         ! Five-block O-grid through the axis. Without boundary: unit disk (2D)
         ! or the deformed reference torus (3D). With boundary (2D only): the
         ! core square is center +/- core_half and each outer block blends its
         ! core edge linearly into boundary(angle) along the radial direction.
+        ! Optional map receives (x, y[, phi/(2 pi)]); periodic=.false. keeps
+        ! the phi=2 pi face open for a field-aligned seam.
         integer, intent(in) :: dim, n, p
         type(tensor_mesh_t), intent(out) :: mesh
         integer, intent(out) :: status
         integer, intent(in), optional :: nphi, q
         procedure(ogrid_boundary), optional :: boundary
         real(dp), intent(in), optional :: center(2), core_half(2)
+        procedure(geometry_map), optional :: map
+        logical, intent(in), optional :: periodic
         real(dp), allocatable :: x(:), w(:), geom(:, :, :), verts(:, :)
         integer, allocatable :: corners(:, :)
-        real(dp) :: uv(3), point(3), angle, radial, tangent, rx, ry, tmp, phi, shape
+        real(dp) :: uv(3), point(3), angle, radial, tangent, rx, ry, tmp, phi, shape, &
+                    key(3), turn
         real(dp) :: inner(2), outer(2), origin(2), half(2)
         real(dp), parameter :: core = 0.32_dp, pi = acos(-1.0_dp)
         integer :: degree, np, ne, ng, e, block, ix, iy, iz, a, i, c, local(3), nv, v
+        logical :: closed
         status = 1
+        closed = .true.
+        if (present(periodic)) closed = periodic
         if (dim < 2 .or. dim > 3 .or. n < 1 .or. p < 1) return
         degree = p
         if (present(q)) degree = q
@@ -284,7 +297,7 @@ contains
         end if
         ng = (degree + 1)**dim
         ne = 5*n*n*np
-        allocate (geom(dim, ng, ne), corners(2**dim, ne), verts(dim, 2**dim*ne))
+        allocate (geom(dim, ng, ne), corners(2**dim, ne), verts(3, 2**dim*ne))
         call gll_rule(degree, x, w, status)
         if (status /= 0) return
         e = 0
@@ -295,6 +308,7 @@ contains
                     do ix = 0, n - 1
                         e = e + 1
                         do a = 1, ng + 2**dim
+                            c = 0
                             if (a <= ng) then
                                 call decode_index(a - 1, degree + 1, local)
                                 do i = 1, 3
@@ -337,7 +351,18 @@ contains
                             point(1) = rx
                             point(2) = ry
                             point(3) = 0
-                            if (dim == 3) then
+                            turn = (iz + uv(3))/np
+                            ! A mapped grid identifies corners by reference position.
+                            key = [rx, ry, 0.0_dp]
+                            if (dim == 3) key(3) = turn
+                            if (closed .and. key(3) >= 1) key(3) = key(3) - 1
+                            if (present(map)) then
+                                if (dim == 3) then
+                                    call map([rx, ry, turn], point)
+                                else
+                                    call map([rx, ry], point(1:2))
+                                end if
+                            else if (dim == 3) then
                                 ! Smooth Cartesian deformation through the axis.
                                 shape = 1 + 0.08_dp*cos(5*phi)
                                 point(1) = (3 + shape*rx)*cos(phi)
@@ -348,15 +373,16 @@ contains
                             if (a <= ng) then
                                 geom(:, a, e) = point(1:dim)
                             else
+                                if (.not. present(map)) key = point
                                 v = 1
                                 do while (v <= nv)
-                                    if (maxval(abs(verts(:, v) - point(1:dim))) &
+                                    if (maxval(abs(verts(:, v) - key)) &
                                         < 1.e-11_dp) exit
                                     v = v + 1
                                 end do
                                 if (v > nv) then
                                     nv = v
-                                    verts(:, v) = point(1:dim)
+                                    verts(:, v) = key
                                 end if
                                 corners(c, e) = v
                             end if
