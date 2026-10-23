@@ -98,6 +98,7 @@ if(FORTFEM_BUILD_TESTING)
 endif()
 add_library(fortfem_tensor_operator STATIC
     src/generated/fortfem_tensor_metric_products.f90
+    src/discretisation/line_mesh.f90
     src/discretisation/tensor_operator.f90)
 set_target_properties(fortfem_tensor_operator PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")

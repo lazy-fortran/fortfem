@@ -193,9 +193,171 @@ the discrete operator to a smooth nodal field. Continuum errors are the separate
 MMS tables above. These measurements establish neither a VMEC/GVEC comparison
 nor the FEM/BEM free-boundary coupling in criterion 1.
 
-Mixed B-spline/Fourier operator adapters remain separate work. General automatic
+Mixed B-spline/Fourier operator adapters are in the IGA-AX section. General automatic
 coarsening assumes a regular cell complex, and propagation of explicit
 periodic multigraph entities to coarse levels needs further validation.
 The exact-diagonal validation covers cells without dof self-identifications;
 one-cell periodic self-identifications are outside the verified scope.
 <!-- MF1 END -->
+
+<!-- IGAAX BEGIN -->
+## IGA-AX: GLL, B-spline and Fourier lines through one MF operator
+
+All rows use the same driver, operator, generated metric kernel, MG-PCG and
+coarse Cholesky. Only the line tables and the transfer rule change between
+families. Solves use relative tolerance 1e-10 from a zero initial guess, with
+Chebyshev-Jacobi smoothing of degree 3. Wall times include hierarchy setup and
+coarse factorisation but not error evaluation. RSS is the process VmHWM.
+
+[V] Evidence run: sCluster `node7` (exclusive), Slurm **3356269**, revision
+3bf52b951e475b9793c480d3de35aa19d929c1ec (pre-rebase; its source tree equals the
+source of the commit adding this section, which only adds text), GNU Fortran 12.2.0, fpm 0.13.0
+`--profile release` (`-O3 -funroll-loops -fcoarray=single -fPIC -fopenmp`),
+`OMP_PROC_BIND=close OMP_PLACES=cores`. Driver SHA256 388f41ff…, libc
+6b4a4535…. The CSVs `disk.csv`, `iters.csv`, `scan.csv` and `threads.csv` (with
+SHA256SUMS) are in `scluster:~/runs/fortfem-igaax-20261023/sweep-3356269/`.
+The pilot 3356244 ran on a shared node, so its timings are not used.
+
+### Operator checks (criterion 4)
+
+[V] `test_lab_line_operator` checks the spline MF apply against the existing
+assembled B-spline H1 operators for 2D/3D and p=1..4 (worst relative error
+2.9e-14), mixed spline x GLL x Fourier against the CSR oracle (3.2e-16) and
+spline x Fourier exactness on trigonometric polynomials (L2 7.6e-15). It also
+checks Galerkin nestedness P^T A_f P = A_c across O-grid interfaces and
+Fourier mode truncation (2.1e-14). `test_lab_line_hierarchy` checks rates,
+bounded iterations and the GLL p-prolongation.
+
+### Disk MMS through the axis vs C1 polar splines (criterion 2)
+
+u = exp(0.1x + 0.2y) on the unit disk. The O-grid has five C0-glued patches with
+n spans or cells per patch direction, and the C1 polar comparison uses n radial
+spans, 4n angular spans and a dense direct solve. "Axis" columns restrict to
+r < 0.2. The rows show n=16 at 4 threads, and the rates are log2 of the error
+ratio between n=8 and n=16.
+
+| Family | p | DOFs | Its | Global rel L2 | Axis max | Axis L2 | Global rate |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| spline O-grid | 2 | 1,480 | 6 | 1.31e-7 | 4.25e-9 | 8.83e-10 | 3.12 |
+| GLL O-grid | 2 | 5,185 | 7 | 1.27e-7 | 4.28e-9 | 8.83e-10 | 2.98 |
+| C1 polar | 2 | 1,027 | direct | 1.42e-7 | 2.94e-8 | 3.80e-9 | 3.07 |
+| spline O-grid | 3 | 1,657 | 14 | 7.64e-9 | 1.01e-10 | 2.98e-11 | 4.02 |
+| GLL O-grid | 3 | 11,617 | 7 | 1.46e-9 | 1.09e-11 | 3.13e-12 | 3.90 |
+| C1 polar | 3 | 1,091 | direct | 6.15e-9 | 8.36e-10 | 8.43e-11 | 4.07 |
+| spline O-grid | 4 | 1,844 | 27 | 2.31e-10 | 9.57e-11 | 2.12e-11 | 5.03 |
+| GLL O-grid | 4 | 20,609 | 9 | 1.66e-11 | 8.27e-12 | 2.80e-12 | 4.81 |
+| C1 polar | 4 | 1,155 | direct | 2.11e-10 | 2.66e-11 | 2.70e-12 | 5.11 |
+
+[V] All three discretisations converge globally at rate p+1. The O-grid has no
+axis degradation. At p=2 its near-axis maximum error is 7x below the polar
+spline at the same n. At p>=3 the O-grid axis columns stop at about 1e-10,
+which is the PCG tolerance. A local rerun with `tol=1e-14` (revision
+3bf52b95, 4 threads) gives an axis maximum of 6.4e-12 at n=16 and 3.5e-13 at
+n=32 for spline p=3, 130x below polar at n=16, and 9.7e-14 for GLL p=3 at
+n=32. Per DOF, the polar spline space is the most compact, but it needs the
+extraction operator and a C1 pole constraint, and it has no multigrid here.
+
+### Multigrid iterations vs p, h and anisotropy (criterion 4)
+
+Disk MMS, 4 threads, PCG iterations to 1e-10 for n = 4, 8, 16, 32, 64
+(spline h-MG by span halving) or n = 2, 4, 8, 16 (GLL p-MG on fixed cells):
+
+| Hierarchy | p=2 | p=3 | p=4 | p=5 | p=6 | p=8 |
+|---|---|---|---|---|---|---|
+| spline h-MG, max continuity | 6,6,6,6,6 | 15,14,14,14,14 | 27 (all n) | 61,49,54,54,53 | | |
+| GLL p-MG | 6,7,7,7 | | 7,7,8,9 | | 8,8,10,10 | 9,10,11,12 |
+
+[V] Spline h-multigrid is h-independent but not p-robust, while GLL
+p-multigrid is close to robust in both p and h. [H] The cause is the
+point-Jacobi Chebyshev smoother acting on maximally smooth splines. Hofreither
+and Takacs report p-robust smoothers built on stable splittings of the spline
+space (SIAM J. Numer. Anal. 55(4):2004-2024, 2017; arXiv:1607.05035), which
+are not implemented here.
+
+Aligned anisotropy uses u = sin(pi x) sin(pi y) on one spline box with
+K = diag(chi, 1), at n = 16 and n = 64 spans:
+
+| chi | Coarsening | p=2 | p=3 | p=4 |
+|---|---|---|---|---|
+| 1e3 | full | 17, 49 | 24, 64 | 29, 89 |
+| 1e3 | semi (strong direction only) | 6, 6 | 11, 9 | 16, 17 |
+| 1e6 | full | 17, 95 | 25, 121 | 31, 174 |
+| 1e6 | semi | 6, 6 | 10, 8 | 16, 15 |
+
+[V] Semi-coarsening along the aligned strong direction makes the iteration
+counts independent of chi and h, while full coarsening degrades with both.
+
+### L1 torus at matched error (criterion 4)
+
+L1 is the shaped nfp=5 torus from `benchmark/lab/PROBLEMS.md`, u = sin x +
+cos y + sin z + (x+y+z)/10, solved on the five-patch O-grid through the axis
+and extended in phi. Phi is discretised with periodic lines of the same family
+(12n cells or spans) or with M Fourier modes. A 16-thread scan covered 69 runs
+(`scan.csv`). For each family the cheapest run at rel L2 <= 1e-6 and <= 1e-8
+was then timed at 1, 4 and 16 threads:
+
+| Target | Family | p | n | phi | DOFs | Its | rel L2 | Wall 1 / 4 / 16 thr (s) | RSS 16 thr MiB |
+|---|---|---:|---:|---|---:|---:|---:|---|---:|
+| 1e-6 | GLL | 8 | 1 | 12 cells | 32,352 | 14 | 6.74e-7 | 0.49 / 0.23 / **0.23** | 262 |
+| 1e-6 | GLL x Fourier | 8 | 1 | M=24 | 16,513 | 20 | 5.72e-7 | 0.64 / **0.52** / 0.68 | 485 |
+| 1e-6 | spline x Fourier | 4 | 8 | M=24 | 30,772 | 31 | 2.92e-7 | 11.7 / 4.13 / 2.63 | 1,390 |
+| 1e-6 | spline | 4 | 8 | 96 spans | 60,288 | 40 | 4.02e-7 | 67.2 / 19.5 / 7.75 | 1,776 |
+| 1e-8 | GLL | 8 | 2 | 24 cells | 252,096 | 15 | 1.84e-9 | 4.10 / 1.81 / **1.26** | 972 |
+| 1e-8 | GLL x Fourier | 6 | 3 | M=32 | 107,705 | 31 | 9.06e-9 | 6.66 / 2.94 / 2.51 | 5,505 |
+| 1e-8 | spline x Fourier | 4 | 16 | M=32 | 119,860 | 30 | 7.82e-9 | 71.8 / 22.8 / 10.6 | 6,296 |
+| 1e-8 | spline (closest, 16 thr) | 4 | 16 | 192 spans | 354,048 | 32 | 1.06e-8 | – / – / 49.1 | 11,889 |
+
+[V] At matched error the tensor GLL discretisation is the fastest by a wide
+margin. At 1e-8 and 16 threads it is 8x faster than spline x Fourier, 2x
+faster than GLL x Fourier and 39x faster than the pure spline closest to the
+target. Fourier in phi gives the fewest DOFs per accuracy, but its global phi
+cell multiplies the quadrature and geometry storage, and its mode-truncation
+multigrid needs 20-31 iterations instead of 14-15. Pure splines need no fewer
+DOFs than GLL p=8 here (60,288 against 32,352 near 5e-7), and their cost per DOF
+is far higher. With p+1 Gauss points per span and direction, each span has
+(p+1)^3 quadrature points for about one new DOF. The spline h-MG iteration counts also grow with
+p. [H] Weighted quadrature (Sangalli and Tani, arXiv:1712.08565) and p-robust
+spline smoothers are the known remedies, and neither is implemented here.
+
+[V] Thread scaling is poor for GLL. The 1e-8 run has a speedup of 3.2 at 16
+threads, because setup (0.88 s of 1.26 s) does not scale. The compute-bound
+pure spline reaches 8.7 and spline x Fourier 4.5 to 6.8. The small GLL x
+Fourier run slows down beyond 4 threads.
+
+### Verdict and limits
+
+[V] For criterion 4 on these problems, use high-order isoparametric GLL with
+p-multigrid as the default discretisation. Splines and Fourier remain
+available through the same operator. The axis-regular O-grid satisfies
+criterion 2 for both GLL and splines without any polar treatment, and the C1
+polar spline remains a comparison only. [H] A spline route would need
+weighted quadrature and p-robust smoothing to compete. Fourier in phi pays off
+only if its setup and storage are reduced, for example with a phi rule and
+geometry per level or with FFT-based phi application. Neither has been tried
+here.
+
+Not measured here: VMEC++/GVEC comparisons, FEM/BEM coupling (criterion 1),
+non-nested/island cases, G1 patch interfaces (the O-grid is C0 across patches)
+and NURBS weights. All runs were single-node, with pointwise kernels from the
+FortSym-generated metric module.
+
+### Reproduction
+
+```bash
+# sCluster, exclusive node; script and CSVs in ~/runs/fortfem-igaax-20261023/
+# source tree of 3bf52b95 = the commit that adds this section
+OMP_NUM_THREADS=16 fpm build --profile release
+B=$(find build -path '*app/fortfem_lab_igaax' | head -1)
+export OPENBLAS_NUM_THREADS=1 OMP_PROC_BIND=close OMP_PLACES=cores
+OMP_NUM_THREADS=4 $B problem=disk family=spline p=3 n=16 header=1
+OMP_NUM_THREADS=4 $B problem=disk family=polar p=3 n=16 nphi=64
+OMP_NUM_THREADS=4 $B problem=aniso family=spline p=3 n=64 chi=1e6 coarsen=semi
+OMP_NUM_THREADS=16 $B problem=L1 family=gll p=8 n=2 nphi=24
+OMP_NUM_THREADS=16 $B problem=L1 family=spline-fourier p=4 n=16 m=32
+OMP_NUM_THREADS=16 $B problem=L1 family=gll-fourier p=6 n=3 m=32
+```
+
+The full grid is in `igaax-sweep.sh` next to the CSVs. Each row in the CSVs
+records threads, DOFs, levels, iterations, the final residual, setup, solve
+and total time, global and near-axis errors and RSS.
+<!-- IGAAX END -->
