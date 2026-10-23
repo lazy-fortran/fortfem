@@ -5,6 +5,10 @@ codegen_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repository_dir=$(cd "$codegen_dir/../.." && pwd)
 generated_dir=${FORTFEM_CODEGEN_OUTPUT_DIR:-"$repository_dir/src/generated"}
 export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
+# Consumer-side lab benchmark kernels stay out of the library source tree.
+lab_generated_dir=${FORTFEM_LAB_CODEGEN_OUTPUT_DIR:-"$repository_dir/benchmark/lab/neq1/generated"}
+mkdir -p "$lab_generated_dir"
+export FORTFEM_LAB_CODEGEN_OUTPUT_DIR="$lab_generated_dir"
 fortsym_override=false
 if [[ -n "${FORTSYM_DIR:-}" ]]; then
     fortsym_dir=$FORTSYM_DIR
@@ -138,6 +142,7 @@ run_codegen gen_cgl_pressure_divergence_products
 run_codegen gen_fci_support_volume_products
 run_codegen gen_field_aligned_flux_products
 run_codegen gen_field_aligned_hall_products
+run_codegen gen_lab_grad_shafranov_source_products
 run_codegen gen_block_graph_products
 run_codegen gen_force_balance_products
 run_codegen gen_regularized_surface_current_products
