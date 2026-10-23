@@ -215,6 +215,9 @@ def run(args):
                 raise SystemExit(proc.returncode)
             record = [line.split()[1:] for line in stdout.splitlines()
                       if line.startswith('LAB ')]
+            # Seam setup (slave rows, seconds) goes to the log, not the CSV schema.
+            sys.stderr.write(''.join(line+'\n' for line in stdout.splitlines()
+                                     if line.startswith('SEAM ')))
             if len(record) != 1:
                 raise RuntimeError('expected exactly one LAB record per modal solve')
             records.append(record[0])
