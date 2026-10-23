@@ -132,8 +132,9 @@ def run(args):
         raise SystemExit('polar comparison requires L5 with ichol_row')
     if args.family == 'bspline' and args.problem not in ('L1', 'L5'):
         raise SystemExit('spline transport adapter pending')
-    if args.alignment != 'unaligned':
-        raise SystemExit('field-aligned periodic mesh closure is pending; no false aligned label')
+    if args.alignment != 'unaligned' and (args.family != 'gll-mf' or args.problem != 'L3'):
+        # Only the MF L3 adapter closes an aligned mesh, by a mortar seam.
+        raise SystemExit('disk/aligned layouts require L3 with gll-mf')
     if args.problem == 'L3a' and args.p != 1:
         raise SystemExit('existing 2D tensor adapter supports P1')
     if args.h <= 0:
@@ -167,6 +168,8 @@ def run(args):
         command = [str(executable), args.problem, str(args.p),
                    str(n) if args.family in ('bspline', 'gll-mf', 'gll-polar') else str(meshfile),
                    args.preconditioner, str(args.ratio)]
+        if args.alignment != 'unaligned':
+            command.append(args.alignment)
         base_row = dict(zip(FIELDS, ['']*len(FIELDS)))
         base_row.update(problem=args.problem, criterion='2' if args.problem == 'L5' else
                    ('3' if args.problem.startswith('L3') else ('4' if args.problem == 'L4' else '1')), family=args.family,
@@ -181,7 +184,10 @@ def run(args):
                    rss_method='wait4.getrusage.child', residual='',
                    nnz='', status='pending', geometry='square' if args.problem == 'L3a'
                    else ('nfp5-polar-gll-approximation' if args.family == 'gll-polar'
-                         else ('nfp5-curved-gll-approximation' if args.family == 'gll-mf'
+                         else ({'disk': 'nfp5-unit-disk-gll-unaligned',
+                                'aligned': 'nfp5-unit-disk-gll-aligned-mortar-seam'}.get(
+                                    args.alignment, 'nfp5-curved-gll-approximation')
+                               if args.family == 'gll-mf'
                          else ('nfp5-periodic-spline-approximation' if args.family == 'bspline'
                          else 'nfp5-affine-tetra-approximation'))), mesh_sha256=checksum,
                    command=shlex.join([f'OMP_NUM_THREADS={args.threads}', sys.executable,
@@ -190,7 +196,7 @@ def run(args):
         records = []
         wall, peak = 0., 0
         for mode_ratio in ([3., 1.] if args.problem == 'L4' else [args.ratio]):
-            command[-1] = str(mode_ratio)
+            command[5] = str(mode_ratio)
             start = time.perf_counter()
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     text=True, env=env)
@@ -265,8 +271,10 @@ def parser(problem=None):
     resolution.add_argument('--h', type=float, default=1.)
     p.add_argument('--preconditioner', choices=['ldlt', 'ichol', 'ichol_row', 'ilu', 'jacobi', 'pmg'], default='ichol_row')
     p.add_argument('--threads', type=int, default=1)
-    p.add_argument('--ratio', type=float, choices=[1., 100., 10000., 1000000.], default=1.)
-    p.add_argument('--alignment', choices=['unaligned', 'aligned'], default='unaligned')
+    p.add_argument('--ratio', type=float, choices=[1., 100., 1000., 10000., 1000000.], default=1.)
+    # unaligned: BEN1 O-grid; disk: exact unit disk; aligned: disk turned by
+    # iota(s)*phi, closed by a mortar seam.
+    p.add_argument('--alignment', choices=['unaligned', 'disk', 'aligned'], default='unaligned')
     p.add_argument('--executable', required=True)
     p.add_argument('--compiler', default='gfortran')
     p.add_argument('--flags', required=True, help='exact flags used to build executable')

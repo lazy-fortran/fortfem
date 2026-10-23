@@ -9,6 +9,7 @@ program lab_mf_run
         build_tensor_operator, tensor_load, &
                                        assemble_tensor_operator, apply_tensor_operator
     use fortfem_tensor_solver, only: tensor_solve_info_t, solve_tensor_diffusion
+    use fortfem_tensor_seam, only: tensor_seam_t, close_tensor_seam
     use fortfem_field_aligned_constitutive_tensor, only: &
         evaluate_field_aligned_constitutive_tensor
     use fortsparse, only: fortsparse_status_t, csc_t, csc_from_triplet
@@ -20,12 +21,13 @@ program lab_mf_run
     type(tensor_mesh_t) :: mesh, original
     type(tensor_operator_t) :: op, error_op
     type(tensor_solve_info_t) :: info
+    type(tensor_seam_t) :: seam
     type(csr_matrix_t) :: csr
     type(csc_t) :: matrix
     type(fortsparse_status_t) :: sparse_status
     type(solver_options_t) :: options
     type(solver_stats_t) :: stats
-    integer, allocatable :: rows(:), cols(:)
+    integer, allocatable :: rows(:), cols(:), master(:, :), slave(:, :)
     real(dp), allocatable :: lift(:), action(:), mapped(:, :, :)
     real(dp), allocatable :: rhs(:), solution(:), bc(:), values(:), local(:)
     real(dp), allocatable :: scratch1(:), scratch2(:), b(:, :), d(:, :), jets(:, :)
@@ -33,7 +35,7 @@ program lab_mf_run
     real(dp) :: ballerr, ballnorm, g(12), radius, phi
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
     integer :: p, n, status, i, e, q, ws, dir, node, fine_nnz
-    character(32) :: problem, preconditioner
+    character(32) :: problem, preconditioner, layout
     character(4096) :: arg
     call get_command_argument(1, problem)
     call get_command_argument(2, arg)
@@ -43,11 +45,38 @@ program lab_mf_run
     call get_command_argument(4, preconditioner)
     call get_command_argument(5, arg)
     read (arg, *) ratio
+    ! unaligned: BEN1 mesh; disk/aligned: the exact unit disk of PROBLEMS.md,
+    ! aligned with theta(phi)=theta0+iota(s)*phi and a mortar periodic seam.
+    layout = 'unaligned'
+    if (command_argument_count() >= 6) call get_command_argument(6, layout)
+    if (layout /= 'unaligned' .and. layout /= 'disk' .and. layout /= 'aligned') &
+        error stop 'MF adapter layout must be unaligned, disk or aligned'
+    if (layout /= 'unaligned' .and. preconditioner /= 'pmg') &
+        error stop 'disk and aligned layouts require pmg'
     if (problem /= 'L1' .and. problem /= 'L3' .and. problem /= 'L5') &
         error stop 'MF adapter supports L1/L3/L5'
     if (preconditioner /= 'pmg' .and. preconditioner /= 'ichol_row') &
         error stop 'MF adapter requires pmg or polar ichol_row'
-    if (preconditioner == 'pmg') then
+    if (layout /= 'unaligned') then
+        call ogrid_tensor_mesh(3, n, p, original, status, nphi=20*n, q=p + 2, &
+                               map=disk_geometry, periodic=layout == 'disk')
+        if (status /= 0) error stop 'lab disk O-grid failed'
+        if (layout == 'aligned') then
+            allocate (master(3, 5*n*n), slave(3, 5*n*n))
+            do e = 1, 5*n*n
+                master(:, e) = [e, 3, 0]
+                slave(:, e) = [e + 5*n*n*(20*n - 1), 3, 1]
+            end do
+            ! Both seam faces are the phi=0 section: the seam map is the identity.
+            call close_tensor_seam(original, master, slave, mesh, seam, status, &
+                                   motion=reshape([1._dp, 0._dp, 0._dp, 0._dp, 1._dp, &
+                                   0._dp, 0._dp, 0._dp, 1._dp, 0._dp, 0._dp, 0._dp], &
+                                                  [3, 4]))
+            if (status /= 0) error stop 'lab aligned seam failed'
+        else
+            mesh = original
+        end if
+    else if (preconditioner == 'pmg') then
         call ogrid_tensor_mesh(3, n, p, original, status, nphi=20*n, q=p + 2)
         if (status /= 0) error stop 'lab O-grid failed'
         mapped = original%geometry
@@ -81,7 +110,10 @@ program lab_mf_run
     end do
     solution = 0
     fine_nnz = 0
-    if (preconditioner == 'pmg') then
+    if (layout == 'aligned') then
+        call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
+                                    bc=bc, maxiter=1500, seam=seam)
+    else if (preconditioner == 'pmg') then
         call solve_tensor_diffusion(mesh, coefficient, rhs, 1.e-10_dp, solution, info, &
                                     bc=bc, maxiter=1500)
     else
@@ -200,6 +232,20 @@ contains
         angle = 2*acos(-1._dp)*xi(2)
         phi = 2*acos(-1._dp)*xi(3)
         call lab_geometry(xi(1)*cos(angle), -xi(1)*sin(angle), phi, g)
+        x = [g(1)*cos(phi), g(1)*sin(phi), g(2)]
+    end subroutine
+    subroutine disk_geometry(xi, x)
+        !! Unit disk (u,v) turned by iota(s)*phi when aligned; phi=-2 pi turn
+        !! keeps the O-grid cells positively oriented.
+        real(dp), intent(in) :: xi(:)
+        real(dp), intent(out) :: x(:)
+        real(dp) :: angle, phi, s, g(12)
+        phi = -2*acos(-1._dp)*xi(3)
+        s = xi(1)**2 + xi(2)**2
+        angle = 0
+        if (layout == 'aligned') angle = (0.4_dp + 0.2_dp*s)*phi
+        call lab_geometry(cos(angle)*xi(1) - sin(angle)*xi(2), &
+                          sin(angle)*xi(1) + cos(angle)*xi(2), phi, g)
         x = [g(1)*cos(phi), g(1)*sin(phi), g(2)]
     end subroutine
     subroutine collapse_polar_axis()
