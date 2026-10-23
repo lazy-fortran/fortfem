@@ -536,7 +536,7 @@ contains
         logical, allocatable :: on_master(:), remove(:)
         integer, allocatable :: srow(:), ccol(:), cols(:)
         integer :: n, nf, f, g, i, k, a, ns, nc, nm, side, info
-        real(dp) :: defect, small
+        real(dp) :: defect
         status = 1
         seam%method = setup%method
         seam%conforming = .false.
@@ -616,22 +616,17 @@ contains
             end if
             ! The clipper inverts a slave part's boundary in a master part's
             ! chart, which is reliable only near its square and away from the
-            ! folds of a curved cell: master parts are nearly bilinear and
-            ! slave parts small against them.
+            ! folds of a curved cell: master parts are nearly bilinear, and
+            ! overlap_points halves a slave part against each master part
+            ! until it is small against that part.
             !$omp parallel do default(shared) private(f) schedule(dynamic)
             do f = 1, merge(0, size(master), allocated(setup%cubature))
                 call split_face(master(f), zq, 0.05_dp, mparts(f))
             end do
             !$omp end parallel do
-            if (.not. allocated(setup%cubature)) then
-                small = huge(1.0_dp)
-                do f = 1, size(master)
-                    small = min(small, 0.25_dp*minval(mparts(f)%part%radius))
-                end do
-            end if
             !$omp parallel do default(shared) private(f) schedule(dynamic)
             do f = 1, merge(0, size(slave), allocated(setup%cubature))
-                call split_face(slave(f), zq, 0.01_dp, sparts(f), small)
+                call split_face(slave(f), zq, 0.01_dp, sparts(f))
             end do
             !$omp end parallel do
             call mortar_rows(status)
@@ -726,25 +721,54 @@ contains
 
         subroutine mortar_rows(info)
             integer, intent(out) :: info
-            integer :: fs, fail, cell
+            integer :: fs, fail, cell, t, nt, first
             real(dp), allocatable :: dl(:, :), bl(:, :, :)
-            integer, allocatable :: hits(:)
+            integer, allocatable :: hits(:), task(:, :)
+            type(seam_cubature_t), allocatable :: piece(:)
             info = 0
             fail = 0
-            !$omp parallel do default(shared) private(fs,dl,bl,hits,cell) &
-            !$omp schedule(dynamic) reduction(max:fail)
+            if (.not. allocated(setup%cubature)) then
+                ! Slave parts, not faces, are the tasks: a coarse seam has
+                ! fewer faces than threads, and parts differ widely in cost.
+                nt = 0
+                do fs = 1, size(slave)
+                    nt = nt + size(sparts(fs)%part)
+                end do
+                allocate (task(2, nt), piece(nt))
+                nt = 0
+                do fs = 1, size(slave)
+                    do t = 1, size(sparts(fs)%part)
+                        nt = nt + 1
+                        task(:, nt) = [fs, t]
+                    end do
+                end do
+                !$omp parallel do default(shared) private(t,cell) &
+                !$omp schedule(dynamic) reduction(max:fail)
+                do t = 1, nt
+                    cell = 0
+                    call overlap_points(task(1, t), task(2, t), piece(t), cell)
+                    fail = max(fail, cell)
+                end do
+                !$omp end parallel do
+                if (fail /= 0) then
+                    info = fail
+                    return
+                end if
+                first = 1
+                do fs = 1, size(slave)
+                    call join_pieces(piece(first:first + size(sparts(fs)%part) - 1), &
+                                     cub(fs))
+                    first = first + size(sparts(fs)%part)
+                end do
+            end if
+            !$omp parallel do default(shared) private(fs,dl,bl,hits) schedule(dynamic)
             do fs = 1, size(slave)
-                cell = 0
-                if (.not. allocated(setup%cubature)) call overlap_points(fs, cell)
-                fail = max(fail, cell)
-                if (cell /= 0) cycle
                 call slave_cell(fs, dl, bl, hits)
                 !$omp critical (seam_scatter)
                 call scatter_cell(fs, dl, bl, hits)
                 !$omp end critical (seam_scatter)
             end do
             !$omp end parallel do
-            info = fail
         end subroutine
 
         subroutine slave_cell(fs, dl, bl, hits)
@@ -793,125 +817,161 @@ contains
             hits = hits(1:nh)
         end subroutine
 
-        subroutine overlap_points(fs, fail)
-            !! Overlap cubature of slave face fs with every master face.
-            integer, intent(in) :: fs
+        subroutine overlap_points(fs, sp, piece, fail)
+            !! Overlap cubature of part sp of slave face fs with every master face.
+            integer, intent(in) :: fs, sp
+            type(seam_cubature_t), intent(out) :: piece
             integer, intent(inout) :: fail
-            real(dp), allocatable :: pts(:, :), wts(:), sq(:, :), mq(:, :), wq(:), &
-                                     t2(:, :), t1(:)
-            integer, allocatable :: owner(:), ti(:)
-            real(dp) :: x(3), xa(3), xb(3), y(3), ab(2), jac, c(3), cs(3), sab(2), &
-                        weight, inverse(3, 4)
-            integer :: m, q, np, st, sp, mp
-            logical :: ok, swap, rim(4), open(4)
+            type(seam_face_t) :: u
+            real(dp), allocatable :: sq(:, :), mq(:, :), wq(:)
+            integer, allocatable :: owner(:)
+            real(dp) :: cs(3), inverse(3, 4)
+            integer :: m, mp, k, i, j, np
+            logical :: rim(4), open(4)
             real(dp), parameter :: edge = 1.e-12_dp
             allocate (sq(2, 64), mq(2, 64), wq(64), owner(64))
             np = 0
             inverse(:, 1:3) = transpose(setup%motion(:, 1:3))
             inverse(:, 4) = -matmul(inverse(:, 1:3), setup%motion(:, 4))
-            c = matmul(setup%motion(:, 1:3), slave(fs)%center) + setup%motion(:, 4)
-            do m = 1, size(master)
-                if (norm2(c - master(m)%center) > &
-                    1.5_dp*(slave(fs)%radius + master(m)%radius)) cycle
-                ! The discrete rims of both faces differ by the geometry error;
-                ! slave slivers beyond a master rim see its polynomial extension.
-                rim = [rim_side(master(m), 1, 1), rim_side(master(m), 1, 0), &
-                       rim_side(master(m), 2, 1), rim_side(master(m), 2, 0)]
-                do sp = 1, size(sparts(fs)%part)
-                    associate (s => sparts(fs)%part(sp))
-                        cs = matmul(setup%motion(:, 1:3), s%center) + setup%motion(:, 4)
-                        do mp = 1, size(mparts(m)%part)
-                            associate (t => mparts(m)%part(mp))
-                                if (norm2(cs - t%center) > 1.5_dp*(s%radius + &
-                                                                   t%radius)) cycle
-                                ! Only part sides on the parent's rim are open.
-                                open = rim .and. [t%origin(1) + t%scale >= 1 - edge, &
-                                                  t%origin(1) - t%scale <= edge - 1, &
-                                                  t%origin(2) + t%scale >= 1 - edge, &
-                                                  t%origin(2) - t%scale <= edge - 1]
-                                if (.not. cells_overlap(s, t, setup%motion, zq, &
-                                                        open)) cycle
-                                ! Clip the smaller part in the chart of the larger
-                                ! one, whose extension then stays near its square.
-                                swap = t%radius > s%radius .or. any(open)
-                                if (swap) then
-                                    call overlap_cubature(t, s, inverse, zq, &
-                                             2*mesh%degree + mesh%geometry_degree + 4, &
-                                                          pts, wts, st, open=open)
-                                else
-                                    call overlap_cubature(s, t, setup%motion, zq, &
-                                             2*mesh%degree + mesh%geometry_degree + 4, &
-                                                          pts, wts, st)
-                                end if
-                                if (st /= 0) then
-                                    fail = 2
-                                    return
-                                end if
-                                do q = 1, size(wts)
-                                    if (swap) then
-                                        ab = pts(:, q)
-                                        call face_map(t%geometry, zq, ab(1), ab(2), &
-                                                      y, xa, xb)
-                                        call generated_tensor_surface_jacobian( &
-                                            xa(1), xa(2), xa(3), xb(1), xb(2), xb(3), &
-                                            jac)
-                                        weight = wts(q)*jac
-                                        ab = t%origin + t%scale*ab
-                                        x = matmul(inverse(:, 1:3), y) + inverse(:, 4)
-                                        sab = 0
-                                        call invert_face(s%geometry, zq, x, sab, ok, &
-                                                         1.5_dp)
-                                        ! Nodes lie in the overlap, hence in s.
-                                        if (maxval(abs(sab)) > 1 + 1.e-8_dp) &
-                                            ok = .false.
-                                        sab = s%origin + s%scale*sab
-                                    else
-                                        sab = s%origin + s%scale*pts(:, q)
-                                        call face_map(slave(fs)%geometry, zq, sab(1), &
-                                                      sab(2), x, xa, xb)
-                                        call generated_tensor_surface_jacobian( &
-                                            xa(1), xa(2), xa(3), xb(1), xb(2), xb(3), &
-                                            jac)
-                                        weight = wts(q)*s%scale**2*jac
-                                        y = matmul(setup%motion(:, 1:3), x) + &
-                                            setup%motion(:, 4)
-                                        ab = 0
-                                        call invert_face(t%geometry, zq, y, ab, ok, &
-                                                         1.5_dp)
-                                        if (maxval(abs(ab)) > 1 + 1.e-8_dp) ok = .false.
-                                        ab = t%origin + t%scale*ab
-                                    end if
-                                    if (.not. ok) then
-                                        fail = 2
-                                        return
-                                    end if
-                                    if (np == size(wq)) then
-                                        allocate (t2(2, 2*np), t1(2*np), ti(2*np))
-                                        t2(:, 1:np) = sq
-                                        call move_alloc(t2, sq)
-                                        allocate (t2(2, 2*np))
-                                        t2(:, 1:np) = mq
-                                        call move_alloc(t2, mq)
-                                        t1(1:np) = wq
-                                        call move_alloc(t1, wq)
-                                        ti(1:np) = owner
-                                        call move_alloc(ti, owner)
-                                    end if
-                                    np = np + 1
-                                    sq(:, np) = sab
-                                    mq(:, np) = ab
-                                    wq(np) = weight
-                                    owner(np) = m
+            associate (s => sparts(fs)%part(sp))
+                cs = matmul(setup%motion(:, 1:3), s%center) + setup%motion(:, 4)
+                do m = 1, size(master)
+                    if (norm2(cs - master(m)%center) > &
+                        1.5_dp*(s%radius + master(m)%radius)) cycle
+                    ! The discrete rims of both faces differ by the geometry error;
+                    ! slave slivers beyond a master rim see its polynomial extension.
+                    rim = [rim_side(master(m), 1, 1), rim_side(master(m), 1, 0), &
+                           rim_side(master(m), 2, 1), rim_side(master(m), 2, 0)]
+                    do mp = 1, size(mparts(m)%part)
+                        associate (t => mparts(m)%part(mp))
+                            if (norm2(cs - t%center) > 1.5_dp*(s%radius + &
+                                                               t%radius)) cycle
+                            ! Only part sides on the parent's rim are open.
+                            open = rim .and. [t%origin(1) + t%scale >= 1 - edge, &
+                                              t%origin(1) - t%scale <= edge - 1, &
+                                              t%origin(2) + t%scale >= 1 - edge, &
+                                              t%origin(2) - t%scale <= edge - 1]
+                            ! A large, nearly affine slave part meets fold preimages
+                            ! of a curved master chart: halve it against t only.
+                            ! At a quarter of t, fan nodes of a rigid twist fell 4%
+                            ! outside the slave part; an eighth keeps them inside.
+                            k = 1
+                            do while (s%radius > 0.125_dp*k*t%radius .and. k < 64)
+                                k = 2*k
+                            end do
+                            if (k == 1) then
+                                call clip_pair(fs, s, t, m, open, inverse, sq, mq, &
+                                               wq, owner, np, fail)
+                            else
+                                do j = 0, k - 1
+                                    do i = 0, k - 1
+                                        call make_part(slave(fs), s%origin + s%scale* &
+                                                       [-1 + (2*i + 1)/real(k, dp), &
+                                                        -1 + (2*j + 1)/real(k, dp)], &
+                                                       s%scale/k, zq, u)
+                                        if (norm2(matmul(setup%motion(:, 1:3), &
+                                                         u%center) + &
+                                                  setup%motion(:, 4) - t%center) > &
+                                            1.5_dp*(u%radius + t%radius)) cycle
+                                        call clip_pair(fs, u, t, m, open, inverse, sq, &
+                                                       mq, wq, owner, np, fail)
+                                        if (fail /= 0) return
+                                    end do
                                 end do
-                            end associate
-                        end do
-                    end associate
+                            end if
+                            if (fail /= 0) return
+                        end associate
+                    end do
                 end do
+            end associate
+            piece%master = owner(1:np)
+            piece%slave_ab = sq(:, 1:np)
+            piece%master_ab = mq(:, 1:np)
+            piece%weight = wq(1:np)
+        end subroutine
+
+        subroutine clip_pair(fs, s, t, m, open, inverse, sq, mq, wq, owner, np, &
+                             fail)
+            !! Append the overlap cubature of part s of slave face fs and part t
+            !! of master face m.
+            type(seam_face_t), intent(in) :: s, t
+            integer, intent(in) :: fs, m
+            logical, intent(in) :: open(4)
+            real(dp), intent(in) :: inverse(3, 4)
+            real(dp), allocatable, intent(inout) :: sq(:, :), mq(:, :), wq(:)
+            integer, allocatable, intent(inout) :: owner(:)
+            integer, intent(inout) :: np, fail
+            real(dp), allocatable :: pts(:, :), wts(:), t2(:, :), t1(:)
+            integer, allocatable :: ti(:)
+            real(dp) :: x(3), xa(3), xb(3), y(3), ab(2), jac, sab(2), weight
+            integer :: q, st
+            logical :: ok, swap
+            if (.not. cells_overlap(s, t, setup%motion, zq, open)) return
+            ! Clip the smaller part in the chart of the larger one, whose
+            ! extension then stays near its square. Each fan triangle takes
+            ! the p+q+2 Gauss points per direction of the slave mass rule.
+            swap = t%radius > s%radius .or. any(open)
+            if (swap) then
+                call overlap_cubature(t, s, inverse, zq, &
+                                      mesh%degree + mesh%geometry_degree + 2, pts, &
+                                      wts, st, open=open)
+            else
+                call overlap_cubature(s, t, setup%motion, zq, &
+                                      mesh%degree + mesh%geometry_degree + 2, pts, &
+                                      wts, st)
+            end if
+            if (st /= 0) then
+                fail = 2
+                return
+            end if
+            do q = 1, size(wts)
+                if (swap) then
+                    ab = pts(:, q)
+                    call face_map(t%geometry, zq, ab(1), ab(2), y, xa, xb)
+                    call generated_tensor_surface_jacobian(xa(1), xa(2), xa(3), &
+                                                           xb(1), xb(2), xb(3), jac)
+                    weight = wts(q)*jac
+                    ab = t%origin + t%scale*ab
+                    x = matmul(inverse(:, 1:3), y) + inverse(:, 4)
+                    sab = 0
+                    call invert_face(s%geometry, zq, x, sab, ok, 1.5_dp)
+                    ! Nodes lie in the overlap, hence in s.
+                    if (maxval(abs(sab)) > 1 + 1.e-8_dp) ok = .false.
+                    sab = s%origin + s%scale*sab
+                else
+                    sab = s%origin + s%scale*pts(:, q)
+                    call face_map(slave(fs)%geometry, zq, sab(1), sab(2), x, xa, xb)
+                    call generated_tensor_surface_jacobian(xa(1), xa(2), xa(3), &
+                                                           xb(1), xb(2), xb(3), jac)
+                    weight = wts(q)*s%scale**2*jac
+                    y = matmul(setup%motion(:, 1:3), x) + setup%motion(:, 4)
+                    ab = 0
+                    call invert_face(t%geometry, zq, y, ab, ok, 1.5_dp)
+                    if (maxval(abs(ab)) > 1 + 1.e-8_dp) ok = .false.
+                    ab = t%origin + t%scale*ab
+                end if
+                if (.not. ok) then
+                    fail = 2
+                    return
+                end if
+                if (np == size(wq)) then
+                    allocate (t2(2, 2*np), t1(2*np), ti(2*np))
+                    t2(:, 1:np) = sq
+                    call move_alloc(t2, sq)
+                    allocate (t2(2, 2*np))
+                    t2(:, 1:np) = mq
+                    call move_alloc(t2, mq)
+                    t1(1:np) = wq
+                    call move_alloc(t1, wq)
+                    ti(1:np) = owner
+                    call move_alloc(ti, owner)
+                end if
+                np = np + 1
+                sq(:, np) = sab
+                mq(:, np) = ab
+                wq(np) = weight
+                owner(np) = m
             end do
-            cub(fs)%master = owner(1:np)
-            cub(fs)%slave_ab = sq(:, 1:np)
-            cub(fs)%master_ab = mq(:, 1:np)
-            cub(fs)%weight = wq(1:np)
         end subroutine
 
         subroutine scatter_cell(fs, dl, bl, hits)
@@ -935,6 +995,28 @@ contains
                         b(r, j) = b(r, j) + bl(a, c, h)
                     end do
                 end do
+            end do
+        end subroutine
+
+        subroutine join_pieces(pieces, joined)
+            !! Concatenate the part cubatures of one slave face in part order.
+            type(seam_cubature_t), intent(in) :: pieces(:)
+            type(seam_cubature_t), intent(out) :: joined
+            integer :: k, np, first
+            np = 0
+            do k = 1, size(pieces)
+                np = np + size(pieces(k)%weight)
+            end do
+            allocate (joined%master(np), joined%slave_ab(2, np), &
+                      joined%master_ab(2, np), joined%weight(np))
+            first = 0
+            do k = 1, size(pieces)
+                np = size(pieces(k)%weight)
+                joined%master(first + 1:first + np) = pieces(k)%master
+                joined%slave_ab(:, first + 1:first + np) = pieces(k)%slave_ab
+                joined%master_ab(:, first + 1:first + np) = pieces(k)%master_ab
+                joined%weight(first + 1:first + np) = pieces(k)%weight
+                first = first + np
             end do
         end subroutine
 
@@ -1073,23 +1155,19 @@ contains
         !$omp end parallel do
     end subroutine
 
-    subroutine split_face(face, zq, limit, split, radius)
+    subroutine split_face(face, zq, limit, split)
         !! Halve a curved face until every part deviates from its bilinear
         !! corner interpolant by at most limit times its diameter; the chart
         !! of a nearly affine part is then injective well beyond its square.
-        !! Parts are also halved until their half diagonals are at most radius.
         type(seam_face_t), intent(in) :: face
         real(dp), intent(in) :: zq(:), limit
         type(face_split_t), intent(out) :: split
-        real(dp), intent(in), optional :: radius
         real(dp) :: x(3), xa(3), xb(3), corner(3, 4), a0, b0, h, worst, dev, diam, &
-                    u, v, largest
-        integer :: k, i, j, r, t, nq, part, c
-        nq = size(zq)
+                    u, v
+        integer :: k, i, j, r, t, part, c
         k = 1
         do
             worst = 0
-            largest = 0
             do j = 0, k - 1
                 do i = 0, k - 1
                     h = 1.0_dp/k
@@ -1102,7 +1180,6 @@ contains
                     end do
                     diam = max(norm2(corner(:, 1) - corner(:, 3)), &
                                norm2(corner(:, 2) - corner(:, 4)))
-                    largest = max(largest, diam/2)
                     do t = 0, 4
                         do r = 0, 4
                             u = -1 + r/2.0_dp
@@ -1118,36 +1195,43 @@ contains
                     end do
                 end do
             end do
-            if (worst <= limit .or. k >= 32) then
-                if (.not. present(radius)) exit
-                if (largest <= radius .or. k >= 128) exit
-            end if
+            if (worst <= limit .or. k >= 32) exit
             k = 2*k
         end do
         allocate (split%part(k*k))
         part = 0
+        h = 1.0_dp/k
         do j = 0, k - 1
             do i = 0, k - 1
                 part = part + 1
-                h = 1.0_dp/k
-                split%part(part)%origin = [-1 + (2*i + 1)*h, -1 + (2*j + 1)*h]
-                split%part(part)%scale = h
-                allocate (split%part(part)%geometry(3, nq*nq))
-                do t = 1, nq
-                    do r = 1, nq
-                        call face_map(face%geometry, zq, split%part(part)%origin(1) + &
-                                      h*zq(r), split%part(part)%origin(2) + h*zq(t), &
-                                      x, xa, xb)
-                        split%part(part)%geometry(:, r + nq*(t - 1)) = x
-                    end do
-                end do
-                split%part(part)%center = sum(split%part(part)%geometry, 2)/(nq*nq)
-                split%part(part)%radius = 0
-                do r = 1, nq*nq
-                    split%part(part)%radius = max(split%part(part)%radius, &
-                       norm2(split%part(part)%geometry(:, r) - split%part(part)%center))
-                end do
+                call make_part(face, [-1 + (2*i + 1)*h, -1 + (2*j + 1)*h], h, zq, &
+                               split%part(part))
             end do
+        end do
+    end subroutine
+
+    subroutine make_part(face, origin, scale, zq, part)
+        !! The part of a face whose parent reference is origin + scale*own.
+        type(seam_face_t), intent(in) :: face
+        real(dp), intent(in) :: origin(2), scale, zq(:)
+        type(seam_face_t), intent(out) :: part
+        real(dp) :: x(3), xa(3), xb(3)
+        integer :: r, t, nq
+        nq = size(zq)
+        part%origin = origin
+        part%scale = scale
+        allocate (part%geometry(3, nq*nq))
+        do t = 1, nq
+            do r = 1, nq
+                call face_map(face%geometry, zq, origin(1) + scale*zq(r), &
+                              origin(2) + scale*zq(t), x, xa, xb)
+                part%geometry(:, r + nq*(t - 1)) = x
+            end do
+        end do
+        part%center = sum(part%geometry, 2)/(nq*nq)
+        part%radius = 0
+        do r = 1, nq*nq
+            part%radius = max(part%radius, norm2(part%geometry(:, r) - part%center))
         end do
     end subroutine
 
