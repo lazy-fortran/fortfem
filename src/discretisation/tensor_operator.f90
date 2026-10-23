@@ -352,9 +352,10 @@ contains
                  (a - 1)/(n(1)*n(2))] + 1
     end function
 
-    subroutine assemble_tensor_operator(op, matrix)
+    subroutine assemble_tensor_operator(op, matrix, eliminate)
         type(tensor_operator_t), intent(in) :: op
         type(csr_matrix_t), intent(out) :: matrix
+        logical, intent(in), optional :: eliminate
         real(dp), allocatable :: basis(:, :), gradient(:, :, :), flux(:, :, :), &
                                  scaled(:, :), element(:, :)
         real(dp) :: g(3, 3), mass, det, val
@@ -421,6 +422,9 @@ contains
                 end do
             end do
         end do
+        if (present(eliminate)) then
+            if (.not. eliminate) return
+        end if
         do i = 1, matrix%n
             do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
                 j = matrix%colidx(k)
