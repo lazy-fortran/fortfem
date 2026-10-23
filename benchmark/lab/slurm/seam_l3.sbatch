@@ -28,7 +28,8 @@ mapfile -t executables < <(find build/fo/profiles -path '*/bin/lab_mf_run' -type
 [[ ${#executables[@]} == 1 ]]
 exe="$PWD/${executables[0]}"
 points=${SEAM_L3_POINTS:-"2 4 6"}
-ratios=${SEAM_L3_RATIOS:-"1000 1000000"}
+# Ratio 1 is the isotropic control of the seam itself.
+ratios=${SEAM_L3_RATIOS:-"1 1000 1000000"}
 failures=0
 for p in $points; do
     for ratio in $ratios; do
