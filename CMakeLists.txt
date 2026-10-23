@@ -98,7 +98,8 @@ if(FORTFEM_BUILD_TESTING)
 endif()
 add_library(fortfem_tensor_operator STATIC
     src/generated/fortfem_tensor_metric_products.f90
-    src/discretisation/tensor_operator.f90)
+    src/discretisation/tensor_operator.f90
+    src/discretisation/tensor_seam.f90)
 set_target_properties(fortfem_tensor_operator PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
 target_include_directories(fortfem_tensor_operator PUBLIC
@@ -230,6 +231,18 @@ if(FORTFEM_BUILD_TESTING)
     add_test(NAME test_lab_tensor_mms COMMAND test_lab_tensor_mms)
     set_tests_properties(test_lab_tensor_mms PROPERTIES
         LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_library(lab_tensor_seam_cases STATIC test/lab_tensor_seam_cases.f90)
+    target_link_libraries(lab_tensor_seam_cases PUBLIC fortfem_tensor_solver)
+    add_executable(test_lab_tensor_seam test/test_lab_tensor_seam.f90)
+    target_link_libraries(test_lab_tensor_seam PRIVATE lab_tensor_seam_cases)
+    add_test(NAME test_lab_tensor_seam COMMAND test_lab_tensor_seam)
+    set_tests_properties(test_lab_tensor_seam PROPERTIES
+        LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_executable(test_lab_tensor_seam_slow test/test_lab_tensor_seam_slow.f90)
+    target_link_libraries(test_lab_tensor_seam_slow PRIVATE lab_tensor_seam_cases)
+    add_test(NAME test_lab_tensor_seam_slow COMMAND test_lab_tensor_seam_slow)
+    set_tests_properties(test_lab_tensor_seam_slow PROPERTIES
+        LABELS "lab;convergence;slow" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_lab_mf1 benchmark/lab/mf1/tensor_benchmark.f90)
