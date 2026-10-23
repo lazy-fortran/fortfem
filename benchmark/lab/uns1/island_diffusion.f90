@@ -341,7 +341,9 @@ end module
 
 program island_diffusion
     ! Usage: island_diffusion KIND LEVEL P RATIO [COARSE [TOL]]
-    !   KIND ogrid|island, COARSE ldlt|amg. Writes one CSV row to stdout.
+    !   KIND ogrid|island, COARSE ldlt|amg|direct. Writes one CSV row to stdout.
+    !   direct factors the assembled fine operator (the system PCG solves) by
+    !   sparse LDLT, so the error columns are free of iteration error.
     !   island_diffusion check   verifies the analytic gradients by central FD.
     use, intrinsic :: iso_fortran_env, only: dp => real64, output_unit
     use omp_lib, only: omp_get_wtime, omp_get_max_threads
@@ -353,6 +355,12 @@ program island_diffusion
                                        tensor_l2_error
     use fortfem_tensor_contractions, only: tensor_contract
     use fortfem_tensor_solver, only: tensor_solve_info_t, solve_tensor_diffusion
+    use fortfem_tensor_operator, only: assemble_tensor_operator
+    use fortfem_element_to_csr, only: csr_matrix_t
+    use fortfem_sparse_direct, only: sparse_direct_factor_t, &
+                                     sparse_direct_factor_csc, &
+                                     sparse_direct_solve_factored, sparse_direct_free
+    use fortsparse, only: sparse_options_t, FORTSPARSE_SYM_INDEFINITE
     use fortfem_tensor_mesh_tools, only: tensor_mesh_quality_t, tensor_mesh_check
     use fortfem_island_quad_mesh, only: island_chain_t, island_mesh_counts_t, &
                                         island_chain_quad_mesh
@@ -426,7 +434,9 @@ program island_diffusion
     allocate (x(mesh%ndof), y(mesh%ndof))
     x = 0
     t1 = omp_get_wtime()
-    if (trim(coarse) == 'amg') then
+    if (trim(coarse) == 'direct') then
+        call direct_solve(mesh, rhs, x, info)
+    else if (trim(coarse) == 'amg') then
         call solve_tensor_diffusion(mesh, coefficient, rhs, tol, x, info, &
                                     maxiter=500, coarse_hook=amg_coarse)
         call amg_reset()
@@ -461,6 +471,55 @@ program island_diffusion
         info%residual, t1 - t0, t2 - t1, omp_get_max_threads(), peak_rss_kb(), &
         quality%min_scaled_jacobian, width(), interp
 contains
+    subroutine direct_solve(mesh, rhs, x, info)
+        ! Same discrete operator and quadrature as solve_tensor_diffusion.
+        type(tensor_mesh_t), intent(in) :: mesh
+        real(dp), intent(in) :: rhs(:)
+        real(dp), intent(inout) :: x(:)
+        type(tensor_solve_info_t), intent(out) :: info
+        type(tensor_operator_t) :: stiff
+        type(csr_matrix_t) :: a
+        type(sparse_direct_factor_t) :: factor
+        type(sparse_options_t) :: options
+        integer, allocatable :: ptr(:), rows(:), fill(:)
+        real(dp), allocatable :: values(:), r(:)
+        integer :: n, i, j, k, pos, status
+        info%status = 1
+        call build_tensor_operator(mesh, coefficient, stiff, status)
+        if (status /= 0) return
+        call assemble_tensor_operator(stiff, a)
+        n = a%n
+        allocate (ptr(n + 1), fill(n), rows(size(a%val)), values(size(a%val)), r(n))
+        ptr = 0
+        do k = 1, size(a%colidx)
+            ptr(a%colidx(k) + 1) = ptr(a%colidx(k) + 1) + 1
+        end do
+        ptr(1) = 1
+        do i = 1, n
+            ptr(i + 1) = ptr(i + 1) + ptr(i)
+        end do
+        fill = ptr(1:n)
+        do i = 1, n
+            do k = a%rowptr(i), a%rowptr(i + 1) - 1
+                j = a%colidx(k)
+                pos = fill(j)
+                rows(pos) = i
+                values(pos) = a%val(k)
+                fill(j) = pos + 1
+            end do
+        end do
+        options%symmetry = FORTSPARSE_SYM_INDEFINITE
+        call sparse_direct_factor_csc(factor, n, ptr, rows, values, status, options)
+        if (status /= 0) return
+        call sparse_direct_solve_factored(factor, rhs, x, status)
+        call sparse_direct_free(factor)
+        if (status /= 0) return
+        call apply_tensor_operator(stiff, x, r)
+        info%residual = norm2(r - rhs)/max(norm2(rhs), tiny(1.0_dp))
+        info%iterations = 0
+        info%status = 0
+    end subroutine
+
     subroutine weighted_inner(op, x, value)
         ! integral of T_h * T on the quadrature of the operator.
         type(tensor_operator_t), intent(in) :: op
@@ -566,7 +625,8 @@ contains
                   psistar(xp + e2) - psistar(xp - e2)]/(2*h)
             worst = max(worst, norm2(fd - g)/max(norm2(g), 1.e-3_dp))
             call grad_exact(xp, g)
-            fd = [exact(xp + e1) - exact(xp - e1), exact(xp + e2) - exact(xp - e2)]/(2*h)
+            fd = [exact(xp + e1) - exact(xp - e1), &
+                  exact(xp + e2) - exact(xp - e2)]/(2*h)
             worst = max(worst, norm2(fd - g)/max(norm2(g), 1.e-1_dp))
             call direction(xp, c)
             ratio = huge(1.0_dp)

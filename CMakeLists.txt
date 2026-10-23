@@ -248,12 +248,17 @@ endif()
 if(FORTFEM_BUILD_BENCHMARKS OR FORTFEM_BUILD_TESTING)
     add_executable(fortfem_lab_uns1_island benchmark/lab/uns1/island_diffusion.f90)
     target_link_libraries(fortfem_lab_uns1_island PRIVATE fortfem_tensor_solver)
+    target_include_directories(fortfem_lab_uns1_island PRIVATE
+        "${PROJECT_BINARY_DIR}/modules")
 endif()
 if(FORTFEM_BUILD_TESTING)
     add_test(NAME lab_uns1_island_check COMMAND fortfem_lab_uns1_island check)
     add_test(NAME lab_uns1_island_smoke
         COMMAND fortfem_lab_uns1_island island 1 2 1e6 amg)
-    set_tests_properties(lab_uns1_island_check lab_uns1_island_smoke PROPERTIES
+    add_test(NAME lab_uns1_island_direct
+        COMMAND fortfem_lab_uns1_island island 1 2 1e6 direct)
+    set_tests_properties(lab_uns1_island_check lab_uns1_island_smoke
+        lab_uns1_island_direct PROPERTIES
         LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
 
