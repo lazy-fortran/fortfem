@@ -417,13 +417,13 @@ contains
                  (a - 1)/(n(1)*n(2))] + 1
     end function
 
-    subroutine assemble_tensor_operator(op, matrix, parallel)
+    subroutine assemble_tensor_operator(op, matrix, parallel, eliminate)
         ! Element matrices are formed in parallel into a block buffer and summed
         ! into the CSR matrix by csr_assemble_blocks through the cached slot map.
         ! Every entry is added in ascending element order, as in a serial loop.
         type(tensor_operator_t), intent(in) :: op
         type(csr_matrix_t), intent(out) :: matrix
-        logical, intent(in), optional :: parallel
+        logical, intent(in), optional :: parallel, eliminate
         real(dp), allocatable :: blocks(:, :, :)
         integer :: i, j, k, nl, mq, nd
         logical :: threaded
@@ -500,6 +500,9 @@ contains
         end block
         !$omp end parallel
         call csr_assemble_blocks(matrix, op%mesh%dof, blocks)
+        if (present(eliminate)) then
+            if (.not. eliminate) return
+        end if
         do i = 1, matrix%n
             do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
                 j = matrix%colidx(k)
