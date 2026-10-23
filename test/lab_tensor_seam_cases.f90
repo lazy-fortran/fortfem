@@ -16,6 +16,8 @@ module lab_tensor_seam_cases
     real(dp), parameter :: pi = acos(-1.0_dp)
     !! Seam shift s(x) = shift0 + shift2*x**2 in periods of the slab y.
     real(dp) :: shift0 = 0.37_dp, shift2 = 0.21_dp
+    !! Torus rotation iota(s) = twist0 + twist2*s turns per toroidal turn.
+    real(dp) :: twist0 = 0.37_dp, twist2 = 0.21_dp
     real(dp), parameter :: translate(3, 4) = reshape([1, 0, 0, 0, 1, 0, 0, 0, 1, &
                                                       0, 0, -1]*1.0_dp, [3, 4])
     real(dp), parameter :: identity(3, 4) = reshape([1, 0, 0, 0, 1, 0, 0, 0, 1, &
@@ -30,6 +32,7 @@ contains
         if (slow) then
             call check_operator_agreement([1, 0], [3, 4])
             call check_reproduction([1, 0], [3, 4])
+            call check_rigid_twist(2, 3)
             call check_slab_rates()
             call check_torus_rates()
         else
@@ -37,6 +40,7 @@ contains
             call check_operator_agreement([1, 6], [1, 2])
             call check_reproduction([1, 4], [1, 2])
             call check_bounded_solves()
+            call check_rigid_twist(1, 2)
         end if
         print *, 'PASS: periodic seam constraints (criterion 3)'
     end subroutine
@@ -56,7 +60,7 @@ contains
         real(dp), intent(out) :: x(:)
         real(dp) :: s, angle, u, v, phi
         s = xi(1)**2 + xi(2)**2
-        angle = 2*pi*xi(3)*(0.37_dp + 0.21_dp*s)
+        angle = 2*pi*xi(3)*(twist0 + twist2*s)
         u = cos(angle)*xi(1) - sin(angle)*xi(2)
         v = sin(angle)*xi(1) + cos(angle)*xi(2)
         phi = 2*pi*xi(3)
@@ -368,6 +372,43 @@ contains
                 previous = error
             end do
         end do
+    end subroutine
+
+    subroutine check_rigid_twist(n, p)
+        !! A shear-free twist keeps unsplit, nearly affine slave faces as large
+        !! as curved master cells; its overlaps must still be clipped exactly.
+        integer, intent(in) :: n, p
+        type(tensor_mesh_t) :: mesh, closed
+        type(tensor_seam_t) :: seam
+        integer, allocatable :: master(:, :), slave(:, :)
+        real(dp), allocatable :: reduced(:), full(:)
+        real(dp) :: error, matched
+        integer :: status, its
+        twist2 = 0
+        twist0 = 0.25_dp
+        ! A quarter turn maps the O-grid onto itself: an identified seam.
+        call torus(n, 6*n, p, mesh, master, slave)
+        call close_tensor_seam(mesh, master, slave, closed, seam, status, &
+                               motion=identity)
+        if (status /= 0) error stop 'quarter-turn seam'
+        if (.not. seam%conforming) error stop 'quarter turn not identified'
+        call solve_error(closed, seam, torus_exact, torus_forcing, p, matched, its)
+        twist0 = 0.37_dp
+        call torus(n, 6*n, p, mesh, master, slave)
+        call close_tensor_seam(mesh, master, slave, closed, seam, status, &
+                               motion=identity)
+        if (status /= 0) error stop 'rigid twist seam'
+        allocate (reduced(seam%nreduced), full(seam%nfull))
+        reduced = 1
+        call seam_expand(seam, reduced, full)
+        call solve_error(closed, seam, torus_exact, torus_forcing, p, error, its)
+        print '(a,2i3,4es12.3)', ' rigid twist n p defect const L2(0.37,0.25)', n, p, &
+            seam%area_defect, maxval(abs(full - 1)), error, matched
+        twist0 = 0.37_dp
+        twist2 = 0.21_dp
+        if (seam%area_defect > 1.e-10_dp) error stop 'rigid twist overlap area'
+        if (maxval(abs(full - 1)) > 1.e-11_dp) error stop 'rigid twist constants'
+        if (error > 1.5_dp*matched) error stop 'rigid twist mortar error'
     end subroutine
 
     subroutine check_bounded_solves()
