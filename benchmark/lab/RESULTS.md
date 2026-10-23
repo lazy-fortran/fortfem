@@ -210,7 +210,8 @@ Chebyshev-Jacobi smoothing of degree 3. Wall times include hierarchy setup and
 coarse factorisation but not error evaluation. RSS is the process VmHWM.
 
 [V] Evidence run: sCluster `node7` (exclusive), Slurm **3356269**, revision
-3bf52b951e475b9793c480d3de35aa19d929c1ec, GNU Fortran 12.2.0, fpm 0.13.0
+3bf52b951e475b9793c480d3de35aa19d929c1ec (pre-rebase; its source tree equals the
+source of the commit adding this section, which only adds text), GNU Fortran 12.2.0, fpm 0.13.0
 `--profile release` (`-O3 -funroll-loops -fcoarray=single -fPIC -fopenmp`),
 `OMP_PROC_BIND=close OMP_PLACES=cores`. Driver SHA256 388f41ff…, libc
 6b4a4535…. The CSVs `disk.csv`, `iters.csv`, `scan.csv` and `threads.csv` (with
@@ -344,7 +345,7 @@ FortSym-generated metric module.
 
 ```bash
 # sCluster, exclusive node; script and CSVs in ~/runs/fortfem-igaax-20261023/
-git checkout 3bf52b951e475b9793c480d3de35aa19d929c1ec
+# source tree of 3bf52b95 = the commit that adds this section
 OMP_NUM_THREADS=16 fpm build --profile release
 B=$(find build -path '*app/fortfem_lab_igaax' | head -1)
 export OPENBLAS_NUM_THREADS=1 OMP_PROC_BIND=close OMP_PLACES=cores
