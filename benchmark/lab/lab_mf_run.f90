@@ -122,8 +122,8 @@ program lab_mf_run
     end if
     call build_tensor_operator(mesh, coefficient, error_op, status, nq=p + 3)
     if (status /= 0) error stop 'lab MF error geometry failed'
-    b = error_op%line%b(:, :, 1)
-    d = error_op%line%d(:, :, 1)
+    b = error_op%line(1)%b(:, :, 1)
+    d = error_op%line(1)%d(:, :, 1)
     ws = maxval([error_op%ni, error_op%no])**3
     allocate (values(product(error_op%no)), jets(3, product(error_op%no)))
     allocate (local(product(error_op%ni)), scratch1(ws), scratch2(ws))
