@@ -170,6 +170,8 @@ contains
         do i = 1, mesh%ndof
             u(i) = sin(real(3*i, dp))
         end do
+        ! Isolate reaction in the unfactored reference after valid construction.
+        op%coef = 0
         call assemble_tensor_operator(op, matrix)
         reference = 0
         do i = 1, mesh%ndof
@@ -189,7 +191,11 @@ contains
     subroutine reaction_coefficient(x, k, c)
         real(dp), intent(in) :: x(:)
         real(dp), intent(out) :: k(:, :), c
+        integer :: i
         k = 0
+        do i = 1, size(k, 1)
+            k(i, i) = 1
+        end do
         c = 1 + sum(x*x)
     end subroutine
 
