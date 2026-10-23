@@ -5,7 +5,11 @@ fixed, connected, closed, oriented triangular surface. It does not assume
 axisymmetry. Potential traces are continuous P1 and normal fluxes are P0.
 Geometry is evaluated through a caller-owned map and may be curved to any
 order, including an exact analytic map. High-order **trace spaces** are not
-implemented by this API.
+implemented by this API. `fortfem_parametric_bem_tensor` provides continuous
+Q_p potentials and discontinuous Q_pf fluxes on quadrilateral panels of the
+same surface contract, with the same singular treatment and operator
+container. Its FEM coupling is described in
+[the tensor FEM/BEM design](design/tensor_fem_bem.md).
 
 ## Surface and operator API
 
