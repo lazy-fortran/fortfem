@@ -171,7 +171,7 @@ if(NOT TARGET fortsparse)
     set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG 7f16e38aaf5ebdfa56b0b8b4f5f57c0c31de212c
+        GIT_TAG 0c89b64f759601553b24f24e09819c36b356f108
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
@@ -244,6 +244,17 @@ endif()
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_lab_mf1 benchmark/lab/mf1/tensor_benchmark.f90)
     target_link_libraries(fortfem_lab_mf1 PRIVATE fortfem_tensor_solver)
+endif()
+if(FORTFEM_BUILD_BENCHMARKS OR FORTFEM_BUILD_TESTING)
+    add_executable(fortfem_lab_uns1_island benchmark/lab/uns1/island_diffusion.f90)
+    target_link_libraries(fortfem_lab_uns1_island PRIVATE fortfem_tensor_solver)
+endif()
+if(FORTFEM_BUILD_TESTING)
+    add_test(NAME lab_uns1_island_check COMMAND fortfem_lab_uns1_island check)
+    add_test(NAME lab_uns1_island_smoke
+        COMMAND fortfem_lab_uns1_island island 1 2 1e6 amg)
+    set_tests_properties(lab_uns1_island_check lab_uns1_island_smoke PROPERTIES
+        LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
 
 install(TARGETS fortfem_capi fortfem_triangle_compat
