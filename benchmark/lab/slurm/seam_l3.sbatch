@@ -22,10 +22,10 @@ mkdir -p "$runroot"
 cp "$MEM_GUARD" "$runroot/mem_guard.sh"
 # Four enforced cores reserve 47.2 GiB. --mem is only documentation here.
 export LAB_FLAGS='-O3 -funroll-loops -fopenmp -finline-matmul-limit=0'
-# fo 0.3.2 links without -fopenmp, which fails on the cluster's offload-enabled
-# GCC 12 (undefined GOMP_offload_unregister_ver); fpm passes the flags to the link.
+# The cluster's offload-enabled GCC 12 needs -fopenmp also at the link (else
+# GOMP_offload_unregister_ver is undefined); fo 0.3.2 has no link flag option.
 "$runroot/mem_guard.sh" 47.2 fpm build --profile release --flag "$LAB_FLAGS" \
-    > "$runroot/build-driver.log" 2>&1
+    --link-flag -fopenmp > "$runroot/build-driver.log" 2>&1
 mapfile -t executables < <(find build -path '*/app/lab_mf_run' -type f)
 [[ ${#executables[@]} == 1 ]]
 exe="$PWD/${executables[0]}"
