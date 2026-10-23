@@ -24,7 +24,11 @@ contains
         real(dp), intent(out) :: theta_b
         real(dp), intent(out) :: phi_b
         real(dp) :: t1_v1
+        real(dp) :: t2_v1
+        real(dp) :: t3_v1
         real(dp) :: t1_v1_b
+        real(dp) :: t2_v1_b
+        real(dp) :: t3_v1_b
         real(dp), dimension(3) :: point_b_in
         real(dp) :: fad_t1
         real(dp) :: fad_t2
@@ -49,46 +53,37 @@ contains
         real(dp) :: fad_t21
         real(dp) :: fad_t22
         real(dp) :: fad_t23
-        real(dp) :: fad_t24
-        real(dp) :: fad_t25
-        real(dp) :: fad_t26
-        real(dp) :: fad_t27
-        real(dp) :: fad_t28
-        real(dp) :: fad_t29
 
         t1_v1 = sinh(eta)
+        t3_v1 = cosh(eta) - cos(theta)
         t1_v1_b = 0.0_dp
+        t2_v1_b = 0.0_dp
+        t3_v1_b = 0.0_dp
         scale_b = 0.0_dp
         eta_b = 0.0_dp
         theta_b = 0.0_dp
         phi_b = 0.0_dp
         point_b_in = point_b
-        fad_t1 = point_b_in(3) * (-(1.0_dp / (cos(theta) - cosh(eta))))
+        fad_t1 = point_b_in(3) * (1.0_dp / t3_v1)
         scale_b = scale_b + fad_t1 * sin(theta)
         theta_b = theta_b + fad_t1 * scale * cos(theta)
-        fad_t5 = point_b_in(3) * ((-(scale * sin(theta))) / (cosh(eta) - cos(theta)) &
-            ** 2)
-        eta_b = eta_b + fad_t5 * sinh(eta)
-        theta_b = theta_b + fad_t5 * (-1.0_dp) * (-sin(theta))
+        t3_v1_b = t3_v1_b + point_b_in(3) * ((-(scale * sin(theta))) / t3_v1 ** 2)
         point_b_in(3) = 0.0_dp
-        fad_t9 = point_b_in(2) * (-(1.0_dp / (cos(theta) - cosh(eta))))
-        scale_b = scale_b + fad_t9 * t1_v1 * sin(phi)
-        phi_b = phi_b + fad_t9 * t1_v1 * scale * cos(phi)
-        t1_v1_b = t1_v1_b + fad_t9 * (scale * sin(phi))
-        fad_t15 = point_b_in(2) * ((-(scale * sin(phi) * t1_v1)) / (cosh(eta) - &
-            cos(theta)) ** 2)
-        eta_b = eta_b + fad_t15 * sinh(eta)
-        theta_b = theta_b + fad_t15 * (-1.0_dp) * (-sin(theta))
+        fad_t6 = point_b_in(2) * (1.0_dp / t3_v1)
+        scale_b = scale_b + fad_t6 * t1_v1 * sin(phi)
+        phi_b = phi_b + fad_t6 * t1_v1 * scale * cos(phi)
+        t1_v1_b = t1_v1_b + fad_t6 * (scale * sin(phi))
+        t3_v1_b = t3_v1_b + point_b_in(2) * ((-(scale * sin(phi) * t1_v1)) / t3_v1 ** 2)
         point_b_in(2) = 0.0_dp
-        fad_t19 = point_b_in(1) * (-(1.0_dp / (cos(theta) - cosh(eta))))
-        scale_b = scale_b + fad_t19 * t1_v1 * cos(phi)
-        phi_b = phi_b - fad_t19 * t1_v1 * scale * sin(phi)
-        t1_v1_b = t1_v1_b + fad_t19 * (scale * cos(phi))
-        fad_t25 = point_b_in(1) * ((-(scale * cos(phi) * t1_v1)) / (cosh(eta) - &
-            cos(theta)) ** 2)
-        eta_b = eta_b + fad_t25 * sinh(eta)
-        theta_b = theta_b + fad_t25 * (-1.0_dp) * (-sin(theta))
+        fad_t13 = point_b_in(1) * (1.0_dp / t3_v1)
+        scale_b = scale_b + fad_t13 * t1_v1 * cos(phi)
+        phi_b = phi_b - fad_t13 * t1_v1 * scale * sin(phi)
+        t1_v1_b = t1_v1_b + fad_t13 * (scale * cos(phi))
+        t3_v1_b = t3_v1_b + point_b_in(1) * ((-(scale * cos(phi) * t1_v1)) / t3_v1 ** 2)
         point_b_in(1) = 0.0_dp
+        eta_b = eta_b + t3_v1_b * sinh(eta)
+        t2_v1_b = t2_v1_b - t3_v1_b * 1.0_dp
+        theta_b = theta_b - t2_v1_b * sin(theta)
         eta_b = eta_b + t1_v1_b * cosh(eta)
     end subroutine fortfem_toroidal_point_to_cartesian_vjp_fortad
 
