@@ -51,7 +51,9 @@ geometry degree. GLL interpolation is tensorised. Each fine global dof has
 one owner cell, making restriction exactly the transpose of global
 prolongation. Jacobi or Chebyshev(Jacobi) smoothing uses a short Lanczos
 spectral estimate with a safety factor. The p=1 CSR matrix is converted to CSC
-and factored through FortFEM's native FortSparse hook with a symmetric hint selecting native LDLT. A
+and factored through FortFEM's native FortSparse hook with the SPD hint, which
+selects native Cholesky. The masked coarse matrix is SPD, and the pivoted
+indefinite LDLT used before took 42 s on a 5,185-dof 2D coarse level. A
 procedure argument can replace the coarse solve, for example with AMG. PCG
 confirms convergence using a fresh operator residual. Nonzero Dirichlet values
 are lifted before solving the masked interior system.

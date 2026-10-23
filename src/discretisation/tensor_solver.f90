@@ -9,7 +9,7 @@ module fortfem_tensor_solver
     use fortfem_element_to_csr, only: csr_matrix_t
     use fortfem_sparse_direct, only: sparse_direct_factor_t, &
               sparse_direct_factor_csc, sparse_direct_solve_factored, sparse_direct_free
-    use fortsparse, only: sparse_options_t, FORTSPARSE_SYM_INDEFINITE
+    use fortsparse, only: sparse_options_t, FORTSPARSE_SYM_SPD
     implicit none
     private
     public :: tensor_solve_info_t, tensor_multigrid_t, build_tensor_multigrid
@@ -200,7 +200,7 @@ contains
                 fill(j) = pos + 1
             end do
         end do
-        options%symmetry = FORTSPARSE_SYM_INDEFINITE
+        options%symmetry = FORTSPARSE_SYM_SPD
         call sparse_direct_factor_csc(mg%factor, n, ptr, rows, values, status, options)
     end subroutine
 
