@@ -23,7 +23,16 @@ module fortfem_parametric_bem_high_order
     private
     public :: bem_pair_options_t, bem_pair_report_t, build_p2_trace_connectivity
     public :: assemble_parametric_bem_p2, integrate_parametric_bem_p2_pair
-    public :: assignment(=)
+    public :: assignment(=), bem_pair_degree_trace_t
+    ! Proposed diagnostic output only; no change to numerical acceptance.
+    type :: bem_pair_degree_trace_t
+        integer :: count=0, degree(128)=0, native_status(128)=0
+        integer(int64) :: evaluations(128)=0_int64
+        logical :: resolved(128)=.false.
+        real(dp) :: ratios(4,128)=huge(1.0_dp)
+        real(dp) :: v(3,3,128)=0, k(3,6,128)=0
+        real(dp) :: w(6,6,128)=0, correction(3,6,128)=0
+    end type
     type :: bem_pair_options_t
         real(dp) :: relative_tolerance = 1.e-3_dp
         real(dp) :: absolute_tolerance = 1.e-9_dp
@@ -405,7 +414,7 @@ contains
     end function
 
     pure subroutine converge_pair(surface,i,j,options,bank,points,block, &
-            report,status)
+            report,status,degree_trace)
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: i,j
         type(bem_pair_options_t), intent(in) :: options
@@ -415,6 +424,7 @@ contains
         type(bem_pair_report_t), intent(out) :: report
         integer, intent(out) :: status
         type(block_t) :: previous
+        type(bem_pair_degree_trace_t), optional, intent(out) :: degree_trace
         integer(int64) :: bound,evaluations
         integer :: l
         logical :: resolved,have_previous
@@ -422,6 +432,14 @@ contains
         report=bem_pair_report_t()
         report%error_ratio=huge(1.0_dp)
         have_previous=.false.
+        if (present(degree_trace)) then
+            degree_trace%count=0
+            if (size(bank%degree)>size(degree_trace%degree)) then
+                status=1
+                report%failed_pairs=1
+                return
+            end if
+        end if
         do l=1,size(bank%degree)
             bound=3_int64*bank%count(l)*int(bank%line_count(l),int64)**2
             if (i==j) bound=2*bound
@@ -435,6 +453,31 @@ contains
             end if
             report%kernel_evaluations=report%kernel_evaluations+evaluations
             report%maximum_degree_used=bank%degree(l)
+            if (present(degree_trace)) then
+                degree_trace%count=l
+                degree_trace%degree(l)=bank%degree(l)
+                degree_trace%evaluations(l)=evaluations
+                degree_trace%native_status(l)=status
+                degree_trace%resolved(l)=resolved
+                degree_trace%v(:,:,l)=block%v
+                degree_trace%k(:,:,l)=block%k
+                degree_trace%w(:,:,l)=block%w
+                degree_trace%correction(:,:,l)=block%c
+                if (have_previous .and. resolved .and. status==0) then
+                    degree_trace%ratios(1,l)=maxval(abs(block%v-previous%v))/ &
+                        (options%absolute_tolerance+options%relative_tolerance* &
+                        maxval(abs(block%v)))
+                    degree_trace%ratios(2,l)=maxval(abs(block%k-previous%k))/ &
+                        (options%absolute_tolerance+options%relative_tolerance* &
+                        maxval(abs(block%k)))
+                    degree_trace%ratios(3,l)=maxval(abs(block%w-previous%w))/ &
+                        (options%absolute_tolerance+options%relative_tolerance* &
+                        maxval(abs(block%w)))
+                    degree_trace%ratios(4,l)=maxval(abs(block%c-previous%c))/ &
+                        (options%absolute_tolerance+options%relative_tolerance* &
+                        maxval(abs(block%c)))
+                end if
+            end if
             if (status/=0) then
                 report%failed_pairs=1
                 return
@@ -464,7 +507,7 @@ contains
     end subroutine
 
     subroutine integrate_parametric_bem_p2_pair(surface,i,j,options, &
-            v,k,w,correction,report,status)
+            v,k,w,correction,report,status,degree_trace)
         !! Raw local forms; no symmetry averaging and no closed-surface jump.
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: i,j
@@ -472,6 +515,7 @@ contains
         real(dp), intent(out) :: v(3,3),k(3,6),w(6,6),correction(3,6)
         type(bem_pair_report_t), intent(out) :: report
         integer, intent(out) :: status
+        type(bem_pair_degree_trace_t), optional, intent(out) :: degree_trace
         type(rule_bank_t) :: bank
         type(point_t), allocatable :: points(:,:)
         type(block_t) :: block
@@ -489,7 +533,8 @@ contains
                 if (status/=0) return
             end do
         end do
-        call converge_pair(surface,i,j,options,bank,points,block,report,status)
+        call converge_pair(surface,i,j,options,bank,points,block,report,status, &
+            degree_trace)
         if (status/=0) return
         v=block%v; k=block%k; w=block%w; correction=block%c
     end subroutine

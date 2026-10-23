@@ -64,6 +64,11 @@ implicit-typing = false
 implicit-external = false
 source-form = "free"
 
+[[executable]]
+name = "fortfem_bem_shared_edge_diagnostic"
+source-dir = "benchmark"
+main = "fortfem_bem_shared_edge_diagnostic.f90"
+
 [extra.ford]
 project = "FortFEM"
 summary = "A modern Fortran finite element library"
