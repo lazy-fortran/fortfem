@@ -103,3 +103,11 @@ main = "tensor_benchmark.f90"
 name = "fortfem_lab_igaax"
 source-dir = "benchmark/lab/igaax"
 main = "igaax_lab.f90"
+
+[[extra.fo.inputs]]
+path = "test/data/gmsh"
+kind = "directory"
+role = "test-fixture"
+
+[extra.fo.test-groups]
+gmsh = { tests = ["test_lab_unstructured_mesh"], inputs = ["test/data/gmsh"] }

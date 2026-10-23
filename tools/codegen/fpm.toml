@@ -357,3 +357,8 @@ main = "gen_parametric_bem_products.f90"
 name = "gen_bem_high_order_products"
 source-dir = "app"
 main = "gen_bem_high_order_products.f90"
+
+[[executable]]
+name = "gen_tensor_fem_bem_products"
+source-dir = "app"
+main = "gen_tensor_fem_bem_products.f90"

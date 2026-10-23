@@ -492,3 +492,112 @@ level function along every ray. The comparison is 2D (single helicity). A 3D
 multi-helicity or stochastic case, a chi-robust preconditioner and
 time-to-solution against VMEC-class codes are not covered.
 <!-- UNS1 END -->
+
+<!-- FB1 BEGIN -->
+## FB1: tensor FEM interior with 3D BEM free boundary (criterion 1)
+
+[V] Synthetic data only (point charges, quadratic interior field, prescribed
+surface current). Correctness rows from revision 1cb4b23e plus the
+allocatable-work-array edit to `parametric_bem_tensor.f90`, workstation,
+GNU Fortran 16.2.1, `fpm test` default debug profile (no OpenMP, loaded
+machine), so the time columns below are orders of magnitude only. Timing and
+thread scaling are cluster rows in the section below.
+
+### Transmission oracle (`test_lab_fem_bem_transmission`)
+
+Exact transmission data on the discrete O-grid torus (5-block O-grid x phi,
+`n` radial cells per block, `nphi` toroidal cells), interior and exterior fields
+from point charges. Columns: relative volume L2 and H1 error, relative coupled
+Neumann error (`relq`) and DtN-only Neumann error (`relq_dtn`), PCG iterations
+for relative tolerance 1e-11 with the block preconditioner.
+
+| n | nphi | p | pf | dofs | trace | its | relL2 | relH1 | relq | relq_dtn |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 6 | 2 | 1 | 300 | 96 | 18 | 3.04e-2 | 1.28e-1 | 3.78e-1 | 3.65e-1 |
+| 1 | 6 | 3 | 2 | 936 | 216 | 18 | 9.23e-3 | 5.38e-2 | 1.32e-1 | 1.56e-1 |
+| 1 | 6 | 4 | 3 | 2136 | 384 | 22 | 3.38e-3 | 2.71e-2 | 1.16e-1 | 1.22e-1 |
+| 2 | 12 | 2 | 1 | 2136 | 384 | 20 | 6.99e-3 | 4.86e-2 | 9.08e-2 | 1.07e-1 |
+
+[V] All errors decrease under p- and h-refinement. The data are too coarse and
+the BEM quadrature error too large to confirm an asymptotic rate of p+1 in h
+or exponential convergence in p. Neumann errors stagnate near 1e-1 for p=3..4,
+so the BEM quadrature limit, not the FEM space, dominates there [H].
+
+[V] Schur scale sigma of the preconditioner (n=1, nphi=6, p=3, pf=2):
+
+| sigma | 1 | 2 | 3 | 5 | 8 |
+|--:|--:|--:|--:|--:|--:|
+| PCG its | 29 | 20 | 18 | 24 | 30 |
+
+### Vacuum-field current sheet (`test_lab_fem_bem_current_sheet`)
+
+Prescribed divergence-free surface current on the torus boundary, exterior B from
+the representation formula (`ext_rel_max`) and interior B on the axis core cells
+(`core_rel_l2`) against an independent Biot-Savart surface integral.
+
+| n | nphi | p | dofs | trace | its | ext_rel_max | core_rel_l2 |
+|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 6 | 2 | 300 | 96 | 17 | 1.57e-2 | 2.46e-2 |
+| 1 | 6 | 4 | 2136 | 384 | 20 | 6.69e-4 | 3.84e-3 |
+| 2 | 12 | 2 | 2136 | 384 | 18 | 8.51e-4 | 4.79e-3 |
+
+### Thread scaling and size scan (sCluster job 3356163)
+
+[V] Revision 46fefb79, node6 (exclusive), GNU Fortran 12.2.0, `fpm test --target
+test_lab_fem_bem_transmission --profile release --flag "-fopenmp
+-finline-matmul-limit=0" --link-flag -fopenmp`, run as
+`OMP_NUM_THREADS=T OPENBLAS_NUM_THREADS=T <bin> n nphi 4 3 0 0 3` (p=4, pf=3,
+default BEM quadrature, sigma=3), so the dense LU/Cholesky of fortnum/OpenBLAS is
+inside the scaling. Times are the per-stage wall times printed by the test, in seconds,
+`wall` is the whole process (`/usr/bin/time`). Rows: `fb1_sweep_3356163.csv`, log sha256
+8e5599000c9d6b4bbb643866bcf08755666afecaa058ea3f38a68e0b7864db2b.
+
+| n | nphi | trace | T | t_bem | t_dtn | t_mg | wall | peak RSS MiB | its |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 2 | 12 | 1536 | 1 | 12.48 | 1.66 | 0.083 | 15.1 | 223 | 28 |
+| 2 | 12 | 1536 | 2 | 8.48 | 1.59 | 0.061 | 10.7 | 232 | 28 |
+| 2 | 12 | 1536 | 4 | 5.36 | 1.57 | 0.051 | 7.4 | 252 | 28 |
+| 2 | 12 | 1536 | 8 | 2.70 | 1.55 | 0.046 | 4.6 | 308 | 28 |
+| 2 | 12 | 1536 | 16 | 1.00 | 1.56 | 0.043 | 2.9 | 408 | 28 |
+| 3 | 18 | 3456 | 1 | 28.61 | 22.88 | 0.497 | 55.7 | 1009 | 31 |
+| 3 | 18 | 3456 | 2 | 20.00 | 22.44 | 0.423 | 45.1 | 1011 | 31 |
+| 3 | 18 | 3456 | 4 | 12.25 | 22.06 | 0.383 | 36.2 | 1019 | 31 |
+| 3 | 18 | 3456 | 8 | 6.61 | 21.97 | 0.368 | 30.1 | 1066 | 31 |
+| 3 | 18 | 3456 | 16 | 2.59 | 21.86 | 0.385 | 25.9 | 1171 | 31 |
+
+[V] `t_bem` scales 12.5x (n=2) and 11.1x (n=3) from 1 to 16 threads. `t_dtn`
+does not scale at all (1.66 s to 1.56 s and 22.9 s to 21.9 s), and `t_mg` gains
+only 1.9x (n=2) and 1.3x (n=3). The wall time therefore saturates at 5.1x
+(n=2) and 2.2x (n=3) because the serial dense DtN build is Amdahl-limited.
+
+| n | nphi | dofs | trace N | its | t_bem | t_dtn | t_mg | wall | peak RSS MiB |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 6 | 2136 | 384 | 22 | 0.49 | 0.021 | 0.010 | 0.7 | 163 |
+| 2 | 12 | 16176 | 1536 | 28 | 1.01 | 1.57 | 0.044 | 3.0 | 380 |
+| 3 | 18 | 53640 | 3456 | 31 | 2.61 | 21.78 | 0.386 | 25.8 | 1170 |
+| 4 | 24 | 126048 | 6144 | 33 | 5.74 | 127.5 | 2.32 | 138.0 | 3109 |
+
+Size scan at 16 threads (same job, same flags). [V] `t_dtn` grows like N^3
+(0.021, 1.57, 21.8, 127.5 s at N=384, 1536, 3456, 6144: ratios 75, 14, 5.9
+against N^3 ratios 64, 11.4, 5.6), while `t_bem` grows sub-quadratically at 16
+threads (0.49, 1.01, 2.61, 5.74 s, local exponents 0.5 to 1.2) and `t_mg` reaches
+2.3 s at N=6144. Dense DtN construction dominates the setup above
+N~1200 (interpolated between N=384 and N=1536) and is 92% of the wall time at
+N=6144. Below N~1200 and in serial (1 thread: `t_bem` 12.5 s against `t_dtn` 1.7 s
+at N=1536) the dense BEM assembly dominates. [H] The DtN build, i.e. the dense solve
+and the transposed-jump product in `build_exterior_dtn`, runs on one thread
+(traced in the follow-up PR); ACA/FMM would not remove it.
+
+### Reproduction
+
+```bash
+fpm test --target test_lab_fem_bem_transmission
+fpm test --target test_lab_fem_bem_current_sheet
+# scan row: n nphi p [flux_degree target_points fan_points schur_scale]
+build/gfortran_*/test/test_lab_fem_bem_transmission 1 6 3 2 0 0 3
+```
+
+[V] Not run: `tools/codegen/check_generated.sh` (needs the pinned FortSym
+checkout, absent here); the generated file is unchanged by the edit.
+[V] Not registered in CMake: the BEM sources are built by fpm only.
+<!-- FB1 END -->
