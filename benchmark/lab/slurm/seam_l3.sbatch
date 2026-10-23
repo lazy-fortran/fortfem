@@ -28,7 +28,8 @@ export LAB_FLAGS='-O3 -funroll-loops -fopenmp -finline-matmul-limit=0 -foffload=
 fpm_args=(--profile release --flag "$LAB_FLAGS" --link-flag "-fopenmp -foffload=disable")
 "$runroot/mem_guard.sh" 47.2 fpm run "${fpm_args[@]}" --target lab_mf_run \
     --runner echo > "$runroot/build-driver.log" 2>&1
-exe=$(tail -n 1 "$runroot/build-driver.log")
+# mem_guard appends its peak line; take the path the runner echoed.
+exe=$(grep -E '(^|/)lab_mf_run$' "$runroot/build-driver.log" | tail -n 1)
 [[ $exe == /* ]] || exe="$PWD/$exe"
 [[ -x $exe ]]
 points=${SEAM_L3_POINTS:-"2 4 6"}
