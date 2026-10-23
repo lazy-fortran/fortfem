@@ -808,6 +808,69 @@ The reported norms use indicator quadrature, not certified integrals.
 | gll-polar | 2 | 1 to 2 | 3.066 | 1.629 | 1.436 |
 | gll-polar | 2 | 2 to 4 | 2.993 | 3.444 | -0.452 |
 
+### SEAM1: field-aligned L3 with a mortar periodic seam (criteria 2-4)
+
+[V] `seam-l3-20261023.csv` holds sCluster job 3356493 (node17, revision
+817dad00, GNU Fortran 12.2.0, `-O3 -funroll-loops -fopenmp
+-finline-matmul-limit=0 -foffload=disable`, four OpenMP threads, n=1). Both
+layouts mesh the exact unit disk of `PROBLEMS.md` with the five-block O-grid
+and 20 phi cells. `disk` is periodic in phi. `aligned` turns each section by
+iota(s) phi and closes the period with the mortar seam of
+`fortfem_tensor_seam`, whose DOFs are the reduced unknowns. BEN1's unaligned
+rows above use a warped mesh whose boundary is not a flux surface, so they are
+not the comparison. Seam setup is the time of `close_tensor_seam`, which the
+wall time includes.
+
+| p | ratio | layout | DOFs | rel L2 | its | seam setup (s) | wall (s) | RSS (MiB) |
+|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| 2 | 1 | disk | 1000 | 1.048e-03 | 6 | — | 0.036 | 19 |
+| 2 | 1 | aligned | 1008 | 1.365e-03 | 7 | 9.07 | 9.51 | 587 |
+| 2 | 1e3 | disk | 1000 | 1.413e-03 | 32 | — | 0.050 | 19 |
+| 2 | 1e3 | aligned | 1008 | 1.142e-03 | 102 | 9.09 | 9.53 | 586 |
+| 4 | 1 | disk | 7120 | 1.345e-05 | 7 | — | 0.107 | 31 |
+| 4 | 1 | aligned | 7136 | 2.577e-05 | 8 | 36.0 | 38.0 | 1625 |
+| 4 | 1e3 | disk | 7120 | 1.220e-05 | 109 | — | 0.345 | 88 |
+| 4 | 1e3 | aligned | 7136 | 1.914e-05 | 162 | 35.9 | 38.4 | 1613 |
+| 6 | 1 | disk | 23160 | 1.257e-07 | 9 | — | 0.329 | 70 |
+| 6 | 1 | aligned | 23184 | 5.508e-07 | 12 | 112 | 119 | 3306 |
+| 6 | 1e3 | disk | 23160 | 4.770e-08 | 129 | — | 1.13 | 258 |
+| 6 | 1e3 | aligned | 23184 | 3.484e-07 | 217 | 111 | 120 | 3309 |
+
+[V] Verdict on this evidence: at matched p and n the aligned layout with a
+mortar seam is not more accurate than the periodic disk, except at p=2 and
+ratio 1e3 (1.14e-3 against 1.41e-3). At p=6 and ratio 1e3 it is seven times
+less accurate (3.5e-7 against 4.8e-8), and it needs more PCG iterations (217
+against 129). It is 106 to 362 times slower, because seam setup dominates,
+and needs 13 to 53 times the memory. Already at ratio 1, where alignment cannot
+help, the aligned error is 1.3 to 4.4 times the disk error, so the price is
+paid by the twisted cells and the nonconforming seam [H for the split between
+the two]. On this case field alignment is therefore no accelerator at the
+tested sizes (criterion 3), and high order without alignment remains the
+faster route to matched accuracy (criterion 4).
+
+[V] All six ratio-1e6 rows failed with exit 1. The cause is the PCG
+tolerance, not the iteration cap as such. On the exact disk at p=2 the
+recurrence residual passed 1e-10 at iterations 100, 151 and 323, while the true
+relative residual was 7.9e-10, 4.9e-10 and 1.8e-9, so the confirmation step of
+`solve_tensor_diffusion` kept iterating, and the true residual stayed at
+1.2e-9 to 1.7e-9 up to 20000 iterations. The driver therefore stopped at its
+1500-iteration cap (`lab_mf_run.f90`). The disk and aligned layouts now solve
+to max(1e-10, 1e-14 ratio), still below the driver's 2e-8 acceptance bound.
+Local reruns (workstation, GNU Fortran 16.2.1, four threads) converge: p=2 disk
+3.55e-2 in 62 iterations, p=2 aligned 3.71e-2 in 315 iterations, p=4 disk
+1.24e-5 in 451 iterations. No timing is claimed for them.
+
+[V] The rigid-twist robustness fix of the seam (slave parts split to a quarter
+of the smallest master part) raised the p=2 seam setup on the workstation to
+183 s and 7.8 GB with 45 million overlap nodes. Halving a slave part only
+against each master part it meets, threading over slave parts instead of the
+five slave faces, and the p+q+2 fan rule bring it to 52 s at p=2 and 205 s at
+p=4 (four threads; errors agree with job 3356493 to 5e-12 relative). That is still about five times the
+setup of job 3356493, which predates the robustness fix. sCluster job 3357470
+measures the strong scaling of this setup on 1 to 16 threads at p=4 and 6
+(`slurm/seam_scaling.sbatch`), and job 3357471 reruns the rows above with all
+three ratios. Both were pending when this section was written.
+
 ### L6: reused N1 external reference measurements
 
 [V] `l6-n1-reference-20261022.csv` imports thirty existing VMEC++/GVEC records
