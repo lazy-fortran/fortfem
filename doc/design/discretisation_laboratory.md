@@ -180,3 +180,9 @@ operator on the polar map, restricts it by the extraction and solves it
 directly. `fortfem_lab_igaax` writes one CSV row per run, and
 `test_lab_line_operator` and `test_lab_line_hierarchy` are the named tests.
 
+
+The IGA-AX section of `benchmark/lab/RESULTS.md` holds the evidence. At
+matched L1 error, GLL with p-multigrid was the fastest family (1.26 s for
+rel L2 1.8e-9 at 16 threads). The O-grid through the axis kept rate p+1
+without any near-axis degradation for both GLL and splines. Spline
+h-multigrid with Jacobi-type smoothing is h-robust but not p-robust.
