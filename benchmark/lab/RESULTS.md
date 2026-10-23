@@ -429,9 +429,41 @@ chi = 1e6, p-MG/LDLT solve wall time in seconds (setup excluded):
 | island L4, 16449 DOFs, 186 its | 3.03 | 1.69 | 1.01 | 0.69 | 0.70 |
 
 Peak RSS at 16 threads is 302,508 KiB (ogrid) and 231,540 KiB (island). These
-2D problems are too small to scale beyond eight threads. The full sweep (p = 2,
-4, 6; chi = 1e3, 1e5, 1e7, 1e9; meshes island L1..4 and ogrid L4..16; solvers
-ldlt, amg, direct; exclusive nodes, 16 threads) is Slurm array **3356137**.
+2D problems are too small to scale beyond eight threads.
+
+[V] Full sweep, Slurm array **3356137** (tasks p = 2/4/6 on `node6`, `node13`,
+`node4`, exclusive, 16 threads, revision 3c2fe688, GNU Fortran 12.2.0, `-O3
+-Wall -Wextra -fcheck=bounds`): meshes island L1..4 and ogrid L4..16, chi =
+1e3, 1e5, 1e7, 1e9, solvers ldlt, amg and direct, 288 rows without failure.
+The p = 4 rows reproduce the faepmac1 numbers above digit for digit. The
+largest mesh of each family (island L4 against ogrid L16, 0.8 times the DOFs)
+gives the direct-solve rel_l2 and the p-MG/LDLT iterations (* = not converged
+in 500):
+
+| p | DOFs island/ogrid | interp island/ogrid | chi | rel_l2 island | rel_l2 ogrid | its island/ogrid |
+|---|---|---|---|---|---|---|
+| 2 | 4129/5185 | 8.65e-3/7.01e-3 | 1e3 | 8.79e-3 | 6.61e-3 | 21/8 |
+| 2 | | | 1e5 | 8.68e-3 | 7.87e-3 | 36/53 |
+| 2 | | | 1e7 | 1.22e-2 | 3.49e-2 | 167/166 |
+| 2 | | | 1e9 | 8.07e-2 | 2.27e-1 | 500*/500* |
+| 4 | 16449/20609 | 1.98e-3/1.83e-3 | 1e3 | 1.96e-3 | 1.75e-3 | 34/9 |
+| 4 | | | 1e5 | 1.91e-3 | 1.80e-3 | 59/81 |
+| 4 | | | 1e7 | 2.17e-3 | 4.14e-3 | 500*/500* |
+| 4 | | | 1e9 | 4.82e-3 | 1.74e-2 | 500*/500* |
+| 6 | 36961/46273 | 7.82e-4/7.30e-4 | 1e3 | 1.05e-3 | 6.62e-4 | 43/12 |
+| 6 | | | 1e5 | 1.01e-3 | 6.69e-4 | 72/99 |
+| 6 | | | 1e7 | 1.10e-3 | 1.24e-3 | 500*/500* |
+| 6 | | | 1e9 | 1.30e-3 | 3.72e-3 | 500*/500* |
+
+[V] Up to chi = 1e5 the unaligned O-grid is at its interpolation error and
+matches or beats the island mesh at matched DOFs (criterion 3: alignment is
+not needed there). At 1e9 the O-grid error exceeds its interpolation error
+by 32, 9.5 and 5.1 times for p = 2, 4 and 6, and the island mesh by 9.3, 2.4
+and 1.7 times. High order therefore reduces the pollution on both meshes, and
+the island-adapted mesh is 2.8 to 3.6 times more accurate at 1e9. [V] No
+solver here gives a fast stiff-anisotropy solve: p-MG stalls from 1e7 (p = 4,
+6), and the direct LDLT reference takes 125 s (ogrid L16) and 95 s (island L4)
+at p = 6. Wall times for every row are in the sweep logs.
 
 ### Reproduction and limits
 
@@ -449,7 +481,9 @@ build/lab/fortfem_lab_uns1_island ogrid 16 4 1e6 ldlt
 ```
 
 [V] Wrappers and logs live outside Git at `scluster:~/runs/fortfem-uns1-20261023/`
-(`uns1-pilot.sh`, `uns1-sweep.sh`, `pilot-3356132.log`, `SHA256SUMS`).
+(`uns1-pilot.sh`, `uns1-sweep.sh`, `uns1_table.py`, `pilot-3356132.log`,
+`sweep-3356137_{0,1,2}.log`, `SHA256SUMS`). `python3 -I uns1_table.py
+sweep-3356137_*.log` prints every row grouped by p, chi and mesh.
 The faepmac1 rows were produced by the same binary arguments with
 `OMP_NUM_THREADS=4`.
 The island mesh uses a polar chart about the disk centre only away from the
