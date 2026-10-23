@@ -99,6 +99,7 @@ jobs:
       # Keep the ten-second per-target contract reliable on large runners;
       # unconstrained host-wide parallelism makes independent numerical tests
       # contend for memory and spuriously cross the wall-clock limit.
+      # The coverage step has a separate instrumentation allowance below.
       # The hosted gfortran front end can emit a module before all of its
       # dependency diagnostics are settled; serialize Fo's test build so
       # consumers never read a partial .mod file.  The ten-second timeout is
@@ -178,6 +179,11 @@ jobs:
     - name: Run tests with coverage
       id: coverage
       continue-on-error: true
+      env:
+        # GCC 12 coverage makes the circulant test about five times slower
+        # than the normal build. Keep its full direct-pair oracle and bound
+        # instrumented execution separately from the normal ten-second gate.
+        FO_TEST_TIMEOUT: 60
       run: |
         read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
         if ! fo test --flag "--coverage -fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
@@ -185,7 +191,7 @@ jobs:
           fpm clean --skip
           fpm test --target "${fast_tests[@]}" \
             --flag "--coverage -fno-fast-math -ffp-contract=off" \
-            --runner "timeout 10s"
+            --runner "timeout 60s"
         fi
         find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
           gcov -o "$dir" src/*.f90 || true
