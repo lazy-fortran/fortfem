@@ -46,7 +46,7 @@ module fortfem_lab_gs
         real(dp), allocatable :: psiq(:, :), g(:, :), gpsi(:, :), gpsia(:, :)
         real(dp), allocatable :: cvec(:), axis_basis(:), evaluated(:)
         integer, allocatable :: axis_dofs(:)
-        real(dp) :: time_axis = 0
+        real(dp) :: time_axis = 0, time_setup(4) = 0 ! mesh, operator, mg, locator
         integer :: axis_searches = 0
     contains
         procedure :: residual => gs_residual
@@ -169,23 +169,31 @@ contains
         type(gs_system_t), intent(out) :: system
         integer, intent(out) :: status
         type(tensor_mesh_t) :: mesh
-        real(dp) :: core
+        real(dp) :: core, t0
         core = 0.32_dp
         call set_active_case(case)
         system%case = case
         system%variant = gs_profile_variant(case)
         status = 1
         if (system%variant == 0) return
+        t0 = wall()
         call ogrid_tensor_mesh(2, n, p, mesh, status, boundary=solovev_boundary, &
                                center=[case%r0, 0.0_dp], &
                                core_half=core*case%eps*case%r0*[1.0_dp, case%kappa])
         if (status /= 0) return
+        system%time_setup(1) = wall() - t0
+        t0 = wall()
         call build_tensor_operator(mesh, inverse_r, system%op, status)
         if (status /= 0) return
+        system%time_setup(2) = wall() - t0
+        t0 = wall()
         call build_tensor_multigrid(mesh, inverse_r, system%mg, status)
         if (status /= 0) return
+        system%time_setup(3) = wall() - t0
+        t0 = wall()
         call build_tensor_locator(mesh, system%locator, status)
         if (status /= 0) return
+        system%time_setup(4) = wall() - t0
         associate (mq => product(system%op%no), ne => mesh%nelem)
             allocate (system%psiq(mq, ne), system%g(mq, ne), system%gpsi(mq, ne), &
                       system%gpsia(mq, ne))

@@ -122,6 +122,8 @@ contains
         write (output_unit, '(a,es12.5,a,es12.5,a,es12.5,a,es12.5)') 't_setup=', &
             t_setup, ' t_guess=', t_guess, ' t_newton=', t_newton, ' t_solve=', &
             t_setup + t_guess + t_newton
+        write (output_unit, '(a,4(es12.5,1x))') 't_setup_mesh_operator_mg_locator=', &
+            system%time_setup
         write (output_unit, '(a,5(es12.5,1x),a,es12.5)') &
             't_residual_linearise_jac_prec_krylov=', info%time, ' t_axis=', &
             system%time_axis
