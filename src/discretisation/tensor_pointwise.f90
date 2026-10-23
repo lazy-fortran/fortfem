@@ -22,21 +22,17 @@ contains
         ws = maxval([op%ni, op%no])**3
         !$omp parallel default(shared) private(e)
         block
-            real(dp), allocatable :: u(:), t1(:), t2(:), b(:, :)
-            real(dp) :: identity(1, 1)
+            real(dp), allocatable :: u(:), t1(:), t2(:)
+            integer :: c(3)
             allocate (u(nl), t1(ws), t2(ws))
-            b = op%line%b(:, :, 1)
-            identity = 1
             !$omp do schedule(static)
             do e = 1, op%mesh%nelem
+                c = op%cell(:, e)
                 u = x(op%mesh%dof(:, e))
-                if (op%mesh%dim == 2) then
-                    call tensor_contract(op%ni, op%no, b, b, identity, u, &
-                                         values(:, e), t1, t2)
-                else
-                    call tensor_contract(op%ni, op%no, b, b, b, u, values(:, e), &
-                                         t1, t2)
-                end if
+                call tensor_contract(op%ni, op%no, op%line(1)%b(:, :, c(1)), &
+                                     op%line(2)%b(:, :, c(2)), &
+                                     op%line(3)%b(:, :, c(3)), u, values(:, e), &
+                                     t1, t2)
             end do
             !$omp end do
         end block
@@ -59,33 +55,27 @@ contains
         y = 0
         !$omp parallel default(shared) private(e,ce,colour,a)
         block
-            real(dp), allocatable :: u(:), q(:), v(:), t1(:), t2(:), b(:, :), &
-                                     bt(:, :)
-            real(dp) :: identity(1, 1)
+            real(dp), allocatable :: u(:), q(:), v(:), t1(:), t2(:)
+            integer :: c(3)
             allocate (u(nl), q(mq), v(nl), t1(ws), t2(ws))
-            b = op%line%b(:, :, 1)
-            bt = transpose(b)
-            identity = 1
             do colour = 1, op%ncolours
                 !$omp do schedule(static)
                 do ce = op%colour_ptr(colour), op%colour_ptr(colour + 1) - 1
                     e = op%colour_cells(ce)
+                    c = op%cell(:, e)
                     do a = 1, nl
                         u(a) = x(op%mesh%dof(a, e))
                         if (mask) then
                             if (op%mesh%boundary(op%mesh%dof(a, e))) u(a) = 0
                         end if
                     end do
-                    if (op%mesh%dim == 2) then
-                        call tensor_contract(op%ni, op%no, b, b, identity, u, q, t1, t2)
-                        q = q*weight(:, e)*op%volume(:, e)
-                        call tensor_contract(op%no, op%ni, bt, bt, identity, q, v, &
-                                             t1, t2)
-                    else
-                        call tensor_contract(op%ni, op%no, b, b, b, u, q, t1, t2)
-                        q = q*weight(:, e)*op%volume(:, e)
-                        call tensor_contract(op%no, op%ni, bt, bt, bt, q, v, t1, t2)
-                    end if
+                    call tensor_contract(op%ni, op%no, op%line(1)%b(:, :, c(1)), &
+                                         op%line(2)%b(:, :, c(2)), &
+                                         op%line(3)%b(:, :, c(3)), u, q, t1, t2)
+                    q = q*weight(:, e)*op%volume(:, e)
+                    call tensor_contract(op%no, op%ni, op%trans(1)%bt(:, :, c(1)), &
+                                         op%trans(2)%bt(:, :, c(2)), &
+                                         op%trans(3)%bt(:, :, c(3)), q, v, t1, t2)
                     do a = 1, nl
                         y(op%mesh%dof(a, e)) = y(op%mesh%dof(a, e)) + v(a)
                     end do
@@ -115,22 +105,18 @@ contains
         rhs = 0
         !$omp parallel default(shared) private(e,ce,colour,a)
         block
-            real(dp), allocatable :: q(:), v(:), t1(:), t2(:), bt(:, :)
-            real(dp) :: identity(1, 1)
+            real(dp), allocatable :: q(:), v(:), t1(:), t2(:)
+            integer :: c(3)
             allocate (q(mq), v(nl), t1(ws), t2(ws))
-            bt = transpose(op%line%b(:, :, 1))
-            identity = 1
             do colour = 1, op%ncolours
                 !$omp do schedule(static)
                 do ce = op%colour_ptr(colour), op%colour_ptr(colour + 1) - 1
                     e = op%colour_cells(ce)
+                    c = op%cell(:, e)
                     q = values(:, e)*op%volume(:, e)
-                    if (op%mesh%dim == 2) then
-                        call tensor_contract(op%no, op%ni, bt, bt, identity, q, v, &
-                                             t1, t2)
-                    else
-                        call tensor_contract(op%no, op%ni, bt, bt, bt, q, v, t1, t2)
-                    end if
+                    call tensor_contract(op%no, op%ni, op%trans(1)%bt(:, :, c(1)), &
+                                         op%trans(2)%bt(:, :, c(2)), &
+                                         op%trans(3)%bt(:, :, c(3)), q, v, t1, t2)
                     do a = 1, nl
                         rhs(op%mesh%dof(a, e)) = rhs(op%mesh%dof(a, e)) + v(a)
                     end do

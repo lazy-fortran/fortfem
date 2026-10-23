@@ -1,5 +1,5 @@
 module fortfem_tensor_points
-    ! Point location and evaluation on lab tensor meshes (2D/3D, curved
+    ! Point location and evaluation on GLL nodal lab meshes (2D/3D, curved
     ! isoparametric cells), plus a local extremum search for a nodal field.
     ! Location inverts each candidate cell's geometry map by Newton's method
     ! inside an inflated bounding box; evaluation returns value and physical
@@ -28,6 +28,9 @@ contains
         real(dp), allocatable :: w(:)
         real(dp) :: margin
         integer :: e, d
+        ! This locator uses GLL nodes, not spline/Fourier coefficients.
+        status = 1
+        if (allocated(mesh%cell)) return
         locator%dim = mesh%dim
         locator%p = mesh%degree
         locator%q = mesh%geometry_degree

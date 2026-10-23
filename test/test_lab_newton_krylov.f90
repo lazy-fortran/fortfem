@@ -108,7 +108,15 @@ program test_lab_newton_krylov
     use fortfem_newton_krylov, only: newton_options_t, newton_info_t, &
                                      newton_krylov_solve
     use fortfem_tensor_mesh, only: tensor_mesh_t, ogrid_tensor_mesh
-    use fortfem_tensor_operator, only: build_tensor_operator, tensor_l2_error
+    use fortfem_tensor_operator, only: tensor_operator_t, build_tensor_operator, &
+                                       tensor_l2_error, assemble_tensor_operator
+    use fortfem_element_to_csr, only: csr_matrix_t
+    use fortfem_tensor_line_tables, only: tensor_line_tables_t
+    use fortfem_bspline_lines, only: build_bspline_line
+    use fortfem_gll_line, only: build_gll_line
+    use fortfem_line_mesh, only: line_tensor_mesh
+    use fortfem_tensor_pointwise, only: tensor_quadrature_values, &
+                                        tensor_weighted_mass, tensor_weighted_load
     use fortfem_tensor_solver, only: build_tensor_multigrid
     use fortfem_tensor_points, only: tensor_locator_t, build_tensor_locator, &
                                      locate_tensor_point, evaluate_tensor_point, &
@@ -118,6 +126,8 @@ program test_lab_newton_krylov
     real(dp) :: errors(3)
     failures = 0
     call check_points()
+    call check_pointwise_lines(2)
+    call check_pointwise_lines(3)
     do k = 1, 3
         p = 2*k
         call solve_case(p, errors(k))
@@ -129,6 +139,60 @@ program test_lab_newton_krylov
     if (failures > 0) error stop 'test_lab_newton_krylov failed'
     print '(a)', 'test_lab_newton_krylov passed'
 contains
+    subroutine check_pointwise_lines(dim)
+        ! Unequal directions and cell-dependent spline tables: compare the
+        ! pointwise reaction action with the existing operator assembly path.
+        integer, intent(in) :: dim
+        type(tensor_line_tables_t) :: lines(3)
+        type(tensor_mesh_t) :: mesh
+        type(tensor_operator_t) :: op
+        type(csr_matrix_t) :: matrix
+        type(tensor_locator_t) :: locator
+        real(dp), allocatable :: u(:), y(:), reference(:), values(:, :)
+        integer :: status, i, j
+        call build_bspline_line(2, lines(1), status, nelem=3)
+        call expect(status == 0, 'pointwise spline line')
+        call build_gll_line(3, 2, lines(2), status)
+        call expect(status == 0, 'pointwise GLL line')
+        if (dim == 3) then
+            call build_gll_line(1, 2, lines(3), status)
+            call expect(status == 0, 'pointwise third line')
+        end if
+        call line_tensor_mesh(dim, lines, mesh, status)
+        call expect(status == 0, 'pointwise line mesh')
+        mesh%boundary = .false.
+        call build_tensor_locator(mesh, locator, status)
+        call expect(status /= 0, 'GLL point locator rejects line-table mesh')
+        call build_tensor_operator(mesh, reaction_coefficient, op, status)
+        call expect(status == 0, 'pointwise reaction operator')
+        allocate (u(mesh%ndof), y(mesh%ndof), reference(mesh%ndof), &
+                  values(product(op%no), mesh%nelem))
+        do i = 1, mesh%ndof
+            u(i) = sin(real(3*i, dp))
+        end do
+        call assemble_tensor_operator(op, matrix)
+        reference = 0
+        do i = 1, mesh%ndof
+            do j = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
+                reference(i) = reference(i) + matrix%val(j)*u(matrix%colidx(j))
+            end do
+        end do
+        call tensor_weighted_mass(op, op%reaction, u, y, eliminate=.false.)
+        call expect(norm2(y - reference) < 1.e-12_dp*norm2(reference), &
+                    'mixed-line weighted mass matches reaction operator')
+        call tensor_quadrature_values(op, u, values)
+        call tensor_weighted_load(op, op%reaction*values, y, eliminate=.false.)
+        call expect(norm2(y - reference) < 1.e-12_dp*norm2(reference), &
+                    'mixed-line field load matches reaction operator')
+    end subroutine
+
+    subroutine reaction_coefficient(x, k, c)
+        real(dp), intent(in) :: x(:)
+        real(dp), intent(out) :: k(:, :), c
+        k = 0
+        c = 1 + sum(x*x)
+    end subroutine
+
     subroutine expect(condition, label)
         logical, intent(in) :: condition
         character(*), intent(in) :: label
