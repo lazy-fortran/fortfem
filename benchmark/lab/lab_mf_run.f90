@@ -35,6 +35,7 @@ program lab_mf_run
     real(dp) :: ballerr, ballnorm, g(12), radius, phi
    real(dp) :: exact, gradient(3), eg(3), source, direction(3), x(3), t(9), inv(3, 3), w
     integer :: p, n, status, i, e, q, ws, dir, node, fine_nnz
+    integer(8) :: tick, tock, rate
     character(32) :: problem, preconditioner, layout
     character(4096) :: arg
     call get_command_argument(1, problem)
@@ -68,11 +69,16 @@ program lab_mf_run
                 slave(:, e) = [e + 5*n*n*(20*n - 1), 3, 1]
             end do
             ! Both seam faces are the phi=0 section: the seam map is the identity.
+            call system_clock(tick, rate)
             call close_tensor_seam(original, master, slave, mesh, seam, status, &
                                    motion=reshape([1._dp, 0._dp, 0._dp, 0._dp, 1._dp, &
                                    0._dp, 0._dp, 0._dp, 1._dp, 0._dp, 0._dp, 0._dp], &
                                                   [3, 4]))
             if (status /= 0) error stop 'lab aligned seam failed'
+            call system_clock(tock)
+            ! Reported apart from the LAB record, which run.py parses.
+            write (*, '(a,1x,i0,1x,es12.4)') 'SEAM', seam%nslave, &
+                real(tock - tick, dp)/real(rate, dp)
         else
             mesh = original
         end if
