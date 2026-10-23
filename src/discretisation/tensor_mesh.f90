@@ -5,7 +5,7 @@ module fortfem_tensor_mesh
     implicit none
     private
     public :: tensor_mesh_t, build_tensor_mesh, structured_tensor_mesh
-    public :: ogrid_tensor_mesh, geometry_map
+    public :: ogrid_tensor_mesh, geometry_map, ogrid_boundary
     type :: tensor_mesh_t
         integer :: dim = 0, degree = 0, geometry_degree = 0, nelem = 0, ndof = 0
         integer, allocatable :: vertices(:, :), dof(:, :)
@@ -22,6 +22,12 @@ module fortfem_tensor_mesh
             import dp
             real(dp), intent(in) :: xi(:)
             real(dp), intent(out) :: x(:)
+        end subroutine
+        subroutine ogrid_boundary(angle, x)
+            ! Physical outer-boundary point for a unit-disk polar angle.
+            import dp
+            real(dp), intent(in) :: angle
+            real(dp), intent(out) :: x(2)
         end subroutine
     end interface
 contains
@@ -239,14 +245,22 @@ contains
         end do
     end subroutine
 
-    subroutine ogrid_tensor_mesh(dim, n, p, mesh, status, nphi, q)
+    subroutine ogrid_tensor_mesh(dim, n, p, mesh, status, nphi, q, boundary, &
+                                 center, core_half)
+        ! Five-block O-grid through the axis. Without boundary: unit disk (2D)
+        ! or the deformed reference torus (3D). With boundary (2D only): the
+        ! core square is center +/- core_half and each outer block blends its
+        ! core edge linearly into boundary(angle) along the radial direction.
         integer, intent(in) :: dim, n, p
         type(tensor_mesh_t), intent(out) :: mesh
         integer, intent(out) :: status
         integer, intent(in), optional :: nphi, q
+        procedure(ogrid_boundary), optional :: boundary
+        real(dp), intent(in), optional :: center(2), core_half(2)
         real(dp), allocatable :: x(:), w(:), geom(:, :, :), verts(:, :)
         integer, allocatable :: corners(:, :)
         real(dp) :: uv(3), point(3), angle, radial, tangent, rx, ry, tmp, phi, shape
+        real(dp) :: inner(2), outer(2), origin(2), half(2)
         real(dp), parameter :: core = 0.32_dp, pi = acos(-1.0_dp)
         integer :: degree, np, ne, ng, e, block, ix, iy, iz, a, i, c, local(3), nv, v
         status = 1
@@ -259,6 +273,15 @@ contains
             if (dim == 3) np = nphi
         end if
         if (degree < 1 .or. np < 1) return
+        origin = 0
+        half = core
+        if (present(boundary)) then
+            if (dim /= 2) return
+            if (.not. present(center) .or. .not. present(core_half)) return
+            if (any(core_half <= 0)) return
+            origin = center
+            half = core_half
+        end if
         ng = (degree + 1)**dim
         ne = 5*n*n*np
         allocate (geom(dim, ng, ne), corners(2**dim, ne), verts(dim, 2**dim*ne))
@@ -288,6 +311,21 @@ contains
                             if (block == 0) then
                                 rx = core*(2*radial - 1)
                                 ry = core*tangent
+                                if (present(boundary)) then
+                                    rx = origin(1) + half(1)*rx/core
+                                    ry = origin(2) + half(2)*ry/core
+                                end if
+                            else if (present(boundary)) then
+                                angle = pi*tangent/4
+                                inner = [1.0_dp, tangent]
+                                do i = 2, block
+                                    tmp = inner(1); inner(1) = -inner(2)
+                                    inner(2) = tmp
+                                end do
+                                inner = origin + half*inner
+                                call boundary(angle + (block - 1)*pi/2, outer)
+                                rx = (1 - radial)*inner(1) + radial*outer(1)
+                                ry = (1 - radial)*inner(2) + radial*outer(2)
                             else
                                 angle = pi*tangent/4
                                 rx = (1 - radial)*core + radial*cos(angle)

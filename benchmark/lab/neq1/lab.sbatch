@@ -1,0 +1,167 @@
+#!/bin/bash
+# NEQ1 lab Grad-Shafranov timing on one exclusive sCluster node.
+# Submit from anywhere (the log path cannot use shell variables in #SBATCH lines):
+#   sbatch --export=ALL,MODE=pilot|scan|caseB|scaling \
+#       --output="$RUN/logs/lab-%j.log" lab.sbatch
+# Environment (defaults relative to $HOME):
+#   RUN   run directory (default $HOME/neq1-20261022); needs vmec/mem_guard.sh, the
+#         VMEC++ case in vmec/case, and logs/ for the --output above; results go to
+#         $RUN/lab/<MODE>-<jobid>
+#   REPO  clean checkout of the revision under test (default $HOME/wt/fortfem/neq1-20261022)
+#   PY    Python of a virtualenv with numpy, scipy, simsopt and vmecpp
+#         (default $HOME/k6bench-20261021/venv/bin/python); used for l6_metric.py,
+#         vmec_case.py and the case-B profile post-processing
+#SBATCH --job-name=neq1-lab
+#SBATCH --partition=compute
+#SBATCH --exclusive
+#SBATCH --cpus-per-task=96
+#SBATCH --time=02:00:00
+set -Eeuo pipefail
+export OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1
+unset DISPLAY
+RUN=${RUN:-$HOME/neq1-20261022}
+REPO=${REPO:-$HOME/wt/fortfem/neq1-20261022}
+PY=${PY:-$HOME/k6bench-20261021/venv/bin/python}
+MODE=${MODE:-pilot}
+BUILD=$RUN/lab/build
+CASE=$RUN/vmec/case
+OUT=$RUN/lab/$MODE-$SLURM_JOB_ID
+mkdir -p "$OUT"
+echo "HOST=$(hostname) JOB=$SLURM_JOB_ID MODE=$MODE REVISION=$(git -C "$REPO" rev-parse HEAD)"
+[[ -z $(git -C "$REPO" status --porcelain) ]] || { echo "dirty worktree"; exit 2; }
+grep -m1 'model name' /proc/cpuinfo; gfortran --version | head -1
+sha256sum /lib/x86_64-linux-gnu/libc.so.6
+FLAGS='-O3 -march=native -funroll-loops'
+"$RUN/vmec/mem_guard.sh" 64 cmake -S "$REPO" -B "$BUILD" -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_Fortran_FLAGS="$FLAGS" -DFORTFEM_BUILD_TESTING=ON \
+    -DFORTFEM_BUILD_BENCHMARKS=ON -DFORTFEM_NATIVE_SPARSE_ONLY=ON > "$OUT/configure.log"
+"$RUN/vmec/mem_guard.sh" 64 cmake --build "$BUILD" -j16 --target fortfem_lab_neq1 \
+    test_lab_newton_krylov test_lab_grad_shafranov test_lab_tensor_mesh \
+    test_lab_tensor_apply test_lab_tensor_solver test_lab_gll_line > "$OUT/build.log"
+sha256sum "$BUILD/fortfem_lab_neq1" | tee "$OUT/binary.sha256"
+echo "FLAGS=$FLAGS"
+OMP_NUM_THREADS=4 ctest --test-dir "$BUILD" --output-on-failure \
+    -R '^test_lab_(gll_line|tensor_mesh|tensor_apply|tensor_solver|newton_krylov|grad_shafranov)$'
+
+# point CASEDIR n p threads tag [rtol] [rays] [profiles.txt npoints]
+point() {
+    local casedir=$1 n=$2 p=$3 t=$4 tag=$5 rtol=${6:-1e-10} rays=${7:-128}
+    local dir=$OUT/$tag/n$n-p$p-t$t cpus
+    shift 7 2> /dev/null || shift $#
+    mkdir -p "$dir"
+    cpus=$(seq -s, 0 $((t - 1)))
+    OMP_NUM_THREADS=$t OMP_PROC_BIND=close OMP_PLACES=cores "$RUN/vmec/mem_guard.sh" 64 \
+        /usr/bin/time -v taskset -c "$cpus" "$BUILD/fortfem_lab_neq1" \
+        "$casedir/case.nml" "$n" "$p" "$casedir/samples.txt" "$dir/" "$rtol" "$rays" "$@" \
+        > "$dir/solve.log" 2> "$dir/time.txt" || echo "FAILED $dir"
+    if [[ -f $casedir/reference_samples.txt && -f $dir/samples_out.txt ]]; then
+        "$PY" -I "$REPO/benchmark/lab/neq1/l6_metric.py" "$casedir/reference_samples.txt" \
+            "$dir/samples_out.txt" > "$dir/l6.json" || true
+    fi
+    echo "$tag n=$n p=$p t=$t $(grep -o 't_solve=.*' "$dir/solve.log") $(cat "$dir/l6.json" 2>/dev/null | tr -d '\n' | cut -c1-160)"
+}
+
+# vmec CASEDIR mpol ns ftol threads tag : VMEC++ point on this node (same harness as
+# the vmec/ scan, exact commands in metrics.json).
+vmec() {
+    local casedir=$1 mpol=$2 ns=$3 ftol=$4 t=$5 tag=$6
+    local dir=$OUT/$tag/m$mpol-ns$ns-f$ftol-t$t cpus
+    mkdir -p "$dir"
+    cpus=$(seq -s, 0 $((t - 1)))
+    OMP_NUM_THREADS=$t "$RUN/vmec/mem_guard.sh" 64 /usr/bin/time -v taskset -c "$cpus" \
+        "$PY" "$REPO/benchmark/lab/neq1/vmec_case.py" --case "$casedir" --mpol "$mpol" \
+        --ns "$ns" --ftol "$ftol" --threads "$t" --out "$dir" > "$dir/run.log" \
+        2> "$dir/time.txt" || echo "FAILED $dir"
+    echo "$tag m=$mpol ns=$ns ftol=$ftol t=$t $(cat "$dir/l6.json" 2>/dev/null | tr -d '\n' | cut -c1-160)"
+}
+
+if [[ $MODE == caseB ]]; then
+    # Nonlinear profiles p ~ (1-psiN)^2, F^2 - F0^2 ~ (1-psiN)^3 on the same boundary.
+    # Self-convergence reference from the finest lab run; VMEC++ consumes its
+    # profile table (psiN s p iota) and is compared on the same samples.
+    B=$OUT/caseB-case
+    mkdir -p "$B"
+    sed -e 's/alpha_p = 1.0/alpha_p = 2.0/; s/alpha_f = 1.0/alpha_f = 3.0/' \
+        "$CASE/case.nml" > "$B/case.nml"
+    cp "$CASE/samples.txt" "$CASE/boundary.txt" "$B/"
+    point "$B" 8 12 8 reference 1e-12 512 "$OUT/reference/profiles.txt" 401
+    R=$OUT/reference/n8-p12-t8
+    cp "$OUT/reference/profiles.txt" "$B/profiles.txt"
+    cp "$R/samples_out.txt" "$B/reference_samples.txt"
+    "$PY" -I - "$CASE/case_info.json" "$R/solve.log" "$B/profiles.txt" "$B/case_info.json" <<'PYEOF'
+import json, re, sys
+info = json.load(open(sys.argv[1]))
+log = open(sys.argv[2]).read()
+m = re.search(r"psia=\s*(\S+)\s+axis=\s*(\S+)\s+(\S+)", log)
+info.update(psi_axis=float(m.group(1)), r_axis=float(m.group(2)), z_axis=0.0,
+            phi_edge=float(open(sys.argv[3]).readline().split("=")[1]),
+            alpha_p=2, alpha_f=3, source="lab reference n8 p12 (self-convergence)")
+json.dump(info, open(sys.argv[4], "w"), indent=1)
+PYEOF
+    for np in "8 10" "6 12" "6 10"; do point "$B" ${np% *} ${np#* } 8 refcheck 1e-12 512; done
+    for rep in 1 2 3; do
+        for t in 1 8; do
+            for n in 1 2 3 4 6; do
+                for p in 2 3 4 5 6 7 8 10; do
+                    (( n * p > 48 )) && continue
+                    point "$B" "$n" "$p" "$t" "caseB-r$rep"
+                done
+            done
+        done
+    done
+    for t in 1 8; do
+        for mpol in 6 8 10 12 16; do
+            for ns in 25 51 101 201; do
+                vmec "$B" "$mpol" "$ns" 1e-14 "$t" vmec-caseB
+            done
+        done
+    done
+    touch "$OUT/complete"
+    exit 0
+fi
+
+if [[ $MODE == scaling ]]; then
+    # Thread scaling of the solve phases on larger meshes (no sampling).
+    for np in "16 8" "24 6" "12 12"; do
+        for t in 1 2 4 8 16; do
+            for rep in 1 2 3; do
+                dir=$OUT/scaling-r$rep/n${np% *}-p${np#* }-t$t
+                mkdir -p "$dir"
+                OMP_NUM_THREADS=$t OMP_PROC_BIND=close OMP_PLACES=cores \
+                    "$RUN/vmec/mem_guard.sh" 64 /usr/bin/time -v \
+                    taskset -c "$(seq -s, 0 $((t - 1)))" "$BUILD/fortfem_lab_neq1" \
+                    "$CASE/case.nml" ${np% *} ${np#* } none "$dir/" 1e-10 \
+                    > "$dir/solve.log" 2> "$dir/time.txt" || echo "FAILED $dir"
+                echo "scaling n=${np% *} p=${np#* } t=$t $(grep -o 'dofs=[0-9]*' "$dir/solve.log") $(grep -o 't_setup=.*' "$dir/solve.log")"
+            done
+        done
+    done
+    touch "$OUT/complete"
+    exit 0
+fi
+
+if [[ $MODE == pilot ]]; then
+    point "$CASE" 2 6 1 solovev
+    point "$CASE" 4 6 8 solovev
+    touch "$OUT/complete"
+    exit 0
+fi
+
+# Case A (exact Solov'ev): repeat each point three times (rep tag) for timing noise.
+for rep in 1 2 3; do
+    for t in 1 8; do
+        for n in 1 2 3 4 6 8; do
+            for p in 2 3 4 5 6 7 8 10; do
+                (( n * p > 64 )) && continue
+                point "$CASE" "$n" "$p" "$t" "solovev-r$rep"
+            done
+        done
+    done
+done
+# Same-node VMEC++ subset for cross-node consistency with the vmec/ scan.
+for t in 1 8; do
+    for mn in "6 25" "8 51" "10 101" "12 101" "16 201"; do
+        vmec "$CASE" ${mn% *} ${mn#* } 1e-14 "$t" vmec-solovev-samenode
+    done
+done
+touch "$OUT/complete"
