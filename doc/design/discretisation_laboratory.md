@@ -226,14 +226,19 @@ GLL space needs it in real space.
 
 The overlap integrals are exact up to quadrature on curved cells. Master faces
 are split into nearly bilinear parts, whose charts invert reliably near their
-squares, and slave faces into still flatter parts no larger than a quarter of
-the smallest master part. Each slave part is clipped in the chart of a master
-part, and a Gauss rule on the fan of curved triangles from the polygon centre
-integrates the overlap, so no master or slave kink lies inside a quadrature
-cell. Clipping a large, nearly affine slave face in a curved master chart, as
-a shear-free twist produces, met spurious fold preimages; the size bound
-removes that case. The fan keeps its nodes inside the
-nearly convex overlap, where both charts invert reliably; a node outside either
+squares, and slave faces into still flatter parts. A slave part that is larger
+than an eighth of a master part it meets is halved against that master part
+only; at a quarter, fan nodes of a rigid twist fell outside the slave part. Each slave part is clipped in the chart of a master part, and a Gauss
+rule on the fan of curved triangles from the polygon centre integrates the
+overlap, so no master or slave kink lies inside a quadrature cell. Clipping a
+large, nearly affine slave face in a curved master chart, as a shear-free
+twist produces, met spurious fold preimages, and the size bound removes that
+case. A global bound, a quarter of the smallest master part for every slave
+part, built 45 million overlap nodes for the five slave faces of the p=2 L3
+seam and took 183 s; the pairwise bound keeps the refinement where the small
+master parts are. Each fan triangle uses the p+q+2 Gauss points per direction
+of the slave mass rule, where q is the geometry degree; the earlier 2p+q+4
+points changed the reproduction and operator checks only at roundoff. The fan keeps its nodes inside the nearly convex overlap, where both charts invert reliably; a node outside either
 cell fails the setup instead of entering the constraint. The discrete rims of the two faces differ by
 the geometry error of the curved boundary. A master cell on a Dirichlet rim is
 therefore not clipped on its rim side, and slave slivers beyond it see the
