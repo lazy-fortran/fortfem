@@ -383,14 +383,26 @@ contains
     end subroutine
 
     subroutine build_exterior_dtn(op, exterior, status)
-        !! One dense LU with all trace right-hand sides. Subsequent applies
-        !! use cached maps only. S = W + (M/2-K)^T V^{-1}(M/2-K) is positive
+        !! One dense LU with all trace right-hand sides and one dgemm for the
+        !! Schur product, both threaded by the linked BLAS/LAPACK. Subsequent
+        !! applies use cached maps only. S = W + (M/2-K)^T V^{-1}(M/2-K) is positive
         !! exterior energy; physical outward flux q = -V^{-1}(M/2-K)u.
         type(bem_operators_t), intent(in) :: op
         type(bem_exterior_dtn_t), intent(out) :: exterior
         integer, intent(out) :: status
         real(dp), allocatable :: jump(:, :)
-        integer :: nf, nv
+        real(dp) :: mean
+        integer :: nf, nv, i, j
+        interface
+            subroutine dgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, &
+                    beta, c, ldc)
+                import :: dp
+                character(len=1), intent(in) :: transa, transb
+                integer, intent(in) :: m, n, k, lda, ldb, ldc
+                real(dp), intent(in) :: alpha, beta, a(lda, *), b(ldb, *)
+                real(dp), intent(inout) :: c(ldc, *)
+            end subroutine
+        end interface
         status = 1
         if (.not. allocated(op%v)) return
         if (.not. allocated(op%k)) return
@@ -414,8 +426,18 @@ contains
             deallocate(exterior%flux_map)
             return
         end if
-        exterior%steklov = op%w-matmul(transpose(jump), exterior%flux_map)
-        exterior%steklov = 0.5_dp*(exterior%steklov+transpose(exterior%steklov))
+        exterior%steklov = op%w
+        call dgemm('T', 'N', nv, nv, nf, -1.0_dp, jump, nf, &
+            exterior%flux_map, nf, 1.0_dp, exterior%steklov, nv)
+        !$omp parallel do default(shared) private(i, j, mean) schedule(static)
+        do j = 1, nv
+            do i = 1, j - 1
+                mean = 0.5_dp*(exterior%steklov(i, j) + exterior%steklov(j, i))
+                exterior%steklov(i, j) = mean
+                exterior%steklov(j, i) = mean
+            end do
+        end do
+        !$omp end parallel do
     end subroutine
 
     subroutine exterior_dtn_matrix(self, matrix, status)
