@@ -28,10 +28,9 @@ symmetric Schur complement
 S = W + (M/2 - K)^T V^{-1} (M/2 - K),
 ```
 
-built by `build_exterior_dtn` without changes. A + R^T S R is symmetric
-positive definite because the exterior Dirichlet problem with decay gives
-S 1 = M 1 > 0, so constants are not in its kernel even when the interior
-operator is a pure Neumann operator.
+built by `build_exterior_dtn` without changes. The exterior energy map is
+positive on nonzero constant traces, so constants are not in its kernel even
+when the interior operator is a pure Neumann operator.
 
 The Steklov Schur complement was chosen over the alternatives for the
 present dense regime. The Johnson-Nedelec coupling needs only V and K, but it
