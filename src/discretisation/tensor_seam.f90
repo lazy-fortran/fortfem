@@ -536,7 +536,7 @@ contains
         logical, allocatable :: on_master(:), remove(:)
         integer, allocatable :: srow(:), ccol(:), cols(:)
         integer :: n, nf, f, g, i, k, a, ns, nc, nm, side, info
-        real(dp) :: defect
+        real(dp) :: defect, small
         status = 1
         seam%method = setup%method
         seam%conforming = .false.
@@ -614,15 +614,24 @@ contains
             else
                 allocate (cub(size(slave)), sparts(size(slave)), mparts(size(master)))
             end if
+            ! The clipper inverts a slave part's boundary in a master part's
+            ! chart, which is reliable only near its square and away from the
+            ! folds of a curved cell: master parts are nearly bilinear and
+            ! slave parts small against them.
             !$omp parallel do default(shared) private(f) schedule(dynamic)
-            do f = 1, merge(0, size(slave) + size(master), allocated(setup%cubature))
-                if (f <= size(slave)) then
-                    call split_face(slave(f), zq, 0.01_dp, sparts(f))
-                else
-                    ! Slave parts are clipped in the unsplit master chart.
-                    call split_face(master(f - size(slave)), zq, huge(1.0_dp), &
-                                    mparts(f - size(slave)))
-                end if
+            do f = 1, merge(0, size(master), allocated(setup%cubature))
+                call split_face(master(f), zq, 0.05_dp, mparts(f))
+            end do
+            !$omp end parallel do
+            if (.not. allocated(setup%cubature)) then
+                small = huge(1.0_dp)
+                do f = 1, size(master)
+                    small = min(small, 0.25_dp*minval(mparts(f)%part%radius))
+                end do
+            end if
+            !$omp parallel do default(shared) private(f) schedule(dynamic)
+            do f = 1, merge(0, size(slave), allocated(setup%cubature))
+                call split_face(slave(f), zq, 0.01_dp, sparts(f), small)
             end do
             !$omp end parallel do
             call mortar_rows(status)
@@ -794,7 +803,8 @@ contains
             real(dp) :: x(3), xa(3), xb(3), y(3), ab(2), jac, c(3), cs(3), sab(2), &
                         weight, inverse(3, 4)
             integer :: m, q, np, st, sp, mp
-            logical :: ok, swap, rim(4)
+            logical :: ok, swap, rim(4), open(4)
+            real(dp), parameter :: edge = 1.e-12_dp
             allocate (sq(2, 64), mq(2, 64), wq(64), owner(64))
             np = 0
             inverse(:, 1:3) = transpose(setup%motion(:, 1:3))
@@ -814,15 +824,20 @@ contains
                             associate (t => mparts(m)%part(mp))
                                 if (norm2(cs - t%center) > 1.5_dp*(s%radius + &
                                                                    t%radius)) cycle
+                                ! Only part sides on the parent's rim are open.
+                                open = rim .and. [t%origin(1) + t%scale >= 1 - edge, &
+                                                  t%origin(1) - t%scale <= edge - 1, &
+                                                  t%origin(2) + t%scale >= 1 - edge, &
+                                                  t%origin(2) - t%scale <= edge - 1]
                                 if (.not. cells_overlap(s, t, setup%motion, zq, &
-                                                        rim)) cycle
+                                                        open)) cycle
                                 ! Clip the smaller part in the chart of the larger
                                 ! one, whose extension then stays near its square.
-                                swap = t%radius > s%radius .or. any(rim)
+                                swap = t%radius > s%radius .or. any(open)
                                 if (swap) then
                                     call overlap_cubature(t, s, inverse, zq, &
                                              2*mesh%degree + mesh%geometry_degree + 4, &
-                                                          pts, wts, st, open=rim)
+                                                          pts, wts, st, open=open)
                                 else
                                     call overlap_cubature(s, t, setup%motion, zq, &
                                              2*mesh%degree + mesh%geometry_degree + 4, &
@@ -1058,20 +1073,23 @@ contains
         !$omp end parallel do
     end subroutine
 
-    subroutine split_face(face, zq, limit, split)
+    subroutine split_face(face, zq, limit, split, radius)
         !! Halve a curved face until every part deviates from its bilinear
         !! corner interpolant by at most limit times its diameter; the chart
         !! of a nearly affine part is then injective well beyond its square.
+        !! Parts are also halved until their half diagonals are at most radius.
         type(seam_face_t), intent(in) :: face
         real(dp), intent(in) :: zq(:), limit
         type(face_split_t), intent(out) :: split
+        real(dp), intent(in), optional :: radius
         real(dp) :: x(3), xa(3), xb(3), corner(3, 4), a0, b0, h, worst, dev, diam, &
-                    u, v
+                    u, v, largest
         integer :: k, i, j, r, t, nq, part, c
         nq = size(zq)
         k = 1
         do
             worst = 0
+            largest = 0
             do j = 0, k - 1
                 do i = 0, k - 1
                     h = 1.0_dp/k
@@ -1084,6 +1102,7 @@ contains
                     end do
                     diam = max(norm2(corner(:, 1) - corner(:, 3)), &
                                norm2(corner(:, 2) - corner(:, 4)))
+                    largest = max(largest, diam/2)
                     do t = 0, 4
                         do r = 0, 4
                             u = -1 + r/2.0_dp
@@ -1099,7 +1118,10 @@ contains
                     end do
                 end do
             end do
-            if (worst <= limit .or. k >= 32) exit
+            if (worst <= limit .or. k >= 32) then
+                if (.not. present(radius)) exit
+                if (largest <= radius .or. k >= 128) exit
+            end if
             k = 2*k
         end do
         allocate (split%part(k*k))
