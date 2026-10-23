@@ -5,9 +5,11 @@ module fortfem_line_transfer
     ! truncation. Matrices map coarse line dofs to fine line dofs.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_bspline_feec, only: evaluate_bspline_basis
+    use fortfem_gll_line, only: gll_rule, lagrange_table
     implicit none
     private
     public :: bspline_line_prolongation, fourier_line_prolongation
+    public :: gll_line_prolongation
     interface
         subroutine dposv(uplo, n, nrhs, a, lda, b, ldb, info)
             import :: dp
@@ -111,6 +113,41 @@ contains
         where (abs(p) < 1.e-14_dp) p = 0
         ! Nestedness check: the fine expansion reproduces every coarse function.
         if (maxval(abs(matmul(bf, p) - bc)) > 1.e-12_dp) return
+        status = 0
+    end subroutine
+
+    subroutine gll_line_prolongation(p_fine, p_coarse, nelem, p, status, periodic)
+        ! Degree lowering on the same cells (p-multigrid): coarse GLL Lagrange
+        ! functions interpolated at the fine GLL nodes of every cell.
+        integer, intent(in) :: p_fine, p_coarse, nelem
+        real(dp), allocatable, intent(out) :: p(:, :)
+        integer, intent(out) :: status
+        logical, intent(in), optional :: periodic
+        real(dp), allocatable :: xf(:), wf(:), xc(:), wc(:), b(:, :), d(:, :)
+        integer :: nf, nc, e, i, j
+        logical :: wrap
+        wrap = .false.
+        if (present(periodic)) wrap = periodic
+        status = 1
+        if (p_coarse < 1 .or. p_coarse > p_fine .or. nelem < 1) return
+        call gll_rule(p_fine, xf, wf, status)
+        if (status /= 0) return
+        call gll_rule(p_coarse, xc, wc, status)
+        if (status /= 0) return
+        call lagrange_table(xc, xf, b, d)
+        nf = p_fine*nelem + merge(0, 1, wrap)
+        nc = p_coarse*nelem + merge(0, 1, wrap)
+        allocate (p(nf, nc))
+        p = 0
+        do e = 1, nelem
+            do i = 1, p_fine + 1
+                do j = 1, p_coarse + 1
+                    p(modulo((e - 1)*p_fine + i - 1, nf) + 1, &
+                      modulo((e - 1)*p_coarse + j - 1, nc) + 1) = b(i, j)
+                end do
+            end do
+        end do
+        where (abs(p) < 1.e-15_dp) p = 0
         status = 0
     end subroutine
 
