@@ -20,7 +20,7 @@ required=$(python3 -c 'import math,sys; print(math.ceil(1.5*float(sys.argv[1])/1
 limit=$(python3 -c 'import sys; print(int(sys.argv[1])*11.8)' "$SLURM_CPUS_PER_TASK")
 export OMP_NUM_THREADS=$threads OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg
 unset DISPLAY
-: "${LAB_REPO:?}" "${LAB_EXE:?}" "${LAB_FLAGS:?}" "${MEM_GUARD:?}"
+: "${LAB_REPO:?}" "${LAB_EXE:?}" "${LAB_FLAGS:?exact build flags; on offload-enabled GCC include -foffload=disable}" "${MEM_GUARD:?}"
 : "${LAB_FAMILY:?tet, bspline or gll-mf}"
 : "${LAB_P:?}" "${LAB_N:?pilot-qualified base resolution}"
 : "${LAB_MODE:?strong or weak}"

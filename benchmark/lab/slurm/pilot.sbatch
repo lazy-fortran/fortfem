@@ -20,7 +20,9 @@ runroot=${LAB_RUN_ROOT:-"$HOME/ben1-runs/$SLURM_JOB_ID"}
 mkdir -p "$runroot"
 cp "$MEM_GUARD" "$runroot/mem_guard.sh"
 # Four enforced cores reserve 47.2 GiB. --mem is only documentation here.
-export LAB_FLAGS='-O3 -funroll-loops -fopenmp -finline-matmul-limit=0'
+# The offload-enabled GCC 12.2 of the cluster fails at link time with an undefined
+# GOMP_offload_unregister_ver unless -foffload=disable is given to compile and link.
+export LAB_FLAGS='-O3 -funroll-loops -fopenmp -foffload=disable -finline-matmul-limit=0'
 "$runroot/mem_guard.sh" 47.2 fo test --profile release --flag "$LAB_FLAGS" \
     test_lab_problem_definitions > "$runroot/build-test.log" 2>&1
 "$runroot/mem_guard.sh" 47.2 fo build --profile release --flag "$LAB_FLAGS" \

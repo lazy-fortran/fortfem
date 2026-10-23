@@ -168,8 +168,8 @@ for t in $(seq 1 16); do
 done
 ```
 
-[V] Actual batch wrappers and full logs are outside Git at
-`scluster:~/runs/fortfem-mf1-20261022/`: `mf1-pilot.sh`, `mf1-sweep.sh`,
+[V] Actual batch wrappers and full logs are outside Git under
+`<run root>/fortfem-mf1-20261022/`: `mf1-pilot.sh`, `mf1-sweep.sh`,
 `pilot-3355289.log` and `sweep-3355311.log`. Each wrapper records host,
 Slurm job ID and revision. The memory guard reserves 16 cores and enforces
 188.8 GiB; short sweep processes use a 0.1-second polling interval. RSS in the
@@ -181,7 +181,7 @@ and CSR, rather than an isolated metric-storage measurement.
 Homebrew include/library paths, and SymEngine include/library paths from the
 existing FortSym CMake dependency build. The FortSym source worktree is pinned
 to 1725c8e16c0af9b7c6650cb82ec05aa6aec99aa4. The exact shell environment and
-logs are retained on `faepmac1` under `~/wt/fortfem/`.
+logs are retained outside Git next to the build worktree.
 
 The apply sweep uses eight cells, so cell colouring offers little parallel
 work at high thread counts. The large solve is the more representative CPU
@@ -255,8 +255,8 @@ python3 benchmark/lab/summarize.py benchmark/lab/baselines-20261022.csv \
 
 [V] One sCluster pilot was submitted as job **3355332**, four cores, one hour,
 at ad40b17a2ceab358a41e4491b49704faa8abe44e. It was not waited on. Its worktree is
-`/home/ert/wt/fortfem/ben1-20261022`, log `ben1-pilot-3355332.log`, and outputs
-`/home/ert/ben1-runs/3355332`. It predates the lab's canonical-symmetry fix,
+a dedicated clean worktree, log `ben1-pilot-3355332.log`, and outputs under
+`<run root>/3355332`. It predates the lab's canonical-symmetry fix,
 so it is not verification of the final head. The template guards 47.2 GiB,
 which is the enforced four-core memory share. Strong/weak scaling templates
 are prepared but no scaling campaign was launched before pilot qualification.

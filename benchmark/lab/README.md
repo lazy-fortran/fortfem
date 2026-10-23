@@ -8,8 +8,8 @@ A criterion tag records relevance, not proof that the criterion is satisfied.
 
 ## Build and verify
 
-Run long builds on faepmac1/2 or in a Slurm allocation. Use the project's native
-Fortran runner and explicit resource limits, for example on faepmac2:
+Run long builds on a remote workstation or in a Slurm allocation. Use the project's
+native Fortran runner and explicit resource limits, for example:
 
 ```sh
 export FO_JOBS=4 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg
@@ -21,7 +21,9 @@ fo build --profile release --flag -fopenmp
 ```
 
 On GNU Fortran older than 13, append `-finline-matmul-limit=0`, as required by
-the root CMake contract. Never run a bare `fpm test` or a full test suite here.
+the root CMake contract. On an offload-enabled GCC (the cluster's 12.2), compile
+and link OpenMP code with `-foffload=disable`, or the link fails with an
+undefined `GOMP_offload_unregister_ver`. Never run a bare `fpm test` or a full test suite here.
 `check_definitions.py` is an additional exact-algebra independent oracle
 (requires SymPy). The native test checks sampled Cartesian differential
 identities and through-axis inverse geometry using finite differences.
@@ -124,8 +126,8 @@ constraint and is explicitly rejected by the driver.
 The existing N1 sweep can be imported without rerunning it or copying cases:
 
 ```sh
-ssh scluster 'python3 - /home/ert/n1nested-20261022 --output -' \
-  < benchmark/lab/import_n1.py > l6-n1-reference.csv
+# N1_ROOT is the retained N1 sweep tree on the machine that holds it.
+python3 -I benchmark/lab/import_n1.py "$N1_ROOT" --output l6-n1-reference.csv
 ```
 
 The importer checks the retained adapter SHA256 manifest. Its thirty rows
