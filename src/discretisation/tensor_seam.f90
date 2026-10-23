@@ -1698,6 +1698,7 @@ contains
         real(dp), allocatable :: aval(:), acc(:), bval(:)
         integer :: i, j, k, r, t, nl, nz, n, cap, s, e
         real(dp) :: avg
+        logical, allocatable :: keep(:)
         if (seam%nslave == 0) then
             call assemble_tensor_operator(op, matrix)
             return
@@ -1750,11 +1751,15 @@ contains
             call flush_row(nz, bcol, bval)
             bptr(j + 1) = nz + 1
         end do
-        ! Exact symmetry for the symmetric coarse factorisation.
+        ! Exact symmetry in values and pattern for the SPD coarse factorisation:
+        ! an entry without a mirror, the zero coupling of an interior row to a
+        ! Dirichlet column, is dropped.
+        allocate (keep(nz))
+        keep = .true.
         do j = 1, n
             do k = bptr(j), bptr(j + 1) - 1
                 i = bcol(k)
-                if (i <= j) cycle
+                if (i == j) cycle
                 s = bptr(i)
                 e = bptr(i + 1) - 1
                 do while (s <= e)
@@ -1767,18 +1772,23 @@ contains
                     end if
                 end do
                 if (s > e) then
-                    avg = 0
-                else
+                    keep(k) = .false.
+                else if (i > j) then
                     avg = (bval(k) + bval(t))/2
                     bval(t) = avg
+                    bval(k) = avg
                 end if
-                bval(k) = avg
             end do
         end do
         matrix%n = n
-        matrix%rowptr = bptr
-        matrix%colidx = bcol(1:nz)
-        matrix%val = bval(1:nz)
+        allocate (matrix%rowptr(n + 1))
+        matrix%rowptr(1) = 1
+        do j = 1, n
+            matrix%rowptr(j + 1) = matrix%rowptr(j) + &
+                                   count(keep(bptr(j):bptr(j + 1) - 1))
+        end do
+        matrix%colidx = pack(bcol(1:nz), keep)
+        matrix%val = pack(bval(1:nz), keep)
     contains
         subroutine push(c, v)
             integer, intent(in) :: c
