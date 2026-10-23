@@ -349,12 +349,13 @@ contains
     subroutine assemble_tensor_operator(op, matrix)
         type(tensor_operator_t), intent(in) :: op
         type(csr_matrix_t), intent(out) :: matrix
-        real(dp), allocatable :: basis(:, :), gradient(:, :, :), element(:, :)
+        real(dp), allocatable :: basis(:, :), gradient(:, :, :), flux(:, :, :), &
+                                 scaled(:, :), element(:, :)
         real(dp) :: g(3, 3), mass, det, val
-        integer :: a, b, q, e, i, j, k, l, dir, ia(3), iq(3), nl, mq, entry, c(3)
-        nl = product(op%ni); mq = product(op%no)
-        allocate (basis(mq, nl), gradient(3, mq, nl), element(nl, nl))
-        gradient = 0
+        integer :: a, b, q, e, i, j, k, l, dir, ia(3), iq(3), nl, mq, entry, c(3), nd
+        nl = product(op%ni); mq = product(op%no); nd = op%mesh%dim
+        allocate (basis(mq, nl), gradient(mq, nl, nd), flux(mq, nl, nd), &
+                  scaled(mq, nl), element(nl, nl))
         call csr_build_pattern(op%mesh%ndof, op%mesh%dof, .false., matrix)
         do e = 1, op%mesh%nelem
             c = op%cell(:, e)
@@ -377,20 +378,26 @@ contains
                                 val = val*op%line(l)%b(iq(l), ia(l), c(l))
                             end if
                         end do
-                        gradient(dir, q, a) = val
+                        gradient(q, a, dir) = val
                     end do
                 end do
             end do
-            element = 0
+            ! Weighted basis and metric fluxes per quadrature point, then dense
+            ! B^T (m B) + sum_i D_i^T (sum_j g_ij D_j) over the full tensor basis.
             do q = 1, mq
                 call metric_at(op%jac(:, :, q, e), op%coef(:, :, q, e), &
                                op%weight(q, e), op%reaction(q, e), g, mass, det)
-                do b = 1, nl
-                    do a = 1, b
-                        element(a, b) = element(a, b) + mass*basis(q, a)*basis(q, b) + &
-                            dot_product(gradient(:, q, a), matmul(g, gradient(:, q, b)))
+                scaled(q, :) = mass*basis(q, :)
+                do i = 1, nd
+                    flux(q, :, i) = 0
+                    do dir = 1, nd
+                        flux(q, :, i) = flux(q, :, i) + g(i, dir)*gradient(q, :, dir)
                     end do
                 end do
+            end do
+            element = matmul(transpose(basis), scaled)
+            do i = 1, nd
+                element = element + matmul(transpose(gradient(:, :, i)), flux(:, :, i))
             end do
             ! FortSparse requires canonical, exactly symmetric CSC input.
             ! Compute each symmetric bilinear-form entry once, then mirror it.
@@ -554,7 +561,7 @@ contains
         type(line_matrix_t), allocatable :: matrices(:)
         real(dp), allocatable :: tangent(:, :, :), xs(:, :), values(:), t1(:), t2(:), &
                                  basis(:, :), local(:), rhs(:), r(:), z(:), p(:), &
-                                 ap(:), diagonal(:), measure(:)
+                                 ap(:), diagonal(:), measure(:), solution(:)
         integer, allocatable :: faces(:, :), dofs(:, :), compact(:)
         integer :: ng(3), nof(3), e, d, side, a, i, j, k, nface, nf, nfaces, nb, &
                    comp, t, other(2), ia(3), iq(3), ws, it, q, dim, ce(3)
@@ -688,7 +695,7 @@ contains
             end do
         end do
         ! Jacobi-PCG on the face-wise (matrix-free) boundary mass.
-        allocate (r(nb), z(nb), p(nb), ap(nb), diagonal(nb), local(nb))
+        allocate (r(nb), z(nb), p(nb), ap(nb), diagonal(nb), solution(nb))
         diagonal = 0
         do t = 1, nfaces
             do j = 1, size(matrices(t)%a, 1)
@@ -697,7 +704,7 @@ contains
             end do
         end do
         if (any(diagonal <= 0)) return
-        local = 0
+        solution = 0
         r = rhs
         initial = max(norm2(rhs), tiny(1.0_dp))
         previous = 1
@@ -712,14 +719,14 @@ contains
             end if
             call boundary_mass(p, ap)
             alpha = rho/dot_product(p, ap)
-            local = local + alpha*p
+            solution = solution + alpha*p
             r = r - alpha*ap
             previous = rho
         end do
         if (present(iterations)) iterations = it
         if (norm2(r) > 1.e-12_dp*initial) return
         do i = 1, op%mesh%ndof
-            if (compact(i) > 0) x(i) = local(compact(i))
+            if (compact(i) > 0) x(i) = solution(compact(i))
         end do
         status = 0
     contains

@@ -3,8 +3,9 @@ module fortfem_line_mesh
     ! Cells are ordered e = c1 + n1*((c2-1) + n2*((c3-1) + n3*(patch-1))), with
     ! cell(:, e) the 1D cell of every direction. Local dofs are tensor ordered,
     ! a = a1 + nloc1*((a2-1) + nloc2*(a3-1)). Geometry coefficients per cell use
-    ! Lagrange nodes of degree q in every multi-cell direction and the line's own
-    ! basis in single-cell Fourier directions (exact symmetry directions only).
+    ! Lagrange nodes of degree q in every local direction and, in single-cell
+    ! Fourier directions, values at the line's nq equispaced quadrature points
+    ! (trigonometric interpolation, independent of the solution's mode count).
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_tensor_line_tables, only: tensor_line_tables_t, LINE_FOURIER
     use fortfem_gll_line, only: gll_rule, lagrange_table
@@ -37,7 +38,7 @@ contains
         if (line%family == 0) then
             count = 1
         else if (line%family == LINE_FOURIER) then
-            count = line%nloc
+            count = line%nq
         else
             count = q + 1
         end if
@@ -68,8 +69,7 @@ contains
             gb = 1; gd = 0
         else if (line%family == LINE_FOURIER) then
             if (present(face)) return
-            gb = line%b(:, :, c)
-            gd = line%d(:, :, c)
+            call spectral_tables(line%nq, line%x1 - line%x0, gb, gd)
         else
             call gll_rule(q, nodes, w, status)
             if (status /= 0) return
@@ -93,24 +93,17 @@ contains
         integer, intent(in) :: c, q
         real(dp), allocatable, intent(out) :: xi(:, :), projector(:, :)
         integer, intent(out) :: status
-        real(dp), allocatable :: nodes(:), w(:), gram(:, :), rhs(:, :)
+        real(dp), allocatable :: nodes(:), w(:), gram(:, :)
         real(dp) :: mid, h
-        integer :: i, n
+        integer :: i
         status = 1
         if (line%family == 0) then
             allocate (xi(1, 1), projector(1, 1))
             xi = 0
             projector = 1
         else if (line%family == LINE_FOURIER) then
-            n = line%nloc
-            if (line%nq < n) return
             xi = reshape(line%xq(:, c), [line%nq, 1])
-            gram = matmul(transpose(line%b(:, :, c)), &
-                          spread(line%wq(:, c), 2, n)*line%b(:, :, c))
-            rhs = transpose(line%b(:, :, c)*spread(line%wq(:, c), 2, n))
-            call cholesky_solve(gram, rhs, status)
-            if (status /= 0) return
-            projector = rhs
+            call spectral_tables(line%nq, line%x1 - line%x0, projector, gram)
         else
             call gll_rule(q, nodes, w, status)
             if (status /= 0) return
@@ -127,28 +120,31 @@ contains
         status = 0
     end subroutine
 
-    subroutine cholesky_solve(a, b, status)
-        ! Small dense SPD solve a x = b, overwriting b (setup only).
-        real(dp), intent(inout) :: a(:, :), b(:, :)
-        integer, intent(out) :: status
-        integer :: i, j, n
-        status = 1
-        n = size(a, 1)
+    subroutine spectral_tables(n, period, b, d)
+        ! Identity values and the periodic spectral differentiation matrix on n
+        ! equispaced points x_j = (j-1) period/n (trigonometric interpolation).
+        integer, intent(in) :: n
+        real(dp), intent(in) :: period
+        real(dp), allocatable, intent(out) :: b(:, :), d(:, :)
+        real(dp) :: h, angle
+        integer :: i, j
+        allocate (b(n, n), d(n, n))
+        b = 0
+        d = 0
+        h = 2*pi/n
         do j = 1, n
-            a(j, j) = a(j, j) - dot_product(a(j, 1:j - 1), a(j, 1:j - 1))
-            if (a(j, j) <= 0) return
-            a(j, j) = sqrt(a(j, j))
-            do i = j + 1, n
-                a(i, j) = (a(i, j) - dot_product(a(i, 1:j - 1), a(j, 1:j - 1)))/a(j, j)
+            b(j, j) = 1
+            do i = 1, n
+                if (i == j) cycle
+                angle = (i - j)*h/2
+                if (modulo(n, 2) == 0) then
+                    d(i, j) = 0.5_dp*(-1)**(i - j)/tan(angle)
+                else
+                    d(i, j) = 0.5_dp*(-1)**(i - j)/sin(angle)
+                end if
             end do
         end do
-        do i = 1, n
-            b(i, :) = (b(i, :) - matmul(a(i, 1:i - 1), b(1:i - 1, :)))/a(i, i)
-        end do
-        do i = n, 1, -1
-            b(i, :) = (b(i, :) - matmul(a(i + 1:n, i), b(i + 1:n, :)))/a(i, i)
-        end do
-        status = 0
+        d = d*2*pi/period
     end subroutine
 
     subroutine evaluate_point(dim, block, x0, length, xi, x, map)
