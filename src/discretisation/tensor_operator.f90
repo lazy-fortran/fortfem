@@ -17,6 +17,7 @@ module fortfem_tensor_operator
     public :: assemble_tensor_operator, tensor_diagonal, tensor_load, tensor_l2_error
     public :: diffusion_coefficient, scalar_function, metric_at, determinant_at
     public :: tensor_values, tensor_boundary_projection
+    public :: tensor_load_flux, vector_function
     type :: line_transpose_t
         real(dp), allocatable :: bt(:, :, :), dt(:, :, :) ! (nloc, nq, ncell)
     end type
@@ -45,6 +46,11 @@ module fortfem_tensor_operator
             real(dp), intent(in) :: x(:)
             real(dp) :: value
         end function
+        subroutine vector_function(x, f)
+            import dp
+            real(dp), intent(in) :: x(:)
+            real(dp), intent(out) :: f(:)
+        end subroutine
     end interface
 contains
     pure function determinant_at(j) result(det)
@@ -528,6 +534,58 @@ contains
         end do
         !$omp end do
         !$omp end parallel
+    end subroutine
+
+    subroutine tensor_load_flux(op, flux, rhs)
+        ! rhs_i = integral of grad(phi_i) . F. With F = K grad T of a manufactured
+        ! T this is the Galerkin load of -div(K grad T) without second derivatives,
+        ! so a stiff parallel part can be cancelled analytically inside F.
+        type(tensor_operator_t), intent(in) :: op
+        procedure(vector_function) :: flux
+        real(dp), allocatable, intent(out) :: rhs(:)
+        integer :: e, ce, colour, nl, mq, ws, dim
+        dim = op%mesh%dim
+        nl = product(op%ni); mq = product(op%no)
+        ws = maxval([op%ni, op%no])**3
+        allocate (rhs(op%mesh%ndof))
+        rhs = 0
+        !$omp parallel default(shared) private(colour,ce,e)
+        block
+            real(dp), allocatable :: values(:, :), local(:), tmp(:), t1(:), t2(:)
+            real(dp) :: g(3, 3), mass, det, f(3), eye(3, 3), jtf(3)
+            integer :: q, a, dir
+            allocate (values(mq, 3), local(nl), tmp(max(nl, mq)), t1(ws), t2(ws))
+            eye = 0
+            do a = 1, 3
+                eye(a, a) = 1
+            end do
+            do colour = 1, op%ncolours
+                !$omp do schedule(static)
+                do ce = op%colour_ptr(colour), op%colour_ptr(colour + 1) - 1
+                    e = op%colour_cells(ce)
+                    do q = 1, mq
+                        f = 0
+                        call flux(op%points(:, q, e), f(1:dim))
+                        call metric_at(op%jac(:, :, q, e), eye, op%weight(q, e), &
+                                       0.0_dp, g, mass, det)
+                        jtf = matmul(transpose(op%jac(:, :, q, e)), f)
+                        values(q, :) = matmul(g, jtf)
+                    end do
+                    local = 0
+                    do dir = 1, dim
+                        call cell_tests(op, op%cell(:, e), dir, values(:, dir), &
+                                        tmp, t1, t2)
+                        local = local + tmp(1:nl)
+                    end do
+                    do a = 1, nl
+                        rhs(op%mesh%dof(a, e)) = rhs(op%mesh%dof(a, e)) + local(a)
+                    end do
+                end do
+                !$omp end do
+            end do
+        end block
+        !$omp end parallel
+        where (op%mesh%boundary) rhs = 0
     end subroutine
 
     function tensor_l2_error(op, x, exact) result(error)
