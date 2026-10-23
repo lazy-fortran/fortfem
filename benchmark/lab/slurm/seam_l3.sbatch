@@ -21,14 +21,16 @@ runroot=${LAB_RUN_ROOT:-"$HOME/seam1-runs/$SLURM_JOB_ID"}
 mkdir -p "$runroot"
 cp "$MEM_GUARD" "$runroot/mem_guard.sh"
 # Four enforced cores reserve 47.2 GiB. --mem is only documentation here.
-export LAB_FLAGS='-O3 -funroll-loops -fopenmp -finline-matmul-limit=0'
-# The cluster's offload-enabled GCC 12 needs -fopenmp also at the link (else
-# GOMP_offload_unregister_ver is undefined); fo 0.3.2 has no link flag option.
-"$runroot/mem_guard.sh" 47.2 fpm build --profile release --flag "$LAB_FLAGS" \
-    --link-flag -fopenmp > "$runroot/build-driver.log" 2>&1
-mapfile -t executables < <(find build -path '*/app/lab_mf_run' -type f)
-[[ ${#executables[@]} == 1 ]]
-exe="$PWD/${executables[0]}"
+# The cluster's GCC 12 is offload-enabled: without -foffload=disable its link
+# adds an offload stub that leaves GOMP_offload_unregister_ver undefined (fo
+# 0.3.2 and fpm alike). fpm resolves the binary for exactly these flags.
+export LAB_FLAGS='-O3 -funroll-loops -fopenmp -finline-matmul-limit=0 -foffload=disable'
+fpm_args=(--profile release --flag "$LAB_FLAGS" --link-flag "-fopenmp -foffload=disable")
+"$runroot/mem_guard.sh" 47.2 fpm run "${fpm_args[@]}" --target lab_mf_run \
+    --runner echo > "$runroot/build-driver.log" 2>&1
+exe=$(tail -n 1 "$runroot/build-driver.log")
+[[ $exe == /* ]] || exe="$PWD/$exe"
+[[ -x $exe ]]
 points=${SEAM_L3_POINTS:-"2 4 6"}
 # Ratio 1 is the isotropic control of the seam itself.
 ratios=${SEAM_L3_RATIOS:-"1 1000 1000000"}
