@@ -221,8 +221,11 @@ program lab_mf_run
     !$omp end parallel do
     value = 0
     if (problem == 'L3') value = projection/norm
+    ! An aligned seam eliminates its slave DOFs: count the unknowns solved for.
+    i = mesh%ndof
+    if (layout == 'aligned') i = seam%nreduced
     write (*, '(a,1x,i0,1x,6(es24.16,1x),i0,1x,es24.16)') &
-        'LAB', mesh%ndof, sqrt(err/norm), &
+        'LAB', i, sqrt(err/norm), &
         sqrt(herr/hnorm), sqrt(aerr/max(anorm, tiny(1._dp))), value, info%residual, &
         real(fine_nnz,dp), info%iterations, sqrt(ballerr/max(ballnorm, tiny(1._dp)))
 contains
