@@ -256,10 +256,14 @@ contains
         errors = 0
         !$omp parallel default(shared) reduction(+:errors)
         block
-            real(dp) :: vloc(nf, nf), kloc(nf, nt), kself(nf, nt), wloc(nt, nt)
-            real(dp) :: vs(nf), ks(nt), ws(3, nt), k0, ct(3, nt), wt
-            integer :: j, t, a, b, local, rows(nf), cols(nf)
+            real(dp), allocatable :: vloc(:, :), kloc(:, :), kself(:, :), wloc(:, :)
+            real(dp), allocatable :: vs(:), ks(:), ws(:, :), ct(:, :)
+            real(dp) :: k0, wt
+            integer, allocatable :: rows(:), cols(:)
+            integer :: j, t, a, b, local
             logical :: near
+            allocate (vloc(nf, nf), kloc(nf, nt), kself(nf, nt), wloc(nt, nt), &
+                      vs(nf), ks(nt), ws(3, nt), ct(3, nt), rows(nf), cols(nf))
             !$omp do schedule(dynamic, 1)
             do i = 1, np
                 rows = [(nf*(i - 1) + a, a=1, nf)]

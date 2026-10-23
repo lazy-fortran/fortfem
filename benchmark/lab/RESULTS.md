@@ -492,3 +492,65 @@ level function along every ray. The comparison is 2D (single helicity). A 3D
 multi-helicity or stochastic case, a chi-robust preconditioner and
 time-to-solution against VMEC-class codes are not covered.
 <!-- UNS1 END -->
+
+<!-- FB1 BEGIN -->
+## FB1: tensor FEM interior with 3D BEM free boundary (criterion 1)
+
+[V] Synthetic data only (point charges, quadratic interior field, prescribed
+surface current). Correctness rows from revision 1cb4b23e plus the
+allocatable-work-array edit to `parametric_bem_tensor.f90`, workstation,
+GNU Fortran 16.2.1, `fpm test` default debug profile (no OpenMP, loaded
+machine), so the time columns below are orders of magnitude only. Timing and
+thread scaling are cluster jobs listed in the handoff, not in this table.
+
+### Transmission oracle (`test_lab_fem_bem_transmission`)
+
+Exact transmission data on the discrete O-grid torus (5-block O-grid x phi,
+`n` radial cells per block, `nphi` toroidal cells), interior and exterior fields
+from point charges. Columns: relative volume L2 and H1 error, relative coupled
+Neumann error (`relq`) and DtN-only Neumann error (`relq_dtn`), PCG iterations
+for relative tolerance 1e-11 with the block preconditioner.
+
+| n | nphi | p | pf | dofs | trace | its | relL2 | relH1 | relq | relq_dtn |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 6 | 2 | 1 | 300 | 96 | 18 | 3.04e-2 | 1.28e-1 | 3.78e-1 | 3.65e-1 |
+| 1 | 6 | 3 | 2 | 936 | 216 | 18 | 9.23e-3 | 5.38e-2 | 1.32e-1 | 1.56e-1 |
+| 1 | 6 | 4 | 3 | 2136 | 384 | 22 | 3.38e-3 | 2.71e-2 | 1.16e-1 | 1.22e-1 |
+| 2 | 12 | 2 | 1 | 2136 | 384 | 20 | 6.99e-3 | 4.86e-2 | 9.08e-2 | 1.07e-1 |
+
+[V] All errors decrease under p- and h-refinement. The data are too coarse and
+the BEM quadrature error too large to confirm an asymptotic rate of p+1 in h
+or exponential convergence in p. Neumann errors stagnate near 1e-1 for p=3..4,
+so the BEM quadrature limit, not the FEM space, dominates there [H].
+
+[V] Schur scale sigma of the preconditioner (n=1, nphi=6, p=3, pf=2):
+
+| sigma | 1 | 2 | 3 | 5 | 8 |
+|--:|--:|--:|--:|--:|--:|
+| PCG its | 29 | 20 | 18 | 24 | 30 |
+
+### Vacuum-field current sheet (`test_lab_fem_bem_current_sheet`)
+
+Prescribed divergence-free surface current on the torus boundary, exterior B from
+the representation formula (`ext_rel_max`) and interior B on the axis core cells
+(`core_rel_l2`) against an independent Biot-Savart surface integral.
+
+| n | nphi | p | dofs | trace | its | ext_rel_max | core_rel_l2 |
+|--:|--:|--:|--:|--:|--:|--:|--:|
+| 1 | 6 | 2 | 300 | 96 | 17 | 1.57e-2 | 2.46e-2 |
+| 1 | 6 | 4 | 2136 | 384 | 20 | 6.69e-4 | 3.84e-3 |
+| 2 | 12 | 2 | 2136 | 384 | 18 | 8.51e-4 | 4.79e-3 |
+
+### Reproduction
+
+```bash
+fpm test --target test_lab_fem_bem_transmission
+fpm test --target test_lab_fem_bem_current_sheet
+# scan row: n nphi p [flux_degree target_points fan_points schur_scale]
+build/gfortran_*/test/test_lab_fem_bem_transmission 1 6 3 2 0 0 3
+```
+
+[V] Not run: `tools/codegen/check_generated.sh` (needs the pinned FortSym
+checkout, absent here); the generated file is unchanged by the edit.
+[V] Not registered in CMake: the BEM sources are built by fpm only.
+<!-- FB1 END -->

@@ -14,6 +14,13 @@
    VMEC-class codes (VMEC++, GVEC) on nested cases while also handling
    non-nested and island cases. KIN6D must not clone VMEC.
 
+## Free boundary
+
+The FEM interior couples to the exterior Laplace problem through the 3D BEM
+Dirichlet-to-Neumann Schur complement on the isoparametric boundary of any
+tensor hex mesh. Its design, API and limits are in
+[tensor_fem_bem.md](tensor_fem_bem.md).
+
 ## Abstraction
 
 `tensor_line_tables_t` is the common, unchanged line-table contract. It carries
