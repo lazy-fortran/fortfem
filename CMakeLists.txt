@@ -122,17 +122,6 @@ if(FORTFEM_BUILD_TESTING)
     set_tests_properties(test_lab_unstructured_mesh PROPERTIES
         LABELS "lab;fast" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
-# Nonlinear lab layer: Newton-Krylov driver, quadrature-point field access
-# and point location/evaluation on tensor meshes.
-add_library(fortfem_tensor_nonlinear STATIC
-    src/discretisation/newton_krylov.f90
-    src/discretisation/tensor_pointwise.f90
-    src/discretisation/tensor_points.f90)
-set_target_properties(fortfem_tensor_nonlinear PROPERTIES
-    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
-target_include_directories(fortfem_tensor_nonlinear PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
-target_link_libraries(fortfem_tensor_nonlinear PUBLIC fortfem_tensor_operator)
 option(FORTFEM_BUILD_BENCHMARKS "Build element scaling benchmark" OFF)
 if(FORTFEM_BUILD_BENCHMARKS)
     add_executable(fortfem_element_precision_scaling
@@ -251,6 +240,26 @@ if(FORTFEM_BUILD_TESTING)
     add_test(NAME test_lab_tensor_mms COMMAND test_lab_tensor_mms)
     set_tests_properties(test_lab_tensor_mms PROPERTIES
         LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+endif()
+# Nonlinear lab layer: Newton-Krylov driver, quadrature-point field access
+# and point location/evaluation on tensor meshes.
+add_library(fortfem_tensor_nonlinear STATIC
+    src/discretisation/newton_krylov.f90
+    src/discretisation/tensor_pointwise.f90
+    src/discretisation/tensor_points.f90)
+set_target_properties(fortfem_tensor_nonlinear PROPERTIES
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/tensor_modules")
+target_include_directories(fortfem_tensor_nonlinear PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
+target_link_libraries(fortfem_tensor_nonlinear PUBLIC
+    fortfem_tensor_operator fortnum)
+# The FGMRES callbacks are internal procedures; heap trampolines (GCC 14+) keep
+# the stack non-executable, as in fortnum itself.
+include(CheckFortranCompilerFlag)
+check_fortran_compiler_flag("-ftrampoline-impl=heap" FORTFEM_HAVE_HEAP_TRAMPOLINES)
+if(FORTFEM_HAVE_HEAP_TRAMPOLINES)
+    target_compile_options(fortfem_tensor_nonlinear PRIVATE
+        $<$<COMPILE_LANGUAGE:Fortran>:-ftrampoline-impl=heap>)
 endif()
 if(FORTFEM_BUILD_TESTING)
     add_executable(test_lab_newton_krylov test/test_lab_newton_krylov.f90)

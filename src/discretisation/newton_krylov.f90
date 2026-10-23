@@ -2,10 +2,14 @@ module fortfem_newton_krylov
     ! Inexact Newton-Krylov driver for nonlinear systems F(u) = 0 that are only
     ! available through callbacks: residual, linearisation at an iterate,
     ! Jacobian action and preconditioner action. Right-preconditioned flexible
-    ! GMRES(m), Eisenstat-Walker forcing (choice 2) and a backtracking line
-    ! search on ||F||. Physics-free; operators are supplied by the extension.
+    ! GMRES(m) from fortnum, Eisenstat-Walker forcing (choice 2) and a
+    ! backtracking line search on ||F||. Physics-free; operators are supplied by
+    ! the extension.
     use, intrinsic :: iso_fortran_env, only: dp => real64, int64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    use fortnum_krylov, only: real_fgmres_operator, KRYLOV_OK, &
+                              KRYLOV_MAX_ITERATIONS, KRYLOV_BREAKDOWN, &
+                              KRYLOV_STAGNATION
     implicit none
     private
     public :: nonlinear_system_t, newton_options_t, newton_info_t
@@ -102,17 +106,6 @@ contains
         s = sqrt(pdot(a, a))
     end function
 
-    subroutine paxpy(alpha, x, y)
-        real(dp), intent(in) :: alpha, x(:)
-        real(dp), intent(inout) :: y(:)
-        integer :: i
-        !$omp parallel do schedule(static)
-        do i = 1, size(x)
-            y(i) = y(i) + alpha*x(i)
-        end do
-        !$omp end parallel do
-    end subroutine
-
     subroutine call_residual(system, u, r, info, status)
         class(nonlinear_system_t), intent(inout) :: system
         real(dp), intent(in) :: u(:)
@@ -126,113 +119,68 @@ contains
         info%residuals = info%residuals + 1
     end subroutine
 
-    subroutine fgmres(system, b, x, tol, options, info, iterations, status)
-        ! Solve J x = b with right preconditioning, x0 = 0, to ||b - J x|| <= tol.
+    subroutine krylov_solve(system, b, x, tol, options, info, iterations, status)
+        ! Solve J x = b with right preconditioning, x0 = 0, to ||b - J x|| <= tol
+        ! through fortnum's flexible GMRES. Its tolerance is relative to
+        ! max(||b||, 1), hence the rescaling. Running out of iterations or a
+        ! stagnating restart cycle are not errors for an inexact Newton step.
         class(nonlinear_system_t), intent(inout) :: system
         real(dp), intent(in) :: b(:), tol
         real(dp), intent(out) :: x(:)
         type(newton_options_t), intent(in) :: options
         type(newton_info_t), intent(inout) :: info
         integer, intent(out) :: iterations, status
-        real(dp), allocatable :: v(:, :), z(:, :), h(:, :), g(:), cs(:), sn(:), &
-                                 y(:), r(:), w(:)
-        real(dp) :: beta, temp, t0, t1, resid
-        integer :: m, n, i, j, k
-        n = size(b)
-        m = max(1, options%restart)
-        allocate (v(n, m + 1), z(n, m), h(m + 1, m), g(m + 1), cs(m), sn(m), &
-                  y(m), r(n), w(n))
+        real(dp) :: bnorm, resid, t1
+        integer :: restart, krylov_info
+        logical :: callback_failed
         t1 = wall()
+        callback_failed = .false.
         x = 0
-        r = b
-        beta = pnorm(r)
-        iterations = 0
-        status = 0
-        resid = beta
-        do while (resid > tol .and. iterations < options%max_krylov)
-            v(:, 1) = r/beta
-            g = 0
-            g(1) = beta
-            h = 0
-            k = 0
-            do j = 1, m
-                t0 = wall()
-                call system%precondition(v(:, j), z(:, j), status)
-                info%time(PHASE_PRECONDITION) = info%time(PHASE_PRECONDITION) + &
-                                                wall() - t0
-                info%preconditioners = info%preconditioners + 1
-                if (status /= 0) then
-                    status = 4
-                    return
-                end if
-                t0 = wall()
-                call system%jacobian(z(:, j), w, status)
-                info%time(PHASE_JACOBIAN) = info%time(PHASE_JACOBIAN) + wall() - t0
-                info%jacobians = info%jacobians + 1
-                if (status /= 0) then
-                    status = 4
-                    return
-                end if
-                ! Modified Gram-Schmidt with one reorthogonalisation pass.
-                do i = 1, j
-                    h(i, j) = pdot(w, v(:, i))
-                    call paxpy(-h(i, j), v(:, i), w)
-                end do
-                do i = 1, j
-                    temp = pdot(w, v(:, i))
-                    h(i, j) = h(i, j) + temp
-                    call paxpy(-temp, v(:, i), w)
-                end do
-                h(j + 1, j) = pnorm(w)
-                if (.not. ieee_is_finite(h(j + 1, j))) then
-                    status = 5
-                    return
-                end if
-                if (h(j + 1, j) > 0) v(:, j + 1) = w/h(j + 1, j)
-                do i = 1, j - 1
-                    temp = cs(i)*h(i, j) + sn(i)*h(i + 1, j)
-                    h(i + 1, j) = -sn(i)*h(i, j) + cs(i)*h(i + 1, j)
-                    h(i, j) = temp
-                end do
-                temp = hypot(h(j, j), h(j + 1, j))
-                if (temp <= 0) then
-                    status = 5
-                    return
-                end if
-                cs(j) = h(j, j)/temp
-                sn(j) = h(j + 1, j)/temp
-                h(j, j) = temp
-                h(j + 1, j) = 0
-                g(j + 1) = -sn(j)*g(j)
-                g(j) = cs(j)*g(j)
-                iterations = iterations + 1
-                k = j
-                resid = abs(g(j + 1))
-                if (resid <= tol .or. iterations >= options%max_krylov) exit
-                if (h(j, j) == 0) exit
-            end do
-            do i = k, 1, -1
-                y(i) = (g(i) - dot_product(h(i, i + 1:k), y(i + 1:k)))/h(i, i)
-            end do
-            do i = 1, k
-                call paxpy(y(i), z(:, i), x)
-            end do
-            if (resid <= tol .or. iterations >= options%max_krylov) exit
-            ! Restart from the true residual.
+        bnorm = pnorm(b)
+        restart = min(max(1, options%restart), max(1, options%max_krylov))
+        call real_fgmres_operator(jacobian_action, preconditioner_action, b, x, &
+                                  tol/max(bnorm, 1.0_dp), max(1, options%max_krylov), &
+                                  restart, krylov_info, iterations, resid)
+        select case (krylov_info)
+        case (KRYLOV_OK, KRYLOV_MAX_ITERATIONS, KRYLOV_STAGNATION)
+            status = 0
+        case (KRYLOV_BREAKDOWN)
+            status = 5
+        case default
+            status = 1
+        end select
+        if (callback_failed) status = 4
+        info%time(PHASE_KRYLOV) = info%time(PHASE_KRYLOV) + wall() - t1
+    contains
+        subroutine jacobian_action(input, output)
+            real(dp), intent(in) :: input(:)
+            real(dp), intent(out) :: output(:)
+            real(dp) :: t0
+            integer :: callback_status
             t0 = wall()
-            call system%jacobian(x, w, status)
+            call system%jacobian(input, output, callback_status)
             info%time(PHASE_JACOBIAN) = info%time(PHASE_JACOBIAN) + wall() - t0
             info%jacobians = info%jacobians + 1
-            if (status /= 0) then
-                status = 4
-                return
+            if (callback_status /= 0) then
+                callback_failed = .true.
+                output = 0
             end if
-            r = b - w
-            beta = pnorm(r)
-            resid = beta
-            if (beta <= 0) exit
-        end do
-        info%time(PHASE_KRYLOV) = info%time(PHASE_KRYLOV) + wall() - t1
+        end subroutine
+
+        subroutine preconditioner_action(input, output)
+            real(dp), intent(in) :: input(:)
+            real(dp), intent(out) :: output(:)
+            real(dp) :: t0
+            integer :: callback_status
+            t0 = wall()
+            call system%precondition(input, output, callback_status)
+            info%time(PHASE_PRECONDITION) = info%time(PHASE_PRECONDITION) + wall() - t0
+            info%preconditioners = info%preconditioners + 1
+            if (callback_status /= 0) then
+                callback_failed = .true.
+                output = 0
+            end if
+        end subroutine
     end subroutine
 
     subroutine newton_krylov_solve(system, u, options, info)
@@ -294,7 +242,7 @@ contains
             eta = min(eta, options%eta_max)
             info%forcing(k) = eta
             rhs = -f
-            call fgmres(system, rhs, d, eta*fnorm, options, info, its, status)
+            call krylov_solve(system, rhs, d, eta*fnorm, options, info, its, status)
             info%krylov = info%krylov + its
             info%krylov_history(k) = its
             if (status /= 0) then
