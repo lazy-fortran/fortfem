@@ -13,6 +13,7 @@ No solver is run.  Output is deterministic.
 import argparse
 import csv
 import hashlib
+import math
 import sys
 from pathlib import Path
 
@@ -207,7 +208,7 @@ def load_r4():
         if (r["n"], r["threads"]) in seen:
             continue  # the sweep log repeats some thread counts
         seen.add((r["n"], r["threads"]))
-        wall = sum(fnum(r[k]) for k in ("t_bem", "t_dtn", "t_solve"))
+        wall = math.fsum(fnum(r[k]) for k in ("t_bem", "t_dtn", "t_solve"))
         rows.append(dict(
             r4=True, problem="FB1", crit=1, fam="fem-bem", p=int(r["p"]),
             dofs=int(r["dofs"]), metric="rel L2 vs transmission oracle",
