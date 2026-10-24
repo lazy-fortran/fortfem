@@ -136,6 +136,7 @@ module fortfem_equilibrated_hcurl_meridian_n
     use fortnum_polynomial, only: lagrange_weights, lagrange_deriv_weights
     use fortsparse, only: csc_from_triplet, csc_matvec, csc_z_t, &
         fortsparse_status_t, status_ok
+    use fortfem_meridian_feec_n, only: meridian_field_t
     implicit none
     private
 
@@ -193,9 +194,48 @@ module fortfem_equilibrated_hcurl_meridian_n
         end subroutine zposv
     end interface
 
+    type, extends(meridian_field_t) :: meridian_field_adapter_t
+        procedure(meridian_field_i), pointer, nopass :: callback => null()
+    contains
+        procedure :: evaluate => meridian_field_adapter_t_evaluate
+    end type
+
+    type, abstract, public :: meridian_edge_load_t
+    contains
+        procedure(meridian_edge_load_t_binding), deferred :: evaluate
+    end type
+    abstract interface
+        subroutine meridian_edge_load_t_binding(self, cell, edge, tau, g)
+            import :: meridian_edge_load_t, dp
+            class(meridian_edge_load_t), intent(in) :: self
+            !! Load density G at parameter tau in [0, 1] of local edge edge of
+            !! triangle cell (from local vertex edge to vertex mod(edge, 3) +
+            !! 1), L(v) = int G (v . t) dl with t along that orientation.
+            integer, intent(in) :: cell, edge
+            real(dp), intent(in) :: tau
+            complex(dp), intent(out) :: g
+        end subroutine
+    end interface
+
+    type, extends(meridian_edge_load_t) :: meridian_edge_load_adapter_t
+        procedure(meridian_edge_load_i), pointer, nopass :: callback => null()
+    contains
+        procedure :: evaluate => meridian_edge_load_adapter_t_evaluate
+    end type
+
+    interface meridian_hcurl_edge_remainder
+        module procedure meridian_hcurl_edge_remainder_object, &
+            meridian_hcurl_edge_remainder_procedure
+    end interface
+
+    interface meridian_hcurl_equilibrated_bound
+        module procedure meridian_hcurl_equilibrated_bound_object, &
+            meridian_hcurl_equilibrated_bound_procedure
+    end interface
+
 contains
 
-    subroutine meridian_hcurl_edge_remainder(fsd, n, cells, edges, load, &
+    subroutine meridian_hcurl_edge_remainder_object(fsd, n, cells, edges, load, &
             load_derivative, bound, status)
         !! Energy majorant of the correction from I_k G to the actual G,
         !! using the same gauge and metric as meridian_hcurl_equilibrated_bound.
@@ -216,7 +256,7 @@ contains
         !! Cost O(N + nq*number_of_loaded_cells) at fixed order, OpenMP.
         type(meridian_feec_t), intent(in) :: fsd
         integer, intent(in) :: n, cells(:), edges(:)
-        procedure(meridian_edge_load_i) :: load, load_derivative
+        class(meridian_edge_load_t), intent(in) :: load, load_derivative
         real(dp), intent(out) :: bound
         integer, intent(out) :: status
         integer, allocatable :: lookup(:, :), active(:)
@@ -260,7 +300,7 @@ contains
             e = edges(ie)
             do j = 1, m
                 tau = nodes(j)
-                call load(t, e, tau, g)
+                call load%evaluate(t, e, tau, g)
                 if (.not. finite_complex(g)) bad = 1
                 coeff(j, ie) = g
             end do
@@ -301,8 +341,8 @@ contains
                     call lagrange_deriv_weights(m, tau, nodes, di)
                     gi = sum(coeff(:, ie)*iv)
                     dgi = sum(coeff(:, ie)*di)
-                    call load(t, e, tau, g)
-                    call load_derivative(t, e, tau, dg)
+                    call load%evaluate(t, e, tau, g)
+                    call load_derivative%evaluate(t, e, tau, dg)
                     if (.not. finite_complex(g)) bad = 1
                     if (.not. finite_complex(dg)) bad = 1
                     r = g - gi
@@ -334,14 +374,14 @@ contains
         if (.not. ieee_is_finite(total)) return
         bound = sqrt(max(0.0_dp, total))
         status = HCURL_OK
-    end subroutine meridian_hcurl_edge_remainder
+    end subroutine meridian_hcurl_edge_remainder_object
 
     pure logical function finite_complex(z) result(ok)
         complex(dp), intent(in) :: z
         ok = ieee_is_finite(real(z, dp)) .and. ieee_is_finite(aimag(z))
     end function finite_complex
 
-    subroutine meridian_hcurl_equilibrated_bound(fs, fsd, n, a_h, source, est, &
+    subroutine meridian_hcurl_equilibrated_bound_object(fs, fsd, n, a_h, source, est, &
             status, method, edge_cell, edge_local, edge_load, free_trace, side)
         !! Bound on ||curl_n (A - A_h)||_M2 for the gauge-fixed problem with
         !! mu0-scaled current source(x) = J (components 1 = R, 3 = Z used).
@@ -359,12 +399,12 @@ contains
         type(meridian_feec_t), intent(in) :: fs, fsd
         integer, intent(in) :: n
         complex(dp), intent(in) :: a_h(:)
-        procedure(meridian_field_i) :: source
+        class(meridian_field_t), intent(in) :: source
         type(meridian_hcurl_estimate_t), intent(out) :: est
         integer, intent(out) :: status
         integer, intent(in), optional :: method
         integer, intent(in), optional :: edge_cell(:), edge_local(:)
-        procedure(meridian_edge_load_i), optional :: edge_load
+        class(meridian_edge_load_t), intent(in), optional :: edge_load
         logical, intent(in), optional :: free_trace
         logical, intent(in), optional :: side(:)
 
@@ -488,7 +528,7 @@ contains
                         cycle
                     end if
                     call field_at(t, phi, bp, bh)
-                    call source(x, jv)
+                    call source%evaluate(x, jv)
                     jp = [jv(1), jv(3)]
                     call radius(x, rr, grr)
                     ! fixed lift of the potential (zero without loads)
@@ -702,7 +742,7 @@ contains
                         cycle
                     end if
                     call field_at(t, phi, bp, bh)
-                    call source(x, jv)
+                    call source%evaluate(x, jv)
                     jp = [jv(1), jv(3)]
                     call radius(x, rr, grr)
                     sq = (0.0_dp, 0.0_dp)
@@ -730,7 +770,7 @@ contains
             !! loads: -G (left) / +G (right) on the side cells of interior
             !! loaded edges, -G minus the side lift on boundary loaded edges;
             !! interpolated at the V0 nodes of the edges (see the header).
-            procedure(meridian_edge_load_i) :: load
+            class(meridian_edge_load_t), intent(in) :: load
             integer, intent(out) :: info
             type(triangle_lagrange_basis_t) :: basis
             integer, allocatable :: nb(:), stack(:), hits(:)
@@ -803,7 +843,7 @@ contains
                     e = edge_local(ie)
                     do j = 1, nl0
                         if (lamv(mod(e + 1, 3) + 1, j) > 0.0_dp) cycle
-                        call load(t, e, edge_tau(e, j), g)
+                        call load%evaluate(t, e, edge_tau(e, j), g)
                         gmax = max(gmax, abs(g))
                         dof = fsd%sp(0)%dof(j, t)
                         if (pass == 1) then
@@ -850,10 +890,10 @@ contains
                     gi = (0.0_dp, 0.0_dp)
                     do j = 1, nl0
                         if (lamv(mod(e + 1, 3) + 1, j) > 0.0_dp) cycle
-                        call load(t, e, edge_tau(e, j), g)
+                        call load%evaluate(t, e, edge_tau(e, j), g)
                         gi = gi + g*bval(j)
                     end do
-                    call load(t, e, tq(q), g)
+                    call load%evaluate(t, e, tq(q), g)
                     defect2 = defect2 + wtq(q)*abs(g - gi)**2
                     norm2_ = norm2_ + wtq(q)*abs(g)**2
                 end do
@@ -924,7 +964,7 @@ contains
             end if
         end subroutine radius
 
-    end subroutine meridian_hcurl_equilibrated_bound
+    end subroutine meridian_hcurl_equilibrated_bound_object
 
     pure subroutine scale_potential(rr, grr, s, gs)
         !! (sigma, grad sigma) -> (s, grad s) for s = sigma/R (generated leaf,
@@ -1033,5 +1073,116 @@ contains
         if (maxval(abs(fs%mm%nodes - fsd%mm%nodes)) > 0.0_dp) return
         status = HCURL_OK
     end subroutine check_consistent
+
+
+    subroutine meridian_hcurl_edge_remainder_procedure(fsd, n, cells, edges, load, &
+            load_derivative, bound, status)
+        !! Energy majorant of the correction from I_k G to the actual G,
+        !! using the same gauge and metric as meridian_hcurl_equilibrated_bound.
+        !! load_derivative returns dG/dtau, NOT the arc-length derivative.
+        !! Each physical loaded edge occurs once, oriented CCW in its listed
+        !! cell. Callbacks must be thread-safe and G must be H^1 on each edge.
+        !!
+        !! Proof: r=G-I_k G vanishes at both edge endpoints. In the listed
+        !! cell put sigma=-(la+lb)^4*r(lb/(la+lb)), zero in the other cells.
+        !! This H^1 lift is zero on the two other edges and jumps by -r.
+        !! Sum the lifts before evaluating H=(grad(sigma)/(i*n),sigma/R).
+        !! Integration by parts gives (curl_n v,H)=L_r(v). Thus
+        !! |||A_G-A_IG||| <= ||H|| with constant ONE, also with any positive
+        !! exterior energy form. No trace or mesh-dependent constant enters.
+        !!
+        !! The returned norm uses sampled volume quadrature and ordinary
+        !! arithmetic: practical, NOT an enclosed/verified numerical radius.
+        !! Cost O(N + nq*number_of_loaded_cells) at fixed order, OpenMP.
+        type(meridian_feec_t), intent(in) :: fsd
+        integer, intent(in) :: n, cells(:), edges(:)
+        procedure(meridian_edge_load_i) :: load, load_derivative
+        real(dp), intent(out) :: bound
+        integer, intent(out) :: status
+        type(meridian_edge_load_adapter_t), target :: load_adapter
+        type(meridian_edge_load_adapter_t), target :: load_derivative_adapter
+
+        load_adapter%callback => load
+        load_derivative_adapter%callback => load_derivative
+        call meridian_hcurl_edge_remainder_object(fsd, &
+            n, &
+            cells, &
+            edges, &
+            load_adapter, &
+            load_derivative_adapter, &
+            bound, &
+            status)
+    end subroutine
+
+    subroutine meridian_hcurl_equilibrated_bound_procedure(fs, fsd, n, a_h, source, &
+        est, &
+            status, method, edge_cell, edge_local, edge_load, free_trace, side)
+        !! Bound on ||curl_n (A - A_h)||_M2 for the gauge-fixed problem with
+        !! mu0-scaled current source(x) = J (components 1 = R, 3 = Z used).
+        !! fs: primal complex (V1 holds a_h); fsd: complex whose Lagrange
+        !! space V0 carries the potential s (same mesh and quadrature).
+        !! method: HCURL_GLOBAL (default) or HCURL_PATCHWISE.
+        !! Optional edge loads (all three together): the oriented edges
+        !! (edge_cell(i), edge_local(i)) carry the density edge_load (called
+        !! serially).  Interior loaded edges must separate the mesh: side(nt)
+        !! marks the cells on one side (default: the cells connected to the
+        !! first interior edge_cell without crossing a loaded edge).  Boundary
+        !! loaded edges require free_trace (default .false.: v x n = 0, the
+        !! tangential trace of A is fixed; .true.: the trace is free and sigma
+        !! is prescribed on the whole boundary, zero on unloaded edges).
+        type(meridian_feec_t), intent(in) :: fs, fsd
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: a_h(:)
+        procedure(meridian_field_i) :: source
+        type(meridian_hcurl_estimate_t), intent(out) :: est
+        integer, intent(out) :: status
+        integer, intent(in), optional :: method
+        integer, intent(in), optional :: edge_cell(:), edge_local(:)
+        procedure(meridian_edge_load_i), optional :: edge_load
+        logical, intent(in), optional :: free_trace
+        logical, intent(in), optional :: side(:)
+        type(meridian_field_adapter_t), target :: source_adapter
+        type(meridian_edge_load_adapter_t), target :: edge_load_adapter
+        class(meridian_edge_load_t), pointer :: edge_load_object
+        nullify(edge_load_object)
+
+        source_adapter%callback => source
+        if (present(edge_load)) then
+            edge_load_adapter%callback => edge_load
+            edge_load_object => edge_load_adapter
+        end if
+        call meridian_hcurl_equilibrated_bound_object(fs, &
+            fsd, &
+            n, &
+            a_h, &
+            source_adapter, &
+            est, &
+            status, &
+            method, &
+            edge_cell, &
+            edge_local, &
+            edge_load_object, &
+            free_trace, &
+            side)
+    end subroutine
+
+    subroutine meridian_field_adapter_t_evaluate(self, x, v)
+        class(meridian_field_adapter_t), intent(in) :: self
+            !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
+            real(dp), intent(in) :: x(2)
+            complex(dp), intent(out) :: v(3)
+        call self%callback(x, v)
+    end subroutine
+
+    subroutine meridian_edge_load_adapter_t_evaluate(self, cell, edge, tau, g)
+        class(meridian_edge_load_adapter_t), intent(in) :: self
+            !! Load density G at parameter tau in [0, 1] of local edge edge of
+            !! triangle cell (from local vertex edge to vertex mod(edge, 3) +
+            !! 1), L(v) = int G (v . t) dl with t along that orientation.
+            integer, intent(in) :: cell, edge
+            real(dp), intent(in) :: tau
+            complex(dp), intent(out) :: g
+        call self%callback(cell, edge, tau, g)
+    end subroutine
 
 end module fortfem_equilibrated_hcurl_meridian_n
