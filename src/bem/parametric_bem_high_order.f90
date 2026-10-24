@@ -15,6 +15,8 @@ module fortfem_parametric_bem_high_order
     use fortfem_generated_bem_trace_product, only: bem_trace_product
     use fortfem_generated_bem_hyper_product, only: bem_hyper_product
     use fortfem_generated_bem_fan_map, only: bem_fan_map
+    use fortfem_generated_bem_coincident_map, only: bem_coincident_map
+    use fortfem_generated_bem_self_angle, only: bem_self_angle
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_bem_circulant, only: bem_circulant_t, circulant_matrix_t
     use fortnum_quadrature, only: gauss_legendre_ab
@@ -264,6 +266,61 @@ contains
         status=0
     end subroutine
 
+    pure subroutine integrate_coincident(surface,panel,bank,l,block, &
+            evaluations,status)
+        class(bem_surface_t), intent(in) :: surface
+        integer, intent(in) :: panel,l
+        type(rule_bank_t), intent(in) :: bank
+        type(block_t), intent(out) :: block
+        integer(int64), intent(out) :: evaluations
+        integer, intent(out) :: status
+        ! Consecutive vertices of T-T, encoded as source minus target.
+        integer, parameter :: tx(6)=[1,1,2,2,3,3], sy(6)=[2,3,3,1,1,2]
+        type(point_t) :: target,source
+        real(dp) :: x(2),y(2),weight,factor,ta(2),tb(2),sa(2),sb(2)
+        real(dp) :: center_x(3),a(3),b(3),d1(2),d2(2),angle,angle_weight
+        integer :: sector,next,t,i,j,n
+        call clear(block)
+        evaluations=0
+        call sample(surface,panel,[1.0_dp/3,1.0_dp/3],target,status)
+        if (status/=0) return
+        call surface%evaluate(panel,[1.0_dp/3,1.0_dp/3],center_x,a,b,status)
+        if (status/=0) return
+        n=bank%line_count(l)
+        do sector=1,6
+            next=mod(sector,6)+1
+            ta=corners(:,tx(sector)); tb=corners(:,tx(next))
+            sa=corners(:,sy(sector)); sb=corners(:,sy(next))
+            d1=sa-ta; d2=sb-tb
+            do j=1,n
+                call bem_self_angle(a(1),a(2),a(3),b(1),b(2),b(3), &
+                    d1(1),d1(2),d2(1),d2(2),bank%nodes(j,l),angle,angle_weight)
+                status=2
+                if (.not. ieee_is_finite(angle)) return
+                if (.not. ieee_is_finite(angle_weight)) return
+                if (angle<0 .or. angle>1 .or. angle_weight<=0) return
+                do i=1,n
+                    do t=1,bank%count(l)
+                        call bem_coincident_map(bank%uv(1,t,l), &
+                            bank%uv(2,t,l),bank%nodes(i,l),angle, &
+                            ta(1),ta(2),tb(1),tb(2),sa(1),sa(2),sb(1),sb(2), &
+                            x(1),x(2),y(1),y(2),weight)
+                        call sample(surface,panel,x,target,status)
+                        if (status/=0) return
+                        call sample(surface,panel,y,source,status)
+                        if (status/=0) return
+                        factor=bank%weights(t,l)*bank%line_w(i,l)* &
+                            bank%line_w(j,l)*weight*angle_weight
+                        call add_integrand(target,source,factor,block,status)
+                        evaluations=evaluations+1
+                        if (status/=0) return
+                    end do
+                end do
+            end do
+        end do
+        status=0
+    end subroutine
+
     pure subroutine integrate_rule(surface,target_panel,source_panel,bank,l, &
             target_points,block,evaluations,resolved,status)
         class(bem_surface_t), intent(in) :: surface
@@ -369,9 +426,15 @@ contains
         have_previous=.false.
         do l=1,size(bank%degree)
             bound=3_int64*bank%count(l)*int(bank%line_count(l),int64)**2
+            if (i==j) bound=2*bound
             if (bound>options%maximum_evaluations-report%kernel_evaluations) exit
-            call integrate_rule(surface,i,j,bank,l,points(:,l),block, &
-                evaluations,resolved,status)
+            if (i==j) then
+                call integrate_coincident(surface,i,bank,l,block,evaluations,status)
+                resolved=.true.
+            else
+                call integrate_rule(surface,i,j,bank,l,points(:,l),block, &
+                    evaluations,resolved,status)
+            end if
             report%kernel_evaluations=report%kernel_evaluations+evaluations
             report%maximum_degree_used=bank%degree(l)
             if (status/=0) then
