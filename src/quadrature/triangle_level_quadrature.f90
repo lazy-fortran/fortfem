@@ -1,7 +1,7 @@
 module fortfem_triangle_level_quadrature
     use fortfem_kinds, only: dp
     use fortnum_quadrature, only: gauss_legendre_ab
-    use fortnum_roots, only: root_brent
+    use fortnum_roots, only: root_brent, scalar_root_function_t
     use fortnum_status, only: fortnum_status_t
     use fortfem_generated_triangle_level_events, only: generated_triangle_level_events
     use fortfem_generated_triangle_level_slice, only: generated_triangle_level_slice
@@ -48,6 +48,37 @@ module fortfem_triangle_level_quadrature
         real(dp) :: nodes4(4), weights4(4), nodes8(8), weights8(8)
         real(dp) :: nodes16(16), weights16(16), nodes32(32), weights32(32)
     end type triangle_level_workspace_t
+    type, abstract, public :: triangle_level_function_t
+    contains
+        procedure(triangle_level_function_t_binding), deferred :: evaluate
+    end type
+    type, extends(triangle_level_function_t) :: triangle_level_function_adapter_t
+        procedure(triangle_level_integrand_t), pointer, nopass :: callback => null()
+    contains
+        procedure :: evaluate => triangle_level_function_adapter_t_evaluate
+    end type
+    abstract interface
+        subroutine triangle_level_function_t_binding(self, point, values, status)
+            import :: dp
+            import :: triangle_level_function_t
+            class(triangle_level_function_t), intent(in) :: self
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: values(:)
+            integer, intent(out) :: status
+        end subroutine triangle_level_function_t_binding
+    end interface
+    interface integrate_triangle_levels
+        module procedure integrate_triangle_levels_object, &
+            integrate_triangle_levels_procedure
+    end interface
+
+    type, extends(scalar_root_function_t) :: polynomial_root_t
+        real(dp) :: coefficients(3)
+        logical :: derivative = .false.
+    contains
+        procedure :: evaluate => polynomial_root_evaluate
+    end type
+
 contains
     subroutine initialize_triangle_level_workspace(workspace, nvalues, max_levels, &
             status, max_panels, max_evaluations, max_points)
@@ -128,19 +159,23 @@ contains
         type(fortnum_status_t) :: root_status
         real(dp) :: c(3), knots(3), values(3), slopes(2), scale, turning, root
         integer :: nknots, i
+        type(polynomial_root_t) :: value_root, slope_root
         roots = 0
         count = 0
         status = 0
         scale = maxval(abs(coefficients))
         if (scale <= 0) return
         c = coefficients/scale
+        value_root%coefficients = c
+        slope_root%coefficients = c
+        slope_root%derivative = .true.
         call generated_triangle_level_polynomial(c, lower, values(1), slopes(1))
         call generated_triangle_level_polynomial(c, upper, values(2), slopes(2))
         nknots = 2
         knots(:2) = [lower, upper]
         if ((slopes(1) < 0 .and. slopes(2) > 0) .or. &
             (slopes(1) > 0 .and. slopes(2) < 0)) then
-            call root_brent(slope_at, lower, upper, turning, root_status, &
+            call root_brent(slope_root, lower, upper, turning, root_status, &
                 xtol=4*epsilon(1._dp), max_iter=80)
             if (root_status%code /= 0) then
                 status = TRIANGLE_LEVEL_BUDGET
@@ -157,7 +192,7 @@ contains
         do i = 1, nknots - 1
             if (.not. ((values(i) < 0 .and. values(i + 1) > 0) .or. &
                 (values(i) > 0 .and. values(i + 1) < 0))) cycle
-            call root_brent(value_at, knots(i), knots(i + 1), root, root_status, &
+            call root_brent(value_root, knots(i), knots(i + 1), root, root_status, &
                 xtol=4*epsilon(1._dp), max_iter=80)
             if (root_status%code /= 0) then
                 status = TRIANGLE_LEVEL_BUDGET
@@ -166,16 +201,6 @@ contains
             call append_root(root)
         end do
     contains
-        pure real(dp) function value_at(x) result(value)
-            real(dp), intent(in) :: x
-            real(dp) :: slope
-            call generated_triangle_level_polynomial(c, x, value, slope)
-        end function value_at
-        pure real(dp) function slope_at(x) result(slope)
-            real(dp), intent(in) :: x
-            real(dp) :: value
-            call generated_triangle_level_polynomial(c, x, value, slope)
-        end function slope_at
         subroutine append_root(x)
             real(dp), intent(in) :: x
             if (count > 0) then
@@ -240,7 +265,7 @@ contains
         type(triangle_level_workspace_t), intent(inout) :: workspace
         real(dp), intent(in) :: xi, outer_weight
         integer, intent(in) :: nlevels
-        procedure(triangle_level_integrand_t) :: integrand
+        class(triangle_level_function_t), intent(in) :: integrand
         integer, intent(out) :: status
         logical, intent(in) :: record_trace
         real(dp) :: lower, upper, eta, weight, point(2), base_lower, base_upper, ignored
@@ -332,7 +357,7 @@ contains
             status = TRIANGLE_LEVEL_BUDGET
             if (workspace%nevaluations >= workspace%max_evaluations) return
             workspace%nevaluations = workspace%nevaluations + 1
-            call integrand(point, workspace%scratch(:, 8), status)
+            call integrand%evaluate(point, workspace%scratch(:, 8), status)
             if (status /= 0) then
                 status = TRIANGLE_LEVEL_CALLBACK
                 return
@@ -351,7 +376,7 @@ contains
         type(triangle_level_workspace_t), intent(inout) :: workspace
         real(dp), intent(in) :: lower, upper
         integer, intent(in) :: nlevels, panel
-        procedure(triangle_level_integrand_t) :: integrand
+        class(triangle_level_function_t), intent(in) :: integrand
         integer, intent(out) :: status
         real(dp) :: xi, weight, unit_node, unit_weight
         integer :: node, low_order, high_order
@@ -435,10 +460,11 @@ contains
         end if
     end function component_budget
 
-    subroutine integrate_triangle_levels(coefficients, levels, integrand, epsabs, &
+    subroutine integrate_triangle_levels_object(coefficients, levels, integrand, &
+        epsabs, &
             epsrel, workspace, integral, error, status, message)
         real(dp), intent(in) :: coefficients(6), levels(:), epsabs(:), epsrel
-        procedure(triangle_level_integrand_t) :: integrand
+        class(triangle_level_function_t), intent(in) :: integrand
         type(triangle_level_workspace_t), intent(inout) :: workspace
         real(dp), intent(out) :: integral(:), error(:)
         integer, intent(out) :: status
@@ -633,5 +659,47 @@ contains
         910     continue
         integral = 0
         workspace%npoints = 0
-    end subroutine integrate_triangle_levels
+    end subroutine integrate_triangle_levels_object
+
+    subroutine integrate_triangle_levels_procedure(coefficients, levels, integrand, &
+        epsabs, &
+            epsrel, workspace, integral, error, status, message)
+        real(dp), intent(in) :: coefficients(6), levels(:), epsabs(:), epsrel
+        procedure(triangle_level_integrand_t) :: integrand
+        type(triangle_level_workspace_t), intent(inout) :: workspace
+        real(dp), intent(out) :: integral(:), error(:)
+        integer, intent(out) :: status
+        character(*), intent(out) :: message
+        type(triangle_level_function_adapter_t) :: adapter
+
+        adapter%callback => integrand
+        call integrate_triangle_levels_object(coefficients, &
+            levels, &
+            adapter, &
+            epsabs, &
+            epsrel, &
+            workspace, &
+            integral, &
+            error, &
+            status, &
+            message)
+    end subroutine
+
+    subroutine triangle_level_function_adapter_t_evaluate(self, point, values, status)
+        class(triangle_level_function_adapter_t), intent(in) :: self
+            real(dp), intent(in) :: point(2)
+            real(dp), intent(out) :: values(:)
+            integer, intent(out) :: status
+        call self%callback(point, values, status)
+    end subroutine
+    pure function polynomial_root_evaluate(self, x) result(y)
+        class(polynomial_root_t), intent(in) :: self
+        real(dp), intent(in) :: x
+        real(dp) :: y, other
+        if (self%derivative) then
+            call generated_triangle_level_polynomial(self%coefficients, x, other, y)
+        else
+            call generated_triangle_level_polynomial(self%coefficients, x, y, other)
+        end if
+    end function
 end module fortfem_triangle_level_quadrature

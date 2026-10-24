@@ -164,6 +164,34 @@ module fortfem_meridian_feec_n
     !> Triangle count below which assembly loops stay serial.
     integer, parameter :: par_min = 128
 
+    type, abstract, public :: meridian_field_t
+    contains
+        procedure(meridian_field_t_binding), deferred :: evaluate
+    end type
+    abstract interface
+        subroutine meridian_field_t_binding(self, x, v)
+            import :: meridian_field_t, dp
+            class(meridian_field_t), intent(in) :: self
+            !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
+            real(dp), intent(in) :: x(2)
+            complex(dp), intent(out) :: v(3)
+        end subroutine
+    end interface
+
+    type, extends(meridian_field_t) :: meridian_field_adapter_t
+        procedure(meridian_field_i), pointer, nopass :: callback => null()
+    contains
+        procedure :: evaluate => meridian_field_adapter_t_evaluate
+    end type
+
+    interface meridian_load
+        module procedure meridian_load_object, meridian_load_procedure
+    end interface
+
+    interface meridian_error_norm
+        module procedure meridian_error_norm_object, meridian_error_norm_procedure
+    end interface
+
 contains
 
     ! ------------------------------------------------------------------
@@ -1319,11 +1347,11 @@ contains
     ! Loads and errors for analytic physical fields
     ! ------------------------------------------------------------------
 
-    subroutine meridian_load(fs, space, fun, b, status)
+    subroutine meridian_load_object(fs, space, fun, b, status)
         !! b_i = int F . phi_i R dR dZ with the physical field F = fun(R, Z).
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: space
-        procedure(meridian_field_i) :: fun
+        class(meridian_field_t), intent(in) :: fun
         complex(dp), allocatable, intent(out) :: b(:)
         integer, intent(out) :: status
 
@@ -1351,7 +1379,7 @@ contains
                     cycle
                 end if
                 call point_basis(fs, space, q, x, jac, det, phi)
-                call fun(x, f)
+                call fun%evaluate(x, f)
                 wq = fs%qw(q)*det*metric_radius(fs, x)
                 do i = 1, nl
                     bl(i, t) = bl(i, t) + wq*(f(1)*phi(1, i) &
@@ -1370,15 +1398,15 @@ contains
             end do
         end do
         status = 0
-    end subroutine meridian_load
+    end subroutine meridian_load_object
 
-    subroutine meridian_error_norm(fs, space, coeff, fun, err, status)
+    subroutine meridian_error_norm_object(fs, space, coeff, fun, err, status)
         !! err = ||u_h - F||_{L2(R dR dZ)} for the field with coefficients
         !! coeff against the analytic physical field F.
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: space
         complex(dp), intent(in) :: coeff(:)
-        procedure(meridian_field_i) :: fun
+        class(meridian_field_t), intent(in) :: fun
         real(dp), intent(out) :: err
         integer, intent(out) :: status
 
@@ -1411,7 +1439,7 @@ contains
                     cycle
                 end if
                 call point_basis(fs, space, q, x, jac, det, phi)
-                call fun(x, f)
+                call fun%evaluate(x, f)
                 u = (0.0_dp, 0.0_dp)
                 do i = 1, nl
                     u(1) = u(1) + cl(i)*phi(1, i)
@@ -1428,6 +1456,52 @@ contains
         if (bad /= 0) return
         err = sqrt(tot)
         status = 0
-    end subroutine meridian_error_norm
+    end subroutine meridian_error_norm_object
+
+
+    subroutine meridian_load_procedure(fs, space, fun, b, status)
+        !! b_i = int F . phi_i R dR dZ with the physical field F = fun(R, Z).
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: space
+        procedure(meridian_field_i) :: fun
+        complex(dp), allocatable, intent(out) :: b(:)
+        integer, intent(out) :: status
+        type(meridian_field_adapter_t), target :: fun_adapter
+
+        fun_adapter%callback => fun
+        call meridian_load_object(fs, &
+            space, &
+            fun_adapter, &
+            b, &
+            status)
+    end subroutine
+
+    subroutine meridian_error_norm_procedure(fs, space, coeff, fun, err, status)
+        !! err = ||u_h - F||_{L2(R dR dZ)} for the field with coefficients
+        !! coeff against the analytic physical field F.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: space
+        complex(dp), intent(in) :: coeff(:)
+        procedure(meridian_field_i) :: fun
+        real(dp), intent(out) :: err
+        integer, intent(out) :: status
+        type(meridian_field_adapter_t), target :: fun_adapter
+
+        fun_adapter%callback => fun
+        call meridian_error_norm_object(fs, &
+            space, &
+            coeff, &
+            fun_adapter, &
+            err, &
+            status)
+    end subroutine
+
+    subroutine meridian_field_adapter_t_evaluate(self, x, v)
+        class(meridian_field_adapter_t), intent(in) :: self
+            !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
+            real(dp), intent(in) :: x(2)
+            complex(dp), intent(out) :: v(3)
+        call self%callback(x, v)
+    end subroutine
 
 end module fortfem_meridian_feec_n
