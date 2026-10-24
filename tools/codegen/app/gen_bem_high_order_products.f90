@@ -1,7 +1,7 @@
 program gen_bem_high_order_products
     use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), &
-        operator(/), operator(**), sqrt, asinh, sinh, cosh
+        operator(/), operator(**), sqrt, asinh, sinh, cosh, log
     use fortsym_diff, only: diff
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
@@ -151,14 +151,86 @@ program gen_bem_high_order_products
     call prove(diff(-normal_gap/radial_norm,radial_distance)- &
         normal_gap*radial_distance/(radial_norm**3), &
         'near-normal peak radial antiderivative')
+    call emit_shared_edge_maps()
     close(unit)
 contains
+    subroutine emit_shared_edge_maps()
+        ! Seven charts cover T x T up to zero-measure boundaries. Their
+        ! positive Jacobians are parametric measures, never 1/distance.
+        type(str_t) :: names(5), outputs(5)
+        type(expr_t) :: vars(5), rho, e, z, q, h, a, b, xray, yray
+        type(expr_t) :: eta, lo, hi, ray, limit, zz, jac, delta, t, u, ss, vv
+        type(expr_t) :: mapped(5), angular, hh, abstract_x, abstract_y
+        character(1) :: suffix
+        integer :: chart, sector
+        names=[str('rho'),str('edge'),str('inner'),str('angle'),str('aspect')]
+        outputs=[str('t'),str('u'),str('s'),str('v'),str('weight')]
+        do chart=1,5
+            vars(chart)=sym(arena,chars(names(chart)))
+        end do
+        rho=vars(1); e=vars(2); z=vars(3); q=vars(4); h=vars(5)
+        ! First prove the algebraic denominator identity on independent
+        ! ray coordinates. On the open ray triangle, d=2-x-y>0 and
+        ! a=x+y-1, hence (1-a)*(1-y)/d=1-y (or 1-x for N2) by field
+        ! cancellation. Compose the proved identity with the hyperbolic map
+        ! only afterwards, rather than expanding reciprocals of sinh/log.
+        abstract_x=sym(arena,'ray_x'); abstract_y=sym(arena,'ray_y')
+        call prove(1-(abstract_x+abstract_y-1)-(2-abstract_x-abstract_y), &
+            'ray inverse denominator')
+        do chart=1,7
+            select case(chart)
+            case(1)
+                sector=1; a=q; b=z; angular=1+0*rho
+            case(2,3)
+                sector=3; eta=q*asinh(h); xray=sinh(eta)/h
+                if (chart==2) then
+                    a=(1-xray)*z
+                else
+                    xray=-xray; a=-xray+(1+xray)*z
+                end if
+                b=1-a-xray
+                angular=(1-sinh(eta)/h)*cosh(eta)*asinh(h)/h
+            case(4:7)
+                sector=2
+                if (chart>=6) sector=4
+                hh=h*h+1
+                lo=-asinh(1/h); hi=log(h)
+                if (mod(chart,2)==1) then
+                    lo=log(h); hi=asinh(h)
+                end if
+                eta=(1-q)*lo+q*hi
+                zz=(1+h*sinh(eta))/hh
+                limit=1/(1-zz)
+                if (mod(chart,2)==1) limit=1/zz
+                ray=1+(limit-1)*z
+                xray=ray*zz; yray=ray*(1-zz)
+                a=xray+yray-1
+                b=(1-yray)/(2-xray-yray)
+                if (sector==4) b=(1-xray)/(2-xray-yray)
+                angular=ray*(limit-1)*h*cosh(eta)*(hi-lo)/hh
+            end select
+            delta=rho*(1-a); u=rho*a; vv=rho*b
+            if (sector==2 .or. sector==4) then
+                delta=rho*(1-a)*b; vv=rho
+            end if
+            t=(1-rho)*e+delta; ss=(1-rho)*e
+            if (sector>=3) then
+                ss=t; t=(1-rho)*e
+                xray=u; u=vv; vv=xray
+            end if
+            jac=rho*rho*(1-rho)*angular
+            mapped=[t,u,ss,vv,jac]
+            write(suffix,'(i1)') chart
+            call emit('bem_edge_chart_'//suffix,names,vars,mapped,outputs,.false.)
+        end do
+    end subroutine
     subroutine prove(expression,label)
         type(expr_t), intent(in) :: expression
         character(*), intent(in) :: label
         identity=engine%zero_test(expression)
         if (identity%verdict /= VERDICT_TRUE) then
             write(*,'(a)') label
+            write(*,'(a,i0)') 'FortSym verdict=',identity%verdict
             error stop 'BEM trace identity failed'
         end if
     end subroutine
