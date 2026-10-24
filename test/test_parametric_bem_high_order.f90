@@ -12,7 +12,7 @@ program test_parametric_bem_high_order
     type(test_sphere_t) :: sphere
     type(bem_operators_t) :: op
     type(bem_exterior_dtn_t) :: exterior
-    type(bem_pair_options_t) :: options
+    type(bem_pair_options_t) :: options, self_options
     type(bem_pair_report_t) :: report
     integer, allocatable :: trace_dofs(:, :), flux_dofs(:, :)
     real(dp), allocatable :: u(:), q(:), load(:)
@@ -56,6 +56,22 @@ program test_parametric_bem_high_order
         'curved sphere monopole capacity has physical accuracy')
     call record(norm2(q+1.0_dp)/sqrt(real(size(q),dp)) < 0.05_dp, &
         'curved sphere monopole flux has physical accuracy')
+    self_options%relative_tolerance=1.e-7_dp
+    self_options%absolute_tolerance=1.e-11_dp
+    self_options%maximum_degree=48
+    call integrate_parametric_bem_p2_pair(sphere,1,1,self_options, &
+        v,k,w,correction,report,status)
+    write(*,'(a,2i8,3es16.7)') 'Sphere self status degree V K ratio ', &
+        status,report%maximum_degree_used,sum(v),sum(k),report%error_ratio
+    call record(status==0,'nonaffine curved self rule converges at tight tolerance')
+    if (status==0) then
+        ! On the unit sphere, (x-y).n_y = -|x-y|**2/2 pointwise.
+        call record(abs(sum(k)+sum(v)/2)<1.e-11_dp, &
+            'raw curved self rule satisfies exact sphere kernel identity')
+        call record(maxval(abs(v-transpose(v)))<1.e-11_dp .and. &
+            maxval(abs(w-transpose(w)))<1.e-10_dp, &
+            'curved self V and W are symmetric before averaging')
+    end if
     ! A cap failure must not masquerade as an accepted quadrature result.
     options%maximum_evaluations = 1
     call integrate_parametric_bem_p2_pair(sphere, 1, 1, options, &

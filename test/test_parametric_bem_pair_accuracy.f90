@@ -34,12 +34,49 @@ program test_parametric_bem_pair_accuracy
     type(plane_t) :: plane
     type(bem_pair_options_t) :: options
     type(bem_pair_report_t) :: report
-    real(dp) :: v(3,3),k(3,6),w(6,6),c(3,6),reference,refined,error,gap
+    real(dp) :: v(3,3),k(3,6),w(6,6),c(3,6),reference,refined,error,gap,aspect
     integer :: status,case_id
     logical :: passed
     passed=.true.
     plane%vertices(:,:,1)=reshape([0.0_dp,0.0_dp,0.0_dp, &
         1.0_dp,0.0_dp,0.0_dp,0.0_dp,1.0_dp,0.0_dp],[3,3])
+    ! Exact right-triangle self energy: integrate the analytic edge potential.
+    ! Integral_T Integral_T 1/|x-y| = (2+sqrt(2))*asinh(1)/3.
+    ! This checks the raw form, before symmetry averaging or jump restoration.
+    options%relative_tolerance=1.e-7_dp
+    options%absolute_tolerance=1.e-12_dp
+    options%maximum_degree=32
+    reference=(2+sqrt(2.0_dp))*asinh(1.0_dp)/(12*acos(-1.0_dp))
+    call integrate_parametric_bem_p2_pair(plane,1,1,options,v,k,w,c, &
+        report,status)
+    write(*,'(a,2i8,3es16.7)') 'BEM3D self status degree value exact ratio ', &
+        status,report%maximum_degree_used,sum(v),reference,report%error_ratio
+    call record(status==0,'coincident rule converges without raising degree cap')
+    if (status==0) then
+        call record(abs(sum(v)-reference)<1.e-8_dp*reference, &
+            'raw self V agrees with exact triangle integral')
+        call record(maxval(abs(v-transpose(v)))<1.e-11_dp, &
+            'raw coincident V is symmetric')
+        call record(maxval(abs(w-transpose(w)))<1.e-10_dp, &
+            'raw coincident W is symmetric')
+        call record(maxval(abs(k))+maxval(abs(c))<1.e-13_dp, &
+            'coplanar coincident double layer vanishes')
+    end if
+    ! Skinny curved-surface panels also need the difference-angle peak resolved.
+    aspect=40.0_dp
+    plane%vertices(1,:,1)=aspect*plane%vertices(1,:,1)
+    reference=aspect**2/(12*acos(-1.0_dp))* &
+        ((asinh(aspect)+asinh(1/aspect))/sqrt(1+aspect**2)+ &
+        asinh(aspect)/aspect+asinh(1/aspect))
+    options%maximum_degree=48
+    options%relative_tolerance=1.e-6_dp
+    call integrate_parametric_bem_p2_pair(plane,1,1,options,v,k,w,c,report,status)
+    write(*,'(a,2i8,3es16.7)') 'BEM3D skinny self status degree value exact ratio ', &
+        status,report%maximum_degree_used,sum(v),reference,report%error_ratio
+    call record(status==0,'skinny coincident panel converges at unchanged caps')
+    if (status==0) call record(abs(sum(v)-reference)<1.e-7_dp*reference, &
+        'skinny self V agrees with exact triangle integral')
+    plane%vertices(1,:,1)=plane%vertices(1,:,1)/aspect
     options%initial_degree=8
     options%maximum_degree=64
     options%relative_tolerance=1.e-3_dp
