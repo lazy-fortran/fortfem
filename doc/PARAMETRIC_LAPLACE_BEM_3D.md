@@ -299,3 +299,20 @@ The pair test checks this before symmetry averaging, for aspect ratios 1 and
 40. The curved-sphere test additionally checks the exact identity D_n G=-G/2
 on the unit sphere and raw V/W symmetry at a tighter pair tolerance. Global
 sphere-harmonic mesh convergence remains the independent discretization oracle.
+
+## Explicit shared-edge pair chart
+
+`integrate_parametric_bem_p2_pair` accepts an optional `edge_chart` of type
+`bem_shared_edge_chart_t`. Each column of `vertices(3,2)` gives the local
+indices of shared endpoints A,B and the opposite vertex, in the same endpoint
+order on both panels. The caller must supply actual matching connectivity.
+The positive `aspect` parameter controls only a bijective angular change of
+coordinates. There is no inferred geometry classifier or automatic dispatch.
+
+The seven generated charts integrate the unchanged physical V/K/W/C kernels,
+with the original stopping and degree/work limits. The independent regression
+is the aspect40 public affine rectangle split across its diagonal, using full
+physical clipped-overlap V/W reference matrices and coplanar K/C. One hundred
+exact product-simplex moments separately check coverage and measure. These
+checks do not establish curved/general surface accuracy or resolve the
+remaining consumer shared-edge failures.
