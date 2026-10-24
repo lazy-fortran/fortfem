@@ -414,3 +414,8 @@ cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
 filename="fortfem_lab_gs_source_products.f90"
 cmp -- "$repository_dir/benchmark/lab/neq1/generated/$filename" \
     "$temporary_dir/lab/$filename"
+
+for product in scalar geometry transport guenter_kernel vector square_disk; do
+    filename="fortfem_lab_${product}.f90"
+    cmp -- "$repository_dir/src/generated/$filename" "$temporary_dir/$filename"
+done

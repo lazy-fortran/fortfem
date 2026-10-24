@@ -235,11 +235,18 @@ if(FORTFEM_BUILD_TESTING)
 endif()
 
 if(FORTFEM_BUILD_TESTING)
+    add_library(lab_tensor_mms_ladder STATIC test/lab_tensor_mms_ladder.f90)
+    target_link_libraries(lab_tensor_mms_ladder PUBLIC fortfem_tensor_solver)
     add_executable(test_lab_tensor_mms test/test_lab_tensor_mms.f90)
-    target_link_libraries(test_lab_tensor_mms PRIVATE fortfem_tensor_solver)
+    target_link_libraries(test_lab_tensor_mms PRIVATE lab_tensor_mms_ladder)
     add_test(NAME test_lab_tensor_mms COMMAND test_lab_tensor_mms)
     set_tests_properties(test_lab_tensor_mms PROPERTIES
         LABELS "lab;convergence" ENVIRONMENT "OMP_NUM_THREADS=4")
+    add_executable(test_lab_tensor_mms_slow test/test_lab_tensor_mms_slow.f90)
+    target_link_libraries(test_lab_tensor_mms_slow PRIVATE lab_tensor_mms_ladder)
+    add_test(NAME test_lab_tensor_mms_slow COMMAND test_lab_tensor_mms_slow)
+    set_tests_properties(test_lab_tensor_mms_slow PROPERTIES
+        LABELS "lab;convergence;slow" ENVIRONMENT "OMP_NUM_THREADS=4")
 endif()
 # Nonlinear lab layer: Newton-Krylov driver, quadrature-point field access
 # and point location/evaluation on tensor meshes.
