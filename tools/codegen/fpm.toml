@@ -367,3 +367,8 @@ main = "gen_tensor_fem_bem_products.f90"
 name = "gen_lab_grad_shafranov_source_products"
 source-dir = "app"
 main = "gen_lab_grad_shafranov_source_products.f90"
+
+[[executable]]
+name = "gen_lab_problems"
+source-dir = "app"
+main = "gen_lab_problems.f90"
