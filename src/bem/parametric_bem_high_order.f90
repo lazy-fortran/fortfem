@@ -17,6 +17,13 @@ module fortfem_parametric_bem_high_order
     use fortfem_generated_bem_fan_map, only: bem_fan_map
     use fortfem_generated_bem_coincident_map, only: bem_coincident_map
     use fortfem_generated_bem_self_angle, only: bem_self_angle
+    use fortfem_generated_bem_edge_chart_1, only: bem_edge_chart_1
+    use fortfem_generated_bem_edge_chart_2, only: bem_edge_chart_2
+    use fortfem_generated_bem_edge_chart_3, only: bem_edge_chart_3
+    use fortfem_generated_bem_edge_chart_4, only: bem_edge_chart_4
+    use fortfem_generated_bem_edge_chart_5, only: bem_edge_chart_5
+    use fortfem_generated_bem_edge_chart_6, only: bem_edge_chart_6
+    use fortfem_generated_bem_edge_chart_7, only: bem_edge_chart_7
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_bem_circulant, only: bem_circulant_t, circulant_matrix_t
     use fortnum_quadrature, only: gauss_legendre_ab
@@ -26,6 +33,13 @@ module fortfem_parametric_bem_high_order
     public :: assemble_parametric_bem_p2, integrate_parametric_bem_p2_pair
     public :: assemble_parametric_bem_p2_circulant
     public :: assignment(=)
+    public :: bem_shared_edge_chart_t
+    ! Caller supplies matching shared-edge connectivity and aspect.
+    ! Each column lists common-edge A, B, then the opposite local vertex.
+    type :: bem_shared_edge_chart_t
+        integer :: vertices(3,2)=0
+        real(dp) :: aspect=1
+    end type
     type :: bem_pair_options_t
         real(dp) :: relative_tolerance = 1.e-3_dp
         real(dp) :: absolute_tolerance = 1.e-9_dp
@@ -321,6 +335,80 @@ contains
         status=0
     end subroutine
 
+    pure subroutine integrate_shared_edge(surface,i,j,chart,bank,l, &
+            block,evaluations,status)
+        class(bem_surface_t), intent(in) :: surface
+        integer, intent(in) :: i,j,l
+        type(bem_shared_edge_chart_t), intent(in) :: chart
+        type(rule_bank_t), intent(in) :: bank
+        type(block_t), intent(out) :: block
+        integer(int64), intent(out) :: evaluations
+        integer, intent(out) :: status
+        type(point_t) :: target,source
+        real(dp) :: t,u,s,v,jac,weight,uv(2),rho,e,z,q
+        integer :: sector,a,b,c,d,n
+        call clear(block)
+        evaluations=0
+        n=bank%line_count(l)
+        do sector=1,7
+            do a=1,n
+                rho=bank%nodes(a,l)
+                do b=1,n
+                    e=bank%nodes(b,l)
+                    do c=1,n
+                        z=bank%nodes(c,l)
+                        do d=1,n
+                            q=bank%nodes(d,l)
+                            select case(sector)
+                            case(1)
+                                call bem_edge_chart_1(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(2)
+                                call bem_edge_chart_2(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(3)
+                                call bem_edge_chart_3(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(4)
+                                call bem_edge_chart_4(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(5)
+                                call bem_edge_chart_5(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(6)
+                                call bem_edge_chart_6(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            case(7)
+                                call bem_edge_chart_7(rho,e,z,q,chart%aspect, &
+                                    t,u,s,v,jac)
+                            end select
+                            status=2
+                            if (.not. all(ieee_is_finite([t,u,s,v,jac]))) return
+                            if (min(t,u,s,v,jac)<=0 .or. &
+                                    max(t+u,s+v)>=1) return
+                            uv=(1-t-u)*corners(:,chart%vertices(1,1))+ &
+                                t*corners(:,chart%vertices(2,1))+ &
+                                u*corners(:,chart%vertices(3,1))
+                            call sample(surface,i,uv,target,status)
+                            if (status/=0) return
+                            uv=(1-s-v)*corners(:,chart%vertices(1,2))+ &
+                                s*corners(:,chart%vertices(2,2))+ &
+                                v*corners(:,chart%vertices(3,2))
+                            call sample(surface,j,uv,source,status)
+                            if (status/=0) return
+                            weight=jac*bank%line_w(a,l)*bank%line_w(b,l)* &
+                                bank%line_w(c,l)*bank%line_w(d,l)
+                            call add_integrand(target,source,weight,block,status)
+                            if (status/=0) return
+                            evaluations=evaluations+1
+                        end do
+                    end do
+                end do
+            end do
+        end do
+        status=0
+    end subroutine
+
     pure subroutine integrate_rule(surface,target_panel,source_panel,bank,l, &
             target_points,block,evaluations,resolved,status)
         class(bem_surface_t), intent(in) :: surface
@@ -407,7 +495,7 @@ contains
     end function
 
     pure subroutine converge_pair(surface,i,j,options,bank,points,block, &
-            report,status)
+            report,status,edge_chart)
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: i,j
         type(bem_pair_options_t), intent(in) :: options
@@ -417,6 +505,7 @@ contains
         type(bem_pair_report_t), intent(out) :: report
         integer, intent(out) :: status
         type(block_t) :: previous
+        type(bem_shared_edge_chart_t), optional, intent(in) :: edge_chart
         integer(int64) :: bound,evaluations
         integer :: l
         logical :: resolved,have_previous
@@ -427,8 +516,13 @@ contains
         do l=1,size(bank%degree)
             bound=3_int64*bank%count(l)*int(bank%line_count(l),int64)**2
             if (i==j) bound=2*bound
+            if (present(edge_chart)) bound=7_int64*int(bank%line_count(l),int64)**4
             if (bound>options%maximum_evaluations-report%kernel_evaluations) exit
-            if (i==j) then
+            if (present(edge_chart)) then
+                call integrate_shared_edge(surface,i,j,edge_chart,bank,l, &
+                    block,evaluations,status)
+                resolved=.true.
+            else if (i==j) then
                 call integrate_coincident(surface,i,bank,l,block,evaluations,status)
                 resolved=.true.
             else
@@ -466,7 +560,7 @@ contains
     end subroutine
 
     subroutine integrate_parametric_bem_p2_pair(surface,i,j,options, &
-            v,k,w,correction,report,status)
+            v,k,w,correction,report,status,edge_chart)
         !! Raw local forms; no symmetry averaging and no closed-surface jump.
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: i,j
@@ -474,6 +568,7 @@ contains
         real(dp), intent(out) :: v(3,3),k(3,6),w(6,6),correction(3,6)
         type(bem_pair_report_t), intent(out) :: report
         integer, intent(out) :: status
+        type(bem_shared_edge_chart_t), optional, intent(in) :: edge_chart
         type(rule_bank_t) :: bank
         type(point_t), allocatable :: points(:,:)
         type(block_t) :: block
@@ -482,6 +577,16 @@ contains
         report=bem_pair_report_t()
         status=1
         if (min(i,j)<1) return
+        if (present(edge_chart)) then
+            if (i==j) return
+            if (.not. ieee_is_finite(edge_chart%aspect)) return
+            if (edge_chart%aspect<=0) return
+            do l=1,2
+                do t=1,3
+                    if (count(edge_chart%vertices(:,l)==t)/=1) return
+                end do
+            end do
+        end if
         call make_bank(options,bank,status)
         if (status/=0) return
         allocate(points(size(bank%weights,1),size(bank%degree)))
@@ -491,7 +596,8 @@ contains
                 if (status/=0) return
             end do
         end do
-        call converge_pair(surface,i,j,options,bank,points,block,report,status)
+        call converge_pair(surface,i,j,options,bank,points,block,report,status, &
+            edge_chart)
         if (status/=0) return
         v=block%v; k=block%k; w=block%w; correction=block%c
     end subroutine
