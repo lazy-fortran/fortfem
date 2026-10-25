@@ -33,13 +33,27 @@ module fortfem_parametric_bem_high_order
     public :: assemble_parametric_bem_p2, integrate_parametric_bem_p2_pair
     public :: assemble_parametric_bem_p2_circulant
     public :: assignment(=)
-    public :: bem_shared_edge_chart_t
+    public :: bem_shared_edge_chart_t, bem_shared_edge_selector
     ! Caller supplies matching shared-edge connectivity and aspect.
     ! Each column lists common-edge A, B, then the opposite local vertex.
     type :: bem_shared_edge_chart_t
         integer :: vertices(3,2)=0
         real(dp) :: aspect=1
     end type
+    abstract interface
+        ! Pure/thread-safe policy. A successful unselected result retains the
+        ! existing pair rule. For a selected result, columns give the same
+        ! global A/B endpoints and then each panel's opposite local vertex.
+        pure subroutine bem_shared_edge_selector(surface, i, j, target_vertices, &
+                                            source_vertices, chart, selected, status)
+            import :: bem_surface_t, bem_shared_edge_chart_t
+            class(bem_surface_t), intent(in) :: surface
+            integer, intent(in) :: i, j, target_vertices(3), source_vertices(3)
+            type(bem_shared_edge_chart_t), intent(out) :: chart
+            logical, intent(out) :: selected
+            integer, intent(out) :: status
+        end subroutine
+    end interface
     type :: bem_pair_options_t
         real(dp) :: relative_tolerance = 1.e-3_dp
         real(dp) :: absolute_tolerance = 1.e-9_dp
@@ -602,8 +616,37 @@ contains
         v=block%v; k=block%k; w=block%w; correction=block%c
     end subroutine
 
+    pure logical function valid_assembly_edge_chart(chart, target, source) result(valid)
+        type(bem_shared_edge_chart_t), intent(in) :: chart
+        integer, intent(in) :: target(3), source(3)
+        integer :: column, vertex, common
+        valid = .false.
+        if (.not. ieee_is_finite(chart%aspect)) return
+        if (chart%aspect <= 0) return
+        do column = 1, 2
+            do vertex = 1, 3
+                if (count(chart%vertices(:, column) == vertex) /= 1) return
+            end do
+        end do
+        common = 0
+        do vertex = 1, 3
+            if (any(source == target(vertex))) common = common + 1
+        end do
+        if (common /= 2) return
+        do vertex = 1, 2
+            if (target(chart%vertices(vertex, 1)) /= &
+                source(chart%vertices(vertex, 2))) return
+        end do
+        valid = .true.
+    end function
+
     subroutine assemble_parametric_bem_p2(surface,faces,options,op, &
-            trace_dofs,flux_dofs,report,status)
+            trace_dofs,flux_dofs,report,status,edge_selector)
+        !! Optional pure policy is called only for distinct panels. Status 1
+        !! rejects invalid selected connectivity/aspect or policy input, while
+        !! status 2 propagates a policy geometry failure. No silent fallback.
+        !! Columns retain common global endpoints A/B and the opposite local
+        !! vertex. Surface normals are never changed by this reference map.
         class(bem_surface_t), intent(in) :: surface
         integer, intent(in) :: faces(:,:)
         type(bem_pair_options_t), intent(in) :: options
@@ -611,11 +654,15 @@ contains
         integer, allocatable, intent(out) :: trace_dofs(:,:),flux_dofs(:,:)
         type(bem_pair_report_t), intent(out) :: report
         integer, intent(out) :: status
+        procedure(bem_shared_edge_selector), optional :: edge_selector
         type(rule_bank_t) :: bank
         type(point_t), allocatable :: points(:,:,:)
         type(block_t) :: block
+        type(bem_shared_edge_chart_t) :: edge_chart
+        logical :: selected
         type(bem_pair_report_t) :: pair_report
         integer :: nf,nt,nv,ne,i,j,l,t,a,b,local_status,errors,dmax,geometry_errors
+        integer :: policy_errors
         integer(int64) :: evaluations
         real(dp) :: value,ratio
         report=bem_pair_report_t()
@@ -659,14 +706,40 @@ contains
                 end do
             end do
         end do
-        evaluations=0; dmax=0; ratio=0; geometry_errors=0
+        evaluations=0; dmax=0; ratio=0; geometry_errors=0; policy_errors=0
         !$omp parallel do default(shared) schedule(dynamic,1) &
-        !$omp private(i,j,a,b,block,pair_report,local_status) &
-        !$omp reduction(+:errors,evaluations,geometry_errors) reduction(max:dmax,ratio)
+        !$omp private(i,j,a,b,block,pair_report,local_status,edge_chart,selected) &
+        !$omp reduction(+:errors,evaluations,geometry_errors,policy_errors) &
+        !$omp reduction(max:dmax,ratio)
         do i=1,nf
             do j=1,nf
-                call converge_pair(surface,i,j,options,bank,points(:,i,:), &
-                    block,pair_report,local_status)
+                selected = .false.
+                local_status = 0
+                if (present(edge_selector)) then
+                    if (i /= j) then
+                        call edge_selector(surface, i, j, faces(:, i), faces(:, j), &
+                                           edge_chart, selected, local_status)
+                        if (local_status /= 0 .and. local_status /= 2) local_status = 1
+                        if (local_status == 0) then
+                            if (selected) then
+                                if (.not. valid_assembly_edge_chart(edge_chart, &
+                                    faces(:, i), faces(:, j))) local_status = 1
+                            end if
+                        end if
+                    end if
+                end if
+                if (local_status /= 0) then
+                    if (local_status == 1) policy_errors = policy_errors + 1
+                    pair_report = bem_pair_report_t()
+                    pair_report%failed_pairs = 1
+                    pair_report%error_ratio = huge(1._dp)
+                else if (selected) then
+                    call converge_pair(surface,i,j,options,bank,points(:,i,:), &
+                        block,pair_report,local_status,edge_chart)
+                else
+                    call converge_pair(surface,i,j,options,bank,points(:,i,:), &
+                        block,pair_report,local_status)
+                end if
                 evaluations=evaluations+pair_report%kernel_evaluations
                 dmax=max(dmax,pair_report%maximum_degree_used)
                 ratio=max(ratio,pair_report%error_ratio)
@@ -697,6 +770,7 @@ contains
         report%error_ratio=ratio
         status=3
         if (geometry_errors/=0) status=2
+        if (policy_errors/=0) status=1
         if (errors/=0) return
         if (.not. all(ieee_is_finite(op%v))) then
             status=2

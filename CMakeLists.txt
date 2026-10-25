@@ -393,3 +393,5 @@ if(FORTFEM_BUILD_TESTING)
             LABELS "sparse;fast" ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
     endforeach()
 endif()
+
+include(cmake/FortfemBem.cmake)
