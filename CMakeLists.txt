@@ -235,6 +235,14 @@ if(FORTFEM_BUILD_TESTING)
 endif()
 
 if(FORTFEM_BUILD_TESTING)
+    add_executable(test_lab_tensor_setup_threads test/test_lab_tensor_setup_threads.f90)
+    target_link_libraries(test_lab_tensor_setup_threads PRIVATE fortfem_tensor_solver
+        OpenMP::OpenMP_Fortran)
+    add_test(NAME test_lab_tensor_setup_threads COMMAND test_lab_tensor_setup_threads)
+    set_tests_properties(test_lab_tensor_setup_threads PROPERTIES LABELS "lab")
+endif()
+
+if(FORTFEM_BUILD_TESTING)
     add_library(lab_tensor_mms_ladder STATIC test/lab_tensor_mms_ladder.f90)
     target_link_libraries(lab_tensor_mms_ladder PUBLIC fortfem_tensor_solver)
     add_executable(test_lab_tensor_mms test/test_lab_tensor_mms.f90)
