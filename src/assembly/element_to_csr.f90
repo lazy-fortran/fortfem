@@ -34,6 +34,8 @@ module fortfem_element_to_csr
         real(dp), allocatable :: val(:)     ! (nnz)
         integer, allocatable :: elem_ptr(:) ! (n+1), node-to-element map
         integer, allocatable :: elem_idx(:) ! elements of dof i, ascending
+        integer, allocatable :: slot(:, :, :) ! (nloc, nloc, nel), colidx position of
+                                              ! (conn(a, e), conn(b, e)); 0 if dropped
     end type csr_matrix_t
 
     interface csr_assemble_batched
@@ -94,14 +96,17 @@ contains
         end function is_repeated
     end subroutine build_node_to_element
 
-    subroutine csr_build_pattern(n_dofs, conn, exchange, matrix)
+    subroutine csr_build_pattern(n_dofs, conn, exchange, matrix, with_slots)
         !! Symmetric sparsity pattern from conn(nloc, nel). The values are zeroed.
+        !! with_slots=.true. also caches the element-to-CSR position map matrix%slot,
+        !! which csr_assemble_blocks then uses instead of a search per entry.
         integer, intent(in) :: n_dofs, conn(:, :)
         logical, intent(in) :: exchange
         type(csr_matrix_t), intent(out) :: matrix
+        logical, intent(in), optional :: with_slots
 
         integer, allocatable :: marker(:)
-        integer :: b, count_row, e, i, j, k, p, position, start
+        integer :: a, b, count_row, e, i, j, k, p, position, start
         integer(8) :: total
 
         matrix%n = n_dofs
@@ -196,6 +201,24 @@ contains
         end do
         !$omp end parallel do
         if (any(matrix%tpos < 1)) error stop "csr_build_pattern: pattern not symmetric"
+        if (present(with_slots)) then
+            if (with_slots) then
+                allocate(matrix%slot(matrix%nloc, matrix%nloc, size(conn, 2)))
+                !$omp parallel do default(none) shared(conn, matrix, exchange) &
+                !$omp private(e, a, b) schedule(static)
+                do e = 1, size(conn, 2)
+                    do b = 1, matrix%nloc
+                        do a = 1, matrix%nloc
+                            matrix%slot(a, b, e) = 0
+                            if (exchange .and. conn(a, e) == conn(b, e)) cycle
+                            matrix%slot(a, b, e) = &
+                                csr_find_entry(matrix, conn(a, e), conn(b, e))
+                        end do
+                    end do
+                end do
+                !$omp end parallel do
+            end if
+        end if
     end subroutine csr_build_pattern
 
     pure subroutine sort_row(column, first, last)
@@ -276,7 +299,11 @@ contains
                         row_sum = row_sum + blocks(a, b, e)
                         scale = max(scale, abs(blocks(a, b, e)))
                         if (matrix%exchange .and. j == i) cycle
-                        p = csr_find_entry(matrix, i, j)
+                        if (allocated(matrix%slot)) then
+                            p = matrix%slot(a, b, e)
+                        else
+                            p = csr_find_entry(matrix, i, j)
+                        end if
                         matrix%val(p) = matrix%val(p) + blocks(a, b, e)
                     end do
                 end do
