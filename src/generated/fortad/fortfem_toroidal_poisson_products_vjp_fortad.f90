@@ -46,6 +46,8 @@ contains
         real(dp) :: t6_v1
         real(dp) :: t7_v1
         real(dp) :: t8_v1
+        real(dp) :: t9_v1
+        real(dp) :: t10_v1
         real(dp) :: harmonic_v1
         real(dp) :: field_1_v1
         real(dp) :: field_2_v1
@@ -58,6 +60,7 @@ contains
         real(dp) :: t4_v1_b
         real(dp) :: t5_v1_b
         real(dp) :: t6_v1_b
+        real(dp) :: t7_v1_b
         real(dp) :: harmonic_v1_b
         real(dp) :: fad_t1
         real(dp) :: fad_t2
@@ -78,13 +81,14 @@ contains
 
         t2_v1 = cos(degree * theta)
         t4_v1 = cos(order * phi)
-        t5_v1 = cosh(eta) - cos(theta)
+        t6_v1 = cosh(eta) - cos(theta)
         t1_v1_b = 0.0_dp
         t2_v1_b = 0.0_dp
         t3_v1_b = 0.0_dp
         t4_v1_b = 0.0_dp
         t5_v1_b = 0.0_dp
         t6_v1_b = 0.0_dp
+        t7_v1_b = 0.0_dp
         degree_b = 0.0_dp
         order_b = 0.0_dp
         scale_b = 0.0_dp
@@ -93,14 +97,15 @@ contains
         phi_b = 0.0_dp
         radial_b = 0.0_dp
         radial_derivative_b = 0.0_dp
-        fad_t1 = harmonic_b * sqrt(t5_v1)
+        fad_t1 = harmonic_b * sqrt(t6_v1)
         radial_b = radial_b + fad_t1 * t4_v1 * t2_v1
         t2_v1_b = t2_v1_b + fad_t1 * t4_v1 * radial
         t4_v1_b = t4_v1_b + fad_t1 * (radial * t2_v1)
-        t6_v1_b = t6_v1_b + harmonic_b * (radial * t2_v1 * t4_v1)
-        t5_v1_b = t5_v1_b + t6_v1_b * (1.0_dp / (2.0_dp * sqrt(t5_v1)))
-        eta_b = eta_b + t5_v1_b * sinh(eta)
-        theta_b = theta_b + t5_v1_b * (-1.0_dp) * (-sin(theta))
+        t7_v1_b = t7_v1_b + harmonic_b * (radial * t2_v1 * t4_v1)
+        t6_v1_b = t6_v1_b + t7_v1_b * (1.0_dp / (2.0_dp * sqrt(t6_v1)))
+        eta_b = eta_b + t6_v1_b * sinh(eta)
+        t5_v1_b = t5_v1_b - t6_v1_b * 1.0_dp
+        theta_b = theta_b - t5_v1_b * sin(theta)
         t3_v1_b = t3_v1_b - t4_v1_b * sin(order * phi)
         order_b = order_b + t3_v1_b * phi
         phi_b = phi_b + t3_v1_b * order

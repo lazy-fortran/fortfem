@@ -19,29 +19,20 @@ contains
         real(dp), intent(in), dimension(2) :: relative
         real(dp), intent(in), dimension(2) :: relative_d
         real(dp), intent(out), dimension(2) :: reference_d
+        real(dp) :: t1
+        real(dp) :: t1_d
 
+        t1_d = jacobian_d(1, 1) * jacobian(2, 2) + jacobian(1, 1) * jacobian_d(2, 2) &
+            - jacobian_d(1, 2) * jacobian(2, 1) - jacobian(1, 2) * jacobian_d(2, 1)
+        t1 = jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)
         reference_d(1) = (((-jacobian_d(1, 2)) * relative(2) + (-jacobian(1, 2)) * &
-            relative_d(2)) * (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * &
-            jacobian(2, 1)) + jacobian(1, 2) * relative(2) * (jacobian_d(1, 1) * &
-            jacobian(2, 2) + jacobian(1, 1) * jacobian_d(2, 2) - jacobian_d(1, 2) * &
-            jacobian(2, 1) - jacobian(1, 2) * jacobian_d(2, 1))) / (jacobian(1, 1) * &
-            jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2 + ((jacobian_d(2, 2) * &
-            relative(1) + jacobian(2, 2) * relative_d(1)) * (jacobian(1, 1) * jacobian(2, &
-            2) - jacobian(1, 2) * jacobian(2, 1)) - jacobian(2, 2) * relative(1) * &
-            (jacobian_d(1, 1) * jacobian(2, 2) + jacobian(1, 1) * jacobian_d(2, 2) - &
-            jacobian_d(1, 2) * jacobian(2, 1) - jacobian(1, 2) * jacobian_d(2, 1))) / &
-            (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2
+            relative_d(2)) * t1 + jacobian(1, 2) * relative(2) * t1_d) / t1 ** 2 + &
+            ((jacobian_d(2, 2) * relative(1) + jacobian(2, 2) * relative_d(1)) * t1 - &
+            jacobian(2, 2) * relative(1) * t1_d) / t1 ** 2
         reference_d(2) = ((jacobian_d(1, 1) * relative(2) + jacobian(1, 1) * &
-            relative_d(2)) * (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * &
-            jacobian(2, 1)) - jacobian(1, 1) * relative(2) * (jacobian_d(1, 1) * &
-            jacobian(2, 2) + jacobian(1, 1) * jacobian_d(2, 2) - jacobian_d(1, 2) * &
-            jacobian(2, 1) - jacobian(1, 2) * jacobian_d(2, 1))) / (jacobian(1, 1) * &
-            jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2 - ((jacobian_d(2, 1) * &
-            relative(1) + jacobian(2, 1) * relative_d(1)) * (jacobian(1, 1) * jacobian(2, &
-            2) - jacobian(1, 2) * jacobian(2, 1)) - jacobian(2, 1) * relative(1) * &
-            (jacobian_d(1, 1) * jacobian(2, 2) + jacobian(1, 1) * jacobian_d(2, 2) - &
-            jacobian_d(1, 2) * jacobian(2, 1) - jacobian(1, 2) * jacobian_d(2, 1))) / &
-            (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2
+            relative_d(2)) * t1 - jacobian(1, 1) * relative(2) * t1_d) / t1 ** 2 - &
+            ((jacobian_d(2, 1) * relative(1) + jacobian(2, 1) * relative_d(1)) * t1 - &
+            jacobian(2, 1) * relative(1) * t1_d) / t1 ** 2
     end subroutine fortfem_triangle_affine_jvp_fortad
 
 end module fortfem_fortad_triangle_affine_jvp

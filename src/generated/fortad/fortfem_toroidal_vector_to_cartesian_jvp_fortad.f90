@@ -48,6 +48,8 @@ contains
         real(dp) :: t6_d
         real(dp) :: t7
         real(dp) :: t7_d
+        real(dp) :: t8
+        real(dp) :: t8_d
 
         t1_d = -(sin(phi) * phi_d)
         t1 = cos(phi)
@@ -55,30 +57,30 @@ contains
         t2 = cosh(eta)
         t3_d = -(sin(theta) * theta_d)
         t3 = cos(theta)
-        t4_d = (-t3_d) * t2 + (-t3) * t2_d
-        t4 = 1.0000000000000000E+000_dp - t3 * t2
-        t5_d = cos(theta) * theta_d
-        t5 = sin(theta)
-        t6_d = cosh(eta) * eta_d
-        t6 = sinh(eta)
-        t7_d = cos(phi) * phi_d
-        t7 = sin(phi)
-        cartesian_1_d = (((component_1_d * t1 + component_1 * t1_d) * t4 + &
-            component_1 * t1 * t4_d) * (t2 - t3) - component_1 * t1 * t4 * (t2_d - t3_d)) &
-            / (t2 - t3) ** 2 - ((((component_2_d * t1 + component_2 * t1_d) * t5 + &
-            component_2 * t1 * t5_d) * t6 + component_2 * t1 * t5 * t6_d) * (t2 - t3) - &
-            component_2 * t1 * t5 * t6 * (t2_d - t3_d)) / (t2 - t3) ** 2 - component_3_d &
-            * t7 - component_3 * t7_d
-        cartesian_2_d = (((component_1_d * t7 + component_1 * t7_d) * t4 + &
-            component_1 * t7 * t4_d) * (t2 - t3) - component_1 * t7 * t4 * (t2_d - t3_d)) &
-            / (t2 - t3) ** 2 - ((((component_2_d * t7 + component_2 * t7_d) * t5 + &
-            component_2 * t7 * t5_d) * t6 + component_2 * t7 * t5 * t6_d) * (t2 - t3) - &
-            component_2 * t7 * t5 * t6 * (t2_d - t3_d)) / (t2 - t3) ** 2 + (component_3_d &
+        t5_d = (-t3_d) * t2 + (-t3) * t2_d
+        t5 = 1.0000000000000000E+000_dp - t3 * t2
+        t6_d = cos(theta) * theta_d
+        t6 = sin(theta)
+        t7_d = cosh(eta) * eta_d
+        t7 = sinh(eta)
+        t8_d = cos(phi) * phi_d
+        t8 = sin(phi)
+        cartesian_1_d = (((component_1_d * t1 + component_1 * t1_d) * t5 + &
+            component_1 * t1 * t5_d) * (t2 - t3) - component_1 * t1 * t5 * (t2_d - t3_d)) &
+            / (t2 - t3) ** 2 - ((((component_2_d * t1 + component_2 * t1_d) * t6 + &
+            component_2 * t1 * t6_d) * t7 + component_2 * t1 * t6 * t7_d) * (t2 - t3) - &
+            component_2 * t1 * t6 * t7 * (t2_d - t3_d)) / (t2 - t3) ** 2 - component_3_d &
+            * t8 - component_3 * t8_d
+        cartesian_2_d = (((component_1_d * t8 + component_1 * t8_d) * t5 + &
+            component_1 * t8 * t5_d) * (t2 - t3) - component_1 * t8 * t5 * (t2_d - t3_d)) &
+            / (t2 - t3) ** 2 - ((((component_2_d * t8 + component_2 * t8_d) * t6 + &
+            component_2 * t8 * t6_d) * t7 + component_2 * t8 * t6 * t7_d) * (t2 - t3) - &
+            component_2 * t8 * t6 * t7 * (t2_d - t3_d)) / (t2 - t3) ** 2 + (component_3_d &
             * t1 + component_3 * t1_d)
-        cartesian_3_d = ((((-component_1_d) * t5 + (-component_1) * t5_d) * t6 - &
-            component_1 * t5 * t6_d) * (t2 - t3) + component_1 * t5 * t6 * (t2_d - t3_d)) &
-            / (t2 - t3) ** 2 - ((component_2_d * t4 + component_2 * t4_d) * (t2 - t3) - &
-            component_2 * t4 * (t2_d - t3_d)) / (t2 - t3) ** 2
+        cartesian_3_d = ((((-component_1_d) * t6 + (-component_1) * t6_d) * t7 - &
+            component_1 * t6 * t7_d) * (t2 - t3) + component_1 * t6 * t7 * (t2_d - t3_d)) &
+            / (t2 - t3) ** 2 - ((component_2_d * t5 + component_2 * t5_d) * (t2 - t3) - &
+            component_2 * t5 * (t2_d - t3_d)) / (t2 - t3) ** 2
     end subroutine fortfem_toroidal_vector_to_cartesian_jvp_fortad
 
 end module fortfem_fortad_toroidal_vector_to_cartesian_jvp

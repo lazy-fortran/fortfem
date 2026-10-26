@@ -9,12 +9,10 @@ pure subroutine generated_triangle_affine(jacobian, relative, reference)
     implicit none
     real(dp), intent(in) :: jacobian(2,2), relative(2)
     real(dp), intent(out) :: reference(2)
+    real(dp) :: t1
 
-    reference(1) = -jacobian(1,2)*relative(2)/(jacobian(1,1)*jacobian(2,2) - jacobian(1,2)* &
-        jacobian(2,1)) + jacobian(2,2)*relative(1)/(jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2, &
-        1))
-    reference(2) = jacobian(1,1)*relative(2)/(jacobian(1,1)*jacobian(2,2) - jacobian(1,2)* &
-        jacobian(2,1)) - jacobian(2,1)*relative(1)/(jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2, &
-        1))
+    t1 = jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2,1)
+    reference(1) = -jacobian(1,2)*relative(2)/t1 + jacobian(2,2)*relative(1)/t1
+    reference(2) = jacobian(1,1)*relative(2)/t1 - jacobian(2,1)*relative(1)/t1
 
 end subroutine generated_triangle_affine

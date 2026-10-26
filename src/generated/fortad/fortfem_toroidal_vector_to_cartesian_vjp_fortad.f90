@@ -37,6 +37,7 @@ contains
         real(dp) :: t5_v1
         real(dp) :: t6_v1
         real(dp) :: t7_v1
+        real(dp) :: t8_v1
         real(dp) :: cartesian_1_v1
         real(dp) :: cartesian_2_v1
         real(dp) :: cartesian_3_v1
@@ -47,6 +48,7 @@ contains
         real(dp) :: t5_v1_b
         real(dp) :: t6_v1_b
         real(dp) :: t7_v1_b
+        real(dp) :: t8_v1_b
         real(dp) :: cartesian_1_v1_b
         real(dp) :: fad_t1
         real(dp) :: fad_t2
@@ -76,14 +78,13 @@ contains
         real(dp) :: fad_t26
         real(dp) :: fad_t27
         real(dp) :: fad_t28
-        real(dp) :: fad_t29
 
         t1_v1 = cos(phi)
         t2_v1 = cosh(eta)
         t3_v1 = cos(theta)
-        t4_v1 = 1.0000000000000000E+000_dp - t3_v1 * t2_v1
-        t5_v1 = sin(theta)
-        t6_v1 = sinh(eta)
+        t5_v1 = 1.0000000000000000E+000_dp - t3_v1 * t2_v1
+        t6_v1 = sin(theta)
+        t7_v1 = sinh(eta)
         t1_v1_b = 0.0_dp
         t2_v1_b = 0.0_dp
         t3_v1_b = 0.0_dp
@@ -91,6 +92,7 @@ contains
         t5_v1_b = 0.0_dp
         t6_v1_b = 0.0_dp
         t7_v1_b = 0.0_dp
+        t8_v1_b = 0.0_dp
         eta_b = 0.0_dp
         theta_b = 0.0_dp
         phi_b = 0.0_dp
@@ -98,32 +100,30 @@ contains
         component_2_b = 0.0_dp
         component_3_b = 0.0_dp
         fad_t1 = cartesian_1_b * (1.0_dp / (t2_v1 - t3_v1))
-        component_1_b = component_1_b + fad_t1 * t4_v1 * t1_v1
-        t1_v1_b = t1_v1_b + fad_t1 * t4_v1 * component_1
-        t4_v1_b = t4_v1_b + fad_t1 * (component_1 * t1_v1)
-        fad_t6 = cartesian_1_b * ((-(component_1 * t1_v1 * t4_v1)) / (t2_v1 - t3_v1) &
-            ** 2)
-        t2_v1_b = t2_v1_b + fad_t6
-        t3_v1_b = t3_v1_b - fad_t6 * 1.0_dp
-        fad_t8 = cartesian_1_b * (-1.0_dp)
-        fad_t9 = fad_t8 * (1.0_dp / (t2_v1 - t3_v1))
-        fad_t11 = fad_t9 * t6_v1 * t5_v1
-        component_2_b = component_2_b + fad_t11 * t1_v1
-        t1_v1_b = t1_v1_b + fad_t11 * component_2
-        t5_v1_b = t5_v1_b + fad_t9 * t6_v1 * (component_2 * t1_v1)
-        t6_v1_b = t6_v1_b + fad_t9 * (component_2 * t1_v1 * t5_v1)
-        fad_t16 = fad_t8 * ((-(component_2 * t1_v1 * t5_v1 * t6_v1)) / (t2_v1 - &
-            t3_v1) ** 2)
-        t2_v1_b = t2_v1_b + fad_t16
-        t3_v1_b = t3_v1_b - fad_t16 * 1.0_dp
-        fad_t18 = cartesian_1_b * (-1.0_dp)
-        component_3_b = component_3_b + fad_t18 * sin(phi)
-        t7_v1_b = t7_v1_b + fad_t18 * component_3
-        phi_b = phi_b + t7_v1_b * cos(phi)
-        eta_b = eta_b + t6_v1_b * cosh(eta)
-        theta_b = theta_b + t5_v1_b * cos(theta)
-        t3_v1_b = t3_v1_b - t4_v1_b * t2_v1 * 1.0_dp
-        t2_v1_b = t2_v1_b - t4_v1_b * t3_v1
+        component_1_b = component_1_b + fad_t1 * t5_v1 * t1_v1
+        t1_v1_b = t1_v1_b + fad_t1 * t5_v1 * component_1
+        t5_v1_b = t5_v1_b + fad_t1 * (component_1 * t1_v1)
+        t4_v1_b = t4_v1_b + cartesian_1_b * ((-(component_1 * t1_v1 * t5_v1)) / &
+            (t2_v1 - t3_v1) ** 2)
+        fad_t7 = cartesian_1_b * (-1.0_dp)
+        fad_t8 = fad_t7 * (1.0_dp / (t2_v1 - t3_v1))
+        fad_t10 = fad_t8 * t7_v1 * t6_v1
+        component_2_b = component_2_b + fad_t10 * t1_v1
+        t1_v1_b = t1_v1_b + fad_t10 * component_2
+        t6_v1_b = t6_v1_b + fad_t8 * t7_v1 * (component_2 * t1_v1)
+        t7_v1_b = t7_v1_b + fad_t8 * (component_2 * t1_v1 * t6_v1)
+        t4_v1_b = t4_v1_b + fad_t7 * ((-(component_2 * t1_v1 * t6_v1 * t7_v1)) / &
+            (t2_v1 - t3_v1) ** 2)
+        fad_t16 = cartesian_1_b * (-1.0_dp)
+        component_3_b = component_3_b + fad_t16 * sin(phi)
+        t8_v1_b = t8_v1_b + fad_t16 * component_3
+        phi_b = phi_b + t8_v1_b * cos(phi)
+        eta_b = eta_b + t7_v1_b * cosh(eta)
+        theta_b = theta_b + t6_v1_b * cos(theta)
+        t3_v1_b = t3_v1_b - t5_v1_b * t2_v1 * 1.0_dp
+        t2_v1_b = t2_v1_b - t5_v1_b * t3_v1
+        t2_v1_b = t2_v1_b + t4_v1_b
+        t3_v1_b = t3_v1_b - t4_v1_b * 1.0_dp
         theta_b = theta_b - t3_v1_b * sin(theta)
         eta_b = eta_b + t2_v1_b * sinh(eta)
         phi_b = phi_b - t1_v1_b * sin(phi)

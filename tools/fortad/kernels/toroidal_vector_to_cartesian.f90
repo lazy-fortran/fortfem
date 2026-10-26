@@ -10,17 +10,18 @@ pure subroutine generated_toroidal_vector_to_cartesian(eta, theta, phi, componen
     implicit none
     real(dp), intent(in) :: eta, theta, phi, component_1, component_2, component_3
     real(dp), intent(out) :: cartesian_1, cartesian_2, cartesian_3
-    real(dp) :: t1, t2, t3, t4, t5, t6, t7
+    real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8
 
     t1 = cos(phi)
     t2 = cosh(eta)
     t3 = cos(theta)
-    t4 = -t3*t2 + 1.0000000000000000E+000_dp
-    t5 = sin(theta)
-    t6 = sinh(eta)
-    t7 = sin(phi)
-    cartesian_1 = component_1*t1*t4/(t2 - t3) - component_2*t1*t5*t6/(t2 - t3) - component_3*t7
-    cartesian_2 = component_1*t7*t4/(t2 - t3) - component_2*t7*t5*t6/(t2 - t3) + component_3*t1
-    cartesian_3 = -component_1*t5*t6/(t2 - t3) - component_2*t4/(t2 - t3)
+    t4 = t2 - t3
+    t5 = -t3*t2 + 1.0000000000000000E+000_dp
+    t6 = sin(theta)
+    t7 = sinh(eta)
+    t8 = sin(phi)
+    cartesian_1 = component_1*t1*t5/t4 - component_2*t1*t6*t7/t4 - component_3*t8
+    cartesian_2 = component_1*t8*t5/t4 - component_2*t8*t6*t7/t4 + component_3*t1
+    cartesian_3 = -component_1*t6*t7/t4 - component_2*t5/t4
 
 end subroutine generated_toroidal_vector_to_cartesian

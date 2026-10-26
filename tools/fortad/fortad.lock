@@ -2,5 +2,5 @@
 # sibling fortfront and fortgen checkouts (path dependencies), so all three
 # are pinned. generate.sh refuses to run against any other revision.
 fortad 7d05839989c918a0ed34a9e9ac8e70b69e364877
-fortfront dfc442d4049a82fb444a3894b384e021453eeab7
+fortfront 17b6bdb50dbd3665ad29a3f708f1795eef2aae46
 fortgen ea422bb282ba26dd39341c3f96f727d5892a8ede

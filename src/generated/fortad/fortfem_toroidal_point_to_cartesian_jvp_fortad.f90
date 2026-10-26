@@ -25,18 +25,21 @@ contains
         real(dp), intent(out), dimension(3) :: point_d
         real(dp) :: t1
         real(dp) :: t1_d
+        real(dp) :: t2
+        real(dp) :: t2_d
+        real(dp) :: t3
+        real(dp) :: t3_d
 
         t1_d = cosh(eta) * eta_d
         t1 = sinh(eta)
+        t3_d = sinh(eta) * eta_d + sin(theta) * theta_d
+        t3 = cosh(eta) - cos(theta)
         point_d(1) = (((scale_d * cos(phi) - scale * (sin(phi) * phi_d)) * t1 + scale &
-            * cos(phi) * t1_d) * (cosh(eta) - cos(theta)) - scale * cos(phi) * t1 * &
-            (sinh(eta) * eta_d + sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
+            * cos(phi) * t1_d) * t3 - scale * cos(phi) * t1 * t3_d) / t3 ** 2
         point_d(2) = (((scale_d * sin(phi) + scale * (cos(phi) * phi_d)) * t1 + scale &
-            * sin(phi) * t1_d) * (cosh(eta) - cos(theta)) - scale * sin(phi) * t1 * &
-            (sinh(eta) * eta_d + sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
-        point_d(3) = ((scale_d * sin(theta) + scale * (cos(theta) * theta_d)) * &
-            (cosh(eta) - cos(theta)) - scale * sin(theta) * (sinh(eta) * eta_d + &
-            sin(theta) * theta_d)) / (cosh(eta) - cos(theta)) ** 2
+            * sin(phi) * t1_d) * t3 - scale * sin(phi) * t1 * t3_d) / t3 ** 2
+        point_d(3) = ((scale_d * sin(theta) + scale * (cos(theta) * theta_d)) * t3 - &
+            scale * sin(theta) * t3_d) / t3 ** 2
     end subroutine fortfem_toroidal_point_to_cartesian_jvp_fortad
 
 end module fortfem_fortad_toroidal_point_to_cartesian_jvp

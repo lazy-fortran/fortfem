@@ -34,6 +34,91 @@
     "file": "fortfem_affine_map_products.f90"
   },
   {
+    "stem": "bem_fan_map",
+    "primal": "bem_fan_map",
+    "active": [
+      "apex1",
+      "apex2",
+      "e1u",
+      "e1v",
+      "e2u",
+      "e2v",
+      "radius",
+      "angle",
+      "determinant"
+    ],
+    "outputs": [
+      "uv1",
+      "uv2",
+      "weight"
+    ],
+    "dims": {
+      "apex1": "",
+      "apex2": "",
+      "e1u": "",
+      "e1v": "",
+      "e2u": "",
+      "e2v": "",
+      "radius": "",
+      "angle": "",
+      "determinant": "",
+      "uv1": "",
+      "uv2": "",
+      "weight": ""
+    },
+    "file": "fortfem_bem_high_order_products.f90"
+  },
+  {
+    "stem": "bem_hyper_product",
+    "primal": "bem_hyper_product",
+    "active": [
+      "green",
+      "tx",
+      "ty",
+      "tz",
+      "sx",
+      "sy",
+      "sz"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "green": "",
+      "tx": "",
+      "ty": "",
+      "tz": "",
+      "sx": "",
+      "sy": "",
+      "sz": "",
+      "value": ""
+    },
+    "file": "fortfem_bem_high_order_products.f90"
+  },
+  {
+    "stem": "bem_trace_product",
+    "primal": "bem_trace_product",
+    "active": [
+      "kernel",
+      "jx",
+      "jy",
+      "test",
+      "trial"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "kernel": "",
+      "jx": "",
+      "jy": "",
+      "test": "",
+      "trial": "",
+      "value": ""
+    },
+    "file": "fortfem_bem_high_order_products.f90"
+  },
+  {
     "stem": "block_graph_product",
     "primal": "generated_block_graph_product",
     "active": [
@@ -139,6 +224,72 @@
       "pressure_23": ""
     },
     "file": "fortfem_cgl_pressure_tensor_products.f90"
+  },
+  {
+    "stem": "current_segment",
+    "primal": "current_segment",
+    "active": [
+      "r1x",
+      "r1y",
+      "r1z",
+      "r2x",
+      "r2y",
+      "r2z"
+    ],
+    "outputs": [
+      "ax",
+      "ay",
+      "az",
+      "bx",
+      "by",
+      "bz"
+    ],
+    "dims": {
+      "r1x": "",
+      "r1y": "",
+      "r1z": "",
+      "r2x": "",
+      "r2y": "",
+      "r2z": "",
+      "ax": "",
+      "ay": "",
+      "az": "",
+      "bx": "",
+      "by": "",
+      "bz": ""
+    },
+    "file": "fortfem_exterior_harmonic_products.f90"
+  },
+  {
+    "stem": "exterior_gram_density",
+    "primal": "exterior_gram_density",
+    "active": [
+      "r1x",
+      "r1y",
+      "r1z",
+      "r2x",
+      "r2y",
+      "r2z",
+      "nx",
+      "ny",
+      "nz"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "r1x": "",
+      "r1y": "",
+      "r1z": "",
+      "r2x": "",
+      "r2y": "",
+      "r2z": "",
+      "nx": "",
+      "ny": "",
+      "nz": "",
+      "value": ""
+    },
+    "file": "fortfem_exterior_harmonic_products.f90"
   },
   {
     "stem": "fci_cubic_bezier_edge_area",
@@ -1021,6 +1172,33 @@
       "contribution": ""
     },
     "file": "fortfem_force_balance_products.f90"
+  },
+  {
+    "stem": "field_inner_product",
+    "primal": "field_inner_product",
+    "active": [
+      "weight",
+      "a1",
+      "a2",
+      "a3",
+      "b1",
+      "b2",
+      "b3"
+    ],
+    "outputs": [
+      "value"
+    ],
+    "dims": {
+      "weight": "",
+      "a1": "",
+      "a2": "",
+      "a3": "",
+      "b1": "",
+      "b2": "",
+      "b3": "",
+      "value": ""
+    },
+    "file": "fortfem_harmonic_field_products.f90"
   },
   {
     "stem": "helmholtz_single_layer_integrand",
