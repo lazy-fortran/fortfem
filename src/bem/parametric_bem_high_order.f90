@@ -614,8 +614,10 @@ contains
         type(rule_bank_t) :: bank
         type(point_t), allocatable :: points(:,:,:)
         type(block_t) :: block
-        type(bem_pair_report_t) :: pair_report
+        type(block_t), allocatable :: blocks(:,:)
+        integer, allocatable :: pair_status(:,:)
         integer :: nf,nt,nv,ne,i,j,l,t,a,b,local_status,errors,dmax,geometry_errors
+        integer :: chunk,i0,i1
         integer(int64) :: evaluations
         real(dp) :: value,ratio
         report=bem_pair_report_t()
@@ -660,36 +662,37 @@ contains
             end do
         end do
         evaluations=0; dmax=0; ratio=0; geometry_errors=0
-        !$omp parallel do default(shared) schedule(dynamic,1) &
-        !$omp private(i,j,a,b,block,pair_report,local_status) &
-        !$omp reduction(+:errors,evaluations,geometry_errors) reduction(max:dmax,ratio)
-        do i=1,nf
-            do j=1,nf
-                call converge_pair(surface,i,j,options,bank,points(:,i,:), &
-                    block,pair_report,local_status)
-                evaluations=evaluations+pair_report%kernel_evaluations
-                dmax=max(dmax,pair_report%maximum_degree_used)
-                ratio=max(ratio,pair_report%error_ratio)
-                if (local_status/=0) then
-                    errors=errors+1
-                    if (local_status==2) geometry_errors=geometry_errors+1
-                    cycle
-                end if
-                op%v(flux_dofs(:,i),flux_dofs(:,j))=block%v
-                do b=1,6
-                    op%k(flux_dofs(:,i),trace_dofs(b,j))= &
-                        op%k(flux_dofs(:,i),trace_dofs(b,j))+block%k(:,b)
-                    op%k(flux_dofs(:,i),trace_dofs(b,i))= &
-                        op%k(flux_dofs(:,i),trace_dofs(b,i))-block%c(:,b)
-                    do a=1,6
-                        !$omp atomic update
-                        op%w(trace_dofs(a,i),trace_dofs(b,j))= &
-                            op%w(trace_dofs(a,i),trace_dofs(b,j))+block%w(a,b)
+        ! Pair blocks are computed in parallel and scattered in a fixed
+        ! (i, j) order, so the result is bitwise independent of threads.
+        chunk=pair_chunk_size(nf)
+        allocate(blocks(nf,chunk),pair_status(nf,chunk))
+        do i0=1,nf,chunk
+            i1=min(nf,i0+chunk-1)
+            call compute_pair_blocks(surface,i0,i1,nf,options,bank,points, &
+                blocks,pair_status,evaluations,dmax,ratio)
+            do i=i0,i1
+                do j=1,nf
+                    local_status=pair_status(j,i-i0+1)
+                    if (local_status/=0) then
+                        errors=errors+1
+                        if (local_status==2) geometry_errors=geometry_errors+1
+                        cycle
+                    end if
+                    block=blocks(j,i-i0+1)
+                    op%v(flux_dofs(:,i),flux_dofs(:,j))=block%v
+                    do b=1,6
+                        op%k(flux_dofs(:,i),trace_dofs(b,j))= &
+                            op%k(flux_dofs(:,i),trace_dofs(b,j))+block%k(:,b)
+                        op%k(flux_dofs(:,i),trace_dofs(b,i))= &
+                            op%k(flux_dofs(:,i),trace_dofs(b,i))-block%c(:,b)
+                        do a=1,6
+                            op%w(trace_dofs(a,i),trace_dofs(b,j))= &
+                                op%w(trace_dofs(a,i),trace_dofs(b,j))+block%w(a,b)
+                        end do
                     end do
                 end do
             end do
         end do
-        !$omp end parallel do
         report%failed_pairs=errors
         report%accepted_pairs=nf**2-errors
         report%maximum_degree_used=dmax
@@ -838,9 +841,11 @@ contains
         type(rule_bank_t) :: bank
         type(point_t), allocatable :: points(:, :, :)
         type(block_t) :: block
-        type(bem_pair_report_t) :: pair_report
+        type(block_t), allocatable :: blocks(:, :)
+        integer, allocatable :: pair_status(:, :)
         integer, allocatable :: trace_map(:, :), local(:), sector(:), flux_map(:, :)
         integer :: nf, np, nt, nv, ne, i, j, l, t, a, b, ia, ib, sa, sb, js, jl
+        integer :: chunk, i0, i1
         integer :: local_status, errors, dmax, geometry_errors
         integer(int64) :: evaluations
         real(dp) :: value, ratio
@@ -908,50 +913,50 @@ contains
             end do
         end do
         evaluations = 0; dmax = 0; ratio = 0; geometry_errors = 0
-        !$omp parallel do collapse(2) default(shared) schedule(dynamic,1) &
-        !$omp private(i,j,a,b,ia,ib,sa,sb,js,jl,block,pair_report,local_status) &
-        !$omp reduction(+:errors,evaluations,geometry_errors) reduction(max:dmax,ratio)
-        do i = 1, np
-            do j = 1, nf
-                call converge_pair(surface, i, j, options, bank, points(:, i, :), &
-                                   block, pair_report, local_status)
-                evaluations = evaluations + pair_report%kernel_evaluations
-                dmax = max(dmax, pair_report%maximum_degree_used)
-                ratio = max(ratio, pair_report%error_ratio)
-                if (local_status /= 0) then
-                    errors = errors + 1
-                    if (local_status == 2) geometry_errors = geometry_errors + 1
-                    cycle
-                end if
-                js = (j - 1)/np + 1; jl = modulo(j - 1, np)
-                do b = 1, 3
-                    do a = 1, 3
-                        op%v%blocks(flux_dofs(a, i), 3*jl + b, js) = block%v(a, b)
+        ! Pair blocks are computed in parallel and scattered in a fixed
+        ! (i, j) order, so the result is bitwise independent of threads.
+        chunk = pair_chunk_size(nf)
+        allocate (blocks(nf, chunk), pair_status(nf, chunk))
+        do i0 = 1, np, chunk
+            i1 = min(np, i0 + chunk - 1)
+            call compute_pair_blocks(surface, i0, i1, nf, options, bank, points, &
+                                     blocks, pair_status, evaluations, dmax, ratio)
+            do i = i0, i1
+                do j = 1, nf
+                    local_status = pair_status(j, i - i0 + 1)
+                    if (local_status /= 0) then
+                        errors = errors + 1
+                        if (local_status == 2) geometry_errors = geometry_errors + 1
+                        cycle
+                    end if
+                    block = blocks(j, i - i0 + 1)
+                    js = (j - 1)/np + 1; jl = modulo(j - 1, np)
+                    do b = 1, 3
+                        do a = 1, 3
+                            op%v%blocks(flux_dofs(a, i), 3*jl + b, js) = block%v(a, b)
+                        end do
                     end do
-                end do
-                do b = 1, 6
-                    ib = local(trace_dofs(b, j)); sb = sector(trace_dofs(b, j))
-                    do a = 1, 3
-                        !$omp atomic update
-                        op%k%blocks(flux_dofs(a, i), ib, sb) = &
-                            op%k%blocks(flux_dofs(a, i), ib, sb) + block%k(a, b)
-                    end do
-                    do a = 1, 6
-                        ia = local(trace_dofs(a, i)); sa = sector(trace_dofs(a, i))
-                        !$omp atomic update
-                        op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) = &
-                          op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) + block%w(a, b)
-                    end do
-                    ib = local(trace_dofs(b, i)); sb = sector(trace_dofs(b, i))
-                    do a = 1, 3
-                        !$omp atomic update
-                        op%k%blocks(flux_dofs(a, i), ib, sb) = &
-                            op%k%blocks(flux_dofs(a, i), ib, sb) - block%c(a, b)
+                    do b = 1, 6
+                        ib = local(trace_dofs(b, j)); sb = sector(trace_dofs(b, j))
+                        do a = 1, 3
+                            op%k%blocks(flux_dofs(a, i), ib, sb) = &
+                                op%k%blocks(flux_dofs(a, i), ib, sb) + block%k(a, b)
+                        end do
+                        do a = 1, 6
+                            ia = local(trace_dofs(a, i)); sa = sector(trace_dofs(a, i))
+                            op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) = &
+                                op%w%blocks(ia, ib, modulo(sb - sa, nphi) + 1) + &
+                                block%w(a, b)
+                        end do
+                        ib = local(trace_dofs(b, i)); sb = sector(trace_dofs(b, i))
+                        do a = 1, 3
+                            op%k%blocks(flux_dofs(a, i), ib, sb) = &
+                                op%k%blocks(flux_dofs(a, i), ib, sb) - block%c(a, b)
+                        end do
                     end do
                 end do
             end do
         end do
-        !$omp end parallel do
         report%failed_pairs = errors
         report%accepted_pairs = np*nf - errors
         report%maximum_degree_used = dmax
@@ -968,5 +973,47 @@ contains
         call op%v%symmetrize(report%raw_v_symmetry)
         call op%w%symmetrize(report%raw_w_symmetry)
         status = 0
+    end subroutine
+    pure integer function pair_chunk_size(nf) result(chunk)
+        !! Source patches per chunk; bounds the pair-block buffer to about
+        !! 2**16 blocks (40 MiB) while leaving many pairs per parallel region.
+        integer, intent(in) :: nf
+        chunk = max(1, 65536/max(1, nf))
+    end function
+
+    subroutine compute_pair_blocks(surface, i0, i1, nf, options, bank, points, &
+                                   blocks, pair_status, evaluations, dmax, ratio)
+        !! Pair blocks of sources i0..i1 against all nf targets. Each pair is
+        !! independent; the caller accumulates them in a fixed order.
+        class(bem_surface_t), intent(in) :: surface
+        integer, intent(in) :: i0, i1, nf
+        type(bem_pair_options_t), intent(in) :: options
+        type(rule_bank_t), intent(in) :: bank
+        type(point_t), intent(in) :: points(:, :, :)
+        type(block_t), intent(inout) :: blocks(:, :)
+        integer, intent(inout) :: pair_status(:, :)
+        integer(int64), intent(inout) :: evaluations
+        integer, intent(inout) :: dmax
+        real(dp), intent(inout) :: ratio
+        type(bem_pair_report_t) :: pair_report
+        type(block_t) :: block
+        integer :: i, j, local_status
+        ! converge_pair accumulates into its block many times; a private block
+        ! avoids false sharing between neighbouring buffer entries.
+        !$omp parallel do collapse(2) default(shared) schedule(dynamic,1) &
+        !$omp private(i,j,block,pair_report,local_status) &
+        !$omp reduction(+:evaluations) reduction(max:dmax,ratio)
+        do i = i0, i1
+            do j = 1, nf
+                call converge_pair(surface, i, j, options, bank, points(:, i, :), &
+                                   block, pair_report, local_status)
+                blocks(j, i - i0 + 1) = block
+                pair_status(j, i - i0 + 1) = local_status
+                evaluations = evaluations + pair_report%kernel_evaluations
+                dmax = max(dmax, pair_report%maximum_degree_used)
+                ratio = max(ratio, pair_report%error_ratio)
+            end do
+        end do
+        !$omp end parallel do
     end subroutine
 end module fortfem_parametric_bem_high_order
