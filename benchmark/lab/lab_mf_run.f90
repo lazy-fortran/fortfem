@@ -253,6 +253,15 @@ contains
         s = xi(1)**2 + xi(2)**2
         angle = 0
         if (layout == 'aligned') angle = (0.4_dp + 0.2_dp*s)*phi
+        block
+            character(32) :: tw
+            integer :: ln
+            call get_environment_variable("SEAM_TWIST", tw, ln)
+            if (ln > 0 .and. layout == "aligned") then
+                read (tw, *) angle
+                angle = angle*phi
+            end if
+        end block
         call lab_geometry(cos(angle)*xi(1) - sin(angle)*xi(2), &
                           sin(angle)*xi(1) + cos(angle)*xi(2), phi, g)
         x = [g(1)*cos(phi), g(1)*sin(phi), g(2)]
