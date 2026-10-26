@@ -19,6 +19,8 @@ contains
         real(dp), intent(in), dimension(2) :: reference_b
         real(dp), intent(out), dimension(2,2) :: jacobian_b
         real(dp), intent(out), dimension(2) :: relative_b
+        real(dp) :: t1_v1
+        real(dp) :: t1_v1_b
         real(dp), dimension(2) :: reference_b_in
         real(dp) :: fad_t1
         real(dp) :: fad_t2
@@ -43,72 +45,39 @@ contains
         real(dp) :: fad_t21
         real(dp) :: fad_t22
         real(dp) :: fad_t23
-        real(dp) :: fad_t24
-        real(dp) :: fad_t25
-        real(dp) :: fad_t26
-        real(dp) :: fad_t27
-        real(dp) :: fad_t28
-        real(dp) :: fad_t29
-        real(dp) :: fad_t30
-        real(dp) :: fad_t31
-        real(dp) :: fad_t32
-        real(dp) :: fad_t33
-        real(dp) :: fad_t34
-        real(dp) :: fad_t35
-        real(dp) :: fad_t36
-        real(dp) :: fad_t37
-        real(dp) :: fad_t38
 
+        t1_v1 = jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)
+        t1_v1_b = 0.0_dp
         jacobian_b = 0.0_dp
         relative_b = 0.0_dp
         reference_b_in = reference_b
-        fad_t1 = reference_b_in(2) * (1.0_dp / (jacobian(1, 1) * jacobian(2, 2) - &
-            jacobian(1, 2) * jacobian(2, 1)))
+        fad_t1 = reference_b_in(2) * (1.0_dp / t1_v1)
         jacobian_b(1, 1) = jacobian_b(1, 1) + fad_t1 * relative(2)
         relative_b(2) = relative_b(2) + fad_t1 * jacobian(1, 1)
-        fad_t4 = reference_b_in(2) * ((-(jacobian(1, 1) * relative(2))) / &
-            (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2)
-        jacobian_b(1, 1) = jacobian_b(1, 1) + fad_t4 * jacobian(2, 2)
-        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t4 * jacobian(1, 1)
-        fad_t7 = fad_t4 * (-1.0_dp)
-        jacobian_b(1, 2) = jacobian_b(1, 2) + fad_t7 * jacobian(2, 1)
-        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t7 * jacobian(1, 2)
-        fad_t10 = reference_b_in(2) * (-1.0_dp)
-        fad_t11 = fad_t10 * (1.0_dp / (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, &
-            2) * jacobian(2, 1)))
-        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t11 * relative(1)
-        relative_b(1) = relative_b(1) + fad_t11 * jacobian(2, 1)
-        fad_t14 = fad_t10 * ((-(jacobian(2, 1) * relative(1))) / (jacobian(1, 1) * &
-            jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2)
-        jacobian_b(1, 1) = jacobian_b(1, 1) + fad_t14 * jacobian(2, 2)
-        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t14 * jacobian(1, 1)
-        fad_t17 = fad_t14 * (-1.0_dp)
-        jacobian_b(1, 2) = jacobian_b(1, 2) + fad_t17 * jacobian(2, 1)
-        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t17 * jacobian(1, 2)
+        t1_v1_b = t1_v1_b + reference_b_in(2) * ((-(jacobian(1, 1) * relative(2))) / &
+            t1_v1 ** 2)
+        fad_t5 = reference_b_in(2) * (-1.0_dp)
+        fad_t6 = fad_t5 * (1.0_dp / t1_v1)
+        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t6 * relative(1)
+        relative_b(1) = relative_b(1) + fad_t6 * jacobian(2, 1)
+        t1_v1_b = t1_v1_b + fad_t5 * ((-(jacobian(2, 1) * relative(1))) / t1_v1 ** 2)
         reference_b_in(2) = 0.0_dp
-        fad_t20 = reference_b_in(1) * (1.0_dp / (jacobian(1, 1) * jacobian(2, 2) - &
-            jacobian(1, 2) * jacobian(2, 1)))
-        jacobian_b(1, 2) = jacobian_b(1, 2) - fad_t20 * relative(2) * 1.0_dp
-        relative_b(2) = relative_b(2) - fad_t20 * jacobian(1, 2)
-        fad_t24 = reference_b_in(1) * ((-((-jacobian(1, 2)) * relative(2))) / &
-            (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2)
-        jacobian_b(1, 1) = jacobian_b(1, 1) + fad_t24 * jacobian(2, 2)
-        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t24 * jacobian(1, 1)
-        fad_t27 = fad_t24 * (-1.0_dp)
-        jacobian_b(1, 2) = jacobian_b(1, 2) + fad_t27 * jacobian(2, 1)
-        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t27 * jacobian(1, 2)
-        fad_t30 = reference_b_in(1) * (1.0_dp / (jacobian(1, 1) * jacobian(2, 2) - &
-            jacobian(1, 2) * jacobian(2, 1)))
-        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t30 * relative(1)
-        relative_b(1) = relative_b(1) + fad_t30 * jacobian(2, 2)
-        fad_t33 = reference_b_in(1) * ((-(jacobian(2, 2) * relative(1))) / &
-            (jacobian(1, 1) * jacobian(2, 2) - jacobian(1, 2) * jacobian(2, 1)) ** 2)
-        jacobian_b(1, 1) = jacobian_b(1, 1) + fad_t33 * jacobian(2, 2)
-        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t33 * jacobian(1, 1)
-        fad_t36 = fad_t33 * (-1.0_dp)
-        jacobian_b(1, 2) = jacobian_b(1, 2) + fad_t36 * jacobian(2, 1)
-        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t36 * jacobian(1, 2)
+        fad_t10 = reference_b_in(1) * (1.0_dp / t1_v1)
+        jacobian_b(1, 2) = jacobian_b(1, 2) - fad_t10 * relative(2) * 1.0_dp
+        relative_b(2) = relative_b(2) - fad_t10 * jacobian(1, 2)
+        t1_v1_b = t1_v1_b + reference_b_in(1) * ((-((-jacobian(1, 2)) * relative(2))) &
+            / t1_v1 ** 2)
+        fad_t15 = reference_b_in(1) * (1.0_dp / t1_v1)
+        jacobian_b(2, 2) = jacobian_b(2, 2) + fad_t15 * relative(1)
+        relative_b(1) = relative_b(1) + fad_t15 * jacobian(2, 2)
+        t1_v1_b = t1_v1_b + reference_b_in(1) * ((-(jacobian(2, 2) * relative(1))) / &
+            t1_v1 ** 2)
         reference_b_in(1) = 0.0_dp
+        jacobian_b(1, 1) = jacobian_b(1, 1) + t1_v1_b * jacobian(2, 2)
+        jacobian_b(2, 2) = jacobian_b(2, 2) + t1_v1_b * jacobian(1, 1)
+        fad_t21 = t1_v1_b * (-1.0_dp)
+        jacobian_b(1, 2) = jacobian_b(1, 2) + fad_t21 * jacobian(2, 1)
+        jacobian_b(2, 1) = jacobian_b(2, 1) + fad_t21 * jacobian(1, 2)
     end subroutine fortfem_triangle_affine_vjp_fortad
 
 end module fortfem_fortad_triangle_affine_vjp

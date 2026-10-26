@@ -9,39 +9,19 @@ pure subroutine generated_tetra_affine(jacobian, relative, reference)
     implicit none
     real(dp), intent(in) :: jacobian(3,3), relative(3)
     real(dp), intent(out) :: reference(3)
+    real(dp) :: t1
 
-    reference(1) = relative(1)*(jacobian(2,2)*jacobian(3,3) - jacobian(2,3)*jacobian(3,2))/ &
-        (jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1, &
-        2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)* &
-        jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1)) - relative(2)*(jacobian(1, &
-        2)*jacobian(3,3) - jacobian(1,3)*jacobian(3,2))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - &
-        jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1, &
-        2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)* &
-        jacobian(2,2)*jacobian(3,1)) + relative(3)*(jacobian(1,2)*jacobian(2,3) - jacobian(1,3)*jacobian(2, &
-        2))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - &
+    t1 = jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - &
         jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1, &
-        3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1))
-    reference(2) = -relative(1)*(jacobian(2,1)*jacobian(3,3) - jacobian(2,3)*jacobian(3,1))/ &
-        (jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1, &
-        2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)* &
-        jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1)) + relative(2)*(jacobian(1, &
-        1)*jacobian(3,3) - jacobian(1,3)*jacobian(3,1))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - &
-        jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1, &
-        2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)* &
-        jacobian(2,2)*jacobian(3,1)) - relative(3)*(jacobian(1,1)*jacobian(2,3) - jacobian(1,3)*jacobian(2, &
-        1))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - &
-        jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1, &
-        3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1))
-    reference(3) = relative(1)*(jacobian(2,1)*jacobian(3,2) - jacobian(2,2)*jacobian(3,1))/ &
-        (jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1, &
-        2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)* &
-        jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1)) - relative(2)*(jacobian(1, &
-        1)*jacobian(3,2) - jacobian(1,2)*jacobian(3,1))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - &
-        jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1, &
-        2)*jacobian(2,3)*jacobian(3,1) + jacobian(1,3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)* &
-        jacobian(2,2)*jacobian(3,1)) + relative(3)*(jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2, &
-        1))/(jacobian(1,1)*jacobian(2,2)*jacobian(3,3) - jacobian(1,1)*jacobian(2,3)*jacobian(3,2) - &
-        jacobian(1,2)*jacobian(2,1)*jacobian(3,3) + jacobian(1,2)*jacobian(2,3)*jacobian(3,1) + jacobian(1, &
-        3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1))
+        3)*jacobian(2,1)*jacobian(3,2) - jacobian(1,3)*jacobian(2,2)*jacobian(3,1)
+    reference(1) = relative(1)*(jacobian(2,2)*jacobian(3,3) - jacobian(2,3)*jacobian(3,2))/t1 - &
+        relative(2)*(jacobian(1,2)*jacobian(3,3) - jacobian(1,3)*jacobian(3,2))/t1 + relative(3)* &
+        (jacobian(1,2)*jacobian(2,3) - jacobian(1,3)*jacobian(2,2))/t1
+    reference(2) = -relative(1)*(jacobian(2,1)*jacobian(3,3) - jacobian(2,3)*jacobian(3,1))/t1 + &
+        relative(2)*(jacobian(1,1)*jacobian(3,3) - jacobian(1,3)*jacobian(3,1))/t1 - relative(3)* &
+        (jacobian(1,1)*jacobian(2,3) - jacobian(1,3)*jacobian(2,1))/t1
+    reference(3) = relative(1)*(jacobian(2,1)*jacobian(3,2) - jacobian(2,2)*jacobian(3,1))/t1 - &
+        relative(2)*(jacobian(1,1)*jacobian(3,2) - jacobian(1,2)*jacobian(3,1))/t1 + relative(3)* &
+        (jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2,1))/t1
 
 end subroutine generated_tetra_affine

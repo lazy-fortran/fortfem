@@ -9,11 +9,13 @@ pure subroutine generated_toroidal_point_to_cartesian(scale, eta, theta, phi, po
     implicit none
     real(dp), intent(in) :: scale, eta, theta, phi
     real(dp), intent(out) :: point(3)
-    real(dp) :: t1
+    real(dp) :: t1, t2, t3
 
     t1 = sinh(eta)
-    point(1) = scale*cos(phi)*t1/(cosh(eta) - cos(theta))
-    point(2) = scale*sin(phi)*t1/(cosh(eta) - cos(theta))
-    point(3) = scale*sin(theta)/(cosh(eta) - cos(theta))
+    t2 = cos(theta)
+    t3 = cosh(eta) - t2
+    point(1) = scale*cos(phi)*t1/t3
+    point(2) = scale*sin(phi)*t1/t3
+    point(3) = scale*sin(theta)/t3
 
 end subroutine generated_toroidal_point_to_cartesian
