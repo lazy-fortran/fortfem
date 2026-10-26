@@ -11,6 +11,6 @@ concurrency:
 
 jobs:
   repo-hygiene:
-    uses: lazy-fortran/.github/.github/workflows/repo-hygiene.yml@4a515a95feac1fa1e79d2f721a4b20eb124b20f4
+    uses: itpplasma/.github/.github/workflows/repo-hygiene.yml@04da3fc73d9ead713b93700de7bbf54049b5ac3e
     with:
-      hygiene-revision: 4a515a95feac1fa1e79d2f721a4b20eb124b20f4
+      hygiene-revision: 04da3fc73d9ead713b93700de7bbf54049b5ac3e
