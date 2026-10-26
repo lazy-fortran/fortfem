@@ -77,5 +77,20 @@ error of 0.00911163, below the unchanged 0.03 gate. Its corrected Gram value
 is 2.359031529, versus 2.483421317 before the scalar correction, as required
 by energy minimization. These are numerical observations for the retained
 curved-torus fixture. They do not certify arbitrary geometry or establish
-assembled geometry derivatives. Strong-scaling measurements remain in
-progress; one eight-thread timing is insufficient to establish a speedup.
+assembled geometry derivatives. The completed aCluster 21817118 sweep retains the same fixture, binary and
+accuracy gates. GNU Fortran 12.2 and one OpenBLAS thread give these assembly
+wall times:
+
+| Requested OpenMP threads | Assembly wall time (s) | Ratio to one thread |
+|---:|---:|---:|
+| 1 | 1440.245 | 1.000 |
+| 2 | 724.321 | 1.988 |
+| 4 | 378.359 | 3.807 |
+| 8 | 197.135 | 7.306 |
+
+All four runs pass the same four normal-leak and energy checks, with the same
+reported Gram values. These are single observations on a shared host. Active
+team sizes, process CPU times and timing variability were not independently
+measured; the ratios describe this completed sweep rather than a robust
+performance bound. Reproduce each requested count with
+`OMP_NUM_THREADS=N OPENBLAS_NUM_THREADS=1 fpm test --target test_exterior_harmonic_tangent_slow --profile release --flag "-fopenmp -foffload=disable -finline-matmul-limit=0"`.
