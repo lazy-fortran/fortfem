@@ -220,7 +220,7 @@ The pilot 3356244 ran on a shared node, so its timings are not used.
 
 ### Operator checks (criterion 4)
 
-[V] `test_lab_line_operator` checks the spline MF apply against the existing
+[V] `test_lab_line_operator_slow` checks the spline MF apply against the existing
 assembled B-spline H1 operators for 2D/3D and p=1..4 (worst relative error
 2.9e-14), mixed spline x GLL x Fourier against the CSR oracle (3.2e-16) and
 spline x Fourier exactness on trigonometric polynomials (L2 7.6e-15). It also
@@ -529,7 +529,7 @@ so the BEM quadrature limit, not the FEM space, dominates there [H].
 |--:|--:|--:|--:|--:|--:|
 | PCG its | 29 | 20 | 18 | 24 | 30 |
 
-### Vacuum-field current sheet (`test_lab_fem_bem_current_sheet`)
+### Vacuum-field current sheet (`test_lab_fem_bem_current_sheet_slow`)
 
 Prescribed divergence-free surface current on the torus boundary, exterior B from
 the representation formula (`ext_rel_max`) and interior B on the axis core cells
@@ -592,7 +592,7 @@ and the transposed-jump product in `build_exterior_dtn`, runs on one thread
 
 ```bash
 fpm test --target test_lab_fem_bem_transmission
-fpm test --target test_lab_fem_bem_current_sheet
+fpm test --target test_lab_fem_bem_current_sheet_slow
 # scan row: n nphi p [flux_degree target_points fan_points schur_scale]
 build/gfortran_*/test/test_lab_fem_bem_transmission 1 6 3 2 0 0 3
 ```

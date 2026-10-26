@@ -1,4 +1,4 @@
-program test_toroidal_mode_boundary_operators_threads_2d
+program test_toroidal_mode_boundary_operators_threads_2d_slow
     !! The panel-parity coloured assembly of V_n, K_n, K'_n, W_n and the mass
     !! matrices, and the coil flux table, do not depend on the number of
     !! OpenMP threads to roundoff (vacuous in a build without OpenMP).
@@ -104,4 +104,4 @@ contains
         call check_condition(condition, description)
     end subroutine record
 
-end program test_toroidal_mode_boundary_operators_threads_2d
+end program test_toroidal_mode_boundary_operators_threads_2d_slow

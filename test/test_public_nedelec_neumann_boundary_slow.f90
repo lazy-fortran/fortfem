@@ -1,4 +1,4 @@
-program test_public_nedelec_neumann_boundary
+program test_public_nedelec_neumann_boundary_slow
     use check, only: check_condition, check_summary
     use fortfem_core, only: mesh_t, unit_square_mesh, vector_function_space_t
     use fortfem_feec, only: &
@@ -193,4 +193,4 @@ contains
         call check_condition(condition, description)
     end subroutine record_condition
 
-end program test_public_nedelec_neumann_boundary
+end program test_public_nedelec_neumann_boundary_slow
