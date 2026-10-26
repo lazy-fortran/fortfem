@@ -205,20 +205,36 @@ contains
         if (any(matrix%tpos < 1)) error stop "csr_build_pattern: pattern not symmetric"
         if (present(with_slots)) then
             if (with_slots) then
+                ! Row-parallel: marker holds the position of each column of row
+                ! i, so a slot is a lookup instead of a search. Every element
+                ! entry of row i is a column of row i.
                 allocate(matrix%slot(matrix%nloc, matrix%nloc, size(conn, 2)))
-                !$omp parallel do default(none) shared(conn, matrix, exchange) &
-                !$omp private(e, a, b) schedule(static)
-                do e = 1, size(conn, 2)
-                    do a = 1, matrix%nloc
-                        do b = 1, matrix%nloc
-                            matrix%slot(b, a, e) = 0
-                            if (exchange .and. conn(a, e) == conn(b, e)) cycle
-                            matrix%slot(b, a, e) = &
-                                csr_find_entry(matrix, conn(a, e), conn(b, e))
+                !$omp parallel default(none) shared(n_dofs, conn, matrix, exchange) &
+                !$omp private(marker, i, k, e, a, b, j)
+                allocate(marker(n_dofs))
+                !$omp do schedule(static)
+                do i = 1, n_dofs
+                    do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
+                        marker(matrix%colidx(k)) = k
+                    end do
+                    do k = matrix%elem_ptr(i), matrix%elem_ptr(i + 1) - 1
+                        e = matrix%elem_idx(k)
+                        do a = 1, matrix%nloc
+                            if (conn(a, e) /= i) cycle
+                            do b = 1, matrix%nloc
+                                j = conn(b, e)
+                                if (exchange .and. j == i) then
+                                    matrix%slot(b, a, e) = 0
+                                else
+                                    matrix%slot(b, a, e) = marker(j)
+                                end if
+                            end do
                         end do
                     end do
                 end do
-                !$omp end parallel do
+                !$omp end do
+                deallocate(marker)
+                !$omp end parallel
             end if
         end if
     end subroutine csr_build_pattern
