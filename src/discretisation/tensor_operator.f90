@@ -10,7 +10,7 @@ module fortfem_tensor_operator
     use fortfem_tensor_contractions, only: tensor_contract
     use fortfem_generated_tensor_metric, only: generated_tensor_metric
     use fortfem_element_to_csr, only: csr_matrix_t, csr_build_pattern, &
-                            csr_find_entry, build_node_to_element, csr_element_colouring
+                      csr_assemble_blocks, build_node_to_element, csr_element_colouring
     implicit none
     private
     public :: tensor_operator_t, build_tensor_operator, apply_tensor_operator
@@ -74,7 +74,8 @@ contains
                            g(1, 2), g(2, 2), g(3, 2), g(1, 3), g(2, 3), g(3, 3), m, det)
     end subroutine
 
-    subroutine build_tensor_operator(mesh, coefficient, op, status, precompute, nq)
+    subroutine build_tensor_operator(mesh, coefficient, op, status, precompute, nq, &
+                                     parallel)
         ! GLL p-nodal meshes build GLL lines (nq Gauss points, default p+1) on the
         ! reference cell; line-table meshes carry their own lines and rules.
         type(tensor_mesh_t), intent(in) :: mesh
@@ -83,12 +84,16 @@ contains
         integer, intent(out) :: status
         logical, intent(in), optional :: precompute
         integer, intent(in), optional :: nq
+        ! parallel=.false. runs the setup on one thread in serial order. By
+        ! default `coefficient` is called concurrently from several threads for
+        ! different points, so it must be thread-safe (no unsynchronised writes
+        ! to shared state); the output does not depend on the thread count.
+        logical, intent(in), optional :: parallel
         type(csr_matrix_t) :: adjacency
         type(line_matrix_t), allocatable :: gb(:, :), gd(:, :)
-        real(dp), allocatable :: t1(:), t2(:), values(:)
         integer, allocatable :: colour(:), fill(:)
-        real(dp) :: g(3, 3), m, det, kmat(3, 3), c
-        integer :: ng(3), mq, e, comp, dir, i, j, l, point, q, d, ce(3), ws
+        integer :: ng(3), mq, e, i, q, d, ws, nitem, bad, badcode
+        logical :: threaded
         status = 1
         if (mesh%dim < 2 .or. mesh%dim > 3) return
         op%mesh = mesh
@@ -138,70 +143,121 @@ contains
         if (op%precompute) allocate (op%metric(3, 3, mq, mesh%nelem), &
                                      op%mass(mq, mesh%nelem))
         ws = maxval([ng, op%no])**3
-        allocate (t1(ws), t2(ws), values(mq))
         op%jac = 0
         if (mesh%dim == 2) op%jac(3, 3, :, :) = 1
-        do e = 1, mesh%nelem
-            ce = op%cell(:, e)
-            do l = 1, op%no(3)
-                do j = 1, op%no(2)
-                    do i = 1, op%no(1)
-                        point = i + op%no(1)*(j - 1 + op%no(2)*(l - 1))
-                        op%weight(point, e) = op%line(1)%wq(i, ce(1))* &
-                                         op%line(2)%wq(j, ce(2))*op%line(3)%wq(l, ce(3))
-                    end do
-                end do
-            end do
-            do comp = 1, mesh%dim
-                call tensor_contract(ng, op%no, gb(ce(1), 1)%a, gb(ce(2), 2)%a, &
-                              gb(ce(3), 3)%a, mesh%geometry(comp, :, e), values, t1, t2)
-                op%points(comp, :, e) = values
-                do dir = 1, mesh%dim
-                    select case (dir)
+        threaded = .true.
+        if (present(parallel)) threaded = parallel
+        nitem = mesh%dim*(mesh%dim + 1)
+        ! Phase 1: geometry. Each (element, item) pair is one sum-factorised
+        ! contraction (item 1..dim: jacobian column dir of component comp, item
+        ! offset: the physical point); every output slice has one writer and
+        ! there is no reduction, so the result is bitwise the serial one.
+        !$omp parallel default(shared) if(threaded)
+        block
+            real(dp), allocatable :: t1(:), t2(:), values(:)
+            integer :: ce_(3), comp_, dir_, e_, item_
+            allocate (t1(ws), t2(ws), values(mq))
+            !$omp do collapse(2) schedule(static)
+            do e_ = 1, mesh%nelem
+                do item_ = 1, nitem
+                    ce_ = op%cell(:, e_)
+                    comp_ = (item_ - 1)/(mesh%dim + 1) + 1
+                    dir_ = modulo(item_ - 1, mesh%dim + 1)
+                    select case (dir_)
+                    case (0)
+                        call tensor_contract(ng, op%no, gb(ce_(1), 1)%a, &
+                                             gb(ce_(2), 2)%a, gb(ce_(3), 3)%a, &
+                                             mesh%geometry(comp_, :, e_), values, &
+                                             t1, t2)
+                        op%points(comp_, :, e_) = values
                     case (1)
-                       call tensor_contract(ng, op%no, gd(ce(1), 1)%a, gb(ce(2), 2)%a, &
-                                    gb(ce(3), 3)%a, mesh%geometry(comp, :, e), values, &
+                        call tensor_contract(ng, op%no, gd(ce_(1), 1)%a, &
+                                             gb(ce_(2), 2)%a, gb(ce_(3), 3)%a, &
+                                             mesh%geometry(comp_, :, e_), values, &
                                              t1, t2)
+                        op%jac(comp_, dir_, :, e_) = values
                     case (2)
-                       call tensor_contract(ng, op%no, gb(ce(1), 1)%a, gd(ce(2), 2)%a, &
-                                    gb(ce(3), 3)%a, mesh%geometry(comp, :, e), values, &
+                        call tensor_contract(ng, op%no, gb(ce_(1), 1)%a, &
+                                             gd(ce_(2), 2)%a, gb(ce_(3), 3)%a, &
+                                             mesh%geometry(comp_, :, e_), values, &
                                              t1, t2)
+                        op%jac(comp_, dir_, :, e_) = values
                     case default
-                       call tensor_contract(ng, op%no, gb(ce(1), 1)%a, gb(ce(2), 2)%a, &
-                                    gd(ce(3), 3)%a, mesh%geometry(comp, :, e), values, &
+                        call tensor_contract(ng, op%no, gb(ce_(1), 1)%a, &
+                                             gb(ce_(2), 2)%a, gd(ce_(3), 3)%a, &
+                                             mesh%geometry(comp_, :, e_), values, &
                                              t1, t2)
+                        op%jac(comp_, dir_, :, e_) = values
                     end select
-                    op%jac(comp, dir, :, e) = values
                 end do
             end do
-            do point = 1, mq
-                kmat = 0
-                kmat(3, 3) = 1
-                call coefficient(op%points(:, point, e), &
-                                 kmat(1:mesh%dim, 1:mesh%dim), c)
-                if (.not. all(ieee_is_finite(kmat))) return
-                if (.not. ieee_is_finite(c)) return
-                if (c < 0) return
-                if (maxval(abs(kmat - transpose(kmat))) > &
-                    1.e-13_dp*maxval(abs(kmat))) return
-                if (kmat(1, 1) <= 0) return
-                if (kmat(1, 1)*kmat(2, 2) - kmat(1, 2)**2 <= 0) return
-                if (determinant_at(kmat) <= 0) return
-                op%coef(:, :, point, e) = kmat
-                op%reaction(point, e) = c
-                call metric_at(op%jac(:, :, point, e), kmat, op%weight(point, e), &
-                               c, g, m, det)
-                if (.not. ieee_is_finite(det) .or. det <= 0) then
-                    status = 2
-                    return
-                end if
-                op%volume(point, e) = op%weight(point, e)*det
-                if (op%precompute) then
-                    op%metric(:, :, point, e) = g
-                    op%mass(point, e) = m
-                end if
+            !$omp end do
+        end block
+        !$omp end parallel
+        ! Phase 2: coefficient callback, validation, metric. The callback is
+        ! invoked concurrently from several threads unless parallel=.false.
+        ! A failure keeps the lowest (element, point) index, which is the one
+        ! the serial loop would have stopped at.
+        bad = huge(bad); badcode = 0
+        !$omp parallel default(shared) if(threaded)
+        block
+            real(dp) :: g_(3, 3), m_, det_, kmat_(3, 3), c_
+            integer :: e_, point_, i_, j_, l_, code_
+            !$omp do collapse(2) schedule(static)
+            do e_ = 1, mesh%nelem
+                do point_ = 1, mq
+                    i_ = modulo(point_ - 1, op%no(1)) + 1
+                    j_ = modulo((point_ - 1)/op%no(1), op%no(2)) + 1
+                    l_ = (point_ - 1)/(op%no(1)*op%no(2)) + 1
+                    op%weight(point_, e_) = op%line(1)%wq(i_, op%cell(1, e_))* &
+                                            op%line(2)%wq(j_, op%cell(2, e_))* &
+                                            op%line(3)%wq(l_, op%cell(3, e_))
+                    kmat_ = 0
+                    kmat_(3, 3) = 1
+                    call coefficient(op%points(:, point_, e_), &
+                                     kmat_(1:mesh%dim, 1:mesh%dim), c_)
+                    code_ = 1
+                    if (all(ieee_is_finite(kmat_)) .and. ieee_is_finite(c_)) then
+                        if (c_ >= 0) then
+                            if (maxval(abs(kmat_ - transpose(kmat_))) <= &
+                                1.e-13_dp*maxval(abs(kmat_)) .and. kmat_(1, 1) > 0) then
+                                if (kmat_(1, 1)*kmat_(2, 2) - kmat_(1, 2)**2 > 0 &
+                                    .and. determinant_at(kmat_) > 0) code_ = 0
+                            end if
+                        end if
+                    end if
+                    if (code_ == 0) then
+                        op%coef(:, :, point_, e_) = kmat_
+                        op%reaction(point_, e_) = c_
+                        call metric_at(op%jac(:, :, point_, e_), kmat_, &
+                                       op%weight(point_, e_), c_, g_, m_, det_)
+                        if (.not. ieee_is_finite(det_) .or. det_ <= 0) then
+                            code_ = 2
+                        else
+                            op%volume(point_, e_) = op%weight(point_, e_)*det_
+                            if (op%precompute) then
+                                op%metric(:, :, point_, e_) = g_
+                                op%mass(point_, e_) = m_
+                            end if
+                        end if
+                    end if
+                    if (code_ /= 0) then
+                        !$omp critical (fortfem_tensor_build_fail)
+                        if ((e_ - 1)*mq + point_ < bad) then
+                            bad = (e_ - 1)*mq + point_
+                            badcode = code_
+                        end if
+                        !$omp end critical (fortfem_tensor_build_fail)
+                    end if
+                end do
             end do
-        end do
+            !$omp end do
+        end block
+        !$omp end parallel
+        if (badcode /= 0) then
+            status = badcode
+            return
+        end if
         ! Colour from node-to-cell adjacency only, without a dense CSR pattern.
         call build_node_to_element(mesh%ndof, mesh%dof, &
                                    adjacency%elem_ptr, adjacency%elem_idx)
@@ -352,75 +408,89 @@ contains
                  (a - 1)/(n(1)*n(2))] + 1
     end function
 
-    subroutine assemble_tensor_operator(op, matrix)
+    subroutine assemble_tensor_operator(op, matrix, parallel)
+        ! Element matrices are formed in parallel into a block buffer and summed
+        ! into the CSR matrix by csr_assemble_blocks through the cached slot map.
+        ! Every entry is added in ascending element order, as in a serial loop.
         type(tensor_operator_t), intent(in) :: op
         type(csr_matrix_t), intent(out) :: matrix
-        real(dp), allocatable :: basis(:, :), gradient(:, :, :), flux(:, :, :), &
-                                 scaled(:, :), element(:, :)
-        real(dp) :: g(3, 3), mass, det, val
-        integer :: a, b, q, e, i, j, k, l, dir, ia(3), iq(3), nl, mq, entry, c(3), nd
+        logical, intent(in), optional :: parallel
+        real(dp), allocatable :: blocks(:, :, :)
+        integer :: i, j, k, nl, mq, nd
+        logical :: threaded
         nl = product(op%ni); mq = product(op%no); nd = op%mesh%dim
-        allocate (basis(mq, nl), gradient(mq, nl, nd), flux(mq, nl, nd), &
-                  scaled(mq, nl), element(nl, nl))
-        call csr_build_pattern(op%mesh%ndof, op%mesh%dof, .false., matrix)
-        do e = 1, op%mesh%nelem
-            c = op%cell(:, e)
-            ! Deliberately unfactored quadrature oracle, independent of MF schedules.
-            do a = 1, nl
-                ia = decode(a, op%ni)
-                do q = 1, mq
-                    iq = decode(q, op%no)
-                    val = 1
-                    do dir = 1, 3
-                        val = val*op%line(dir)%b(iq(dir), ia(dir), c(dir))
-                    end do
-                    basis(q, a) = val
-                    do dir = 1, op%mesh%dim
-                        val = 1
-                        do l = 1, 3
-                            if (l == dir) then
-                                val = val*op%line(l)%d(iq(l), ia(l), c(l))
-                            else
-                                val = val*op%line(l)%b(iq(l), ia(l), c(l))
-                            end if
-                        end do
-                        gradient(q, a, dir) = val
-                    end do
-                end do
-            end do
-            ! Weighted basis and metric fluxes per quadrature point, then dense
-            ! B^T (m B) + sum_i D_i^T (sum_j g_ij D_j) over the full tensor basis.
-            do q = 1, mq
-                call metric_at(op%jac(:, :, q, e), op%coef(:, :, q, e), &
-                               op%weight(q, e), op%reaction(q, e), g, mass, det)
-                scaled(q, :) = mass*basis(q, :)
-                do i = 1, nd
-                    flux(q, :, i) = 0
-                    do dir = 1, nd
-                        flux(q, :, i) = flux(q, :, i) + g(i, dir)*gradient(q, :, dir)
-                    end do
-                end do
-            end do
-            element = matmul(transpose(basis), scaled)
-            do i = 1, nd
-                element = element + matmul(transpose(gradient(:, :, i)), flux(:, :, i))
-            end do
-            ! FortSparse requires canonical, exactly symmetric CSC input.
-            ! Compute each symmetric bilinear-form entry once, then mirror it.
-            do b = 1, nl
-                do a = 1, b - 1
-                    element(b, a) = element(a, b)
-                end do
-            end do
-            do b = 1, nl
-                j = op%mesh%dof(b, e)
+        threaded = .true.
+        if (present(parallel)) threaded = parallel
+        call csr_build_pattern(op%mesh%ndof, op%mesh%dof, .false., matrix, &
+                               with_slots=.true.)
+        allocate (blocks(nl, nl, op%mesh%nelem))
+        !$omp parallel default(shared) if(threaded)
+        block
+            real(dp), allocatable :: basis(:, :), gradient(:, :, :), flux(:, :, :), &
+                                     scaled(:, :), element(:, :)
+            real(dp) :: g(3, 3), mass, det, val
+            integer :: a, b, q, e, i_, l, dir, ia(3), iq(3), c(3)
+            allocate (basis(mq, nl), gradient(mq, nl, nd), flux(mq, nl, nd), &
+                      scaled(mq, nl), element(nl, nl))
+            !$omp do schedule(dynamic)
+            do e = 1, op%mesh%nelem
+                c = op%cell(:, e)
+                ! Deliberately unfactored quadrature oracle, independent of MF
+                ! schedules.
                 do a = 1, nl
-                    i = op%mesh%dof(a, e)
-                    entry = csr_find_entry(matrix, i, j)
-                    matrix%val(entry) = matrix%val(entry) + element(a, b)
+                    ia = decode(a, op%ni)
+                    do q = 1, mq
+                        iq = decode(q, op%no)
+                        val = 1
+                        do dir = 1, 3
+                            val = val*op%line(dir)%b(iq(dir), ia(dir), c(dir))
+                        end do
+                        basis(q, a) = val
+                        do dir = 1, nd
+                            val = 1
+                            do l = 1, 3
+                                if (l == dir) then
+                                    val = val*op%line(l)%d(iq(l), ia(l), c(l))
+                                else
+                                    val = val*op%line(l)%b(iq(l), ia(l), c(l))
+                                end if
+                            end do
+                            gradient(q, a, dir) = val
+                        end do
+                    end do
                 end do
+                ! Weighted basis and metric fluxes per quadrature point, then dense
+                ! B^T (m B) + sum_i D_i^T (sum_j g_ij D_j) over the full tensor basis.
+                do q = 1, mq
+                    call metric_at(op%jac(:, :, q, e), op%coef(:, :, q, e), &
+                                   op%weight(q, e), op%reaction(q, e), g, mass, det)
+                    scaled(q, :) = mass*basis(q, :)
+                    do i_ = 1, nd
+                        flux(q, :, i_) = 0
+                        do dir = 1, nd
+                            flux(q, :, i_) = flux(q, :, i_) + &
+                                             g(i_, dir)*gradient(q, :, dir)
+                        end do
+                    end do
+                end do
+                element = matmul(transpose(basis), scaled)
+                do i_ = 1, nd
+                    element = element + &
+                              matmul(transpose(gradient(:, :, i_)), flux(:, :, i_))
+                end do
+                ! FortSparse requires canonical, exactly symmetric CSC input.
+                ! Compute each symmetric bilinear-form entry once, then mirror it.
+                do b = 1, nl
+                    do a = 1, b - 1
+                        element(b, a) = element(a, b)
+                    end do
+                end do
+                blocks(:, :, e) = element
             end do
-        end do
+            !$omp end do
+        end block
+        !$omp end parallel
+        call csr_assemble_blocks(matrix, op%mesh%dof, blocks)
         do i = 1, matrix%n
             do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
                 j = matrix%colidx(k)
