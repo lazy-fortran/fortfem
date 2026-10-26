@@ -30,6 +30,11 @@ source-dir = "benchmark"
 main = "fortfem_tetra_vector_interpolation_ad.f90"
 
 [[executable]]
+name = "fortfem_hcurl_hx_ladder"
+source-dir = "benchmark"
+main = "fortfem_hcurl_hx_ladder.f90"
+
+[[executable]]
 name = "fortfem_csr_spmv_scaling"
 source-dir = "benchmark"
 main = "fortfem_csr_spmv_scaling.f90"
