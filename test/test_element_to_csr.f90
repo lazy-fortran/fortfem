@@ -1,7 +1,8 @@
 program test_element_to_csr
     !! Element blocks to CSR on curved isoparametric P1/P2/P3 triangle meshes:
     !! pattern symmetry, CSR product vs element-by-element scatter apply, exchange
-    !! form, colouring, AD products and thread invariance. Scaling is measured by
+    !! form, colouring, AD products, thread invariance, the cached slots with the
+    !! symmetric column path, and long (heapsorted) rows. Scaling is measured by
     !! benchmark/fortfem_csr_spmv_scaling.f90.
     use, intrinsic :: iso_fortran_env, only: int64
     use check, only: check_condition, check_summary
@@ -22,6 +23,7 @@ program test_element_to_csr
     do degree = 1, 3
         call run_degree(degree, 24)
     end do
+    call check_long_rows()
     call check_summary("element_to_csr")
 
 contains
@@ -105,7 +107,89 @@ contains
             trim(tag)//": element colouring has no shared dof within a colour")
 
         call check_thread_invariance(conn, blocks_full, blocks_stiff, tag)
+        call check_slots(conn, blocks_full, blocks_stiff, tag)
     end subroutine run_degree
+
+    subroutine check_slots(conn, blocks_full, blocks_stiff, tag)
+        !! The cached slots give the values of the search path bitwise, and with
+        !! exactly symmetric blocks the symmetric (column) path does too.
+        integer, intent(in) :: conn(:, :)
+        real(dp), intent(in) :: blocks_full(:, :, :), blocks_stiff(:, :, :)
+        character(len=*), intent(in) :: tag
+
+        type(csr_matrix_t) :: reference, slotted, ex_reference, ex_slotted
+        real(dp), allocatable :: sym_full(:, :, :), sym_stiff(:, :, :)
+        integer :: e, n_dofs
+        logical :: same
+
+        n_dofs = maxval(conn)
+        sym_full = blocks_full
+        sym_stiff = blocks_stiff
+        do e = 1, size(conn, 2)
+            sym_full(:, :, e) = 0.5_dp*(blocks_full(:, :, e) &
+                + transpose(blocks_full(:, :, e)))
+            sym_stiff(:, :, e) = 0.5_dp*(blocks_stiff(:, :, e) &
+                + transpose(blocks_stiff(:, :, e)))
+        end do
+        call csr_build_pattern(n_dofs, conn, .false., reference)
+        call csr_build_pattern(n_dofs, conn, .false., slotted, with_slots=.true.)
+        call csr_build_pattern(n_dofs, conn, .true., ex_reference)
+        call csr_build_pattern(n_dofs, conn, .true., ex_slotted, with_slots=.true.)
+        call csr_assemble_blocks(reference, conn, blocks_full)
+        call csr_assemble_blocks(slotted, conn, blocks_full)
+        same = all(slotted%colidx == reference%colidx) .and. &
+            all(slotted%val == reference%val)
+        call csr_assemble_blocks(reference, conn, sym_full)
+        call csr_assemble_blocks(slotted, conn, sym_full, symmetric=.true.)
+        same = same .and. all(slotted%val == reference%val)
+        call csr_assemble_blocks(ex_reference, conn, sym_stiff)
+        call csr_assemble_blocks(ex_slotted, conn, sym_stiff, symmetric=.true.)
+        same = same .and. all(ex_slotted%val == ex_reference%val)
+        call check_condition(same, trim(tag)// &
+            ": slots and the symmetric column path bitwise equal to the search path")
+    end subroutine check_slots
+
+    subroutine check_long_rows()
+        !! Rows longer than the insertion-sort cutoff (heapsort path) are sorted,
+        !! unique and hold exactly the dofs that share an element.
+        integer, parameter :: n_dofs = 300, nel = 40, nloc = 60
+        type(csr_matrix_t) :: matrix
+        integer :: conn(nloc, nel), a, b, e, i, k, count_row
+        logical :: member(n_dofs), ok
+        real(dp) :: r(nloc*nel)
+
+        call random_vector(r, 29)
+        do e = 1, nel
+            member = .false.
+            a = 0
+            k = 0
+            do while (a < nloc)
+                k = k + 1
+                i = 1 + mod(int(abs(r(1 + mod(k + nloc*(e - 1), nloc*nel)))*1.0e6_dp) &
+                    + 37*k + 11*e, n_dofs)
+                if (member(i)) cycle
+                member(i) = .true.
+                a = a + 1
+                conn(a, e) = i
+            end do
+        end do
+        call csr_build_pattern(n_dofs, conn, .false., matrix, with_slots=.true.)
+        ok = pattern_ok(matrix) .and. covers_elements(matrix, conn)
+        do i = 1, n_dofs
+            member = .false.
+            do e = 1, nel
+                if (.not. any(conn(:, e) == i)) cycle
+                do b = 1, nloc
+                    member(conn(b, e)) = .true.
+                end do
+            end do
+            member(i) = .true.
+            count_row = matrix%rowptr(i + 1) - matrix%rowptr(i)
+            if (count_row /= count(member)) ok = .false.
+        end do
+        ok = ok .and. maxval(matrix%rowptr(2:) - matrix%rowptr(:n_dofs)) > 32
+        call check_condition(ok, "long rows: heapsorted pattern complete and sorted")
+    end subroutine check_long_rows
 
     subroutine check_thread_invariance(conn, blocks_full, blocks_stiff, tag)
         integer, intent(in) :: conn(:, :)
