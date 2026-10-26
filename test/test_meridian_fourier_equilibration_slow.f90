@@ -72,7 +72,7 @@ contains
     end subroutine
 end module
 
-program test_meridian_fourier_equilibration
+program test_meridian_fourier_equilibration_slow
     use fourier_equilibration_fixture, only: dp, pi, chi, modes, nb, nphi, &
         amplitude, conductivity_t, source_t, bubble
     use fortfem_mesh_2d, only: mesh_2d_t

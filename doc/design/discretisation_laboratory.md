@@ -185,7 +185,7 @@ C1 polar splines (`fortfem_bspline_polar`, Toshniwal-Hughes extraction) enter
 only as a comparison for criterion 2. The driver assembles the tensor
 operator on the polar map, restricts it by the extraction and solves it
 directly. `fortfem_lab_igaax` writes one CSV row per run, and
-`test_lab_line_operator` and `test_lab_line_hierarchy` are the named tests.
+`test_lab_line_operator_slow` and `test_lab_line_hierarchy` are the named tests.
 
 
 The IGA-AX section of `benchmark/lab/RESULTS.md` holds the evidence. At

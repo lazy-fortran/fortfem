@@ -1,4 +1,4 @@
-program test_lab_fem_bem_current_sheet
+program test_lab_fem_bem_current_sheet_slow
     !! Vacuum-field free-boundary model: a prescribed divergence-free surface
     !! current K = grad(Phi) x n on the torus boundary Gamma (mu0 = 1). Its
     !! field is B = -grad(psi) off Gamma with psi the double-layer potential

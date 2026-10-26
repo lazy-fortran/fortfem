@@ -91,6 +91,7 @@ contains
         real(dp), allocatable :: high_rt_values(:, :)
         real(dp) :: expected_curl(3), reconstructed_curl(3)
         integer :: high_status
+        real(dp), parameter :: div_curl_tolerance = 1.0e-8_dp
 
         call initialize_tetra_nedelec_first_kind(6, high_nedelec, high_status)
         call initialize_tetra_rt(5, high_rt, high_status)
@@ -118,11 +119,20 @@ contains
             matmul(high_rt_values, high_rt_dofs) - expected_curl)) < &
             3.0e-9_dp, &
             "Order-five Hdiv interpolation reproduces the Hcurl image")
-        if (abs(dot_product(high_divergences, high_rt_dofs)) >= 4.0e-9_dp) &
+        ! The degree-5 RT coefficients come from a runtime LU solve of the
+        ! moment matrix (n = 189, equilibrated kappa_1 ~ 1.3e9). The
+        ! componentwise backward-error bound for that solve (Higham, Thm 9.4),
+        ! gamma_3n |d|^T Dr^-1 P^T |L||U| Dc^-1 |x|, is 2.7e-9 to 3.2e-9 at this
+        ! point, and it does not yet cover the quadrature of the moment matrix,
+        ! the candidate evaluation and the threaded LAPACK blocking. Three times
+        ! that bound is the roundoff budget; a defect in the commuting property
+        ! shows up at the scale sum |d_i||f_i| ~ 1e4.
+        if (abs(dot_product(high_divergences, high_rt_dofs)) >= &
+            div_curl_tolerance) &
             write (*, '(a,es12.4)') "High-order div-curl error ", &
             abs(dot_product(high_divergences, high_rt_dofs))
         call record_condition(abs(dot_product( &
-            high_divergences, high_rt_dofs)) < 4.0e-9_dp, &
+            high_divergences, high_rt_dofs)) < div_curl_tolerance, &
             "Order-six discrete divergence annihilates a polynomial curl")
     end subroutine check_order_six_polynomial_chain
 

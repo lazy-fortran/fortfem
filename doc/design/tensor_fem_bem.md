@@ -131,7 +131,7 @@ numbering and `fb%trace%trace_dof` gives R.
   h-refinement, the trace topology (genus one, 4 n nphi panels) and the PCG
   iteration bound. Given arguments `n nphi p [pf nq nl sigma]`, it prints one
   scan row.
-- `test_lab_fem_bem_current_sheet`: a vacuum-field free-boundary model. A
+- `test_lab_fem_bem_current_sheet_slow`: a vacuum-field free-boundary model. A
   prescribed divergence-free surface current `K = grad(Phi) x n` on Gamma
   produces `B = -grad(psi)` with psi the double-layer potential of Phi, i.e.
   `g_D = -Phi`, `g_N = 0`. The exterior B from the representation formula and

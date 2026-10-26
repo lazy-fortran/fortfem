@@ -1,4 +1,4 @@
-program test_hcurl_equilibrated_2d
+program test_hcurl_equilibrated_2d_slow
     !! A posteriori energy bound for curl(nu curl u) + kappa u = f with u x n = 0
     !! on the order-one Nedelec space. (1) An exact field inside the space
     !! (constant curl, nu and kappa) gives a bound at rounding level. (2) For
@@ -276,4 +276,4 @@ contains
         wk = wts(k)
     end function gauss_w
 
-end program test_hcurl_equilibrated_2d
+end program test_hcurl_equilibrated_2d_slow

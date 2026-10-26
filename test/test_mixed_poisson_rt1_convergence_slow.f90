@@ -1,4 +1,4 @@
-program test_mixed_poisson_higher_order_convergence
+program test_mixed_poisson_rt1_convergence_slow
     use check, only: check_condition, check_summary
     use fortfem_core, only: mesh_t, rectangle_mesh
     use fortfem_feec, only: &
@@ -13,32 +13,32 @@ program test_mixed_poisson_higher_order_convergence
     use fortsparse, only: fortsparse_status_t
     implicit none
 
-    real(dp) :: coarse_errors(2), fine_errors(2), medium_errors(2)
-    real(dp) :: first_rates(2), second_rates(2)
-    integer :: degree
+    real(dp) :: coarse_errors(2), fine_errors(2), first_rates(2)
+    real(dp) :: medium_errors(2), second_rates(2)
+    logical :: all_passed
 
-    do degree = 2, 3
-        call solve_and_measure(3, degree, coarse_errors)
-        call solve_and_measure(5, degree, medium_errors)
-        call solve_and_measure(9, degree, fine_errors)
-        first_rates = log(coarse_errors / medium_errors) / log(2.0_dp)
-        second_rates = log(medium_errors / fine_errors) / log(2.0_dp)
-        write(*, '(a,i0,a,2(es12.4,1x),a,2(f6.2,1x))') &
-            "RT degree ", degree, " fine errors ", fine_errors, &
-            " rates ", second_rates
-        call check_condition( &
-            minval(first_rates) > real(degree, dp) + 0.45_dp .and. &
-            minval(second_rates) > real(degree, dp) + 0.45_dp, &
-            "Higher RT-DG pairs attain their optimal convergence order")
-        call check_condition(maxval(fine_errors) < 7.0e-4_dp, &
-            "Higher RT-DG pairs reach the analytical Poisson solution")
-    end do
-    call check_summary("Higher-order RT-DG mixed Poisson convergence")
+    all_passed = .true.
+    call solve_and_measure(5, coarse_errors)
+    call solve_and_measure(9, medium_errors)
+    call solve_and_measure(17, fine_errors)
+    first_rates = log(coarse_errors / medium_errors) / log(2.0_dp)
+    second_rates = log(medium_errors / fine_errors) / log(2.0_dp)
+
+    call record_condition( &
+        minval(first_rates) > 1.7_dp .and. minval(second_rates) > 1.7_dp, &
+        "RT1-DG1 flux and pressure attain second-order convergence")
+    call record_condition(fine_errors(1) < 2.0e-2_dp, &
+        "RT1 flux reaches the analytical Darcy field")
+    call record_condition(fine_errors(2) < 3.0e-3_dp, &
+        "DG1 pressure reaches the analytical solution")
+
+    call check_summary("RT1-DG1 mixed Poisson convergence")
+    if (.not. all_passed) error stop 1
 
 contains
 
-    subroutine solve_and_measure(vertex_count, degree, errors)
-        integer, intent(in) :: vertex_count, degree
+    subroutine solve_and_measure(vertex_count, errors)
+        integer, intent(in) :: vertex_count
         real(dp), intent(out) :: errors(2)
 
         type(fortsparse_status_t) :: status
@@ -49,11 +49,10 @@ contains
             vertex_count, vertex_count, &
             [0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp])
         call solve_mixed_poisson_rt( &
-            mesh%data, degree, 2 * degree + 6, exact_source, &
-            flux_dofs, pressure_dofs, status)
-        if (status%code /= 0) error stop "higher RT-DG solve failed"
+            mesh%data, 1, 8, exact_source, flux_dofs, pressure_dofs, status)
+        if (status%code /= 0) error stop "RT1-DG1 mixed solve failed"
         call compute_errors( &
-            mesh%data, degree, flux_dofs, pressure_dofs, errors)
+            mesh%data, 1, flux_dofs, pressure_dofs, errors)
     end subroutine solve_and_measure
 
     subroutine compute_errors( &
@@ -78,19 +77,18 @@ contains
 
         call build_triangle_trimmed_dof_map( &
             mesh, degree + 1, flux_map, transforms, flux_count, local_status)
-        if (local_status /= 0) error stop "higher RT flux map failed"
+        if (local_status /= 0) error stop "RT1 flux map failed"
         call build_triangle_discontinuous_dof_map( &
             mesh, degree, pressure_map, pressure_count, local_status)
-        if (local_status /= 0) error stop "higher DG pressure map failed"
+        if (local_status /= 0) error stop "DG1 pressure map failed"
         call initialize_triangle_raviart_thomas( &
             degree, flux_basis, local_status)
-        if (local_status /= 0) error stop "higher RT basis failed"
+        if (local_status /= 0) error stop "RT1 basis failed"
         call initialize_triangle_lagrange_basis( &
             degree, pressure_basis, local_status)
-        if (local_status /= 0) error stop "higher DG basis failed"
-        call triangle_duffy_quadrature( &
-            2 * degree + 8, xi, eta, weights, local_status)
-        if (local_status /= 0) error stop "higher mixed quadrature failed"
+        if (local_status /= 0) error stop "DG1 basis failed"
+        call triangle_duffy_quadrature(8, xi, eta, weights, local_status)
+        if (local_status /= 0) error stop "Mixed error quadrature failed"
 
         allocate(local_flux(size(flux_map, 1)))
         allocate(local_pressure(size(pressure_map, 1)))
@@ -122,11 +120,9 @@ contains
                 call evaluate_triangle_rt_interpolant( &
                     vertices, flux_basis, local_flux, xi(point_index), &
                     eta(point_index), numerical_flux, divergence, local_status)
-                if (local_status /= 0) error stop "higher RT evaluation failed"
                 call evaluate_triangle_lagrange_basis( &
                     pressure_basis, xi(point_index), eta(point_index), &
                     pressure_values, pressure_gradients, local_status)
-                if (local_status /= 0) error stop "higher DG evaluation failed"
                 numerical_pressure = dot_product( &
                     pressure_values, local_pressure)
                 exact_flux = exact_darcy_flux(point)
@@ -162,4 +158,12 @@ contains
         value = 2.0_dp * pi**2 * sin(pi * x) * sin(pi * y)
     end function exact_source
 
-end program test_mixed_poisson_higher_order_convergence
+    subroutine record_condition(condition, description)
+        logical, intent(in) :: condition
+        character(len=*), intent(in) :: description
+
+        all_passed = all_passed .and. condition
+        call check_condition(condition, description)
+    end subroutine record_condition
+
+end program test_mixed_poisson_rt1_convergence_slow

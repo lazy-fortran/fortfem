@@ -1,4 +1,4 @@
-program test_equilibrated_mixed_2d
+program test_equilibrated_mixed_2d_slow
     !! Equilibrated-residual bound of the RT_k-DG_k mixed Poisson solver
     !! (actual solve_mixed_poisson_rt solutions on the unit square). Oracles:
     !! (1) u = x(1-x)y(1-y) with k = 3: sigma_h = -grad u exactly, the local
@@ -28,13 +28,17 @@ program test_equilibrated_mixed_2d
     real(dp), parameter :: efficiency_cap(0:2, 2) = reshape( &
         [1.8_dp, 1.8_dp, 1.8_dp, 3.6_dp, 3.6_dp, 3.6_dp], [3, 2])
     type(nonconforming_estimate_t) :: est
-    real(dp) :: flux_error, potential_error, bound(3), index, rate
+    real(dp) :: flux_error, potential_error, bound(3, 2), index, rate
     integer :: k, level, vertex_count, method
+    type(mesh_t) :: solved_mesh
+    real(dp), allocatable :: flux_dofs(:), pressure_dofs(:)
     logical :: polynomial
 
     polynomial = .true.
+    call solve_problem(5, 3, solved_mesh, flux_dofs, pressure_dofs)
     do method = MIXED_POTENTIAL_PATCH, MIXED_POTENTIAL_OSWALD
-        call solve_and_estimate(5, 3, method, est, flux_error, potential_error)
+        call estimate_solution(solved_mesh%data, 3, method, flux_dofs, &
+            pressure_dofs, est, flux_error, potential_error)
         call check_condition(est%bound < 1.0e-9_dp, &
             "exact polynomial solution: flux bound vanishes")
         call check_condition(est%potential_bound < 1.0e-9_dp, &
@@ -45,45 +49,45 @@ program test_equilibrated_mixed_2d
     end do
 
     polynomial = .false.
-    do method = MIXED_POTENTIAL_PATCH, MIXED_POTENTIAL_OSWALD
     do k = 0, 2
         do level = 1, 3
             vertex_count = 1 + 2**(level + 1)
-            call solve_and_estimate(vertex_count, k, method, est, flux_error, &
-                potential_error)
-            bound(level) = est%bound
-            index = est%bound/flux_error
-            call check_condition(est%bound >= flux_error, &
-                "flux bound is above the exact flux error")
-            call check_condition(est%potential_bound >= potential_error, &
-                "potential bound is above the exact potential error")
-            call check_condition(index <= efficiency_cap(k, method), &
-                "flux efficiency index below the cap")
-            print '(a, i1, a, i2, a, i3, 5(a, es10.2))', "method ", method, &
-                " k", k, " n", vertex_count - 1, &
-                " flux err", flux_error, " bound", est%bound, " index", index, &
-                " X", est%flux_defect, " osc+div", &
-                est%oscillation + est%divergence_defect
+            ! Both reconstructions use the same mixed solution. Factor once.
+            call solve_problem(vertex_count, k, solved_mesh, flux_dofs, pressure_dofs)
+            do method = MIXED_POTENTIAL_PATCH, MIXED_POTENTIAL_OSWALD
+                call estimate_solution(solved_mesh%data, k, method, flux_dofs, &
+                    pressure_dofs, est, flux_error, potential_error)
+                bound(level, method) = est%bound
+                index = est%bound/flux_error
+                call check_condition(est%bound >= flux_error, &
+                    "flux bound is above the exact flux error")
+                call check_condition(est%potential_bound >= potential_error, &
+                    "potential bound is above the exact potential error")
+                call check_condition(index <= efficiency_cap(k, method), &
+                    "flux efficiency index below the cap")
+                print '(a, i1, a, i2, a, i3, 5(a, es10.2))', "method ", method, &
+                    " k", k, " n", vertex_count - 1, &
+                    " flux err", flux_error, " bound", est%bound, " index", index, &
+                    " X", est%flux_defect, " osc+div", &
+                    est%oscillation + est%divergence_defect
+            end do
         end do
-        rate = log(bound(2)/bound(3))/log(2.0_dp)
-        call check_condition(rate > real(k + 1, dp) - 0.2_dp, &
-            "flux bound converges at the optimal rate k + 1")
-        print '(a, i2, a, f6.2)', "k", k, " bound rate", rate
-    end do
+        do method = MIXED_POTENTIAL_PATCH, MIXED_POTENTIAL_OSWALD
+            rate = log(bound(2, method)/bound(3, method))/log(2.0_dp)
+            call check_condition(rate > real(k + 1, dp) - 0.2_dp, &
+                "flux bound converges at the optimal rate k + 1")
+            print '(a, i2, a, f6.2)', "k", k, " bound rate", rate
+        end do
     end do
     call check_summary("equilibrated_mixed_2d")
 
 contains
 
-    subroutine solve_and_estimate(vertex_count, degree, reconstruction, estimate, &
-            flux_err, potential_err)
-        integer, intent(in) :: vertex_count, degree, reconstruction
-        type(nonconforming_estimate_t), intent(out) :: estimate
-        real(dp), intent(out) :: flux_err, potential_err
+    subroutine solve_problem(vertex_count, degree, mesh, flux_dofs, pressure_dofs)
+        integer, intent(in) :: vertex_count, degree
+        type(mesh_t), intent(out) :: mesh
+        real(dp), allocatable, intent(out) :: flux_dofs(:), pressure_dofs(:)
         type(fortsparse_status_t) :: status
-        type(mesh_t) :: mesh
-        real(dp), allocatable :: flux_dofs(:), pressure_dofs(:)
-        integer :: info
 
         mesh = rectangle_mesh(vertex_count, vertex_count, &
             [0.0_dp, 1.0_dp, 0.0_dp, 1.0_dp])
@@ -95,12 +99,23 @@ contains
                 smooth_source, flux_dofs, pressure_dofs, status)
         end if
         if (status%code /= 0) error stop "mixed solve failed"
+    end subroutine solve_problem
+
+    subroutine estimate_solution(mesh, degree, reconstruction, flux_dofs, &
+            pressure_dofs, estimate, flux_err, potential_err)
+        type(mesh_2d_t), intent(inout) :: mesh
+        integer, intent(in) :: degree, reconstruction
+        real(dp), intent(in) :: flux_dofs(:), pressure_dofs(:)
+        type(nonconforming_estimate_t), intent(out) :: estimate
+        real(dp), intent(out) :: flux_err, potential_err
+        integer :: info
+
         if (polynomial) then
-            call mixed_poisson_flux_bound(mesh%data, degree, 2*degree + 8, &
+            call mixed_poisson_flux_bound(mesh, degree, 2*degree + 8, &
                 flux_dofs, pressure_dofs, polynomial_source, friedrichs, &
                 estimate, info, reconstruction)
         else
-            call mixed_poisson_flux_bound(mesh%data, degree, 2*degree + 8, &
+            call mixed_poisson_flux_bound(mesh, degree, 2*degree + 8, &
                 flux_dofs, pressure_dofs, smooth_source, friedrichs, &
                 estimate, info, reconstruction)
         end if
@@ -109,9 +124,9 @@ contains
             print '(a, i0)', "mixed estimate status ", info
             error stop "mixed estimate failed"
         end if
-        call exact_errors(mesh%data, degree, flux_dofs, estimate%potential, &
+        call exact_errors(mesh, degree, flux_dofs, estimate%potential, &
             flux_err, potential_err)
-    end subroutine solve_and_estimate
+    end subroutine estimate_solution
 
     subroutine exact_errors(mesh, degree, flux_dofs, potential, flux_err, &
             potential_err)
@@ -194,4 +209,4 @@ contains
         value = 2.0_dp*pi*pi*sin(pi*x)*sin(pi*y)
     end function smooth_source
 
-end program test_equilibrated_mixed_2d
+end program test_equilibrated_mixed_2d_slow

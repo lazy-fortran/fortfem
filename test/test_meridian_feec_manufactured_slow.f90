@@ -1,4 +1,4 @@
-program test_meridian_feec_manufactured
+program test_meridian_feec_manufactured_slow
     !! Manufactured solutions of the per-n Dirichlet problems on a curved
     !! annulus (geometry order = element order):
     !!   V0  -div_n(R grad_n f)/R + f = F        (resistive diffusion)
@@ -127,4 +127,4 @@ contains
         end do
     end subroutine run_space
 
-end program test_meridian_feec_manufactured
+end program test_meridian_feec_manufactured_slow
