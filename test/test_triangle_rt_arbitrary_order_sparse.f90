@@ -5,6 +5,9 @@ program test_triangle_rt_arbitrary_order_sparse
         assemble_triangle_rt_div_mass_csc, build_triangle_trimmed_dof_map, &
         triangle_duffy_quadrature
     use fortfem_kinds, only: dp
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_interior_tests, &
+        initialize_triangle_nedelec_first_kind, triangle_nedelec_first_kind_t
     use fortfem_mesh_2d, only: mesh_2d_t
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
@@ -101,7 +104,9 @@ contains
         real(dp) :: edge_point(2), jacobian(2, 2), normal(2)
         real(dp) :: physical_x, reference_field(2)
         integer :: component, edge, exponent, moment, node, status
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: test
 
         jacobian(:, 1) = vertices(:, 2) - vertices(:, 1)
         jacobian(:, 2) = vertices(:, 3) - vertices(:, 1)
@@ -128,20 +133,23 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * degree + 1, xi, eta, triangle_weights, status)
-        do component = 1, 2
-            do total_degree = 0, degree - 1
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment = moment + 1
-                    do node = 1, size(xi)
-                        call reference_polynomial_field( &
-                            vertices, jacobian, xi(node), eta(node), &
-                            degree, physical_x, reference_field)
-                        dofs(moment) = dofs(moment) + &
-                            triangle_weights(node) * &
-                            reference_field(component) * &
-                            xi(node)**x_degree * eta(node)**y_degree
-                    end do
+        ! Interior moments against the RT test polynomials q_m (those of the
+        ! rotated Nedelec basis of order degree + 1).
+        call initialize_triangle_nedelec_first_kind(degree + 1, test_basis, &
+            status)
+        allocate(tests(degree*(degree + 1)/2))
+        do node = 1, size(xi)
+            call reference_polynomial_field( &
+                vertices, jacobian, xi(node), eta(node), &
+                degree, physical_x, reference_field)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, xi(node), &
+                eta(node), tests, status)
+            do component = 1, 2
+                do test = 1, size(tests)
+                    dofs(moment + (component - 1)*size(tests) + test) = &
+                        dofs(moment + (component - 1)*size(tests) + test) + &
+                        triangle_weights(node) * &
+                        reference_field(component) * tests(test)
                 end do
             end do
         end do
