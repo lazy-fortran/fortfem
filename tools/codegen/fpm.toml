@@ -372,3 +372,8 @@ main = "gen_lab_grad_shafranov_source_products.f90"
 name = "gen_lab_problems"
 source-dir = "app"
 main = "gen_lab_problems.f90"
+
+[[executable]]
+name = "gen_triangle_feec_tables"
+source-dir = "app"
+main = "gen_triangle_feec_tables.f90"

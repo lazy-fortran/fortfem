@@ -73,7 +73,8 @@ module fortfem_meridian_feec_n
     use fortfem_generated_physical_pairing, only: generated_physical_pairing
     use fortfem_meridian_curved_mesh, only: meridian_mesh_t
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
-    use fortfem_triangle_feec_operators, only: build_triangle_discrete_gradient
+    use fortfem_generated_triangle_feec_tables, only: &
+        triangle_feec_operator_tables, triangle_feec_table_max_order
     use fortfem_triangle_lagrange_arbitrary_order, only: &
         evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
         triangle_lagrange_basis_t, triangle_lagrange_nodes
@@ -214,7 +215,7 @@ contains
         integer :: nt, qdeg, i
 
         status = 1
-        if (k < 1 .or. k > 6) return
+        if (k < 1 .or. k > triangle_feec_table_max_order) return
         if (.not. allocated(mm%nodes)) return
         if (present(cylinder_r0)) then
             if (.not. (cylinder_r0 > 0.0_dp)) return
@@ -761,13 +762,9 @@ contains
         type(meridian_feec_t), intent(inout) :: fs
         integer, intent(out) :: status
 
-        type(triangle_nedelec_first_kind_t) :: nb
-        type(triangle_rt_basis_t) :: rb
-        type(triangle_lagrange_basis_t) :: db
         type(csc_t) :: gpol, pmat, pg
         type(fortsparse_status_t) :: fst
         real(dp), allocatable :: gref(:, :), cref(:, :), dref(:, :)
-        real(dp), allocatable :: nodes(:, :), cur(:), vals(:, :), dv(:)
         integer, allocatable :: owner(:), pi_(:), rows(:), cols(:)
         real(dp), allocatable :: sig(:), tv(:)
         integer :: k, nn, nt, n0, nd, nln, nl0, nld, t, j, m, l, idx, half
@@ -783,25 +780,10 @@ contains
         nl0 = fs%nl0
         nld = fs%nld
 
-        ! reference matrices
-        call build_triangle_discrete_gradient(k, gref, status)
+        ! Exact reference matrices (FortSym, rounded once): gradient,
+        ! Nedelec curls and RT divergences at the P_{k-1} nodes.
+        call triangle_feec_operator_tables(k, gref, cref, dref, status)
         if (status /= 0) return
-        call initialize_triangle_nedelec_first_kind(k, nb, status)
-        call initialize_triangle_raviart_thomas(k - 1, rb, status)
-        call initialize_triangle_lagrange_basis(k - 1, db, status)
-        call triangle_lagrange_nodes(db, nodes)
-        allocate (cref(nld, nln), dref(nld, nln), vals(2, nln), cur(nln))
-        allocate (dv(nln))
-        do l = 1, nld
-            call evaluate_triangle_nedelec_first_kind(nb, nodes(1, l), &
-                nodes(2, l), vals, cur, status)
-            if (status /= 0) return
-            cref(l, :) = cur
-            call evaluate_triangle_raviart_thomas(rb, nodes(1, l), &
-                nodes(2, l), vals, dv, status)
-            if (status /= 0) return
-            dref(l, :) = dv
-        end do
 
         ! signed permutation RT local <- Nedelec local (rot90 N = -sig RT)
         allocate (pi_(nln), sig(nln))
