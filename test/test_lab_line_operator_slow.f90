@@ -1,4 +1,4 @@
-program test_lab_line_operator
+program test_lab_line_operator_slow
     ! Spline and Fourier lines through the shared matrix-free tensor operator:
     ! agreement with the existing assembled B-spline H1 operators, with the
     ! unfactored CSR oracle for mixed products, exactness on spline x trig

@@ -64,7 +64,7 @@ dense mode-pair matrix. Pointwise tensor residuals, toroidal gradients and
 source coupling are emitted by `gen_meridian_fourier_equilibration_products`
 using `tools/codegen/fortsym.lock`. The estimator is not differentiated.
 
-`test_meridian_fourier_equilibration` checks P4 exact recovery with a nonzero
+`test_meridian_fourier_equilibration_slow` checks P4 exact recovery with a nonzero
 strong source, cosine and sine components, and even/odd phi grids. A P2
 Galerkin solve for a quartic meridional bubble and phi-dependent scalar K
 checks containment, efficiency <= 1.6 and energy convergence >= 1.8.

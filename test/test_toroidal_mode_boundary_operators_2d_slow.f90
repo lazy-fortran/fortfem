@@ -1,4 +1,4 @@
-program test_toroidal_mode_boundary_operators_2d
+program test_toroidal_mode_boundary_operators_2d_slow
     !! Independent oracles for the toroidal-mode boundary operators on curved
     !! P2 panels (n = 0, 1, 3, 6):
     !!  - structure: K' = K^T, symmetry and definiteness of V, W and S_n,
@@ -543,4 +543,4 @@ contains
             "dual norm of S u equals the energy <S u, u>")
     end subroutine test_jn_and_ntd
 
-end program test_toroidal_mode_boundary_operators_2d
+end program test_toroidal_mode_boundary_operators_2d_slow
