@@ -4,13 +4,18 @@ program gen_triangle_feec_tables
     !!
     !! The degrees of freedom are those of fortfem_triangle_nedelec_arbitrary_order:
     !! edge moments against shifted Legendre polynomials and interior moments
-    !! against monomials. FortSym solves the moment system in exact rational
+    !! against L2-orthogonal polynomials of P_{k-2}, each scaled by a power of
+    !! two to about unit norm (monomial interior moments make the dual basis
+    !! grow like 100^k). FortSym solves the moment system in exact rational
     !! arithmetic. The basis is emitted as Bernstein coefficients (all Bernstein
     !! polynomials are nonnegative, so evaluation is well conditioned) and every
     !! discrete operator table is emitted from exact values. Each emitted number
     !! is rounded to binary64 exactly once. Before emission the generator proves
     !! exactly: duality with the moments, the Bernstein representation, the
     !! gradient table and curl(grad) = 0, div(rot grad) = 0 at the table level.
+    !! The interior test polynomials are emitted in Bernstein form too, so
+    !! interpolation evaluates exactly the functionals that define the basis.
+    use, intrinsic :: iso_fortran_env, only: real64
     use fortsym_arena, only: arena_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
@@ -24,11 +29,13 @@ program gen_triangle_feec_tables
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     use fortfem_codegen_rational, only: q_t, q, q_frac, q_text, q_zero, &
-        q_literal, q_factorial, q_binomial, operator(+), operator(-), &
+        q_literal, q_factorial, q_binomial, q_real, operator(+), operator(-), &
         operator(*), operator(/), operator(==)
     implicit none
 
     integer, parameter :: max_order = 8
+    logical, parameter :: orthogonal_interior = .true.
+    type(q_t), allocatable :: interior_tests(:, :, :)   ! (0:k-2, 0:k-2, m)
 
     type :: vpoly_t
         !! Vector polynomial sum c(a, b) x^a y^b, components 1 and 2.
@@ -48,6 +55,7 @@ program gen_triangle_feec_tables
     call write_table_header()
     call write_bernstein_section()
     call write_operator_section()
+    call write_interior_test_section()
     write(table_unit, "(a)") ""
     write(table_unit, "(a)") "end module fortfem_generated_triangle_feec_tables"
     close(table_unit)
@@ -81,6 +89,7 @@ contains
         nl0 = nb
         nld = k*(k + 1)/2
 
+        call set_interior_tests(k)
         call nedelec_candidates(k, candidates)
         allocate (moments(ndof, ndof))
         do j = 1, ndof
@@ -207,6 +216,7 @@ contains
         end do
         solution = solve_exact_linear_system(engine, a, identity)
         if (.not. solution%ok) then
+            write (*, "(a)") "exact solve: "//chars(solution%message)
             error stop "exact Nedelec moment system failed"
         end if
         do j = 1, n
@@ -291,7 +301,7 @@ contains
 
         integer, parameter :: tangent(2, 3) = reshape([1, 0, -1, 1, 0, -1], &
             [2, 3])
-        integer :: edge, j, component, total, a, b, row, n, alpha, beta
+        integer :: edge, j, component, a, b, row, n, alpha, beta, t
 
         n = ubound(p%c, 2)
         row = 0
@@ -313,22 +323,123 @@ contains
             end do
         end do
         do component = 1, 2
-            do total = 0, k - 2
-                do a = 0, total
-                    b = total - a
-                    row = row + 1
-                    m(row) = q(0)
-                    do beta = 0, n
-                        do alpha = 0, n - beta
-                            if (q_zero(p%c(component, alpha, beta))) cycle
-                            m(row) = m(row) + p%c(component, alpha, beta)* &
-                                triangle_integral(alpha + a, beta + b)
+            do t = 1, size(interior_tests, 3)
+                row = row + 1
+                m(row) = q(0)
+                do beta = 0, n
+                    do alpha = 0, n - beta
+                        if (q_zero(p%c(component, alpha, beta))) cycle
+                        do b = 0, k - 2
+                            do a = 0, k - 2 - b
+                                if (q_zero(interior_tests(a, b, t))) cycle
+                                m(row) = m(row) + p%c(component, alpha, beta)* &
+                                    (interior_tests(a, b, t)* &
+                                    triangle_integral(alpha + a, beta + b))
+                            end do
                         end do
                     end do
                 end do
             end do
         end do
     end function nedelec_moments
+
+    subroutine set_interior_tests(k)
+        !! Interior test polynomials of P_{k-2}: the L2(T)-orthogonal
+        !! polynomials obtained by exact Gram-Schmidt of the graded monomials
+        !! x^a y^(t-a), each scaled by the power of two closest to 1/norm.
+        integer, intent(in) :: k
+
+        type(q_t), allocatable :: g(:, :, :)
+        type(q_t) :: inner, norm2
+        integer :: t, a, count, i, j, scale_bits
+        real(real64) :: inverse_norm
+
+        if (allocated(interior_tests)) deallocate (interior_tests)
+        count = max(0, (k - 1)*k/2)
+        allocate (interior_tests(0:max(k - 2, 0), 0:max(k - 2, 0), count))
+        interior_tests = q(0)
+        if (count == 0) return
+        allocate (g(0:k - 2, 0:k - 2, count))
+        g = q(0)
+        i = 0
+        do t = 0, k - 2
+            do a = 0, t
+                i = i + 1
+                g(a, t - a, i) = q(1)
+            end do
+        end do
+        do i = 1, count
+            if (.not. orthogonal_interior) cycle
+            do j = 1, i - 1
+                inner = poly_inner(g(:, :, i), g(:, :, j), k - 2)
+                norm2 = poly_inner(g(:, :, j), g(:, :, j), k - 2)
+                g(:, :, i) = poly_axpy(q(0) - inner/norm2, g(:, :, j), &
+                    g(:, :, i), k - 2)
+            end do
+        end do
+        do i = 1, count
+            if (orthogonal_interior) then
+                inverse_norm = 1.0_real64/sqrt(q_real(poly_inner(g(:, :, i), &
+                    g(:, :, i), k - 2)))
+                scale_bits = nint(log(inverse_norm)/log(2.0_real64))
+                g(:, :, i) = poly_scale(power(q(2), scale_bits), g(:, :, i), &
+                    k - 2)
+            end if
+            interior_tests(:, :, i) = g(:, :, i)
+        end do
+    end subroutine set_interior_tests
+
+    function poly_inner(f, g, n) result(v)
+        type(q_t), intent(in) :: f(0:, 0:), g(0:, 0:)
+        integer, intent(in) :: n
+        type(q_t) :: v
+
+        integer :: a, b, c, d
+
+        v = q(0)
+        do b = 0, n
+            do a = 0, n - b
+                if (q_zero(f(a, b))) cycle
+                do d = 0, n
+                    do c = 0, n - d
+                        if (q_zero(g(c, d))) cycle
+                        v = v + f(a, b)*(g(c, d)*triangle_integral(a + c, b + d))
+                    end do
+                end do
+            end do
+        end do
+    end function poly_inner
+
+    function poly_axpy(alpha, x, y, n) result(r)
+        type(q_t), intent(in) :: alpha, x(0:, 0:), y(0:, 0:)
+        integer, intent(in) :: n
+        type(q_t) :: r(0:n, 0:n)
+
+        integer :: a, b
+
+        r = y(0:n, 0:n)
+        do b = 0, n
+            do a = 0, n - b
+                if (q_zero(x(a, b))) cycle
+                r(a, b) = r(a, b) + alpha*x(a, b)
+            end do
+        end do
+    end function poly_axpy
+
+    function poly_scale(alpha, x, n) result(r)
+        type(q_t), intent(in) :: alpha, x(0:, 0:)
+        integer, intent(in) :: n
+        type(q_t) :: r(0:n, 0:n)
+
+        integer :: a, b
+
+        r = q(0)
+        do b = 0, n
+            do a = 0, n - b
+                if (.not. q_zero(x(a, b))) r(a, b) = alpha*x(a, b)
+            end do
+        end do
+    end function poly_scale
 
     function edge_integral(edge, a, b, j) result(v)
         !! int_0^1 L_j(s) x(s)^a y(s)^b ds with the edge parametrisations
@@ -591,9 +702,10 @@ contains
         integer :: i
 
         v = q(1)
-        do i = 1, e
+        do i = 1, abs(e)
             v = v*x
         end do
+        if (e < 0) v = q(1)/v
     end function power
 
     subroutine check_bernstein(p, c, k)
@@ -674,6 +786,7 @@ contains
         call line("    public :: triangle_feec_table_max_order")
         call line("    public :: triangle_nedelec_bernstein_table")
         call line("    public :: triangle_feec_operator_tables")
+        call line("    public :: triangle_nedelec_interior_test_table")
         call line("")
         call line("    integer, parameter :: triangle_feec_table_max_order = "// &
             itoa(max_order))
@@ -793,6 +906,42 @@ contains
         call line("        status = 0")
         call line("    end subroutine triangle_feec_operator_tables")
     end subroutine write_operator_section
+
+    subroutine write_interior_test_section()
+        type(q_t), allocatable :: bern(:)
+        integer :: k, t, nb
+
+        call line("")
+        call line("    subroutine triangle_nedelec_interior_test_table(order, "// &
+            "coefficients, status)")
+        call line("        !! coefficients(beta, m): interior test polynomial m of "// &
+            "the order-k")
+        call line("        !! Nedelec dofs in degree-(k-2) Bernstein form, "// &
+            "m in graded order.")
+        call line("        integer, intent(in) :: order")
+        call line("        real(dp), allocatable, intent(out) :: coefficients(:, :)")
+        call line("        integer, intent(out) :: status")
+        call line("")
+        call line("        status = 1")
+        call line("        select case (order)")
+        do k = 1, max_order
+            call set_interior_tests(k)
+            nb = max(k - 1, 0)*k/2
+            call line("        case ("//itoa(k)//")")
+            call line("            allocate (coefficients("//itoa(nb)//", "// &
+                itoa(size(interior_tests, 3))//"))")
+            do t = 1, size(interior_tests, 3)
+                bern = to_bernstein(interior_tests(:, :, t), k - 2, k - 2)
+                call array_assignment("            coefficients(:, "// &
+                    itoa(t)//")", bern)
+            end do
+        end do
+        call line("        case default")
+        call line("            return")
+        call line("        end select")
+        call line("        status = 0")
+        call line("    end subroutine triangle_nedelec_interior_test_table")
+    end subroutine write_interior_test_section
 
     subroutine array_assignment(lhs, values)
         character(*), intent(in) :: lhs

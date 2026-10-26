@@ -1,14 +1,17 @@
 module fortfem_triangle_nedelec_arbitrary_order
     !! First-kind Nedelec basis of order k on the reference triangle. The basis
     !! is dual to edge moments against shifted Legendre polynomials and to
-    !! interior monomial moments. FortSym solves these moment systems in exact
+    !! interior moments against L2-orthogonal polynomials q_m of P_{k-2}
+    !! (evaluate_triangle_nedelec_interior_tests). FortSym solves these moment
+    !! systems in exact
     !! rational arithmetic (tools/codegen/app/gen_triangle_feec_tables.f90),
     !! and the basis is stored in degree-k Bernstein form with every
     !! coefficient rounded once. Bernstein polynomials are nonnegative, so the
     !! evaluation is well conditioned for all supported orders.
     use fortfem_kinds, only: dp
     use fortfem_generated_triangle_feec_tables, only: &
-        triangle_feec_table_max_order, triangle_nedelec_bernstein_table
+        triangle_feec_table_max_order, triangle_nedelec_bernstein_table, &
+        triangle_nedelec_interior_test_table
     use fortfem_triangle_bernstein_jets, only: triangle_bernstein_jet
     implicit none
 
@@ -18,6 +21,7 @@ module fortfem_triangle_nedelec_arbitrary_order
     public :: evaluate_triangle_nedelec_first_kind
     public :: evaluate_triangle_nedelec_first_kind_jvp
     public :: evaluate_triangle_nedelec_first_kind_vjp
+    public :: evaluate_triangle_nedelec_interior_tests
     public :: initialize_triangle_nedelec_first_kind
     public :: triangle_nedelec_dof_count
     public :: triangle_nedelec_first_kind_t
@@ -32,6 +36,7 @@ module fortfem_triangle_nedelec_arbitrary_order
         integer :: dof_count = 0
         integer :: bernstein_count = 0
         real(dp), allocatable :: coefficients(:, :, :) !! (2, beta, dof)
+        real(dp), allocatable :: interior_tests(:, :) !! (beta, m), degree k-2
     end type triangle_nedelec_first_kind_t
 
     interface assignment(=)
@@ -49,6 +54,9 @@ contains
         status = 1
         if (order < 1 .or. order > triangle_nedelec_max_order) return
         call triangle_nedelec_bernstein_table(order, basis%coefficients, &
+            status)
+        if (status /= 0) return
+        call triangle_nedelec_interior_test_table(order, basis%interior_tests, &
             status)
         if (status /= 0) return
         basis%order = order
@@ -85,6 +93,33 @@ contains
         end do
         status = 0
     end subroutine evaluate_triangle_nedelec_first_kind
+
+    subroutine evaluate_triangle_nedelec_interior_tests(basis, xi, eta, &
+            values, status)
+        !! Values of the interior test polynomials q_m; the interior dofs are
+        !! int_T q_m v_1 and int_T q_m v_2 (component 1 first), m in graded order.
+        type(triangle_nedelec_first_kind_t), intent(in) :: basis
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(out) :: values(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: b(:), db(:, :), d2b(:, :)
+        integer :: nb
+
+        values = 0.0_dp
+        status = 1
+        if (basis%order < 1) return
+        if (size(values) /= size(basis%interior_tests, 2)) return
+        if (size(values) == 0) then
+            status = 0
+            return
+        end if
+        nb = size(basis%interior_tests, 1)
+        allocate (b(nb), db(2, nb), d2b(3, nb))
+        call triangle_bernstein_jet(basis%order - 2, xi, eta, b, db, d2b)
+        values = matmul(b, basis%interior_tests)
+        status = 0
+    end subroutine evaluate_triangle_nedelec_interior_tests
 
     subroutine evaluate_triangle_nedelec_first_kind_jvp( &
             basis, xi, eta, xi_dot, eta_dot, values_dot, curls_dot, status)
@@ -190,6 +225,8 @@ contains
         left%dof_count = right%dof_count
         left%bernstein_count = right%bernstein_count
         if (allocated(right%coefficients)) left%coefficients = right%coefficients
+        if (allocated(right%interior_tests)) &
+            left%interior_tests = right%interior_tests
     end subroutine assign_triangle_nedelec_first_kind
 
 end module fortfem_triangle_nedelec_arbitrary_order
