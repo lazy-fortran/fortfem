@@ -24,6 +24,10 @@ module fortfem_meridian_hcurl_auxiliary
     use fortfem_kinds, only: dp
     use fortfem_meridian_feec_n, only: meridian_feec_t, meridian_stiffness
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_interior_tests, &
+        initialize_triangle_nedelec_first_kind, triangle_nedelec_dof_count, &
+        triangle_nedelec_first_kind_t
     use fortsparse, only: csc_t, csc_z_t, csc_from_triplet, fortsparse_status_t, &
         status_ok
     implicit none
@@ -50,17 +54,18 @@ contains
         !! reference Whitney function w_i of local edge i.  The N_k basis of
         !! fortfem_triangle_nedelec_arbitrary_order is dual to its moments
         !! (edge: int_0^1 P_m(s) v.t ds with shifted Legendre P_m and the
-        !! reference_edge tangent; interior: int xi^a eta^b v_c over the
-        !! reference triangle, c = 1, 2, a + b <= k - 2), so c(:, i) are the
-        !! moments of w_i: no Gram solve and no loss of digits with k.  On
-        !! its own edge w_i . t = 1 (P_0 moment 1, higher moments 0), and
-        !! w_i . t = 0 on the other edges.
+        !! reference_edge tangent; interior: int q_m v_c over the reference
+        !! triangle with the L2-orthogonal q_m of P_{k-2}, c = 1, 2, m in
+        !! graded order), so c(:, i) are the moments of w_i: no Gram solve and
+        !! no loss of digits with k.  On its own edge w_i . t = 1 (P_0 moment
+        !! 1, higher moments 0), and w_i . t = 0 on the other edges.
         integer, intent(in) :: k
         real(dp), allocatable, intent(out) :: c(:, :)
         integer, intent(out) :: status
-        real(dp), allocatable :: xi(:), eta(:), w(:)
-        real(dp) :: lam(3), glam(2, 3), wv(2), mono
-        integer :: nln, q, i, a, b, comp, td, xd, l
+        real(dp), allocatable :: xi(:), eta(:), w(:), qv(:)
+        real(dp) :: lam(3), glam(2, 3), wv(2)
+        integer :: nln, nq, q, i, a, b, comp, m, l
+        type(triangle_nedelec_first_kind_t) :: basis
 
         nln = k*(k + 2)
         allocate (c(nln, 3))
@@ -72,10 +77,17 @@ contains
         if (k < 2) return
         call triangle_duffy_quadrature(2*k, xi, eta, w, status)
         if (status /= 0) return
+        call initialize_triangle_nedelec_first_kind(k, basis, status)
+        if (status /= 0) return
+        nq = (triangle_nedelec_dof_count(basis) - 3*k)/2
+        allocate (qv(nq))
         glam(:, 1) = [-1.0_dp, -1.0_dp]
         glam(:, 2) = [1.0_dp, 0.0_dp]
         glam(:, 3) = [0.0_dp, 1.0_dp]
         do q = 1, size(w)
+            call evaluate_triangle_nedelec_interior_tests(basis, xi(q), eta(q), &
+                                                          qv, status)
+            if (status /= 0) return
             lam = [1.0_dp - xi(q) - eta(q), xi(q), eta(q)]
             do i = 1, 3
                 a = i
@@ -83,12 +95,9 @@ contains
                 wv = lam(a)*glam(:, b) - lam(b)*glam(:, a)
                 l = 3*k
                 do comp = 1, 2
-                    do td = 0, k - 2
-                        do xd = 0, td
-                            l = l + 1
-                            mono = xi(q)**xd*eta(q)**(td - xd)
-                            c(l, i) = c(l, i) + w(q)*mono*wv(comp)
-                        end do
+                    do m = 1, nq
+                        l = l + 1
+                        c(l, i) = c(l, i) + w(q)*qv(m)*wv(comp)
                     end do
                 end do
             end do
