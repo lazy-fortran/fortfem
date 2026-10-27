@@ -52,6 +52,7 @@ contains
         integer, allocatable, intent(out) :: elem_ptr(:), elem_idx(:)
 
         integer, allocatable :: fill(:)
+        logical(1), allocatable :: repeated(:, :)
         integer :: a, b, dof, e, nel, nloc
 
         nloc = size(conn, 1)
@@ -59,11 +60,20 @@ contains
         if (any(conn < 1) .or. any(conn > n_dofs)) then
             error stop "build_node_to_element: connectivity outside 1:n_dofs"
         end if
-        allocate(elem_ptr(n_dofs + 1), fill(n_dofs))
+        allocate(elem_ptr(n_dofs + 1), fill(n_dofs), repeated(nloc, nel))
+        ! The repeated-dof test is quadratic in nloc: evaluate it once, in
+        ! parallel, instead of in both serial counting passes.
+        !$omp parallel do default(shared) private(e, a) schedule(static)
+        do e = 1, nel
+            do a = 1, nloc
+                repeated(a, e) = is_repeated(conn(:, e), a)
+            end do
+        end do
+        !$omp end parallel do
         elem_ptr = 0
         do e = 1, nel
             do a = 1, nloc
-                if (is_repeated(conn(:, e), a)) cycle
+                if (repeated(a, e)) cycle
                 elem_ptr(conn(a, e) + 1) = elem_ptr(conn(a, e) + 1) + 1
             end do
         end do
@@ -75,7 +85,7 @@ contains
         fill = elem_ptr(1:n_dofs)
         do e = 1, nel
             do a = 1, nloc
-                if (is_repeated(conn(:, e), a)) cycle
+                if (repeated(a, e)) cycle
                 b = conn(a, e)
                 elem_idx(fill(b)) = e
                 fill(b) = fill(b) + 1
