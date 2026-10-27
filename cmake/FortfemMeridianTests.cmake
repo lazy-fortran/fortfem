@@ -56,11 +56,11 @@ foreach(test_name IN ITEMS
         test_meridian_feec_cohomology
         test_meridian_feec_exact_sequence
         test_meridian_feec_gs_n0
-        test_meridian_feec_manufactured
+        test_meridian_feec_manufactured_slow
         test_meridian_feec_threads
         test_meridian_fourier_apply
         test_meridian_fourier_curl
-        test_meridian_fourier_equilibration
+        test_meridian_fourier_equilibration_slow
         test_meridian_fourier_scalar
         test_meridian_hermitian_forms
         test_meridian_magnetic_coupling
