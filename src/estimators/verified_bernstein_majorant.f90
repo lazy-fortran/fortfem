@@ -99,9 +99,68 @@ module fortfem_verified_bernstein_majorant
         type(interval_t) :: c(66)
     end type mapped_poly_t
 
+    type, abstract, public :: bernstein_source_t
+    contains
+        procedure(bernstein_source_t_binding), deferred :: evaluate
+    end type
+    abstract interface
+        subroutine bernstein_source_t_binding(self, cell, coefficients, ok)
+            import :: bernstein_source_t, interval_t
+            class(bernstein_source_t), intent(in) :: self
+            !! Outward Bernstein coefficients of the polynomial numerator (or
+            !! its approximation when source_remainder is supplied), using
+            !! the vertex order of `triangles`. Called
+            !! concurrently from OpenMP threads.
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: coefficients(:)
+            logical, intent(out) :: ok
+        end subroutine
+    end interface
+
+    type, extends(bernstein_source_t) :: bernstein_source_adapter_t
+        procedure(verified_bernstein_source), pointer, nopass :: callback => null()
+    contains
+        procedure :: evaluate => bernstein_source_adapter_t_evaluate
+    end type
+
+    type, abstract, public :: bernstein_remainder_t
+    contains
+        procedure(bernstein_remainder_t_binding), deferred :: evaluate
+    end type
+    abstract interface
+        subroutine bernstein_remainder_t_binding(self, cell, radius, ok)
+            import :: bernstein_remainder_t, interval_t
+            class(bernstein_remainder_t), intent(in) :: self
+            !! Nonnegative outward upper bound radius%hi for the absolute
+            !! numerator remainder on the WHOLE cell, not sampled points.
+            !! The source polynomial is supplied by verified_bernstein_source.
+            !! The caller proves this contract. Called concurrently.
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: radius
+            logical, intent(out) :: ok
+        end subroutine
+    end interface
+
+    type, extends(bernstein_remainder_t) :: bernstein_remainder_adapter_t
+        procedure(verified_bernstein_source_remainder), pointer, nopass :: callback &
+            => null()
+    contains
+        procedure :: evaluate => bernstein_remainder_adapter_t_evaluate
+    end type
+
+    interface verified_mapped_bernstein_majorant
+        module procedure verified_mapped_bernstein_majorant_object, &
+            verified_mapped_bernstein_majorant_procedure
+    end interface
+
+    interface verified_bernstein_majorant
+        module procedure verified_bernstein_majorant_object, &
+            verified_bernstein_majorant_procedure
+    end interface
+
 contains
 
-    subroutine verified_mapped_bernstein_majorant(vertices, triangles, degree, &
+    subroutine verified_mapped_bernstein_majorant_object(vertices, triangles, degree, &
                           flux_coefficients, solution_cells, solution, geometry_nodes, &
                         weight_nodes, source, source_degree, weight_power, friedrichs, &
                         bound, flux_squared, residual_squared, status, source_remainder)
@@ -120,8 +179,8 @@ contains
         real(dp), intent(in) :: weight_nodes(:)
         integer, intent(in) :: triangles(:, :), solution_cells(:, :)
         integer, intent(in) :: degree, source_degree, weight_power
-        procedure(verified_bernstein_source) :: source
-        procedure(verified_bernstein_source_remainder), optional :: source_remainder
+        class(bernstein_source_t), intent(in) :: source
+        class(bernstein_remainder_t), intent(in), optional :: source_remainder
         type(interval_t), intent(in) :: friedrichs
         type(interval_t), intent(out) :: bound, flux_squared, residual_squared
         integer, intent(out) :: status
@@ -283,7 +342,7 @@ contains
             integer, intent(in) :: cell
             type(interval_t), intent(out) :: flux_value, residual_value
             integer, intent(out) :: cell_status
-            procedure(verified_bernstein_source_remainder), optional :: tail
+            class(bernstein_remainder_t), intent(in), optional :: tail
             type(mapped_poly_t) :: x, y, w, u, j11, j12, j21, j22, det
             type(mapped_poly_t) :: sx, sy, ux, uy, dummy, qx, qy, dx, dy
             type(mapped_poly_t) :: div, s, wm, r
@@ -369,7 +428,7 @@ contains
             call mapped_derivative(sy, dummy, dy)
             div = mapped_sum(dx, dy)
             s%degree = source_degree; s%c = interval(0._dp)
-            call source(cell, s%c(:count_of(source_degree)), ok)
+            call source%evaluate(cell, s%c(:count_of(source_degree)), ok)
             cell_status = VERIFIED_BERNSTEIN_BAD_SOURCE
             if (.not. ok) return
             if (.not. all(valid(s%c(:count_of(source_degree))))) return
@@ -383,7 +442,7 @@ contains
             call verified_mapped_divide(integral_x, &
                                         wmh*wmh*dh, residual_value)
             if (present(tail)) then
-                call tail(cell, rho, ok)
+                call tail%evaluate(cell, rho, ok)
                 if (.not. ok) return
                 if (.not. valid(rho)) return
                 if (rho%lo < 0) return
@@ -401,7 +460,7 @@ contains
             residual_value%lo = max(0._dp, residual_value%lo)
             cell_status = VERIFIED_BERNSTEIN_OK
         end subroutine
-    end subroutine verified_mapped_bernstein_majorant
+    end subroutine verified_mapped_bernstein_majorant_object
 
     pure integer function lagrange_degree(n) result(p)
         integer, intent(in) :: n
@@ -487,7 +546,7 @@ contains
     end function
 
 
-    subroutine verified_bernstein_majorant(vertices, triangles, degree, &
+    subroutine verified_bernstein_majorant_object(vertices, triangles, degree, &
             flux_coefficients, solution_cells, solution, weight, source, &
             source_degree, weight_power, friedrichs, bound, flux_squared, &
             residual_squared, status, source_remainder)
@@ -500,8 +559,8 @@ contains
         real(dp), intent(in) :: solution(:), weight(:)
         integer, intent(in) :: triangles(:, :), solution_cells(:, :)
         integer, intent(in) :: degree, source_degree, weight_power
-        procedure(verified_bernstein_source) :: source
-        procedure(verified_bernstein_source_remainder), optional :: source_remainder
+        class(bernstein_source_t), intent(in) :: source
+        class(bernstein_remainder_t), intent(in), optional :: source_remainder
         type(interval_t), intent(in) :: friedrichs
         type(interval_t), intent(out) :: bound, flux_squared, residual_squared
         integer, intent(out) :: status
@@ -675,7 +734,7 @@ contains
             integer, intent(in) :: cell
             type(interval_t), intent(out) :: flux_value, residual_value
             integer, intent(out) :: cell_status
-            procedure(verified_bernstein_source_remainder), optional :: tail
+            class(bernstein_remainder_t), intent(in), optional :: tail
             real(dp) :: c(2, max_coefficients)
             type(interval_t) :: xy(2, 3), det, g(4), normal(2, 3), w(3), chord(3)
             type(interval_t) :: sx(max_coefficients), sy(max_coefficients)
@@ -782,7 +841,7 @@ contains
                 div(1:count_of(nt_degree)) = tmp(1:count_of(nt_degree))
             end do
             ns = source_degree
-            call source(cell, s(1:count_of(ns)), ok)
+            call source%evaluate(cell, s(1:count_of(ns)), ok)
             if (.not. ok) then
                 cell_status = VERIFIED_BERNSTEIN_BAD_SOURCE
                 return
@@ -811,7 +870,7 @@ contains
             call verified_bernstein_square_integral(ns, s, chord, part)
             residual_value = part*det
             if (present(tail)) then
-                call tail(cell, rho, ok)
+                call tail%evaluate(cell, rho, ok)
                 cell_status = VERIFIED_BERNSTEIN_BAD_SOURCE
                 if (.not. ok) return
                 if (.not. valid(rho)) return
@@ -850,7 +909,7 @@ contains
             j = merge(fit%degree + 1, 1, v == hi)
         end function corner_position
 
-    end subroutine verified_bernstein_majorant
+    end subroutine verified_bernstein_majorant_object
 
     subroutine chord_values(power, wmin, wmax, w, chord)
         !! Vertex values of an affine upper bound of w^-power on the cell.
@@ -958,4 +1017,129 @@ contains
         if (.not. ieee_is_finite(value%hi)) return
         valid = value%lo <= value%hi
     end function valid
+
+    subroutine verified_mapped_bernstein_majorant_procedure(vertices, triangles, &
+        degree, &
+                          flux_coefficients, solution_cells, solution, geometry_nodes, &
+                        weight_nodes, source, source_degree, weight_power, friedrichs, &
+                        bound, flux_squared, residual_squared, status, source_remainder)
+        !! Outward audit on conforming isoparametric P1/P2/P3 triangles.
+        !! weight_nodes is cell-major: n_geometry_nodes values for each cell.
+        !! It defines w=1/A by the same reference Lagrange interpolation as
+        !! geometry. Source supplies a reference Bernstein numerator s in
+        !! f=(s+delta)/w**weight_power, |delta|<=source_remainder on each cell.
+        !! No quadrature is sampled. Exact polynomial square moments divided
+        !! by positive denominator hulls give lower/upper integral budgets.
+        !! The caller supplies nonoverlap, a conforming H1_0 candidate and C_F.
+        !! Shared mapped edges are checked node for node, including orientation.
+        !! A nonpositive Bernstein hull fails closed (a sufficient test only).
+        real(dp), intent(in) :: vertices(:, :), flux_coefficients(:, :)
+        real(dp), intent(in) :: solution(:), geometry_nodes(:, :, :)
+        real(dp), intent(in) :: weight_nodes(:)
+        integer, intent(in) :: triangles(:, :), solution_cells(:, :)
+        integer, intent(in) :: degree, source_degree, weight_power
+        procedure(verified_bernstein_source) :: source
+        procedure(verified_bernstein_source_remainder), optional :: source_remainder
+        type(interval_t), intent(in) :: friedrichs
+        type(interval_t), intent(out) :: bound, flux_squared, residual_squared
+        integer, intent(out) :: status
+        type(bernstein_source_adapter_t), target :: source_adapter
+        type(bernstein_remainder_adapter_t), target :: source_remainder_adapter
+        class(bernstein_remainder_t), pointer :: source_remainder_object
+        nullify(source_remainder_object)
+
+        source_adapter%callback => source
+        if (present(source_remainder)) then
+            source_remainder_adapter%callback => source_remainder
+            source_remainder_object => source_remainder_adapter
+        end if
+        call verified_mapped_bernstein_majorant_object(vertices, &
+            triangles, &
+            degree, &
+            flux_coefficients, &
+            solution_cells, &
+            solution, &
+            geometry_nodes, &
+            weight_nodes, &
+            source_adapter, &
+            source_degree, &
+            weight_power, &
+            friedrichs, &
+            bound, &
+            flux_squared, &
+            residual_squared, &
+            status, &
+            source_remainder_object)
+    end subroutine
+
+    subroutine verified_bernstein_majorant_procedure(vertices, triangles, degree, &
+            flux_coefficients, solution_cells, solution, weight, source, &
+            source_degree, weight_power, friedrichs, bound, flux_squared, &
+            residual_squared, status, source_remainder)
+        !! degree: k of the RT_k flux (equilibrated_flux_estimate_t,
+        !! flux_coefficients(dofs, cells)). solution_cells(nloc, nt) indexes the
+        !! Lagrange values of u_h in `solution`: nloc = 3 (P1), 6 (P2), or 10
+        !! (P3): vertices, then edge nodes along 1-2, 2-3, 3-1, then centroid.
+        !! P3 has two edge nodes at 1/3 and 2/3 along each directed edge.
+        real(dp), intent(in) :: vertices(:, :), flux_coefficients(:, :)
+        real(dp), intent(in) :: solution(:), weight(:)
+        integer, intent(in) :: triangles(:, :), solution_cells(:, :)
+        integer, intent(in) :: degree, source_degree, weight_power
+        procedure(verified_bernstein_source) :: source
+        procedure(verified_bernstein_source_remainder), optional :: source_remainder
+        type(interval_t), intent(in) :: friedrichs
+        type(interval_t), intent(out) :: bound, flux_squared, residual_squared
+        integer, intent(out) :: status
+        type(bernstein_source_adapter_t), target :: source_adapter
+        type(bernstein_remainder_adapter_t), target :: source_remainder_adapter
+        class(bernstein_remainder_t), pointer :: source_remainder_object
+        nullify(source_remainder_object)
+
+        source_adapter%callback => source
+        if (present(source_remainder)) then
+            source_remainder_adapter%callback => source_remainder
+            source_remainder_object => source_remainder_adapter
+        end if
+        call verified_bernstein_majorant_object(vertices, &
+            triangles, &
+            degree, &
+            flux_coefficients, &
+            solution_cells, &
+            solution, &
+            weight, &
+            source_adapter, &
+            source_degree, &
+            weight_power, &
+            friedrichs, &
+            bound, &
+            flux_squared, &
+            residual_squared, &
+            status, &
+            source_remainder_object)
+    end subroutine
+
+    subroutine bernstein_source_adapter_t_evaluate(self, cell, coefficients, ok)
+        class(bernstein_source_adapter_t), intent(in) :: self
+            !! Outward Bernstein coefficients of the polynomial numerator (or
+            !! its approximation when source_remainder is supplied), using
+            !! the vertex order of `triangles`. Called
+            !! concurrently from OpenMP threads.
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: coefficients(:)
+            logical, intent(out) :: ok
+        call self%callback(cell, coefficients, ok)
+    end subroutine
+
+    subroutine bernstein_remainder_adapter_t_evaluate(self, cell, radius, ok)
+        class(bernstein_remainder_adapter_t), intent(in) :: self
+            !! Nonnegative outward upper bound radius%hi for the absolute
+            !! numerator remainder on the WHOLE cell, not sampled points.
+            !! The source polynomial is supplied by verified_bernstein_source.
+            !! The caller proves this contract. Called concurrently.
+            integer, intent(in) :: cell
+            type(interval_t), intent(out) :: radius
+            logical, intent(out) :: ok
+        call self%callback(cell, radius, ok)
+    end subroutine
+
 end module fortfem_verified_bernstein_majorant

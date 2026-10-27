@@ -122,9 +122,11 @@ contains
         allocate (ap(m, n + 1))
         ap(:, :n) = a
         ap(:, n + 1) = (0.0_dp, 0.0_dp)
-        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
+        ! Request vectors in ap to use LAPACK's QR path under strict traps.
+        ! Values-only dqds probes IEEE infinity with an intentional 1/0.
+        call zgesvd('O', 'N', m, n, ap, m, s, u, 1, vt, 1, wq, -1, rwork, info)
         allocate (work(max(1, int(real(wq(1))))))
-        call zgesvd('N', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
+        call zgesvd('O', 'N', m, n, ap, m, s, u, 1, vt, 1, work, size(work), &
             rwork, info)
         r = count(s > 1.0e-8_dp*s(1))
     end function matrix_rank
