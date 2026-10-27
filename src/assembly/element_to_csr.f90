@@ -34,8 +34,10 @@ module fortfem_element_to_csr
         real(dp), allocatable :: val(:)     ! (nnz)
         integer, allocatable :: elem_ptr(:) ! (n+1), node-to-element map
         integer, allocatable :: elem_idx(:) ! elements of dof i, ascending
-        integer, allocatable :: slot(:, :, :) ! (nloc, nloc, nel), colidx position of
-                                              ! (conn(a, e), conn(b, e)); 0 if dropped
+        integer, allocatable :: slot(:, :, :) ! (nloc, nloc, nel): slot(b, a, e) is the
+                                              ! colidx position of (conn(a, e),
+                                              ! conn(b, e)), contiguous along the
+                                              ! row a; 0 if dropped
     end type csr_matrix_t
 
     interface csr_assemble_batched
@@ -213,30 +215,54 @@ contains
         if (any(matrix%tpos < 1)) error stop "csr_build_pattern: pattern not symmetric"
         if (present(with_slots)) then
             if (with_slots) then
+                ! Row-parallel: marker holds the position of each column of row
+                ! i, so a slot is a lookup instead of a search. Every element
+                ! entry of row i is a column of row i.
                 allocate(matrix%slot(matrix%nloc, matrix%nloc, size(conn, 2)))
-                !$omp parallel do default(none) shared(conn, matrix, exchange) &
-                !$omp private(e, a, b) schedule(static)
-                do e = 1, size(conn, 2)
-                    do b = 1, matrix%nloc
+                !$omp parallel default(none) shared(n_dofs, conn, matrix, exchange) &
+                !$omp private(marker, i, k, e, a, b, j)
+                allocate(marker(n_dofs))
+                !$omp do schedule(static)
+                do i = 1, n_dofs
+                    do k = matrix%rowptr(i), matrix%rowptr(i + 1) - 1
+                        marker(matrix%colidx(k)) = k
+                    end do
+                    do k = matrix%elem_ptr(i), matrix%elem_ptr(i + 1) - 1
+                        e = matrix%elem_idx(k)
                         do a = 1, matrix%nloc
-                            matrix%slot(a, b, e) = 0
-                            if (exchange .and. conn(a, e) == conn(b, e)) cycle
-                            matrix%slot(a, b, e) = &
-                                csr_find_entry(matrix, conn(a, e), conn(b, e))
+                            if (conn(a, e) /= i) cycle
+                            do b = 1, matrix%nloc
+                                j = conn(b, e)
+                                if (exchange .and. j == i) then
+                                    matrix%slot(b, a, e) = 0
+                                else
+                                    matrix%slot(b, a, e) = marker(j)
+                                end if
+                            end do
                         end do
                     end do
                 end do
-                !$omp end parallel do
+                !$omp end do
+                deallocate(marker)
+                !$omp end parallel
             end if
         end if
     end subroutine csr_build_pattern
 
     pure subroutine sort_row(column, first, last)
+        !! Ascending sort of column(first:last): insertion sort for short rows,
+        !! heapsort (O(n log n)) for the long rows of high-order or Fourier-coupled
+        !! elements, where the quadratic insertion sort dominated the pattern build.
         integer, intent(inout) :: column(:)
         integer, intent(in) :: first, last
 
+        integer, parameter :: short_row = 32
         integer :: i, j, key
 
+        if (last - first + 1 > short_row) then
+            call heap_sort(column(first:last))
+            return
+        end if
         do i = first + 1, last
             key = column(i)
             j = i - 1
@@ -248,6 +274,41 @@ contains
             column(j + 1) = key
         end do
     end subroutine sort_row
+
+    pure subroutine heap_sort(v)
+        integer, intent(inout) :: v(:)
+
+        integer :: n, last, t
+
+        n = size(v)
+        do last = n/2, 1, -1
+            call sift_down(v, last, n)
+        end do
+        do last = n, 2, -1
+            t = v(1); v(1) = v(last); v(last) = t
+            call sift_down(v, 1, last - 1)
+        end do
+    contains
+        pure subroutine sift_down(v, root, bound)
+            integer, intent(inout) :: v(:)
+            integer, intent(in) :: root, bound
+            integer :: child, parent, key
+
+            parent = root
+            key = v(parent)
+            do
+                child = 2*parent
+                if (child > bound) exit
+                if (child < bound) then
+                    if (v(child + 1) > v(child)) child = child + 1
+                end if
+                if (v(child) <= key) exit
+                v(parent) = v(child)
+                parent = child
+            end do
+            v(parent) = key
+        end subroutine sift_down
+    end subroutine heap_sort
 
     pure function csr_find_entry(matrix, row, column) result(position)
         !! Position of entry (row, column) in colidx, or 0 when it is not stored.
@@ -273,24 +334,53 @@ contains
         end do
     end function csr_find_entry
 
-    subroutine csr_assemble_blocks(matrix, conn, blocks, row_sum_defect)
+    subroutine csr_assemble_blocks(matrix, conn, blocks, row_sum_defect, symmetric)
         !! Overwrite the values with the sum of the element blocks
         !! blocks(a, b, e) = K_ab of element e (row a, column b). The pattern must
         !! come from csr_build_pattern with the same conn. In exchange form the
         !! diagonal is dropped; row_sum_defect (optional) returns the largest
         !! |sum_b K_ab| summed over a row relative to the largest absolute entry,
         !! which is the information lost by dropping it.
+        !! symmetric=.true. (with the slots of csr_build_pattern) declares every
+        !! block exactly symmetric, blocks(a, b, e) == blocks(b, a, e), and reads
+        !! row a of a block as its contiguous column a. The sums run in the same
+        !! order, so the values are bitwise those of the default path.
         type(csr_matrix_t), intent(inout) :: matrix
         integer, intent(in) :: conn(:, :)
         real(dp), intent(in) :: blocks(:, :, :)
         real(dp), intent(out), optional :: row_sum_defect
+        logical, intent(in), optional :: symmetric
 
         real(dp) :: defect, row_sum, scale
         integer :: a, b, e, i, j, k, p
+        logical :: columns
 
         if (size(blocks, 1) /= matrix%nloc .or. size(blocks, 2) /= matrix%nloc .or. &
             size(blocks, 3) /= size(conn, 2) .or. size(conn, 1) /= matrix%nloc) then
             error stop "csr_assemble_blocks: block or connectivity shape mismatch"
+        end if
+        columns = .false.
+        if (present(symmetric)) columns = symmetric .and. allocated(matrix%slot) &
+            .and. .not. present(row_sum_defect)
+        if (columns) then
+            !$omp parallel do default(none) shared(matrix, conn, blocks) &
+            !$omp private(i, k, e, a, b, p) schedule(static)
+            do i = 1, matrix%n
+                matrix%val(matrix%rowptr(i):matrix%rowptr(i + 1) - 1) = 0.0_dp
+                do k = matrix%elem_ptr(i), matrix%elem_ptr(i + 1) - 1
+                    e = matrix%elem_idx(k)
+                    do a = 1, matrix%nloc
+                        if (conn(a, e) /= i) cycle
+                        do b = 1, matrix%nloc
+                            p = matrix%slot(b, a, e)
+                            if (p == 0) cycle
+                            matrix%val(p) = matrix%val(p) + blocks(b, a, e)
+                        end do
+                    end do
+                end do
+            end do
+            !$omp end parallel do
+            return
         end if
         defect = 0.0_dp
         scale = 0.0_dp
@@ -310,7 +400,7 @@ contains
                         scale = max(scale, abs(blocks(a, b, e)))
                         if (matrix%exchange .and. j == i) cycle
                         if (allocated(matrix%slot)) then
-                            p = matrix%slot(a, b, e)
+                            p = matrix%slot(b, a, e)
                         else
                             p = csr_find_entry(matrix, i, j)
                         end if
