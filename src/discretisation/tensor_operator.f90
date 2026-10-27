@@ -143,10 +143,19 @@ contains
         if (op%precompute) allocate (op%metric(3, 3, mq, mesh%nelem), &
                                      op%mass(mq, mesh%nelem))
         ws = maxval([ng, op%no])**3
-        op%jac = 0
-        if (mesh%dim == 2) op%jac(3, 3, :, :) = 1
         threaded = .true.
         if (present(parallel)) threaded = parallel
+        ! In 3D phase 1 writes every entry of jac. In 2D the third row and
+        ! column are constants, set here by the threads that own the elements
+        ! so that the pages are first touched in parallel.
+        if (mesh%dim == 2) then
+            !$omp parallel do default(shared) private(e) schedule(static) if(threaded)
+            do e = 1, mesh%nelem
+                op%jac(:, :, :, e) = 0
+                op%jac(3, 3, :, e) = 1
+            end do
+            !$omp end parallel do
+        end if
         nitem = mesh%dim*(mesh%dim + 1)
         ! Phase 1: geometry. Each (element, item) pair is one sum-factorised
         ! contraction (item 1..dim: jacobian column dir of component comp, item
