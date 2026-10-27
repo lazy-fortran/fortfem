@@ -65,10 +65,15 @@ target_include_directories(fortfem_element_kernels PUBLIC
 target_link_libraries(fortfem_element_kernels PUBLIC OpenMP::OpenMP_Fortran)
 if(FORTFEM_BUILD_TESTING)
     enable_testing()
+    add_library(fortfem_test_check STATIC test/check.f90)
+    set_target_properties(fortfem_test_check PROPERTIES
+        Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/test_modules")
+    target_include_directories(fortfem_test_check PUBLIC
+        "${PROJECT_BINARY_DIR}/test_modules")
     add_executable(test_element_precision_batch
-        test/check.f90 test/test_element_precision_batch.f90)
+        test/test_element_precision_batch.f90)
     target_link_libraries(test_element_precision_batch PRIVATE
-        fortfem_element_kernels)
+        fortfem_element_kernels fortfem_test_check)
     add_test(NAME fortfem_element_precision_batch
         COMMAND test_element_precision_batch)
     set_tests_properties(fortfem_element_precision_batch PROPERTIES
@@ -87,8 +92,9 @@ target_include_directories(fortfem_tensor_lines PUBLIC
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/tensor_modules>)
 target_link_libraries(fortfem_tensor_lines PUBLIC OpenMP::OpenMP_Fortran)
 if(FORTFEM_BUILD_TESTING)
-    add_executable(test_lab_gll_line test/check.f90 test/test_lab_gll_line.f90)
-    target_link_libraries(test_lab_gll_line PRIVATE fortfem_tensor_lines)
+    add_executable(test_lab_gll_line test/test_lab_gll_line.f90)
+    target_link_libraries(test_lab_gll_line PRIVATE
+        fortfem_tensor_lines fortfem_test_check)
     add_test(NAME test_lab_gll_line COMMAND test_lab_gll_line)
     add_executable(test_lab_tensor_mesh test/test_lab_tensor_mesh.f90)
     target_link_libraries(test_lab_tensor_mesh PRIVATE fortfem_tensor_lines)
@@ -153,6 +159,21 @@ if(FORTFEM_ENABLE_CUDA)
 endif()
 if(FORTFEM_ELEMENT_KERNELS_ONLY)
     return()
+endif()
+
+# The meridian test graph uses the same FortNum provider as fpm. Declare it
+# before FortSparse, whose standalone build otherwise supplies its own pin.
+if(FORTFEM_BUILD_TESTING AND NOT TARGET fortnum)
+    if(NOT FORTFEM_FETCH_DEPENDENCIES)
+        message(FATAL_ERROR
+            "fortnum target is required when dependency fetching is disabled")
+    endif()
+    set(FORTNUM_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(fortnum
+        GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
+        GIT_TAG 187831c72dd8b6a2d4b71f5cff75e8997076a6fa
+        GIT_SHALLOW FALSE)
+    FetchContent_MakeAvailable(fortnum)
 endif()
 
 if(NOT TARGET fortsparse)
@@ -386,11 +407,6 @@ endif()
 
 if(FORTFEM_BUILD_TESTING)
     enable_testing()
-    add_library(fortfem_test_check STATIC test/check.f90)
-    set_target_properties(fortfem_test_check PROPERTIES
-        Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/test_modules")
-    target_include_directories(fortfem_test_check PUBLIC
-        "${PROJECT_BINARY_DIR}/test_modules")
     foreach(test_name IN ITEMS sparse_direct_backend sparse_constrained_derivatives
             sparse_direct_derivatives sparse_direct_complex_derivatives
             capi_solver)
@@ -403,4 +419,5 @@ if(FORTFEM_BUILD_TESTING)
         set_tests_properties(fortfem_${test_name} PROPERTIES
             LABELS "sparse;fast" ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
     endforeach()
+    include(cmake/FortfemMeridianTests.cmake)
 endif()
