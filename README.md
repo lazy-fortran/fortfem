@@ -1,116 +1,47 @@
-[![CI](https://github.com/lazy-fortran/fortfem/actions/workflows/test.yml/badge.svg)](https://github.com/lazy-fortran/fortfem/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/lazy-fortran/fortfem/branch/main/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/lazy-fortran/fortfem)
-[![Documentation](https://github.com/lazy-fortran/fortfem/actions/workflows/docs.yml/badge.svg)](https://lazy-fortran.github.io/fortfem/)
+# FortFEM
 
-> **Note**: This project is experimental and subject to major changes. APIs may change without notice.
+A Fortran finite-element and boundary-element library with a high-level API
+inspired by FEniCS and FreeFEM. It provides the structure-preserving (FEEC)
+discretisations, open-boundary operators and sparse solves needed by plasma
+physics and electromagnetics codes.
 
-A modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS.
+Status: experimental research code; APIs may change without notice.
 
-## Implementation Status
+## Features
 
-Verified numerical paths:
+- Finite-element exterior calculus: arbitrary-order triangular and tetrahedral
+  H1, H(curl) (Nédélec), H(div) (Raviart-Thomas, BDM) and discontinuous
+  families, with Piola maps, global orientations and commuting projections.
+- Weak forms written as expressions (`inner(grad(u), grad(v))*dx`), assembled to
+  dense element matrices or sparse CSC matrices.
+- Open boundaries: planar, circular and spherical Dirichlet-to-Neumann maps, PML,
+  and Laplace, Helmholtz and Maxwell boundary-integral operators; FEM/BEM
+  coupling.
+- Sparse direct solves through [fortsparse](https://github.com/lazy-fortran/fortsparse)
+  (native CPU backend, real and complex), quadrature and special functions
+  through [fortnum](https://github.com/lazy-fortran/fortnum).
+- Mesh generation, refinement and plotting through
+  [fortplot](https://github.com/lazy-fortran/fortplot).
+- JVP/VJP derivative actions for many operators, and a C/C++ API
+  ([`include/fortfem.h`](include/fortfem.h)).
 
-- P1 and P2 triangular Lagrange elements, Q1 quadrilaterals, and scalar
-  Poisson solvers.
-- Arbitrary-order triangular Lagrange, first- and second-kind Nédélec,
-  Raviart--Thomas, BDM, and discontinuous scalar families through order four.
-  Their affine Piola maps, global moment orientations, commuting projections,
-  and sparse differential or mass forms have analytical tests.
-- First-kind tetrahedral Nédélec reference bases have no fixed order ceiling;
-  the public solve, topology, orientation, and sparse assembly paths are
-  verified through order six. They have
-  complete Kronecker edge, face, and cell moments, reproduce polynomial
-  gradients, and have independently verified curls. Their candidate
-  polynomials, analytical curls, and dual-basis coefficients use pinned
-  `fortsym` kernels through order four, runtime monomial moments at order
-  five, and FortNum orthogonal simplex modes above order five. A
-  FortSym-generated kernel supplies the modal vector and curl identities.
-  The affine covariant map, canonical
-  edge and face orientations, global topology, and sparse curl-mass assembly
-  accept every implemented order.
-- Tetrahedral Raviart--Thomas H(div) and discontinuous L2 spaces have no fixed
-  order ceiling and are verified through degree six. FortSym-generated exact
-  candidate and dual-basis tables remain the source of truth through degree
-  four; degree five uses runtime monomial moments, while higher degrees use
-  FortNum's orthogonal Dubiner/Koornwinder modes and exact gradients. Piola
-  interpolation, global face transforms, sparse assembly, and the symbolic
-  RT6--DG6 mixed Poisson solve have analytical conservation tests.
-- Tensor-weighted tetrahedral assembly and physical vector loads reproduce the
-  magnetic-paper box centre value at its 12×12×8 reference resolution. The
-  reconstructed magnetic field at an off-grid point converges toward an
-  independently differentiated membrane series.
-- Iterative dense solvers and real or complex sparse direct solves through
-  `fortsparse`.
-- A C/C++ API for oriented triangle meshes, retained complex sparse factors,
-  and RT0 coefficient transfer.
-- Planar and circular outgoing Helmholtz DtN operators, dense two-dimensional
-  Laplace and Helmholtz boundary operators, a Helmholtz CFIE solve, and
-  symmetric Laplace FEM/BEM transmission coupling.
-- Executable symbolic P1 scalar mass, stiffness, and constant-load forms.
-  Weighted H(curl) and H(div) forms compile to element matrices or
-  `fortsparse` CSC matrices for all four triangular vector families.
-- A sparse RT0-DG0 mixed Poisson solve with homogeneous or edge-average
-  Dirichlet pressure data preserves the source balance independently on every
-  cell and attains first-order flux and pressure convergence.
-- A matching-degree RT-DG mixed Poisson solve integrates physical source
-  callbacks at arbitrary implemented degree; RT1-DG1 attains second-order
-  flux and pressure convergence.
-- Mesh generation, refinement, and plotting through `fortplot`.
+A more detailed list of what is verified and what is still experimental is in
+[doc/status.md](doc/status.md).
 
-Experimental interfaces:
+## Building
 
-- Symbolic mixed forms, nonconstant scalar loads, boundary measures, and
-  general pointwise vector sources are not compiled yet.
-- The high-level order-one Nédélec path compiles cellwise scalar curl and mass
-  coefficients, constant or cellwise physical vector sources, and constant
-  physical or explicitly supplied tangential edge moments. Its direct solve
-  uses a `fortsparse` interior block and converges to the analytical
-  three-material, Fourier-mode magnetic solution. A smooth manufactured
-  curl-mass problem attains first-order field convergence.
-
-Two-dimensional tensor coefficients, complex coefficients, higher-order
-high-level solves, other three-dimensional FEEC families, electromagnetic
-BEM coupling, and validation
-against the unavailable proprietary MEPHIT cases and the not-yet-ported
-acoustic-paper fixtures remain. See the
-[FEEC, MEPHIT, and open-boundary roadmap](doc/roadmap_mephit_feec_bem.md).
-
-The normal library build has no CAS dependency. Symbolic generators live in
-`tools/codegen`, pin their tested `fortsym` revision, and commit their output
-under `src/generated`. Run `tools/codegen/check_generated.sh` to regenerate
-into a temporary directory and compare it byte-for-byte with the committed
-kernels.
-
-## Quick Start
+Requirements: a Fortran 2018 compiler, BLAS/LAPACK, OpenMP and
+[fpm](https://github.com/fortran-lang/fpm). fpm fetches fortnum, fortsparse and
+fortplot.
 
 ```bash
-# Build the library
 fpm build
-
-# Run tests
 fpm test
-
-# Run examples
 fpm run --example simple_poisson
 ```
 
-Sparse direct solves explicitly select FortSparse's native CPU backend for real
-and complex matrices, including retained transpose/adjoint factors and the
-constrained/tree--cotree derivative paths. They do not fall back to another
-sparse solver. With AMD or METIS available they select supernodal LU; FortSparse
-chooses ND for uncapped DEFAULT ordering and AMD for capped/LOW_MEMORY requests.
-Builds without either ordering library retain scalar execution. Pass an explicit
-FortSparse `sparse_options_t` as the optional final `options` argument to the
-one-shot or retained factor wrappers to select scalar/natural-order execution,
-AMD/ND, or a payload cap. Otherwise retained factor controls (including caps and
-thread budgets) are preserved while selecting supernodal LU. Unsupported capped
-ordering returns the FortSparse status; no cap or accuracy gate is relaxed.
-Dense BLAS/LAPACK remain system dependencies.
-
-For C and C++ consumers, CMake builds the focused shared API and fetches the
-pinned `fortsparse` dependency when needed. The default
-`FORTFEM_NATIVE_SPARSE_ONLY=ON` disables SuperLU, UMFPACK, MUMPS and native CUDA
-in that fetched dependency:
+The CMake build produces the C/C++ shared library `fortfem::capi` (plus a few
+standalone component libraries) and fetches its pinned dependencies:
 
 ```bash
 cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
@@ -118,88 +49,72 @@ cmake --build build/cmake
 cmake --install build/cmake --prefix /desired/prefix
 ```
 
-Run the affected native adapter, real/complex derivative and C API tests with:
+Downstream CMake projects use `find_package(fortfem CONFIG REQUIRED)` and link
+`fortfem::capi`. CMake options and the sparse solver configuration are described
+in [doc/building.md](doc/building.md).
 
-```bash
-cmake -S . -B build/cmake -DFORTFEM_BUILD_TESTING=ON
-cmake --build build/cmake -j2
-ctest --test-dir build/cmake -L sparse --output-on-failure -j2
-```
+## Usage
 
-The fpm dependency also builds native CPU solvers without external sparse
-libraries. Its sparse tests continue to use the same public Fortran contracts.
-
-Downstream CMake projects can then use `find_package(fortfem CONFIG REQUIRED)`
-and link `fortfem::capi`. The installed
-[`fortfem.h`](include/fortfem.h) documents the zero-based array layouts,
-process-local handles, and status arguments.
-
-## Usage Example
-
-FortFEM provides a clean, FEniCS-inspired API for defining finite element problems:
+From [`example/simple_poisson`](example/simple_poisson/simple_poisson.f90),
+solving -Δu = 1 on the unit square with homogeneous Dirichlet data:
 
 ```fortran
-program poisson_example
-    use fortfem_api
-    
-    ! Create mesh and function space
+program simple_poisson
+    use fortfem_core, only: dirichlet_bc_t, function_space_t, mesh_t, &
+        unit_square_mesh
+    use fortfem_feec, only: constant, dirichlet_bc, dx, form_expr_t, function, &
+        function_space, function_t, grad, inner, operator(*), &
+        operator(==), solve, test_function, test_function_t, trial_function, &
+        trial_function_t
+    use fortfem_kinds, only: dp
+    use fortfem_plot, only: plot
+    implicit none
+
+    type(mesh_t) :: mesh
+    type(function_space_t) :: Vh
+    type(trial_function_t) :: u
+    type(test_function_t) :: v
+    type(function_t) :: f, uh
+    type(dirichlet_bc_t) :: bc
+    type(form_expr_t) :: a, L
+
     mesh = unit_square_mesh(20)
     Vh = function_space(mesh, "Lagrange", 1)
-    
-    ! Define trial and test functions
     u = trial_function(Vh)
     v = test_function(Vh)
     f = constant(1.0_dp)
-    
-    ! Define weak form using natural mathematical notation
-    a = inner(grad(u), grad(v))*dx  ! Bilinear form: ∫ ∇u·∇v dx
-    L = f*v*dx                      ! Linear form:   ∫ f v dx
-    
-    ! Solve and plot in one line
-    uh = function(Vh)
+
+    a = inner(grad(u), grad(v))*dx
+    L = f*v*dx
     bc = dirichlet_bc(Vh, 0.0_dp)
+    uh = function(Vh)
+
     call solve(a == L, uh, bc)
-    call plot(uh, title="Poisson Solution", colormap="viridis")
-end program
+    call plot(uh, filename="poisson_solution.png", colormap="viridis")
+end program simple_poisson
 ```
 
-## Examples
+More programs, including H(curl) problems, DtN and BEM examples, are under
+[`example/`](example).
 
-Explore the [examples/](https://github.com/lazy-fortran/fortfem/tree/main/example) directory for complete working examples:
+## Documentation
 
-- [**Simple Poisson solver**](https://github.com/lazy-fortran/fortfem/blob/main/example/simple_poisson/simple_poisson.f90) - FEniCS-style API demonstration with plotting
-- [**Curl-curl electromagnetic prototype**](https://github.com/lazy-fortran/fortfem/blob/main/example/curl_curl/curl_curl.f90) - Experimental vector API and plotting path
-- [**Plotting demonstration**](https://github.com/lazy-fortran/fortfem/blob/main/example/plotting/plotting.f90) - Plotting API examples
-- [**Mesh plotting**](https://github.com/lazy-fortran/fortfem/blob/main/example/plot_mesh/plot_mesh.f90) - Mesh visualization examples
+- Documentation site: <https://lazy-fortran.github.io/fortfem/> (generated with
+  FORD from `doc/` and the sources)
+- [Quick start](doc/quickstart.md), [module overview](doc/modules.md),
+  [design notes](doc/design/index.md)
+- [Building and sparse solver configuration](doc/building.md)
+- [Implementation status](doc/status.md)
 
-## Project Structure
+## Related projects
 
-- [`src/`](https://github.com/lazy-fortran/fortfem/tree/main/src) - Core library modules
-- [`test/`](https://github.com/lazy-fortran/fortfem/tree/main/test) - Comprehensive test suite
-- [`example/`](https://github.com/lazy-fortran/fortfem/tree/main/example) - Example programs
-- [`doc/`](https://github.com/lazy-fortran/fortfem/tree/main/doc) - Documentation
-- [`app/`](https://github.com/lazy-fortran/fortfem/tree/main/app) - Main applications
-
-## Navigation
-
-- [API Documentation](https://lazy-fortran.github.io/fortfem/lists/modules.html) - Detailed module and procedure documentation
-- [Source Files](https://lazy-fortran.github.io/fortfem/lists/files.html) - Browse the source code
-- [Program Structure](https://lazy-fortran.github.io/fortfem/lists/procedures.html) - Main programs and procedures
-- [Design Documentation](https://lazy-fortran.github.io/fortfem/page/design/index.html) - Architecture and design decisions
-- [Roadmap](ROADMAP.md) - Structure-preserving FEM, BEM, IGA, Fourier-FEM, and plasma-physics ingredients
-
-## Quick Links
-
-- [Getting Started](https://lazy-fortran.github.io/fortfem/page/quickstart.html) - Build and run your first FE simulation
-- [Examples](https://lazy-fortran.github.io/fortfem/page/examples/index.html) - Complete working examples
-- [Module Reference](https://lazy-fortran.github.io/fortfem/lists/modules.html) - Complete API reference
-
-## Contributing
-
-1. Check the [GitHub Issues](https://github.com/lazy-fortran/fortfem/issues) for current development priorities
-2. Follow strict TDD: write tests first
-3. See [CLAUDE.md](https://github.com/lazy-fortran/fortfem/blob/main/CLAUDE.md) for development guidelines
+- [fortsparse](https://github.com/lazy-fortran/fortsparse): sparse direct solvers.
+- [fortnum](https://github.com/lazy-fortran/fortnum): quadrature, special
+  functions and other numerics.
+- [fortsym](https://github.com/lazy-fortran/fortsym): symbolic generation of the
+  committed reference-element kernels under `src/generated`.
+- [fortplot](https://github.com/lazy-fortran/fortplot): plotting.
 
 ## License
 
-See [LICENSE](https://github.com/lazy-fortran/fortfem/blob/main/LICENSE) for details.
+MIT. See [LICENSE](LICENSE).

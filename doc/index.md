@@ -13,6 +13,8 @@ operators, sparse solvers, and analytical verification examples.
 - [Quick Start Guide](quickstart.html) - Get up and running with FortFEM
 - [Examples](examples/index.html) - Learn from example programs
 - [Module Overview](modules.html) - Understand the library structure
+- [Building](building.html) - fpm and CMake builds, sparse solver configuration
+- [Implementation status](status.html) - What is tested and what is experimental
 
 ## User Guide
 
