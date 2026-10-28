@@ -4,6 +4,8 @@ program test_triangle_nedelec_arbitrary_order
         initialize_triangle_nedelec_first_kind, triangle_duffy_quadrature, &
         triangle_nedelec_dof_count, triangle_nedelec_first_kind_t
     use fortfem_kinds, only: dp
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_interior_tests
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
@@ -68,7 +70,9 @@ contains
         real(dp), allocatable :: local_curls(:), local_values(:, :)
         real(dp) :: edge_point(2), tangent(2), moment, polynomial
         integer :: component, edge, exponent, moment_dof, node
-        integer :: status, total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: status, test
 
         allocate(edge_nodes(order + 2), edge_weights(order + 2))
         allocate(local_values(2, dof_count), local_curls(dof_count))
@@ -97,26 +101,29 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * order, xi, eta, triangle_weights, status)
+        ! Interior moments against the basis's test polynomials q_m.
+        call initialize_triangle_nedelec_first_kind(order, test_basis, &
+            status)
+        allocate(tests((order)*(order - 1)/2))
         do component = 1, 2
-            do total_degree = 0, order - 2
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment_dof = moment_dof + 1
-                    moment = 0.0_dp
-                    do node = 1, size(xi)
-                        call evaluate_triangle_nedelec_first_kind( &
-                            basis, xi(node), eta(node), local_values, &
-                            local_curls, status)
-                        moment = moment + triangle_weights(node) * &
-                            local_values(component, basis_dof) * &
-                            xi(node)**x_degree * eta(node)**y_degree
-                    end do
-                    call record_condition(abs(moment - kronecker_delta( &
-                        moment_dof, basis_dof)) < 3.0e-10_dp, &
-                        "Nedelec cell moments form a Kronecker basis")
+            do test = 1, size(tests)
+                moment_dof = moment_dof + 1
+                moment = 0.0_dp
+                do node = 1, size(xi)
+                    call evaluate_triangle_nedelec_first_kind( &
+                        basis, xi(node), eta(node), local_values, &
+                        local_curls, status)
+                    call evaluate_triangle_nedelec_interior_tests( &
+                        test_basis, xi(node), eta(node), tests, status)
+                    moment = moment + triangle_weights(node) * &
+                        local_values(component, basis_dof) * tests(test)
                 end do
+                call record_condition(abs(moment - kronecker_delta( &
+                    moment_dof, basis_dof)) < 3.0e-10_dp, &
+                    "Nedelec cell moments form a Kronecker basis")
             end do
         end do
+        deallocate(tests)
         deallocate(edge_nodes, edge_weights, local_values, local_curls)
         if (allocated(xi)) deallocate(xi)
         if (allocated(eta)) deallocate(eta)
@@ -129,8 +136,9 @@ contains
 
         real(dp), allocatable :: edge_nodes(:), edge_weights(:)
         real(dp) :: edge_point(2), field(2), tangent(2)
-        integer :: component, edge, exponent, moment_dof, node
-        integer :: status, total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: edge, exponent, moment_dof, node, status, test
 
         allocate(edge_nodes(order + 2), edge_weights(order + 2))
         call gauss_legendre_ab( &
@@ -155,23 +163,19 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * order, xi, eta, triangle_weights, status)
-        do component = 1, 2
-            do total_degree = 0, order - 2
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment_dof = moment_dof + 1
-                    if (component == 1) then
-                        dofs(moment_dof) = sum(triangle_weights * &
-                            real(order, dp) * xi**(order - 1 + x_degree) * &
-                            eta**y_degree)
-                    end if
-                end do
+        ! Interior moments against the basis's test polynomials q_m; the
+        ! field (order x^(order-1), 0) has no second-component moments.
+        call initialize_triangle_nedelec_first_kind(order, test_basis, status)
+        allocate(tests(order*(order - 1)/2))
+        do node = 1, size(xi)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, xi(node), &
+                eta(node), tests, status)
+            do test = 1, size(tests)
+                dofs(moment_dof + test) = dofs(moment_dof + test) + &
+                    triangle_weights(node) * real(order, dp) * &
+                    xi(node)**(order - 1) * tests(test)
             end do
         end do
-        deallocate(edge_nodes, edge_weights)
-        if (allocated(xi)) deallocate(xi)
-        if (allocated(eta)) deallocate(eta)
-        if (allocated(triangle_weights)) deallocate(triangle_weights)
     end subroutine polynomial_gradient_dofs
 
     pure subroutine reference_edge(edge, parameter, point, tangent)

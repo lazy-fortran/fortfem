@@ -4,6 +4,9 @@ program test_triangle_rt_arbitrary_order
         initialize_triangle_raviart_thomas, triangle_duffy_quadrature, &
         triangle_rt_basis_t, triangle_rt_dof_count
     use fortfem_kinds, only: dp
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_interior_tests, &
+        initialize_triangle_nedelec_first_kind, triangle_nedelec_first_kind_t
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
@@ -71,7 +74,9 @@ contains
         real(dp), allocatable :: eta(:), triangle_weights(:), xi(:)
         real(dp) :: edge_point(2), moment, normal(2), polynomial
         integer :: component, edge, exponent, moment_dof, node, status
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: test
 
         allocate(edge_nodes(degree + 3), edge_weights(degree + 3))
         allocate(local_values(2, dof_count), local_divergences(dof_count))
@@ -100,26 +105,29 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * degree + 2, xi, eta, triangle_weights, status)
+        ! Interior moments against the basis's test polynomials q_m.
+        call initialize_triangle_nedelec_first_kind(degree + 1, test_basis, &
+            status)
+        allocate(tests(degree*(degree + 1)/2))
         do component = 1, 2
-            do total_degree = 0, degree - 1
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment_dof = moment_dof + 1
-                    moment = 0.0_dp
-                    do node = 1, size(xi)
-                        call evaluate_triangle_raviart_thomas( &
-                            basis, xi(node), eta(node), local_values, &
-                            local_divergences, status)
-                        moment = moment + triangle_weights(node) * &
-                            local_values(component, basis_dof) * &
-                            xi(node)**x_degree * eta(node)**y_degree
-                    end do
-                    call record_condition(abs(moment - kronecker_delta( &
-                        moment_dof, basis_dof)) < 4.0e-10_dp, &
-                        "Raviart-Thomas cell moments form a Kronecker basis")
+            do test = 1, size(tests)
+                moment_dof = moment_dof + 1
+                moment = 0.0_dp
+                do node = 1, size(xi)
+                    call evaluate_triangle_raviart_thomas( &
+                        basis, xi(node), eta(node), local_values, &
+                        local_divergences, status)
+                    call evaluate_triangle_nedelec_interior_tests( &
+                        test_basis, xi(node), eta(node), tests, status)
+                    moment = moment + triangle_weights(node) * &
+                        local_values(component, basis_dof) * tests(test)
                 end do
+                call record_condition(abs(moment - kronecker_delta( &
+                    moment_dof, basis_dof)) < 4.0e-10_dp, &
+                    "Raviart-Thomas cell moments form a Kronecker basis")
             end do
         end do
+        deallocate(tests)
     end subroutine check_basis_moments
 
     subroutine polynomial_rt_dofs(degree, dofs)
@@ -130,7 +138,9 @@ contains
         real(dp), allocatable :: eta(:), triangle_weights(:), xi(:)
         real(dp) :: edge_point(2), field(2), normal(2)
         integer :: component, edge, exponent, moment_dof, node, status
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:), node_tests(:, :)
+        integer :: test
 
         allocate(edge_nodes(degree + 3), edge_weights(degree + 3))
         call gauss_legendre_ab( &
@@ -155,19 +165,27 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * degree + 2, xi, eta, triangle_weights, status)
+        ! Interior moments against the RT test polynomials q_m (those of the
+        ! rotated Nedelec basis of order degree + 1).
+        call initialize_triangle_nedelec_first_kind(degree + 1, test_basis, &
+            status)
+        allocate(tests(degree*(degree + 1)/2), &
+            node_tests(size(xi), degree*(degree + 1)/2))
+        do node = 1, size(xi)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, xi(node), &
+                eta(node), tests, status)
+            node_tests(node, :) = tests
+        end do
         do component = 1, 2
-            do total_degree = 0, degree - 1
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment_dof = moment_dof + 1
-                    if (component == 1) then
-                        dofs(moment_dof) = sum(triangle_weights * &
-                            xi**(degree + 1 + x_degree) * eta**y_degree)
-                    else
-                        dofs(moment_dof) = sum(triangle_weights * &
-                            xi**(degree + x_degree) * eta**(y_degree + 1))
-                    end if
-                end do
+            do test = 1, size(tests)
+                moment_dof = moment_dof + 1
+                if (component == 1) then
+                    dofs(moment_dof) = sum(triangle_weights * &
+                        xi**(degree + 1) * node_tests(:, test))
+                else
+                    dofs(moment_dof) = sum(triangle_weights * &
+                        xi**degree * eta * node_tests(:, test))
+                end if
             end do
         end do
     end subroutine polynomial_rt_dofs
