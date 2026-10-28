@@ -16,7 +16,8 @@ on:
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - ".github/workflows/interoperability.yml"
       - "benchmark/fenicsx/**"
@@ -28,6 +29,7 @@ on:
       - "test/test_interoperability_manufactured_oracles.f90"
       - "tools/codegen/app/gen_interoperability_oracles.f90"
 
+  merge_group:
 permissions:
   contents: read
 
@@ -39,7 +41,7 @@ concurrency:
 jobs:
   freefem:
     name: FreeFEM analytical oracles
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -112,9 +114,11 @@ jobs:
           path: benchmark-results/freefem/
           retention-days: 30
 
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci')) || github.event_name == 'schedule'
   fenicsx:
     name: FEniCSx analytical oracles
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     timeout-minutes: 30
     defaults:
       run:
@@ -155,9 +159,11 @@ jobs:
           path: benchmark-results/fenicsx/
           retention-days: 30
 
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci')) || github.event_name == 'schedule'
   mfem:
     name: MFEM analytical oracles
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -215,9 +221,11 @@ jobs:
           path: benchmark-results/mfem/
           retention-days: 30
 
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci')) || github.event_name == 'schedule'
   compare:
     name: Cross-code oracle agreement
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-ubuntu24]
     needs: [freefem, fenicsx, mfem]
     steps:
       - uses: actions/checkout@v4
@@ -307,3 +315,5 @@ jobs:
           name: generated-interoperability-plots-${{ github.sha }}
           path: output/example/interoperability_benchmarks/
           retention-days: 30
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci')) || github.event_name == 'schedule'
