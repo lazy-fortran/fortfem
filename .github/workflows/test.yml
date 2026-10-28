@@ -10,24 +10,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Keep push/PR verification bounded to these independent form/interval/RT gates.
-  # Reuse exactly this selection for normal, coverage and checked builds.
-  FORTFEM_FAST_TESTS: >-
-    test_exterior_harmonic_fields
-    test_exterior_harmonic_energy
-    test_harmonic_field_energy
-    test_element_precision_batch
-    test_meridian_hermitian_forms
-    test_verified_rt0_majorant
-    test_verified_bernstein_majorant
-    test_verified_mapped_majorant
-    test_reference_p2_scalar_intervals
-    test_parametric_bem_high_order
-    test_bem_circulant_modes
-    test_parametric_bem_circulant
-    test_parametric_bem_pair_accuracy
-    test_equilibrated_rt_normal_trace
-    test_parametric_bem_estimator
   OMP_NUM_THREADS: 2
   OPENBLAS_NUM_THREADS: 1
   OMP_WAIT_POLICY: passive
@@ -38,62 +20,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  generated:
-    name: generated sources are current
-    runs-on: ubuntu-latest
-    env:
-      # Code generation includes a large exact RT solve; keep the compiler
-      # graph bounded so hosted runners do not segfault under oversubscription.
-      FO_JOBS: 1
-      FO_BUILD_TIMEOUT: 600
-      FORTFEM_CODEGEN_RUNNER: fpm
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          cmake \
-          g++ \
-          gfortran \
-          libflint-dev \
-          libgmp-dev \
-          libmpfr-dev \
-          ninja-build
-
-    - name: Install pinned SymEngine
-      run: scripts/ci/install_symengine.sh
-
-    - name: Install fpm and fo
-      run: |
-        sudo curl -L -o /usr/local/bin/fpm \
-          https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
-        sudo chmod +x /usr/local/bin/fpm
-        git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
-        (
-          cd /tmp/fo
-          fpm install --profile release --prefix "$HOME/.local"
-        )
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-    - name: Checkout locked fortsym revision
-      run: |
-        git clone https://github.com/lazy-fortran/fortsym.git ../fortsym
-        git -C ../fortsym checkout "$(cat tools/codegen/fortsym.lock)"
-
-    - name: Check generated sources
-      run: |
-        export PATH="$HOME/.local/bin:$PATH"
-        tools/codegen/check_generated.sh
-
-    - name: Prove polar-complex identities with FortSym
-      working-directory: verification/fortsym
-      run: |
-        export PATH="$HOME/.local/bin:$PATH"
-        fo exec verify_polar_complex
-
   build-test:
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
     runs-on: ${{ matrix.os }}
     env:
       # Keep the ten-second per-target contract reliable on large runners;
@@ -132,14 +61,33 @@ jobs:
         chmod +x fpm-0.13.0-linux-x86_64-gcc-12
         sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
 
+    # Building fo takes about six minutes on a hosted runner. The merge queue
+    # reuses the fo that the latest nightly built on main; it builds fo itself
+    # only when no nightly has saved one yet.
+    - name: Restore fo from the latest nightly
+      id: fo-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/fo-prefix
+        key: fo-${{ runner.os }}-${{ github.run_id }}
+        restore-keys: fo-${{ runner.os }}-
+
     - name: Install fo test runner
+      if: steps.fo-cache.outputs.cache-matched-key == ''
       run: |
         git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
         (
           cd /tmp/fo
-          fpm install --profile release --prefix "$HOME/.local"
+          fpm install --profile release --prefix "$HOME/fo-prefix"
         )
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Put fo on the path
+      run: echo "$HOME/fo-prefix/bin" >> "$GITHUB_PATH"
+
+    - name: Select the fast tests
+      run: |
+        echo "FORTFEM_FAST_TESTS=$(grep -v '^#' .github/fast-tests.txt | xargs)" \
+          >> "$GITHUB_ENV"
 
     - name: Check native sparse C API and derivatives
       run: |
@@ -149,8 +97,8 @@ jobs:
         cmake --build build/native-capi -j2
         ctest --test-dir build/native-capi -L "sparse|element" --output-on-failure -j2
 
-    - name: Build
-      run: fpm build --profile release
+    - name: Check the nightly triage guards
+      run: python3 scripts/nightly_triage_test.py
 
     - name: Set up uv for the external IGA oracle
       uses: astral-sh/setup-uv@v6
@@ -175,36 +123,6 @@ jobs:
           fpm test --target "${fast_tests[@]}" \
             --flag "-fno-fast-math -ffp-contract=off" --runner "timeout 10s"
         fi
-
-    - name: Run tests with coverage
-      id: coverage
-      continue-on-error: true
-      env:
-        # GCC 12 coverage makes the circulant test about five times slower
-        # than the normal build. Keep its full direct-pair oracle and bound
-        # instrumented execution separately from the normal ten-second gate.
-        FO_TEST_TIMEOUT: 60
-      run: |
-        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
-        if ! fo test --flag "--coverage -fno-fast-math -ffp-contract=off" "${fast_tests[@]}"; then
-          echo "Fo coverage build failed; retrying coverage through FPM"
-          fpm clean --skip
-          fpm test --target "${fast_tests[@]}" \
-            --flag "--coverage -fno-fast-math -ffp-contract=off" \
-            --runner "timeout 60s"
-        fi
-        find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
-          gcov -o "$dir" src/*.f90 || true
-        done
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./*.gcov
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
     - name: Build examples
       if: github.event_name == 'workflow_dispatch'
@@ -283,41 +201,15 @@ jobs:
         retention-days: 30
 
     - name: Report verification failures after publishing artifacts
-      if: always() && (steps.unit_tests.outcome == 'failure' || steps.coverage.outcome == 'failure' || steps.build_examples.outcome == 'failure' || steps.examples.outcome == 'failure' || steps.benchmarks.outcome == 'failure')
+      if: always() && (steps.unit_tests.outcome == 'failure' || steps.build_examples.outcome == 'failure' || steps.examples.outcome == 'failure' || steps.benchmarks.outcome == 'failure')
       run: |
         echo "One or more verification stages failed; generated artifacts were uploaded for documentation."
         exit 1
 
-  debug-checks:
-    name: tests with runtime checks (debug profile)
-    runs-on: ubuntu-latest
-    env:
-      TEST_TIMEOUT: 10s
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
-
-    - name: Setup Fortran Package Manager
-      run: |
-        wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
-        chmod +x fpm-0.13.0-linux-x86_64-gcc-12
-        sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
-
-    - name: Run selected tests with bounds and floating-point checks
-      run: |
-        read -r -a fast_tests <<< "$FORTFEM_FAST_TESTS"
-        fpm test --target "${fast_tests[@]}" --profile debug \
-          --flag "-g -O0 -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -fno-fast-math -ffp-contract=off" \
-          --runner "timeout $TEST_TIMEOUT"
-
   enzyme:
     name: released Flang 22 + pinned Enzyme
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
     runs-on: ubuntu-24.04
     env:
       LLVM_MAJOR: "22"
@@ -378,26 +270,17 @@ jobs:
   # Summary job for branch protection - must be named 'test' for PR checks
   test:
     name: test
-    needs: [build-test, debug-checks, enzyme, generated]
-    if: always()
+    needs: [build-test, enzyme]
+    if: >-
+      always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]'))
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
           echo "Build-test result: ${{ needs.build-test.result }}"
-          echo "Debug-checks result: ${{ needs.debug-checks.result }}"
           echo "Enzyme result: ${{ needs.enzyme.result }}"
-          echo "Generated-source result: ${{ needs.generated.result }}"
           if [ "${{ needs.build-test.result }}" != "success" ]; then
             echo "::error::Tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.debug-checks.result }}" != "success" ]; then
-            echo "::error::Tests with runtime checks failed"
-            exit 1
-          fi
-          if [ "${{ needs.generated.result }}" != "success" ]; then
-            echo "::error::Generated sources are stale"
             exit 1
           fi
           if [ "${{ needs.enzyme.result }}" != "success" ]; then

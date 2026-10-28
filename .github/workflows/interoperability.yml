@@ -4,17 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 1"
-  pull_request:
-    paths:
-      - ".github/workflows/interoperability.yml"
-      - "benchmark/fenicsx/**"
-      - "benchmark/freefem/**"
-      - "benchmark/mfem/**"
-      - "example/interoperability_benchmarks/**"
-      - "src/interoperability/fortfem_interoperability_records.f90"
-      - "src/generated/fortfem_interoperability_oracles.f90"
-      - "test/test_interoperability_manufactured_oracles.f90"
-      - "tools/codegen/app/gen_interoperability_oracles.f90"
   push:
     branches: [main]
     paths:
