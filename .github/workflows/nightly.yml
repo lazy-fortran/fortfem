@@ -1,0 +1,271 @@
+name: nightly
+
+# Jobs too slow for the merge queue run once a night on main. A failed job
+# bisects its own command between the last commit where it passed and this
+# commit; the report job files or updates one issue labelled nightly-failure,
+# and the next run in which every recorded job passes closes it.
+run-name: >-
+  ${{ inputs.jobs && format('nightly: {0}', inputs.jobs) || 'nightly: all jobs' }}
+
+on:
+  schedule:
+    - cron: "47 1 * * *"
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: >-
+          Comma-separated jobs to run: generated, debug-checks, coverage
+          (empty runs all)
+        required: false
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  OMP_NUM_THREADS: 2
+  OPENBLAS_NUM_THREADS: 1
+  OMP_WAIT_POLICY: passive
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan nightly jobs
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          JOBS: ${{ inputs.jobs }}
+        run: python3 scripts/nightly_triage.py plan --jobs "$JOBS"
+
+  generated:
+    name: generated sources are current
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'generated')
+    runs-on: ubuntu-latest
+    # The job takes 12-22 minutes; the rest is room for bisection.
+    timeout-minutes: 360
+    env:
+      # Code generation includes a large exact RT solve; keep the compiler
+      # graph bounded so hosted runners do not segfault under oversubscription.
+      FO_JOBS: 1
+      FO_BUILD_TIMEOUT: 600
+      FORTFEM_CODEGEN_RUNNER: fpm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            g++ \
+            gfortran \
+            libflint-dev \
+            libgmp-dev \
+            libmpfr-dev \
+            ninja-build
+
+      - name: Install pinned SymEngine
+        run: scripts/ci/install_symengine.sh
+
+      - name: Install fpm and fo
+        run: |
+          sudo curl -L -o /usr/local/bin/fpm \
+            https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          sudo chmod +x /usr/local/bin/fpm
+          git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+          (
+            cd /tmp/fo
+            fpm install --profile release --prefix "$HOME/.local"
+          )
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check generated sources and prove polar-complex identities
+        id: job
+        run: python3 scripts/nightly_triage.py run generated
+
+      - name: Bisect the failure
+        if: failure() && steps.job.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/nightly_triage.py bisect generated
+
+      - name: Keep the bisection result for the report
+        if: failure() && steps.job.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-triage-generated
+          path: ${{ runner.temp }}/nightly-triage/generated.json
+          if-no-files-found: ignore
+
+  debug-checks:
+    name: tests with runtime checks (debug profile)
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'debug-checks')
+    runs-on: ubuntu-latest
+    # The job takes 22-41 minutes; the rest is room for bisection.
+    timeout-minutes: 360
+    env:
+      TEST_TIMEOUT: 10s
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
+
+      - name: Setup Fortran Package Manager
+        run: |
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.13.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+
+      - name: Select the fast tests
+        run: |
+          echo "FORTFEM_FAST_TESTS=$(grep -v '^#' .github/fast-tests.txt | xargs)" \
+            >> "$GITHUB_ENV"
+
+      - name: Run selected tests with bounds and floating-point checks
+        id: job
+        run: python3 scripts/nightly_triage.py run debug-checks
+
+      - name: Bisect the failure
+        if: failure() && steps.job.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/nightly_triage.py bisect debug-checks
+
+      - name: Keep the bisection result for the report
+        if: failure() && steps.job.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-triage-debug-checks
+          path: ${{ runner.temp }}/nightly-triage/debug-checks.json
+          if-no-files-found: ignore
+
+  coverage:
+    name: release build and coverage
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'coverage')
+    runs-on: ubuntu-latest
+    # The job takes about 20 minutes; the rest is room for bisection.
+    timeout-minutes: 360
+    env:
+      # Serialize Fo's test build so consumers never read a partial .mod file.
+      FO_JOBS: 1
+      FO_TEST_TIMEOUT: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran liblapack-dev libsuitesparse-dev
+
+      - name: Setup Fortran Package Manager
+        run: |
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.13.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.13.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+
+      - name: Install fo test runner
+        id: fo
+        run: |
+          git clone --depth 1 https://github.com/lazy-fortran/fo.git /tmp/fo
+          echo "revision=$(git -C /tmp/fo rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          (
+            cd /tmp/fo
+            fpm install --profile release --prefix "$HOME/fo-prefix"
+          )
+          echo "$HOME/fo-prefix/bin" >> "$GITHUB_PATH"
+
+      # The merge queue restores the newest of these instead of building fo.
+      - name: Share this fo with the merge queue
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: ~/fo-prefix
+          key: fo-${{ runner.os }}-${{ steps.fo.outputs.revision }}
+
+      - name: Select the fast tests
+        run: |
+          echo "FORTFEM_FAST_TESTS=$(grep -v '^#' .github/fast-tests.txt | xargs)" \
+            >> "$GITHUB_ENV"
+
+      - name: Build everything and run the fast tests with coverage
+        id: job
+        run: python3 scripts/nightly_triage.py run coverage
+
+      - name: Bisect the failure
+        if: failure() && steps.job.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/nightly_triage.py bisect coverage
+
+      - name: Keep the bisection result for the report
+        if: failure() && steps.job.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-triage-coverage
+          path: ${{ runner.temp }}/nightly-triage/coverage.json
+          if-no-files-found: ignore
+
+      - name: Collect coverage
+        if: steps.job.outcome == 'success'
+        run: |
+          find build -name "*.gcda" -type f -exec dirname {} \; | sort -u | while read -r dir; do
+            gcov -o "$dir" src/*.f90 || true
+          done
+
+      - name: Upload coverage to Codecov
+        if: steps.job.outcome == 'success'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./*.gcov
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  report:
+    name: Report nightly result
+    needs: [plan, generated, debug-checks, coverage]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect bisection results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: nightly-triage-*
+          path: ${{ runner.temp }}/nightly-triage
+          merge-multiple: true
+      - name: File, update or close the nightly-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOBS: ${{ inputs.jobs }}
+        run: python3 scripts/nightly_triage.py report --jobs "$JOBS"
