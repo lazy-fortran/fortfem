@@ -120,9 +120,13 @@ module fortfem_boundary
         estimate_laplace_p0_two_level_residual_3d, &
         mark_bem_dorfler, refine_surface_mesh_marked
     use fortfem_elasticity_planar_acoustic_dtn_2d, only: &
-        solve_elasticity_planar_acoustic_dtn_p1
+        solve_elasticity_planar_acoustic_dtn_p1, &
+        solve_elasticity_planar_acoustic_dtn_p1_jvp, &
+        solve_elasticity_planar_acoustic_dtn_p1_vjp
     use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
-        solve_elasticity_curved_acoustic_ntd_p1
+        solve_elasticity_curved_acoustic_ntd_p1, &
+        solve_elasticity_curved_acoustic_ntd_p1_jvp, &
+        solve_elasticity_curved_acoustic_ntd_p1_vjp
     use fortfem_laplace_symmetric_coupling_2d, only: &
         assemble_helmholtz_symmetric_coupling_p1_p0, &
         assemble_laplace_symmetric_coupling_p1_p0, &
@@ -525,7 +529,11 @@ module fortfem_boundary
     public :: mark_bem_dorfler
     public :: refine_surface_mesh_marked
     public :: solve_elasticity_planar_acoustic_dtn_p1
+    public :: solve_elasticity_planar_acoustic_dtn_p1_jvp
+    public :: solve_elasticity_planar_acoustic_dtn_p1_vjp
     public :: solve_elasticity_curved_acoustic_ntd_p1
+    public :: solve_elasticity_curved_acoustic_ntd_p1_jvp
+    public :: solve_elasticity_curved_acoustic_ntd_p1_vjp
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
     public :: assemble_complex_dtn_trace_residual

@@ -1,4 +1,5 @@
 module fortfem_planar_acoustic_displacement_dtn
+    use fortfem_generated_periodic_p1_mass, only: generated_periodic_p1_mass
     use fortfem_kinds, only: dp
     use fortnum_fft, only: fft_c2c
     implicit none
@@ -46,10 +47,8 @@ contains
         complex(dp), intent(out) :: form(:, :)
         integer, intent(out) :: status
 
-        complex(dp), allocatable :: displacement(:), pressure(:)
-        complex(dp), allocatable :: strong_operator(:, :)
-        real(dp) :: spacing
-        integer :: column, next, operator_status, previous, row
+        complex(dp), allocatable :: column(:), displacement(:), pressure(:)
+        integer :: next, offset, operator_status, previous, row
 
         form = cmplx(0.0_dp, 0.0_dp, dp)
         status = 1
@@ -57,24 +56,24 @@ contains
         if (size(form, 1) /= sample_count .or. &
             size(form, 2) /= sample_count) return
         allocate(displacement(sample_count), pressure(sample_count))
-        allocate(strong_operator(sample_count, sample_count))
-        do column = 1, sample_count
-            displacement = cmplx(0.0_dp, 0.0_dp, dp)
-            displacement(column) = cmplx(1.0_dp, 0.0_dp, dp)
-            call apply_planar_acoustic_displacement_dtn( &
-                displacement, angular_frequency, sound_speed, fluid_density, &
-                period, maximum_mode, pressure, operator_status)
-            if (operator_status /= 0) return
-            strong_operator(:, column) = pressure
-        end do
-        spacing = period/real(sample_count, dp)
+        allocate(column(sample_count))
+        ! The map is a Fourier multiplier and the periodic P1 mass a circulant
+        ! stencil, so the form is circulant: one column of the strong operator
+        ! and one mass application determine it.
+        displacement = cmplx(0.0_dp, 0.0_dp, dp)
+        displacement(1) = cmplx(1.0_dp, 0.0_dp, dp)
+        call apply_planar_acoustic_displacement_dtn( &
+            displacement, angular_frequency, sound_speed, fluid_density, &
+            period, maximum_mode, pressure, operator_status)
+        if (operator_status /= 0) return
         do row = 1, sample_count
             previous = modulo(row - 2, sample_count) + 1
             next = modulo(row, sample_count) + 1
-            form(row, :) = spacing/6.0_dp*( &
-                strong_operator(previous, :) + &
-                4.0_dp*strong_operator(row, :) + &
-                strong_operator(next, :))
+            call generated_periodic_p1_mass(period, real(sample_count, dp), &
+                pressure(previous), pressure(row), pressure(next), column(row))
+        end do
+        do offset = 0, sample_count - 1
+            form(:, offset + 1) = cshift(column, -offset)
         end do
         status = 0
     end subroutine assemble_planar_acoustic_dtn_form_complex

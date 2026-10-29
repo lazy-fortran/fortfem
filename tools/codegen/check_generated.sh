@@ -130,6 +130,10 @@ filename="fortfem_p1_elasticity_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_elastic_acoustic_coupling_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_planar_helmholtz_dtn_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"

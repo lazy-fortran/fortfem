@@ -111,6 +111,7 @@ run_codegen gen_nurbs_geometry_products
 run_codegen gen_bspline_h1_geometry_products
 run_codegen gen_cartesian_pml_products
 run_codegen gen_p1_elasticity_products
+run_codegen gen_elastic_acoustic_coupling_products
 run_codegen gen_planar_helmholtz_dtn_products
 run_codegen gen_surface_triangle_geometry_products
 run_codegen gen_laplace_bem_kernel_products
@@ -183,6 +184,7 @@ fo fmt "$generated_dir/fortfem_nurbs_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_bspline_h1_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_cartesian_pml_products.f90"
 fo fmt "$generated_dir/fortfem_p1_elasticity_products.f90"
+fo fmt "$generated_dir/fortfem_elastic_acoustic_coupling_products.f90"
 fo fmt "$generated_dir/fortfem_planar_helmholtz_dtn_products.f90"
 fo fmt "$generated_dir/fortfem_surface_triangle_geometry_products.f90"
 fo fmt "$generated_dir/fortfem_laplace_bem_kernel_products.f90"
