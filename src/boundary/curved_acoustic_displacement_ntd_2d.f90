@@ -14,6 +14,7 @@ module fortfem_curved_acoustic_displacement_ntd_2d
         assemble_helmholtz_double_layer_mixed_linear, &
         assemble_helmholtz_hypersingular_linear, &
         assemble_helmholtz_single_layer_constant
+    use fortfem_generated_ntd_panel_coupling, only: generated_ntd_panel_coupling
     use fortfem_kinds, only: dp
     use fortnum_linalg, only: dense_solve
     use fortsparse, only: csc_from_triplet, csc_z_t, fortsparse_status_t, &
@@ -94,7 +95,7 @@ contains
         complex(dp), allocatable :: right_hand_side(:), solution(:)
         real(dp), allocatable :: displacement_trace(:, :), traction_mass(:, :)
         integer, allocatable :: columns(:), rows(:)
-        real(dp) :: length, normal(2)
+        real(dp) :: delta(2), endpoint_mass, length, trace(2), traction(2, 2, 2)
         integer :: column, component, endpoint, entry, node_count
         integer :: operator_status, panel, panel_count
 
@@ -154,19 +155,18 @@ contains
         displacement_trace = 0.0_dp
         traction_mass = 0.0_dp
         do panel = 1, panel_count
-            length = norm2(panel_end(:, panel) - panel_start(:, panel))
-            normal = [ &
-                panel_end(2, panel) - panel_start(2, panel), &
-                panel_start(1, panel) - panel_end(1, panel)]/length
+            delta = panel_end(:, panel) - panel_start(:, panel)
+            call generated_ntd_panel_coupling(delta(1), delta(2), length, &
+                endpoint_mass, trace, traction)
             do endpoint = 1, 2
                 do component = 1, 2
                     displacement_trace(panel, &
                         2*panel_nodes(endpoint, panel) - 2 + component) = &
-                        0.5_dp*normal(component)
+                        trace(component)
                 end do
             end do
             call add_panel_traction_mass( &
-                panel, length, normal, panel_nodes, traction_mass)
+                panel, traction, panel_nodes, traction_mass)
         end do
         form = matmul(traction_mass, &
             matmul(pressure_operator, displacement_trace))
@@ -246,9 +246,9 @@ contains
     end function valid_boundary_inputs
 
     pure subroutine add_panel_traction_mass( &
-            panel, length, normal, panel_nodes, traction_mass)
+            panel, traction, panel_nodes, traction_mass)
         integer, intent(in) :: panel
-        real(dp), intent(in) :: length, normal(2)
+        real(dp), intent(in) :: traction(2, 2, 2)
         integer, intent(in) :: panel_nodes(:, :)
         real(dp), intent(inout) :: traction_mass(:, :)
 
@@ -261,8 +261,8 @@ contains
                         2*panel_nodes(first, panel) - 2 + component, &
                         panel_nodes(second, panel)) = traction_mass( &
                         2*panel_nodes(first, panel) - 2 + component, &
-                        panel_nodes(second, panel)) + normal(component)* &
-                        length*merge(2.0_dp, 1.0_dp, first == second)/6.0_dp
+                        panel_nodes(second, panel)) + &
+                        traction(component, first, second)
                 end do
             end do
         end do
@@ -275,17 +275,19 @@ contains
         real(dp), intent(out) :: mass(:, :)
         integer, intent(out) :: status
 
-        real(dp) :: length
+        real(dp) :: delta(2), endpoint_mass, length, trace(2), traction(2, 2, 2)
         integer :: endpoint, panel
 
         mass = 0.0_dp
         status = 1
         do panel = 1, size(panel_start, 2)
-            length = norm2(panel_end(:, panel) - panel_start(:, panel))
-            if (length <= 0.0_dp) return
+            delta = panel_end(:, panel) - panel_start(:, panel)
+            if (all(delta == 0.0_dp)) return
+            call generated_ntd_panel_coupling(delta(1), delta(2), length, &
+                endpoint_mass, trace, traction)
             do endpoint = 1, 2
                 mass(panel, panel_nodes(endpoint, panel)) = &
-                    mass(panel, panel_nodes(endpoint, panel)) + 0.5_dp*length
+                    mass(panel, panel_nodes(endpoint, panel)) + endpoint_mass
             end do
         end do
         status = 0
