@@ -12,10 +12,14 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     !! One CSC pattern from fortfem_block_csc holds three groups: the triangles
     !! (generated elasticity cell), the optional absorbing edges (generated
     !! impedance edge with a complex (Z_p, Z_s) per edge, by default the real
-    !! parts of the solid's P and S impedances) and one dense
-    !! block over the 2m interface dofs, the m x m acoustic form contracted with
-    !! the interface normals. Dirichlet values go to sparse_direct_solve_constrained.
-    !! Storage is O(triangles + nnz + m**2).
+    !! parts of the solid's P and S impedances) and the interface coupling.
+    !! The DtN couples only the normal displacement component: when every
+    !! interface normal is axis-aligned the interface group is the m x m block
+    !! of the acoustic form on the normal-component dofs, contracted with the
+    !! normals at assembly; otherwise it is the dense block over the 2m
+    !! interface dofs. Dirichlet values go to sparse_direct_solve_constrained.
+    !! Storage is O(triangles + nnz + (k*m)**2) with k the number of active
+    !! normal components and a scratch of m**2, not (2m)**2, for the block.
     !!
     !! Derivatives cover vertex coordinates, angular frequency, complex sound
     !! speed, fluid density, Young's modulus, Poisson ratio, solid density,
@@ -26,6 +30,7 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     !! times the interface with a hard baffle (zero normal displacement) beyond
     !! it, removing the periodic coupling of the interface ends.
     !! Cotangents follow fortfem_elasticity_acoustic_common_2d.
+    use, intrinsic :: iso_fortran_env, only: int64
     use fortfem_block_csc, only: block_csc_add, block_csc_add_group, &
         block_csc_finalize, block_csc_gather, block_csc_init, &
         block_csc_new_matrix, block_csc_pattern_t
@@ -40,6 +45,12 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
         generated_interface_normal_block_jvp
     use fortfem_generated_interface_normal_block_vjp, only: &
         generated_interface_normal_block_vjp
+    use fortfem_generated_interface_normal_component_block, only: &
+        generated_interface_normal_component_block
+    use fortfem_generated_interface_normal_component_block_jvp, only: &
+        generated_interface_normal_component_block_jvp
+    use fortfem_generated_interface_normal_component_block_vjp, only: &
+        generated_interface_normal_component_block_vjp
     use fortfem_generated_p1_elastic_impedance_edge, only: &
         generated_p1_elastic_impedance_edge
     use fortfem_generated_p1_elastic_impedance_edge_jvp, only: &
@@ -69,6 +80,7 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     public :: solve_elasticity_planar_acoustic_dtn_p1
     public :: solve_elasticity_planar_acoustic_dtn_p1_jvp
     public :: solve_elasticity_planar_acoustic_dtn_p1_vjp
+    public :: planar_dtn_interface_entries
 
     interface solve_elasticity_planar_acoustic_dtn_p1
         module procedure solve_elasticity_planar_acoustic_dtn_p1_real
@@ -90,6 +102,11 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
         integer :: dtn_samples = 0, dtn_modes = 0
         real(dp) :: dtn_period = 0.0_dp
         logical :: baffled = .false.
+        !! Interface coupling layout: normal_only with one active component
+        !! stores the m x m form on the normal-component dofs; the dense
+        !! layout keeps the 2m x 2m block over both components.
+        logical :: normal_only = .false.
+        integer :: normal_component = 0
     end type planar_system_t
 
 contains
@@ -311,20 +328,36 @@ contains
             status = 1
             return
         end if
-        allocate(block_dot(2*m, 2*m, 1))
-        !$omp parallel do default(none) &
-        !$omp shared(m, interface_normals, system, form_dot, block_dot) &
-        !$omp private(a, b) schedule(static)
-        do b = 1, m
-            do a = 1, m
-                call generated_interface_normal_block_jvp( &
-                    interface_normals(1, a), interface_normals(2, a), &
-                    interface_normals(1, b), interface_normals(2, b), &
-                    system%form(a, b), form_dot(a, b), &
-                    block_dot(2*a - 1:2*a, 2*b - 1:2*b, 1))
+        if (system%normal_only) then
+            allocate(block_dot(m, m, 1))
+            !$omp parallel do default(none) &
+            !$omp shared(m, interface_normals, system, form_dot, block_dot) &
+            !$omp private(a, b) schedule(static)
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_component_block_jvp( &
+                        interface_normals(system%normal_component, a), &
+                        interface_normals(system%normal_component, b), &
+                        system%form(a, b), form_dot(a, b), block_dot(a, b, 1))
+                end do
             end do
-        end do
-        !$omp end parallel do
+            !$omp end parallel do
+        else
+            allocate(block_dot(2*m, 2*m, 1))
+            !$omp parallel do default(none) &
+            !$omp shared(m, interface_normals, system, form_dot, block_dot) &
+            !$omp private(a, b) schedule(static)
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_block_jvp( &
+                        interface_normals(1, a), interface_normals(2, a), &
+                        interface_normals(1, b), interface_normals(2, b), &
+                        system%form(a, b), form_dot(a, b), &
+                        block_dot(2*a - 1:2*a, 2*b - 1:2*b, 1))
+                end do
+            end do
+            !$omp end parallel do
+        end if
         call block_csc_add(system%pattern, system%interface_group, block_dot, &
             values_dot)
 
@@ -483,20 +516,36 @@ contains
             poisson_ratio_bar, solid_density_bar, omega_material_bar)
         angular_frequency_bar = angular_frequency_bar + omega_material_bar
 
-        allocate(block_bar(2*m, 2*m, 1))
-        call block_csc_gather(system%pattern, system%interface_group, values_bar, &
-            block_bar)
-        allocate(form_bar(m, m))
-        do b = 1, m
-            do a = 1, m
-                call generated_interface_normal_block_vjp( &
-                    interface_normals(1, a), interface_normals(2, a), &
-                    interface_normals(1, b), interface_normals(2, b), &
-                    system%form(a, b), conjg(block_bar(2*a - 1:2*a, 2*b - 1:2*b, 1)), &
-                    value_bar)
-                form_bar(a, b) = conjg(value_bar)
+        if (system%normal_only) then
+            allocate(block_bar(m, m, 1))
+            call block_csc_gather(system%pattern, system%interface_group, &
+                values_bar, block_bar)
+            allocate(form_bar(m, m))
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_component_block_vjp( &
+                        interface_normals(system%normal_component, a), &
+                        interface_normals(system%normal_component, b), &
+                        system%form(a, b), conjg(block_bar(a, b, 1)), value_bar)
+                    form_bar(a, b) = conjg(value_bar)
+                end do
             end do
-        end do
+        else
+            call block_csc_gather(system%pattern, system%interface_group, &
+                values_bar, block_bar)
+            allocate(form_bar(m, m))
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_block_vjp( &
+                        interface_normals(1, a), interface_normals(2, a), &
+                        interface_normals(1, b), interface_normals(2, b), &
+                        system%form(a, b), &
+                        conjg(block_bar(2*a - 1:2*a, 2*b - 1:2*b, 1)), &
+                        value_bar)
+                    form_bar(a, b) = conjg(value_bar)
+                end do
+            end do
+        end if
         call assemble_planar_acoustic_displacement_dtn_form_vjp(m, &
             angular_frequency, sound_speed, fluid_density, system%dtn_period, &
             system%dtn_modes, form_bar, omega_form_bar, sound_speed_bar, &
@@ -562,6 +611,8 @@ contains
         dof_count = 2*size(vertices, 2)
         if (.not. valid_inputs()) return
         if (.not. dtn_layout()) return
+        call interface_layout(interface_normals, m, system%normal_only, &
+            system%normal_component)
 
         call elastic_material(young_modulus, poisson_ratio, solid_density, &
             angular_frequency, system%material)
@@ -574,9 +625,18 @@ contains
             edge_dofs(2::2, :) = 2*absorbing_edges
             call block_csc_add_group(system%pattern, edge_dofs, system%edge_group)
         end if
-        allocate(interface_dofs(2*m, 1))
-        interface_dofs(1::2, 1) = 2*interface_nodes - 1
-        interface_dofs(2::2, 1) = 2*interface_nodes
+        if (system%normal_only) then
+            allocate(interface_dofs(m, 1))
+            if (system%normal_component == 1) then
+                interface_dofs(:, 1) = 2*interface_nodes - 1
+            else
+                interface_dofs(:, 1) = 2*interface_nodes
+            end if
+        else
+            allocate(interface_dofs(2*m, 1))
+            interface_dofs(1::2, 1) = 2*interface_nodes - 1
+            interface_dofs(2::2, 1) = 2*interface_nodes
+        end if
         call block_csc_add_group(system%pattern, interface_dofs, &
             system%interface_group)
         call block_csc_finalize(system%pattern)
@@ -627,19 +687,37 @@ contains
             sound_speed, fluid_density, system%dtn_period, system%dtn_modes, &
             system%form, status, system%dtn_samples)
         if (status /= 0) return
-        allocate(blocks(2*m, 2*m, 1))
-        !$omp parallel do default(none) &
-        !$omp shared(m, interface_normals, system, blocks) private(a, b) &
-        !$omp schedule(static)
-        do b = 1, m
-            do a = 1, m
-                call generated_interface_normal_block( &
-                    interface_normals(1, a), interface_normals(2, a), &
-                    interface_normals(1, b), interface_normals(2, b), &
-                    system%form(a, b), blocks(2*a - 1:2*a, 2*b - 1:2*b, 1))
+        if (system%normal_only) then
+            !! The coupling lives on one scalar component: an m x m block of
+            !! the form contracted with the normal components of its nodes.
+            allocate(blocks(m, m, 1))
+            !$omp parallel do default(none) &
+            !$omp shared(m, interface_normals, system, blocks) private(a, b) &
+            !$omp schedule(static)
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_component_block( &
+                        interface_normals(system%normal_component, a), &
+                        interface_normals(system%normal_component, b), &
+                        system%form(a, b), blocks(a, b, 1))
+                end do
             end do
-        end do
-        !$omp end parallel do
+            !$omp end parallel do
+        else
+            allocate(blocks(2*m, 2*m, 1))
+            !$omp parallel do default(none) &
+            !$omp shared(m, interface_normals, system, blocks) private(a, b) &
+            !$omp schedule(static)
+            do b = 1, m
+                do a = 1, m
+                    call generated_interface_normal_block( &
+                        interface_normals(1, a), interface_normals(2, a), &
+                        interface_normals(1, b), interface_normals(2, b), &
+                        system%form(a, b), blocks(2*a - 1:2*a, 2*b - 1:2*b, 1))
+                end do
+            end do
+            !$omp end parallel do
+        end if
         call block_csc_add(system%pattern, system%interface_group, blocks, &
             system%matrix%val)
 
@@ -726,6 +804,42 @@ contains
         end function dtn_layout
 
     end subroutine build_system
+
+    pure subroutine interface_layout(normals, m, normal_only, component)
+        !! The DtN couples only the normal component. When every interface
+        !! normal is axis-aligned the coupling lives on that single scalar
+        !! component and the interface block is m x m; otherwise both
+        !! components are active and it is 2m x 2m.
+        real(dp), intent(in) :: normals(:, :)
+        integer, intent(in) :: m
+        logical, intent(out) :: normal_only
+        integer, intent(out) :: component
+
+        logical :: active_x, active_y
+
+        active_x = any(normals(1, 1:m) /= 0.0_dp)
+        active_y = any(normals(2, 1:m) /= 0.0_dp)
+        normal_only = active_x .neqv. active_y
+        component = merge(1, 2, active_x)
+    end subroutine interface_layout
+
+    integer(int64) pure function planar_dtn_interface_entries(m, &
+            interface_normals) result(entries)
+        !! Number of interface-block entries the solver stores for m interface
+        !! samples: m*m for axis-aligned normals (one active component),
+        !! 4*m*m otherwise.
+        integer, intent(in) :: m
+        real(dp), intent(in) :: interface_normals(:, :)
+
+        logical :: normal_only
+        integer :: component
+        integer(int64) :: width
+
+        call interface_layout(interface_normals, m, normal_only, component)
+        width = int(m, int64)
+        if (.not. normal_only) width = 2*width
+        entries = width*width
+    end function planar_dtn_interface_entries
 
     pure subroutine load_neighbours(a, m, baffled, previous, next)
         !! Neighbour samples of the incident load: periodic, or, at the ends of
