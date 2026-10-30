@@ -6,7 +6,9 @@ program gen_elastic_acoustic_coupling_products
     !! - one row of the periodic P1 mass on equispaced samples, h/6 (1, 4, 1), and
     !!   the incident-pressure load -n h/6 (1, 4, 1) p it gives at an interface node;
     !! - the interface block n_a n_b^T F_ab that contracts a scalar acoustic form
-    !!   entry with the normals of its two nodes;
+    !!   entry with the normals of its two nodes, and the same contraction
+    !!   (n_a·e_p)(n_b·e_q) F_ab of one normal-component pair, which lets the
+    !!    solver store the coupling on the active components only;
     !! - the panel coupling of the curved NtD form: length, normal trace n/2,
     !!   endpoint mass length/2 and the P1 traction mass n_c length (2 or 1)/6.
     !! JVP and VJP are emitted for the leaves that the solver derivatives use.
@@ -36,6 +38,7 @@ program gen_elastic_acoustic_coupling_products
     call periodic_mass()
     call incident_load()
     call normal_block()
+    call normal_component_block()
     call panel_coupling()
     close (unit)
 
@@ -129,6 +132,22 @@ contains
             [.false., .false., .false., .false., .true.], [str("block")], &
             [str("(2,2)")], [1, 1, 1, 1], refs, "complex(dp)", .true.)
     end subroutine normal_block
+
+    subroutine normal_component_block()
+        !! One component (p, q) of the interface block: the solver assembles
+        !! the coupling on the normal-component dofs only, so it needs the
+        !! scalar (n_a·e_p)(n_b·e_q) F_ab as its own kernel.
+        type(expr_t) :: a, b, value
+
+        a = sym(arena, "normal_a")
+        b = sym(arena, "normal_b")
+        value = sym(arena, "value")
+        call emit_family("interface_normal_component_block", [a*value*b], &
+            [a, b, value], [str("normal_a"), str("normal_b"), str("value")], &
+            [real_types(2), complex_types(1)], [.false., .false., .true.], &
+            [str("block_value")], no_shapes(1), [1], no_shapes(1), &
+            "complex(dp)", .true.)
+    end subroutine normal_component_block
 
     subroutine panel_coupling()
         type(expr_t) :: dx, dy, length, normal(2), roots(12)
