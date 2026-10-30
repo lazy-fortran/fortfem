@@ -115,7 +115,7 @@ openmp = "*"
 blas = "*"
 fortplot = { git = "https://github.com/lazy-fortran/fortplot.git" }
 fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "b763bce9eb4fd521ba8fe3a7d6afa8c7a450f2f3" }
-fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "9edf4bea2453ead1c9f05a6b363c8d7a493b0e68" }
+fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "859d6964d4db075d9cc1eea2c963fb53eb430af1" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
