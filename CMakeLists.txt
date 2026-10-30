@@ -161,9 +161,10 @@ if(FORTFEM_ELEMENT_KERNELS_ONLY)
     return()
 endif()
 
-# The meridian test graph uses the same FortNum provider as fpm. Declare it
-# before FortSparse, whose standalone build otherwise supplies its own pin.
-if(FORTFEM_BUILD_TESTING AND NOT TARGET fortnum)
+# The public Fortran API needs the same FortNum and FortSparse providers as
+# fpm. Declare them before FortSparse, whose standalone build otherwise
+# supplies its own pin.
+if(NOT TARGET fortnum)
     if(NOT FORTFEM_FETCH_DEPENDENCIES)
         message(FATAL_ERROR
             "fortnum target is required when dependency fetching is disabled")
@@ -196,6 +197,40 @@ if(NOT TARGET fortsparse)
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
+
+# The plotting facade of fortfem_api links FortPlot, as in fpm; the pin is
+# the revision fpm resolves for the unpinned fpm.toml dependency.
+if(NOT TARGET fortplot)
+    if(NOT FORTFEM_FETCH_DEPENDENCIES)
+        message(FATAL_ERROR
+            "fortplot target is required when dependency fetching is disabled")
+    endif()
+    FetchContent_Declare(fortplot
+        GIT_REPOSITORY https://github.com/lazy-fortran/fortplot.git
+        GIT_TAG 19dd002c32fed1bdaa657089e6d3c9bfa9648dcf
+        GIT_SHALLOW FALSE)
+    FetchContent_MakeAvailable(fortplot)
+endif()
+
+# The full public Fortran library: every module fpm builds from src/, so a
+# consumer that does `find_package(fortfem)` (or FetchContent) and links
+# fortfem::api or fortfem::boundary sees the same modules as an fpm build.
+# CMake resolves the intra-target Fortran MODULE dependencies.
+file(GLOB_RECURSE FORTFEM_API_SOURCES CONFIGURE_DEPENDS src/*.f90)
+list(FILTER FORTFEM_API_SOURCES EXCLUDE REGEX "/src/triangle_compat/")
+add_library(fortfem_api STATIC ${FORTFEM_API_SOURCES})
+add_library(fortfem::api ALIAS fortfem_api)
+add_library(fortfem::boundary ALIAS fortfem_api)
+set_target_properties(fortfem_api PROPERTIES
+    EXPORT_NAME api
+    Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/api_modules")
+target_include_directories(fortfem_api PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/api_modules>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fortfem>)
+target_link_libraries(fortfem_api PUBLIC
+    OpenMP::OpenMP_Fortran fortnum fortsparse fortplot
+    fortfem_triangle_compat)
 
 set(FORTFEM_CAPI_SOURCES
     src/generated/fortfem_reference_basis_products.f90
@@ -361,7 +396,15 @@ install(TARGETS fortfem_capi fortfem_triangle_compat
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+# The full API library links the fetched FortNum, FortSparse and FortPlot
+# targets; a package export would have to export those too, so consumers use
+# it through add_subdirectory/FetchContent or an installed static library.
+install(TARGETS fortfem_api
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES include/fortfem.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY "${PROJECT_BINARY_DIR}/api_modules/"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/fortfem"
+    FILES_MATCHING PATTERN "*.mod")
 
 configure_package_config_file(
     cmake/fortfemConfig.cmake.in
@@ -419,5 +462,15 @@ if(FORTFEM_BUILD_TESTING)
         set_tests_properties(fortfem_${test_name} PROPERTIES
             LABELS "sparse;fast" ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
     endforeach()
+    # Consumer smoke: the boundary facade must be linkable and usable from
+    # this CMake build, as it is from fpm.
+    add_executable(test_cmake_boundary_consumer
+        test/test_cmake_boundary_consumer.f90)
+    target_link_libraries(test_cmake_boundary_consumer PRIVATE
+        fortfem::boundary fortfem_test_check)
+    add_test(NAME fortfem_cmake_boundary_consumer
+        COMMAND test_cmake_boundary_consumer)
+    set_tests_properties(fortfem_cmake_boundary_consumer PROPERTIES
+        LABELS "api;fast" ENVIRONMENT "OMP_NUM_THREADS=1")
     include(cmake/FortfemMeridianTests.cmake)
 endif()
