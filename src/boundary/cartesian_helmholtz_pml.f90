@@ -11,6 +11,8 @@ module fortfem_cartesian_helmholtz_pml
         generated_cartesian_curl_curl_pml_jvp
     use fortfem_generated_cartesian_curl_curl_pml_vjp, only: &
         generated_cartesian_curl_curl_pml_vjp
+    use fortfem_generated_cartesian_scalar_pml, only: &
+        generated_cartesian_scalar_pml
     use fortfem_generated_cartesian_scalar_pml_jvp, only: &
         generated_cartesian_scalar_pml_jvp
     use fortfem_generated_cartesian_scalar_pml_vjp, only: &
@@ -42,10 +44,9 @@ contains
             return
         end if
 
-        gradient_coefficient(1) = stretch(2)*stretch(3)/stretch(1)
-        gradient_coefficient(2) = stretch(1)*stretch(3)/stretch(2)
-        gradient_coefficient(3) = stretch(1)*stretch(2)/stretch(3)
-        mass_coefficient = product(stretch)
+        call generated_cartesian_scalar_pml(stretch(1), stretch(2), stretch(3), &
+            gradient_coefficient(1), gradient_coefficient(2), &
+            gradient_coefficient(3), mass_coefficient)
     end subroutine cartesian_scalar_helmholtz_pml_coefficients
 
     pure subroutine cartesian_scalar_helmholtz_pml_coefficients_jvp( &
