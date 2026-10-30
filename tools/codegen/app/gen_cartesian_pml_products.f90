@@ -21,7 +21,8 @@ program gen_cartesian_pml_products
     type(expr_t) :: curl_jvp(6), curl_vjp(3)
     type(expr_t) :: attenuation_jvp(1), attenuation_vjp(4)
     type(kernel_spec_t) :: spec
-    character(:), allocatable :: scalar_jvp_code, scalar_vjp_code
+    character(:), allocatable :: scalar_code, scalar_jvp_code, scalar_vjp_code
+    character(:), allocatable :: attenuation_code
     character(:), allocatable :: curl_jvp_code, curl_vjp_code
     character(:), allocatable :: attenuation_jvp_code, attenuation_vjp_code
     integer :: ios, root, unit
@@ -67,12 +68,22 @@ program gen_cartesian_pml_products
         attenuation, attenuation_variables, attenuation_dot)
     attenuation_vjp = vjp( &
         attenuation, attenuation_variables, attenuation_bar)
+    call simplify_all(scalar_outputs)
+    call simplify_all(attenuation)
     call simplify_all(scalar_jvp)
     call simplify_all(scalar_vjp)
     call simplify_all(curl_jvp)
     call simplify_all(curl_vjp)
     call simplify_all(attenuation_jvp)
     call simplify_all(attenuation_vjp)
+
+    call initialize_spec( &
+        spec, "generated_cartesian_scalar_pml", &
+        "fortfem_generated_cartesian_scalar_pml", 3, 4)
+    spec%args = [str("stretch_1"), str("stretch_2"), str("stretch_3")]
+    spec%outputs = [ &
+        str("gradient_1"), str("gradient_2"), str("gradient_3"), str("mass")]
+    scalar_code = emit_text(scalar_outputs, spec)
 
     call initialize_spec( &
         spec, "generated_cartesian_scalar_pml_jvp", &
@@ -119,6 +130,16 @@ program gen_cartesian_pml_products
     curl_vjp_code = emit_text(curl_vjp, spec)
 
     call initialize_spec( &
+        spec, "generated_cartesian_pml_attenuation", &
+        "fortfem_generated_cartesian_pml_attenuation", 5, 1)
+    spec%scalar_type = str("real(dp)")
+    spec%args = [ &
+        str("distance"), str("layer_width"), str("wave_number"), &
+        str("sigma_max"), str("polynomial_degree")]
+    spec%outputs = [str("attenuation")]
+    attenuation_code = emit_text(attenuation, spec)
+
+    call initialize_spec( &
         spec, "generated_cartesian_pml_attenuation_jvp", &
         "fortfem_generated_cartesian_pml_attenuation_jvp", 9, 1)
     spec%scalar_type = str("real(dp)")
@@ -145,10 +166,12 @@ program gen_cartesian_pml_products
         file=generated_path("fortfem_cartesian_pml_products.f90"), &
         status="replace", action="write", iostat=ios)
     if (ios /= 0) error stop "cannot write Cartesian PML products"
+    write (unit, "(a)") scalar_code(:len(scalar_code) - 1)
     write (unit, "(a)") scalar_jvp_code(:len(scalar_jvp_code) - 1)
     write (unit, "(a)") scalar_vjp_code(:len(scalar_vjp_code) - 1)
     write (unit, "(a)") curl_jvp_code(:len(curl_jvp_code) - 1)
     write (unit, "(a)") curl_vjp_code(:len(curl_vjp_code) - 1)
+    write (unit, "(a)") attenuation_code(:len(attenuation_code) - 1)
     write (unit, "(a)") attenuation_jvp_code(:len(attenuation_jvp_code) - 1)
     write (unit, "(a)") attenuation_vjp_code(:len(attenuation_vjp_code) - 1)
     close (unit)
