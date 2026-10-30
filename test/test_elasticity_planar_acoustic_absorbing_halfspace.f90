@@ -11,31 +11,40 @@ program test_elasticity_planar_acoustic_absorbing_halfspace
     !! displacement is U = P_b/(i omega (Z_s + Z_f)), Z = density*speed (P wave
     !! in steel). The fit of A, B uses the 1D P1 wavenumber
     !! cos(k_h h) = (1 - (kh)**2/3)/(1 + (kh)**2/6), so |B/A| measures only the
-    !! reflection of the discrete absorbing face. With 80, 160 and 320 cells per
-    !! P wavelength, |B/A| was 1.8e-4, 4.3e-5, 9.8e-6 and the wet-face error
-    !! 3.0e-2, 7.2e-3, 1.7e-3 (second order); this test uses 160. The former
-    !! +i omega Z edge gave |B/A| = 5.5e3 and a wet-face error of 2.07.
+    !! reflection of the discrete absorbing face.
+    !!
+    !! The rollers make the lateral faces mirror planes, so the periodic DtN map
+    !! acts on the even extension of the wet face: samples on rows 0..ny, then
+    !! ny-1..1, period 2W, fluid density and pressure halved because each
+    !! interior row appears twice. Sampling rows 0..ny-1 with period W instead
+    !! loads row 0 twice and leaves row ny without fluid, which tilts the wet
+    !! face by up to 15 % at its edges with only first-order convergence.
+    !!
+    !! With 160, 320 and 640 cells per P wavelength, |B/A| is 3.2e-5, 8.0e-6,
+    !! 2.0e-6, the centre wet-face error 8.6e-5, 2.2e-5, 5.5e-6 and the lateral
+    !! spread of the wet face 9.8e-4, 2.8e-4, 7.8e-5 (second order); the test
+    !! solves the first two. The former +i omega Z edge gives |B/A| = 3.1e4 and
+    !! a wet-face error of 2.07.
     use check, only: check_condition, check_summary
     use fortfem_boundary, only: solve_elasticity_planar_acoustic_dtn_p1
     use fortfem_kinds, only: dp
     implicit none
 
-    integer, parameter :: nx = 340, ny = 20
-    integer, parameter :: nv = (nx + 1)*(ny + 1)
+    integer, parameter :: nx_coarse = 340, ny_coarse = 20
     real(dp), parameter :: pi = acos(-1.0_dp)
     real(dp), parameter :: young_modulus = 200.0e9_dp, poisson_ratio = 0.3_dp
     real(dp), parameter :: solid_density = 7850.0_dp
     real(dp), parameter :: sound_speed = 1480.0_dp, fluid_density = 1000.0_dp
-    real(dp), parameter :: h = 0.5e-4_dp, thickness = nx*h
+    real(dp), parameter :: h_coarse = 0.5e-4_dp, thickness = nx_coarse*h_coarse
     real(dp), parameter :: blocked_pressure = 1.0_dp
     real(dp), allocatable :: vertices(:, :), normals(:, :), anormals(:, :)
     integer, allocatable :: triangles(:, :), inodes(:), dofs(:), aedges(:, :)
     complex(dp), allocatable :: values(:), load(:), pinc(:), solution(:)
     real(dp) :: modulus, p_speed, wavenumber, z_s, z_f, omega
     real(dp) :: displacement_error, reflection, interface_reflection_error
-    real(dp) :: amplitude
+    real(dp) :: amplitude, spread_coarse, spread_fine, spread_order, h
     complex(dp) :: exact, centre, interface_reflection
-    integer :: status
+    integer :: nx, ny, nv, status
     logical :: all_passed
 
     all_passed = .true.
@@ -46,17 +55,15 @@ program test_elasticity_planar_acoustic_absorbing_halfspace
     omega = wavenumber*p_speed
     z_s = solid_density*p_speed
     z_f = fluid_density*sound_speed
-    call build_problem()
+    exact = blocked_pressure/(cmplx(0.0_dp, omega*(z_s + z_f), dp))
 
-    call solve_elasticity_planar_acoustic_dtn_p1(vertices, triangles, inodes, &
-        normals, omega, sound_speed, fluid_density, ny*h, 3, young_modulus, &
-        poisson_ratio, solid_density, load, pinc, dofs, values, solution, &
-        status, absorbing_edges=aedges, absorbing_normals=anormals)
+    call solve_strip(2, spread_fine)
+    call record(status == 0, "refined steel half-space solve succeeds")
+    call solve_strip(1, spread_coarse)
     call record(status == 0, "steel half-space solve succeeds")
 
     call fit_waves(reflection, amplitude)
-    exact = blocked_pressure/(cmplx(0.0_dp, omega*(z_s + z_f), dp))
-    centre = solution(2*inodes(ny/2) - 1)
+    centre = solution(2*node(nx, ny/2) - 1)
     displacement_error = abs(centre - exact)/abs(exact)
     interface_reflection = (blocked_pressure - &
         (0.0_dp, 1.0_dp)*omega*z_f*centre)/(0.5_dp*blocked_pressure) - 1.0_dp
@@ -68,36 +75,77 @@ program test_elasticity_planar_acoustic_absorbing_halfspace
         displacement_error
     write (*, "(a,es10.3)") "water-steel reflection coefficient error ", &
         interface_reflection_error
+    spread_order = log(spread_coarse/spread_fine)/log(2.0_dp)
+    write (*, "(a,2es10.3,a,f5.2)") "lateral wet-face spread h, h/2 ", &
+        spread_coarse, spread_fine, ", order ", spread_order
     call record(reflection < 1.0e-3_dp, &
         "absorbing face reflects less than 0.1 % at normal incidence")
     call record(abs(amplitude - 1.0_dp) < 1.0e-3_dp, &
         "transmitted wave carries the half-space amplitude")
-    call record(displacement_error < 1.0e-2_dp, &
+    call record(displacement_error < 2.0e-4_dp, &
         "wet-face displacement matches the half-space solution")
     call record(interface_reflection_error < 1.0e-3_dp, &
         "water-steel reflection is (Z_s - Z_f)/(Z_s + Z_f)")
+    call record(spread_coarse < 2.0e-3_dp, &
+        "normal incidence gives a laterally uniform wet face")
+    call record(spread_order > 1.7_dp, &
+        "lateral nonuniformity is second-order discretisation error")
 
     call check_summary("Steel half-space with absorbing face")
     if (.not. all_passed) error stop 1
 
 contains
 
+    pure integer function node(col, row)
+        integer, intent(in) :: col, row
+
+        node = 1 + row + (ny + 1)*col
+    end function node
+
+    subroutine solve_strip(refinement, spread)
+        !! Solve with h_coarse/refinement; spread is the largest relative
+        !! deviation of u_x on the wet face from its centre value.
+        integer, intent(in) :: refinement
+        real(dp), intent(out) :: spread
+
+        integer :: row
+
+        nx = nx_coarse*refinement
+        ny = ny_coarse*refinement
+        nv = (nx + 1)*(ny + 1)
+        h = h_coarse/real(refinement, dp)
+        call build_problem()
+        call solve_elasticity_planar_acoustic_dtn_p1(vertices, triangles, &
+            inodes, normals, omega, sound_speed, fluid_density/2.0_dp, &
+            2.0_dp*ny*h, 3, young_modulus, poisson_ratio, solid_density, load, &
+            pinc, dofs, values, solution, status, absorbing_edges=aedges, &
+            absorbing_normals=anormals)
+        spread = 0.0_dp
+        do row = 0, ny
+            spread = max(spread, abs(solution(2*node(nx, row) - 1) - &
+                solution(2*node(nx, ny/2) - 1)))
+        end do
+        spread = spread/abs(solution(2*node(nx, ny/2) - 1))
+    end subroutine solve_strip
+
     subroutine fit_waves(ratio, amplitude)
         !! Least-squares fit of u_x along the middle row to A e^{-ikx} + B e^{ikx};
         !! ratio = |B/A|, amplitude = |A|/|U|.
         real(dp), intent(out) :: ratio, amplitude
-        complex(dp) :: basis(0:nx, 2), gram(2, 2), rhs(2), samples(0:nx)
+        complex(dp), allocatable :: basis(:, :), samples(:)
+        complex(dp) :: gram(2, 2), rhs(2)
         complex(dp) :: a, b, det
         real(dp) :: q, discrete_k, x
         integer :: col
 
+        allocate(basis(0:nx, 2), samples(0:nx))
         q = (wavenumber*h)**2
         discrete_k = acos((1.0_dp - q/3.0_dp)/(1.0_dp + q/6.0_dp))/h
         do col = 0, nx
             x = h*real(col, dp)
             basis(col, 1) = exp(cmplx(0.0_dp, -discrete_k*x, dp))
             basis(col, 2) = exp(cmplx(0.0_dp, discrete_k*x, dp))
-            samples(col) = solution(2*(1 + ny/2 + (ny + 1)*col) - 1)
+            samples(col) = solution(2*node(col, ny/2) - 1)
         end do
         gram = matmul(conjg(transpose(basis)), basis)
         rhs = matmul(conjg(transpose(basis)), samples)
@@ -109,35 +157,39 @@ contains
     end subroutine fit_waves
 
     subroutine build_problem()
-        !! Vertex (column, row) is 1 + row + (ny + 1) column.
         integer :: col, row, t, ll, k
 
+        if (allocated(vertices)) deallocate(vertices, triangles, inodes, &
+            normals, pinc, aedges, anormals, dofs, values, load, solution)
         allocate(vertices(2, nv), triangles(3, 2*nx*ny))
         do col = 0, nx
             do row = 0, ny
-                vertices(:, 1 + row + (ny + 1)*col) = h*real([col, row], dp)
+                vertices(:, node(col, row)) = h*real([col, row], dp)
             end do
         end do
         t = 0
         do col = 0, nx - 1
             do row = 0, ny - 1
-                ll = 1 + row + (ny + 1)*col
+                ll = node(col, row)
                 t = t + 1
                 triangles(:, t) = [ll, ll + ny + 1, ll + ny + 2]
                 t = t + 1
                 triangles(:, t) = [ll, ll + ny + 2, ll + 1]
             end do
         end do
-        allocate(inodes(ny), normals(2, ny), pinc(ny))
-        do row = 0, ny - 1
-            inodes(row + 1) = 1 + row + (ny + 1)*nx
+        allocate(inodes(2*ny), normals(2, 2*ny), pinc(2*ny))
+        do row = 0, ny
+            inodes(row + 1) = node(nx, row)
+        end do
+        do row = ny - 1, 1, -1
+            inodes(2*ny - row + 1) = node(nx, row)
         end do
         normals = 0.0_dp
         normals(1, :) = 1.0_dp
-        pinc = blocked_pressure
+        pinc = blocked_pressure/2.0_dp
         allocate(aedges(2, ny), anormals(2, ny))
         do row = 0, ny - 1
-            aedges(:, row + 1) = [1 + row, 2 + row]
+            aedges(:, row + 1) = [node(0, row), node(0, row + 1)]
         end do
         anormals = 0.0_dp
         anormals(1, :) = -1.0_dp
@@ -145,9 +197,9 @@ contains
         k = 0
         do col = 0, nx
             k = k + 1
-            dofs(k) = 2*(1 + (ny + 1)*col)
+            dofs(k) = 2*node(col, 0)
             k = k + 1
-            dofs(k) = 2*(1 + ny + (ny + 1)*col)
+            dofs(k) = 2*node(col, ny)
         end do
         allocate(values(size(dofs)), load(2*nv), solution(2*nv))
         values = (0.0_dp, 0.0_dp)
