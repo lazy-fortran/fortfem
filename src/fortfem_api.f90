@@ -1561,18 +1561,15 @@ module fortfem_api
         curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
         curvilinear_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
-        solve_scalar_helmholtz_pml_slab_1d
-    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d, &
         solve_scalar_helmholtz_pml_slab_1d_jvp, &
         solve_scalar_helmholtz_pml_slab_1d_vjp
     use fortfem_scalar_helmholtz_pml_2d, only: &
-        solve_scalar_helmholtz_pml_p1_2d
-    use fortfem_scalar_helmholtz_pml_2d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_2d, &
         solve_scalar_helmholtz_pml_p1_2d_jvp, &
         solve_scalar_helmholtz_pml_p1_2d_vjp
     use fortfem_scalar_helmholtz_pml_3d, only: &
-        solve_scalar_helmholtz_pml_p1_3d
-    use fortfem_scalar_helmholtz_pml_3d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_3d, &
         solve_scalar_helmholtz_pml_p1_3d_jvp, &
         solve_scalar_helmholtz_pml_p1_3d_vjp
     use fortfem_toroidal_poisson_dtn, only: &

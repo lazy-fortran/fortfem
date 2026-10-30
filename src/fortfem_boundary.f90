@@ -171,19 +171,15 @@ module fortfem_boundary
         pullback_planar_maxwell_dtn_form_jvp, &
         pullback_planar_maxwell_dtn_form_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
-        assemble_scalar_helmholtz_pml_slab_1d_matrix, &
-        solve_scalar_helmholtz_pml_slab_1d
-    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d, &
         solve_scalar_helmholtz_pml_slab_1d_jvp, &
         solve_scalar_helmholtz_pml_slab_1d_vjp
     use fortfem_scalar_helmholtz_pml_2d, only: &
-        solve_scalar_helmholtz_pml_p1_2d
-    use fortfem_scalar_helmholtz_pml_2d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_2d, &
         solve_scalar_helmholtz_pml_p1_2d_jvp, &
         solve_scalar_helmholtz_pml_p1_2d_vjp
     use fortfem_scalar_helmholtz_pml_3d, only: &
-        solve_scalar_helmholtz_pml_p1_3d
-    use fortfem_scalar_helmholtz_pml_3d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_3d, &
         solve_scalar_helmholtz_pml_p1_3d_jvp, &
         solve_scalar_helmholtz_pml_p1_3d_vjp
     use fortfem_cartesian_helmholtz_pml, only: &
@@ -559,7 +555,6 @@ module fortfem_boundary
     public :: pullback_planar_maxwell_dtn_form
     public :: pullback_planar_maxwell_dtn_form_jvp
     public :: pullback_planar_maxwell_dtn_form_vjp
-    public :: assemble_scalar_helmholtz_pml_slab_1d_matrix
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_slab_1d_jvp
     public :: solve_scalar_helmholtz_pml_slab_1d_vjp

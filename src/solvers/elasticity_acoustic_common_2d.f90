@@ -1,8 +1,7 @@
 module fortfem_elasticity_acoustic_common_2d
     !! Pieces shared by the coupled elasticity-acoustic solvers: the homogeneous
     !! isotropic material from (E, nu, rho_s, omega) through the generated leaf,
-    !! the cell group of a uniform material with JVP and VJP, and the Dirichlet
-    !! mask of sparse_direct_solve_constrained.
+    !! and the cell group of a uniform material with JVP and VJP.
     !!
     !! Cotangents follow sparse_direct_solve_constrained_vjp: a complex input z
     !! gets z_bar = sum conj(dA/dz) A_bar and a real input x gets
@@ -27,7 +26,6 @@ module fortfem_elasticity_acoustic_common_2d
     public :: uniform_cells_assemble
     public :: uniform_cells_assemble_jvp
     public :: uniform_cells_assemble_vjp
-    public :: dirichlet_mask
 
     type :: elastic_material_t
         complex(dp) :: lambda = (0.0_dp, 0.0_dp)
@@ -155,23 +153,5 @@ contains
         material_bar%mu = material_bar%mu + sum(mu_bar)
         material_bar%inertia = material_bar%inertia + sum(inertia_bar)
     end subroutine uniform_cells_assemble_vjp
-
-    pure subroutine dirichlet_mask(dof_count, dofs, values, constrained, fixed)
-        !! A repeated dof keeps its last value, as in the dense elimination before.
-        integer, intent(in) :: dof_count, dofs(:)
-        complex(dp), intent(in) :: values(:)
-        logical, allocatable, intent(out) :: constrained(:)
-        complex(dp), allocatable, intent(out) :: fixed(:)
-
-        integer :: k
-
-        allocate(constrained(dof_count), fixed(dof_count))
-        constrained = .false.
-        fixed = (0.0_dp, 0.0_dp)
-        do k = 1, size(dofs)
-            constrained(dofs(k)) = .true.
-            fixed(dofs(k)) = values(k)
-        end do
-    end subroutine dirichlet_mask
 
 end module fortfem_elasticity_acoustic_common_2d

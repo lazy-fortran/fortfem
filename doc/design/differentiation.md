@@ -147,24 +147,24 @@ state-level real-complex dot identity.
 
 The one-dimensional scalar P1 slab exposes the complete end-to-end version of
 this contract as `solve_scalar_helmholtz_pml_slab_1d_jvp` and
-`solve_scalar_helmholtz_pml_slab_1d_vjp`. Its products reassemble the same
-complex PML matrix as the primal routine, differentiate the element lengths,
-PML width, polynomial attenuation, and wave number analytically, and then use
-FortNum's complex implicit solve products. Dirichlet elimination is part of
-the differentiated map: the reverse product includes the matrix-dependent
-right-hand-side term induced by the prescribed left value. The focused test
+`solve_scalar_helmholtz_pml_slab_1d_vjp`. The attenuation, the stretch
+coefficients and the interval matrices are FortSym-generated primal, JVP and
+VJP kernels; the intervals are one group of a `fortfem_block_csc` pattern, so
+the matrix JVP is the assembly of the cell JVPs and its VJP the gather of the
+value cotangents into the cell VJPs. The end values go to
+`sparse_direct_solve_constrained`, whose products include the
+matrix-dependent right-hand-side term induced by the prescribed left value. The focused test
 checks the JVP against a two-sided re-solve difference and checks the VJP with
 the real-complex adjoint identity. A perturbation must keep the active PML
 element mask fixed, just like the coefficient-level map above.
 
 The P1 triangular and tetrahedral scalar PML solvers provide the same
 end-to-end products for moving vertices, complex element stretches, wave
-number, complex volume loads, and prescribed Dirichlet data. Their assembly
-uses a topology-fixed CSC pattern, so a retained FortSparse factorization is
-reused for the tangent solve and a conjugate-transpose factorization supplies
-the reverse solve. Reverse assembly scatters duplicate element contributions
-back to the shared mesh vertices and includes the matrix-dependent
-Dirichlet-elimination term. The tests independently re-solve perturbed
+number, complex volume loads, and prescribed Dirichlet data through the same
+generated cell kernels, `fortfem_block_csc` assembly and constrained sparse
+solve products (`fortfem_scalar_helmholtz_pml_common`). Reverse assembly
+gathers the value cotangents into cell blocks and scatters the generated cell
+VJPs back to the shared mesh vertices in a fixed order. The tests independently re-solve perturbed
 meshes and check the real-complex adjoint identity in both dimensions.
 
 The planar Helmholtz DtN trace operator has analytical trace, wave-number, and
