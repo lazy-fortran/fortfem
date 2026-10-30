@@ -2,7 +2,7 @@ program test_p1_elasticity_kernels
     !! Generated vector P1 elasticity kernels: the 6x6 cell matrix against the
     !! handwritten assembly of elasticity_p1_2d_core (both orientations), symmetry
     !! and rigid-body null space; the 4x4 impedance edge matrix against the
-    !! absorbing block of elasticity_planar_acoustic_dtn_2d; JVP against central
+    !! absorbing Lysmer-Kuhlemeyer block -i omega Z M; JVP against central
     !! differences and VJP against JVP by the (bilinear) dot-product test.
     use check, only: check_condition, check_summary
     use fortfem_elasticity_p1_2d_core, only: assemble_elasticity_dynamic_p1_2d
@@ -123,8 +123,9 @@ contains
 
     function absorbing_block(length, normal, p_impedance, s_impedance, omega) &
             result(local)
-        !! Transcription of assemble_absorbing_boundary (elasticity_planar_
-        !! acoustic_dtn_2d.f90) without its real() on the impedances.
+        !! -i omega M_edge (Z_s I + (Z_p - Z_s) n n^T): the Lysmer-Kuhlemeyer
+        !! traction under exp(-i omega t) (formerly assemble_absorbing_boundary
+        !! with +i, which fed energy in), without the solver's real() on Z.
         real(dp), intent(in) :: length, normal(2), omega
         complex(dp), intent(in) :: p_impedance, s_impedance
         complex(dp) :: local(4, 4), coefficient(2, 2)
@@ -145,7 +146,7 @@ contains
         do first = 1, 2
             do second = 1, 2
                 local(2*first - 1:2*first, 2*second - 1:2*second) = &
-                    cmplx(0.0_dp, omega*edge_mass(first, second), dp)*coefficient
+                    cmplx(0.0_dp, -omega*edge_mass(first, second), dp)*coefficient
             end do
         end do
     end function absorbing_block

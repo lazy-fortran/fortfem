@@ -536,13 +536,13 @@ contains
 
         t1 = p_impedance - s_impedance
         t2 = s_impedance + normal_1**2*t1
-        t3 = angular_frequency*length*(0.0_dp, 1.0_dp)*t2*1.0_dp/3.0_dp
-        t4 = angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp
-        t5 = angular_frequency*length*(0.0_dp, 1.0_dp)*t2*1.0_dp/6.0_dp
-        t6 = angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp
+        t3 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t2*1.0_dp/3.0_dp
+        t4 = -angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp
+        t5 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t2*1.0_dp/6.0_dp
+        t6 = -angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp
         t7 = s_impedance + normal_2**2*t1
-        t8 = angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/3.0_dp
-        t9 = angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp
+        t8 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/3.0_dp
+        t9 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp
         edge(1,1) = t3
         edge(2,1) = t4
         edge(3,1) = t5
@@ -599,28 +599,28 @@ contains
         t3 = p_impedance_dot - s_impedance_dot
         t4 = s_impedance_dot + normal_1*normal_1_dot*t1*2 + t2*t3
         t5 = s_impedance + t2*t1
-        t6 = angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/3.0_dp + angular_frequency*length_dot* &
-            (0.0_dp, 1.0_dp)*t5*1.0_dp/3.0_dp + angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t5*1.0_dp/3.0_dp
-        t7 = angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*1.0_dp/3.0_dp + &
-            angular_frequency*length*normal_1*normal_2_dot*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp + &
-            angular_frequency*length*normal_1_dot*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp + &
-            angular_frequency*length_dot*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp + &
+        t6 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/3.0_dp - angular_frequency*length_dot* &
+            (0.0_dp, 1.0_dp)*t5*1.0_dp/3.0_dp - angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t5*1.0_dp/3.0_dp
+        t7 = -angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*1.0_dp/3.0_dp - &
+            angular_frequency*length*normal_1*normal_2_dot*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp - &
+            angular_frequency*length*normal_1_dot*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp - &
+            angular_frequency*length_dot*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp - &
             angular_frequency_dot*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp
-        t8 = angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/6.0_dp + angular_frequency*length_dot* &
-            (0.0_dp, 1.0_dp)*t5*1.0_dp/6.0_dp + angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t5*1.0_dp/6.0_dp
-        t9 = angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*1.0_dp/6.0_dp + &
-            angular_frequency*length*normal_1*normal_2_dot*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp + &
-            angular_frequency*length*normal_1_dot*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp + &
-            angular_frequency*length_dot*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp + &
+        t8 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/6.0_dp - angular_frequency*length_dot* &
+            (0.0_dp, 1.0_dp)*t5*1.0_dp/6.0_dp - angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t5*1.0_dp/6.0_dp
+        t9 = -angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*1.0_dp/6.0_dp - &
+            angular_frequency*length*normal_1*normal_2_dot*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp - &
+            angular_frequency*length*normal_1_dot*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp - &
+            angular_frequency*length_dot*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp - &
             angular_frequency_dot*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/6.0_dp
         t10 = normal_2**2
         t11 = s_impedance_dot + normal_2*normal_2_dot*t1*2 + t10*t3
         t12 = s_impedance + t10*t1
-        t13 = angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/3.0_dp + angular_frequency* &
-            length_dot*(0.0_dp, 1.0_dp)*t12*1.0_dp/3.0_dp + angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t12* &
+        t13 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/3.0_dp - angular_frequency* &
+            length_dot*(0.0_dp, 1.0_dp)*t12*1.0_dp/3.0_dp - angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t12* &
             1.0_dp/3.0_dp
-        t14 = angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/6.0_dp + angular_frequency* &
-            length_dot*(0.0_dp, 1.0_dp)*t12*1.0_dp/6.0_dp + angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t12* &
+        t14 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/6.0_dp - angular_frequency* &
+            length_dot*(0.0_dp, 1.0_dp)*t12*1.0_dp/6.0_dp - angular_frequency_dot*length*(0.0_dp, 1.0_dp)*t12* &
             1.0_dp/6.0_dp
         edge_dot(1,1) = t6
         edge_dot(2,1) = t7
@@ -680,29 +680,31 @@ contains
         t9 = normal_2**2
         t10 = s_impedance + t9*t2
         t11 = edge_bar(2,4) + edge_bar(4,2)
-        t12 = angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/3.0_dp
-        t13 = angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp
-        t14 = t12 + t13
-        t15 = angular_frequency*length*(0.0_dp, 1.0_dp)*t8*1.0_dp/3.0_dp
-        t16 = angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/6.0_dp
-        t17 = t15 + t16
-        t18 = angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp + &
+        t12 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t4*1.0_dp/3.0_dp
+        t13 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp
+        t14 = t12 - angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp
+        t15 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t8*1.0_dp/3.0_dp
+        t16 = -angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/6.0_dp
+        t17 = t15 - angular_frequency*length*(0.0_dp, 1.0_dp)*t11*1.0_dp/6.0_dp
+        t18 = -angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*1.0_dp/3.0_dp - &
             angular_frequency*length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*1.0_dp/6.0_dp + t5*t14 + t9*t17
-        length_bar = angular_frequency*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp + &
-            angular_frequency*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp + angular_frequency* &
-            (0.0_dp, 1.0_dp)*t4*t6*1.0_dp/3.0_dp + angular_frequency*(0.0_dp, 1.0_dp)*t7*t6*1.0_dp/6.0_dp + &
-            angular_frequency*(0.0_dp, 1.0_dp)*t8*t10*1.0_dp/3.0_dp + angular_frequency*(0.0_dp, 1.0_dp)*t11* &
+        length_bar = -angular_frequency*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp - &
+            angular_frequency*normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp - angular_frequency* &
+            (0.0_dp, 1.0_dp)*t4*t6*1.0_dp/3.0_dp - angular_frequency*(0.0_dp, 1.0_dp)*t7*t6*1.0_dp/6.0_dp - &
+            angular_frequency*(0.0_dp, 1.0_dp)*t8*t10*1.0_dp/3.0_dp - angular_frequency*(0.0_dp, 1.0_dp)*t11* &
             t10*1.0_dp/6.0_dp
-        normal_1_bar = angular_frequency*length*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp + &
+        normal_1_bar = -angular_frequency*length*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp - &
             angular_frequency*length*normal_2*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp + normal_1*t2*t14*2
-        normal_2_bar = angular_frequency*length*normal_1*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp + &
+        normal_2_bar = -angular_frequency*length*normal_1*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp - &
             angular_frequency*length*normal_1*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp + normal_2*t2*t17*2
         p_impedance_bar = t18
-        s_impedance_bar = t12 + t13 + t15 + t16 - t18
-        angular_frequency_bar = length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp + length* &
-            normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp + length*(0.0_dp, 1.0_dp)*t4*t6*1.0_dp/ &
-            3.0_dp + length*(0.0_dp, 1.0_dp)*t7*t6*1.0_dp/6.0_dp + length*(0.0_dp, 1.0_dp)*t8*t10*1.0_dp/ &
-            3.0_dp + length*(0.0_dp, 1.0_dp)*t11*t10*1.0_dp/6.0_dp
+        s_impedance_bar = t12 - angular_frequency*length*(0.0_dp, 1.0_dp)*t7*1.0_dp/6.0_dp - &
+            angular_frequency*length*(0.0_dp, 1.0_dp)*t8*1.0_dp/3.0_dp - angular_frequency*length*(0.0_dp, &
+            1.0_dp)*t11*1.0_dp/6.0_dp - t18
+        angular_frequency_bar = -length*normal_1*normal_2*(0.0_dp, 1.0_dp)*t1*t2*1.0_dp/3.0_dp - length* &
+            normal_1*normal_2*(0.0_dp, 1.0_dp)*t3*t2*1.0_dp/6.0_dp - length*(0.0_dp, 1.0_dp)*t4*t6*1.0_dp/ &
+            3.0_dp - length*(0.0_dp, 1.0_dp)*t7*t6*1.0_dp/6.0_dp - length*(0.0_dp, 1.0_dp)*t8*t10*1.0_dp/ &
+            3.0_dp - length*(0.0_dp, 1.0_dp)*t11*t10*1.0_dp/6.0_dp
 
     end subroutine generated_p1_elastic_impedance_edge_vjp
 
