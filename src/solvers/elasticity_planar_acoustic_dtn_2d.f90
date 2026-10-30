@@ -24,10 +24,11 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     use fortfem_block_csc, only: block_csc_add, block_csc_add_group, &
         block_csc_finalize, block_csc_gather, block_csc_init, &
         block_csc_new_matrix, block_csc_pattern_t
-    use fortfem_elasticity_acoustic_common_2d, only: dirichlet_mask, &
-        elastic_material, elastic_material_jvp, elastic_material_t, &
-        elastic_material_vjp, uniform_cells_assemble, &
-        uniform_cells_assemble_jvp, uniform_cells_assemble_vjp
+    use fortfem_dirichlet_constraints, only: dirichlet_mask
+    use fortfem_elasticity_acoustic_common_2d, only: elastic_material, &
+        elastic_material_jvp, elastic_material_t, elastic_material_vjp, &
+        uniform_cells_assemble, uniform_cells_assemble_jvp, &
+        uniform_cells_assemble_vjp
     use fortfem_elasticity_p1_csc_2d, only: elasticity_p1_cell_dofs
     use fortfem_generated_interface_normal_block, only: &
         generated_interface_normal_block
