@@ -131,10 +131,6 @@ end program magnetic_curvilinear_metrics
 
 ![cylindrical_coefficients_1d.png](../../media/examples/magnetic_curvilinear_metrics/cylindrical_coefficients_1d.png)
 
-### spherical_coefficients_1d.png
-
-![spherical_coefficients_1d.png](../../media/examples/magnetic_curvilinear_metrics/spherical_coefficients_1d.png)
-
 ---
 
 [← Back to all examples](../index.html)

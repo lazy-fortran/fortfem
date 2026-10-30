@@ -332,25 +332,9 @@ end program mixed_elasticity_wave
 
 ![primary.png](../../media/examples/mixed_elasticity_wave/primary.png)
 
-### mixed_elasticity_energy_1d.png
-
-![mixed_elasticity_energy_1d.png](../../media/examples/mixed_elasticity_wave/mixed_elasticity_energy_1d.png)
-
-### mixed_elasticity_error_1d.png
-
-![mixed_elasticity_error_1d.png](../../media/examples/mixed_elasticity_wave/mixed_elasticity_error_1d.png)
-
 ### mixed_elasticity_solution_1d.png
 
 ![mixed_elasticity_solution_1d.png](../../media/examples/mixed_elasticity_wave/mixed_elasticity_solution_1d.png)
-
-### mixed_elasticity_solution_2d.png
-
-![mixed_elasticity_solution_2d.png](../../media/examples/mixed_elasticity_wave/mixed_elasticity_solution_2d.png)
-
-### mixed_elasticity_stress_1d.png
-
-![mixed_elasticity_stress_1d.png](../../media/examples/mixed_elasticity_wave/mixed_elasticity_stress_1d.png)
 
 ---
 

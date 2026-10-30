@@ -95,7 +95,9 @@ end program simple_poisson
 ```
 
 More programs, including H(curl) problems, DtN and BEM examples, are under
-[`example/`](example).
+[`example/`](example); the
+[example gallery](https://lazy-fortran.github.io/fortfem/page/examples/index.html)
+shows their source and plots.
 
 ## Documentation
 

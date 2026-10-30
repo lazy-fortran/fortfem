@@ -211,14 +211,6 @@ end program laplace_symmetric_transmission
 
 ![primary.png](../../media/examples/laplace_symmetric_transmission/primary.png)
 
-### flux_1d.png
-
-![flux_1d.png](../../media/examples/laplace_symmetric_transmission/flux_1d.png)
-
-### solution_1d.png
-
-![solution_1d.png](../../media/examples/laplace_symmetric_transmission/solution_1d.png)
-
 ### solution_2d.png
 
 ![solution_2d.png](../../media/examples/laplace_symmetric_transmission/solution_2d.png)

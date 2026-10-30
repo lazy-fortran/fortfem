@@ -124,15 +124,14 @@ grep -Fq \
     'https://lazy-fortran.github.io/fortfem/page/examples/index.html' \
     "$readme_file"
 
-if [[ -d "$artifacts_dir" ]]; then
-    while IFS= read -r plot; do
-        example_name=$(basename "$(dirname "$plot")")
-        plot_name=$(basename "$plot")
-        grep -Fq \
-            "../../media/examples/$example_name/$plot_name" \
-            "$generated_dir/$example_name.md"
-    done < <(find "$artifacts_dir" -mindepth 2 -maxdepth 2 \
-        -type f -name '*.png' | sort)
-fi
+# Pages link exactly the mapped primary plot and its gallery alias, whatever
+# else a local run left in the artifact directory.
+for example_name in "${expected[@]}"; do
+    primary_name=$(awk -v name="$example_name" '$1 == name {print $2}' "$primary_file")
+    diff -u \
+        <(printf '%s\n' primary.png "$primary_name") \
+        <(sed -n 's/^!\[[^]]*\](\.\.\/\.\.\/media\/examples\/[^/]*\/\([^)]*\)).*$/\1/p' \
+            "$generated_dir/$example_name.md")
+done
 
 echo "example documentation covers ${#expected[@]} executable examples"

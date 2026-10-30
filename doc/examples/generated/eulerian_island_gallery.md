@@ -304,10 +304,6 @@ end program eulerian_island_gallery
 
 ![primary.png](../../media/examples/eulerian_island_gallery/primary.png)
 
-### island_flux_diagnostics_2d.png
-
-![island_flux_diagnostics_2d.png](../../media/examples/eulerian_island_gallery/island_flux_diagnostics_2d.png)
-
 ### island_flux_solution_2d.png
 
 ![island_flux_solution_2d.png](../../media/examples/eulerian_island_gallery/island_flux_solution_2d.png)

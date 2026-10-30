@@ -258,17 +258,9 @@ end program nested_surface_solution
 
 ![primary.png](../../media/examples/nested_surface_solution/primary.png)
 
-### nested_surface_radial_profile_1d.png
-
-![nested_surface_radial_profile_1d.png](../../media/examples/nested_surface_solution/nested_surface_radial_profile_1d.png)
-
 ### nested_surface_solution_3d.png
 
 ![nested_surface_solution_3d.png](../../media/examples/nested_surface_solution/nested_surface_solution_3d.png)
-
-### nested_surface_solution_parameter_2d.png
-
-![nested_surface_solution_parameter_2d.png](../../media/examples/nested_surface_solution/nested_surface_solution_parameter_2d.png)
 
 ---
 

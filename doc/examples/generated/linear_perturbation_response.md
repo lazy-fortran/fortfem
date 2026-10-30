@@ -365,14 +365,6 @@ end program linear_perturbation_response
 
 ![primary.png](../../media/examples/linear_perturbation_response/primary.png)
 
-### linear_response_diagnostics_1d.png
-
-![linear_response_diagnostics_1d.png](../../media/examples/linear_perturbation_response/linear_response_diagnostics_1d.png)
-
-### linear_response_phase_1d.png
-
-![linear_response_phase_1d.png](../../media/examples/linear_perturbation_response/linear_response_phase_1d.png)
-
 ### linear_response_state_1d.png
 
 ![linear_response_state_1d.png](../../media/examples/linear_perturbation_response/linear_response_state_1d.png)

@@ -26,7 +26,12 @@ not source data or an abstract convergence quantity.
 Generated outputs:
 
 - `sphere_exterior_solution_3d.png`: computed exterior (1/r) field on the
-  observation shell;
+  connected observation shell, with a filled tensor-product surface and
+  ordered samples (the first gallery stage);
+- `sphere_exterior_solution_3d.csv`: ordered `(theta,phi)` surface samples
+  containing coordinates, computed values, exact `1/r`, and absolute error;
+- `gallery_sequence.txt`: machine-readable stage order proving that the
+  physical solution precedes density, operator, and convergence diagnostics;
 - `sphere_capacitance.png`: Galerkin capacitance convergence;
 - `sphere_hierarchical_action.png`: dense and hierarchical operator actions;
 - `sphere_helmholtz_hierarchical_action.png`: real and imaginary outgoing
@@ -328,16 +333,56 @@ program bem_sphere_3d
     solution_points_z = reshape(solution_surface_z, [size(surface_solution)])
     solution_point_values = reshape(surface_solution, [size(surface_solution)])
 
+    ! Keep the gallery order machine-checkable.  The first stage is the
+    ! connected physical solution surface below; all operator and convergence
+    ! diagnostics follow it in the generated documentation.
+    open(newunit=unit, file=output_directory//"/gallery_sequence.txt", &
+        status="replace", action="write")
+    write(unit, "(a)") "physical_solution"
+    write(unit, "(a)") "boundary_density"
+    write(unit, "(a)") "operator_comparison"
+    write(unit, "(a)") "helmholtz_solution"
+    write(unit, "(a)") "scaling"
+    close(unit)
+
+    ! Export the same connected tensor-product surface used by the physical
+    ! plot.  This is an independent stage oracle for gallery checks: the
+    ! coordinates remain ordered in (theta, phi), and the exact 1/r value is
+    ! recorded without relying on pixels or FortPlot internals.
+    open(newunit=unit, file=output_directory//"/sphere_exterior_solution_3d.csv", &
+        status="replace", action="write")
+    write(unit, "(a)") "theta,phi,x,y,z,computed,exact,absolute_error"
+    do field_point = 1, surface_phi_count
+        do level = 1, surface_theta_count
+            surface_theta = acos(-1.0_dp)*real(level - 1, dp)/ &
+                real(surface_theta_count - 1, dp)
+            surface_phi = 2.0_dp*acos(-1.0_dp)*real(field_point - 1, dp)/ &
+                real(surface_phi_count - 1, dp)
+            observation_radius = sqrt( &
+                solution_surface_x(level, field_point)**2 + &
+                solution_surface_y(level, field_point)**2 + &
+                solution_surface_z(level, field_point)**2)
+            write(unit, "(*(es24.16,:,','))") surface_theta, surface_phi, &
+                solution_surface_x(level, field_point), &
+                solution_surface_y(level, field_point), &
+                solution_surface_z(level, field_point), &
+                surface_solution(level, field_point), 1.0_dp/observation_radius, &
+                abs(surface_solution(level, field_point) - 1.0_dp/observation_radius)
+        end do
+    end do
+    close(unit)
+
     call figure(figsize=[8.0_dp, 6.5_dp])
     call add_parametric_surface( &
         solution_surface_x, solution_surface_y, solution_surface_z, &
-        color="lightgray", alpha=0.28_dp, linewidth=0.0_dp, filled=.true., &
-        label="exterior observation shell")
+        color="lightsteelblue", edgecolor=[0.20_dp, 0.35_dp, 0.50_dp], &
+        alpha=0.42_dp, linewidth=0.30_dp, filled=.true., &
+        label="connected exterior observation shell")
     call add_scatter( &
         solution_points_x, solution_points_y, solution_points_z, &
-        c=solution_point_values, cmap="viridis", marker=".", markersize=12.0_dp, &
-        label="computed exterior Laplace field")
-    call colorbar(label="u_h on observation shell")
+        c=solution_point_values, cmap="viridis", marker=".", markersize=6.0_dp, &
+        label="computed BEM samples")
+    call colorbar(label="u_h (exterior 1/r)")
     call title("Computed exterior Laplace solution around a sphere")
     call xlabel("x")
     call ylabel("y")
@@ -555,37 +600,9 @@ end program bem_sphere_3d
 
 ![primary.png](../../media/examples/bem_sphere_3d/primary.png)
 
-### sphere_capacitance.png
-
-![sphere_capacitance.png](../../media/examples/bem_sphere_3d/sphere_capacitance.png)
-
-### sphere_density_3d.png
-
-![sphere_density_3d.png](../../media/examples/bem_sphere_3d/sphere_density_3d.png)
-
 ### sphere_exterior_solution_3d.png
 
 ![sphere_exterior_solution_3d.png](../../media/examples/bem_sphere_3d/sphere_exterior_solution_3d.png)
-
-### sphere_helmholtz_cfie_resonance.png
-
-![sphere_helmholtz_cfie_resonance.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_cfie_resonance.png)
-
-### sphere_helmholtz_cfie_scaling.png
-
-![sphere_helmholtz_cfie_scaling.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_cfie_scaling.png)
-
-### sphere_helmholtz_hierarchical_action.png
-
-![sphere_helmholtz_hierarchical_action.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_hierarchical_action.png)
-
-### sphere_helmholtz_solve.png
-
-![sphere_helmholtz_solve.png](../../media/examples/bem_sphere_3d/sphere_helmholtz_solve.png)
-
-### sphere_hierarchical_action.png
-
-![sphere_hierarchical_action.png](../../media/examples/bem_sphere_3d/sphere_hierarchical_action.png)
 
 ---
 

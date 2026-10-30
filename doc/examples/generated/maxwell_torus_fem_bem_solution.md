@@ -362,29 +362,9 @@ end program maxwell_torus_fem_bem_solution
 
 ![primary.png](../../media/examples/maxwell_torus_fem_bem_solution/primary.png)
 
-### debug_quiver.png
-
-![debug_quiver.png](../../media/examples/maxwell_torus_fem_bem_solution/debug_quiver.png)
-
-### maxwell_torus_fem_bem_centerline_1d.png
-
-![maxwell_torus_fem_bem_centerline_1d.png](../../media/examples/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_centerline_1d.png)
-
-### maxwell_torus_fem_bem_error_2d.png
-
-![maxwell_torus_fem_bem_error_2d.png](../../media/examples/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_error_2d.png)
-
-### maxwell_torus_fem_bem_geometry_3d.png
-
-![maxwell_torus_fem_bem_geometry_3d.png](../../media/examples/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_geometry_3d.png)
-
 ### maxwell_torus_fem_bem_solution_2d.png
 
 ![maxwell_torus_fem_bem_solution_2d.png](../../media/examples/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_solution_2d.png)
-
-### maxwell_torus_fem_bem_vector_2d.png
-
-![maxwell_torus_fem_bem_vector_2d.png](../../media/examples/maxwell_torus_fem_bem_solution/maxwell_torus_fem_bem_vector_2d.png)
 
 ---
 

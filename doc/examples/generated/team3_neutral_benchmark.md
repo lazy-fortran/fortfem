@@ -391,17 +391,9 @@ end program team3_neutral_benchmark
 
 ![primary.png](../../media/examples/team3_neutral_benchmark/primary.png)
 
-### probe.png
-
-![probe.png](../../media/examples/team3_neutral_benchmark/probe.png)
-
 ### solution.png
 
 ![solution.png](../../media/examples/team3_neutral_benchmark/solution.png)
-
-### solution_3d.png
-
-![solution_3d.png](../../media/examples/team3_neutral_benchmark/solution_3d.png)
 
 ---
 

@@ -253,14 +253,6 @@ end program direct_force_campaign_gallery
 
 ![primary.png](../../media/examples/direct_force_campaign_gallery/primary.png)
 
-### direct_force_objective_diagnostics_1d.png
-
-![direct_force_objective_diagnostics_1d.png](../../media/examples/direct_force_campaign_gallery/direct_force_objective_diagnostics_1d.png)
-
-### direct_force_state_2d.png
-
-![direct_force_state_2d.png](../../media/examples/direct_force_campaign_gallery/direct_force_state_2d.png)
-
 ### direct_force_torus_solution_3d.png
 
 ![direct_force_torus_solution_3d.png](../../media/examples/direct_force_campaign_gallery/direct_force_torus_solution_3d.png)

@@ -177,17 +177,9 @@ end program helmholtz_cfie_circle
 
 ![primary.png](../../media/examples/helmholtz_cfie_circle/primary.png)
 
-### convergence_1d.png
-
-![convergence_1d.png](../../media/examples/helmholtz_cfie_circle/convergence_1d.png)
-
 ### helmholtz_cfie_field_2d.png
 
 ![helmholtz_cfie_field_2d.png](../../media/examples/helmholtz_cfie_circle/helmholtz_cfie_field_2d.png)
-
-### incident_boundary_2d.png
-
-![incident_boundary_2d.png](../../media/examples/helmholtz_cfie_circle/incident_boundary_2d.png)
 
 ---
 

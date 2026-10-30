@@ -231,17 +231,9 @@ end program xfem_interface_solution
 
 ![primary.png](../../media/examples/xfem_interface_solution/primary.png)
 
-### xfem_interface_jump_2d.png
-
-![xfem_interface_jump_2d.png](../../media/examples/xfem_interface_solution/xfem_interface_jump_2d.png)
-
 ### xfem_interface_solution_2d.png
 
 ![xfem_interface_solution_2d.png](../../media/examples/xfem_interface_solution/xfem_interface_solution_2d.png)
-
-### xfem_vector_field_2d.png
-
-![xfem_vector_field_2d.png](../../media/examples/xfem_interface_solution/xfem_vector_field_2d.png)
 
 ---
 

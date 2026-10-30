@@ -502,18 +502,6 @@ end program solver_benchmark
 
 ![poisson_solution_2d.png](../../media/examples/solver_benchmark/poisson_solution_2d.png)
 
-### solver_residuals_1d.png
-
-![solver_residuals_1d.png](../../media/examples/solver_benchmark/solver_residuals_1d.png)
-
-### solver_times_1d.png
-
-![solver_times_1d.png](../../media/examples/solver_benchmark/solver_times_1d.png)
-
-### sparse_factor_times_1d.png
-
-![sparse_factor_times_1d.png](../../media/examples/solver_benchmark/sparse_factor_times_1d.png)
-
 ---
 
 [← Back to all examples](../index.html)

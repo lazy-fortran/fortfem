@@ -246,14 +246,6 @@ end program helmholtz_bem_circle_spectrum
 
 ![primary.png](../../media/examples/helmholtz_bem_circle_spectrum/primary.png)
 
-### boundary_mode_2d.png
-
-![boundary_mode_2d.png](../../media/examples/helmholtz_bem_circle_spectrum/boundary_mode_2d.png)
-
-### convergence_1d.png
-
-![convergence_1d.png](../../media/examples/helmholtz_bem_circle_spectrum/convergence_1d.png)
-
 ### helmholtz_disk_field_2d.png
 
 ![helmholtz_disk_field_2d.png](../../media/examples/helmholtz_bem_circle_spectrum/helmholtz_disk_field_2d.png)

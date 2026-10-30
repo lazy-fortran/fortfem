@@ -735,25 +735,9 @@ end program maxwell_vector_open_boundary_parity_gallery
 
 ![primary.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/primary.png)
 
-### maxwell_vector_domain_comparison_1d.png
-
-![maxwell_vector_domain_comparison_1d.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/maxwell_vector_domain_comparison_1d.png)
-
-### maxwell_vector_dtn_diagnostic_1d.png
-
-![maxwell_vector_dtn_diagnostic_1d.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/maxwell_vector_dtn_diagnostic_1d.png)
-
-### maxwell_vector_pml_solution_2d.png
-
-![maxwell_vector_pml_solution_2d.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/maxwell_vector_pml_solution_2d.png)
-
 ### maxwell_vector_solution_2d.png
 
 ![maxwell_vector_solution_2d.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/maxwell_vector_solution_2d.png)
-
-### maxwell_vector_torus_geometry_3d.png
-
-![maxwell_vector_torus_geometry_3d.png](../../media/examples/maxwell_vector_open_boundary_parity_gallery/maxwell_vector_torus_geometry_3d.png)
 
 ---
 
