@@ -11,7 +11,7 @@ program gen_p1_elasticity_products
     use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, func_in, num, sym, operator(+), &
+    use fortsym_expr, only: expr_t, i_expr, num, sym, operator(+), &
         operator(-), operator(*), operator(/)
     use fortsym_diff, only: diff
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, &
@@ -28,7 +28,7 @@ program gen_p1_elasticity_products
     type(expr_t) :: cell(36), cell_jvp(36), cell_vjp(7)
     type(expr_t) :: cell_inputs(7), cell_dots(7), cell_bars(36)
     type(expr_t) :: edge(16), edge_jvp(16), edge_vjp(6)
-    type(expr_t) :: edge_inputs(6), edge_dots(6), edge_bars(16), imaginary_unit
+    type(expr_t) :: edge_inputs(6), edge_dots(6), edge_bars(16)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code
     character(*), parameter :: cell_names(7) = [character(11) :: "a", "b", "c", &
@@ -55,17 +55,8 @@ program gen_p1_elasticity_products
     end do
     cell_jvp = jvp(cell, cell_inputs, cell_dots)
     cell_vjp = vjp(cell, cell_inputs, cell_bars)
-    ! edge = i*edge_over_i: the constant i stays outside differentiation.
-    imaginary_unit = func_in(arena, "imaginary_unit")
     edge_jvp = jvp(edge, edge_inputs, edge_dots)
-    do k = 1, 16
-        edge_bars(k) = imaginary_unit*edge_bars(k)
-    end do
     edge_vjp = vjp(edge, edge_inputs, edge_bars)
-    do k = 1, 16
-        edge(k) = imaginary_unit*edge(k)
-        edge_jvp(k) = imaginary_unit*edge_jvp(k)
-    end do
     call simplify(cell)
     call simplify(cell_jvp)
     call simplify(cell_vjp)
@@ -185,12 +176,12 @@ contains
                 end if
                 do q = 1, 2
                     do p = 1, 2
-                        ! omega*M_ij*(Z_s I + (Z_p - Z_s) n n^T)_pq, times i below
+                        ! i*omega*M_ij*(Z_s I + (Z_p - Z_s) n n^T)_pq
                         coefficient = (p_impedance - s_impedance)* &
                             normal(p)*normal(q)
                         if (p == q) coefficient = coefficient + s_impedance
                         edge(4*(2*j - 2 + q - 1) + 2*i - 2 + p) = &
-                            frequency*mass*coefficient
+                            i_expr(arena)*frequency*mass*coefficient
                     end do
                 end do
             end do
@@ -295,13 +286,6 @@ contains
         spec%regenerate_command = str("cd tools/codegen && ./generate.sh")
         spec%scalar_type = str("complex(dp)")
         spec%pure_procedure = .true.
-        ! The Fortran emitter refuses the constant i (fortsym_print.f90,
-        ! fortran_node_representable) and diff gives a nullary function a
-        ! nonzero derivative, so i is a bound nullary function applied after
-        ! differentiation.
-        allocate (spec%bindings(1))
-        spec%bindings(1)%head = str("imaginary_unit")
-        spec%bindings(1)%replacement = str("(0.0_dp, 1.0_dp)")
     end subroutine initialize
 
     subroutine write_kernel(roots)
