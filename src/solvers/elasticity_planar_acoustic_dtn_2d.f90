@@ -9,11 +9,10 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     !! the interface normals. Dirichlet values go to sparse_direct_solve_constrained.
     !! Storage is O(triangles + nnz + m**2).
     !!
-    !! Derivatives cover vertex coordinates, fluid density, Young's modulus,
-    !! Poisson ratio, solid density and incident pressure. The angular frequency
-    !! and sound speed also enter the DtN mode multiplier, whose generated JVP and
-    !! VJP (gen_planar_acoustic_dtn_products) await a FortSym emitter fix for
-    !! the constant i, so they are not differentiated yet.
+    !! Derivatives cover vertex coordinates, angular frequency, complex sound
+    !! speed, fluid density, Young's modulus, Poisson ratio, solid density and
+    !! incident pressure; the DtN form derivatives come from the generated mode
+    !! multiplier (gen_planar_acoustic_dtn_products).
     !! Cotangents follow fortfem_elasticity_acoustic_common_2d.
     use fortfem_block_csc, only: block_csc_add, block_csc_add_group, &
         block_csc_finalize, block_csc_gather, block_csc_init, &
@@ -46,7 +45,9 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     use fortfem_generated_segment_length_vjp, only: generated_segment_length_vjp
     use fortfem_kinds, only: dp
     use fortfem_planar_acoustic_displacement_dtn, only: &
-        assemble_planar_acoustic_displacement_dtn_form
+        assemble_planar_acoustic_displacement_dtn_form, &
+        assemble_planar_acoustic_displacement_dtn_form_jvp, &
+        assemble_planar_acoustic_displacement_dtn_form_vjp
     use fortfem_sparse_direct, only: sparse_direct_solve_constrained, &
         sparse_direct_solve_constrained_jvp, sparse_direct_solve_constrained_vjp
     use fortsparse, only: csc_z_t
@@ -158,9 +159,10 @@ contains
             angular_frequency, sound_speed, fluid_density, period, &
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            vertices_dot, fluid_density_dot, young_modulus_dot, &
-            poisson_ratio_dot, solid_density_dot, incident_pressure_dot, &
-            solution_dot, status, absorbing_edges, absorbing_normals)
+            vertices_dot, angular_frequency_dot, sound_speed_dot, &
+            fluid_density_dot, young_modulus_dot, poisson_ratio_dot, &
+            solid_density_dot, incident_pressure_dot, solution_dot, status, &
+            absorbing_edges, absorbing_normals)
         !! Directional derivative of the solution of the complex interface.
         !! status as for the solve.
         real(dp), intent(in) :: vertices(:, :)
@@ -175,7 +177,9 @@ contains
         complex(dp), intent(in) :: volume_load(:), incident_pressure(:)
         integer, intent(in) :: dirichlet_dofs(:)
         complex(dp), intent(in) :: dirichlet_values(:)
-        real(dp), intent(in) :: vertices_dot(:, :), fluid_density_dot
+        real(dp), intent(in) :: vertices_dot(:, :), angular_frequency_dot
+        complex(dp), intent(in) :: sound_speed_dot
+        real(dp), intent(in) :: fluid_density_dot
         complex(dp), intent(in) :: young_modulus_dot
         real(dp), intent(in) :: poisson_ratio_dot, solid_density_dot
         complex(dp), intent(in) :: incident_pressure_dot(:)
@@ -188,6 +192,7 @@ contains
         type(elastic_material_t) :: material_dot
         complex(dp), allocatable :: values_dot(:), rhs_dot(:), edge_dot(:, :, :)
         complex(dp), allocatable :: block_dot(:, :, :), form_dot(:, :)
+        integer :: form_status
         real(dp) :: delta(2), delta_dot(2), length_dot
         integer :: a, b, e, m, previous, next
 
@@ -206,7 +211,7 @@ contains
 
         call elastic_material_jvp(young_modulus, poisson_ratio, solid_density, &
             angular_frequency, young_modulus_dot, poisson_ratio_dot, &
-            solid_density_dot, 0.0_dp, material_dot)
+            solid_density_dot, angular_frequency_dot, material_dot)
         allocate(values_dot(system%pattern%nnz))
         values_dot = (0.0_dp, 0.0_dp)
         call uniform_cells_assemble_jvp(system%pattern, system%cell_group, &
@@ -218,6 +223,7 @@ contains
             !$omp parallel do default(none) &
             !$omp shared(absorbing_edges, absorbing_normals, vertices) &
             !$omp shared(vertices_dot, system, material_dot, angular_frequency) &
+            !$omp shared(angular_frequency_dot) &
             !$omp shared(edge_dot) private(e, delta, delta_dot, length_dot) &
             !$omp schedule(static)
             do e = 1, size(absorbing_edges, 2)
@@ -234,15 +240,22 @@ contains
                     real_part(system%material%s_impedance), angular_frequency, &
                     length_dot, 0.0_dp, 0.0_dp, &
                     real_part(material_dot%p_impedance), &
-                    real_part(material_dot%s_impedance), 0.0_dp, &
+                    real_part(material_dot%s_impedance), angular_frequency_dot, &
                     edge_dot(:, :, e))
             end do
             !$omp end parallel do
             call block_csc_add(system%pattern, system%edge_group, edge_dot, &
                 values_dot)
         end if
-        ! The form is linear in the fluid density.
-        form_dot = system%form*(fluid_density_dot/fluid_density)
+        allocate(form_dot(m, m))
+        call assemble_planar_acoustic_displacement_dtn_form_jvp(m, &
+            angular_frequency, sound_speed, fluid_density, period, &
+            maximum_mode, angular_frequency_dot, sound_speed_dot, &
+            fluid_density_dot, form_dot, form_status)
+        if (form_status /= 0) then
+            status = 1
+            return
+        end if
         allocate(block_dot(2*m, 2*m, 1))
         !$omp parallel do default(none) &
         !$omp shared(m, interface_normals, system, form_dot, block_dot) &
@@ -287,9 +300,10 @@ contains
             angular_frequency, sound_speed, fluid_density, period, &
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            solution_bar, vertices_bar, fluid_density_bar, young_modulus_bar, &
-            poisson_ratio_bar, solid_density_bar, incident_pressure_bar, status, &
-            absorbing_edges, absorbing_normals)
+            solution_bar, vertices_bar, angular_frequency_bar, sound_speed_bar, &
+            fluid_density_bar, young_modulus_bar, poisson_ratio_bar, &
+            solid_density_bar, incident_pressure_bar, status, absorbing_edges, &
+            absorbing_normals)
         !! Cotangents of the inputs of the JVP for the solution cotangent
         !! solution_bar; Re<solution_bar, solution_dot> equals their pairing
         !! with the tangents. The outputs are overwritten.
@@ -305,7 +319,9 @@ contains
         complex(dp), intent(in) :: volume_load(:), incident_pressure(:)
         integer, intent(in) :: dirichlet_dofs(:)
         complex(dp), intent(in) :: dirichlet_values(:), solution_bar(:)
-        real(dp), intent(out) :: vertices_bar(:, :), fluid_density_bar
+        real(dp), intent(out) :: vertices_bar(:, :), angular_frequency_bar
+        complex(dp), intent(out) :: sound_speed_bar
+        real(dp), intent(out) :: fluid_density_bar
         complex(dp), intent(out) :: young_modulus_bar
         real(dp), intent(out) :: poisson_ratio_bar, solid_density_bar
         complex(dp), intent(out) :: incident_pressure_bar(:)
@@ -317,14 +333,16 @@ contains
         type(elastic_material_t) :: material_bar
         complex(dp), allocatable :: solution(:), values_bar(:), rhs_bar(:)
         complex(dp), allocatable :: fixed_bar(:), edge_bar(:, :, :)
-        complex(dp), allocatable :: block_bar(:, :, :)
+        complex(dp), allocatable :: block_bar(:, :, :), form_bar(:, :)
         complex(dp) :: length_c, n1_bar, n2_bar, zp_bar, zs_bar, omega_bar
         complex(dp) :: value_bar, period_bar, pressure_bar(3)
-        real(dp) :: delta(2), delta_bar(2), length_bar, density_sum
-        real(dp) :: omega_material_bar
+        real(dp) :: delta(2), delta_bar(2), length_bar
+        real(dp) :: omega_material_bar, omega_form_bar
         integer :: a, b, e, m, previous, next
 
         vertices_bar = 0.0_dp
+        angular_frequency_bar = 0.0_dp
+        sound_speed_bar = (0.0_dp, 0.0_dp)
         fluid_density_bar = 0.0_dp
         young_modulus_bar = (0.0_dp, 0.0_dp)
         poisson_ratio_bar = 0.0_dp
@@ -375,6 +393,7 @@ contains
                     real(zp_bar, dp)
                 material_bar%s_impedance = material_bar%s_impedance + &
                     real(zs_bar, dp)
+                angular_frequency_bar = angular_frequency_bar + real(omega_bar, dp)
                 delta = vertices(:, absorbing_edges(2, e)) - &
                     vertices(:, absorbing_edges(1, e))
                 length_bar = real(length_c, dp)
@@ -389,11 +408,12 @@ contains
         call elastic_material_vjp(young_modulus, poisson_ratio, solid_density, &
             angular_frequency, material_bar, young_modulus_bar, &
             poisson_ratio_bar, solid_density_bar, omega_material_bar)
+        angular_frequency_bar = angular_frequency_bar + omega_material_bar
 
         allocate(block_bar(2*m, 2*m, 1))
         call block_csc_gather(system%pattern, system%interface_group, values_bar, &
             block_bar)
-        density_sum = 0.0_dp
+        allocate(form_bar(m, m))
         do b = 1, m
             do a = 1, m
                 call generated_interface_normal_block_vjp( &
@@ -401,11 +421,18 @@ contains
                     interface_normals(1, b), interface_normals(2, b), &
                     system%form(a, b), conjg(block_bar(2*a - 1:2*a, 2*b - 1:2*b, 1)), &
                     value_bar)
-                ! value_bar is conj(form_bar(a, b)); d form/d rho = form/rho.
-                density_sum = density_sum + real(value_bar*system%form(a, b), dp)
+                form_bar(a, b) = conjg(value_bar)
             end do
         end do
-        fluid_density_bar = density_sum/fluid_density
+        call assemble_planar_acoustic_displacement_dtn_form_vjp(m, &
+            angular_frequency, sound_speed, fluid_density, period, &
+            maximum_mode, form_bar, omega_form_bar, sound_speed_bar, &
+            fluid_density_bar, status)
+        if (status /= 0) then
+            status = 1
+            return
+        end if
+        angular_frequency_bar = angular_frequency_bar + omega_form_bar
 
         do a = 1, m
             previous = modulo(a - 2, m) + 1

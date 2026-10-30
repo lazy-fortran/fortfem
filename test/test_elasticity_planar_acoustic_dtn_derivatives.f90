@@ -1,6 +1,7 @@
 program test_elasticity_planar_acoustic_dtn_derivatives
     !! JVP of the planar elastic-acoustic DtN solver against central differences
-    !! (each parameter alone and all together) and VJP against JVP through
+    !! (each parameter alone and all together, including the angular frequency
+    !! and the complex sound speed) and VJP against JVP through
     !! Re<u_bar, u_dot> = <x_bar, x_dot> + Re<z_bar, z_dot>, on a jittered mesh with
     !! absorbing edges, damping (complex E and c) and several acoustic modes.
     use check, only: check_condition, check_summary
@@ -20,23 +21,26 @@ program test_elasticity_planar_acoustic_dtn_derivatives
     complex(dp), allocatable :: values(:)
     complex(dp) :: load(2*nv), pinc(m)
     ! Tangent direction
-    real(dp) :: v_dot(2, nv), rho_f_dot, nu_dot, rho_s_dot
-    complex(dp) :: e_dot, p_dot(m)
-    real(dp) :: weights(6)
+    real(dp) :: v_dot(2, nv), omega_dot, rho_f_dot, nu_dot, rho_s_dot
+    complex(dp) :: c_dot, e_dot, p_dot(m)
+    real(dp) :: weights(8)
     complex(dp) :: u_dot(2*nv), u_fd(2*nv), u_bar(2*nv)
-    real(dp) :: v_bar(2, nv), rho_f_bar, nu_bar, rho_s_bar, lhs, rhs, error
-    complex(dp) :: e_bar, p_bar(m)
+    real(dp) :: v_bar(2, nv), omega_bar, rho_f_bar, nu_bar, rho_s_bar
+    real(dp) :: lhs, rhs, error
+    complex(dp) :: c_bar, e_bar, p_bar(m)
     integer :: k, status, part
     logical :: all_passed
-    character(*), parameter :: part_names(7) = [character(16) :: "vertices", &
-        "fluid density", "Young modulus", "Poisson ratio", "solid density", &
-        "incident", "all together"]
+    character(*), parameter :: part_names(9) = [character(17) :: "vertices", &
+        "angular frequency", "sound speed", "fluid density", "Young modulus", &
+        "Poisson ratio", "solid density", "incident", "all together"]
 
     all_passed = .true.
     call build_problem()
     do k = 1, nv
         v_dot(:, k) = 0.03_dp*[sin(1.3_dp*k), cos(2.1_dp*k)]
     end do
+    omega_dot = 0.2_dp
+    c_dot = (0.05_dp, -0.01_dp)
     rho_f_dot = 0.4_dp
     nu_dot = 0.05_dp
     rho_s_dot = -0.3_dp
@@ -45,18 +49,19 @@ program test_elasticity_planar_acoustic_dtn_derivatives
         p_dot(k) = cmplx(cos(0.9_dp*k), sin(0.4_dp*k), dp)
     end do
 
-    do part = 1, 7
+    do part = 1, 9
         weights = 0.0_dp
-        if (part <= 6) then
+        if (part <= 8) then
             weights(part) = 1.0_dp
         else
             weights = 1.0_dp
         end if
         call solve_elasticity_planar_acoustic_dtn_p1_jvp(vertices, triangles, &
             inodes, normals, omega, c, rho_f, period, 2, e, nu, rho_s, load, pinc, &
-            dofs, values, weights(1)*v_dot, weights(2)*rho_f_dot, &
-            weights(3)*e_dot, weights(4)*nu_dot, weights(5)*rho_s_dot, &
-            weights(6)*p_dot, u_dot, status, absorbing_edges=edges, &
+            dofs, values, weights(1)*v_dot, weights(2)*omega_dot, &
+            weights(3)*c_dot, weights(4)*rho_f_dot, weights(5)*e_dot, &
+            weights(6)*nu_dot, weights(7)*rho_s_dot, weights(8)*p_dot, u_dot, &
+            status, absorbing_edges=edges, &
             absorbing_normals=anormals)
         call record(status == 0, "JVP succeeds: "//trim(part_names(part)))
         call central_difference(weights, u_fd)
@@ -71,11 +76,12 @@ program test_elasticity_planar_acoustic_dtn_derivatives
     end do
     call solve_elasticity_planar_acoustic_dtn_p1_vjp(vertices, triangles, inodes, &
         normals, omega, c, rho_f, period, 2, e, nu, rho_s, load, pinc, dofs, &
-        values, u_bar, v_bar, rho_f_bar, e_bar, nu_bar, rho_s_bar, p_bar, status, &
-        absorbing_edges=edges, absorbing_normals=anormals)
+        values, u_bar, v_bar, omega_bar, c_bar, rho_f_bar, e_bar, nu_bar, &
+        rho_s_bar, p_bar, status, absorbing_edges=edges, absorbing_normals=anormals)
     call record(status == 0, "VJP succeeds")
     lhs = real(sum(conjg(u_bar)*u_dot), dp)
-    rhs = sum(v_bar*v_dot) + rho_f_bar*rho_f_dot + &
+    rhs = sum(v_bar*v_dot) + omega_bar*omega_dot + &
+        real(conjg(c_bar)*c_dot, dp) + rho_f_bar*rho_f_dot + &
         real(conjg(e_bar)*e_dot, dp) + nu_bar*nu_dot + rho_s_bar*rho_s_dot + &
         real(sum(conjg(p_bar)*p_dot), dp)
     write (*, "(a,2es24.15)") "dot test ", lhs, rhs
@@ -88,7 +94,7 @@ program test_elasticity_planar_acoustic_dtn_derivatives
 contains
 
     subroutine central_difference(weights, derivative)
-        real(dp), intent(in) :: weights(6)
+        real(dp), intent(in) :: weights(8)
         complex(dp), intent(out) :: derivative(:)
         real(dp), parameter :: h = 1.0e-5_dp
         complex(dp) :: plus(2*nv), minus(2*nv)
@@ -99,16 +105,17 @@ contains
     end subroutine central_difference
 
     subroutine perturbed(step, weights, solution)
-        real(dp), intent(in) :: step, weights(6)
+        real(dp), intent(in) :: step, weights(8)
         complex(dp), intent(out) :: solution(:)
         integer :: solve_status
 
         call solve_elasticity_planar_acoustic_dtn_p1( &
             vertices + step*weights(1)*v_dot, triangles, inodes, normals, &
-            omega, c, rho_f + step*weights(2)*rho_f_dot, period, 2, &
-            e + step*weights(3)*e_dot, nu + step*weights(4)*nu_dot, &
-            rho_s + step*weights(5)*rho_s_dot, load, &
-            pinc + step*weights(6)*p_dot, dofs, values, solution, &
+            omega + step*weights(2)*omega_dot, c + step*weights(3)*c_dot, &
+            rho_f + step*weights(4)*rho_f_dot, period, 2, &
+            e + step*weights(5)*e_dot, nu + step*weights(6)*nu_dot, &
+            rho_s + step*weights(7)*rho_s_dot, load, &
+            pinc + step*weights(8)*p_dot, dofs, values, solution, &
             solve_status, absorbing_edges=edges, absorbing_normals=anormals)
         if (solve_status /= 0) error stop "perturbed solve failed"
     end subroutine perturbed
