@@ -119,10 +119,6 @@ end program mixed_wave_wall
 
 ![primary.png](../../media/examples/mixed_wave_wall/primary.png)
 
-### mixed_wave_wall_energy_1d.png
-
-![mixed_wave_wall_energy_1d.png](../../media/examples/mixed_wave_wall/mixed_wave_wall_energy_1d.png)
-
 ### mixed_wave_wall_solution_1d.png
 
 ![mixed_wave_wall_solution_1d.png](../../media/examples/mixed_wave_wall/mixed_wave_wall_solution_1d.png)

@@ -220,14 +220,6 @@ end program mixed_wave_3d_structure
 
 ![primary.png](../../media/examples/mixed_wave_3d_structure/primary.png)
 
-### mixed_wave_3d_components_1d.png
-
-![mixed_wave_3d_components_1d.png](../../media/examples/mixed_wave_3d_structure/mixed_wave_3d_components_1d.png)
-
-### mixed_wave_3d_energy_1d.png
-
-![mixed_wave_3d_energy_1d.png](../../media/examples/mixed_wave_3d_structure/mixed_wave_3d_energy_1d.png)
-
 ### mixed_wave_3d_trajectory_3d.png
 
 ![mixed_wave_3d_trajectory_3d.png](../../media/examples/mixed_wave_3d_structure/mixed_wave_3d_trajectory_3d.png)

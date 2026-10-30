@@ -218,14 +218,6 @@ end program laplace_bem_circle_spectrum
 
 ![primary.png](../../media/examples/laplace_bem_circle_spectrum/primary.png)
 
-### boundary_mode_2d.png
-
-![boundary_mode_2d.png](../../media/examples/laplace_bem_circle_spectrum/boundary_mode_2d.png)
-
-### convergence_1d.png
-
-![convergence_1d.png](../../media/examples/laplace_bem_circle_spectrum/convergence_1d.png)
-
 ### laplace_disk_mode_2d.png
 
 ![laplace_disk_mode_2d.png](../../media/examples/laplace_bem_circle_spectrum/laplace_disk_mode_2d.png)

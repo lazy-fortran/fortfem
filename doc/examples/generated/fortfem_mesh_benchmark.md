@@ -163,14 +163,6 @@ end program fortfem_mesh_benchmark
 
 ![primary.png](../../media/examples/fortfem_mesh_benchmark/primary.png)
 
-### entity_counts_1d.png
-
-![entity_counts_1d.png](../../media/examples/fortfem_mesh_benchmark/entity_counts_1d.png)
-
-### generation_time_1d.png
-
-![generation_time_1d.png](../../media/examples/fortfem_mesh_benchmark/generation_time_1d.png)
-
 ### representative_mesh_2d.png
 
 ![representative_mesh_2d.png](../../media/examples/fortfem_mesh_benchmark/representative_mesh_2d.png)

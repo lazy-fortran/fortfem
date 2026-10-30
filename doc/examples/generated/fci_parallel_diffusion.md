@@ -155,10 +155,6 @@ end program fci_parallel_diffusion
 
 ![primary.png](../../media/examples/fci_parallel_diffusion/primary.png)
 
-### fci_parallel_dissipation_1d.png
-
-![fci_parallel_dissipation_1d.png](../../media/examples/fci_parallel_diffusion/fci_parallel_dissipation_1d.png)
-
 ### fci_parallel_profile_1d.png
 
 ![fci_parallel_profile_1d.png](../../media/examples/fci_parallel_diffusion/fci_parallel_profile_1d.png)

@@ -180,10 +180,6 @@ end program adaptive_bem_prolate
 
 ![primary.png](../../media/examples/adaptive_bem_prolate/primary.png)
 
-### adaptive_convergence.png
-
-![adaptive_convergence.png](../../media/examples/adaptive_bem_prolate/adaptive_convergence.png)
-
 ### prolate_density_3d.png
 
 ![prolate_density_3d.png](../../media/examples/adaptive_bem_prolate/prolate_density_3d.png)

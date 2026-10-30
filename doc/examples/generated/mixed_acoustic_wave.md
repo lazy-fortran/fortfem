@@ -211,18 +211,6 @@ end program mixed_acoustic_wave
 
 ![primary.png](../../media/examples/mixed_acoustic_wave/primary.png)
 
-### mixed_acoustic_energy_1d.png
-
-![mixed_acoustic_energy_1d.png](../../media/examples/mixed_acoustic_wave/mixed_acoustic_energy_1d.png)
-
-### mixed_acoustic_exact_error_1d.png
-
-![mixed_acoustic_exact_error_1d.png](../../media/examples/mixed_acoustic_wave/mixed_acoustic_exact_error_1d.png)
-
-### mixed_acoustic_phase_2d.png
-
-![mixed_acoustic_phase_2d.png](../../media/examples/mixed_acoustic_wave/mixed_acoustic_phase_2d.png)
-
 ### mixed_acoustic_solution_1d.png
 
 ![mixed_acoustic_solution_1d.png](../../media/examples/mixed_acoustic_wave/mixed_acoustic_solution_1d.png)

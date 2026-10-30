@@ -178,10 +178,6 @@ end program adaptive_helmholtz_bem_sphere
 
 ![primary.png](../../media/examples/adaptive_helmholtz_bem_sphere/primary.png)
 
-### adaptive_convergence.png
-
-![adaptive_convergence.png](../../media/examples/adaptive_helmholtz_bem_sphere/adaptive_convergence.png)
-
 ### sphere_density_3d.png
 
 ![sphere_density_3d.png](../../media/examples/adaptive_helmholtz_bem_sphere/sphere_density_3d.png)

@@ -386,10 +386,6 @@ end program curl_curl_example
 
 ![curl_curl_field_slice_2d.png](../../media/examples/curl_curl/curl_curl_field_slice_2d.png)
 
-### curl_curl_p_convergence.png
-
-![curl_curl_p_convergence.png](../../media/examples/curl_curl/curl_curl_p_convergence.png)
-
 ---
 
 [← Back to all examples](../index.html)

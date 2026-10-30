@@ -739,25 +739,9 @@ end program maxwell_open_boundary_comparison
 
 ![primary.png](../../media/examples/maxwell_open_boundary_comparison/primary.png)
 
-### maxwell_domain_comparison_1d.png
-
-![maxwell_domain_comparison_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_domain_comparison_1d.png)
-
-### maxwell_dtn_modes_1d.png
-
-![maxwell_dtn_modes_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_dtn_modes_1d.png)
-
-### maxwell_nedelec_dtn_1d.png
-
-![maxwell_nedelec_dtn_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_nedelec_dtn_1d.png)
-
 ### maxwell_pml_field_slice_2d.png
 
 ![maxwell_pml_field_slice_2d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_pml_field_slice_2d.png)
-
-### maxwell_reflection_1d.png
-
-![maxwell_reflection_1d.png](../../media/examples/maxwell_open_boundary_comparison/maxwell_reflection_1d.png)
 
 ---
 

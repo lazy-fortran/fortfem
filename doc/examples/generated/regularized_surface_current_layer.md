@@ -247,10 +247,6 @@ end program regularized_surface_current_layer
 
 ![primary.png](../../media/examples/regularized_surface_current_layer/primary.png)
 
-### regularized_sheet_integral_convergence.png
-
-![regularized_sheet_integral_convergence.png](../../media/examples/regularized_surface_current_layer/regularized_sheet_integral_convergence.png)
-
 ### regularized_sheet_profile_1d.png
 
 ![regularized_sheet_profile_1d.png](../../media/examples/regularized_surface_current_layer/regularized_sheet_profile_1d.png)

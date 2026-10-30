@@ -293,17 +293,9 @@ end program laplace_exterior_bem_circle
 
 ![primary.png](../../media/examples/laplace_exterior_bem_circle/primary.png)
 
-### exterior_laplace_density_2d.png
-
-![exterior_laplace_density_2d.png](../../media/examples/laplace_exterior_bem_circle/exterior_laplace_density_2d.png)
-
 ### exterior_laplace_solution_2d.png
 
 ![exterior_laplace_solution_2d.png](../../media/examples/laplace_exterior_bem_circle/exterior_laplace_solution_2d.png)
-
-### exterior_laplace_trace_1d.png
-
-![exterior_laplace_trace_1d.png](../../media/examples/laplace_exterior_bem_circle/exterior_laplace_trace_1d.png)
 
 ---
 

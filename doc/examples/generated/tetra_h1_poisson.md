@@ -293,18 +293,6 @@ end program tetra_h1_poisson
 
 ![primary.png](../../media/examples/tetra_h1_poisson/primary.png)
 
-### tetra_h1_poisson_axis_gray_zoom.png
-
-![tetra_h1_poisson_axis_gray_zoom.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_axis_gray_zoom.png)
-
-### tetra_h1_poisson_convergence.png
-
-![tetra_h1_poisson_convergence.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_convergence.png)
-
-### tetra_h1_poisson_convergence_gray.png
-
-![tetra_h1_poisson_convergence_gray.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_convergence_gray.png)
-
 ### tetra_h1_poisson_solution_3d.png
 
 ![tetra_h1_poisson_solution_3d.png](../../media/examples/tetra_h1_poisson/tetra_h1_poisson_solution_3d.png)
