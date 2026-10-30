@@ -183,7 +183,8 @@ contains
         real(dp), parameter :: radius = 0.8_dp
         real(dp), parameter :: solid_density = 2.0_dp
         real(dp), parameter :: sound_speed = omega/1.4_dp
-        complex(dp), parameter :: young_modulus = (10.0_dp, 0.2_dp)
+        ! FortFEM uses exp(-i omega t), so loss is Im(E) < 0.
+        complex(dp), parameter :: young_modulus = (10.0_dp, -0.2_dp)
         complex(dp), allocatable :: dirichlet_values(:), incident_pressure(:)
         complex(dp), allocatable :: load(:), solution(:)
         integer, allocatable :: dirichlet_dofs(:), interface_nodes(:)

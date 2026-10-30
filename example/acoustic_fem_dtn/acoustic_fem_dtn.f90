@@ -6,9 +6,10 @@ program acoustic_fem_dtn
 
     integer, parameter :: n = 17
     real(dp), parameter :: angular_frequency = 2.3_dp
-    complex(dp), parameter :: sound_speed = cmplx(1.0_dp, 0.01_dp, dp)
+    ! FortFEM uses exp(-i omega t), so loss is Im(c) < 0 and Im(E) < 0.
+    complex(dp), parameter :: sound_speed = cmplx(1.0_dp, -0.01_dp, dp)
     real(dp), parameter :: fluid_density = 1.0_dp
-    complex(dp), parameter :: young_modulus = cmplx(10.0_dp, 0.1_dp, dp)
+    complex(dp), parameter :: young_modulus = cmplx(10.0_dp, -0.1_dp, dp)
     real(dp), parameter :: poisson_ratio = 0.25_dp
     real(dp), parameter :: solid_density = 1.0_dp
     character(*), parameter :: output_directory = &

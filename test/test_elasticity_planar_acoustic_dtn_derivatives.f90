@@ -14,7 +14,8 @@ program test_elasticity_planar_acoustic_dtn_derivatives
     integer, parameter :: n = 6, nv = n*n, m = n
     real(dp), parameter :: omega = 2.3_dp, rho_f = 1.1_dp, nu = 0.27_dp
     real(dp), parameter :: rho_s = 1.3_dp, period = 1.0_dp + 1.0_dp/(n - 1)
-    complex(dp), parameter :: c = (1.0_dp, 0.02_dp), e = (10.0_dp, 0.3_dp)
+    ! FortFEM uses exp(-i omega t), so loss is Im(c) < 0 and Im(E) < 0.
+    complex(dp), parameter :: c = (1.0_dp, -0.02_dp), e = (10.0_dp, -0.3_dp)
     real(dp) :: vertices(2, nv), normals(2, m), anormals(2, n - 1)
     integer :: triangles(3, 2*(n - 1)**2), inodes(m), edges(2, n - 1)
     integer, allocatable :: dofs(:)
