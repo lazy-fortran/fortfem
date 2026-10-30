@@ -2,6 +2,13 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     !! Vector P1 time-harmonic elasticity coupled to a periodic acoustic half-space
     !! through the planar displacement-to-pressure (DtN) form, with JVP and VJP.
     !!
+    !! Time dependence is exp(-i omega t). The DtN mode multiplier
+    !! -i rho_f omega**2/k_n with the principal root k_n is outgoing, absorbing
+    !! edges add -i omega Z M, and a lossy material has Im(c) < 0 and Im(E) < 0
+    !! (Im(c) > 0 or Im(E) > 0 is gain). The interface samples are m equispaced
+    !! points of one period of the fluid half-space; the normals point from the
+    !! solid into the fluid.
+    !!
     !! One CSC pattern from fortfem_block_csc holds three groups: the triangles
     !! (generated elasticity cell), the optional absorbing edges (generated
     !! impedance edge with the real parts of the P and S impedances) and one dense
@@ -117,6 +124,7 @@ contains
             volume_load, incident_pressure, dirichlet_dofs, &
             dirichlet_values, solution, status, absorbing_edges, &
             absorbing_normals)
+        !! Time dependence exp(-i omega t): Im(c) < 0 and Im(E) < 0 are lossy.
         !! status: 0 success, 1 invalid input or failed form, 2 failed solve.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)

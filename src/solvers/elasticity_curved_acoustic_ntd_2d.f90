@@ -3,6 +3,9 @@ module fortfem_elasticity_curved_acoustic_ntd_2d
     !! of a closed polygonal interface through the curved displacement-to-pressure
     !! form (Burton-Miller BEM), with JVP and VJP.
     !!
+    !! Time dependence is exp(-i omega t): the BEM kernel (i/4) H_0^(1)(k r) is
+    !! outgoing, and a lossy solid has Im(E) < 0 (Im(E) > 0 is gain).
+    !!
     !! One CSC pattern from fortfem_block_csc holds the triangles (generated
     !! elasticity cell) and one dense block over the 2m interface dofs (the BEM
     !! form, already contracted with the panel normals). Dirichlet values go to
@@ -56,6 +59,7 @@ contains
             angular_frequency, sound_speed, fluid_density, young_modulus, &
             poisson_ratio, solid_density, volume_load, incident_pressure, &
             dirichlet_dofs, dirichlet_values, solution, status)
+        !! Time dependence exp(-i omega t): Im(E) < 0 is lossy.
         !! status: 0 success, 1 invalid input or panel, 2 failed BEM or sparse solve.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
