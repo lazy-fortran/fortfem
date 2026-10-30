@@ -253,13 +253,14 @@ analytical Hankel traction. The formulation is provenance-matched to
 DOI `10.1098/rspa.1971.0097`.
 
 Scalar Helmholtz and complex P1 elasticity integrate the planar maps into
-their weak forms. The 5 MHz steel-water fixture matches the independent
-`paper_acoustics` Fortran result. Complex P1 elasticity also integrates the
-curved NtD weak form and solves the coupled system with FortSparse. Its
-manufactured rigid-translation problem uses an independently evaluated
-Hankel pressure traction and converges quadratically. The planar and curved
-solvers share one dynamic-elasticity assembly and constrained FortSparse
-solve. Higher-order traces and fast boundary operators remain.
+their weak forms. The 5 MHz steel-water fixture of `paper_acoustics`, with its
+loss written for `exp(-i omega t)`, matches the discrete plane-wave layer
+solution. Complex P1 elasticity also integrates the curved NtD weak form and
+solves the coupled system with FortSparse. Its manufactured rigid-translation
+problem uses an independently evaluated Hankel pressure traction and converges
+quadratically. The planar and curved solvers share one dynamic-elasticity
+assembly and constrained FortSparse solve. Higher-order traces and fast
+boundary operators remain.
 
 ## Use of fortnum and fortsparse
 
@@ -750,27 +751,27 @@ discretization error.
 
 Items 1--5 are implemented. The scalar planar DtN solver passes an outgoing
 plane-wave refinement study. The complex P1 elastic-acoustic solver passes a
-lossy longitudinal-wave refinement study and matches the 5 MHz steel-water
-`paper_acoustics` fixture at revision `6300ab0`; P/S impedance conditions
-close its other three boundaries. Item 3 includes dense Laplace and Helmholtz
-single-layer, double-layer, adjoint double-layer, and hypersingular
+complex-material longitudinal-wave refinement study, damps in lossy media
+under `exp(-i omega t)` and matches the plane-wave layer solution on the 5 MHz
+steel-water `paper_acoustics` fixture (revision `6300ab0`); P/S impedance
+conditions close its other three boundaries. Item 3 includes dense Laplace and
+Helmholtz single-layer, double-layer, adjoint double-layer, and hypersingular
 operators with circle-spectrum checks. Item 4 includes a constant-panel CFIE
 solve, Mie-series convergence, and adaptively verified off-surface field
 evaluation. The symmetric P1/P0 Laplace transmission solver passes an exact
 affine solution and a nonzero exterior dipole refinement study. Its complex
-Helmholtz counterpart passes a manufactured plane-wave transmission
-refinement study with independently integrated Neumann data. Calderon
-identities beyond the jump and spectral checks, adaptive near-singular
-panel-pair assembly, higher-order exterior traces, and the remaining layered
-paper validation cases in item 6 remain. The same P1/P0 blocks now provide an
-arbitrary-polygon acoustic displacement-to-pressure map through a
-Burton--Miller combined Calderon solve. Its first circular Fourier mode
-converges quadratically to the independent Hankel quotient, and the
-`curved_acoustic_ntd` Fortplot example publishes the trace comparison and
-convergence curve without checking generated images into git. It also
-publishes the monolithic elastic displacement and its quadratic convergence
-to a manufactured rigid translation driven by the analytical outgoing Hankel
-traction.
+Helmholtz counterpart passes a manufactured plane-wave transmission refinement
+study with independently integrated Neumann data. Calderon identities beyond
+the jump and spectral checks, adaptive near-singular panel-pair assembly,
+higher-order exterior traces, and the remaining layered paper validation cases
+in item 6 remain. The same P1/P0 blocks now provide an arbitrary-polygon
+acoustic displacement-to-pressure map through a Burton--Miller combined
+Calderon solve. Its first circular Fourier mode converges quadratically to the
+independent Hankel quotient, and the `curved_acoustic_ntd` Fortplot example
+publishes the trace comparison and convergence curve without checking
+generated images into git. It also publishes the monolithic elastic
+displacement and its quadratic convergence to a manufactured rigid translation
+driven by the analytical outgoing Hankel traction.
 
 ### Phase 4: fast and three-dimensional BEM
 

@@ -13,7 +13,8 @@ program test_elasticity_curved_acoustic_ntd_derivatives
     integer, parameter :: np = 16, nv = 2*np + 1
     real(dp), parameter :: omega = 1.1_dp, c = 0.8_dp, rho_f = 1.7_dp
     real(dp), parameter :: nu = 0.25_dp, rho_s = 2.0_dp
-    complex(dp), parameter :: e = (10.0_dp, 0.2_dp)
+    ! FortFEM uses exp(-i omega t), so loss is Im(E) < 0.
+    complex(dp), parameter :: e = (10.0_dp, -0.2_dp)
     real(dp) :: vertices(2, nv)
     integer :: triangles(3, 3*np), inodes(np), pnodes(2, np)
     integer, allocatable :: dofs(:)
