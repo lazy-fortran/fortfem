@@ -1,6 +1,9 @@
 program gen_p1_elasticity_products
     !! Vector P1 time-harmonic elasticity: the 6x6 triangle matrix K - inertia*M
     !! and the 4x4 impedance (absorbing) edge matrix, with JVP and VJP.
+    !! Time convention exp(-i omega t), as in the planar acoustic DtN map: the
+    !! Lysmer-Kuhlemeyer traction sigma n = -Z du/dt = i omega Z u adds
+    !! -i omega Z (u, v)_edge to the form, so the edge absorbs.
     !!
     !! Triangle geometry uses the affine-map entries of gen_element_precision_products,
     !! a = x2 - x1, b = y2 - y1, c = x3 - x1, d = y3 - y1, and the local dof order
@@ -176,12 +179,12 @@ contains
                 end if
                 do q = 1, 2
                     do p = 1, 2
-                        ! i*omega*M_ij*(Z_s I + (Z_p - Z_s) n n^T)_pq
+                        ! -i*omega*M_ij*(Z_s I + (Z_p - Z_s) n n^T)_pq
                         coefficient = (p_impedance - s_impedance)* &
                             normal(p)*normal(q)
                         if (p == q) coefficient = coefficient + s_impedance
                         edge(4*(2*j - 2 + q - 1) + 2*i - 2 + p) = &
-                            i_expr(arena)*frequency*mass*coefficient
+                            -i_expr(arena)*frequency*mass*coefficient
                     end do
                 end do
             end do
