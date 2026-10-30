@@ -11,15 +11,20 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
     !!
     !! One CSC pattern from fortfem_block_csc holds three groups: the triangles
     !! (generated elasticity cell), the optional absorbing edges (generated
-    !! impedance edge with the real parts of the P and S impedances) and one dense
+    !! impedance edge with a complex (Z_p, Z_s) per edge, by default the real
+    !! parts of the solid's P and S impedances) and one dense
     !! block over the 2m interface dofs, the m x m acoustic form contracted with
     !! the interface normals. Dirichlet values go to sparse_direct_solve_constrained.
     !! Storage is O(triangles + nnz + m**2).
     !!
     !! Derivatives cover vertex coordinates, angular frequency, complex sound
-    !! speed, fluid density, Young's modulus, Poisson ratio, solid density and
-    !! incident pressure; the DtN form derivatives come from the generated mode
-    !! multiplier (gen_planar_acoustic_dtn_products).
+    !! speed, fluid density, Young's modulus, Poisson ratio, solid density,
+    !! incident pressure and the per-edge impedances; the DtN form derivatives
+    !! come from the generated mode multiplier (gen_planar_acoustic_dtn_products).
+    !!
+    !! An optional dtn_period_factor lfac > 1 extends the DtN period to lfac
+    !! times the interface with a hard baffle (zero normal displacement) beyond
+    !! it, removing the periodic coupling of the interface ends.
     !! Cotangents follow fortfem_elasticity_acoustic_common_2d.
     use fortfem_block_csc, only: block_csc_add, block_csc_add_group, &
         block_csc_finalize, block_csc_gather, block_csc_init, &
@@ -80,7 +85,11 @@ module fortfem_elasticity_planar_acoustic_dtn_2d
         logical, allocatable :: constrained(:)
         type(elastic_material_t) :: material
         real(dp), allocatable :: lengths(:)
+        complex(dp), allocatable :: p_impedance(:), s_impedance(:)
         complex(dp), allocatable :: form(:, :)
+        integer :: dtn_samples = 0, dtn_modes = 0
+        real(dp) :: dtn_period = 0.0_dp
+        logical :: baffled = .false.
     end type planar_system_t
 
 contains
@@ -91,7 +100,7 @@ contains
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, &
             dirichlet_values, solution, status, absorbing_edges, &
-            absorbing_normals)
+            absorbing_normals, absorbing_impedances, dtn_period_factor)
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -106,6 +115,8 @@ contains
         integer, intent(out) :: status
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
+        complex(dp), intent(in), optional :: absorbing_impedances(:, :)
+        real(dp), intent(in), optional :: dtn_period_factor
 
         call solve_elasticity_planar_acoustic_dtn_p1_complex( &
             vertices, triangles, interface_nodes, interface_normals, &
@@ -114,7 +125,8 @@ contains
             cmplx(young_modulus, 0.0_dp, dp), poisson_ratio, &
             solid_density, volume_load, incident_pressure, &
             dirichlet_dofs, dirichlet_values, solution, status, &
-            absorbing_edges, absorbing_normals)
+            absorbing_edges, absorbing_normals, absorbing_impedances, &
+            dtn_period_factor)
     end subroutine solve_elasticity_planar_acoustic_dtn_p1_real
 
     subroutine solve_elasticity_planar_acoustic_dtn_p1_complex( &
@@ -123,9 +135,19 @@ contains
             maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, &
             dirichlet_values, solution, status, absorbing_edges, &
-            absorbing_normals)
+            absorbing_normals, absorbing_impedances, dtn_period_factor)
         !! Time dependence exp(-i omega t): Im(c) < 0 and Im(E) < 0 are lossy.
         !! status: 0 success, 1 invalid input or failed form, 2 failed solve.
+        !! absorbing_impedances(:, e) = (Z_p, Z_s) of absorbing edge e, for
+        !! example (rho_f c_f, 0) for a fluid half-space behind the face; without
+        !! it every edge gets the real parts of the solid's own impedances.
+        !! dtn_period_factor = lfac >= 1 (default 1, the periodic interface)
+        !! sets the DtN period to lfac*period with lfac*m samples, the interface
+        !! in the first m and a hard baffle (zero normal displacement) in the
+        !! rest; lfac*m must be an integer. The mode cutoff scales with it, so
+        !! the largest retained wavenumber stays 2 pi maximum_mode/period. The
+        !! incident load extends the pressure constantly by one sample beyond
+        !! each end instead of wrapping it.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -142,6 +164,8 @@ contains
         integer, intent(out) :: status
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
+        complex(dp), intent(in), optional :: absorbing_impedances(:, :)
+        real(dp), intent(in), optional :: dtn_period_factor
 
         type(planar_system_t) :: system
 
@@ -152,7 +176,8 @@ contains
             interface_normals, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            system, status, absorbing_edges, absorbing_normals)
+            system, status, absorbing_edges, absorbing_normals, &
+            absorbing_impedances, dtn_period_factor)
         if (status /= 0) return
         call sparse_direct_solve_constrained(system%matrix, system%rhs, &
             system%constrained, system%fixed, solution, status)
@@ -170,9 +195,11 @@ contains
             vertices_dot, angular_frequency_dot, sound_speed_dot, &
             fluid_density_dot, young_modulus_dot, poisson_ratio_dot, &
             solid_density_dot, incident_pressure_dot, solution_dot, status, &
-            absorbing_edges, absorbing_normals)
+            absorbing_edges, absorbing_normals, absorbing_impedances, &
+            absorbing_impedances_dot, dtn_period_factor)
         !! Directional derivative of the solution of the complex interface.
-        !! status as for the solve.
+        !! status as for the solve. absorbing_impedances_dot is the tangent of
+        !! absorbing_impedances (zero when absent).
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -195,11 +222,15 @@ contains
         integer, intent(out) :: status
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
+        complex(dp), intent(in), optional :: absorbing_impedances(:, :)
+        real(dp), intent(in), optional :: dtn_period_factor
+        complex(dp), intent(in), optional :: absorbing_impedances_dot(:, :)
 
         type(planar_system_t) :: system
         type(elastic_material_t) :: material_dot
         complex(dp), allocatable :: values_dot(:), rhs_dot(:), edge_dot(:, :, :)
         complex(dp), allocatable :: block_dot(:, :, :), form_dot(:, :)
+        complex(dp), allocatable :: zp_dot(:), zs_dot(:)
         integer :: form_status
         real(dp) :: delta(2), delta_dot(2), length_dot
         integer :: a, b, e, m, previous, next
@@ -213,7 +244,8 @@ contains
             interface_normals, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            system, status, absorbing_edges, absorbing_normals)
+            system, status, absorbing_edges, absorbing_normals, &
+            absorbing_impedances, dtn_period_factor)
         if (status /= 0) return
         m = size(interface_nodes)
 
@@ -228,10 +260,29 @@ contains
         if (status /= 0) return
         if (present(absorbing_edges)) then
             allocate(edge_dot(4, 4, size(absorbing_edges, 2)))
+            allocate(zp_dot(size(absorbing_edges, 2)))
+            allocate(zs_dot(size(absorbing_edges, 2)))
+            if (present(absorbing_impedances)) then
+                zp_dot = (0.0_dp, 0.0_dp)
+                zs_dot = (0.0_dp, 0.0_dp)
+                if (present(absorbing_impedances_dot)) then
+                    if (any(shape(absorbing_impedances_dot) /= &
+                        shape(absorbing_impedances))) then
+                        status = 1
+                        return
+                    end if
+                    zp_dot = absorbing_impedances_dot(1, :)
+                    zs_dot = absorbing_impedances_dot(2, :)
+                end if
+            else
+                ! d Re(Z) = Re(dZ): the default boundary uses the real impedances.
+                zp_dot = real_part(material_dot%p_impedance)
+                zs_dot = real_part(material_dot%s_impedance)
+            end if
             !$omp parallel do default(none) &
             !$omp shared(absorbing_edges, absorbing_normals, vertices) &
-            !$omp shared(vertices_dot, system, material_dot, angular_frequency) &
-            !$omp shared(angular_frequency_dot) &
+            !$omp shared(vertices_dot, system, angular_frequency) &
+            !$omp shared(angular_frequency_dot, zp_dot, zs_dot) &
             !$omp shared(edge_dot) private(e, delta, delta_dot, length_dot) &
             !$omp schedule(static)
             do e = 1, size(absorbing_edges, 2)
@@ -241,15 +292,11 @@ contains
                     vertices_dot(:, absorbing_edges(1, e))
                 call generated_segment_length_jvp(delta(1), delta(2), &
                     delta_dot(1), delta_dot(2), length_dot)
-                ! d Re(Z) = Re(dZ): the boundary uses the real impedances.
                 call generated_p1_elastic_impedance_edge_jvp(system%lengths(e), &
                     absorbing_normals(1, e), absorbing_normals(2, e), &
-                    real_part(system%material%p_impedance), &
-                    real_part(system%material%s_impedance), angular_frequency, &
-                    length_dot, 0.0_dp, 0.0_dp, &
-                    real_part(material_dot%p_impedance), &
-                    real_part(material_dot%s_impedance), angular_frequency_dot, &
-                    edge_dot(:, :, e))
+                    system%p_impedance(e), system%s_impedance(e), &
+                    angular_frequency, length_dot, 0.0_dp, 0.0_dp, zp_dot(e), &
+                    zs_dot(e), angular_frequency_dot, edge_dot(:, :, e))
             end do
             !$omp end parallel do
             call block_csc_add(system%pattern, system%edge_group, edge_dot, &
@@ -257,9 +304,9 @@ contains
         end if
         allocate(form_dot(m, m))
         call assemble_planar_acoustic_displacement_dtn_form_jvp(m, &
-            angular_frequency, sound_speed, fluid_density, period, &
-            maximum_mode, angular_frequency_dot, sound_speed_dot, &
-            fluid_density_dot, form_dot, form_status)
+            angular_frequency, sound_speed, fluid_density, system%dtn_period, &
+            system%dtn_modes, angular_frequency_dot, sound_speed_dot, &
+            fluid_density_dot, form_dot, form_status, system%dtn_samples)
         if (form_status /= 0) then
             status = 1
             return
@@ -284,8 +331,7 @@ contains
         allocate(rhs_dot(size(system%rhs)))
         rhs_dot = (0.0_dp, 0.0_dp)
         do a = 1, m
-            previous = modulo(a - 2, m) + 1
-            next = modulo(a, m) + 1
+            call load_neighbours(a, m, system%baffled, previous, next)
             call generated_planar_incident_load_jvp(period, real(m, dp), &
                 incident_pressure(previous), incident_pressure(a), &
                 incident_pressure(next), interface_normals(1, a), &
@@ -311,10 +357,12 @@ contains
             solution_bar, vertices_bar, angular_frequency_bar, sound_speed_bar, &
             fluid_density_bar, young_modulus_bar, poisson_ratio_bar, &
             solid_density_bar, incident_pressure_bar, status, absorbing_edges, &
-            absorbing_normals)
+            absorbing_normals, absorbing_impedances, absorbing_impedances_bar, &
+            dtn_period_factor)
         !! Cotangents of the inputs of the JVP for the solution cotangent
         !! solution_bar; Re<solution_bar, solution_dot> equals their pairing
-        !! with the tangents. The outputs are overwritten.
+        !! with the tangents. The outputs are overwritten; absorbing_impedances_bar
+        !! pairs with absorbing_impedances_dot as Re(conj(z_bar) z_dot).
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
         real(dp), intent(in) :: interface_normals(:, :)
@@ -336,6 +384,9 @@ contains
         integer, intent(out) :: status
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
+        complex(dp), intent(in), optional :: absorbing_impedances(:, :)
+        real(dp), intent(in), optional :: dtn_period_factor
+        complex(dp), intent(out), optional :: absorbing_impedances_bar(:, :)
 
         type(planar_system_t) :: system
         type(elastic_material_t) :: material_bar
@@ -356,15 +407,23 @@ contains
         poisson_ratio_bar = 0.0_dp
         solid_density_bar = 0.0_dp
         incident_pressure_bar = (0.0_dp, 0.0_dp)
+        if (present(absorbing_impedances_bar)) &
+            absorbing_impedances_bar = (0.0_dp, 0.0_dp)
         status = 1
         if (size(solution_bar) /= 2*size(vertices, 2)) return
+        if (present(absorbing_impedances_bar)) then
+            if (.not. present(absorbing_impedances)) return
+            if (any(shape(absorbing_impedances_bar) /= &
+                shape(absorbing_impedances))) return
+        end if
         if (any(shape(vertices_bar) /= shape(vertices))) return
         if (size(incident_pressure_bar) /= size(incident_pressure)) return
         call build_system(vertices, triangles, interface_nodes, &
             interface_normals, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            system, status, absorbing_edges, absorbing_normals)
+            system, status, absorbing_edges, absorbing_normals, &
+            absorbing_impedances, dtn_period_factor)
         if (status /= 0) return
         m = size(interface_nodes)
         allocate(solution(size(solution_bar)), values_bar(system%pattern%nnz))
@@ -391,16 +450,22 @@ contains
             do e = 1, size(absorbing_edges, 2)
                 call generated_p1_elastic_impedance_edge_vjp(system%lengths(e), &
                     absorbing_normals(1, e), absorbing_normals(2, e), &
-                    real_part(system%material%p_impedance), &
-                    real_part(system%material%s_impedance), angular_frequency, &
-                    conjg(edge_bar(:, :, e)), length_c, n1_bar, n2_bar, zp_bar, &
-                    zs_bar, omega_bar)
-                ! Re(Z) is real, so its cotangent is the real part, and the
-                ! adjoint of Re passes it on unchanged.
-                material_bar%p_impedance = material_bar%p_impedance + &
-                    real(zp_bar, dp)
-                material_bar%s_impedance = material_bar%s_impedance + &
-                    real(zs_bar, dp)
+                    system%p_impedance(e), system%s_impedance(e), &
+                    angular_frequency, conjg(edge_bar(:, :, e)), length_c, &
+                    n1_bar, n2_bar, zp_bar, zs_bar, omega_bar)
+                if (present(absorbing_impedances)) then
+                    if (present(absorbing_impedances_bar)) then
+                        absorbing_impedances_bar(1, e) = conjg(zp_bar)
+                        absorbing_impedances_bar(2, e) = conjg(zs_bar)
+                    end if
+                else
+                    ! Re(Z) is real, so its cotangent is the real part, and the
+                    ! adjoint of Re passes it on unchanged.
+                    material_bar%p_impedance = material_bar%p_impedance + &
+                        real(zp_bar, dp)
+                    material_bar%s_impedance = material_bar%s_impedance + &
+                        real(zs_bar, dp)
+                end if
                 angular_frequency_bar = angular_frequency_bar + real(omega_bar, dp)
                 delta = vertices(:, absorbing_edges(2, e)) - &
                     vertices(:, absorbing_edges(1, e))
@@ -433,9 +498,9 @@ contains
             end do
         end do
         call assemble_planar_acoustic_displacement_dtn_form_vjp(m, &
-            angular_frequency, sound_speed, fluid_density, period, &
-            maximum_mode, form_bar, omega_form_bar, sound_speed_bar, &
-            fluid_density_bar, status)
+            angular_frequency, sound_speed, fluid_density, system%dtn_period, &
+            system%dtn_modes, form_bar, omega_form_bar, sound_speed_bar, &
+            fluid_density_bar, status, system%dtn_samples)
         if (status /= 0) then
             status = 1
             return
@@ -443,8 +508,7 @@ contains
         angular_frequency_bar = angular_frequency_bar + omega_form_bar
 
         do a = 1, m
-            previous = modulo(a - 2, m) + 1
-            next = modulo(a, m) + 1
+            call load_neighbours(a, m, system%baffled, previous, next)
             call generated_planar_incident_load_vjp(period, real(m, dp), &
                 incident_pressure(previous), incident_pressure(a), &
                 incident_pressure(next), interface_normals(1, a), &
@@ -464,7 +528,8 @@ contains
             interface_normals, angular_frequency, sound_speed, fluid_density, &
             period, maximum_mode, young_modulus, poisson_ratio, solid_density, &
             volume_load, incident_pressure, dirichlet_dofs, dirichlet_values, &
-            system, status, absorbing_edges, absorbing_normals)
+            system, status, absorbing_edges, absorbing_normals, &
+            absorbing_impedances, dtn_period_factor)
         !! Pattern, matrix values and right-hand side of the coupled problem.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: triangles(:, :), interface_nodes(:)
@@ -482,6 +547,8 @@ contains
         integer, intent(out) :: status
         integer, intent(in), optional :: absorbing_edges(:, :)
         real(dp), intent(in), optional :: absorbing_normals(:, :)
+        complex(dp), intent(in), optional :: absorbing_impedances(:, :)
+        real(dp), intent(in), optional :: dtn_period_factor
 
         complex(dp), allocatable :: edge_blocks(:, :, :), blocks(:, :, :)
         complex(dp) :: load(2)
@@ -494,6 +561,7 @@ contains
         m = size(interface_nodes)
         dof_count = 2*size(vertices, 2)
         if (.not. valid_inputs()) return
+        if (.not. dtn_layout()) return
 
         call elastic_material(young_modulus, poisson_ratio, solid_density, &
             angular_frequency, system%material)
@@ -521,6 +589,15 @@ contains
         if (present(absorbing_edges)) then
             allocate(system%lengths(size(absorbing_edges, 2)))
             allocate(edge_blocks(4, 4, size(absorbing_edges, 2)))
+            if (present(absorbing_impedances)) then
+                system%p_impedance = absorbing_impedances(1, :)
+                system%s_impedance = absorbing_impedances(2, :)
+            else
+                allocate(system%p_impedance(size(absorbing_edges, 2)), &
+                    system%s_impedance(size(absorbing_edges, 2)))
+                system%p_impedance = real_part(system%material%p_impedance)
+                system%s_impedance = real_part(system%material%s_impedance)
+            end if
             bad_edge = .false.
             !$omp parallel do default(none) &
             !$omp shared(absorbing_edges, absorbing_normals, vertices, system) &
@@ -536,9 +613,8 @@ contains
                     bad_edge = .true.
                 call generated_p1_elastic_impedance_edge(system%lengths(e), &
                     absorbing_normals(1, e), absorbing_normals(2, e), &
-                    real_part(system%material%p_impedance), &
-                    real_part(system%material%s_impedance), angular_frequency, &
-                    edge_blocks(:, :, e))
+                    system%p_impedance(e), system%s_impedance(e), &
+                    angular_frequency, edge_blocks(:, :, e))
             end do
             !$omp end parallel do
             if (bad_edge) return
@@ -548,7 +624,8 @@ contains
 
         allocate(system%form(m, m))
         call assemble_planar_acoustic_displacement_dtn_form(m, angular_frequency, &
-            sound_speed, fluid_density, period, maximum_mode, system%form, status)
+            sound_speed, fluid_density, system%dtn_period, system%dtn_modes, &
+            system%form, status, system%dtn_samples)
         if (status /= 0) return
         allocate(blocks(2*m, 2*m, 1))
         !$omp parallel do default(none) &
@@ -568,8 +645,7 @@ contains
 
         system%rhs = volume_load
         do a = 1, m
-            previous = modulo(a - 2, m) + 1
-            next = modulo(a, m) + 1
+            call load_neighbours(a, m, system%baffled, previous, next)
             associate (node => interface_nodes(a))
                 call generated_planar_incident_load(period, real(m, dp), &
                     incident_pressure(previous), incident_pressure(a), &
@@ -605,6 +681,12 @@ contains
                 if (any(absorbing_edges < 1) .or. &
                     any(absorbing_edges > dof_count/2)) return
             end if
+            if (present(absorbing_impedances)) then
+                if (.not. present(absorbing_edges)) return
+                if (size(absorbing_impedances, 1) /= 2 .or. &
+                    size(absorbing_impedances, 2) /= &
+                    size(absorbing_edges, 2)) return
+            end if
             if (angular_frequency <= 0.0_dp .or. abs(sound_speed) <= 0.0_dp .or. &
                 fluid_density <= 0.0_dp .or. solid_density <= 0.0_dp) return
             if (period <= 0.0_dp .or. abs(young_modulus) <= 0.0_dp) return
@@ -618,7 +700,47 @@ contains
             valid_inputs = .true.
         end function valid_inputs
 
+        logical function dtn_layout()
+            !! DtN samples, period and mode cutoff of the (extended) period.
+            real(dp) :: samples
+
+            dtn_layout = .false.
+            system%dtn_samples = m
+            system%dtn_period = period
+            system%dtn_modes = maximum_mode
+            if (.not. present(dtn_period_factor)) then
+                dtn_layout = .true.
+                return
+            end if
+            if (dtn_period_factor < 1.0_dp) return
+            samples = dtn_period_factor*real(m, dp)
+            if (samples > real(huge(m)/2, dp)) return
+            if (abs(samples - anint(samples)) > 1.0e-9_dp*samples) return
+            system%dtn_samples = nint(samples)
+            system%dtn_period = period*real(system%dtn_samples, dp)/real(m, dp)
+            ! maximum_mode*M/m without overflow: same largest wavenumber.
+            system%dtn_modes = int(real(maximum_mode, dp)*real(system%dtn_samples, &
+                dp)/real(m, dp) + 1.0e-9_dp)
+            system%baffled = system%dtn_samples > m
+            dtn_layout = .true.
+        end function dtn_layout
+
     end subroutine build_system
+
+    pure subroutine load_neighbours(a, m, baffled, previous, next)
+        !! Neighbour samples of the incident load: periodic, or, at the ends of
+        !! a baffled interface, the end sample itself (constant extension).
+        integer, intent(in) :: a, m
+        logical, intent(in) :: baffled
+        integer, intent(out) :: previous, next
+
+        previous = modulo(a - 2, m) + 1
+        next = modulo(a, m) + 1
+        if (baffled) then
+            previous = max(a - 1, 1)
+            next = min(a + 1, m)
+        end if
+    end subroutine load_neighbours
 
     elemental function real_part(z) result(r)
         !! The absorbing condition uses the real parts of the impedances.
