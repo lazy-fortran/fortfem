@@ -519,29 +519,9 @@ end program maxwell_torus_curved_scattering
 
 ![primary.png](../../media/examples/maxwell_torus_curved_scattering/primary.png)
 
-### maxwell_torus_dtn_1d.png
-
-![maxwell_torus_dtn_1d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_dtn_1d.png)
-
-### maxwell_torus_rcs_1d.png
-
-![maxwell_torus_rcs_1d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_1d.png)
-
-### maxwell_torus_rcs_2d.png
-
-![maxwell_torus_rcs_2d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_2d.png)
-
-### maxwell_torus_rcs_3d.png
-
-![maxwell_torus_rcs_3d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_rcs_3d.png)
-
 ### maxwell_torus_solution_2d.png
 
 ![maxwell_torus_solution_2d.png](../../media/examples/maxwell_torus_curved_scattering/maxwell_torus_solution_2d.png)
-
-### torus_geometry_3d.png
-
-![torus_geometry_3d.png](../../media/examples/maxwell_torus_curved_scattering/torus_geometry_3d.png)
 
 ---
 

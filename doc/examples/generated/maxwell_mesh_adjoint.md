@@ -283,14 +283,6 @@ end program maxwell_mesh_adjoint
 
 ![primary.png](../../media/examples/maxwell_mesh_adjoint/primary.png)
 
-### adjoint_accuracy_1d.png
-
-![adjoint_accuracy_1d.png](../../media/examples/maxwell_mesh_adjoint/adjoint_accuracy_1d.png)
-
-### derivative_timing_1d.png
-
-![derivative_timing_1d.png](../../media/examples/maxwell_mesh_adjoint/derivative_timing_1d.png)
-
 ### mesh_gradient_2d.png
 
 ![mesh_gradient_2d.png](../../media/examples/maxwell_mesh_adjoint/mesh_gradient_2d.png)

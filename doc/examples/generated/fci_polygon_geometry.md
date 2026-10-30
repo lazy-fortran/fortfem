@@ -657,14 +657,6 @@ end program fci_polygon_geometry
 
 ![primary.png](../../media/examples/fci_polygon_geometry/primary.png)
 
-### fci_curved_polygon_cells_2d.png
-
-![fci_curved_polygon_cells_2d.png](../../media/examples/fci_polygon_geometry/fci_curved_polygon_cells_2d.png)
-
-### fci_polygon_areas_1d.png
-
-![fci_polygon_areas_1d.png](../../media/examples/fci_polygon_geometry/fci_polygon_areas_1d.png)
-
 ### fci_polygon_cells_2d.png
 
 ![fci_polygon_cells_2d.png](../../media/examples/fci_polygon_geometry/fci_polygon_cells_2d.png)

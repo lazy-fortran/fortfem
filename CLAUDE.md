@@ -104,22 +104,6 @@ fortfem/
   I/O. Generation is reproducibility evidence, not proof: keep independent
   behavioral tests.
 
-### Generated local kernels (FortSym)
-- Pointwise local mathematics is emitted by FortSym, not handwritten:
-  reference basis jets and their derivatives, Piola/geometry factors,
-  integrands, small contractions and constants. Add or extend a generator in
-  `tools/codegen/app/gen_*_products.f90`, run `tools/codegen/generate.sh` with
-  the FortSym revision in `tools/codegen/fortsym.lock`, and check with
-  `tools/codegen/check_generated.sh`. Never edit `src/generated/` by hand.
-- Reasons: one authoritative mathematical source, symbolically derived
-  derivatives (a handwritten P2 Hessian once silently dropped terms, see
-  `doc/REFERENCE_BASIS_GENERATION.md`), primal/JVP/VJP from the same source
-  for differentiable consumers, and reproducible kernels without a runtime
-  FortSym dependency. Emit JVP/VJP only for a concrete consumer.
-- Handwritten Fortran owns topology, gather/scatter, solvers, schedules and
-  I/O. Generation is reproducibility evidence, not proof: keep independent
-  behavioral tests.
-
 ### Testing Strategy
 - Strict Test-Driven Development (TDD)
 - Target >90% code coverage

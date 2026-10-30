@@ -393,14 +393,6 @@ end program fci_sol_gallery
 
 ![fci_sol_field_lines_3d.png](../../media/examples/fci_sol_gallery/fci_sol_field_lines_3d.png)
 
-### fci_sol_gradient_diagnostic_1d.png
-
-![fci_sol_gradient_diagnostic_1d.png](../../media/examples/fci_sol_gallery/fci_sol_gradient_diagnostic_1d.png)
-
-### fci_sol_solution_2d.png
-
-![fci_sol_solution_2d.png](../../media/examples/fci_sol_gallery/fci_sol_solution_2d.png)
-
 ---
 
 [← Back to all examples](../index.html)

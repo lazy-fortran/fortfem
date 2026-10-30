@@ -158,14 +158,6 @@ end program circular_dtn_modes
 
 ![circular_dtn_field_2d.png](../../media/examples/circular_dtn_modes/circular_dtn_field_2d.png)
 
-### circular_dtn_response_1d.png
-
-![circular_dtn_response_1d.png](../../media/examples/circular_dtn_modes/circular_dtn_response_1d.png)
-
-### circular_dtn_trace_1d.png
-
-![circular_dtn_trace_1d.png](../../media/examples/circular_dtn_modes/circular_dtn_trace_1d.png)
-
 ---
 
 [← Back to all examples](../index.html)

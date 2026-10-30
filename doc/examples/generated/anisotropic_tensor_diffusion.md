@@ -272,18 +272,6 @@ end program anisotropic_tensor_diffusion
 
 ![primary.png](../../media/examples/anisotropic_tensor_diffusion/primary.png)
 
-### anisotropic_centerline_1d.png
-
-![anisotropic_centerline_1d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_centerline_1d.png)
-
-### anisotropic_error_2d.png
-
-![anisotropic_error_2d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_error_2d.png)
-
-### anisotropic_mesh_2d.png
-
-![anisotropic_mesh_2d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_mesh_2d.png)
-
 ### anisotropic_solution_2d.png
 
 ![anisotropic_solution_2d.png](../../media/examples/anisotropic_tensor_diffusion/anisotropic_solution_2d.png)

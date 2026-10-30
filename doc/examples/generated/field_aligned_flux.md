@@ -113,10 +113,6 @@ end program field_aligned_flux
 
 ![field_aligned_flux_1d.png](../../media/examples/field_aligned_flux/field_aligned_flux_1d.png)
 
-### field_aligned_flux_components_1d.png
-
-![field_aligned_flux_components_1d.png](../../media/examples/field_aligned_flux/field_aligned_flux_components_1d.png)
-
 ---
 
 [← Back to all examples](../index.html)

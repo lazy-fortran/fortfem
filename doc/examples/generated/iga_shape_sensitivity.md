@@ -364,17 +364,9 @@ end program iga_shape_sensitivity
 
 ![primary.png](../../media/examples/iga_shape_sensitivity/primary.png)
 
-### geometry_gradient_1d.png
-
-![geometry_gradient_1d.png](../../media/examples/iga_shape_sensitivity/geometry_gradient_1d.png)
-
 ### shape_gradient_2d.png
 
 ![shape_gradient_2d.png](../../media/examples/iga_shape_sensitivity/shape_gradient_2d.png)
-
-### state_sensitivity_1d.png
-
-![state_sensitivity_1d.png](../../media/examples/iga_shape_sensitivity/state_sensitivity_1d.png)
 
 ---
 

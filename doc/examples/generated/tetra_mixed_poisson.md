@@ -215,14 +215,6 @@ end program tetra_mixed_poisson
 
 ![primary.png](../../media/examples/tetra_mixed_poisson/primary.png)
 
-### tetra_mixed_conservation_1d.png
-
-![tetra_mixed_conservation_1d.png](../../media/examples/tetra_mixed_poisson/tetra_mixed_conservation_1d.png)
-
-### tetra_mixed_dofs_1d.png
-
-![tetra_mixed_dofs_1d.png](../../media/examples/tetra_mixed_poisson/tetra_mixed_dofs_1d.png)
-
 ### tetra_mixed_solution_3d.png
 
 ![tetra_mixed_solution_3d.png](../../media/examples/tetra_mixed_poisson/tetra_mixed_solution_3d.png)
