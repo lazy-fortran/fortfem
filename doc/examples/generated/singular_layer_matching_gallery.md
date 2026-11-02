@@ -343,10 +343,6 @@ end program singular_layer_matching_gallery
 
 ![primary.png](../../media/examples/singular_layer_matching_gallery/primary.png)
 
-### singular_layer_diagnostics_1d.png
-
-![singular_layer_diagnostics_1d.png](../../media/examples/singular_layer_matching_gallery/singular_layer_diagnostics_1d.png)
-
 ### singular_layer_solution_1d.png
 
 ![singular_layer_solution_1d.png](../../media/examples/singular_layer_matching_gallery/singular_layer_solution_1d.png)

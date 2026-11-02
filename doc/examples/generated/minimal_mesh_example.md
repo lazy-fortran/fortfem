@@ -121,10 +121,6 @@ end program minimal_mesh_example
 
 ![primary.png](../../media/examples/minimal_mesh_example/primary.png)
 
-### rectangle_mesh.png
-
-![rectangle_mesh.png](../../media/examples/minimal_mesh_example/rectangle_mesh.png)
-
 ### unit_square_mesh.png
 
 ![unit_square_mesh.png](../../media/examples/minimal_mesh_example/unit_square_mesh.png)

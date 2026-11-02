@@ -120,9 +120,13 @@ module fortfem_boundary
         estimate_laplace_p0_two_level_residual_3d, &
         mark_bem_dorfler, refine_surface_mesh_marked
     use fortfem_elasticity_planar_acoustic_dtn_2d, only: &
-        solve_elasticity_planar_acoustic_dtn_p1
+        solve_elasticity_planar_acoustic_dtn_p1, &
+        solve_elasticity_planar_acoustic_dtn_p1_jvp, &
+        solve_elasticity_planar_acoustic_dtn_p1_vjp
     use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
-        solve_elasticity_curved_acoustic_ntd_p1
+        solve_elasticity_curved_acoustic_ntd_p1, &
+        solve_elasticity_curved_acoustic_ntd_p1_jvp, &
+        solve_elasticity_curved_acoustic_ntd_p1_vjp
     use fortfem_laplace_symmetric_coupling_2d, only: &
         assemble_helmholtz_symmetric_coupling_p1_p0, &
         assemble_laplace_symmetric_coupling_p1_p0, &
@@ -167,19 +171,15 @@ module fortfem_boundary
         pullback_planar_maxwell_dtn_form_jvp, &
         pullback_planar_maxwell_dtn_form_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
-        assemble_scalar_helmholtz_pml_slab_1d_matrix, &
-        solve_scalar_helmholtz_pml_slab_1d
-    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d, &
         solve_scalar_helmholtz_pml_slab_1d_jvp, &
         solve_scalar_helmholtz_pml_slab_1d_vjp
     use fortfem_scalar_helmholtz_pml_2d, only: &
-        solve_scalar_helmholtz_pml_p1_2d
-    use fortfem_scalar_helmholtz_pml_2d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_2d, &
         solve_scalar_helmholtz_pml_p1_2d_jvp, &
         solve_scalar_helmholtz_pml_p1_2d_vjp
     use fortfem_scalar_helmholtz_pml_3d, only: &
-        solve_scalar_helmholtz_pml_p1_3d
-    use fortfem_scalar_helmholtz_pml_3d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_3d, &
         solve_scalar_helmholtz_pml_p1_3d_jvp, &
         solve_scalar_helmholtz_pml_p1_3d_vjp
     use fortfem_cartesian_helmholtz_pml, only: &
@@ -525,7 +525,11 @@ module fortfem_boundary
     public :: mark_bem_dorfler
     public :: refine_surface_mesh_marked
     public :: solve_elasticity_planar_acoustic_dtn_p1
+    public :: solve_elasticity_planar_acoustic_dtn_p1_jvp
+    public :: solve_elasticity_planar_acoustic_dtn_p1_vjp
     public :: solve_elasticity_curved_acoustic_ntd_p1
+    public :: solve_elasticity_curved_acoustic_ntd_p1_jvp
+    public :: solve_elasticity_curved_acoustic_ntd_p1_vjp
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
     public :: assemble_complex_dtn_trace_residual
@@ -551,7 +555,6 @@ module fortfem_boundary
     public :: pullback_planar_maxwell_dtn_form
     public :: pullback_planar_maxwell_dtn_form_jvp
     public :: pullback_planar_maxwell_dtn_form_vjp
-    public :: assemble_scalar_helmholtz_pml_slab_1d_matrix
     public :: solve_scalar_helmholtz_pml_slab_1d
     public :: solve_scalar_helmholtz_pml_slab_1d_jvp
     public :: solve_scalar_helmholtz_pml_slab_1d_vjp

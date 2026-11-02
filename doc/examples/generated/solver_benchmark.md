@@ -403,12 +403,11 @@ contains
 
         integer :: unit_num, ios, i, n_cases
         character(len=*), parameter :: filename = &
-            "artifacts/solver_benchmarks/"// &
-            "poisson_solver_benchmark.txt"
+            output_directory//"/poisson_solver_benchmark.txt"
 
         n_cases = size(mesh_sizes)
 
-        call ensure_benchmark_directory()
+        call ensure_example_output_directory()
 
         open (newunit=unit_num, file=filename, status="replace", &
             action="write", iostat=ios)
@@ -437,15 +436,6 @@ contains
 
         write (*, *) "Benchmark report written to", trim(filename)
     end subroutine write_benchmark_report
-
-    subroutine ensure_benchmark_directory()
-        logical :: exists
-
-        inquire (file="artifacts/solver_benchmarks", exist=exists)
-        if (.not. exists) then
-            call execute_command_line("mkdir -p artifacts/solver_benchmarks")
-        end if
-    end subroutine ensure_benchmark_directory
 
     subroutine ensure_example_output_directory()
         logical :: exists
@@ -501,18 +491,6 @@ end program solver_benchmark
 ### poisson_solution_2d.png
 
 ![poisson_solution_2d.png](../../media/examples/solver_benchmark/poisson_solution_2d.png)
-
-### solver_residuals_1d.png
-
-![solver_residuals_1d.png](../../media/examples/solver_benchmark/solver_residuals_1d.png)
-
-### solver_times_1d.png
-
-![solver_times_1d.png](../../media/examples/solver_benchmark/solver_times_1d.png)
-
-### sparse_factor_times_1d.png
-
-![sparse_factor_times_1d.png](../../media/examples/solver_benchmark/sparse_factor_times_1d.png)
 
 ---
 

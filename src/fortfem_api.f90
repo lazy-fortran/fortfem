@@ -1518,9 +1518,13 @@ module fortfem_api
         apply_planar_acoustic_displacement_dtn, &
         assemble_planar_acoustic_displacement_dtn_form
     use fortfem_elasticity_planar_acoustic_dtn_2d, only: &
-        solve_elasticity_planar_acoustic_dtn_p1
+        solve_elasticity_planar_acoustic_dtn_p1, &
+        solve_elasticity_planar_acoustic_dtn_p1_jvp, &
+        solve_elasticity_planar_acoustic_dtn_p1_vjp
     use fortfem_elasticity_curved_acoustic_ntd_2d, only: &
-        solve_elasticity_curved_acoustic_ntd_p1
+        solve_elasticity_curved_acoustic_ntd_p1, &
+        solve_elasticity_curved_acoustic_ntd_p1_jvp, &
+        solve_elasticity_curved_acoustic_ntd_p1_vjp
     use fortfem_scalar_helmholtz_planar_dtn_2d, only: &
         solve_scalar_helmholtz_planar_dtn_p1, &
         solve_scalar_helmholtz_planar_dtn_p1_jvp, &
@@ -1557,18 +1561,15 @@ module fortfem_api
         curvilinear_scalar_helmholtz_pml_coefficients_jvp, &
         curvilinear_scalar_helmholtz_pml_coefficients_vjp
     use fortfem_scalar_helmholtz_pml_slab_1d, only: &
-        solve_scalar_helmholtz_pml_slab_1d
-    use fortfem_scalar_helmholtz_pml_slab_1d_ad, only: &
+        solve_scalar_helmholtz_pml_slab_1d, &
         solve_scalar_helmholtz_pml_slab_1d_jvp, &
         solve_scalar_helmholtz_pml_slab_1d_vjp
     use fortfem_scalar_helmholtz_pml_2d, only: &
-        solve_scalar_helmholtz_pml_p1_2d
-    use fortfem_scalar_helmholtz_pml_2d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_2d, &
         solve_scalar_helmholtz_pml_p1_2d_jvp, &
         solve_scalar_helmholtz_pml_p1_2d_vjp
     use fortfem_scalar_helmholtz_pml_3d, only: &
-        solve_scalar_helmholtz_pml_p1_3d
-    use fortfem_scalar_helmholtz_pml_3d_ad, only: &
+        solve_scalar_helmholtz_pml_p1_3d, &
         solve_scalar_helmholtz_pml_p1_3d_jvp, &
         solve_scalar_helmholtz_pml_p1_3d_vjp
     use fortfem_toroidal_poisson_dtn, only: &
@@ -2807,7 +2808,11 @@ module fortfem_api
     public :: apply_planar_acoustic_displacement_dtn
     public :: assemble_planar_acoustic_displacement_dtn_form
     public :: solve_elasticity_planar_acoustic_dtn_p1
+    public :: solve_elasticity_planar_acoustic_dtn_p1_jvp
+    public :: solve_elasticity_planar_acoustic_dtn_p1_vjp
     public :: solve_elasticity_curved_acoustic_ntd_p1
+    public :: solve_elasticity_curved_acoustic_ntd_p1_jvp
+    public :: solve_elasticity_curved_acoustic_ntd_p1_vjp
     public :: assemble_planar_helmholtz_dtn_form
     public :: assemble_planar_helmholtz_dtn_form_jvp
     public :: assemble_planar_helmholtz_dtn_form_vjp

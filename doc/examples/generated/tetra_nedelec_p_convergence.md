@@ -344,14 +344,6 @@ end program tetra_nedelec_p_convergence
 
 ![nedelec_field_3d.png](../../media/examples/tetra_nedelec_p_convergence/nedelec_field_3d.png)
 
-### nedelec_field_slice_2d.png
-
-![nedelec_field_slice_2d.png](../../media/examples/tetra_nedelec_p_convergence/nedelec_field_slice_2d.png)
-
-### p_convergence_1d.png
-
-![p_convergence_1d.png](../../media/examples/tetra_nedelec_p_convergence/p_convergence_1d.png)
-
 ---
 
 [← Back to all examples](../index.html)

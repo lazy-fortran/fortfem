@@ -217,14 +217,6 @@ end program fci_quadrilateral_geometry
 
 ![primary.png](../../media/examples/fci_quadrilateral_geometry/primary.png)
 
-### fci_curved_quadrilateral_cells_2d.png
-
-![fci_curved_quadrilateral_cells_2d.png](../../media/examples/fci_quadrilateral_geometry/fci_curved_quadrilateral_cells_2d.png)
-
-### fci_quadrilateral_areas_1d.png
-
-![fci_quadrilateral_areas_1d.png](../../media/examples/fci_quadrilateral_geometry/fci_quadrilateral_areas_1d.png)
-
 ### fci_quadrilateral_cells_2d.png
 
 ![fci_quadrilateral_cells_2d.png](../../media/examples/fci_quadrilateral_geometry/fci_quadrilateral_cells_2d.png)

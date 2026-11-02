@@ -23,6 +23,7 @@ module fortfem_element_to_csr
     public :: csr_find_entry
     public :: csr_element_colouring
     public :: build_node_to_element
+    public :: csr_sort_row
 
     type :: csr_matrix_t
         integer :: n = 0
@@ -193,7 +194,7 @@ contains
                     matrix%colidx(position) = j
                 end do
             end do
-            call sort_row(matrix%colidx, start, position)
+            call csr_sort_row(matrix%colidx, start, position)
             do p = start, position
                 matrix%val(p) = 0.0_dp
             end do
@@ -249,7 +250,7 @@ contains
         end if
     end subroutine csr_build_pattern
 
-    pure subroutine sort_row(column, first, last)
+    pure subroutine csr_sort_row(column, first, last)
         !! Ascending sort of column(first:last): insertion sort for short rows,
         !! heapsort (O(n log n)) for the long rows of high-order or Fourier-coupled
         !! elements, where the quadratic insertion sort dominated the pattern build.
@@ -273,7 +274,7 @@ contains
             end do
             column(j + 1) = key
         end do
-    end subroutine sort_row
+    end subroutine csr_sort_row
 
     pure subroutine heap_sort(v)
         integer, intent(inout) :: v(:)

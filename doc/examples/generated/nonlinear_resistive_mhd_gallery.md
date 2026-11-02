@@ -330,14 +330,6 @@ end program nonlinear_resistive_mhd_gallery
 
 ![primary.png](../../media/examples/nonlinear_resistive_mhd_gallery/primary.png)
 
-### island_wall_branches_1d.png
-
-![island_wall_branches_1d.png](../../media/examples/nonlinear_resistive_mhd_gallery/island_wall_branches_1d.png)
-
-### island_wall_ledger_1d.png
-
-![island_wall_ledger_1d.png](../../media/examples/nonlinear_resistive_mhd_gallery/island_wall_ledger_1d.png)
-
 ### island_wall_solution_1d.png
 
 ![island_wall_solution_1d.png](../../media/examples/nonlinear_resistive_mhd_gallery/island_wall_solution_1d.png)

@@ -184,14 +184,6 @@ end program plotting_demo
 
 ![solution_constant.png](../../media/examples/plotting/solution_constant.png)
 
-### solution_coolwarm.png
-
-![solution_coolwarm.png](../../media/examples/plotting/solution_coolwarm.png)
-
-### solution_point.png
-
-![solution_point.png](../../media/examples/plotting/solution_point.png)
-
 ---
 
 [← Back to all examples](../index.html)
