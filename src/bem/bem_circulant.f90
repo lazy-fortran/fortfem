@@ -9,6 +9,7 @@ module fortfem_bem_circulant
     implicit none
     private
     public :: circulant_matrix_t, bem_circulant_t, assignment(=)
+    public :: build_circulant_exterior_dtn
 
     type :: circulant_matrix_t
         real(dp), allocatable :: blocks(:, :, :)
@@ -262,5 +263,76 @@ contains
         end do
         op%area = self%area
         op%genus = self%genus
+    end subroutine
+    subroutine build_circulant_exterior_dtn(op, steklov, status)
+        !! Block-circulant form of build_exterior_dtn: per harmonic k,
+        !! S(k) = W(k) + J(k)^H V(k)^{-1} J(k) with J = M/2 - K, one complex
+        !! dense solve per harmonic. A circulant product has the product of
+        !! harmonics, and the transpose has the conjugate transpose. Blocks
+        !! are recovered by the inverse transform and symmetrized as in the
+        !! dense path; raw asymmetry is roundoff only.
+        class(bem_circulant_t), intent(in) :: op
+        type(circulant_matrix_t), intent(out) :: steklov
+        integer, intent(out) :: status
+        complex(dp), allocatable :: v(:, :, :), k(:, :, :), m(:, :, :)
+        complex(dp), allocatable :: s(:, :, :), jump(:, :), x(:, :)
+        type(fortnum_fft_plan_t) :: plan
+        type(fortnum_fft_workspace_t) :: workspace
+        integer, allocatable :: info(:)
+        real(dp) :: raw_asymmetry
+        integer :: nf, nt, ns, q, i, j
+        status = 1
+        if (.not. op%v%valid() .or. .not. op%k%valid()) return
+        if (.not. op%w%valid() .or. .not. op%mass%valid()) return
+        nf = size(op%v%blocks, 1); nt = size(op%w%blocks, 1)
+        ns = size(op%v%blocks, 3)
+        if (size(op%v%blocks, 2) /= nf .or. size(op%w%blocks, 2) /= nt) return
+        if (any(shape(op%k%blocks) /= [nf, nt, ns])) return
+        if (any(shape(op%mass%blocks) /= [nf, nt, ns])) return
+        if (any(shape(op%w%blocks) /= [nt, nt, ns])) return
+        if (any(op%v%row_dofs /= op%v%column_dofs)) return
+        if (any(op%k%row_dofs /= op%v%row_dofs)) return
+        if (any(op%mass%row_dofs /= op%v%row_dofs)) return
+        if (any(op%k%column_dofs /= op%w%row_dofs)) return
+        if (any(op%mass%column_dofs /= op%w%row_dofs)) return
+        if (any(op%w%row_dofs /= op%w%column_dofs)) return
+        call op%v%harmonics(v, status)
+        if (status /= 0) return
+        call op%k%harmonics(k, status)
+        if (status /= 0) return
+        call op%mass%harmonics(m, status)
+        if (status /= 0) return
+        call op%w%harmonics(s, status)
+        if (status /= 0) return
+        allocate (info(ns))
+        !$omp parallel do default(shared) private(q,jump,x) schedule(dynamic,1)
+        do q = 1, ns
+            jump = .5_dp*m(:, :, q) - k(:, :, q)
+            allocate (x(nf, nt))
+            call dense_solve(v(:, :, q), jump, x, info(q))
+            if (info(q) == 0) s(:, :, q) = s(:, :, q) + &
+                matmul(conjg(transpose(jump)), x)
+            deallocate (x)
+        end do
+        !$omp end parallel do
+        status = 2
+        if (any(info /= 0)) return
+        call fft_c2c_plan_init(plan, ns)
+        !$omp parallel default(shared) private(i,j,workspace)
+        call fft_workspace_init(workspace, plan)
+        !$omp do collapse(2)
+        do j = 1, nt
+            do i = 1, nt
+                call fft_c2c(s(i, j, :), -1, plan, workspace)
+            end do
+        end do
+        !$omp end do
+        !$omp end parallel
+        steklov%row_dofs = op%w%row_dofs
+        steklov%column_dofs = op%w%column_dofs
+        steklov%blocks = real(s, dp)/real(ns, dp)
+        call steklov%symmetrize(raw_asymmetry)
+        status = 0
+        if (.not. steklov%valid()) status = 2
     end subroutine
 end module
