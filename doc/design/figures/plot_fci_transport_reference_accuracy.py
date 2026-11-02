@@ -1,7 +1,7 @@
 """Plot the computed, dimensionless errors reported by the native FCI test.
 
 Run with Python and matplotlib; the CSV is the unfiltered printed epsilon
-ladder (alpha = 0). SVG is the documentation figure; --preview requests a PNG review render.
+ladder (alpha = 0). Choose a local output path with --output.
 """
 import csv
 import argparse
@@ -12,6 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--preview", type=Path)
 args = parser.parse_args()
 HERE = Path(__file__).resolve().parent
@@ -43,8 +44,6 @@ for ax, fixture, title in zip(axes, ["periodic", "mixed"],
               ncol=3, frameon=False, fontsize=8, columnspacing=0.8)
 axes[0].set_ylabel("Relative mass error (dimensionless)")
 fig.tight_layout()
-svg = HERE / "fci_transport_reference_accuracy.svg"
-fig.savefig(svg, metadata={"Date": None})
-svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n")
+fig.savefig(args.output)
 if args.preview:
     fig.savefig(args.preview, dpi=160)

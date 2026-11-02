@@ -1,15 +1,21 @@
 ---
-title: Kernel-separated FCI transport reference
+title: FCI anisotropic transport solver
 ---
 
-# Kernel-separated FCI transport reference
+# FCI anisotropic transport solver
 
-FortFEM provides a small dense reference solve that separates the kernel of
-the flux-coordinate-independent (FCI) parallel gradient before introducing a
-large conductivity. It is an algebraic oracle for a future transport
-preconditioner, not a scalable transport block. The sheared nested-surface,
-island, plate-intersection and single-null geometry benchmarks, and the
-mesh-independent Krylov iteration gate, remain unqualified.
+The solver is blocked at its first accuracy gate: the native bilinear
+flux-coordinate-independent (FCI) map loses the field-line-constant limit
+on a non-aligned nested-surface fixture. Even the dense oracle gives nearly
+unit relative solution error while satisfying the discrete equations.
+Option B, a two-level Krylov preconditioner, cannot correct this spatial
+error for the tested operator. No production solver is delivered or qualified.
+Island, plate-intersection, single-null, Krylov and cost gates remain open.
+
+The dense kernel/complement reference is test support in
+`test/fci_transport_reference.f90`, linked only into its test consumers.
+It is neither installed nor part of the public library API. Its original
+algebraic verification is retained below.
 
 This is a first part of the transport work required by
 [KIN6D's nonlinear resistive MHD design](https://github.com/itpplasma/kin6d/blob/main/docs/nonlinear-resistive-mhd.md),
@@ -17,6 +23,116 @@ particularly its anisotropic transport and preconditioner gates RM-B3/RM-B4.
 The existing [FCI support operator](fci_parallel_operator.md) supplies the
 parallel gradient; no new diffusion discretization or physical closure is
 introduced here.
+
+## First failing gate: nested surfaces with shear
+
+The dimensionless domain has Cartesian coordinates `(x,y,z)` with section
+`[0,1]^2` and a periodic third coordinate of period one.
+Define the flux function `psi = sin(pi*x)*sin(pi*y)` and
+`B = (a*psi_y, -a*psi_x, 1)`, where `a = 0.15*(1+psi)` supplies shear.
+Here subscripts denote partial derivatives and `b = B/|B|` is the unit field.
+The field is divergence free, tangent to nested `psi` surfaces, and nowhere
+zero. Set perpendicular conductivity to one and let `epsilon` be its ratio
+to parallel conductivity. With `I` the identity tensor and `b*b^T` the outer
+product, the conductivity is `K = I + (1/epsilon-1)*b*b^T`.
+The exact temperature solution of
+`-div(K*grad(u)) = 2*pi^2*psi`, with zero outer Dirichlet data, is `u = psi`
+for every positive epsilon. This follows from `b.grad(psi) = 0` and
+`-Delta(psi) = 2*pi^2*psi`.
+
+This is a translated, sheared, guide-field extension of the source and
+temperature in Sovinec et al., [JCP 195 (2004), 355–386,
+Section 4.2, pp. 374–375](https://doi.org/10.1016/j.jcp.2003.10.004)
+([author manuscript](https://w3.pppl.gov/cemm/Project/NIMROD_JCP_rev1_wfigs.pdf),
+pp. 35–36): their unnumbered benchmark equations specify
+`Q = 2*pi^2*cos(pi*x)*cos(pi*y)` and
+`T = cos(pi*x)*cos(pi*y)/chi_perp` on `[-0.5,0.5]^2`.
+It does not reproduce their evolving magnetic field or finite-element tables.
+Günter et al., [JCP 209 (2005), 354–370,
+equations (1)–(2) and Section 2](https://doi.org/10.1016/j.jcp.2005.03.021),
+use the same field-constant manufactured-source principle. Their circular
+closed-line and `sin(2*pi*x)*cos(2*pi*y)` benchmarks have not been run here.
+
+`test_fci_transport_nested` traces interior Cartesian nodes with the native
+classical fourth-order Runge–Kutta field-line tracer, obtains endpoint
+interpolation with the native
+bilinear map builder, and calls the native parallel-gradient assembler.
+Departure maps evaluate at the starting nodes; endpoint maps evaluate after
+half a period. Only duplicate periodic planes are identified algebraically.
+Connectivity is obtained from those maps, not prescribed as separate lines.
+Two canonical planes use 5, 9 and 17 cells per section direction. Odd cell
+counts keep the magnetic axis between nodes on every refinement.
+Support and interior mass weights are `h^2/2`, where `h` is section spacing;
+line lengths come from integrating `|B|` along the traced segment.
+The slow matrix is the standard Cartesian Laplacian, including periodic
+third-direction differences. The parallel coefficient passed to the oracle
+is the excess conductivity `1/epsilon-1`.
+
+An independent sine eigenvalue checks the slow matrix and the
+perpendicular-only baseline. The latter uses excess conductivity `1e-20`
+to respect the oracle's positive-coefficient contract and agrees with the
+zero-excess eigenvalue solution within `1e-11` in maximum norm.
+The norm is the relative diagonal-mass norm
+defined below. The deliberately loose acceptance bound is `error < 0.1`
+at every epsilon and refinement. The registered
+`test_fci_transport_nested_accuracy_gate` enforces it and **fails all 24
+cases**. It has no expected-failure property. The separate diagnostic test
+checks tracing, assembly, the baseline and residuals; its passing result
+does not mean the accuracy gate passed.
+
+| cells per section direction | total unknowns | perpendicular-only error | error at epsilon=1e-6 | error at epsilon=1e-13 | parallel defect |
+|---|---:|---:|---:|---:|---:|
+| 5 | 72 | 0.03356 | 0.99706 | 1.00000 | 0.08789 |
+| 9 | 200 | 0.01022 | 0.97841 | 1.00000 | 0.03660 |
+| 17 | 648 | 0.002851 | 0.74913 | 1.00000 | 0.01069 |
+
+The parallel defect is `sqrt(sum(W_s*(Q*psi)^2)/sum(M*psi^2))`, with `Q`
+the mapped gradient, `W_s` the support weights and `M` the diagonal mass.
+All quantities in this table are dimensionless. The original weak residual,
+recomputed through sparse gradient and transpose actions rather than the
+reduced equations, stays below `4.1e-10`. Traced flux defects stay below
+`1.3e-10`; endpoint step-doubling differences stay below `2.6e-10`.
+The manufactured solution is lost despite small algebraic residuals.
+
+The cause is the bilinear interpolation in
+`src/operators/fci_interpolation_map.f90:1434` and its use in the gradient
+at `src/operators/fci_parallel_operator.f90:114`. Partition of unity
+preserves constants but not this nonlinear flux. Positive stencil paths
+connect every interior departure node to the anchored perimeter, although
+the continuous interior field lines never reach it. The diagnostic checks
+this reachability independently. Consequently the homogeneous free-node
+parallel kernel is trivial; the oracle's numerical-rank check confirms that
+fact. At fixed mesh the solution therefore tends to zero as epsilon tends
+to zero. This is not a Krylov convergence failure or a theorem about other
+FCI interpolation schemes.
+
+Stop at gate 1. The next step is to establish an accurate limit space with
+a different spatial/map construction or an asymptotic-preserving (AP)
+discretization, then build
+option B against that operator. No option-B iteration counts, option-A
+implementation, or new matched-accuracy cost comparison are claimed.
+The existing additive field split supplies a parallel Jacobi action, not an
+exact line solve. Plane cycles and FortSparse's symmetric-positive-definite
+algebraic multigrid (AMG) interface (`amg_setup_csr`, `amg_apply`,
+`near_nullspace`) were inspected
+but cannot repair this failed accuracy gate by preconditioning alone.
+
+The [unfiltered CSV](figures/fci_transport_nested_accuracy.csv) retains all
+24 computed rows, residuals, tracing defects and individual wall timings.
+The [plot source](figures/plot_fci_transport_nested_accuracy.py) shows
+solution error and original weak residual with dimensionless axis labels:
+
+```sh
+python3 doc/design/figures/plot_fci_transport_nested_accuracy.py --output /tmp/fci-transport-nested.png
+cmake --build build/u3b -j 8 --target test_fci_transport_nested test_fci_transport_reference
+ctest --test-dir build/u3b -j 8 -R '^test_fci_transport_' --output-on-failure
+```
+
+Use the Release/OpenBLAS configuration below with `build/u3b` as build root.
+The transport scope returns seven passes and one failure, the accuracy gate.
+On shared faepmac1, gfortran 16.2 and one OpenMP/BLAS thread, oracle setup
+took 0.265 ms, 7.66 ms and 1.28 s on the three meshes. Individual solves
+are retained in the CSV; these diagnostic timings are not gate-3 evidence.
 
 ## Algebra and boundary contract
 
@@ -109,9 +225,9 @@ not an implementation of either paper's finite element multiplier system.
 In particular, the latter paper's inflow-based gauge and its tube-domain
 hypothesis do not establish a closed-line or X-point result here.
 
-The measurements below justify retaining this decomposition as the accuracy
-oracle for option A. They do not choose between a scalable micro-macro method
-and option B's two-level Krylov method. FortSparse's available smoothed
+The algebraic measurements below justify retaining this decomposition as an
+oracle. Option B is the selected solver design, but its spatial accuracy
+preflight above fails before implementation. FortSparse's available smoothed
 aggregation interface (`amg_setup_csr`, `amg_apply`,
 `amg_params_t%near_nullspace`) and FortFEM's plane cycles were inspected; neither
 is composed into this reference. Comparing those scalable alternatives,
@@ -185,12 +301,11 @@ number of unknowns `n` shown in its heading; the periodic rows shown here use
 asserted bound. No error growth with decreasing epsilon is observed in these
 fixtures.
 
-![Computed relative mass error versus epsilon on periodic and mixed closed/open algebraic fixtures. Both axes are dimensionless; colors and markers distinguish refinement.](figures/fci_transport_reference_accuracy.svg)
-
-The figure uses all 48 printed rows from the zero-mass-shift ladders, without
+The retained plot source uses all 48 printed rows from the zero-mass-shift ladders, without
 filtering or smoothing. The [CSV data](figures/fci_transport_reference_accuracy.csv)
 and [plot source](figures/plot_fci_transport_reference_accuracy.py) are adjacent;
-run the source with Python and Matplotlib to reproduce the SVG figure.
+run the source with Python and Matplotlib and `--output /tmp/fci-reference.png`
+to reproduce the figure. Rendered figures are not checked into the repository.
 
 | epsilon | periodic n=12 | n=24 | n=48 | mixed n=13 | n=25 | n=49 |
 |---|---:|---:|---:|---:|---:|---:|
