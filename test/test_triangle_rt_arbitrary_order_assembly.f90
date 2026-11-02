@@ -3,6 +3,9 @@ program test_triangle_rt_arbitrary_order_assembly
     use fortfem_feec, only: &
         assemble_triangle_rt_div_mass_element, triangle_duffy_quadrature
     use fortfem_kinds, only: dp
+    use fortfem_triangle_nedelec_arbitrary_order, only: &
+        evaluate_triangle_nedelec_interior_tests, &
+        initialize_triangle_nedelec_first_kind, triangle_nedelec_first_kind_t
     use fortnum_quadrature, only: gauss_legendre_ab
     implicit none
 
@@ -69,7 +72,9 @@ contains
         real(dp), allocatable :: eta(:), triangle_weights(:), xi(:)
         real(dp) :: edge_point(2), field(2), normal(2)
         integer :: component, edge, exponent, moment, node, quadrature_status
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:), node_tests(:, :)
+        integer :: test
 
         allocate(edge_nodes(degree + 3), edge_weights(degree + 3))
         call gauss_legendre_ab( &
@@ -93,19 +98,27 @@ contains
 
         call triangle_duffy_quadrature( &
             2 * degree + 2, xi, eta, triangle_weights, quadrature_status)
+        ! Interior moments against the RT test polynomials q_m (those of the
+        ! rotated Nedelec basis of order degree + 1).
+        call initialize_triangle_nedelec_first_kind(degree + 1, test_basis, &
+            quadrature_status)
+        allocate(tests(degree*(degree + 1)/2), &
+            node_tests(size(xi), degree*(degree + 1)/2))
+        do node = 1, size(xi)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, xi(node), &
+                eta(node), tests, quadrature_status)
+            node_tests(node, :) = tests
+        end do
         do component = 1, 2
-            do total_degree = 0, degree - 1
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment = moment + 1
-                    if (component == 1) then
-                        dofs(moment) = sum(triangle_weights * &
-                            xi**(degree + 1 + x_degree) * eta**y_degree)
-                    else
-                        dofs(moment) = sum(triangle_weights * &
-                            xi**(degree + x_degree) * eta**(y_degree + 1))
-                    end if
-                end do
+            do test = 1, size(tests)
+                moment = moment + 1
+                if (component == 1) then
+                    dofs(moment) = sum(triangle_weights * &
+                        xi**(degree + 1) * node_tests(:, test))
+                else
+                    dofs(moment) = sum(triangle_weights * &
+                        xi**degree * eta * node_tests(:, test))
+                end if
             end do
         end do
     end subroutine polynomial_rt_dofs
