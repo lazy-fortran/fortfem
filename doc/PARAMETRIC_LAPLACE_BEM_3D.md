@@ -193,6 +193,19 @@ status 3 reports failure to meet this criterion. Invalid options/topology
 return 1; invalid geometry/nonfinite data return 2. An unsuccessful operator
 must be discarded. `maximum_degree` is limited to 128.
 
+[V] Stretched source panels split their fan triangles in the angle. Take the
+fan triangle from the apex to source edge e, with physical chord length L_e and
+panel height h_e over that edge. Let r be the distance of the target from the
+apex. That fan triangle is then cut into
+min(16, ceil(L_e/(2*max(h_e, r)))) equal pieces of the edge, each integrated
+with the same squared-radial rule. On a stretched panel near a target, the
+angular integrand varies on the scale h_e rather than L_e. Isotropic panels
+and far targets keep one piece, so their rule and work are unchanged. On two
+aspect-20 coplanar neighbours (test_parametric_bem_pair_accuracy, analytic
+edge oracle), the pair converges at degree 16 with 1.2e5 kernel evaluations.
+Without the pieces it fails at degree 64 after 9.1e6. The per-level
+evaluation cap check still counts one piece; reported work counts all pieces.
+
 [V] This is an observed quadrature error estimate, not a rigorous error
 bound. Repeated rules can share an unresolved bias; independently refine
 quadrature and the mesh for a new geometry. `report` retains work counts,

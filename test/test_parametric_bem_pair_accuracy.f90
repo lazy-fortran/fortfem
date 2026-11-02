@@ -36,6 +36,7 @@ program test_parametric_bem_pair_accuracy
     type(bem_pair_report_t) :: report
     real(dp) :: v(3,3),k(3,6),w(6,6),c(3,6),reference,refined,error,gap,aspect
     integer :: status,case_id
+    integer, parameter :: STRETCHED_DEGREE = 16
     logical :: passed
     passed=.true.
     plane%vertices(:,:,1)=reshape([0.0_dp,0.0_dp,0.0_dp, &
@@ -106,6 +107,35 @@ program test_parametric_bem_pair_accuracy
         call record(error<2.e-3_dp,'raw DG1 sum agrees with analytic-edge integral')
         call record(maxval(abs(k))<1.e-13_dp,'coplanar double layer vanishes')
     end do
+    ! Stretched neighbours (aspect 20, long shared or nearly shared edge),
+    ! as on toroidal strips of a coupling surface. The angular fan pieces
+    ! keep the pair degree moderate; the analytic-edge reference is the same.
+    aspect=20.0_dp
+    do case_id=1,2
+        gap=0
+        if (case_id==1) gap=1.e-2_dp
+        plane%vertices(:,:,1)=reshape([0.0_dp,0.0_dp,0.0_dp, &
+            aspect,0.0_dp,0.0_dp,0.0_dp,1.0_dp,0.0_dp],[3,3])
+        plane%vertices(:,:,2)=reshape([aspect,-gap,0.0_dp, &
+            0.0_dp,-gap,0.0_dp,aspect,-1.0_dp-gap,0.0_dp],[3,3])
+        call edge_reference(64,reference)
+        call edge_reference(96,refined)
+        call record(abs(reference-refined)<1.e-4_dp*abs(refined), &
+            'stretched analytic-edge reference is refined')
+        call integrate_parametric_bem_p2_pair(plane,1,2,options,v,k,w,c, &
+            report,status)
+        error=abs(sum(v)-refined)/abs(refined)
+        write(*,'(a,4i8,4es16.7)') 'BEM3D stretched case status degree evaluations ', &
+            case_id,status,report%maximum_degree_used,report%kernel_evaluations, &
+            sum(v),refined,report%error_ratio,error
+        call record(status==0,'stretched pair reaches requested tolerance')
+        if (status/=0) cycle
+        call record(error<2.e-3_dp,'stretched DG1 sum agrees with analytic edge')
+        call record(report%maximum_degree_used<=STRETCHED_DEGREE, &
+            'stretched pair needs no high-degree rule')
+    end do
+    plane%vertices(:,:,1)=reshape([0.0_dp,0.0_dp,0.0_dp, &
+        1.0_dp,0.0_dp,0.0_dp,0.0_dp,1.0_dp,0.0_dp],[3,3])
     ! For parallel overlapping projections, D_n G develops a narrow peak.
     plane%vertices(:,:,2)=plane%vertices(:,:,1)
     plane%vertices(3,:,1)=0.02_dp
@@ -186,7 +216,9 @@ contains
                 denominator=norm2(first)+norm2(second)-length
                 potential=potential+height*log(numerator/denominator)
             end do
-            value=value+weights(t)*potential/(4*acos(-1.0_dp))
+            ! Target Jacobian |a x b| (one for the unit right triangle).
+            value=value+weights(t)*potential/(4*acos(-1.0_dp))* &
+                norm2([a(2)*b(3)-a(3)*b(2),a(3)*b(1)-a(1)*b(3),a(1)*b(2)-a(2)*b(1)])
         end do
     end subroutine
     subroutine record(ok,label)
