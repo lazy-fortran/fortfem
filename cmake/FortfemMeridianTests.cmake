@@ -10,6 +10,7 @@ add_library(fortfem_meridian STATIC
     src/bem/axisymmetric_gs_kernel.f90
     src/bem/meridian_magnetic_coupling.f90
     src/elements/polynomial_candidate_jets.f90
+    src/elements/triangle_bernstein_jets.f90
     src/elements/triangle_feec_operators.f90
     src/elements/triangle_lagrange_arbitrary_order.f90
     src/elements/triangle_nedelec_arbitrary_order.f90
@@ -23,6 +24,8 @@ add_library(fortfem_meridian STATIC
     src/generated/fortfem_mapped_oscillation_products.f90
     src/generated/fortfem_meridian_fourier_equilibration_products.f90
     src/generated/fortfem_meridian_hcurl_equilibration_products.f90
+    src/generated/fortfem_triangle_bernstein_jets.f90
+    src/generated/fortfem_triangle_feec_tables.f90
     src/generated/fortfem_triangle_level_geometry.f90
     src/generated/fortfem_triangle_piola_products.f90
     src/generated/fortfem_verified_bernstein_products.f90

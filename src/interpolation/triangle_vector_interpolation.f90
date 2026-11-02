@@ -11,6 +11,8 @@ module fortfem_triangle_vector_interpolation
         evaluate_triangle_nedelec_first_kind, &
         evaluate_triangle_nedelec_first_kind_jvp, &
         evaluate_triangle_nedelec_first_kind_vjp, &
+        evaluate_triangle_nedelec_interior_tests, &
+        initialize_triangle_nedelec_first_kind, &
         triangle_nedelec_first_kind_t
     use fortfem_triangle_nedelec_second_kind, only: &
         evaluate_triangle_nedelec_second_kind, &
@@ -1028,7 +1030,9 @@ contains
         real(dp) :: physical_field(2), physical_point(2), polynomial
         real(dp) :: reference_field(2), tangent(2)
         integer :: component, edge, exponent, moment, node, node_count
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: test, test_count
 
         status = 1
         if (order < 1 .or. quadrature_degree < 0) return
@@ -1070,27 +1074,29 @@ contains
         call triangle_duffy_quadrature( &
             quadrature_degree, xi, eta, triangle_weights, status)
         if (status /= 0) return
-        do component = 1, 2
-            do total_degree = 0, order - 2
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment = moment + 1
-                    do node = 1, size(xi)
-                        physical_point = vertices(:, 1) + &
-                            matmul(jacobian, [xi(node), eta(node)])
-                        call field( &
-                            physical_point(1), physical_point(2), &
-                            physical_field)
-                        reference_field = &
-                            matmul(transpose(jacobian), physical_field)
-                        dofs(moment) = dofs(moment) + &
-                            triangle_weights(node) * &
-                            xi(node)**x_degree * eta(node)**y_degree * &
-                            reference_field(component)
-                    end do
+        ! Interior moments against the basis's own test polynomials q_m.
+        call initialize_triangle_nedelec_first_kind(order, test_basis, status)
+        if (status /= 0) return
+        test_count = order*(order - 1)/2
+        allocate(tests(test_count))
+        do node = 1, size(xi)
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, [xi(node), eta(node)])
+            call field(physical_point(1), physical_point(2), physical_field)
+            reference_field = matmul(transpose(jacobian), physical_field)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, &
+                xi(node), eta(node), tests, status)
+            if (status /= 0) return
+            do component = 1, 2
+                do test = 1, test_count
+                    dofs(moment + (component - 1)*test_count + test) = &
+                        dofs(moment + (component - 1)*test_count + test) + &
+                        triangle_weights(node)*tests(test)* &
+                        reference_field(component)
                 end do
             end do
         end do
+        moment = moment + 2*test_count
         if (moment /= size(dofs)) then
             status = 2
             return
@@ -1112,7 +1118,9 @@ contains
         real(dp) :: physical_field(2), physical_point(2), polynomial
         real(dp) :: reference_field(2)
         integer :: component, edge, exponent, moment, node, node_count
-        integer :: total_degree, x_degree, y_degree
+        type(triangle_nedelec_first_kind_t) :: test_basis
+        real(dp), allocatable :: tests(:)
+        integer :: test, test_count
 
         status = 1
         if (degree < 0 .or. quadrature_degree < 0) return
@@ -1155,27 +1163,31 @@ contains
         call triangle_duffy_quadrature( &
             quadrature_degree, xi, eta, triangle_weights, status)
         if (status /= 0) return
-        do component = 1, 2
-            do total_degree = 0, degree - 1
-                do x_degree = 0, total_degree
-                    y_degree = total_degree - x_degree
-                    moment = moment + 1
-                    do node = 1, size(xi)
-                        physical_point = vertices(:, 1) + &
-                            matmul(jacobian, [xi(node), eta(node)])
-                        call field( &
-                            physical_point(1), physical_point(2), &
-                            physical_field)
-                        call pull_back_rt( &
-                            jacobian, physical_field, reference_field)
-                        dofs(moment) = dofs(moment) + &
-                            triangle_weights(node) * &
-                            xi(node)**x_degree * eta(node)**y_degree * &
-                            reference_field(component)
-                    end do
+        ! RT_degree is the rotated Nedelec basis of order degree + 1, so its
+        ! interior moments use the same test polynomials q_m.
+        call initialize_triangle_nedelec_first_kind(degree + 1, test_basis, &
+            status)
+        if (status /= 0) return
+        test_count = degree*(degree + 1)/2
+        allocate(tests(test_count))
+        do node = 1, size(xi)
+            physical_point = vertices(:, 1) + &
+                matmul(jacobian, [xi(node), eta(node)])
+            call field(physical_point(1), physical_point(2), physical_field)
+            call pull_back_rt(jacobian, physical_field, reference_field)
+            call evaluate_triangle_nedelec_interior_tests(test_basis, &
+                xi(node), eta(node), tests, status)
+            if (status /= 0) return
+            do component = 1, 2
+                do test = 1, test_count
+                    dofs(moment + (component - 1)*test_count + test) = &
+                        dofs(moment + (component - 1)*test_count + test) + &
+                        triangle_weights(node)*tests(test)* &
+                        reference_field(component)
                 end do
             end do
         end do
+        moment = moment + 2*test_count
         if (moment /= size(dofs)) then
             status = 2
             return
