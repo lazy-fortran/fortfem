@@ -473,4 +473,5 @@ if(FORTFEM_BUILD_TESTING)
     set_tests_properties(fortfem_cmake_boundary_consumer PROPERTIES
         LABELS "api;fast" ENVIRONMENT "OMP_NUM_THREADS=1")
     include(cmake/FortfemMeridianTests.cmake)
+    include(cmake/FortfemFciTests.cmake)
 endif()

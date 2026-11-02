@@ -96,6 +96,11 @@ defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
+The [kernel-separated FCI transport reference](fci_transport_reference.html)
+provides a dense accuracy oracle for strongly anisotropic weak systems with
+closed components and prescribed open-line endpoints. It does not yet qualify
+the scalable transport solver or magnetic-geometry gates.
+
 The [FCI interpolation-map contract](fci_interpolation_map.html) defines
 linear, bilinear, quadratic, and FortSym-generated cubic and quartic
 fixed-stencil maps,
