@@ -2,12 +2,13 @@ module parametric_bem_circulant_test_cases
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use check, only: check_condition, check_summary
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
-    use fortfem_parametric_laplace_bem_3d, only: bem_operators_t
+    use fortfem_parametric_laplace_bem_3d, only: bem_operators_t, &
+             bem_exterior_dtn_t, build_exterior_dtn
     use fortfem_parametric_bem_high_order, only: assemble_parametric_bem_p2, &
              assemble_parametric_bem_p2_circulant, bem_pair_options_t, &
              bem_pair_report_t, integrate_parametric_bem_p2_pair
     use fortfem_bem_circulant, only: bem_circulant_t, circulant_matrix_t, &
-                                     assignment(=)
+                                     assignment(=), build_circulant_exterior_dtn
     use fortnum_linalg, only: dense_solve
     use parametric_bem_test_geometry, only: test_torus_t
     use omp_lib, only: omp_get_wtime, omp_get_max_threads, omp_set_num_threads
@@ -23,7 +24,9 @@ contains
         type(bem_circulant_t) :: circular
         type(bem_pair_options_t) :: options
         type(bem_pair_report_t) :: report, full_report
-        type(circulant_matrix_t) :: jump
+        type(circulant_matrix_t) :: jump, steklov
+        type(bem_exterior_dtn_t) :: exterior
+        real(dp), allocatable :: dense_steklov(:, :), circulant_steklov(:, :)
         integer, allocatable :: td(:, :), fd(:, :)
         real(dp), allocatable :: vertices(:, :), u(:), rhs(:), flux(:), exact(:), y(:)
         real(dp) :: start, full_time, circular_time, difference, x(3), a(3), b(3)
@@ -121,6 +124,26 @@ contains
         call record(status == 0, 'per-harmonic exterior solve succeeds')
         call record(norm2(flux - exact)/max(1._dp, norm2(exact)) < 1.e-10_dp, &
                     'per-harmonic exterior flux equals dense solve for nonzero modes')
+        ! Dense Schur complement S = W + J^T V^{-1} J is the oracle for
+        ! the per-harmonic exterior Steklov form.
+        call build_exterior_dtn(dense, exterior, status)
+        call record(status == 0, 'dense exterior Steklov form builds')
+        call exterior%matrix(dense_steklov, status)
+        call build_circulant_exterior_dtn(circular, steklov, status)
+        call record(status == 0, 'per-harmonic exterior Steklov form builds')
+        call steklov%expand(circulant_steklov, status)
+        call record(status == 0, 'per-harmonic Steklov form expands')
+        difference = relative(dense_steklov, circulant_steklov)
+        write (*, '(a,es16.8)') 'maximum relative Steklov difference ', difference
+        call record(difference < 1.e-10_dp, &
+                    'per-harmonic Steklov form equals dense Schur complement')
+        difference = maxval(abs(circulant_steklov - transpose(circulant_steklov)))
+        call record(difference == 0, 'per-harmonic Steklov form is symmetric')
+        jump = circular%v
+        circular%v%blocks = 0._dp
+        call build_circulant_exterior_dtn(circular, steklov, status)
+        call record(status /= 0, 'singular harmonic single-layer block is rejected')
+        circular%v = jump
         if (scaling) then
             previous_threads = omp_get_max_threads()
             threads = 1

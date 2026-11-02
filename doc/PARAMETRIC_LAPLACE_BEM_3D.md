@@ -262,10 +262,23 @@ back. A nonzero solver status must be checked. The current solve factors anew
 on each call; consumers with repeated loads can retain the exposed harmonic
 matrices and factor them once. No assembled geometry derivatives are supplied.
 
+[V] `build_circulant_exterior_dtn(circular, steklov, status)` returns the
+exterior Steklov form of `build_exterior_dtn` as a `circulant_matrix_t` on the
+trace DOFs. A circulant product has the product of harmonics and a transpose
+has the conjugate transpose, so per harmonic
+
+    S_hat(k) = W_hat(k) + J_hat(k)^H V_hat(k)^{-1} J_hat(k),  J = M/2 - K,
+
+with one complex dense solve (all trace right-hand sides) per harmonic. The
+inverse transform recovers B_S(d), which is symmetrized like the dense form.
+Cost is nphi solves of size n/nphi instead of one of size n, and storage is
+one block row. A singular harmonic single-layer block returns nonzero status.
+
 [V] `test_bem_circulant_modes` checks nonsymmetric solves for sector counts
 1–13 against an independent dense solve. `test_parametric_bem_circulant`
-compares all four BEM forms, areas, application, and interior/exterior harmonic
-Dirichlet solves against all-pairs assembly on the existing curved torus.
+compares all four BEM forms, areas, application, interior/exterior harmonic
+Dirichlet solves and the per-harmonic Steklov form (against the dense Schur
+complement) with all-pairs assembly on the existing curved torus.
 `test_parametric_bem_circulant_scaling_slow` repeats at 12 sectors and reports
 all-pairs/sector assembly costs plus 1/2/4/8-thread timings, checking the same
 matrix tolerance at every thread count. Timings are measurements, not portable
