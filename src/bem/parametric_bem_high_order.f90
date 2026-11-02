@@ -65,6 +65,7 @@ module fortfem_parametric_bem_high_order
     interface assignment(=)
         module procedure assign_bank
     end interface
+    integer, parameter :: MAX_FAN_PIECES = 16
     real(dp), parameter :: scale = 1.0_dp/(4*acos(-1.0_dp))
     real(dp), parameter :: corners(2,3) = reshape( &
         [0.0_dp,0.0_dp,1.0_dp,0.0_dp,0.0_dp,1.0_dp],[2,3])
@@ -422,11 +423,17 @@ contains
         type(point_t) :: source
         real(dp) :: apex(2),e1(2),e2(2),det,uv(2),factor,fan_weight
         real(dp) :: probe_x(3),probe_a(3),probe_b(3),distance,length_scale
-        integer :: t,edge,i,j,n
+        real(dp) :: corner_x(3,3),apex_x(3),c1(2),c2(2),reach
+        integer :: t,edge,next,i,j,n,pieces,piece
         call clear(block)
         evaluations=0
         resolved=.true.
         n=bank%line_count(l)
+        do edge=1,3
+            call surface%evaluate(source_panel,corners(:,edge),corner_x(:,edge), &
+                probe_a,probe_b,status)
+            if (status/=0) return
+        end do
         do t=1,bank%count(l)
             apex=bank%uv(:,t,l)
             if (target_panel/=source_panel) then
@@ -458,30 +465,63 @@ contains
                     status=0
                 end if
             end if
+            call surface%evaluate(source_panel,apex,apex_x,probe_a,probe_b,status)
+            if (status/=0) return
+            status=2
+            if (.not. all(ieee_is_finite(apex_x))) return
+            reach=norm2(target_points(t)%x-apex_x)
             do edge=1,3
-                e1=corners(:,edge)-apex
-                e2=corners(:,mod(edge,3)+1)-apex
+                next=mod(edge,3)+1
+                c1=corners(:,edge); c2=corners(:,next)
+                e1=c1-apex; e2=c2-apex
                 det=abs(e1(1)*e2(2)-e1(2)*e2(1))
                 if (det<64*epsilon(1.0_dp)) cycle
-                do i=1,n
-                    do j=1,n
-                        call bem_fan_map(apex(1),apex(2),e1(1),e1(2), &
-                            e2(1),e2(2),bank%nodes(i,l),bank%nodes(j,l),det, &
-                            uv(1),uv(2),fan_weight)
-                        call sample(surface,source_panel,uv,source,status)
-                        if (status/=0) return
-                        factor=bank%weights(t,l)*bank%line_w(i,l)* &
-                            bank%line_w(j,l)*fan_weight
-                        call add_integrand(target_points(t),source,factor, &
-                            block,status)
-                        evaluations=evaluations+1
-                        if (status/=0) return
+                pieces=fan_pieces(corner_x(:,edge),corner_x(:,next), &
+                    corner_x(:,mod(next,3)+1),reach)
+                do piece=1,pieces
+                    e1=c1+real(piece-1,dp)/pieces*(c2-c1)-apex
+                    e2=c1+real(piece,dp)/pieces*(c2-c1)-apex
+                    det=abs(e1(1)*e2(2)-e1(2)*e2(1))
+                    do i=1,n
+                        do j=1,n
+                            call bem_fan_map(apex(1),apex(2),e1(1),e1(2), &
+                                e2(1),e2(2),bank%nodes(i,l),bank%nodes(j,l), &
+                                det,uv(1),uv(2),fan_weight)
+                            call sample(surface,source_panel,uv,source,status)
+                            if (status/=0) return
+                            factor=bank%weights(t,l)*bank%line_w(i,l)* &
+                                bank%line_w(j,l)*fan_weight
+                            call add_integrand(target_points(t),source,factor, &
+                                block,status)
+                            evaluations=evaluations+1
+                            if (status/=0) return
+                        end do
                     end do
                 end do
             end do
         end do
         status=0
     end subroutine
+
+    pure integer function fan_pieces(x1,x2,x3,reach) result(pieces)
+        !! Angular pieces of a fan triangle whose far edge is x1-x2 of the
+        !! source panel x1,x2,x3. A stretched panel makes the fan stretched:
+        !! the angular integrand then varies on the panel height over that
+        !! edge (or the target distance from the apex, if larger) rather than
+        !! on the edge length. Equal pieces of about twice that scale restore
+        !! an isotropic fan. Isotropic panels and far targets keep one piece.
+        real(dp), intent(in) :: x1(3),x2(3),x3(3),reach
+        real(dp) :: u(3),v(3),length,height,ratio
+        u=x2-x1; v=x3-x1
+        length=norm2(u)
+        pieces=1
+        if (.not. ieee_is_finite(length) .or. length<=tiny(1.0_dp)) return
+        height=norm2([u(2)*v(3)-u(3)*v(2),u(3)*v(1)-u(1)*v(3), &
+            u(1)*v(2)-u(2)*v(1)])/length
+        ratio=length/(2*max(height,reach,tiny(1.0_dp)))
+        if (.not. ieee_is_finite(ratio)) return
+        pieces=min(MAX_FAN_PIECES,max(1,ceiling(ratio-64*epsilon(1.0_dp))))
+    end function
 
     pure real(dp) function difference_ratio(current,previous,options) result(r)
         type(block_t), intent(in) :: current,previous
