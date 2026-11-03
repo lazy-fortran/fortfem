@@ -68,6 +68,13 @@ module fortfem_meridian_feec_n
     !! meridian_feec_build (cylinder_r0 > 0); the default is the axisymmetric
     !! chart of the (R, Z) meridian plane.
     !!
+    !! Second-kind edges.  With edge_kind = 2 the section one-forms are the
+    !! second-kind Nedelec space N2_k (complete vector P_k), so the complex
+    !! becomes Lagrange P_{k+1} -> (N2_k, P_{k+1}) -> (BDM_k, DG_{k-1}) ->
+    !! DG_{k-1}, with BDM_k = rot90 N2_k.  grad P_{k+1} is the gradient
+    !! subspace of N2_k, and the L2 projection into V1 is then accurate to
+    !! O(h^{k+1}) instead of O(h^k).  Edge moments per edge are k+1.
+    !!
     !! Element-parallel (OpenMP) assembly into per-element triplet slices.
     use fortfem_kinds, only: dp
     use fortfem_generated_physical_pairing, only: generated_physical_pairing
@@ -85,6 +92,11 @@ module fortfem_meridian_feec_n
     use fortfem_triangle_rt_arbitrary_order, only: &
         evaluate_triangle_raviart_thomas, initialize_triangle_raviart_thomas, &
         triangle_rt_basis_t
+    use fortfem_triangle_nedelec_second_kind, only: &
+        evaluate_triangle_nedelec_second_kind, &
+        initialize_triangle_nedelec_second_kind, &
+        triangle_nedelec_second_kind_t
+    use fortnum_linalg, only: dense_solve
     use fortsparse, only: csc_conjugate_transpose, csc_from_triplet, &
         csc_matmul, csc_t, csc_z_t, fortsparse_status_t, status_ok
     implicit none
@@ -108,6 +120,9 @@ module fortfem_meridian_feec_n
     type, public :: meridian_feec_t
         type(meridian_mesh_t) :: mm
         integer :: k = 0                       !! polynomial order
+        integer :: edge_kind = 1 !! Nedelec family of V1
+        integer :: k0 = 0 !! Lagrange order of V0
+        integer :: ke = 0 !! moments per edge
         integer :: g = 1                       !! geometry order
         integer :: nq = 0
         real(dp) :: cyl_r0 = 0.0_dp          !! > 0: periodic-cylinder chart, R = R0
@@ -128,7 +143,9 @@ module fortfem_meridian_feec_n
     type, public :: meridian_point_basis_t
         type(triangle_lagrange_basis_t) :: lb, db, gb
         type(triangle_nedelec_first_kind_t) :: nb
+        type(triangle_nedelec_second_kind_t) :: nb2
         type(triangle_rt_basis_t) :: rb
+        integer :: edge_kind = 1
     end type meridian_point_basis_t
 
     abstract interface
@@ -200,17 +217,19 @@ contains
     ! ------------------------------------------------------------------
 
     subroutine meridian_feec_build(mm, k, fs, status, quad_degree, &
-            cylinder_r0)
+            cylinder_r0, edge_kind)
         !! Build the complex of order k on the meridional mesh mm.  With
         !! cylinder_r0 > 0 the mesh is a cross-section (x, y) of a straight
         !! cylinder of axial period 2 pi cylinder_r0 (see the module header);
-        !! otherwise it is an (R, Z) half-plane mesh with R > 0.
+        !! otherwise it is an (R, Z) half-plane mesh with R > 0.  edge_kind
+        !! selects first-kind (1, default) or second-kind (2) Nedelec edges.
         type(meridian_mesh_t), intent(in) :: mm
         integer, intent(in) :: k
         type(meridian_feec_t), intent(out) :: fs
         integer, intent(out) :: status
         integer, intent(in), optional :: quad_degree
         real(dp), intent(in), optional :: cylinder_r0
+        integer, intent(in), optional :: edge_kind
 
         integer :: nt, qdeg, i
 
@@ -221,18 +240,29 @@ contains
             if (.not. (cylinder_r0 > 0.0_dp)) return
             fs%cyl_r0 = cylinder_r0
         end if
+        if (present(edge_kind)) fs%edge_kind = edge_kind
+        if (fs%edge_kind /= 1 .and. fs%edge_kind /= 2) return
+        if (fs%edge_kind == 2 .and. k + 1 > triangle_feec_table_max_order) return
         fs%mm = mm
         fs%k = k
         fs%g = mm%geo_order
         nt = fs%mm%topology%n_triangles
-        fs%nl0 = (k + 1)*(k + 2)/2
-        fs%nln = k*(k + 2)
+        if (fs%edge_kind == 1) then
+            fs%k0 = k
+            fs%ke = k
+            fs%nln = k*(k + 2)
+        else
+            fs%k0 = k + 1
+            fs%ke = k + 1
+            fs%nln = (k + 1)*(k + 2)
+        end if
+        fs%nl0 = (fs%k0 + 1)*(fs%k0 + 2)/2
         fs%nld = k*(k + 1)/2
         fs%nd = nt*fs%nld
 
         call build_numbering(fs, status)
         if (status /= 0) return
-        qdeg = 2*k + 2*fs%g + 2
+        qdeg = 2*fs%k0 + 2*fs%g + 2
         if (present(quad_degree)) qdeg = quad_degree
         call build_tables(fs, qdeg, status)
         if (status /= 0) return
@@ -257,8 +287,9 @@ contains
         k = fs%k
         nt = fs%mm%topology%n_triangles
         call build_edge_numbering(fs%mm%topology%triangles, &
-            fs%mm%topology%n_vertices, k, ned_dof, ned_sgn, ne, ecount)
-        nn = ne*k + nt*k*(k - 1)
+            fs%mm%topology%n_vertices, fs%ke, fs%nln - 3*fs%ke, ned_dof, &
+            ned_sgn, ne, ecount)
+        nn = ne*fs%ke + nt*(fs%nln - 3*fs%ke)
         fs%nn = nn
         call build_lagrange_map(fs, ned_dof, ned_sgn, ecount, ne, lag_dof, &
             lag_bnd)
@@ -316,18 +347,19 @@ contains
         status = 0
     end subroutine build_numbering
 
-    subroutine build_edge_numbering(tri, nv, k, ned_dof, ned_sgn, ne, ecount)
-        !! Nedelec/RT dof numbering with edge moments (e0 k + m) and element
-        !! interior moments, edges found by a linear-time sort of the
+    subroutine build_edge_numbering(tri, nv, k, nint, ned_dof, ned_sgn, ne, &
+            ecount)
+        !! Nedelec/RT dof numbering with k edge moments (e0 k + m) and nint
+        !! element interior moments, edges found by a linear-time sort of the
         !! half-edges.  An odd edge moment changes sign when the local edge
         !! direction opposes the global one (lower to higher vertex).
-        integer, intent(in) :: tri(:, :), nv, k
+        integer, intent(in) :: tri(:, :), nv, k, nint
         integer, allocatable, intent(out) :: ned_dof(:, :), ned_sgn(:, :)
         integer, intent(out) :: ne
         integer, allocatable, intent(out) :: ecount(:)
 
         integer, allocatable :: lo(:), hi(:), perm(:), tmp(:), eid(:)
-        integer :: nt, nh, h, i, j, t, e0, m, nloc, nint, c, a, b, prev_lo, prev_hi
+        integer :: nt, nh, h, i, j, t, e0, m, nloc, c, a, b, prev_lo, prev_hi
 
         nt = size(tri, 2)
         nh = 3*nt
@@ -361,8 +393,7 @@ contains
         do h = 1, nh
             ecount(eid(h)) = ecount(eid(h)) + 1
         end do
-        nloc = k*(k + 2)
-        nint = k*(k - 1)
+        nloc = 3*k + nint
         allocate (ned_dof(nloc, nt), ned_sgn(nloc, nt))
         ned_sgn = 1
         do t = 1, nt
@@ -413,8 +444,8 @@ contains
 
         do e0 = 0, size(ecount) - 1
             if (ecount(e0) == 1) then
-                do j = 1, fs%k
-                    mask(e0*fs%k + j) = .true.
+                do j = 1, fs%ke
+                    mask(e0*fs%ke + j) = .true.
                 end do
             end if
         end do
@@ -453,9 +484,10 @@ contains
         logical, allocatable, intent(out) :: lag_bnd(:)
 
         integer, allocatable :: pw(:, :), tri(:, :)
-        integer :: k, nt, nv, nint, t, m, i, j, third, e0, ori, mpos, cnt
+        integer :: k, ke, nt, nv, nint, t, m, i, j, third, e0, ori, mpos, cnt
 
-        k = fs%k
+        k = fs%k0
+        ke = fs%ke
         nt = fs%mm%topology%n_triangles
         nv = fs%mm%topology%n_vertices
         nint = (k - 1)*(k - 2)/2
@@ -471,16 +503,16 @@ contains
                     i = maxloc(pw(:, m), 1)
                     lag_dof(m, t) = tri(i, t)
                     j = mod(i + 1, 3) + 1      ! other edge at vertex i
-                    if (ecount((ned_dof((i - 1)*k + 1, t) - 1)/k) == 1 .or. &
-                        ecount((ned_dof((j - 1)*k + 1, t) - 1)/k) == 1) then
+                    if (ecount((ned_dof((i - 1)*ke + 1, t) - 1)/ke) == 1 .or. &
+                        ecount((ned_dof((j - 1)*ke + 1, t) - 1)/ke) == 1) then
                         lag_bnd(lag_dof(m, t)) = .true.
                     end if
                 else if (any(pw(:, m) == 0)) then
                     third = minloc(pw(:, m), 1)
                     i = mod(third, 3) + 1        ! edge i: vertex i -> j
                     j = mod(i, 3) + 1
-                    e0 = (ned_dof((i - 1)*k + 1, t) - 1)/k
-                    ori = ned_sgn((i - 1)*k + 1, t)
+                    e0 = (ned_dof((i - 1)*ke + 1, t) - 1)/ke
+                    ori = ned_sgn((i - 1)*ke + 1, t)
                     ! position measured from the lower global vertex
                     if (ori == 1) then
                         mpos = pw(j, m)
@@ -504,6 +536,7 @@ contains
 
         type(triangle_lagrange_basis_t) :: lb, db, gb
         type(triangle_nedelec_first_kind_t) :: nb
+        type(triangle_nedelec_second_kind_t) :: nb2
         type(triangle_rt_basis_t) :: rb
         real(dp), allocatable :: xi(:), eta(:), cur(:), dgr(:, :)
         integer :: q, ngeo
@@ -512,15 +545,19 @@ contains
         if (status /= 0) return
         fs%nq = size(xi)
         ngeo = size(fs%mm%nodes, 2)
-        call initialize_triangle_lagrange_basis(fs%k, lb, status)
+        call initialize_triangle_lagrange_basis(fs%k0, lb, status)
         if (status /= 0) return
         call initialize_triangle_lagrange_basis(fs%k - 1, db, status)
         if (status /= 0) return
         call initialize_triangle_lagrange_basis(fs%g, gb, status)
         if (status /= 0) return
-        call initialize_triangle_nedelec_first_kind(fs%k, nb, status)
-        if (status /= 0) return
-        call initialize_triangle_raviart_thomas(fs%k - 1, rb, status)
+        if (fs%edge_kind == 1) then
+            call initialize_triangle_nedelec_first_kind(fs%k, nb, status)
+            if (status /= 0) return
+            call initialize_triangle_raviart_thomas(fs%k - 1, rb, status)
+        else
+            call initialize_triangle_nedelec_second_kind(fs%k, nb2, status)
+        end if
         if (status /= 0) return
         allocate (fs%tl(fs%nl0, fs%nq), fs%tlg(2, fs%nl0, fs%nq))
         allocate (fs%tn(2, fs%nln, fs%nq), fs%tr(2, fs%nln, fs%nq))
@@ -537,15 +574,37 @@ contains
             call evaluate_triangle_lagrange_basis(gb, xi(q), eta(q), &
                 fs%tgeo(:, q), fs%tgeog(:, :, q), status)
             if (status /= 0) return
-            call evaluate_triangle_nedelec_first_kind(nb, xi(q), eta(q), &
-                fs%tn(:, :, q), cur, status)
-            if (status /= 0) return
-            call evaluate_triangle_raviart_thomas(rb, xi(q), eta(q), &
-                fs%tr(:, :, q), cur, status)
+            call reference_edge_basis(fs%edge_kind, nb, nb2, rb, xi(q), &
+                eta(q), fs%tn(:, :, q), fs%tr(:, :, q), cur, status)
             if (status /= 0) return
         end do
         status = 0
     end subroutine build_tables
+
+    subroutine reference_edge_basis(edge_kind, nb, nb2, rb, xi, eta, tn, tr, &
+            cur, status)
+        !! Reference Nedelec values tn and the face values tr.  The
+        !! second-kind face space is BDM_k = rot90 N2_k, rot90 v = (-v2, v1).
+        integer, intent(in) :: edge_kind
+        type(triangle_nedelec_first_kind_t), intent(in) :: nb
+        type(triangle_nedelec_second_kind_t), intent(in) :: nb2
+        type(triangle_rt_basis_t), intent(in) :: rb
+        real(dp), intent(in) :: xi, eta
+        real(dp), intent(out) :: tn(:, :), tr(:, :), cur(:)
+        integer, intent(out) :: status
+
+        if (edge_kind == 1) then
+            call evaluate_triangle_nedelec_first_kind(nb, xi, eta, tn, cur, &
+                status)
+            if (status /= 0) return
+            call evaluate_triangle_raviart_thomas(rb, xi, eta, tr, cur, status)
+        else
+            call evaluate_triangle_nedelec_second_kind(nb2, xi, eta, tn, cur, &
+                status)
+            tr(1, :) = -tn(2, :)
+            tr(2, :) = tn(1, :)
+        end if
+    end subroutine reference_edge_basis
 
     ! ------------------------------------------------------------------
     ! Geometry and physical basis functions
@@ -685,12 +744,17 @@ contains
         type(meridian_point_basis_t), intent(out) :: pb
         integer, intent(out) :: status
 
-        call initialize_triangle_lagrange_basis(fs%k, pb%lb, status)
+        call initialize_triangle_lagrange_basis(fs%k0, pb%lb, status)
         if (status /= 0) return
         call initialize_triangle_lagrange_basis(fs%k - 1, pb%db, status)
         if (status /= 0) return
         call initialize_triangle_lagrange_basis(fs%g, pb%gb, status)
         if (status /= 0) return
+        pb%edge_kind = fs%edge_kind
+        if (fs%edge_kind == 2) then
+            call initialize_triangle_nedelec_second_kind(fs%k, pb%nb2, status)
+            return
+        end if
         call initialize_triangle_nedelec_first_kind(fs%k, pb%nb, status)
         if (status /= 0) return
         call initialize_triangle_raviart_thomas(fs%k - 1, pb%rb, status)
@@ -737,10 +801,8 @@ contains
         if (status /= 0) return
         call evaluate_triangle_lagrange_basis(pb%db, xi, eta, td, dg, status)
         if (status /= 0) return
-        call evaluate_triangle_nedelec_first_kind(pb%nb, xi, eta, tn, cur, &
-            status)
-        if (status /= 0) return
-        call evaluate_triangle_raviart_thomas(pb%rb, xi, eta, tr, cur, status)
+        call reference_edge_basis(pb%edge_kind, pb%nb, pb%nb2, pb%rb, xi, eta, &
+            tn, tr, cur, status)
         if (status /= 0) return
         call physical_basis(space, metric_radius(fs, x), jac, det, tl, tn, tr, &
             td, phi)
@@ -780,13 +842,20 @@ contains
         nl0 = fs%nl0
         nld = fs%nld
 
+        allocate (pi_(nln), sig(nln))
+        if (fs%edge_kind == 2) then
+            call second_kind_operator_tables(k, gref, cref, dref, status)
+            if (status /= 0) return
+            ! The face basis is rot90 of the edge basis itself.
+            pi_ = [(l, l=1, nln)]
+            sig = -1.0_dp
+        else
         ! Exact reference matrices (FortSym, rounded once): gradient,
         ! Nedelec curls and RT divergences at the P_{k-1} nodes.
         call triangle_feec_operator_tables(k, gref, cref, dref, status)
         if (status /= 0) return
 
         ! signed permutation RT local <- Nedelec local (rot90 N = -sig RT)
-        allocate (pi_(nln), sig(nln))
         half = k*(k - 1)/2
         e3 = 3*k
         do l = 1, nln
@@ -801,6 +870,7 @@ contains
                 sig(l) = -1.0_dp
             end if
         end do
+        end if
 
         ! owner element of every Nedelec dof
         allocate (owner(nn))
@@ -934,6 +1004,65 @@ contains
         end do
         call triplets_to_csc(nd, nn + nd, rows, cols, tv, fs%div%b, status)
     end subroutine build_operators
+
+    subroutine second_kind_operator_tables(k, gref, cref, dref, status)
+        !! Reference tables of the second-kind complex in the layout of
+        !! triangle_feec_operator_tables: gref(nln, nl0) holds the N2_k
+        !! coefficients of the P_{k+1} Lagrange gradients, cref(nld, nln)
+        !! the N2_k curls and dref(nld, nln) the BDM_k = rot90 N2_k
+        !! divergences, both at the P_{k-1} nodes.  grad P_{k+1} lies in
+        !! N2_k, so the reference L2 projection reproduces it exactly.
+        integer, intent(in) :: k
+        real(dp), allocatable, intent(out) :: gref(:, :), cref(:, :), dref(:, :)
+        integer, intent(out) :: status
+
+        type(triangle_nedelec_second_kind_t) :: nb
+        type(triangle_lagrange_basis_t) :: lb, db
+        real(dp), allocatable :: xi(:), eta(:), w(:), tn(:, :), cur(:)
+        real(dp), allocatable :: tl(:), tlg(:, :), gram(:, :), rhs(:, :)
+        real(dp), allocatable :: nodes(:, :)
+        integer :: nln, nl0, nld, q, i, info
+
+        nln = (k + 1)*(k + 2)
+        nl0 = (k + 2)*(k + 3)/2
+        nld = k*(k + 1)/2
+        call initialize_triangle_nedelec_second_kind(k, nb, status)
+        if (status /= 0) return
+        call initialize_triangle_lagrange_basis(k + 1, lb, status)
+        if (status /= 0) return
+        call initialize_triangle_lagrange_basis(k - 1, db, status)
+        if (status /= 0) return
+        call triangle_duffy_quadrature(2*k + 2, xi, eta, w, status)
+        if (status /= 0) return
+        allocate (tn(2, nln), cur(nln), tl(nl0), tlg(2, nl0))
+        allocate (gram(nln, nln), rhs(nln, nl0), gref(nln, nl0))
+        gram = 0.0_dp
+        rhs = 0.0_dp
+        do q = 1, size(xi)
+            call evaluate_triangle_nedelec_second_kind(nb, xi(q), eta(q), tn, &
+                cur, status)
+            if (status /= 0) return
+            call evaluate_triangle_lagrange_basis(lb, xi(q), eta(q), tl, tlg, &
+                status)
+            if (status /= 0) return
+            gram = gram + w(q)*matmul(transpose(tn), tn)
+            rhs = rhs + w(q)*matmul(transpose(tn), tlg)
+        end do
+        call dense_solve(gram, rhs, gref, info)
+        status = 2
+        if (info /= 0) return
+        call triangle_lagrange_nodes(db, nodes)
+        allocate (cref(nld, nln), dref(nld, nln))
+        do i = 1, nld
+            call evaluate_triangle_nedelec_second_kind(nb, nodes(1, i), &
+                nodes(2, i), tn, cur, status)
+            if (status /= 0) return
+            cref(i, :) = cur
+        end do
+        ! div(rot90 v) = -rot v
+        dref = -cref
+        status = 0
+    end subroutine second_kind_operator_tables
 
     subroutine triplets_to_csc(nrow, ncol, rows, cols, vals, a, status, count)
         !! CSC matrix from triplets, dropping exact zeros.
@@ -1148,7 +1277,7 @@ contains
         real(dp), allocatable :: nodes(:, :), gv(:), gg(:, :)
         integer :: t, m, i, status
 
-        call initialize_triangle_lagrange_basis(fs%k, lb, status)
+        call initialize_triangle_lagrange_basis(fs%k0, lb, status)
         call initialize_triangle_lagrange_basis(fs%g, gb, status)
         call triangle_lagrange_nodes(lb, nodes)
         allocate (xy(2, fs%n0), gv(size(fs%mm%nodes, 2)))
