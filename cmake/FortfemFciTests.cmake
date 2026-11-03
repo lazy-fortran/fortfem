@@ -17,11 +17,21 @@ foreach(test_source IN LISTS fci_test_sources)
     else()
         target_link_libraries(${test_name} PRIVATE fortfem::api fortfem_test_check)
     endif()
+    if(test_name STREQUAL "test_fci_transport_pollution")
+        target_link_libraries(${test_name} PRIVATE fortfem_tensor_lines)
+    endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES
         LABELS "fci" PROCESSORS 1
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
+
+add_test(NAME test_fci_transport_pollution_published_gate
+    COMMAND test_fci_transport_pollution paper
+        "${PROJECT_BINARY_DIR}/pollution_published.csv")
+set_tests_properties(test_fci_transport_pollution_published_gate PROPERTIES
+    LABELS "fci;acceptance" PROCESSORS 1
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 
 add_test(NAME test_fci_transport_nested_accuracy_gate
     COMMAND test_fci_transport_nested gate)

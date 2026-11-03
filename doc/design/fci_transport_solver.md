@@ -29,6 +29,25 @@ The existing [FCI support operator](fci_parallel_operator.md) supplies the
 parallel gradient; no new diffusion discretization or physical closure is
 introduced here.
 
+## Accepted accuracy target
+
+Epsilon-uniform accuracy for general loads at fixed mesh spacing is retired
+as a target. The [resonant-shear example](#first-invalid-inference-in-the-uniform-error-argument)
+develops epsilon-dependent layers, and the irrational-torus example in that
+same discussion has no positive parallel spectral
+gap; neither permits that general fixed-mesh accuracy requirement. The
+discretization is instead assessed by the pollution benchmark used in the
+MHD literature: the effective numerical perpendicular diffusivity
+`chi_perp,num` contributed by the discrete parallel operator must remain
+well below the physical perpendicular diffusivity `chi_perp` at the physical
+anisotropy on meshes not aligned with the unit field direction `b`.
+The requested comparison reports which candidate attains
+`chi_perp,num/chi_perp <= 0.1` at `chi_par/chi_perp = 1e10` with the fewest
+unknowns; method selection remains separate from the measurements.
+The [literature and reproduction screen](anisotropic_pollution_benchmarks.md)
+records the first failed published-value comparison; no candidate ladder is
+qualified by that screen.
+
 ## Explicit averaging: analytical preflight
 
 Let `h` be the mesh spacing and `epsilon` the perpendicular-to-parallel

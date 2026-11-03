@@ -82,6 +82,7 @@ else
     fo build
 fi
 run_codegen gen_tensor_metric_products
+run_codegen gen_anisotropic_pollution_products
 run_codegen gen_element_precision_products
 run_codegen gen_reference_basis_products
 run_codegen gen_verified_rt0_products
@@ -197,6 +198,7 @@ fo fmt "$generated_dir/fortfem_helmholtz_bem_kernel_products.f90"
 fo fmt "$generated_dir/fortfem_laplace_singular_edge_products.f90"
 fo fmt "$generated_dir/fortfem_helmholtz_bem_smooth_products.f90"
 fo fmt "$generated_dir/fortfem_fci_parallel_products.f90"
+fo fmt "$generated_dir/fortfem_anisotropic_pollution_products.f90"
 fo fmt "$generated_dir/fortfem_fci_power_flux_products.f90"
 fo fmt "$generated_dir/fortfem_fci_quartic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_quintic_lagrange.f90"

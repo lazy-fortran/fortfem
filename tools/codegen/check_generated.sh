@@ -52,6 +52,10 @@ filename="fortfem_verified_rt0_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
 
+filename="fortfem_anisotropic_pollution_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_verified_bernstein_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"
