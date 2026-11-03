@@ -82,6 +82,8 @@ module fortfem_meridian_feec_n
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_generated_triangle_feec_tables, only: &
         triangle_feec_operator_tables, triangle_feec_table_max_order
+    use fortfem_generated_triangle_second_gradient, only: &
+        triangle_second_kind_gradient_table
     use fortfem_triangle_lagrange_arbitrary_order, only: &
         evaluate_triangle_lagrange_basis, initialize_triangle_lagrange_basis, &
         triangle_lagrange_basis_t, triangle_lagrange_nodes
@@ -96,7 +98,6 @@ module fortfem_meridian_feec_n
         evaluate_triangle_nedelec_second_kind, &
         initialize_triangle_nedelec_second_kind, &
         triangle_nedelec_second_kind_t
-    use fortnum_linalg, only: dense_solve
     use fortsparse, only: csc_conjugate_transpose, csc_from_triplet, &
         csc_matmul, csc_t, csc_z_t, fortsparse_status_t, status_ok
     implicit none
@@ -1010,47 +1011,27 @@ contains
         !! triangle_feec_operator_tables: gref(nln, nl0) holds the N2_k
         !! coefficients of the P_{k+1} Lagrange gradients, cref(nld, nln)
         !! the N2_k curls and dref(nld, nln) the BDM_k = rot90 N2_k
-        !! divergences, both at the P_{k-1} nodes.  grad P_{k+1} lies in
-        !! N2_k, so the reference L2 projection reproduces it exactly.
+        !! divergences, both at the P_{k-1} nodes. Gradient coefficients are
+        !! exact defining moments; a mass-normal-equation solve loses digits.
         integer, intent(in) :: k
         real(dp), allocatable, intent(out) :: gref(:, :), cref(:, :), dref(:, :)
         integer, intent(out) :: status
 
         type(triangle_nedelec_second_kind_t) :: nb
-        type(triangle_lagrange_basis_t) :: lb, db
-        real(dp), allocatable :: xi(:), eta(:), w(:), tn(:, :), cur(:)
-        real(dp), allocatable :: tl(:), tlg(:, :), gram(:, :), rhs(:, :)
+        type(triangle_lagrange_basis_t) :: db
+        real(dp), allocatable :: tn(:, :), cur(:)
         real(dp), allocatable :: nodes(:, :)
-        integer :: nln, nl0, nld, q, i, info
+        integer :: nln, nld, i
 
         nln = (k + 1)*(k + 2)
-        nl0 = (k + 2)*(k + 3)/2
         nld = k*(k + 1)/2
         call initialize_triangle_nedelec_second_kind(k, nb, status)
         if (status /= 0) return
-        call initialize_triangle_lagrange_basis(k + 1, lb, status)
+        call triangle_second_kind_gradient_table(k, gref, status)
         if (status /= 0) return
         call initialize_triangle_lagrange_basis(k - 1, db, status)
         if (status /= 0) return
-        call triangle_duffy_quadrature(2*k + 2, xi, eta, w, status)
-        if (status /= 0) return
-        allocate (tn(2, nln), cur(nln), tl(nl0), tlg(2, nl0))
-        allocate (gram(nln, nln), rhs(nln, nl0), gref(nln, nl0))
-        gram = 0.0_dp
-        rhs = 0.0_dp
-        do q = 1, size(xi)
-            call evaluate_triangle_nedelec_second_kind(nb, xi(q), eta(q), tn, &
-                cur, status)
-            if (status /= 0) return
-            call evaluate_triangle_lagrange_basis(lb, xi(q), eta(q), tl, tlg, &
-                status)
-            if (status /= 0) return
-            gram = gram + w(q)*matmul(transpose(tn), tn)
-            rhs = rhs + w(q)*matmul(transpose(tn), tlg)
-        end do
-        call dense_solve(gram, rhs, gref, info)
-        status = 2
-        if (info /= 0) return
+        allocate (tn(2, nln), cur(nln))
         call triangle_lagrange_nodes(db, nodes)
         allocate (cref(nld, nln), dref(nld, nln))
         do i = 1, nld

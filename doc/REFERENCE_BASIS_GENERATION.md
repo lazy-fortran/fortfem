@@ -44,3 +44,7 @@ checks, allocates no per-query scratch, and requires no Vandermonde solve at
 initialization. The independent degree-0--4 polynomial value/gradient oracle
 includes vertices, an edge midpoint and an interior point (421 checks).
 Production-consumer timings live in KIN6D, which owns those scientific cases.
+
+Second-kind meridian gradient coefficients are the exact edge and interior
+moments of each Lagrange gradient. They are generated alongside the first-kind
+triangle tables, without a mass-matrix projection at initialisation.
