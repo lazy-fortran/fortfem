@@ -11,8 +11,11 @@ unit relative solution error while satisfying the discrete equations.
 Option B, a two-level Krylov preconditioner, cannot correct this spatial
 error for the tested operator. No production solver is delivered or qualified.
 Island, plate-intersection, single-null, Krylov and cost gates remain open.
-Two reduced multiplier candidates also fail the limit-space preflight below:
-both retain antisymmetric checkerboards. Neither is selected for production.
+The explicit field-line-average proposal is blocked at its analytical preflight:
+a small parallel defect on the proposed limit space does not supply an
+epsilon-uniform consistency bound without further control of the complement.
+The argument and its limits are given below. No averaging operator, explicit
+limit basis or modified transport discretization has been implemented.
 
 The dense kernel/complement reference is test support in
 `test/fci_transport_reference.f90`, linked only into its test consumers.
@@ -26,107 +29,151 @@ The existing [FCI support operator](fci_parallel_operator.md) supplies the
 parallel gradient; no new diffusion discretization or physical closure is
 introduced here.
 
-## Reduced-space preflight
+## Explicit averaging: analytical preflight
 
-On the sheared fixture defined below, `test_fci_transport_reduced_space`
-evaluates two spaces for testing the mapped parallel difference. Let `h`
-be the Cartesian section spacing. `P0-2h` contains
-independent constants on disjoint 2-by-2 blocks of interior support samples
-in each plane interval. `Q1-2h` contains continuous bilinear functions on a
-coarse section mesh with spacing `2h`; its last interval has width `h` to
-include the final support sample. The native bilinear builder supplies its
-basis values. These are discrete L2 projections using the existing diagonal
-support pairing, rather than exact integration over continuous elements.
-Boundary values remain zero on the physical perimeter; periodic planes are
-identified exactly as in the original fixture.
+Let `h` be the mesh spacing and `epsilon` the perpendicular-to-parallel
+conductivity ratio. The proposed construction would approximate the continuous
+field-line average by `A_h`, reveal a finite-dimensional range `K_h`, and split the
+mesh space `V_h` into `K_h` and its mass-orthogonal complement. Let `P_h`
+be the mass-orthogonal projector onto `K_h`, `C_h = I - P_h`, and `G_h`
+the mapped parallel gradient. The modified weak parallel energy would be
 
-Let `G` be the original interval gradient after eliminating wall nodes, `H`
-the chosen test basis evaluated at support samples, and
-`L L^T = H^T H`. The normalized constraint is `C = L^(-1) H^T G`.
-The uniform nodal and support masses cancel in this expression. The two
-identical intervals on two periodic planes split orthogonally into
-plane-symmetric and plane-antisymmetric blocks. Both blocks are retained.
-No connectivity is supplied independently of the native traced maps.
+\[
+ \epsilon^{-1}(G_h C_h u_h,G_h C_h v_h)_s,
+\]
 
-The dense singular value decomposition of `C` reports its rank and kernel.
-Its smallest singular value, including a zero if the multiplier has a
-cokernel, is `beta_l2`. The second value, `beta_h1`, uses the discrete
-H1 norm of the temperature `u`: mass plus the Cartesian five-point section
-energy and the periodic third-direction energy. An orthonormal discrete sine
-transform diagonalizes this norm; an independent highest-sine-mode eigenvalue checks
-the scaling. The multiplier norm remains the discrete L2 norm. Neither
-value uses the mesh-dependent dual norm of the stabilized AP analysis.
-The rank threshold is the existing oracle's
-`8 * machine_epsilon * max(rows,columns) * largest_sigma`.
+where `u_h` and `v_h` are mesh trial and test functions, and the subscript
+`s` denotes the positive support pairing. This
+annihilates `K_h` exactly, including the nonzero mapped-gradient defect of
+its basis. It changes the discretization; it is not a preconditioner for
+the original bilinear-map equation. Accurate field-line averaging is
+necessary, but its convergence theorem alone does not justify this change.
 
-The meshes have 21, 41 and 81 cells per section direction. The reference
-surface-resolution count is 10, 20 and 40 radial bins from the wall to the
-axis, at Cartesian spacing `h`; it is a resolution proxy, not a theorem
-counting all representable flux functions. Kernel dimension grows
-quadratically with section resolution for both candidates.
+### First invalid inference in the uniform-error argument
 
-For an independent physical discriminator, the initial checkerboard has
-nodal values `(-1)^(i+j) sin(pi*x_i) sin(pi*y_j)` and opposite signs on the
-two planes, with interior grid indices `i` and `j`. It is normalized before
-orthogonal projection onto the reduced kernel. Every sampled flux function
-has identical values on both planes, so the projected antisymmetric vector
-is exactly orthogonal to that whole
-physical subspace. The retained vector also has an order-one defect under
-the original, unprojected gradient. On the coarse mesh the existing dense
-transport oracle independently confirms the full nullity and reproduces
-the projected checkerboard using an identity slow operator and parallel
-coefficient `1e13`. This is an algebraic mass-projection check, not a
-manufactured transport accuracy qualification.
+Let `b` be the unit magnetic-field direction and `D = b.grad` its parallel
+derivative. Let `a` denote the coercive slow bilinear form, including a mass
+term if needed. Unlabelled norms use the volume L2 pairing (square-integrable
+functions); H1 additionally requires square-integrable first derivatives.
+The exact weak equation for a test function `v` is
 
-The [complete measurements](figures/fci_transport_reduced_space.csv) retain
-all six rows, both inf-sup norms, mass-projection errors of the exact flux,
-constraint defects and diagnostic timings. On the finest mesh, `P0-2h` and
-`Q1-2h` have kernel dimensions 9,600 and 9,438, retain 98.91% and 98.51% of
-the checkerboard, and have H1 inf-sup values `7.643e-4` and `3.641e-4`.
-Those values decrease on both refinements; a uniform lower bound is not
-established. Reduced constraint defects remain below `3.7e-15`, whereas
-the unprojected gradient defects are between 1.73 and 1.87. These quantities
-are dimensionless. The full-rank multiplier maps leave respectively 75%
-and approximately 74% of the finest temperature space unconstrained.
+\[
+ a(u_\epsilon,v)+(q_\epsilon,Dv)=(f,v),
+ \qquad q_\epsilon=\epsilon^{-1}D u_\epsilon.
+\]
 
-The [plot source](figures/plot_fci_transport_reduced_space.py) shows the
-inf-sup values, kernel growth and the actual coarse kernel vectors retained
-in [P0 data](figures/fci_transport_P0-2h_kernel.csv) and
-[Q1 data](figures/fci_transport_Q1-2h_kernel.csv). The latter use the same
-grayscale amplitude scale and reverse sign on the second plane. They are
-vectors computed by the dense oracle, not illustrative patterns.
+Here `f` is the load, `u_epsilon` the exact solution, and `q_epsilon` its
+parallel flux multiplier. Suppose a reconstructed discrete macro function
+`k_h` has parallel defect `||D k_h|| <= delta ||k_h||_a`, where
+`||.||_a` is the slow-energy norm and `delta` includes interpolation,
+tracing and averaging errors. Dropping the parallel term on macro tests
+leaves the consistency functional
 
-With the Release/OpenBLAS configuration below:
+\[
+ R_\epsilon(k_h)=(q_\epsilon,D k_h),\qquad
+ |R_\epsilon(k_h)|\le
+ \delta\,\|q_\epsilon\|\,\|k_h\|_a.
+\]
 
-```sh
-cmake --build build/u3c -j 8 --target test_fci_transport_reduced_space
-ctest --test-dir build/u3c -j 8 -R '^test_fci_transport_reduced_space_ladder$' -V
-ctest --test-dir build/u3c -j 8 -R '^test_fci_transport_reduced_space_gate$' -V
-python3 doc/design/figures/plot_fci_transport_reduced_space.py --output /tmp/fci-reduced-space.png
-```
+Replacing the right-hand side by an epsilon-independent `O(delta)` is the
+first unjustified step. The ordinary energy estimate gives only
+`||D u_epsilon|| = O(sqrt(epsilon))` for a load bounded in the slow dual
+norm, hence `||q_epsilon|| = O(epsilon^(-1/2))`. It does not give the
+uniform multiplier bound needed by this argument. Working directly with
+the original penalty instead gives a consistency estimate proportional to
+`delta/sqrt(epsilon)` in its energy dual norm. A small measured
+`||G_h P_h||` cannot by itself remove either factor.
 
-The ladder returns 93/93 diagnostic checks in 444.32 s on shared faepmac1,
-gfortran 16.2, eight OpenMP threads and one BLAS thread. Timings cover dense
-diagnostics and are not a solver cost comparison. The coarse diagnostic
-returns 39/39; its separate acceptance invocation returns 39/41, with one
-checkerboard rejection for each candidate.
+The uniform multiplier premise can fail even for fixed smooth shear and
+a fixed smooth load. Take `x` in `(-1,1)`, periodic angles `y,z`,
+`b = (0,x,1)/sqrt(1+x^2)`, and the slow operator `-Delta+I`, with zero
+Dirichlet data at `x = +/-1` and load `cos(y)`. In this Fourier sector,
+write `u_epsilon = w_epsilon(x)*cos(y)` and define
+`g(x) = x/sqrt(1+x^2)`. The scalar problem is
 
-The step-1 absence-of-spurious-kernel requirement fails already on the
-coarse mesh. The registered `test_fci_transport_reduced_space_gate` enforces
-zero checkerboard retention to roundoff and fails; it is neither disabled
-nor marked as an expected failure. The diagnostic and refinement tests
-check the measurements, and their passes do not qualify either space.
-Step 2 accuracy, constrained-limit and inf-sup qualification on the four
-geometries, and step 3 Krylov/cost gates, remain unopened. In particular,
-the spatial rates required for a selected method have not been measured.
+\[
+ -w_\epsilon''+2w_\epsilon+
+ \epsilon^{-1}g^2w_\epsilon=1,
+ \qquad w_\epsilon(-1)=w_\epsilon(1)=0.
+\]
 
-The failure is in the reduction itself:
-`test/test_fci_transport_reduced_space.f90`, `test_basis`, drops about
-three quarters of the interval constraints. Full row rank then leaves a
-large antisymmetric kernel; `probe` constructs an explicit member using
-the SVD row-space projector. Merely making the multiplier smaller is
-insufficient. A candidate with the correct limit space and a controlled
-inf-sup pairing is still required before solver work.
+The multiplier amplitude is `q_epsilon = g*w_epsilon/epsilon`. Energy
+bounds `w_epsilon` in H1 and makes `g*w_epsilon` tend to zero in L2.
+Compactness therefore gives `w_epsilon -> 0` strongly in L2 and weakly
+in H1, since `g` vanishes only at one point. If the multipliers were
+bounded in L2, a weakly convergent subsequence with limit `q` would,
+by the weak equation, satisfy `g*q = 1`. But `1/g` behaves like `1/x`
+and is not in L2. This contradiction excludes that uniform multiplier
+bound in this smooth resonant-shear example. It does not exclude another
+uniform solution estimate using different norms or additional structure.
+
+An independent two-mode calculation also shows why the complement needs
+control. In dimensionless Euclidean coordinates `(u_1,u_2)`, take the slow
+matrix to be the identity, load `f = (0,1)`, reference parallel derivative
+`D_sigma = diag(0,sigma)`, and discrete derivative
+`G_sigma = diag(0,2*sigma)`, with `sigma > 0`. The average projector
+`P = diag(1,0)` is exact for both operators: its defect, idempotence error
+and kernel-approximation error are all zero. The slow discretization is
+also exact, and the derivative error has operator norm `sigma`. Nevertheless,
+
+\[
+ u_\epsilon=\left(0,\frac{\epsilon}{\epsilon+\sigma^2}\right),
+ \qquad
+ u_{h,\epsilon}=\left(0,\frac{\epsilon}{\epsilon+4\sigma^2}\right).
+\]
+
+At `epsilon = sigma^2`, these components are exactly `1/2` and `1/5`:
+the absolute error is `3/10` and the relative Euclidean error is `3/5`,
+even as the absolute derivative error tends to zero. The exact multiplier
+is then `(0,1/(2*sigma))`. Choosing `sigma^2` between `1e-13` and `1e-6`
+puts the obstruction inside the requested anisotropy range. This is an
+analytic family of algebraic problems, not a measurement on the sheared
+FCI fixture or a counterexample with a fixed positive parallel spectral gap.
+It refutes an error estimate based only on absolute derivative consistency
+and correct kernel identification, uniformly over complements with vanishing
+parallel singular values.
+
+Smooth quasiperiodicity does not itself provide a positive parallel gap.
+For example, on a flat periodic two-torus with angles `theta,zeta` and
+irrational slope `rho`, the normalized derivative
+`D = (d/dtheta + rho*d/dzeta)/sqrt(1+rho^2)` has singular values
+`|m+rho*n|/sqrt(1+rho^2)` on normalized Fourier modes with integer indices
+`(m,n)`. Every nonconstant mode has zero infinite-time average, yet rational
+approximations to `rho` make these singular values arbitrarily small.
+There is no positive L2 parallel Poincare constant on that complement.
+This observation also applies to Diophantine irrational slopes; their
+polynomial small-divisor bounds do not give a fixed positive gap.
+Perpendicular regularity can change the relevant estimate, but must enter
+its hypotheses explicitly.
+
+A proof could instead use an epsilon-uniform multiplier regularity bound
+and a stable discrete mixed pairing, or a stable reconstruction between
+the continuous and discrete decompositions with controlled relative error
+on the complement. None has been established for the proposed FCI
+construction on nested surfaces, islands, plates and an X-point. These
+are missing hypotheses, not evidence that every explicitly averaged method
+fails. The checked literature below does not establish them for this
+projected penalty. Analytical preflight therefore stops before implementing
+`A_h` or running its spatial and anisotropy gates. No claim is made about
+its rank, projection error, checkerboard rejection, separatrix cut-off or
+Krylov convergence.
+
+### Retired reduced constraint spaces
+
+Reducing the multiplier dimension cannot by itself isolate flux functions:
+`dim(K_h) >= dim(V_h) - dim(Q_h)`. The
+[retained measurements](figures/fci_transport_reduced_space.csv) used
+piecewise constants (`P0`) or continuous bilinear functions (`Q1`) on a
+section grid with twice the temperature spacing, on 21/41/81-cell meshes.
+At 81 cells, `dim(V_h) = 12800`, while the two kernels have dimensions
+9600 and 9438; the radial-resolution proxy is only 40 bins. Their projected
+odd-plane checkerboards retain respectively 98.91% and 98.51% of their
+original norm. This dimension mismatch retires this generic reduction route,
+rather than selecting another small multiplier space. The proxy is not an
+exact count of representable flux functions. The refuted diagnostic and
+its failing acceptance test have been removed. Their source and detailed
+interpretation are retained by commit
+f07c254d38f41f2c00e2dc84285e42f9d68a63c1.
 
 ## First failing gate: nested surfaces with shear
 
@@ -314,6 +361,86 @@ residual and the kernel defect. Storage is quadratic and setup/solve are dense;
 overhead and BLAS/LAPACK workspace.
 
 ## Relation to asymptotic-preserving schemes
+
+### Field-line averaging and weighted Birkhoff literature
+
+The following locations were checked against the linked full-text versions
+except where marked **unverified**; published numbering was not checked when
+the link is a preprint. Continuous averaging, an asymptotic-preserving (AP)
+semi-Lagrangian propagator and the proposed projected penalty are different
+constructions; a result for one is not a theorem for the others.
+
+- Chacon, del-Castillo-Negrete and Hauck,
+  [JCP 272 (2014), 719–746](https://doi.org/10.1016/j.jcp.2014.04.049),
+  [accepted manuscript](https://www.osti.gov/servlets/purl/3365113):
+  Section 2, equations (7), (11)–(17), treats constant transport
+  coefficients and confined lines (`b.n = 0`). Equation (15) averages
+  with measure `ds/|B|`, where `s` is arclength. Equation (16) replaces it
+  by `ds` when field magnitude is constant or approximately constant along
+  a line. Equation (17) is the averaged perpendicular limit equation.
+  Section 3, propagator properties (i)–(iv), preserves the continuous
+  kernel and identifies the infinite-time average. Section 4.1 after
+  equation (31) explicitly restricts its Fourier error analysis to a
+  straight field; equations (44)–(46) analyze operator-splitting error.
+  Section 7.1 uses field-line quadrature with interpolation, and Section 9
+  discusses the field-magnitude restriction. None analyzes replacing a
+  mapped derivative by `G_h C_h` for an approximate finite-rank projector.
+- del-Castillo-Negrete and Chacon,
+  [PRL 106 (2011), 195004](https://doi.org/10.1103/PhysRevLett.106.195004),
+  [author preprint](https://arxiv.org/pdf/1007.4579):
+  equations (1)–(6) take zero perpendicular transport, constant parallel
+  coefficient and the ordering `d(log|B|)/ds approximately 0`.
+  Equations (7)–(10) give Green-function propagation along traced lines;
+  the paragraph after (10) specifies a periodic Green function for closed
+  lines. Figure 1 shows relaxation to a function of magnetic potential
+  inside an island. This is not a finite-rank mesh projector error bound.
+- del-Castillo-Negrete and Chacon,
+  [PoP 19 (2012), 056112](https://doi.org/10.1063/1.3696054):
+  the [ORNL abstract](https://impact.ornl.gov/en/publications/parallel-heat-transport-in-integrable-and-chaotic-magnetic-fields/)
+  describes a Lagrangian Green-function method for local and nonlocal
+  parallel transport, with integrable, weakly chaotic and fully chaotic
+  examples. Full text was not obtained; equation locations, detailed
+  hypotheses and any applicable error theorem are **unverified**.
+- Das and Yorke,
+  [Nonlinearity 31 (2018), 491–501](https://doi.org/10.1088/1361-6544/aa99a0),
+  [author preprint](https://arxiv.org/pdf/1506.06810):
+  Theorem 1.1 requires a smooth quasiperiodic map, a smooth observable, a
+  Diophantine rotation vector and a smooth bump weight. Equations (4)–(5)
+  define the exponentially tapered, normalized weighted average.
+  Theorem 3.1, equations (8)–(9), gives `O(N^(-m))` for regularity
+  `M > d + m*(d+beta)`, where `N` is the iterate count, `d` the torus
+  dimension and `beta` its Diophantine class. Infinite regularity yields
+  every algebraic order. Uniformity in the starting point is on the
+  specified torus; a uniform constant across resonances is not provided.
+- Das, Saiki, Sander and Yorke,
+  [*Quantitative quasiperiodicity*, Nonlinearity 30 (2017), 4111–4140](https://doi.org/10.1088/1361-6544/aa84c2),
+  [full text](https://esander1789.github.io/files/DSSY17.pdf):
+  Section 2.2 defines the Diophantine condition; Section 3, Theorem 3.1,
+  equation (12), states the weighted-average convergence result with
+  finite smoothness and specializes it to infinite smoothness.
+  The examples concern torus diagnostics and conjugacies, not anisotropic
+  diffusion error estimates.
+- Ruth and Bindel,
+  [*Finding Birkhoff Averages via Adaptive Filtering*](https://arxiv.org/pdf/2403.19003):
+  Section IV.B and Figure 6 apply reduced-rank extrapolation to a
+  stellarator field-line return map, comparing weighted averaging.
+  Numerical ODE integration and spline interpolation introduce
+  non-symplectic map errors and require adjusted classification
+  tolerances. This supports magnetic-topology diagnostics, not a theorem
+  for the FCI complement or a uniform separatrix averaging cost.
+
+Thus super-polynomial convergence is verified for the stated smooth,
+Diophantine setting. A piecewise bilinear interpolant is generally only
+continuous across cell edges and does not satisfy those smoothness
+hypotheses. Averaging a smooth coordinate may enjoy the theorem under the
+other hypotheses, but that does not establish the same rate for averaging
+an arbitrary mesh field. Neither a plate-ending trajectory nor a
+separatrix orbit is covered by that quasiperiodic theorem. Also, uniform
+sampling in the tracer parameter must reproduce the intended invariant
+measure: for a monotone tracing coordinate `phi`,
+`ds/|B| = dphi/(B.grad(phi))`, where `B` is the magnetic field. A return-map
+average of section samples alone is not automatically the full continuous
+field-line average.
 
 ### Closed-line literature and reduced constraint spaces
 
