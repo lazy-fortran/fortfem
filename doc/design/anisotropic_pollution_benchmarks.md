@@ -4,10 +4,18 @@ title: Anisotropic transport pollution benchmarks
 
 # Anisotropic transport pollution benchmarks
 
-**Verified outcome:** isotropic assembly passes its convergence gate, but the
-first conforming pollution-scaling gate fails. The bilinear quadrilateral fit
-gives a mesh exponent of 1.502 rather than the required `2 +/- 0.3`.
-The candidate comparison stops here; no method is selected or qualified.
+The symmetric scheme and bilinear flux-coordinate-independent (FCI) candidate
+meet the signed pollution threshold on the smallest tested mesh, with nine
+free unknowns, on both problems at all three anisotropies. Among continuous
+finite elements, degree four reaches the threshold at 961 unknowns when the
+anisotropy is `1e10`; degree one does not reach it at one million unknowns.
+These are minima on the sampled refinement ladders, not optimal mesh searches.
+
+The comparison uses directly measured signed pollution and cost; no fitted
+power law is an accuracy gate or an extrapolation rule. The bilinear
+quadrilateral measurements cross response regimes, so no single power law
+holds throughout the retained window. Method selection remains separate
+from these measurements.
 The [accuracy target](fci_transport_solver.md#accepted-accuracy-target) is
 numerical perpendicular transport well below physical perpendicular transport
 at physical anisotropy, rather than epsilon-uniform accuracy for general loads
@@ -124,17 +132,19 @@ All errors are dimensionless. These tabulated profile errors are not
 `chi_perp,num/chi_perp`, since physical perpendicular diffusivity is zero.
 Published-version table numbering has not been checked.
 
-## Validation gates and first failure
+## Validation gates and descriptive fits
 
 The figure reading is a reported comparison only. Its interval is not a
 published uncertainty, and the prescribed analytic field is not the magnetic
-field evolved in NIMROD. Validation instead requires the theoretical/published
-pollution exponents within `+/- 0.3` over at least four mesh widths and four
-anisotropies in a pollution-dominated regime, plus isotropic L2 convergence
-of order `p+1` for every degree used. For naive conforming elements the
-required exponents are `a = 2p`, `b = 1`; the support-operator expectations
-and plane-spacing dependence are recorded above. None of these exponents
-or tolerances is fitted to the measurements.
+field evolved in NIMROD. Validation requires the original-matrix normwise residual, isotropic L2
+convergence of order `p+1`, and convergence of the discrete parallel gradient
+applied to an interpolant of an analytic smooth function at order `p` in L2,
+for each degree used. The last two refinement rates must be within `0.3` of
+the design order. The gradient check uses `u = exp(x+2*y)`, with independent
+analytic derivatives `u_x = u` and `u_y = 2*u`, and `p+4` quadrature points per
+direction. It exercises the same generated basis and anisotropic integrand
+as assembly, against an analytic derivative rather than a second generated
+operator. The field remains the normalized Sovinec field.
 
 **Verified residual check:** for discrete matrix `A`, solution vector `t`,
 and load `f` after boundary elimination, every solve reports
@@ -167,7 +177,12 @@ Both of the last two refinement rates must be within `0.3` of `p+1`.
 | 3 | 4 | 3.996267 | pass |
 | 4 | 5 | 4.997632 | pass |
 
-**Verified first failing gate:** conforming bilinear quadrilaterals on the
+**Verified parallel-gradient convergence:** the [parallel CSV](figures/fci_transport_pollution_parallel.csv)
+retains all four meshes for each degree. The final measured L2 orders for
+`p=1,2,3,4` are `0.999004, 1.999378, 3.000193, 4.000875`; both final rates
+pass the stated `p +/- 0.3` check for every degree.
+
+**Descriptive bilinear fit:** conforming bilinear quadrilaterals on the
 Sovinec thermal problem, with prescribed analytic
 `B = ez cross grad(T_exact)` normalized at each quadrature point, are
 measured at `h = 1/8, 1/16, 1/32, 1/64` and `R = 1e7, 1e8, 1e9, 1e10`.
@@ -179,43 +194,106 @@ normwise residuals pass; the maximum is `1.916e-16`.
 A least-squares fit of all 16 logarithmic measurements, without filtering,
 gives the following coefficients. An independent NumPy least-squares solve
 in the plotting script reproduces the Fortran regression.
-The logarithmic root-mean-square fit residual is `0.5685`, so the failed
-power law is not used for extrapolation.
+The logarithmic root-mean-square fit residual is `0.5685`, so this power law is not used for extrapolation.
 
-| method / problem | a | b | C | unknowns for E <= 0.1 at R=1e10 |
-|---|---:|---:|---:|---|
-| H1 p=1 quads / Sovinec, failed validation fit | 1.501624 | 0.841869 | 0.04538546 | unavailable: scaling gate fails |
-| H1 p=2--4 / either problem | not measured | not measured | not measured | unavailable |
-| bilinear FCI / either problem | not measured | not measured | not measured | unavailable |
-| higher-order FCI / either problem | not measured | not measured | not measured | unavailable |
-| Guenter symmetric / either problem | not measured | not measured | not measured | unavailable |
+| method / problem | a | b | C |
+|---|---:|---:|---:|
+| H1 p=1 quads / Sovinec, descriptive fit | 1.501624 | 0.841869 | 0.04538546 |
 
 Here H1 denotes the continuous finite-element space with square-integrable
-first derivatives, and FCI denotes flux-coordinate-independent interpolation.
+first derivatives.
 For fixed `R` in increasing order, the fitted mesh exponents are
 `0.580073, 1.412033, 1.946508, 2.067881`. For the four meshes in increasing
 resolution, the anisotropy exponents are
-`0.998922, 0.982561, 0.841581, 0.544410`. Thus even the aggregate mesh
-exponent is outside `[1.7, 2.3]`, and the per-anisotropy gate fails as well.
+`0.998922, 0.982561, 0.841581, 0.544410`. No single law holds in this window. The high-anisotropy mesh exponent
+approaches two, while the anisotropy exponent decreases on finer meshes.
+This is consistent with a regime change and locking-type saturation of the
+conforming bilinear space; it is not evidence of an assembly defect.
+The fit and all 16 rows are retained as reports.
 
-The failure is enforced at
-`test/test_fci_transport_pollution.f90:239`; the signed diagnostic is
-formed at line 213. The prescribed field comes from
-`tools/codegen/app/gen_anisotropic_pollution_products.f90:27` and is used
-by the quadrature assembly in that test. This identifies the failing
-observable and exercised discretization, not a proved code defect.
-Origin/main contains no corresponding pollution test or existing fix.
-**Hypothesis:** the chosen parameter window mixes distinct response regimes;
-the variation of marginal exponents is consistent with this explanation,
-but it does not prove it. Field normalization, quadrature effects and
-anisotropic solution-shape changes have not been isolated. The isotropic
-order check alone does not establish anisotropic consistency.
+## Direct cost to signed pollution threshold
 
-No higher-degree pollution gate, Stegmeir support-operator gate, Guenter
-circular problem, four-candidate ladder, or solver work follows this failure.
-The symmetric scheme has only its retained sine oracle; no circular result
-is implied. No valid unknown count at `R = 1e10` or matched-accuracy cost
-comparison is established.
+The [complete measurements](figures/fci_transport_pollution_cost.csv) retain
+all 67 rows from 24 ladders; the [summary CSV](figures/fci_transport_pollution_cost_summary.csv)
+contains the first sampled mesh reaching `E <= 0.1`, or the final mesh at
+the cap. Meshes start at four elements per direction and double until the
+threshold, with the last mesh clipped to one million free unknowns. The
+bilinear cap uses 1001 elements per direction and exactly one million
+unknowns; its central value is interpolated between nodes. Higher-degree
+quadrilaterals use the existing GLL basis. No fitted law determines a row.
+
+The solver is FortSparse's native real symmetric positive-definite direct
+solver, through `sparse_direct_factor_csc` in `fortfem_sparse_direct`; it factors a full,
+exactly symmetric compressed sparse column matrix. Small-mesh solutions
+at anisotropies `1`, `1e5` and `1e10` agree with the independent LAPACK
+banded solver for all four degrees within relative infinity error `1e-6`.
+All cost-run normwise residuals are below `5.95e-16`, against the unchanged
+limit `2.220446e-13`. No iterative solver or solver tuning is introduced.
+
+The retained test-side Günter symmetric stencil places the parallel flux at
+quad centres and the unknowns on the dual cell grid, with its existing
+five-point isotropic term. The bilinear FCI candidate uses those same
+unknowns and isotropic term. At each quad centre the existing RK4 tracer
+follows the unit field by `+/-h/2`, with 64 steps in each direction. The
+existing bilinear map and generated gradient form the endpoint difference
+divided by `h`; its volume-weighted adjoint supplies the diffusion form.
+This is a two-dimensional support-operator reconstruction with line spacing
+`h`, not a reproduction of a published three-dimensional FCI table.
+Higher-order FCI is not added.
+
+Times are wall seconds on shared faepmac1, GNU Fortran 16.2, Release,
+OpenBLAS, with one OpenMP and one BLAS thread per case. A CTest resource
+lock prevents these timing cases from overlapping each other. Assembly
+includes mesh tables, sparsity, tracing where needed, and matrix/load
+construction. Solve includes factorization and back substitution; it excludes
+the separate isotropic-baseline solve and residual measurement. Each row
+is a single measurement, so microsecond differences are not a speed ranking.
+
+| Sovinec candidate | R | free unknowns | signed E | setup (s) | factor + solve (s) |
+|---|---:|---:|---:|---:|---:|
+| H1 p=1 | 1e+06 | 1,000,000 (not reached) | 0.5088 | 1.185 | 1.767 |
+| H1 p=1 | 1e+08 | 1,000,000 (not reached) | 34.627 | 1.19 | 1.789 |
+| H1 p=1 | 1e+10 | 1,000,000 (not reached) | 3431.3 | 1.98 | 3.213 |
+| H1 p=2 | 1e+06 | 3,969 | 0.04315 | 0.01005 | 0.005578 |
+| H1 p=2 | 1e+08 | 16,129 | 0.088998 | 0.04307 | 0.01737 |
+| H1 p=2 | 1e+10 | 261,121 | 0.066699 | 0.711 | 0.4492 |
+| H1 p=3 | 1e+06 | 121 | 4.6729e-05 | 0.000707 | 8.3e-05 |
+| H1 p=3 | 1e+08 | 2,209 | 0.048762 | 0.01418 | 0.004888 |
+| H1 p=3 | 1e+10 | 9,025 | 0.063953 | 0.05406 | 0.01045 |
+| H1 p=4 | 1e+06 | 225 | 0.00037415 | 0.002921 | 0.000207 |
+| H1 p=4 | 1e+08 | 225 | 0.011337 | 0.002642 | 0.000187 |
+| H1 p=4 | 1e+10 | 961 | 0.020701 | 0.01271 | 0.001531 |
+| Gunter symmetric | 1e+06 | 9 | 4.5535e-11 | 1e-05 | 5e-06 |
+| Gunter symmetric | 1e+08 | 9 | 2.1334e-09 | 1e-05 | 4e-06 |
+| Gunter symmetric | 1e+10 | 9 | 2.6823e-07 | 1e-05 | 4e-06 |
+| Bilinear FCI | 1e+06 | 9 | -0.0024323 | 0.000486 | 1.1e-05 |
+| Bilinear FCI | 1e+08 | 9 | -0.0024323 | 0.000506 | 4e-06 |
+| Bilinear FCI | 1e+10 | 9 | -0.0024323 | 0.000488 | 5e-06 |
+
+The two candidates with the fewest unknowns on Sovinec are tied at nine.
+They are compared below on the centred circular Günter 2005 problem,
+with `T=1-r^3`, source `9*r`, and analytic Dirichlet data.
+
+| Circular candidate | R | free unknowns | signed E | setup (s) | factor + solve (s) |
+|---|---:|---:|---:|---:|---:|
+| Gunter symmetric | 1e+06 | 9 | 3.2589e-11 | 9e-06 | 4e-06 |
+| Gunter symmetric | 1e+08 | 9 | -1.079e-08 | 1e-05 | 5e-06 |
+| Gunter symmetric | 1e+10 | 9 | -7.6268e-07 | 9e-06 | 5e-06 |
+| Bilinear FCI | 1e+06 | 9 | -0.00023449 | 0.000271 | 5e-06 |
+| Bilinear FCI | 1e+08 | 9 | -0.0002345 | 0.000248 | 5e-06 |
+| Bilinear FCI | 1e+10 | 9 | -0.00023675 | 0.000283 | 4e-06 |
+
+Negative values are retained, as the signed diagnostic requires. They do
+not establish negative physical diffusion. This central-value criterion does
+not bound total spatial error, and a nine-unknown success does not establish
+accuracy for general loads or magnetic geometry. In particular, the existing
+symmetric sine eigenmode is exceptionally well preserved on this uniform
+grid. The CSV also retains the isotropic baseline and total central diagnostic.
+No production method is selected or qualified by these tables.
+
+The [plotting script](figures/plot_fci_transport_cost.py) displays every row,
+uses a signed logarithmic scale for pollution, and regenerates the summary.
+It uses no absolute value, smoothing, fitted extrapolation or omitted mesh.
 
 ## Figure report on quadrilaterals
 
@@ -236,24 +314,31 @@ This row is retained without a pass/fail comparison to the figure reading.
 The [figure row](figures/fci_transport_pollution_published.csv),
 [sine residuals](figures/fci_transport_pollution_checks.csv),
 [isotropic errors](figures/fci_transport_pollution_isotropic.csv),
-[failed scaling rows](figures/fci_transport_pollution_scaling_p1.csv),
+[scaling rows](figures/fci_transport_pollution_scaling_p1.csv),
 [independent fit](figures/fci_transport_pollution_fits.csv), and
 [plot source](figures/plot_fci_transport_pollution.py) retain all measured rows.
 The plot has normalized units and no smoothed or discarded data.
 
 ```sh
-cmake -S . -B build/u3f -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
-cmake --build build/u3f -j 8 --target test_fci_transport_pollution
-ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution$' -V
-ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_isotropic_gate$' -V
-ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_scaling_p1$' -V
-# Stop here: the scaling command fails. The figure report is not a validation gate.
-ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_figure_report$' -V
+export PKG_CONFIG_PATH=/opt/homebrew/opt/openblas/lib/pkgconfig
+cmake -S . -B build/u3g -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
+cmake --build build/u3g -j 8 --target test_fci_transport_pollution
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_isotropic_gate$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_parallel_gate$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_scaling_p1$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_figure_report$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_sparse_gate$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(cost_|circle_)' -V
+python3 doc/design/figures/plot_fci_transport_cost.py --build-dir build/u3g --data /tmp/fci_transport_pollution_cost.csv --output /tmp/sovinec-cost.png --circle-output /tmp/circle-cost.png --summary-output /tmp/pollution-cost-summary.csv
 python3 doc/design/figures/plot_fci_transport_pollution.py --output /tmp/transport-pollution.png --fit-output /tmp/transport-pollution-fits.csv
 ```
 
 CTest runs with one OpenMP thread and one OpenBLAS thread per case; the native
 build uses eight jobs. Timings in the CSV are diagnostics on shared faepmac1
-with gfortran 16.2, not matched-accuracy performance evidence. The next step
-is to explain the missing common scaling regime or repair a demonstrated
-anisotropic discretization defect before restarting the unchanged gates.
+with gfortran 16.2, single-run measurements without uncertainty estimates.
+Direct cost ladders refine until `E <= 0.1` or the unknown cap. They retain
+the signed diagnostic,
+the isotropic baseline on each mesh, assembly time, and factorization plus
+solve time. No solver-tolerance adjustment or solver-method research is part
+of this comparison.

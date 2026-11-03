@@ -45,9 +45,9 @@ The requested comparison reports which candidate attains
 `chi_perp,num/chi_perp <= 0.1` at `chi_par/chi_perp = 1e10` with the fewest
 unknowns; method selection remains separate from the measurements.
 The [pollution benchmarks](anisotropic_pollution_benchmarks.md) retain the
-published figure comparison as a reported row. Isotropic assembly converges
-at its design order, but the first bilinear conforming scaling gate fails;
-no candidate ladder is qualified.
+published figure comparison as a reported row. The single-power-law fit is descriptive: its window crosses response
+regimes. Validation uses residuals, isotropic convergence and parallel-gradient
+consistency; candidate costs are measured directly without extrapolation.
 
 ## Explicit averaging: analytical preflight
 

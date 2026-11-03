@@ -1,4 +1,4 @@
-"""Plot the figure report, normwise residuals and attempted scaling gates."""
+"""Plot the figure report, normwise residuals and descriptive scaling fits."""
 
 import argparse
 import csv
@@ -84,7 +84,7 @@ def main():
                                         lineterminator="\n")
                 writer.writeheader()
                 writer.writerows(fits)
-        # Display all rows of the last attempted degree, including a failed gate.
+        # Display all rows of the retained degree, including every measured row.
         scaling = read_csv(paths[-1])
         p = int(scaling[0]["p"])
         ratios = sorted({float(r["chi_ratio"]) for r in scaling})
@@ -95,11 +95,11 @@ def main():
             axes[3].loglog(h, errors, marker=marker, color=color,
                            label=rf"$\chi_\parallel/\chi_\perp={ratio:.0e}$")
         axes[3].loglog(h, errors[-1] * (h / h[-1]) ** (2 * p), color="black",
-                       linestyle=":", label=f"Expected order {2*p}")
+                       linestyle=":", label=f"Reference slope {2*p}")
         axes[3].set(xlabel="Element width h (normalized units)",
                     ylabel=r"$(\chi_{\perp,\rm num}/\chi_\perp)/(\chi_\parallel/\chi_\perp)$"
                            "\n(dimensionless)",
-                    title=f"Conforming quadrilaterals, last attempted p={p}")
+                    title=f"Conforming quadrilaterals, retained p={p}")
         axes[3].legend(fontsize=8, loc="lower right")
     else:
         axes[3].set_axis_off()
