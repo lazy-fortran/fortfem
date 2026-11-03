@@ -58,6 +58,8 @@ program test_fci_transport_pollution
         call validation_ladder()
     else if (trim(mode) == 'sparse') then
         call sparse_oracle()
+    else if (trim(mode) == 'cost_row') then
+        call cost_ladder(single_row=.true.)
     else if (trim(mode) == 'cost') then
         call cost_ladder()
     else if (trim(mode) == 'parallel') then
@@ -970,7 +972,8 @@ contains
         call gate(r <= residual_limit, 'between-node central-value residual')
     end subroutine
 
-    subroutine cost_ladder()
+    subroutine cost_ladder(single_row)
+        logical, intent(in), optional :: single_row
         type(fixture_t) :: data
         character(4096) :: name, method, argument, path
         real(dp) :: c, e, r, s, baseline, baseline_s, chi, signed_error
@@ -999,6 +1002,9 @@ contains
                 baseline, signed_error)
             flush (out)
             call gate(r <= residual_limit, 'cost anisotropic normwise residual')
+            if (present(single_row)) then
+                if (single_row) exit
+            end if
             if (signed_error <= 0.1_dp) exit
             if (ne == 1001/p) exit
             ne = min(2*ne, 1001/p)

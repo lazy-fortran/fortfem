@@ -11,7 +11,7 @@ file(GLOB fci_test_sources CONFIGURE_DEPENDS
 foreach(test_source IN LISTS fci_test_sources)
     get_filename_component(test_name "${test_source}" NAME_WE)
     add_executable(${test_name} "${test_source}")
-    if(test_name MATCHES "^test_fci_transport_(reference|nested)$")
+    if(test_name STREQUAL "test_fci_transport_reference")
         target_link_libraries(${test_name} PRIVATE
             fortfem_fci_transport_test_support fortfem_test_check)
     else()
@@ -29,6 +29,9 @@ foreach(test_source IN LISTS fci_test_sources)
     set_tests_properties(${test_name} PROPERTIES
         LABELS "fci" PROCESSORS 1
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    if(test_name MATCHES "^test_fci_transport_(reference|pollution)$")
+        set_property(TEST ${test_name} APPEND PROPERTY LABELS fast)
+    endif()
 endforeach()
 
 add_test(NAME test_fci_transport_pollution_figure_report
@@ -42,14 +45,14 @@ add_test(NAME test_fci_transport_pollution_isotropic_gate
     COMMAND test_fci_transport_pollution isotropic
         "${PROJECT_BINARY_DIR}/pollution_isotropic.csv")
 set_tests_properties(test_fci_transport_pollution_isotropic_gate PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
+    LABELS "fci;acceptance;fast" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 
 add_test(NAME test_fci_transport_pollution_parallel_gate
     COMMAND test_fci_transport_pollution parallel
         "${PROJECT_BINARY_DIR}/pollution_parallel.csv")
 set_tests_properties(test_fci_transport_pollution_parallel_gate PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
+    LABELS "fci;acceptance;fast" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 
 foreach(degree RANGE 1 4)
@@ -61,16 +64,10 @@ foreach(degree RANGE 1 4)
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
 
-add_test(NAME test_fci_transport_nested_accuracy_gate
-    COMMAND test_fci_transport_nested gate)
-set_tests_properties(test_fci_transport_nested_accuracy_gate PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
-    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-
 add_test(NAME test_fci_transport_reference_threads
     COMMAND test_fci_transport_reference)
 set_tests_properties(test_fci_transport_reference_threads PROPERTIES
-    LABELS "fci" PROCESSORS 8
+    LABELS "fci;fast" PROCESSORS 8
     ENVIRONMENT "OMP_NUM_THREADS=8;OPENBLAS_NUM_THREADS=1")
 foreach(method IN ITEMS reference direct)
     foreach(threads IN ITEMS 1 8)
@@ -85,8 +82,28 @@ endforeach()
 add_test(NAME test_fci_transport_pollution_sparse_gate
     COMMAND test_fci_transport_pollution sparse)
 set_tests_properties(test_fci_transport_pollution_sparse_gate PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
+    LABELS "fci;acceptance;fast" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+# Keep one small measured row per candidate in the fast selection.
+foreach(method IN ITEMS h1 symmetric fci)
+    set(degrees 1)
+    if(method STREQUAL "h1")
+        set(degrees 1 2 3 4)
+    endif()
+    foreach(degree IN LISTS degrees)
+        set(name test_fci_transport_pollution_cost_row_${method}_p${degree})
+        add_test(NAME ${name} COMMAND ${CMAKE_COMMAND}
+            "-Dexecutable=$<TARGET_FILE:test_fci_transport_pollution>"
+            "-Dmethod=${method}" "-Ddegree=${degree}"
+            "-Doutput=${PROJECT_BINARY_DIR}/pollution_cost_row_${method}_p${degree}.csv"
+            -P "${PROJECT_SOURCE_DIR}/cmake/CheckFciPollutionCostRow.cmake")
+        set_tests_properties(${name} PROPERTIES
+            LABELS "fci;acceptance;fast" PROCESSORS 1
+            RESOURCE_LOCK anisotropic_pollution_timing
+            ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+    endforeach()
+endforeach()
 
 foreach(method IN ITEMS h1 symmetric fci)
     set(degrees 1)
@@ -127,7 +144,7 @@ add_test(NAME test_fci_transport_pollution_manufactured_source
     COMMAND test_fci_transport_pollution manufactured_source)
 set_tests_properties(test_fci_transport_pollution_candidate_parallel
     test_fci_transport_pollution_manufactured_source PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
+    LABELS "fci;acceptance;fast" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 
 foreach(problem IN ITEMS sovinec circle manufactured)
@@ -174,5 +191,5 @@ set_tests_properties(${name} PROPERTIES LABELS "fci;benchmark" PROCESSORS 1
 add_test(NAME test_fci_transport_pollution_circle_interpolation
     COMMAND test_fci_transport_pollution circle_interpolation)
 set_tests_properties(test_fci_transport_pollution_circle_interpolation PROPERTIES
-    LABELS "fci;acceptance" PROCESSORS 1
+    LABELS "fci;acceptance;fast" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")

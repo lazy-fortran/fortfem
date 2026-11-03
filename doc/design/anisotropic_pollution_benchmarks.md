@@ -1,26 +1,35 @@
 ---
-title: Anisotropic transport pollution benchmarks
+title: Anisotropic heat-transport pollution benchmarks
 ---
 
-# Anisotropic transport pollution benchmarks
+# Anisotropic heat-transport pollution benchmarks
 
-The bilinear flux-coordinate-independent (FCI) candidate and the Günter
-symmetric stencil respond to nonzero parallel structure: both reach absolute
-L2 temperature error (the square-integral norm) below `1e-2` at 961 free unknowns on the manufactured
-problem below, at anisotropies `1e6`, `1e8` and `1e10`. Their nine-unknown
-success on the signed pollution diagnostic alone is insufficient evidence of
-spatial accuracy. The comparison below reports both criteria without selecting
-a method or qualifying the three-dimensional production FCI operator.
+Degree-four H1 elements are the selected temperature discretization for
+[KIN6D's nonlinear resistive magnetohydrodynamics design](https://github.com/itpplasma/kin6d/blob/main/docs/nonlinear-resistive-mhd.md).
+H1 denotes continuous finite elements with square-integrable first derivatives.
+On the two-dimensional benchmarks, high-order H1, the Günter symmetric stencil
+and flux-coordinate-independent (FCI) reconstruction control
+anisotropic pollution through parallel-to-perpendicular diffusivity ratios of
+`1e10`. The two stencils reach the manufactured temperature-error target at
+961 free unknowns at all three measured anisotropies; degree-four H1 needs
+225, 225 and 961. This is practical evidence over the sampled range, not a
+proof of anisotropy-independent error at arbitrary ratios or fixed mesh.
 
-The comparison uses directly measured signed pollution and cost; no fitted
-power law is an accuracy gate or an extrapolation rule. The bilinear
-quadrilateral measurements cross response regimes, so no single power law
-holds throughout the retained window. Method selection remains separate
-from these measurements.
-The [accuracy target](fci_transport_solver.md#accepted-accuracy-target) is
-numerical perpendicular transport well below physical perpendicular transport
-at physical anisotropy, rather than epsilon-uniform accuracy for general loads
-on a fixed mesh.
+The three-dimensional plane-to-plane bilinear FCI operator instead locks on
+the tested non-aligned nested surfaces: its relative solution error tends to
+one despite small algebraic residuals. A preconditioner cannot repair this
+spatial error. No production transport solver is qualified by this work.
+The two-dimensional FCI fixture traces the exact analytic field with numerical
+Runge–Kutta steps; it has no distinct plane coordinate and must not be
+identified with the three-dimensional operator.
+
+The problem is numerical perpendicular transport induced by a discrete
+parallel operator, which should remain well below physical perpendicular
+transport at physical anisotropy. Epsilon-uniform accuracy for general loads
+on a fixed mesh is not an accepted target: resonant layers and arbitrarily
+small parallel singular values require additional regularity assumptions.
+The benchmarks measure signed pollution, independent temperature error and
+cost directly. No fitted power law is an accuracy gate or extrapolation rule.
 
 Here `T` is temperature, `Q` the heat source, `b` the unit field direction,
 `chi_par` and `chi_perp` the parallel and perpendicular diffusivities, `p`
@@ -262,39 +271,11 @@ construction. Solve includes factorization and back substitution; it excludes
 the separate isotropic-baseline solve and residual measurement. Each row
 is a single measurement, so microsecond differences are not a speed ranking.
 
-| Sovinec candidate | R | free unknowns | signed E | setup (s) | factor + solve (s) |
-|---|---:|---:|---:|---:|---:|
-| H1 p=1 | 1e+06 | 1,000,000 (not reached) | 0.5088 | 1.185 | 1.767 |
-| H1 p=1 | 1e+08 | 1,000,000 (not reached) | 34.627 | 1.19 | 1.789 |
-| H1 p=1 | 1e+10 | 1,000,000 (not reached) | 3431.3 | 1.98 | 3.213 |
-| H1 p=2 | 1e+06 | 3,969 | 0.04315 | 0.01005 | 0.005578 |
-| H1 p=2 | 1e+08 | 16,129 | 0.088998 | 0.04307 | 0.01737 |
-| H1 p=2 | 1e+10 | 261,121 | 0.066699 | 0.711 | 0.4492 |
-| H1 p=3 | 1e+06 | 121 | 4.6729e-05 | 0.000707 | 8.3e-05 |
-| H1 p=3 | 1e+08 | 2,209 | 0.048762 | 0.01418 | 0.004888 |
-| H1 p=3 | 1e+10 | 9,025 | 0.063953 | 0.05406 | 0.01045 |
-| H1 p=4 | 1e+06 | 225 | 0.00037415 | 0.002921 | 0.000207 |
-| H1 p=4 | 1e+08 | 225 | 0.011337 | 0.002642 | 0.000187 |
-| H1 p=4 | 1e+10 | 961 | 0.020701 | 0.01271 | 0.001531 |
-| Gunter symmetric | 1e+06 | 9 | 4.5535e-11 | 1e-05 | 5e-06 |
-| Gunter symmetric | 1e+08 | 9 | 2.1334e-09 | 1e-05 | 4e-06 |
-| Gunter symmetric | 1e+10 | 9 | 2.6823e-07 | 1e-05 | 4e-06 |
-| Bilinear FCI | 1e+06 | 9 | -0.0024323 | 0.000486 | 1.1e-05 |
-| Bilinear FCI | 1e+08 | 9 | -0.0024323 | 0.000506 | 4e-06 |
-| Bilinear FCI | 1e+10 | 9 | -0.0024323 | 0.000488 | 5e-06 |
-
-The two candidates with the fewest unknowns on Sovinec are tied at nine.
-They are compared below on the centred circular Günter 2005 problem,
-with `T=1-r^3`, source `9*r`, and analytic Dirichlet data.
-
-| Circular candidate | R | free unknowns | signed E | setup (s) | factor + solve (s) |
-|---|---:|---:|---:|---:|---:|
-| Gunter symmetric | 1e+06 | 9 | 3.2589e-11 | 9e-06 | 4e-06 |
-| Gunter symmetric | 1e+08 | 9 | -1.079e-08 | 1e-05 | 5e-06 |
-| Gunter symmetric | 1e+10 | 9 | -7.6268e-07 | 9e-06 | 5e-06 |
-| Bilinear FCI | 1e+06 | 9 | -0.00023449 | 0.000271 | 5e-06 |
-| Bilinear FCI | 1e+08 | 9 | -0.0002345 | 0.000248 | 5e-06 |
-| Bilinear FCI | 1e+10 | 9 | -0.00023675 | 0.000283 | 4e-06 |
+The combined table below reports the Sovinec and centred circular Günter
+2005 thresholds together with the manufactured temperature-error threshold.
+The circular problem uses `T=1-r^3`, source `9*r`, and analytic Dirichlet data.
+The two test-side stencils tie at nine unknowns on the signed central-value
+pollution criterion for both problems at every sampled anisotropy.
 
 Negative values are retained, as the signed diagnostic requires. They do
 not establish negative physical diffusion. This central-value criterion does
@@ -302,7 +283,8 @@ not bound total spatial error, and a nine-unknown success does not establish
 accuracy for general loads or magnetic geometry. In particular, the existing
 symmetric sine eigenmode is exceptionally well preserved on this uniform
 grid. The CSV also retains the isotropic baseline and total central diagnostic.
-No production method is selected or qualified by these tables.
+These tables alone do not qualify a production method; the degree-four H1
+choice also uses the manufactured temperature-error comparison below.
 
 The [plotting script](figures/plot_fci_transport_cost.py) displays every row,
 uses a signed logarithmic scale for pollution, and regenerates the summary.
@@ -405,6 +387,105 @@ retains the table at full precision. The
 plots every signed pollution value and every manufactured L2 and central error,
 and regenerates the combined threshold CSV. No data are smoothed or discarded.
 
+## Three-dimensional bilinear FCI locking
+
+The dimensionless nested-surface fixture uses `(x,y)` in `[0,1]^2`, periodic
+`z` of period one, `psi = sin(pi*x)*sin(pi*y)`, and magnetic field
+`B = (a*psi_y, -a*psi_x, 1)`, with `a = 0.15*(1+psi)` and subscripts denoting
+partial derivatives. It is divergence free, nowhere zero and tangent to
+`psi` surfaces. With unit perpendicular conductivity and parallel conductivity
+`1/epsilon`, the exact temperature is `psi` for source `2*pi^2*psi` and zero
+outer Dirichlet data. This translates and extends the Sovinec thermal source
+with shear and a guide field; it does not reproduce NIMROD's evolved field.
+
+Native fourth-order Runge–Kutta tracing, bilinear endpoint interpolation and
+parallel-gradient assembly supplied connectivity between two canonical planes
+half a period apart, with duplicate periodic planes identified. On 5, 9 and
+17 section cells per direction (72, 200 and 648 free unknowns), relative
+mass-norm errors at `epsilon=1e-6` were `0.99706`, `0.97841` and `0.74913`.
+They tend to one at `epsilon=1e-13`; all 24 rows fail the former `error < 0.1`
+target. Perpendicular-only errors were `0.033558`, `0.010216`, `0.002851`.
+The [complete CSV](figures/fci_transport_nested_accuracy.csv) retains every
+error, residual, tracing check and timing; the
+[plot source](figures/plot_fci_transport_nested_accuracy.py) displays all rows.
+The original weak residual stays below `4.1e-10`, traced flux defect below
+`1.3e-10`, and endpoint step-doubling difference below `2.6e-10`.
+
+Bilinear interpolation preserves constants but not this nonlinear flux.
+Positive interpolation paths connect every free node to the anchored wall,
+even though the continuous interior field lines do not reach it. An independent
+graph check and singular-value rank check found a trivial free-node parallel
+kernel, so the fixed-mesh solution tends to zero as `epsilon` tends to zero.
+The responsible interpolation is in `src/operators/fci_interpolation_map.f90`
+(`build_fci_bilinear_interpolation_map_2d`) and its gradient use in
+`src/operators/fci_parallel_operator.f90`. This is a spatial locking result,
+not a Krylov failure or a conclusion about all FCI interpolation schemes.
+The failing acceptance executable is retired; its source and reproduction
+commands remain in [the recorded experiment](https://github.com/lazy-fortran/fortfem/commit/f282fda321db1c5d385ab8b733155976cc53cc7b).
+
+## Retired constraint-space and averaging routes
+
+Coarsening a multiplier space cannot by itself isolate flux functions:
+its kernel dimension is at least the temperature dimension minus the
+multiplier dimension. The [reduced-space CSV](figures/fci_transport_reduced_space.csv)
+records piecewise-constant and continuous-bilinear multipliers on a section
+grid with twice the temperature spacing, at 21, 41 and 81 section cells.
+At 81 cells the temperature space has dimension 12800, but the two kernels
+have dimensions 9600 and 9438, against a radial-resolution proxy of only 40
+bins. Projected odd-plane checkerboards retain 98.91% and 98.51% of their
+norm. The proxy is not an exact flux-space dimension. This generic reduction
+route is retired; its code is retained by
+[git history](https://github.com/lazy-fortran/fortfem/commit/f07c254d38f41f2c00e2dc84285e42f9d68a63c1).
+
+An explicit field-line-average projector was also stopped before
+implementation. A small parallel defect of its proposed range does not yield
+an epsilon-uniform consistency estimate without controlling the parallel flux
+multiplier and the complement. The energy estimate alone permits multiplier
+growth proportional to `epsilon^(-1/2)`. Smooth resonant shear need not give
+a uniformly bounded multiplier, and irrational field lines on a torus need
+not give a positive parallel spectral gap. Thus neither accurate averaging
+nor kernel identification alone proves the proposed projected penalty accurate.
+The [analytical preflight](https://github.com/lazy-fortran/fortfem/blob/6e6c6aeb71639ff3f2db812b2c1db653eeb0367e/doc/design/fci_transport_solver.md#explicit-averaging-analytical-preflight)
+contains the counterexamples and the checked literature locations. No averaging
+operator or modified transport discretization was implemented.
+
+## Dense algebraic oracle
+
+The kernel/complement oracle remains only in `test/fci_transport_reference.f90`,
+linked into its independent algebraic tests, never the installed library.
+It eliminates prescribed values and uses a mass-weighted singular value
+decomposition of the support gradient to split kernel and complement before
+scaling the weak equations. Rank is numerical, not certified; weak nonzero
+modes below the rank threshold may be classified as kernel. Setup and solves
+are dense, and storage is quadratic. This is not a scalable production solver
+or an implementation of a published finite-element multiplier system.
+
+Periodic and mixed closed/open line fixtures use independent Fourier
+eigenvalues. The latter includes plate values 2 and 5. The
+[accuracy CSV](figures/fci_transport_reference_accuracy.csv) and
+[plot source](figures/plot_fci_transport_reference_accuracy.py) retain all
+48 zero-mass-shift rows over `epsilon=1e-6` through `1e-13`. Maximum relative
+mass errors are `1.035e-13` (periodic) and `4.232e-15` (mixed), below the
+`2e-11` gate. Shifted and rescaled equations, nonuniform interpolation weights,
+rank rejection and invalid inputs are also tested. These algebraic fixtures
+do not establish spatial convergence on non-aligned magnetic surfaces.
+At `epsilon=1e-13`, assembled sparse solves of the separate cost fixtures
+had relative errors `0.24` to `1.45`, while the split oracle stayed below
+`4.506e-14`. Their timings compare different work and accuracy, not a practical
+solver crossover; the detailed historical table is in the
+[recorded oracle experiment](https://github.com/lazy-fortran/fortfem/blob/6e6c6aeb71639ff3f2db812b2c1db653eeb0367e/doc/design/fci_transport_solver.md#measured-accuracy-and-cost).
+
+## Consequence for temperature transport
+
+The tested two-dimensional Günter symmetric and FCI stencils show anisotropy-independent sampled resolution requirements for the
+manufactured load. High-order H1 controls the same error at modest resolution;
+degree four is the KIN6D temperature choice. Its small but measurable resolution
+increase with anisotropy remains in the table, so a strict uniform-error theorem
+is not claimed. The three-dimensional bilinear plane operator locks on the
+non-aligned nested fixture. No solver from this branch is promoted to
+production, and island, plate, single-null and general three-dimensional
+accuracy and preconditioner gates remain unqualified.
+
 ## Figure report on quadrilaterals
 
 The existing reconstruction already uses quadrilaterals. The source, square,
@@ -431,32 +512,39 @@ The plot has normalized units and no smoothed or discarded data.
 
 ```sh
 export PKG_CONFIG_PATH=/opt/homebrew/opt/openblas/lib/pkgconfig
-cmake -S . -B build/u3g -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
-cmake --build build/u3g -j 8 --target test_fci_transport_pollution
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_isotropic_gate$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_parallel_gate$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_scaling_p1$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_figure_report$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_sparse_gate$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(cost_|circle_)' -V
-python3 doc/design/figures/plot_fci_transport_cost.py --build-dir build/u3g --data /tmp/fci_transport_pollution_cost.csv --output /tmp/sovinec-cost.png --circle-output /tmp/circle-cost.png --summary-output /tmp/pollution-cost-summary.csv
-python3 doc/design/figures/plot_fci_transport_pollution.py --output /tmp/transport-pollution.png --fit-output /tmp/transport-pollution-fits.csv
+cmake -S . -B build/transport -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran \
+  -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS \
+  -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
+cmake --build build/transport -j 8
+ctest --test-dir build/transport -j 8 -L '^fci$' -LE benchmark --output-on-failure
+ctest --test-dir build/transport -j 8 -L '^fci$' --output-on-failure
+ctest --test-dir build/transport -j 8 -L '^fast$' --output-on-failure
 ```
 
-CTest runs with one OpenMP thread and one OpenBLAS thread per case; the native
-build uses eight jobs. Timings in the CSV are diagnostics on shared faepmac1
-with gfortran 16.2, single-run measurements without uncertainty estimates.
-Direct cost ladders refine until `E <= 0.1` or the unknown cap. They retain
-the signed diagnostic,
-the isotropic baseline on each mesh, assembly time, and factorization plus
-solve time. No solver-tolerance adjustment or solver-method research is part
-of this comparison.
+The fast CTest selection (`-L '^fast$'`, or FCI with `-LE benchmark`) includes
+validation gates and one four-cell cost row for each of the six candidates.
+These rows check the original-matrix residual and report cost; they do not
+assert a pollution threshold. Full cost, scaling and refinement ladders carry
+the `benchmark` label and remain registered and runnable. Bare CTest includes
+benchmarks; use explicit labels to select the fast scope. The native fpm default
+runs the diagnostic program, not its command-line ladders.
 
-To reproduce the additional validation, after the build above:
+CTest sets one OpenMP and one OpenBLAS thread per FCI case; builds use eight
+jobs. The timing cases share a CTest resource lock. Retained CSV times are
+single measurements on shared faepmac1 with GNU Fortran 16.2, Release/OpenBLAS,
+without uncertainty estimates. Direct ladders stop at signed `E <= 0.1` or
+one million unknowns; validation refinements retain every row, including
+nonmonotone errors. No solver tolerance or residual gate is relaxed.
+
+Plot sources read the retained CSVs by default, and accept output paths outside
+the repository. For example:
 
 ```sh
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(candidate_parallel|manufactured_source|circle_interpolation)$' -V
-ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(refine_|cap_)' -V
-python3 doc/design/figures/plot_fci_transport_validation.py --build-dir build/u3g --data /tmp/fci_transport_pollution_validation.csv --output-dir /tmp/transport-validation --summary-output /tmp/fci_transport_pollution_thresholds.csv
+MPLBACKEND=Agg python3 doc/design/figures/plot_fci_transport_cost.py \
+  --output /tmp/sovinec-cost.png --circle-output /tmp/circle-cost.png \
+  --summary-output /tmp/pollution-cost-summary.csv
+MPLBACKEND=Agg python3 doc/design/figures/plot_fci_transport_validation.py \
+  --output-dir /tmp/transport-validation \
+  --summary-output /tmp/transport-thresholds.csv
 ```
