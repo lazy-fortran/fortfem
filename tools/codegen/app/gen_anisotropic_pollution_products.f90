@@ -10,7 +10,7 @@ program gen_anisotropic_pollution_products
     type(arena_t), target :: arena
     type(kernel_spec_t) :: spec
     type(expr_t) :: x, y, pi, u, source, vx, vy, r, one
-    type(expr_t) :: bx, by, dx, dy, v, gx, gy, hx, hy, w, q
+    type(expr_t) :: bx, by, dx, dy, v, gx, gy, hx, hy, w, q, numerical, exact
     character(:), allocatable :: code
     integer :: unit
 
@@ -61,6 +61,12 @@ program gen_anisotropic_pollution_products
     spec%outputs = [str('slow'), str('parallel'), str('load')]
     call emit('integrand', [w*(gx*hx + gy*hy), &
         w*(bx*gx + by*gy)*(bx*hx + by*hy), w*q*v])
+
+    numerical = sym(arena, 'numerical')
+    exact = sym(arena, 'exact')
+    spec%args = [str('numerical'), str('exact'), str('w')]
+    spec%outputs = [str('squared_error')]
+    call emit('error', [w*(numerical - exact)**2])
 
     open (newunit=unit, &
         file=generated_path('fortfem_anisotropic_pollution_products.f90'), &

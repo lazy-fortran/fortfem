@@ -20,18 +20,39 @@ foreach(test_source IN LISTS fci_test_sources)
     if(test_name STREQUAL "test_fci_transport_pollution")
         target_link_libraries(${test_name} PRIVATE fortfem_tensor_lines)
     endif()
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    if(test_name STREQUAL "test_fci_transport_pollution")
+        add_test(NAME ${test_name} COMMAND ${test_name} diagnostics
+            "${PROJECT_BINARY_DIR}/pollution_checks.csv")
+    else()
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endif()
     set_tests_properties(${test_name} PROPERTIES
         LABELS "fci" PROCESSORS 1
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
 
-add_test(NAME test_fci_transport_pollution_published_gate
+add_test(NAME test_fci_transport_pollution_figure_report
     COMMAND test_fci_transport_pollution paper
         "${PROJECT_BINARY_DIR}/pollution_published.csv")
-set_tests_properties(test_fci_transport_pollution_published_gate PROPERTIES
+set_tests_properties(test_fci_transport_pollution_figure_report PROPERTIES
+    LABELS "fci;benchmark" PROCESSORS 1
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_test(NAME test_fci_transport_pollution_isotropic_gate
+    COMMAND test_fci_transport_pollution isotropic
+        "${PROJECT_BINARY_DIR}/pollution_isotropic.csv")
+set_tests_properties(test_fci_transport_pollution_isotropic_gate PROPERTIES
     LABELS "fci;acceptance" PROCESSORS 1
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+foreach(degree RANGE 1 4)
+    add_test(NAME test_fci_transport_pollution_scaling_p${degree}
+        COMMAND test_fci_transport_pollution scaling ${degree}
+            "${PROJECT_BINARY_DIR}/pollution_scaling_p${degree}.csv")
+    set_tests_properties(test_fci_transport_pollution_scaling_p${degree} PROPERTIES
+        LABELS "fci;acceptance" PROCESSORS 1
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endforeach()
 
 add_test(NAME test_fci_transport_nested_accuracy_gate
     COMMAND test_fci_transport_nested gate)

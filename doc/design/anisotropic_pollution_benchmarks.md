@@ -4,22 +4,31 @@ title: Anisotropic transport pollution benchmarks
 
 # Anisotropic transport pollution benchmarks
 
-**Verified outcome:** the first literature-reproduction screen fails.
-No discretization is selected, and no candidate refinement or anisotropy
-ladder is qualified. The [accuracy target](fci_transport_solver.md#accepted-accuracy-target)
-is numerical perpendicular transport well below physical perpendicular
-transport at physical anisotropy, rather than epsilon-uniform accuracy for
-general loads on a fixed mesh.
+**Verified outcome:** isotropic assembly passes its convergence gate, but the
+first conforming pollution-scaling gate fails. The bilinear quadrilateral fit
+gives a mesh exponent of 1.502 rather than the required `2 +/- 0.3`.
+The candidate comparison stops here; no method is selected or qualified.
+The [accuracy target](fci_transport_solver.md#accepted-accuracy-target) is
+numerical perpendicular transport well below physical perpendicular transport
+at physical anisotropy, rather than epsilon-uniform accuracy for general loads
+on a fixed mesh.
 
 Here `T` is temperature, `Q` the heat source, `b` the unit field direction,
-`chi_par` and `chi_perp` the parallel and perpendicular diffusivities, and
-`h` the Cartesian element width. Coordinates and diffusivities below are
-normalized as in each source. For the Sovinec test, `chi_perp = 1`, so
-`|1/T(0,0)-1|` is the effective perpendicular diffusivity error. It includes
-perpendicular discretization error; it is not by itself an isolated measure
-of pollution from the parallel operator. A subsequent comparison must retain
-the isotropic baseline and report the signed difference of the effective
-diffusivities as well as the paper's absolute diagnostic.
+`chi_par` and `chi_perp` the parallel and perpendicular diffusivities, `p`
+the element degree, and `h` the Cartesian element width. Coordinates,
+temperatures and diffusivities below are normalized as in each source.
+Write `R = chi_par/chi_perp` for the anisotropy. For the Sovinec test,
+`chi_perp = 1`, and the reported paper diagnostic is `|1/T(0,0)-1|`.
+It includes perpendicular discretization error. The isolated, signed pollution
+measure used in the fit is instead
+
+`E = chi_perp,num/chi_perp = 1/T_R(0,0) - 1/T_1(0,0)`.
+
+Here `T_R` is the discrete solution at anisotropy `R`, and `T_1` its
+isotropic baseline on the same mesh. No absolute value is applied to this
+difference. A fit to `E = C R^b h^a` estimates the mesh exponent `a`,
+anisotropy exponent `b`, and constant `C`; all quantities in this law are
+dimensionless in the stated normalization.
 
 ## Checked literature
 
@@ -115,70 +124,136 @@ All errors are dimensionless. These tabulated profile errors are not
 `chi_perp,num/chi_perp`, since physical perpendicular diffusivity is zero.
 Published-version table numbering has not been checked.
 
-## Reproduction failure
+## Validation gates and first failure
 
-**Verified:** the test-side reconstruction uses continuous analytic
-`B = ez cross grad(T_exact)`, normalized at each quadrature point, rather
-than solving the driven magnetic problem. The field definition is in
-`tools/codegen/app/gen_anisotropic_pollution_products.f90:27`; its use is
-in `test/test_fci_transport_pollution.f90:79`. The source, square,
+The figure reading is a reported comparison only. Its interval is not a
+published uncertainty, and the prescribed analytic field is not the magnetic
+field evolved in NIMROD. Validation instead requires the theoretical/published
+pollution exponents within `+/- 0.3` over at least four mesh widths and four
+anisotropies in a pollution-dominated regime, plus isotropic L2 convergence
+of order `p+1` for every degree used. For naive conforming elements the
+required exponents are `a = 2p`, `b = 1`; the support-operator expectations
+and plane-spacing dependence are recorded above. None of these exponents
+or tolerances is fitted to the measurements.
+
+**Verified residual check:** for discrete matrix `A`, solution vector `t`,
+and load `f` after boundary elimination, every solve reports
+
+`eta = ||A t - f||_inf / (||A||_inf ||t||_inf + ||f||_inf)`.
+
+The matrix norm is the induced infinity norm, the maximum absolute row sum;
+vector norms are maximum absolute values. The limit is `1e3 * epsilon`,
+where `epsilon` is double-precision machine epsilon, approximately
+`2.220446e-13` after multiplication by `1e3`. Residuals use the unfactored
+matrix. An exact two-by-two oracle and equation rescaling independently
+check this normalization. The six symmetric sine-eigenmode checks pass;
+at 16 cells and `R = 1e6`, `eta = 8.24625e-17`. This replaces the former
+load-normalized residual, whose anisotropy dependence made its fixed limit
+inappropriate. It changes the stated error measure, not its tolerance to
+the same quantity.
+
+**Verified isotropic convergence:** continuous tensor-product quadrilaterals
+use the native GLL (Gauss-Lobatto-Legendre) nodal basis and `p+1` Gauss points
+per direction for assembly. The L2 norm is integrated independently with
+`p+4` points per direction against the analytic cosine-cosine solution.
+All four meshes, with 2, 4, 8 and 16 elements per direction, are retained
+in the [isotropic CSV](figures/fci_transport_pollution_isotropic.csv).
+Both of the last two refinement rates must be within `0.3` of `p+1`.
+
+| degree p | required L2 order | last measured order | result |
+|---|---:|---:|---|
+| 1 | 2 | 1.997795 | pass |
+| 2 | 3 | 2.994973 | pass |
+| 3 | 4 | 3.996267 | pass |
+| 4 | 5 | 4.997632 | pass |
+
+**Verified first failing gate:** conforming bilinear quadrilaterals on the
+Sovinec thermal problem, with prescribed analytic
+`B = ez cross grad(T_exact)` normalized at each quadrature point, are
+measured at `h = 1/8, 1/16, 1/32, 1/64` and `R = 1e7, 1e8, 1e9, 1e10`.
+The field is not aligned with the Cartesian mesh. At every point the signed
+pollution exceeds ten times the absolute isotropic effective-diffusivity
+error and is resolved above the subtraction-roundoff check. All original
+normwise residuals pass; the maximum is `1.916e-16`.
+
+A least-squares fit of all 16 logarithmic measurements, without filtering,
+gives the following coefficients. An independent NumPy least-squares solve
+in the plotting script reproduces the Fortran regression.
+The logarithmic root-mean-square fit residual is `0.5685`, so the failed
+power law is not used for extrapolation.
+
+| method / problem | a | b | C | unknowns for E <= 0.1 at R=1e10 |
+|---|---:|---:|---:|---|
+| H1 p=1 quads / Sovinec, failed validation fit | 1.501624 | 0.841869 | 0.04538546 | unavailable: scaling gate fails |
+| H1 p=2--4 / either problem | not measured | not measured | not measured | unavailable |
+| bilinear FCI / either problem | not measured | not measured | not measured | unavailable |
+| higher-order FCI / either problem | not measured | not measured | not measured | unavailable |
+| Guenter symmetric / either problem | not measured | not measured | not measured | unavailable |
+
+Here H1 denotes the continuous finite-element space with square-integrable
+first derivatives, and FCI denotes flux-coordinate-independent interpolation.
+For fixed `R` in increasing order, the fitted mesh exponents are
+`0.580073, 1.412033, 1.946508, 2.067881`. For the four meshes in increasing
+resolution, the anisotropy exponents are
+`0.998922, 0.982561, 0.841581, 0.544410`. Thus even the aggregate mesh
+exponent is outside `[1.7, 2.3]`, and the per-anisotropy gate fails as well.
+
+The failure is enforced at
+`test/test_fci_transport_pollution.f90:239`; the signed diagnostic is
+formed at line 213. The prescribed field comes from
+`tools/codegen/app/gen_anisotropic_pollution_products.f90:27` and is used
+by the quadrature assembly in that test. This identifies the failing
+observable and exercised discretization, not a proved code defect.
+Origin/main contains no corresponding pollution test or existing fix.
+**Hypothesis:** the chosen parameter window mixes distinct response regimes;
+the variation of marginal exponents is consistent with this explanation,
+but it does not prove it. Field normalization, quadrature effects and
+anisotropic solution-shape changes have not been isolated. The isotropic
+order check alone does not establish anisotropic consistency.
+
+No higher-degree pollution gate, Stegmeir support-operator gate, Guenter
+circular problem, four-candidate ladder, or solver work follows this failure.
+The symmetric scheme has only its retained sine oracle; no circular result
+is implied. No valid unknown count at `R = 1e10` or matched-accuracy cost
+comparison is established.
+
+## Figure report on quadrilaterals
+
+The existing reconstruction already uses quadrilaterals. The source, square,
 temperature boundary, conforming bilinear space and four-point quadrature
-match the stated thermal problem. Matching those ingredients does not
-establish equivalence to the paper's discrete magnetic field.
+match the stated thermal setup. The analytic field does not establish
+equivalence to the paper's discrete magnetic field.
 
-| case | free unknowns | central T | effective error | original weak residual |
-|---|---:|---:|---:|---:|
-| prescribed analytic field, bilinear, h=1/8, ratio=1e3 | 49 | 0.2378644074 | 3.204075806 | 1.3970e-13 |
-| Sovinec manuscript Fig. 9, same h and ratio | — | — | approximately 6; reading interval [5,7] | — |
+| case, h=1/8 and R=1e3 | free unknowns | central T | paper diagnostic |
+|---|---:|---:|---:|
+| prescribed analytic field, bilinear quads | 49 | 0.2378644074 | 3.204075806 |
+| Sovinec manuscript Fig. 9 | -- | -- | about 6; reading [5,7] |
 
-**Hypothesis:** the different magnetic representation contributes to the
-discrepancy. No experiment isolates that contribution, and the result is
-not a demonstrated defect in FortFEM's tensor basis or FCI operator.
-Origin/main has no corresponding pollution-reproduction test; its FCI map
-and parallel operator are unchanged on this branch.
-
-**Verified independent check and limitation:** the symmetric-stencil sine
-problem has central value
-`[pi*h/(2*sin(pi*h/2))]^2`, independent of anisotropy in exact arithmetic.
-All six forward-value checks pass. At 16 cells and ratio `1e6`, however,
-the double-precision band solve's original residual is `2.3934e-9`, failing
-the unchanged `1e-9` check. The residual is recomputed from the unfactored
-band matrix in `test/test_fci_transport_pollution.f90:250`.
-Roundoff amplified by anisotropy is a hypothesis, not an established cause.
-This failure is retained as well. No threshold was relaxed.
-
-| requested candidate | available foundation | qualified measurements |
-|---|---|---|
-| bilinear FCI | native 2D bilinear maps and support gradient | none |
-| higher-order FCI | native cubic 1D maps; no native bicubic 2D builder found | none |
-| conforming H1, p=1–4 | arbitrary-degree GLL line tables, Gauss quadrature | first p=1 reconstruction fails reproduction |
-| Günter symmetric | test-side cell-centred stencil | sine oracle only; circular benchmark not run |
-
-There is no measured pollution exponent, cost comparison at accepted
-accuracy, or unknown count satisfying the ratio-`1e10` selection criterion.
-No Krylov or option-B implementation was attempted.
+This row is retained without a pass/fail comparison to the figure reading.
 
 ## Reproduction
 
-The [reproduction row](figures/fci_transport_pollution_published.csv),
-[sine-oracle residuals](figures/fci_transport_pollution_checks.csv) and
-[plot source](figures/plot_fci_transport_pollution.py) retain the failed
-checks without filtering. The plot labels every quantity as dimensionless.
-The graphical interval is intentionally a conservative rejection screen;
-even agreement would not by itself validate the full harness to an accuracy
-that the source does not state.
+The [figure row](figures/fci_transport_pollution_published.csv),
+[sine residuals](figures/fci_transport_pollution_checks.csv),
+[isotropic errors](figures/fci_transport_pollution_isotropic.csv),
+[failed scaling rows](figures/fci_transport_pollution_scaling_p1.csv),
+[independent fit](figures/fci_transport_pollution_fits.csv), and
+[plot source](figures/plot_fci_transport_pollution.py) retain all measured rows.
+The plot has normalized units and no smoothed or discarded data.
 
 ```sh
-cmake -S . -B build/u3e -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
-cmake --build build/u3e -j 8 --target test_fci_transport_pollution
-ctest --test-dir build/u3e -j 8 -R '^test_fci_transport_pollution(_published_gate)?$' -V
-python3 doc/design/figures/plot_fci_transport_pollution.py --output /tmp/transport-pollution.png
+cmake -S . -B build/u3f -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=/opt/homebrew/bin/gfortran -DFORTFEM_BUILD_TESTING=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/openblas
+cmake --build build/u3f -j 8 --target test_fci_transport_pollution
+ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution$' -V
+ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_isotropic_gate$' -V
+ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_scaling_p1$' -V
+# Stop here: the scaling command fails. The figure report is not a validation gate.
+ctest --test-dir build/u3f -j 8 -R '^test_fci_transport_pollution_figure_report$' -V
+python3 doc/design/figures/plot_fci_transport_pollution.py --output /tmp/transport-pollution.png --fit-output /tmp/transport-pollution-fits.csv
 ```
 
-The two registered tests fail as described above. The new fixtures use only
-analytic data. Timings in the CSV are diagnostic: on shared faepmac1 with
-gfortran 16.2 and one BLAS thread the 49-unknown setup took 45 microseconds
-and factorization/solve 16 microseconds, or 0.327 microseconds per unknown.
-These are not matched-accuracy performance evidence. The next step is to
-reconcile the published discretized field and thermal operator, then repeat
-this reproduction gate before attempting any candidate ladder.
+CTest runs with one OpenMP thread and one OpenBLAS thread per case; the native
+build uses eight jobs. Timings in the CSV are diagnostics on shared faepmac1
+with gfortran 16.2, not matched-accuracy performance evidence. The next step
+is to explain the missing common scaling regime or repair a demonstrated
+anisotropic discretization defect before restarting the unchanged gates.
