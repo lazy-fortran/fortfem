@@ -5,6 +5,8 @@ program test_fci_transport_pollution
     use fortfem_tensor_line_tables, only: tensor_line_tables_t
     use fortfem_generated_pollution_sovinec, only: pollution_sovinec
     use fortfem_generated_pollution_circle, only: pollution_circle
+    use fortfem_generated_pollution_manufactured, only: pollution_manufactured
+    use fortfem_generated_pollution_directional, only: pollution_directional
     use fortfem_generated_pollution_basis, only: pollution_basis
     use fortfem_generated_pollution_integrand, only: pollution_integrand
     use fortfem_generated_pollution_error, only: pollution_error
@@ -43,7 +45,18 @@ program test_fci_transport_pollution
 
     pi = acos(-1.0_dp)
     call get_command_argument(1, mode)
-    if (trim(mode) == 'sparse') then
+    if (trim(mode) == 'parallel_candidates') then
+        call get_command_argument(2, output)
+        call candidate_parallel_gate(trim(output))
+    else if (trim(mode) == 'circle_interpolation') then
+        call circle_interpolation_gate()
+    else if (trim(mode) == 'manufactured_source') then
+        call manufactured_source_gate()
+    else if (trim(mode) == 'refine_cap') then
+        call validation_ladder(.true.)
+    else if (trim(mode) == 'refine') then
+        call validation_ladder()
+    else if (trim(mode) == 'sparse') then
         call sparse_oracle()
     else if (trim(mode) == 'cost') then
         call cost_ladder()
@@ -240,11 +253,16 @@ contains
         integer, intent(in) :: p, ne
         real(dp), intent(in) :: solution(:)
         real(dp) :: error, numerical, exact, source, bx, by, term, coefficient
+        real(dp), allocatable :: nodes(:), weights(:)
+        real(dp) :: x, y, h
         type(tensor_line_tables_t) :: line
         integer :: status, n, ex, ey, ix, iy, qx, qy, gi, gj
         ! Independent overintegration measures between-node error as well.
         call build_gll_line(p, ne, line, status, nq=p + 4, x0=-0.5_dp, x1=0.5_dp)
         if (status /= 0) error stop 'error quadrature failed'
+        call gll_rule(p, nodes, weights, status)
+        if (status /= 0) error stop 'error boundary nodes failed'
+        h = 1.0_dp/real(ne, dp)
         n = p*ne - 1
         error = 0.0_dp
         do ey = 1, ne
@@ -256,10 +274,16 @@ contains
                             gj = (ey - 1)*p + iy - 1
                             do ix = 1, p + 1
                                 gi = (ex - 1)*p + ix - 1
-                                coefficient = 0.0_dp
                                 if (gi > 0 .and. gi <= n .and. &
-                                    gj > 0 .and. gj <= n) &
+                                    gj > 0 .and. gj <= n) then
                                     coefficient = solution((gj - 1)*n + gi)
+                                else
+                                    x = -0.5_dp + (real(ex - 1, dp) + &
+                                        0.5_dp*(nodes(ix) + 1.0_dp))*h
+                                    y = -0.5_dp + (real(ey - 1, dp) + &
+                                        0.5_dp*(nodes(iy) + 1.0_dp))*h
+                                    call benchmark(name, x, y, coefficient, source, bx, by)
+                                end if
                                 numerical = numerical + coefficient* &
                                     line%b(qx, ix, ex)*line%b(qy, iy, ey)
                             end do
@@ -344,12 +368,17 @@ contains
         value = sum((x - mx)*(y - my))/sum((x - mx)**2)
     end function
 
-    pure subroutine benchmark(name, x, y, value, source, bx, by)
+    pure subroutine benchmark(name, x, y, value, source, bx, by, chi)
         character(*), intent(in) :: name
         real(dp), intent(in) :: x, y
         real(dp), intent(out) :: value, source, bx, by
-        real(dp) :: vx, vy, norm
-        if (name == 'sovinec') then
+        real(dp), intent(in), optional :: chi
+        real(dp) :: vx, vy, norm, ratio
+        ratio = 1.0_dp
+        if (present(chi)) ratio = chi
+        if (name == 'manufactured') then
+            call pollution_manufactured(x, y, pi, ratio, value, source, vx, vy)
+        else if (name == 'sovinec') then
             call pollution_sovinec(x, y, pi, value, source, vx, vy)
         else
             call pollution_circle(x, y, value, source, vx, vy)
@@ -363,19 +392,19 @@ contains
         end if
     end subroutine
 
-    subroutine assemble_fixture(name, method, p, ne, data, sparse)
+    subroutine assemble_fixture(name, method, p, ne, data, sparse, chi)
         character(*), intent(in) :: name, method
         integer, intent(in) :: p, ne
         type(fixture_t), intent(out) :: data
         logical, intent(in), optional :: sparse
+        real(dp), intent(in), optional :: chi
         type(tensor_line_tables_t) :: line
         real(dp), allocatable :: v(:), gx(:), gy(:), boundary(:), nodes(:), weights(:)
         integer, allocatable :: ids(:)
         integer :: n, nd, bw, ex, ey, ix, iy, qx, qy, a, b, gi, gj, status
         integer(int64) :: start, finish, rate
         real(dp) :: value, source, bx, by, slow, parallel, load, weight, h, x, y
-        real(dp) :: endpoints(2, 2), points(2), maps(2, 4), gridx(2), gridy(2), q(4)
-        type(fortsparse_status_t) :: trace_status
+        real(dp) :: q(4)
         call system_clock(start, rate)
         n = p*ne - 1
         nd = n*n
@@ -439,28 +468,9 @@ contains
                             y = line%xq(qy, ey)
                             weight = line%wq(qx, ex)*line%wq(qy, ey)
                         end if
-                        call benchmark(name, x, y, value, source, bx, by)
-                        if (method == 'fci') then
-                            points = [x, y]
-                            call trace_fci_field_line_rk4(points, 0.5_dp*h, 64, &
-                                pollution_rhs, endpoints(:, 1), trace_status)
-                            if (trace_status%code /= 0) &
-                                call gate(.false., 'FCI forward trace')
-                            call trace_fci_field_line_rk4(points, -0.5_dp*h, 64, &
-                                pollution_rhs, endpoints(:, 2), trace_status)
-                            if (trace_status%code /= 0) &
-                                call gate(.false., 'FCI backward trace')
-                            gridx = [x - 0.5_dp*h, x + 0.5_dp*h]
-                            gridy = [y - 0.5_dp*h, y + 0.5_dp*h]
-                            call build_fci_bilinear_interpolation_map_2d(gridx, gridy, &
-                                endpoints(1, :), endpoints(2, :), maps, trace_status)
-                            if (trace_status%code /= 0) &
-                                call gate(.false., 'FCI endpoint map')
-                            do a = 1, 4
-                                call generated_fci_parallel_gradient(maps(1, a), &
-                                    1.0_dp, maps(2, a), 1.0_dp, h, q(a))
-                            end do
-                        end if
+                        call benchmark(name, x, y, value, source, bx, by, chi)
+                        if (method /= 'h1') &
+                            call parallel_stencil(name, method, x, y, h, q)
                         a = 0
                         do iy = 1, p + 1
                             do ix = 1, p + 1
@@ -483,7 +493,7 @@ contains
                                     gy(b), bx, by, weight, source, v(a), &
                                     slow, parallel, load)
                                 if (method /= 'h1') slow = 0.0_dp
-                                if (method == 'fci') then
+                                if (method /= 'h1') then
                                     call pollution_integrand(q(a), 0.0_dp, q(b), &
                                         0.0_dp, 1.0_dp, 0.0_dp, weight, 0.0_dp, &
                                         0.0_dp, slow, parallel, load)
@@ -512,7 +522,7 @@ contains
                     a = (gj - 1)*n + gi
                     x = -0.5_dp + real(gi, dp)*h
                     y = -0.5_dp + real(gj, dp)*h
-                    call benchmark(name, x, y, value, source, bx, by)
+                    call benchmark(name, x, y, value, source, bx, by, chi)
                     data%load(a) = h*h*source
                     call add_entry(data, a, a, 4.0_dp, 0.0_dp)
                     if (gi < n) call add_entry(data, a + 1, a, -1.0_dp, 0.0_dp)
@@ -534,6 +544,258 @@ contains
         end if
         call system_clock(finish)
         data%setup_seconds = real(finish - start, dp)/real(rate, dp)
+    end subroutine
+
+    subroutine parallel_stencil(name, method, x, y, h, q)
+        character(*), intent(in) :: name, method
+        real(dp), intent(in) :: x, y, h
+        real(dp), intent(out) :: q(4)
+        real(dp) :: endpoints(2, 2), maps(2, 4), gridx(2), gridy(2), points(2)
+        real(dp) :: value, source, bx, by, v, gx, gy
+        type(fortsparse_status_t) :: status
+        integer :: a, ix, iy
+        if (method == 'fci') then
+            trace_benchmark = name
+            if (name == 'manufactured') trace_benchmark = 'sovinec'
+            points(1) = x
+            points(2) = y
+            call trace_fci_field_line_rk4(points, 0.5_dp*h, 64, &
+                pollution_rhs, endpoints(:, 1), status)
+            if (status%code /= 0) call gate(.false., 'FCI forward trace')
+            call trace_fci_field_line_rk4(points, -0.5_dp*h, 64, &
+                pollution_rhs, endpoints(:, 2), status)
+            if (status%code /= 0) call gate(.false., 'FCI backward trace')
+            gridx = [x - 0.5_dp*h, x + 0.5_dp*h]
+            gridy = [y - 0.5_dp*h, y + 0.5_dp*h]
+            call build_fci_bilinear_interpolation_map_2d(gridx, gridy, &
+                endpoints(1, :), endpoints(2, :), maps, status)
+            if (status%code /= 0) call gate(.false., 'FCI endpoint map')
+            do a = 1, 4
+                call generated_fci_parallel_gradient(maps(1, a), &
+                    1.0_dp, maps(2, a), 1.0_dp, h, q(a))
+            end do
+        else
+            call benchmark(name, x, y, value, source, bx, by)
+            a = 0
+            do iy = 1, 2
+                do ix = 1, 2
+                    a = a + 1
+                    call pollution_basis(0.5_dp, 0.5_dp, &
+                        real(2*ix - 3, dp)/h, real(2*iy - 3, dp)/h, v, gx, gy)
+                    call pollution_directional(bx, by, gx, gy, q(a))
+                end do
+            end do
+        end if
+    end subroutine
+
+    subroutine candidate_parallel_gate(path)
+        character(*), intent(in) :: path
+        character(9), parameter :: methods(2) = ['fci      ', 'symmetric']
+        real(dp) :: h, x, y, xx, yy, q(4), numerical, exact, error, previous
+        real(dp) :: rate, value, source, bx, by, term
+        integer :: out, method, level, ne, ex, ey, ix, iy, a
+        open (newunit=out, file=path, status='replace')
+        write (out, '(a)') 'method,cells,l2_parallel_error,rate'
+        do method = 1, 2
+            previous = 0.0_dp
+            do level = 2, 8
+                ne = 2**level
+                h = 1.0_dp/real(ne, dp)
+                error = 0.0_dp
+                do ey = 1, ne
+                    y = -0.5_dp + (real(ey, dp) - 0.5_dp)*h
+                    do ex = 1, ne
+                        x = -0.5_dp + (real(ex, dp) - 0.5_dp)*h
+                        call parallel_stencil('sovinec', trim(methods(method)), &
+                            x, y, h, q)
+                        numerical = 0.0_dp
+                        a = 0
+                        do iy = 1, 2
+                            yy = y + 0.5_dp*real(2*iy - 3, dp)*h
+                            do ix = 1, 2
+                                xx = x + 0.5_dp*real(2*ix - 3, dp)*h
+                                a = a + 1
+                                numerical = numerical + q(a)*exp(xx + 2.0_dp*yy)
+                            end do
+                        end do
+                        call benchmark('sovinec', x, y, value, source, bx, by)
+                        exact = (bx + 2.0_dp*by)*exp(x + 2.0_dp*y)
+                        call pollution_error(numerical, exact, h*h, term)
+                        error = error + term
+                    end do
+                end do
+                error = sqrt(error)
+                rate = 0.0_dp
+                if (level > 2) rate = log(previous/error)/log(2.0_dp)
+                write (out, '(a,",",i0,2(",",es24.16))') &
+                    trim(methods(method)), ne, error, rate
+                flush (out)
+                write (*, '(a,1x,i0,2(1x,es14.6))') &
+                    trim(methods(method)), ne, error, rate
+                if (level >= 7) then
+                    if (method == 1) then
+                        ! The normalized field is singular at the axis.
+                        call gate(rate >= 0.7_dp, 'FCI global parallel consistency')
+                    else
+                        call gate(abs(rate - 2.0_dp) <= 0.3_dp, &
+                            'symmetric parallel gradient second order')
+                    end if
+                end if
+                if (level == 8) call gate(error < 0.01_dp, &
+                    'parallel gradient agrees with nonzero analytic derivative')
+                previous = error
+            end do
+        end do
+        close (out)
+    end subroutine
+
+    pure function independent_temperature(x, y) result(value)
+        real(dp), intent(in) :: x, y
+        real(dp) :: value, psi, s
+        psi = cos(pi*x)*cos(pi*y)
+        s = (cos(pi*x)*sin(pi*y))**2 + (sin(pi*x)*cos(pi*y))**2
+        value = psi*(1.0_dp + 4.0_dp*x*s*s)
+    end function
+
+    pure subroutine independent_flux(x, y, chi, flux)
+        real(dp), intent(in) :: x, y, chi
+        real(dp), intent(out) :: flux(2)
+        real(dp), parameter :: step = 0.001_dp
+        real(dp) :: gradient(2), b(2)
+        gradient(1) = (independent_temperature(x - 2*step, y) - &
+            8*independent_temperature(x - step, y) + &
+            8*independent_temperature(x + step, y) - &
+            independent_temperature(x + 2*step, y))/(12*step)
+        gradient(2) = (independent_temperature(x, y - 2*step) - &
+            8*independent_temperature(x, y - step) + &
+            8*independent_temperature(x, y + step) - &
+            independent_temperature(x, y + 2*step))/(12*step)
+        b(1) = cos(pi*x)*sin(pi*y)
+        b(2) = -sin(pi*x)*cos(pi*y)
+        b = b/sqrt(sum(b*b))
+        flux = gradient + (chi - 1)*b*dot_product(b, gradient)
+    end subroutine
+
+    subroutine manufactured_source_gate()
+        real(dp), parameter :: points(2, 3) = reshape( &
+            [0.13_dp, 0.21_dp, -0.23_dp, 0.17_dp, 0.31_dp, -0.11_dp], [2, 3])
+        real(dp), parameter :: step = 0.001_dp
+        real(dp) :: chi, x, y, value, source, bx, by, fp(2), fm(2), fpp(2), fmm(2)
+        real(dp) :: oracle, derivative(2)
+        integer :: point, power
+        do power = 6, 10, 2
+            chi = 10.0_dp**power
+            do point = 1, 3
+                x = points(1, point)
+                y = points(2, point)
+                call benchmark('manufactured', x, y, value, source, bx, by, chi)
+                call gate(abs(value - independent_temperature(x, y)) < 1.0e-14_dp, &
+                    'manufactured exact temperature independent formula')
+                call independent_flux(x + step, y, chi, fp)
+                call independent_flux(x - step, y, chi, fm)
+                call independent_flux(x + 2*step, y, chi, fpp)
+                call independent_flux(x - 2*step, y, chi, fmm)
+                derivative(1) = (-fpp(1) + 8*fp(1) - 8*fm(1) + fmm(1))/(12*step)
+                call independent_flux(x, y + step, chi, fp)
+                call independent_flux(x, y - step, chi, fm)
+                call independent_flux(x, y + 2*step, chi, fpp)
+                call independent_flux(x, y - 2*step, chi, fmm)
+                derivative(2) = (-fpp(2) + 8*fp(2) - 8*fm(2) + fmm(2))/(12*step)
+                oracle = -sum(derivative)
+                write (*, '(a,i0,3(1x,es18.10))') 'manufactured source R power=', &
+                    power, source/chi, oracle/chi, abs(source - oracle)/chi
+                call gate(abs(source - oracle)/chi < 2.0e-6_dp, &
+                    'FortSym source against independent fourth-order differences')
+                call gate(abs(source/chi) > 0.01_dp, &
+                    'manufactured source has nonzero parallel structure')
+            end do
+        end do
+        call benchmark('manufactured', 0.0_dp, 0.0_dp, value, source, bx, by, chi)
+        call gate(abs(value - 1.0_dp) < 1.0e-14_dp, 'manufactured axis temperature')
+        call gate(abs(source - 2*pi*pi) < 1.0e-12_dp, 'manufactured axis source')
+    end subroutine
+
+    subroutine circle_interpolation_gate()
+        real(dp), allocatable :: solution(:)
+        real(dp) :: x, y, error, previous, rate
+        integer :: ne, level, ix, iy, n
+        previous = 0.0_dp
+        do level = 3, 5
+            ne = 2**level
+            n = ne - 1
+            allocate (solution(n*n))
+            do iy = 1, n
+                y = -0.5_dp + real(iy, dp)/real(ne, dp)
+                do ix = 1, n
+                    x = -0.5_dp + real(ix, dp)/real(ne, dp)
+                    solution((iy - 1)*n + ix) = 1.0_dp - (x*x + y*y)**1.5_dp
+                end do
+            end do
+            error = l2_error('circle', 1, ne, solution)
+            if (level > 3) then
+                rate = log(previous/error)/log(2.0_dp)
+                write (*, '(a,i0,2(1x,es14.6))') 'circle interpolation ', ne, error, rate
+                call gate(abs(rate - 2.0_dp) <= 0.3_dp, &
+                    'nonzero-boundary circle interpolant L2 second order')
+            end if
+            previous = error
+            deallocate (solution)
+        end do
+    end subroutine
+
+    subroutine validation_ladder(continue_to_cap)
+        logical, intent(in), optional :: continue_to_cap
+        type(fixture_t) :: data
+        character(4096) :: name, method, argument, path
+        real(dp), allocatable :: solution(:)
+        real(dp) :: c, e, r, s, baseline, baseline_s, chi, signed_error, l2, centre_error
+        integer :: p, ne, out, power, last
+        call get_command_argument(2, name)
+        call get_command_argument(3, method)
+        call get_command_argument(4, argument)
+        read (argument, *) p
+        call get_command_argument(5, argument)
+        read (argument, *) power
+        chi = 10.0_dp**power
+        call get_command_argument(6, path)
+        open (newunit=out, file=trim(path), status='replace')
+        write (out, '(a)') 'benchmark,method,p,cells,unknowns,chi_ratio,'// &
+            'signed_pollution,l2_error,centre_error,residual,setup_s,solve_s'
+        ne = 4
+        last = min(256, 1001/p)
+        if (present(continue_to_cap)) then
+            if (continue_to_cap) then
+                ne = min(512, 1001/p)
+                last = 1001/p
+            end if
+        end if
+        do
+            call assemble_fixture(trim(name), trim(method), p, ne, data, .true., chi)
+            if (name /= 'manufactured') then
+                call solve_fixture(data, 1.0_dp, c, e, r, baseline_s)
+                baseline = 1.0_dp/c
+                call gate(r <= residual_limit, 'refined baseline normwise residual')
+            end if
+            call solve_fixture(data, chi, c, e, r, s, solution)
+            call gate(r <= residual_limit, 'refined anisotropic normwise residual')
+            l2 = l2_error(trim(name), p, ne, solution)
+            centre_error = abs(c - 1.0_dp)
+            write (out, '(a,",",a,3(",",i0),",",es24.16,",")', advance='no') &
+                trim(name), trim(method), p, ne, size(data%load), chi
+            if (name == 'manufactured') then
+                write (out, '(a)', advance='no') 'not applicable'
+            else
+                signed_error = 1.0_dp/c - baseline
+                write (out, '(es24.16)', advance='no') signed_error
+            end if
+            write (out, '(5(",",es24.16))') l2, centre_error, r, data%setup_seconds, s
+            flush (out)
+            write (*, '(a,1x,a,2(1x,i0),4(1x,es14.6))') trim(name), trim(method), &
+                p, ne, chi, l2, centre_error, r
+            if (ne == last) exit
+            ne = min(2*ne, last)
+        end do
+        close (out)
     end subroutine
 
     pure subroutine pollution_rhs(parameter, point, derivative)

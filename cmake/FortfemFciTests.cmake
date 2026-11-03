@@ -119,3 +119,60 @@ foreach(method IN ITEMS symmetric fci)
             ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
     endforeach()
 endforeach()
+
+add_test(NAME test_fci_transport_pollution_candidate_parallel
+    COMMAND test_fci_transport_pollution parallel_candidates
+        "${PROJECT_BINARY_DIR}/pollution_candidate_parallel.csv")
+add_test(NAME test_fci_transport_pollution_manufactured_source
+    COMMAND test_fci_transport_pollution manufactured_source)
+set_tests_properties(test_fci_transport_pollution_candidate_parallel
+    test_fci_transport_pollution_manufactured_source PROPERTIES
+    LABELS "fci;acceptance" PROCESSORS 1
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+foreach(problem IN ITEMS sovinec circle manufactured)
+    foreach(method IN ITEMS h1 fci symmetric)
+        if(NOT problem STREQUAL "manufactured" AND method STREQUAL "h1")
+            continue()
+        endif()
+        set(degrees 1)
+        if(method STREQUAL "h1")
+            set(degrees 1 2 3 4)
+        endif()
+        foreach(degree IN LISTS degrees)
+            foreach(power IN ITEMS 6 8 10)
+                set(name test_fci_transport_pollution_refine_${problem}_${method}_p${degree}_r${power})
+                add_test(NAME ${name} COMMAND test_fci_transport_pollution refine
+                    ${problem} ${method} ${degree} ${power}
+                    "${PROJECT_BINARY_DIR}/pollution_refine_${problem}_${method}_p${degree}_r${power}.csv")
+                set_tests_properties(${name} PROPERTIES
+                    LABELS "fci;benchmark" PROCESSORS 1
+                    RESOURCE_LOCK anisotropic_pollution_timing
+                    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+            endforeach()
+        endforeach()
+    endforeach()
+endforeach()
+
+foreach(power IN ITEMS 6 8 10)
+    set(name test_fci_transport_pollution_cap_manufactured_h1_p1_r${power})
+    add_test(NAME ${name} COMMAND test_fci_transport_pollution refine_cap
+        manufactured h1 1 ${power}
+        "${PROJECT_BINARY_DIR}/pollution_cap_manufactured_h1_p1_r${power}.csv")
+    set_tests_properties(${name} PROPERTIES LABELS "fci;benchmark" PROCESSORS 1
+        RESOURCE_LOCK anisotropic_pollution_timing
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endforeach()
+set(name test_fci_transport_pollution_cap_manufactured_h1_p2_r10)
+add_test(NAME ${name} COMMAND test_fci_transport_pollution refine_cap
+    manufactured h1 2 10
+    "${PROJECT_BINARY_DIR}/pollution_cap_manufactured_h1_p2_r10.csv")
+set_tests_properties(${name} PROPERTIES LABELS "fci;benchmark" PROCESSORS 1
+    RESOURCE_LOCK anisotropic_pollution_timing
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_test(NAME test_fci_transport_pollution_circle_interpolation
+    COMMAND test_fci_transport_pollution circle_interpolation)
+set_tests_properties(test_fci_transport_pollution_circle_interpolation PROPERTIES
+    LABELS "fci;acceptance" PROCESSORS 1
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")

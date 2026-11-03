@@ -1,7 +1,7 @@
 program gen_anisotropic_pollution_products
     use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, real_expr, cos, sqrt, &
-        operator(+), operator(-), operator(*), operator(/), operator(**)
+        sin, operator(+), operator(-), operator(*), operator(/), operator(**)
     use fortsym_diff, only: diff
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: str, chars
@@ -11,6 +11,7 @@ program gen_anisotropic_pollution_products
     type(kernel_spec_t) :: spec
     type(expr_t) :: x, y, pi, u, source, vx, vy, r, one
     type(expr_t) :: bx, by, dx, dy, v, gx, gy, hx, hy, w, q, numerical, exact
+    type(expr_t) :: psi, field_square, perturbation, along, chi, flux_x, flux_y
     character(:), allocatable :: code
     integer :: unit
 
@@ -31,6 +32,24 @@ program gen_anisotropic_pollution_products
     spec%args = [str('x'), str('y'), str('pi')]
     spec%outputs = [str('value'), str('source'), str('vx'), str('vy')]
     call emit('sovinec', [u, source, vx, vy])
+
+    psi = u
+    vx = cos(pi*x)*sin(pi*y)
+    vy = -sin(pi*x)*cos(pi*y)
+    field_square = vx*vx + vy*vy
+    perturbation = x*psi
+    u = psi + real_expr(arena, 4.0d0)*perturbation*field_square**2
+    ! Cancel the field norm before differentiation to extend across its zeros.
+    along = real_expr(arena, 4.0d0)*(field_square* &
+        (vx*diff(perturbation, x) + vy*diff(perturbation, y)) + &
+        real_expr(arena, 2.0d0)*perturbation* &
+        (vx*diff(field_square, x) + vy*diff(field_square, y)))
+    chi = sym(arena, 'chi')
+    flux_x = diff(u, x) + (chi - one)*vx*along
+    flux_y = diff(u, y) + (chi - one)*vy*along
+    source = -(diff(flux_x, x) + diff(flux_y, y))
+    spec%args = [str('x'), str('y'), str('pi'), str('chi')]
+    call emit('manufactured', [u, source, vx, vy])
 
     r = sqrt(x*x + y*y)
     u = one - r**3
@@ -61,6 +80,10 @@ program gen_anisotropic_pollution_products
     spec%outputs = [str('slow'), str('parallel'), str('load')]
     call emit('integrand', [w*(gx*hx + gy*hy), &
         w*(bx*gx + by*gy)*(bx*hx + by*hy), w*q*v])
+
+    spec%args = [str('bx'), str('by'), str('gx'), str('gy')]
+    spec%outputs = [str('value')]
+    call emit('directional', [bx*gx + by*gy])
 
     numerical = sym(arena, 'numerical')
     exact = sym(arena, 'exact')

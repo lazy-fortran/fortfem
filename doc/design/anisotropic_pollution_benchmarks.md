@@ -4,12 +4,13 @@ title: Anisotropic transport pollution benchmarks
 
 # Anisotropic transport pollution benchmarks
 
-The symmetric scheme and bilinear flux-coordinate-independent (FCI) candidate
-meet the signed pollution threshold on the smallest tested mesh, with nine
-free unknowns, on both problems at all three anisotropies. Among continuous
-finite elements, degree four reaches the threshold at 961 unknowns when the
-anisotropy is `1e10`; degree one does not reach it at one million unknowns.
-These are minima on the sampled refinement ladders, not optimal mesh searches.
+The bilinear flux-coordinate-independent (FCI) candidate and the Günter
+symmetric stencil respond to nonzero parallel structure: both reach absolute
+L2 temperature error (the square-integral norm) below `1e-2` at 961 free unknowns on the manufactured
+problem below, at anisotropies `1e6`, `1e8` and `1e10`. Their nine-unknown
+success on the signed pollution diagnostic alone is insufficient evidence of
+spatial accuracy. The comparison below reports both criteria without selecting
+a method or qualifying the three-dimensional production FCI operator.
 
 The comparison uses directly measured signed pollution and cost; no fitted
 power law is an accuracy gate or an extrapolation rule. The bilinear
@@ -233,13 +234,25 @@ limit `2.220446e-13`. No iterative solver or solver tuning is introduced.
 The retained test-side Günter symmetric stencil places the parallel flux at
 quad centres and the unknowns on the dual cell grid, with its existing
 five-point isotropic term. The bilinear FCI candidate uses those same
-unknowns and isotropic term. At each quad centre the existing RK4 tracer
-follows the unit field by `+/-h/2`, with 64 steps in each direction. The
-existing bilinear map and generated gradient form the endpoint difference
-divided by `h`; its volume-weighted adjoint supplies the diffusion form.
-This is a two-dimensional support-operator reconstruction with line spacing
-`h`, not a reproduction of a published three-dimensional FCI table.
-Higher-order FCI is not added.
+unknowns and isotropic term. There is **no distinct plane coordinate** in this
+2D fixture: both endpoint maps interpolate the same four Cartesian cell
+corners. In particular, there are no successive out-of-plane sections; the
+Sovinec field has zero out-of-plane component.
+
+At a quad centre `c`, the tracer solves `dX/ds = b(X)` for the position `X`
+at arc lengths `+/-h/2`, using 64 fourth-order Runge–Kutta (RK4) steps per
+direction. Its input is
+the exact analytic normalized field `b = (ez cross grad(psi))/|grad(psi)|`,
+where `psi = cos(pi*x)*cos(pi*y)`, rather than an interpolated discrete field.
+The endpoint locations are numerical RK4 approximations, not analytic maps.
+Each parallel-gradient row is the difference of the two bilinear interpolation
+rows divided by `h`; its `h^2`-weighted adjoint supplies the diffusion form.
+Thus its links follow field lines although its unknowns remain on a Cartesian
+grid. Exact trajectories preserve `psi`; interpolation need not preserve its
+nodal samples. The circular fixture instead traces `(-y,x)/sqrt(x^2+y^2)`.
+This is a two-dimensional support reconstruction, not a reproduction of a
+published three-dimensional FCI plane discretization. Higher-order FCI is not
+added.
 
 Times are wall seconds on shared faepmac1, GNU Fortran 16.2, Release,
 OpenBLAS, with one OpenMP and one BLAS thread per case. A CTest resource
@@ -295,6 +308,103 @@ The [plotting script](figures/plot_fci_transport_cost.py) displays every row,
 uses a signed logarithmic scale for pollution, and regenerates the summary.
 It uses no absolute value, smoothing, fitted extrapolation or omitted mesh.
 
+## Parallel consistency and manufactured validation
+
+The original [parallel CSV](figures/fci_transport_pollution_parallel.csv)
+checks only the conforming H1 candidates. The additional
+[candidate gradient CSV](figures/fci_transport_pollution_candidate_parallel.csv)
+applies each actual FCI or symmetric assembly stencil to nodal samples of
+`u = exp(x+2*y)` and compares it to the independent analytic derivative
+`b.grad(u) = (b_x+2*b_y)*exp(x+2*y)` at every cell centre. The L2 error uses
+cell areas `h^2`. On 4, 8, 16, 32, 64, 128 and 256 cells per direction,
+the final measured orders are `0.993023` for FCI and `1.999740` for the
+symmetric stencil; their final errors are `2.078403e-3` and `1.118234e-5`.
+Both derivatives are nonzero and converge. The normalized field is singular
+at the magnetic axis; no smooth-field global order theorem is inferred from
+these measurements.
+
+For the manufactured problem, keep this Sovinec field and `chi_perp=1`, but
+set
+
+`v = (cos(pi*x)*sin(pi*y), -sin(pi*x)*cos(pi*y))`,
+`s = v_x^2+v_y^2`, and `T_exact = psi + 4*x*psi*s^2`.
+
+The second term varies along field lines and vanishes on the boundary and
+at the magnetic axis. Its L2 norm is `0.12998343504`, independently integrated
+by the plotting script with 32, 64 and 128 Gauss points per direction. This
+term is odd in `x`, whereas a flux function of `psi` is even in `x`; replacing
+it by any flux function cannot remove that L2 component. Thus a flux-only
+solution cannot meet the `0.01` error target. The source changes with `R` so that this same exact
+temperature solves `-div([I+(R-1)*b*b^T] grad(T)) = Q_R`, where `I` is the
+identity tensor and `b*b^T` the outer product of `b` with itself. FortSym generates
+the analytic source from the flux; cancellation of the factor `s` before
+differentiation gives a finite expression at the field zeros. An independent
+fourth-order numerical divergence, using a separate temperature formula and
+step `1e-3`, agrees with `Q_R/R` within `1.69e-8` at three off-axis points
+for each tested anisotropy, against a fixed `2e-6` check. The axis source is
+independently checked against `2*pi^2`.
+
+All candidates use their existing assembly quadrature and the same native
+FortSparse SPD direct solver. Absolute L2 temperature error is independently
+overintegrated with `p+4` Gauss points per direction; the area of the
+normalized square is one. For the computed temperature `T_h`, the central
+error is `|T_h(0,0)-1|`. Nonzero
+Dirichlet values are included in the circular error reconstruction; a nodal
+interpolation oracle verifies second-order L2 convergence with those boundary
+values. No residual limit or solver setting is relaxed. The maximum original-matrix
+normwise residual across the 217 new refinement rows is `5.78e-16`, below
+the unchanged `2.220446e-13` limit.
+
+The [complete refinement CSV](figures/fci_transport_pollution_validation.csv)
+retains every mesh, L2 error, central error, signed pollution where applicable,
+residual and timing. Refinements run from 4 to 256 cells per direction; degree
+four stops at 250 cells to respect the unknown cap. The unresolved manufactured
+H1 degree-one cases continue through 512 and 1001 cells, and degree two at
+`R=1e10` continues to 500 cells, so the threshold table does not extrapolate.
+The two test-side stencils also retain all 4–256-cell Sovinec and circular
+pollution measurements rather than stopping at the first passing mesh.
+
+The following is the single combined cost table. Each entry is free unknowns
+followed by assembly plus factorization/solve seconds; `N` denotes the
+number of free unknowns. A missing threshold
+reports the measured cap, not a fitted prediction. Sovinec and circular
+pollution costs retain the preceding direct-cost measurements; manufactured
+costs come from the new refinement measurements. The L2 threshold does not
+also impose a central-error threshold; both errors remain in the full CSV.
+
+| Candidate | R | Sovinec E <= 0.1: N; time (s) | Circular E <= 0.1: N; time (s) | Manufactured L2 <= 0.01: N; time (s) |
+|---|---:|---:|---:|---:|
+| H1 p=1 | 1e+06 | not reached at 1,000,000; 2.952 | — | not reached at 1,000,000; 2.622 |
+| H1 p=1 | 1e+08 | not reached at 1,000,000; 2.979 | — | not reached at 1,000,000; 2.606 |
+| H1 p=1 | 1e+10 | not reached at 1,000,000; 5.193 | — | not reached at 1,000,000; 2.655 |
+| H1 p=2 | 1e+06 | 3,969; 0.01563 | — | 16,129; 0.05252 |
+| H1 p=2 | 1e+08 | 16,129; 0.06044 | — | 65,025; 0.2048 |
+| H1 p=2 | 1e+10 | 261,121; 1.16 | — | 998,001; 3.814 |
+| H1 p=3 | 1e+06 | 121; 0.00079 | — | 2,209; 0.0122 |
+| H1 p=3 | 1e+08 | 2,209; 0.01907 | — | 9,025; 0.04594 |
+| H1 p=3 | 1e+10 | 9,025; 0.06451 | — | 36,481; 0.1955 |
+| H1 p=4 | 1e+06 | 225; 0.003128 | — | 225; 0.002149 |
+| H1 p=4 | 1e+08 | 225; 0.002829 | — | 225; 0.001902 |
+| H1 p=4 | 1e+10 | 961; 0.01424 | — | 961; 0.008907 |
+| Gunter symmetric | 1e+06 | 9; 1.5e-05 | 9; 1.3e-05 | 961; 0.001199 |
+| Gunter symmetric | 1e+08 | 9; 1.4e-05 | 9; 1.5e-05 | 961; 0.001004 |
+| Gunter symmetric | 1e+10 | 9; 1.4e-05 | 9; 1.4e-05 | 961; 0.001002 |
+| Bilinear FCI | 1e+06 | 9; 0.000497 | 9; 0.000276 | 961; 0.02634 |
+| Bilinear FCI | 1e+08 | 9; 0.00051 | 9; 0.000253 | 961; 0.02658 |
+| Bilinear FCI | 1e+10 | 9; 0.000493 | 9; 0.000287 | 961; 0.02663 |
+
+These results reject a completely absent parallel response on this manufactured
+case. They do not establish accuracy for every load or field geometry, and the
+2D FCI reconstruction does not qualify the production 3D plane operator.
+At high anisotropy, the finest-mesh errors and signed pollution can be
+nonmonotone even while original-matrix residuals pass. In particular, neither
+negative pollution nor a small normwise residual is a forward-error bound.
+The [combined threshold CSV](figures/fci_transport_pollution_thresholds.csv)
+retains the table at full precision. The
+[validation plotting script](figures/plot_fci_transport_validation.py)
+plots every signed pollution value and every manufactured L2 and central error,
+and regenerates the combined threshold CSV. No data are smoothed or discarded.
+
 ## Figure report on quadrilaterals
 
 The existing reconstruction already uses quadrilaterals. The source, square,
@@ -342,3 +452,11 @@ the signed diagnostic,
 the isotropic baseline on each mesh, assembly time, and factorization plus
 solve time. No solver-tolerance adjustment or solver-method research is part
 of this comparison.
+
+To reproduce the additional validation, after the build above:
+
+```sh
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(candidate_parallel|manufactured_source|circle_interpolation)$' -V
+ctest --test-dir build/u3g -j 8 --stop-on-failure -R '^test_fci_transport_pollution_(refine_|cap_)' -V
+python3 doc/design/figures/plot_fci_transport_validation.py --build-dir build/u3g --data /tmp/fci_transport_pollution_validation.csv --output-dir /tmp/transport-validation --summary-output /tmp/fci_transport_pollution_thresholds.csv
+```
