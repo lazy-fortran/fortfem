@@ -14,6 +14,7 @@ add_library(fortfem_meridian STATIC
     src/elements/triangle_feec_operators.f90
     src/elements/triangle_lagrange_arbitrary_order.f90
     src/elements/triangle_nedelec_arbitrary_order.f90
+    src/elements/triangle_nedelec_second_kind.f90
     src/elements/triangle_piola_maps.f90
     src/elements/triangle_rt_arbitrary_order.f90
     src/estimators/equilibrated_flux_2d.f90
@@ -60,6 +61,7 @@ foreach(test_name IN ITEMS
         test_meridian_feec_exact_sequence
         test_meridian_feec_gs_n0
         test_meridian_feec_manufactured_slow
+        test_meridian_feec_second_kind
         test_meridian_feec_threads
         test_meridian_fourier_apply
         test_meridian_fourier_curl
