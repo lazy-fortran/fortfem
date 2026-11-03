@@ -96,6 +96,12 @@ defines the PARALLAX-aligned mapped gradient and its conservative
 volume-weighted adjoint without coupling FortFEM to a particular field-line
 tracer.
 
+The [anisotropic heat-transport pollution benchmarks](anisotropic_pollution_benchmarks.html)
+compare high-order H1, Günter-symmetric and two-dimensional FCI candidates at
+matched error, retain the three-dimensional bilinear FCI locking and retired
+constraint-space findings, and document the degree-four H1 temperature choice
+for KIN6D. No production transport solver is qualified.
+
 The [FCI interpolation-map contract](fci_interpolation_map.html) defines
 linear, bilinear, quadratic, and FortSym-generated cubic and quartic
 fixed-stencil maps,
