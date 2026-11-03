@@ -27,6 +27,7 @@ add_library(fortfem_meridian STATIC
     src/generated/fortfem_meridian_hcurl_equilibration_products.f90
     src/generated/fortfem_triangle_bernstein_jets.f90
     src/generated/fortfem_triangle_feec_tables.f90
+    src/generated/fortfem_triangle_second_gradient.f90
     src/generated/fortfem_triangle_level_geometry.f90
     src/generated/fortfem_triangle_piola_products.f90
     src/generated/fortfem_verified_bernstein_products.f90
@@ -62,6 +63,7 @@ foreach(test_name IN ITEMS
         test_meridian_feec_gs_n0
         test_meridian_feec_manufactured_slow
         test_meridian_feec_second_kind
+        test_meridian_second_gradient
         test_meridian_feec_threads
         test_meridian_fourier_apply
         test_meridian_fourier_curl

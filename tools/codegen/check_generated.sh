@@ -44,7 +44,7 @@ for degree in 0 1 2 3 4; do
 done
 
 for filename in fortfem_triangle_feec_tables.f90 \
-    fortfem_triangle_bernstein_jets.f90; do
+    fortfem_triangle_bernstein_jets.f90 fortfem_triangle_second_gradient.f90; do
     cmp -- "$repository_dir/src/generated/$filename" \
         "$temporary_dir/$filename"
 done
