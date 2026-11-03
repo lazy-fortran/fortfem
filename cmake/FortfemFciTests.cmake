@@ -11,7 +11,7 @@ file(GLOB fci_test_sources CONFIGURE_DEPENDS
 foreach(test_source IN LISTS fci_test_sources)
     get_filename_component(test_name "${test_source}" NAME_WE)
     add_executable(${test_name} "${test_source}")
-    if(test_name MATCHES "^test_fci_transport_(reference|nested)$")
+    if(test_name MATCHES "^test_fci_transport_(reference|nested|reduced_space)$")
         target_link_libraries(${test_name} PRIVATE
             fortfem_fci_transport_test_support fortfem_test_check)
     else()
@@ -22,6 +22,18 @@ foreach(test_source IN LISTS fci_test_sources)
         LABELS "fci" PROCESSORS 1
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
+
+add_test(NAME test_fci_transport_reduced_space_gate
+    COMMAND test_fci_transport_reduced_space gate)
+set_tests_properties(test_fci_transport_reduced_space_gate PROPERTIES
+    LABELS "fci;acceptance" PROCESSORS 1
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_test(NAME test_fci_transport_reduced_space_ladder
+    COMMAND test_fci_transport_reduced_space ladder "${PROJECT_BINARY_DIR}")
+set_tests_properties(test_fci_transport_reduced_space_ladder PROPERTIES
+    LABELS "fci;slow" PROCESSORS 8
+    ENVIRONMENT "OMP_NUM_THREADS=8;OPENBLAS_NUM_THREADS=1")
 
 add_test(NAME test_fci_transport_nested_accuracy_gate
     COMMAND test_fci_transport_nested gate)

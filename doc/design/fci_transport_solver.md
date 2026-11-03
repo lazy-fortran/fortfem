@@ -11,6 +11,8 @@ unit relative solution error while satisfying the discrete equations.
 Option B, a two-level Krylov preconditioner, cannot correct this spatial
 error for the tested operator. No production solver is delivered or qualified.
 Island, plate-intersection, single-null, Krylov and cost gates remain open.
+Two reduced multiplier candidates also fail the limit-space preflight below:
+both retain antisymmetric checkerboards. Neither is selected for production.
 
 The dense kernel/complement reference is test support in
 `test/fci_transport_reference.f90`, linked only into its test consumers.
@@ -23,6 +25,108 @@ particularly its anisotropic transport and preconditioner gates RM-B3/RM-B4.
 The existing [FCI support operator](fci_parallel_operator.md) supplies the
 parallel gradient; no new diffusion discretization or physical closure is
 introduced here.
+
+## Reduced-space preflight
+
+On the sheared fixture defined below, `test_fci_transport_reduced_space`
+evaluates two spaces for testing the mapped parallel difference. Let `h`
+be the Cartesian section spacing. `P0-2h` contains
+independent constants on disjoint 2-by-2 blocks of interior support samples
+in each plane interval. `Q1-2h` contains continuous bilinear functions on a
+coarse section mesh with spacing `2h`; its last interval has width `h` to
+include the final support sample. The native bilinear builder supplies its
+basis values. These are discrete L2 projections using the existing diagonal
+support pairing, rather than exact integration over continuous elements.
+Boundary values remain zero on the physical perimeter; periodic planes are
+identified exactly as in the original fixture.
+
+Let `G` be the original interval gradient after eliminating wall nodes, `H`
+the chosen test basis evaluated at support samples, and
+`L L^T = H^T H`. The normalized constraint is `C = L^(-1) H^T G`.
+The uniform nodal and support masses cancel in this expression. The two
+identical intervals on two periodic planes split orthogonally into
+plane-symmetric and plane-antisymmetric blocks. Both blocks are retained.
+No connectivity is supplied independently of the native traced maps.
+
+The dense singular value decomposition of `C` reports its rank and kernel.
+Its smallest singular value, including a zero if the multiplier has a
+cokernel, is `beta_l2`. The second value, `beta_h1`, uses the discrete
+H1 norm of the temperature `u`: mass plus the Cartesian five-point section
+energy and the periodic third-direction energy. An orthonormal discrete sine
+transform diagonalizes this norm; an independent highest-sine-mode eigenvalue checks
+the scaling. The multiplier norm remains the discrete L2 norm. Neither
+value uses the mesh-dependent dual norm of the stabilized AP analysis.
+The rank threshold is the existing oracle's
+`8 * machine_epsilon * max(rows,columns) * largest_sigma`.
+
+The meshes have 21, 41 and 81 cells per section direction. The reference
+surface-resolution count is 10, 20 and 40 radial bins from the wall to the
+axis, at Cartesian spacing `h`; it is a resolution proxy, not a theorem
+counting all representable flux functions. Kernel dimension grows
+quadratically with section resolution for both candidates.
+
+For an independent physical discriminator, the initial checkerboard has
+nodal values `(-1)^(i+j) sin(pi*x_i) sin(pi*y_j)` and opposite signs on the
+two planes, with interior grid indices `i` and `j`. It is normalized before
+orthogonal projection onto the reduced kernel. Every sampled flux function
+has identical values on both planes, so the projected antisymmetric vector
+is exactly orthogonal to that whole
+physical subspace. The retained vector also has an order-one defect under
+the original, unprojected gradient. On the coarse mesh the existing dense
+transport oracle independently confirms the full nullity and reproduces
+the projected checkerboard using an identity slow operator and parallel
+coefficient `1e13`. This is an algebraic mass-projection check, not a
+manufactured transport accuracy qualification.
+
+The [complete measurements](figures/fci_transport_reduced_space.csv) retain
+all six rows, both inf-sup norms, mass-projection errors of the exact flux,
+constraint defects and diagnostic timings. On the finest mesh, `P0-2h` and
+`Q1-2h` have kernel dimensions 9,600 and 9,438, retain 98.91% and 98.51% of
+the checkerboard, and have H1 inf-sup values `7.643e-4` and `3.641e-4`.
+Those values decrease on both refinements; a uniform lower bound is not
+established. Reduced constraint defects remain below `3.7e-15`, whereas
+the unprojected gradient defects are between 1.73 and 1.87. These quantities
+are dimensionless. The full-rank multiplier maps leave respectively 75%
+and approximately 74% of the finest temperature space unconstrained.
+
+The [plot source](figures/plot_fci_transport_reduced_space.py) shows the
+inf-sup values, kernel growth and the actual coarse kernel vectors retained
+in [P0 data](figures/fci_transport_P0-2h_kernel.csv) and
+[Q1 data](figures/fci_transport_Q1-2h_kernel.csv). The latter use the same
+grayscale amplitude scale and reverse sign on the second plane. They are
+vectors computed by the dense oracle, not illustrative patterns.
+
+With the Release/OpenBLAS configuration below:
+
+```sh
+cmake --build build/u3c -j 8 --target test_fci_transport_reduced_space
+ctest --test-dir build/u3c -j 8 -R '^test_fci_transport_reduced_space_ladder$' -V
+ctest --test-dir build/u3c -j 8 -R '^test_fci_transport_reduced_space_gate$' -V
+python3 doc/design/figures/plot_fci_transport_reduced_space.py --output /tmp/fci-reduced-space.png
+```
+
+The ladder returns 93/93 diagnostic checks in 444.32 s on shared faepmac1,
+gfortran 16.2, eight OpenMP threads and one BLAS thread. Timings cover dense
+diagnostics and are not a solver cost comparison. The coarse diagnostic
+returns 39/39; its separate acceptance invocation returns 39/41, with one
+checkerboard rejection for each candidate.
+
+The step-1 absence-of-spurious-kernel requirement fails already on the
+coarse mesh. The registered `test_fci_transport_reduced_space_gate` enforces
+zero checkerboard retention to roundoff and fails; it is neither disabled
+nor marked as an expected failure. The diagnostic and refinement tests
+check the measurements, and their passes do not qualify either space.
+Step 2 accuracy, constrained-limit and inf-sup qualification on the four
+geometries, and step 3 Krylov/cost gates, remain unopened. In particular,
+the spatial rates required for a selected method have not been measured.
+
+The failure is in the reduction itself:
+`test/test_fci_transport_reduced_space.f90`, `test_basis`, drops about
+three quarters of the interval constraints. Full row rank then leaves a
+large antisymmetric kernel; `probe` constructs an explicit member using
+the SVD row-space projector. Merely making the multiplier smaller is
+insufficient. A candidate with the correct limit space and a controlled
+inf-sup pairing is still required before solver work.
 
 ## First failing gate: nested surfaces with shear
 
@@ -210,6 +314,78 @@ residual and the kernel defect. Storage is quadratic and setup/solve are dense;
 overhead and BLAS/LAPACK workspace.
 
 ## Relation to asymptotic-preserving schemes
+
+### Closed-line literature and reduced constraint spaces
+
+The following locations were checked against the linked full-text preprints.
+Numbering in the published versions has not been checked. None of these
+papers supplies a coarsened FCI difference space with the required discrete
+limit kernel and a uniform inf-sup constant.
+
+- Deluzet and Narski, [*A two field iterated asymptotic-preserving method for
+  highly anisotropic elliptic equations*, MMS 17 (2019), 434–459](https://doi.org/10.1137/17M115205X),
+  [EUROfusion author preprint](https://scipub.euro-fusion.org/wp-content/uploads/eurofusion/WP14ERPR18_19317_submitted.pdf):
+  Section 2.1, equations (3)–(9), assumes a smooth unit field, positive
+  parallel coefficient and uniformly positive perpendicular tensor on the
+  perpendicular subspace. Section 2.2 explicitly distinguishes locking from
+  conditioning. Section 2.3, equations (18)–(19), uses two fields in the same
+  space `V`; Lemma 5 preserves orthogonality to field-constant functions in
+  the H1 seminorm when the initial auxiliary field has zero perpendicular
+  gradient. Section 3.1, equation (45), discretizes both fields in the same
+  `V_h`, using linear triangles or biquadratic rectangles. Its parameter
+  `epsilon_0` keeps each subproblem mildly anisotropic. This is an iterated
+  auxiliary-potential formulation. Its applicability to the present FCI
+  kernel is **unverified**.
+- Narski and Ottaviani, [*Asymptotic Preserving scheme for strongly
+  anisotropic parabolic equations for arbitrary anisotropy direction*, CPC
+  185 (2014), 3189–3203](https://arxiv.org/pdf/1303.5219):
+  Section 3.1, equation (4), removes the inflow gauge and uses an auxiliary
+  potential in `L = {q in L2 : grad_parallel q in L2}`, with a positive mass
+  stabilization. Equation (5) sets its coefficient to `h^(k+1)` for degree
+  `k` elements; Section 4.1 uses biquadratic elements on a Cartesian mesh.
+  This permits closed lines without prescribing a point on every line.
+  The stabilization changes the second equation; it is not a reduced
+  first-derivative multiplier space. The paper postpones theoretical
+  justification of this construction.
+- Lozinski, Narski and Negulescu, [*Numerical analysis of an
+  asymptotic-preserving scheme for anisotropic elliptic equations*](https://arxiv.org/pdf/1507.00879):
+  Section 3, equations (34)–(38), uses the same parallel-Sobolev space and
+  analyzes its L2-orthogonal complement to field-constant functions.
+  Section 3.2, equations (50)–(52), uses `V_h` for both variables, then
+  removes the discrete field-constant component for analysis. Its inf-sup
+  result uses a mesh-dependent dual norm, not an ordinary L2 multiplier
+  norm. Theorem 22, equation (53), assumes regular-mesh approximation and
+  the stated H^(k+1) and H1 solution regularity. Remark 23 only expects
+  uniform higher regularity in general and proves it in simple aligned
+  geometry. These hypotheses are not established for our sheared FCI map,
+  islands or X-points.
+- The earlier [Degond–Lozinski–Narski–Negulescu micro-macro preprint](https://arxiv.org/pdf/1102.0904),
+  Section 2.2, equation (13), fixes the auxiliary potential on inflow;
+  Hypothesis B and Theorem 3 require a smooth tube of boundary-crossing
+  field lines. The [Degond–Deluzet–Lozinski–Narski–Negulescu duality
+  preprint](https://arxiv.org/pdf/1008.3405), Section 2.3, Hypothesis B,
+  equations (2.16)–(2.18), assumes an H1-continuous field-line averaging
+  projector and a parallel Poincare–Wirtinger inequality. These assumptions
+  do not give a closed-line FCI multiplier construction.
+- A checked successor is Yang, Deluzet and Narski,
+  [*Preserving the accuracy of numerical methods discretizing anisotropic
+  elliptic problems*](https://arxiv.org/pdf/1911.11482), Section 3.2,
+  equations (32)–(33). It compares the inflow micro-macro construction with
+  the two-field iteration and rescaled parallel dynamics. It does not
+  specify a reduced FCI difference test space. The later published version,
+  [JCP 521 (2025), 113568](https://doi.org/10.1016/j.jcp.2024.113568),
+  was located; its full-text equation numbering and any changes from this
+  preprint are **unverified**.
+
+The auxiliary potentials in these papers must not be identified with the
+first-derivative flux multiplier in the proposed reduced mixed method.
+In particular, epsilon-independent conditioning of an auxiliary system does
+not by itself establish that its FCI limit space approximates flux functions.
+For the unchanged FCI bilinear form, there is also a direct algebraic
+obstruction: at an exact two-field fixed point and epsilon zero, the second
+equation enforces the same parallel kernel. Its free-node kernel is trivial
+on this fixture. This is an inference about transplanting the construction
+to this operator, not a claim that the papers analyze this FCI map.
 
 The kernel/complement split follows the limit-space and fluctuation-space
 construction in Degond, Deluzet, Lozinski, Narski and Negulescu,
