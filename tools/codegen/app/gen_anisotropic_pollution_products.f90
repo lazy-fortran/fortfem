@@ -5,15 +5,16 @@ program gen_anisotropic_pollution_products
     use fortsym_diff, only: diff
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: str, chars
-    use fortfem_codegen_provenance, only: fortsym_revision, generated_path
+    use fortfem_codegen_provenance, only: fortsym_revision
     implicit none
     type(arena_t), target :: arena
     type(kernel_spec_t) :: spec
     type(expr_t) :: x, y, pi, u, source, vx, vy, r, one
     type(expr_t) :: bx, by, dx, dy, v, gx, gy, hx, hy, w, q, numerical, exact
     type(expr_t) :: psi, field_square, perturbation, along, chi, flux_x, flux_y
-    character(:), allocatable :: code
-    integer :: unit
+    character(:), allocatable :: code, directory
+    character(4096) :: buffer
+    integer :: unit, length, status
 
     call arena%init()
     spec%mode = KERNEL_SUBROUTINE
@@ -91,8 +92,15 @@ program gen_anisotropic_pollution_products
     spec%outputs = [str('squared_error')]
     call emit('error', [w*(numerical - exact)**2])
 
+    call get_environment_variable('FORTFEM_TEST_CODEGEN_OUTPUT_DIR', buffer, &
+        length=length, status=status)
+    if (status /= 0 .or. length == 0) then
+        directory = '../../test/generated/'
+    else
+        directory = buffer(:length)//'/'
+    end if
     open (newunit=unit, &
-        file=generated_path('fortfem_anisotropic_pollution_products.f90'), &
+        file=directory//'fortfem_anisotropic_pollution_products.f90', &
         status='replace', action='write')
     write (unit, '(a)') code(:len(code) - 1)
     close (unit)

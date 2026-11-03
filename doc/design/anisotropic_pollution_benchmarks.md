@@ -4,10 +4,8 @@ title: Anisotropic heat-transport pollution benchmarks
 
 # Anisotropic heat-transport pollution benchmarks
 
-Degree-four H1 elements are the selected temperature discretization for
-[KIN6D's nonlinear resistive magnetohydrodynamics design](https://github.com/itpplasma/kin6d/blob/main/docs/nonlinear-resistive-mhd.md).
-H1 denotes continuous finite elements with square-integrable first derivatives.
-On the two-dimensional benchmarks, high-order H1, the Günter symmetric stencil
+On the two-dimensional benchmarks, high-order H1 elements (continuous elements
+with square-integrable first derivatives), the Günter symmetric stencil
 and flux-coordinate-independent (FCI) reconstruction control
 anisotropic pollution through parallel-to-perpendicular diffusivity ratios of
 `1e10`. The two stencils reach the manufactured temperature-error target at
@@ -15,13 +13,19 @@ anisotropic pollution through parallel-to-perpendicular diffusivity ratios of
 225, 225 and 961. This is practical evidence over the sampled range, not a
 proof of anisotropy-independent error at arbitrary ratios or fixed mesh.
 
-The three-dimensional plane-to-plane bilinear FCI operator instead locks on
-the tested non-aligned nested surfaces: its relative solution error tends to
-one despite small algebraic residuals. A preconditioner cannot repair this
-spatial error. No production transport solver is qualified by this work.
-The two-dimensional FCI fixture traces the exact analytic field with numerical
-Runge–Kutta steps; it has no distinct plane coordinate and must not be
-identified with the three-dimensional operator.
+The three-dimensional bilinear FCI operator maps field-line endpoints between mesh
+planes by interpolation (plane-to-plane maps). It locks on the tested nested
+magnetic flux surfaces (surfaces tangent to the magnetic field, enclosing one
+another), which are not aligned with the mesh. On each of three fixed meshes, its
+relative solution error tends to one as `epsilon = chi_perp/chi_par`, the
+perpendicular-to-parallel diffusivity ratio, tends to zero. Here `chi_perp` and
+`chi_par` are the perpendicular and parallel diffusivities. This occurs despite
+small algebraic residuals. A preconditioner changes how the discrete equations are
+solved, not their solution, so it cannot remove this discretization error. No
+production transport solver is qualified by this work. The two-dimensional FCI
+fixture traces the exact analytic field with numerical Runge–Kutta steps; it has
+no distinct plane coordinate and must not be identified with the three-dimensional
+operator.
 
 The problem is numerical perpendicular transport induced by a discrete
 parallel operator, which should remain well below physical perpendicular
@@ -32,21 +36,25 @@ The benchmarks measure signed pollution, independent temperature error and
 cost directly. No fitted power law is an accuracy gate or extrapolation rule.
 
 Here `T` is temperature, `Q` the heat source, `b` the unit field direction,
-`chi_par` and `chi_perp` the parallel and perpendicular diffusivities, `p`
-the element degree, and `h` the Cartesian element width. Coordinates,
-temperatures and diffusivities below are normalized as in each source.
-Write `R = chi_par/chi_perp` for the anisotropy. For the Sovinec test,
-`chi_perp = 1`, and the reported paper diagnostic is `|1/T(0,0)-1|`.
-It includes perpendicular discretization error. The isolated, signed pollution
-measure used in the fit is instead
+`chi_par` and `chi_perp` the parallel and perpendicular diffusivities, `p` the
+element degree, and `h` the Cartesian element width. Coordinates, temperatures and
+diffusivities below are normalized as in each source. Write `R = chi_par/chi_perp = 1/epsilon` for the anisotropy, where `epsilon = chi_perp/chi_par` is the
+perpendicular-to-parallel diffusivity ratio. The coordinates `x`, `y`, `z` are
+Cartesian; `pi` is the circle constant. The L2 norm is the square root of the
+integral of the squared error. For the Sovinec test, `chi_perp = 1`, and the
+reported paper diagnostic is `|1/T(0,0)-1|`. It includes perpendicular
+discretization error. The isolated, signed pollution measure used in the fit is
+instead
 
 `E = chi_perp,num/chi_perp = 1/T_R(0,0) - 1/T_1(0,0)`.
 
-Here `T_R` is the discrete solution at anisotropy `R`, and `T_1` its
-isotropic baseline on the same mesh. No absolute value is applied to this
-difference. A fit to `E = C R^b h^a` estimates the mesh exponent `a`,
-anisotropy exponent `b`, and constant `C`; all quantities in this law are
-dimensionless in the stated normalization.
+Here `T_R` is the discrete solution at anisotropy `R`, and `T_1` its isotropic
+baseline on the same mesh. Thus `E` is a signed centre-point diagnostic, evaluated
+at `(0,0)`; it does not bound the total solution error. The symbol `chi_perp,num`
+denotes the effective numerical perpendicular diffusivity inferred from this
+diagnostic. No absolute value is applied to this difference. A fit to `E = C R^b h^a` estimates the mesh exponent `a`, anisotropy exponent `b` (a scalar fit
+parameter, distinct from the field direction), and constant `C`; all quantities in
+this law are dimensionless in the stated normalization.
 
 ## Checked literature
 
@@ -74,7 +82,8 @@ The PDF filename is misleading; its title page is the 2005 article.
 Equations (6a,b), (7a,b), (8), pp. 356–357, define the symmetric
 cell-centred parallel gradient and its negative adjoint divergence.
 The circular test on p. 357/Fig. 2 uses `[-1/2,1/2]^2`,
-`r = sqrt((x-x0)^2+(y-y0)^2)`, `T = 1-r^3`,
+`r = sqrt((x-x0)^2+(y-y0)^2)`, the distance from the field centre
+`(x0,y0)`, `T = 1-r^3`,
 `chi_perp = 1`, source `9*r`, and analytic Dirichlet boundary data.
 The centre is `(0,0)` for mostly closed lines and `(-1/2,-1/2)` for
 open lines. The normalized central error divides by
@@ -105,14 +114,15 @@ error values or numerical accuracy for figure readings are stated.
 [checked preprint, arXiv:1505.02040v1](https://arxiv.org/pdf/1505.02040v1).
 Section 2.5, equations (29)–(36), uses a uniform inclined field,
 perpendicular step `h`, plane spacing `Delta_z`, fractional shift
-`f = Delta_z*tan(theta)/h`, and line step `Delta_s`.
+`f = Delta_z*tan(theta)/h`, where `theta` is the field inclination to the
+plane normal, and field-line step length `Delta_s`.
 Its linear-interpolation naive diffusivity is
 `f*(1-f)*h^2/Delta_s^2` for unit parallel diffusivity. The support scheme
 instead has fourth-order modal hyperdiffusion. Section 3.1 uses the
-circular shell `0.1 <= rho <= 0.2` and radial sine modes, equation (43).
+circular shell `0.1 <= rho <= 0.2`, where `rho` is cylindrical radius, and radial sine modes, equation (43).
 For zonal modes the measured decay is entirely numerical. Section 3.1.2,
 Fig. 11 and equations (47)–(48), reports `h^2`/`h^4` for naive linear/cubic
-interpolation, `h^4` for support-linear and an `A*h^8+B*h^4` contribution
+interpolation, `h^4` for support-linear and an `A*h^8+B*h^4` contribution, with fitted coefficients `A` and `B`,
 for support-cubic, each divided by `Delta_z^2`. The cubic lower-order term
 is attributed to boundary interpolation. These are modal decay scalings,
 not universal scalar perpendicular diffusivities. Published-version
@@ -124,11 +134,16 @@ Section V, equations (46)–(47), uses cylindrical coordinates with
 `B = 20*grad(phi) + grad(psi_p) cross grad(phi)`,
 `psi_p = cos(pi*(R-10)/2)*cos(pi*Z/2)`,
 `R in [9,11]`, `Z in [-1,1]`, `phi in [0,2*pi]`.
+Here `R` is cylindrical radius (rather than the anisotropy), `Z` is height,
+`phi` is azimuth, `B` is the magnetic field and `psi_p` is poloidal flux.
+LDG denotes local discontinuous Galerkin; dG denotes discontinuous Galerkin.
 Section V.B uses Neumann walls, `chi_par = 100`, `chi_perp = 0`, and
-time step `0.001`. Section V.B.2 initializes the stationary profile
+time step `0.001` in normalized time `t`. Section V.B.2 initializes the stationary profile
 `f0 = 0.1*psi_p^2` and measures relative L2 profile loss.
 Table VII at `t = 5` fixes `N_phi = 10`, `P_phi = 1`, `P_RZ = 3`;
-the paper's `P` counts polynomial coefficients. It gives:
+`N_phi` counts azimuthal cells; the paper's `P` counts polynomial
+coefficients, with subscripts `phi` and `RZ` denoting azimuthal and
+section directions. It gives:
 
 | section cell width | non-aligned LDG | direct aligned dG | self-adjoint aligned dG |
 |---|---:|---:|---:|
@@ -144,30 +159,30 @@ Published-version table numbering has not been checked.
 
 ## Validation gates and descriptive fits
 
-The figure reading is a reported comparison only. Its interval is not a
-published uncertainty, and the prescribed analytic field is not the magnetic
-field evolved in NIMROD. Validation requires the original-matrix normwise residual, isotropic L2
+The figure reading is a reported comparison only. Its interval is not a published
+uncertainty, and the prescribed analytic field is not the magnetic field evolved
+in NIMROD. Validation requires the original-matrix normwise residual, isotropic L2
 convergence of order `p+1`, and convergence of the discrete parallel gradient
-applied to an interpolant of an analytic smooth function at order `p` in L2,
-for each degree used. The last two refinement rates must be within `0.3` of
-the design order. The gradient check uses `u = exp(x+2*y)`, with independent
-analytic derivatives `u_x = u` and `u_y = 2*u`, and `p+4` quadrature points per
-direction. It exercises the same generated basis and anisotropic integrand
-as assembly, against an analytic derivative rather than a second generated
-operator. The field remains the normalized Sovinec field.
+applied to an interpolant of an analytic smooth function at order `p` in L2, for
+each degree used. The last two refinement rates must be within `0.3` of the design
+order. The gradient check uses the analytic scalar test function `u = exp(x+2*y)`,
+with independent analytic partial derivatives `u_x = u` and `u_y = 2*u`, and `p+4`
+quadrature points per direction. It exercises the same generated basis and
+anisotropic integrand as assembly, against an analytic derivative rather than a
+second generated operator. The field remains the normalized Sovinec field.
 
 **Verified residual check:** for discrete matrix `A`, solution vector `t`,
-and load `f` after boundary elimination, every solve reports
+and load `f` after boundary elimination, every solve reports the normwise residual `eta`:
 
 `eta = ||A t - f||_inf / (||A||_inf ||t||_inf + ||f||_inf)`.
 
 The matrix norm is the induced infinity norm, the maximum absolute row sum;
-vector norms are maximum absolute values. The limit is `1e3 * epsilon`,
-where `epsilon` is double-precision machine epsilon, approximately
+vector norms are maximum absolute values. The limit is `1e3 * epsilon_machine`,
+where `epsilon_machine` is double-precision machine epsilon, approximately
 `2.220446e-13` after multiplication by `1e3`. Residuals use the unfactored
 matrix. An exact two-by-two oracle and equation rescaling independently
 check this normalization. The six symmetric sine-eigenmode checks pass;
-at 16 cells and `R = 1e6`, `eta = 8.24625e-17`. This replaces the former
+at 16 cells and `R = 1e6`, `eta = 8.24625e-17`. This replaces the
 load-normalized residual, whose anisotropy dependence made its fixed limit
 inappropriate. It changes the stated error measure, not its tolerance to
 the same quantity.
@@ -248,23 +263,24 @@ unknowns and isotropic term. There is **no distinct plane coordinate** in this
 corners. In particular, there are no successive out-of-plane sections; the
 Sovinec field has zero out-of-plane component.
 
-At a quad centre `c`, the tracer solves `dX/ds = b(X)` for the position `X`
-at arc lengths `+/-h/2`, using 64 fourth-order Runge–Kutta (RK4) steps per
-direction. Its input is
-the exact analytic normalized field `b = (ez cross grad(psi))/|grad(psi)|`,
-where `psi = cos(pi*x)*cos(pi*y)`, rather than an interpolated discrete field.
-The endpoint locations are numerical RK4 approximations, not analytic maps.
-Each parallel-gradient row is the difference of the two bilinear interpolation
-rows divided by `h`; its `h^2`-weighted adjoint supplies the diffusion form.
-Thus its links follow field lines although its unknowns remain on a Cartesian
-grid. Exact trajectories preserve `psi`; interpolation need not preserve its
-nodal samples. The circular fixture instead traces `(-y,x)/sqrt(x^2+y^2)`.
-This is a two-dimensional support reconstruction, not a reproduction of a
-published three-dimensional FCI plane discretization. Higher-order FCI is not
-added.
+At a quad centre `c`, the tracer solves `dX/ds = b(X)` for the position `X` at arc
+lengths `+/-h/2`, where `s` is arc length and `c` the starting point, using 64
+fourth-order Runge–Kutta (RK4) steps per direction. Its input is the exact
+analytic normalized field `b = (ez cross grad(psi))/|grad(psi)|`, where `psi =
+cos(pi*x)*cos(pi*y)` labels magnetic flux contours and `ez` is the unit vector
+normal to the square, rather than an interpolated discrete field. The endpoint
+locations are numerical RK4 approximations, not analytic maps. Each
+parallel-gradient row is the difference of the two bilinear interpolation rows
+divided by `h`; its `h^2`-weighted adjoint supplies the diffusion form. Thus its
+links follow field lines although its unknowns remain on a Cartesian grid. Exact
+trajectories preserve `psi`; interpolation need not preserve its nodal samples.
+The circular fixture instead traces `(-y,x)/sqrt(x^2+y^2)`. This is a
+two-dimensional support reconstruction, not a reproduction of a published
+three-dimensional FCI plane discretization. Higher-order FCI is not added.
 
-Times are wall seconds on shared faepmac1, GNU Fortran 16.2, Release,
-OpenBLAS, with one OpenMP and one BLAS thread per case. A CTest resource
+Times are wall seconds on a shared macOS arm64 machine, GNU Fortran 16.2, Release,
+OpenBLAS, with one OpenMP thread and one Basic Linear Algebra Subprograms
+(BLAS) thread per case. A CTest resource
 lock prevents these timing cases from overlapping each other. Assembly
 includes mesh tables, sparsity, tracing where needed, and matrix/load
 construction. Solve includes factorization and back substitution; it excludes
@@ -275,7 +291,8 @@ The combined table below reports the Sovinec and centred circular Günter
 2005 thresholds together with the manufactured temperature-error threshold.
 The circular problem uses `T=1-r^3`, source `9*r`, and analytic Dirichlet data.
 The two test-side stencils tie at nine unknowns on the signed central-value
-pollution criterion for both problems at every sampled anisotropy.
+pollution criterion for both problems at every sampled anisotropy. Nine
+unknowns is the coarsest mesh tried, not a measured minimum resolution.
 
 Negative values are retained, as the signed diagnostic requires. They do
 not establish negative physical diffusion. This central-value criterion does
@@ -283,8 +300,8 @@ not bound total spatial error, and a nine-unknown success does not establish
 accuracy for general loads or magnetic geometry. In particular, the existing
 symmetric sine eigenmode is exceptionally well preserved on this uniform
 grid. The CSV also retains the isotropic baseline and total central diagnostic.
-These tables alone do not qualify a production method; the degree-four H1
-choice also uses the manufactured temperature-error comparison below.
+These tables alone do not qualify a production method; the manufactured
+temperature-error comparison below supplies a separate accuracy measure.
 
 The [plotting script](figures/plot_fci_transport_cost.py) displays every row,
 uses a signed logarithmic scale for pollution, and regenerates the summary.
@@ -297,8 +314,9 @@ checks only the conforming H1 candidates. The additional
 [candidate gradient CSV](figures/fci_transport_pollution_candidate_parallel.csv)
 applies each actual FCI or symmetric assembly stencil to nodal samples of
 `u = exp(x+2*y)` and compares it to the independent analytic derivative
-`b.grad(u) = (b_x+2*b_y)*exp(x+2*y)` at every cell centre. The L2 error uses
-cell areas `h^2`. On 4, 8, 16, 32, 64, 128 and 256 cells per direction,
+`b.grad(u) = (b_x+2*b_y)*exp(x+2*y)` at every cell centre, where `b_x` and
+`b_y` are the Cartesian components of the unit field direction. The L2 error
+uses cell areas `h^2`. On 4, 8, 16, 32, 64, 128 and 256 cells per direction,
 the final measured orders are `0.993023` for FCI and `1.999740` for the
 symmetric stencil; their final errors are `2.078403e-3` and `1.118234e-5`.
 Both derivatives are nonzero and converge. The normalized field is singular
@@ -310,6 +328,10 @@ set
 
 `v = (cos(pi*x)*sin(pi*y), -sin(pi*x)*cos(pi*y))`,
 `s = v_x^2+v_y^2`, and `T_exact = psi + 4*x*psi*s^2`.
+Here `v_x` and `v_y` are components of the unnormalized field vector `v`;
+`s` now denotes its squared magnitude, rather than tracing arc length, and
+`T_exact` is the manufactured exact temperature. The source `Q_R` is the
+heat source at anisotropy `R`.
 
 The second term varies along field lines and vanishes on the boundary and
 at the magnetic axis. Its L2 norm is `0.12998343504`, independently integrated
@@ -327,15 +349,15 @@ for each tested anisotropy, against a fixed `2e-6` check. The axis source is
 independently checked against `2*pi^2`.
 
 All candidates use their existing assembly quadrature and the same native
-FortSparse SPD direct solver. Absolute L2 temperature error is independently
-overintegrated with `p+4` Gauss points per direction; the area of the
-normalized square is one. For the computed temperature `T_h`, the central
-error is `|T_h(0,0)-1|`. Nonzero
-Dirichlet values are included in the circular error reconstruction; a nodal
-interpolation oracle verifies second-order L2 convergence with those boundary
-values. No residual limit or solver setting is relaxed. The maximum original-matrix
-normwise residual across the 217 new refinement rows is `5.78e-16`, below
-the unchanged `2.220446e-13` limit.
+FortSparse symmetric positive-definite (SPD) direct solver. Absolute L2
+temperature error is independently overintegrated with `p+4` Gauss points per
+direction; the area of the normalized square is one. For the computed temperature
+`T_h`, the central error is `|T_h(0,0)-1|`. Nonzero Dirichlet values are included
+in the circular error reconstruction; a nodal interpolation oracle verifies
+second-order L2 convergence with those boundary values. No residual limit or
+solver setting is relaxed. The maximum original-matrix normwise residual across
+the 217 new refinement rows is `5.78e-16`, below the unchanged `2.220446e-13`
+limit.
 
 The [complete refinement CSV](figures/fci_transport_pollution_validation.csv)
 retains every mesh, L2 error, central error, signed pollution where applicable,
@@ -389,27 +411,30 @@ and regenerates the combined threshold CSV. No data are smoothed or discarded.
 
 ## Three-dimensional bilinear FCI locking
 
-The dimensionless nested-surface fixture uses `(x,y)` in `[0,1]^2`, periodic
-`z` of period one, `psi = sin(pi*x)*sin(pi*y)`, and magnetic field
-`B = (a*psi_y, -a*psi_x, 1)`, with `a = 0.15*(1+psi)` and subscripts denoting
-partial derivatives. It is divergence free, nowhere zero and tangent to
-`psi` surfaces. With unit perpendicular conductivity and parallel conductivity
-`1/epsilon`, the exact temperature is `psi` for source `2*pi^2*psi` and zero
-outer Dirichlet data. This translates and extends the Sovinec thermal source
-with shear and a guide field; it does not reproduce NIMROD's evolved field.
+The dimensionless nested-surface fixture uses `(x,y)` in `[0,1]^2`, periodic `z`
+of period one, `psi = sin(pi*x)*sin(pi*y)`, and magnetic field `B = (a*psi_y,
+-a*psi_x, 1)`, with `a = 0.15*(1+psi)` and subscripts denoting partial
+derivatives. It is divergence free, nowhere zero and tangent to `psi` surfaces.
+Here `a` sets the field-line pitch, and `psi_x`, `psi_y` are partial derivatives
+of `psi`. With unit perpendicular conductivity and parallel conductivity
+`1/epsilon`, the exact temperature is `psi` for source `2*pi^2*psi` and zero outer
+Dirichlet data. This translates and extends the Sovinec thermal source with shear
+and a guide field; it does not reproduce NIMROD's evolved field.
 
 Native fourth-order Runge–Kutta tracing, bilinear endpoint interpolation and
-parallel-gradient assembly supplied connectivity between two canonical planes
-half a period apart, with duplicate periodic planes identified. On 5, 9 and
-17 section cells per direction (72, 200 and 648 free unknowns), relative
-mass-norm errors at `epsilon=1e-6` were `0.99706`, `0.97841` and `0.74913`.
-They tend to one at `epsilon=1e-13`; all 24 rows fail the former `error < 0.1`
-target. Perpendicular-only errors were `0.033558`, `0.010216`, `0.002851`.
-The [complete CSV](figures/fci_transport_nested_accuracy.csv) retains every
-error, residual, tracing check and timing; the
-[plot source](figures/plot_fci_transport_nested_accuracy.py) displays all rows.
-The original weak residual stays below `4.1e-10`, traced flux defect below
-`1.3e-10`, and endpoint step-doubling difference below `2.6e-10`.
+parallel-gradient assembly supplied connectivity between two canonical planes half
+a period apart, with duplicate periodic planes identified. On 5, 9 and 17 section
+cells per direction (72, 200 and 648 free unknowns), relative mass-norm errors
+(discrete L2 errors weighted by nodal cell volumes and divided by the
+exact-temperature norm) at `epsilon=1e-6` were `0.99706`, `0.97841` and `0.74913`.
+On each fixed mesh the error tends to one as `epsilon` decreases toward zero,
+reaching near-one errors at `epsilon=1e-13`; all 24 rows fail `error < 0.1`.
+Perpendicular-only errors were `0.033558`, `0.010216`, `0.002851`. The [complete
+CSV](figures/fci_transport_nested_accuracy.csv) retains every error, residual,
+tracing check and timing; the [plot
+source](figures/plot_fci_transport_nested_accuracy.py) displays all rows. The
+original weak residual stays below `4.1e-10`, traced flux defect below `1.3e-10`,
+and endpoint step-doubling difference below `2.6e-10`.
 
 Bilinear interpolation preserves constants but not this nonlinear flux.
 Positive interpolation paths connect every free node to the anchored wall,
@@ -420,39 +445,41 @@ The responsible interpolation is in `src/operators/fci_interpolation_map.f90`
 (`build_fci_bilinear_interpolation_map_2d`) and its gradient use in
 `src/operators/fci_parallel_operator.f90`. This is a spatial locking result,
 not a Krylov failure or a conclusion about all FCI interpolation schemes.
-The failing acceptance executable is retired; its source and reproduction
-commands remain in [the recorded experiment](https://github.com/lazy-fortran/fortfem/commit/f282fda321db1c5d385ab8b733155976cc53cc7b).
 
-## Retired constraint-space and averaging routes
+## Constraint-space and averaging limitations
 
-Coarsening a multiplier space cannot by itself isolate flux functions:
-its kernel dimension is at least the temperature dimension minus the
-multiplier dimension. The [reduced-space CSV](figures/fci_transport_reduced_space.csv)
-records piecewise-constant and continuous-bilinear multipliers on a section
-grid with twice the temperature spacing, at 21, 41 and 81 section cells.
-At 81 cells the temperature space has dimension 12800, but the two kernels
-have dimensions 9600 and 9438, against a radial-resolution proxy of only 40
-bins. Projected odd-plane checkerboards retain 98.91% and 98.51% of their
-norm. The proxy is not an exact flux-space dimension. This generic reduction
-route is retired; its code is retained by
-[git history](https://github.com/lazy-fortran/fortfem/commit/f07c254d38f41f2c00e2dc84285e42f9d68a63c1).
+In a multiplier formulation an additional unknown enforces the weak
+parallel-gradient constraint: the parallel gradient is tested against every
+function in the multiplier space. A flux function is constant along magnetic field
+lines. Coarsening a multiplier space cannot by itself isolate flux functions: its
+kernel (the temperature fields whose tested parallel gradient vanishes) has
+dimension at least the temperature dimension minus the multiplier dimension. The [reduced-space CSV](figures/fci_transport_reduced_space.csv)
+records piecewise-constant and continuous-bilinear multipliers on a section grid
+with twice the temperature spacing, at 21, 41 and 81 section cells. At 81 cells
+the temperature space has dimension 12800, but the two kernels have dimensions
+9600 and 9438, against a radial-resolution proxy of only 40 bins. Checkerboard
+modes alternate sign between neighbouring grid nodes; the odd-plane modes also
+have opposite signs on the two planes. Projected odd-plane checkerboards retain
+98.91% and 98.51% of their norm. The proxy is not an exact flux-space dimension.
+These measurements do not qualify this generic reduction route.
 
-An explicit field-line-average projector was also stopped before
-implementation. A small parallel defect of its proposed range does not yield
-an epsilon-uniform consistency estimate without controlling the parallel flux
-multiplier and the complement. The energy estimate alone permits multiplier
-growth proportional to `epsilon^(-1/2)`. Smooth resonant shear need not give
-a uniformly bounded multiplier, and irrational field lines on a torus need
-not give a positive parallel spectral gap. Thus neither accurate averaging
-nor kernel identification alone proves the proposed projected penalty accurate.
-The [analytical preflight](https://github.com/lazy-fortran/fortfem/blob/6e6c6aeb71639ff3f2db812b2c1db653eeb0367e/doc/design/fci_transport_solver.md#explicit-averaging-analytical-preflight)
-contains the counterexamples and the checked literature locations. No averaging
-operator or modified transport discretization was implemented.
+An explicit field-line-average projector, which would replace a temperature by its
+average along each field line, was considered but not implemented. A small
+parallel defect of its proposed range does not yield an epsilon-uniform
+consistency estimate without controlling the parallel flux multiplier and the
+complement. The energy estimate alone permits multiplier growth proportional to
+`epsilon^(-1/2)`. Smooth resonant shear need not give a uniformly bounded
+multiplier, and irrational field lines on a torus need not give a positive
+parallel spectral gap. Thus neither accurate averaging nor kernel identification
+alone proves the proposed projected penalty accurate. No averaging operator or
+modified transport discretization was implemented.
 
 ## Dense algebraic oracle
 
 The kernel/complement oracle remains only in `test/fci_transport_reference.f90`,
-linked into its independent algebraic tests, never the installed library.
+linked into its independent algebraic tests, never the installed library. The
+kernel consists of fields annihilated by the parallel gradient; the complement
+is its mass-orthogonal remainder.
 It eliminates prescribed values and uses a mass-weighted singular value
 decomposition of the support gradient to split kernel and complement before
 scaling the weak equations. Rank is numerical, not certified; weak nonzero
@@ -472,19 +499,20 @@ do not establish spatial convergence on non-aligned magnetic surfaces.
 At `epsilon=1e-13`, assembled sparse solves of the separate cost fixtures
 had relative errors `0.24` to `1.45`, while the split oracle stayed below
 `4.506e-14`. Their timings compare different work and accuracy, not a practical
-solver crossover; the detailed historical table is in the
-[recorded oracle experiment](https://github.com/lazy-fortran/fortfem/blob/6e6c6aeb71639ff3f2db812b2c1db653eeb0367e/doc/design/fci_transport_solver.md#measured-accuracy-and-cost).
+solver crossover; the cost fixtures in
+[`test_fci_transport_reference.f90`](../../test/test_fci_transport_reference.f90)
+provide the corresponding algebraic comparison.
 
 ## Consequence for temperature transport
 
-The tested two-dimensional Günter symmetric and FCI stencils show anisotropy-independent sampled resolution requirements for the
-manufactured load. High-order H1 controls the same error at modest resolution;
-degree four is the KIN6D temperature choice. Its small but measurable resolution
-increase with anisotropy remains in the table, so a strict uniform-error theorem
-is not claimed. The three-dimensional bilinear plane operator locks on the
-non-aligned nested fixture. No solver from this branch is promoted to
-production, and island, plate, single-null and general three-dimensional
-accuracy and preconditioner gates remain unqualified.
+The tested two-dimensional Günter symmetric and FCI stencils show
+anisotropy-independent sampled resolution requirements for the manufactured load.
+High-order H1 controls the same error at modest resolution; degree four has a
+small but measurable resolution increase with anisotropy, retained in the table,
+so a strict uniform-error theorem is not claimed. The three-dimensional bilinear
+plane operator locks on the non-aligned nested fixture. These benchmarks do not
+qualify a production solver; island, plate, single-null and general
+three-dimensional accuracy and preconditioner gates remain unqualified.
 
 ## Figure report on quadrilaterals
 
@@ -530,12 +558,11 @@ the `benchmark` label and remain registered and runnable. Bare CTest includes
 benchmarks; use explicit labels to select the fast scope. The native fpm default
 runs the diagnostic program, not its command-line ladders.
 
-CTest sets one OpenMP and one OpenBLAS thread per FCI case; builds use eight
-jobs. The timing cases share a CTest resource lock. Retained CSV times are
-single measurements on shared faepmac1 with GNU Fortran 16.2, Release/OpenBLAS,
-without uncertainty estimates. Direct ladders stop at signed `E <= 0.1` or
-one million unknowns; validation refinements retain every row, including
-nonmonotone errors. No solver tolerance or residual gate is relaxed.
+CTest sets one OpenMP and one OpenBLAS thread per FCI case; builds use eight jobs.
+The timing cases share a CTest resource lock. Retained CSV times are single
+measurements on a shared macOS arm64 machine with GNU Fortran 16.2,
+Release/OpenBLAS, without uncertainty estimates. Direct ladders stop at signed `E <= 0.1` or one million unknowns; validation refinements retain every row,
+including nonmonotone errors. No solver tolerance or residual gate is relaxed.
 
 Plot sources read the retained CSVs by default, and accept output paths outside
 the repository. For example:

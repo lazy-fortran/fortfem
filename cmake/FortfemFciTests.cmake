@@ -1,5 +1,6 @@
 add_library(fortfem_fci_transport_test_support STATIC
-    "${PROJECT_SOURCE_DIR}/test/fci_transport_reference.f90")
+    "${PROJECT_SOURCE_DIR}/test/fci_transport_reference.f90"
+    "${PROJECT_SOURCE_DIR}/test/generated/fortfem_anisotropic_pollution_products.f90")
 set_target_properties(fortfem_fci_transport_test_support PROPERTIES
     Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/fci_transport_test_modules")
 target_include_directories(fortfem_fci_transport_test_support PUBLIC
@@ -18,7 +19,8 @@ foreach(test_source IN LISTS fci_test_sources)
         target_link_libraries(${test_name} PRIVATE fortfem::api fortfem_test_check)
     endif()
     if(test_name STREQUAL "test_fci_transport_pollution")
-        target_link_libraries(${test_name} PRIVATE fortfem_tensor_lines)
+        target_link_libraries(${test_name} PRIVATE
+            fortfem_tensor_lines fortfem_fci_transport_test_support)
     endif()
     if(test_name STREQUAL "test_fci_transport_pollution")
         add_test(NAME ${test_name} COMMAND ${test_name} diagnostics

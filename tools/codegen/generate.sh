@@ -9,6 +9,9 @@ export FORTFEM_CODEGEN_OUTPUT_DIR="$generated_dir"
 lab_generated_dir=${FORTFEM_LAB_CODEGEN_OUTPUT_DIR:-"$repository_dir/benchmark/lab/neq1/generated"}
 mkdir -p "$lab_generated_dir"
 export FORTFEM_LAB_CODEGEN_OUTPUT_DIR="$lab_generated_dir"
+test_generated_dir=${FORTFEM_TEST_CODEGEN_OUTPUT_DIR:-"$repository_dir/test/generated"}
+mkdir -p "$test_generated_dir"
+export FORTFEM_TEST_CODEGEN_OUTPUT_DIR="$test_generated_dir"
 fortsym_override=false
 if [[ -n "${FORTSYM_DIR:-}" ]]; then
     fortsym_dir=$FORTSYM_DIR
@@ -198,7 +201,7 @@ fo fmt "$generated_dir/fortfem_helmholtz_bem_kernel_products.f90"
 fo fmt "$generated_dir/fortfem_laplace_singular_edge_products.f90"
 fo fmt "$generated_dir/fortfem_helmholtz_bem_smooth_products.f90"
 fo fmt "$generated_dir/fortfem_fci_parallel_products.f90"
-fo fmt "$generated_dir/fortfem_anisotropic_pollution_products.f90"
+fo fmt "$test_generated_dir/fortfem_anisotropic_pollution_products.f90"
 fo fmt "$generated_dir/fortfem_fci_power_flux_products.f90"
 fo fmt "$generated_dir/fortfem_fci_quartic_lagrange.f90"
 fo fmt "$generated_dir/fortfem_fci_quintic_lagrange.f90"
