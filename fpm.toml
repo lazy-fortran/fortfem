@@ -65,6 +65,11 @@ source-dir = "benchmark"
 main = "bem_residual_study.f90"
 
 [[executable]]
+name = "fortfem_parametric_bem_scaling"
+source-dir = "benchmark"
+main = "fortfem_parametric_bem_scaling.f90"
+
+[[executable]]
 name = "lab_scalar_run"
 source-dir = "benchmark/lab"
 main = "lab_scalar_run.f90"
