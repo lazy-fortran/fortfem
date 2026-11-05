@@ -193,3 +193,75 @@ matched L1 error, GLL with p-multigrid was the fastest family (1.26 s for
 rel L2 1.8e-9 at 16 threads). The O-grid through the axis kept rate p+1
 without any near-axis degradation for both GLL and splines. Spline
 h-multigrid with Jacobi-type smoothing is h-robust but not p-robust.
+
+## Nonmatching periodic seams
+
+A mesh whose toroidal lines follow field lines closes a period with a poloidal
+twist that is in general not a multiple of the cell size, so its two periodic
+faces do not match node for node. Alignment stays an optional accelerator
+(criterion 3), and the seam closure exists so that it can be measured.
+`close_tensor_seam` in `fortfem_tensor_seam` takes the two face lists, a rigid
+seam motion and optional lattice images. A matching seam is closed by DOF
+identification, bit for bit the ordinary periodic gather map. Otherwise the
+slave face DOFs are eliminated by an affine constraint `u_s = C u_m`, and every
+operator acts as `P^T A P` with `P = [I; C]`, matrix free through
+`apply_seam_operator`. The assembled `assemble_seam_operator` is the oracle and
+the coarse matrix.
+
+Two constraints are available. `SEAM_INTERPOLATION` sets slave nodes to the
+master trace at their images, as flux-coordinate-independent codes do along
+field lines ([Hariri and Ottaviani 2013](https://doi.org/10.1016/j.cpc.2013.06.005);
+[Stegmeir et al. 2016](https://doi.org/10.1016/j.cpc.2015.09.016)). The master
+trace has kinks at master cell edges inside slave cells, so the closed space is
+not continuous across the seam and the pointwise condition is not optimal for
+p >= 2. The default `SEAM_MORTAR` is the mortar condition of Bernardi, Maday and
+Patera (1994): slave test functions, lowered by one degree along a Dirichlet
+rim, are orthogonal to `u_slave - u_master o T`
+([Ben Belgacem 1999](https://doi.org/10.1007/s002110050468) analyses the
+multiplier form). It is eliminated as a constraint, so it costs the same per
+apply as interpolation and needs no saddle-point solver. The flux-tube
+twist-shift condition ([Beer, Cowley and Hammett 1995](https://doi.org/10.1063/1.871232))
+states the same identification for a Fourier binormal coordinate, whereas a C0
+GLL space needs it in real space.
+
+The overlap integrals are exact up to quadrature on curved cells. Master faces
+are split into nearly bilinear parts, whose charts invert reliably near their
+squares, and slave faces into still flatter parts. A slave part that is larger
+than an eighth of a master part it meets is halved against that master part
+only; at a quarter, fan nodes of a rigid twist fell outside the slave part.
+Each slave part is clipped in the chart of a master part, and a Gauss rule on
+the fan of curved triangles from the polygon centre integrates the overlap, so
+no master or slave kink lies inside a quadrature cell. Clipping a large, nearly
+affine slave face in a curved master chart, as a shear-free twist produces, met
+spurious fold preimages, and the size bound removes that case. A global bound,
+a quarter of the smallest master part for every slave part, built 45 million
+overlap nodes for the five slave faces of the p=2 L3 seam and took 183 s; the
+pairwise bound keeps the refinement where the small master parts are. Each fan
+triangle uses the p+q+2 Gauss points per direction of the slave mass rule,
+where q is the geometry degree; the earlier 2p+q+4 points changed the
+reproduction and operator checks only at roundoff. The fan keeps its nodes
+inside the nearly convex overlap, where both charts invert reliably; a node
+outside either cell fails the setup instead of entering the constraint. The
+discrete rims of the two faces differ by the geometry error of the curved
+boundary. A master cell on a Dirichlet rim is therefore not clipped on its rim
+side, and slave slivers beyond it see the polynomial extension of its trace.
+Without this, constants are not reproduced next to a curved rim. The overlap
+cubature depends only on the geometry, which all p-levels share, so
+`coarsen_tensor_seam` reuses it and p-multigrid restricts and prolongs on
+consistently constrained coarse spaces. The setup is dense in the slave rows of
+the seam, O(n_slave^3), which is acceptable for one cross-section but not for a
+seam with many thousands of slave DOFs.
+
+L3 evidence ([V], sCluster job 3356493, `benchmark/lab/RESULTS.md` on the L3
+integration branch): on the exact unit disk with n=1 and 20 phi cells, the
+aligned O-grid with this mortar seam is not more accurate than the periodic
+O-grid at matched p, except at p=2 and ratio 1e3, and is seven times less
+accurate at p=6 and ratio 1e3 (3.5e-7 against 4.8e-8). It needs more PCG
+iterations, and its wall time is 106 to 362 times larger because seam setup
+dominates (9, 36 and 111 s at p=2, 4 and 6 on four threads, before the
+robustness fix above). Already at ratio 1 the aligned error is 1.3 to 4.4
+times the disk error. Field alignment through a nonmatching seam is therefore
+not an accelerator on this case, which is consistent with criterion 3 keeping
+alignment optional. The seam stays available for charts that need it, such as
+KIN6D field-line charts with irrational iota, and its setup cost is the open
+item (overlap cubature on finely split parts, and the dense slave solve).
