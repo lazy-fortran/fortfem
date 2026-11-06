@@ -377,3 +377,8 @@ main = "gen_lab_problems.f90"
 name = "gen_triangle_feec_tables"
 source-dir = "app"
 main = "gen_triangle_feec_tables.f90"
+
+[[executable]]
+name = "gen_meridian_bspline_products"
+source-dir = "app"
+main = "gen_meridian_bspline_products.f90"
