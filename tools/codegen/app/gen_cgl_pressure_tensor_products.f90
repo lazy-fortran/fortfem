@@ -1,5 +1,4 @@
 program gen_cgl_pressure_tensor_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), sym
@@ -9,7 +8,6 @@ program gen_cgl_pressure_tensor_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(5), variables_dot(5)
@@ -20,20 +18,19 @@ program gen_cgl_pressure_tensor_products
     integer :: ios, root, unit
     type(expr_t) :: delta
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "p_parallel"), sym(arena, "p_perpendicular"), &
-        sym(arena, "direction_1"), sym(arena, "direction_2"), &
-        sym(arena, "direction_3")]
+        sym("p_parallel"), sym("p_perpendicular"), &
+        sym("direction_1"), sym("direction_2"), &
+        sym("direction_3")]
     variables_dot = [ &
-        sym(arena, "p_parallel_dot"), sym(arena, "p_perpendicular_dot"), &
-        sym(arena, "direction_1_dot"), sym(arena, "direction_2_dot"), &
-        sym(arena, "direction_3_dot")]
+        sym("p_parallel_dot"), sym("p_perpendicular_dot"), &
+        sym("direction_1_dot"), sym("direction_2_dot"), &
+        sym("direction_3_dot")]
     tensor_bar = [ &
-        sym(arena, "pressure_11_bar"), sym(arena, "pressure_22_bar"), &
-        sym(arena, "pressure_33_bar"), sym(arena, "pressure_12_bar"), &
-        sym(arena, "pressure_13_bar"), sym(arena, "pressure_23_bar")]
+        sym("pressure_11_bar"), sym("pressure_22_bar"), &
+        sym("pressure_33_bar"), sym("pressure_12_bar"), &
+        sym("pressure_13_bar"), sym("pressure_23_bar")]
 
     delta = variables(1) - variables(2)
     tensor = [ &

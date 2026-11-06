@@ -3,7 +3,6 @@ program gen_tensor_power_split_products
     !!
     !! The runtime wrapper owns shape/finiteness checks; FortSym owns the
     !! symmetric, skew, and total quadratic contractions and their JVP/VJP.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -17,7 +16,6 @@ program gen_tensor_power_split_products
     integer, parameter :: dimension = 3
     integer, parameter :: tensor_size = dimension*dimension
     integer, parameter :: variable_count = tensor_size + dimension
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(variable_count), variables_dot(variable_count)
@@ -28,28 +26,27 @@ program gen_tensor_power_split_products
     character(len=32) :: name
     integer :: row, column, index, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    half = real_expr(arena, 0.5d0)
+    engine = make_native_engine()
+    half = real_expr(0.5d0)
     do row = 1, dimension
         do column = 1, dimension
             index = (row - 1)*dimension + column
             write (name, '("tensor_",i1,i1)') row, column
-            variables(index) = sym(arena, trim(name))
+            variables(index) = sym(trim(name))
             write (name, '("tensor_",i1,i1,"_dot")') row, column
-            variables_dot(index) = sym(arena, trim(name))
+            variables_dot(index) = sym(trim(name))
         end do
     end do
     do row = 1, dimension
         index = tensor_size + row
         write (name, '("vector_",i1)') row
-        variables(index) = sym(arena, trim(name))
+        variables(index) = sym(trim(name))
         write (name, '("vector_",i1,"_dot")') row
-        variables_dot(index) = sym(arena, trim(name))
+        variables_dot(index) = sym(trim(name))
     end do
 
-    powers = [real_expr(arena, 0.0d0), real_expr(arena, 0.0d0), &
-        real_expr(arena, 0.0d0)]
+    powers = [real_expr(0.0d0), real_expr(0.0d0), &
+        real_expr(0.0d0)]
     do row = 1, dimension
         do column = 1, dimension
             index = (row - 1)*dimension + column
@@ -63,8 +60,8 @@ program gen_tensor_power_split_products
                 variables(tensor_size + row)*variables(tensor_size + column)
         end do
     end do
-    power_bar = [sym(arena, "symmetric_power_bar"), &
-        sym(arena, "skew_power_bar"), sym(arena, "total_power_bar")]
+    power_bar = [sym("symmetric_power_bar"), &
+        sym("skew_power_bar"), sym("total_power_bar")]
     powers_dot = jvp(powers, variables, variables_dot)
     powers_vjp = vjp(powers, variables, power_bar)
     call simplify_all(powers)

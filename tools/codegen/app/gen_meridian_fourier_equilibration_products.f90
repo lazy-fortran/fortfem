@@ -1,6 +1,5 @@
 program gen_meridian_fourier_equilibration_products
     ! Fourier transport residual leaves; reconstruction is not differentiated.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
@@ -9,37 +8,35 @@ program gen_meridian_fourier_equilibration_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: r, n, uc, us, jc, js, fc, fs
     type(expr_t) :: a, b, c, x, y, z, u, f
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open (newunit=unit, file=generated_path( &
         'fortfem_meridian_fourier_equilibration_products.f90'), &
         status='replace', action='write')
-    r = sym(arena, 'r'); n = sym(arena, 'n')
-    uc = sym(arena, 'uc'); us = sym(arena, 'us')
+    r = sym('r'); n = sym('n')
+    uc = sym('uc'); us = sym('us')
     call emit('fourier_equil_phi_gradient', &
         [str('r'), str('n'), str('uc'), str('us')], &
         [str('gc'), str('gs')], [n*us/r, -n*uc/r])
 
-    a = sym(arena, 'a'); b = sym(arena, 'b'); c = sym(arena, 'c')
-    x = sym(arena, 'x'); y = sym(arena, 'y'); z = sym(arena, 'z')
-    u = sym(arena, 'u')
+    a = sym('a'); b = sym('b'); c = sym('c')
+    x = sym('x'); y = sym('y'); z = sym('z')
+    u = sym('u')
     ! One physical row of j = K grad p_h - f.
     call emit('fourier_equil_flux_component', &
         [str('a'), str('b'), str('c'), str('x'), str('y'), str('z'), str('u')], &
         [str('j')], [a*x + b*y + c*z - u])
-    f = sym(arena, 'f')
+    f = sym('f')
     ! Metric-weighted scalar coefficient, meridional flux and source.
     call emit('fourier_equil_metric', &
         [str('r'), str('a'), str('x'), str('z'), str('f')], &
         [str('c'), str('px'), str('pz'), str('s')], [r*a, r*x, r*z, r*f])
-    jc = sym(arena, 'jc'); js = sym(arena, 'js')
-    fc = sym(arena, 'fc'); fs = sym(arena, 'fs')
+    jc = sym('jc'); js = sym('js')
+    fc = sym('fc'); fs = sym('fs')
     ! -div_2(R j_pol)_b = (R f0 + d_phi j_phi)_b.
     call emit('fourier_equil_source', &
         [str('r'), str('n'), str('fc'), str('fs'), str('jc'), str('js')], &

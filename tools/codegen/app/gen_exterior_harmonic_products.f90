@@ -1,5 +1,4 @@
 program gen_exterior_harmonic_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), &
                             operator(*), operator(/), operator(**), sqrt, log
     use fortsym_diff, only: diff
@@ -10,19 +9,17 @@ program gen_exterior_harmonic_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
     type(expr_t) :: v(9), r(3), d(3), avec(3), bvec(3), numerator(3), rr, f, dotdr
     type(expr_t) :: r1, r2, length, s, rho, primitive, outputs(6), pair(1)
     type(str_t) :: names(9)
     integer :: i, j, k, unit
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     names = [str('r1x'), str('r1y'), str('r1z'), str('r2x'), str('r2y'), &
              str('r2z'), str('nx'), str('ny'), str('nz')]
     do i = 1, 9
-        v(i) = sym(arena, chars(names(i)))
+        v(i) = sym(chars(names(i)))
     end do
     r = v(1:3); d = v(4:6)
     rr = r(1)**2 + r(2)**2 + r(3)**2
@@ -46,7 +43,7 @@ program gen_exterior_harmonic_products
                    3*(numerator(k)*r(j) - numerator(j)*r(k)) - &
                    (3*r(i)*dotdr - d(i)*rr), 'closed wire curl identity')
     end do
-    s = sym(arena, 's'); rho = sym(arena, 'rho')
+    s = sym('s'); rho = sym('rho')
     primitive = log(s + sqrt(s*s + rho*rho))
     call prove(diff(primitive, s) - 1/sqrt(s*s + rho*rho), &
                'straight segment vector potential primitive')
@@ -117,7 +114,7 @@ contains
         write (unit, '(a)') code(:len(code) - 1)
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
-            directions(k) = sym(arena, chars(dot_names(k)))
+            directions(k) = sym(chars(dot_names(k)))
         end do
         do k = 1, size(outputs)
             dot_outputs(k) = str(chars(outputs(k))//'_dot')
@@ -131,7 +128,7 @@ contains
         write (unit, '(a)') code(:len(code) - 1)
         do k = 1, size(outputs)
             bar_names(k) = str(chars(outputs(k))//'_bar')
-            cotangents(k) = sym(arena, chars(bar_names(k)))
+            cotangents(k) = sym(chars(bar_names(k)))
         end do
         do k = 1, size(names)
             bar_outputs(k) = str(chars(names(k))//'_bar')

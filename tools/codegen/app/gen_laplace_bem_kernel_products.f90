@@ -1,5 +1,4 @@
 program gen_laplace_bem_kernel_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_laplace_bem_kernel_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(8), variables_dot(8), displacement(3)
@@ -20,21 +18,20 @@ program gen_laplace_bem_kernel_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: component, ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "first_point_1"), sym(arena, "first_point_2"), &
-        sym(arena, "first_point_3"), sym(arena, "second_point_1"), &
-        sym(arena, "second_point_2"), sym(arena, "second_point_3"), &
-        sym(arena, "first_jacobian"), sym(arena, "second_jacobian")]
+        sym("first_point_1"), sym("first_point_2"), &
+        sym("first_point_3"), sym("second_point_1"), &
+        sym("second_point_2"), sym("second_point_3"), &
+        sym("first_jacobian"), sym("second_jacobian")]
     variables_dot = [ &
-        sym(arena, "first_point_1_dot"), sym(arena, "first_point_2_dot"), &
-        sym(arena, "first_point_3_dot"), sym(arena, "second_point_1_dot"), &
-        sym(arena, "second_point_2_dot"), sym(arena, "second_point_3_dot"), &
-        sym(arena, "first_jacobian_dot"), &
-        sym(arena, "second_jacobian_dot")]
-    kernel_scale = sym(arena, "kernel_scale")
-    output_bar(1) = sym(arena, "value_bar")
+        sym("first_point_1_dot"), sym("first_point_2_dot"), &
+        sym("first_point_3_dot"), sym("second_point_1_dot"), &
+        sym("second_point_2_dot"), sym("second_point_3_dot"), &
+        sym("first_jacobian_dot"), &
+        sym("second_jacobian_dot")]
+    kernel_scale = sym("kernel_scale")
+    output_bar(1) = sym("value_bar")
     do component = 1, 3
         displacement(component) = variables(component) - &
             variables(component + 3)

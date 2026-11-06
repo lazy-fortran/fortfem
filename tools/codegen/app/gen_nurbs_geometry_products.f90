@@ -1,5 +1,4 @@
 program gen_nurbs_geometry_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_nurbs_geometry_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: outputs(3), variables(6), directions(6)
@@ -24,49 +22,48 @@ program gen_nurbs_geometry_products
     character(:), allocatable :: volume_jvp_code, volume_vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "numerator"), &
-        sym(arena, "derivative_numerator_x"), &
-        sym(arena, "derivative_numerator_y"), &
-        sym(arena, "denominator"), &
-        sym(arena, "derivative_denominator_x"), &
-        sym(arena, "derivative_denominator_y")]
+        sym("numerator"), &
+        sym("derivative_numerator_x"), &
+        sym("derivative_numerator_y"), &
+        sym("denominator"), &
+        sym("derivative_denominator_x"), &
+        sym("derivative_denominator_y")]
     directions = [ &
-        sym(arena, "numerator_dot"), &
-        sym(arena, "derivative_numerator_x_dot"), &
-        sym(arena, "derivative_numerator_y_dot"), &
-        sym(arena, "denominator_dot"), &
-        sym(arena, "derivative_denominator_x_dot"), &
-        sym(arena, "derivative_denominator_y_dot")]
+        sym("numerator_dot"), &
+        sym("derivative_numerator_x_dot"), &
+        sym("derivative_numerator_y_dot"), &
+        sym("denominator_dot"), &
+        sym("derivative_denominator_x_dot"), &
+        sym("derivative_denominator_y_dot")]
     cotangents = [ &
-        sym(arena, "point_bar"), &
-        sym(arena, "jacobian_x_bar"), &
-        sym(arena, "jacobian_y_bar")]
+        sym("point_bar"), &
+        sym("jacobian_x_bar"), &
+        sym("jacobian_y_bar")]
     volume_variables = [ &
-        sym(arena, "numerator"), &
-        sym(arena, "derivative_numerator_x"), &
-        sym(arena, "derivative_numerator_y"), &
-        sym(arena, "derivative_numerator_z"), &
-        sym(arena, "denominator"), &
-        sym(arena, "derivative_denominator_x"), &
-        sym(arena, "derivative_denominator_y"), &
-        sym(arena, "derivative_denominator_z")]
+        sym("numerator"), &
+        sym("derivative_numerator_x"), &
+        sym("derivative_numerator_y"), &
+        sym("derivative_numerator_z"), &
+        sym("denominator"), &
+        sym("derivative_denominator_x"), &
+        sym("derivative_denominator_y"), &
+        sym("derivative_denominator_z")]
     volume_directions = [ &
-        sym(arena, "numerator_dot"), &
-        sym(arena, "derivative_numerator_x_dot"), &
-        sym(arena, "derivative_numerator_y_dot"), &
-        sym(arena, "derivative_numerator_z_dot"), &
-        sym(arena, "denominator_dot"), &
-        sym(arena, "derivative_denominator_x_dot"), &
-        sym(arena, "derivative_denominator_y_dot"), &
-        sym(arena, "derivative_denominator_z_dot")]
+        sym("numerator_dot"), &
+        sym("derivative_numerator_x_dot"), &
+        sym("derivative_numerator_y_dot"), &
+        sym("derivative_numerator_z_dot"), &
+        sym("denominator_dot"), &
+        sym("derivative_denominator_x_dot"), &
+        sym("derivative_denominator_y_dot"), &
+        sym("derivative_denominator_z_dot")]
     volume_cotangents = [ &
-        sym(arena, "point_bar"), &
-        sym(arena, "jacobian_x_bar"), &
-        sym(arena, "jacobian_y_bar"), &
-        sym(arena, "jacobian_z_bar")]
+        sym("point_bar"), &
+        sym("jacobian_x_bar"), &
+        sym("jacobian_y_bar"), &
+        sym("jacobian_z_bar")]
 
     outputs(1) = variables(1)/variables(4)
     outputs(2) = (variables(2) - &

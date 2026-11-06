@@ -6,7 +6,6 @@ program gen_lab_grad_shafranov_source_products
     ! F^2 = F0^2 + cf (1 - psin)^af, psin = (psi - psia)/(psib - psia).
     ! Outputs g and its derivatives with respect to the local flux psi and the
     ! free-axis value psia, which carries the nonlocal Newton term.
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_expr, only: expr_t, sym, real_expr, &
                             operator(+), operator(-), operator(*), operator(/), &
@@ -15,7 +14,6 @@ program gen_lab_grad_shafranov_source_products
     use fortsym_string, only: str, chars
     use fortfem_codegen_provenance, only: fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: r, psi, psia, psib, mu0, pa, cf, psin, pressure, fsq, g, &
                     roots(3), one, half
     type(kernel_spec_t) :: spec
@@ -25,16 +23,15 @@ program gen_lab_grad_shafranov_source_products
     integer :: unit, length, status, variant
     integer, parameter :: exponents(2, 2) = reshape([1, 1, 2, 3], [2, 2])
 
-    call arena%init()
-    one = real_expr(arena, 1.0d0)
-    half = real_expr(arena, 0.5d0)
-    r = sym(arena, 'r')
-    psi = sym(arena, 'psi')
-    psia = sym(arena, 'psia')
-    psib = sym(arena, 'psib')
-    mu0 = sym(arena, 'mu0')
-    pa = sym(arena, 'pa')
-    cf = sym(arena, 'cf')
+    one = real_expr(1.0d0)
+    half = real_expr(0.5d0)
+    r = sym('r')
+    psi = sym('psi')
+    psia = sym('psia')
+    psib = sym('psib')
+    mu0 = sym('mu0')
+    pa = sym('pa')
+    cf = sym('cf')
     psin = (psi - psia)/(psib - psia)
     all_code = ''
     do variant = 1, size(exponents, 2)

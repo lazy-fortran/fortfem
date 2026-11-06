@@ -1,20 +1,19 @@
 program gen_tetra_rt_coefficients
     use, intrinsic :: iso_fortran_env, only: int64
-    use fortsym_arena, only: arena_t, NK_INT, NK_RAT
+    use fortsym_arena, only: NK_INT, NK_RAT
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), rat
     use fortsym_linalg, only: &
         exact_linear_system_result_t, solve_exact_linear_system
     use fortfem_codegen_provenance, only: &
         fortsym_revision, generated_path
+    use fortsym_string, only: itoa
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: degree, output_unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     call write_module_header()
     do degree = 0, 4
         call generate_degree(degree)
@@ -35,9 +34,9 @@ contains
         allocate(moment_matrix(dof_count, dof_count))
         allocate(identity(dof_count, dof_count))
         call build_exact_moment_matrix(degree, moment_matrix)
-        identity = num(arena, 0)
+        identity = num(0)
         do diagonal = 1, dof_count
-            identity(diagonal, diagonal) = num(arena, 1)
+            identity(diagonal, diagonal) = num(1)
         end do
         solution = solve_exact_linear_system( &
             engine, moment_matrix, identity)
@@ -59,7 +58,7 @@ contains
         allocate(coefficients(3, size(matrix, 2)))
         allocate(powers(3, 3, size(matrix, 2)))
         call build_candidates(degree, coefficients, powers)
-        matrix = num(arena, 0)
+        matrix = num(0)
         moment = 0
         do face = 1, 4
             do total = 0, degree
@@ -84,7 +83,7 @@ contains
                         do candidate = 1, size(matrix, 2)
                             if (coefficients(component, candidate) == 0) cycle
                             matrix(moment, candidate) = num( &
-                                arena, coefficients(component, candidate))* &
+                                coefficients(component, candidate))* &
                                 tetra_monomial_integral( &
                                 powers(:, component, candidate) + &
                                 [x_degree, y_degree, z_degree])
@@ -149,12 +148,11 @@ contains
         integer :: component, area_normal(3)
 
         call face_geometry(face, area_normal=area_normal)
-        value = num(arena, 0)
+        value = num(0)
         do component = 1, 3
             if (coefficients(component) == 0 .or. &
                 area_normal(component) == 0) cycle
-            value = value + num( &
-                arena, coefficients(component)*area_normal(component))* &
+            value = value + num(coefficients(component)*area_normal(component))* &
                 face_monomial_integral( &
                 powers(:, component), face, moment_x, moment_y)
         end do
@@ -177,12 +175,11 @@ contains
                 polynomial, powers(component), offset(component), &
                 affine(component, 1), affine(component, 2))
         end do
-        value = num(arena, 0)
+        value = num(0)
         do x_degree = 0, 8
             do y_degree = 0, 8 - x_degree
                 if (polynomial(x_degree, y_degree) == 0_int64) cycle
-                value = value + num( &
-                    arena, polynomial(x_degree, y_degree))* &
+                value = value + num(polynomial(x_degree, y_degree))* &
                     triangle_monomial_integral( &
                     x_degree + moment_x, y_degree + moment_y)
             end do
@@ -263,8 +260,7 @@ contains
         integer, intent(in) :: x_degree, y_degree
         type(expr_t) :: value
 
-        value = rat( &
-            arena, factorial(x_degree)*factorial(y_degree), &
+        value = rat(factorial(x_degree)*factorial(y_degree), &
             factorial(x_degree + y_degree + 2))
     end function triangle_monomial_integral
 
@@ -272,8 +268,7 @@ contains
         integer, intent(in) :: powers(3)
         type(expr_t) :: value
 
-        value = rat( &
-            arena, factorial(powers(1))*factorial(powers(2))* &
+        value = rat(factorial(powers(1))*factorial(powers(2))* &
             factorial(powers(3)), factorial(sum(powers) + 3))
     end function tetra_monomial_integral
 
@@ -332,16 +327,16 @@ contains
 
         integer :: column, row
 
-        write(output_unit, "(a)") "        case ("//integer_text(degree)//")"
+        write(output_unit, "(a)") "        case ("//itoa(degree)//")"
         write(output_unit, "(a)") "            allocate(coefficients("// &
-            integer_text(size(coefficients, 1))//","// &
-            integer_text(size(coefficients, 2))//"))"
+            itoa(size(coefficients, 1))//","// &
+            itoa(size(coefficients, 2))//"))"
         write(output_unit, "(a)") "            coefficients = 0.0_real64"
         do column = 1, size(coefficients, 2)
             do row = 1, size(coefficients, 1)
                 if (coefficients(row, column)%int_value() == 0_int64) cycle
                 write(output_unit, "(a)") "            coefficients("// &
-                    integer_text(row)//","//integer_text(column)//") = "// &
+                    itoa(row)//","//itoa(column)//") = "// &
                     rational_literal(coefficients(row, column))
             end do
         end do
@@ -373,15 +368,6 @@ contains
             error stop "RT basis coefficient is not exact rational"
         end select
     end function rational_literal
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(32) :: buffer
-
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 
     function integer_text_64(value) result(text)
         integer(int64), intent(in) :: value

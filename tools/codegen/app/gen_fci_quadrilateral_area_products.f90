@@ -1,5 +1,4 @@
 program gen_fci_quadrilateral_area_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_fci_quadrilateral_area_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(8), variables_dot(8), area(1), two
@@ -19,17 +17,16 @@ program gen_fci_quadrilateral_area_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    two = real_expr(arena, 2.0d0)
-    variables(1) = sym(arena, "x_1")
-    variables(2) = sym(arena, "y_1")
-    variables(3) = sym(arena, "x_2")
-    variables(4) = sym(arena, "y_2")
-    variables(5) = sym(arena, "x_3")
-    variables(6) = sym(arena, "y_3")
-    variables(7) = sym(arena, "x_4")
-    variables(8) = sym(arena, "y_4")
+    engine = make_native_engine()
+    two = real_expr(2.0d0)
+    variables(1) = sym("x_1")
+    variables(2) = sym("y_1")
+    variables(3) = sym("x_2")
+    variables(4) = sym("y_2")
+    variables(5) = sym("x_3")
+    variables(6) = sym("y_3")
+    variables(7) = sym("x_4")
+    variables(8) = sym("y_4")
     area(1) = (variables(1)*variables(4) + &
         variables(3)*variables(6) + variables(5)*variables(8) + &
         variables(7)*variables(2) - variables(2)*variables(3) - &
@@ -50,15 +47,15 @@ program gen_fci_quadrilateral_area_products
     spec%outputs(1) = str("area")
     primal_code = chars(emit_kernel(area, spec))
 
-    variables_dot(1) = sym(arena, "x_1_dot")
-    variables_dot(2) = sym(arena, "y_1_dot")
-    variables_dot(3) = sym(arena, "x_2_dot")
-    variables_dot(4) = sym(arena, "y_2_dot")
-    variables_dot(5) = sym(arena, "x_3_dot")
-    variables_dot(6) = sym(arena, "y_3_dot")
-    variables_dot(7) = sym(arena, "x_4_dot")
-    variables_dot(8) = sym(arena, "y_4_dot")
-    area_bar(1) = sym(arena, "area_bar")
+    variables_dot(1) = sym("x_1_dot")
+    variables_dot(2) = sym("y_1_dot")
+    variables_dot(3) = sym("x_2_dot")
+    variables_dot(4) = sym("y_2_dot")
+    variables_dot(5) = sym("x_3_dot")
+    variables_dot(6) = sym("y_3_dot")
+    variables_dot(7) = sym("x_4_dot")
+    variables_dot(8) = sym("y_4_dot")
+    area_bar(1) = sym("area_bar")
     area_jvp = jvp(area, variables, variables_dot)
     area_vjp = vjp(area, variables, area_bar)
     call simplify_all(area_jvp)

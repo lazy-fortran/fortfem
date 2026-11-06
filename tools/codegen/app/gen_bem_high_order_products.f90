@@ -1,5 +1,4 @@
 program gen_bem_high_order_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), operator(*), &
         operator(/), operator(**), sqrt, asinh, sinh, cosh, log
     use fortsym_diff, only: diff
@@ -10,7 +9,6 @@ program gen_bem_high_order_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: v(7), product(1), x, y, z, phi(6), l(3), total
     type(expr_t) :: poly, lap, euler, rr, primitive, legendre
     type(expr_t) :: fan(9), mapped(3), signed_jacobian
@@ -24,9 +22,8 @@ program gen_bem_high_order_products
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
     integer :: i, j, unit, degree, exponent
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, 'x'); y = sym(arena, 'y')
+    engine = make_native_engine()
+    x = sym('x'); y = sym('y')
     l = [1-x-y,x,y]
     phi = [l(1)*(2*l(1)-1),l(2)*(2*l(2)-1),l(3)*(2*l(3)-1), &
         4*l(1)*l(2),4*l(2)*l(3),4*l(3)*l(1)]
@@ -41,7 +38,7 @@ program gen_bem_high_order_products
     ! For harmonic homogeneous P_l, u=P_l/r**(2*l+1) is exterior harmonic.
     ! Product/chain rule: r**(2-s) Laplacian(r**s P) =
     ! r**2 Laplacian(P)+2*s*x.grad(P)+s*(s+1)*P. Domain r>0.
-    z=sym(arena,'z'); rr=x*x+y*y+z*z
+    z=sym('z'); rr=x*x+y*y+z*z
     do degree=1,2
         poly=z
         if (degree==2) poly=(2*z*z-x*x-y*y)/2
@@ -65,7 +62,7 @@ program gen_bem_high_order_products
     names = [str('kernel'),str('jx'),str('jy'),str('test'),str('trial'), &
         str('unused1'),str('unused2')]
     do i=1,7
-        v(i)=sym(arena,chars(names(i)))
+        v(i)=sym(chars(names(i)))
     end do
     open(newunit=unit,file=generated_path('fortfem_bem_high_order_products.f90'), &
         status='replace',action='write')
@@ -74,14 +71,14 @@ program gen_bem_high_order_products
     names=[str('green'),str('tx'),str('ty'),str('tz'), &
         str('sx'),str('sy'),str('sz')]
     do i=1,7
-        v(i)=sym(arena,chars(names(i)))
+        v(i)=sym(chars(names(i)))
     end do
     product=[v(1)*(v(2)*v(5)+v(3)*v(6)+v(4)*v(7))]
     call emit('bem_hyper_product',names,v,product,[str('value')])
     fan_names=[str('apex1'),str('apex2'),str('e1u'),str('e1v'), &
         str('e2u'),str('e2v'),str('radius'),str('angle'),str('determinant')]
     do i=1,9
-        fan(i)=sym(arena,chars(fan_names(i)))
+        fan(i)=sym(chars(fan_names(i)))
     end do
     mapped(1)=fan(1)+fan(7)**2*((1-fan(8))*fan(3)+fan(8)*fan(5))
     mapped(2)=fan(2)+fan(7)**2*((1-fan(8))*fan(4)+fan(8)*fan(6))
@@ -98,7 +95,7 @@ program gen_bem_high_order_products
     pair_names=[str('z1'),str('z2'),str('r'),str('s'),str('ta1'),str('ta2'), &
         str('tb1'),str('tb2'),str('sa1'),str('sa2'),str('sb1'),str('sb2')]
     do i=1,12
-        pair(i)=sym(arena,chars(pair_names(i)))
+        pair(i)=sym(chars(pair_names(i)))
     end do
     do j=1,2
         pair_map(j)=(1-pair(3))*pair(j)+pair(3)* &
@@ -122,7 +119,7 @@ program gen_bem_high_order_products
     angle_names=[str('ax'),str('ay'),str('az'),str('bx'),str('by'),str('bz'), &
         str('du1'),str('dv1'),str('du2'),str('dv2'),str('q')]
     do i=1,11
-        angle(i)=sym(arena,chars(angle_names(i)))
+        angle(i)=sym(chars(angle_names(i)))
     end do
     do j=1,3
         first(j)=angle(j)*angle(7)+angle(j+3)*angle(8)
@@ -145,8 +142,8 @@ program gen_bem_high_order_products
         [str('s'),str('weight')], .false.)
     ! For normal_gap>0 this primitive has endpoint difference one on
     ! [0,infinity); angular integration gives the double-layer jump 1/2.
-    normal_gap=sym(arena,'normal_gap')
-    radial_distance=sym(arena,'radial_distance')
+    normal_gap=sym('normal_gap')
+    radial_distance=sym('radial_distance')
     radial_norm=sqrt(normal_gap*normal_gap+radial_distance*radial_distance)
     call prove(diff(-normal_gap/radial_norm,radial_distance)- &
         normal_gap*radial_distance/(radial_norm**3), &
@@ -166,7 +163,7 @@ contains
         names=[str('rho'),str('edge'),str('inner'),str('angle'),str('aspect')]
         outputs=[str('t'),str('u'),str('s'),str('v'),str('weight')]
         do chart=1,5
-            vars(chart)=sym(arena,chars(names(chart)))
+            vars(chart)=sym(chars(names(chart)))
         end do
         rho=vars(1); e=vars(2); z=vars(3); q=vars(4); h=vars(5)
         ! First prove the algebraic denominator identity on independent
@@ -174,7 +171,7 @@ contains
         ! a=x+y-1, hence (1-a)*(1-y)/d=1-y (or 1-x for N2) by field
         ! cancellation. Compose the proved identity with the hyperbolic map
         ! only afterwards, rather than expanding reciprocals of sinh/log.
-        abstract_x=sym(arena,'ray_x'); abstract_y=sym(arena,'ray_y')
+        abstract_x=sym('ray_x'); abstract_y=sym('ray_y')
         call prove(1-(abstract_x+abstract_y-1)-(2-abstract_x-abstract_y), &
             'ray inverse denominator')
         do chart=1,7
@@ -262,7 +259,7 @@ contains
         end if
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
-            directions(k) = sym(arena, chars(dot_names(k)))
+            directions(k) = sym(chars(dot_names(k)))
         end do
         do k = 1, size(outputs)
             dot_outputs(k) = str(chars(outputs(k))//'_dot')
@@ -276,7 +273,7 @@ contains
         write(unit, '(a)') code(:len(code)-1)
         do k = 1, size(outputs)
             bar_names(k) = str(chars(outputs(k))//'_bar')
-            cotangents(k) = sym(arena, chars(bar_names(k)))
+            cotangents(k) = sym(chars(bar_names(k)))
         end do
         do k = 1, size(names)
             bar_outputs(k) = str(chars(names(k))//'_bar')

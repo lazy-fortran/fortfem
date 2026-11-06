@@ -1,5 +1,4 @@
 program gen_harmonic_field_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), &
         operator(*), operator(/)
     use fortsym_diff, only: diff
@@ -10,16 +9,14 @@ program gen_harmonic_field_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: v(7), product(1), x, y, rr, hx, hy
     type(str_t) :: names(7)
     type(native_engine_t) :: engine
     type(engine_result_t) :: identity
     integer :: i, unit
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, 'x')
-    y = sym(arena, 'y')
+    engine = make_native_engine()
+    x = sym('x')
+    y = sym('y')
     rr = x*x+y*y
     hx = -y/rr
     hy = x/rr
@@ -33,7 +30,7 @@ program gen_harmonic_field_products
     names = [str('weight'), str('a1'), str('a2'), str('a3'), &
         str('b1'), str('b2'), str('b3')]
     do i = 1, 7
-        v(i) = sym(arena, chars(names(i)))
+        v(i) = sym(chars(names(i)))
     end do
     product = [v(1)*(v(2)*v(5)+v(3)*v(6)+v(4)*v(7))]
     open(newunit=unit, &
@@ -66,7 +63,7 @@ contains
         write(unit, '(a)') code(:len(code)-1)
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
-            directions(k) = sym(arena, chars(dot_names(k)))
+            directions(k) = sym(chars(dot_names(k)))
         end do
         do k = 1, size(outputs)
             dot_outputs(k) = str(chars(outputs(k))//'_dot')
@@ -80,7 +77,7 @@ contains
         write(unit, '(a)') code(:len(code)-1)
         do k = 1, size(outputs)
             bar_names(k) = str(chars(outputs(k))//'_bar')
-            cotangents(k) = sym(arena, chars(bar_names(k)))
+            cotangents(k) = sym(chars(bar_names(k)))
         end do
         do k = 1, size(names)
             bar_outputs(k) = str(chars(names(k))//'_bar')

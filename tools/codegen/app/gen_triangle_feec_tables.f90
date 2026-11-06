@@ -16,7 +16,6 @@ program gen_triangle_feec_tables
     !! The interior test polynomials are emitted in Bernstein form too, so
     !! interpolation evaluates exactly the functionals that define the basis.
     use, intrinsic :: iso_fortran_env, only: real64
-    use fortsym_arena, only: arena_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
         operator(*), operator(**)
@@ -26,7 +25,7 @@ program gen_triangle_feec_tables
     use fortsym_linalg, only: exact_linear_system_result_t, &
         solve_exact_linear_system
     use fortsym_parse, only: parse_expr
-    use fortsym_string, only: chars, str, str_t
+    use fortsym_string, only: chars, str, str_t, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     use fortfem_codegen_rational, only: q_t, q, q_frac, q_text, q_zero, &
         q_literal, q_factorial, q_binomial, q_real, operator(+), operator(-), &
@@ -42,12 +41,10 @@ program gen_triangle_feec_tables
         type(q_t), allocatable :: c(:, :, :)   ! (2, 0:n, 0:n)
     end type vpoly_t
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: table_unit, order
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
 
     open(newunit=table_unit, &
         file=generated_path("fortfem_triangle_feec_tables.f90"), &
@@ -209,10 +206,10 @@ contains
         allocate (a(n, n), identity(n, n), inverse(n, n))
         do j = 1, n
             do i = 1, n
-                a(i, j) = parse_expr(arena, chars(matrix(i, j)%value), ok, &
+                a(i, j) = parse_expr(chars(matrix(i, j)%value), ok, &
                     message)
                 if (.not. ok) error stop "cannot parse exact moment"
-                identity(i, j) = num(arena, merge(1, 0, i == j))
+                identity(i, j) = num(merge(1, 0, i == j))
             end do
         end do
         solution = solve_exact_linear_system(engine, a, identity)
@@ -1152,16 +1149,6 @@ contains
         write(table_unit, "(a)") text
     end subroutine line
 
-    function itoa(i) result(s)
-        integer, intent(in) :: i
-        character(:), allocatable :: s
-
-        character(16) :: buffer
-
-        write(buffer, "(i0)") i
-        s = trim(buffer)
-    end function itoa
-
     ! ------------------------------------------------------------------
     ! Bernstein jets: values, gradients and Hessians in (xi, eta)
     ! ------------------------------------------------------------------
@@ -1193,9 +1180,9 @@ contains
 
         nb = (m + 1)*(m + 2)/2
         allocate (roots(6*nb), refs(6*nb))
-        l(1) = sym(arena, "lambda_1")
-        l(2) = sym(arena, "lambda_2")
-        l(3) = sym(arena, "lambda_3")
+        l(1) = sym("lambda_1")
+        l(2) = sym("lambda_2")
+        l(3) = sym("lambda_3")
         idx = 0
         do b2 = 0, m
             do b3 = 0, m - b2
@@ -1249,7 +1236,7 @@ contains
         character(:), allocatable :: message
         logical :: ok
 
-        e = parse_expr(arena, chars(c%value), ok, message)
+        e = parse_expr(chars(c%value), ok, message)
         if (.not. ok) error stop "cannot parse Bernstein coefficient"
     end function parse_coefficient
 

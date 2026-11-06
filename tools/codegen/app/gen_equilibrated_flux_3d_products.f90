@@ -3,7 +3,6 @@ program gen_equilibrated_flux_3d_products
     !! tetrahedral geometry (Jacobian, determinant, hat gradients), monomial
     !! bases P_k for k = 0..4, squared edge lengths, and the patch load, Gram,
     !! flux right-hand side, multiplier, projection and defect integrands.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), operator(-), &
@@ -13,12 +12,10 @@ program gen_equilibrated_flux_3d_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open (newunit=unit, file=generated_path("fortfem_equilibrated_flux_3d_products.f90"), &
         status="replace", action="write")
     call emit_geometry()
@@ -39,7 +36,7 @@ contains
         character(*), intent(in) :: name
         type(expr_t) :: value
 
-        value = sym(arena, name)
+        value = sym(name)
     end function sym_
 
     function at(name, i) result(text)
@@ -161,7 +158,7 @@ contains
         do s = 1, 4
             if (s == 1) then
                 do r = 1, 3
-                    grad(r, s) = num(arena, 0) - inv_rows(r, 1) &
+                    grad(r, s) = num(0) - inv_rows(r, 1) &
                         - inv_rows(r, 2) - inv_rows(r, 3)
                 end do
             else
@@ -210,7 +207,7 @@ contains
                 do j = 0, degree - i
                     do l = 0, degree - i - j
                         n = n + 1
-                        term = num(arena, 1)
+                        term = num(1)
                         term = term*power(point(1), i)*power(point(2), j) &
                             *power(point(3), l)
                         roots(n) = term
@@ -232,7 +229,7 @@ contains
         type(expr_t) :: value
 
         if (exponent == 0) then
-            value = num(arena, 1)
+            value = num(1)
         else
             value = base*power(base, exponent - 1)
         end if
@@ -257,7 +254,7 @@ contains
         do k = 1, 6
             a = pair(1, k)
             b = pair(2, k)
-            d = num(arena, 0)
+            d = num(0)
             do r = 1, 3
                 d = d + (vertices(r, a) - vertices(r, b))*(vertices(r, a) - vertices(r, b))
             end do
@@ -287,7 +284,7 @@ contains
                 grad(r, s) = sym_(at2("hat_grad", r, s))
             end do
         end do
-        psi(1) = num(arena, 1) - point(1) - point(2) - point(3)
+        psi(1) = num(1) - point(1) - point(2) - point(3)
         psi(2) = point(1)
         psi(3) = point(2)
         psi(4) = point(3)
@@ -394,7 +391,7 @@ contains
         end do
         coefficient = sym_("coefficient")
         wdet = sym_("wdet")
-        d = num(arena, 0)
+        d = num(0)
         do r = 1, 3
             d = d + (sigma(r) - flux(r))*(sigma(r) - flux(r))
         end do

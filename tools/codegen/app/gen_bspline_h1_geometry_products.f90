@@ -1,5 +1,4 @@
 program gen_bspline_h1_geometry_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_bspline_h1_geometry_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: geometry(4), geometry_dot(4), output(1)
@@ -23,25 +21,24 @@ program gen_bspline_h1_geometry_products
     character(:), allocatable :: jvp_code, vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     geometry = [ &
-        sym(arena, "jacobian_11"), sym(arena, "jacobian_21"), &
-        sym(arena, "jacobian_12"), sym(arena, "jacobian_22")]
+        sym("jacobian_11"), sym("jacobian_21"), &
+        sym("jacobian_12"), sym("jacobian_22")]
     geometry_dot = [ &
-        sym(arena, "jacobian_11_dot"), sym(arena, "jacobian_21_dot"), &
-        sym(arena, "jacobian_12_dot"), sym(arena, "jacobian_22_dot")]
+        sym("jacobian_11_dot"), sym("jacobian_21_dot"), &
+        sym("jacobian_12_dot"), sym("jacobian_22_dot")]
     row_reference = [ &
-        sym(arena, "gradient_row_1"), sym(arena, "gradient_row_2")]
+        sym("gradient_row_1"), sym("gradient_row_2")]
     column_reference = [ &
-        sym(arena, "gradient_column_1"), &
-        sym(arena, "gradient_column_2")]
-    basis_row = sym(arena, "basis_row")
-    basis_column = sym(arena, "basis_column")
-    stiffness = sym(arena, "stiffness_coefficient")
-    mass = sym(arena, "mass_coefficient")
-    quadrature_weight = sym(arena, "quadrature_weight")
-    output_bar(1) = sym(arena, "contribution_bar")
+        sym("gradient_column_1"), &
+        sym("gradient_column_2")]
+    basis_row = sym("basis_row")
+    basis_column = sym("basis_column")
+    stiffness = sym("stiffness_coefficient")
+    mass = sym("mass_coefficient")
+    quadrature_weight = sym("quadrature_weight")
+    output_bar(1) = sym("contribution_bar")
 
     determinant = geometry(1)*geometry(4) - geometry(3)*geometry(2)
     row_physical(1) = ( &

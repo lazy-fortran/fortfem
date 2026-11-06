@@ -1,16 +1,14 @@
 program gen_interoperability_oracles
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
         operator(**), pi_expr, sin, sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: ampere_curl, ampere_field(2), pi, poisson, roots(7)
     type(expr_t) :: x, y
@@ -19,11 +17,10 @@ program gen_interoperability_oracles
     character(:), allocatable :: code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, "x")
-    y = sym(arena, "y")
-    pi = pi_expr(arena)
+    engine = make_native_engine()
+    x = sym("x")
+    y = sym("y")
+    pi = pi_expr()
 
     poisson = sin(pi*x)*sin(pi*y)
     ampere_field = [sin(pi*y), sin(pi*x)]
@@ -52,7 +49,7 @@ program gen_interoperability_oracles
     spec%outputs = [str("values")]
     spec%output_shapes = [str("(7)")]
     do root = 1, size(roots)
-        spec%output_references(root) = str("values("//integer_text(root)//")")
+        spec%output_references(root) = str("values("//itoa(root)//")")
     end do
 
     code = chars(emit_kernel(roots, spec))
@@ -62,17 +59,5 @@ program gen_interoperability_oracles
     if (ios /= 0) error stop "cannot write interoperability oracle kernel"
     write (unit, "(a)") code(:len(code) - 1)
     close (unit)
-
-contains
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-
-        character(32) :: buffer
-
-        write (buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 
 end program gen_interoperability_oracles

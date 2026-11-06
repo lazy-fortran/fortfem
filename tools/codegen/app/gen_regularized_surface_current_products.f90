@@ -1,6 +1,5 @@
 program gen_regularized_surface_current_products
     !! Emit a normalized Gaussian sheet-current sample and tangent products.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: exp, expr_t, operator(*), operator(-), &
@@ -11,7 +10,6 @@ program gen_regularized_surface_current_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: simplified
     type(expr_t) :: variables(3), variables_dot(3), value(1), value_dot(1)
@@ -20,16 +18,15 @@ program gen_regularized_surface_current_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: root, unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "signed_distance"), sym(arena, "sheet_current"), &
-        sym(arena, "thickness")]
+        sym("signed_distance"), sym("sheet_current"), &
+        sym("thickness")]
     variables_dot = [ &
-        sym(arena, "signed_distance_dot"), sym(arena, "sheet_current_dot"), &
-        sym(arena, "thickness_dot")]
-    inverse_sqrt_pi = sym(arena, "inverse_sqrt_pi")
-    value_bar(1) = sym(arena, "volume_current_bar")
+        sym("signed_distance_dot"), sym("sheet_current_dot"), &
+        sym("thickness_dot")]
+    inverse_sqrt_pi = sym("inverse_sqrt_pi")
+    value_bar(1) = sym("volume_current_bar")
     profile = inverse_sqrt_pi/variables(3)* &
         exp(-(variables(1)/variables(3))**2)
     value(1) = profile*variables(2)

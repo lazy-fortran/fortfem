@@ -3,7 +3,6 @@ program gen_equilibrated_nonconforming_products
     !! SIPG diffusion on affine triangles (estimators/
     !! equilibrated_nonconforming_2d.f90).  Only primal leaves are emitted: the
     !! estimators are not differentiated.  A = scalar diffusion coefficient.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
@@ -13,7 +12,6 @@ program gen_equilibrated_nonconforming_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: x1, y1, x2, y2, x3, y3, j11, j12, j21, j22, det
     type(expr_t) :: jit11, jit12, jit21, jit22, rx, ry
@@ -21,17 +19,16 @@ program gen_equilibrated_nonconforming_products
     type(expr_t) :: jump, nx, ny, phi, pl, pm, sigma, div, proj
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open (newunit=unit, file=generated_path( &
         "fortfem_equilibrated_nonconforming_products.f90"), &
         status="replace", action="write")
 
     ! Affine geometry: J = [x2-x1 x3-x1; y2-y1 y3-y1], det J, J^(-T) and the
     ! squared edge lengths (the cell diameter is their maximum root).
-    x1 = sym(arena, "x1"); y1 = sym(arena, "y1")
-    x2 = sym(arena, "x2"); y2 = sym(arena, "y2")
-    x3 = sym(arena, "x3"); y3 = sym(arena, "y3")
+    x1 = sym("x1"); y1 = sym("y1")
+    x2 = sym("x2"); y2 = sym("y2")
+    x3 = sym("x3"); y3 = sym("y3")
     j11 = x2 - x1; j21 = y2 - y1
     j12 = x3 - x1; j22 = y3 - y1
     det = j11*j22 - j12*j21
@@ -44,19 +41,19 @@ program gen_equilibrated_nonconforming_products
         j12*j12 + j22*j22])
 
     ! Physical gradient J^(-T) * reference gradient.
-    jit11 = sym(arena, "jit11"); jit12 = sym(arena, "jit12")
-    jit21 = sym(arena, "jit21"); jit22 = sym(arena, "jit22")
-    rx = sym(arena, "rx"); ry = sym(arena, "ry")
+    jit11 = sym("jit11"); jit12 = sym("jit12")
+    jit21 = sym("jit21"); jit22 = sym("jit22")
+    rx = sym("rx"); ry = sym("ry")
     call emit("eq_physical_gradient", [str("jit11"), str("jit12"), str("jit21"), &
         str("jit22"), str("rx"), str("ry")], [str("gx"), str("gy")], &
         [jit11*rx + jit12*ry, jit21*rx + jit22*ry])
 
-    w = sym(arena, "w"); a = sym(arena, "a")
-    gix = sym(arena, "gix"); giy = sym(arena, "giy")
-    gjx = sym(arena, "gjx"); gjy = sym(arena, "gjy")
-    sx = sym(arena, "sx"); sy = sym(arena, "sy")
-    gx = sym(arena, "gx"); gy = sym(arena, "gy")
-    lx = sym(arena, "lx"); ly = sym(arena, "ly")
+    w = sym("w"); a = sym("a")
+    gix = sym("gix"); giy = sym("giy")
+    gjx = sym("gjx"); gjy = sym("gjy")
+    sx = sym("sx"); sy = sym("sy")
+    gx = sym("gx"); gy = sym("gy")
+    lx = sym("lx"); ly = sym("ly")
 
     ! Local potential postprocessing: minimise int A^-1 |sigma + A grad s|^2,
     ! i.e. K s = -c with K_ij = int A grad phi_i . grad phi_j and
@@ -67,7 +64,7 @@ program gen_equilibrated_nonconforming_products
         str("giy")], [str("term")], [w*(sx*gix + sy*giy)])
 
     ! Weighted L2 mass entry of a scalar space.
-    pl = sym(arena, "pl"); pm = sym(arena, "pm")
+    pl = sym("pl"); pm = sym("pm")
     call emit("eq_mass_term", [str("w"), str("a"), str("pl"), str("pm")], &
         [str("term")], [w*a*pl*pm])
 
@@ -81,7 +78,7 @@ program gen_equilibrated_nonconforming_products
         [str("density")], [w*a*(gx*gx + gy*gy)])
 
     ! Squared divergence defect (div sigma - Pi_k f)^2.
-    div = sym(arena, "div"); proj = sym(arena, "proj")
+    div = sym("div"); proj = sym("proj")
     call emit("eq_divergence_defect_density", [str("w"), str("div"), &
         str("proj")], [str("density")], [w*(div - proj)*(div - proj)])
 
@@ -92,14 +89,14 @@ program gen_equilibrated_nonconforming_products
         [a*gx, a*gy, a*(gx - lx), a*(gy - ly)])
 
     ! Face term of the lifting: int_F wght A [u] (tau . n), tau = phi e_c.
-    jump = sym(arena, "jump"); nx = sym(arena, "nx"); ny = sym(arena, "ny")
-    phi = sym(arena, "phi")
+    jump = sym("jump"); nx = sym("nx"); ny = sym("ny")
+    phi = sym("phi")
     call emit("eq_lifting_load", [str("w"), str("a"), str("jump"), str("nx"), &
         str("ny"), str("phi")], [str("load_x"), str("load_y")], &
         [w*a*jump*nx*phi, w*a*jump*ny*phi])
 
     ! Squared penalty jump seminorm density sigma_F [u]^2.
-    sigma = sym(arena, "sigma")
+    sigma = sym("sigma")
     call emit("eq_jump_density", [str("w"), str("sigma"), str("jump")], &
         [str("density")], [w*sigma*jump*jump])
 

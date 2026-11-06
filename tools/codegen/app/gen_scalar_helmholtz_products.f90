@@ -12,7 +12,6 @@ program gen_scalar_helmholtz_products
     !! orientation*det/(dim!) with orientation = sign(det) a constant input, so the
     !! kernels are rational in the geometry and exact for a nondegenerate cell.
     !! Gradients are adj(J)^T/det, written as numerators over det.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, sym, operator(+), operator(-), &
@@ -23,7 +22,6 @@ program gen_scalar_helmholtz_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code
@@ -34,8 +32,7 @@ program gen_scalar_helmholtz_products
         "j21", "j31", "j12", "j22", "j32", "j13", "j23", "j33"]
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open (newunit=unit, file=generated_path("fortfem_scalar_helmholtz_products.f90"), &
         status="replace", action="write")
     call emit_family("p1_helmholtz_interval", interval_geometry, .false., 1, 2)
@@ -63,17 +60,17 @@ contains
         allocate (geometry(n_geometry), names(n_inputs))
         do k = 1, n_geometry
             names(k) = str(trim(geometry_names(k)))
-            geometry(k) = sym(arena, trim(geometry_names(k)))
+            geometry(k) = sym(trim(geometry_names(k)))
         end do
         do k = 1, dimension
             names(n_geometry + k) = str(gradient_name(k))
-            gradient(k) = sym(arena, gradient_name(k))
+            gradient(k) = sym(gradient_name(k))
         end do
         names(n_inputs - 1) = str("mass")
         names(n_inputs) = str("wave_number")
-        mass = sym(arena, "mass")
-        wave_number = sym(arena, "wave_number")
-        orientation = sym(arena, "orientation")
+        mass = sym("mass")
+        wave_number = sym("wave_number")
+        orientation = sym("orientation")
         inputs = [geometry, gradient(1:dimension), mass, wave_number]
 
         select case (dimension)
@@ -89,10 +86,10 @@ contains
 
         allocate (dots(n_inputs), bars(order*order))
         do k = 1, n_inputs
-            dots(k) = sym(arena, chars(names(k))//"_dot")
+            dots(k) = sym(chars(names(k))//"_dot")
         end do
         do k = 1, order*order
-            bars(k) = sym(arena, matrix_entry("cell_bar", order, k))
+            bars(k) = sym(matrix_entry("cell_bar", order, k))
         end do
         cell_jvp = jvp(cell, inputs, dots)
         cell_vjp = vjp(cell, inputs, bars)
@@ -168,8 +165,8 @@ contains
         det = a*d - b*c
         ! grad(lambda_i) = numerator(:, i)/det
         numerator(:, 1) = [b - d, c - a]
-        numerator(:, 2) = [d, num(arena, 0) - c]
-        numerator(:, 3) = [num(arena, 0) - b, a]
+        numerator(:, 2) = [d, num(0) - c]
+        numerator(:, 3) = [num(0) - b, a]
         allocate (cell(9))
         do j = 1, 3
             do i = 1, 3
@@ -197,7 +194,7 @@ contains
         numerator(:, 3) = cross(e(:, 3), e(:, 1))
         numerator(:, 4) = cross(e(:, 1), e(:, 2))
         do p = 1, 3
-            numerator(p, 1) = num(arena, 0) - numerator(p, 2) - numerator(p, 3) - &
+            numerator(p, 1) = num(0) - numerator(p, 2) - numerator(p, 3) - &
                 numerator(p, 4)
         end do
         det = e(1, 1)*numerator(1, 2) + e(2, 1)*numerator(2, 2) + &
@@ -233,9 +230,9 @@ contains
         type(expr_t) :: weight
 
         if (i == j) then
-            weight = num(arena, 2)/denominator
+            weight = num(2)/denominator
         else
-            weight = num(arena, 1)/denominator
+            weight = num(1)/denominator
         end if
     end function mass_weight
 

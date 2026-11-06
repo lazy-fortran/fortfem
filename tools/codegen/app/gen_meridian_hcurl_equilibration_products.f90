@@ -16,7 +16,6 @@ program gen_meridian_hcurl_equilibration_products
     !! (sum psi = 1, sum grad psi = 0).  Complex quantities are split into
     !! real and imaginary parts.  R is the metric radius with gradient
     !! (grr1, grr2).
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), &
@@ -35,7 +34,6 @@ program gen_meridian_hcurl_equilibration_products
     character(len=*), parameter :: out_names(nout) = [character(len=5) :: &
         "r1re", "r1im", "r2re", "r2im", "rphre", "rphim"]
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: v(nin), outputs(nout)
@@ -44,10 +42,9 @@ program gen_meridian_hcurl_equilibration_products
     character(:), allocatable :: code
     integer :: ios, root, unit, i
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     do i = 1, nin
-        v(i) = sym(arena, trim(in_names(i)))
+        v(i) = sym(trim(in_names(i)))
     end do
 
     ! X = grad(R s) + psi R rot90 J - R sh grad psi (complex 2-vector)
@@ -104,7 +101,7 @@ program gen_meridian_hcurl_equilibration_products
         character(len=*), parameter :: sout_names(3) = [character(len=3) :: &
             "s", "gs1", "gs2"]
         do i = 1, 6
-            sv(i) = sym(arena, trim(sin_names(i)))
+            sv(i) = sym(trim(sin_names(i)))
         end do
         so(1) = sv(4)/sv(1)
         so(2) = sv(5)/sv(1) - sv(4)*sv(2)/(sv(1)*sv(1))
@@ -135,7 +132,7 @@ program gen_meridian_hcurl_equilibration_products
         character(len=4), parameter :: names(8) = &
             ["la  ", "lb  ", "ga1 ", "ga2 ", "gb1 ", "gb2 ", "r   ", "dr  "]
         do i = 1, 8
-            lv(i) = sym(arena, trim(names(i)))
+            lv(i) = sym(trim(names(i)))
         end do
         tau = lv(2)/(lv(1) + lv(2))
         call emit_family('edge_coordinate', lv(:2), names(:2), [tau])
@@ -164,11 +161,11 @@ contains
         do j = 1, size(inputs)
             args(j) = str(trim(names(j)))
             args(size(inputs) + j) = str(trim(names(j))//'_dot')
-            dots(j) = sym(arena, chars(args(size(inputs) + j)))
+            dots(j) = sym(chars(args(size(inputs) + j)))
         end do
         adjargs(:size(inputs)) = args(:size(inputs))
         do j = 1, size(roots)
-            bars(j) = sym(arena, 'bar'//achar(iachar('0') + j))
+            bars(j) = sym('bar'//achar(iachar('0') + j))
             adjargs(size(inputs) + j) = str('bar'//achar(iachar('0') + j))
         end do
         call emit_one(name, roots, args(:size(inputs)))

@@ -3,7 +3,6 @@ program gen_surface_integral_products
     !!
     !! The wrapper owns the fixed-topology array reduction and target subtraction;
     !! FortSym owns the pointwise product and its exact tangent/reverse products.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), sym
@@ -13,7 +12,6 @@ program gen_surface_integral_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(2), variables_dot(2), outputs(1)
@@ -22,13 +20,12 @@ program gen_surface_integral_products
     character(:), allocatable :: value_code, jvp_code, vjp_code
     integer :: unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    variables = [sym(arena, "sample"), sym(arena, "weight")]
-    variables_dot = [sym(arena, "sample_dot"), sym(arena, "weight_dot")]
+    engine = make_native_engine()
+    variables = [sym("sample"), sym("weight")]
+    variables_dot = [sym("sample_dot"), sym("weight_dot")]
     outputs(1) = variables(1)*variables(2)
     outputs_jvp = jvp(outputs, variables, variables_dot)
-    output_bar(1) = sym(arena, "contribution_bar")
+    output_bar(1) = sym("contribution_bar")
     outputs_vjp = vjp(outputs, variables, output_bar)
     call simplify(outputs(1))
     call simplify(outputs_jvp(1))

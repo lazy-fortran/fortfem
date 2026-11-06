@@ -1,26 +1,23 @@
 program gen_tetra_rt_candidates
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), &
         operator(**), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: &
         fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: x, y, z
     integer :: degree
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, "x")
-    y = sym(arena, "y")
-    z = sym(arena, "z")
+    engine = make_native_engine()
+    x = sym("x")
+    y = sym("y")
+    z = sym("z")
     do degree = 0, 4
         call generate_degree(degree)
     end do
@@ -60,11 +57,11 @@ contains
         call simplify_all(roots)
 
         filename = "fortfem_tetra_rt_candidates_degree_"// &
-            integer_text(degree)//".f90"
+            itoa(degree)//".f90"
         module_name = "fortfem_generated_tetra_rt_candidates_degree_"// &
-            integer_text(degree)
+            itoa(degree)
         procedure_name = "evaluate_rt_candidates_degree_"// &
-            integer_text(degree)
+            itoa(degree)
         call configure_spec( &
             dof_count, module_name, procedure_name, spec)
         code = chars(emit_kernel(roots, spec))
@@ -84,7 +81,7 @@ contains
         integer :: candidate, component, total_degree
         integer :: x_degree, y_degree, z_degree
 
-        zero = num(arena, 0)
+        zero = num(0)
         values = zero
         candidate = 0
         do component = 1, 3
@@ -149,21 +146,21 @@ contains
         spec%args = [str("x"), str("y"), str("z")]
         spec%outputs = [str("values"), str("divergences")]
         spec%output_shapes = [ &
-            str("(3,"//integer_text(dof_count)//")"), &
-            str("("//integer_text(dof_count)//")")]
+            str("(3,"//itoa(dof_count)//")"), &
+            str("("//itoa(dof_count)//")")]
         root = 0
         do candidate = 1, dof_count
             do component = 1, 3
                 root = root + 1
                 spec%output_references(root) = str( &
-                    "values("//integer_text(component)//","// &
-                    integer_text(candidate)//")")
+                    "values("//itoa(component)//","// &
+                    itoa(candidate)//")")
             end do
         end do
         do candidate = 1, dof_count
             root = root + 1
             spec%output_references(root) = str( &
-                "divergences("//integer_text(candidate)//")")
+                "divergences("//itoa(candidate)//")")
         end do
     end subroutine configure_spec
 
@@ -173,14 +170,4 @@ contains
 
         value = x**x_degree*y**y_degree*z**z_degree
     end function monomial_value
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-
-        character(32) :: buffer
-
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 end program gen_tetra_rt_candidates

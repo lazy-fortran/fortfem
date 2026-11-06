@@ -1,5 +1,4 @@
 program gen_fci_polygon_edge_area_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_fci_polygon_edge_area_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(4), variables_dot(4), area(1), area_bar(1)
@@ -19,12 +17,11 @@ program gen_fci_polygon_edge_area_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    two = real_expr(arena, 2.0d0)
+    engine = make_native_engine()
+    two = real_expr(2.0d0)
     variables = [ &
-        sym(arena, "x_start"), sym(arena, "y_start"), &
-        sym(arena, "x_end"), sym(arena, "y_end")]
+        sym("x_start"), sym("y_start"), &
+        sym("x_end"), sym("y_end")]
     area(1) = (variables(1)*variables(4) - variables(2)*variables(3))/two
     call simplify_all(area)
 
@@ -35,9 +32,9 @@ program gen_fci_polygon_edge_area_products
     primal_code = chars(emit_kernel(area, spec))
 
     variables_dot = [ &
-        sym(arena, "x_start_dot"), sym(arena, "y_start_dot"), &
-        sym(arena, "x_end_dot"), sym(arena, "y_end_dot")]
-    area_bar(1) = sym(arena, "edge_area_bar")
+        sym("x_start_dot"), sym("y_start_dot"), &
+        sym("x_end_dot"), sym("y_end_dot")]
+    area_bar(1) = sym("edge_area_bar")
     area_jvp = jvp(area, variables, variables_dot)
     area_vjp = vjp(area, variables, area_bar)
     call simplify_all(area_jvp)

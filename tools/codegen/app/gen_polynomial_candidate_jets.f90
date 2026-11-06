@@ -1,5 +1,4 @@
 program gen_polynomial_candidate_jets
-    use fortsym_arena,only:arena_t
     use fortsym_expr,only:expr_t,sym,num,operator(+),operator(-),operator(*),operator(/),operator(**)
     use fortsym_diff,only:diff
     use fortsym_subs,only:subs_many
@@ -9,10 +8,9 @@ program gen_polynomial_candidate_jets
     use fortsym_string,only:str,str_t,chars
     use fortfem_codegen_provenance,only:generated_path,fortsym_revision
     implicit none
-    type(arena_t),target::arena
     type(native_engine_t)::engine
     integer::unit,dimension,order,kind
-    call arena%init();engine=make_native_engine(arena)
+    engine=make_native_engine()
     open(newunit=unit,file=generated_path('fortfem_polynomial_candidate_jets.f90'),status='replace',action='write')
     call power_jet()
     do dimension=2,3
@@ -93,7 +91,7 @@ contains
         spec%cse_level=CSE_NONE
         spec%args=[str('previous_power'),str('coordinate')]
         spec%outputs=[str('power')]
-        r(1)=sym(arena,'previous_power')*sym(arena,'coordinate')
+        r(1)=sym('previous_power')*sym('coordinate')
         open(newunit=unit,file=generated_path('fortfem_power_multiply.inc'),status='replace',action='write')
         call emit(r,spec)
         close(unit)
@@ -102,10 +100,10 @@ contains
         type(expr_t)::x,p,r(3),from(3),to(3)
         type(kernel_spec_t)::spec
         integer::i
-        x=sym(arena,'x');p=sym(arena,'degree')
+        x=sym('x');p=sym('degree')
         r(1)=x**p;r(2)=diff(r(1),x);r(3)=diff(r(2),x)
         from=[x**p,x**(p-1),x**(p-2)]
-        to=[sym(arena,'power'),sym(arena,'previous_power'),sym(arena,'second_previous_power')]
+        to=[sym('power'),sym('previous_power'),sym('second_previous_power')]
         do i=1,3
             from(i)=simplify(from(i))
         end do
@@ -126,12 +124,12 @@ contains
         integer::i,j,k
         character(:),allocatable::shape
         do i=1,d
-            t(i)=sym(arena,'t'//text(i));zero(i)=num(arena,0)
+            t(i)=sym('t'//text(i));zero(i)=num(0)
         end do
-        p=num(arena,1)
+        p=num(1)
         do i=1,d
-            f=sym(arena,'factor_values('//text(i)//')')+sym(arena,'factor_gradients('//text(i)//')')*t(i)
-            if(o==2)f=f+sym(arena,'factor_hessians('//text(i)//')')*t(i)*t(i)/2
+            f=sym('factor_values('//text(i)//')')+sym('factor_gradients('//text(i)//')')*t(i)
+            if(o==2)f=f+sym('factor_hessians('//text(i)//')')*t(i)*t(i)/2
             p=p*f
         end do
         k=1+d
@@ -175,20 +173,20 @@ contains
         type(kernel_spec_t)::spec
         integer::i,j,k,other(2)
         do i=1,3
-            t(i)=sym(arena,'t'//text(i))
-            direction(i)=sym(arena,'point_dot('//text(i)//')')
+            t(i)=sym('t'//text(i))
+            direction(i)=sym('point_dot('//text(i)//')')
         end do
-        zero=num(arena,0)
-        m=sym(arena,'value')
+        zero=num(0)
+        m=sym('value')
         do i=1,3
-            m=m+sym(arena,'gradient('//text(i)//')')*t(i)
+            m=m+sym('gradient('//text(i)//')')*t(i)
             if(o/=2)cycle
-            m=m+sym(arena,'hessian('//text(i)//','//text(i)//')')*t(i)*t(i)/2
+            m=m+sym('hessian('//text(i)//','//text(i)//')')*t(i)*t(i)/2
             do j=i+1,3
-                m=m+sym(arena,'hessian('//text(i)//','//text(j)//')')*t(i)*t(j)
+                m=m+sym('hessian('//text(i)//','//text(j)//')')*t(i)*t(j)
             end do
         end do
-        f=num(arena,0);f(component)=sym(arena,'coefficient')*m
+        f=num(0);f(component)=sym('coefficient')*m
         curl=[diff(f(3),t(2))-diff(f(2),t(3)), &
             diff(f(1),t(3))-diff(f(3),t(1)),diff(f(2),t(1))-diff(f(1),t(2))]
         k=0
@@ -199,7 +197,7 @@ contains
         base=[f(component),curl(other(1)),curl(other(2))];r=base
         if(o==2)then
             do i=1,3
-                r(i)=num(arena,0)
+                r(i)=num(0)
                 do j=1,3
                     r(i)=r(i)+diff(base(i),t(j))*direction(j)
                 end do
@@ -224,10 +222,10 @@ contains
         spec%output_shapes=[str('(3,:)'),str('(3,:)')]
         allocate(spec%output_references(3))
         spec%output_references(1)=str(chars(spec%outputs(1))//'('//text(component)//',candidate)')
-        r(1)=r(1)+sym(arena,'value_accumulator')
+        r(1)=r(1)+sym('value_accumulator')
         do i=1,2
             spec%output_references(i+1)=str(chars(spec%outputs(2))//'('//text(other(i))//',candidate)')
-            r(i+1)=r(i+1)+sym(arena,'curl_accumulators('//text(other(i))//')')
+            r(i+1)=r(i+1)+sym('curl_accumulators('//text(other(i))//')')
         end do
         call emit_inline(r,spec,'fortfem_tetra_component'//text(component)//'_order'//text(o)//'.inc')
     end subroutine tetra_component_jet
@@ -236,21 +234,21 @@ contains
         type(expr_t)::t(2),zero(2),m,f(2),curl,r(3),base(3),direction(2)
         type(kernel_spec_t)::spec
         integer::i
-        t=[sym(arena,'tx'),sym(arena,'ty')];zero=num(arena,0)
-        m=sym(arena,'value')+sym(arena,'gradient(1)')*t(1)+sym(arena,'gradient(2)')*t(2)
-        if(o==2)m=m+sym(arena,'hessian(1,1)')*t(1)*t(1)/2+ &
-            sym(arena,'hessian(1,2)')*t(1)*t(2)+sym(arena,'hessian(2,2)')*t(2)*t(2)/2
+        t=[sym('tx'),sym('ty')];zero=num(0)
+        m=sym('value')+sym('gradient(1)')*t(1)+sym('gradient(2)')*t(2)
+        if(o==2)m=m+sym('hessian(1,1)')*t(1)*t(1)/2+ &
+            sym('hessian(1,2)')*t(1)*t(2)+sym('hessian(2,2)')*t(2)*t(2)/2
         select case(kind)
         case(1)
-            f=[m,num(arena,0)]
+            f=[m,num(0)]
         case(2)
-            f=[num(arena,0),m]
+            f=[num(0),m]
         case(3)
-            f=[-(sym(arena,'point(2)')+t(2))*m,(sym(arena,'point(1)')+t(1))*m]
+            f=[-(sym('point(2)')+t(2))*m,(sym('point(1)')+t(1))*m]
         end select
         curl=diff(f(2),t(1))-diff(f(1),t(2));base=[f,curl];r=base
         if(o==2)then
-            direction=[sym(arena,'direction(1)'),sym(arena,'direction(2)')]
+            direction=[sym('direction(1)'),sym('direction(2)')]
             do i=1,3
                 r(i)=diff(base(i),t(1))*direction(1)+diff(base(i),t(2))*direction(2)
             end do
@@ -267,10 +265,10 @@ contains
         spec%output_references=[str('field(1)'),str('field(2)'),str('curl')]
         call emit(r,spec)
         do i=1,3
-            r(i)=subs_many(r(i),[sym(arena,'point(1)'),sym(arena,'point(2)'), &
-                sym(arena,'value')],[sym(arena,'xi'),sym(arena,'eta'),sym(arena,'monomial')])
-            if(o==2)r(i)=subs_many(r(i),[sym(arena,'direction(1)'),sym(arena,'direction(2)')], &
-                [sym(arena,'xi_dot'),sym(arena,'eta_dot')])
+            r(i)=subs_many(r(i),[sym('point(1)'),sym('point(2)'), &
+                sym('value')],[sym('xi'),sym('eta'),sym('monomial')])
+            if(o==2)r(i)=subs_many(r(i),[sym('direction(1)'),sym('direction(2)')], &
+                [sym('xi_dot'),sym('eta_dot')])
         end do
         spec%args=[str('xi'),str('eta'),str('monomial'),str('gradient')]
         spec%arg_shapes=[str(''),str(''),str(''),str('(2)')]

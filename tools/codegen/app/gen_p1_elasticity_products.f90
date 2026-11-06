@@ -11,7 +11,6 @@ program gen_p1_elasticity_products
     !! is a constant input instead of abs(det), so the kernels stay polynomial in the
     !! geometry and d|det| = orientation*d(det) holds exactly for a nondegenerate
     !! triangle.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, i_expr, num, sym, operator(+), &
@@ -26,7 +25,6 @@ program gen_p1_elasticity_products
     use fortfem_codegen_triangle_basis, only: triangle_scalar_bases
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: cell(36), cell_jvp(36), cell_vjp(7)
     type(expr_t) :: cell_inputs(7), cell_dots(7), cell_bars(36)
@@ -40,21 +38,20 @@ program gen_p1_elasticity_products
         "normal_1", "normal_2", "p_impedance", "s_impedance", "angular_frequency"]
     integer :: k, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     call build_cell()
     call build_edge()
     do k = 1, 36
-        cell_bars(k) = sym(arena, matrix_entry("cell_bar", 6, k))
+        cell_bars(k) = sym(matrix_entry("cell_bar", 6, k))
     end do
     do k = 1, 16
-        edge_bars(k) = sym(arena, matrix_entry("edge_bar", 4, k))
+        edge_bars(k) = sym(matrix_entry("edge_bar", 4, k))
     end do
     do k = 1, 7
-        cell_dots(k) = sym(arena, trim(cell_names(k))//"_dot")
+        cell_dots(k) = sym(trim(cell_names(k))//"_dot")
     end do
     do k = 1, 6
-        edge_dots(k) = sym(arena, trim(edge_names(k))//"_dot")
+        edge_dots(k) = sym(trim(edge_names(k))//"_dot")
     end do
     cell_jvp = jvp(cell, cell_inputs, cell_dots)
     cell_vjp = vjp(cell, cell_inputs, cell_bars)
@@ -118,13 +115,13 @@ contains
         type(expr_t) :: mass, stiffness
         integer :: i, j, p, q, point
 
-        a = sym(arena, "a"); b = sym(arena, "b")
-        c = sym(arena, "c"); d = sym(arena, "d")
-        orientation = sym(arena, "orientation")
-        lambda = sym(arena, "lambda"); mu = sym(arena, "mu")
-        inertia = sym(arena, "inertia")
+        a = sym("a"); b = sym("b")
+        c = sym("c"); d = sym("d")
+        orientation = sym("orientation")
+        lambda = sym("lambda"); mu = sym("mu")
+        inertia = sym("inertia")
         cell_inputs = [a, b, c, d, lambda, mu, inertia]
-        xi = sym(arena, "xi"); eta = sym(arena, "eta")
+        xi = sym("xi"); eta = sym("eta")
         det = a*d - b*c
         area = orientation*det/2
         call triangle_scalar_bases(xi, eta, l, p2)
@@ -133,11 +130,11 @@ contains
             grad(i, 2) = (-c*diff(l(i), xi) + a*diff(l(i), eta))/det
         end do
         ! Degree-2 rule on the reference triangle (weights 1/6): exact for l_i l_j.
-        qx = [num(arena, 1)/6, num(arena, 2)/3, num(arena, 1)/6]
-        qy = [num(arena, 1)/6, num(arena, 1)/6, num(arena, 2)/3]
+        qx = [num(1)/6, num(2)/3, num(1)/6]
+        qy = [num(1)/6, num(1)/6, num(2)/3]
         do j = 1, 3
             do i = 1, 3
-                mass = num(arena, 0)
+                mass = num(0)
                 do point = 1, 3
                     mass = mass + subs_many(l(i)*l(j), [xi, eta], &
                         [qx(point), qy(point)])/6
@@ -164,11 +161,11 @@ contains
         type(expr_t) :: coefficient, mass
         integer :: i, j, p, q
 
-        length = sym(arena, "length")
-        normal = [sym(arena, "normal_1"), sym(arena, "normal_2")]
-        p_impedance = sym(arena, "p_impedance")
-        s_impedance = sym(arena, "s_impedance")
-        frequency = sym(arena, "angular_frequency")
+        length = sym("length")
+        normal = [sym("normal_1"), sym("normal_2")]
+        p_impedance = sym("p_impedance")
+        s_impedance = sym("s_impedance")
+        frequency = sym("angular_frequency")
         edge_inputs = [length, normal, p_impedance, s_impedance, frequency]
         do j = 1, 2
             do i = 1, 2
@@ -184,7 +181,7 @@ contains
                             normal(p)*normal(q)
                         if (p == q) coefficient = coefficient + s_impedance
                         edge(4*(2*j - 2 + q - 1) + 2*i - 2 + p) = &
-                            -i_expr(arena)*frequency*mass*coefficient
+                            -i_expr()*frequency*mass*coefficient
                     end do
                 end do
             end do

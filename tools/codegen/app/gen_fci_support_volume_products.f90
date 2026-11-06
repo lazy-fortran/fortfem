@@ -1,5 +1,4 @@
 program gen_fci_support_volume_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(*), sym
@@ -9,7 +8,6 @@ program gen_fci_support_volume_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(4), variables_dot(4), volume(1)
@@ -18,17 +16,16 @@ program gen_fci_support_volume_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "forward_flux_expansion"), &
-        sym(arena, "backward_flux_expansion"), &
-        sym(arena, "base_cell_area"), sym(arena, "toroidal_field")]
+        sym("forward_flux_expansion"), &
+        sym("backward_flux_expansion"), &
+        sym("base_cell_area"), sym("toroidal_field")]
     variables_dot = [ &
-        sym(arena, "forward_flux_expansion_dot"), &
-        sym(arena, "backward_flux_expansion_dot"), &
-        sym(arena, "base_cell_area_dot"), sym(arena, "toroidal_field_dot")]
-    volume_bar(1) = sym(arena, "staggered_volume_bar")
+        sym("forward_flux_expansion_dot"), &
+        sym("backward_flux_expansion_dot"), &
+        sym("base_cell_area_dot"), sym("toroidal_field_dot")]
+    volume_bar(1) = sym("staggered_volume_bar")
     volume(1) = (variables(1) + variables(2))*variables(3)*variables(4)
     volume_jvp = jvp(volume, variables, variables_dot)
     volume_vjp = vjp(volume, variables, volume_bar)

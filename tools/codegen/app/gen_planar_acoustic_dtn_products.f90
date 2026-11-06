@@ -4,7 +4,6 @@ program gen_planar_acoustic_dtn_products
     !! (principal root, time convention exp(-i omega t)), with JVP and VJP in
     !! (omega, c, rho, period). The radicand is a separate primal leaf so the
     !! caller can reject a mode at cutoff before dividing by k_n.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, i_expr, pi_expr, sqrt, sym, operator(+), &
@@ -15,7 +14,6 @@ program gen_planar_acoustic_dtn_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(kernel_spec_t) :: spec
     type(expr_t) :: omega, c, rho, period, mode, radicand, multiplier(1)
@@ -25,20 +23,19 @@ program gen_planar_acoustic_dtn_products
         "sound_speed", "fluid_density", "period"]
     integer :: k, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    omega = sym(arena, "angular_frequency")
-    c = sym(arena, "sound_speed")
-    rho = sym(arena, "fluid_density")
-    period = sym(arena, "period")
-    mode = sym(arena, "mode")
-    radicand = (omega/c)**2 - (2*pi_expr(arena)*mode/period)**2
-    multiplier(1) = -i_expr(arena)*rho*omega**2/sqrt(radicand)
+    engine = make_native_engine()
+    omega = sym("angular_frequency")
+    c = sym("sound_speed")
+    rho = sym("fluid_density")
+    period = sym("period")
+    mode = sym("mode")
+    radicand = (omega/c)**2 - (2*pi_expr()*mode/period)**2
+    multiplier(1) = -i_expr()*rho*omega**2/sqrt(radicand)
     inputs = [omega, c, rho, period]
     do k = 1, 4
-        dots(k) = sym(arena, trim(names(k))//"_dot")
+        dots(k) = sym(trim(names(k))//"_dot")
     end do
-    bar(1) = sym(arena, "multiplier_bar")
+    bar(1) = sym("multiplier_bar")
     tangent = jvp(multiplier, inputs, dots)
     cotangent = vjp(multiplier, inputs, bar)
 

@@ -1,5 +1,4 @@
 program gen_bem_synthetic_surface
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, cos, sin, operator(+), operator(-), &
         operator(*)
     use fortsym_diff, only: diff
@@ -7,15 +6,13 @@ program gen_bem_synthetic_surface
     use fortsym_string, only: str, chars
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: theta, phi, major, minor, ripple, nfp, radial, roots(9)
     type(kernel_spec_t) :: spec
     character(:), allocatable :: code
     integer :: i, unit
-    call arena%init()
-    theta=sym(arena,'theta'); phi=sym(arena,'phi')
-    major=sym(arena,'major'); minor=sym(arena,'minor')
-    ripple=sym(arena,'ripple'); nfp=sym(arena,'nfp')
+    theta=sym('theta'); phi=sym('phi')
+    major=sym('major'); minor=sym('minor')
+    ripple=sym('ripple'); nfp=sym('nfp')
     radial=major+minor*cos(theta)+ripple*cos(theta-nfp*phi)
     roots(1:3)=[radial*cos(phi),radial*sin(phi), &
         minor*sin(theta)+ripple*sin(theta-nfp*phi)]

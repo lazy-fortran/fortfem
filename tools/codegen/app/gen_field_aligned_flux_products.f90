@@ -1,5 +1,4 @@
 program gen_field_aligned_flux_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), sym
@@ -9,7 +8,6 @@ program gen_field_aligned_flux_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(8), variables_dot(8), flux(3)
@@ -19,23 +17,22 @@ program gen_field_aligned_flux_products
     integer :: ios, root, unit
     type(expr_t) :: delta, projection
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "parallel_coefficient"), &
-        sym(arena, "perpendicular_coefficient"), &
-        sym(arena, "direction_1"), sym(arena, "direction_2"), &
-        sym(arena, "direction_3"), sym(arena, "gradient_1"), &
-        sym(arena, "gradient_2"), sym(arena, "gradient_3")]
+        sym("parallel_coefficient"), &
+        sym("perpendicular_coefficient"), &
+        sym("direction_1"), sym("direction_2"), &
+        sym("direction_3"), sym("gradient_1"), &
+        sym("gradient_2"), sym("gradient_3")]
     variables_dot = [ &
-        sym(arena, "parallel_coefficient_dot"), &
-        sym(arena, "perpendicular_coefficient_dot"), &
-        sym(arena, "direction_1_dot"), sym(arena, "direction_2_dot"), &
-        sym(arena, "direction_3_dot"), sym(arena, "gradient_1_dot"), &
-        sym(arena, "gradient_2_dot"), sym(arena, "gradient_3_dot")]
+        sym("parallel_coefficient_dot"), &
+        sym("perpendicular_coefficient_dot"), &
+        sym("direction_1_dot"), sym("direction_2_dot"), &
+        sym("direction_3_dot"), sym("gradient_1_dot"), &
+        sym("gradient_2_dot"), sym("gradient_3_dot")]
     flux_bar = [ &
-        sym(arena, "flux_1_bar"), sym(arena, "flux_2_bar"), &
-        sym(arena, "flux_3_bar")]
+        sym("flux_1_bar"), sym("flux_2_bar"), &
+        sym("flux_3_bar")]
     delta = variables(1) - variables(2)
     projection = variables(3)*variables(6) + variables(4)*variables(7) + &
         variables(5)*variables(8)

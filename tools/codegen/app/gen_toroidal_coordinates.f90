@@ -9,9 +9,10 @@ program gen_toroidal_coordinates
     use fortsym_string, only: chars, str
     use fortsym_toroidal, only: make_toroidal_chart
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
+    use fortsym_context, only: current_arena
     implicit none
 
-    type(arena_t), target :: arena
+    type(arena_t), pointer :: arena
     type(chart_t) :: chart
     type(expr_t) :: forward_variables(4), forward_directions(4)
     type(expr_t) :: forward_outputs(3), forward_output_bars(3)
@@ -36,32 +37,32 @@ program gen_toroidal_coordinates
     character(:), allocatable :: vector_code, vector_jvp_code, vector_vjp_code
     integer :: ios, unit
 
-    call arena%init()
-    half = real_expr(arena, 0.5d0)
-    two = real_expr(arena, 2.0d0)
-    eta = sym(arena, "eta")
-    theta = sym(arena, "theta")
-    phi = sym(arena, "phi")
-    scale = sym(arena, "scale")
+    arena => current_arena()
+    half = real_expr(0.5d0)
+    two = real_expr(2.0d0)
+    eta = sym("eta")
+    theta = sym("theta")
+    phi = sym("phi")
+    scale = sym("scale")
     forward_variables = [scale, eta, theta, phi]
     forward_directions = [ &
-        sym(arena, "scale_dot"), sym(arena, "eta_dot"), &
-        sym(arena, "theta_dot"), sym(arena, "phi_dot")]
+        sym("scale_dot"), sym("eta_dot"), &
+        sym("theta_dot"), sym("phi_dot")]
     chart = make_toroidal_chart(arena, eta, theta, phi, scale)
     forward_outputs = chart%x
     forward_output_bars = [ &
-        sym(arena, "point_1_bar"), sym(arena, "point_2_bar"), &
-        sym(arena, "point_3_bar")]
+        sym("point_1_bar"), sym("point_2_bar"), &
+        sym("point_3_bar")]
     forward_jvp = jvp(forward_outputs, forward_variables, forward_directions)
     forward_vjp = vjp(forward_outputs, forward_variables, forward_output_bars)
 
-    point_x = sym(arena, "point_1")
-    point_y = sym(arena, "point_2")
-    point_z = sym(arena, "point_3")
+    point_x = sym("point_1")
+    point_y = sym("point_2")
+    point_z = sym("point_3")
     inverse_variables = [point_x, point_y, point_z, scale]
     inverse_directions = [ &
-        sym(arena, "point_1_dot"), sym(arena, "point_2_dot"), &
-        sym(arena, "point_3_dot"), sym(arena, "scale_dot")]
+        sym("point_1_dot"), sym("point_2_dot"), &
+        sym("point_3_dot"), sym("scale_dot")]
     cylindrical_radius = sqrt(point_x*point_x + point_y*point_y)
     eta_expression = log( &
         ((cylindrical_radius + scale)**2 + point_z*point_z)/ &
@@ -72,20 +73,20 @@ program gen_toroidal_coordinates
     phi_expression = atan2(point_y, point_x)
     inverse_outputs = [eta_expression, theta_expression, phi_expression]
     inverse_output_bars = [ &
-        sym(arena, "eta_bar"), sym(arena, "theta_bar"), sym(arena, "phi_bar")]
+        sym("eta_bar"), sym("theta_bar"), sym("phi_bar")]
     inverse_jvp = jvp(inverse_outputs, inverse_variables, inverse_directions)
     inverse_vjp = vjp(inverse_outputs, inverse_variables, inverse_output_bars)
 
-    component_1 = sym(arena, "component_1")
-    component_2 = sym(arena, "component_2")
-    component_3 = sym(arena, "component_3")
+    component_1 = sym("component_1")
+    component_2 = sym("component_2")
+    component_3 = sym("component_3")
     vector_variables = [eta, theta, phi, component_1, component_2, component_3]
     vector_directions = [ &
-        sym(arena, "eta_dot"), sym(arena, "theta_dot"), sym(arena, "phi_dot"), &
-        sym(arena, "component_1_dot"), sym(arena, "component_2_dot"), &
-        sym(arena, "component_3_dot")]
+        sym("eta_dot"), sym("theta_dot"), sym("phi_dot"), &
+        sym("component_1_dot"), sym("component_2_dot"), &
+        sym("component_3_dot")]
     denominator = cosh(eta) - cos(theta)
-    eta_radial = (real_expr(arena, 1.0d0) - cosh(eta)*cos(theta))/denominator
+    eta_radial = (real_expr(1.0d0) - cosh(eta)*cos(theta))/denominator
     eta_vertical = -sinh(eta)*sin(theta)/denominator
     theta_radial = eta_vertical
     theta_vertical = -eta_radial
@@ -96,8 +97,8 @@ program gen_toroidal_coordinates
         component_3*cos(phi), &
         component_1*eta_vertical + component_2*theta_vertical]
     vector_output_bars = [ &
-        sym(arena, "cartesian_1_bar"), sym(arena, "cartesian_2_bar"), &
-        sym(arena, "cartesian_3_bar")]
+        sym("cartesian_1_bar"), sym("cartesian_2_bar"), &
+        sym("cartesian_3_bar")]
     vector_jvp = jvp(vector_outputs, vector_variables, vector_directions)
     vector_vjp = vjp(vector_outputs, vector_variables, vector_output_bars)
 

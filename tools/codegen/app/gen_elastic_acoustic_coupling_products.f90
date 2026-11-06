@@ -12,7 +12,6 @@ program gen_elastic_acoustic_coupling_products
     !! - the panel coupling of the curved NtD form: length, normal trace n/2,
     !!   endpoint mass length/2 and the P1 traction mass n_c length (2 or 1)/6.
     !! JVP and VJP are emitted for the leaves that the solver derivatives use.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, sqrt, sym, operator(+), operator(-), &
@@ -23,13 +22,11 @@ program gen_elastic_acoustic_coupling_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(kernel_spec_t) :: spec
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open (newunit=unit, file=generated_path( &
         "fortfem_elastic_acoustic_coupling_products.f90"), status="replace", &
         action="write")
@@ -47,10 +44,10 @@ contains
     subroutine material()
         type(expr_t) :: e, nu, rho, omega, lambda, mu, roots(5)
 
-        e = sym(arena, "young_modulus")
-        nu = sym(arena, "poisson_ratio")
-        rho = sym(arena, "solid_density")
-        omega = sym(arena, "angular_frequency")
+        e = sym("young_modulus")
+        nu = sym("poisson_ratio")
+        rho = sym("solid_density")
+        omega = sym("angular_frequency")
         mu = e/(2*(1 + nu))
         lambda = e*nu/((1 + nu)*(1 - 2*nu))
         roots = [lambda, mu, rho*omega**2, sqrt((lambda + 2*mu)*rho), &
@@ -67,8 +64,8 @@ contains
     subroutine segment_length()
         type(expr_t) :: dx, dy
 
-        dx = sym(arena, "dx")
-        dy = sym(arena, "dy")
+        dx = sym("dx")
+        dy = sym("dy")
         call emit_family("segment_length", [sqrt(dx**2 + dy**2)], [dx, dy], &
             [str("dx"), str("dy")], real_types(2), [.true., .true.], &
             [str("length")], no_shapes(1), [1], no_shapes(1), "real(dp)", .true.)
@@ -77,11 +74,11 @@ contains
     subroutine periodic_mass()
         type(expr_t) :: period, count, previous, centre, next
 
-        period = sym(arena, "period")
-        count = sym(arena, "sample_count")
-        previous = sym(arena, "previous")
-        centre = sym(arena, "centre")
-        next = sym(arena, "next")
+        period = sym("period")
+        count = sym("sample_count")
+        previous = sym("previous")
+        centre = sym("centre")
+        next = sym("next")
         call emit_family("periodic_p1_mass", &
             [period/count/6*(previous + 4*centre + next)], &
             [period, count, previous, centre, next], &
@@ -94,12 +91,12 @@ contains
     subroutine incident_load()
         type(expr_t) :: period, count, previous, centre, next, normal(2), weak
 
-        period = sym(arena, "period")
-        count = sym(arena, "sample_count")
-        previous = sym(arena, "previous")
-        centre = sym(arena, "centre")
-        next = sym(arena, "next")
-        normal = [sym(arena, "normal_1"), sym(arena, "normal_2")]
+        period = sym("period")
+        count = sym("sample_count")
+        previous = sym("previous")
+        centre = sym("centre")
+        next = sym("next")
+        normal = [sym("normal_1"), sym("normal_2")]
         weak = period/count/6*(previous + 4*centre + next)
         ! The incident pressure pushes against the outward normal.
         call emit_family("planar_incident_load", [-normal(1)*weak, &
@@ -117,9 +114,9 @@ contains
         type(str_t) :: refs(4)
         integer :: p, q
 
-        a = [sym(arena, "normal_a_1"), sym(arena, "normal_a_2")]
-        b = [sym(arena, "normal_b_1"), sym(arena, "normal_b_2")]
-        value = sym(arena, "value")
+        a = [sym("normal_a_1"), sym("normal_a_2")]
+        b = [sym("normal_b_1"), sym("normal_b_2")]
+        value = sym("value")
         do q = 1, 2
             do p = 1, 2
                 roots(p + 2*(q - 1)) = a(p)*value*b(q)
@@ -139,9 +136,9 @@ contains
         !! scalar (n_a·e_p)(n_b·e_q) F_ab as its own kernel.
         type(expr_t) :: a, b, value
 
-        a = sym(arena, "normal_a")
-        b = sym(arena, "normal_b")
-        value = sym(arena, "value")
+        a = sym("normal_a")
+        b = sym("normal_b")
+        value = sym("value")
         call emit_family("interface_normal_component_block", [a*value*b], &
             [a, b, value], [str("normal_a"), str("normal_b"), str("value")], &
             [real_types(2), complex_types(1)], [.false., .false., .true.], &
@@ -154,8 +151,8 @@ contains
         type(str_t) :: refs(12)
         integer :: c, first, second, k, owners(12)
 
-        dx = sym(arena, "dx")
-        dy = sym(arena, "dy")
+        dx = sym("dx")
+        dy = sym("dy")
         length = sqrt(dx**2 + dy**2)
         ! Right normal of a counter-clockwise panel: out of the bounded domain.
         normal = [dy/length, -dx/length]
@@ -223,7 +220,7 @@ contains
         allocate(dots(size(variables)), dot_names(size(variables)))
         do k = 1, size(variables)
             dot_names(k) = str(chars(active_names(k))//"_dot")
-            dots(k) = sym(arena, chars(dot_names(k)))
+            dots(k) = sym(chars(dot_names(k)))
         end do
         tangent = jvp(roots, variables, dots)
         call simplify(tangent)
@@ -235,7 +232,7 @@ contains
 
         allocate(bars(size(roots)))
         do k = 1, size(roots)
-            bars(k) = sym(arena, chars(outputs(owners(k)))//"_bar"// &
+            bars(k) = sym(chars(outputs(owners(k)))//"_bar"// &
                 chars(suffixes(k)))
         end do
         cotangent = vjp(roots, variables, bars)

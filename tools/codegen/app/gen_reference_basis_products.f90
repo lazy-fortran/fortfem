@@ -1,5 +1,4 @@
 program gen_reference_basis_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t, VERDICT_TRUE
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
@@ -13,7 +12,6 @@ program gen_reference_basis_products
     use fortfem_codegen_triangle_basis, only: triangle_scalar_bases
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: x, y, p1(3), p2(6), q1(4), line(2)
@@ -23,9 +21,8 @@ program gen_reference_basis_products
     character(4) :: index_string
     integer :: unit, i, j
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, 'xi'); y = sym(arena, 'eta')
+    engine = make_native_engine()
+    x = sym('xi'); y = sym('eta')
     call triangle_scalar_bases(x,y,p1,p2)
     q1(1)=(1-x)*(1-y); q1(2)=(1+x)*(1-y)
     q1(3)=(1+x)*(1+y); q1(4)=(1-x)*(1+y)
@@ -64,14 +61,14 @@ contains
         character(1) :: digit
         integer :: node, degree_x, degree_y
 
-        locations_x = [num(arena,0), num(arena,1), num(arena,0), &
-            num(arena,1)/2, num(arena,1)/2, num(arena,0)]
-        locations_y = [num(arena,0), num(arena,0), num(arena,1), &
-            num(arena,0), num(arena,1)/2, num(arena,1)/2]
+        locations_x = [num(0), num(1), num(0), &
+            num(1)/2, num(1)/2, num(0)]
+        locations_y = [num(0), num(0), num(1), &
+            num(0), num(1)/2, num(1)/2]
         do degree_x = 0, 2
             do degree_y = 0, 2-degree_x
                 oracle = x**degree_x*y**degree_y
-                recovered = num(arena,0)
+                recovered = num(0)
                 do node = 1, 6
                     recovered = recovered + p2(node)*subs_many(oracle, &
                         [x,y], [locations_x(node),locations_y(node)])
@@ -81,15 +78,15 @@ contains
                     error stop 'P2 polynomial reproduction unproved'
             end do
         end do
-        r = sym(arena,'r'); z = sym(arena,'z')
+        r = sym('r'); z = sym('z')
         do node = 1, 3
             write(digit,'(i0)') node
-            vertex_r(node) = sym(arena,'r'//digit)
-            vertex_z(node) = sym(arena,'z'//digit)
+            vertex_r(node) = sym('r'//digit)
+            vertex_z(node) = sym('z'//digit)
         end do
         do node = 1, 6
             write(digit,'(i0)') node
-            nodes(node) = sym(arena,'u'//digit)
+            nodes(node) = sym('u'//digit)
         end do
         determinant = (vertex_r(2)-vertex_r(1))*(vertex_z(3)-vertex_z(1)) &
             -(vertex_r(3)-vertex_r(1))*(vertex_z(2)-vertex_z(1))
@@ -103,14 +100,14 @@ contains
         result = engine%zero_test(vertex_z(1)+(vertex_z(2)-vertex_z(1))*xi &
             +(vertex_z(3)-vertex_z(1))*eta-z)
         if (result%verdict /= VERDICT_TRUE) error stop 'affine Z inverse unproved'
-        field = num(arena,0)
+        field = num(0)
         do node = 1, 5
             write(digit,'(i0)') node+1
-            centered(node) = sym(arena,'d'//digit)
+            centered(node) = sym('d'//digit)
             differences(node) = nodes(node+1)-nodes(1)
             field = field + centered(node)*p2(node+1)
         end do
-        origin = num(arena,0)
+        origin = num(0)
         coefficients(1) = subs_many(diff(field,x),[x,y],origin)
         coefficients(2) = subs_many(diff(field,y),[x,y],origin)
         coefficients(3) = subs_many(diff(diff(field,x),x)/2,[x,y],origin)
@@ -160,8 +157,8 @@ contains
             str('u5'),str('u6')]
         interval_spec%outputs = [str('lx'),str('ly'),str('a'),str('b'),str('c')]
         call emit_interval(coefficient_roots,interval_spec)
-        symbols = [sym(arena,'lx'),sym(arena,'ly'),sym(arena,'a'), &
-            sym(arena,'b'),sym(arena,'c')]
+        symbols = [sym('lx'),sym('ly'),sym('a'), &
+            sym('b'),sym('c')]
         mapped = nodes(1)+symbols(1)*xi+symbols(2)*eta+symbols(3)*xi**2 &
             +symbols(4)*xi*eta+symbols(5)*eta**2
         roots_interval = [mapped,diff(mapped,r),diff(mapped,z),determinant]
@@ -216,12 +213,12 @@ contains
         integer :: node, coefficient
 
         variables = [x, y]
-        origin = num(arena, 0)
-        field = num(arena, 0)
+        origin = num(0)
+        field = num(0)
         ! The caller centers on node one before invoking this product.
         do node = 2, size(basis)
             write(node_text, '(i0)') node
-            field = field + sym(arena, &
+            field = field + sym( &
                 'centered_nodes('//trim(node_text)//')')*basis(node)
         end do
         coefficients(1) = subs_many(field, variables, origin)
@@ -270,7 +267,7 @@ contains
         do column=1,3
             do row=1,2
                 write(row_text,'(i0)')row;write(column_text,'(i0)')column
-                vertices(row,column)=sym(arena,'vertices('//trim(row_text)//','//trim(column_text)//')')
+                vertices(row,column)=sym('vertices('//trim(row_text)//','//trim(column_text)//')')
             end do
         end do
         do row=1,2
