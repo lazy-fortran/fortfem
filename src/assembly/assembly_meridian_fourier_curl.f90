@@ -23,6 +23,9 @@ module fortfem_meridian_fourier_curl
     !!   n = 0:   a,
     !!   n > 0:   [[a, n b], [-n b, a]]     (rows (cos, sin), columns (cos, sin)),
     !! the real form of multiplication by a + i n b on Re[(c - i s) e^{i n phi}].
+    !! With the optional period P of the gradient, curl and identity forms,
+    !! block n holds the toroidal mode n P instead (a P-periodic field keeps
+    !! only these modes); the phi-mean weights are unchanged.
     !! The operators do not couple modes, and since grad_n V0 is in V1 and
     !! curl_n V1 is in V2 exactly, curl_F grad_F = 0 holds as a matrix
     !! identity for every mode count.
@@ -61,7 +64,8 @@ module fortfem_meridian_fourier_curl
 
 contains
 
-    subroutine meridian_fourier_identity_forms(fs, modes, c, s, mg, status)
+    subroutine meridian_fourier_identity_forms(fs, modes, c, s, mg, status, &
+            period)
         !! Exact phi integration for K=I. The already assembled meridian
         !! mass is copied with weights 1, 1/2, 1/2, ... . Storage is linear
         !! in the number of real Fourier blocks, including construction.
@@ -70,9 +74,10 @@ contains
         integer, intent(in) :: modes
         type(csc_t), intent(out) :: c, s, mg
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
         type(csc_t) :: m, g, ct, mc
         type(fortsparse_status_t) :: st
-        call meridian_fourier_curl(fs, modes, c, status)
+        call meridian_fourier_curl(fs, modes, c, status, period)
         if (status /= 0) return
         call meridian_fourier_diagonal_mass(fs, 2, modes, m, status)
         if (status /= 0) return
@@ -83,7 +88,7 @@ contains
         if (.not. status_ok(st)) return
         call csc_matmul(ct, mc, s, st)
         if (.not. status_ok(st)) return
-        call meridian_fourier_gradient(fs, modes, g, status)
+        call meridian_fourier_gradient(fs, modes, g, status, period)
         if (status /= 0) return
         call meridian_fourier_diagonal_mass(fs, 1, modes, m, status)
         if (status /= 0) return
@@ -92,10 +97,10 @@ contains
         if (status_ok(st)) status = 0
     end subroutine
 
-    subroutine block_operator(a, b, modes, op, status)
-        !! Real-block operator of a + i n b on the (cos, sin) amplitudes.
+    subroutine block_operator(a, b, modes, period, op, status)
+        !! Real-block operator of a + i n P b on the (cos, sin) amplitudes.
         type(csc_t), intent(in) :: a, b
-        integer, intent(in) :: modes
+        integer, intent(in) :: modes, period
         type(csc_t), intent(out) :: op
         integer, intent(out) :: status
 
@@ -113,8 +118,8 @@ contains
         do n = 1, modes
             call put(a, (2*n - 1)*nr, (2*n - 1)*nc, 1.0_dp)
             call put(a, 2*n*nr, 2*n*nc, 1.0_dp)
-            call put(b, (2*n - 1)*nr, 2*n*nc, real(n, dp))
-            call put(b, 2*n*nr, (2*n - 1)*nc, -real(n, dp))
+            call put(b, (2*n - 1)*nr, 2*n*nc, real(n*period, dp))
+            call put(b, 2*n*nr, (2*n - 1)*nc, -real(n*period, dp))
         end do
         call csc_from_triplet((2*modes + 1)*nr, (2*modes + 1)*nc, &
             rows(1:pos), cols(1:pos), vals(1:pos), op, fst)
@@ -137,28 +142,36 @@ contains
         end subroutine put
     end subroutine block_operator
 
-    subroutine meridian_fourier_gradient(fs, modes, g, status)
+    subroutine meridian_fourier_gradient(fs, modes, g, status, period)
         !! Real-block gradient V0 -> V1 on the Fourier spaces.
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: modes
         type(csc_t), intent(out) :: g
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
+        integer :: p
 
         status = 1
-        if (modes < 0) return
-        call block_operator(fs%grad%a, fs%grad%b, modes, g, status)
+        p = 1
+        if (present(period)) p = period
+        if (modes < 0 .or. p < 1) return
+        call block_operator(fs%grad%a, fs%grad%b, modes, p, g, status)
     end subroutine meridian_fourier_gradient
 
-    subroutine meridian_fourier_curl(fs, modes, c, status)
+    subroutine meridian_fourier_curl(fs, modes, c, status, period)
         !! Real-block curl V1 -> V2 on the Fourier spaces.
         type(meridian_feec_t), intent(in) :: fs
         integer, intent(in) :: modes
         type(csc_t), intent(out) :: c
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
+        integer :: p
 
         status = 1
-        if (modes < 0) return
-        call block_operator(fs%curl%a, fs%curl%b, modes, c, status)
+        p = 1
+        if (present(period)) p = period
+        if (modes < 0 .or. p < 1) return
+        call block_operator(fs%curl%a, fs%curl%b, modes, p, c, status)
     end subroutine meridian_fourier_curl
 
     subroutine meridian_fourier_pairing(fs, modes, m, status)
