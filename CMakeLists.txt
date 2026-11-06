@@ -173,7 +173,7 @@ if(NOT TARGET fortnum)
     set(FORTNUM_BUILD_TESTING OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(fortnum
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
-        GIT_TAG b763bce9eb4fd521ba8fe3a7d6afa8c7a450f2f3
+        GIT_TAG 23e36f8f7572d0104124073c349a1e0ea661749a
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortnum)
 endif()
@@ -194,7 +194,7 @@ if(NOT TARGET fortsparse)
     set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG 859d6964d4db075d9cc1eea2c963fb53eb430af1
+        GIT_TAG 2d7c43ee633e42c6044a5225e3a506609d7c4d41
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
