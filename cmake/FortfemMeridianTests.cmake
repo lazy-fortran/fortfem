@@ -9,6 +9,8 @@ add_library(fortfem_meridian STATIC
     src/bem/axisymmetric_gs_boundary_operators_2d.f90
     src/bem/axisymmetric_gs_kernel.f90
     src/bem/meridian_magnetic_coupling.f90
+    src/bem/toroidal_mode_boundary_operators_2d.f90
+    src/bem/toroidal_mode_kernel.f90
     src/elements/polynomial_candidate_jets.f90
     src/elements/triangle_bernstein_jets.f90
     src/elements/triangle_feec_operators.f90

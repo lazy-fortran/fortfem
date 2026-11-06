@@ -57,6 +57,14 @@ filename="fortfem_anisotropic_pollution_products.f90"
 cmp -- "$repository_dir/test/generated/$filename" \
     "$temporary_dir/test/$filename"
 
+filename="fortfem_meridian_bspline_manufactured.f90"
+cmp -- "$repository_dir/test/generated/$filename" \
+    "$temporary_dir/test/$filename"
+
+filename="fortfem_meridian_bspline_products.f90"
+cmp -- "$repository_dir/src/generated/$filename" \
+    "$temporary_dir/$filename"
+
 filename="fortfem_verified_bernstein_products.f90"
 cmp -- "$repository_dir/src/generated/$filename" \
     "$temporary_dir/$filename"

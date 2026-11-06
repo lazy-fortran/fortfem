@@ -160,6 +160,7 @@ run_codegen gen_equilibrated_flux_products
 run_codegen gen_equilibrated_nonconforming_products
 run_codegen gen_hcurl_bound_products
 run_codegen gen_meridian_fourier_equilibration_products
+run_codegen gen_meridian_bspline_products
 
 run_codegen gen_bem_synthetic_surface
 run_codegen gen_bem_high_order_products
@@ -184,6 +185,8 @@ fo fmt "$generated_dir/fortfem_torus_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_toroidal_poisson_products.f90"
 fo fmt "$generated_dir/fortfem_meridian_hcurl_equilibration_products.f90"
 fo fmt "$generated_dir/fortfem_meridian_fourier_equilibration_products.f90"
+fo fmt "$generated_dir/fortfem_meridian_bspline_products.f90"
+fo fmt "$test_generated_dir/fortfem_meridian_bspline_manufactured.f90"
 fo fmt "$generated_dir/fortfem_sphere_curved_panel_products.f90"
 fo fmt "$generated_dir/fortfem_interoperability_oracles.f90"
 fo fmt "$generated_dir/fortfem_tetra_h1_oracle.f90"
