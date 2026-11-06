@@ -151,6 +151,7 @@ program test_meridian_fourier_curl
     call test_reduction_symmetry_derham()
     call test_exact_forms()
     call test_identity_forms()
+    call test_period()
     call check_summary("Meridian real Fourier curl-complex forms")
     if (.not. all_passed) error stop 1
 
@@ -188,6 +189,53 @@ contains
                     "identity forms retain curl grad nullspace")
             end do
         end do
+    end subroutine
+
+    subroutine test_period()
+        ! Block k of a period-P operator is the period-1 block of mode k P.
+        type(meridian_mesh_t) :: mm
+        type(meridian_feec_t) :: fs
+        type(csc_t) :: c, c1, g, g1, s, mg
+        real(dp), allocatable :: d(:, :), d1(:, :), v(:), cv(:)
+        integer, parameter :: p = 3, modes = 2
+        integer :: st, k, j, r, q, r1, q1
+        call make_warped_rectangle_mesh(2, 2, mm)
+        call meridian_feec_build(mm, 2, fs, st)
+        call record(st == 0, "period complex builds")
+        call meridian_fourier_curl(fs, modes, c, st, period=p)
+        call record(st == 0, "period curl assembles")
+        call meridian_fourier_curl(fs, modes*p, c1, st)
+        call meridian_fourier_gradient(fs, modes, g, st, period=p)
+        call record(st == 0, "period gradient assembles")
+        call meridian_fourier_gradient(fs, modes*p, g1, st)
+        d = to_dense(c); d1 = to_dense(c1)
+        r = fs%sp(2)%ndof; q = fs%sp(1)%ndof
+        do k = 1, modes
+            do j = 0, 1
+                r1 = (2*k*p - 1 + j)*r; q1 = (2*k*p - 1)*q
+                call record(maxval(abs(d((2*k - 1 + j)*r + 1:(2*k + j)*r, &
+                    (2*k - 1)*q + 1:(2*k + 1)*q) - d1(r1 + 1:r1 + r, &
+                    q1 + 1:q1 + 2*q))) == 0, "period curl block is mode k P")
+            end do
+        end do
+        d = to_dense(g); d1 = to_dense(g1)
+        r = fs%sp(1)%ndof; q = fs%sp(0)%ndof
+        do k = 1, modes
+            do j = 0, 1
+                r1 = (2*k*p - 1 + j)*r; q1 = (2*k*p - 1)*q
+                call record(maxval(abs(d((2*k - 1 + j)*r + 1:(2*k + j)*r, &
+                    (2*k - 1)*q + 1:(2*k + 1)*q) - d1(r1 + 1:r1 + r, &
+                    q1 + 1:q1 + 2*q))) == 0, "period gradient block is mode k P")
+            end do
+        end do
+        call meridian_fourier_identity_forms(fs, modes, c, s, mg, st, period=p)
+        call record(st == 0, "period identity forms assemble")
+        v = [(sin(0.37_dp*j), j=1, g%ncol)]
+        cv = csc_matvec(c, csc_matvec(g, v))
+        call record(norm2(cv) < 1.0e-10_dp*norm2(v), &
+            "period forms retain curl grad nullspace")
+        call meridian_fourier_curl(fs, modes, c, st, period=0)
+        call record(st /= 0, "period below one is rejected")
     end subroutine
 
     subroutine record(c, d)
