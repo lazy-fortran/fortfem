@@ -98,6 +98,7 @@ module fortfem_meridian_feec_n
         evaluate_triangle_nedelec_second_kind, &
         initialize_triangle_nedelec_second_kind, &
         triangle_nedelec_second_kind_t
+    use fortnum_quadrature, only: gauss_legendre_ab
     use fortsparse, only: csc_conjugate_transpose, csc_from_triplet, &
         csc_matmul, csc_t, csc_z_t, fortsparse_status_t, status_ok
     implicit none
@@ -178,6 +179,18 @@ module fortfem_meridian_feec_n
     public :: meridian_qgrad
     public :: meridian_point_basis_init
     public :: meridian_point_basis
+    public :: meridian_boundary_trace, meridian_boundary_trace_points
+    public :: meridian_boundary_trace_values
+
+    interface
+        subroutine dposv(uplo, n, nrhs, a, lda, b, ldb, info)
+            import :: dp
+            character(len=1), intent(in) :: uplo
+            integer, intent(in) :: n, nrhs, lda, ldb
+            real(dp), intent(inout) :: a(lda, *), b(ldb, *)
+            integer, intent(out) :: info
+        end subroutine dposv
+    end interface
 
     real(dp), parameter :: tiny_entry = 1.0e-12_dp
     !> Triangle count below which assembly loops stay serial.
@@ -1248,6 +1261,168 @@ contains
         if (bad /= 0) return
         call triplets_to_csc(fs%n0, fs%n0, rows, cols, vals, k, status)
     end subroutine meridian_gs_stiffness
+
+    subroutine meridian_boundary_trace(fs, fun, values, status)
+        !! V1 boundary dofs whose trace approximates the physical field
+        !! A = fun(R, Z) = (A_R, A_phi, A_Z), evaluated only on the boundary
+        !! (meridian_boundary_trace_points, then _values).
+        type(meridian_feec_t), intent(in) :: fs
+        procedure(meridian_field_i) :: fun
+        complex(dp), allocatable, intent(out) :: values(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: xy(:, :)
+        complex(dp), allocatable :: v(:, :)
+        integer :: i
+
+        call meridian_boundary_trace_points(fs, xy)
+        allocate (v(3, size(xy, 2)))
+        do i = 1, size(xy, 2)
+            call fun(xy(:, i), v(:, i))
+        end do
+        call meridian_boundary_trace_values(fs, v, values, status)
+    end subroutine meridian_boundary_trace
+
+    subroutine meridian_boundary_trace_points(fs, xy)
+        !! Points at which meridian_boundary_trace_values needs the field:
+        !! the edge quadrature points of every boundary edge (triangle-major,
+        !! local edges 1..3, ke + 3 Gauss points each), then the boundary
+        !! Lagrange nodes in V0 dof order.
+        type(meridian_feec_t), intent(in) :: fs
+        real(dp), allocatable, intent(out) :: xy(:, :)
+
+        call trace_walk(fs, xy=xy)
+    end subroutine meridian_boundary_trace_points
+
+    subroutine meridian_boundary_trace_values(fs, v, values, status)
+        !! V1 boundary dofs from the physical field v(:, i) = (A_R, A_phi,
+        !! A_Z) at the points of meridian_boundary_trace_points.  On each
+        !! boundary edge the Nedelec dofs are the L2(ds) projection of the
+        !! tangential component A_pol . t onto the edge's tangential traces
+        !! (the other local functions have none there).  The Lagrange dofs of
+        !! a = R A_phi interpolate a at their nodes.  values has the V1 size
+        !! nn + n0 and is zero at interior dofs.
+        type(meridian_feec_t), intent(in) :: fs
+        complex(dp), intent(in) :: v(:, :)
+        complex(dp), allocatable, intent(out) :: values(:)
+        integer, intent(out) :: status
+
+        call trace_walk(fs, v=v, values=values, status=status)
+    end subroutine meridian_boundary_trace_values
+
+    subroutine trace_walk(fs, xy, v, values, status)
+        !! One traversal for the points (xy) and the projection (v, values),
+        !! so both use the same point order.
+        type(meridian_feec_t), intent(in) :: fs
+        real(dp), allocatable, intent(out), optional :: xy(:, :)
+        complex(dp), intent(in), optional :: v(:, :)
+        complex(dp), allocatable, intent(out), optional :: values(:)
+        integer, intent(out), optional :: status
+
+        type(meridian_point_basis_t) :: pb
+        real(dp), allocatable :: tau(:), w(:), gv(:), gg(:, :), tn(:, :)
+        real(dp), allocatable :: tr(:, :), cur(:), mloc(:, :), bloc(:, :)
+        real(dp), allocatable :: nodes(:, :), trace(:), pts(:, :)
+        real(dp) :: xi, eta, that(2), x(2), jac(2, 2), tphys(2), ds
+        complex(dp) :: at
+        integer :: nq, t, e, q, l, m, j0, ke, ngeo, i, info, np, st, nedge
+        logical :: project
+
+        project = present(v)
+        if (project) status = 1
+        ke = fs%ke
+        nq = ke + 3
+        ngeo = size(fs%mm%nodes, 2)
+        nedge = 0
+        do t = 1, fs%mm%topology%n_triangles
+            do e = 1, 3
+                if (fs%sp(1)%bnd(fs%sp(1)%dof((e - 1)*ke + 1, t))) &
+                    nedge = nedge + 1
+            end do
+        end do
+        call meridian_lagrange_nodes(fs, nodes)
+        allocate (pts(2, nedge*nq + count(fs%sp(0)%bnd)))
+        call meridian_point_basis_init(fs, pb, st)
+        if (st /= 0) return
+        if (project) then
+            if (size(v, 1) /= 3 .or. size(v, 2) /= size(pts, 2)) return
+            allocate (values(fs%nn + fs%n0))
+            values = (0.0_dp, 0.0_dp)
+        end if
+        allocate (tau(nq), w(nq), gv(ngeo), gg(2, ngeo), tn(2, fs%nln))
+        allocate (tr(2, fs%nln), cur(fs%nln), mloc(ke, ke), bloc(ke, 2))
+        allocate (trace(ke))
+        call gauss_legendre_ab(nq, 0.0_dp, 1.0_dp, tau, w)
+        np = 0
+        do t = 1, fs%mm%topology%n_triangles
+            do e = 1, 3
+                j0 = (e - 1)*ke
+                if (.not. fs%sp(1)%bnd(fs%sp(1)%dof(j0 + 1, t))) cycle
+                mloc = 0.0_dp
+                bloc = 0.0_dp
+                do q = 1, nq
+                    ! Local edge e joins local vertices e and e mod 3 + 1.
+                    select case (e)
+                    case (1)
+                        xi = tau(q); eta = 0.0_dp; that = [1.0_dp, 0.0_dp]
+                    case (2)
+                        xi = 1.0_dp - tau(q); eta = tau(q)
+                        that = [-1.0_dp, 1.0_dp]
+                    case default
+                        xi = 0.0_dp; eta = 1.0_dp - tau(q)
+                        that = [0.0_dp, -1.0_dp]
+                    end select
+                    call evaluate_triangle_lagrange_basis(pb%gb, xi, eta, gv, &
+                        gg, st)
+                    if (st /= 0) return
+                    x = 0.0_dp
+                    jac = 0.0_dp
+                    do i = 1, ngeo
+                        x = x + gv(i)*fs%mm%nodes(:, i, t)
+                        jac(:, 1) = jac(:, 1) + gg(1, i)*fs%mm%nodes(:, i, t)
+                        jac(:, 2) = jac(:, 2) + gg(2, i)*fs%mm%nodes(:, i, t)
+                    end do
+                    np = np + 1
+                    pts(:, np) = x
+                    if (.not. project) cycle
+                    call reference_edge_basis(pb%edge_kind, pb%nb, pb%nb2, &
+                        pb%rb, xi, eta, tn, tr, cur, st)
+                    if (st /= 0) return
+                    ! Covariant Piola: w . (jac that) = what . that.
+                    tphys = matmul(jac, that)
+                    ds = norm2(tphys)
+                    if (ds <= 0.0_dp) return
+                    at = v(1, np)*tphys(1) + v(3, np)*tphys(2)
+                    do l = 1, ke
+                        trace(l) = dot_product(tn(:, j0 + l), that)
+                    end do
+                    do l = 1, ke
+                        do m = 1, ke
+                            mloc(l, m) = mloc(l, m) + w(q)*trace(l)*trace(m)/ds
+                        end do
+                        bloc(l, 1) = bloc(l, 1) + w(q)*trace(l)*real(at, dp)/ds
+                        bloc(l, 2) = bloc(l, 2) + w(q)*trace(l)*aimag(at)/ds
+                    end do
+                end do
+                if (.not. project) cycle
+                call dposv('L', ke, 2, mloc, ke, bloc, ke, info)
+                if (info /= 0) return
+                do l = 1, ke
+                    values(fs%sp(1)%dof(j0 + l, t)) = &
+                        real(fs%sp(1)%sgn(j0 + l, t), dp) &
+                        *cmplx(bloc(l, 1), bloc(l, 2), dp)
+                end do
+            end do
+        end do
+        do i = 1, fs%n0
+            if (.not. fs%sp(0)%bnd(i)) cycle
+            np = np + 1
+            pts(:, np) = nodes(:, i)
+            if (project) values(fs%nn + i) = metric_radius(fs, nodes(:, i))*v(2, np)
+        end do
+        if (present(xy)) call move_alloc(pts, xy)
+        if (project) status = 0
+    end subroutine trace_walk
 
     subroutine meridian_lagrange_nodes(fs, xy)
         !! Physical coordinates xy(:, i) of the V0 (Lagrange) nodes.
