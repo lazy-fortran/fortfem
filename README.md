@@ -50,7 +50,9 @@ cmake --install build/cmake --prefix /desired/prefix
 ```
 
 Downstream CMake projects use `find_package(fortfem CONFIG REQUIRED)` and link
-`fortfem::capi`. CMake options and the sparse solver configuration are described
+`fortfem::capi`. Within a CMake build, `fortfem::api` is the Fortran library
+and `fortfem::plot` adds plotting; `-DFORTFEM_WITH_PLOT=OFF` leaves out
+`fortfem::plot` and fortplot. CMake options and the sparse solver configuration are described
 in [doc/building.md](doc/building.md).
 
 ## Usage

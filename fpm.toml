@@ -118,12 +118,12 @@ md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markd
 [dependencies]
 openmp = "*"
 blas = "*"
-fortplot = { git = "https://github.com/lazy-fortran/fortplot.git" }
+fortplot = { git = "https://github.com/lazy-fortran/fortplot.git", rev = "35a9cd26ab20cf50ba6f7347d7daf13566e0dc91" }
 fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "30c14fe2b4674655a3cac9b2525c60aa7bc31738" }
 fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "d2d912b95139871b9c8b2fdd695574496bc98810" }
 
 [dev-dependencies]
-test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
+test-drive = { git = "https://github.com/fortran-lang/test-drive.git", rev = "791484a79a24cbc00be6f74e53c6e030cb75efe2" }
 
 [[executable]]
 name = "fortfem_lab_mf1"

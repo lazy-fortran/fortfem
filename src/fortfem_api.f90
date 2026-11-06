@@ -1134,7 +1134,6 @@ module fortfem_api
     use fortfem_cgl_pressure_divergence, only: &
         evaluate_cgl_pressure_divergence, evaluate_cgl_pressure_divergence_jvp, &
         evaluate_cgl_pressure_divergence_vjp
-    use fortfem_api_plot
     use fortfem_torus_surface_mesh, only: generate_torus_surface_mesh
     use fortfem_solid_torus_tetra_mesh, only: generate_solid_torus_tetra_mesh
     use fortfem_structured_tetra_box_mesh, only: &
@@ -3657,8 +3656,5 @@ module fortfem_api
     public :: assemble_glued_feec_sequence_csc_compositions_jvp
     public :: assemble_glued_feec_sequence_csc_compositions_vjp
     public :: build_multipatch_signed_dof_map
-
-    ! Plotting interface
-    public :: plot
 
 end module fortfem_api
