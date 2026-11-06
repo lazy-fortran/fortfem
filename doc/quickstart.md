@@ -42,6 +42,7 @@ The library provides a clean, FEniCS-inspired API for finite element problems:
 ```fortran
 program poisson_forms
     use fortfem_api
+    use fortfem_plot, only: plot
     implicit none
     
     type(mesh_t) :: mesh

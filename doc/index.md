@@ -61,6 +61,7 @@ operators, sparse solvers, and analytical verification examples.
 ```fortran
 program poisson_example
     use fortfem_api
+    use fortfem_plot, only: plot
     implicit none
     
     type(mesh_t) :: mesh

@@ -55,6 +55,7 @@ ctest --test-dir build/cmake -L sparse --output-on-failure -j2
 | `FORTFEM_FETCH_DEPENDENCIES` | `ON` | Fetch pinned dependencies when the targets are not already available |
 | `FORTFEM_BUILD_TESTING` | `OFF` | Build the C API and sparse adapter tests |
 | `FORTFEM_NATIVE_SPARSE_ONLY` | `ON` | Disable SuperLU, UMFPACK, MUMPS and CUDA in the fetched fortsparse |
+| `FORTFEM_WITH_PLOT` | `ON` | Build `fortfem::plot` (`fortfem_plot`, linking `fortfem::api` and the pinned fortplot); `OFF` neither fetches nor links fortplot |
 | `FORTFEM_TRIANGLE_COMPAT_ONLY` | `OFF` | Build only the dependency-free `fortfem::triangle_compat` mesher library |
 | `FORTFEM_ELEMENT_KERNELS_ONLY` | `OFF` | Build only the dependency-free batched element and CSR interface |
 | `FORTFEM_ENABLE_CUDA` | `OFF` | Build batched CUDA element kernels |
