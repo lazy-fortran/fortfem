@@ -26,6 +26,8 @@ option(FORTFEM_ENZYME_REQUIRED
     "Fail configuration when the optional Enzyme toolchain is unavailable" OFF)
 option(FORTFEM_TRIANGLE_COMPAT_ONLY
     "Build only the dependency-free triangle_compat mesher library" OFF)
+option(FORTFEM_WITH_PLOT
+    "Build the FortPlot-based plotting library fortfem::plot" ON)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_Fortran_STANDARD 2018)
@@ -199,26 +201,32 @@ if(NOT TARGET fortsparse)
     FetchContent_MakeAvailable(fortsparse)
 endif()
 
-# The plotting facade of fortfem_api links FortPlot, as in fpm; the pin is
-# the revision fpm resolves for the unpinned fpm.toml dependency.
-if(NOT TARGET fortplot)
+# Only fortfem::plot needs FortPlot; the pin matches fpm.toml.
+if(FORTFEM_WITH_PLOT AND NOT TARGET fortplot)
     if(NOT FORTFEM_FETCH_DEPENDENCIES)
         message(FATAL_ERROR
             "fortplot target is required when dependency fetching is disabled")
     endif()
     FetchContent_Declare(fortplot
         GIT_REPOSITORY https://github.com/lazy-fortran/fortplot.git
-        GIT_TAG f87c1c79002830575e8babb119cf17dd915fca00
+        GIT_TAG 1645fa41c11b5786c71bc27e5b41dae7c7bbba23
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortplot)
 endif()
 
-# The full public Fortran library: every module fpm builds from src/, so a
-# consumer that does `find_package(fortfem)` (or FetchContent) and links
-# fortfem::api or fortfem::boundary sees the same modules as an fpm build.
-# CMake resolves the intra-target Fortran MODULE dependencies.
+# The full public Fortran library: every module fpm builds from src/ except
+# the FortPlot-based plotting modules, which form fortfem::plot, so a consumer
+# that does `find_package(fortfem)` (or FetchContent) and links fortfem::api or
+# fortfem::boundary sees the same modules as an fpm build. CMake resolves the
+# intra-target Fortran MODULE dependencies.
 file(GLOB_RECURSE FORTFEM_API_SOURCES CONFIGURE_DEPENDS src/*.f90)
 list(FILTER FORTFEM_API_SOURCES EXCLUDE REGEX "/src/triangle_compat/")
+list(FILTER FORTFEM_API_SOURCES EXCLUDE REGEX
+    "/src/(fortfem_api_plot|fortfem_api_plot_mesh|fortfem_plot)\\.f90$")
+set(FORTFEM_PLOT_SOURCES
+    src/fortfem_api_plot_mesh.f90
+    src/fortfem_api_plot.f90
+    src/fortfem_plot.f90)
 add_library(fortfem_api STATIC ${FORTFEM_API_SOURCES})
 add_library(fortfem::api ALIAS fortfem_api)
 add_library(fortfem::boundary ALIAS fortfem_api)
@@ -230,8 +238,20 @@ target_include_directories(fortfem_api PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fortfem>)
 target_link_libraries(fortfem_api PUBLIC
-    OpenMP::OpenMP_Fortran fortnum fortsparse fortplot
+    OpenMP::OpenMP_Fortran fortnum fortsparse
     fortfem_triangle_compat)
+
+if(FORTFEM_WITH_PLOT)
+    add_library(fortfem_plot STATIC ${FORTFEM_PLOT_SOURCES})
+    add_library(fortfem::plot ALIAS fortfem_plot)
+    set_target_properties(fortfem_plot PROPERTIES
+        EXPORT_NAME plot
+        Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/plot_modules")
+    target_include_directories(fortfem_plot PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/plot_modules>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fortfem>)
+    target_link_libraries(fortfem_plot PUBLIC fortfem_api fortplot)
+endif()
 
 set(FORTFEM_CAPI_SOURCES
     src/generated/fortfem_reference_basis_products.f90
@@ -409,15 +429,23 @@ install(TARGETS fortfem_capi fortfem_triangle_compat
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-# The full API library links the fetched FortNum, FortSparse and FortPlot
-# targets; a package export would have to export those too, so consumers use
-# it through add_subdirectory/FetchContent or an installed static library.
+# The full API library links the fetched FortNum and FortSparse targets, and
+# fortfem_plot also FortPlot; a package export would have to export those too,
+# so consumers use them through add_subdirectory/FetchContent or installed
+# static libraries.
 install(TARGETS fortfem_api
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES include/fortfem.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(DIRECTORY "${PROJECT_BINARY_DIR}/api_modules/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/fortfem"
     FILES_MATCHING PATTERN "*.mod")
+if(FORTFEM_WITH_PLOT)
+    install(TARGETS fortfem_plot
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(DIRECTORY "${PROJECT_BINARY_DIR}/plot_modules/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/fortfem"
+        FILES_MATCHING PATTERN "*.mod")
+endif()
 
 configure_package_config_file(
     cmake/fortfemConfig.cmake.in

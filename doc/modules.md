@@ -73,6 +73,8 @@ FortFEM provides a clean, high-level API that hides implementation details while
   Solve the order-one through order-four anisotropic magnetic-paper
   tetrahedral box benchmark, optionally
   reconstructing its magnetic field at an interior point
+- Plotting is in `fortfem_plot` (CMake target `fortfem::plot`), not in
+  `fortfem_api`:
 - **plot(uh, filename, title, colormap)**: Plot scalar function
 - **plot(Eh, filename, title, plot_type)**: Plot vector field
 - **plot(mesh, filename, title)**: Plot mesh triangulation
@@ -99,6 +101,7 @@ This provides access to the complete FEniCS-style API.
 ```fortran
 program poisson_example
     use fortfem_api
+    use fortfem_plot, only: plot
     implicit none
     
     type(mesh_t) :: mesh
