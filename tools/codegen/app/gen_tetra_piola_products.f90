@@ -1,5 +1,4 @@
 program gen_tetra_piola_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, sym, operator(+), operator(*), operator(/)
@@ -8,7 +7,6 @@ program gen_tetra_piola_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: j(3, 3), inverse(3, 3), determinant, values(3), curls(3), divergence
     type(expr_t), allocatable :: inputs(:), dots(:), bars(:), mapped(:)
@@ -16,8 +14,7 @@ program gen_tetra_piola_products
     character(:), allocatable :: family, scalar_name
     integer :: family_id, row, column, index
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     do family_id = 1, 2
         family = "tetra_covariant"
         scalar_name = "curls"
@@ -56,26 +53,26 @@ program gen_tetra_piola_products
             values(row) = register(indexed("reference_values", row, basis=.true.), &
                 indexed("reference_values_dot", row, basis=.true.), &
                 indexed("reference_values_bar", row, basis=.true.))
-            bars(row) = sym(arena, indexed("physical_values_bar", row, basis=.true.))
+            bars(row) = sym(indexed("physical_values_bar", row, basis=.true.))
         end do
         if (family_id == 1) then
             do row = 1, 3
                 curls(row) = register(indexed("reference_curls", row, basis=.true.), &
                     indexed("reference_curls_dot", row, basis=.true.), &
                     indexed("reference_curls_bar", row, basis=.true.))
-                bars(3 + row) = sym(arena, &
+                bars(3 + row) = sym( &
                     indexed("physical_curls_bar", row, basis=.true.))
             end do
         else
             divergence = register("reference_divergences(basis)", &
                 "reference_divergences_dot(basis)", "reference_divergences_bar(basis)")
-            bars(4) = sym(arena, "physical_divergences_bar(basis)")
+            bars(4) = sym("physical_divergences_bar(basis)")
         end if
         if (index /= size(inputs)) error stop "Piola input registration mismatch"
         do row = 1, 3
-            mapped(row) = num(arena, 0)
+            mapped(row) = num(0)
             if (family_id == 1) then
-                mapped(3 + row) = num(arena, 0)
+                mapped(3 + row) = num(0)
                 do column = 1, 3
                     mapped(row) = mapped(row) + inverse(column, row)*values(column)
                     mapped(3 + row) = mapped(3 + row) + j(row, column)*curls(column)
@@ -99,9 +96,9 @@ contains
         character(*), intent(in) :: name, dot_name, bar_name
         type(expr_t) :: value
         index = index + 1
-        value = sym(arena, name)
+        value = sym(name)
         inputs(index) = value
-        dots(index) = sym(arena, dot_name)
+        dots(index) = sym(dot_name)
         output_references(index) = str(bar_name)
     end function register
     function indexed(name, row, column, basis) result(text)

@@ -1,5 +1,4 @@
 program gen_tetra_modal_vector_identities
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_subs, only: subs_many
     use fortsym_products, only: jvp
@@ -8,11 +7,10 @@ program gen_tetra_modal_vector_identities
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), &
         operator(-), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: component_curls(3, 3), cross_curls(3, 3)
     type(expr_t) :: cross_curls_dot(3, 3), cross_values(3, 3)
@@ -27,25 +25,24 @@ program gen_tetra_modal_vector_identities
     character(:), allocatable :: code, filename
     integer :: column, component, ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, "x")
-    y = sym(arena, "y")
-    z = sym(arena, "z")
-    phi = sym(arena, "phi")
-    dx = sym(arena, "dx")
-    dy = sym(arena, "dy")
-    dz = sym(arena, "dz")
-    x_dot = sym(arena, "x_dot")
-    y_dot = sym(arena, "y_dot")
-    z_dot = sym(arena, "z_dot")
-    phi_dot = sym(arena, "phi_dot")
-    dx_dot = sym(arena, "dx_dot")
-    dy_dot = sym(arena, "dy_dot")
-    dz_dot = sym(arena, "dz_dot")
-    zero = num(arena, 0)
+    engine = make_native_engine()
+    x = sym("x")
+    y = sym("y")
+    z = sym("z")
+    phi = sym("phi")
+    dx = sym("dx")
+    dy = sym("dy")
+    dz = sym("dz")
+    x_dot = sym("x_dot")
+    y_dot = sym("y_dot")
+    z_dot = sym("z_dot")
+    phi_dot = sym("phi_dot")
+    dx_dot = sym("dx_dot")
+    dy_dot = sym("dy_dot")
+    dz_dot = sym("dz_dot")
+    zero = num(0)
 
-    shift=[sym(arena,'shift_x'),sym(arena,'shift_y'),sym(arena,'shift_z')]
+    shift=[sym('shift_x'),sym('shift_y'),sym('shift_z')]
     shift_zero=zero
     local_phi=phi+dx*shift(1)+dy*shift(2)+dz*shift(3)
     do column=1,3
@@ -272,8 +269,8 @@ contains
             do component = 1, 3
                 root = root + 1
                 spec%output_references(root) = str( &
-                    name//"("//integer_text(component)//","// &
-                    integer_text(column)//")")
+                    name//"("//itoa(component)//","// &
+                    itoa(column)//")")
             end do
         end do
     end subroutine append_references
@@ -300,14 +297,5 @@ contains
             expressions(expression) = result%value
         end do
     end subroutine simplify_all
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(16) :: buffer
-
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 
 end program gen_tetra_modal_vector_identities

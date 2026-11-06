@@ -1,15 +1,13 @@
 program gen_tetra_whitney_products
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: coordinates(3), lambda(4), field(3), roots(36)
@@ -19,9 +17,8 @@ program gen_tetra_whitney_products
         [1, 2, 1, 3, 1, 4, 2, 3, 2, 4, 3, 4], [2, 6])
     integer :: edge, component, first, second, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    coordinates = [sym(arena, "x"), sym(arena, "y"), sym(arena, "z")]
+    engine = make_native_engine()
+    coordinates = [sym("x"), sym("y"), sym("z")]
     lambda(1) = 1 - coordinates(1) - coordinates(2) - coordinates(3)
     lambda(2:4) = coordinates
     do edge = 1, 6
@@ -60,7 +57,7 @@ program gen_tetra_whitney_products
     spec%output_shapes = [str("(3,6)"), str("(3,6)")]
     do edge = 1, 6
         do component = 1, 3
-            reference = "("//integer_text(component)//","//integer_text(edge)//")"
+            reference = "("//itoa(component)//","//itoa(edge)//")"
             spec%output_references(3*(edge - 1) + component) = &
                 str("values"//reference)
             spec%output_references(18 + 3*(edge - 1) + component) = &
@@ -73,12 +70,4 @@ program gen_tetra_whitney_products
         status="replace", action="write")
     write (unit, "(a)") code(:len(code) - 1)
     close (unit)
-contains
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(32) :: buffer
-        write (buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 end program gen_tetra_whitney_products

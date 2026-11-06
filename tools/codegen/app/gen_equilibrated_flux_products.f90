@@ -6,7 +6,6 @@ program gen_equilibrated_flux_products
     !! (shifted Legendre moments, edge speed, normal trace, edge integrands).
     !! Contractions over runtime sizes, patch topology and the dense solves
     !! stay handwritten in the estimator.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, sqrt, operator(*), operator(+), &
@@ -15,15 +14,13 @@ program gen_equilibrated_flux_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: unit, degree, l
     character(:), allocatable :: text
     logical :: mapped_output
 
     mapped_output = .true.
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open(newunit=unit, file=generated_path("fortfem_mapped_oscillation_products.f90"), &
         status="replace", action="write")
 
@@ -167,7 +164,7 @@ contains
     function ex(name) result(e)
         character(*), intent(in) :: name
         type(expr_t) :: e
-        e = sym(arena, name)
+        e = sym(name)
     end function ex
 
     function ix(name, i, j) result(text)
@@ -200,7 +197,7 @@ contains
 
         do c = 1, 2
             do r = 1, 2
-                acc = num(arena, 0)
+                acc = num(0)
                 do k = 1, count
                     acc = acc + ex(ix("nodes", r, k))*ex(ix("grad", k, c))
                 end do
@@ -222,8 +219,8 @@ contains
         do j = 1, 2
             do i = 1, 2
                 n = n + 1
-                roots(n) = num(arena, 2)*ex(ix("midpoint", i, j)) &
-                    - (ex(ix("left", i, j)) + ex(ix("right", i, j)))/num(arena, 2)
+                roots(n) = num(2)*ex(ix("midpoint", i, j)) &
+                    - (ex(ix("left", i, j)) + ex(ix("right", i, j)))/num(2)
             end do
         end do
     end function midpoint_roots
@@ -234,7 +231,7 @@ contains
         integer :: i, j, m
         do j = 1, 2
             do i = 1, 2
-                entry(i, j) = num(arena, 0)
+                entry(i, j) = num(0)
                 do m = 1, 2
                     entry(i, j) = entry(i, j) + ex(ix("jacobian", i, m)) &
                         *ex(ix("inverse_transpose", j, m))
@@ -245,7 +242,7 @@ contains
         bb = entry(1,1)*entry(1,2) + entry(2,1)*entry(2,2)
         cc = entry(1,2)*entry(1,2) + entry(2,2)*entry(2,2)
         roots(1) = sqrt((aa + cc + sqrt((aa - cc)*(aa - cc) &
-            + num(arena, 4)*bb*bb))/num(arena, 2))
+            + num(4)*bb*bb))/num(2))
     end function relative_norm_roots
 
     function poincare_roots() result(roots)
@@ -270,7 +267,7 @@ contains
             do b = 0, 4 - a
                 n = n + 1
                 refs(n) = str("controls("//itxt(n)//")")
-                roots(n) = num(arena, 0)
+                roots(n) = num(0)
                 weight4 = factorial(4)/(factorial(a)*factorial(b)*factorial(4-a-b))
                 do i = 1, 6
                     do j = 1, 6
@@ -279,8 +276,8 @@ contains
                             *ex("jacobians(2,2,"//itxt(j)//")") &
                             - ex("jacobians(1,2,"//itxt(i)//")") &
                             *ex("jacobians(2,1,"//itxt(j)//")")
-                        roots(n) = roots(n) + num(arena, weights(i)*weights(j)) &
-                            *term/num(arena, weight4)
+                        roots(n) = roots(n) + num(weights(i)*weights(j)) &
+                            *term/num(weight4)
                     end do
                 end do
             end do
@@ -330,7 +327,7 @@ contains
 
     function hat_value_roots() result(roots)
         type(expr_t) :: roots(3)
-        roots(1) = num(arena, 1) - ex("xi") - ex("eta")
+        roots(1) = num(1) - ex("xi") - ex("eta")
         roots(2) = ex("xi")
         roots(3) = ex("eta")
     end function hat_value_roots
@@ -349,7 +346,7 @@ contains
         do ii = 0, deg
             do jj = 0, deg - ii
                 l = l + 1
-                term = num(arena, 1)
+                term = num(1)
                 do p = 1, ii
                     term = term*ex("xi")
                 end do
@@ -381,7 +378,7 @@ contains
     function tensor_inverse_roots() result(roots)
         !! Inverse of the symmetrised 2x2 coefficient, column-major order.
         type(expr_t) :: roots(4), b, det
-        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(arena, 2)
+        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(2)
         det = ex("coefficient(1,1)")*ex("coefficient(2,2)") - b*b
         roots(1) = ex("coefficient(2,2)")/det
         roots(2) = -b/det
@@ -410,9 +407,9 @@ contains
         !! Smaller eigenvalue (a + c)/2 - sqrt(((a - c)/2)^2 + b^2) of the
         !! symmetrised coefficient [[a, b], [b, c]].
         type(expr_t) :: roots(1), b, h
-        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(arena, 2)
-        h = (ex("coefficient(1,1)") - ex("coefficient(2,2)"))/num(arena, 2)
-        roots(1) = (ex("coefficient(1,1)") + ex("coefficient(2,2)"))/num(arena, 2) &
+        b = (ex("coefficient(1,2)") + ex("coefficient(2,1)"))/num(2)
+        h = (ex("coefficient(1,1)") - ex("coefficient(2,2)"))/num(2)
+        roots(1) = (ex("coefficient(1,1)") + ex("coefficient(2,2)"))/num(2) &
             - sqrt(h*h + b*b)
     end function tensor_min_eigenvalue_roots
 
@@ -443,12 +440,12 @@ contains
         type(expr_t) :: roots(7), x
         integer :: j
 
-        x = num(arena, 2)*ex("s") - num(arena, 1)
-        roots(1) = num(arena, 1)
+        x = num(2)*ex("s") - num(1)
+        roots(1) = num(1)
         roots(2) = x
         do j = 1, 5
-            roots(j + 2) = (num(arena, 2*j + 1)*x*roots(j + 1) &
-                - num(arena, j)*roots(j))/num(arena, j + 1)
+            roots(j + 2) = (num(2*j + 1)*x*roots(j + 1) &
+                - num(j)*roots(j))/num(j + 1)
         end do
     end function legendre_roots
 

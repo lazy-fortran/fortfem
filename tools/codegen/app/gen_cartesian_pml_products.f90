@@ -1,5 +1,4 @@
 program gen_cartesian_pml_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(/), operator(**), sym
@@ -9,7 +8,6 @@ program gen_cartesian_pml_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: stretch(3), stretch_dot(3)
@@ -27,38 +25,37 @@ program gen_cartesian_pml_products
     character(:), allocatable :: attenuation_jvp_code, attenuation_vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    stretch = [sym(arena, "stretch_1"), sym(arena, "stretch_2"), &
-        sym(arena, "stretch_3")]
-    stretch_dot = [sym(arena, "stretch_1_dot"), &
-        sym(arena, "stretch_2_dot"), sym(arena, "stretch_3_dot")]
+    engine = make_native_engine()
+    stretch = [sym("stretch_1"), sym("stretch_2"), &
+        sym("stretch_3")]
+    stretch_dot = [sym("stretch_1_dot"), &
+        sym("stretch_2_dot"), sym("stretch_3_dot")]
     scalar_outputs = [ &
         stretch(2)*stretch(3)/stretch(1), &
         stretch(1)*stretch(3)/stretch(2), &
         stretch(1)*stretch(2)/stretch(3), &
         stretch(1)*stretch(2)*stretch(3)]
     scalar_outputs_bar = [ &
-        sym(arena, "gradient_1_bar"), sym(arena, "gradient_2_bar"), &
-        sym(arena, "gradient_3_bar"), sym(arena, "mass_bar")]
+        sym("gradient_1_bar"), sym("gradient_2_bar"), &
+        sym("gradient_3_bar"), sym("mass_bar")]
     curl_outputs = [ &
         stretch(1)/(stretch(2)*stretch(3)), &
         stretch(2)/(stretch(1)*stretch(3)), &
         stretch(3)/(stretch(1)*stretch(2)), scalar_outputs(1:3)]
     curl_outputs_bar = [ &
-        sym(arena, "curl_1_bar"), sym(arena, "curl_2_bar"), &
-        sym(arena, "curl_3_bar"), sym(arena, "mass_1_bar"), &
-        sym(arena, "mass_2_bar"), sym(arena, "mass_3_bar")]
+        sym("curl_1_bar"), sym("curl_2_bar"), &
+        sym("curl_3_bar"), sym("mass_1_bar"), &
+        sym("mass_2_bar"), sym("mass_3_bar")]
     attenuation_variables = [ &
-        sym(arena, "distance"), sym(arena, "layer_width"), &
-        sym(arena, "wave_number"), sym(arena, "sigma_max")]
+        sym("distance"), sym("layer_width"), &
+        sym("wave_number"), sym("sigma_max")]
     attenuation_dot = [ &
-        sym(arena, "distance_dot"), sym(arena, "layer_width_dot"), &
-        sym(arena, "wave_number_dot"), sym(arena, "sigma_max_dot")]
+        sym("distance_dot"), sym("layer_width_dot"), &
+        sym("wave_number_dot"), sym("sigma_max_dot")]
     attenuation(1) = attenuation_variables(4)/attenuation_variables(3)* &
         (attenuation_variables(1)/attenuation_variables(2))** &
-        sym(arena, "polynomial_degree")
-    attenuation_bar(1) = sym(arena, "attenuation_bar")
+        sym("polynomial_degree")
+    attenuation_bar(1) = sym("attenuation_bar")
 
     scalar_jvp = jvp(scalar_outputs, stretch, stretch_dot)
     scalar_vjp = vjp(scalar_outputs, stretch, scalar_outputs_bar)

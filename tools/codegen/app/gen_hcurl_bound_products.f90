@@ -3,7 +3,6 @@ program gen_hcurl_bound_products
     !! energy bound (curl(nu curl u) + kappa u = f, u x n = 0): the rot leaf
     !! of scalar patch reconstructions, the patch target, the local matrix and
     !! right-hand-side contributions, and the two global defect integrands.
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
@@ -14,7 +13,6 @@ program gen_hcurl_bound_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(kernel_spec_t) :: spec
@@ -27,33 +25,32 @@ program gen_hcurl_bound_products
     integer :: unit, ios, i
     character(2) :: label
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    j11 = sym(arena, "j11")
-    j21 = sym(arena, "j21")
-    j12 = sym(arena, "j12")
-    j22 = sym(arena, "j22")
-    r1 = sym(arena, "r1")
-    r2 = sym(arena, "r2")
+    engine = make_native_engine()
+    j11 = sym("j11")
+    j21 = sym("j21")
+    j12 = sym("j12")
+    j22 = sym("j22")
+    r1 = sym("r1")
+    r2 = sym("r2")
     det = j11*j22 - j12*j21
-    psi = sym(arena, "psi")
-    s = sym(arena, "s")
-    g1 = sym(arena, "g1")
-    g2 = sym(arena, "g2")
-    rpsi1 = sym(arena, "rpsi1")
-    rpsi2 = sym(arena, "rpsi2")
-    phi_i = sym(arena, "phi_i")
-    phi_j = sym(arena, "phi_j")
-    ri1 = sym(arena, "ri1")
-    ri2 = sym(arena, "ri2")
-    rj1 = sym(arena, "rj1")
-    rj2 = sym(arena, "rj2")
-    nu = sym(arena, "nu")
-    kappa = sym(arena, "kappa")
-    w = sym(arena, "w")
-    h = sym(arena, "h")
-    rh1 = sym(arena, "rh1")
-    rh2 = sym(arena, "rh2")
+    psi = sym("psi")
+    s = sym("s")
+    g1 = sym("g1")
+    g2 = sym("g2")
+    rpsi1 = sym("rpsi1")
+    rpsi2 = sym("rpsi2")
+    phi_i = sym("phi_i")
+    phi_j = sym("phi_j")
+    ri1 = sym("ri1")
+    ri2 = sym("ri2")
+    rj1 = sym("rj1")
+    rj2 = sym("rj2")
+    nu = sym("nu")
+    kappa = sym("kappa")
+    w = sym("w")
+    h = sym("h")
+    rh1 = sym("rh1")
+    rh2 = sym("rh2")
 
     open (newunit=unit, file=generated_path("fortfem_hcurl_bound_products.f90"), &
         status="replace", action="write", iostat=ios)
@@ -61,12 +58,12 @@ program gen_hcurl_bound_products
 
     ! Reference P2 Lagrange basis (3 vertices, then the midpoints of local
     ! edges 1-2, 2-3, 3-1) and its reference gradient at (xi, eta).
-    xr = sym(arena, "xi")
-    er = sym(arena, "eta")
-    l = [num(arena, 1) - xr - er, xr, er]
+    xr = sym("xi")
+    er = sym("eta")
+    l = [num(1) - xr - er, xr, er]
     do i = 1, 3
-        basis(i) = l(i)*(num(arena, 2)*l(i) - num(arena, 1))
-        basis(3 + i) = num(arena, 4)*l(i)*l(mod(i, 3) + 1)
+        basis(i) = l(i)*(num(2)*l(i) - num(1))
+        basis(3 + i) = num(4)*l(i)*l(mod(i, 3) + 1)
     end do
     do i = 1, 6
         write (label, "(i0)") i

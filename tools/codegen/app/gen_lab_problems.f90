@@ -1,5 +1,4 @@
 program gen_lab_problems
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_expr, only: expr_t, sym, sin, cos, sqrt, &
                             operator(+), operator(-), operator(*), operator(/)
@@ -7,13 +6,11 @@ program gen_lab_problems
     use fortsym_string, only: str, chars
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: x, y, z, r, phi, u, v, a, rc, zc, s, temp
     type(expr_t) :: roots(12), tr, tp, tz, norm, iota, pi
-    call arena%init()
-    x = sym(arena, 'x')
-    y = sym(arena, 'y')
-    z = sym(arena, 'z')
+    x = sym('x')
+    y = sym('y')
+    z = sym('z')
     temp = sin(x) + cos(y) + sin(z) + (x + y + z)/10
     roots(1) = temp
     roots(2) = diff(temp, x)
@@ -34,9 +31,9 @@ program gen_lab_problems
     roots(8) = 2*sin(z)
     roots(9) = 2*sin(x)
     call emit('vector', ['x  ', 'y  ', 'z  '], roots(:9))
-    u = sym(arena, 'u')
-    v = sym(arena, 'v')
-    phi = sym(arena, 'phi')
+    u = sym('u')
+    v = sym('v')
+    phi = sym('phi')
     roots(1) = u*sqrt(1 - v*v/2)
     roots(2) = v*sqrt(1 - u*u/2)
     call emit('square_disk', ['u  ', 'v  '], roots(:2))
@@ -56,7 +53,7 @@ program gen_lab_problems
     roots(11) = roots(1)*a*13/10
     roots(12) = roots(1)
     call emit('geometry', ['u  ', 'v  ', 'phi'], roots)
-    r = sym(arena, 'r')
+    r = sym('r')
     u = (r - rc)/a
     v = (z - zc)*10/13
     s = u*u + v*v
@@ -78,7 +75,7 @@ program gen_lab_problems
     roots(9) = s
     call emit('transport', ['r  ', 'phi', 'z  '], roots(:9))
     ! pi is an input so the mathematical constant is caller controlled.
-    pi = sym(arena, 'pi')
+    pi = sym('pi')
     temp = cos(pi*x)*cos(pi*y)
     roots(1) = temp
     roots(2) = diff(temp, x)

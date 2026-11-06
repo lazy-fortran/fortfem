@@ -5,7 +5,6 @@ program gen_fci_power_flux_products
     !! owns the scalar product, product-rule tangent, and reverse products so
     !! the parallel flux/power signs cannot diverge between value and adjoint
     !! paths.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(-), sym
@@ -15,7 +14,6 @@ program gen_fci_power_flux_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: parallel_variables(3), parallel_variables_dot(3)
@@ -30,15 +28,14 @@ program gen_fci_power_flux_products
     character(:), allocatable :: perpendicular_vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
 
     parallel_variables = [ &
-        sym(arena, "gradient"), sym(arena, "coefficient"), &
-        sym(arena, "staggered_volume")]
+        sym("gradient"), sym("coefficient"), &
+        sym("staggered_volume")]
     parallel_variables_dot = [ &
-        sym(arena, "gradient_dot"), sym(arena, "coefficient_dot"), &
-        sym(arena, "staggered_volume_dot")]
+        sym("gradient_dot"), sym("coefficient_dot"), &
+        sym("staggered_volume_dot")]
     parallel_outputs = [ &
         -parallel_variables(2)*parallel_variables(1), &
         -parallel_variables(3)*parallel_variables(2)*parallel_variables(1)* &
@@ -46,7 +43,7 @@ program gen_fci_power_flux_products
     parallel_outputs_jvp = jvp( &
         parallel_outputs, parallel_variables, parallel_variables_dot)
     parallel_output_bar = [ &
-        sym(arena, "parallel_flux_bar"), sym(arena, "parallel_power_bar")]
+        sym("parallel_flux_bar"), sym("parallel_power_bar")]
     parallel_outputs_vjp = vjp( &
         parallel_outputs, parallel_variables, parallel_output_bar)
     call simplify_all(parallel_outputs)
@@ -77,15 +74,15 @@ program gen_fci_power_flux_products
     parallel_vjp_code = chars(emit_kernel(parallel_outputs_vjp, spec))
 
     perpendicular_variables = [ &
-        sym(arena, "field"), sym(arena, "action"), sym(arena, "canonical_volume")]
+        sym("field"), sym("action"), sym("canonical_volume")]
     perpendicular_variables_dot = [ &
-        sym(arena, "field_dot"), sym(arena, "action_dot"), &
-        sym(arena, "canonical_volume_dot")]
+        sym("field_dot"), sym("action_dot"), &
+        sym("canonical_volume_dot")]
     perpendicular_output(1) = perpendicular_variables(1)*perpendicular_variables(2)* &
         perpendicular_variables(3)
     perpendicular_output_jvp = jvp( &
         perpendicular_output, perpendicular_variables, perpendicular_variables_dot)
-    perpendicular_output_bar(1) = sym(arena, "perpendicular_power_bar")
+    perpendicular_output_bar(1) = sym("perpendicular_power_bar")
     perpendicular_output_vjp = vjp( &
         perpendicular_output, perpendicular_variables, perpendicular_output_bar)
     call simplify_all(perpendicular_output)

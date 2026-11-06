@@ -1,5 +1,4 @@
 program gen_magnetic_curvilinear_coefficients
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: &
@@ -9,7 +8,6 @@ program gen_magnetic_curvilinear_coefficients
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: determinant, g11, g12, g22, g33
@@ -18,13 +16,12 @@ program gen_magnetic_curvilinear_coefficients
     character(:), allocatable :: code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    g11 = sym(arena, "metric_11")
-    g12 = sym(arena, "metric_12")
-    g22 = sym(arena, "metric_22")
-    g33 = sym(arena, "metric_33")
-    reluctivity = sym(arena, "reluctivity")
+    engine = make_native_engine()
+    g11 = sym("metric_11")
+    g12 = sym("metric_12")
+    g22 = sym("metric_22")
+    g33 = sym("metric_33")
+    reluctivity = sym("reluctivity")
 
     determinant = g11 * g22 - g12**2
     jacobian = sqrt(determinant * g33)

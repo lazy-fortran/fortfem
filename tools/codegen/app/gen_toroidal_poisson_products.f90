@@ -1,5 +1,4 @@
 program gen_toroidal_poisson_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: cos, cosh, expr_t, operator(*), operator(+), &
@@ -10,7 +9,6 @@ program gen_toroidal_poisson_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(8), variables_dot(8), outputs(6), output_bar(6)
@@ -22,21 +20,20 @@ program gen_toroidal_poisson_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "degree"), sym(arena, "order"), sym(arena, "scale"), &
-        sym(arena, "eta"), sym(arena, "theta"), sym(arena, "phi"), &
-        sym(arena, "radial"), sym(arena, "radial_derivative")]
+        sym("degree"), sym("order"), sym("scale"), &
+        sym("eta"), sym("theta"), sym("phi"), &
+        sym("radial"), sym("radial_derivative")]
     variables_dot = [ &
-        sym(arena, "degree_dot"), sym(arena, "order_dot"), &
-        sym(arena, "scale_dot"), sym(arena, "eta_dot"), &
-        sym(arena, "theta_dot"), sym(arena, "phi_dot"), &
-        sym(arena, "radial_dot"), sym(arena, "radial_derivative_dot")]
+        sym("degree_dot"), sym("order_dot"), &
+        sym("scale_dot"), sym("eta_dot"), &
+        sym("theta_dot"), sym("phi_dot"), &
+        sym("radial_dot"), sym("radial_derivative_dot")]
     output_bar = [ &
-        sym(arena, "harmonic_bar"), sym(arena, "field_1_bar"), &
-        sym(arena, "field_2_bar"), sym(arena, "field_3_bar"), &
-        sym(arena, "dtn_bar"), sym(arena, "normal_derivative_bar")]
+        sym("harmonic_bar"), sym("field_1_bar"), &
+        sym("field_2_bar"), sym("field_3_bar"), &
+        sym("dtn_bar"), sym("normal_derivative_bar")]
 
     denominator = cosh(variables(4)) - cos(variables(5))
     root_denominator = sqrt(denominator)

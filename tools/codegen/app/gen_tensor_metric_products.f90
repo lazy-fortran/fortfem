@@ -1,27 +1,24 @@
 program gen_tensor_metric_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, real_expr, sqrt, &
                             operator(+), operator(-), operator(*), operator(/)
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_string, only: str, chars
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: j(3, 3), k(3, 3), adj(3, 3), det, w, c, roots(11), zero
     type(expr_t) :: ta(3), tb(3), normal(3)
     type(kernel_spec_t) :: spec
     character(8) :: name
     character(:), allocatable :: code
     integer :: a, b, r, s, t, unit
-    call arena%init()
-    zero = real_expr(arena, 0.0d0)
+    zero = real_expr(0.0d0)
     allocate (spec%args(20), spec%outputs(11))
     t = 0
     do b = 1, 3
         do a = 1, 3
             t = t + 1
             write (name, '(a,i1,i1)') 'j', a, b
-            j(a, b) = sym(arena, trim(name))
+            j(a, b) = sym(trim(name))
             spec%args(t) = str(trim(name))
         end do
     end do
@@ -29,12 +26,12 @@ program gen_tensor_metric_products
         do a = 1, 3
             t = t + 1
             write (name, '(a,i1,i1)') 'k', a, b
-            k(a, b) = sym(arena, trim(name))
+            k(a, b) = sym(trim(name))
             spec%args(t) = str(trim(name))
         end do
     end do
-    w = sym(arena, 'w')
-    c = sym(arena, 'c')
+    w = sym('w')
+    c = sym('c')
     spec%args(19:20) = [str('w'), str('c')]
     ! adj(a,b) is the cofactor transpose, so J maps reference to physical.
     do a = 1, 3
@@ -94,10 +91,10 @@ program gen_tensor_metric_products
     allocate (spec%args(6), spec%outputs(1))
     do a = 1, 3
         write (name, '(a,i1)') 'ta', a
-        ta(a) = sym(arena, trim(name))
+        ta(a) = sym(trim(name))
         spec%args(a) = str(trim(name))
         write (name, '(a,i1)') 'tb', a
-        tb(a) = sym(arena, trim(name))
+        tb(a) = sym(trim(name))
         spec%args(3 + a) = str(trim(name))
     end do
     do a = 1, 3

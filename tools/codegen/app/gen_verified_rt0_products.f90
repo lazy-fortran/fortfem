@@ -1,5 +1,4 @@
 program gen_verified_rt0_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
                             operator(*), operator(/), operator(**)
     use fortsym_diff, only: diff
@@ -10,7 +9,6 @@ program gen_verified_rt0_products
     use fortsym_string, only: chars, str
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: x, y, x1, y1, x2, y2, x3, y3, q1, q2, q3
@@ -21,13 +19,12 @@ program gen_verified_rt0_products
     integer :: unit
     logical :: ok
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, 'xi'); y = sym(arena, 'eta')
-    x1 = sym(arena, 'x1'); y1 = sym(arena, 'y1')
-    x2 = sym(arena, 'x2'); y2 = sym(arena, 'y2')
-    x3 = sym(arena, 'x3'); y3 = sym(arena, 'y3')
-    q1 = sym(arena, 'q1'); q2 = sym(arena, 'q2'); q3 = sym(arena, 'q3')
+    engine = make_native_engine()
+    x = sym('xi'); y = sym('eta')
+    x1 = sym('x1'); y1 = sym('y1')
+    x2 = sym('x2'); y2 = sym('y2')
+    x3 = sym('x3'); y3 = sym('y3')
+    q1 = sym('q1'); q2 = sym('q2'); q3 = sym('q3')
     j11 = x2 - x1; j12 = x3 - x1; j21 = y2 - y1; j22 = y3 - y1
     det = j11*j22 - j12*j21
     ! Canonical RT0 reference fields: (xi,eta-1), (xi,eta), (xi-1,eta).
@@ -53,10 +50,10 @@ program gen_verified_rt0_products
     write (unit, '(a)') 'implicit none'
     write (unit, '(a)') 'contains'
     call emit([x1 + j11*x + j12*y, y1 + j21*x + j22*y, sx, sy, divergence/det, det])
-    a = sym(arena, 'coefficient'); f = sym(arena, 'source')
-    gx = sym(arena, 'gradient_x'); gy = sym(arena, 'gradient_y')
-    s1 = sym(arena, 'sigma_x'); s2 = sym(arena, 'sigma_y')
-    d = sym(arena, 'divergence'); det = sym(arena, 'determinant')
+    a = sym('coefficient'); f = sym('source')
+    gx = sym('gradient_x'); gy = sym('gradient_y')
+    s1 = sym('sigma_x'); s2 = sym('sigma_y')
+    d = sym('divergence'); det = sym('determinant')
     spec%name = str('verified_rt0_integrands')
     spec%args = [str('coefficient'), str('source'), str('gradient_x'), &
                  str('gradient_y'), str('sigma_x'), str('sigma_y'), str('divergence'), &

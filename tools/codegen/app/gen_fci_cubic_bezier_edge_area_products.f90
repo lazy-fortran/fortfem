@@ -1,6 +1,5 @@
 program gen_fci_cubic_bezier_edge_area_products
     use, intrinsic :: iso_fortran_env, only: real64
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -12,7 +11,6 @@ program gen_fci_cubic_bezier_edge_area_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(8), variables_dot(8), edge_area(1)
@@ -24,17 +22,16 @@ program gen_fci_cubic_bezier_edge_area_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, degree, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    half = real_expr(arena, 0.5d0)
-    two = real_expr(arena, 2.0d0)
-    three = real_expr(arena, 3.0d0)
+    engine = make_native_engine()
+    half = real_expr(0.5d0)
+    two = real_expr(2.0d0)
+    three = real_expr(3.0d0)
     variables = [ &
-        sym(arena, "x_start"), sym(arena, "y_start"), &
-        sym(arena, "control_1_x"), sym(arena, "control_1_y"), &
-        sym(arena, "control_2_x"), sym(arena, "control_2_y"), &
-        sym(arena, "x_end"), sym(arena, "y_end")]
-    curve_parameter = sym(arena, "parameter")
+        sym("x_start"), sym("y_start"), &
+        sym("control_1_x"), sym("control_1_y"), &
+        sym("control_2_x"), sym("control_2_y"), &
+        sym("x_end"), sym("y_end")]
+    curve_parameter = sym("parameter")
     x_coeff(0) = variables(1)
     x_coeff(1) = three*(variables(3) - variables(1))
     x_coeff(2) = three*(variables(1) - two*variables(3) + variables(5))
@@ -53,14 +50,14 @@ program gen_fci_cubic_bezier_edge_area_products
     end do
     derivative_x = diff(edge_x, curve_parameter)
     derivative_y = diff(edge_y, curve_parameter)
-    edge_area(1) = real_expr(arena, 0.0d0)
+    edge_area(1) = real_expr(0.0d0)
     do index = 0, 3
         do degree = 1, 3
-            edge_area(1) = edge_area(1) + half*real_expr(arena, &
+            edge_area(1) = edge_area(1) + half*real_expr( &
                 real(degree, real64))* &
                 (x_coeff(index)*y_coeff(degree) - &
                 y_coeff(index)*x_coeff(degree))/ &
-                real_expr(arena, real(index + degree, real64))
+                real_expr(real(index + degree, real64))
         end do
     end do
     ! Keep the explicit polynomial construction in the generator as a readback
@@ -78,11 +75,11 @@ program gen_fci_cubic_bezier_edge_area_products
     primal_code = chars(emit_kernel(edge_area, spec))
 
     variables_dot = [ &
-        sym(arena, "x_start_dot"), sym(arena, "y_start_dot"), &
-        sym(arena, "control_1_x_dot"), sym(arena, "control_1_y_dot"), &
-        sym(arena, "control_2_x_dot"), sym(arena, "control_2_y_dot"), &
-        sym(arena, "x_end_dot"), sym(arena, "y_end_dot")]
-    edge_area_bar(1) = sym(arena, "edge_area_bar")
+        sym("x_start_dot"), sym("y_start_dot"), &
+        sym("control_1_x_dot"), sym("control_1_y_dot"), &
+        sym("control_2_x_dot"), sym("control_2_y_dot"), &
+        sym("x_end_dot"), sym("y_end_dot")]
+    edge_area_bar(1) = sym("edge_area_bar")
     edge_area_jvp = jvp(edge_area, variables, variables_dot)
     edge_area_vjp = vjp(edge_area, variables, edge_area_bar)
     call simplify_all(edge_area_jvp)

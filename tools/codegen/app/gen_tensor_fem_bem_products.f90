@@ -1,7 +1,6 @@
 program gen_tensor_fem_bem_products
     !! Laplace representation kernels for evaluating a BEM potential and its
     !! gradient off the surface: G, d_nG and their gradients in the target.
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), &
         operator(*), operator(/), sqrt
     use fortsym_diff, only: diff
@@ -12,16 +11,14 @@ program gen_tensor_fem_bem_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: d(6), r, green, double, gg(3), gd(3), roots(8)
     type(str_t) :: names(6)
     integer :: unit, i
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     names = [str('d1'), str('d2'), str('d3'), str('n1'), str('n2'), str('n3')]
     do i = 1, 6
-        d(i) = sym(arena, chars(names(i)))
+        d(i) = sym(chars(names(i)))
     end do
     ! d = x - y for target x and source y with source normal n; the caller
     ! supplies 1/(4*pi).
@@ -74,7 +71,7 @@ contains
         write (unit, '(a)') code(:len(code) - 1)
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
-            directions(k) = sym(arena, chars(dot_names(k)))
+            directions(k) = sym(chars(dot_names(k)))
         end do
         do k = 1, size(outputs)
             dot_outputs(k) = str(chars(outputs(k))//'_dot')

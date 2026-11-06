@@ -1,5 +1,4 @@
 program gen_element_precision_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, num, abs, operator(+), &
                             operator(-), operator(*), operator(/), operator(**)
     use fortsym_engine, only: engine_result_t
@@ -14,7 +13,6 @@ program gen_element_precision_products
     use fortfem_codegen_triangle_basis, only: triangle_scalar_bases
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: a, b, c, d, k, m, x, y, det, l(3), basis(6)
     type(expr_t) :: gx(3), gy(3), cell(9), factors(5), jets(36), v(2)
@@ -28,26 +26,25 @@ program gen_element_precision_products
     integer :: precision, unit, cuda_unit, i, j, n, q
     logical :: ok
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    a = sym(arena, 'a'); b = sym(arena, 'b'); c = sym(arena, 'c'); d = sym(arena, 'd')
-    k = sym(arena, 'diffusion'); m = sym(arena, 'reaction')
-    x = sym(arena, 'xi'); y = sym(arena, 'eta')
-    v = [sym(arena, 'vx'), sym(arena, 'vy')]
+    engine = make_native_engine()
+    a = sym('a'); b = sym('b'); c = sym('c'); d = sym('d')
+    k = sym('diffusion'); m = sym('reaction')
+    x = sym('xi'); y = sym('eta')
+    v = [sym('vx'), sym('vy')]
     det = a*d - b*c
     call triangle_scalar_bases(x, y, l, basis)
     do i = 1, 3
         gx(i) = (d*diff(l(i), x) - b*diff(l(i), y))/det
         gy(i) = (-c*diff(l(i), x) + a*diff(l(i), y))/det
     end do
-    qx = [num(arena, 1)/6, num(arena, 2)/3, num(arena, 1)/6]
-    qy = [num(arena, 1)/6, num(arena, 1)/6, num(arena, 2)/3]
-    w = num(arena, 1)/6
+    qx = [num(1)/6, num(2)/3, num(1)/6]
+    qy = [num(1)/6, num(1)/6, num(2)/3]
+    w = num(1)/6
     n = 0
     do j = 1, 3
         do i = 1, 3
             n = n + 1
-            integral = num(arena, 0)
+            integral = num(0)
             do q = 1, 3
                 integral = integral + w*subs_many(l(i)*l(j), [x, y], [qx(q), qy(q)])
             end do

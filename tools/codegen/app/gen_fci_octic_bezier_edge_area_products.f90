@@ -1,6 +1,5 @@
 program gen_fci_octic_bezier_edge_area_products
     use, intrinsic :: iso_fortran_env, only: real64
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
@@ -14,7 +13,6 @@ program gen_fci_octic_bezier_edge_area_products
 
     integer, parameter :: polynomial_degree = 8
     integer, parameter :: variable_count = 2*(polynomial_degree + 1)
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(variable_count), variables_dot(variable_count)
@@ -27,28 +25,27 @@ program gen_fci_octic_bezier_edge_area_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, degree, control, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "x_start"), sym(arena, "y_start"), &
-        sym(arena, "control_1_x"), sym(arena, "control_1_y"), &
-        sym(arena, "control_2_x"), sym(arena, "control_2_y"), &
-        sym(arena, "control_3_x"), sym(arena, "control_3_y"), &
-        sym(arena, "control_4_x"), sym(arena, "control_4_y"), &
-        sym(arena, "control_5_x"), sym(arena, "control_5_y"), &
-        sym(arena, "control_6_x"), sym(arena, "control_6_y"), &
-        sym(arena, "control_7_x"), sym(arena, "control_7_y"), &
-        sym(arena, "x_end"), sym(arena, "y_end")]
+        sym("x_start"), sym("y_start"), &
+        sym("control_1_x"), sym("control_1_y"), &
+        sym("control_2_x"), sym("control_2_y"), &
+        sym("control_3_x"), sym("control_3_y"), &
+        sym("control_4_x"), sym("control_4_y"), &
+        sym("control_5_x"), sym("control_5_y"), &
+        sym("control_6_x"), sym("control_6_y"), &
+        sym("control_7_x"), sym("control_7_y"), &
+        sym("x_end"), sym("y_end")]
     do control = 0, polynomial_degree
         control_x(control) = variables(2*control + 1)
         control_y(control) = variables(2*control + 2)
     end do
 
     do degree = 0, polynomial_degree
-        x_coeff(degree) = real_expr(arena, 0.0d0)
-        y_coeff(degree) = real_expr(arena, 0.0d0)
+        x_coeff(degree) = real_expr(0.0d0)
+        y_coeff(degree) = real_expr(0.0d0)
         do control = 0, degree
-            coefficient = real_expr(arena, real( &
+            coefficient = real_expr(real( &
                 binomial(polynomial_degree, degree)*binomial(degree, control)* &
                 (-1)**(degree - control), real64))
             x_coeff(degree) = x_coeff(degree) + coefficient*control_x(control)
@@ -56,7 +53,7 @@ program gen_fci_octic_bezier_edge_area_products
         end do
     end do
 
-    curve_parameter = sym(arena, "parameter")
+    curve_parameter = sym("parameter")
     edge_x = x_coeff(0)
     edge_y = y_coeff(0)
     do degree = 1, polynomial_degree
@@ -65,14 +62,14 @@ program gen_fci_octic_bezier_edge_area_products
     end do
     derivative_x = diff(edge_x, curve_parameter)
     derivative_y = diff(edge_y, curve_parameter)
-    edge_area(1) = real_expr(arena, 0.0d0)
+    edge_area(1) = real_expr(0.0d0)
     do index = 0, polynomial_degree
         do degree = 1, polynomial_degree
-            edge_area(1) = edge_area(1) + real_expr(arena, 0.5d0)* &
-                real_expr(arena, real(degree, real64))* &
+            edge_area(1) = edge_area(1) + real_expr(0.5d0)* &
+                real_expr(real(degree, real64))* &
                 (x_coeff(index)*y_coeff(degree) - &
                 y_coeff(index)*x_coeff(degree))/ &
-                real_expr(arena, real(index + degree, real64))
+                real_expr(real(index + degree, real64))
         end do
     end do
     if (edge_x%node_count() < 1 .or. derivative_x%node_count() < 1 .or. &
@@ -88,16 +85,16 @@ program gen_fci_octic_bezier_edge_area_products
     primal_code = chars(emit_kernel(edge_area, spec))
 
     variables_dot = [ &
-        sym(arena, "x_start_dot"), sym(arena, "y_start_dot"), &
-        sym(arena, "control_1_x_dot"), sym(arena, "control_1_y_dot"), &
-        sym(arena, "control_2_x_dot"), sym(arena, "control_2_y_dot"), &
-        sym(arena, "control_3_x_dot"), sym(arena, "control_3_y_dot"), &
-        sym(arena, "control_4_x_dot"), sym(arena, "control_4_y_dot"), &
-        sym(arena, "control_5_x_dot"), sym(arena, "control_5_y_dot"), &
-        sym(arena, "control_6_x_dot"), sym(arena, "control_6_y_dot"), &
-        sym(arena, "control_7_x_dot"), sym(arena, "control_7_y_dot"), &
-        sym(arena, "x_end_dot"), sym(arena, "y_end_dot")]
-    edge_area_bar(1) = sym(arena, "edge_area_bar")
+        sym("x_start_dot"), sym("y_start_dot"), &
+        sym("control_1_x_dot"), sym("control_1_y_dot"), &
+        sym("control_2_x_dot"), sym("control_2_y_dot"), &
+        sym("control_3_x_dot"), sym("control_3_y_dot"), &
+        sym("control_4_x_dot"), sym("control_4_y_dot"), &
+        sym("control_5_x_dot"), sym("control_5_y_dot"), &
+        sym("control_6_x_dot"), sym("control_6_y_dot"), &
+        sym("control_7_x_dot"), sym("control_7_y_dot"), &
+        sym("x_end_dot"), sym("y_end_dot")]
+    edge_area_bar(1) = sym("edge_area_bar")
     edge_area_jvp = jvp(edge_area, variables, variables_dot)
     edge_area_vjp = vjp(edge_area, variables, edge_area_bar)
     call simplify_all(edge_area_jvp)

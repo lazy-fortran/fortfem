@@ -7,10 +7,11 @@ program gen_affine_map_products
     use fortsym_products, only: jvp, vjp
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE, &
         KERNEL_SNIPPET, CSE_NONE
-    use fortsym_string, only: chars, str, str_t
+    use fortsym_string, only: chars, str, str_t, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
+    use fortsym_context, only: current_arena
     implicit none
-    type(arena_t), target :: arena
+    type(arena_t), pointer :: arena
     type(native_engine_t) :: engine
     type(expr_t), allocatable :: vertices(:, :), point(:), jacobian(:, :)
     type(expr_t), allocatable :: inverse(:, :), mapped(:), inputs(:), dots(:), bars(:)
@@ -21,8 +22,8 @@ program gen_affine_map_products
     integer :: dimension, row, column, i, unit
     logical :: ok
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    arena => current_arena()
+    engine = make_native_engine()
     open(newunit=unit, file=generated_path("fortfem_affine_map_products.f90"), &
         status="replace", action="write")
     do dimension = 2, 3
@@ -39,17 +40,17 @@ program gen_affine_map_products
         do column = 1, dimension + 1
             do row = 1, dimension
                 i = i + 1
-                vertices(row, column) = sym(arena, indexed("vertices", row, column))
+                vertices(row, column) = sym(indexed("vertices", row, column))
                 inputs(i) = vertices(row, column)
-                dots(i) = sym(arena, indexed("vertices_dot", row, column))
+                dots(i) = sym(indexed("vertices_dot", row, column))
             end do
         end do
         do row = 1, dimension
             i = i + 1
-            point(row) = sym(arena, indexed("point", row))
+            point(row) = sym(indexed("point", row))
             inputs(i) = point(row)
-            dots(i) = sym(arena, indexed("point_dot", row))
-            bars(row) = sym(arena, indexed("reference_bar", row))
+            dots(i) = sym(indexed("point_dot", row))
+            bars(row) = sym(indexed("reference_bar", row))
         end do
         do column = 1, dimension
             do row = 1, dimension
@@ -61,13 +62,13 @@ program gen_affine_map_products
             do row = 1, dimension
                 i = i + 1
                 geometry(i) = jacobian(row, column)
-                geometry_bars(i) = sym(arena, indexed("jacobian_bar", row, column))
+                geometry_bars(i) = sym(indexed("jacobian_bar", row, column))
             end do
         end do
         do row = 1, dimension
             i = i + 1
             geometry(i) = point(row) - vertices(row, 1)
-            geometry_bars(i) = sym(arena, indexed("relative_bar", row))
+            geometry_bars(i) = sym(indexed("relative_bar", row))
         end do
         call emit(family, "_geometry", geometry, dimension)
         call emit(family, "_geometry_jvp", jvp(geometry, inputs, dots), dimension)
@@ -80,16 +81,16 @@ program gen_affine_map_products
         do column = 1, dimension
             do row = 1, dimension
                 i = i + 1
-                jacobian(row, column) = sym(arena, indexed("jacobian", row, column))
+                jacobian(row, column) = sym(indexed("jacobian", row, column))
                 inputs(i) = jacobian(row, column)
-                dots(i) = sym(arena, indexed("jacobian_dot", row, column))
+                dots(i) = sym(indexed("jacobian_dot", row, column))
             end do
         end do
         do row = 1, dimension
             i = i + 1
-            relative(row) = sym(arena, indexed("relative", row))
+            relative(row) = sym(indexed("relative", row))
             inputs(i) = relative(row)
-            dots(i) = sym(arena, indexed("relative_dot", row))
+            dots(i) = sym(indexed("relative_dot", row))
         end do
         matrix = from_matrix(arena, jacobian)
         inverse_matrix = matrix_inverse(arena, matrix, ok, why)
@@ -97,7 +98,7 @@ program gen_affine_map_products
         call to_matrix(inverse_matrix, inverse, ok)
         if (.not. ok) error stop "symbolic affine inverse shape failed"
         do row = 1, dimension
-            mapped(row) = num(arena, 0)
+            mapped(row) = num(0)
             do column = 1, dimension
                 mapped(row) = mapped(row) + inverse(row, column)*relative(column)
             end do
@@ -115,17 +116,10 @@ contains
         integer, intent(in) :: row
         integer, intent(in), optional :: column
         character(:), allocatable :: text
-        text = name//"("//integer_text(row)
-        if (present(column)) text = text//","//integer_text(column)
+        text = name//"("//itoa(row)
+        if (present(column)) text = text//","//itoa(column)
         text = text//")"
     end function indexed
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(32) :: buffer
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
     subroutine emit(family, suffix, expressions, dimension)
         character(*), intent(in) :: family, suffix
         integer, intent(in) :: dimension
@@ -141,9 +135,9 @@ contains
             if (.not. simplified%ok) error stop "affine product simplification failed"
             roots(k) = simplified%value
         end do
-        vector_shape = "("//integer_text(dimension)//")"
-        vertices_shape = "("//integer_text(dimension)//","// &
-            integer_text(dimension + 1)//")"
+        vector_shape = "("//itoa(dimension)//")"
+        vertices_shape = "("//itoa(dimension)//","// &
+            itoa(dimension + 1)//")"
         spec%name = str("generated_"//family//"_affine"//suffix)
         spec%module_name = str("fortfem_generated_"//family//"_affine"//suffix)
         geometry_mode = index(suffix, "_geometry") == 1
@@ -159,26 +153,26 @@ contains
         select case(suffix)
         case("")
             spec%args = [str("jacobian"), str("relative")]
-            spec%arg_shapes = [str("("//integer_text(dimension)//","// &
-                integer_text(dimension)//")"), str(vector_shape)]
+            spec%arg_shapes = [str("("//itoa(dimension)//","// &
+                itoa(dimension)//")"), str(vector_shape)]
             spec%outputs = [str("reference")]
             spec%output_shapes = [str(vector_shape)]
         case("_jvp")
             spec%args = [str("jacobian"), str("relative"), &
                 str("jacobian_dot"), str("relative_dot")]
-            spec%arg_shapes = [str("("//integer_text(dimension)//","// &
-                integer_text(dimension)//")"), str(vector_shape), &
-                str("("//integer_text(dimension)//","// &
-                integer_text(dimension)//")"), str(vector_shape)]
+            spec%arg_shapes = [str("("//itoa(dimension)//","// &
+                itoa(dimension)//")"), str(vector_shape), &
+                str("("//itoa(dimension)//","// &
+                itoa(dimension)//")"), str(vector_shape)]
             spec%outputs = [str("reference_dot")]
             spec%output_shapes = [str(vector_shape)]
         case("_vjp")
             spec%args = [str("jacobian"), str("relative"), str("reference_bar")]
-            spec%arg_shapes = [str("("//integer_text(dimension)//","// &
-                integer_text(dimension)//")"), str(vector_shape), str(vector_shape)]
+            spec%arg_shapes = [str("("//itoa(dimension)//","// &
+                itoa(dimension)//")"), str(vector_shape), str(vector_shape)]
             spec%outputs = [str("jacobian_bar"), str("relative_bar")]
-            spec%output_shapes = [str("("//integer_text(dimension)//","// &
-                integer_text(dimension)//")"), str(vector_shape)]
+            spec%output_shapes = [str("("//itoa(dimension)//","// &
+                itoa(dimension)//")"), str(vector_shape)]
         case("_geometry")
             spec%args = [str("vertices"), str("point")]
             spec%outputs = [str("jacobian"), str("relative")]

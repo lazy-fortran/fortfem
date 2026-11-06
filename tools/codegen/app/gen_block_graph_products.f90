@@ -4,7 +4,6 @@ program gen_block_graph_products
     !! The graph topology and its loops stay runtime-owned.  The local product
     !! rule is deliberately generated so the value, tangent, and reverse paths
     !! cannot drift as more field blocks are composed.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), sym
@@ -14,7 +13,6 @@ program gen_block_graph_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: simplified
     type(expr_t) :: block_value, state_value, block_value_dot, state_value_dot
@@ -23,13 +21,12 @@ program gen_block_graph_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: root, unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    block_value = sym(arena, "block_value")
-    state_value = sym(arena, "state_value")
-    block_value_dot = sym(arena, "block_value_dot")
-    state_value_dot = sym(arena, "state_value_dot")
-    product_bar = sym(arena, "product_bar")
+    engine = make_native_engine()
+    block_value = sym("block_value")
+    state_value = sym("state_value")
+    block_value_dot = sym("block_value_dot")
+    state_value_dot = sym("state_value_dot")
+    product_bar = sym("product_bar")
     product = [block_value*state_value]
     product_dot = jvp(product, [block_value, state_value], &
         [block_value_dot, state_value_dot])

@@ -1,5 +1,4 @@
 program gen_parametric_bem_products
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, operator(+), operator(-), &
         operator(*), operator(/), sqrt
     use fortsym_kernel, only: kernel_spec_t, emit_kernel, KERNEL_SUBROUTINE
@@ -9,7 +8,6 @@ program gen_parametric_bem_products
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: t(6), c(3), jac, d(6), r, f(4), g(2), a(8), curl(3)
     type(str_t) :: tn(6), dn(6), an(8)
     type(expr_t) :: pv(11), products(3)
@@ -19,18 +17,17 @@ program gen_parametric_bem_products
     type(expr_t) :: flux(2), difference(2)
     type(str_t) :: flux_names(2)
     integer :: unit, i
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     tn = [str('a1'), str('a2'), str('a3'), str('b1'), str('b2'), str('b3')]
     dn = [str('d1'), str('d2'), str('d3'), str('n1'), str('n2'), str('n3')]
     an(:6) = tn
     an(7:) = [str('dxi'), str('deta')]
     do i = 1, 6
-        t(i) = sym(arena, chars(tn(i)))
-        d(i) = sym(arena, chars(dn(i)))
+        t(i) = sym(chars(tn(i)))
+        d(i) = sym(chars(dn(i)))
     end do
     do i = 1, 8
-        a(i) = sym(arena, chars(an(i)))
+        a(i) = sym(chars(an(i)))
     end do
     c = [t(2)*t(6)-t(3)*t(5), t(3)*t(4)-t(1)*t(6), &
         t(1)*t(5)-t(2)*t(4)]
@@ -51,14 +48,14 @@ program gen_parametric_bem_products
     pn = [str('green'),str('double'),str('jx'),str('jy'),str('phi'), &
         str('tx'),str('ty'),str('tz'),str('sx'),str('sy'),str('sz')]
     do i = 1, 11
-        pv(i) = sym(arena, chars(pn(i)))
+        pv(i) = sym(chars(pn(i)))
     end do
     products = [pv(1)*pv(3)*pv(4), pv(2)*pv(3)*pv(4)*pv(5), &
         pv(1)*(pv(6)*pv(9)+pv(7)*pv(10)+pv(8)*pv(11))]
     call emit('bem_pair_product', pn, pv, products, &
         [str('single_value'),str('double_value'),str('hyper_value')])
     flux_names = [str('fine'), str('coarse')]
-    flux = [sym(arena, 'fine'), sym(arena, 'coarse')]
+    flux = [sym('fine'), sym('coarse')]
     difference(1) = flux(1)-flux(2)
     difference(2) = difference(1)*difference(1)
     identity = engine%zero_test(difference(2) - &
@@ -90,7 +87,7 @@ contains
         write(unit, '(a)') code(:len(code)-1)
         do k = 1, size(names)
             dot_names(k) = str(chars(names(k))//'_dot')
-            directions(k) = sym(arena, chars(dot_names(k)))
+            directions(k) = sym(chars(dot_names(k)))
         end do
         do k = 1, size(outputs)
             dot_outputs(k) = str(chars(outputs(k))//'_dot')

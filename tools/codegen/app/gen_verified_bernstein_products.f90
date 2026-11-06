@@ -9,7 +9,6 @@ program gen_verified_bernstein_products
     !! integrals use the exact Bernstein moments
     !! int_T^ B^n_a B^n_b B^1_g = C(n,a) C(n,b) / (C(2n+1,a+b+g) (2n+2)(2n+3)).
     use, intrinsic :: iso_fortran_env, only: int64
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, num, rat, operator(+), operator(-), &
                             operator(*), operator(/), operator(**), sqrt
     use fortsym_diff, only: diff
@@ -18,12 +17,11 @@ program gen_verified_bernstein_products
     use fortsym_engine, only: engine_result_t, VERDICT_TRUE
     use fortsym_rigorous_emit, only: rigorous_kernel_spec_t, interval_runtime, &
                                      emit_rigorous_kernel
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: generated_path, fortsym_revision
     implicit none
     integer, parameter :: max_product = 5, max_gradient = 4, max_square = 6
     integer, parameter :: max_power = 4
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(rigorous_kernel_spec_t) :: spec
     type(expr_t) :: l(3), xi, eta
@@ -31,10 +29,9 @@ program gen_verified_bernstein_products
     integer :: unit, n, m
     logical :: ok
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    l(1) = sym(arena, 'l1'); l(2) = sym(arena, 'l2'); l(3) = sym(arena, 'l3')
-    xi = sym(arena, 'xi'); eta = sym(arena, 'eta')
+    engine = make_native_engine()
+    l(1) = sym('l1'); l(2) = sym('l2'); l(3) = sym('l3')
+    xi = sym('xi'); eta = sym('eta')
     spec%generator = str('gen_verified_bernstein_products; '//fortsym_revision())
     spec%runtime = interval_runtime('fortnum_interval', 'interval_t')
     spec%temp_prefix = str('z')
@@ -77,9 +74,9 @@ contains
         type(expr_t) :: a, b, c, d, lo, hi
         integer :: k
         call prove_mapped_identities()
-        a = sym(arena, 'a'); b = sym(arena, 'b')
-        c = sym(arena, 'numerator'); d = sym(arena, 'denominator')
-        lo = sym(arena, 'lower'); hi = sym(arena, 'upper')
+        a = sym('a'); b = sym('b')
+        c = sym('numerator'); d = sym('denominator')
+        lo = sym('lower'); hi = sym('upper')
         call prove((a*b*c/d)*d - a*b*c, 'mapped rational coefficient')
         call set_names('verified_mapped_product_term', &
                        [character(16) :: 'a', 'b', 'numerator', 'denominator'], &
@@ -277,7 +274,7 @@ contains
         integer, intent(in) :: degree, a(3)
         type(expr_t) :: b
         integer :: i
-        b = num(arena, multinomial(degree, a))
+        b = num(multinomial(degree, a))
         do i = 1, 3
             if (a(i) > 0) b = b*l(i)**a(i)
         end do
@@ -290,7 +287,7 @@ contains
         integer :: k
         allocate (s(count))
         do k = 1, count
-            s(k) = sym(arena, prefix//itoa(k))
+            s(k) = sym(prefix//itoa(k))
         end do
     end function symbols
 
@@ -301,7 +298,7 @@ contains
         integer, allocatable :: a(:, :)
         integer :: k
         a = indices(degree)
-        p = num(arena, 0)
+        p = num(0)
         do k = 1, size(a, 2)
             p = p + c(k)*bernstein(degree, a(:, k))
         end do
@@ -359,9 +356,9 @@ contains
         type(expr_t) :: x(3), y(3), det, cx, cy, g, nx, ny, px, py
         type(expr_t) :: g1, g2, n1x, n1y, n2x, n2y, d
         character(16) :: inputs(6)
-        x(1) = sym(arena, 'x1'); y(1) = sym(arena, 'y1')
-        x(2) = sym(arena, 'x2'); y(2) = sym(arena, 'y2')
-        x(3) = sym(arena, 'x3'); y(3) = sym(arena, 'y3')
+        x(1) = sym('x1'); y(1) = sym('y1')
+        x(2) = sym('x2'); y(2) = sym('y2')
+        x(3) = sym('x3'); y(3) = sym('y3')
         ! Physical gradient = G reference gradient, G = J^-T of the affine map
         ! (xi, eta) -> P1 + xi (P2 - P1) + eta (P3 - P1).
         det = (x(2) - x(1))*(y(3) - y(1)) - (x(3) - x(1))*(y(2) - y(1))
@@ -374,11 +371,10 @@ contains
         call set_names('verified_bernstein_edge_normal', &
                        [character(16) :: 'xa', 'ya', 'xb', 'yb'], &
                        [character(16) :: 'nx', 'ny'])
-        call emit([sym(arena, 'yb') - sym(arena, 'ya'), &
-                   sym(arena, 'xa') - sym(arena, 'xb')])
+        call emit([sym('yb') - sym('ya'), sym('xa') - sym('xb')])
         ! Replace the normal component of c by the shared value g.
-        cx = sym(arena, 'cx'); cy = sym(arena, 'cy'); g = sym(arena, 'g')
-        nx = sym(arena, 'nx'); ny = sym(arena, 'ny')
+        cx = sym('cx'); cy = sym('cy'); g = sym('g')
+        nx = sym('nx'); ny = sym('ny')
         d = (g - nx*cx - ny*cy)/(nx*nx + ny*ny)
         px = cx + d*nx; py = cy + d*ny
         call prove(nx*px + ny*py - g, 'edge projection')
@@ -387,9 +383,9 @@ contains
                        [character(16) :: 'px', 'py'])
         call emit([px, py])
         ! Corner vector with prescribed components along two edge normals.
-        g1 = sym(arena, 'g1'); g2 = sym(arena, 'g2')
-        n1x = sym(arena, 'n1x'); n1y = sym(arena, 'n1y')
-        n2x = sym(arena, 'n2x'); n2y = sym(arena, 'n2y')
+        g1 = sym('g1'); g2 = sym('g2')
+        n1x = sym('n1x'); n1y = sym('n1y')
+        n2x = sym('n2x'); n2y = sym('n2y')
         d = n1x*n2y - n1y*n2x
         cx = (g1*n2y - g2*n1y)/d
         cy = (n1x*g2 - n2x*g1)/d
@@ -411,11 +407,11 @@ contains
         a = indices(degree + 1)
         allocate (d(size(a, 2)))
         do k = 1, size(a, 2)
-            d(k) = num(arena, 0)
+            d(k) = num(0)
             do i = 1, 3
                 if (a(i, k) == 0) cycle
                 b = a(:, k); b(i) = b(i) - 1
-                d(k) = d(k) + rat(arena, multinomial(degree, b), &
+                d(k) = d(k) + rat(multinomial(degree, b), &
                                   multinomial(degree + 1, a(:, k))) &
                        *c(position(degree, b))*w(i)
             end do
@@ -437,11 +433,11 @@ contains
         a = indices(degree + 1)
         allocate (d(size(a, 2)))
         do k = 1, size(a, 2)
-            d(k) = num(arena, 0)
+            d(k) = num(0)
             do i = 1, 3
                 if (a(i, k) == 0) cycle
                 b = a(:, k); b(i) = b(i) - 1
-                d(k) = d(k) + rat(arena, int(a(i, k), int64), int(degree + 1, int64)) &
+                d(k) = d(k) + rat(int(a(i, k), int64), int(degree + 1, int64)) &
                        *c(position(degree, b))
             end do
         end do
@@ -460,15 +456,15 @@ contains
         integer, allocatable :: a(:, :)
         integer :: k, nb
         c = symbols('c', count_of(degree))
-        g11 = sym(arena, 'g11'); g12 = sym(arena, 'g12')
-        g21 = sym(arena, 'g21'); g22 = sym(arena, 'g22')
+        g11 = sym('g11'); g12 = sym('g12')
+        g21 = sym('g21'); g22 = sym('g22')
         a = indices(degree - 1)
         nb = size(a, 2)
         allocate (dxi(nb), deta(nb), roots(2*nb))
         do k = 1, nb
-            dxi(k) = num(arena, degree)*(c(position(degree, a(:, k) + [0, 1, 0])) &
+            dxi(k) = num(degree)*(c(position(degree, a(:, k) + [0, 1, 0])) &
                                          - c(position(degree, a(:, k) + [1, 0, 0])))
-            deta(k) = num(arena, degree)*(c(position(degree, a(:, k) + [0, 0, 1])) &
+            deta(k) = num(degree)*(c(position(degree, a(:, k) + [0, 0, 1])) &
                                           - c(position(degree, a(:, k) + [1, 0, 0])))
         end do
         p = reference(polynomial(degree, c))
@@ -490,7 +486,7 @@ contains
     function reference(p) result(r)
         type(expr_t), intent(in) :: p
         type(expr_t) :: r
-        r = subs(p, l(1), num(arena, 1) - xi - eta)
+        r = subs(p, l(1), num(1) - xi - eta)
         r = subs(r, l(2), xi)
         r = subs(r, l(3), eta)
     end function reference
@@ -512,9 +508,9 @@ contains
         a = indices(degree); b = indices(2*degree); d = indices(2*degree + 1)
         allocate (tt(size(a, 2)), p(size(b, 2)), q(size(d, 2)))
         do i = 1, size(a, 2)
-            tt(i) = num(arena, multinomial(degree, a(:, i)))*t(i)
+            tt(i) = num(multinomial(degree, a(:, i)))*t(i)
         end do
-        p = num(arena, 0)
+        p = num(0)
         do i = 1, size(a, 2)
             do j = i, size(a, 2)
                 k = position(2*degree, a(:, i) + a(:, j))
@@ -525,29 +521,29 @@ contains
                 end if
             end do
         end do
-        total = num(arena, 0)
+        total = num(0)
         do k = 1, size(d, 2)
-            q(k) = num(arena, 0)
+            q(k) = num(0)
             do g = 1, 3
                 e = 0; e(g) = 1
                 if (d(g, k) == 0) cycle
                 q(k) = q(k) + w(g)*p(position(2*degree, d(:, k) - e))
             end do
-            total = total + rat(arena, 1_int64, multinomial(2*degree + 1, d(:, k)) &
+            total = total + rat(1_int64, multinomial(2*degree + 1, d(:, k)) &
                                 *(2*degree + 2)*(2*degree + 3))*q(k)
         end do
         ! Independent check against the termwise Bernstein moment formula.
-        direct = num(arena, 0)
+        direct = num(0)
         do g = 1, 3
             e = 0; e(g) = 1
-            inner = num(arena, 0)
+            inner = num(0)
             do i = 1, size(a, 2)
                 do j = 1, size(a, 2)
                     numerator = multinomial(degree, a(:, i)) &
                                 *multinomial(degree, a(:, j))
                     denominator = multinomial(2*degree + 1, a(:, i) + a(:, j) + e) &
                                   *(2*degree + 2)*(2*degree + 3)
-                    inner = inner + rat(arena, numerator, denominator)*t(i)*t(j)
+                    inner = inner + rat(numerator, denominator)*t(i)*t(j)
                 end do
             end do
             direct = direct + w(g)*inner
@@ -564,13 +560,13 @@ contains
         !! an affine upper bound of w^-power there; and the plain power.
         integer, intent(in) :: power
         type(expr_t) :: lo, hi, w
-        lo = sym(arena, 'lo'); hi = sym(arena, 'hi'); w = sym(arena, 'w')
+        lo = sym('lo'); hi = sym('hi'); w = sym('w')
         call set_names('verified_bernstein_chord_'//itoa(power), &
                        [character(16) :: 'lo', 'hi', 'w'], [character(16) :: 'value'])
         call emit([((hi - w)/lo**power + (w - lo)/hi**power)/(hi - lo)])
         call set_names('verified_bernstein_reciprocal_'//itoa(power), &
                        [character(16) :: 'w'], [character(16) :: 'value'])
-        call emit([num(arena, 1)/w**power])
+        call emit([num(1)/w**power])
     end subroutine chord
 
     subroutine lagrange_p2()
@@ -579,9 +575,9 @@ contains
         type(expr_t) :: u(6), b(6), p, half
         integer :: k
         do k = 1, 6
-            u(k) = sym(arena, 'u'//itoa(k))
+            u(k) = sym('u'//itoa(k))
         end do
-        half = rat(arena, 1_int64, 2_int64)
+        half = rat(1_int64, 2_int64)
         b(position(2, [2, 0, 0])) = u(1)
         b(position(2, [0, 2, 0])) = u(2)
         b(position(2, [0, 0, 2])) = u(3)
@@ -589,11 +585,11 @@ contains
         b(position(2, [0, 1, 1])) = 2*u(5) - half*(u(2) + u(3))
         b(position(2, [1, 0, 1])) = 2*u(6) - half*(u(3) + u(1))
         p = polynomial(2, b)
-        call prove(subs(subs(subs(p, l(1), half), l(2), half), l(3), num(arena, 0)) &
+        call prove(subs(subs(subs(p, l(1), half), l(2), half), l(3), num(0)) &
                    - u(4), 'P2 midpoint 1-2')
-        call prove(subs(subs(subs(p, l(1), num(arena, 0)), l(2), half), l(3), half) &
+        call prove(subs(subs(subs(p, l(1), num(0)), l(2), half), l(3), half) &
                    - u(5), 'P2 midpoint 2-3')
-        call prove(subs(subs(subs(p, l(1), half), l(2), num(arena, 0)), l(3), half) &
+        call prove(subs(subs(subs(p, l(1), half), l(2), num(0)), l(3), half) &
                    - u(6), 'P2 midpoint 3-1')
         call set_names('verified_bernstein_lagrange_p2', names('u', 6), names('b', 6))
         call emit(b)
@@ -606,7 +602,7 @@ contains
         powers = reshape([3,0,0, 0,3,0, 0,0,3, 2,1,0, 1,2,0, &
                           0,2,1, 0,1,2, 1,0,2, 2,0,1, 1,1,1], [3,10])
         do k = 1, 10
-            u(k) = sym(arena, 'u'//itoa(k))
+            u(k) = sym('u'//itoa(k))
         end do
         do j = 1, 3
             next = mod(j, 3) + 1
@@ -626,7 +622,7 @@ contains
         do k = 1, 10
             at = p
             do j = 1, 3
-                at = subs(at, l(j), rat(arena, int(powers(j,k), int64), 3_int64))
+                at = subs(at, l(j), rat(int(powers(j,k), int64), 3_int64))
             end do
             call prove(at - u(k), 'P3 interpolation node '//itoa(k))
         end do
@@ -638,7 +634,7 @@ contains
         type(expr_t), intent(in) :: values(:)
         type(expr_t) :: total
         integer :: k
-        total = num(arena, 0)
+        total = num(0)
         do k = 1, size(values)
             total = total + values(k)
         end do
@@ -648,8 +644,8 @@ contains
         !! Minkowski: ||r + delta/w^m||_T <= ||r||_T + rho sqrt(|T|)/wmin^m.
         type(expr_t) :: square, rho, determinant, wmin
         integer :: m
-        square = sym(arena, 'square'); rho = sym(arena, 'rho')
-        determinant = sym(arena, 'determinant'); wmin = sym(arena, 'wmin')
+        square = sym('square'); rho = sym('rho')
+        determinant = sym('determinant'); wmin = sym('wmin')
         do m = 0, 2
             if (m == 0) then
                 call set_names('verified_bernstein_source_tail_0', &
@@ -762,12 +758,4 @@ contains
             text = text//prefix//'('//itoa(k)//')'
         end do
     end function args
-
-    function itoa(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(16) :: buffer
-        write (buffer, '(i0)') value
-        text = trim(buffer)
-    end function itoa
 end program gen_verified_bernstein_products

@@ -1,5 +1,4 @@
 program gen_fci_sextic_lagrange
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(-), operator(/), sym
@@ -10,7 +9,6 @@ program gen_fci_sextic_lagrange
     implicit none
 
     integer, parameter :: node_count = 7
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(node_count + 1), variables_dot(node_count + 1)
@@ -21,16 +19,15 @@ program gen_fci_sextic_lagrange
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: first_other, index, ios, node, other, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    variables(1) = sym(arena, "target")
-    variables(2) = sym(arena, "node_1")
-    variables(3) = sym(arena, "node_2")
-    variables(4) = sym(arena, "node_3")
-    variables(5) = sym(arena, "node_4")
-    variables(6) = sym(arena, "node_5")
-    variables(7) = sym(arena, "node_6")
-    variables(8) = sym(arena, "node_7")
+    engine = make_native_engine()
+    variables(1) = sym("target")
+    variables(2) = sym("node_1")
+    variables(3) = sym("node_2")
+    variables(4) = sym("node_3")
+    variables(5) = sym("node_4")
+    variables(6) = sym("node_5")
+    variables(7) = sym("node_6")
+    variables(8) = sym("node_7")
 
     do node = 1, node_count
         first_other = 1
@@ -70,21 +67,21 @@ program gen_fci_sextic_lagrange
     spec%outputs(7) = str("weight_7")
     primal_code = chars(emit_kernel(outputs, spec))
 
-    variables_dot(1) = sym(arena, "target_dot")
-    variables_dot(2) = sym(arena, "node_1_dot")
-    variables_dot(3) = sym(arena, "node_2_dot")
-    variables_dot(4) = sym(arena, "node_3_dot")
-    variables_dot(5) = sym(arena, "node_4_dot")
-    variables_dot(6) = sym(arena, "node_5_dot")
-    variables_dot(7) = sym(arena, "node_6_dot")
-    variables_dot(8) = sym(arena, "node_7_dot")
-    output_bar(1) = sym(arena, "weight_1_bar")
-    output_bar(2) = sym(arena, "weight_2_bar")
-    output_bar(3) = sym(arena, "weight_3_bar")
-    output_bar(4) = sym(arena, "weight_4_bar")
-    output_bar(5) = sym(arena, "weight_5_bar")
-    output_bar(6) = sym(arena, "weight_6_bar")
-    output_bar(7) = sym(arena, "weight_7_bar")
+    variables_dot(1) = sym("target_dot")
+    variables_dot(2) = sym("node_1_dot")
+    variables_dot(3) = sym("node_2_dot")
+    variables_dot(4) = sym("node_3_dot")
+    variables_dot(5) = sym("node_4_dot")
+    variables_dot(6) = sym("node_5_dot")
+    variables_dot(7) = sym("node_6_dot")
+    variables_dot(8) = sym("node_7_dot")
+    output_bar(1) = sym("weight_1_bar")
+    output_bar(2) = sym("weight_2_bar")
+    output_bar(3) = sym("weight_3_bar")
+    output_bar(4) = sym("weight_4_bar")
+    output_bar(5) = sym("weight_5_bar")
+    output_bar(6) = sym("weight_6_bar")
+    output_bar(7) = sym("weight_7_bar")
     outputs_jvp = jvp(outputs, variables, variables_dot)
     outputs_vjp = vjp(outputs, variables, output_bar)
     do index = 1, size(outputs_jvp)

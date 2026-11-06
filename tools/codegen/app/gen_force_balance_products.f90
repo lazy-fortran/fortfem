@@ -4,7 +4,6 @@ program gen_force_balance_products
     !! Assembly topology remains runtime-owned.  This local contraction is
     !! generated once so volume, boundary, and sheet terms share one product
     !! rule and cannot acquire divergent derivative formulas.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), sym
@@ -14,7 +13,6 @@ program gen_force_balance_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: simplified
     type(expr_t) :: variables(3), variables_dot(3), product(1), product_dot(1)
@@ -23,15 +21,14 @@ program gen_force_balance_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: root, unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "weight"), sym(arena, "test_value"), &
-        sym(arena, "force_value")]
+        sym("weight"), sym("test_value"), &
+        sym("force_value")]
     variables_dot = [ &
-        sym(arena, "weight_dot"), sym(arena, "test_value_dot"), &
-        sym(arena, "force_value_dot")]
-    product_bar = sym(arena, "contribution_bar")
+        sym("weight_dot"), sym("test_value_dot"), &
+        sym("force_value_dot")]
+    product_bar = sym("contribution_bar")
     product = [variables(1)*variables(2)*variables(3)]
     product_dot = jvp(product, variables, variables_dot)
     product_vjp = vjp(product, variables, [product_bar])

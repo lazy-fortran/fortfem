@@ -1,5 +1,4 @@
 program gen_triangle_piola_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), operator(/), sym
@@ -7,10 +6,9 @@ program gen_triangle_piola_products
     use fortsym_subs, only: subs_many
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE, &
         KERNEL_SNIPPET, CSE_NONE
-    use fortsym_string, only: chars, str, str_t
+    use fortsym_string, only: chars, str, str_t, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: inputs(7), dots(7), bars(3), determinant, mapped(3)
     character(3), parameter :: input_names(7) = &
@@ -19,14 +17,13 @@ program gen_triangle_piola_products
     integer :: i, family, unit
     character(:), allocatable :: family_name
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     do i = 1, 7
-        inputs(i) = sym(arena, trim(input_names(i)))
-        dots(i) = sym(arena, trim(input_names(i))//"_dot")
+        inputs(i) = sym(trim(input_names(i)))
+        dots(i) = sym(trim(input_names(i))//"_dot")
     end do
     do i = 1, 3
-        bars(i) = sym(arena, "out"//integer_text(i)//"_bar")
+        bars(i) = sym("out"//itoa(i)//"_bar")
     end do
     determinant = inputs(1)*inputs(4) - inputs(3)*inputs(2)
     open (newunit=unit, &
@@ -51,7 +48,7 @@ program gen_triangle_piola_products
         call emit_inline_product(family_name, jvp(mapped, inputs, dots), &
             family, .true.)
         do i = 1, 3
-            args(7 + i) = str("out"//integer_text(i)//"_bar")
+            args(7 + i) = str("out"//itoa(i)//"_bar")
         end do
         call emit(family_name//"_vjp", vjp(mapped, inputs, bars), args(:10))
     end do
@@ -81,26 +78,26 @@ contains
 
         scalar_name = "curls"
         if (family_id == 2) scalar_name = "divergences"
-        replacements(1) = sym(arena, "jacobian(1,1)")
-        replacements(2) = sym(arena, "jacobian(2,1)")
-        replacements(3) = sym(arena, "jacobian(1,2)")
-        replacements(4) = sym(arena, "jacobian(2,2)")
-        replacements(5) = sym(arena, "reference_values(1,basis_dof)")
-        replacements(6) = sym(arena, "reference_values(2,basis_dof)")
-        replacements(7) = sym(arena, "reference_"//scalar_name//"(basis_dof)")
+        replacements(1) = sym("jacobian(1,1)")
+        replacements(2) = sym("jacobian(2,1)")
+        replacements(3) = sym("jacobian(1,2)")
+        replacements(4) = sym("jacobian(2,2)")
+        replacements(5) = sym("reference_values(1,basis_dof)")
+        replacements(6) = sym("reference_values(2,basis_dof)")
+        replacements(7) = sym("reference_"//scalar_name//"(basis_dof)")
         symbols(:7) = inputs
         ninput = 7
         output_suffix = ""
         file_suffix = "_primal"
         if (tangent_mode) then
             symbols(8:14) = dots
-            replacements(8) = sym(arena, "jacobian_dot(1,1)")
-            replacements(9) = sym(arena, "jacobian_dot(2,1)")
-            replacements(10) = sym(arena, "jacobian_dot(1,2)")
-            replacements(11) = sym(arena, "jacobian_dot(2,2)")
-            replacements(12) = sym(arena, "reference_values_dot(1,basis_dof)")
-            replacements(13) = sym(arena, "reference_values_dot(2,basis_dof)")
-            replacements(14) = sym(arena, "reference_"//scalar_name//"_dot(basis_dof)")
+            replacements(8) = sym("jacobian_dot(1,1)")
+            replacements(9) = sym("jacobian_dot(2,1)")
+            replacements(10) = sym("jacobian_dot(1,2)")
+            replacements(11) = sym("jacobian_dot(2,2)")
+            replacements(12) = sym("reference_values_dot(1,basis_dof)")
+            replacements(13) = sym("reference_values_dot(2,basis_dof)")
+            replacements(14) = sym("reference_"//scalar_name//"_dot(basis_dof)")
             ninput = 14
             output_suffix = "_dot"
             file_suffix = "_jvp"
@@ -158,18 +155,11 @@ contains
         allocate(spec%outputs(1), spec%output_shapes(1))
         allocate(spec%output_references(size(roots)))
         spec%outputs = [str("product")]
-        spec%output_shapes = [str("("//integer_text(size(roots))//")")]
+        spec%output_shapes = [str("("//itoa(size(roots))//")")]
         do root = 1, size(roots)
-            spec%output_references(root) = str("product("//integer_text(root)//")")
+            spec%output_references(root) = str("product("//itoa(root)//")")
         end do
         code = chars(emit_kernel(roots, spec))
         write (unit, "(a)") code(:len(code) - 1)
     end subroutine emit
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-        character(32) :: buffer
-        write (buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 end program gen_triangle_piola_products

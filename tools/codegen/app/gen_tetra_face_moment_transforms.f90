@@ -1,22 +1,21 @@
 program gen_tetra_face_moment_transforms
     use, intrinsic :: iso_fortran_env, only: int64
-    use fortsym_arena, only: arena_t, NK_INT, NK_RAT
+    use fortsym_arena, only: NK_INT, NK_RAT
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(+), rat
     use fortsym_linalg, only: &
         exact_linear_system_result_t, solve_exact_linear_system
     use fortfem_codegen_provenance, only: &
         fortsym_revision, generated_path
+    use fortsym_string, only: itoa
     implicit none
 
     integer, parameter :: permutations(3, 6) = reshape([ &
         1, 2, 3, 1, 3, 2, 2, 1, 3, 2, 3, 1, 3, 1, 2, 3, 2, 1], [3, 6])
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: degree, order, output_unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     call write_module_header()
     do order = 2, 4
         call generate_order(order)
@@ -42,7 +41,7 @@ contains
             left(dof_count, dof_count), right(dof_count, dof_count))
         call build_rt_moment_matrix(degree, permutations(:, 1), canonical)
         call write_order_header( &
-            "transform_rt_degree_"//integer_text(degree), dof_count)
+            "transform_rt_degree_"//itoa(degree), dof_count)
         do permutation = 1, size(permutations, 2)
             call build_rt_moment_matrix( &
                 degree, permutations(:, permutation), local)
@@ -56,10 +55,10 @@ contains
                 permutation, transpose(solution%values))
         end do
         call write_order_footer( &
-            "transform_rt_degree_"//integer_text(degree))
+            "transform_rt_degree_"//itoa(degree))
 
         call write_order_header( &
-            "rt_basis_to_local_degree_"//integer_text(degree), dof_count)
+            "rt_basis_to_local_degree_"//itoa(degree), dof_count)
         do permutation = 1, size(permutations, 2)
             call build_rt_moment_matrix( &
                 degree, permutations(:, permutation), local)
@@ -73,7 +72,7 @@ contains
                 permutation, transpose(solution%values))
         end do
         call write_order_footer( &
-            "rt_basis_to_local_degree_"//integer_text(degree))
+            "rt_basis_to_local_degree_"//itoa(degree))
     end subroutine generate_rt_degree
 
     subroutine build_rt_moment_matrix(degree, permutation, matrix)
@@ -85,7 +84,7 @@ contains
         integer :: moment_degree, moment_x, moment_y, row
 
         call permutation_map(permutation, offset, affine)
-        matrix = num(arena, 0)
+        matrix = num(0)
         column = 0
         do basis_degree = 0, degree
             do basis_x = 0, basis_degree
@@ -121,7 +120,7 @@ contains
         call build_moment_matrix( &
             order, permutations(:, 1), canonical)
         call write_order_header( &
-            "transform_order_"//integer_text(order), dof_count)
+            "transform_order_"//itoa(order), dof_count)
         do permutation = 1, size(permutations, 2)
             call build_moment_matrix( &
                 order, permutations(:, permutation), local)
@@ -135,10 +134,10 @@ contains
                 permutation, transpose(solution%values))
         end do
         call write_order_footer( &
-            "transform_order_"//integer_text(order))
+            "transform_order_"//itoa(order))
 
         call write_order_header( &
-            "basis_to_local_order_"//integer_text(order), dof_count)
+            "basis_to_local_order_"//itoa(order), dof_count)
         do permutation = 1, size(permutations, 2)
             call build_moment_matrix( &
                 order, permutations(:, permutation), local)
@@ -152,7 +151,7 @@ contains
                 permutation, transpose(solution%values))
         end do
         call write_order_footer( &
-            "basis_to_local_order_"//integer_text(order))
+            "basis_to_local_order_"//itoa(order))
     end subroutine generate_order
 
     subroutine build_moment_matrix(order, permutation, matrix)
@@ -165,7 +164,7 @@ contains
         integer :: basis_degree, moment_degree
 
         call permutation_map(permutation, offset, affine)
-        matrix = num(arena, 0)
+        matrix = num(0)
         column = 0
         do basis_component = 1, 2
             do basis_degree = 0, order - 2
@@ -178,8 +177,7 @@ contains
                             do moment_x = 0, moment_degree
                                 moment_y = moment_degree - moment_x
                                 row = row + 1
-                                matrix(row, column) = num( &
-                                    arena, affine( &
+                                matrix(row, column) = num(affine( &
                                     basis_component, moment_component)) * &
                                     transformed_monomial_integral( &
                                     basis_x, basis_y, moment_x, moment_y, &
@@ -208,12 +206,11 @@ contains
             coefficients, basis_x, offset(1), affine(1, 1), affine(1, 2))
         call multiply_affine_power( &
             coefficients, basis_y, offset(2), affine(2, 1), affine(2, 2))
-        value = num(arena, 0)
+        value = num(0)
         do x_degree = 0, 4
             do y_degree = 0, 4 - x_degree
                 if (coefficients(x_degree, y_degree) == 0_int64) cycle
-                value = value + num( &
-                    arena, coefficients(x_degree, y_degree)) * &
+                value = value + num(coefficients(x_degree, y_degree)) * &
                     triangle_monomial_integral( &
                     x_degree + moment_x, y_degree + moment_y)
             end do
@@ -258,8 +255,7 @@ contains
         integer, intent(in) :: x_degree, y_degree
         type(expr_t) :: value
 
-        value = rat( &
-            arena, factorial(x_degree) * factorial(y_degree), &
+        value = rat(factorial(x_degree) * factorial(y_degree), &
             factorial(x_degree + y_degree + 2))
     end function triangle_monomial_integral
 
@@ -542,14 +538,14 @@ contains
             "        real(real64), intent(out) :: output(:)"
         write(output_unit, "(a)") "        integer, intent(out) :: status"
         write(output_unit, "(a)") "        real(real64) :: transform("// &
-            integer_text(dof_count)//","//integer_text(dof_count)//")"
+            itoa(dof_count)//","//itoa(dof_count)//")"
         write(output_unit, "(a)") ""
         write(output_unit, "(a)") "        output = 0.0_real64"
         write(output_unit, "(a)") "        status = 1"
         write(output_unit, "(a)") "        if (size(input) /= "// &
-            integer_text(dof_count)//") return"
+            itoa(dof_count)//") return"
         write(output_unit, "(a)") "        if (size(output) /= "// &
-            integer_text(dof_count)//") return"
+            itoa(dof_count)//") return"
         write(output_unit, "(a)") "        select case (permutation)"
     end subroutine write_order_header
 
@@ -560,7 +556,7 @@ contains
         integer :: column, entry, row
 
         write(output_unit, "(a)") "        case ("// &
-            integer_text(permutation)//")"
+            itoa(permutation)//")"
         write(output_unit, "(a)") "            transform = reshape([ &"
         entry = 0
         do column = 1, size(transform, 2)
@@ -610,16 +606,6 @@ contains
             error stop "face transform is not exact rational"
         end select
     end function rational_literal
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-
-        character(32) :: buffer
-
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 
     function integer_text_64(value) result(text)
         integer(int64), intent(in) :: value

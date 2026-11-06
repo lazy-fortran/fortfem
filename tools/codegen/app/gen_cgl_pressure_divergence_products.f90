@@ -1,15 +1,13 @@
 program gen_cgl_pressure_divergence_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(+), operator(-), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
     use fortsym_products, only: jvp, vjp
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(20), variables_dot(20), force(3)
@@ -19,54 +17,53 @@ program gen_cgl_pressure_divergence_products
     integer :: i, j, index, ios, root, unit
     type(expr_t) :: delta_pressure, pressure_gradient
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    variables(1) = sym(arena, "p_parallel")
-    variables(2) = sym(arena, "p_perpendicular")
+    engine = make_native_engine()
+    variables(1) = sym("p_parallel")
+    variables(2) = sym("p_perpendicular")
     variables(3:5) = [ &
-        sym(arena, "direction_1"), sym(arena, "direction_2"), &
-        sym(arena, "direction_3")]
+        sym("direction_1"), sym("direction_2"), &
+        sym("direction_3")]
     variables(6:8) = [ &
-        sym(arena, "parallel_gradient_1"), sym(arena, "parallel_gradient_2"), &
-        sym(arena, "parallel_gradient_3")]
+        sym("parallel_gradient_1"), sym("parallel_gradient_2"), &
+        sym("parallel_gradient_3")]
     variables(9:11) = [ &
-        sym(arena, "perpendicular_gradient_1"), &
-        sym(arena, "perpendicular_gradient_2"), &
-        sym(arena, "perpendicular_gradient_3")]
+        sym("perpendicular_gradient_1"), &
+        sym("perpendicular_gradient_2"), &
+        sym("perpendicular_gradient_3")]
     index = 12
     do i = 1, 3
         do j = 1, 3
-            variables(index) = sym(arena, &
+            variables(index) = sym( &
                 "direction_gradient_"//itoa(i)//itoa(j))
             index = index + 1
         end do
     end do
 
-    variables_dot(1) = sym(arena, "p_parallel_dot")
-    variables_dot(2) = sym(arena, "p_perpendicular_dot")
+    variables_dot(1) = sym("p_parallel_dot")
+    variables_dot(2) = sym("p_perpendicular_dot")
     variables_dot(3:5) = [ &
-        sym(arena, "direction_1_dot"), sym(arena, "direction_2_dot"), &
-        sym(arena, "direction_3_dot")]
+        sym("direction_1_dot"), sym("direction_2_dot"), &
+        sym("direction_3_dot")]
     variables_dot(6:8) = [ &
-        sym(arena, "parallel_gradient_1_dot"), &
-        sym(arena, "parallel_gradient_2_dot"), &
-        sym(arena, "parallel_gradient_3_dot")]
+        sym("parallel_gradient_1_dot"), &
+        sym("parallel_gradient_2_dot"), &
+        sym("parallel_gradient_3_dot")]
     variables_dot(9:11) = [ &
-        sym(arena, "perpendicular_gradient_1_dot"), &
-        sym(arena, "perpendicular_gradient_2_dot"), &
-        sym(arena, "perpendicular_gradient_3_dot")]
+        sym("perpendicular_gradient_1_dot"), &
+        sym("perpendicular_gradient_2_dot"), &
+        sym("perpendicular_gradient_3_dot")]
     index = 12
     do i = 1, 3
         do j = 1, 3
-            variables_dot(index) = sym(arena, &
+            variables_dot(index) = sym( &
                 "direction_gradient_"//itoa(i)//itoa(j)//"_dot")
             index = index + 1
         end do
     end do
 
     force_bar = [ &
-        sym(arena, "force_1_bar"), sym(arena, "force_2_bar"), &
-        sym(arena, "force_3_bar")]
+        sym("force_1_bar"), sym("force_2_bar"), &
+        sym("force_3_bar")]
     delta_pressure = variables(1) - variables(2)
     do i = 1, 3
         force(i) = variables(8 + i)
@@ -189,15 +186,6 @@ contains
             str("direction_gradient_23_bar"), str("direction_gradient_31_bar"), &
             str("direction_gradient_32_bar"), str("direction_gradient_33_bar")]
     end subroutine set_vjp_names
-
-    function itoa(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-
-        character(2) :: buffer
-        write (buffer, "(i0)") value
-        text = trim(buffer)
-    end function itoa
 
     subroutine simplify_all(expressions)
         type(expr_t), intent(inout) :: expressions(:)

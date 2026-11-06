@@ -1,5 +1,4 @@
 program gen_surface_triangle_geometry_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_surface_triangle_geometry_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(11), variables_dot(11), outputs(7)
@@ -20,26 +18,25 @@ program gen_surface_triangle_geometry_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: component, ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "vertex_11"), sym(arena, "vertex_21"), &
-        sym(arena, "vertex_31"), sym(arena, "vertex_12"), &
-        sym(arena, "vertex_22"), sym(arena, "vertex_32"), &
-        sym(arena, "vertex_13"), sym(arena, "vertex_23"), &
-        sym(arena, "vertex_33"), sym(arena, "xi"), sym(arena, "eta")]
+        sym("vertex_11"), sym("vertex_21"), &
+        sym("vertex_31"), sym("vertex_12"), &
+        sym("vertex_22"), sym("vertex_32"), &
+        sym("vertex_13"), sym("vertex_23"), &
+        sym("vertex_33"), sym("xi"), sym("eta")]
     variables_dot = [ &
-        sym(arena, "vertex_11_dot"), sym(arena, "vertex_21_dot"), &
-        sym(arena, "vertex_31_dot"), sym(arena, "vertex_12_dot"), &
-        sym(arena, "vertex_22_dot"), sym(arena, "vertex_32_dot"), &
-        sym(arena, "vertex_13_dot"), sym(arena, "vertex_23_dot"), &
-        sym(arena, "vertex_33_dot"), sym(arena, "xi_dot"), &
-        sym(arena, "eta_dot")]
+        sym("vertex_11_dot"), sym("vertex_21_dot"), &
+        sym("vertex_31_dot"), sym("vertex_12_dot"), &
+        sym("vertex_22_dot"), sym("vertex_32_dot"), &
+        sym("vertex_13_dot"), sym("vertex_23_dot"), &
+        sym("vertex_33_dot"), sym("xi_dot"), &
+        sym("eta_dot")]
     output_bar = [ &
-        sym(arena, "point_1_bar"), sym(arena, "point_2_bar"), &
-        sym(arena, "point_3_bar"), sym(arena, "jacobian_bar"), &
-        sym(arena, "normal_1_bar"), sym(arena, "normal_2_bar"), &
-        sym(arena, "normal_3_bar")]
+        sym("point_1_bar"), sym("point_2_bar"), &
+        sym("point_3_bar"), sym("jacobian_bar"), &
+        sym("normal_1_bar"), sym("normal_2_bar"), &
+        sym("normal_3_bar")]
 
     do component = 1, 3
         first(component) = variables(component + 3) - variables(component)

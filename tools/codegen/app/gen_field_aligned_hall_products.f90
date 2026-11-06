@@ -4,7 +4,6 @@ program gen_field_aligned_hall_products
     !! The symmetric projector remains owned by the existing generated CGL
     !! kernel.  Generating only q_i = k_H b_i avoids duplicating it while the
     !! runtime wrapper owns the fixed skew-matrix layout.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), sym
@@ -14,7 +13,6 @@ program gen_field_aligned_hall_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: simplified
     type(expr_t) :: variables(4), variables_dot(4)
@@ -24,18 +22,17 @@ program gen_field_aligned_hall_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: root, unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "hall_coefficient"), sym(arena, "direction_1"), &
-        sym(arena, "direction_2"), sym(arena, "direction_3")]
+        sym("hall_coefficient"), sym("direction_1"), &
+        sym("direction_2"), sym("direction_3")]
     variables_dot = [ &
-        sym(arena, "hall_coefficient_dot"), sym(arena, "direction_1_dot"), &
-        sym(arena, "direction_2_dot"), sym(arena, "direction_3_dot")]
+        sym("hall_coefficient_dot"), sym("direction_1_dot"), &
+        sym("direction_2_dot"), sym("direction_3_dot")]
     products_bar = [ &
-        sym(arena, "hall_direction_1_bar"), &
-        sym(arena, "hall_direction_2_bar"), &
-        sym(arena, "hall_direction_3_bar")]
+        sym("hall_direction_1_bar"), &
+        sym("hall_direction_2_bar"), &
+        sym("hall_direction_3_bar")]
     products = [ &
         variables(1)*variables(2), variables(1)*variables(3), &
         variables(1)*variables(4)]

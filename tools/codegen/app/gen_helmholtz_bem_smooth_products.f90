@@ -1,5 +1,4 @@
 program gen_helmholtz_bem_smooth_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: cos, expr_t, num, operator(+), operator(-), &
@@ -10,7 +9,6 @@ program gen_helmholtz_bem_smooth_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(9), variables_dot(9), displacement(3)
@@ -20,22 +18,21 @@ program gen_helmholtz_bem_smooth_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: component, ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "first_point_1"), sym(arena, "first_point_2"), &
-        sym(arena, "first_point_3"), sym(arena, "second_point_1"), &
-        sym(arena, "second_point_2"), sym(arena, "second_point_3"), &
-        sym(arena, "first_jacobian"), sym(arena, "second_jacobian"), &
-        sym(arena, "wave_number")]
+        sym("first_point_1"), sym("first_point_2"), &
+        sym("first_point_3"), sym("second_point_1"), &
+        sym("second_point_2"), sym("second_point_3"), &
+        sym("first_jacobian"), sym("second_jacobian"), &
+        sym("wave_number")]
     variables_dot = [ &
-        sym(arena, "first_point_1_dot"), sym(arena, "first_point_2_dot"), &
-        sym(arena, "first_point_3_dot"), sym(arena, "second_point_1_dot"), &
-        sym(arena, "second_point_2_dot"), sym(arena, "second_point_3_dot"), &
-        sym(arena, "first_jacobian_dot"), &
-        sym(arena, "second_jacobian_dot"), sym(arena, "wave_number_dot")]
-    kernel_scale = sym(arena, "kernel_scale")
-    output_bar = [sym(arena, "value_real_bar"), sym(arena, "value_imag_bar")]
+        sym("first_point_1_dot"), sym("first_point_2_dot"), &
+        sym("first_point_3_dot"), sym("second_point_1_dot"), &
+        sym("second_point_2_dot"), sym("second_point_3_dot"), &
+        sym("first_jacobian_dot"), &
+        sym("second_jacobian_dot"), sym("wave_number_dot")]
+    kernel_scale = sym("kernel_scale")
+    output_bar = [sym("value_real_bar"), sym("value_imag_bar")]
     do component = 1, 3
         displacement(component) = variables(component) - &
             variables(component + 3)
@@ -47,7 +44,7 @@ program gen_helmholtz_bem_smooth_products
     amplitude = kernel_scale*variables(7)*variables(8)/radius
     phase = variables(9)*radius
     outputs = [ &
-        amplitude*(cos(phase) - num(arena, 1)), amplitude*sin(phase)]
+        amplitude*(cos(phase) - num(1)), amplitude*sin(phase)]
 
     jvp_roots = jvp(outputs, variables, variables_dot)
     vjp_roots = vjp(outputs, variables, output_bar)

@@ -1,26 +1,23 @@
 program gen_tetra_nedelec_candidates
-    use fortsym_arena, only: arena_t
     use fortsym_diff, only: diff
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, num, operator(*), operator(-), &
         operator(**), sym
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
-    use fortsym_string, only: chars, str
+    use fortsym_string, only: chars, str, itoa
     use fortfem_codegen_provenance, only: &
         fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: x, y, z
     integer :: order
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, "x")
-    y = sym(arena, "y")
-    z = sym(arena, "z")
+    engine = make_native_engine()
+    x = sym("x")
+    y = sym("y")
+    z = sym("z")
     do order = 1, 4
         call generate_order(order)
     end do
@@ -45,11 +42,11 @@ contains
         call simplify_all(roots)
 
         filename = "fortfem_tetra_nedelec_candidates_order_"// &
-            integer_text(order)//".f90"
+            itoa(order)//".f90"
         module_name = &
             "fortfem_generated_tetra_nedelec_candidates_order_"// &
-            integer_text(order)
-        procedure_name = "evaluate_candidates_order_"//integer_text(order)
+            itoa(order)
+        procedure_name = "evaluate_candidates_order_"//itoa(order)
         call configure_spec( &
             order, dof_count, module_name, procedure_name, spec)
         code = chars(emit_kernel(roots, spec))
@@ -69,7 +66,7 @@ contains
         integer :: candidate, component, total_degree
         integer :: x_degree, y_degree, z_degree
 
-        zero = num(arena, 0)
+        zero = num(0)
         values = zero
         candidate = 0
         do component = 1, 3
@@ -190,24 +187,24 @@ contains
         spec%args = [str("x"), str("y"), str("z")]
         spec%outputs = [str("values"), str("curls")]
         spec%output_shapes = [ &
-            str("(3,"//integer_text(dof_count)//")"), &
-            str("(3,"//integer_text(dof_count)//")")]
+            str("(3,"//itoa(dof_count)//")"), &
+            str("(3,"//itoa(dof_count)//")")]
 
         root = 0
         do candidate = 1, dof_count
             do component = 1, 3
                 root = root + 1
                 spec%output_references(root) = str( &
-                    "values("//integer_text(component)//","// &
-                    integer_text(candidate)//")")
+                    "values("//itoa(component)//","// &
+                    itoa(candidate)//")")
             end do
         end do
         do candidate = 1, dof_count
             do component = 1, 3
                 root = root + 1
                 spec%output_references(root) = str( &
-                    "curls("//integer_text(component)//","// &
-                    integer_text(candidate)//")")
+                    "curls("//itoa(component)//","// &
+                    itoa(candidate)//")")
             end do
         end do
     end subroutine configure_spec
@@ -218,15 +215,5 @@ contains
 
         value = x**x_degree * y**y_degree * z**z_degree
     end function monomial_value
-
-    function integer_text(value) result(text)
-        integer, intent(in) :: value
-        character(:), allocatable :: text
-
-        character(32) :: buffer
-
-        write(buffer, "(i0)") value
-        text = trim(buffer)
-    end function integer_text
 
 end program gen_tetra_nedelec_candidates

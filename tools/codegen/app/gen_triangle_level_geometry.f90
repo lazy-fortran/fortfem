@@ -1,5 +1,4 @@
 program gen_triangle_level_geometry
-    use fortsym_arena, only: arena_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
         operator(*), operator(/), sin, pi_expr
     use fortsym_diff, only: diff
@@ -10,7 +9,6 @@ program gen_triangle_level_geometry
     use fortsym_string, only: str_t, str, chars
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(expr_t) :: c(6), x, y, q, edges(6), discriminant(3), inner(3)
     type(expr_t) :: roots(9), slice(4), scalar(2), interval(2), dc, qb, qa
@@ -19,14 +17,13 @@ program gen_triangle_level_geometry
     character(8) :: number
     integer :: i, unit, ios
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    x = sym(arena, 'xi')
-    y = sym(arena, 'eta')
-    zero = num(arena, 0)
+    engine = make_native_engine()
+    x = sym('xi')
+    y = sym('eta')
+    zero = num(0)
     do i = 1, 6
         write(number, '(i0)') i
-        c(i) = sym(arena, 'coefficients('//trim(number)//')')
+        c(i) = sym('coefficients('//trim(number)//')')
     end do
     ! Native reference quadratic: constant, xi, eta, xi^2, xi*eta, eta^2.
     q = c(1) + c(2)*x + c(3)*y + c(4)*x*x + c(5)*x*y + c(6)*y*y
@@ -63,10 +60,10 @@ program gen_triangle_level_geometry
         [str('(3)'), str('')], [str('value'), str('slope')], &
         [str(''), str('')], [str('value'), str('slope')])
 
-    lower = sym(arena, 'lower')
-    upper = sym(arena, 'upper')
-    unit_node = sym(arena, 'unit_node')
-    unit_weight = sym(arena, 'unit_weight')
+    lower = sym('lower')
+    upper = sym('upper')
+    unit_node = sym('unit_node')
+    unit_weight = sym('unit_weight')
     interval(1) = lower + (upper - lower)*unit_node
     interval(2) = diff(interval(1), unit_node)*unit_weight
     call write_product(interval, 'interval', &
@@ -76,7 +73,7 @@ program gen_triangle_level_geometry
         [str('node'), str('weight')])
     ! Sine-squared coordinates regularize quadratic-root tangencies at either end.
     ! The positive measure is the native derivative of this exact node definition.
-    angle = pi_expr(arena)*unit_node/2
+    angle = pi_expr()*unit_node/2
     interval(1) = lower + (upper - lower)*sin(angle)*sin(angle)
     interval(2) = diff(interval(1), unit_node)*unit_weight
     call write_product(interval, 'tangent_interval', &

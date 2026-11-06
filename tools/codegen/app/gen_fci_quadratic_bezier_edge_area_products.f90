@@ -1,5 +1,4 @@
 program gen_fci_quadratic_bezier_edge_area_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_fci_quadratic_bezier_edge_area_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(6), variables_dot(6), edge_area(1)
@@ -23,15 +21,14 @@ program gen_fci_quadratic_bezier_edge_area_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    half = real_expr(arena, 0.5d0)
-    two = real_expr(arena, 2.0d0)
-    three = real_expr(arena, 3.0d0)
+    engine = make_native_engine()
+    half = real_expr(0.5d0)
+    two = real_expr(2.0d0)
+    three = real_expr(3.0d0)
     variables = [ &
-        sym(arena, "x_start"), sym(arena, "y_start"), &
-        sym(arena, "control_x"), sym(arena, "control_y"), &
-        sym(arena, "x_end"), sym(arena, "y_end")]
+        sym("x_start"), sym("y_start"), &
+        sym("control_x"), sym("control_y"), &
+        sym("x_end"), sym("y_end")]
     start_x = variables(1)
     start_y = variables(2)
     control_x = variables(3)
@@ -56,10 +53,10 @@ program gen_fci_quadratic_bezier_edge_area_products
     primal_code = chars(emit_kernel(edge_area, spec))
 
     variables_dot = [ &
-        sym(arena, "x_start_dot"), sym(arena, "y_start_dot"), &
-        sym(arena, "control_x_dot"), sym(arena, "control_y_dot"), &
-        sym(arena, "x_end_dot"), sym(arena, "y_end_dot")]
-    edge_area_bar(1) = sym(arena, "edge_area_bar")
+        sym("x_start_dot"), sym("y_start_dot"), &
+        sym("control_x_dot"), sym("control_y_dot"), &
+        sym("x_end_dot"), sym("y_end_dot")]
+    edge_area_bar(1) = sym("edge_area_bar")
     edge_area_jvp = jvp(edge_area, variables, variables_dot)
     edge_area_vjp = vjp(edge_area, variables, edge_area_bar)
     call simplify_all(edge_area_jvp)

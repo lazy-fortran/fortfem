@@ -1,5 +1,4 @@
 program gen_planar_helmholtz_dtn_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(-), operator(**), sqrt, sym
@@ -9,7 +8,6 @@ program gen_planar_helmholtz_dtn_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     type(engine_result_t) :: result
     type(expr_t) :: variables(2), variables_dot(2), beta_bar(1)
@@ -21,12 +19,11 @@ program gen_planar_helmholtz_dtn_products
     character(:), allocatable :: evanescent_jvp_code, evanescent_vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
-    variables = [sym(arena, "wavenumber"), sym(arena, "tangential_wavenumber")]
+    engine = make_native_engine()
+    variables = [sym("wavenumber"), sym("tangential_wavenumber")]
     variables_dot = [ &
-        sym(arena, "wavenumber_dot"), sym(arena, "tangential_wavenumber_dot")]
-    beta_bar(1) = sym(arena, "beta_bar")
+        sym("wavenumber_dot"), sym("tangential_wavenumber_dot")]
+    beta_bar(1) = sym("beta_bar")
     propagating(1) = sqrt(variables(1)**2 - variables(2)**2)
     evanescent(1) = sqrt(variables(2)**2 - variables(1)**2)
     propagating_jvp = jvp(propagating, variables, variables_dot)

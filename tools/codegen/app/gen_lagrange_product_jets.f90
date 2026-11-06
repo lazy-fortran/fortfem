@@ -1,7 +1,6 @@
 program gen_lagrange_product_jets
     !! The application supplies only affine barycentric coordinates and a
     !! Taylor polynomial. FortSym derives every multiplication/derivative jet.
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, sym, num, operator(+), operator(-), &
@@ -12,12 +11,10 @@ program gen_lagrange_product_jets
     use fortsym_string, only: chars, str, str_t
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
-    type(arena_t), target :: arena
     type(native_engine_t) :: engine
     integer :: unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     open(newunit=unit, file=generated_path('fortfem_lagrange_product_jets.f90'), &
         status='replace', action='write')
     call product_jet(1, 1)
@@ -87,19 +84,19 @@ contains
         nargs = count + 1 + dimension
         allocate(args(nargs), names(count), roots(count))
         args(1) = str('a_value'); names(1) = str('next_value')
-        polynomial = sym(arena, 'a_value')
-        affine = sym(arena, 'b_value')
+        polynomial = sym('a_value')
+        affine = sym('b_value')
         args(count + 1) = str('b_value')
         do i = 1, dimension
-            t(i) = sym(arena, indexed('t_', i))
-            zero(i) = num(arena, 0)
+            t(i) = sym(indexed('t_', i))
+            zero(i) = num(0)
             coefficient = indexed('a_g', i)
             args(1 + i) = str(coefficient)
             names(1 + i) = str(indexed('next_g', i))
-            polynomial = polynomial + sym(arena, coefficient)*t(i)
+            polynomial = polynomial + sym(coefficient)*t(i)
             coefficient = indexed('b_g', i)
             args(count + 1 + i) = str(coefficient)
-            affine = affine + sym(arena, coefficient)*t(i)
+            affine = affine + sym(coefficient)*t(i)
         end do
         index = 1 + dimension
         if (order == 2) then
@@ -111,9 +108,9 @@ contains
                     names(index) = str(indexed('next_h', i, j))
                     if (i == j) then
                         polynomial = polynomial + &
-                            sym(arena, coefficient)*t(i)*t(j)/2
+                            sym(coefficient)*t(i)*t(j)/2
                     else
-                        polynomial = polynomial + sym(arena, coefficient)*t(i)*t(j)
+                        polynomial = polynomial + sym(coefficient)*t(i)*t(j)
                     end if
                 end do
             end do
@@ -146,9 +143,9 @@ contains
         type(expr_t) :: roots((dimension + 1)*(dimension + 1))
         type(str_t) :: args(dimension), outputs(size(roots))
         integer :: i, j, index
-        lambda(1) = num(arena, 1)
+        lambda(1) = num(1)
         do i = 1, dimension
-            x(i) = sym(arena, indexed('point_', i))
+            x(i) = sym(indexed('point_', i))
             args(i) = str(indexed('point_', i))
             lambda(1) = lambda(1) - x(i)
             lambda(i + 1) = x(i)
@@ -179,16 +176,16 @@ contains
         allocate(roots(order + 1), outputs(order + 1), args(order + 4))
         args(:2) = [str('value'), str('derivative')]
         outputs(:2) = [str('next_value'), str('next_derivative')]
-        t(1) = sym(arena, 'increment'); zero(1) = num(arena, 0)
-        polynomial = sym(arena, 'value') + sym(arena, 'derivative')*t(1)
+        t(1) = sym('increment'); zero(1) = num(0)
+        polynomial = sym('value') + sym('derivative')*t(1)
         if (order == 2) then
             args(3) = str('second_derivative')
             outputs(3) = str('next_second_derivative')
-            polynomial = polynomial + sym(arena, 'second_derivative')*t(1)*t(1)/2
+            polynomial = polynomial + sym('second_derivative')*t(1)*t(1)/2
         end if
         args(order + 2:) = [str('degree'), str('factor_index'), str('lambda')]
-        factor = sym(arena, 'degree')*(sym(arena, 'lambda') + t(1)) - &
-            sym(arena, 'factor_index')
+        factor = sym('degree')*(sym('lambda') + t(1)) - &
+            sym('factor_index')
         polynomial = polynomial*factor
         roots(1) = subs_many(polynomial, t, zero)
         do i = 1, order
@@ -212,37 +209,37 @@ contains
         count = (dimension + 1)*(order + 1)
         if (order == 2) count = count + dimension
         allocate(args(count))
-        increments(1) = num(arena, 0)
+        increments(1) = num(0)
         do i = 1, dimension
-            t(i) = sym(arena, indexed('factor_increment_', i))
-            zero(i) = num(arena, 0)
+            t(i) = sym(indexed('factor_increment_', i))
+            zero(i) = num(0)
             increments(1) = increments(1) - t(i)
             increments(i + 1) = t(i)
         end do
-        polynomial = num(arena, 1)
+        polynomial = num(1)
         index = 0
         do j = 1, dimension + 1
             index = index + 1
             args(index) = str(indexed('factor_value_', j))
-            factor = sym(arena, chars(args(index)))
+            factor = sym(chars(args(index)))
             index = index + 1
             args(index) = str(indexed('factor_derivative_', j))
-            factor = factor + sym(arena, chars(args(index)))*increments(j)
+            factor = factor + sym(chars(args(index)))*increments(j)
             if (order == 2) then
                 index = index + 1
                 args(index) = str(indexed('factor_second_derivative_', j))
                 factor = factor + &
-                    sym(arena, chars(args(index)))*increments(j)*increments(j)/2
+                    sym(chars(args(index)))*increments(j)*increments(j)/2
             end if
             polynomial = polynomial*factor
         end do
         if (order == 2) then
-            directional = num(arena, 0)
+            directional = num(0)
             do i = 1, dimension
                 index = index + 1
                 args(index) = str(indexed('direction_', i))
                 directional = directional + diff(polynomial, t(i))* &
-                    sym(arena, chars(args(index)))
+                    sym(chars(args(index)))
             end do
             polynomial = directional
             outputs(1) = str('value_dot')

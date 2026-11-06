@@ -1,5 +1,4 @@
 program gen_fci_quartic_lagrange
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(-), operator(/), sym
@@ -9,7 +8,6 @@ program gen_fci_quartic_lagrange
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(6), variables_dot(6), outputs(5)
@@ -18,11 +16,10 @@ program gen_fci_quartic_lagrange
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: index, ios, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "target"), sym(arena, "node_1"), sym(arena, "node_2"), &
-        sym(arena, "node_3"), sym(arena, "node_4"), sym(arena, "node_5")]
+        sym("target"), sym("node_1"), sym("node_2"), &
+        sym("node_3"), sym("node_4"), sym("node_5")]
     outputs(1) = (variables(1) - variables(3))* &
         (variables(1) - variables(4))* &
         (variables(1) - variables(5))* &
@@ -77,12 +74,12 @@ program gen_fci_quartic_lagrange
     primal_code = chars(emit_kernel(outputs, spec))
 
     variables_dot = [ &
-        sym(arena, "target_dot"), sym(arena, "node_1_dot"), &
-        sym(arena, "node_2_dot"), sym(arena, "node_3_dot"), &
-        sym(arena, "node_4_dot"), sym(arena, "node_5_dot")]
-    output_bar = [sym(arena, "weight_1_bar"), sym(arena, "weight_2_bar"), &
-        sym(arena, "weight_3_bar"), sym(arena, "weight_4_bar"), &
-        sym(arena, "weight_5_bar")]
+        sym("target_dot"), sym("node_1_dot"), &
+        sym("node_2_dot"), sym("node_3_dot"), &
+        sym("node_4_dot"), sym("node_5_dot")]
+    output_bar = [sym("weight_1_bar"), sym("weight_2_bar"), &
+        sym("weight_3_bar"), sym("weight_4_bar"), &
+        sym("weight_5_bar")]
     outputs_jvp = jvp(outputs, variables, variables_dot)
     outputs_vjp = vjp(outputs, variables, output_bar)
     do index = 1, size(outputs)

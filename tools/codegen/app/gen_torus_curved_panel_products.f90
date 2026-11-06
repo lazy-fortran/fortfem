@@ -1,5 +1,4 @@
 program gen_torus_curved_panel_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: cos, expr_t, operator(+), operator(-), operator(*), &
@@ -10,7 +9,6 @@ program gen_torus_curved_panel_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(10), variables_dot(10), outputs(10)
@@ -21,26 +19,25 @@ program gen_torus_curved_panel_products
     character(:), allocatable :: primal_code, jvp_code, vjp_code
     integer :: component, ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "parameter_11"), sym(arena, "parameter_21"), &
-        sym(arena, "parameter_12"), sym(arena, "parameter_22"), &
-        sym(arena, "parameter_13"), sym(arena, "parameter_23"), &
-        sym(arena, "major_radius"), sym(arena, "minor_radius"), &
-        sym(arena, "xi"), sym(arena, "eta")]
+        sym("parameter_11"), sym("parameter_21"), &
+        sym("parameter_12"), sym("parameter_22"), &
+        sym("parameter_13"), sym("parameter_23"), &
+        sym("major_radius"), sym("minor_radius"), &
+        sym("xi"), sym("eta")]
     variables_dot = [ &
-        sym(arena, "parameter_11_dot"), sym(arena, "parameter_21_dot"), &
-        sym(arena, "parameter_12_dot"), sym(arena, "parameter_22_dot"), &
-        sym(arena, "parameter_13_dot"), sym(arena, "parameter_23_dot"), &
-        sym(arena, "major_radius_dot"), sym(arena, "minor_radius_dot"), &
-        sym(arena, "xi_dot"), sym(arena, "eta_dot")]
+        sym("parameter_11_dot"), sym("parameter_21_dot"), &
+        sym("parameter_12_dot"), sym("parameter_22_dot"), &
+        sym("parameter_13_dot"), sym("parameter_23_dot"), &
+        sym("major_radius_dot"), sym("minor_radius_dot"), &
+        sym("xi_dot"), sym("eta_dot")]
     output_bar = [ &
-        sym(arena, "point_1_bar"), sym(arena, "point_2_bar"), &
-        sym(arena, "point_3_bar"), sym(arena, "tangent_xi_1_bar"), &
-        sym(arena, "tangent_xi_2_bar"), sym(arena, "tangent_xi_3_bar"), &
-        sym(arena, "tangent_eta_1_bar"), sym(arena, "tangent_eta_2_bar"), &
-        sym(arena, "tangent_eta_3_bar"), sym(arena, "surface_jacobian_bar")]
+        sym("point_1_bar"), sym("point_2_bar"), &
+        sym("point_3_bar"), sym("tangent_xi_1_bar"), &
+        sym("tangent_xi_2_bar"), sym("tangent_xi_3_bar"), &
+        sym("tangent_eta_1_bar"), sym("tangent_eta_2_bar"), &
+        sym("tangent_eta_3_bar"), sym("surface_jacobian_bar")]
 
     theta = variables(1) + variables(9)*(variables(3) - variables(1)) + &
         variables(10)*(variables(5) - variables(1))
@@ -52,7 +49,7 @@ program gen_torus_curved_panel_products
         -variables(8)*sin(theta)*cos(phi), &
         -variables(8)*sin(theta)*sin(phi), variables(8)*cos(theta)]
     derivative_phi = [&
-        -radial*sin(phi), radial*cos(phi), zero_expr(arena)]
+        -radial*sin(phi), radial*cos(phi), zero_expr()]
     do component = 1, 3
         tangent_xi(component) = (variables(3) - variables(1))* &
             derivative_theta(component) + (variables(4) - variables(2))* &
@@ -209,11 +206,10 @@ contains
         end do
     end subroutine simplify_all
 
-    function zero_expr(arena) result(value)
-        type(arena_t), intent(inout), target :: arena
+    function zero_expr() result(value)
         type(expr_t) :: value
 
-        value = real_expr(arena, 0.0d0)
+        value = real_expr(0.0d0)
     end function zero_expr
 
 end program gen_torus_curved_panel_products

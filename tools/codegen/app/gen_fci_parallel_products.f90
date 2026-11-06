@@ -1,5 +1,4 @@
 program gen_fci_parallel_products
-    use fortsym_arena, only: arena_t
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(*), operator(-), &
@@ -10,7 +9,6 @@ program gen_fci_parallel_products
     use fortfem_codegen_provenance, only: fortsym_revision, generated_path
     implicit none
 
-    type(arena_t), target :: arena
     type(engine_result_t) :: result
     type(native_engine_t) :: engine
     type(expr_t) :: variables(5), variables_dot(5), gradient(1)
@@ -36,17 +34,16 @@ program gen_fci_parallel_products
     character(:), allocatable :: cubic_jvp_code, cubic_vjp_code
     integer :: ios, root, unit
 
-    call arena%init()
-    engine = make_native_engine(arena)
+    engine = make_native_engine()
     variables = [ &
-        sym(arena, "forward_value"), sym(arena, "upper_field"), &
-        sym(arena, "backward_value"), sym(arena, "lower_field"), &
-        sym(arena, "line_length")]
+        sym("forward_value"), sym("upper_field"), &
+        sym("backward_value"), sym("lower_field"), &
+        sym("line_length")]
     variables_dot = [ &
-        sym(arena, "forward_value_dot"), sym(arena, "upper_field_dot"), &
-        sym(arena, "backward_value_dot"), sym(arena, "lower_field_dot"), &
-        sym(arena, "line_length_dot")]
-    gradient_bar(1) = sym(arena, "gradient_bar")
+        sym("forward_value_dot"), sym("upper_field_dot"), &
+        sym("backward_value_dot"), sym("lower_field_dot"), &
+        sym("line_length_dot")]
+    gradient_bar(1) = sym("gradient_bar")
     gradient(1) = (variables(1)*variables(2) - &
         variables(3)*variables(4))/variables(5)
     gradient_jvp = jvp(gradient, variables, variables_dot)
@@ -88,20 +85,20 @@ program gen_fci_parallel_products
     vjp_code = chars(emit_kernel(gradient_vjp, spec))
 
     diffusion_variables = [ &
-        sym(arena, "forward_value"), sym(arena, "upper_field"), &
-        sym(arena, "backward_value"), sym(arena, "lower_field"), &
-        sym(arena, "line_length"), sym(arena, "parallel_coefficient"), &
-        sym(arena, "canonical_volume"), sym(arena, "staggered_volume")]
+        sym("forward_value"), sym("upper_field"), &
+        sym("backward_value"), sym("lower_field"), &
+        sym("line_length"), sym("parallel_coefficient"), &
+        sym("canonical_volume"), sym("staggered_volume")]
     diffusion_variables_dot = [ &
-        sym(arena, "forward_value_dot"), sym(arena, "upper_field_dot"), &
-        sym(arena, "backward_value_dot"), sym(arena, "lower_field_dot"), &
-        sym(arena, "line_length_dot"), &
-        sym(arena, "parallel_coefficient_dot"), &
-        sym(arena, "canonical_volume_dot"), &
-        sym(arena, "staggered_volume_dot")]
+        sym("forward_value_dot"), sym("upper_field_dot"), &
+        sym("backward_value_dot"), sym("lower_field_dot"), &
+        sym("line_length_dot"), &
+        sym("parallel_coefficient_dot"), &
+        sym("canonical_volume_dot"), &
+        sym("staggered_volume_dot")]
     diffusion_output_bar = [ &
-        sym(arena, "lower_contribution_bar"), &
-        sym(arena, "upper_contribution_bar")]
+        sym("lower_contribution_bar"), &
+        sym("upper_contribution_bar")]
     diffusion_outputs(1) = diffusion_variables(3)*diffusion_variables(8)* &
         diffusion_variables(6)*gradient(1)/diffusion_variables(5)/ &
         diffusion_variables(7)
@@ -160,9 +157,9 @@ program gen_fci_parallel_products
     diffusion_vjp_code = chars(emit_kernel(diffusion_vjp, spec))
 
     diagonal_variables = [ &
-        sym(arena, "map_value"), sym(arena, "line_length"), &
-        sym(arena, "parallel_coefficient"), sym(arena, "canonical_volume"), &
-        sym(arena, "staggered_volume")]
+        sym("map_value"), sym("line_length"), &
+        sym("parallel_coefficient"), sym("canonical_volume"), &
+        sym("staggered_volume")]
     diagonal_output(1) = diagonal_variables(1)*diagonal_variables(1)* &
         diagonal_variables(3)*diagonal_variables(5)/ &
         (diagonal_variables(2)*diagonal_variables(2)*diagonal_variables(4))
@@ -178,8 +175,8 @@ program gen_fci_parallel_products
     diagonal_code = chars(emit_kernel(diagonal_output, spec))
 
     quadratic_variables = [ &
-        sym(arena, "target"), sym(arena, "node_1"), sym(arena, "node_2"), &
-        sym(arena, "node_3")]
+        sym("target"), sym("node_1"), sym("node_2"), &
+        sym("node_3")]
     quadratic_outputs = [ &
         (quadratic_variables(1) - quadratic_variables(3))* &
         (quadratic_variables(1) - quadratic_variables(4))/ &
@@ -204,11 +201,11 @@ program gen_fci_parallel_products
     quadratic_code = chars(emit_kernel(quadratic_outputs, spec))
 
     quadratic_variables_dot = [ &
-        sym(arena, "target_dot"), sym(arena, "node_1_dot"), &
-        sym(arena, "node_2_dot"), sym(arena, "node_3_dot")]
+        sym("target_dot"), sym("node_1_dot"), &
+        sym("node_2_dot"), sym("node_3_dot")]
     quadratic_output_bar = [ &
-        sym(arena, "weight_1_bar"), sym(arena, "weight_2_bar"), &
-        sym(arena, "weight_3_bar")]
+        sym("weight_1_bar"), sym("weight_2_bar"), &
+        sym("weight_3_bar")]
     quadratic_outputs_jvp = jvp( &
         quadratic_outputs, quadratic_variables, quadratic_variables_dot)
     quadratic_outputs_vjp = vjp( &
@@ -238,8 +235,8 @@ program gen_fci_parallel_products
     quadratic_vjp_code = chars(emit_kernel(quadratic_outputs_vjp, spec))
 
     cubic_variables = [ &
-        sym(arena, "target"), sym(arena, "node_1"), sym(arena, "node_2"), &
-        sym(arena, "node_3"), sym(arena, "node_4")]
+        sym("target"), sym("node_1"), sym("node_2"), &
+        sym("node_3"), sym("node_4")]
     cubic_outputs = [ &
         (cubic_variables(1) - cubic_variables(3))* &
         (cubic_variables(1) - cubic_variables(4))* &
@@ -278,12 +275,12 @@ program gen_fci_parallel_products
     cubic_code = chars(emit_kernel(cubic_outputs, spec))
 
     cubic_variables_dot = [ &
-        sym(arena, "target_dot"), sym(arena, "node_1_dot"), &
-        sym(arena, "node_2_dot"), sym(arena, "node_3_dot"), &
-        sym(arena, "node_4_dot")]
+        sym("target_dot"), sym("node_1_dot"), &
+        sym("node_2_dot"), sym("node_3_dot"), &
+        sym("node_4_dot")]
     cubic_output_bar = [ &
-        sym(arena, "weight_1_bar"), sym(arena, "weight_2_bar"), &
-        sym(arena, "weight_3_bar"), sym(arena, "weight_4_bar")]
+        sym("weight_1_bar"), sym("weight_2_bar"), &
+        sym("weight_3_bar"), sym("weight_4_bar")]
     cubic_outputs_jvp = jvp( &
         cubic_outputs, cubic_variables, cubic_variables_dot)
     cubic_outputs_vjp = vjp( &
