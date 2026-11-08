@@ -19,7 +19,7 @@ program gen_meridian_bspline_products
     !! are split into real and imaginary parts.
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
-    use fortsym_expr, only: expr_t, sym, real_expr, operator(+), &
+    use fortsym_expr, only: expr_t, sym, num, real_expr, operator(+), &
         operator(-), operator(*), operator(/), operator(**)
     use fortsym_diff, only: diff
     use fortsym_kernel, only: emit_kernel, kernel_spec_t, KERNEL_SUBROUTINE
@@ -36,6 +36,9 @@ program gen_meridian_bspline_products
     character(4096) :: buffer
     character(:), allocatable :: test_dir
     integer :: unit, ios, length, status
+    type(expr_t) :: axr, axrz, axzz, ayz, ayrr, ayrz, crr, crz, czz
+    type(expr_t) :: jets(7), jets_r(7), jets_z(7), bphys(5), grad(10)
+    integer :: k, m
 
     engine = make_native_engine()
     r = sym('r')
@@ -59,6 +62,39 @@ program gen_meridian_bspline_products
         [str('a_phi'), str('b_r_re'), str('b_r_im'), str('b_phi'), &
         str('b_z_re'), str('b_z_im')], &
         [c/r, -cz/r, n*ay/r, axz - ayr, cr/r, -(n*ax)/r])
+
+    ! d/dR and d/dZ of the physical curl, by the chain rule through the
+    ! basis jets; the second-derivative jets are the new inputs.
+    axr = sym('ax_r')
+    axrz = sym('ax_rz')
+    axzz = sym('ax_zz')
+    ayz = sym('ay_z')
+    ayrr = sym('ay_rr')
+    ayrz = sym('ay_rz')
+    crr = sym('c_rr')
+    crz = sym('c_rz')
+    czz = sym('c_zz')
+    jets = [ax, axz, ay, ayr, c, cr, cz]
+    jets_r = [axr, axrz, ayr, ayrr, cr, crr, crz]
+    jets_z = [axz, axzz, ayz, ayrz, cz, crz, czz]
+    bphys = [-cz/r, n*ay/r, axz - ayr, cr/r, -(n*ax)/r]
+    do m = 1, 5
+        grad(m) = diff(bphys(m), r)
+        grad(5 + m) = num(0)
+        do k = 1, 7
+            grad(m) = grad(m) + diff(bphys(m), jets(k))*jets_r(k)
+            grad(5 + m) = grad(5 + m) + diff(bphys(m), jets(k))*jets_z(k)
+        end do
+    end do
+    call emit('generated_meridian_bspline_physical_gradient', &
+        'fortfem_generated_meridian_bspline_physical_gradient', &
+        [str('r'), str('n'), str('ax'), str('ax_r'), str('ax_z'), str('ax_rz'), &
+        str('ax_zz'), str('ay'), str('ay_r'), str('ay_z'), str('ay_rr'), &
+        str('ay_rz'), str('c'), str('c_r'), str('c_z'), str('c_rr'), &
+        str('c_rz'), str('c_zz')], &
+        [str('b_r_re_r'), str('b_r_im_r'), str('b_phi_r'), str('b_z_re_r'), &
+        str('b_z_im_r'), str('b_r_re_z'), str('b_r_im_z'), str('b_phi_z'), &
+        str('b_z_re_z'), str('b_z_im_z')], grad)
     open (newunit=unit, &
         file=generated_path('fortfem_meridian_bspline_products.f90'), &
         status='replace', action='write', iostat=ios)

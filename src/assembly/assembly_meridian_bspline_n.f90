@@ -70,6 +70,8 @@ module fortfem_meridian_bspline_n
     use fortfem_assembly_bspline_2d, only: build_bspline_feec_2d_operators_csc
     use fortfem_generated_meridian_bspline_physical, only: &
         generated_meridian_bspline_physical
+    use fortfem_generated_meridian_bspline_physical_gradient, only: &
+        generated_meridian_bspline_physical_gradient
     use fortfem_meridian_feec_n, only: meridian_op_t, meridian_op_complex, &
         meridian_zcsc_matmul, meridian_real_to_complex
     use fortfem_meridian_magnetic_coupling, only: meridian_exterior_t, &
@@ -111,6 +113,7 @@ module fortfem_meridian_bspline_n
     public :: meridian_bspline_load_curl
     public :: meridian_bspline_load_value
     public :: meridian_bspline_eval
+    public :: meridian_bspline_eval_gradient
 
     !> Point counts below which load and evaluation loops stay serial.
     integer, parameter :: par_min = 2048
@@ -533,6 +536,136 @@ contains
         status = bad
     end subroutine meridian_bspline_eval
 
+    subroutine meridian_bspline_eval_gradient(sp, n, u, x, b, db, status)
+        !! B = curl_n A (b(3, :)) of the V1 field u and its derivatives
+        !! db(3, 1, :) = d/dR and db(3, 2, :) = d/dZ at the points x(2, :),
+        !! components (R, phi, Z). The phi derivative is i n B.
+        type(meridian_bspline_t), intent(in) :: sp
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: u(:)
+        real(dp), intent(in) :: x(:, :)
+        complex(dp), intent(out) :: b(:, :), db(:, :, :)
+        integer, intent(out) :: status
+
+        integer :: idx(meridian_bspline_local_count(sp))
+        complex(dp) :: bv(3, size(idx)), dbv(3, 2, size(idx))
+        integer :: k, l, st, bad
+
+        bad = 0
+        !$omp parallel do if(size(x, 2) >= par_min) default(shared) &
+        !$omp private(k, l, st, idx, bv, dbv) reduction(max:bad)
+        do k = 1, size(x, 2)
+            b(:, k) = (0.0_dp, 0.0_dp)
+            db(:, :, k) = (0.0_dp, 0.0_dp)
+            call meridian_bspline_v1_point_gradient(sp, n, x(:, k), idx, bv, &
+                dbv, st)
+            if (st /= 0) then
+                bad = 1
+                cycle
+            end if
+            do l = 1, size(idx)
+                b(:, k) = b(:, k) + u(idx(l))*bv(:, l)
+                db(:, :, k) = db(:, :, k) + u(idx(l))*dbv(:, :, l)
+            end do
+        end do
+        !$omp end parallel do
+        status = bad
+    end subroutine meridian_bspline_eval_gradient
+
+    subroutine meridian_bspline_v1_point_gradient(sp, n, x, idx, bval, dbval, &
+            status)
+        !! As meridian_bspline_v1_point for the curls, with their R and Z
+        !! derivatives dbval(3, 1:2, nl).
+        type(meridian_bspline_t), intent(in) :: sp
+        integer, intent(in) :: n
+        real(dp), intent(in) :: x(2)
+        integer, intent(out) :: idx(:)
+        complex(dp), intent(out) :: bval(:, :), dbval(:, :, :)
+        integer, intent(out) :: status
+
+        real(dp) :: svr(0:sp%p), sdr(0:sp%p), dvr(sp%p), ddr(sp%p), ssr(0:sp%p)
+        real(dp) :: svz(0:sp%p), sdz(0:sp%p), dvz(sp%p), ddz(sp%p), ssz(0:sp%p)
+        real(dp) :: aphi, brr, bri, bph, bzr, bzi, g(10), rn, tol, xr, xz
+        integer :: p, sr, sz, i, j, l
+
+        status = 1
+        p = sp%p
+        tol = 1.0e-12_dp*max(sp%r1 - sp%r0, sp%z1 - sp%z0)
+        if (x(1) < sp%r0 - tol .or. x(1) > sp%r1 + tol) return
+        if (x(2) < sp%z0 - tol .or. x(2) > sp%z1 + tol) return
+        xr = min(max(x(1), sp%r0), sp%r1)
+        xz = min(max(x(2), sp%z0), sp%z1)
+        sr = find_span(sp%kr, p, sp%mr, x(1))
+        sz = find_span(sp%kz, p, sp%mz, x(2))
+        call local_basis(sp%kr, p, sr, xr, svr, sdr, dvr, ddr, status)
+        if (status /= 0) return
+        call local_basis(sp%kz, p, sz, xz, svz, sdz, dvz, ddz, status)
+        if (status /= 0) return
+        call local_basis_second(sp%kr, p, sr, ddr, ssr)
+        call local_basis_second(sp%kz, p, sz, ddz, ssz)
+        rn = real(n, dp)
+        l = 0
+        do j = 0, p
+            do i = 1, p
+                l = l + 1
+                idx(l) = sr - p - 1 + i + (sz - p + j - 1)*(sp%mr - 1)
+                call generated_meridian_bspline_physical(xr, rn, &
+                    dvr(i)*svz(j), dvr(i)*sdz(j), 0.0_dp, 0.0_dp, 0.0_dp, &
+                    0.0_dp, 0.0_dp, aphi, brr, bri, bph, bzr, bzi)
+                call generated_meridian_bspline_physical_gradient(xr, rn, &
+                    dvr(i)*svz(j), ddr(i)*svz(j), dvr(i)*sdz(j), &
+                    ddr(i)*sdz(j), dvr(i)*ssz(j), 0.0_dp, 0.0_dp, 0.0_dp, &
+                    0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                    0.0_dp, g(1), g(2), g(3), g(4), g(5), g(6), g(7), g(8), &
+                    g(9), g(10))
+                call store(l)
+            end do
+        end do
+        do j = 1, p
+            do i = 0, p
+                l = l + 1
+                idx(l) = sp%ncx + sr - p + i + (sz - p + j - 2)*sp%mr
+                call generated_meridian_bspline_physical(xr, rn, 0.0_dp, &
+                    0.0_dp, svr(i)*dvz(j), sdr(i)*dvz(j), 0.0_dp, 0.0_dp, &
+                    0.0_dp, aphi, brr, bri, bph, bzr, bzi)
+                call generated_meridian_bspline_physical_gradient(xr, rn, &
+                    0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, svr(i)*dvz(j), &
+                    sdr(i)*dvz(j), svr(i)*ddz(j), ssr(i)*dvz(j), &
+                    sdr(i)*ddz(j), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                    0.0_dp, g(1), g(2), g(3), g(4), g(5), g(6), g(7), g(8), &
+                    g(9), g(10))
+                call store(l)
+            end do
+        end do
+        do j = 0, p
+            do i = 0, p
+                l = l + 1
+                idx(l) = sp%nc + sr - p + i + (sz - p + j - 1)*sp%mr
+                call generated_meridian_bspline_physical(xr, rn, 0.0_dp, &
+                    0.0_dp, 0.0_dp, 0.0_dp, svr(i)*svz(j), sdr(i)*svz(j), &
+                    svr(i)*sdz(j), aphi, brr, bri, bph, bzr, bzi)
+                call generated_meridian_bspline_physical_gradient(xr, rn, &
+                    0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+                    0.0_dp, 0.0_dp, 0.0_dp, svr(i)*svz(j), sdr(i)*svz(j), &
+                    svr(i)*sdz(j), ssr(i)*svz(j), sdr(i)*sdz(j), &
+                    svr(i)*ssz(j), g(1), g(2), g(3), g(4), g(5), g(6), g(7), &
+                    g(8), g(9), g(10))
+                call store(l)
+            end do
+        end do
+        status = 0
+    contains
+        subroutine store(l)
+            integer, intent(in) :: l
+            bval(:, l) = [cmplx(brr, bri, dp), cmplx(bph, 0.0_dp, dp), &
+                cmplx(bzr, bzi, dp)]
+            dbval(:, 1, l) = [cmplx(g(1), g(2), dp), cmplx(g(3), 0.0_dp, dp), &
+                cmplx(g(4), g(5), dp)]
+            dbval(:, 2, l) = [cmplx(g(6), g(7), dp), cmplx(g(8), 0.0_dp, dp), &
+                cmplx(g(9), g(10), dp)]
+        end subroutine store
+    end subroutine meridian_bspline_v1_point_gradient
+
     ! ------------------------------------------------------------------
     ! Internal helpers
     ! ------------------------------------------------------------------
@@ -624,6 +757,29 @@ contains
         dv = v
         dd = d
     end subroutine local_basis
+
+    pure subroutine local_basis_second(knots, p, s, dd, ss)
+        !! Second derivatives ss of the degree-p functions s-p .. s on span s
+        !! from the derivatives dd of the degree-(p-1) functions s-p+1 .. s.
+        real(dp), intent(in) :: knots(:), dd(:)
+        integer, intent(in) :: p, s
+        real(dp), intent(out) :: ss(0:p)
+        real(dp) :: h
+        integer :: k, j
+
+        ss = 0.0_dp
+        do k = 0, p
+            j = s - p + k
+            if (k >= 1) then
+                h = knots(j + p) - knots(j)
+                if (h > 0.0_dp) ss(k) = ss(k) + p*dd(k)/h
+            end if
+            if (k + 1 <= p) then
+                h = knots(j + p + 1) - knots(j + 1)
+                if (h > 0.0_dp) ss(k) = ss(k) - p*dd(k + 1)/h
+            end if
+        end do
+    end subroutine local_basis_second
 
     subroutine mass_1d(knots, p, kind, weight, m, status)
         !! 1D mass of the degree-p (kind 0) or degree-(p-1) (kind 1) splines
