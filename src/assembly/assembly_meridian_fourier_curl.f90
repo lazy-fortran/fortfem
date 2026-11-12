@@ -23,9 +23,10 @@ module fortfem_meridian_fourier_curl
     !!   n = 0:   a,
     !!   n > 0:   [[a, n b], [-n b, a]]     (rows (cos, sin), columns (cos, sin)),
     !! the real form of multiplication by a + i n b on Re[(c - i s) e^{i n phi}].
-    !! With the optional period P of the gradient, curl and identity forms,
-    !! block n holds the toroidal mode n P instead (a P-periodic field keeps
-    !! only these modes); the phi-mean weights are unchanged.
+    !! With the optional period P of every form, block n holds the toroidal
+    !! mode n P instead (a P-periodic field keeps only these modes); the
+    !! phi-mean weights are unchanged, and K is sampled on one period,
+    !! phi_j = 2 pi j / (nphi P), so it must be P-periodic.
     !! The operators do not couple modes, and since grad_n V0 is in V1 and
     !! curl_n V1 is in V2 exactly, curl_F grad_F = 0 holds as a matrix
     !! identity for every mode count.
@@ -232,7 +233,8 @@ contains
         status = 0
     end subroutine fourier_diagonal
 
-    subroutine meridian_fourier_mass(fs, space, modes, nphi, coef, m, status)
+    subroutine meridian_fourier_mass(fs, space, modes, nphi, coef, m, status, &
+            period)
         !! M_(gi, gj) = < phi_gi . K phi_gj > on the Fourier-V1 (space = 1) or
         !! Fourier-V2 (space = 2) space; symmetric, and positive definite for
         !! positive definite K.
@@ -241,6 +243,7 @@ contains
         class(meridian_fourier_tensor_t), intent(in) :: coef
         type(csc_t), intent(out) :: m
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
 
         integer, allocatable :: rows(:), cols(:), gdof(:)
         real(dp), allocatable :: vals(:), ml(:, :), gl(:, :), phi(:, :)
@@ -250,9 +253,12 @@ contains
         real(dp) :: x(2)
         type(fortsparse_status_t) :: fst
         integer :: nt, nl, nb, ml_n, t, q, j, p, i, b, b2, base, bad, st, np
-        integer :: ndof
+        integer :: ndof, per
 
         status = 1
+        per = 1
+        if (present(period)) per = period
+        if (per < 1) return
         if (space < 1 .or. space > 2) return
         if (modes < 0 .or. nphi < 2*modes + 1) return
         nt = fs%mm%topology%n_triangles
@@ -293,7 +299,7 @@ contains
                     phis(:, i, q) = real(fs%sp(space)%sgn(i, t), dp)*phi(:, i)
                 end do
                 do j = 1, nphi
-                    xq(:, (q - 1)*nphi + j) = [x, 2*pi*(j - 1)/nphi]
+                    xq(:, (q - 1)*nphi + j) = [x, 2*pi*(j - 1)/(nphi*per)]
                 end do
             end do
             if (st == 0) call coef%tensor(t, xq, kt, st)
@@ -351,7 +357,8 @@ contains
         end do
     end subroutine trig_values
 
-    subroutine meridian_fourier_curl_curl(fs, modes, nphi, coef, s, status)
+    subroutine meridian_fourier_curl_curl(fs, modes, nphi, coef, s, status, &
+            period)
         !! S = C_F^T M_2(K) C_F: < curl v . K curl u > on Fourier-V1.
         !! Symmetric positive semi-definite with grad V0 in the null space.
         type(meridian_feec_t), intent(in) :: fs
@@ -359,13 +366,14 @@ contains
         class(meridian_fourier_tensor_t), intent(in) :: coef
         type(csc_t), intent(out) :: s
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
 
         type(csc_t) :: c, ct, m2, mc
         type(fortsparse_status_t) :: fst
 
-        call meridian_fourier_curl(fs, modes, c, status)
+        call meridian_fourier_curl(fs, modes, c, status, period)
         if (status /= 0) return
-        call meridian_fourier_mass(fs, 2, modes, nphi, coef, m2, status)
+        call meridian_fourier_mass(fs, 2, modes, nphi, coef, m2, status, period)
         if (status /= 0) return
         status = 2
         call csc_matmul(m2, c, mc, fst)
@@ -377,7 +385,7 @@ contains
     end subroutine meridian_fourier_curl_curl
 
     subroutine meridian_fourier_gradient_coupling(fs, modes, nphi, coef, cpl, &
-            status)
+            status, period)
         !! cpl = M_1(K) G_F: < v . K grad lambda >, rows Fourier-V1, columns
         !! Fourier-V0.
         type(meridian_feec_t), intent(in) :: fs
@@ -385,13 +393,14 @@ contains
         class(meridian_fourier_tensor_t), intent(in) :: coef
         type(csc_t), intent(out) :: cpl
         integer, intent(out) :: status
+        integer, intent(in), optional :: period
 
         type(csc_t) :: g, m1
         type(fortsparse_status_t) :: fst
 
-        call meridian_fourier_gradient(fs, modes, g, status)
+        call meridian_fourier_gradient(fs, modes, g, status, period)
         if (status /= 0) return
-        call meridian_fourier_mass(fs, 1, modes, nphi, coef, m1, status)
+        call meridian_fourier_mass(fs, 1, modes, nphi, coef, m1, status, period)
         if (status /= 0) return
         status = 2
         call csc_matmul(m1, g, cpl, fst)
