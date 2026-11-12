@@ -1,10 +1,11 @@
 module meridian_fourier_test_coefficients
     use fortfem_kinds, only: dp
     use fortfem_meridian_fourier_scalar, only: meridian_fourier_tensor_t, &
-        meridian_fourier_source_t
+        meridian_fourier_source_t, meridian_fourier_anisotropic_t
     implicit none
     private
     public :: identity_t, helical_t, polynomial_source_t, trig_source_t
+    public :: helical_direction_t, ellipse_t, ellipse_source_t, ellipse_psi
     public :: exact_u, exact_grad, helical_tensor
 
     type, extends(meridian_fourier_tensor_t) :: identity_t
@@ -15,6 +16,24 @@ module meridian_fourier_test_coefficients
     type, extends(meridian_fourier_tensor_t) :: helical_t
     contains
         procedure :: tensor => helical_eval
+    end type
+
+    !> helical_tensor in factored form: k_perp = 1e-3, k_par = 1 + 1e-3.
+    type, extends(meridian_fourier_anisotropic_t) :: helical_direction_t
+    contains
+        procedure :: direction => helical_direction
+    end type
+
+    !> b along the level sets of ellipse_psi, k_par/k_perp = 1e12.
+    type, extends(meridian_fourier_anisotropic_t) :: ellipse_t
+    contains
+        procedure :: direction => ellipse_direction
+    end type
+
+    !> Weak flux f = k_perp grad ellipse_psi (b . grad psi = 0).
+    type, extends(meridian_fourier_source_t) :: ellipse_source_t
+    contains
+        procedure :: source => ellipse_source
     end type
 
     !> Weak flux f = K grad u of the trigonometric polynomial exact_u.
@@ -73,6 +92,58 @@ contains
         status = 0
     end subroutine helical_eval
 
+    subroutine helical_direction(self, t, x, b, k_par, k_perp, status)
+        class(helical_direction_t), intent(in) :: self
+        integer, intent(in) :: t
+        real(dp), intent(in) :: x(:, :)
+        real(dp), intent(out) :: b(:, :), k_par(:), k_perp(:)
+        integer, intent(out) :: status
+        integer :: p
+        do p = 1, size(x, 2)
+            b(:, p) = [0.3_dp*x(2, p)*cos(2*x(3, p)), 3.0_dp/x(1, p), &
+                0.2_dp*sin(x(3, p)) + (x(1, p) - 3.0_dp)]
+            b(:, p) = b(:, p)/norm2(b(:, p))
+        end do
+        k_perp = 1.0e-3_dp
+        k_par = 1.0_dp + 1.0e-3_dp
+        status = 0
+    end subroutine helical_direction
+
+    pure real(dp) function ellipse_psi(x) result(psi)
+        real(dp), intent(in) :: x(2)
+        psi = (x(1) - 3.0_dp)**2 + 2*x(2)**2
+    end function ellipse_psi
+
+    subroutine ellipse_direction(self, t, x, b, k_par, k_perp, status)
+        class(ellipse_t), intent(in) :: self
+        integer, intent(in) :: t
+        real(dp), intent(in) :: x(:, :)
+        real(dp), intent(out) :: b(:, :), k_par(:), k_perp(:)
+        integer, intent(out) :: status
+        integer :: p
+        do p = 1, size(x, 2)
+            b(:, p) = [-4*x(2, p), 0.0_dp, 2*(x(1, p) - 3.0_dp)]
+            b(:, p) = b(:, p)/norm2(b(:, p))
+        end do
+        k_perp = 1.0_dp
+        k_par = 1.0e12_dp
+        status = 0
+    end subroutine ellipse_direction
+
+    subroutine ellipse_source(self, t, x, f0, f, status)
+        class(ellipse_source_t), intent(in) :: self
+        integer, intent(in) :: t
+        real(dp), intent(in) :: x(:, :)
+        real(dp), intent(out) :: f0(:), f(:, :)
+        integer, intent(out) :: status
+        integer :: p
+        f0 = 0.0_dp
+        do p = 1, size(x, 2)
+            f(:, p) = [2*(x(1, p) - 3.0_dp), 0.0_dp, 4*x(2, p)]
+        end do
+        status = 0
+    end subroutine ellipse_source
+
     pure real(dp) function exact_u(x) result(u)
         !! Quadratic in (R, Z) per Fourier component, modes 0, 1 and 2.
         real(dp), intent(in) :: x(3)
@@ -130,7 +201,11 @@ program test_meridian_fourier_scalar
     !!  - the scalar load equals half of the per-n load of each component;
     !!  - a Galerkin solve with a phi-dependent anisotropic tensor
     !!    (ratio 1e3) reproduces a trigonometric polynomial with quadratic
-    !!    (R, Z) components, which lies in the P2 space, to roundoff.
+    !!    (R, Z) components, which lies in the P2 space, to roundoff;
+    !!  - the matrix-free factored apply equals the assembled form;
+    !!  - at k_par/k_perp = 1e12 with b along the level sets of a quadratic
+    !!    psi, refinement with the factored residual returns psi to
+    !!    roundoff.
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_meridian_curved_mesh, only: meridian_mesh_t
@@ -138,12 +213,14 @@ program test_meridian_fourier_scalar
         meridian_stiffness, meridian_load, meridian_lagrange_nodes, &
         meridian_real_to_complex
     use fortfem_meridian_fourier_scalar, only: meridian_fourier_diffusion, &
-        meridian_fourier_load, meridian_fourier_index
+        meridian_fourier_load, meridian_fourier_index, &
+        meridian_fourier_anisotropic_apply
     use fortsparse, only: csc_t, csc_z_t, csc_matvec
     use meridian_test_fields, only: solve_z, zero_rows
     use meridian_test_meshes, only: make_annulus_mesh
     use meridian_fourier_test_coefficients, only: identity_t, helical_t, &
-        polynomial_source_t, trig_source_t, exact_u
+        polynomial_source_t, trig_source_t, exact_u, helical_direction_t, &
+        ellipse_t, ellipse_source_t, ellipse_psi
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -154,7 +231,10 @@ program test_meridian_fourier_scalar
     type(helical_t) :: hel
     type(polynomial_source_t) :: psrc
     type(trig_source_t) :: tsrc
-    type(csc_t) :: a
+    type(helical_direction_t) :: hdir
+    type(ellipse_t) :: ell
+    type(ellipse_source_t) :: esrc
+    type(csc_t) :: a, az_check_a
     type(csc_z_t) :: kn, az
     real(dp), allocatable :: v(:), full(:), y(:), ref(:), b(:), xy(:, :)
     complex(dp), allocatable :: zb(:), zx(:), zr(:)
@@ -263,10 +343,59 @@ program test_meridian_fourier_scalar
     print '(a, es10.3)', "  trigonometric-polynomial reproduction error: ", err
     call record(err <= 1.0e-9_dp, "anisotropic Galerkin reproduces P2 x trig")
 
+    ! Factored apply against the assembled form of the same tensor.
+    call meridian_fourier_diffusion(fs, modes, nphi, hdir, a, st)
+    call record(st == 0, "factored tensor assembly")
+    y = csc_matvec(a, full)
+    call meridian_fourier_anisotropic_apply(fs, modes, nphi, hdir, full, ref, st)
+    call record(st == 0, "factored apply")
+    err = maxval(abs(ref - y))/maxval(abs(y))
+    print '(a, es10.3)', "  factored apply vs assembled: ", err
+    call record(err <= 1.0e-13_dp, "factored apply equals the assembled form")
+    call meridian_fourier_diffusion(fs, modes, nphi, hel, az_check_a, st)
+    err = maxval(abs(csc_matvec(az_check_a, full) - y))/maxval(abs(y))
+    call record(err <= 1.0e-13_dp, "default tensor equals k_perp I + (k_par - k_perp) b b")
+
+    ! Ratio 1e12, exact discrete solution psi.
+    call ellipse_refinement(err)
+    print '(a, es10.3)', "  1e12 error with the factored residual: ", err
+    call record(err <= 1.0e-12_dp, "factored refinement reaches roundoff at ratio 1e12")
+
     call check_summary("Meridian real Fourier scalar diffusion")
     if (.not. all_passed) error stop 1
 
 contains
+
+    subroutine ellipse_refinement(err)
+        !! Dirichlet solve, axisymmetric block, u = psi on the boundary; the
+        !! assembled factor only preconditions the refinement.
+        real(dp), intent(out) :: err
+        type(csc_t) :: ae
+        type(csc_z_t) :: aez
+        real(dp), allocatable :: u(:), rhs(:), ex(:), r(:)
+        complex(dp), allocatable :: cr(:), cx(:)
+        logical, allocatable :: fixed(:)
+        integer :: it
+        logical :: solved
+        call meridian_fourier_diffusion(fs, 0, 1, ell, ae, st)
+        call meridian_fourier_load(fs, 0, 1, esrc, rhs, st)
+        allocate (ex(n0), fixed(n0), cr(n0), cx(n0), r(n0))
+        do i = 1, n0
+            ex(i) = ellipse_psi(xy(:, i))
+        end do
+        fixed = fs%sp(0)%bnd
+        call meridian_real_to_complex(ae, aez)
+        call zero_rows(aez, fixed)
+        u = merge(ex, 0.0_dp, fixed)
+        do it = 0, 8
+            call meridian_fourier_anisotropic_apply(fs, 0, 1, ell, u, r, st)
+            r = rhs - r
+            cr = cmplx(merge(0.0_dp, r, fixed), 0.0_dp, dp)
+            call solve_z(aez, cr, cx, solved)
+            u = u + real(cx, dp)
+        end do
+        err = maxval(abs(u - ex))/maxval(abs(ex))
+    end subroutine ellipse_refinement
 
     subroutine record(c, d)
         logical, intent(in) :: c

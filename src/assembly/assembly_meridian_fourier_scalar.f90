@@ -34,6 +34,16 @@ module fortfem_meridian_fourier_scalar
         procedure(fourier_tensor_i), deferred :: tensor
     end type meridian_fourier_tensor_t
 
+    type, abstract, extends(meridian_fourier_tensor_t), public :: &
+            meridian_fourier_anisotropic_t
+        !! K = k_perp I + (k_par - k_perp) b b with a unit vector b.  The
+        !! factored form keeps the near-kernel of the parallel term exact in
+        !! meridian_fourier_anisotropic_apply; tensor() assembles K.
+    contains
+        procedure(fourier_direction_i), deferred :: direction
+        procedure :: tensor => anisotropic_tensor
+    end type meridian_fourier_anisotropic_t
+
     type, abstract, public :: meridian_fourier_source_t
     contains
         procedure(fourier_source_i), deferred :: source
@@ -51,6 +61,17 @@ module fortfem_meridian_fourier_scalar
             integer, intent(out) :: status
         end subroutine fourier_tensor_i
 
+        subroutine fourier_direction_i(self, t, x, b, k_par, k_perp, status)
+            !! Unit vector b(3, m) in (R, phi, Z) and the conductivities
+            !! k_par(m), k_perp(m) at the points x(3, m) = (R, Z, phi).
+            import :: dp, meridian_fourier_anisotropic_t
+            class(meridian_fourier_anisotropic_t), intent(in) :: self
+            integer, intent(in) :: t
+            real(dp), intent(in) :: x(:, :)
+            real(dp), intent(out) :: b(:, :), k_par(:), k_perp(:)
+            integer, intent(out) :: status
+        end subroutine fourier_direction_i
+
         subroutine fourier_source_i(self, t, x, f0, f, status)
             !! Scalar density f0(m) and physical flux f(3, m) in (R, phi, Z)
             !! at the points x(3, m) = (R, Z, phi) of triangle t.
@@ -64,6 +85,7 @@ module fortfem_meridian_fourier_scalar
     end interface
 
     public :: meridian_fourier_diffusion, meridian_fourier_load
+    public :: meridian_fourier_anisotropic_apply
     public :: meridian_fourier_index, meridian_fourier_value
 
     integer, parameter :: par_min = 32
@@ -221,6 +243,114 @@ contains
             end do
         end subroutine local_dofs
     end subroutine meridian_fourier_diffusion
+
+    subroutine anisotropic_tensor(self, t, x, k, status)
+        class(meridian_fourier_anisotropic_t), intent(in) :: self
+        integer, intent(in) :: t
+        real(dp), intent(in) :: x(:, :)
+        real(dp), intent(out) :: k(:, :, :)
+        integer, intent(out) :: status
+        real(dp) :: b(3, size(x, 2)), kpar(size(x, 2)), kperp(size(x, 2))
+        integer :: p, i
+
+        k = 0.0_dp
+        call self%direction(t, x, b, kpar, kperp, status)
+        if (status /= 0) return
+        do p = 1, size(x, 2)
+            do i = 1, 3
+                k(:, i, p) = (kpar(p) - kperp(p))*b(:, p)*b(i, p)
+                k(i, i, p) = k(i, i, p) + kperp(p)
+            end do
+        end do
+    end subroutine anisotropic_tensor
+
+    subroutine meridian_fourier_anisotropic_apply(fs, modes, nphi, coef, u, y, &
+            status)
+        !! y = A u for the form of meridian_fourier_diffusion with the same
+        !! quadrature, without assembling A.  At each point the flux is
+        !! k_perp grad u + (k_par - k_perp) (b . grad u) b, so rounding enters
+        !! the parallel term only through b . grad u and stays in the range of
+        !! the parallel operator; an assembled matrix carries an unstructured
+        !! error of size eps k_par instead.  Use it for refinement residuals
+        !! at large k_par/k_perp.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes, nphi
+        class(meridian_fourier_anisotropic_t), intent(in) :: coef
+        real(dp), intent(in) :: u(:)
+        real(dp), allocatable, intent(out) :: y(:)
+        integer, intent(out) :: status
+
+        real(dp), allocatable :: yl(:, :), gv(:, :), val(:, :), grad(:, :, :)
+        real(dp), allocatable :: xq(:, :), w(:), b(:, :), kpar(:), kperp(:)
+        real(dp), allocatable :: ul(:)
+        real(dp) :: x(2), g(3), flux(3), s
+        integer, allocatable :: gdof(:)
+        integer :: nt, nl, nb, m, t, q, j, p, i, bad, st, np, blk
+
+        status = 1
+        if (modes < 0 .or. nphi < 2*modes + 1) return
+        nt = fs%mm%topology%n_triangles
+        nl = fs%nl0
+        nb = 2*modes + 1
+        m = nl*nb
+        np = fs%nq*nphi
+        if (size(u) /= fs%n0*nb) return
+        allocate (yl(m, nt), y(fs%n0*nb))
+        bad = 0
+        !$omp parallel if(nt >= par_min) default(shared) &
+        !$omp private(t, q, j, p, i, st, gv, val, grad, xq, w, b, kpar, kperp, &
+        !$omp ul, gdof, x, g, flux, s, blk) reduction(max:bad)
+        allocate (gv(3, m), val(nl, fs%nq), grad(2, nl, fs%nq), xq(3, np), &
+            w(fs%nq), b(3, np), kpar(np), kperp(np), ul(m), gdof(m))
+        !$omp do schedule(dynamic, 4)
+        do t = 1, nt
+            yl(:, t) = 0.0_dp
+            st = 0
+            do q = 1, fs%nq
+                call meridian_qgrad(fs, t, q, x, w(q), val(:, q), grad(:, :, q), &
+                    st)
+                if (st /= 0) exit
+                do j = 1, nphi
+                    xq(:, (q - 1)*nphi + j) = [x, 2*pi*(j - 1)/nphi]
+                end do
+            end do
+            if (st == 0) call coef%direction(t, xq, b, kpar, kperp, st)
+            if (st /= 0) then
+                bad = 1
+                cycle
+            end if
+            do blk = 0, nb - 1
+                gdof(blk*nl + 1:(blk + 1)*nl) = blk*fs%n0 + fs%sp(0)%dof(:, t)
+            end do
+            ul = u(gdof)
+            do q = 1, fs%nq
+                do j = 1, nphi
+                    p = (q - 1)*nphi + j
+                    call basis_trig(modes, xq(3, p), radius(fs, xq(:2, p)), &
+                        val(:, q), grad(:, :, q), gv)
+                    g = matmul(gv, ul)
+                    s = dot_product(b(:, p), g)
+                    flux = (w(q)/nphi)*(kperp(p)*g + (kpar(p) - kperp(p))*s*b(:, p))
+                    do i = 1, m
+                        yl(i, t) = yl(i, t) + dot_product(gv(:, i), flux)
+                    end do
+                end do
+            end do
+        end do
+        !$omp end do
+        !$omp end parallel
+        if (bad /= 0) return
+        y = 0.0_dp
+        do t = 1, nt
+            do blk = 0, nb - 1
+                do i = 1, nl
+                    p = blk*fs%n0 + fs%sp(0)%dof(i, t)
+                    y(p) = y(p) + yl(blk*nl + i, t)
+                end do
+            end do
+        end do
+        status = 0
+    end subroutine meridian_fourier_anisotropic_apply
 
     subroutine meridian_fourier_load(fs, modes, nphi, src, b, status)
         !! b_gi = < phi_gi f0 + grad phi_gi . f > on the Fourier-V0 space.
