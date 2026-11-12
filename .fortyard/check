@@ -1,0 +1,9 @@
+#!/bin/sh
+# Landing check on fortyard: the fast tests the GitHub CI ran
+# (.github/fast-tests.txt), with its floating-point flags. The other tests
+# run long or download Triangle and belong to slower verification.
+set -eu
+tests=$(grep -v '^#' .github/fast-tests.txt | xargs)
+fo build
+# shellcheck disable=SC2086
+fo test --flag "-fno-fast-math -ffp-contract=off" $tests

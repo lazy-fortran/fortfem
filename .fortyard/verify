@@ -1,0 +1,7 @@
+#!/bin/sh
+# Verification of main on fortyard: the same fast tests, every one run again.
+set -eu
+tests=$(grep -v '^#' .github/fast-tests.txt | xargs)
+fo build
+# shellcheck disable=SC2086
+FO_TEST_RERUN=1 fo test --flag "-fno-fast-math -ffp-contract=off" $tests
