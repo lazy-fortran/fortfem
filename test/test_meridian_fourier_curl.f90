@@ -5,7 +5,7 @@ module meridian_fourier_curl_fields
     use fortfem_meridian_fourier_scalar, only: meridian_fourier_tensor_t
     implicit none
     private
-    public :: identity_t, coupled_t, field_t, coupled_tensor
+    public :: identity_t, coupled_t, periodic_t, field_t, coupled_tensor
     public :: series, field_a, field_b, zc, ratio_k3
 
     real(dp), parameter :: zc = 0.5_dp
@@ -20,6 +20,13 @@ module meridian_fourier_curl_fields
     type, extends(meridian_fourier_tensor_t) :: coupled_t
     contains
         procedure :: tensor => coupled_eval
+    end type
+
+    !> The coupled tensor at angle P phi, so P-periodic.
+    type, extends(meridian_fourier_tensor_t) :: periodic_t
+        integer :: p = 1
+    contains
+        procedure :: tensor => periodic_eval
     end type
 
     !> A = grad_pol(R^2 Z) T1(phi) + grad(R^2 (1 + Z) T3(phi))
@@ -69,6 +76,19 @@ contains
         end do
         status = 0
     end subroutine coupled_eval
+
+    subroutine periodic_eval(self, t, x, k, status)
+        class(periodic_t), intent(in) :: self
+        integer, intent(in) :: t
+        real(dp), intent(in) :: x(:, :)
+        real(dp), intent(out) :: k(:, :, :)
+        integer, intent(out) :: status
+        integer :: p
+        do p = 1, size(x, 2)
+            call coupled_tensor([x(1:2, p), self%p*x(3, p)], k(:, :, p))
+        end do
+        status = 0
+    end subroutine periodic_eval
 
     pure real(dp) function series(w, phi, d) result(s)
         !! sum_b w(b) trig_b(phi) (d = 0) or its phi derivative (d = 1);
@@ -139,7 +159,7 @@ program test_meridian_fourier_curl
         meridian_fourier_gradient, meridian_fourier_curl, &
         meridian_fourier_identity_forms, meridian_fourier_pairing
     use fortsparse, only: csc_t, csc_matvec
-    use meridian_fourier_curl_fields, only: identity_t, coupled_t, field_t, &
+    use meridian_fourier_curl_fields, only: identity_t, coupled_t, periodic_t, field_t, &
         coupled_tensor, series, field_a, field_b, zc
     use meridian_test_meshes, only: make_warped_rectangle_mesh
     implicit none
@@ -152,6 +172,7 @@ program test_meridian_fourier_curl
     call test_exact_forms()
     call test_identity_forms()
     call test_period()
+    call test_period_tensor_forms()
     call check_summary("Meridian real Fourier curl-complex forms")
     if (.not. all_passed) error stop 1
 
@@ -236,6 +257,66 @@ contains
             "period forms retain curl grad nullspace")
         call meridian_fourier_curl(fs, modes, c, st, period=0)
         call record(st /= 0, "period below one is rejected")
+    end subroutine
+
+    subroutine test_period_tensor_forms()
+        ! With a P-periodic K, block (k, k') of a period-P form is the
+        ! period-1 block of modes (k P, k' P); both phi rules are exact.
+        type(meridian_mesh_t) :: mm
+        type(meridian_feec_t) :: fs
+        type(periodic_t) :: kp
+        type(csc_t) :: a, a1
+        integer, parameter :: p = 3, modes = 2
+        integer :: st, space, n
+        real(dp) :: err
+        call make_warped_rectangle_mesh(2, 2, mm)
+        call meridian_feec_build(mm, 2, fs, st)
+        kp%p = p
+        do space = 1, 2
+            call meridian_fourier_mass(fs, space, modes, 2*modes + 5, kp, a, &
+                st, period=p)
+            call record(st == 0, "period mass assembles")
+            call meridian_fourier_mass(fs, space, modes*p, 2*modes*p + 2*p + 1, &
+                kp, a1, st)
+            n = fs%sp(space)%ndof
+            call block_error(a, a1, n, modes, p, err)
+            call record(err < 1.0e-12_dp, "period mass blocks are modes k P")
+        end do
+        call meridian_fourier_curl_curl(fs, modes, 2*modes + 5, kp, a, st, &
+            period=p)
+        call record(st == 0, "period curl-curl assembles")
+        call meridian_fourier_curl_curl(fs, modes*p, 2*modes*p + 2*p + 1, kp, &
+            a1, st)
+        call block_error(a, a1, fs%sp(1)%ndof, modes, p, err)
+        call record(err < 1.0e-12_dp, "period curl-curl blocks are modes k P")
+        call meridian_fourier_mass(fs, 1, modes, 2*modes + 5, kp, a, st, &
+            period=0)
+        call record(st /= 0, "period mass below one is rejected")
+    end subroutine
+
+    subroutine block_error(a, a1, n, modes, p, err)
+        ! Largest difference between the blocks of a period-p form a and the
+        ! blocks of modes k p of the full form a1, relative to max |a1|.
+        type(csc_t), intent(in) :: a, a1
+        integer, intent(in) :: n, modes, p
+        real(dp), intent(out) :: err
+        real(dp), allocatable :: d(:, :), d1(:, :)
+        integer :: idx(2*modes + 1), idx1(2*modes + 1), i, j, k
+        d = to_dense(a); d1 = to_dense(a1)
+        idx(1) = 0; idx1(1) = 0
+        do k = 1, modes
+            idx(2*k:2*k + 1) = [2*k - 1, 2*k]
+            idx1(2*k:2*k + 1) = [2*k*p - 1, 2*k*p]
+        end do
+        err = 0.0_dp
+        do j = 1, 2*modes + 1
+            do i = 1, 2*modes + 1
+                err = max(err, maxval(abs(d(idx(i)*n + 1:(idx(i) + 1)*n, &
+                    idx(j)*n + 1:(idx(j) + 1)*n) - d1(idx1(i)*n + 1:(idx1(i) + 1)*n, &
+                    idx1(j)*n + 1:(idx1(j) + 1)*n))))
+            end do
+        end do
+        err = err/maxval(abs(d1))
     end subroutine
 
     subroutine record(c, d)
