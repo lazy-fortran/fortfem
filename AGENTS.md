@@ -1,1 +1,127 @@
-CLAUDE.md
+# Contributor guide
+
+This file guides contributors and coding agents working in this repository.
+
+## Project Overview
+
+FortFEM is a modern Fortran finite element library designed for ease of use, inspired by FreeFEM and FEniCS. It provides natural mathematical notation for defining weak forms and supports various element types on triangular and quadrilateral meshes.
+
+## Build and Development Commands
+
+### Build Commands
+- **Build the project**: `fpm build`
+- **Build with specific compiler**: `fpm build --compiler gfortran`
+- **Build with coverage**: `fpm build --flag "--coverage"`
+- **Clean build**: `fpm clean --skip && fpm build`
+- **Note**: Always use `fpm clean --skip` to avoid interactive prompts
+
+### Run Commands
+- **Run the main application**: `fpm run`
+- **Run specific example**: `fpm run --example plot_basis`
+- **List available examples**: `fpm run --example --list`
+- **Use `fpm run --example <name>` to run examples**
+
+### Test Commands
+- **Run the standard tests**: `make test` (everything except `*_slow`; as in CI)
+- **Run the slow tests**: `make test-slow`
+- **Run the standard tests with runtime checks**: `make test-debug` (debug profile: bounds, allocation and floating-point traps; run in CI)
+- **Run one test**: `fpm test test-name` (do not use a bare `fpm test`: it starts every test program at once and oversubscribes the machine)
+- **Run specific test**: `fpm test test-name`
+- **Run tests with coverage**: `fpm test --flag "--coverage"`
+- **List available tests**: `fpm test --list`
+
+### Important Testing Notes
+- ALWAYS place test files in the `test/` directory
+- ALWAYS use `fpm test` to run tests, not manual compilation
+- Test files should be named `test_*.f90`
+- Use the `check` module for test assertions
+
+### Development Workflow
+1. Follow strict TDD: Write test first, then implementation
+2. Source files go in `src/`
+3. Tests go in `test/`
+4. Examples go in `example/`
+5. Documentation goes in `doc/`
+6. Check TODO.md for current implementation tasks
+
+## Architecture and Code Structure
+
+### Directory Layout
+```
+fortfem/
+├── src/          # Core library modules
+├── test/         # Unit and integration tests
+├── example/      # Example programs with visualization
+├── app/          # Main applications
+└── doc/          # Documentation
+```
+
+### Module Organization (Planned)
+- **src/fortfem.f90**: Main module exporting public API
+- **src/mesh/**: Mesh data structures and I/O
+- **src/elements/**: Finite element definitions
+- **src/quadrature/**: Integration rules
+- **src/forms/**: Weak form abstractions
+- **src/assembly/**: Matrix and vector assembly
+- **src/solvers/**: Linear solver interfaces
+
+### Dependencies
+- **fortplotlib**: For visualization in examples
+- **LAPACK**: For linear algebra (initially)
+- **SuiteSparse**: For sparse solvers (future)
+
+### Fortran Conventions
+- Derived types follow `typename_t` naming convention
+- Line limit: 88 characters
+- Indentation: 4 spaces
+- Arrays extend with: `arr = [arr, new_element]` syntax
+- Use associate blocks for unused dummy arguments
+- Real precision: `dp = kind(0.0d0)`
+
+### Critical Fortran Design Principles
+- **NO POINTERS**: Never use pointers in Fortran. Always use allocatables instead.
+- **DEEP COPY ASSIGNMENT**: When a type contains allocatable members, always overload the assignment operator (=) with deep-copy semantics.
+- **ALLOCATABLE FUNCTION RETURNS**: Prefer subroutines with intent(out) allocatable arguments over functions returning allocatables. If you do write a function returning an allocatable, ensure that the return value is guaranteed to be allocated.
+- **SAFE ALLOCATION**: Always check if allocatable is already allocated before deallocating or reallocating.
+- **CLEAN INTERFACES**: Prefer explicit interfaces over implicit ones.
+- **INTENT EVERYWHERE**: Always specify intent for all dummy arguments.
+- **PURE/ELEMENTAL**: Use pure and elemental procedures where possible for better optimization and safety.
+- **STRICT TDD**: You MUST always write tests first. No exceptions.
+
+### Generated local kernels (FortSym)
+- Pointwise local mathematics is emitted by FortSym, not handwritten:
+  reference basis jets and their derivatives, Piola/geometry factors,
+  integrands, small contractions and constants. Add or extend a generator in
+  `tools/codegen/app/gen_*_products.f90`, run `tools/codegen/generate.sh` with
+  the FortSym revision in `tools/codegen/fortsym.lock`, and check with
+  `tools/codegen/check_generated.sh`. Never edit `src/generated/` by hand.
+- Reasons: one authoritative mathematical source, symbolically derived
+  derivatives (a handwritten P2 Hessian once silently dropped terms, see
+  `doc/REFERENCE_BASIS_GENERATION.md`), primal/JVP/VJP from the same source
+  for differentiable consumers, and reproducible kernels without a runtime
+  FortSym dependency. Emit JVP/VJP only for a concrete consumer.
+- Handwritten Fortran owns topology, gather/scatter, solvers, schedules and
+  I/O. Generation is reproducibility evidence, not proof: keep independent
+  behavioral tests.
+
+### Testing Strategy
+- Strict Test-Driven Development (TDD)
+- Target >90% code coverage
+- Tests must pass before implementation
+- Use codecov for coverage tracking
+- CI/CD runs on every push
+
+### Example Development
+- Examples use fortplotlib for visualization
+- Each example demonstrates specific features
+- Examples should be self-contained
+- Include mathematical description in comments
+
+### Continuous Integration
+- GitHub Actions workflow in `.github/workflows/ci.yml`
+- Tests on Ubuntu and macOS with gfortran
+- Automatic codecov upload
+- Example compilation verification
+
+## Code Maintenance Principles
+- Always delete obsolete parts of the code.

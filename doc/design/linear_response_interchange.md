@@ -71,5 +71,5 @@ normalization conventions remain properties of the external response model.
 The block split follows the generic forced-response decomposition used by
 linear ideal/resistive MHD and resistive-wall response codes.  FortFEM keeps
 the implementation algebraic so that external adapters can record their own
-equilibrium and code revisions.  Relevant parity targets are listed in
-[`ROADMAP.md`](../../ROADMAP.md): GPEC, MARS-F, GLISS, and STARWALL.
+equilibrium and code revisions.  Relevant parity targets are GPEC, MARS-F,
+GLISS, and STARWALL.

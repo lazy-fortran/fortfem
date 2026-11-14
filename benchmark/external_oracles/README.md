@@ -47,8 +47,8 @@ tree--cotree oracle and is labeled separately.
 
 ## Private source registry and public extraction boundary
 
-`source_registry.json` records logical source IDs for the private Nextcloud and
-Zotero material that has been inventoried for this work. It is deliberately
+`source_registry.json` records logical source IDs for the private literature and
+note material that has been inventoried for this work. It is deliberately
 not a file index: it contains no absolute local paths, PDF bytes, scans,
 source scripts, meshes, reference arrays, or copyrighted figures. A private
 attachment remains private even when its bibliographic record or public DOI is

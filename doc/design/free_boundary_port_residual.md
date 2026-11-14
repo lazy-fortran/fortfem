@@ -53,7 +53,7 @@ coverage, and invalid/zero-row cases.
 ## Provenance and scope
 
 The contract is the algebraic boundary-port part of the fixed/free-boundary
-composition described in [FortFEM's roadmap](../../ROADMAP.md).  It is
+composition of FortFEM.  It is
 compatible with work-conjugate trace coupling used by FEM--BEM and
 FEM--DtN formulations, but it intentionally contains no kernel, quadrature,
 surface reader, coil model, pressure law, or production equilibrium code.

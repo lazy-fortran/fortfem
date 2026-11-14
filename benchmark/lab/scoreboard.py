@@ -50,7 +50,7 @@ STYLE = {  # colour (Okabe-Ito), marker, filled
 }
 MISSING = [
     ("Same-host, same-compiler, same-geometry timing of assembled tet/B-spline "
-     "against the matrix-free families (assembled rows: faepmac2, affine mesh)",
+     "against the matrix-free families (assembled rows: m3-ultra-b, affine mesh)",
      "not measured; cross-family time ratios with the assembled rows are [H]"),
     ("Assembled tet/B-spline beyond 1e-5 on L1", "not measured"),
     ("p-robust smoother / weighted quadrature for B-spline MF (spline h-MG "
@@ -320,8 +320,8 @@ def write_md(rows):
     a("- Wall time is process wall time (assembly, setup, solve, error integral) for "
       "the lab CSVs. KIN6D rows are native phase-sum seconds on one core, a lower "
       "bound. VMEC++ rows are native solve seconds on one core.")
-    a("- **Like-for-like groups.** Assembled tet/B-spline rows ran on faepmac2 with "
-      "GCC 16.1 (revision 5a48864d), matrix-free GLL rows on faepmac1 with GCC 16.2, "
+    a("- **Like-for-like groups.** Assembled tet/B-spline rows ran on m3-ultra-b with "
+      "GCC 16.1 (revision 5a48864d), matrix-free GLL rows on m3-ultra-a with GCC 16.2, "
       "KIN6D/VMEC++/GVEC on sCluster node7 (GCC 12.2 / external builds). The "
       "round-4 matrix-free rows (IGA-AX, FB1, SEAM1, UNS1, NEQ1) are separate "
       "sCluster sweeps and are only comparable within their own job. Different "
@@ -440,7 +440,7 @@ def write_md(rows):
     a("![scoreboard r4](figures/scoreboard_r4.png)")
     a("")
     a("Panels: (a, b) L1 accuracy against DOFs and time, thin markers all rows and "
-      "lines the lower-left frontier per family, assembled BEN1 rows hollow (faepmac2, "
+      "lines the lower-left frontier per family, assembled BEN1 rows hollow (m3-ultra-b, "
       "affine mesh, 4 threads: not the same host); (c) strong scaling; (d) FB1 cost "
       "split; (e) NEQ1 against VMEC++; (f) SEAM1 L3 disk.")
     a("")
@@ -591,7 +591,7 @@ def draw_r4(rows):
     for fam, (lab, col, mk) in ben_style.items():
         r = [x for x in rows if not x.get("r4") and x["problem"] == "L1"
              and x["fam"] == fam and x["err"] is not None
-             and x["host"].startswith("faepmac2")]
+             and x["host"].startswith("m3-ultra-b")]
         a.scatter([x["dofs"] for x in r], [x["err"] for x in r], facecolors="none",
                   edgecolors=col, marker=mk, s=45, label=lab)
         b.scatter([x["wall"] for x in r], [x["err"] for x in r], facecolors="none",
@@ -723,7 +723,7 @@ def draw_r4(rows):
     g.text(0.17, 0.97, "ratio 1e6: PCG fails (both)", transform=g.transAxes,
            fontsize=8, va="top")
     fig.suptitle("FortFEM discretisation lab, evidence scoreboard r4 (2026-10-23). "
-                 "*BEN1 assembled rows: faepmac2, 4 thr, affine mesh (not same host)",
+                 "*BEN1 assembled rows: m3-ultra-b, 4 thr, affine mesh (not same host)",
                  fontsize=11)
     fig.tight_layout(rect=(0, 0, 1, 0.97))
     PNG4.parent.mkdir(exist_ok=True)
