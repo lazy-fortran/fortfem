@@ -1,5 +1,7 @@
 # FortFEM
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24223527.svg)](https://doi.org/10.5281/zenodo.24223527)
+
 A Fortran finite-element and boundary-element library with a high-level API
 inspired by FEniCS and FreeFEM. It provides the structure-preserving (FEEC)
 discretisations, open-boundary operators and sparse solves needed by plasma
@@ -122,3 +124,11 @@ shows their source and plots.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Citation
+
+Cite fortfem through its Zenodo record,
+[doi:10.5281/zenodo.24223527](https://doi.org/10.5281/zenodo.24223527), which
+always resolves to the latest release; release 0.1.0 is
+[doi:10.5281/zenodo.24223528](https://doi.org/10.5281/zenodo.24223528).
+`CITATION.cff` holds the full citation metadata.
