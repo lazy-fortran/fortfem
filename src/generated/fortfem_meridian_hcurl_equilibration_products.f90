@@ -87,7 +87,7 @@ module fortfem_generated_meridian_edge_coordinate_jvp
 contains
 
     pure subroutine generated_meridian_edge_coordinate_jvp(la, lb, la_dot, &
-            lb_dot, out1)
+        lb_dot, out1)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: la, lb, la_dot, lb_dot
@@ -138,7 +138,7 @@ module fortfem_generated_meridian_edge_lift
 contains
 
     pure subroutine generated_meridian_edge_lift(la, lb, ga1, ga2, gb1, gb2, r, &
-            dr, out1, out2, out3)
+        dr, out1, out2, out3)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: la, lb, ga1, ga2, gb1, gb2, r, dr
@@ -166,12 +166,12 @@ module fortfem_generated_meridian_edge_lift_jvp
 contains
 
     pure subroutine generated_meridian_edge_lift_jvp(la, lb, ga1, ga2, gb1, gb2, &
-            r, dr, la_dot, lb_dot, &
+        r, dr, la_dot, lb_dot, &
             ga1_dot, ga2_dot, gb1_dot, gb2_dot, r_dot, dr_dot, out1, out2, out3)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: la, lb, ga1, ga2, gb1, gb2, r, dr, la_dot, &
-            lb_dot, ga1_dot, ga2_dot, &
+        lb_dot, ga1_dot, ga2_dot, &
             gb1_dot, gb2_dot, r_dot, dr_dot
         real(dp), intent(out) :: out1, out2, out3
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12
@@ -189,16 +189,16 @@ contains
         t11 = ga2 + gb2
         t12 = -t1*t1*t2*(dr*t10 + r*t11*4)
         out1 = t3 - r*t1*t1*t1*t2 - r*t1*t1*t1*t2 - r*t1*t1*t1*t2 - &
-            r_dot*t1*t1*t1*t1
+        r_dot*t1*t1*t1*t1
         out2 = -t1*t1*t1*(dr*(ga1*lb*t4*t2 - ga1*lb_dot/t1 - ga1_dot*lb/t1 + &
-            gb1*t5 + gb1_dot*t6) + &
+        gb1*t5 + gb1_dot*t6) + &
             dr_dot*t7 + r*(ga1_dot + gb1_dot)*4 + r_dot*t8*4) - t1*t1*t2*(dr*t7 &
-            + r*t8*4) - t1*t1*t2*(dr*t7 + r* &
+        + r*t8*4) - t1*t1*t2*(dr*t7 + r* &
             t8*4) - t1*t1*t2*(dr*t7 + r*t8*4)
         out3 = -t1*t1*t1*(dr*(ga2*lb*t4*t2 - ga2*lb_dot/t1 - ga2_dot*lb/t1 + &
-            gb2*t5 + gb2_dot*t6) + &
+        gb2*t5 + gb2_dot*t6) + &
             dr_dot*t10 + r*(ga2_dot + gb2_dot)*4 + r_dot*t11*4) - &
-            t1*t1*t2*(dr*t10 + r*t11*4) - t1*t1*t2*(dr* &
+        t1*t1*t2*(dr*t10 + r*t11*4) - t1*t1*t2*(dr* &
             t10 + r*t11*4) - t1*t1*t2*(dr*t10 + r*t11*4)
 
     end subroutine generated_meridian_edge_lift_jvp
@@ -216,7 +216,7 @@ module fortfem_generated_meridian_edge_lift_vjp
 contains
 
     pure subroutine generated_meridian_edge_lift_vjp(la, lb, ga1, ga2, gb1, gb2, &
-            r, dr, bar1, bar2, &
+        r, dr, bar1, bar2, &
             bar3, out1, out2, out3, out4, out5, out6, out7, out8)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
@@ -235,24 +235,24 @@ contains
         t9 = -bar3*t1*t1*(dr*t7 + r*t8*4)
         t10 = -bar2*dr*gb1*t1*t1*t1 - bar3*dr*gb2*t1*t1*t1
         t11 = -t1**(-1 - 1)*(bar2*dr*ga1*lb*t1*t1*t1 + bar3*dr*ga2*lb*t1*t1*t1 &
-            - lb*t10)
+        - lb*t10)
         t12 = -bar2*r*t1*t1*t1*4
         t13 = -bar3*r*t1*t1*t1*4
         out1 = t2 - bar1*r*t1*t1*t1 - bar1*r*t1*t1*t1 - bar1*r*t1*t1*t1 - &
-            bar2*t1*t1*(dr*t4 + r*t5*4) - &
+        bar2*t1*t1*(dr*t4 + r*t5*4) - &
             bar2*t1*t1*(dr*t4 + r*t5*4) - bar2*t1*t1*(dr*t4 + r*t5*4) - &
-            bar3*t1*t1*(dr*t7 + r*t8*4) - bar3*t1* &
+        bar3*t1*t1*(dr*t7 + r*t8*4) - bar3*t1* &
             t1*(dr*t7 + r*t8*4) - bar3*t1*t1*(dr*t7 + r*t8*4) - t1**(-1 - &
-            1)*(bar2*dr*ga1*lb*t1*t1*t1 + bar3*dr* &
+        1)*(bar2*dr*ga1*lb*t1*t1*t1 + bar3*dr* &
             ga2*lb*t1*t1*t1 - lb*t10)
         out2 = t2 - bar1*r*t1*t1*t1 - bar1*r*t1*t1*t1 - bar1*r*t1*t1*t1 + &
-            bar2*dr*ga1*t1*t1*t1/t1 - &
+        bar2*dr*ga1*t1*t1*t1/t1 - &
             bar2*t1*t1*(dr*t4 + r*t5*4) - bar2*t1*t1*(dr*t4 + r*t5*4) - &
-            bar2*t1*t1*(dr*t4 + r*t5*4) + bar3*dr* &
+        bar2*t1*t1*(dr*t4 + r*t5*4) + bar3*dr* &
             ga2*t1*t1*t1/t1 - bar3*t1*t1*(dr*t7 + r*t8*4) - bar3*t1*t1*(dr*t7 + &
-            r*t8*4) - bar3*t1*t1*(dr*t7 + r* &
+        r*t8*4) - bar3*t1*t1*(dr*t7 + r* &
             t8*4) - t1**(-1 - 1)*(bar2*dr*ga1*lb*t1*t1*t1 + &
-            bar3*dr*ga2*lb*t1*t1*t1 - lb*t10) - t10/t1
+        bar3*dr*ga2*lb*t1*t1*t1 - lb*t10) - t10/t1
         out3 = bar2*dr*lb*t1*t1*t1/t1 - bar2*r*t1*t1*t1*4
         out4 = bar3*dr*lb*t1*t1*t1/t1 - bar3*r*t1*t1*t1*4
         out5 = -bar2*dr*t1*t1*t1*t3 - bar2*r*t1*t1*t1*4

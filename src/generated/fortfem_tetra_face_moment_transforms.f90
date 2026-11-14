@@ -51,7 +51,7 @@ contains
             permutation(1) == permutation(3) .or. &
             permutation(2) == permutation(3)) return
         select case (100 * permutation(1) + &
-                10 * permutation(2) + permutation(3))
+            10 * permutation(2) + permutation(3))
         case (123); index_ = 1
         case (132); index_ = 2
         case (213); index_ = 3
@@ -159,42 +159,42 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
                 1.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
                 -1.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 -1.0_real64, &
                 -1.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
                 0.0_real64, &
                 -1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -218,42 +218,42 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
                 1.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
                 -1.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 -1.0_real64, &
                 -1.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
                 0.0_real64, &
                 -1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -309,7 +309,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
@@ -348,7 +348,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
@@ -387,7 +387,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 0.0_real64, &
@@ -426,7 +426,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 -1.0_real64, &
@@ -465,7 +465,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -504,7 +504,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -560,7 +560,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
@@ -599,7 +599,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
@@ -638,7 +638,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 -1.0_real64, &
@@ -677,7 +677,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 0.0_real64, &
@@ -716,7 +716,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -755,7 +755,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -919,7 +919,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
@@ -1066,7 +1066,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
@@ -1213,7 +1213,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 0.0_real64, &
@@ -1360,7 +1360,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 -1.0_real64, &
@@ -1507,7 +1507,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -1654,7 +1654,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -1818,7 +1818,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 0.0_real64, &
@@ -1965,7 +1965,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 -1.0_real64, &
@@ -2112,7 +2112,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 -1.0_real64, &
@@ -2259,7 +2259,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 0.0_real64, &
@@ -2406,7 +2406,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -2553,7 +2553,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -2574,27 +2574,27 @@ contains
         case (1)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -2615,27 +2615,27 @@ contains
         case (1)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -2664,7 +2664,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -2676,7 +2676,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -2688,7 +2688,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -2700,7 +2700,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -2712,7 +2712,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -2724,7 +2724,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -2753,7 +2753,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -2765,7 +2765,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -2777,7 +2777,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -2789,7 +2789,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -2801,7 +2801,7 @@ contains
                 0.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -2813,7 +2813,7 @@ contains
                 0.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -2869,7 +2869,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -2908,7 +2908,7 @@ contains
                 1.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -2947,7 +2947,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -2986,7 +2986,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -3025,7 +3025,7 @@ contains
                 1.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -3064,7 +3064,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -3120,7 +3120,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -3159,7 +3159,7 @@ contains
                 1.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -3198,7 +3198,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -3237,7 +3237,7 @@ contains
                 1.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -3276,7 +3276,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -3315,7 +3315,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -3435,7 +3435,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -3538,7 +3538,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -3641,7 +3641,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -3744,7 +3744,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -3847,7 +3847,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -3950,7 +3950,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -4070,7 +4070,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -4173,7 +4173,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -4276,7 +4276,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -4379,7 +4379,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -4482,7 +4482,7 @@ contains
                 -1.0_real64, &
                 1.0_real64, &
                 -1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -4585,7 +4585,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -4830,7 +4830,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -5058,7 +5058,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -5286,7 +5286,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -5514,7 +5514,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -5742,7 +5742,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -5970,7 +5970,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
@@ -6215,7 +6215,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (2)
             transform = reshape([ &
                 1.0_real64, &
@@ -6443,7 +6443,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (3)
             transform = reshape([ &
                 1.0_real64, &
@@ -6671,7 +6671,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (4)
             transform = reshape([ &
                 1.0_real64, &
@@ -6899,7 +6899,7 @@ contains
                 0.0_real64, &
                 0.0_real64, &
                 0.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (5)
             transform = reshape([ &
                 1.0_real64, &
@@ -7127,7 +7127,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         case (6)
             transform = reshape([ &
                 1.0_real64, &
@@ -7355,7 +7355,7 @@ contains
                 1.0_real64, &
                 -1.0_real64, &
                 1.0_real64 &
-                ], shape(transform))
+            ], shape(transform))
         end select
         output = matmul(transform, input)
         status = 0
