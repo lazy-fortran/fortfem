@@ -1,6 +1,6 @@
 # Revisions that generated src/generated/fortad. fortad builds against its
 # sibling fortfront and fortgen checkouts (path dependencies), so all three
 # are pinned. generate.sh refuses to run against any other revision.
-fortad 7d05839989c918a0ed34a9e9ac8e70b69e364877
-fortfront 17b6bdb50dbd3665ad29a3f708f1795eef2aae46
+fortad 982fadd6e5c6a523e9123d03e91e499a5183a28f
+fortfront afc4788c4777a1dbe563308e2f40e08d55a2a327
 fortgen ea422bb282ba26dd39341c3f96f727d5892a8ede
