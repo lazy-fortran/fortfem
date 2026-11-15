@@ -1,0 +1,6 @@
+#!/bin/sh
+# Nightly run: every test, the slow ones included, not only the fast list of
+# the landing check, with the landing check's strict floating-point flags.
+set -eu
+fo build
+FO_TEST_RERUN=1 fo test --all --flag "-fno-fast-math -ffp-contract=off"
