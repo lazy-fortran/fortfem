@@ -17,7 +17,8 @@ include(CMakePackageConfigHelpers)
 
 option(FORTFEM_FETCH_DEPENDENCIES
     "Fetch pinned dependencies when targets are not already available" ON)
-option(FORTFEM_BUILD_TESTING "Build focused C API and sparse adapter tests" OFF)
+option(FORTFEM_BUILD_TESTING "Build focused C API and sparse adapter tests"
+    ${PROJECT_IS_TOP_LEVEL})
 option(FORTFEM_NATIVE_SPARSE_ONLY
     "Build with project-owned sparse solvers and no external sparse libraries" ON)
 option(FORTFEM_ENABLE_ENZYME
@@ -28,6 +29,20 @@ option(FORTFEM_TRIANGLE_COMPAT_ONLY
     "Build only the dependency-free triangle_compat mesher library" OFF)
 option(FORTFEM_WITH_PLOT
     "Build the FortPlot-based plotting library fortfem::plot" ON)
+
+# Consumers get fortfem's tests only on request: -DFORTFEM_BUILD_TESTING=ON plus
+# include(CTest) in the consumer.
+if(PROJECT_IS_TOP_LEVEL)
+    include(CTest)
+endif()
+if(FORTFEM_BUILD_TESTING AND NOT BUILD_TESTING)
+    message(STATUS "FORTFEM_BUILD_TESTING is ON, but BUILD_TESTING is OFF; "
+        "fortfem tests will not be built.")
+    set(FORTFEM_BUILD_TESTING OFF)
+endif()
+if(FORTFEM_BUILD_TESTING)
+    enable_testing()
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_Fortran_STANDARD 2018)
@@ -66,7 +81,6 @@ target_include_directories(fortfem_element_kernels PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 target_link_libraries(fortfem_element_kernels PUBLIC OpenMP::OpenMP_Fortran)
 if(FORTFEM_BUILD_TESTING)
-    enable_testing()
     add_library(fortfem_test_check STATIC test/check.f90)
     set_target_properties(fortfem_test_check PROPERTIES
         Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/test_modules")
@@ -496,7 +510,6 @@ if(FORTFEM_ENABLE_ENZYME)
 endif()
 
 if(FORTFEM_BUILD_TESTING)
-    enable_testing()
     foreach(test_name IN ITEMS sparse_direct_backend sparse_constrained_derivatives
             sparse_direct_derivatives sparse_direct_complex_derivatives
             capi_solver)
