@@ -186,7 +186,10 @@ if(NOT TARGET fortnum)
         message(FATAL_ERROR
             "fortnum target is required when dependency fetching is disabled")
     endif()
-    set(FORTNUM_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    # A default only: a FORTNUM_BUILD_TESTING set by the user is kept.
+    if(NOT DEFINED FORTNUM_BUILD_TESTING)
+        set(FORTNUM_BUILD_TESTING OFF)
+    endif()
     FetchContent_Declare(fortnum
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
         GIT_TAG 23e36f8f7572d0104124073c349a1e0ea661749a
@@ -199,15 +202,23 @@ if(NOT TARGET fortsparse)
         message(FATAL_ERROR
             "fortsparse target is required when dependency fetching is disabled")
     endif()
+    # Normal variables, which fortsparse's option() takes up without a cache
+    # entry. The native-only switches are enforced; the rest are defaults.
     if(FORTFEM_NATIVE_SPARSE_ONLY)
-        set(FORTSPARSE_ENABLE_SUPERLU OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_UMFPACK_IPC OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_MUMPS OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_NATIVE_CUDA OFF CACHE BOOL "" FORCE)
+        set(FORTSPARSE_ENABLE_SUPERLU OFF)
+        set(FORTSPARSE_ENABLE_UMFPACK_IPC OFF)
+        set(FORTSPARSE_ENABLE_MUMPS OFF)
+        set(FORTSPARSE_ENABLE_NATIVE_CUDA OFF)
     endif()
-    set(FORTSPARSE_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    set(FORTSPARSE_INSTALL_HELPER OFF CACHE BOOL "" FORCE)
-    set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
+    if(NOT DEFINED FORTSPARSE_BUILD_TESTING)
+        set(FORTSPARSE_BUILD_TESTING OFF)
+    endif()
+    if(NOT DEFINED FORTSPARSE_INSTALL_HELPER)
+        set(FORTSPARSE_INSTALL_HELPER OFF)
+    endif()
+    if(NOT DEFINED FORTSPARSE_USE_SYSTEM_DEPS)
+        set(FORTSPARSE_USE_SYSTEM_DEPS ON)
+    endif()
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
         GIT_TAG 2d7c43ee633e42c6044a5225e3a506609d7c4d41
