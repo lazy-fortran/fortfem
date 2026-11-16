@@ -140,6 +140,12 @@ name = "fortfem_lab_dtn_build_bench"
 source-dir = "benchmark/lab/dtn"
 main = "dtn_build_bench.f90"
 
+[extra.fo]
+# CPU seconds over all threads: the standard multithreaded FEM/BEM cases use up
+# to about 130 s, the rate studies in *_slow far more.
+test-timeout = 300
+slow-test-timeout = 3600
+
 [[extra.fo.inputs]]
 path = "test/data/gmsh"
 kind = "directory"

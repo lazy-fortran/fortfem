@@ -32,6 +32,7 @@ contains
         character(len=512) :: cmd
         integer :: stat
         logical :: triangle_ok
+        integer :: cmd_stat
 
         ! Try Triangle external library first
         call ensure_triangle_available(TRIANGLE_PATH, stat)
@@ -46,7 +47,9 @@ contains
 
             if (stat == 0) then
                 cmd = trim(TRIANGLE_PATH) // " -pQ " // POLY_BASE // ".poly"
-                call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
+                call execute_command_line(trim(cmd), wait=.true., exitstat=stat, &
+                    cmdstat=cmd_stat)
+                if (cmd_stat /= 0) stat = cmd_stat
             end if
 
             if (stat == 0) then

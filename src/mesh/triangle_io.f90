@@ -470,6 +470,7 @@ contains
 
         character(len=1024) :: cmd
         logical :: file_exists
+        integer :: cmd_stat
 
         inquire(file=triangle_path, exist=file_exists)
         if (file_exists) then
@@ -481,7 +482,9 @@ contains
         write(*, '(A)') "   Downloading Triangle from netlib.org..."
         cmd = "wget -q http://www.netlib.org/voronoi/triangle.zip "           &
             // "-O /tmp/triangle_download.zip 2>/dev/null"
-        call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
+        call execute_command_line(trim(cmd), wait=.true., exitstat=stat, &
+            cmdstat=cmd_stat)
+        if (cmd_stat /= 0) stat = cmd_stat
         if (stat /= 0) then
             write(*, '(A)') "   Warning: Failed to download Triangle"
             return
@@ -489,7 +492,9 @@ contains
 
         ! Extract
         cmd = "cd /tmp && unzip -o triangle_download.zip >/dev/null 2>&1"
-        call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
+        call execute_command_line(trim(cmd), wait=.true., exitstat=stat, &
+            cmdstat=cmd_stat)
+        if (cmd_stat /= 0) stat = cmd_stat
         if (stat /= 0) then
             write(*, '(A)') "   Warning: Failed to extract Triangle"
             return
@@ -499,7 +504,9 @@ contains
         write(*, '(A)') "   Compiling Triangle..."
         cmd = "cd /tmp && gcc -std=gnu89 -O2 -DLINUX -o " // trim(triangle_path) &
             // " triangle.c -lm 2>/dev/null"
-        call execute_command_line(trim(cmd), wait=.true., exitstat=stat)
+        call execute_command_line(trim(cmd), wait=.true., exitstat=stat, &
+            cmdstat=cmd_stat)
+        if (cmd_stat /= 0) stat = cmd_stat
         if (stat /= 0) then
             write(*, '(A)') "   Warning: Failed to compile Triangle"
             return
