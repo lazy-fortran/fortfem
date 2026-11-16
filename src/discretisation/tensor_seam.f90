@@ -1287,6 +1287,11 @@ contains
                     ab = 0
                     cycle
                 end if
+                ! A preimage inside the square already decides the test below.
+                if (all(abs(ab) <= 1)) then
+                    cells_overlap = .true.
+                    return
+                end if
                 lo = min(lo, ab)
                 hi = max(hi, ab)
             end do

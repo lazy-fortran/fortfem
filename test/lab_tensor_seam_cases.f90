@@ -1,5 +1,6 @@
 module lab_tensor_seam_cases
-    !! Shared cases of test_lab_tensor_seam and test_lab_tensor_seam_slow.
+    !! Shared cases of test_lab_tensor_seam, test_lab_tensor_seam_slow and
+    !! test_lab_tensor_seam_torus_slow.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfem_tensor_mesh, only: tensor_mesh_t, structured_tensor_mesh, &
                                    ogrid_tensor_mesh
@@ -12,7 +13,7 @@ module lab_tensor_seam_cases
     use fortfem_element_to_csr, only: csr_matrix_t
     implicit none
     private
-    public :: run_tensor_seam
+    public :: run_tensor_seam, run_tensor_seam_torus
     real(dp), parameter :: pi = acos(-1.0_dp)
     !! Seam shift s(x) = shift0 + shift2*x**2 in periods of the slab y.
     real(dp) :: shift0 = 0.37_dp, shift2 = 0.21_dp
@@ -37,12 +38,21 @@ contains
             call check_torus_rates()
         else
             call check_zero_shift()
-            call check_operator_agreement([1, 6], [1, 2])
-            call check_reproduction([1, 4], [1, 2])
-            call check_bounded_solves()
-            call check_rigid_twist(1, 2)
+            call check_operator_agreement([1, 4], [1, 0])
+            call check_reproduction([1, 4], [1, 0])
+            call check_bounded_solves(.false.)
         end if
         print *, 'PASS: periodic seam constraints (criterion 3)'
+    end subroutine
+
+    subroutine run_tensor_seam_torus()
+        !! The standard cases on the twisted torus and the higher slab degrees:
+        !! closing a curved mortar seam costs thousands of CPU seconds.
+        call check_operator_agreement([5, 6], [1, 2])
+        call check_reproduction([1, 0], [1, 2])
+        call check_bounded_solves(.true.)
+        call check_rigid_twist(1, 2)
+        print *, 'PASS: periodic seam constraints on the torus (criterion 3)'
     end subroutine
 
     subroutine sheared_slab(xi, x)
@@ -161,7 +171,7 @@ contains
             if (status /= 0) error stop 'periodic mesh'
             if (closed%ndof /= periodic%ndof) error stop 'zero-shift ndof'
             if (any(closed%dof /= periodic%dof)) error stop 'zero-shift gather map'
-         if (any(closed%vertices /= periodic%vertices)) error stop 'zero-shift vertices'
+            if (any(closed%vertices /= periodic%vertices)) error stop 'zero-shift vertices'
             if (any(closed%boundary .neqv. periodic%boundary)) &
                 error stop 'zero-shift boundary'
             call build_tensor_operator(closed, isotropic, a, status)
@@ -197,7 +207,7 @@ contains
         do geometry = 1, 2
             do method = SEAM_MORTAR, SEAM_INTERPOLATION
                 do p = merge(pslab(1), ptorus(1), geometry == 1), &
-                    merge(pslab(2), ptorus(2), geometry == 1)
+                        merge(pslab(2), ptorus(2), geometry == 1)
                     if (geometry == 1) then
                         call slab([2, 3, 3], p, mesh, master, slave)
                         call close_tensor_seam(mesh, master, slave, closed, seam, &
@@ -246,7 +256,7 @@ contains
         do geometry = 1, 2
             do method = SEAM_MORTAR, SEAM_INTERPOLATION
                 do p = merge(pslab(1), ptorus(1), geometry == 1), &
-                    merge(pslab(2), ptorus(2), geometry == 1)
+                        merge(pslab(2), ptorus(2), geometry == 1)
                     if (geometry == 1) then
                         call slab([2, 3, 2], p, mesh, master, slave)
                         call close_tensor_seam(mesh, master, slave, closed, seam, &
@@ -340,7 +350,7 @@ contains
                 rate = 0
                 if (n > 2) rate = log(previous/error)/log(2.0_dp)
                 print '(3i7,2i5,2es12.3,2f7.2)', p, n, closed%ndof, its, error, rate
-               if (n == 8 .and. rate(1) < p + 0.7_dp) error stop 'mortar slab rate loss'
+                if (n == 8 .and. rate(1) < p + 0.7_dp) error stop 'mortar slab rate loss'
                 if (maxval(its) > 60) error stop 'seam p-MG iterations unbounded'
                 previous = error
             end do
@@ -362,7 +372,7 @@ contains
                 call close_tensor_seam(mesh, master, slave, closed, seam, status, &
                                        motion=identity)
                 if (status /= 0) error stop 'torus seam'
-               call solve_error(closed, seam, torus_exact, torus_forcing, p, error, its)
+                call solve_error(closed, seam, torus_exact, torus_forcing, p, error, its)
                 rate = 0
                 if (n > 1) rate = log(previous/error)/log(2.0_dp)
                 print '(4i7,es12.3,f7.2,es12.3)', p, n, closed%ndof, its, error, rate, &
@@ -411,14 +421,20 @@ contains
         if (error > 1.5_dp*matched) error stop 'rigid twist mortar error'
     end subroutine
 
-    subroutine check_bounded_solves()
-        !! p-MG on the constrained spaces converges in a bounded number of steps.
+    subroutine check_bounded_solves(on_torus)
+        !! p-MG on the constrained spaces converges in a bounded number of steps:
+        !! on the slab, or on the torus if on_torus is true.
+        logical, intent(in) :: on_torus
         type(tensor_mesh_t) :: mesh, closed
         type(tensor_seam_t) :: seam
         integer, allocatable :: master(:, :), slave(:, :)
         real(dp) :: error
         integer :: method, status, its
         print *, 'bounded p-MG: geometry method p n its L2'
+        if (on_torus) then
+            call torus_case()
+            return
+        end if
         do method = SEAM_MORTAR, SEAM_INTERPOLATION
             call slab([4, 4, 4], 2, mesh, master, slave)
             call close_tensor_seam(mesh, master, slave, closed, seam, status, &
@@ -428,12 +444,15 @@ contains
             print '(4i7,i5,es12.3)', 1, method, 2, 4, its, error
             if (its > 30) error stop 'slab seam p-MG iterations unbounded'
         end do
-        call torus(1, 6, 2, mesh, master, slave)
-        call close_tensor_seam(mesh, master, slave, closed, seam, status, &
-                               motion=identity)
-        if (status /= 0) error stop 'bounded torus seam'
-        call solve_error(closed, seam, torus_exact, torus_forcing, 2, error, its)
-        print '(4i7,i5,es12.3)', 2, SEAM_MORTAR, 2, 1, its, error
-        if (its > 30) error stop 'torus seam p-MG iterations unbounded'
+    contains
+        subroutine torus_case()
+            call torus(1, 6, 2, mesh, master, slave)
+            call close_tensor_seam(mesh, master, slave, closed, seam, status, &
+                                   motion=identity)
+            if (status /= 0) error stop 'bounded torus seam'
+            call solve_error(closed, seam, torus_exact, torus_forcing, 2, error, its)
+            print '(4i7,i5,es12.3)', 2, SEAM_MORTAR, 2, 1, its, error
+            if (its > 30) error stop 'torus seam p-MG iterations unbounded'
+        end subroutine
     end subroutine
 end module
