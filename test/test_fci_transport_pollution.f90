@@ -1,5 +1,5 @@
 program test_fci_transport_pollution
-    use, intrinsic :: iso_fortran_env, only: dp => real64, int64
+    use, intrinsic :: iso_fortran_env, only: dp => real64, qp => real128, int64
     use check, only: check_condition, check_summary
     use fortfem_gll_line, only: build_gll_line, gll_rule, lagrange_jet
     use fortfem_tensor_line_tables, only: tensor_line_tables_t
@@ -118,6 +118,7 @@ program test_fci_transport_pollution
         call check_condition(abs(centre - 1.0_dp) < 0.02_dp, &
             'H1 isotropic central value against analytic solution')
         call check_condition(residual <= residual_limit, 'H1 original residual')
+        call sparse_oracle()
     end if
     call check_summary('anisotropic pollution')
 contains
@@ -879,11 +880,13 @@ contains
         end if
     end subroutine
 
-    subroutine solve_sparse(data, chi, centre, pollution, residual, seconds, solution)
+    subroutine solve_sparse(data, chi, centre, pollution, residual, seconds, &
+            solution, rhs_override)
         type(fixture_t), intent(in) :: data
         real(dp), intent(in) :: chi
         real(dp), intent(out) :: centre, pollution, residual, seconds
         real(dp), allocatable, intent(out), optional :: solution(:)
+        real(dp), intent(in), optional :: rhs_override(:)
         type(sparse_direct_factor_t) :: factor
         type(sparse_options_t) :: options
         real(dp), allocatable :: values(:), rhs(:), x(:), r(:), rowsum(:)
@@ -892,6 +895,7 @@ contains
         n = size(data%load)
         values = data%sparse_slow + (chi - 1.0_dp)*data%sparse_parallel
         rhs = data%load + data%boundary_slow + (chi - 1.0_dp)*data%boundary_parallel
+        if (present(rhs_override)) rhs = rhs_override
         allocate (x(n), rowsum(n))
         options%symmetry = FORTSPARSE_SYM_SPD
         call system_clock(start, rate)
@@ -914,8 +918,12 @@ contains
             end do
         end do
         residual = maxval(abs(r))/(maxval(rowsum)*maxval(abs(x)) + maxval(abs(rhs)))
-        centre = probe_centre(data, x)
-        pollution = abs(1.0_dp/centre - 1.0_dp)
+        centre = 0.0_dp
+        pollution = 0.0_dp
+        if (.not. present(rhs_override)) then
+            centre = probe_centre(data, x)
+            pollution = abs(1.0_dp/centre - 1.0_dp)
+        end if
         if (present(solution)) solution = x
     end subroutine
 
@@ -950,8 +958,9 @@ contains
     subroutine sparse_oracle()
         type(fixture_t) :: band, sparse
         real(dp), allocatable :: xb(:), xs(:)
-        real(dp) :: c, e, r, s, chi
+        real(dp) :: c, e, r, s, chi, raw_difference
         integer :: p, power
+        call sparse_refinement_oracle()
         do p = 1, 4
             call assemble_fixture('sovinec', 'h1', p, 4, band)
             call assemble_fixture('sovinec', 'h1', p, 4, sparse, .true.)
@@ -961,6 +970,11 @@ contains
                 call gate(r <= residual_limit, 'banded oracle residual')
                 call solve_fixture(sparse, chi, c, e, r, s, xs)
                 call gate(r <= residual_limit, 'sparse oracle residual')
+                raw_difference = maxval(abs(xs - xb))/maxval(abs(xb))
+                call refine_sparse_comparison(band, sparse, chi, xb, xs)
+                write (*, '(a,i0,a,i0,2(a,es12.4))') 'sparse oracle p=', p, &
+                    ' exponent=', power, ' raw=', raw_difference, &
+                    ' refined=', maxval(abs(xs - xb))/maxval(abs(xb))
                 call gate(maxval(abs(xs - xb)) <= 1.0e-6_dp*maxval(abs(xb)), &
                     'sparse solution against independent LAPACK banded solve')
             end do
@@ -970,6 +984,92 @@ contains
         call gate(abs(c - 1.0_dp) < 0.002_dp, &
             'between-node central value against analytic cosine solution')
         call gate(r <= residual_limit, 'between-node central-value residual')
+    end subroutine
+
+    subroutine sparse_refinement_oracle()
+        type(fixture_t) :: band, sparse
+        real(dp) :: xb(2), xs(2)
+        real(dp), parameter :: exact(2) = [1.0_dp, -2.0_dp]
+
+        band%slow = reshape([4.0_dp, 1.0_dp, 3.0_dp, huge(1.0_dp)], [2, 2])
+        band%parallel = 0.0_dp*band%slow
+        band%load = [2.0_dp, -5.0_dp]
+        band%boundary_slow = [0.0_dp, 0.0_dp]
+        band%boundary_parallel = [0.0_dp, 0.0_dp]
+        sparse%col_ptr = [1, 3, 5]
+        sparse%row_idx = [1, 2, 1, 2]
+        sparse%sparse_slow = [4.0_dp, 1.0_dp, 1.0_dp, 3.0_dp]
+        sparse%sparse_parallel = [0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp]
+        sparse%load = band%load
+        sparse%boundary_slow = band%boundary_slow
+        sparse%boundary_parallel = band%boundary_parallel
+        xb = exact + [0.25_dp, -0.25_dp]
+        xs = exact
+        call refine_sparse_comparison(band, sparse, 1.0_dp, xb, xs)
+        call gate(maxval(abs(xb - exact)) <= 8*epsilon(1.0_dp), &
+            'band refinement against exact two-by-two solution')
+        call gate(maxval(abs(xs - exact)) <= 8*epsilon(1.0_dp), &
+            'sparse refinement preserves an exact solution')
+    end subroutine
+
+    subroutine refine_sparse_comparison(band, sparse, chi, xb, xs)
+        type(fixture_t), intent(in) :: band, sparse
+        real(dp), intent(in) :: chi
+        real(dp), intent(inout) :: xb(:), xs(:)
+        real(qp), allocatable :: matrix(:, :), defect(:)
+        real(dp), allocatable :: rhs(:), values(:), db(:), ds(:), dense(:, :)
+        real(dp) :: c, e, r, seconds
+        integer :: n, j, k, i, step
+        logical :: converged
+
+        n = size(xb)
+        allocate (matrix(n, n), dense(n, n), db(n), ds(n))
+        matrix = 0.0_qp
+        do j = 1, n
+            do k = 1, min(size(band%slow, 1), n - j + 1)
+                i = j + k - 1
+                matrix(i, j) = real(band%slow(k, j) + &
+                    (chi - 1.0_dp)*band%parallel(k, j), qp)
+                matrix(j, i) = matrix(i, j)
+            end do
+        end do
+        values = sparse%sparse_slow + (chi - 1.0_dp)*sparse%sparse_parallel
+        dense = 0.0_dp
+        do j = 1, n
+            do k = sparse%col_ptr(j), sparse%col_ptr(j + 1) - 1
+                dense(sparse%row_idx(k), j) = values(k)
+            end do
+        end do
+        call gate(all(real(dense, qp) == matrix), &
+            'band and sparse matrices agree exactly')
+        rhs = band%load + band%boundary_slow + &
+            (chi - 1.0_dp)*band%boundary_parallel
+        call gate(all(rhs == sparse%load + sparse%boundary_slow + &
+            (chi - 1.0_dp)*sparse%boundary_parallel), &
+            'band and sparse right-hand sides agree exactly')
+
+        ! Binary64 residuals cannot resolve this ill-conditioned comparison.
+        converged = .false.
+        do step = 1, 4
+            db = 0.0_dp
+            ds = 0.0_dp
+            defect = real(rhs, qp) - matmul(matrix, real(xb, qp))
+            if (any(defect /= 0.0_qp)) then
+                call solve_fixture(band, chi, c, e, r, seconds, db, real(defect, dp))
+                call gate(r <= residual_limit, 'banded correction residual')
+            end if
+            defect = real(rhs, qp) - matmul(matrix, real(xs, qp))
+            if (any(defect /= 0.0_qp)) then
+                call solve_fixture(sparse, chi, c, e, r, seconds, ds, real(defect, dp))
+                call gate(r <= residual_limit, 'sparse correction residual')
+            end if
+            xb = xb + db
+            xs = xs + ds
+            converged = maxval(abs(db)) <= 8*epsilon(1.0_dp)*maxval(abs(xb)) .and. &
+                maxval(abs(ds)) <= 8*epsilon(1.0_dp)*maxval(abs(xs))
+            if (converged) exit
+        end do
+        call gate(converged, 'independent solve corrections converge')
     end subroutine
 
     subroutine cost_ladder(single_row)
@@ -1012,16 +1112,19 @@ contains
         close (out)
     end subroutine
 
-    subroutine solve_fixture(data, chi, centre, pollution, residual, seconds, solution)
+    subroutine solve_fixture(data, chi, centre, pollution, residual, seconds, &
+            solution, rhs_override)
         type(fixture_t), intent(in) :: data
         real(dp), intent(in) :: chi
         real(dp), intent(out) :: centre, pollution, residual, seconds
         real(dp), allocatable, intent(out), optional :: solution(:)
+        real(dp), intent(in), optional :: rhs_override(:)
         real(dp), allocatable :: band(:, :), factor(:, :), rhs(:, :), original(:)
         integer :: n, bw, info
         integer(int64) :: start, finish, rate
         if (allocated(data%col_ptr)) then
-            call solve_sparse(data, chi, centre, pollution, residual, seconds, solution)
+            call solve_sparse(data, chi, centre, pollution, residual, seconds, &
+                solution, rhs_override)
             return
         end if
         n = size(data%load)
@@ -1031,6 +1134,7 @@ contains
         allocate (rhs(n, 1))
         original = data%load + data%boundary_slow + &
             (chi - 1.0_dp)*data%boundary_parallel
+        if (present(rhs_override)) original = rhs_override
         rhs(:, 1) = original
         call system_clock(start, rate)
         call dpbsv('L', n, bw, 1, factor, bw + 1, rhs, n, info)
@@ -1038,8 +1142,12 @@ contains
         if (info /= 0) error stop 'banded reference factorization failed'
         seconds = real(finish - start, dp)/real(rate, dp)
         residual = backward_residual(band, rhs(:, 1), original)
-        centre = probe_centre(data, rhs(:, 1))
-        pollution = abs(1.0_dp/centre - 1.0_dp)
+        centre = 0.0_dp
+        pollution = 0.0_dp
+        if (.not. present(rhs_override)) then
+            centre = probe_centre(data, rhs(:, 1))
+            pollution = abs(1.0_dp/centre - 1.0_dp)
+        end if
         if (present(solution)) solution = rhs(:, 1)
     end subroutine
 

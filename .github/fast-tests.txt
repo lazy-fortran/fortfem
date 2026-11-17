@@ -16,3 +16,4 @@ test_parametric_bem_circulant
 test_parametric_bem_pair_accuracy
 test_equilibrated_rt_normal_trace
 test_parametric_bem_estimator
+test_fci_transport_pollution
