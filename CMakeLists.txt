@@ -17,7 +17,8 @@ include(CMakePackageConfigHelpers)
 
 option(FORTFEM_FETCH_DEPENDENCIES
     "Fetch pinned dependencies when targets are not already available" ON)
-option(FORTFEM_BUILD_TESTING "Build focused C API and sparse adapter tests" OFF)
+option(FORTFEM_BUILD_TESTING "Build focused C API and sparse adapter tests"
+    ${PROJECT_IS_TOP_LEVEL})
 option(FORTFEM_NATIVE_SPARSE_ONLY
     "Build with project-owned sparse solvers and no external sparse libraries" ON)
 option(FORTFEM_ENABLE_ENZYME
@@ -28,6 +29,20 @@ option(FORTFEM_TRIANGLE_COMPAT_ONLY
     "Build only the dependency-free triangle_compat mesher library" OFF)
 option(FORTFEM_WITH_PLOT
     "Build the FortPlot-based plotting library fortfem::plot" ON)
+
+# Consumers get fortfem's tests only on request: -DFORTFEM_BUILD_TESTING=ON plus
+# include(CTest) in the consumer.
+if(PROJECT_IS_TOP_LEVEL)
+    include(CTest)
+endif()
+if(FORTFEM_BUILD_TESTING AND NOT BUILD_TESTING)
+    message(STATUS "FORTFEM_BUILD_TESTING is ON, but BUILD_TESTING is OFF; "
+        "fortfem tests will not be built.")
+    set(FORTFEM_BUILD_TESTING OFF)
+endif()
+if(FORTFEM_BUILD_TESTING)
+    enable_testing()
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_Fortran_STANDARD 2018)
@@ -66,7 +81,6 @@ target_include_directories(fortfem_element_kernels PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 target_link_libraries(fortfem_element_kernels PUBLIC OpenMP::OpenMP_Fortran)
 if(FORTFEM_BUILD_TESTING)
-    enable_testing()
     add_library(fortfem_test_check STATIC test/check.f90)
     set_target_properties(fortfem_test_check PROPERTIES
         Fortran_MODULE_DIRECTORY "${PROJECT_BINARY_DIR}/test_modules")
@@ -164,6 +178,9 @@ if(FORTFEM_ELEMENT_KERNELS_ONLY)
     return()
 endif()
 
+# Resolve our direct LAPACK calls before dependencies supply fallback targets.
+find_package(LAPACK REQUIRED)
+
 # The public Fortran API needs the same FortNum and FortSparse providers as
 # fpm. Declare them before FortSparse, whose standalone build otherwise
 # supplies its own pin.
@@ -172,10 +189,13 @@ if(NOT TARGET fortnum)
         message(FATAL_ERROR
             "fortnum target is required when dependency fetching is disabled")
     endif()
-    set(FORTNUM_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    # A default only: a FORTNUM_BUILD_TESTING set by the user is kept.
+    if(NOT DEFINED FORTNUM_BUILD_TESTING)
+        set(FORTNUM_BUILD_TESTING OFF)
+    endif()
     FetchContent_Declare(fortnum
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
-        GIT_TAG 23e36f8f7572d0104124073c349a1e0ea661749a
+        GIT_TAG 4a907bd0537c4187141e62343b85772ffd78764d
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortnum)
 endif()
@@ -185,23 +205,31 @@ if(NOT TARGET fortsparse)
         message(FATAL_ERROR
             "fortsparse target is required when dependency fetching is disabled")
     endif()
+    # Normal variables, which fortsparse's option() takes up without a cache
+    # entry. The native-only switches are enforced; the rest are defaults.
     if(FORTFEM_NATIVE_SPARSE_ONLY)
-        set(FORTSPARSE_ENABLE_SUPERLU OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_UMFPACK_IPC OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_MUMPS OFF CACHE BOOL "" FORCE)
-        set(FORTSPARSE_ENABLE_NATIVE_CUDA OFF CACHE BOOL "" FORCE)
+        set(FORTSPARSE_ENABLE_SUPERLU OFF)
+        set(FORTSPARSE_ENABLE_UMFPACK_IPC OFF)
+        set(FORTSPARSE_ENABLE_MUMPS OFF)
+        set(FORTSPARSE_ENABLE_NATIVE_CUDA OFF)
     endif()
-    set(FORTSPARSE_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    set(FORTSPARSE_INSTALL_HELPER OFF CACHE BOOL "" FORCE)
-    set(FORTSPARSE_USE_SYSTEM_DEPS ON CACHE BOOL "" FORCE)
+    if(NOT DEFINED FORTSPARSE_BUILD_TESTING)
+        set(FORTSPARSE_BUILD_TESTING OFF)
+    endif()
+    if(NOT DEFINED FORTSPARSE_INSTALL_HELPER)
+        set(FORTSPARSE_INSTALL_HELPER OFF)
+    endif()
+    if(NOT DEFINED FORTSPARSE_USE_SYSTEM_DEPS)
+        set(FORTSPARSE_USE_SYSTEM_DEPS ON)
+    endif()
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG 2d7c43ee633e42c6044a5225e3a506609d7c4d41
+        GIT_TAG 61aacae16016b689c1f8456ec132d0a5c80b84e0
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
 
-# Only fortfem::plot needs FortPlot; the pin matches fpm.toml.
+# Only fortfem::plot needs FortPlot.
 if(FORTFEM_WITH_PLOT AND NOT TARGET fortplot)
     if(NOT FORTFEM_FETCH_DEPENDENCIES)
         message(FATAL_ERROR
@@ -209,7 +237,7 @@ if(FORTFEM_WITH_PLOT AND NOT TARGET fortplot)
     endif()
     FetchContent_Declare(fortplot
         GIT_REPOSITORY https://github.com/lazy-fortran/fortplot.git
-        GIT_TAG 1645fa41c11b5786c71bc27e5b41dae7c7bbba23
+        GIT_TAG 2fef8b4e162493283ba5fa47115d9843acf27369
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortplot)
 endif()
@@ -238,7 +266,7 @@ target_include_directories(fortfem_api PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fortfem>)
 target_link_libraries(fortfem_api PUBLIC
-    OpenMP::OpenMP_Fortran fortnum fortsparse
+    OpenMP::OpenMP_Fortran fortnum fortsparse LAPACK::LAPACK
     fortfem_triangle_compat)
 
 if(FORTFEM_WITH_PLOT)
@@ -496,7 +524,6 @@ if(FORTFEM_ENABLE_ENZYME)
 endif()
 
 if(FORTFEM_BUILD_TESTING)
-    enable_testing()
     foreach(test_name IN ITEMS sparse_direct_backend sparse_constrained_derivatives
             sparse_direct_derivatives sparse_direct_complex_derivatives
             capi_solver)

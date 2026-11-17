@@ -20,8 +20,8 @@ fpm run --example simple_poisson
 ## CMake (C/C++ API)
 
 CMake builds the shared C/C++ library `fortfem::capi` and installs a CMake
-package. It fetches the pinned fortnum and fortsparse revisions when they are
-not already available as targets.
+package. It requires LAPACK and OpenMP and fetches the pinned fortnum and
+fortsparse revisions when they are not already available as targets.
 
 ```bash
 cmake -S . -B build/cmake -DCMAKE_BUILD_TYPE=Release
@@ -48,12 +48,17 @@ cmake --build build/cmake -j2
 ctest --test-dir build/cmake -L sparse --output-on-failure -j2
 ```
 
+When fortfem is added to another CMake project, its tests are not part of that
+build, and fortfem leaves the consumer's `BUILD_TESTING` and CTest setup alone.
+To run them there, pass `-DFORTFEM_BUILD_TESTING=ON` and call `include(CTest)`
+in the consumer.
+
 ### Options
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `FORTFEM_FETCH_DEPENDENCIES` | `ON` | Fetch pinned dependencies when the targets are not already available |
-| `FORTFEM_BUILD_TESTING` | `OFF` | Build the C API and sparse adapter tests |
+| `FORTFEM_BUILD_TESTING` | `ON` for a top-level build | Build the C API and sparse adapter tests; `-DBUILD_TESTING=OFF` turns them off as well |
 | `FORTFEM_NATIVE_SPARSE_ONLY` | `ON` | Disable SuperLU, UMFPACK, MUMPS and CUDA in the fetched fortsparse |
 | `FORTFEM_WITH_PLOT` | `ON` | Build `fortfem::plot` (`fortfem_plot`, linking `fortfem::api` and the pinned fortplot); `OFF` neither fetches nor links fortplot |
 | `FORTFEM_TRIANGLE_COMPAT_ONLY` | `OFF` | Build only the dependency-free `fortfem::triangle_compat` mesher library |

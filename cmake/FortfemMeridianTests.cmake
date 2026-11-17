@@ -42,7 +42,8 @@ target_include_directories(fortfem_meridian PUBLIC
     "${PROJECT_BINARY_DIR}/meridian_modules"
     "${PROJECT_BINARY_DIR}/modules")
 target_link_libraries(fortfem_meridian PUBLIC
-    fortfem_capi fortfem_tensor_lines fortnum fortsparse OpenMP::OpenMP_Fortran)
+    fortfem_capi fortfem_tensor_lines fortnum fortsparse
+    LAPACK::LAPACK OpenMP::OpenMP_Fortran)
 
 add_library(fortfem_meridian_test_support STATIC
     test/equilibrated_test_mesh.f90
