@@ -25,7 +25,7 @@ program gen_toroidal_sheet_trapezoid_products
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
-        operator(/), sqrt, sym, erfc, operator(**)
+        operator(/), sqrt, sym, erfc, exp, operator(**)
     use fortsym_diff, only: diff
     use fortsym_subs, only: subs_many
     use fortsym_products, only: jvp
@@ -53,7 +53,7 @@ program gen_toroidal_sheet_trapezoid_products
     integer :: i, unit, ios
 
     engine = make_native_engine()
-    allocate (character(len=300000) :: code(6))
+    allocate (character(len=600000) :: code(9))
 
     ! pair HVP
     do i = 1, 8
@@ -124,6 +124,58 @@ program gen_toroidal_sheet_trapezoid_products
         (str(trim(params(i))), i=1, 7), str("w"), (str("d"//trim(px(i))), i=1, 8), &
         (str("d"//trim(py(i))), i=1, 8)])
 
+    ! the same times sigma = alpha + beta S(y), y = 2 - 2 r/r0 (r = 1/w), S the
+    ! C-infinity step e^(-1/y)/(e^(-1/y) + e^(-1/(1-y))): a partition of unity
+    ! in the distance (near: alpha = 0, beta = 1; far: alpha = 1, beta = -1),
+    ! evaluated for r0/2 < r < r0 only
+    block
+        type(expr_t) :: sig, yy, e1, e2, gs(8), hs(8), fs, blocks(100)
+        character(len=8) :: bn(100), gn(9)
+        integer :: jj, kb
+        yy = 2 - 2/(ww*sym("r0"))
+        e1 = exp(-1/yy)
+        e2 = exp(-1/(1 - yy))
+        sig = sym("alpha") + sym("beta")*e1/(e1 + e2)
+        fs = aa*ww*sig
+        do i = 1, 8
+            gs(i) = total(fs, x(i))
+        end do
+        do i = 1, 8
+            hs(i) = 0*ww
+            do jj = 1, 8
+                hs(i) = hs(i) + total(gs(i), x(jj))*dx(jj) + total(gs(i), y(jj))*dy(jj)
+            end do
+        end do
+        gn = [character(len=8) :: "value", "g_r", "g_z", "g_ru", "g_zu", "g_rv", "g_zv", &
+            "g_pu", "g_pv"]
+        code(7) = kernel("generated_ts_trap_pair_gradient_pou", [fs, gs], gn, &
+            [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0")])
+        code(8) = kernel("generated_ts_trap_pair_hvp_pou", hs, [character(len=8) :: "h_r", &
+            "h_z", "h_ru", "h_zu", "h_rv", "h_zv", "h_pu", "h_pv"], &
+            [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0"), &
+            (str("d"//trim(px(i))), i=1, 8), (str("d"//trim(py(i))), i=1, 8)])
+        kb = 0
+        do i = 1, 8
+            do jj = i, 8
+                kb = kb + 1
+                blocks(kb) = total(gs(i), x(jj))
+                write (bn(kb), "(a,i0,a,i0)") "hxx", i, "_", jj
+            end do
+        end do
+        do i = 1, 8
+            do jj = 1, 8
+                kb = kb + 1
+                blocks(kb) = total(gs(i), y(jj))
+                write (bn(kb), "(a,i0,a,i0)") "hxy", i, "_", jj
+            end do
+        end do
+        code(9) = kernel("generated_ts_trap_pair_blocks_pou", blocks, bn, &
+            [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0")])
+    end block
+
     ! zeta term and base
     a = sym("a"); b = sym("b"); c = sym("c"); m = sym("m"); n = sym("n")
     abc = [a, b, c]
@@ -177,7 +229,7 @@ program gen_toroidal_sheet_trapezoid_products
     open (newunit=unit, file=generated_path("fortfem_toroidal_sheet_trapezoid_products.f90"), &
         status="replace", action="write", iostat=ios)
     if (ios /= 0) error stop "cannot write toroidal sheet trapezoid products"
-    do i = 1, 6
+    do i = 1, 9
         write (unit, "(a)") trim(code(i))
     end do
     close (unit)

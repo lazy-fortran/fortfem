@@ -6,11 +6,12 @@ program test_toroidal_sheet_trapezoid
     !!    converges at third order (nfp = 3, so the period symmetry is used);
     !!  - the gradient and the Hessian-vector product against central
     !!    differences on a non-axisymmetric surface (nfp = 2), and the
-    !!    current block of the Hessian against the product.
+    !!    current block and the dense Hessian against the product, with one
+    !!    level and with the two-level partition.
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_toroidal_sheet_trapezoid, only: tst_grid_t, tst_energy, tst_hvp, &
-        tst_current_form, tst_current_modes, tst_hessian
+        tst_current_modes, tst_hessian
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -18,7 +19,9 @@ program test_toroidal_sheet_trapezoid
 
     all_passed = .true.
     call test_toroidal_field_coil()
-    call test_derivatives()
+    call test_derivatives(0.0_dp)
+    call test_two_level()
+    call test_derivatives(2.5_dp)
     call check_summary("Toroidal sheet trapezoidal rule")
     if (.not. all_passed) error stop 1
 
@@ -74,13 +77,36 @@ contains
             "toroidal-field coil energy at third order", err(2))
     end subroutine test_toroidal_field_coil
 
-    subroutine test_derivatives()
+    subroutine test_two_level()
+        !! The toroidal-field coil with the two-level partition (r0 = 3 at 64 x
+        !! 64 points, nfp = 3): the error stays at the one-level value (it
+        !! grows to 1.3e-4 at r0 = 1.2, where the step spans 3 coarse cells).
+        type(tst_grid_t) :: g
+        real(dp), allocatable :: u(:, :, :)
+        real(dp) :: e1, e2, exact
+        exact = 0.5_dp*(3 - sqrt(8.0_dp))
+        g = tst_grid_t(nu=64, nv=64, nfp=3)
+        allocate (u(8, 64, 64))
+        call torus(g, u, 0.0_dp)
+        call tst_energy(g, u, e1)
+        ! r0/2 is about 7 coarse spacings: the coarse sum resolves the step
+        g%r0 = 3.0_dp
+        call tst_energy(g, u, e2)
+        write (*, "(a,2es12.4)") "   one-level, two-level error ", abs(e1 - exact)/exact, &
+            abs(e2 - exact)/exact
+        call record(abs(e2 - exact)/exact < 2*abs(e1 - exact)/exact, &
+            "two-level partition keeps the accuracy", abs(e2 - e1)/exact)
+    end subroutine test_two_level
+
+    subroutine test_derivatives(r0)
+        real(dp), intent(in) :: r0
         type(tst_grid_t) :: g
         real(dp), allocatable :: u(:, :, :), du(:, :, :), gr(:, :, :), gp(:, :, :), &
             gm(:, :, :), hv(:, :, :)
         real(dp) :: e, ep, em, h, err
         integer :: i, j, c
-        g = tst_grid_t(nu=12, nv=8, nfp=2)
+        g = tst_grid_t(nu=12, nv=8, nfp=2, r0=r0)
+        write (*, "(a,f5.2)") "   r0 ", r0
         allocate (u(8, 12, 8), du(8, 12, 8), gr(8, 12, 8), gp(8, 12, 8), gm(8, 12, 8), &
             hv(8, 12, 8))
         call torus(g, u, 0.1_dp)
@@ -102,17 +128,6 @@ contains
         call record(err < 1.0e-8_dp, "gradient", err)
         err = maxval(abs((gp - gm)/(2*h) - hv))/maxval(abs(hv))
         call record(err < 1.0e-7_dp, "Hessian-vector product", err)
-        block
-            real(dp) :: form(2, 96, 2, 96), dq(8, 12, 8), hp(8, 12, 8), y(2, 96)
-            dq = 0
-            dq(7:8, :, :) = du(7:8, :, :)
-            call tst_hvp(g, u, dq, hp)
-            call tst_current_form(g, u, form)
-            y = reshape(matmul(reshape(form, [192, 192]), reshape(dq(7:8, :, :), [192])), &
-                [2, 96])
-            err = maxval(abs(y - reshape(hp(7:8, :, :), [2, 96])))/maxval(abs(hp(7:8, :, :)))
-            call record(err < 1.0e-12_dp, "current block of the Hessian", err)
-        end block
         call test_modes(g, u)
         block
             real(dp), allocatable :: hd(:, :, :, :)
