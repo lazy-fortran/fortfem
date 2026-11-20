@@ -157,8 +157,9 @@ program test_meridian_fourier_curl
     use fortfem_meridian_fourier_curl, only: meridian_fourier_mass, &
         meridian_fourier_curl_curl, meridian_fourier_gradient_coupling, &
         meridian_fourier_gradient, meridian_fourier_curl, &
-        meridian_fourier_identity_forms, meridian_fourier_pairing
-    use fortsparse, only: csc_t, csc_matvec
+        meridian_fourier_identity_forms, meridian_fourier_pairing, &
+        meridian_fourier_pairing_curl
+    use fortsparse, only: csc_t, csc_matvec, csc_matmul, fortsparse_status_t
     use meridian_fourier_curl_fields, only: identity_t, coupled_t, periodic_t, field_t, &
         coupled_tensor, series, field_a, field_b, zc
     use meridian_test_meshes, only: make_warped_rectangle_mesh
@@ -182,7 +183,8 @@ contains
         type(meridian_mesh_t) :: mm
         type(meridian_feec_t) :: fs
         type(identity_t) :: iso
-        type(csc_t) :: c, s, mg, reference, g
+        type(csc_t) :: c, s, mg, reference, g, pair
+        type(fortsparse_status_t) :: fst
         real(dp), allocatable :: exact(:, :), d(:, :), v(:), cv(:)
         integer :: st, n, k, j
         call make_warped_rectangle_mesh(2, 2, mm)
@@ -208,6 +210,14 @@ contains
                 cv = csc_matvec(c, csc_matvec(g, v))
                 call record(norm2(cv) < 1.0e-10_dp*norm2(v), &
                     "identity forms retain curl grad nullspace")
+                call meridian_fourier_pairing(fs, n, pair, st)
+                call record(st == 0, "Fourier pairing assembles")
+                call csc_matmul(pair, c, reference, fst)
+                call meridian_fourier_pairing_curl(fs, n, s, st)
+                call record(st == 0, "Fourier pairing curl assembles")
+                exact = to_dense(reference); d = to_dense(s)
+                call record(maxval(abs(d - exact)) <= &
+                    1.0e-13_dp*maxval(abs(exact)), "block pairing curl = P C")
             end do
         end do
     end subroutine
