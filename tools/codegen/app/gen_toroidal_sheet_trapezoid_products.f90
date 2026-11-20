@@ -4,7 +4,8 @@ program gen_toroidal_sheet_trapezoid_products
     !
     !   E = w^2/(8 pi) [ sum_i sum_{j /= i} k_i . k_j / |X_i - X_j| - sum_i Z_i |k_i|^2 ],
     !
-    ! k = Phi_u X_v - Phi_v X_u, w = h_u h_v, and Z_i the Epstein zeta
+    ! k = Phi_u X_v - Phi_v X_u, w = h_u h_v (every pair and diagonal term
+    ! minus that of Phi = jt v alone, a parameter, when jt /= 0), and Z_i the Epstein zeta
     ! function at s = 1/2 of the lattice form Q(m, n) = |m h_u X_u + n h_v X_v|^2
     ! of point i, which corrects the punctured sum of the 1/r singularity.
     !
@@ -38,13 +39,13 @@ program gen_toroidal_sheet_trapezoid_products
         "rx", "zx", "rux", "zux", "rvx", "zvx", "pux", "pvx"]
     character(len=4), parameter :: py(8) = [character(len=4) :: &
         "ry", "zy", "ruy", "zuy", "rvy", "zvy", "puy", "pvy"]
-    character(len=4), parameter :: params(7) = [character(len=4) :: &
-        "t", "c1", "s1", "c2", "s2", "dc", "ds"]
+    character(len=4), parameter :: params(8) = [character(len=4) :: &
+        "t", "c1", "s1", "c2", "s2", "dc", "ds", "jt"]
     real(8), parameter :: pi = 3.14159265358979323846264338327950288_8
     character(len=4), parameter :: zj(10) = [character(len=4) :: &
         "z", "za", "zb", "zc", "zaa", "zab", "zac", "zbb", "zbc", "zcc"]
     type(native_engine_t) :: engine
-    type(expr_t) :: x(8), y(8), p(7), dx(8), dy(8), k1(3), k2(3), q(3), f, &
+    type(expr_t) :: x(8), y(8), p(8), dx(8), dy(8), k1(3), k2(3), q(3), f, &
         roots(10), a, b, c, m, n, l, qq, qs, zt, abc(3), d(8), zjet(10), zt3, h(3)
     type(str_t), allocatable :: args(:)
     character(len=8) :: names(10)
@@ -60,7 +61,7 @@ program gen_toroidal_sheet_trapezoid_products
         x(i) = sym(trim(px(i))); y(i) = sym(trim(py(i)))
         dx(i) = sym("d"//trim(px(i))); dy(i) = sym("d"//trim(py(i)))
     end do
-    do i = 1, 7
+    do i = 1, 8
         p(i) = sym(trim(params(i)))
     end do
     call sheet([x(1), x(3:8)], p(2), p(3), k1)
@@ -72,7 +73,9 @@ program gen_toroidal_sheet_trapezoid_products
     ! w = 1/|Q| is an input
     ww = sym("w")
     sq = q(1)*q(1) + q(2)*q(2) + q(3)*q(3)
-    aa = k1(1)*k2(1) + k1(2)*k2(2) + k1(3)*k2(3)
+    ! minus the pair term of the current Phi = jt v alone (jt = 0: none)
+    aa = k1(1)*k2(1) + k1(2)*k2(2) + k1(3)*k2(3) &
+        - p(8)*p(8)*(x(3)*y(3)*(p(2)*p(4) + p(3)*p(5)) + x(4)*y(4))
     do i = 1, 8
         gw(i) = total(aa*ww, x(i))
     end do
@@ -93,7 +96,7 @@ program gen_toroidal_sheet_trapezoid_products
             "g_pu", "g_pv"]
         code(1) = kernel("generated_ts_trap_pair_gradient_w", gr, gn, &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-            (str(trim(params(i))), i=1, 7), str("w")])
+            (str(trim(params(i))), i=1, 8), str("w")])
     end block
     block
         type(expr_t) :: blocks(100)
@@ -116,12 +119,12 @@ program gen_toroidal_sheet_trapezoid_products
         end do
         code(6) = kernel("generated_ts_trap_pair_blocks_w", blocks, bn, &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-            (str(trim(params(i))), i=1, 7), str("w")])
+            (str(trim(params(i))), i=1, 8), str("w")])
     end block
     code(5) = kernel("generated_ts_trap_pair_hvp_w", hw, [character(len=8) :: "h_r", "h_z", &
         "h_ru", "h_zu", "h_rv", "h_zv", "h_pu", "h_pv"], &
         [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-        (str(trim(params(i))), i=1, 7), str("w"), (str("d"//trim(px(i))), i=1, 8), &
+        (str(trim(params(i))), i=1, 8), str("w"), (str("d"//trim(px(i))), i=1, 8), &
         (str("d"//trim(py(i))), i=1, 8)])
 
     ! the same times sigma = alpha + beta S(y), y = 2 - 2 r/r0 (r = 1/w), S the
@@ -150,11 +153,11 @@ program gen_toroidal_sheet_trapezoid_products
             "g_pu", "g_pv"]
         code(7) = kernel("generated_ts_trap_pair_gradient_pou", [fs, gs], gn, &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0")])
+            (str(trim(params(i))), i=1, 8), str("w"), str("alpha"), str("beta"), str("r0")])
         code(8) = kernel("generated_ts_trap_pair_hvp_pou", hs, [character(len=8) :: "h_r", &
             "h_z", "h_ru", "h_zu", "h_rv", "h_zv", "h_pu", "h_pv"], &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0"), &
+            (str(trim(params(i))), i=1, 8), str("w"), str("alpha"), str("beta"), str("r0"), &
             (str("d"//trim(px(i))), i=1, 8), (str("d"//trim(py(i))), i=1, 8)])
         kb = 0
         do i = 1, 8
@@ -173,7 +176,7 @@ program gen_toroidal_sheet_trapezoid_products
         end do
         code(9) = kernel("generated_ts_trap_pair_blocks_pou", blocks, bn, &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-            (str(trim(params(i))), i=1, 7), str("w"), str("alpha"), str("beta"), str("r0")])
+            (str(trim(params(i))), i=1, 8), str("w"), str("alpha"), str("beta"), str("r0")])
     end block
 
     ! zeta term and base
@@ -206,7 +209,7 @@ program gen_toroidal_sheet_trapezoid_products
     zt3 = zjet(1) + zjet(2)*h(1) + zjet(3)*h(2) + zjet(4)*h(3) &
         + zjet(5)*h(1)*h(1)/2 + zjet(6)*h(1)*h(2) + zjet(7)*h(1)*h(3) &
         + zjet(8)*h(2)*h(2)/2 + zjet(9)*h(2)*h(3) + zjet(10)*h(3)*h(3)/2
-    f = (k1(1)*k1(1) + k1(2)*k1(2) + k1(3)*k1(3))*zt3
+    f = (k1(1)*k1(1) + k1(2)*k1(2) + k1(3)*k1(3) - p(8)*p(8)*(x(3)*x(3) + x(4)*x(4)))*zt3
     do i = 1, 8
         d(i) = diff(f, x(i))
     end do
@@ -221,7 +224,7 @@ program gen_toroidal_sheet_trapezoid_products
                 sym("hu")*sym("hv")*(x(3)*x(5) + x(4)*x(6)), &
                 sym("hv")*sym("hv")*(x(5)*x(5) + x(1)*x(1) + x(6)*x(6))])
         end do
-        args = [(str(trim(px(i))), i=1, 8), str("hu"), str("hv"), &
+        args = [(str(trim(px(i))), i=1, 8), str("hu"), str("hv"), str("jt"), &
             (str(trim(zj(i))), i=1, 10), (str("d"//trim(px(i))), i=1, 8)]
         code(4) = kernel17("generated_ts_trap_diag", all, args)
     end block

@@ -10,33 +10,36 @@ module fortfem_generated_ts_trap_pair_gradient_w
 contains
 
     pure subroutine generated_ts_trap_pair_gradient_w(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, &
-            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, value, g_r, g_z, g_ru, g_zu, g_rv, g_zv, &
+            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, value, g_r, g_z, g_ru, g_zu, g_rv, g_zv, &
             g_pu, g_pv)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w
         real(dp), intent(out) :: value, g_r, g_z, g_ru, g_zu, g_rv, g_zv, g_pu, g_pv
-        real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8
+        real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10
 
-        t1 = c1*rvx - rx*s1
-        t2 = -c2*pvy*ruy + puy*(c2*rvy - ry*s2)
-        t3 = puy*zvy - pvy*zuy
-        t4 = c1*rx + rvx*s1
-        t5 = puy*(c2*ry + rvy*s2) - pvy*ruy*s2
-        t6 = (-c1*pvx*rux + pux*t1)*t2 + (pux*zvx - pvx*zux)*t3 + (pux*t4 - pvx*rux*s1)*t5
-        t7 = w**3
-        t8 = ry - rx
-        value = w*t6
-        g_r = w*(c1*pux*t5 - pux*s1*t2) - t7*((dc - c2/t)*(c2*t8/t + dc*rx)*2 + (ds - s2/t)*(ds*rx + s2* &
-            t8/t)*2)*t6*1.0_dp/2.0_dp
-        g_z = t7*(zy - zx)*t6/t**2
-        g_ru = w*(-c1*pvx*t2 - pvx*s1*t5)
-        g_zu = -pvx*w*t3
-        g_rv = w*(c1*pux*t2 + pux*s1*t5)
-        g_zv = pux*w*t3
-        g_pu = w*(zvx*t3 + t1*t2 + t4*t5)
-        g_pv = w*(-c1*rux*t2 - rux*s1*t5 - zux*t3)
+        t1 = jt**2
+        t2 = c1*c2 + s1*s2
+        t3 = c1*rvx - rx*s1
+        t4 = -c2*pvy*ruy + puy*(c2*rvy - ry*s2)
+        t5 = puy*zvy - pvy*zuy
+        t6 = c1*rx + rvx*s1
+        t7 = puy*(c2*ry + rvy*s2) - pvy*ruy*s2
+        t8 = -t1*(rux*ruy*t2 + zux*zuy) + (-c1*pvx*rux + pux*t3)*t4 + (pux*zvx - pvx*zux)*t5 + (pux*t6 - &
+            pvx*rux*s1)*t7
+        t9 = w**3
+        t10 = ry - rx
+        value = w*t8
+        g_r = w*(c1*pux*t7 - pux*s1*t4) - t9*t8*((dc - c2/t)*(c2*t10/t + dc*rx)*2 + (ds - s2/t)*(ds*rx + &
+            s2*t10/t)*2)*1.0_dp/2.0_dp
+        g_z = t9*(zy - zx)*t8/t**2
+        g_ru = w*(-c1*pvx*t4 - pvx*s1*t7 - ruy*t1*t2)
+        g_zu = w*(-pvx*t5 - zuy*t1)
+        g_rv = w*(c1*pux*t4 + pux*s1*t7)
+        g_zv = pux*w*t5
+        g_pu = w*(zvx*t5 + t3*t4 + t6*t7)
+        g_pv = w*(-c1*rux*t4 - rux*s1*t7 - zux*t5)
 
     end subroutine generated_ts_trap_pair_gradient_w
 
@@ -248,68 +251,71 @@ module fortfem_generated_ts_trap_diag
     public :: generated_ts_trap_diag
 contains
 
-    pure subroutine generated_ts_trap_diag(rx, zx, rux, zux, rvx, zvx, pux, pvx, hu, hv, z, za, zb, zc, &
-            zaa, zab, zac, zbb, zbc, zcc, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, value, g_rx, g_zx, &
+    pure subroutine generated_ts_trap_diag(rx, zx, rux, zux, rvx, zvx, pux, pvx, hu, hv, jt, z, za, zb, &
+            zc, zaa, zab, zac, zbb, zbc, zcc, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, value, g_rx, g_zx, &
             g_rux, g_zux, g_rvx, g_zvx, g_pux, g_pvx, h_rx, h_zx, h_rux, h_zux, h_rvx, h_zvx, h_pux, h_pvx)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
-        real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, hu, hv, z, za, zb, zc, zaa, zab, &
-            zac, zbb, zbc, zcc, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx
+        real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, hu, hv, jt, z, za, zb, zc, zaa, &
+            zab, zac, zbb, zbc, zcc, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx
         real(dp), intent(out) :: value, g_rx, g_zx, g_rux, g_zux, g_rvx, g_zvx, g_pux, g_pvx, h_rx, &
             h_zx, h_rux, h_zux, h_rvx, h_zvx, h_pux, h_pvx
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, &
-            t19, t20, t21, t22, t23, t24
+            t19, t20, t21, t22, t23, t24, t25, t26, t27
 
         t1 = pux*rvx - pvx*rux
         t2 = pux*zvx - pvx*zux
-        t3 = pux**2
-        t4 = rx**2
-        t5 = t1**2 + t2**2 + t3*t4
-        t6 = hv**2
-        t7 = hu**2
-        t8 = hu*hv*rvx*zb + rux*za*t7*2
-        t9 = hu*hv*zb*zvx + za*zux*t7*2
-        t10 = hu*hv*rux*zb + rvx*zc*t6*2
-        t11 = hu*hv*zb*zux + zc*zvx*t6*2
-        t12 = pux*t4*2 + rvx*t1*2 + zvx*t2*2
-        t13 = -rux*t1*2 - zux*t2*2
-        t14 = dpux*rvx - dpvx*rux - drux*pvx + drvx*pux
-        t15 = dpux*zvx - dpvx*zux - dzux*pvx + dzvx*pux
-        t16 = dpux*pux*t4*2 + drx*rx*t3*2 + t14*t1*2 + t15*t2*2
-        t17 = drux*rvx + drvx*rux + dzux*zvx + dzvx*zux
-        t18 = drux*rux*2 + dzux*zux*2
-        t19 = drvx*rvx*2 + drx*rx*2 + dzvx*zvx*2
-        t20 = hu*hv*zb*t17 + za*t7*t18 + zc*t6*t19
-        t21 = hv**3
-        t22 = hv**4
-        t23 = hu**3
-        t24 = hu**4
-        value = z*t5
-        g_rx = rx*z*t3*2 + rx*zc*t6*t5*2
+        t3 = jt**2
+        t4 = pux**2
+        t5 = rx**2
+        t6 = t1**2 + t2**2 - t3*(rux**2 + zux**2) + t4*t5
+        t7 = hv**2
+        t8 = -pvx*t1*2 - rux*t3*2
+        t9 = hu**2
+        t10 = hu*hv*rvx*zb + rux*za*t9*2
+        t11 = -pvx*t2*2 - zux*t3*2
+        t12 = hu*hv*zb*zvx + za*zux*t9*2
+        t13 = hu*hv*rux*zb + rvx*zc*t7*2
+        t14 = hu*hv*zb*zux + zc*zvx*t7*2
+        t15 = pux*t5*2 + rvx*t1*2 + zvx*t2*2
+        t16 = -rux*t1*2 - zux*t2*2
+        t17 = drux*rux*2 + dzux*zux*2
+        t18 = dpux*rvx - dpvx*rux - drux*pvx + drvx*pux
+        t19 = dpux*zvx - dpvx*zux - dzux*pvx + dzvx*pux
+        t20 = dpux*pux*t5*2 + drx*rx*t4*2 - t3*t17 + t18*t1*2 + t19*t2*2
+        t21 = drux*rvx + drvx*rux + dzux*zvx + dzvx*zux
+        t22 = drvx*rvx*2 + drx*rx*2 + dzvx*zvx*2
+        t23 = hu*hv*zb*t21 + za*t9*t17 + zc*t7*t22
+        t24 = hv**3
+        t25 = hv**4
+        t26 = hu**3
+        t27 = hu**4
+        value = z*t6
+        g_rx = rx*z*t4*2 + rx*zc*t7*t6*2
         g_zx = 0
-        g_rux = -pvx*z*t1*2 + t5*t8
-        g_zux = -pvx*z*t2*2 + t5*t9
-        g_rvx = pux*z*t1*2 + t5*t10
-        g_zvx = pux*z*t2*2 + t5*t11
-        g_pux = z*t12
-        g_pvx = z*t13
-        h_rx = rx*zc*t6*t16*2 + rx*t3*t20*2 + z*(dpux*pux*rx*4 + drx*t3*2) + t5*(drx*zc*t6*2 + hu*rx* &
-            zbc*t21*t17*2 + rx*zac*t7*t6*t18*2 + rx*zcc*t22*t19*2)
+        g_rux = z*t8 + t6*t10
+        g_zux = z*t11 + t6*t12
+        g_rvx = pux*z*t1*2 + t6*t13
+        g_zvx = pux*z*t2*2 + t6*t14
+        g_pux = z*t15
+        g_pvx = z*t16
+        h_rx = rx*zc*t7*t20*2 + rx*t4*t23*2 + z*(dpux*pux*rx*4 + drx*t4*2) + t6*(drx*zc*t7*2 + hu*rx* &
+            zbc*t24*t21*2 + rx*zac*t9*t7*t17*2 + rx*zcc*t25*t22*2)
         h_zx = 0
-        h_rux = -pvx*t20*t1*2 + z*(-dpvx*t1*2 - pvx*t14*2) + t5*(drux*za*t7*2 + drvx*hu*hv*zb + hu*rvx* &
-            zbc*t21*t19 + hv*rux*zab*t23*t17*2 + hv*rvx*zab*t23*t18 + rux*zaa*t24*t18*2 + rux*zac*t7*t6*t19*2 + &
-            rvx*zbb*t7*t6*t17) + t16*t8
-        h_zux = -pvx*t20*t2*2 + z*(-dpvx*t2*2 - pvx*t15*2) + t5*(dzux*za*t7*2 + dzvx*hu*hv*zb + hu*zbc* &
-            zvx*t21*t19 + hv*zab*zux*t23*t17*2 + hv*zab*zvx*t23*t18 + zaa*zux*t24*t18*2 + zac*zux*t7*t6*t19*2 + &
-            zbb*zvx*t7*t6*t17) + t16*t9
-        h_rvx = pux*t20*t1*2 + z*(dpux*t1*2 + pux*t14*2) + t5*(drux*hu*hv*zb + drvx*zc*t6*2 + hu*rux* &
-            zbc*t21*t19 + hu*rvx*zbc*t21*t17*2 + hv*rux*zab*t23*t18 + rux*zbb*t7*t6*t17 + rvx*zac*t7*t6*t18*2 + &
-            rvx*zcc*t22*t19*2) + t16*t10
-        h_zvx = pux*t20*t2*2 + z*(dpux*t2*2 + pux*t15*2) + t5*(dzux*hu*hv*zb + dzvx*zc*t6*2 + hu*zbc* &
-            zux*t21*t19 + hu*zbc*zvx*t21*t17*2 + hv*zab*zux*t23*t18 + zac*zvx*t7*t6*t18*2 + zbb*zux*t7*t6*t17 + &
-            zcc*zvx*t22*t19*2) + t16*t11
-        h_pux = z*(dpux*t4*2 + drvx*t1*2 + drx*pux*rx*4 + dzvx*t2*2 + rvx*t14*2 + zvx*t15*2) + t20*t12
-        h_pvx = z*(-drux*t1*2 - dzux*t2*2 - rux*t14*2 - zux*t15*2) + t20*t13
+        h_rux = z*(-dpvx*t1*2 - drux*t3*2 - pvx*t18*2) + t6*(drux*za*t9*2 + drvx*hu*hv*zb + hu*rvx*zbc* &
+            t24*t22 + hv*rux*zab*t26*t21*2 + hv*rvx*zab*t26*t17 + rux*zaa*t27*t17*2 + rux*zac*t9*t7*t22*2 + rvx* &
+            zbb*t9*t7*t21) + t20*t10 + t23*t8
+        h_zux = z*(-dpvx*t2*2 - dzux*t3*2 - pvx*t19*2) + t6*(dzux*za*t9*2 + dzvx*hu*hv*zb + hu*zbc*zvx* &
+            t24*t22 + hv*zab*zux*t26*t21*2 + hv*zab*zvx*t26*t17 + zaa*zux*t27*t17*2 + zac*zux*t9*t7*t22*2 + zbb* &
+            zvx*t9*t7*t21) + t20*t12 + t23*t11
+        h_rvx = pux*t23*t1*2 + z*(dpux*t1*2 + pux*t18*2) + t6*(drux*hu*hv*zb + drvx*zc*t7*2 + hu*rux* &
+            zbc*t24*t22 + hu*rvx*zbc*t24*t21*2 + hv*rux*zab*t26*t17 + rux*zbb*t9*t7*t21 + rvx*zac*t9*t7*t17*2 + &
+            rvx*zcc*t25*t22*2) + t20*t13
+        h_zvx = pux*t23*t2*2 + z*(dpux*t2*2 + pux*t19*2) + t6*(dzux*hu*hv*zb + dzvx*zc*t7*2 + hu*zbc* &
+            zux*t24*t22 + hu*zbc*zvx*t24*t21*2 + hv*zab*zux*t26*t17 + zac*zvx*t9*t7*t17*2 + zbb*zux*t9*t7*t21 + &
+            zcc*zvx*t25*t22*2) + t20*t14
+        h_pux = z*(dpux*t5*2 + drvx*t1*2 + drx*pux*rx*4 + dzvx*t2*2 + rvx*t18*2 + zvx*t19*2) + t23*t15
+        h_pvx = z*(-drux*t1*2 - dzux*t2*2 - rux*t18*2 - zux*t19*2) + t23*t16
 
     end subroutine generated_ts_trap_diag
 
@@ -327,17 +333,17 @@ module fortfem_generated_ts_trap_pair_hvp_w
 contains
 
     pure subroutine generated_ts_trap_pair_hvp_w(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, &
-            rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, dry, &
-            dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy, h_r, h_z, h_ru, h_zu, h_rv, h_zv, h_pu, h_pv)
+            rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, &
+            dry, dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy, h_r, h_z, h_ru, h_zu, h_rv, h_zv, h_pu, h_pv)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, dry, dzy, druy, &
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, dry, dzy, druy, &
             dzuy, drvy, dzvy, dpuy, dpvy
         real(dp), intent(out) :: h_r, h_z, h_ru, h_zu, h_rv, h_zv, h_pu, h_pv
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, &
             t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, &
-            t39
+            t39, t40, t41, t42, t43, t44
 
         t1 = c2*ry + rvy*s2
         t2 = puy*t1 - pvy*ruy*s2
@@ -361,58 +367,62 @@ contains
         t20 = zvy*t17 + t18*t3 + t1*t19
         t21 = -c1*rux*t4 - rux*s1*t2 - zux*t6
         t22 = -c2*ruy*t18 - ruy*s2*t19 - zuy*t17
-        t23 = -c1*pvx*t4 - pvx*s1*t2
-        t24 = -c2*pvy*t18 - pvy*s2*t19
-        t25 = c1*pux*t4 + pux*s1*t2
-        t26 = c2*puy*t18 + puy*s2*t19
-        t27 = c1*pux*t2
-        t28 = -pux*s1*t4
-        t29 = t27 - pux*s1*t4
-        t30 = t18*t4 + t17*t6 + t19*t2
-        t31 = t27 - pux*s1*t4 - w**2*t15*t30*3.0_dp/2.0_dp
-        t32 = c1*c2*pux*puy + pux*puy*s1*s2
-        t33 = c2*t12*2/t + s2*t14*2/t
-        t34 = c2*puy*t19 - puy*s2*t18
-        t35 = zy - zx
-        t36 = w**5
-        t37 = t35**2
-        t38 = -c1*t4 - s1*t2
-        t39 = c1*t4 + s1*t2
+        t23 = jt**2
+        t24 = c1*c2 + s1*s2
+        t25 = -c1*pvx*t4 - pvx*s1*t2 - ruy*t23*t24
+        t26 = -c2*pvy*t18 - pvy*s2*t19 - rux*t23*t24
+        t27 = c1*pux*t4 + pux*s1*t2
+        t28 = c2*puy*t18 + puy*s2*t19
+        t29 = c1*pux*t2
+        t30 = -pux*s1*t4
+        t31 = t29 - pux*s1*t4
+        t32 = zux*zuy
+        t33 = -t23*(rux*ruy*t24 + t32) + t18*t4 + t17*t6 + t19*t2
+        t34 = t29 - pux*s1*t4 - w**2*t33*t15*3.0_dp/2.0_dp
+        t35 = c1*c2*pux*puy + pux*puy*s1*s2
+        t36 = c2*t12*2/t + s2*t14*2/t
+        t37 = c2*puy*t19 - puy*s2*t18
+        t38 = -pvx*t6 - zuy*t23
+        t39 = -pvy*t17 - zux*t23
+        t40 = zy - zx
+        t41 = w**5
+        t42 = t40**2
+        t43 = -c1*t4 - s1*t2
+        t44 = c1*t4 + s1*t2
         h_r = dpux*t16 + dpuy*(w*(c1*pux*t1 - pux*s1*t3) - t5*t20*t15*1.0_dp/2.0_dp) - dpvx*t5*t21*t15* &
-            1.0_dp/2.0_dp + dpvy*(w*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t5*t22*t15*1.0_dp/2.0_dp) - drux*t5*t23* &
-            t15*1.0_dp/2.0_dp + druy*(w*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t5*t24*t15*1.0_dp/2.0_dp) - drvx*t5* &
-            t25*t15*1.0_dp/2.0_dp + drvy*(w*(c1*pux*puy*s2 - c2*pux*puy*s1) - t5*t26*t15*1.0_dp/2.0_dp) + drx*(- &
-            t5*t29*t15*1.0_dp/2.0_dp - t5*t31*t15*1.0_dp/2.0_dp - t5*(t10**2*2 + t13**2*2)*t30*1.0_dp/2.0_dp) + &
-            dry*(w*t32 - t5*t31*t33*1.0_dp/2.0_dp - t5*t34*t15*1.0_dp/2.0_dp - t5*(c2*t10*2/t + s2*t13*2/t)*t30* &
-            1.0_dp/2.0_dp) + dzux*pvx*t5*t6*t15*1.0_dp/2.0_dp + dzuy*pvy*t5*t17*t15*1.0_dp/2.0_dp - dzvx*pux*t5* &
-            t6*t15*1.0_dp/2.0_dp - dzvy*puy*t5*t17*t15*1.0_dp/2.0_dp + dzx*t5*t35*t31/t**2 - dzy*t5*t35*t31/t**2
-        h_z = dpux*t5*t35*t9/t**2 + dpuy*t5*t35*t20/t**2 + dpvx*t5*t35*t21/t**2 + dpvy*t5*t35*t22/t**2 + &
-            drux*t5*t35*t23/t**2 + druy*t5*t35*t24/t**2 + drvx*t5*t35*t25/t**2 + drvy*t5*t35*t26/t**2 + drx*(t5* &
-            t35*t29/t**2 - t36*t35*t15*t30*3.0_dp/2.0_dp/t**2) + dry*(t5*t35*t34/t**2 - t36*t35*t33*t30*3.0_dp/ &
-            2.0_dp/t**2) - dzux*pvx*t5*t35*t6/t**2 - dzuy*pvy*t5*t35*t17/t**2 + dzvx*pux*t5*t35*t6/t**2 + dzvy* &
-            puy*t5*t35*t17/t**2 + dzx*(t36*t37*t30*3/t**4 - t5*t30/t**2) + dzy*(-t36*t37*t30*3/t**4 + t5*t30/ &
-            t**2)
-        h_ru = dpuy*w*(-c1*pvx*t3 - pvx*s1*t1) + dpvx*w*t38 + dpvy*w*(c1*c2*pvx*ruy + pvx*ruy*s1*s2) + &
-            druy*w*(c1*c2*pvx*pvy + pvx*pvy*s1*s2) + drvy*w*(-c1*c2*puy*pvx - puy*pvx*s1*s2) - drx*t5*t23*t15* &
-            1.0_dp/2.0_dp + dry*(w*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t5*t23*t33*1.0_dp/2.0_dp) + dzx*t5*t35*t23/ &
-            t**2 - dzy*t5*t35*t23/t**2
-        h_zu = -dpuy*pvx*w*zvy - dpvx*w*t6 + dpvy*pvx*w*zuy + drx*pvx*t5*t6*t15*1.0_dp/2.0_dp + dry*pvx* &
-            t5*t33*t6*1.0_dp/2.0_dp + dzuy*pvx*pvy*w - dzvy*puy*pvx*w - dzx*pvx*t5*t35*t6/t**2 + dzy*pvx*t5*t35* &
-            t6/t**2
-        h_rv = dpux*w*t39 + dpuy*w*(c1*pux*t3 + pux*s1*t1) + dpvy*w*(-c1*c2*pux*ruy - pux*ruy*s1*s2) + &
-            druy*w*(-c1*c2*pux*pvy - pux*pvy*s1*s2) + drvy*w*t32 - drx*t5*t25*t15*1.0_dp/2.0_dp + dry*(w*(-c1* &
-            pux*puy*s2 + c2*pux*puy*s1) - t5*t25*t33*1.0_dp/2.0_dp) + dzx*t5*t35*t25/t**2 - dzy*t5*t35*t25/t**2
+            1.0_dp/2.0_dp + dpvy*(w*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t5*t22*t15*1.0_dp/2.0_dp) - drux*t5*t25* &
+            t15*1.0_dp/2.0_dp + druy*(w*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t5*t26*t15*1.0_dp/2.0_dp) - drvx*t5* &
+            t27*t15*1.0_dp/2.0_dp + drvy*(w*(c1*pux*puy*s2 - c2*pux*puy*s1) - t5*t28*t15*1.0_dp/2.0_dp) + drx*(- &
+            t5*t31*t15*1.0_dp/2.0_dp - t5*t34*t15*1.0_dp/2.0_dp - t5*t33*(t10**2*2 + t13**2*2)*1.0_dp/2.0_dp) + &
+            dry*(w*t35 - t5*t34*t36*1.0_dp/2.0_dp - t5*t37*t15*1.0_dp/2.0_dp - t5*(c2*t10*2/t + s2*t13*2/t)*t33* &
+            1.0_dp/2.0_dp) - dzux*t5*t38*t15*1.0_dp/2.0_dp - dzuy*t5*t39*t15*1.0_dp/2.0_dp - dzvx*pux*t5*t6*t15* &
+            1.0_dp/2.0_dp - dzvy*puy*t5*t17*t15*1.0_dp/2.0_dp + dzx*t5*t40*t34/t**2 - dzy*t5*t40*t34/t**2
+        h_z = dpux*t5*t40*t9/t**2 + dpuy*t5*t40*t20/t**2 + dpvx*t5*t40*t21/t**2 + dpvy*t5*t40*t22/t**2 + &
+            drux*t5*t40*t25/t**2 + druy*t5*t40*t26/t**2 + drvx*t5*t40*t27/t**2 + drvy*t5*t40*t28/t**2 + drx*(t5* &
+            t40*t31/t**2 - t41*t40*t33*t15*3.0_dp/2.0_dp/t**2) + dry*(t5*t40*t37/t**2 - t41*t40*t36*t33*3.0_dp/ &
+            2.0_dp/t**2) + dzux*t5*t40*t38/t**2 + dzuy*t5*t40*t39/t**2 + dzvx*pux*t5*t40*t6/t**2 + dzvy*puy*t5* &
+            t40*t17/t**2 + dzx*(t41*t42*t33*3/t**4 - t5*t33/t**2) + dzy*(-t41*t42*t33*3/t**4 + t5*t33/t**2)
+        h_ru = dpuy*w*(-c1*pvx*t3 - pvx*s1*t1) + dpvx*w*t43 + dpvy*w*(c1*c2*pvx*ruy + pvx*ruy*s1*s2) + &
+            druy*w*(c1*c2*pvx*pvy + pvx*pvy*s1*s2 - t23*t24) + drvy*w*(-c1*c2*puy*pvx - puy*pvx*s1*s2) - drx*t5* &
+            t25*t15*1.0_dp/2.0_dp + dry*(w*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t5*t25*t36*1.0_dp/2.0_dp) + dzx*t5* &
+            t40*t25/t**2 - dzy*t5*t40*t25/t**2
+        h_zu = -dpuy*pvx*w*zvy - dpvx*w*t6 + dpvy*pvx*w*zuy - drx*t5*t38*t15*1.0_dp/2.0_dp - dry*t5*t36* &
+            t38*1.0_dp/2.0_dp + dzuy*w*(pvx*pvy - t23) - dzvy*puy*pvx*w + dzx*t5*t40*t38/t**2 - dzy*t5*t40*t38/ &
+            t**2
+        h_rv = dpux*w*t44 + dpuy*w*(c1*pux*t3 + pux*s1*t1) + dpvy*w*(-c1*c2*pux*ruy - pux*ruy*s1*s2) + &
+            druy*w*(-c1*c2*pux*pvy - pux*pvy*s1*s2) + drvy*w*t35 - drx*t5*t27*t15*1.0_dp/2.0_dp + dry*(w*(-c1* &
+            pux*puy*s2 + c2*pux*puy*s1) - t5*t27*t36*1.0_dp/2.0_dp) + dzx*t5*t40*t27/t**2 - dzy*t5*t40*t27/t**2
         h_zv = dpux*w*t6 + dpuy*pux*w*zvy - dpvy*pux*w*zuy - drx*pux*t5*t6*t15*1.0_dp/2.0_dp - dry*pux* &
-            t5*t33*t6*1.0_dp/2.0_dp - dzuy*pux*pvy*w + dzvy*pux*puy*w + dzx*pux*t5*t35*t6/t**2 - dzy*pux*t5*t35* &
+            t5*t36*t6*1.0_dp/2.0_dp - dzuy*pux*pvy*w + dzvy*pux*puy*w + dzx*pux*t5*t40*t6/t**2 - dzy*pux*t5*t40* &
             t6/t**2
         h_pu = dpuy*w*(zvx*zvy + t7*t3 + t8*t1) + dpvy*w*(-c2*ruy*t7 - ruy*s2*t8 - zuy*zvx) + druy*w*(- &
-            c2*pvy*t7 - pvy*s2*t8) + drvx*w*t39 + drvy*w*(c2*puy*t7 + puy*s2*t8) + drx*t16 + dry*(w*(c2*puy*t8 - &
-            puy*s2*t7) - t5*t33*t9*1.0_dp/2.0_dp) - dzuy*pvy*w*zvx + dzvx*w*t6 + dzvy*puy*w*zvx + dzx*t5*t35*t9/ &
-            t**2 - dzy*t5*t35*t9/t**2
-        h_pv = dpuy*w*(-c1*rux*t3 - rux*s1*t1 - zux*zvy) + dpvy*w*(c1*c2*rux*ruy + rux*ruy*s1*s2 + zux* &
-            zuy) + drux*w*t38 + druy*w*(c1*c2*pvy*rux + pvy*rux*s1*s2) + drvy*w*(-c1*c2*puy*rux - puy*rux*s1*s2) &
-            - drx*t5*t21*t15*1.0_dp/2.0_dp + dry*(w*(c1*puy*rux*s2 - c2*puy*rux*s1) - t5*t21*t33*1.0_dp/2.0_dp) &
-            - dzux*w*t6 + dzuy*pvy*w*zux - dzvy*puy*w*zux + dzx*t5*t35*t21/t**2 - dzy*t5*t35*t21/t**2
+            c2*pvy*t7 - pvy*s2*t8) + drvx*w*t44 + drvy*w*(c2*puy*t7 + puy*s2*t8) + drx*t16 + dry*(w*(c2*puy*t8 - &
+            puy*s2*t7) - t5*t36*t9*1.0_dp/2.0_dp) - dzuy*pvy*w*zvx + dzvx*w*t6 + dzvy*puy*w*zvx + dzx*t5*t40*t9/ &
+            t**2 - dzy*t5*t40*t9/t**2
+        h_pv = dpuy*w*(-c1*rux*t3 - rux*s1*t1 - zux*zvy) + dpvy*w*(c1*c2*rux*ruy + rux*ruy*s1*s2 + t32) &
+            + drux*w*t43 + druy*w*(c1*c2*pvy*rux + pvy*rux*s1*s2) + drvy*w*(-c1*c2*puy*rux - puy*rux*s1*s2) - &
+            drx*t5*t21*t15*1.0_dp/2.0_dp + dry*(w*(c1*puy*rux*s2 - c2*puy*rux*s1) - t5*t21*t36*1.0_dp/2.0_dp) - &
+            dzux*w*t6 + dzuy*pvy*w*zux - dzvy*puy*w*zux + dzx*t5*t40*t21/t**2 - dzy*t5*t40*t21/t**2
 
     end subroutine generated_ts_trap_pair_hvp_w
 
@@ -430,7 +440,7 @@ module fortfem_generated_ts_trap_pair_blocks_w
 contains
 
     pure subroutine generated_ts_trap_pair_blocks_w(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, &
-            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, hxx1_1, hxx1_2, hxx1_3, hxx1_4, hxx1_5, &
+            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, hxx1_1, hxx1_2, hxx1_3, hxx1_4, hxx1_5, &
             hxx1_6, hxx1_7, hxx1_8, hxx2_2, hxx2_3, hxx2_4, hxx2_5, hxx2_6, hxx2_7, hxx2_8, hxx3_3, hxx3_4, &
             hxx3_5, hxx3_6, hxx3_7, hxx3_8, hxx4_4, hxx4_5, hxx4_6, hxx4_7, hxx4_8, hxx5_5, hxx5_6, hxx5_7, &
             hxx5_8, hxx6_6, hxx6_7, hxx6_8, hxx7_7, hxx7_8, hxx8_8, hxy1_1, hxy1_2, hxy1_3, hxy1_4, hxy1_5, &
@@ -442,7 +452,7 @@ contains
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w
         real(dp), intent(out) :: hxx1_1, hxx1_2, hxx1_3, hxx1_4, hxx1_5, hxx1_6, hxx1_7, hxx1_8, hxx2_2, &
             hxx2_3, hxx2_4, hxx2_5, hxx2_6, hxx2_7, hxx2_8, hxx3_3, hxx3_4, hxx3_5, hxx3_6, hxx3_7, hxx3_8, &
             hxx4_4, hxx4_5, hxx4_6, hxx4_7, hxx4_8, hxx5_5, hxx5_6, hxx5_7, hxx5_8, hxx6_6, hxx6_7, hxx6_8, &
@@ -453,7 +463,7 @@ contains
             hxy6_6, hxy6_7, hxy6_8, hxy7_1, hxy7_2, hxy7_3, hxy7_4, hxy7_5, hxy7_6, hxy7_7, hxy7_8, hxy8_1, &
             hxy8_2, hxy8_3, hxy8_4, hxy8_5, hxy8_6, hxy8_7, hxy8_8
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, &
-            t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32
+            t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36
 
         t1 = w**3
         t2 = c2*ry + rvy*s2
@@ -468,46 +478,52 @@ contains
         t11 = ds - s2/t
         t12 = ds*rx + s2*t9/t
         t13 = t8*t10*2 + t11*t12*2
-        t14 = c1*rvx - rx*s1
-        t15 = -c1*pvx*rux + pux*t14
-        t16 = pux*zvx - pvx*zux
-        t17 = puy*zvy - pvy*zuy
-        t18 = c1*rx + rvx*s1
-        t19 = pux*t18 - pvx*rux*s1
-        t20 = t15*t6 + t16*t17 + t19*t3
-        t21 = t4 - pux*s1*t6 - w**2*t13*t20*3.0_dp/2.0_dp
-        t22 = zy - zx
-        t23 = -c1*pvx*t6 - pvx*s1*t3
-        t24 = c1*pux*t6 + pux*s1*t3
-        t25 = zvx*t17 + t14*t6 + t18*t3
-        t26 = -c1*rux*t6 - rux*s1*t3 - zux*t17
-        t27 = w**5
-        t28 = t22**2
-        t29 = w*(c1*c2*pux*puy + pux*puy*s1*s2)
-        t30 = c2*t10*2/t + s2*t12*2/t
-        t31 = c2*puy*t19 - puy*s2*t15
-        t32 = zvy*t16 + t15*t5 + t2*t19
-        hxx1_1 = -t1*(t4 - pux*s1*t6)*t13*1.0_dp/2.0_dp - t1*t21*t13*1.0_dp/2.0_dp - t1*(t8**2*2 + &
-            t11**2*2)*t20*1.0_dp/2.0_dp
-        hxx1_2 = t1*t22*t21/t**2
-        hxx1_3 = -t1*t23*t13*1.0_dp/2.0_dp
-        hxx1_4 = pvx*t1*t17*t13*1.0_dp/2.0_dp
-        hxx1_5 = -t1*t24*t13*1.0_dp/2.0_dp
-        hxx1_6 = -pux*t1*t17*t13*1.0_dp/2.0_dp
-        hxx1_7 = w*(c1*t3 - s1*t6) - t1*t25*t13*1.0_dp/2.0_dp
-        hxx1_8 = -t1*t26*t13*1.0_dp/2.0_dp
-        hxx2_2 = t27*t28*t20*3/t**4 - t1*t20/t**2
+        t14 = jt**2
+        t15 = c1*c2 + s1*s2
+        t16 = zux*zuy
+        t17 = c1*rvx - rx*s1
+        t18 = -c1*pvx*rux + pux*t17
+        t19 = pux*zvx - pvx*zux
+        t20 = puy*zvy - pvy*zuy
+        t21 = c1*rx + rvx*s1
+        t22 = pux*t21 - pvx*rux*s1
+        t23 = -t14*(rux*ruy*t15 + t16) + t18*t6 + t19*t20 + t22*t3
+        t24 = t4 - pux*s1*t6 - w**2*t23*t13*3.0_dp/2.0_dp
+        t25 = zy - zx
+        t26 = -c1*pvx*t6 - pvx*s1*t3 - ruy*t14*t15
+        t27 = -pvx*t20 - zuy*t14
+        t28 = c1*pux*t6 + pux*s1*t3
+        t29 = zvx*t20 + t17*t6 + t21*t3
+        t30 = -c1*rux*t6 - rux*s1*t3 - zux*t20
+        t31 = w**5
+        t32 = t25**2
+        t33 = w*(c1*c2*pux*puy + pux*puy*s1*s2)
+        t34 = c2*t10*2/t + s2*t12*2/t
+        t35 = c2*puy*t22 - puy*s2*t18
+        t36 = zvy*t19 + t18*t5 + t2*t22
+        hxx1_1 = -t1*(t4 - pux*s1*t6)*t13*1.0_dp/2.0_dp - t1*t24*t13*1.0_dp/2.0_dp - t1*t23*(t8**2*2 + &
+            t11**2*2)*1.0_dp/2.0_dp
+        hxx1_2 = t1*t25*t24/t**2
+        hxx1_3 = -t1*t26*t13*1.0_dp/2.0_dp
+        hxx1_4 = -t1*t27*t13*1.0_dp/2.0_dp
+        hxx1_5 = -t1*t28*t13*1.0_dp/2.0_dp
+        hxx1_6 = -pux*t1*t20*t13*1.0_dp/2.0_dp
+        hxx1_7 = w*(c1*t3 - s1*t6) - t1*t29*t13*1.0_dp/2.0_dp
+        hxx1_8 = -t1*t30*t13*1.0_dp/2.0_dp
+        hxx2_2 = t31*t32*t23*3/t**4 - t1*t23/t**2
         hxx2_3 = (c1*c2*puy*pvx*rvy*zx*t1 - c1*c2*puy*pvx*rvy*zy*t1 - c1*c2*pvx*pvy*ruy*zx*t1 + c1*c2* &
-            pvx*pvy*ruy*zy*t1 - c1*puy*pvx*ry*s2*zx*t1 + c1*puy*pvx*ry*s2*zy*t1 + c2*puy*pvx*ry*s1*zx*t1 - c2* &
-            puy*pvx*ry*s1*zy*t1 + puy*pvx*rvy*s1*s2*zx*t1 - puy*pvx*rvy*s1*s2*zy*t1 - pvx*pvy*ruy*s1*s2*zx*t1 + &
-            pvx*pvy*ruy*s1*s2*zy*t1)/t**2
-        hxx2_4 = -pvx*t1*t22*t17/t**2
+            pvx*pvy*ruy*zy*t1 + c1*c2*ruy*zx*t14*t1 - c1*c2*ruy*zy*t14*t1 - c1*puy*pvx*ry*s2*zx*t1 + c1*puy*pvx* &
+            ry*s2*zy*t1 + c2*puy*pvx*ry*s1*zx*t1 - c2*puy*pvx*ry*s1*zy*t1 + puy*pvx*rvy*s1*s2*zx*t1 - puy*pvx* &
+            rvy*s1*s2*zy*t1 - pvx*pvy*ruy*s1*s2*zx*t1 + pvx*pvy*ruy*s1*s2*zy*t1 + ruy*s1*s2*zx*t14*t1 - ruy*s1* &
+            s2*zy*t14*t1)/t**2
+        hxx2_4 = (puy*pvx*zvy*zx*t1 - puy*pvx*zvy*zy*t1 - pvx*pvy*zuy*zx*t1 + pvx*pvy*zuy*zy*t1 + zuy* &
+            zx*t14*t1 - zuy*zy*t14*t1)/t**2
         hxx2_5 = (-c1*c2*pux*puy*rvy*zx*t1 + c1*c2*pux*puy*rvy*zy*t1 + c1*c2*pux*pvy*ruy*zx*t1 - c1*c2* &
             pux*pvy*ruy*zy*t1 + c1*pux*puy*ry*s2*zx*t1 - c1*pux*puy*ry*s2*zy*t1 - c2*pux*puy*ry*s1*zx*t1 + c2* &
             pux*puy*ry*s1*zy*t1 - pux*puy*rvy*s1*s2*zx*t1 + pux*puy*rvy*s1*s2*zy*t1 + pux*pvy*ruy*s1*s2*zx*t1 - &
             pux*pvy*ruy*s1*s2*zy*t1)/t**2
-        hxx2_6 = pux*t1*t22*t17/t**2
-        hxx2_7 = t1*t22*t25/t**2
+        hxx2_6 = pux*t1*t25*t20/t**2
+        hxx2_7 = t1*t25*t29/t**2
         hxx2_8 = (c1*c2*puy*rux*rvy*zx*t1 - c1*c2*puy*rux*rvy*zy*t1 - c1*c2*pvy*rux*ruy*zx*t1 + c1*c2* &
             pvy*rux*ruy*zy*t1 - c1*puy*rux*ry*s2*zx*t1 + c1*puy*rux*ry*s2*zy*t1 + c2*puy*rux*ry*s1*zx*t1 - c2* &
             puy*rux*ry*s1*zy*t1 + puy*rux*rvy*s1*s2*zx*t1 - puy*rux*rvy*s1*s2*zy*t1 + puy*zux*zvy*zx*t1 - puy* &
@@ -523,92 +539,97 @@ contains
         hxx4_5 = 0
         hxx4_6 = 0
         hxx4_7 = 0
-        hxx4_8 = -w*t17
+        hxx4_8 = -w*t20
         hxx5_5 = 0
         hxx5_6 = 0
         hxx5_7 = w*(c1*t6 + s1*t3)
         hxx5_8 = 0
         hxx6_6 = 0
-        hxx6_7 = w*t17
+        hxx6_7 = w*t20
         hxx6_8 = 0
         hxx7_7 = 0
         hxx7_8 = 0
         hxx8_8 = 0
-        hxy1_1 = t29 - t1*t21*t30*1.0_dp/2.0_dp - t1*t31*t13*1.0_dp/2.0_dp - t1*(c2*t8*2/t + s2*t11*2/t) &
-            *t20*1.0_dp/2.0_dp
-        hxy1_2 = -t1*t22*t21/t**2
-        hxy1_3 = w*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t1*(-c2*pvy*t15 - pvy*s2*t19)*t13*1.0_dp/2.0_dp
-        hxy1_4 = pvy*t1*t16*t13*1.0_dp/2.0_dp
-        hxy1_5 = w*(c1*pux*puy*s2 - c2*pux*puy*s1) - t1*(c2*puy*t15 + puy*s2*t19)*t13*1.0_dp/2.0_dp
-        hxy1_6 = -puy*t1*t16*t13*1.0_dp/2.0_dp
-        hxy1_7 = w*(c1*pux*t2 - pux*s1*t5) - t1*t32*t13*1.0_dp/2.0_dp
-        hxy1_8 = w*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t1*(-c2*ruy*t15 - ruy*s2*t19 - zuy*t16)*t13* &
+        hxy1_1 = t33 - t1*t24*t34*1.0_dp/2.0_dp - t1*t35*t13*1.0_dp/2.0_dp - t1*(c2*t8*2/t + s2*t11*2/t) &
+            *t23*1.0_dp/2.0_dp
+        hxy1_2 = -t1*t25*t24/t**2
+        hxy1_3 = w*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t1*(-c2*pvy*t18 - pvy*s2*t22 - rux*t14*t15)*t13* &
             1.0_dp/2.0_dp
-        hxy2_1 = t1*t22*t31/t**2 - t27*t22*t30*t20*3.0_dp/2.0_dp/t**2
-        hxy2_2 = -t27*t28*t20*3/t**4 + t1*t20/t**2
+        hxy1_4 = -t1*(-pvy*t19 - zux*t14)*t13*1.0_dp/2.0_dp
+        hxy1_5 = w*(c1*pux*puy*s2 - c2*pux*puy*s1) - t1*(c2*puy*t18 + puy*s2*t22)*t13*1.0_dp/2.0_dp
+        hxy1_6 = -puy*t1*t19*t13*1.0_dp/2.0_dp
+        hxy1_7 = w*(c1*pux*t2 - pux*s1*t5) - t1*t36*t13*1.0_dp/2.0_dp
+        hxy1_8 = w*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t1*(-c2*ruy*t18 - ruy*s2*t22 - zuy*t19)*t13* &
+            1.0_dp/2.0_dp
+        hxy2_1 = t1*t25*t35/t**2 - t31*t25*t34*t23*3.0_dp/2.0_dp/t**2
+        hxy2_2 = -t31*t32*t23*3/t**4 + t1*t23/t**2
         hxy2_3 = (c1*c2*pux*pvy*rvx*zx*t1 - c1*c2*pux*pvy*rvx*zy*t1 - c1*c2*pvx*pvy*rux*zx*t1 + c1*c2* &
-            pvx*pvy*rux*zy*t1 + c1*pux*pvy*rx*s2*zx*t1 - c1*pux*pvy*rx*s2*zy*t1 - c2*pux*pvy*rx*s1*zx*t1 + c2* &
-            pux*pvy*rx*s1*zy*t1 + pux*pvy*rvx*s1*s2*zx*t1 - pux*pvy*rvx*s1*s2*zy*t1 - pvx*pvy*rux*s1*s2*zx*t1 + &
-            pvx*pvy*rux*s1*s2*zy*t1)/t**2
-        hxy2_4 = -pvy*t1*t22*t16/t**2
+            pvx*pvy*rux*zy*t1 + c1*c2*rux*zx*t14*t1 - c1*c2*rux*zy*t14*t1 + c1*pux*pvy*rx*s2*zx*t1 - c1*pux*pvy* &
+            rx*s2*zy*t1 - c2*pux*pvy*rx*s1*zx*t1 + c2*pux*pvy*rx*s1*zy*t1 + pux*pvy*rvx*s1*s2*zx*t1 - pux*pvy* &
+            rvx*s1*s2*zy*t1 - pvx*pvy*rux*s1*s2*zx*t1 + pvx*pvy*rux*s1*s2*zy*t1 + rux*s1*s2*zx*t14*t1 - rux*s1* &
+            s2*zy*t14*t1)/t**2
+        hxy2_4 = (pux*pvy*zvx*zx*t1 - pux*pvy*zvx*zy*t1 - pvx*pvy*zux*zx*t1 + pvx*pvy*zux*zy*t1 + zux* &
+            zx*t14*t1 - zux*zy*t14*t1)/t**2
         hxy2_5 = (-c1*c2*pux*puy*rvx*zx*t1 + c1*c2*pux*puy*rvx*zy*t1 + c1*c2*puy*pvx*rux*zx*t1 - c1*c2* &
             puy*pvx*rux*zy*t1 - c1*pux*puy*rx*s2*zx*t1 + c1*pux*puy*rx*s2*zy*t1 + c2*pux*puy*rx*s1*zx*t1 - c2* &
             pux*puy*rx*s1*zy*t1 - pux*puy*rvx*s1*s2*zx*t1 + pux*puy*rvx*s1*s2*zy*t1 + puy*pvx*rux*s1*s2*zx*t1 - &
             puy*pvx*rux*s1*s2*zy*t1)/t**2
-        hxy2_6 = puy*t1*t22*t16/t**2
-        hxy2_7 = t1*t22*t32/t**2
+        hxy2_6 = puy*t1*t25*t19/t**2
+        hxy2_7 = t1*t25*t36/t**2
         hxy2_8 = (c1*c2*pux*ruy*rvx*zx*t1 - c1*c2*pux*ruy*rvx*zy*t1 - c1*c2*pvx*rux*ruy*zx*t1 + c1*c2* &
             pvx*rux*ruy*zy*t1 + c1*pux*ruy*rx*s2*zx*t1 - c1*pux*ruy*rx*s2*zy*t1 - c2*pux*ruy*rx*s1*zx*t1 + c2* &
             pux*ruy*rx*s1*zy*t1 + pux*ruy*rvx*s1*s2*zx*t1 - pux*ruy*rvx*s1*s2*zy*t1 + pux*zuy*zvx*zx*t1 - pux* &
             zuy*zvx*zy*t1 - pvx*rux*ruy*s1*s2*zx*t1 + pvx*rux*ruy*s1*s2*zy*t1 - pvx*zux*zuy*zx*t1 + pvx*zux*zuy* &
             zy*t1)/t**2
-        hxy3_1 = w*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t1*t23*t30*1.0_dp/2.0_dp
+        hxy3_1 = w*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t1*t26*t34*1.0_dp/2.0_dp
         hxy3_2 = (-c1*c2*puy*pvx*rvy*zx*t1 + c1*c2*puy*pvx*rvy*zy*t1 + c1*c2*pvx*pvy*ruy*zx*t1 - c1*c2* &
-            pvx*pvy*ruy*zy*t1 + c1*puy*pvx*ry*s2*zx*t1 - c1*puy*pvx*ry*s2*zy*t1 - c2*puy*pvx*ry*s1*zx*t1 + c2* &
-            puy*pvx*ry*s1*zy*t1 - puy*pvx*rvy*s1*s2*zx*t1 + puy*pvx*rvy*s1*s2*zy*t1 + pvx*pvy*ruy*s1*s2*zx*t1 - &
-            pvx*pvy*ruy*s1*s2*zy*t1)/t**2
-        hxy3_3 = w*(c1*c2*pvx*pvy + pvx*pvy*s1*s2)
+            pvx*pvy*ruy*zy*t1 - c1*c2*ruy*zx*t14*t1 + c1*c2*ruy*zy*t14*t1 + c1*puy*pvx*ry*s2*zx*t1 - c1*puy*pvx* &
+            ry*s2*zy*t1 - c2*puy*pvx*ry*s1*zx*t1 + c2*puy*pvx*ry*s1*zy*t1 - puy*pvx*rvy*s1*s2*zx*t1 + puy*pvx* &
+            rvy*s1*s2*zy*t1 + pvx*pvy*ruy*s1*s2*zx*t1 - pvx*pvy*ruy*s1*s2*zy*t1 - ruy*s1*s2*zx*t14*t1 + ruy*s1* &
+            s2*zy*t14*t1)/t**2
+        hxy3_3 = w*(c1*c2*pvx*pvy + pvx*pvy*s1*s2 - t14*t15)
         hxy3_4 = 0
         hxy3_5 = w*(-c1*c2*puy*pvx - puy*pvx*s1*s2)
         hxy3_6 = 0
         hxy3_7 = w*(-c1*pvx*t5 - pvx*s1*t2)
         hxy3_8 = w*(c1*c2*pvx*ruy + pvx*ruy*s1*s2)
-        hxy4_1 = pvx*t1*t30*t17*1.0_dp/2.0_dp
-        hxy4_2 = pvx*t1*t22*t17/t**2
+        hxy4_1 = -t1*t34*t27*1.0_dp/2.0_dp
+        hxy4_2 = (-puy*pvx*zvy*zx*t1 + puy*pvx*zvy*zy*t1 + pvx*pvy*zuy*zx*t1 - pvx*pvy*zuy*zy*t1 - zuy* &
+            zx*t14*t1 + zuy*zy*t14*t1)/t**2
         hxy4_3 = 0
-        hxy4_4 = pvx*pvy*w
+        hxy4_4 = w*(pvx*pvy - t14)
         hxy4_5 = 0
         hxy4_6 = -puy*pvx*w
         hxy4_7 = -pvx*w*zvy
         hxy4_8 = pvx*w*zuy
-        hxy5_1 = w*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t1*t24*t30*1.0_dp/2.0_dp
+        hxy5_1 = w*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t1*t28*t34*1.0_dp/2.0_dp
         hxy5_2 = (c1*c2*pux*puy*rvy*zx*t1 - c1*c2*pux*puy*rvy*zy*t1 - c1*c2*pux*pvy*ruy*zx*t1 + c1*c2* &
             pux*pvy*ruy*zy*t1 - c1*pux*puy*ry*s2*zx*t1 + c1*pux*puy*ry*s2*zy*t1 + c2*pux*puy*ry*s1*zx*t1 - c2* &
             pux*puy*ry*s1*zy*t1 + pux*puy*rvy*s1*s2*zx*t1 - pux*puy*rvy*s1*s2*zy*t1 - pux*pvy*ruy*s1*s2*zx*t1 + &
             pux*pvy*ruy*s1*s2*zy*t1)/t**2
         hxy5_3 = w*(-c1*c2*pux*pvy - pux*pvy*s1*s2)
         hxy5_4 = 0
-        hxy5_5 = t29
+        hxy5_5 = t33
         hxy5_6 = 0
         hxy5_7 = w*(c1*pux*t5 + pux*s1*t2)
         hxy5_8 = w*(-c1*c2*pux*ruy - pux*ruy*s1*s2)
-        hxy6_1 = -pux*t1*t30*t17*1.0_dp/2.0_dp
-        hxy6_2 = -pux*t1*t22*t17/t**2
+        hxy6_1 = -pux*t1*t34*t20*1.0_dp/2.0_dp
+        hxy6_2 = -pux*t1*t25*t20/t**2
         hxy6_3 = 0
         hxy6_4 = -pux*pvy*w
         hxy6_5 = 0
         hxy6_6 = pux*puy*w
         hxy6_7 = pux*w*zvy
         hxy6_8 = -pux*w*zuy
-        hxy7_1 = w*(c2*puy*t18 - puy*s2*t14) - t1*t30*t25*1.0_dp/2.0_dp
-        hxy7_2 = -t1*t22*t25/t**2
-        hxy7_3 = w*(-c2*pvy*t14 - pvy*s2*t18)
+        hxy7_1 = w*(c2*puy*t21 - puy*s2*t17) - t1*t34*t29*1.0_dp/2.0_dp
+        hxy7_2 = -t1*t25*t29/t**2
+        hxy7_3 = w*(-c2*pvy*t17 - pvy*s2*t21)
         hxy7_4 = -pvy*w*zvx
-        hxy7_5 = w*(c2*puy*t14 + puy*s2*t18)
+        hxy7_5 = w*(c2*puy*t17 + puy*s2*t21)
         hxy7_6 = puy*w*zvx
-        hxy7_7 = w*(zvx*zvy + t14*t5 + t18*t2)
-        hxy7_8 = w*(-c2*ruy*t14 - ruy*s2*t18 - zuy*zvx)
-        hxy8_1 = w*(c1*puy*rux*s2 - c2*puy*rux*s1) - t1*t26*t30*1.0_dp/2.0_dp
+        hxy7_7 = w*(zvx*zvy + t17*t5 + t21*t2)
+        hxy7_8 = w*(-c2*ruy*t17 - ruy*s2*t21 - zuy*zvx)
+        hxy8_1 = w*(c1*puy*rux*s2 - c2*puy*rux*s1) - t1*t30*t34*1.0_dp/2.0_dp
         hxy8_2 = (-c1*c2*puy*rux*rvy*zx*t1 + c1*c2*puy*rux*rvy*zy*t1 + c1*c2*pvy*rux*ruy*zx*t1 - c1*c2* &
             pvy*rux*ruy*zy*t1 + c1*puy*rux*ry*s2*zx*t1 - c1*puy*rux*ry*s2*zy*t1 - c2*puy*rux*ry*s1*zx*t1 + c2* &
             puy*rux*ry*s1*zy*t1 - puy*rux*rvy*s1*s2*zx*t1 + puy*rux*rvy*s1*s2*zy*t1 - puy*zux*zvy*zx*t1 + puy* &
@@ -619,7 +640,7 @@ contains
         hxy8_5 = w*(-c1*c2*puy*rux - puy*rux*s1*s2)
         hxy8_6 = -puy*w*zux
         hxy8_7 = w*(-c1*rux*t5 - rux*s1*t2 - zux*zvy)
-        hxy8_8 = w*(c1*c2*rux*ruy + rux*ruy*s1*s2 + zux*zuy)
+        hxy8_8 = w*(c1*c2*rux*ruy + rux*ruy*s1*s2 + t16)
 
     end subroutine generated_ts_trap_pair_blocks_w
 
@@ -637,14 +658,14 @@ module fortfem_generated_ts_trap_pair_gradient_pou
 contains
 
     pure subroutine generated_ts_trap_pair_gradient_pou(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, &
-            ruy, zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0, value, g_r, g_z, g_ru, &
-            g_zu, g_rv, g_zv, g_pu, g_pv)
+            ruy, zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0, value, g_r, g_z, &
+            g_ru, g_zu, g_rv, g_zv, g_pu, g_pv)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0
         real(dp), intent(out) :: value, g_r, g_z, g_ru, g_zu, g_rv, g_zv, g_pu, g_pv
-        real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15
+        real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17
 
         t1 = -1.0_dp/r0/w + 1
         t2 = exp(-1.0_dp/2.0_dp/t1)
@@ -652,26 +673,29 @@ contains
         t4 = exp(-1.0_dp/t3)
         t5 = t2 + t4
         t6 = alpha + beta*t2/t5
-        t7 = c1*rvx - rx*s1
-        t8 = -c2*pvy*ruy + puy*(c2*rvy - ry*s2)
-        t9 = puy*zvy - pvy*zuy
-        t10 = c1*rx + rvx*s1
-        t11 = puy*(c2*ry + rvy*s2) - pvy*ruy*s2
-        t12 = (-c1*pvx*rux + pux*t7)*t8 + (pux*zvx - pvx*zux)*t9 + (pux*t10 - pvx*rux*s1)*t11
-        t13 = w**3
-        t14 = w*(beta*t2*1.0_dp/2.0_dp/r0/w**2/t5/t1**2 - beta*t2*(t2*1.0_dp/2.0_dp/r0/w**2/t1**2 - t4* &
-            2/r0/w**2/t3**2)/t5**2)*t12 + t6*t12
-        t15 = ry - rx
-        value = w*t6*t12
-        g_r = w*t6*(c1*pux*t11 - pux*s1*t8) - t13*t14*((dc - c2/t)*(c2*t15/t + dc*rx)*2 + (ds - s2/t)* &
-            (ds*rx + s2*t15/t)*2)*1.0_dp/2.0_dp
-        g_z = t13*(zy - zx)*t14/t**2
-        g_ru = w*t6*(-c1*pvx*t8 - pvx*s1*t11)
-        g_zu = -pvx*w*t6*t9
-        g_rv = w*t6*(c1*pux*t8 + pux*s1*t11)
-        g_zv = pux*w*t6*t9
-        g_pu = w*t6*(zvx*t9 + t7*t8 + t10*t11)
-        g_pv = w*t6*(-c1*rux*t8 - rux*s1*t11 - zux*t9)
+        t7 = jt**2
+        t8 = c1*c2 + s1*s2
+        t9 = c1*rvx - rx*s1
+        t10 = -c2*pvy*ruy + puy*(c2*rvy - ry*s2)
+        t11 = puy*zvy - pvy*zuy
+        t12 = c1*rx + rvx*s1
+        t13 = puy*(c2*ry + rvy*s2) - pvy*ruy*s2
+        t14 = -t7*(rux*ruy*t8 + zux*zuy) + (-c1*pvx*rux + pux*t9)*t10 + (pux*zvx - pvx*zux)*t11 + (pux* &
+            t12 - pvx*rux*s1)*t13
+        t15 = w**3
+        t16 = w*(beta*t2*1.0_dp/2.0_dp/r0/w**2/t5/t1**2 - beta*t2*(t2*1.0_dp/2.0_dp/r0/w**2/t1**2 - t4* &
+            2/r0/w**2/t3**2)/t5**2)*t14 + t6*t14
+        t17 = ry - rx
+        value = w*t6*t14
+        g_r = w*t6*(c1*pux*t13 - pux*s1*t10) - t15*t16*((dc - c2/t)*(c2*t17/t + dc*rx)*2 + (ds - s2/t)* &
+            (ds*rx + s2*t17/t)*2)*1.0_dp/2.0_dp
+        g_z = t15*(zy - zx)*t16/t**2
+        g_ru = w*t6*(-c1*pvx*t10 - pvx*s1*t13 - ruy*t7*t8)
+        g_zu = w*t6*(-pvx*t11 - zuy*t7)
+        g_rv = w*t6*(c1*pux*t10 + pux*s1*t13)
+        g_zv = pux*w*t6*t11
+        g_pu = w*t6*(zvx*t11 + t9*t10 + t12*t13)
+        g_pv = w*t6*(-c1*rux*t10 - rux*s1*t13 - zux*t11)
 
     end subroutine generated_ts_trap_pair_gradient_pou
 
@@ -689,19 +713,19 @@ module fortfem_generated_ts_trap_pair_hvp_pou
 contains
 
     pure subroutine generated_ts_trap_pair_hvp_pou(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, &
-            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0, drx, dzx, drux, dzux, drvx, &
-            dzvx, dpux, dpvx, dry, dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy, h_r, h_z, h_ru, h_zu, h_rv, h_zv, &
-            h_pu, h_pv)
+            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0, drx, dzx, drux, dzux, &
+            drvx, dzvx, dpux, dpvx, dry, dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy, h_r, h_z, h_ru, h_zu, h_rv, &
+            h_zv, h_pu, h_pv)
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0, drx, dzx, drux, dzux, drvx, dzvx, dpux, dpvx, &
-            dry, dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0, drx, dzx, drux, dzux, drvx, dzvx, dpux, &
+            dpvx, dry, dzy, druy, dzuy, drvy, dzvy, dpuy, dpvy
         real(dp), intent(out) :: h_r, h_z, h_ru, h_zu, h_rv, h_zv, h_pu, h_pv
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, &
             t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, &
             t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, &
-            t59, t60, t61, t62, t63
+            t59, t60, t61, t62, t63, t64, t65, t66, t67, t68
 
         t1 = -1.0_dp/r0/w + 1
         t2 = exp(-1.0_dp/2.0_dp/t1)
@@ -737,75 +761,80 @@ contains
         t32 = w*t13*t31 + t6*t31
         t33 = -c2*ruy*t27 - ruy*s2*t28 - zuy*t26
         t34 = w*t13*t33 + t6*t33
-        t35 = -c1*pvx*t10 - pvx*s1*t8
-        t36 = w*t13*t35 + t6*t35
-        t37 = -c2*pvy*t27 - pvy*s2*t28
+        t35 = jt**2
+        t36 = c1*c2 + s1*s2
+        t37 = -c1*pvx*t10 - pvx*s1*t8 - ruy*t35*t36
         t38 = w*t13*t37 + t6*t37
-        t39 = c1*pux*t10 + pux*s1*t8
+        t39 = -c2*pvy*t27 - pvy*s2*t28 - rux*t35*t36
         t40 = w*t13*t39 + t6*t39
-        t41 = c2*puy*t27 + puy*s2*t28
+        t41 = c1*pux*t10 + pux*s1*t8
         t42 = w*t13*t41 + t6*t41
-        t43 = c1*pux*t8 - pux*s1*t10
-        t44 = w*t13*t43
-        t45 = w**2
-        t46 = t27*t10 + t26*t14 + t28*t8
-        t47 = w*t13*t46 + t6*t46
-        t48 = w*(beta*t2*1.0_dp/4.0_dp/r0**2/w**4/t5/t1**4 - beta*t2/r0**2/w**4/t5/t1**3 - beta*t2/r0/ &
+        t43 = c2*puy*t27 + puy*s2*t28
+        t44 = w*t13*t43 + t6*t43
+        t45 = c1*pux*t8 - pux*s1*t10
+        t46 = w*t13*t45
+        t47 = w**2
+        t48 = zux*zuy
+        t49 = -t35*(rux*ruy*t36 + t48) + t27*t10 + t26*t14 + t28*t8
+        t50 = w*t13*t49 + t6*t49
+        t51 = w*(beta*t2*1.0_dp/4.0_dp/r0**2/w**4/t5/t1**4 - beta*t2/r0**2/w**4/t5/t1**3 - beta*t2/r0/ &
             w**3/t5/t1**2 - beta*t2*t12/r0/w**2/t5**2/t1**2 + beta*t2*t12**2*2/t5**3 - beta*t2*(t2*1.0_dp/ &
             4.0_dp/r0**2/w**4/t1**4 - t2/r0**2/w**4/t1**3 - t2/r0/w**3/t1**2 + t4*4/r0**2/w**4/t3**4 - t4*8/ &
-            r0**2/w**4/t3**3 + t4*4/r0/w**3/t3**2)/t5**2)*t46 + t13*t46*2
-        t49 = t6*t43
-        t50 = t44 - t45*t47*t24*3.0_dp/2.0_dp - t11*t48*t24*1.0_dp/2.0_dp + t49
-        t51 = t44 + t49
-        t52 = c1*c2*pux*puy + pux*puy*s1*s2
-        t53 = c2*t21*2/t + s2*t23*2/t
-        t54 = c2*puy*t28 - puy*s2*t27
-        t55 = w*t13*t54 + t6*t54
-        t56 = -pvx*w*t13*t14 - pvx*t6*t14
-        t57 = -pvy*w*t13*t26 - pvy*t6*t26
-        t58 = pux*w*t13*t14 + pux*t6*t14
-        t59 = puy*w*t13*t26 + puy*t6*t26
-        t60 = zy - zx
-        t61 = t45*t60*t47*3/t**2 + t11*t60*t48/t**2
-        t62 = -c1*t10 - s1*t8
-        t63 = c1*t10 + s1*t8
+            r0**2/w**4/t3**3 + t4*4/r0/w**3/t3**2)/t5**2)*t49 + t13*t49*2
+        t52 = t6*t45
+        t53 = t46 - t47*t50*t24*3.0_dp/2.0_dp - t11*t51*t24*1.0_dp/2.0_dp + t52
+        t54 = t46 + t52
+        t55 = c1*c2*pux*puy + pux*puy*s1*s2
+        t56 = c2*t21*2/t + s2*t23*2/t
+        t57 = c2*puy*t28 - puy*s2*t27
+        t58 = w*t13*t57 + t6*t57
+        t59 = -pvx*t14 - zuy*t35
+        t60 = w*t13*t59 + t6*t59
+        t61 = -pvy*t26 - zux*t35
+        t62 = w*t13*t61 + t6*t61
+        t63 = pux*w*t13*t14 + pux*t6*t14
+        t64 = puy*w*t13*t26 + puy*t6*t26
+        t65 = zy - zx
+        t66 = t47*t65*t50*3/t**2 + t11*t65*t51/t**2
+        t67 = -c1*t10 - s1*t8
+        t68 = c1*t10 + s1*t8
         h_r = dpux*t25 + dpuy*(w*t6*(c1*pux*t7 - pux*s1*t9) - t11*t30*t24*1.0_dp/2.0_dp) - dpvx*t11*t32* &
             t24*1.0_dp/2.0_dp + dpvy*(w*t6*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t11*t34*t24*1.0_dp/2.0_dp) - drux* &
-            t11*t36*t24*1.0_dp/2.0_dp + druy*(w*t6*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t11*t38*t24*1.0_dp/2.0_dp) &
-            - drvx*t11*t40*t24*1.0_dp/2.0_dp + drvy*(w*t6*(c1*pux*puy*s2 - c2*pux*puy*s1) - t11*t42*t24*1.0_dp/ &
-            2.0_dp) + drx*(-t11*t50*t24*1.0_dp/2.0_dp - t11*t51*t24*1.0_dp/2.0_dp - t11*t47*(t19**2*2 + t22**2* &
-            2)*1.0_dp/2.0_dp) + dry*(w*t6*t52 - t11*(c2*t19*2/t + s2*t22*2/t)*t47*1.0_dp/2.0_dp - t11*t53*t50* &
-            1.0_dp/2.0_dp - t11*t55*t24*1.0_dp/2.0_dp) - dzux*t11*t56*t24*1.0_dp/2.0_dp - dzuy*t11*t57*t24* &
-            1.0_dp/2.0_dp - dzvx*t11*t58*t24*1.0_dp/2.0_dp - dzvy*t11*t59*t24*1.0_dp/2.0_dp + dzx*t11*t60*t50/ &
-            t**2 - dzy*t11*t60*t50/t**2
-        h_z = dpux*t11*t60*t18/t**2 + dpuy*t11*t60*t30/t**2 + dpvx*t11*t60*t32/t**2 + dpvy*t11*t60*t34/ &
-            t**2 + drux*t11*t60*t36/t**2 + druy*t11*t60*t38/t**2 + drvx*t11*t60*t40/t**2 + drvy*t11*t60*t42/ &
-            t**2 + drx*(t11*t60*t51/t**2 - t11*t61*t24*1.0_dp/2.0_dp) + dry*(t11*t60*t55/t**2 - t11*t53*t61* &
-            1.0_dp/2.0_dp) + dzux*t11*t60*t56/t**2 + dzuy*t11*t60*t57/t**2 + dzvx*t11*t60*t58/t**2 + dzvy*t11* &
-            t60*t59/t**2 + dzx*(t11*t60*t61/t**2 - t11*t47/t**2) + dzy*(-t11*t60*t61/t**2 + t11*t47/t**2)
-        h_ru = dpuy*w*t6*(-c1*pvx*t9 - pvx*s1*t7) + dpvx*w*t6*t62 + dpvy*w*t6*(c1*c2*pvx*ruy + pvx*ruy* &
-            s1*s2) + druy*w*t6*(c1*c2*pvx*pvy + pvx*pvy*s1*s2) + drvy*w*t6*(-c1*c2*puy*pvx - puy*pvx*s1*s2) - &
-            drx*t11*t36*t24*1.0_dp/2.0_dp + dry*(w*t6*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t11*t53*t36*1.0_dp/ &
-            2.0_dp) + dzx*t11*t60*t36/t**2 - dzy*t11*t60*t36/t**2
-        h_zu = -dpuy*pvx*w*zvy*t6 - dpvx*w*t6*t14 + dpvy*pvx*w*zuy*t6 - drx*t11*t56*t24*1.0_dp/2.0_dp - &
-            dry*t11*t53*t56*1.0_dp/2.0_dp + dzuy*pvx*pvy*w*t6 - dzvy*puy*pvx*w*t6 + dzx*t11*t60*t56/t**2 - dzy* &
-            t11*t60*t56/t**2
-        h_rv = dpux*w*t6*t63 + dpuy*w*t6*(c1*pux*t9 + pux*s1*t7) + dpvy*w*t6*(-c1*c2*pux*ruy - pux*ruy* &
-            s1*s2) + druy*w*t6*(-c1*c2*pux*pvy - pux*pvy*s1*s2) + drvy*w*t6*t52 - drx*t11*t40*t24*1.0_dp/ &
-            2.0_dp + dry*(w*t6*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t11*t53*t40*1.0_dp/2.0_dp) + dzx*t11*t60*t40/ &
-            t**2 - dzy*t11*t60*t40/t**2
-        h_zv = dpux*w*t6*t14 + dpuy*pux*w*zvy*t6 - dpvy*pux*w*zuy*t6 - drx*t11*t58*t24*1.0_dp/2.0_dp - &
-            dry*t11*t53*t58*1.0_dp/2.0_dp - dzuy*pux*pvy*w*t6 + dzvy*pux*puy*w*t6 + dzx*t11*t60*t58/t**2 - dzy* &
-            t11*t60*t58/t**2
+            t11*t38*t24*1.0_dp/2.0_dp + druy*(w*t6*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t11*t40*t24*1.0_dp/2.0_dp) &
+            - drvx*t11*t42*t24*1.0_dp/2.0_dp + drvy*(w*t6*(c1*pux*puy*s2 - c2*pux*puy*s1) - t11*t44*t24*1.0_dp/ &
+            2.0_dp) + drx*(-t11*t53*t24*1.0_dp/2.0_dp - t11*t54*t24*1.0_dp/2.0_dp - t11*t50*(t19**2*2 + t22**2* &
+            2)*1.0_dp/2.0_dp) + dry*(w*t6*t55 - t11*(c2*t19*2/t + s2*t22*2/t)*t50*1.0_dp/2.0_dp - t11*t56*t53* &
+            1.0_dp/2.0_dp - t11*t58*t24*1.0_dp/2.0_dp) - dzux*t11*t60*t24*1.0_dp/2.0_dp - dzuy*t11*t62*t24* &
+            1.0_dp/2.0_dp - dzvx*t11*t63*t24*1.0_dp/2.0_dp - dzvy*t11*t64*t24*1.0_dp/2.0_dp + dzx*t11*t65*t53/ &
+            t**2 - dzy*t11*t65*t53/t**2
+        h_z = dpux*t11*t65*t18/t**2 + dpuy*t11*t65*t30/t**2 + dpvx*t11*t65*t32/t**2 + dpvy*t11*t65*t34/ &
+            t**2 + drux*t11*t65*t38/t**2 + druy*t11*t65*t40/t**2 + drvx*t11*t65*t42/t**2 + drvy*t11*t65*t44/ &
+            t**2 + drx*(t11*t65*t54/t**2 - t11*t66*t24*1.0_dp/2.0_dp) + dry*(t11*t65*t58/t**2 - t11*t56*t66* &
+            1.0_dp/2.0_dp) + dzux*t11*t65*t60/t**2 + dzuy*t11*t65*t62/t**2 + dzvx*t11*t65*t63/t**2 + dzvy*t11* &
+            t65*t64/t**2 + dzx*(t11*t65*t66/t**2 - t11*t50/t**2) + dzy*(-t11*t65*t66/t**2 + t11*t50/t**2)
+        h_ru = dpuy*w*t6*(-c1*pvx*t9 - pvx*s1*t7) + dpvx*w*t6*t67 + dpvy*w*t6*(c1*c2*pvx*ruy + pvx*ruy* &
+            s1*s2) + druy*w*t6*(c1*c2*pvx*pvy + pvx*pvy*s1*s2 - t35*t36) + drvy*w*t6*(-c1*c2*puy*pvx - puy*pvx* &
+            s1*s2) - drx*t11*t38*t24*1.0_dp/2.0_dp + dry*(w*t6*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t11*t56*t38* &
+            1.0_dp/2.0_dp) + dzx*t11*t65*t38/t**2 - dzy*t11*t65*t38/t**2
+        h_zu = -dpuy*pvx*w*zvy*t6 - dpvx*w*t6*t14 + dpvy*pvx*w*zuy*t6 - drx*t11*t60*t24*1.0_dp/2.0_dp - &
+            dry*t11*t56*t60*1.0_dp/2.0_dp + dzuy*w*t6*(pvx*pvy - t35) - dzvy*puy*pvx*w*t6 + dzx*t11*t65*t60/ &
+            t**2 - dzy*t11*t65*t60/t**2
+        h_rv = dpux*w*t6*t68 + dpuy*w*t6*(c1*pux*t9 + pux*s1*t7) + dpvy*w*t6*(-c1*c2*pux*ruy - pux*ruy* &
+            s1*s2) + druy*w*t6*(-c1*c2*pux*pvy - pux*pvy*s1*s2) + drvy*w*t6*t55 - drx*t11*t42*t24*1.0_dp/ &
+            2.0_dp + dry*(w*t6*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t11*t56*t42*1.0_dp/2.0_dp) + dzx*t11*t65*t42/ &
+            t**2 - dzy*t11*t65*t42/t**2
+        h_zv = dpux*w*t6*t14 + dpuy*pux*w*zvy*t6 - dpvy*pux*w*zuy*t6 - drx*t11*t63*t24*1.0_dp/2.0_dp - &
+            dry*t11*t56*t63*1.0_dp/2.0_dp - dzuy*pux*pvy*w*t6 + dzvy*pux*puy*w*t6 + dzx*t11*t65*t63/t**2 - dzy* &
+            t11*t65*t63/t**2
         h_pu = dpuy*w*t6*(zvx*zvy + t15*t9 + t16*t7) + dpvy*w*t6*(-c2*ruy*t15 - ruy*s2*t16 - zuy*zvx) + &
-            druy*w*t6*(-c2*pvy*t15 - pvy*s2*t16) + drvx*w*t6*t63 + drvy*w*t6*(c2*puy*t15 + puy*s2*t16) + drx* &
-            t25 + dry*(w*t6*(c2*puy*t16 - puy*s2*t15) - t11*t53*t18*1.0_dp/2.0_dp) - dzuy*pvy*w*zvx*t6 + dzvx*w* &
-            t6*t14 + dzvy*puy*w*zvx*t6 + dzx*t11*t60*t18/t**2 - dzy*t11*t60*t18/t**2
+            druy*w*t6*(-c2*pvy*t15 - pvy*s2*t16) + drvx*w*t6*t68 + drvy*w*t6*(c2*puy*t15 + puy*s2*t16) + drx* &
+            t25 + dry*(w*t6*(c2*puy*t16 - puy*s2*t15) - t11*t56*t18*1.0_dp/2.0_dp) - dzuy*pvy*w*zvx*t6 + dzvx*w* &
+            t6*t14 + dzvy*puy*w*zvx*t6 + dzx*t11*t65*t18/t**2 - dzy*t11*t65*t18/t**2
         h_pv = dpuy*w*t6*(-c1*rux*t9 - rux*s1*t7 - zux*zvy) + dpvy*w*t6*(c1*c2*rux*ruy + rux*ruy*s1*s2 + &
-            zux*zuy) + drux*w*t6*t62 + druy*w*t6*(c1*c2*pvy*rux + pvy*rux*s1*s2) + drvy*w*t6*(-c1*c2*puy*rux - &
-            puy*rux*s1*s2) - drx*t11*t32*t24*1.0_dp/2.0_dp + dry*(w*t6*(c1*puy*rux*s2 - c2*puy*rux*s1) - t11* &
-            t53*t32*1.0_dp/2.0_dp) - dzux*w*t6*t14 + dzuy*pvy*w*zux*t6 - dzvy*puy*w*zux*t6 + dzx*t11*t60*t32/ &
-            t**2 - dzy*t11*t60*t32/t**2
+            t48) + drux*w*t6*t67 + druy*w*t6*(c1*c2*pvy*rux + pvy*rux*s1*s2) + drvy*w*t6*(-c1*c2*puy*rux - puy* &
+            rux*s1*s2) - drx*t11*t32*t24*1.0_dp/2.0_dp + dry*(w*t6*(c1*puy*rux*s2 - c2*puy*rux*s1) - t11*t56* &
+            t32*1.0_dp/2.0_dp) - dzux*w*t6*t14 + dzuy*pvy*w*zux*t6 - dzvy*puy*w*zux*t6 + dzx*t11*t65*t32/t**2 - &
+            dzy*t11*t65*t32/t**2
 
     end subroutine generated_ts_trap_pair_hvp_pou
 
@@ -823,7 +852,7 @@ module fortfem_generated_ts_trap_pair_blocks_pou
 contains
 
     pure subroutine generated_ts_trap_pair_blocks_pou(rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, &
-            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0, hxx1_1, hxx1_2, hxx1_3, &
+            zuy, rvy, zvy, puy, pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0, hxx1_1, hxx1_2, hxx1_3, &
             hxx1_4, hxx1_5, hxx1_6, hxx1_7, hxx1_8, hxx2_2, hxx2_3, hxx2_4, hxx2_5, hxx2_6, hxx2_7, hxx2_8, &
             hxx3_3, hxx3_4, hxx3_5, hxx3_6, hxx3_7, hxx3_8, hxx4_4, hxx4_5, hxx4_6, hxx4_7, hxx4_8, hxx5_5, &
             hxx5_6, hxx5_7, hxx5_8, hxx6_6, hxx6_7, hxx6_8, hxx7_7, hxx7_8, hxx8_8, hxy1_1, hxy1_2, hxy1_3, &
@@ -836,7 +865,7 @@ contains
         use, intrinsic :: iso_fortran_env, only: dp => real64
         implicit none
         real(dp), intent(in) :: rx, zx, rux, zux, rvx, zvx, pux, pvx, ry, zy, ruy, zuy, rvy, zvy, puy, &
-            pvy, t, c1, s1, c2, s2, dc, ds, w, alpha, beta, r0
+            pvy, t, c1, s1, c2, s2, dc, ds, jt, w, alpha, beta, r0
         real(dp), intent(out) :: hxx1_1, hxx1_2, hxx1_3, hxx1_4, hxx1_5, hxx1_6, hxx1_7, hxx1_8, hxx2_2, &
             hxx2_3, hxx2_4, hxx2_5, hxx2_6, hxx2_7, hxx2_8, hxx3_3, hxx3_4, hxx3_5, hxx3_6, hxx3_7, hxx3_8, &
             hxx4_4, hxx4_5, hxx4_6, hxx4_7, hxx4_8, hxx5_5, hxx5_6, hxx5_7, hxx5_8, hxx6_6, hxx6_7, hxx6_8, &
@@ -849,7 +878,7 @@ contains
         real(dp) :: t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17, t18, &
             t19, t20, t21, t22, t23, t24, t25, t26, t27, t28, t29, t30, t31, t32, t33, t34, t35, t36, t37, t38, &
             t39, t40, t41, t42, t43, t44, t45, t46, t47, t48, t49, t50, t51, t52, t53, t54, t55, t56, t57, t58, &
-            t59
+            t59, t60, t61, t62, t63, t64
 
         t1 = w**3
         t2 = -1.0_dp/r0/w + 1
@@ -866,155 +895,160 @@ contains
         t13 = c1*pux*t10 - pux*s1*t12
         t14 = w*t8*t13
         t15 = w**2
-        t16 = c1*rvx - rx*s1
-        t17 = -c1*pvx*rux + pux*t16
-        t18 = pux*zvx - pvx*zux
-        t19 = puy*zvy - pvy*zuy
-        t20 = c1*rx + rvx*s1
-        t21 = pux*t20 - pvx*rux*s1
-        t22 = t17*t12 + t18*t19 + t21*t10
-        t23 = alpha + beta*t3/t6
-        t24 = w*t8*t22 + t23*t22
-        t25 = dc - c2/t
-        t26 = ry - rx
-        t27 = c2*t26/t + dc*rx
-        t28 = ds - s2/t
-        t29 = ds*rx + s2*t26/t
-        t30 = t25*t27*2 + t28*t29*2
-        t31 = w*(beta*t3*1.0_dp/4.0_dp/r0**2/w**4/t6/t2**4 - beta*t3/r0**2/w**4/t6/t2**3 - beta*t3/r0/ &
+        t16 = jt**2
+        t17 = c1*c2 + s1*s2
+        t18 = zux*zuy
+        t19 = c1*rvx - rx*s1
+        t20 = -c1*pvx*rux + pux*t19
+        t21 = pux*zvx - pvx*zux
+        t22 = puy*zvy - pvy*zuy
+        t23 = c1*rx + rvx*s1
+        t24 = pux*t23 - pvx*rux*s1
+        t25 = -t16*(rux*ruy*t17 + t18) + t20*t12 + t21*t22 + t24*t10
+        t26 = alpha + beta*t3/t6
+        t27 = w*t8*t25 + t26*t25
+        t28 = dc - c2/t
+        t29 = ry - rx
+        t30 = c2*t29/t + dc*rx
+        t31 = ds - s2/t
+        t32 = ds*rx + s2*t29/t
+        t33 = t28*t30*2 + t31*t32*2
+        t34 = w*(beta*t3*1.0_dp/4.0_dp/r0**2/w**4/t6/t2**4 - beta*t3/r0**2/w**4/t6/t2**3 - beta*t3/r0/ &
             w**3/t6/t2**2 - beta*t3*t7/r0/w**2/t6**2/t2**2 + beta*t3*t7**2*2/t6**3 - beta*t3*(t3*1.0_dp/4.0_dp/ &
             r0**2/w**4/t2**4 - t3/r0**2/w**4/t2**3 - t3/r0/w**3/t2**2 + t5*4/r0**2/w**4/t4**4 - t5*8/r0**2/w**4/ &
-            t4**3 + t5*4/r0/w**3/t4**2)/t6**2)*t22 + t8*t22*2
-        t32 = t23*t13
-        t33 = t14 - t15*t24*t30*3.0_dp/2.0_dp - t1*t31*t30*1.0_dp/2.0_dp + t32
-        t34 = zy - zx
-        t35 = -c1*pvx*t12 - pvx*s1*t10
-        t36 = w*t8*t35 + t23*t35
-        t37 = -pvx*w*t8*t19 - pvx*t23*t19
-        t38 = c1*pux*t12 + pux*s1*t10
-        t39 = w*t8*t38 + t23*t38
-        t40 = pux*w*t8*t19 + pux*t23*t19
-        t41 = zvx*t19 + t16*t12 + t20*t10
-        t42 = w*t8*t41 + t23*t41
-        t43 = -c1*rux*t12 - rux*s1*t10 - zux*t19
-        t44 = w*t8*t43 + t23*t43
-        t45 = t15*t34*t24*3/t**2 + t1*t34*t31/t**2
-        t46 = w*t23*(c1*c2*pux*puy + pux*puy*s1*s2)
-        t47 = c2*t27*2/t + s2*t29*2/t
-        t48 = c2*puy*t21 - puy*s2*t17
-        t49 = w*t8*t48 + t23*t48
-        t50 = -c2*pvy*t17 - pvy*s2*t21
-        t51 = w*t8*t50 + t23*t50
-        t52 = -pvy*w*t8*t18 - pvy*t23*t18
-        t53 = c2*puy*t17 + puy*s2*t21
-        t54 = w*t8*t53 + t23*t53
-        t55 = puy*w*t8*t18 + puy*t23*t18
-        t56 = zvy*t18 + t17*t11 + t9*t21
-        t57 = w*t8*t56 + t23*t56
-        t58 = -c2*ruy*t17 - ruy*s2*t21 - zuy*t18
-        t59 = w*t8*t58 + t23*t58
-        hxx1_1 = -t1*t33*t30*1.0_dp/2.0_dp - t1*(t14 + t32)*t30*1.0_dp/2.0_dp - t1*t24*(t25**2*2 + &
-            t28**2*2)*1.0_dp/2.0_dp
-        hxx1_2 = t1*t34*t33/t**2
-        hxx1_3 = -t1*t36*t30*1.0_dp/2.0_dp
-        hxx1_4 = -t1*t37*t30*1.0_dp/2.0_dp
-        hxx1_5 = -t1*t39*t30*1.0_dp/2.0_dp
-        hxx1_6 = -t1*t40*t30*1.0_dp/2.0_dp
-        hxx1_7 = w*t23*(c1*t10 - s1*t12) - t1*t42*t30*1.0_dp/2.0_dp
-        hxx1_8 = -t1*t44*t30*1.0_dp/2.0_dp
-        hxx2_2 = t1*t34*t45/t**2 - t1*t24/t**2
-        hxx2_3 = t1*t34*t36/t**2
-        hxx2_4 = t1*t34*t37/t**2
-        hxx2_5 = t1*t34*t39/t**2
-        hxx2_6 = t1*t34*t40/t**2
-        hxx2_7 = t1*t34*t42/t**2
-        hxx2_8 = t1*t34*t44/t**2
+            t4**3 + t5*4/r0/w**3/t4**2)/t6**2)*t25 + t8*t25*2
+        t35 = t26*t13
+        t36 = t14 - t15*t27*t33*3.0_dp/2.0_dp - t1*t34*t33*1.0_dp/2.0_dp + t35
+        t37 = zy - zx
+        t38 = -c1*pvx*t12 - pvx*s1*t10 - ruy*t16*t17
+        t39 = w*t8*t38 + t26*t38
+        t40 = -pvx*t22 - zuy*t16
+        t41 = w*t8*t40 + t26*t40
+        t42 = c1*pux*t12 + pux*s1*t10
+        t43 = w*t8*t42 + t26*t42
+        t44 = pux*w*t8*t22 + pux*t26*t22
+        t45 = zvx*t22 + t19*t12 + t23*t10
+        t46 = w*t8*t45 + t26*t45
+        t47 = -c1*rux*t12 - rux*s1*t10 - zux*t22
+        t48 = w*t8*t47 + t26*t47
+        t49 = t15*t37*t27*3/t**2 + t1*t37*t34/t**2
+        t50 = w*t26*(c1*c2*pux*puy + pux*puy*s1*s2)
+        t51 = c2*t30*2/t + s2*t32*2/t
+        t52 = c2*puy*t24 - puy*s2*t20
+        t53 = w*t8*t52 + t26*t52
+        t54 = -c2*pvy*t20 - pvy*s2*t24 - rux*t16*t17
+        t55 = w*t8*t54 + t26*t54
+        t56 = -pvy*t21 - zux*t16
+        t57 = w*t8*t56 + t26*t56
+        t58 = c2*puy*t20 + puy*s2*t24
+        t59 = w*t8*t58 + t26*t58
+        t60 = puy*w*t8*t21 + puy*t26*t21
+        t61 = zvy*t21 + t20*t11 + t9*t24
+        t62 = w*t8*t61 + t26*t61
+        t63 = -c2*ruy*t20 - ruy*s2*t24 - zuy*t21
+        t64 = w*t8*t63 + t26*t63
+        hxx1_1 = -t1*t36*t33*1.0_dp/2.0_dp - t1*(t14 + t35)*t33*1.0_dp/2.0_dp - t1*t27*(t28**2*2 + &
+            t31**2*2)*1.0_dp/2.0_dp
+        hxx1_2 = t1*t37*t36/t**2
+        hxx1_3 = -t1*t39*t33*1.0_dp/2.0_dp
+        hxx1_4 = -t1*t41*t33*1.0_dp/2.0_dp
+        hxx1_5 = -t1*t43*t33*1.0_dp/2.0_dp
+        hxx1_6 = -t1*t44*t33*1.0_dp/2.0_dp
+        hxx1_7 = w*t26*(c1*t10 - s1*t12) - t1*t46*t33*1.0_dp/2.0_dp
+        hxx1_8 = -t1*t48*t33*1.0_dp/2.0_dp
+        hxx2_2 = t1*t37*t49/t**2 - t1*t27/t**2
+        hxx2_3 = t1*t37*t39/t**2
+        hxx2_4 = t1*t37*t41/t**2
+        hxx2_5 = t1*t37*t43/t**2
+        hxx2_6 = t1*t37*t44/t**2
+        hxx2_7 = t1*t37*t46/t**2
+        hxx2_8 = t1*t37*t48/t**2
         hxx3_3 = 0
         hxx3_4 = 0
         hxx3_5 = 0
         hxx3_6 = 0
         hxx3_7 = 0
-        hxx3_8 = w*t23*(-c1*t12 - s1*t10)
+        hxx3_8 = w*t26*(-c1*t12 - s1*t10)
         hxx4_4 = 0
         hxx4_5 = 0
         hxx4_6 = 0
         hxx4_7 = 0
-        hxx4_8 = -w*t23*t19
+        hxx4_8 = -w*t26*t22
         hxx5_5 = 0
         hxx5_6 = 0
-        hxx5_7 = w*t23*(c1*t12 + s1*t10)
+        hxx5_7 = w*t26*(c1*t12 + s1*t10)
         hxx5_8 = 0
         hxx6_6 = 0
-        hxx6_7 = w*t23*t19
+        hxx6_7 = w*t26*t22
         hxx6_8 = 0
         hxx7_7 = 0
         hxx7_8 = 0
         hxx8_8 = 0
-        hxy1_1 = t46 - t1*(c2*t25*2/t + s2*t28*2/t)*t24*1.0_dp/2.0_dp - t1*t47*t33*1.0_dp/2.0_dp - t1* &
-            t49*t30*1.0_dp/2.0_dp
-        hxy1_2 = -t1*t34*t33/t**2
-        hxy1_3 = w*t23*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t1*t51*t30*1.0_dp/2.0_dp
-        hxy1_4 = -t1*t52*t30*1.0_dp/2.0_dp
-        hxy1_5 = w*t23*(c1*pux*puy*s2 - c2*pux*puy*s1) - t1*t54*t30*1.0_dp/2.0_dp
-        hxy1_6 = -t1*t55*t30*1.0_dp/2.0_dp
-        hxy1_7 = w*t23*(c1*pux*t9 - pux*s1*t11) - t1*t57*t30*1.0_dp/2.0_dp
-        hxy1_8 = w*t23*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t1*t59*t30*1.0_dp/2.0_dp
-        hxy2_1 = t1*t34*t49/t**2 - t1*t47*t45*1.0_dp/2.0_dp
-        hxy2_2 = -t1*t34*t45/t**2 + t1*t24/t**2
-        hxy2_3 = t1*t34*t51/t**2
-        hxy2_4 = t1*t34*t52/t**2
-        hxy2_5 = t1*t34*t54/t**2
-        hxy2_6 = t1*t34*t55/t**2
-        hxy2_7 = t1*t34*t57/t**2
-        hxy2_8 = t1*t34*t59/t**2
-        hxy3_1 = w*t23*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t1*t47*t36*1.0_dp/2.0_dp
-        hxy3_2 = -t1*t34*t36/t**2
-        hxy3_3 = w*t23*(c1*c2*pvx*pvy + pvx*pvy*s1*s2)
+        hxy1_1 = t50 - t1*(c2*t28*2/t + s2*t31*2/t)*t27*1.0_dp/2.0_dp - t1*t51*t36*1.0_dp/2.0_dp - t1* &
+            t53*t33*1.0_dp/2.0_dp
+        hxy1_2 = -t1*t37*t36/t**2
+        hxy1_3 = w*t26*(-c1*pux*pvy*s2 + c2*pux*pvy*s1) - t1*t55*t33*1.0_dp/2.0_dp
+        hxy1_4 = -t1*t57*t33*1.0_dp/2.0_dp
+        hxy1_5 = w*t26*(c1*pux*puy*s2 - c2*pux*puy*s1) - t1*t59*t33*1.0_dp/2.0_dp
+        hxy1_6 = -t1*t60*t33*1.0_dp/2.0_dp
+        hxy1_7 = w*t26*(c1*pux*t9 - pux*s1*t11) - t1*t62*t33*1.0_dp/2.0_dp
+        hxy1_8 = w*t26*(-c1*pux*ruy*s2 + c2*pux*ruy*s1) - t1*t64*t33*1.0_dp/2.0_dp
+        hxy2_1 = t1*t37*t53/t**2 - t1*t51*t49*1.0_dp/2.0_dp
+        hxy2_2 = -t1*t37*t49/t**2 + t1*t27/t**2
+        hxy2_3 = t1*t37*t55/t**2
+        hxy2_4 = t1*t37*t57/t**2
+        hxy2_5 = t1*t37*t59/t**2
+        hxy2_6 = t1*t37*t60/t**2
+        hxy2_7 = t1*t37*t62/t**2
+        hxy2_8 = t1*t37*t64/t**2
+        hxy3_1 = w*t26*(c1*puy*pvx*s2 - c2*puy*pvx*s1) - t1*t51*t39*1.0_dp/2.0_dp
+        hxy3_2 = -t1*t37*t39/t**2
+        hxy3_3 = w*t26*(c1*c2*pvx*pvy + pvx*pvy*s1*s2 - t16*t17)
         hxy3_4 = 0
-        hxy3_5 = w*t23*(-c1*c2*puy*pvx - puy*pvx*s1*s2)
+        hxy3_5 = w*t26*(-c1*c2*puy*pvx - puy*pvx*s1*s2)
         hxy3_6 = 0
-        hxy3_7 = w*t23*(-c1*pvx*t11 - pvx*s1*t9)
-        hxy3_8 = w*t23*(c1*c2*pvx*ruy + pvx*ruy*s1*s2)
-        hxy4_1 = -t1*t47*t37*1.0_dp/2.0_dp
-        hxy4_2 = -t1*t34*t37/t**2
+        hxy3_7 = w*t26*(-c1*pvx*t11 - pvx*s1*t9)
+        hxy3_8 = w*t26*(c1*c2*pvx*ruy + pvx*ruy*s1*s2)
+        hxy4_1 = -t1*t51*t41*1.0_dp/2.0_dp
+        hxy4_2 = -t1*t37*t41/t**2
         hxy4_3 = 0
-        hxy4_4 = pvx*pvy*w*t23
+        hxy4_4 = w*t26*(pvx*pvy - t16)
         hxy4_5 = 0
-        hxy4_6 = -puy*pvx*w*t23
-        hxy4_7 = -pvx*w*zvy*t23
-        hxy4_8 = pvx*w*zuy*t23
-        hxy5_1 = w*t23*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t1*t47*t39*1.0_dp/2.0_dp
-        hxy5_2 = -t1*t34*t39/t**2
-        hxy5_3 = w*t23*(-c1*c2*pux*pvy - pux*pvy*s1*s2)
+        hxy4_6 = -puy*pvx*w*t26
+        hxy4_7 = -pvx*w*zvy*t26
+        hxy4_8 = pvx*w*zuy*t26
+        hxy5_1 = w*t26*(-c1*pux*puy*s2 + c2*pux*puy*s1) - t1*t51*t43*1.0_dp/2.0_dp
+        hxy5_2 = -t1*t37*t43/t**2
+        hxy5_3 = w*t26*(-c1*c2*pux*pvy - pux*pvy*s1*s2)
         hxy5_4 = 0
-        hxy5_5 = t46
+        hxy5_5 = t50
         hxy5_6 = 0
-        hxy5_7 = w*t23*(c1*pux*t11 + pux*s1*t9)
-        hxy5_8 = w*t23*(-c1*c2*pux*ruy - pux*ruy*s1*s2)
-        hxy6_1 = -t1*t47*t40*1.0_dp/2.0_dp
-        hxy6_2 = -t1*t34*t40/t**2
+        hxy5_7 = w*t26*(c1*pux*t11 + pux*s1*t9)
+        hxy5_8 = w*t26*(-c1*c2*pux*ruy - pux*ruy*s1*s2)
+        hxy6_1 = -t1*t51*t44*1.0_dp/2.0_dp
+        hxy6_2 = -t1*t37*t44/t**2
         hxy6_3 = 0
-        hxy6_4 = -pux*pvy*w*t23
+        hxy6_4 = -pux*pvy*w*t26
         hxy6_5 = 0
-        hxy6_6 = pux*puy*w*t23
-        hxy6_7 = pux*w*zvy*t23
-        hxy6_8 = -pux*w*zuy*t23
-        hxy7_1 = w*t23*(c2*puy*t20 - puy*s2*t16) - t1*t47*t42*1.0_dp/2.0_dp
-        hxy7_2 = -t1*t34*t42/t**2
-        hxy7_3 = w*t23*(-c2*pvy*t16 - pvy*s2*t20)
-        hxy7_4 = -pvy*w*zvx*t23
-        hxy7_5 = w*t23*(c2*puy*t16 + puy*s2*t20)
-        hxy7_6 = puy*w*zvx*t23
-        hxy7_7 = w*t23*(zvx*zvy + t16*t11 + t20*t9)
-        hxy7_8 = w*t23*(-c2*ruy*t16 - ruy*s2*t20 - zuy*zvx)
-        hxy8_1 = w*t23*(c1*puy*rux*s2 - c2*puy*rux*s1) - t1*t47*t44*1.0_dp/2.0_dp
-        hxy8_2 = -t1*t34*t44/t**2
-        hxy8_3 = w*t23*(c1*c2*pvy*rux + pvy*rux*s1*s2)
-        hxy8_4 = pvy*w*zux*t23
-        hxy8_5 = w*t23*(-c1*c2*puy*rux - puy*rux*s1*s2)
-        hxy8_6 = -puy*w*zux*t23
-        hxy8_7 = w*t23*(-c1*rux*t11 - rux*s1*t9 - zux*zvy)
-        hxy8_8 = w*t23*(c1*c2*rux*ruy + rux*ruy*s1*s2 + zux*zuy)
+        hxy6_6 = pux*puy*w*t26
+        hxy6_7 = pux*w*zvy*t26
+        hxy6_8 = -pux*w*zuy*t26
+        hxy7_1 = w*t26*(c2*puy*t23 - puy*s2*t19) - t1*t51*t46*1.0_dp/2.0_dp
+        hxy7_2 = -t1*t37*t46/t**2
+        hxy7_3 = w*t26*(-c2*pvy*t19 - pvy*s2*t23)
+        hxy7_4 = -pvy*w*zvx*t26
+        hxy7_5 = w*t26*(c2*puy*t19 + puy*s2*t23)
+        hxy7_6 = puy*w*zvx*t26
+        hxy7_7 = w*t26*(zvx*zvy + t19*t11 + t23*t9)
+        hxy7_8 = w*t26*(-c2*ruy*t19 - ruy*s2*t23 - zuy*zvx)
+        hxy8_1 = w*t26*(c1*puy*rux*s2 - c2*puy*rux*s1) - t1*t51*t48*1.0_dp/2.0_dp
+        hxy8_2 = -t1*t37*t48/t**2
+        hxy8_3 = w*t26*(c1*c2*pvy*rux + pvy*rux*s1*s2)
+        hxy8_4 = pvy*w*zux*t26
+        hxy8_5 = w*t26*(-c1*c2*puy*rux - puy*rux*s1*s2)
+        hxy8_6 = -puy*w*zux*t26
+        hxy8_7 = w*t26*(-c1*rux*t11 - rux*s1*t9 - zux*zvy)
+        hxy8_8 = w*t26*(c1*c2*rux*ruy + rux*ruy*s1*s2 + t18)
 
     end subroutine generated_ts_trap_pair_blocks_pou
 

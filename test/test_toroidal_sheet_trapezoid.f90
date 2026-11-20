@@ -22,6 +22,7 @@ program test_toroidal_sheet_trapezoid
     call test_derivatives(0.0_dp)
     call test_two_level()
     call test_derivatives(2.5_dp)
+    call test_subtraction()
     call check_summary("Toroidal sheet trapezoidal rule")
     if (.not. all_passed) error stop 1
 
@@ -76,6 +77,42 @@ contains
         call record(err(2) < 1.0e-4_dp .and. err(1)/err(2) > 7, &
             "toroidal-field coil energy at third order", err(2))
     end subroutine test_toroidal_field_coil
+
+    subroutine test_subtraction()
+        !! jt /= 0 equals the energy minus that of Phi = jt v alone, for the
+        !! value, the geometry gradient and the product along geometry.
+        type(tst_grid_t) :: g
+        real(dp), allocatable :: u(:, :, :), u0(:, :, :), du(:, :, :), g1(:, :, :), &
+            g2(:, :, :), g0(:, :, :), h1(:, :, :), h2(:, :, :), h0(:, :, :)
+        real(dp) :: e1, e2, e0, err
+        integer :: i, j, c
+        g = tst_grid_t(nu=12, nv=8, nfp=2)
+        allocate (u(8, 12, 8), du(8, 12, 8))
+        call torus(g, u, 0.1_dp)
+        do j = 1, 8
+            do i = 1, 12
+                u(7, i, j) = 0.3_dp*sin(1.3_dp*i + 0.4_dp*j)
+                do c = 1, 6
+                    du(c, i, j) = 0.01_dp*cos(1.9_dp*c + 2.3_dp*i + 0.7_dp*j)
+                end do
+            end do
+        end do
+        du(7:8, :, :) = 0
+        u0 = u
+        u0(7, :, :) = 0; u0(8, :, :) = 0.7_dp
+        allocate (g1, g2, g0, h1, h2, h0, mold=u)
+        call tst_energy(g, u, e1, g1)
+        call tst_energy(g, u0, e0, g0)
+        call tst_hvp(g, u, du, h1)
+        call tst_hvp(g, u0, du, h0)
+        g%jt = 0.7_dp
+        call tst_energy(g, u, e2, g2)
+        call tst_hvp(g, u, du, h2)
+        err = max(abs(e2 - (e1 - e0))/abs(e1), &
+            maxval(abs(g2(1:6, :, :) - g1(1:6, :, :) + g0(1:6, :, :)))/maxval(abs(g1)), &
+            maxval(abs(h2(1:6, :, :) - h1(1:6, :, :) + h0(1:6, :, :)))/maxval(abs(h1)))
+        call record(err < 1.0e-12_dp, "subtracted toroidal current", err)
+    end subroutine test_subtraction
 
     subroutine test_two_level()
         !! The toroidal-field coil with the two-level partition (r0 = 3 at 64 x

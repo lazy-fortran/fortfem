@@ -40,9 +40,12 @@ module fortfem_toroidal_sheet_trapezoid
     !> every second point in u and v (nu, nv even; weight 16 per pair): both
     !> integrands are smooth, so both sums stay spectral, and the far sum has
     !> 16 times fewer pairs. r0 = 0: every pair on the grid.
+    !> jt /= 0: the energy minus that of the current Phi = jt v alone (the
+    !> poloidal current of a toroidal-field coil, whose large self energy a
+    !> caller adds exactly by other means); the subtraction is in the kernels.
     type, public :: tst_grid_t
         integer :: nu = 0, nv = 0, nfp = 1
-        real(dp) :: r0 = 0
+        real(dp) :: r0 = 0, jt = 0
     end type
 
     public :: tst_energy, tst_hvp, tst_zeta, tst_current_modes
@@ -128,7 +131,7 @@ contains
                             call pair_class(g%r0, wi, level, mode, alpha, beta)
                             if (mode == 0) cycle
                             call pair_gradient(u(:, i1, j1), u(:, i2, jj), cs(:, j1), &
-                                cs(:, j2), wi, mode, alpha, beta, g%r0, out)
+                                cs(:, j2), wi, mode, alpha, beta, g%r0, g%jt, out)
                             s = s + scale*out(1)
                             gx = gx + scale*out(2:9)
                         end do
@@ -136,7 +139,7 @@ contains
                 end do
                 abc = metric(g, u(:, i1, j1))
                 call tst_zeta(abc(1), abc(2), abc(3), z)
-                call diag(u(:, i1, j1), hu, hv, z, zero8, d)
+                call diag(u(:, i1, j1), hu, hv, g%jt, z, zero8, d)
                 e = e + s - d(1)
                 if (present(gradient)) gradient(:, i1, j1) = &
                     g%nfp*w*w/(8*pi)*(2*gx - d(2:9))
@@ -185,37 +188,38 @@ contains
         sig = alpha + beta*e1/(e1 + e2)
     end function smooth_weight
 
-    subroutine pair_gradient(x, y, c1, c2, wi, mode, alpha, beta, r0, o)
-        real(dp), intent(in) :: x(8), y(8), c1(2), c2(2), wi, alpha, beta, r0
+    subroutine pair_gradient(x, y, c1, c2, wi, mode, alpha, beta, r0, jt, o)
+        real(dp), intent(in) :: x(8), y(8), c1(2), c2(2), wi, alpha, beta, r0, jt
         integer, intent(in) :: mode
         real(dp), intent(out) :: o(9)
         if (mode == 1) then
             call generated_ts_trap_pair_gradient_w(x(1), x(2), x(3), x(4), x(5), x(6), &
                 x(7), x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, &
-                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), wi, o(1), o(2), &
+                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), jt, wi, o(1), o(2), &
                 o(3), o(4), o(5), o(6), o(7), o(8), o(9))
         else
             call generated_ts_trap_pair_gradient_pou(x(1), x(2), x(3), x(4), x(5), x(6), &
                 x(7), x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, &
-                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), wi, alpha, beta, &
+                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), jt, wi, alpha, beta, &
                 r0, o(1), o(2), o(3), o(4), o(5), o(6), o(7), o(8), o(9))
         end if
     end subroutine pair_gradient
 
-    subroutine pair_hvp(x, y, c1, c2, wi, mode, alpha, beta, r0, dx, dy, o)
-        real(dp), intent(in) :: x(8), y(8), c1(2), c2(2), wi, alpha, beta, r0, dx(8), dy(8)
+    subroutine pair_hvp(x, y, c1, c2, wi, mode, alpha, beta, r0, jt, dx, dy, o)
+        real(dp), intent(in) :: x(8), y(8), c1(2), c2(2), wi, alpha, beta, r0, jt, dx(8), &
+            dy(8)
         integer, intent(in) :: mode
         real(dp), intent(out) :: o(8)
         if (mode == 1) then
             call generated_ts_trap_pair_hvp_w(x(1), x(2), x(3), x(4), x(5), x(6), x(7), &
                 x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, c1(1), c1(2), &
-                c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), wi, dx(1), dx(2), dx(3), dx(4), &
+                c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), jt, wi, dx(1), dx(2), dx(3), dx(4), &
                 dx(5), dx(6), dx(7), dx(8), dy(1), dy(2), dy(3), dy(4), dy(5), dy(6), &
                 dy(7), dy(8), o(1), o(2), o(3), o(4), o(5), o(6), o(7), o(8))
         else
             call generated_ts_trap_pair_hvp_pou(x(1), x(2), x(3), x(4), x(5), x(6), x(7), &
                 x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, c1(1), c1(2), &
-                c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), wi, alpha, beta, r0, dx(1), &
+                c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), jt, wi, alpha, beta, r0, dx(1), &
                 dx(2), dx(3), dx(4), dx(5), dx(6), dx(7), dx(8), dy(1), dy(2), dy(3), &
                 dy(4), dy(5), dy(6), dy(7), dy(8), o(1), o(2), o(3), o(4), o(5), o(6), &
                 o(7), o(8))
@@ -256,14 +260,15 @@ contains
                             call pair_class(g%r0, wi, level, mode, alpha, beta)
                             if (mode == 0) cycle
                             call pair_hvp(u(:, i1, j1), u(:, i2, jj), cs(:, j1), cs(:, j2), &
-                                wi, mode, alpha, beta, g%r0, du(:, i1, j1), du(:, i2, jj), out)
+                                wi, mode, alpha, beta, g%r0, g%jt, du(:, i1, j1), &
+                                du(:, i2, jj), out)
                             acc = acc + scale*out
                         end do
                     end do
                 end do
                 abc = metric(g, u(:, i1, j1))
                 call tst_zeta(abc(1), abc(2), abc(3), z)
-                call diag(u(:, i1, j1), hu, hv, z, du(:, i1, j1), d)
+                call diag(u(:, i1, j1), hu, hv, g%jt, z, du(:, i1, j1), d)
                 hv_out(:, i1, j1) = g%nfp*w*w/(8*pi)*(2*acc - d(10:17))
             end do
         end do
@@ -432,7 +437,7 @@ contains
                 call tst_zeta(abc(1), abc(2), abc(3), z)
                 do q = 1, 8
                     e8 = 0; e8(q) = 1
-                    call diag(u(:, i1, j1), hu, hv, z, e8, d)
+                    call diag(u(:, i1, j1), hu, hv, g%jt, z, e8, d)
                     h(:, a, q, a) = h(:, a, q, a) - c*d(10:17)
                 end do
             end do
@@ -446,7 +451,7 @@ contains
             if (mode == 2) then
                 call generated_ts_trap_pair_blocks_pou(x(1), x(2), x(3), x(4), x(5), x(6), &
                     x(7), x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, &
-                    c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), wi, alpha, &
+                    c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), g%jt, wi, alpha, &
                     beta, g%r0, o(1), o(2), o(3), o(4), o(5), o(6), o(7), o(8), o(9), o(10), &
                     o(11), o(12), o(13), o(14), o(15), o(16), o(17), o(18), o(19), o(20), &
                     o(21), o(22), o(23), o(24), o(25), o(26), o(27), o(28), o(29), o(30), &
@@ -461,7 +466,7 @@ contains
             end if
             call generated_ts_trap_pair_blocks_w(x(1), x(2), x(3), x(4), x(5), x(6), &
                 x(7), x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, &
-                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), &
+                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), g%jt, &
                 inverse_distance(x, y, c1, c2), o(1), o(2), o(3), o(4), o(5), o(6), &
                 o(7), o(8), o(9), o(10), o(11), o(12), o(13), o(14), o(15), o(16), &
                 o(17), o(18), o(19), o(20), o(21), o(22), o(23), o(24), o(25), o(26), &
@@ -484,12 +489,12 @@ contains
         xv = [x(5)*cs(1) - x(1)*cs(2), x(5)*cs(2) + x(1)*cs(1), x(6)]
     end subroutine cartesian
 
-    pure subroutine diag(x, hu, hv, z, dx, d)
+    pure subroutine diag(x, hu, hv, jt, z, dx, d)
         !! |k|^2 Z of one point: value, gradient in x and its derivative along dx.
-        real(dp), intent(in) :: x(8), hu, hv, z(10), dx(8)
+        real(dp), intent(in) :: x(8), hu, hv, jt, z(10), dx(8)
         real(dp), intent(out) :: d(17)
         call generated_ts_trap_diag(x(1), x(2), x(3), x(4), x(5), x(6), x(7), x(8), hu, &
-            hv, z(1), z(2), z(3), z(4), z(5), z(6), z(7), z(8), z(9), z(10), dx(1), &
+            hv, jt, z(1), z(2), z(3), z(4), z(5), z(6), z(7), z(8), z(9), z(10), dx(1), &
             dx(2), dx(3), dx(4), dx(5), dx(6), dx(7), dx(8), d(1), d(2), d(3), d(4), &
             d(5), d(6), d(7), d(8), d(9), d(10), d(11), d(12), d(13), d(14), d(15), &
             d(16), d(17))
