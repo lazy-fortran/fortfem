@@ -12,6 +12,7 @@ program gen_toroidal_sheet_trapezoid_products
     !   directional derivative along (dx, dy), with w = 1/|Q| an input (the
     !   caller forms Q) and its derivatives by the chain rule, dw = -w^3/2
     !   d(Q.Q), so the kernels are polynomial in w.
+    ! pair_blocks_w: the x-x (upper, row-wise) and x-y blocks of its Hessian.
     ! zeta_term, zeta_base: for Q with matrix (a, b; b, c), l = sqrt(ac - b^2),
     !   Z = zeta_base + sum_{(m, n) /= 0} zeta_term(m, n), the Ewald split
     !   of the form normalised to unit determinant:
@@ -52,7 +53,7 @@ program gen_toroidal_sheet_trapezoid_products
     integer :: i, unit, ios
 
     engine = make_native_engine()
-    allocate (character(len=200000) :: code(5))
+    allocate (character(len=300000) :: code(6))
 
     ! pair HVP
     do i = 1, 8
@@ -91,6 +92,29 @@ program gen_toroidal_sheet_trapezoid_products
         gn = [character(len=8) :: "value", "g_r", "g_z", "g_ru", "g_zu", "g_rv", "g_zv", &
             "g_pu", "g_pv"]
         code(1) = kernel("generated_ts_trap_pair_gradient_w", gr, gn, &
+            [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+            (str(trim(params(i))), i=1, 7), str("w")])
+    end block
+    block
+        type(expr_t) :: blocks(100)
+        character(len=8) :: bn(100)
+        integer :: jj, kb
+        kb = 0
+        do i = 1, 8
+            do jj = i, 8
+                kb = kb + 1
+                blocks(kb) = total(gw(i), x(jj))
+                write (bn(kb), "(a,i0,a,i0)") "hxx", i, "_", jj
+            end do
+        end do
+        do i = 1, 8
+            do jj = 1, 8
+                kb = kb + 1
+                blocks(kb) = total(gw(i), y(jj))
+                write (bn(kb), "(a,i0,a,i0)") "hxy", i, "_", jj
+            end do
+        end do
+        code(6) = kernel("generated_ts_trap_pair_blocks_w", blocks, bn, &
             [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
             (str(trim(params(i))), i=1, 7), str("w")])
     end block
@@ -153,7 +177,7 @@ program gen_toroidal_sheet_trapezoid_products
     open (newunit=unit, file=generated_path("fortfem_toroidal_sheet_trapezoid_products.f90"), &
         status="replace", action="write", iostat=ios)
     if (ios /= 0) error stop "cannot write toroidal sheet trapezoid products"
-    do i = 1, 5
+    do i = 1, 6
         write (unit, "(a)") trim(code(i))
     end do
     close (unit)

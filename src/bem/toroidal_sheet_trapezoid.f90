@@ -24,6 +24,7 @@ module fortfem_toroidal_sheet_trapezoid
         generated_toroidal_sheet_pair_value
     use fortfem_generated_ts_trap_pair_gradient_w, only: generated_ts_trap_pair_gradient_w
     use fortfem_generated_ts_trap_pair_hvp_w, only: generated_ts_trap_pair_hvp_w
+    use fortfem_generated_ts_trap_pair_blocks_w, only: generated_ts_trap_pair_blocks_w
     use fortfem_generated_ts_trap_zeta_term, only: generated_ts_trap_zeta_term
     use fortfem_generated_ts_trap_zeta_base, only: generated_ts_trap_zeta_base
     use fortfem_generated_ts_trap_diag, only: generated_ts_trap_diag
@@ -37,6 +38,7 @@ module fortfem_toroidal_sheet_trapezoid
     end type
 
     public :: tst_energy, tst_hvp, tst_zeta, tst_current_form, tst_current_modes
+    public :: tst_hessian
 
 contains
 
@@ -337,6 +339,84 @@ contains
             end do
         end do
     end subroutine tst_current_modes
+
+    subroutine tst_hessian(g, u, h)
+        !! Dense Hessian of E in the inputs of the first period, h(c, a, c', b)
+        !! with a, b = i + nu (j - 1); for coarse grids (8 nu nv squared
+        !! entries).
+        type(tst_grid_t), intent(in) :: g
+        real(dp), intent(in) :: u(:, :, :)
+        real(dp), intent(out) :: h(:, :, :, :)
+        real(dp) :: hu, hv, w, cs(2, g%nv*g%nfp), out(100), z(10), abc(3), d(17), c
+        real(dp) :: e8(8), hxx(8, 8), hxy(8, 8)
+        integer :: i1, j1, i2, j2, jj, nvt, a, b, k, r, q
+        hu = 1.0_dp/g%nu
+        hv = 2*pi/(g%nfp*g%nv)
+        w = hu*hv
+        nvt = g%nv*g%nfp
+        c = g%nfp*w*w/(8*pi)
+        do j2 = 1, nvt
+            cs(:, j2) = [cos((j2 - 1)*hv), sin((j2 - 1)*hv)]
+        end do
+        !$omp parallel do collapse(2) schedule(dynamic, 4) default(shared) &
+        !$omp& private(i1, j1, i2, j2, jj, a, b, k, r, q, out, z, abc, d, e8, hxx, hxy)
+        do j1 = 1, g%nv
+            do i1 = 1, g%nu
+                a = i1 + g%nu*(j1 - 1)
+                h(:, a, :, :) = 0
+                do j2 = 1, nvt
+                    jj = 1 + mod(j2 - 1, g%nv)
+                    do i2 = 1, g%nu
+                        if (i2 == i1 .and. j2 == j1) cycle
+                        b = i2 + g%nu*(jj - 1)
+                        call blocks(u(:, i1, j1), u(:, i2, jj), cs(:, j1), cs(:, j2), out)
+                        k = 0
+                        do r = 1, 8
+                            do q = r, 8
+                                k = k + 1
+                                hxx(r, q) = out(k); hxx(q, r) = out(k)
+                            end do
+                        end do
+                        do r = 1, 8
+                            do q = 1, 8
+                                k = k + 1
+                                hxy(r, q) = out(k)
+                            end do
+                        end do
+                        h(:, a, :, a) = h(:, a, :, a) + 2*c*hxx
+                        h(:, a, :, b) = h(:, a, :, b) + 2*c*hxy
+                    end do
+                end do
+                abc = metric(g, u(:, i1, j1))
+                call tst_zeta(abc(1), abc(2), abc(3), z)
+                do q = 1, 8
+                    e8 = 0; e8(q) = 1
+                    call diag(u(:, i1, j1), hu, hv, z, e8, d)
+                    h(:, a, q, a) = h(:, a, q, a) - c*d(10:17)
+                end do
+            end do
+        end do
+        !$omp end parallel do
+    contains
+        subroutine blocks(x, y, c1, c2, o)
+            real(dp), intent(in) :: x(8), y(8), c1(2), c2(2)
+            real(dp), intent(out) :: o(100)
+            call generated_ts_trap_pair_blocks_w(x(1), x(2), x(3), x(4), x(5), x(6), &
+                x(7), x(8), y(1), y(2), y(3), y(4), y(5), y(6), y(7), y(8), 1.0_dp, &
+                c1(1), c1(2), c2(1), c2(2), c2(1) - c1(1), c2(2) - c1(2), &
+                inverse_distance(x, y, c1, c2), o(1), o(2), o(3), o(4), o(5), o(6), &
+                o(7), o(8), o(9), o(10), o(11), o(12), o(13), o(14), o(15), o(16), &
+                o(17), o(18), o(19), o(20), o(21), o(22), o(23), o(24), o(25), o(26), &
+                o(27), o(28), o(29), o(30), o(31), o(32), o(33), o(34), o(35), o(36), &
+                o(37), o(38), o(39), o(40), o(41), o(42), o(43), o(44), o(45), o(46), &
+                o(47), o(48), o(49), o(50), o(51), o(52), o(53), o(54), o(55), o(56), &
+                o(57), o(58), o(59), o(60), o(61), o(62), o(63), o(64), o(65), o(66), &
+                o(67), o(68), o(69), o(70), o(71), o(72), o(73), o(74), o(75), o(76), &
+                o(77), o(78), o(79), o(80), o(81), o(82), o(83), o(84), o(85), o(86), &
+                o(87), o(88), o(89), o(90), o(91), o(92), o(93), o(94), o(95), o(96), &
+                o(97), o(98), o(99), o(100))
+        end subroutine blocks
+    end subroutine tst_hessian
 
     pure subroutine cartesian(x, cs, p, xu, xv)
         real(dp), intent(in) :: x(8), cs(2)

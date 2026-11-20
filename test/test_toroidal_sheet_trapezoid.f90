@@ -10,7 +10,7 @@ program test_toroidal_sheet_trapezoid
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_toroidal_sheet_trapezoid, only: tst_grid_t, tst_energy, tst_hvp, &
-        tst_current_form, tst_current_modes
+        tst_current_form, tst_current_modes, tst_hessian
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -114,6 +114,14 @@ contains
             call record(err < 1.0e-12_dp, "current block of the Hessian", err)
         end block
         call test_modes(g, u)
+        block
+            real(dp), allocatable :: hd(:, :, :, :)
+            allocate (hd(8, 96, 8, 96))
+            call tst_hessian(g, u, hd)
+            err = maxval(abs(reshape(matmul(reshape(hd, [768, 768]), reshape(du, [768])), &
+                [8, 12, 8]) - hv))/maxval(abs(hv))
+            call record(err < 1.0e-12_dp, "dense Hessian", err)
+        end block
     end subroutine test_derivatives
 
     subroutine test_modes(g, u)
