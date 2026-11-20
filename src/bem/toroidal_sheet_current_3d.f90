@@ -74,6 +74,13 @@ module fortfem_toroidal_sheet_current_3d
         real(dp), allocatable :: tp(:, :, :), dtp(:, :, :)
     end type
 
+    !> Local coefficients of each panel: values and global indices.
+    type :: frame_t
+        integer :: nlg = 0, nlp = 0, nl = 0
+        real(dp), allocatable :: cl(:, :) !! (nl, panel)
+        integer, allocatable :: gidx(:, :) !! (nl, panel)
+    end type
+
     !> Linear functional of the coefficients: sum coef(j) c(idx(j)) + shift.
     type :: functional_t
         integer :: n = 0
@@ -269,14 +276,22 @@ contains
 
     subroutine ts_energy(s, plan, energy, gradient, hessian)
         !! E, and when present its gradient and Hessian in ts_coefficients(s).
+        !! The double sum is invariant under exchanging the two points with a
+        !! shift by whole periods, and both the separated and the near rules
+        !! are mirror symmetric, so the source side of the gradient and of
+        !! the own Hessian blocks equals the target side: these are taken
+        !! twice, a cross block C enters as 2 C or 2 C^T and the Hessian is
+        !! symmetrised at the end.
         type(ts_surface_t), intent(in) :: s
         type(ts_plan_t), intent(in) :: plan
         real(dp), intent(out) :: energy
         real(dp), intent(out), optional :: gradient(:), hessian(:, :)
         type(far_points_t), allocatable :: far(:)
+        type(frame_t) :: fr
         real(dp), allocatable :: c(:), lg(:), lh(:, :), centre(:, :), radius(:)
+        real(dp), allocatable :: gl(:), lxx(:, :)
         real(dp) :: le
-        integer :: order, nc, ng, nh, p, b, q, bb, nv_all, npatch, target
+        integer :: order, nc, ng, nh, p, b, q, bb, nv_all, target, dq, dbb
 
         c = ts_coefficients(s)
         nc = size(c)
@@ -288,26 +303,174 @@ contains
         if (order == 2) nh = nc
         allocate (lg(ng), lh(nh, nh), source=0.0_dp)
         nv_all = plan%nv*s%nfp
-        npatch = nv_all*s%n_panels
+        call make_frame(s, c, fr)
         call far_tables(s, plan, c, far, centre, radius)
         le = 0
         !$omp parallel do schedule(dynamic, 1) default(shared) &
-        !$omp& private(target, p, b, q, bb) reduction(+:le, lg, lh)
+        !$omp& private(target, p, b, q, bb, dq, dbb, gl, lxx) reduction(+:le, lg, lh)
         do target = 1, plan%nv*s%n_panels
             p = 1 + mod(target - 1, s%n_panels)
             b = 1 + (target - 1)/s%n_panels
-            call far_target(s, plan, c, far, centre, radius, p, b, order, le, lg, lh)
-            do bb = 1, nv_all
-                do q = 1, s%n_panels
-                    call patch_pair(s, plan, c, p, b, q, bb, order, le, lg, lh)
+            if (.not. allocated(gl)) allocate (gl(fr%nl), lxx(fr%nl, fr%nl))
+            gl = 0
+            if (order == 2) lxx = 0
+            call far_target(s, plan, fr, far, centre, radius, p, b, order, le, gl, &
+                lxx, lh)
+            do dbb = -1, 1
+                bb = modulo(b - 1 + dbb, nv_all) + 1
+                if (centred(bb - b, nv_all) /= dbb) cycle
+                do dq = -1, 1
+                    q = modulo(p - 1 + dq, s%n_panels) + 1
+                    if (centred(q - p, s%n_panels) /= dq) cycle
+                    call patch_pair(s, plan, fr, p, b, q, bb, order, le, gl, lxx, lh)
                 end do
             end do
+            if (order >= 1) lg(fr%gidx(:, p)) = lg(fr%gidx(:, p)) + 2*gl
+            if (order == 2) lh(fr%gidx(:, p), fr%gidx(:, p)) = &
+                lh(fr%gidx(:, p), fr%gidx(:, p)) + 2*lxx
         end do
         !$omp end parallel do
         energy = s%nfp*le/(8*pi)
         if (present(gradient)) gradient = s%nfp*lg/(8*pi)
-        if (present(hessian)) hessian = s%nfp*lh/(8*pi)
+        if (present(hessian)) hessian = s%nfp*(lh + transpose(lh))/(16*pi)
     end subroutine ts_energy
+
+    pure integer function centred(d, n)
+        !! d modulo n in [-n/2, n/2).
+        integer, intent(in) :: d, n
+        centred = modulo(d + n/2, n) - n/2
+    end function centred
+
+    subroutine make_frame(s, c, fr)
+        !! Local coefficients of each panel: R and Z (node a fastest, then
+        !! mode), then Phi; their global indices and values.
+        type(ts_surface_t), intent(in) :: s
+        real(dp), intent(in) :: c(:)
+        type(frame_t), intent(out) :: fr
+        integer :: q, a, m, k1, l, node, zoff
+        k1 = s%degree + 1
+        fr%nlg = k1*s%nmode; fr%nlp = k1*s%nmode_phi
+        fr%nl = 2*fr%nlg + fr%nlp
+        zoff = s%n_nodes*s%nmode
+        allocate (fr%gidx(fr%nl, s%n_panels), fr%cl(fr%nl, s%n_panels))
+        do q = 1, s%n_panels
+            do a = 1, k1
+                node = node_of(s, q, a)
+                do m = 1, s%nmode
+                    l = a + k1*(m - 1)
+                    fr%gidx(l, q) = node + s%n_nodes*(m - 1)
+                    fr%gidx(fr%nlg + l, q) = zoff + fr%gidx(l, q)
+                end do
+                do m = 1, s%nmode_phi
+                    fr%gidx(2*fr%nlg + a + k1*(m - 1), q) = 2*zoff + node + s%n_nodes*(m - 1)
+                end do
+            end do
+            fr%cl(:, q) = c(fr%gidx(:, q))
+        end do
+    end subroutine make_frame
+
+    pure subroutine point_vectors(s, n, dn, t, dt, tp, dtp, gv, pv)
+        !! Basis vectors of the point inputs in the local coefficients:
+        !! gv(:, 1:3) = N T, dN T, N dT (R and Z), pv(:, 1:2) = dN T, N dT (Phi).
+        type(ts_surface_t), intent(in) :: s
+        real(dp), intent(in) :: n(:), dn(:), t(:), dt(:), tp(:), dtp(:)
+        real(dp), intent(out) :: gv(:, :), pv(:, :)
+        integer :: a, m, l, k1
+        k1 = s%degree + 1
+        do m = 1, s%nmode
+            do a = 1, k1
+                l = a + k1*(m - 1)
+                gv(l, 1) = n(a)*t(m); gv(l, 2) = dn(a)*t(m); gv(l, 3) = n(a)*dt(m)
+            end do
+        end do
+        do m = 1, s%nmode_phi
+            do a = 1, k1
+                l = a + k1*(m - 1)
+                pv(l, 1) = dn(a)*tp(m); pv(l, 2) = n(a)*dtp(m)
+            end do
+        end do
+    end subroutine point_vectors
+
+    pure subroutine point_at(s, xi, v, gv, pv)
+        type(ts_surface_t), intent(in) :: s
+        real(dp), intent(in) :: xi, v
+        real(dp), intent(out) :: gv(:, :), pv(:, :)
+        real(dp) :: n(s%degree + 1), dn(s%degree + 1)
+        real(dp) :: t(s%nmode), dt(s%nmode), tp(s%nmode_phi), dtp(s%nmode_phi)
+        call basis(s, xi, n, dn)
+        call trig(s%nmode, s%nfp, v, t, dt)
+        call trig(s%nmode_phi, s%nfp, v, tp, dtp)
+        call point_vectors(s, n, dn, t, dt, tp, dtp, gv, pv)
+    end subroutine point_at
+
+    pure function point_inputs(s, fr, q, gv, pv) result(u)
+        !! (R, Z, R_xi, Z_xi, R_v, Z_v, Phi_xi, Phi_v) on panel q, with the
+        !! net-current ramps in Phi.
+        type(ts_surface_t), intent(in) :: s
+        type(frame_t), intent(in) :: fr
+        integer, intent(in) :: q
+        real(dp), intent(in) :: gv(:, :), pv(:, :)
+        real(dp) :: u(8)
+        integer :: g
+        g = fr%nlg
+        u(1) = dot_product(gv(:, 1), fr%cl(1:g, q))
+        u(2) = dot_product(gv(:, 1), fr%cl(g + 1:2*g, q))
+        u(3) = dot_product(gv(:, 2), fr%cl(1:g, q))
+        u(4) = dot_product(gv(:, 2), fr%cl(g + 1:2*g, q))
+        u(5) = dot_product(gv(:, 3), fr%cl(1:g, q))
+        u(6) = dot_product(gv(:, 3), fr%cl(g + 1:2*g, q))
+        u(7) = dot_product(pv(:, 1), fr%cl(2*g + 1:, q)) + s%i_t/s%n_panels
+        u(8) = dot_product(pv(:, 2), fr%cl(2*g + 1:, q)) + s%i_p/(2*pi)
+    end function point_inputs
+
+    pure subroutine add_gradient(nlg, gv, pv, gp, w, gl)
+        !! gl += w B^T gp for one point.
+        integer, intent(in) :: nlg
+        real(dp), intent(in) :: gv(:, :), pv(:, :), gp(8), w
+        real(dp), intent(inout) :: gl(:)
+        gl(1:nlg) = gl(1:nlg) + w*(gp(1)*gv(:, 1) + gp(3)*gv(:, 2) + gp(5)*gv(:, 3))
+        gl(nlg + 1:2*nlg) = gl(nlg + 1:2*nlg) &
+            + w*(gp(2)*gv(:, 1) + gp(4)*gv(:, 2) + gp(6)*gv(:, 3))
+        gl(2*nlg + 1:) = gl(2*nlg + 1:) + w*(gp(7)*pv(:, 1) + gp(8)*pv(:, 2))
+    end subroutine add_gradient
+
+    pure subroutine add_block(nlg, ga, pa, gb, pb, h, w, l)
+        !! l += w B_a^T h B_b, B the point inputs in local coefficients: the
+        !! inputs of R are 1, 3, 5 (vectors ga(:, 1:3)), of Z 2, 4, 6, of Phi
+        !! 7, 8 (pa(:, 1:2)).
+        integer, intent(in) :: nlg
+        real(dp), intent(in) :: ga(:, :), pa(:, :), gb(:, :), pb(:, :), h(8, 8), w
+        real(dp), intent(inout) :: l(:, :)
+        integer, parameter :: rows(3, 3) = reshape([1, 3, 5, 2, 4, 6, 7, 8, 0], [3, 3])
+        integer, parameter :: nk(3) = [3, 3, 2]
+        real(dp) :: colv(3), wk(3)
+        integer :: ca, cb, ka, jj, lb, ob, nlp
+        nlp = size(pa, 1)
+        do cb = 1, 3
+            lb = merge(nlg, nlp, cb < 3)
+            ob = (cb - 1)*nlg
+            do jj = 1, lb
+                if (cb < 3) then
+                    colv = gb(jj, 1:3)
+                else
+                    colv(1:2) = pb(jj, 1:2)
+                end if
+                do ca = 1, 3
+                    do ka = 1, nk(ca)
+                        wk(ka) = w*dot_product(h(rows(ka, ca), rows(1:nk(cb), cb)), &
+                            colv(1:nk(cb)))
+                    end do
+                    if (ca < 3) then
+                        l((ca - 1)*nlg + 1:ca*nlg, ob + jj) = l((ca - 1)*nlg + 1:ca*nlg, &
+                            ob + jj) + wk(1)*ga(:, 1) + wk(2)*ga(:, 2) + wk(3)*ga(:, 3)
+                    else
+                        l(2*nlg + 1:, ob + jj) = l(2*nlg + 1:, ob + jj) + wk(1)*pa(:, 1) &
+                            + wk(2)*pa(:, 2)
+                    end if
+                end do
+            end do
+        end do
+    end subroutine add_block
 
     subroutine far_tables(s, plan, c, far, centre, radius)
         !! Quadrature points of every patch (panel q, interval bb of the torus,
@@ -389,31 +552,30 @@ contains
         end if
     end function far_order
 
-    subroutine far_target(s, plan, c, far, centre, radius, p, b, order, le, lg, lh)
+    subroutine far_target(s, plan, fr, far, centre, radius, p, b, order, le, gl, &
+            lxx, lh)
         !! All separated source patches of the target patch (p, b). For each
         !! order n the target points of that order meet every source patch
-        !! that takes it; the inputs come from the tables, the gradient and
-        !! the point's own Hessian blocks are accumulated per point in input
-        !! space and scattered once, the cross blocks through a dense row
-        !! block per target point.
+        !! that takes it, with the inputs from the tables. Per target point the
+        !! gradient and own block go to the local gl, lxx, the cross block
+        !! through a row block in the global coefficients into lh as 2 C^T.
         type(ts_surface_t), intent(in) :: s
         type(ts_plan_t), intent(in) :: plan
-        real(dp), intent(in) :: c(:), centre(:, :), radius(:)
+        type(frame_t), intent(in) :: fr
+        real(dp), intent(in) :: centre(:, :), radius(:)
         type(far_points_t), intent(in) :: far(2:)
         integer, intent(in) :: p, b, order
-        real(dp), intent(inout) :: le, lg(:), lh(:, :)
-        real(dp), allocatable :: gx(:), gy(:, :, :), hxx(:, :), hyy(:, :, :, :)
-        real(dp), allocatable :: cross(:, :)
+        real(dp), intent(inout) :: le, gl(:), lxx(:, :), lh(:, :)
+        real(dp), allocatable :: cross(:, :), col(:)
         logical, allocatable :: use(:, :)
-        real(dp) :: out(1 + n_self + n_self*(n_self + 1)/2), hv, ux(8), uy(8), lin(16, 16)
-        real(dp) :: hp(16, 16), gp(16), wx, wy
-        integer :: nv_all, npatch, tp, patch, n, k, l, dp_, db, q, bb, nc
-        type(functional_t) :: f(7)
+        real(dp) :: out(1 + n_self + n_self*(n_self + 1)/2), ux(8), uy(8), wx, wy
+        real(dp) :: gp(16), hxx(8, 8), hxy(8, 8), sxx(8, 8), gx(8)
+        real(dp) :: gvx(fr%nlg, 3), pvx(fr%nlp, 2)
+        integer :: nv_all, npatch, tp, patch, n, k, l, q, bb, nc, lx
 
-        hv = 2*pi/(s%nfp*plan%nv)
         nv_all = plan%nv*s%nfp
         npatch = nv_all*s%n_panels
-        nc = size(c)
+        nc = size(lh, 1)
         tp = p + s%n_panels*(b - 1)
         ! which separated patches take which order
         allocate (use(npatch, 2:plan%ng_far))
@@ -421,32 +583,21 @@ contains
         do patch = 1, npatch
             q = 1 + mod(patch - 1, s%n_panels)
             bb = 1 + (patch - 1)/s%n_panels
-            dp_ = modulo(q - p + s%n_panels/2, s%n_panels) - s%n_panels/2
-            db = modulo(bb - b + nv_all/2, nv_all) - nv_all/2
-            if (abs(dp_) <= 1 .and. abs(db) <= 1) cycle
+            if (abs(centred(q - p, s%n_panels)) <= 1 .and. &
+                abs(centred(bb - b, nv_all)) <= 1) cycle
             n = far_order(plan, norm2(centre(:, patch) - centre(:, tp)), &
                 radius(patch) + radius(tp))
             use(patch, n) = .true.
         end do
-        ! input-space accumulators of the source points (gradient and own
-        ! Hessian block), per order
-        if (order >= 1) then
-            allocate (gy(8, plan%ng_far**2, npatch), gx(8))
-            if (order == 2) then
-                allocate (hyy(8, 8, plan%ng_far**2, npatch), hxx(8, 8), cross(8, nc))
-                hyy = 0
-            end if
-            gy = 0
-        end if
-        lin = 0
+        if (order == 2) allocate (cross(8, nc), col(nc))
         do n = 2, plan%ng_far
             if (.not. any(use(:, n))) cycle
             do k = 1, n*n
                 ux = far(n)%u(:, k, tp)
                 wx = far(n)%w(k, tp)
-                if (order >= 1) gx = 0
+                gx = 0
                 if (order == 2) then
-                    hxx = 0; cross = 0
+                    sxx = 0; cross = 0
                 end if
                 do patch = 1, npatch
                     if (.not. use(patch, n)) cycle
@@ -457,36 +608,33 @@ contains
                             order, out)
                         le = le + wx*wy*out(1)
                         if (order == 0) cycle
-                        ! leaf inputs (x 7, y 7, dr, dz) in point inputs (x 8, y 8)
-                        call leaf_to_points(out, gp, hp, order)
-                        gx = gx + wx*wy*gp(1:8)
-                        gy(:, l, patch) = gy(:, l, patch) + wx*wy*gp(9:16)
+                        call leaf_to_points(out, 1.0_dp, order, gp, hxx, hxy)
+                        gx = gx + wy*gp(1:8)
                         if (order < 2) cycle
-                        hxx = hxx + wx*wy*hp(1:8, 1:8)
-                        hyy(:, :, l, patch) = hyy(:, :, l, patch) + wx*wy*hp(9:16, 9:16)
-                        call add_cross(s, far(n), l, patch, wx*wy*hp(1:8, 9:16), cross)
+                        sxx = sxx + wy*hxx
+                        call add_cross(s, far(n), l, patch, wy*hxy, cross)
                     end do
                 end do
                 if (order == 0) cycle
-                ! scatter the target point
-                call point_functionals(s, p, far(n)%xi(k, tp), far(n)%v(k, tp), f)
-                call scatter_point(s, f, gx, lg)
-                if (order == 2) then
-                    call scatter_point_hessian(s, f, hxx, lh)
-                    call scatter_cross(s, f, cross, lh)
-                end if
-            end do
-        end do
-        if (order == 0) return
-        ! scatter the source points
-        do patch = 1, npatch
-            q = 1 + mod(patch - 1, s%n_panels)
-            do n = 2, plan%ng_far
-                if (.not. use(patch, n)) cycle
-                do l = 1, n*n
-                    call point_functionals(s, q, far(n)%xi(l, patch), far(n)%v(l, patch), f)
-                    call scatter_point(s, f, gy(:, l, patch), lg)
-                    if (order == 2) call scatter_point_hessian(s, f, hyy(:, :, l, patch), lh)
+                call point_vectors(s, far(n)%nb(:, k, tp), far(n)%dnb(:, k, tp), &
+                    far(n)%tt(:, k, tp), far(n)%dtt(:, k, tp), far(n)%tp(:, k, tp), &
+                    far(n)%dtp(:, k, tp), gvx, pvx)
+                call add_gradient(fr%nlg, gvx, pvx, gx, wx, gl)
+                if (order < 2) cycle
+                call add_block(fr%nlg, gvx, pvx, gvx, pvx, sxx, wx, lxx)
+                do lx = 1, fr%nlg
+                    col = gvx(lx, 1)*cross(1, :) + gvx(lx, 2)*cross(3, :) &
+                        + gvx(lx, 3)*cross(5, :)
+                    lh(:, fr%gidx(lx, p)) = lh(:, fr%gidx(lx, p)) + 2*wx*col
+                    col = gvx(lx, 1)*cross(2, :) + gvx(lx, 2)*cross(4, :) &
+                        + gvx(lx, 3)*cross(6, :)
+                    lh(:, fr%gidx(fr%nlg + lx, p)) = lh(:, fr%gidx(fr%nlg + lx, p)) &
+                        + 2*wx*col
+                end do
+                do lx = 1, fr%nlp
+                    col = pvx(lx, 1)*cross(7, :) + pvx(lx, 2)*cross(8, :)
+                    lh(:, fr%gidx(2*fr%nlg + lx, p)) = lh(:, fr%gidx(2*fr%nlg + lx, p)) &
+                        + 2*wx*col
                 end do
             end do
         end do
@@ -500,105 +648,77 @@ contains
         real(dp) :: u(n_self), c1, s1, c2, s2
         u = [ux(1), ux(3:8), uy(1), uy(3:8), uy(1) - ux(1), uy(2) - ux(2)]
         c1 = cos(vx); s1 = sin(vx); c2 = cos(vy); s2 = sin(vy)
+        call leaf(u, c1, s1, c2, s2, c2 - c1, s2 - s1, order, out)
+    end subroutine far_leaf
+
+    subroutine leaf(u, c1, s1, c2, s2, dc, ds, order, out)
+        real(dp), intent(in) :: u(n_self), c1, s1, c2, s2, dc, ds
+        integer, intent(in) :: order
+        real(dp), intent(out) :: out(:)
         select case (order)
         case (0)
             call generated_toroidal_sheet_self_value(u(1), u(2), u(3), u(4), u(5), &
                 u(6), u(7), u(8), u(9), u(10), u(11), u(12), u(13), u(14), u(15), &
-                u(16), c1, s1, c2, s2, c2 - c1, s2 - s1, out(1))
+                u(16), c1, s1, c2, s2, dc, ds, out(1))
         case (1)
             call generated_toroidal_sheet_self_gradient(u(1), u(2), u(3), u(4), &
                 u(5), u(6), u(7), u(8), u(9), u(10), u(11), u(12), u(13), u(14), &
-                u(15), u(16), c1, s1, c2, s2, c2 - c1, s2 - s1, out(1), out(2), &
-                out(3), out(4), out(5), out(6), out(7), out(8), out(9), out(10), &
-                out(11), out(12), out(13), out(14), out(15), out(16), out(17))
+                u(15), u(16), c1, s1, c2, s2, dc, ds, out(1), out(2), out(3), &
+                out(4), out(5), out(6), out(7), out(8), out(9), out(10), out(11), &
+                out(12), out(13), out(14), out(15), out(16), out(17))
         case default
-            call self_jet(u, c1, s1, c2, s2, c2 - c1, s2 - s1, out)
+            call self_jet(u, c1, s1, c2, s2, dc, ds, out)
         end select
-    end subroutine far_leaf
+    end subroutine leaf
 
-    subroutine leaf_to_points(out, gp, hp, order)
-        !! Gradient and Hessian of the leaf (inputs x 7, y 7, dr, dz) in the
-        !! point inputs (x: R, Z, R_xi, Z_xi, R_v, Z_v, Phi_xi, Phi_v; then y).
-        real(dp), intent(in) :: out(:)
+    pure subroutine leaf_to_points(out, t, order, gp, hxx, hxy)
+        !! Gradient of the leaf (inputs x 7, y 7, (R_y - R_x)/t, (Z_y - Z_x)/t)
+        !! in the point inputs (x: R, Z, R_xi, Z_xi, R_v, Z_v, Phi_xi, Phi_v;
+        !! then y), and the x-x and x-y Hessian blocks.
+        real(dp), intent(in) :: out(:), t
         integer, intent(in) :: order
-        real(dp), intent(out) :: gp(16), hp(16, 16)
-        real(dp) :: m(16, 16), he(16, 16)
-        integer :: i, j, k
-        m = 0
-        ! leaf input i <- point variables
-        m(1, 1) = 1
-        do i = 2, 7
-            m(i, i + 1) = 1
-            m(i + 7, i + 9) = 1
+        real(dp), intent(out) :: gp(16), hxx(8, 8), hxy(8, 8)
+        real(dp) :: he(n_self, n_self), cm(2, 16)
+        integer :: lm(2, 16), nm(16), i, j, k, a, c
+        nm = 1; lm = 0; cm = 0
+        lm(1, 1) = 1; cm(1, 1) = 1; lm(2, 1) = 15; cm(2, 1) = -1/t; nm(1) = 2
+        lm(1, 2) = 16; cm(1, 2) = -1/t
+        lm(1, 9) = 8; cm(1, 9) = 1; lm(2, 9) = 15; cm(2, 9) = 1/t; nm(9) = 2
+        lm(1, 10) = 16; cm(1, 10) = 1/t
+        do i = 3, 8
+            lm(1, i) = i - 1; cm(1, i) = 1
+            lm(1, i + 8) = i + 6; cm(1, i + 8) = 1
         end do
-        m(8, 9) = 1
-        m(15, 9) = 1; m(15, 1) = -1
-        m(16, 10) = 1; m(16, 2) = -1
-        gp = matmul(out(2:17), m)
-        hp = 0
-        if (order < 2) return
-        k = 17
         do i = 1, 16
-            do j = i, 16
+            gp(i) = 0
+            do a = 1, nm(i)
+                gp(i) = gp(i) + cm(a, i)*out(1 + lm(a, i))
+            end do
+        end do
+        hxx = 0; hxy = 0
+        if (order < 2) return
+        k = 1 + n_self
+        do i = 1, n_self
+            do j = i, n_self
                 k = k + 1
                 he(i, j) = out(k); he(j, i) = out(k)
             end do
         end do
-        hp = matmul(transpose(m), matmul(he, m))
-    end subroutine leaf_to_points
-
-    subroutine point_rows(s, f, rows)
-        !! The 8 point inputs as functionals: rows(1:8) = (R, Z, R_xi, Z_xi,
-        !! R_v, Z_v, Phi_xi, Phi_v) from the 7 point functionals.
-        type(ts_surface_t), intent(in) :: s
-        type(functional_t), intent(in) :: f(7)
-        type(functional_t), intent(inout) :: rows(8)
-        integer :: k, map(8)
-        map = [1, 1, 2, 3, 4, 5, 6, 7]
-        do k = 1, 8
-            rows(k)%n = f(map(k))%n
-            rows(k)%idx = f(map(k))%idx(1:f(map(k))%n)
-            rows(k)%coef = f(map(k))%coef(1:f(map(k))%n)
-        end do
-        rows(2)%idx = rows(2)%idx + s%n_nodes*s%nmode
-    end subroutine point_rows
-
-    subroutine scatter_point(s, f, g8, lg)
-        type(ts_surface_t), intent(in) :: s
-        type(functional_t), intent(in) :: f(7)
-        real(dp), intent(in) :: g8(8)
-        real(dp), intent(inout) :: lg(:)
-        type(functional_t) :: rows(8)
-        integer :: i, a
-        call point_rows(s, f, rows)
-        do i = 1, 8
-            do a = 1, rows(i)%n
-                lg(rows(i)%idx(a)) = lg(rows(i)%idx(a)) + g8(i)*rows(i)%coef(a)
-            end do
-        end do
-    end subroutine scatter_point
-
-    subroutine scatter_point_hessian(s, f, h8, lh)
-        type(ts_surface_t), intent(in) :: s
-        type(functional_t), intent(in) :: f(7)
-        real(dp), intent(in) :: h8(8, 8)
-        real(dp), intent(inout) :: lh(:, :)
-        type(functional_t) :: rows(8)
-        integer :: i, j, a, b
-        call point_rows(s, f, rows)
-        do j = 1, 8
+        do j = 1, 16
             do i = 1, 8
-                if (h8(i, j) == 0) cycle
-                do b = 1, rows(j)%n
-                    do a = 1, rows(i)%n
-                        lh(rows(i)%idx(a), rows(j)%idx(b)) = &
-                            lh(rows(i)%idx(a), rows(j)%idx(b)) &
-                            + h8(i, j)*rows(i)%coef(a)*rows(j)%coef(b)
+                do c = 1, nm(j)
+                    do a = 1, nm(i)
+                        if (j <= 8) then
+                            hxx(i, j) = hxx(i, j) + cm(a, i)*cm(c, j)*he(lm(a, i), lm(c, j))
+                        else
+                            hxy(i, j - 8) = hxy(i, j - 8) &
+                                + cm(a, i)*cm(c, j)*he(lm(a, i), lm(c, j))
+                        end if
                     end do
                 end do
             end do
         end do
-    end subroutine scatter_point_hessian
+    end subroutine leaf_to_points
 
     subroutine add_cross(s, far, l, patch, hxy, cross)
         !! cross(i, :) += sum_j hxy(i, j) J_y(j, :) for source point l of the
@@ -632,53 +752,37 @@ contains
         end do
     end subroutine add_cross
 
-    subroutine scatter_cross(s, f, cross, lh)
-        !! lh += J_x^T cross + (J_x^T cross)^T.
-        type(ts_surface_t), intent(in) :: s
-        type(functional_t), intent(in) :: f(7)
-        real(dp), intent(in) :: cross(:, :)
-        real(dp), intent(inout) :: lh(:, :)
-        type(functional_t) :: rows(8)
-        integer :: i, a
-        call point_rows(s, f, rows)
-        do i = 1, 8
-            do a = 1, rows(i)%n
-                lh(rows(i)%idx(a), :) = lh(rows(i)%idx(a), :) + rows(i)%coef(a)*cross(i, :)
-                lh(:, rows(i)%idx(a)) = lh(:, rows(i)%idx(a)) + rows(i)%coef(a)*cross(i, :)
-            end do
-        end do
-    end subroutine scatter_cross
-
-    subroutine patch_pair(s, plan, c, p, b, q, bb, order, le, lg, lh)
-        !! Target patch (panel p, toroidal interval b of the first period) and
-        !! source patch (q, bb over the torus). In the target's continued
-        !! parameters the source occupies [o1, o1 + 1] x [o2, o2 + h].
-        !! Separated patches: tensor Gauss in both. Touching or equal patches:
-        !! relative coordinates z = y - x; per direction the overlap length of
-        !! x and y = x + z is the tent w - |z_i - o_i|, so z is split at o_i
-        !! into rectangles, those with a corner at z = 0 take a polar rule
-        !! about it (the radius cancels 1/|X_y - X_x|), the others tensor
-        !! Gauss, and x runs over the overlap with tensor Gauss.
+    subroutine patch_pair(s, plan, fr, p, b, q, bb, order, le, gl, lxx, lh)
+        !! Touching or equal patches: target (panel p, toroidal interval b of
+        !! the first period) and source (q, bb over the torus); in the
+        !! target's continued parameters the source occupies [o1, o1 + 1] x
+        !! [o2, o2 + h]. Relative coordinates z = y - x; per direction the
+        !! overlap length of x and y = x + z is the tent w - |z_i - o_i|, so z
+        !! is split at o_i into rectangles, those with a corner at z = 0 take a
+        !! polar rule about it (the radius cancels 1/|X_y - X_x|), the others
+        !! tensor Gauss, and x runs over the overlap with tensor Gauss. The
+        !! cross block goes into lh as 2 C.
         type(ts_surface_t), intent(in) :: s
         type(ts_plan_t), intent(in) :: plan
-        real(dp), intent(in) :: c(:)
+        type(frame_t), intent(in) :: fr
         integer, intent(in) :: p, b, q, bb, order
-        real(dp), intent(inout) :: le, lg(:), lh(:, :)
+        real(dp), intent(inout) :: le, gl(:), lxx(:, :), lh(:, :)
         real(dp) :: hv, o(2), w(2), lo(2), hi(2), corner(2, 5), d(2), z(2)
         real(dp) :: gu(plan%ng_u), gw(plan%ng_u)
         real(dp) :: tq(plan%ng_t), tw(plan%ng_t), sq(plan%ng_s), sw(plan%ng_s)
         real(dp) :: det, rho, wz
+        real(dp) :: gvx(fr%nlg, 3), pvx(fr%nlp, 2), gvy(fr%nlg, 3), pvy(fr%nlp, 2)
+        real(dp), allocatable :: lxy(:, :)
         integer :: nv_all, dp_, db, k, l, m, ri, rj
-        type(functional_t) :: fx(7), fy(7)
 
         hv = 2*pi/(s%nfp*plan%nv)
         nv_all = plan%nv*s%nfp
-        dp_ = modulo(q - p + s%n_panels/2, s%n_panels) - s%n_panels/2
-        db = modulo(bb - b + nv_all/2, nv_all) - nv_all/2
+        dp_ = centred(q - p, s%n_panels)
+        db = centred(bb - b, nv_all)
         call gauss_unit(plan%ng_u, gu, gw)
-        if (abs(dp_) > 1 .or. abs(db) > 1) return
         call gauss_unit(plan%ng_t, tq, tw)
         call gauss_unit(plan%ng_s, sq, sw)
+        if (order == 2) allocate (lxy(fr%nl, fr%nl), source=0.0_dp)
         o = [real(dp_, dp), db*hv]
         w = [1.0_dp, hv]
         ! z rectangles [o_i - w_i, o_i] and [o_i, o_i + w_i]
@@ -719,12 +823,15 @@ contains
                 end do
             end do
         end do
+        if (order == 2) lh(fr%gidx(:, p), fr%gidx(:, q)) = &
+            lh(fr%gidx(:, p), fr%gidx(:, q)) + 2*lxy
     contains
         subroutine overlap(z, t, wz)
             !! x over the overlap of the target patch and the source patch
             !! shifted by -z; X_y - X_x = t Q (t the polar radius, or 1).
             real(dp), intent(in) :: z(2), t, wz
-            real(dp) :: xl(2), xh(2), xx(2)
+            real(dp) :: xl(2), xh(2), xx(2), ux(8), uy(8), u(n_self), vy, wt
+            real(dp) :: out(1 + n_self + n_self*(n_self + 1)/2), gp(16), hxx(8, 8), hxy(8, 8)
             integer :: i1, i2
             xl = [max(0.0_dp, o(1) - z(1)), max((b - 1)*hv, (b - 1)*hv + o(2) - z(2))]
             xh = [min(1.0_dp, o(1) + 1 - z(1)), min(b*hv, (b - 1)*hv + o(2) + hv - z(2))]
@@ -732,137 +839,30 @@ contains
             do i2 = 1, plan%ng_u
                 do i1 = 1, plan%ng_u
                     xx = xl + [gu(i1), gu(i2)]*(xh - xl)
-                    call point_functionals(s, p, xx(1), xx(2), fx)
-                    call source_point(s, c, fx, xx, q, xx(1) + z(1) - o(1), &
-                        xx(2) + z(2), t, wz*gw(i1)*gw(i2)*(xh(1) - xl(1)) &
-                        *(xh(2) - xl(2)), order, le, lg, lh, fy)
+                    wt = wz*gw(i1)*gw(i2)*(xh(1) - xl(1))*(xh(2) - xl(2))
+                    vy = xx(2) + z(2)
+                    call point_at(s, xx(1), xx(2), gvx, pvx)
+                    call point_at(s, xx(1) + z(1) - o(1), vy, gvy, pvy)
+                    ux = point_inputs(s, fr, p, gvx, pvx)
+                    uy = point_inputs(s, fr, q, gvy, pvy)
+                    u = [ux(1), ux(3:8), uy(1), uy(3:8), (uy(1) - ux(1))/t, &
+                        (uy(2) - ux(2))/t]
+                    ! (cos v_y - cos v_x)/t and (sin v_y - sin v_x)/t without
+                    ! cancellation
+                    call leaf(u, cos(xx(2)), sin(xx(2)), cos(vy), sin(vy), &
+                        -2*sin(0.5_dp*z(2))*sin(0.5_dp*(vy + xx(2)))/t, &
+                        2*sin(0.5_dp*z(2))*cos(0.5_dp*(vy + xx(2)))/t, order, out)
+                    le = le + wt*out(1)
+                    if (order == 0) cycle
+                    call leaf_to_points(out, t, order, gp, hxx, hxy)
+                    call add_gradient(fr%nlg, gvx, pvx, gp(1:8), wt, gl)
+                    if (order < 2) cycle
+                    call add_block(fr%nlg, gvx, pvx, gvx, pvx, hxx, wt, lxx)
+                    call add_block(fr%nlg, gvx, pvx, gvy, pvy, hxy, wt, lxy)
                 end do
             end do
         end subroutine overlap
     end subroutine patch_pair
-
-    subroutine source_point(s, c, fx, x0, q, xi_y, v_y, t, w, order, le, lg, lh, fy)
-        !! One source at (xi_y, v_y) of panel q for the target fx; X_y - X_x
-        !! = t Q (t = 1 for far pairs). fy is work storage.
-        type(ts_surface_t), intent(in) :: s
-        real(dp), intent(in) :: c(:), x0(2), xi_y, v_y, t, w
-        type(functional_t), intent(in) :: fx(7)
-        integer, intent(in) :: q, order
-        real(dp), intent(inout) :: le, lg(:), lh(:, :)
-        type(functional_t), intent(inout) :: fy(7)
-        real(dp) :: u(n_self), out(1 + n_self + n_self*(n_self + 1)/2), f
-        real(dp) :: gr(n_self), he(n_self, n_self), c1, s1, c2, s2, dc, ds
-        integer :: i, j, k, bidx, zoff
-
-        call point_functionals(s, q, xi_y, v_y, fy)
-        zoff = s%n_nodes*s%nmode
-        do i = 1, 7
-            u(i) = apply(fx(i), c)
-            u(7 + i) = apply(fy(i), c)
-        end do
-        u(15) = (u(8) - u(1))/t
-        u(16) = (apply_offset(fy(1), c, zoff) - apply_offset(fx(1), c, zoff))/t
-        c1 = cos(x0(2)); s1 = sin(x0(2)); c2 = cos(v_y); s2 = sin(v_y)
-        ! (cos v_y - cos v_x)/t without cancellation
-        dc = -2*sin(0.5_dp*(v_y - x0(2)))*sin(0.5_dp*(v_y + x0(2)))/t
-        ds = 2*sin(0.5_dp*(v_y - x0(2)))*cos(0.5_dp*(v_y + x0(2)))/t
-        select case (order)
-        case (0)
-            call generated_toroidal_sheet_self_value(u(1), u(2), u(3), u(4), u(5), &
-                u(6), u(7), u(8), u(9), u(10), u(11), u(12), u(13), u(14), u(15), &
-                u(16), c1, s1, c2, s2, dc, ds, f)
-            le = le + w*f
-            return
-        case (1)
-            call generated_toroidal_sheet_self_gradient(u(1), u(2), u(3), u(4), &
-                u(5), u(6), u(7), u(8), u(9), u(10), u(11), u(12), u(13), u(14), &
-                u(15), u(16), c1, s1, c2, s2, dc, ds, out(1), out(2), out(3), &
-                out(4), out(5), out(6), out(7), out(8), out(9), out(10), out(11), &
-                out(12), out(13), out(14), out(15), out(16), out(17))
-        case default
-            call self_jet(u, c1, s1, c2, s2, dc, ds, out)
-        end select
-        le = le + w*out(1)
-        gr = out(2:1 + n_self)
-        do i = 1, n_self
-            call scatter_gradient(i, w*gr(i))
-        end do
-        if (order < 2) return
-        bidx = 1 + n_self
-        do i = 1, n_self
-            do j = i, n_self
-                bidx = bidx + 1
-                he(i, j) = out(bidx); he(j, i) = out(bidx)
-            end do
-        end do
-        do j = 1, n_self
-            do i = 1, n_self
-                if (he(i, j) /= 0) call scatter_hessian(i, j, w*he(i, j))
-            end do
-        end do
-    contains
-        subroutine input(i, part, idx, coef, n)
-            !! Coefficients of input i: part 1 (and part 2 for the
-            !! differences dr, dz: x enters with -1/t).
-            integer, intent(in) :: i, part
-            integer, intent(out) :: n
-            integer, intent(out) :: idx(:)
-            real(dp), intent(out) :: coef(:)
-            select case (i)
-            case (1:7)
-                n = merge(fx(i)%n, 0, part == 1)
-                if (n > 0) then
-                    idx(:n) = fx(i)%idx(:n); coef(:n) = fx(i)%coef(:n)
-                end if
-            case (8:14)
-                n = merge(fy(i - 7)%n, 0, part == 1)
-                if (n > 0) then
-                    idx(:n) = fy(i - 7)%idx(:n); coef(:n) = fy(i - 7)%coef(:n)
-                end if
-            case default
-                k = merge(0, zoff, i == 15)
-                if (part == 1) then
-                    n = fy(1)%n
-                    idx(:n) = fy(1)%idx(:n) + k; coef(:n) = fy(1)%coef(:n)/t
-                else
-                    n = fx(1)%n
-                    idx(:n) = fx(1)%idx(:n) + k; coef(:n) = -fx(1)%coef(:n)/t
-                end if
-            end select
-        end subroutine input
-
-        subroutine scatter_gradient(i, gi)
-            integer, intent(in) :: i
-            real(dp), intent(in) :: gi
-            integer :: idx(size(fx(1)%idx)), n, a, part
-            real(dp) :: coef(size(fx(1)%idx))
-            do part = 1, 2
-                call input(i, part, idx, coef, n)
-                do a = 1, n
-                    lg(idx(a)) = lg(idx(a)) + gi*coef(a)
-                end do
-            end do
-        end subroutine scatter_gradient
-
-        subroutine scatter_hessian(i, j, hij)
-            integer, intent(in) :: i, j
-            real(dp), intent(in) :: hij
-            integer :: ii(size(fx(1)%idx)), jj(size(fx(1)%idx)), ni, nj, a, b2, pi_, pj
-            real(dp) :: ci(size(fx(1)%idx)), cj(size(fx(1)%idx))
-            do pj = 1, 2
-                call input(j, pj, jj, cj, nj)
-                if (nj == 0) cycle
-                do pi_ = 1, 2
-                    call input(i, pi_, ii, ci, ni)
-                    do b2 = 1, nj
-                        do a = 1, ni
-                            lh(ii(a), jj(b2)) = lh(ii(a), jj(b2)) + hij*ci(a)*cj(b2)
-                        end do
-                    end do
-                end do
-            end do
-        end subroutine scatter_hessian
-    end subroutine source_point
 
     pure real(dp) function apply_offset(f, c, offset) result(x)
         type(functional_t), intent(in) :: f
