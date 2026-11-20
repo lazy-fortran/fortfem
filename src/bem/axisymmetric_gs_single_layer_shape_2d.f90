@@ -32,6 +32,14 @@ module fortfem_gs_single_layer_shape_2d
         generated_gs_single_layer_near_jet
     use fortfem_generated_gs_single_layer_far_jet, only: &
         generated_gs_single_layer_far_jet
+    use fortfem_generated_gs_single_layer_near_value, only: &
+        generated_gs_single_layer_near_value
+    use fortfem_generated_gs_single_layer_near_gradient, only: &
+        generated_gs_single_layer_near_gradient
+    use fortfem_generated_gs_single_layer_far_value, only: &
+        generated_gs_single_layer_far_value
+    use fortfem_generated_gs_single_layer_far_gradient, only: &
+        generated_gs_single_layer_far_gradient
     use fortfem_generated_gs_boundary_load_jet, only: &
         generated_gs_boundary_load_jet
     implicit none
@@ -190,7 +198,8 @@ contains
 
     subroutine gs_sl_assemble(curve, plan, v, tau, dvtau, gradient, hessian)
         !! V; with tau also dvtau = d(V tau)/dX, the gradient and the Hessian
-        !! of tau' V tau / 2 in X.
+        !! of tau' V tau / 2 in X (each computed only when present; the
+        !! integrand jet is taken to the highest order requested).
         type(gs_sl_curve_t), intent(in) :: curve
         type(gs_sl_plan_t), intent(in) :: plan
         real(dp), intent(out) :: v(:, :)
@@ -199,18 +208,27 @@ contains
         real(dp), allocatable :: fx(:), fw(:), lv(:, :), ldv(:, :), lg(:), lh(:, :)
         real(dp), allocatable :: tau_l(:)
         logical :: shape
-        integer :: np, a, b, n, i, j, m, ng, nx, ny, ns
+        integer :: np, a, b, n, i, j, m, ng, nx, ny, ns, nh, order
 
         np = curve%n_panels
         nx = 2*curve%n_nodes
         ny = size(v, 1)
         shape = present(tau)
         ns = 0
-        if (shape) ns = nx
+        nh = 0
+        order = 0
+        if (shape) then
+            ns = nx
+            order = 1
+            if (present(hessian)) then
+                nh = nx
+                order = 2
+            end if
+        end if
         allocate (tau_l(ny), source=0.0_dp)
         if (shape) tau_l = tau
         allocate (lv(ny, ny), source=0.0_dp)
-        allocate (ldv(ny, ns), lg(ns), lh(ns, ns), source=0.0_dp)
+        allocate (ldv(ny, ns), lg(ns), lh(nh, nh), source=0.0_dp)
         !$omp parallel do schedule(dynamic, 1) default(shared) &
         !$omp& private(a, b, n, i, j, m, ng, fx, fw) &
         !$omp& reduction(+:lv, ldv, lg, lh)
@@ -219,19 +237,19 @@ contains
                 select case (plan%kind(a, b))
                 case (1)
                     do n = 1, size(plan%self_xi)
-                        call add_pair(curve, plan, shape, tau_l, a, b, &
+                        call add_pair(curve, plan, order, tau_l, a, b, &
                             plan%self_xi(n), plan%self_eta(n), plan%self_w(n), &
                             1, plan%self_oa(n), 0.0_dp, lv, ldv, lg, lh)
                     end do
                 case (2)
                     do n = 1, size(plan%nxt_xi)
-                        call add_pair(curve, plan, shape, tau_l, a, b, &
+                        call add_pair(curve, plan, order, tau_l, a, b, &
                             plan%nxt_xi(n), plan%nxt_eta(n), plan%nxt_w(n), &
                             2, plan%nxt_oa(n), plan%nxt_ob(n), lv, ldv, lg, lh)
                     end do
                 case (3)
                     do n = 1, size(plan%prv_xi)
-                        call add_pair(curve, plan, shape, tau_l, a, b, &
+                        call add_pair(curve, plan, order, tau_l, a, b, &
                             plan%prv_xi(n), plan%prv_eta(n), plan%prv_w(n), &
                             3, plan%prv_oa(n), plan%prv_ob(n), lv, ldv, lg, lh)
                     end do
@@ -243,7 +261,7 @@ contains
                     call gauss_unit(ng, fx, fw)
                     do i = 1, m*ng
                         do j = 1, m*ng
-                            call add_pair(curve, plan, shape, tau_l, a, b, &
+                            call add_pair(curve, plan, order, tau_l, a, b, &
                                 (real((i - 1)/ng, dp) + fx(mod(i - 1, ng) + 1))/m, &
                                 (real((j - 1)/ng, dp) + fx(mod(j - 1, ng) + 1))/m, &
                                 fw(mod(i - 1, ng) + 1)*fw(mod(j - 1, ng) + 1) &
@@ -255,19 +273,18 @@ contains
         end do
         !$omp end parallel do
         v = lv
-        if (shape) then
-            dvtau = ldv
-            gradient = lg
-            hessian = lh
-        end if
+        if (present(dvtau)) dvtau = ldv
+        if (present(gradient)) gradient = lg
+        if (present(hessian)) hessian = lh
     end subroutine gs_sl_assemble
 
-    subroutine add_pair(curve, plan, shape, tau, pa, pb, xi, eta, w, mode, oa, &
+    subroutine add_pair(curve, plan, order, tau, pa, pb, xi, eta, w, mode, oa, &
             ob, v, dvtau, gradient, hessian)
-        !! One quadrature pair (xi on panel pa, eta on panel pb).
+        !! One quadrature pair (xi on panel pa, eta on panel pb); order 0: V,
+        !! 1: also dvtau and the gradient, 2: also the Hessian.
         type(gs_sl_curve_t), intent(in) :: curve
         type(gs_sl_plan_t), intent(in) :: plan
-        logical, intent(in) :: shape
+        integer, intent(in) :: order
         real(dp), intent(in) :: tau(:)
         integer, intent(in) :: pa, pb, mode
         real(dp), intent(in) :: xi, eta, w, oa, ob
@@ -280,7 +297,7 @@ contains
         integer :: glob(4*(curve%degree + 1)), nl, ii, jj, i, j, k, l
 
         call pair_inputs(curve, pa, pb, xi, eta, mode, oa, ob, u, ell, jac, glob)
-        call pair_jet(u, ell, f, gr, he)
+        call pair_jet(u, ell, order, f, gr, he)
         nl = plan%flux_degree + 1
         call flux_basis(plan%flux_degree, xi, phi_a)
         call flux_basis(plan%flux_degree, eta, phi_b)
@@ -291,17 +308,18 @@ contains
                 v(ii, jj) = v(ii, jj) + w*f*phi_a(i)*phi_b(j)
             end do
         end do
-        if (.not. shape) return
+        if (order == 0) return
         alpha = dot_product(tau((pa - 1)*nl + 1:pa*nl), phi_a)
         beta = dot_product(tau((pb - 1)*nl + 1:pb*nl), phi_b)
         gl = matmul(gr, jac)
-        hl = matmul(transpose(jac), matmul(he, jac))
+        if (order == 2) hl = matmul(transpose(jac), matmul(he, jac))
         do k = 1, size(glob)
             do i = 1, nl
                 ii = (pa - 1)*nl + i
                 dvtau(ii, glob(k)) = dvtau(ii, glob(k)) + w*phi_a(i)*beta*gl(k)
             end do
             gradient(glob(k)) = gradient(glob(k)) + 0.5_dp*w*alpha*beta*gl(k)
+            if (order < 2) cycle
             do l = 1, size(glob)
                 hessian(glob(l), glob(k)) = hessian(glob(l), glob(k)) &
                     + 0.5_dp*w*alpha*beta*hl(l, k)
@@ -447,16 +465,43 @@ contains
         end do
     end subroutine pair_inputs
 
-    pure subroutine pair_jet(u, ell, f, gr, he)
-        !! Integrand G |t_x| |t_y| with gradient and Hessian in u; the
-        !! log-split form near coincidence, the direct form elsewhere.
+    pure subroutine pair_jet(u, ell, order, f, gr, he)
+        !! Integrand G |t_x| |t_y| with, by order, its gradient and Hessian
+        !! in u; the log-split form near coincidence, the direct form
+        !! elsewhere.
         real(dp), intent(in) :: u(n_in), ell
+        integer, intent(in) :: order
         real(dp), intent(out) :: f, gr(n_in), he(n_in, n_in)
         real(dp) :: out(66), d2, s2
+        logical :: near
 
         d2 = exp(2.0_dp*ell)*(u(9)**2 + u(10)**2)
         s2 = (u(1) + u(3))**2 + (u(2) - u(4))**2
-        if (d2 < split_q_max*s2) then
+        near = d2 < split_q_max*s2
+        gr = 0.0_dp
+        he = 0.0_dp
+        if (order == 0) then
+            if (near) then
+                call generated_gs_single_layer_near_value(u(1), u(2), u(3), u(4), &
+                    u(5), u(6), u(7), u(8), u(9), u(10), ell, f)
+            else
+                call generated_gs_single_layer_far_value(u(1), u(2), u(3), u(4), &
+                    u(5), u(6), u(7), u(8), f)
+            end if
+            return
+        else if (order == 1) then
+            if (near) then
+                call generated_gs_single_layer_near_gradient(u(1), u(2), u(3), u(4), &
+                    u(5), u(6), u(7), u(8), u(9), u(10), ell, f, gr(1), gr(2), &
+                    gr(3), gr(4), gr(5), gr(6), gr(7), gr(8), gr(9), gr(10))
+            else
+                call generated_gs_single_layer_far_gradient(u(1), u(2), u(3), u(4), &
+                    u(5), u(6), u(7), u(8), f, gr(1), gr(2), gr(3), gr(4), gr(5), &
+                    gr(6), gr(7), gr(8))
+            end if
+            return
+        end if
+        if (near) then
             call generated_gs_single_layer_near_jet(u(1), u(2), u(3), u(4), &
                 u(5), u(6), u(7), u(8), u(9), u(10), ell, out(1), out(2), &
                 out(3), out(4), out(5), out(6), out(7), out(8), out(9), &

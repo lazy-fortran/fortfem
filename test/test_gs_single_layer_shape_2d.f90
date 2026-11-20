@@ -124,6 +124,14 @@ contains
             dir(i) = 0.05_dp*cos(2.3_dp*i + 0.4_dp)
         end do
         call gs_sl_assemble(curve, plan, v, tau, dvtau, grad, hess)
+        ! The value and gradient leaves give what the Hessian leaf gives.
+        call gs_sl_assemble(curve, plan, vp)
+        call gs_sl_assemble(curve, plan, vm, tau, dvp, gp)
+        call record(maxval(abs(vp - v)) <= 1.0e-13_dp*maxval(abs(v)) .and. &
+            maxval(abs(vm - v)) <= 1.0e-13_dp*maxval(abs(v)) .and. &
+            maxval(abs(dvp - dvtau)) <= 1.0e-12_dp*maxval(abs(dvtau)) .and. &
+            maxval(abs(gp - grad)) <= 1.0e-12_dp*maxval(abs(grad)), &
+            trim(label)//" value and gradient leaves agree with the Hessian leaf")
         call record(maxval(abs(hess - transpose(hess))) <= &
             1.0e-12_dp*maxval(abs(hess)), trim(label)//" shape Hessian is symmetric")
 

@@ -41,6 +41,7 @@ program gen_gs_single_layer_shape_products
     type(expr_t) :: w(n_load), psi, hr, hz, f_load
     type(expr_t) :: p(6)
     character(:), allocatable :: code_near, code_far, code_load
+    character(:), allocatable :: code_near0, code_near1, code_far0, code_far1
     integer :: i, ios, unit
 
     engine = make_native_engine()
@@ -71,6 +72,19 @@ program gen_gs_single_layer_shape_products
     code_far = jet_kernel(g_far*speed_x*speed_y, v(1:8), pair_names(1:8), &
         "generated_gs_single_layer_far_jet", [(str(trim(pair_names(i))), &
         i=1, 8)])
+    ! Value only (operator assembly) and value with gradient (residuals).
+    code_near0 = jet_kernel(g_near*speed_x*speed_y, v, pair_names, &
+        "generated_gs_single_layer_near_value", [(str(trim(pair_names(i))), &
+        i=1, n_pair), str("ell")], order=0)
+    code_near1 = jet_kernel(g_near*speed_x*speed_y, v, pair_names, &
+        "generated_gs_single_layer_near_gradient", [(str(trim(pair_names(i))), &
+        i=1, n_pair), str("ell")], order=1)
+    code_far0 = jet_kernel(g_far*speed_x*speed_y, v(1:8), pair_names(1:8), &
+        "generated_gs_single_layer_far_value", [(str(trim(pair_names(i))), &
+        i=1, 8)], order=0)
+    code_far1 = jet_kernel(g_far*speed_x*speed_y, v(1:8), pair_names(1:8), &
+        "generated_gs_single_layer_far_gradient", [(str(trim(pair_names(i))), &
+        i=1, 8)], order=1)
 
     ! psi as its second-order Taylor polynomial about the point; the jets of
     ! psi |t| at the point are exact.
@@ -96,11 +110,15 @@ program gen_gs_single_layer_shape_products
     write (unit, "(a)") code_near(:len(code_near) - 1)
     write (unit, "(a)") code_far(:len(code_far) - 1)
     write (unit, "(a)") code_load(:len(code_load) - 1)
+    write (unit, "(a)") code_near0(:len(code_near0) - 1)
+    write (unit, "(a)") code_near1(:len(code_near1) - 1)
+    write (unit, "(a)") code_far0(:len(code_far0) - 1)
+    write (unit, "(a)") code_far1(:len(code_far1) - 1)
     close (unit)
 
 contains
 
-    function jet_kernel(f, vars, names, name, args, at_old, at_new) &
+    function jet_kernel(f, vars, names, name, args, at_old, at_new, order) &
             result(code)
         !! Value, gradient and upper-triangle Hessian of f in vars, packed
         !! row by row (H11, H12, ..., H1n, H22, ...), as a kernel of args.
@@ -109,25 +127,39 @@ contains
         character(*), intent(in) :: names(:), name
         type(str_t), intent(in) :: args(:)
         type(expr_t), intent(in), optional :: at_old(:), at_new(:)
+        integer, intent(in), optional :: order
         character(:), allocatable :: code
         type(expr_t), allocatable :: roots(:), grad(:)
         type(kernel_spec_t) :: spec
-        integer :: n, k, i, j
+        integer :: n, k, i, j, highest
 
         n = size(vars)
-        allocate (roots(1 + n + n*(n + 1)/2), grad(n))
+        highest = 2
+        if (present(order)) highest = order
+        allocate (grad(n))
+        if (highest == 0) then
+            allocate (roots(1))
+        else if (highest == 1) then
+            allocate (roots(1 + n))
+        else
+            allocate (roots(1 + n + n*(n + 1)/2))
+        end if
         roots(1) = f
-        do i = 1, n
-            grad(i) = diff(f, vars(i))
-            roots(1 + i) = grad(i)
-        end do
-        k = 1 + n
-        do i = 1, n
-            do j = i, n
-                k = k + 1
-                roots(k) = diff(grad(i), vars(j))
+        if (highest >= 1) then
+            do i = 1, n
+                grad(i) = diff(f, vars(i))
+                roots(1 + i) = grad(i)
             end do
-        end do
+        end if
+        k = 1 + n
+        if (highest == 2) then
+            do i = 1, n
+                do j = i, n
+                    k = k + 1
+                    roots(k) = diff(grad(i), vars(j))
+                end do
+            end do
+        end if
         if (present(at_old)) then
             do k = 1, size(roots)
                 roots(k) = subs_many(roots(k), at_old, at_new)
@@ -145,9 +177,17 @@ contains
         allocate (spec%outputs(size(roots)))
         spec%args = args
         spec%outputs(1) = str("value")
+        if (highest == 0) then
+            code = chars(emit_kernel(roots, spec))
+            return
+        end if
         do i = 1, n
             spec%outputs(1 + i) = str("grad_"//trim(names(i)))
         end do
+        if (highest == 1) then
+            code = chars(emit_kernel(roots, spec))
+            return
+        end if
         k = 1 + n
         do i = 1, n
             do j = i, n
