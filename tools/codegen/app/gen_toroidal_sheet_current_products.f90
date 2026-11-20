@@ -4,16 +4,17 @@ program gen_toroidal_sheet_current_products
     ! parameters, and the current K dA = Phi_u X_v - Phi_v X_u (K = n x
     ! grad_s Phi):
     !
-    !   self:  (K_x dA_x) . (K_y dA_y) / |Q|,   X_y - X_x = rho Q,
+    !   pair:  (K_x dA_x) . (K_y dA_y) / |Q|,   X_y - X_x = t Q,
     !   load:  Phi B . (X_u x X_v),             B by its value, gradient and
     !                                           Hessian in (R, Z) at the point.
     !
-    ! Self inputs: per point x, y the values (r, r_u, z_u, r_v, z_v, p_u, p_v);
-    ! the cancellation-free differences dr = (R_y - R_x)/rho, dz =
-    ! (Z_y - Z_x)/rho; parameters cos v, sin v at both points and dc = (cos v_y
-    ! - cos v_x)/rho, ds = (sin v_y - sin v_x)/rho.  Every input is linear in
-    ! the coefficients of R, Z and Phi at fixed parameters, so the value,
-    ! gradient and Hessian give exact derivatives of the discrete energy.
+    ! Pair inputs: per point x, y the values (r, z, r_u, z_u, r_v, z_v, p_u,
+    ! p_v), with (R_y - R_x)/t and (Z_y - Z_x)/t formed inside; parameters t,
+    ! cos v, sin v at both points and dc = (cos v_y - cos v_x)/t, ds = (sin v_y
+    ! - sin v_x)/t. Every input is linear in the coefficients of R, Z and Phi
+    ! at fixed parameters. The energy sums pairs symmetrically, so the kernels
+    ! give the value, the gradient in the x inputs and the x-x and x-y blocks
+    ! of the Hessian (exact derivatives of the discrete energy).
     use fortsym_engine, only: engine_result_t
     use fortsym_engine_native, only: make_native_engine, native_engine_t
     use fortsym_expr, only: expr_t, operator(+), operator(-), operator(*), &
@@ -27,14 +28,14 @@ program gen_toroidal_sheet_current_products
 
     integer, parameter :: n_self = 16, n_load = 6
     character(len=4), parameter :: self_names(n_self) = [character(len=4) :: &
-        "r1", "ru1", "zu1", "rv1", "zv1", "pu1", "pv1", &
-        "r2", "ru2", "zu2", "rv2", "zv2", "pu2", "pv2", "dr", "dz"]
-    character(len=4), parameter :: self_params(6) = [character(len=4) :: &
-        "c1", "s1", "c2", "s2", "dc", "ds"]
+        "rx", "zx", "rux", "zux", "rvx", "zvx", "pux", "pvx", &
+        "ry", "zy", "ruy", "zuy", "rvy", "zvy", "puy", "pvy"]
+    character(len=4), parameter :: self_params(7) = [character(len=4) :: &
+        "t", "c1", "s1", "c2", "s2", "dc", "ds"]
     character(len=4), parameter :: load_names(n_load) = [character(len=4) :: &
         "r", "z", "ru", "zu", "rv", "zv"]
     type(native_engine_t) :: engine
-    type(expr_t) :: v(n_self), p(6), k1(3), k2(3), q(3), f_self
+    type(expr_t) :: v(n_self), p(7), k1(3), k2(3), q(3), f_self, dr, dz
     type(expr_t) :: w(n_load), hr, hz, br, bp, bz, f_load, bj(18)
     type(str_t), allocatable :: args(:)
     character(:), allocatable :: code(:)
@@ -48,15 +49,17 @@ program gen_toroidal_sheet_current_products
     do i = 1, n_self
         v(i) = sym(trim(self_names(i)))
     end do
-    do i = 1, 6
+    do i = 1, 7
         p(i) = sym(trim(self_params(i)))
     end do
-    call sheet(v(1:7), p(1), p(2), k1)
-    call sheet(v(8:14), p(3), p(4), k2)
-    ! X_y - X_x = rho ((R_y - R_x) cos v_y/rho + R_x dc, ..., dz)
-    q(1) = v(15)*p(3) + v(1)*p(5)
-    q(2) = v(15)*p(4) + v(1)*p(6)
-    q(3) = v(16)
+    call sheet([v(1), v(3:8)], p(2), p(3), k1)
+    call sheet([v(9), v(11:16)], p(4), p(5), k2)
+    ! X_y - X_x = t ((R_y - R_x) cos v_y/t + R_x dc, ..., (Z_y - Z_x)/t)
+    dr = (v(9) - v(1))/p(1)
+    dz = (v(10) - v(2))/p(1)
+    q(1) = dr*p(4) + v(1)*p(6)
+    q(2) = dr*p(5) + v(1)*p(7)
+    q(3) = dz
     f_self = (k1(1)*k2(1) + k1(2)*k2(2) + k1(3)*k2(3)) &
         /sqrt(q(1)*q(1) + q(2)*q(2) + q(3)*q(3))
 
@@ -77,10 +80,10 @@ program gen_toroidal_sheet_current_products
 
     allocate (character(len=600000) :: code(7))
     args = [(str(trim(self_names(i))), i=1, n_self), &
-        (str(trim(self_params(i))), i=1, 6)]
+        (str(trim(self_params(i))), i=1, 7)]
     do order = 0, 2
-        code(order + 1) = jet_kernel(f_self, v, self_names, &
-            "generated_toroidal_sheet_self_"//suffix(order), args, order)
+        code(order + 1) = pair_kernel(f_self, v, &
+            "generated_toroidal_sheet_pair_"//suffix(order), args, order)
     end do
     args = [(str(trim(load_names(i))), i=3, n_load), &
         (str(trim(bnames(i))), i=1, 18)]
@@ -136,6 +139,66 @@ contains
         case default; s = "jet"
         end select
     end function suffix
+
+    function pair_kernel(f, vars, name, kargs, order) result(text)
+        !! Value, gradient in the x inputs vars(1:8), the upper triangle of
+        !! the x-x Hessian block (row-wise) and the x-y block (row-wise).
+        type(expr_t), intent(in) :: f, vars(16)
+        character(*), intent(in) :: name
+        type(str_t), intent(in) :: kargs(:)
+        integer, intent(in) :: order
+        character(:), allocatable :: text
+        type(expr_t), allocatable :: roots(:)
+        type(expr_t) :: grad(8)
+        type(kernel_spec_t) :: spec
+        type(engine_result_t) :: result
+        integer :: k, i, j, nroot
+
+        nroot = 1
+        if (order >= 1) nroot = nroot + 8
+        if (order >= 2) nroot = nroot + 36 + 64
+        allocate (roots(nroot), spec%outputs(nroot))
+        roots(1) = f
+        spec%outputs(1) = str("value")
+        k = 1
+        if (order >= 1) then
+            do i = 1, 8
+                grad(i) = diff(f, vars(i))
+                k = k + 1
+                roots(k) = grad(i)
+                spec%outputs(k) = str("g"//trim(self_names(i)))
+            end do
+        end if
+        if (order >= 2) then
+            do i = 1, 8
+                do j = i, 8
+                    k = k + 1
+                    roots(k) = diff(grad(i), vars(j))
+                    spec%outputs(k) = str("h"//trim(self_names(i))//"_"//trim(self_names(j)))
+                end do
+            end do
+            do i = 1, 8
+                do j = 9, 16
+                    k = k + 1
+                    roots(k) = diff(grad(i), vars(j))
+                    spec%outputs(k) = str("h"//trim(self_names(i))//"_"//trim(self_names(j)))
+                end do
+            end do
+        end if
+        do k = 1, nroot
+            result = engine%simplify(roots(k))
+            if (result%ok) roots(k) = result%value
+        end do
+        spec%name = str(name)
+        spec%module_name = str("fortfem_"//name)
+        spec%mode = KERNEL_SUBROUTINE
+        spec%generator = str("gen_toroidal_sheet_current_products")
+        spec%generator_revision = str(fortsym_revision())
+        spec%regenerate_command = str("cd tools/codegen && ./generate.sh")
+        spec%pure_procedure = .true.
+        spec%args = kargs
+        text = chars(emit_kernel(roots, spec))
+    end function pair_kernel
 
     function jet_kernel(f, vars, names, name, kargs, order, at_old, at_new, &
             keep_r) result(text)
