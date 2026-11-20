@@ -37,7 +37,7 @@ module fortfem_toroidal_sheet_trapezoid
         integer :: nu = 0, nv = 0, nfp = 1
     end type
 
-    public :: tst_energy, tst_hvp, tst_zeta, tst_current_form
+    public :: tst_energy, tst_hvp, tst_zeta, tst_current_form, tst_current_modes
 
 contains
 
@@ -233,6 +233,102 @@ contains
         end do
         !$omp end parallel do
     end subroutine tst_current_form
+
+    subroutine tst_current_modes(g, u, du, t, dt, mform)
+        !! Hessian of E in the current potential phi(i, n) of the basis
+        !! Phi = sum_n phi(i, n) T_n(v) at u_i (spectral in u: Phi_u = du
+        !! (phi T)), T_n periodic over one field period, given by its values
+        !! t(n, j) and v derivatives dt(n, j) at the grid of one period. mform
+        !! (i + nu (n - 1), i' + nu (n' - 1)). The kernel is contracted over the
+        !! source columns inside the pair loop, so the grid form is not stored.
+        type(tst_grid_t), intent(in) :: g
+        real(dp), intent(in) :: u(:, :, :), du(:, :), t(:, :), dt(:, :)
+        real(dp), intent(out) :: mform(:, :)
+        real(dp), allocatable :: fl(:, :, :, :, :), gg(:, :, :, :)
+        real(dp) :: hu, hv, w, cs(2, g%nv*g%nfp), z(10), abc(3), c, blk(2, 2)
+        real(dp) :: x1(3), xu1(3), xv1(3), x2(3), xu2(3), xv2(3), r
+        real(dp), allocatable :: h1(:, :, :)
+        integer :: i1, j1, i2, j2, jj, nvt, nm, nu, ia, n, ta
+        hu = 1.0_dp/g%nu
+        hv = 2*pi/(g%nfp*g%nv)
+        w = hu*hv
+        nvt = g%nv*g%nfp
+        nu = g%nu
+        nm = size(t, 1)
+        c = g%nfp*w*w/(8*pi)
+        do j2 = 1, nvt
+            cs(:, j2) = [cos((j2 - 1)*hv), sin((j2 - 1)*hv)]
+        end do
+        ! fl(ta, i1, j1, :, :) = (F L)(target, type ta; basis (i', n'))
+        allocate (fl(2, nu, g%nv, nu, nm))
+        !$omp parallel do collapse(2) schedule(dynamic, 4) default(shared) &
+        !$omp& private(i1, j1, i2, j2, jj, z, abc, x1, xu1, xv1, x2, xu2, xv2, r, gg, blk, n, ta)
+        do j1 = 1, g%nv
+            do i1 = 1, nu
+                if (.not. allocated(gg)) allocate (gg(2, 2, nu, nm))
+                ! gg(ta, tb, i2, n') = sum over source columns of F(a, b) T_n'(b)
+                gg = 0
+                call cartesian(u(:, i1, j1), cs(:, j1), x1, xu1, xv1)
+                do j2 = 1, nvt
+                    jj = 1 + mod(j2 - 1, g%nv)
+                    do i2 = 1, nu
+                        if (i2 == i1 .and. j2 == j1) cycle
+                        call cartesian(u(:, i2, jj), cs(:, j2), x2, xu2, xv2)
+                        r = norm2(x2 - x1)
+                        blk(1, 1) = dot_product(xv1, xv2)/r
+                        blk(1, 2) = -dot_product(xv1, xu2)/r
+                        blk(2, 1) = -dot_product(xu1, xv2)/r
+                        blk(2, 2) = dot_product(xu1, xu2)/r
+                        do n = 1, nm
+                            gg(:, 1, i2, n) = gg(:, 1, i2, n) + blk(:, 1)*t(n, jj)
+                            gg(:, 2, i2, n) = gg(:, 2, i2, n) + blk(:, 2)*dt(n, jj)
+                        end do
+                    end do
+                end do
+                gg = 2*c*gg
+                abc = metric(g, u(:, i1, j1))
+                call tst_zeta(abc(1), abc(2), abc(3), z)
+                blk(1, 1) = -2*c*z(1)*dot_product(xv1, xv1)
+                blk(1, 2) = 2*c*z(1)*dot_product(xv1, xu1)
+                blk(2, 1) = blk(1, 2)
+                blk(2, 2) = -2*c*z(1)*dot_product(xu1, xu1)
+                do n = 1, nm
+                    gg(:, 1, i1, n) = gg(:, 1, i1, n) + blk(:, 1)*t(n, j1)
+                    gg(:, 2, i1, n) = gg(:, 2, i1, n) + blk(:, 2)*dt(n, j1)
+                end do
+                ! Phi_u of the source = du applied along i2 to the T-weighted sum
+                do ta = 1, 2
+                    fl(ta, i1, j1, :, :) = matmul(transpose(du), gg(ta, 1, :, :)) &
+                        + gg(ta, 2, :, :)
+                end do
+            end do
+        end do
+        !$omp end parallel do
+        ! M = L^T (F L): the target side the same way
+        allocate (h1(nu, nm, nu*nm))
+        h1 = 0
+        do j1 = 1, g%nv
+            do n = 1, nm
+                do i1 = 1, nu
+                    h1(i1, n, :) = h1(i1, n, :) + t(n, j1)*reshape(fl(1, i1, j1, :, :), [nu*nm])
+                end do
+            end do
+        end do
+        mform = 0
+        do n = 1, nm
+            do ia = 1, nu
+                mform(ia + nu*(n - 1), :) = matmul(du(:, ia), h1(:, n, :))
+            end do
+        end do
+        do j1 = 1, g%nv
+            do n = 1, nm
+                do i1 = 1, nu
+                    mform(i1 + nu*(n - 1), :) = mform(i1 + nu*(n - 1), :) &
+                        + dt(n, j1)*reshape(fl(2, i1, j1, :, :), [nu*nm])
+                end do
+            end do
+        end do
+    end subroutine tst_current_modes
 
     pure subroutine cartesian(x, cs, p, xu, xv)
         real(dp), intent(in) :: x(8), cs(2)

@@ -10,7 +10,7 @@ program test_toroidal_sheet_trapezoid
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_toroidal_sheet_trapezoid, only: tst_grid_t, tst_energy, tst_hvp, &
-        tst_current_form
+        tst_current_form, tst_current_modes
     implicit none
 
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -113,6 +113,43 @@ contains
             err = maxval(abs(y - reshape(hp(7:8, :, :), [2, 96])))/maxval(abs(hp(7:8, :, :)))
             call record(err < 1.0e-12_dp, "current block of the Hessian", err)
         end block
+        call test_modes(g, u)
     end subroutine test_derivatives
+
+    subroutine test_modes(g, u)
+        !! The current block in the basis phi(i, n) T_n(v) (2 modes) against
+        !! the product along a basis direction.
+        type(tst_grid_t), intent(in) :: g
+        real(dp), intent(in) :: u(:, :, :)
+        real(dp) :: du(12, 12), t(3, 8), dt(3, 8), m(36, 36), phi(12, 3), dq(8, 12, 8), &
+            hp(8, 12, 8), v, y(36), err
+        integer :: i, k, j
+        du = 0
+        do k = 1, 12
+            do i = 1, 12
+                if (i /= k) du(i, k) = 2*pi*0.5_dp*(-1)**mod(abs(i - k), 2) &
+                    /tan((i - k)*pi/12)
+            end do
+        end do
+        do j = 1, 8
+            v = 2*pi*(j - 1)/(2*8)
+            t(:, j) = [1.0_dp, cos(2*v), sin(2*v)]
+            dt(:, j) = [0.0_dp, -2*sin(2*v), 2*cos(2*v)]
+        end do
+        call tst_current_modes(g, u, du, t, dt, m)
+        do k = 1, 3
+            do i = 1, 12
+                phi(i, k) = cos(0.7_dp*i + 1.3_dp*k)
+            end do
+        end do
+        dq = 0
+        dq(7, :, :) = matmul(du, matmul(phi, t))
+        dq(8, :, :) = matmul(phi, dt)
+        call tst_hvp(g, u, dq, hp)
+        y = reshape(matmul(matmul(transpose(du), hp(7, :, :)), transpose(t)) &
+            + matmul(hp(8, :, :), transpose(dt)), [36])
+        err = maxval(abs(matmul(m, reshape(phi, [36])) - y))/maxval(abs(y))
+        call record(err < 1.0e-12_dp, "current block in the mode basis", err)
+    end subroutine test_modes
 
 end program test_toroidal_sheet_trapezoid
