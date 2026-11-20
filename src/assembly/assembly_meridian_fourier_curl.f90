@@ -59,6 +59,7 @@ module fortfem_meridian_fourier_curl
     public :: meridian_fourier_gradient_coupling
     public :: meridian_fourier_gradient, meridian_fourier_curl
     public :: meridian_fourier_identity_forms, meridian_fourier_identity_curl_curl
+    public :: meridian_fourier_pairing_curl
 
     integer, parameter :: par_min = 32
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -170,6 +171,69 @@ contains
             end do
         end subroutine put
     end subroutine meridian_fourier_identity_curl_curl
+
+    subroutine meridian_fourier_pairing_curl(fs, modes, h, status, period)
+        !! H = P C, the Fourier pairing times the Fourier curl. P weights its
+        !! blocks 1, 1/2, 1/2, ... and C = A + i n P B, so with k = n P block 0
+        !! is pair A and harmonic n is (1/2) [[pair A, k pair B],
+        !! [-k pair B, pair A]]: two products of single-block matrices.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: h
+        integer, intent(out) :: status
+        integer, intent(in), optional :: period
+
+        type(csc_t) :: pair, pa, pb
+        type(fortsparse_status_t) :: st
+        integer, allocatable :: rows(:), cols(:)
+        real(dp), allocatable :: vals(:)
+        integer :: p, n, nr, nc, pos, cap, j, q
+        real(dp) :: k
+
+        status = 1
+        p = 1
+        if (present(period)) p = period
+        if (modes < 0 .or. p < 1) return
+        call meridian_mass_weighted(fs, 1, pair, status, trial_space=2)
+        if (status /= 0) return
+        status = 1
+        call csc_matmul(pair, fs%curl%a, pa, st)
+        if (.not. status_ok(st)) return
+        call csc_matmul(pair, fs%curl%b, pb, st)
+        if (.not. status_ok(st)) return
+        nr = pa%nrow
+        nc = pa%ncol
+        cap = pa%nnz + modes*(2*pa%nnz + 2*pb%nnz)
+        allocate (rows(cap), cols(cap), vals(cap))
+        pos = 0
+        call put(pa, 0, 0, 1.0_dp)
+        do n = 1, modes
+            k = real(n*p, dp)
+            call put(pa, 2*n - 1, 2*n - 1, 0.5_dp)
+            call put(pa, 2*n, 2*n, 0.5_dp)
+            call put(pb, 2*n - 1, 2*n, 0.5_dp*k)
+            call put(pb, 2*n, 2*n - 1, -0.5_dp*k)
+        end do
+        call csc_from_triplet((2*modes + 1)*nr, (2*modes + 1)*nc, &
+            rows(1:pos), cols(1:pos), vals(1:pos), h, st)
+        status = merge(0, 1, status_ok(st))
+
+    contains
+
+        subroutine put(mat, rb, cb, w)
+            type(csc_t), intent(in) :: mat
+            integer, intent(in) :: rb, cb
+            real(dp), intent(in) :: w
+            do j = 1, mat%ncol
+                do q = mat%col_ptr(j), mat%col_ptr(j + 1) - 1
+                    pos = pos + 1
+                    rows(pos) = mat%row_idx(q) + rb*nr
+                    cols(pos) = j + cb*nc
+                    vals(pos) = w*mat%val(q)
+                end do
+            end do
+        end subroutine put
+    end subroutine meridian_fourier_pairing_curl
 
     subroutine block_operator(a, b, modes, period, op, status)
         !! Real-block operator of a + i n P b on the (cos, sin) amplitudes.
