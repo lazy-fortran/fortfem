@@ -77,7 +77,6 @@ module fortfem_meridian_feec_n
     !!
     !! Element-parallel (OpenMP) assembly into per-element triplet slices.
     use fortfem_kinds, only: dp
-    use fortfem_generated_physical_pairing, only: generated_physical_pairing
     use fortfem_meridian_curved_mesh, only: meridian_mesh_t
     use fortfem_triangle_duffy_quadrature, only: triangle_duffy_quadrature
     use fortfem_generated_triangle_feec_tables, only: &
@@ -99,6 +98,7 @@ module fortfem_meridian_feec_n
         initialize_triangle_nedelec_second_kind, &
         triangle_nedelec_second_kind_t
     use fortnum_quadrature, only: gauss_legendre_ab
+    use fortnum_blas, only: fortnum_dgemm
     use fortsparse, only: csc_conjugate_transpose, csc_from_triplet, &
         csc_matmul, csc_t, csc_z_t, fortsparse_status_t, status_ok
     implicit none
@@ -108,9 +108,9 @@ module fortfem_meridian_feec_n
     type, public :: meridian_space_t
         integer :: ndof = 0
         integer :: nloc = 0
-        integer, allocatable :: dof(:, :)      !! (nloc, ntriangles)
-        integer, allocatable :: sgn(:, :)      !! orientation signs
-        logical, allocatable :: bnd(:)         !! dofs of the boundary trace
+        integer, allocatable :: dof(:, :) !! (nloc, ntriangles)
+        integer, allocatable :: sgn(:, :) !! orientation signs
+        logical, allocatable :: bnd(:) !! dofs of the boundary trace
     end type meridian_space_t
 
     !> Operator a + i n b with real sparse a and b.
@@ -121,24 +121,24 @@ module fortfem_meridian_feec_n
 
     type, public :: meridian_feec_t
         type(meridian_mesh_t) :: mm
-        integer :: k = 0                       !! polynomial order
+        integer :: k = 0 !! polynomial order
         integer :: edge_kind = 1 !! Nedelec family of V1
         integer :: k0 = 0 !! Lagrange order of V0
         integer :: ke = 0 !! moments per edge
-        integer :: g = 1                       !! geometry order
+        integer :: g = 1 !! geometry order
         integer :: nq = 0
-        real(dp) :: cyl_r0 = 0.0_dp          !! > 0: periodic-cylinder chart, R = R0
-        integer :: n0 = 0, nn = 0, nd = 0      !! Lagrange, Nedelec/RT, DG dofs
-        integer :: nl0 = 0, nln = 0, nld = 0   !! local counts
+        real(dp) :: cyl_r0 = 0.0_dp !! > 0: periodic-cylinder chart, R = R0
+        integer :: n0 = 0, nn = 0, nd = 0 !! Lagrange, Nedelec/RT, DG dofs
+        integer :: nl0 = 0, nln = 0, nld = 0 !! local counts
         type(meridian_space_t) :: sp(0:3)
         real(dp), allocatable :: qw(:)
         real(dp), allocatable :: tl(:, :), tlg(:, :, :)
         real(dp), allocatable :: tn(:, :, :), tr(:, :, :), td(:, :)
         real(dp), allocatable :: tgeo(:, :), tgeog(:, :, :)
-        type(meridian_op_t) :: grad          !! V0 -> V1
-        type(meridian_op_t) :: curl          !! V1 -> V2
-        type(meridian_op_t) :: div           !! V2 -> V3
-        type(csc_t) :: mass(0:3)             !! physical L2(R dR dZ) masses
+        type(meridian_op_t) :: grad !! V0 -> V1
+        type(meridian_op_t) :: curl !! V1 -> V2
+        type(meridian_op_t) :: div !! V2 -> V3
+        type(csc_t) :: mass(0:3) !! physical L2(R dR dZ) masses
     end type meridian_feec_t
 
     !> Reference bases for evaluation of the complex at arbitrary points.
@@ -516,14 +516,14 @@ contains
                 if (any(pw(:, m) == k)) then
                     i = maxloc(pw(:, m), 1)
                     lag_dof(m, t) = tri(i, t)
-                    j = mod(i + 1, 3) + 1      ! other edge at vertex i
+                    j = mod(i + 1, 3) + 1 ! other edge at vertex i
                     if (ecount((ned_dof((i - 1)*ke + 1, t) - 1)/ke) == 1 .or. &
                         ecount((ned_dof((j - 1)*ke + 1, t) - 1)/ke) == 1) then
                         lag_bnd(lag_dof(m, t)) = .true.
                     end if
                 else if (any(pw(:, m) == 0)) then
                     third = minloc(pw(:, m), 1)
-                    i = mod(third, 3) + 1        ! edge i: vertex i -> j
+                    i = mod(third, 3) + 1 ! edge i: vertex i -> j
                     j = mod(i, 3) + 1
                     e0 = (ned_dof((i - 1)*ke + 1, t) - 1)/ke
                     ori = ned_sgn((i - 1)*ke + 1, t)
@@ -864,26 +864,26 @@ contains
             pi_ = [(l, l=1, nln)]
             sig = -1.0_dp
         else
-        ! Exact reference matrices (FortSym, rounded once): gradient,
-        ! Nedelec curls and RT divergences at the P_{k-1} nodes.
-        call triangle_feec_operator_tables(k, gref, cref, dref, status)
-        if (status /= 0) return
+            ! Exact reference matrices (FortSym, rounded once): gradient,
+            ! Nedelec curls and RT divergences at the P_{k-1} nodes.
+            call triangle_feec_operator_tables(k, gref, cref, dref, status)
+            if (status /= 0) return
 
-        ! signed permutation RT local <- Nedelec local (rot90 N = -sig RT)
-        half = k*(k - 1)/2
-        e3 = 3*k
-        do l = 1, nln
-            if (l <= e3) then
-                pi_(l) = l
-                sig(l) = 1.0_dp
-            else if (l <= e3 + half) then
-                pi_(l) = l + half
-                sig(l) = 1.0_dp
-            else
-                pi_(l) = l - half
-                sig(l) = -1.0_dp
-            end if
-        end do
+            ! signed permutation RT local <- Nedelec local (rot90 N = -sig RT)
+            half = k*(k - 1)/2
+            e3 = 3*k
+            do l = 1, nln
+                if (l <= e3) then
+                    pi_(l) = l
+                    sig(l) = 1.0_dp
+                else if (l <= e3 + half) then
+                    pi_(l) = l + half
+                    sig(l) = 1.0_dp
+                else
+                    pi_(l) = l - half
+                    sig(l) = -1.0_dp
+                end if
+            end do
         end if
 
         ! owner element of every Nedelec dof
@@ -1140,9 +1140,9 @@ contains
         integer, intent(in), optional :: trial_space
 
         integer, allocatable :: rows(:), cols(:)
-        real(dp), allocatable :: vals(:), phi(:, :), chi(:, :), ml(:, :)
-        real(dp) :: x(2), jac(2, 2), det, wq, extra, product(1)
-        integer :: nt, nl, nc, trial, t, q, i, j, base, bad
+        real(dp), allocatable :: vals(:), phi(:, :), chi(:, :), ml(:, :), pw(:, :), cw(:, :)
+        real(dp) :: x(2), jac(2, 2), det, wq, extra
+        integer :: nt, nl, nc, trial, t, q, i, j, base, bad, nk
 
         status = 1
         if (space < 0 .or. space > 3) return
@@ -1155,12 +1155,17 @@ contains
         allocate (rows(nl*nc*nt), cols(nl*nc*nt), vals(nl*nc*nt))
         bad = 0
         !$omp parallel if(nt >= par_min) default(shared) &
-        !$omp private(t, q, i, j, base, phi, chi, ml, x, jac, det, wq, extra, product) &
+        !$omp private(t, q, i, j, base, phi, chi, ml, pw, cw, x, jac, det, wq, extra) &
         !$omp reduction(max:bad)
-        allocate (phi(3, nl), chi(3, nc), ml(nl, nc))
+        ! The element matrix sum_q w_q phi_i(q) . chi_j(q) is one product of
+        ! the weighted test values and the trial values over all quadrature
+        ! points and components.
+        nk = 3*fs%nq
+        allocate (phi(3, nl), chi(3, nc), ml(nl, nc), pw(nk, nl), cw(nk, nc))
         !$omp do schedule(static)
         do t = 1, nt
-            ml = 0.0_dp
+            pw = 0.0_dp
+            cw = 0.0_dp
             do q = 1, fs%nq
                 call point_geometry(fs, t, q, x, jac, det)
                 if (det <= 0.0_dp .or. metric_radius(fs, x) <= 0.0_dp) then
@@ -1176,14 +1181,16 @@ contains
                 extra = 1.0_dp
                 if (present(weight)) extra = weight(x)
                 wq = fs%qw(q)*det*metric_radius(fs, x)*extra
-                do j = 1, nc
-                    do i = 1, nl
-                        call generated_physical_pairing(phi(1, i), phi(2, i), &
-                            phi(3, i), chi(1, j), chi(2, j), chi(3, j), wq, product)
-                        ml(i, j) = ml(i, j) + product(1)
-                    end do
-                end do
+                pw(3*q - 2:3*q, :) = wq*phi
+                cw(3*q - 2:3*q, :) = chi
             end do
+            call fortnum_dgemm('T', 'N', nl, nc, nk, 1.0_dp, pw, nk, cw, nk, 0.0_dp, ml, nl)
+            if (trial == space) then
+                ! the weight sits on one factor, so mirror for exact symmetry
+                do j = 1, nc
+                    ml(j + 1:nl, j) = ml(j, j + 1:nl)
+                end do
+            end if
             base = (t - 1)*nl*nc
             do j = 1, nc
                 do i = 1, nl
@@ -1765,9 +1772,9 @@ contains
 
     subroutine meridian_field_adapter_t_evaluate(self, x, v)
         class(meridian_field_adapter_t), intent(in) :: self
-            !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
-            real(dp), intent(in) :: x(2)
-            complex(dp), intent(out) :: v(3)
+        !! Physical components v = (v_R, v_phi, v_Z) at x = (R, Z).
+        real(dp), intent(in) :: x(2)
+        complex(dp), intent(out) :: v(3)
         call self%callback(x, v)
     end subroutine
 

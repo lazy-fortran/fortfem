@@ -58,7 +58,7 @@ module fortfem_meridian_fourier_curl
     public :: meridian_fourier_mass, meridian_fourier_curl_curl
     public :: meridian_fourier_gradient_coupling
     public :: meridian_fourier_gradient, meridian_fourier_curl
-    public :: meridian_fourier_identity_forms
+    public :: meridian_fourier_identity_forms, meridian_fourier_identity_curl_curl
 
     integer, parameter :: par_min = 32
     real(dp), parameter :: pi = acos(-1.0_dp)
@@ -76,19 +76,12 @@ contains
         type(csc_t), intent(out) :: c, s, mg
         integer, intent(out) :: status
         integer, intent(in), optional :: period
-        type(csc_t) :: m, g, ct, mc
+        type(csc_t) :: m, g
         type(fortsparse_status_t) :: st
         call meridian_fourier_curl(fs, modes, c, status, period)
         if (status /= 0) return
-        call meridian_fourier_diagonal_mass(fs, 2, modes, m, status)
+        call meridian_fourier_identity_curl_curl(fs, modes, s, status, period)
         if (status /= 0) return
-        call csc_matmul(m, c, mc, st)
-        status = 1
-        if (.not. status_ok(st)) return
-        call csc_transpose(c, ct, st)
-        if (.not. status_ok(st)) return
-        call csc_matmul(ct, mc, s, st)
-        if (.not. status_ok(st)) return
         call meridian_fourier_gradient(fs, modes, g, status, period)
         if (status /= 0) return
         call meridian_fourier_diagonal_mass(fs, 1, modes, m, status)
@@ -97,6 +90,86 @@ contains
         call csc_matmul(m, g, mg, st)
         if (status_ok(st)) status = 0
     end subroutine
+
+    subroutine meridian_fourier_identity_curl_curl(fs, modes, s, status, period)
+        !! S = C^T M_2 C for K = I, with C = A + i n P B on the real (cos, sin)
+        !! blocks and M_2 weighted 1, 1/2, 1/2, ... . With k = n P, block 0
+        !! is A^T M A and harmonic n is
+        !! (1/2) [[A^T M A + k^2 B^T M B, k (A^T M B - B^T M A)],
+        !!        [k (B^T M A - A^T M B), A^T M A + k^2 B^T M B]],
+        !! so three products of single-block matrices replace the triple
+        !! product of the full block operators.
+        type(meridian_feec_t), intent(in) :: fs
+        integer, intent(in) :: modes
+        type(csc_t), intent(out) :: s
+        integer, intent(out) :: status
+        integer, intent(in), optional :: period
+
+        type(csc_t) :: ma, mb, at, bt, kaa, kbb, kab, kba
+        type(fortsparse_status_t) :: st
+        integer, allocatable :: rows(:), cols(:)
+        real(dp), allocatable :: vals(:)
+        integer :: p, n, nc, pos, cap, j, q
+        real(dp) :: k
+
+        status = 1
+        p = 1
+        if (present(period)) p = period
+        if (modes < 0 .or. p < 1) return
+        associate (a => fs%curl%a, b => fs%curl%b, m => fs%mass(2))
+            call csc_matmul(m, a, ma, st)
+            if (.not. status_ok(st)) return
+            call csc_matmul(m, b, mb, st)
+            if (.not. status_ok(st)) return
+            call csc_transpose(a, at, st)
+            if (.not. status_ok(st)) return
+            call csc_transpose(b, bt, st)
+            if (.not. status_ok(st)) return
+            nc = a%ncol
+        end associate
+        call csc_matmul(at, ma, kaa, st)
+        if (.not. status_ok(st)) return
+        call csc_matmul(bt, mb, kbb, st)
+        if (.not. status_ok(st)) return
+        call csc_matmul(at, mb, kab, st)
+        if (.not. status_ok(st)) return
+        call csc_transpose(kab, kba, st)
+        if (.not. status_ok(st)) return
+        cap = kaa%nnz + modes*(2*kaa%nnz + 2*kbb%nnz + 4*kab%nnz)
+        allocate (rows(cap), cols(cap), vals(cap))
+        pos = 0
+        call put(kaa, 0, 0, 1.0_dp)
+        do n = 1, modes
+            k = real(n*p, dp)
+            call put(kaa, 2*n - 1, 2*n - 1, 0.5_dp)
+            call put(kaa, 2*n, 2*n, 0.5_dp)
+            call put(kbb, 2*n - 1, 2*n - 1, 0.5_dp*k*k)
+            call put(kbb, 2*n, 2*n, 0.5_dp*k*k)
+            call put(kab, 2*n - 1, 2*n, 0.5_dp*k)
+            call put(kba, 2*n - 1, 2*n, -0.5_dp*k)
+            call put(kba, 2*n, 2*n - 1, 0.5_dp*k)
+            call put(kab, 2*n, 2*n - 1, -0.5_dp*k)
+        end do
+        call csc_from_triplet((2*modes + 1)*nc, (2*modes + 1)*nc, &
+            rows(1:pos), cols(1:pos), vals(1:pos), s, st)
+        status = merge(0, 1, status_ok(st))
+
+    contains
+
+        subroutine put(mat, rb, cb, w)
+            type(csc_t), intent(in) :: mat
+            integer, intent(in) :: rb, cb
+            real(dp), intent(in) :: w
+            do j = 1, mat%ncol
+                do q = mat%col_ptr(j), mat%col_ptr(j + 1) - 1
+                    pos = pos + 1
+                    rows(pos) = mat%row_idx(q) + rb*nc
+                    cols(pos) = j + cb*nc
+                    vals(pos) = w*mat%val(q)
+                end do
+            end do
+        end subroutine put
+    end subroutine meridian_fourier_identity_curl_curl
 
     subroutine block_operator(a, b, modes, period, op, status)
         !! Real-block operator of a + i n P b on the (cos, sin) amplitudes.
