@@ -8,8 +8,10 @@ program gen_toroidal_sheet_trapezoid_products
     ! function at s = 1/2 of the lattice form Q(m, n) = |m h_u X_u + n h_v X_v|^2
     ! of point i, which corrects the punctured sum of the 1/r singularity.
     !
-    ! pair_hvp: the directional derivative of the x gradient of the pair
-    !   integrand (generated_toroidal_sheet_pair_* inputs) along (dx, dy).
+    ! pair_gradient_w, pair_hvp_w: the x gradient of the pair integrand and its
+    !   directional derivative along (dx, dy), with w = 1/|Q| an input (the
+    !   caller forms Q) and its derivatives by the chain rule, dw = -w^3/2
+    !   d(Q.Q), so the kernels are polynomial in w.
     ! zeta_term, zeta_base: for Q with matrix (a, b; b, c), l = sqrt(ac - b^2),
     !   Z = zeta_base + sum_{(m, n) /= 0} zeta_term(m, n), the Ewald split
     !   of the form normalised to unit determinant:
@@ -41,15 +43,16 @@ program gen_toroidal_sheet_trapezoid_products
     character(len=4), parameter :: zj(10) = [character(len=4) :: &
         "z", "za", "zb", "zc", "zaa", "zab", "zac", "zbb", "zbc", "zcc"]
     type(native_engine_t) :: engine
-    type(expr_t) :: x(8), y(8), p(7), dx(8), dy(8), k1(3), k2(3), q(3), f, g(8), &
+    type(expr_t) :: x(8), y(8), p(7), dx(8), dy(8), k1(3), k2(3), q(3), f, &
         roots(10), a, b, c, m, n, l, qq, qs, zt, abc(3), d(8), zjet(10), zt3, h(3)
     type(str_t), allocatable :: args(:)
     character(len=8) :: names(10)
     character(:), allocatable :: code(:)
+    type(expr_t) :: ww, sq, aa, gw(8), hw(8)
     integer :: i, unit, ios
 
     engine = make_native_engine()
-    allocate (character(len=200000) :: code(4))
+    allocate (character(len=200000) :: code(5))
 
     ! pair HVP
     do i = 1, 8
@@ -65,16 +68,37 @@ program gen_toroidal_sheet_trapezoid_products
     q(2) = (y(1) - x(1))/p(1)*p(5) + x(1)*p(7)
     q(3) = (y(2) - x(2))/p(1)
     f = (k1(1)*k2(1) + k1(2)*k2(2) + k1(3)*k2(3))/sqrt(q(1)*q(1) + q(2)*q(2) + q(3)*q(3))
+    ! w = 1/|Q| is an input
+    ww = sym("w")
+    sq = q(1)*q(1) + q(2)*q(2) + q(3)*q(3)
+    aa = k1(1)*k2(1) + k1(2)*k2(2) + k1(3)*k2(3)
     do i = 1, 8
-        g(i) = diff(f, x(i))
+        gw(i) = total(aa*ww, x(i))
     end do
-    roots(1:8) = jvp(g, [x, y], [dx, dy])
-    args = [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
-        (str(trim(params(i))), i=1, 7), (str("d"//trim(px(i))), i=1, 8), &
-        (str("d"//trim(py(i))), i=1, 8)]
-    names(1:8) = [character(len=8) :: "h_r", "h_z", "h_ru", "h_zu", "h_rv", "h_zv", &
-        "h_pu", "h_pv"]
-    code(1) = kernel("generated_ts_trap_pair_hvp", roots(1:8), names(1:8), args)
+    do i = 1, 8
+        hw(i) = 0*ww
+        block
+            integer :: jj
+            do jj = 1, 8
+                hw(i) = hw(i) + total(gw(i), x(jj))*dx(jj) + total(gw(i), y(jj))*dy(jj)
+            end do
+        end block
+    end do
+    block
+        type(expr_t) :: gr(9)
+        character(len=8) :: gn(9)
+        gr = [aa*ww, gw]
+        gn = [character(len=8) :: "value", "g_r", "g_z", "g_ru", "g_zu", "g_rv", "g_zv", &
+            "g_pu", "g_pv"]
+        code(1) = kernel("generated_ts_trap_pair_gradient_w", gr, gn, &
+            [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+            (str(trim(params(i))), i=1, 7), str("w")])
+    end block
+    code(5) = kernel("generated_ts_trap_pair_hvp_w", hw, [character(len=8) :: "h_r", "h_z", &
+        "h_ru", "h_zu", "h_rv", "h_zv", "h_pu", "h_pv"], &
+        [(str(trim(px(i))), i=1, 8), (str(trim(py(i))), i=1, 8), &
+        (str(trim(params(i))), i=1, 7), str("w"), (str("d"//trim(px(i))), i=1, 8), &
+        (str("d"//trim(py(i))), i=1, 8)])
 
     ! zeta term and base
     a = sym("a"); b = sym("b"); c = sym("c"); m = sym("m"); n = sym("n")
@@ -129,12 +153,19 @@ program gen_toroidal_sheet_trapezoid_products
     open (newunit=unit, file=generated_path("fortfem_toroidal_sheet_trapezoid_products.f90"), &
         status="replace", action="write", iostat=ios)
     if (ios /= 0) error stop "cannot write toroidal sheet trapezoid products"
-    do i = 1, 4
+    do i = 1, 5
         write (unit, "(a)") trim(code(i))
     end do
     close (unit)
 
 contains
+
+    function total(e, v) result(d)
+        !! d e/d v with w = (Q.Q)^(-1/2) a function of v: dw = -w^3/2 d(Q.Q).
+        type(expr_t), intent(in) :: e, v
+        type(expr_t) :: d
+        d = diff(e, v) - diff(e, ww)*ww*ww*ww*diff(sq, v)/2
+    end function total
 
     subroutine sheet(v, cv, sv, k)
         !! K dA = p_u X_v - p_v X_u, v = (r, r_u, z_u, r_v, z_v, p_u, p_v).

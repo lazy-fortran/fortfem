@@ -22,9 +22,8 @@ module fortfem_toroidal_sheet_trapezoid
     use fortfem_kinds, only: dp
     use fortfem_generated_toroidal_sheet_pair_value, only: &
         generated_toroidal_sheet_pair_value
-    use fortfem_generated_toroidal_sheet_pair_gradient, only: &
-        generated_toroidal_sheet_pair_gradient
-    use fortfem_generated_ts_trap_pair_hvp, only: generated_ts_trap_pair_hvp
+    use fortfem_generated_ts_trap_pair_gradient_w, only: generated_ts_trap_pair_gradient_w
+    use fortfem_generated_ts_trap_pair_hvp_w, only: generated_ts_trap_pair_hvp_w
     use fortfem_generated_ts_trap_zeta_term, only: generated_ts_trap_zeta_term
     use fortfem_generated_ts_trap_zeta_base, only: generated_ts_trap_zeta_base
     use fortfem_generated_ts_trap_diag, only: generated_ts_trap_diag
@@ -65,6 +64,13 @@ contains
         end do
     end subroutine tst_zeta
 
+    pure real(dp) function inverse_distance(x, y, c1, c2) result(w)
+        !! 1/|X_y - X_x| from the point inputs and (cos, sin) of both angles.
+        real(dp), intent(in) :: x(8), y(8), c1(2), c2(2)
+        w = 1/sqrt((y(1)*c2(1) - x(1)*c1(1))**2 + (y(1)*c2(2) - x(1)*c1(2))**2 &
+            + (y(2) - x(2))**2)
+    end function inverse_distance
+
     pure function metric(g, x) result(abc)
         type(tst_grid_t), intent(in) :: g
         real(dp), intent(in) :: x(8)
@@ -103,15 +109,16 @@ contains
                     do i2 = 1, g%nu
                         if (i2 == i1 .and. j2 == j1) cycle
                         if (present(gradient)) then
-                            call generated_toroidal_sheet_pair_gradient(u(1, i1, j1), &
+                            call generated_ts_trap_pair_gradient_w(u(1, i1, j1), &
                                 u(2, i1, j1), u(3, i1, j1), u(4, i1, j1), u(5, i1, j1), &
                                 u(6, i1, j1), u(7, i1, j1), u(8, i1, j1), u(1, i2, jj), &
                                 u(2, i2, jj), u(3, i2, jj), u(4, i2, jj), u(5, i2, jj), &
                                 u(6, i2, jj), u(7, i2, jj), u(8, i2, jj), 1.0_dp, &
                                 cs(1, j1), cs(2, j1), cs(1, j2), cs(2, j2), &
-                                cs(1, j2) - cs(1, j1), cs(2, j2) - cs(2, j1), out(1), &
-                                out(2), out(3), out(4), out(5), out(6), out(7), out(8), &
-                                out(9))
+                                cs(1, j2) - cs(1, j1), cs(2, j2) - cs(2, j1), &
+                                inverse_distance(u(:, i1, j1), u(:, i2, jj), cs(:, j1), &
+                                cs(:, j2)), out(1), out(2), out(3), out(4), out(5), out(6), &
+                                out(7), out(8), out(9))
                             gx = gx + out(2:9)
                         else
                             call generated_toroidal_sheet_pair_value(u(1, i1, j1), &
@@ -160,13 +167,14 @@ contains
                     jj = 1 + mod(j2 - 1, g%nv)
                     do i2 = 1, g%nu
                         if (i2 == i1 .and. j2 == j1) cycle
-                        call generated_ts_trap_pair_hvp(u(1, i1, j1), u(2, i1, j1), &
+                        call generated_ts_trap_pair_hvp_w(u(1, i1, j1), u(2, i1, j1), &
                             u(3, i1, j1), u(4, i1, j1), u(5, i1, j1), u(6, i1, j1), &
                             u(7, i1, j1), u(8, i1, j1), u(1, i2, jj), u(2, i2, jj), &
                             u(3, i2, jj), u(4, i2, jj), u(5, i2, jj), u(6, i2, jj), &
                             u(7, i2, jj), u(8, i2, jj), 1.0_dp, cs(1, j1), cs(2, j1), &
                             cs(1, j2), cs(2, j2), cs(1, j2) - cs(1, j1), &
-                            cs(2, j2) - cs(2, j1), du(1, i1, j1), du(2, i1, j1), &
+                            cs(2, j2) - cs(2, j1), inverse_distance(u(:, i1, j1), &
+                            u(:, i2, jj), cs(:, j1), cs(:, j2)), du(1, i1, j1), du(2, i1, j1), &
                             du(3, i1, j1), du(4, i1, j1), du(5, i1, j1), du(6, i1, j1), &
                             du(7, i1, j1), du(8, i1, j1), du(1, i2, jj), du(2, i2, jj), &
                             du(3, i2, jj), du(4, i2, jj), du(5, i2, jj), du(6, i2, jj), &
