@@ -4,6 +4,10 @@ program test_toroidal_sheet_current_3d
     !!  - a net poloidal current i_p on a circular torus (R0, a) is a
     !!    toroidal-field coil: B = i_p/(2 pi R) inside and 0 outside, so
     !!    E = (1/2) int B^2 dV = (i_p^2/2) (R0 - sqrt(R0^2 - a^2));
+    !!  - the load of the net-current ramps alone (phi = 0) in the field
+    !!    B = (1 + cos v, 0, b0): int (i_t u + i_p v/2 pi) B.N = i_t 2 pi
+    !!    (b0 U_r - U_z) - i_p pi A, U_r = int u R R_u, U_z = int u R Z_u,
+    !!    A = oint R Z_u along the chain;
     !!  - the gradient and Hessian of the self energy and of the field load
     !!    against central differences on a non-axisymmetric surface (nfp = 2).
     use check, only: check_condition, check_summary
@@ -18,6 +22,7 @@ program test_toroidal_sheet_current_3d
 
     all_passed = .true.
     call test_toroidal_field_coil()
+    call test_ramp_load()
     call test_derivatives()
     call check_summary("Toroidal sheet current energy")
     if (.not. all_passed) error stop 1
@@ -113,6 +118,54 @@ contains
         call gauss_legendre(size(x), x, w)
         x = 0.5_dp*(x + 1); w = 0.5_dp*w
     end subroutine gauss01
+
+    subroutine test_ramp_load()
+        type(ts_surface_t) :: s
+        type(ts_plan_t) :: plan
+        real(dp) :: e, exact, ur, uz, area, x(20), w(20), xi, uc, r, dr, dz
+        real(dp) :: n(4), dn(4)
+        integer :: st, p, q, i, j, node
+        call ts_surface_create(3, 8, 1, 0, 0, s, st)
+        call circle(s, 3.0_dp, 1.0_dp, 0.0_dp)
+        s%i_t = 0.7_dp; s%i_p = 1.3_dp
+        plan%nv = 8; plan%ng_v = 6
+        call ts_load(s, plan, ramp_field, e)
+        call gauss01(x, w)
+        ur = 0; uz = 0; area = 0
+        do p = 1, s%n_panels
+            do q = 1, 20
+                xi = x(q); uc = (p - 1 + xi)/s%n_panels
+                n = 0; dn = 0
+                do i = 1, 4
+                    do j = 4, 1, -1
+                        n(i) = n(i)*xi + s%lagrange(i, j)
+                        if (j > 1) dn(i) = dn(i)*xi + (j - 1)*s%lagrange(i, j)
+                    end do
+                end do
+                r = 0; dr = 0; dz = 0
+                do i = 1, 4
+                    node = (p - 1)*3 + i
+                    if (node > s%n_nodes) node = node - s%n_nodes
+                    r = r + n(i)*s%rz(1, node, 1)
+                    dr = dr + dn(i)*s%rz(1, node, 1)
+                    dz = dz + dn(i)*s%rz(2, node, 1)
+                end do
+                ur = ur + w(q)*uc*r*dr
+                uz = uz + w(q)*uc*r*dz
+                area = area + w(q)*r*dz
+            end do
+        end do
+        exact = s%i_t*2*pi*(0.4_dp*ur - uz) - s%i_p*pi*area
+        call record(abs(e - exact) < 1.0e-12_dp*abs(exact), &
+            "load of the net-current ramps", abs(e - exact)/abs(exact))
+    end subroutine test_ramp_load
+
+    subroutine ramp_field(r, z, v, b, db, d2b)
+        real(dp), intent(in) :: r, z, v
+        real(dp), intent(out) :: b(3), db(3, 2), d2b(3, 3)
+        b = [1 + cos(v), 0.0_dp, 0.4_dp]
+        db = 0; d2b = 0
+    end subroutine ramp_field
 
     subroutine field(r, z, v, b, db, d2b)
         !! A smooth test field with all jets: B = (z r, 1/r + sin v z, r^2 - z).

@@ -905,8 +905,9 @@ contains
     ! ------------------------------------------------------------------
 
     subroutine ts_load(s, plan, field, value, gradient, hessian)
-        !! int phi B . (X_xi x X_v) dxi dv over the torus (phi the single-valued
-        !! part), and when present its gradient and Hessian in the
+        !! int Phi B . (X_xi x X_v) dxi dv over the torus cut at u_c = 0 and
+        !! v = 0, Phi = phi + i_t u_c + i_p v/(2 pi) with the ramps of the net
+        !! currents, and when present its gradient and Hessian in the
         !! coefficients. Gauss per patch.
         type(ts_surface_t), intent(in) :: s
         type(ts_plan_t), intent(in) :: plan
@@ -957,7 +958,8 @@ contains
                             out(27), out(28))
                         ! out: B.N, its gradient in (r, z, r_xi, z_xi, r_v, z_v)
                         ! (z through B's Taylor data) and the Hessian
-                        phi = apply(fphi, c)
+                        phi = apply(fphi, c) + s%i_t*(p - 1 + xi)/s%n_panels &
+                            + s%i_p*v/(2*pi)
                         value = value + w*phi*out(1)
                         if (.not. present(gradient)) cycle
                         call unpack_load(out, gr, he)
