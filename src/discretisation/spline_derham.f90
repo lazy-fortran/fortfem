@@ -388,6 +388,8 @@ contains
                 head = head + 1
                 do r = incidence%rowptr(v), incidence%rowptr(v + 1) - 1
                     e = incidence%colidx(r)
+                    ! edges without two distinct ends (d_t = 0 for one t-node)
+                    if (any(ends(:, e) == 0) .or. ends(1, e) == ends(2, e)) cycle
                     w = sum(ends(:, e)) - v
                     if (seen(w)) cycle
                     seen(w) = .true.
@@ -413,6 +415,7 @@ contains
         incidence%rowptr = 0
         do e = 1, size(ends, 2)
             do j = 1, 2
+                if (ends(j, e) == 0) cycle
                 incidence%rowptr(ends(j, e) + 1) = incidence%rowptr(ends(j, e) + 1) + 1
             end do
         end do
@@ -425,6 +428,7 @@ contains
         do e = 1, size(ends, 2)
             do j = 1, 2
                 v = ends(j, e)
+                if (v == 0) cycle
                 incidence%colidx(next(v)) = e
                 next(v) = next(v) + 1
             end do
@@ -1399,6 +1403,15 @@ contains
                 matrix%colidx(n) = col(i)
                 matrix%val(n) = val(i)
             end do
+            ! drop entries that cancelled (one t-node: d_t = 0)
+            j = matrix%rowptr(r)
+            do i = matrix%rowptr(r), n
+                if (matrix%val(i) == 0.0_dp) cycle
+                matrix%colidx(j) = matrix%colidx(i)
+                matrix%val(j) = matrix%val(i)
+                j = j + 1
+            end do
+            n = j - 1
             matrix%rowptr(r + 1) = n + 1
         end do
         matrix%colidx = matrix%colidx(:n)

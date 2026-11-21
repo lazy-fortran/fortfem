@@ -288,6 +288,8 @@ program test_spline_cohomology
     call check_condition(cohomology_ok(disc, -2, 1) .and. cohomology_ok(ring, -2, 2), &
         "periodic splines in t: toroidal and poloidal classes")
     call check_condition(mass_ok(ring, -2), "mass matrices with periodic splines in t")
+    call check_condition(cohomology_ok(disc, 0, 1) .and. single_plane_tree_ok(disc), &
+        "one t-node (axisymmetric): tree without t-edges, toroidal class")
     call check_condition(rooted_tree_ok(disc), &
         "tree rooted at the boundary nodes: vertices - roots edges, none between roots")
     call check_condition(leg_free_ok(), &
@@ -366,6 +368,19 @@ contains
             call spline_derham_build(space, derham, status)
         end if
     end subroutine build
+
+    logical function single_plane_tree_ok(layout) result(ok)
+        !! toroidal_modes = 0: d_t vanishes, so no t-edge joins two nodes.
+        type(block_layout_t), intent(in) :: layout
+
+        type(spline_derham_t) :: derham
+        logical, allocatable :: tree(:)
+
+        call build(layout, 0, derham)
+        call spline_derham_tree(derham, tree)
+        ok = count(tree) == derham%dimension(0) - 1 .and. &
+            .not. any(tree(derham%edge_count*derham%plane_count + 1:))
+    end function single_plane_tree_ok
 
     logical function rooted_tree_ok(layout) result(ok)
         type(block_layout_t), intent(in) :: layout
