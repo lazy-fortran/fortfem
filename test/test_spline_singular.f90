@@ -91,6 +91,9 @@ program test_spline_singular
     !! 1e2 to 1e3 inside a block, 2 to 5 on sides and corners, where the
     !! nearly singular neighbour cells dominate), and the pointwise cells
     !! reproduce tensor results for polynomial integrands.
+    !! X on the central vertex of a distorted core block (four cells): with
+    !! I(u, v) = int v (grad u x grad theta) . e_z, theta the angle about X,
+    !! I(u, v) + I(v, u) = oint uv dtheta - 2 pi u(X) v(X).
     use check, only: check_condition, check_summary
     use fortfem_kinds, only: dp
     use fortfem_element_to_csr, only: csr_matrix_t
@@ -150,6 +153,22 @@ program test_spline_singular
     call spline_quadrature_build(space, 3, quad, status)
     call spline_quadrature_point_singular(space, quad, points(:, 1), adapted, status)
     call check_condition(status == 1, "odd point counts are rejected")
+
+    layout%vertices(:, 1) = layout%vertices(:, 1) + [0.08_dp, -0.05_dp]
+    layout%vertices(:, 3) = layout%vertices(:, 3) + [-0.03_dp, 0.06_dp]
+    call build(4)
+    call spline_geometry_at(space, 1, [0.5_dp, 0.5_dp], jet, status)
+    do k = 1, 3
+        call spline_quadrature_build(space, 2**(k + 1), quad, status)
+        call spline_quadrature_point_singular(space, quad, jet(:, 1), adapted, status)
+        cells(k) = count(adapted%pointwise)
+        gauss(k) = abs(curl_pair(quad, jet(:, 1)) - boundary_pair(jet(:, 1)))
+        polar(k) = abs(curl_pair(adapted, jet(:, 1)) - boundary_pair(jet(:, 1)))
+    end do
+    print '(a,3es10.2,a,3es10.2)', "vertex, 4/8/16 points: Gauss", gauss, "  polar", polar
+    call check_condition(all(cells == 4) .and. polar(3) < 1.0e-10_dp .and. &
+        all(polar(2:3) < gauss(2:3)), &
+        "X on a vertex of four cells: grad u x grad theta exact")
     call check_summary("spline_singular")
 
 contains
@@ -176,6 +195,58 @@ contains
             total = total + q%weight(i)/norm2(q%s(:, i) - x)
         end do
     end function inverse_distance
+
+    pure subroutine uv(s, u, v, gu, gv)
+        real(dp), intent(in) :: s(2)
+        real(dp), intent(out) :: u, v, gu(2), gv(2)
+
+        u = cos(s(1)) + s(2)**2
+        gu = [-sin(s(1)), 2.0_dp*s(2)]
+        v = exp(0.3_dp*s(1))*sin(s(2) + 0.5_dp)
+        gv = [0.3_dp*v, exp(0.3_dp*s(1))*cos(s(2) + 0.5_dp)]
+    end subroutine uv
+
+    real(dp) function curl_pair(q, x) result(total)
+        !! I(u, v) + I(v, u) with grad theta = (-d2, d1)/|d|^2, d = s - X.
+        type(spline_quadrature_t), intent(in) :: q
+        real(dp), intent(in) :: x(2)
+        real(dp) :: d(2), u, v, gu(2), gv(2)
+        integer :: i
+
+        total = 0.0_dp
+        do i = 1, q%point_count
+            d = q%s(:, i) - x
+            call uv(q%s(:, i), u, v, gu, gv)
+            total = total + q%weight(i)*dot_product(v*gu + u*gv, d)/sum(d*d)
+        end do
+    end function curl_pair
+
+    real(dp) function boundary_pair(x) result(total)
+        !! oint uv dtheta over the square [c0 - a, c0 + a]^2 (counter-
+        !! clockwise, 3-point Gauss on 256 panels per side) minus 2 pi u(X) v(X).
+        real(dp), parameter :: x3(3) = [-sqrt(0.6_dp), 0.0_dp, sqrt(0.6_dp)], &
+            w3(3) = [5.0_dp, 8.0_dp, 5.0_dp]/18.0_dp
+        real(dp), intent(in) :: x(2)
+        real(dp) :: corner(2, 5), d(2), e(2), u, v, gu(2), gv(2), t
+        integer :: side, i, j
+
+        corner = spread(c0 - x, 2, 5) + reshape([-a, -a, a, -a, a, a, -a, a, -a, -a], &
+            [2, 5])
+        total = 0.0_dp
+        do side = 1, 4
+            e = corner(:, side + 1) - corner(:, side)
+            do i = 1, 256
+                do j = 1, 3
+                    t = (i - 0.5_dp + 0.5_dp*x3(j))/256
+                    d = corner(:, side) + t*e
+                    call uv(x + d, u, v, gu, gv)
+                    total = total + w3(j)/256*u*v*(d(1)*e(2) - d(2)*e(1))/sum(d*d)
+                end do
+            end do
+        end do
+        call uv(x, u, v, gu, gv)
+        total = total - 2.0_dp*acos(-1.0_dp)*u*v
+    end function boundary_pair
 
     real(dp) function exact_integral(x) result(v)
         !! int over [c0 - a, c0 + a]^2 of 1/|s - x| by the antiderivative
