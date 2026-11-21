@@ -192,7 +192,7 @@ if(NOT TARGET fortnum)
     endif()
     FetchContent_Declare(fortnum
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
-        GIT_TAG 5d3f52e129a56d9eb6bdb61c26fbbd4e8c684caf
+        GIT_TAG 4285c0e422082bc44a090bbad5d199739153af59
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortnum)
 endif()
@@ -234,7 +234,7 @@ if(NOT TARGET fortsparse)
     endif()
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG e0909228d568e121651eb72c53a9be2374f9c863
+        GIT_TAG 161faedc1cfa72c95a9073b9b3a4692ccad901f8
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()

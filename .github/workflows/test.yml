@@ -92,8 +92,7 @@ jobs:
     - name: Check native sparse C API and derivatives
       run: |
         cmake -S . -B build/native-capi -DCMAKE_BUILD_TYPE=Debug \
-          -DFORTFEM_BUILD_TESTING=ON -DFORTSPARSE_ENABLE_AMD=OFF \
-          -DFORTSPARSE_ENABLE_METIS=OFF
+          -DFORTFEM_BUILD_TESTING=ON -DFORTSPARSE_ENABLE_METIS=OFF
         cmake --build build/native-capi -j2
         ctest --test-dir build/native-capi -L "sparse|element" --output-on-failure -j2
 
