@@ -14,7 +14,6 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-link = ["lapack"]
 
 [install]
 library = true
@@ -117,10 +116,9 @@ md_extensions = ["markdown.extensions.toc", "markdown.extensions.smarty", "markd
 
 [dependencies]
 openmp = "*"
-blas = "*"
 fortplot = { git = "https://github.com/lazy-fortran/fortplot.git", rev = "1645fa41c11b5786c71bc27e5b41dae7c7bbba23" }
-fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "abf066d0f1682ad9fffc23401e1ce9bb98dddacd" }
-fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "2d7c43ee633e42c6044a5225e3a506609d7c4d41" }
+fortnum = { git = "https://github.com/lazy-fortran/fortnum.git", rev = "5d3f52e129a56d9eb6bdb61c26fbbd4e8c684caf" }
+fortsparse = { git = "https://github.com/lazy-fortran/fortsparse.git", rev = "e0909228d568e121651eb72c53a9be2374f9c863" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git", rev = "791484a79a24cbc00be6f74e53c6e030cb75efe2" }

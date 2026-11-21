@@ -178,9 +178,6 @@ if(FORTFEM_ELEMENT_KERNELS_ONLY)
     return()
 endif()
 
-# Resolve our direct LAPACK calls before dependencies supply fallback targets.
-find_package(LAPACK REQUIRED)
-
 # The public Fortran API needs the same FortNum and FortSparse providers as
 # fpm. Declare them before FortSparse, whose standalone build otherwise
 # supplies its own pin.
@@ -195,9 +192,22 @@ if(NOT TARGET fortnum)
     endif()
     FetchContent_Declare(fortnum
         GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
-        GIT_TAG abf066d0f1682ad9fffc23401e1ce9bb98dddacd
+        GIT_TAG 5d3f52e129a56d9eb6bdb61c26fbbd4e8c684caf
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortnum)
+endif()
+
+# BLAS and LAPACK are fortnum's under their standard names (fortnum_lapack77);
+# a consumer that defines LAPACK::LAPACK first keeps its own.
+if(NOT TARGET LAPACK::LAPACK)
+    add_library(LAPACK::LAPACK INTERFACE IMPORTED GLOBAL)
+    set_target_properties(LAPACK::LAPACK PROPERTIES
+        INTERFACE_LINK_LIBRARIES fortnum_lapack77)
+endif()
+if(NOT TARGET BLAS::BLAS)
+    add_library(BLAS::BLAS INTERFACE IMPORTED GLOBAL)
+    set_target_properties(BLAS::BLAS PROPERTIES
+        INTERFACE_LINK_LIBRARIES fortnum_lapack77)
 endif()
 
 if(NOT TARGET fortsparse)
@@ -224,7 +234,7 @@ if(NOT TARGET fortsparse)
     endif()
     FetchContent_Declare(fortsparse
         GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
-        GIT_TAG 61aacae16016b689c1f8456ec132d0a5c80b84e0
+        GIT_TAG e0909228d568e121651eb72c53a9be2374f9c863
         GIT_SHALLOW FALSE)
     FetchContent_MakeAvailable(fortsparse)
 endif()
