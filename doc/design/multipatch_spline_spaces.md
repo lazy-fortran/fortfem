@@ -362,7 +362,8 @@ boundary data and gauged direct solves of small cases.
 - Boundary surface (curve times circle): its 1- and 2-form dofs, the
   surface curl (restriction of curl, for gauge-invariant B·n coupling)
   and the toroidal and poloidal surface classes (the two flux numbers).
-- Mass matrices of all forms with a caller-supplied weight for the
+- Mass matrices of all forms over the parametric cells (reference
+  measure), with a caller-supplied pullback weight for the
   parametric proxies.
 
 Tests: tree size (vertices - 1), b1 representatives for disc, ring, disc

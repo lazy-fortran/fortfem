@@ -532,9 +532,10 @@ contains
 
     subroutine spline_derham_mass(derham, quad, form, metric, matrix, status, &
             points)
-        !! Mass matrix of V_form, int proxy_i . W proxy_j dxi (dt), with the
-        !! weight W from `metric`, the section quadrature `quad` and `points`
-        !! Gauss points per t-interval (default 2 M + 2).
+        !! Mass matrix of V_form, int proxy_i . W proxy_j dxi1 dxi2 (dt) over
+        !! the parametric cells (reference measure, without the section map
+        !! Jacobian), with the weight W from `metric`, the section quadrature
+        !! `quad` and `points` Gauss points per t-interval (default 2 M + 2).
         type(spline_derham_t), intent(in) :: derham
         type(spline_quadrature_t), intent(in) :: quad
         integer, intent(in) :: form
@@ -586,7 +587,7 @@ contains
                 do kt = 1, merge(nt, 1, derham%toroidal)
                     do j = 1, size(tx)
                         tt = (kt - 1)/real(nt, dp) + tx(j)
-                        wt = quad%weight(point)*tw(j)
+                        wt = reference_weight(cell, q)*tw(j)
                         if (derham%toroidal) call spline_derham_t_basis(nt, tt, lt, ht)
                         call local_values(q, vals)
                         call metric(quad%block(point), quad%xi(:, point), tt, w)
@@ -606,6 +607,22 @@ contains
         status = 0
 
     contains
+
+        real(dp) function reference_weight(cell, q) result(w0)
+            !! Gauss weight of point q of the cell in xi (no det DG).
+            integer, intent(in) :: cell, q
+            integer :: k, e(2), q1, q2, nq1
+
+            k = derham%space%cell_block(cell)
+            e = derham%space%cell_element(:, cell)
+            nq1 = quad%points_per_direction
+            q1 = modulo(q - 1, nq1) + 1
+            q2 = (q - 1)/nq1 + 1
+            w0 = (derham%space%blocks(k)%breaks1(e(1) + 1) - &
+                derham%space%blocks(k)%breaks1(e(1)))* &
+                (derham%space%blocks(k)%breaks2(e(2) + 1) - &
+                derham%space%blocks(k)%breaks2(e(2)))*quad%t_weight(q1)*quad%t_weight(q2)
+        end function reference_weight
 
         subroutine local_dofs(dofs, sgn)
             !! Global dofs and signs of the cell functions of V_form.

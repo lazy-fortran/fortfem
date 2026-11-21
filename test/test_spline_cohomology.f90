@@ -432,8 +432,9 @@ contains
     end function surface_ok
 
     logical function mass_ok(layout, modes) result(ok)
-        !! Identity metric: c^T M c equals the integral of |proxy|^2 by point
-        !! evaluation on a different quadrature, and M is symmetric.
+        !! Identity metric: c^T M c equals the integral of |proxy|^2 over the
+        !! parametric cells (reference measure) by point evaluation on a
+        !! different quadrature, and M is symmetric.
         type(block_layout_t), intent(in) :: layout
         integer, intent(in) :: modes
 
@@ -445,6 +446,7 @@ contains
         integer :: form, status, q, j, ncomp, top, nt
 
         call build(layout, modes, derham)
+        geometry_space = derham%space
         call spline_quadrature_build(derham%space, 3, quad, status)
         call spline_quadrature_build(derham%space, 4, fine, status)
         ok = .true.
@@ -466,7 +468,8 @@ contains
                 do q = 1, fine%point_count
                     call spline_derham_evaluate(derham, form, c, fine%block(q), &
                         fine%xi(:, q), tt, v)
-                    direct = direct + fine%weight(q)*sum(v**2)/merge(4*nt, 1, modes >= 0)
+                    direct = direct + reference(fine, q)*sum(v**2)/ &
+                        merge(4*nt, 1, modes >= 0)
                 end do
             end do
             ok = ok .and. abs(dot_product(c, matmul(md, c)) - direct) < &
@@ -523,6 +526,24 @@ contains
             end do
         end do
     end function matvec
+
+    real(dp) function reference(quad, point) result(w0)
+        !! Gauss weight of a quadrature point in xi, without det DG.
+        type(spline_quadrature_t), intent(in) :: quad
+        integer, intent(in) :: point
+        integer :: cell, q, k, e(2), nq1
+
+        cell = (point - 1)/quad%points_per_cell + 1
+        q = point - quad%point_offset(cell) + 1
+        k = geometry_space%cell_block(cell)
+        e = geometry_space%cell_element(:, cell)
+        nq1 = quad%points_per_direction
+        w0 = (geometry_space%blocks(k)%breaks1(e(1) + 1) - &
+            geometry_space%blocks(k)%breaks1(e(1)))* &
+            (geometry_space%blocks(k)%breaks2(e(2) + 1) - &
+            geometry_space%blocks(k)%breaks2(e(2)))* &
+            quad%t_weight(modulo(q - 1, nq1) + 1)*quad%t_weight((q - 1)/nq1 + 1)
+    end function reference
 
     subroutine identity(block, xi, t, weight)
         integer, intent(in) :: block
