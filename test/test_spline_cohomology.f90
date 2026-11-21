@@ -1,3 +1,175 @@
+module spline_cohomology_xpoint
+    !! u - lap u = f with exact Neumann data, u = cos(0.7 R) sin(0.9 Z) + R Z,
+    !! and a double-null geometry: Gamma_p made of four quadratic Bezier arcs
+    !! with 90 degree corners at the X-points (R0, -h), (R0, h), straight legs
+    !! with a slight bend, and an elliptic wall.
+    use fortfem_kinds, only: dp
+    use fortfem_spline_energy, only: pointwise_energy_t
+    use fortfem_spline_xpoint, only: xpoint_curves_t
+    implicit none
+    private
+
+    public :: problem_kernel_t, exact_solution, exact_gradient, source, &
+        double_null, core_area
+
+    real(dp), parameter, public :: r0 = 1.7_dp
+    real(dp), parameter, public :: wall_a = 1.05_dp, wall_b = 1.6_dp
+
+    type, extends(pointwise_energy_t) :: problem_kernel_t
+        real(dp), allocatable :: f(:)
+    contains
+        procedure :: evaluate
+    end type problem_kernel_t
+
+contains
+
+    subroutine evaluate(self, cell, first_point, npoint, jet, weight, need, w, &
+            gradient, hessian, status)
+        class(problem_kernel_t), intent(in) :: self
+        integer, intent(in) :: cell, first_point, npoint, need
+        real(dp), intent(in) :: jet(:, :), weight(:)
+        real(dp), intent(out) :: w(:), gradient(:, :), hessian(:, :)
+        integer, intent(out) :: status
+
+        real(dp) :: f
+        integer :: q
+
+        associate (unused => cell, unused_weight => weight)
+        end associate
+        do q = 1, npoint
+            f = self%f(first_point + q - 1)
+            w(q) = 0.5_dp*(jet(2, q)**2 + jet(3, q)**2 + jet(1, q)**2) - f*jet(1, q)
+            if (need >= 1) gradient(:, q) = [jet(1, q) - f, jet(2, q), jet(3, q)]
+            if (need >= 2) hessian(:, q) = [1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp, &
+                0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp]
+        end do
+        status = 0
+    end subroutine evaluate
+
+    pure real(dp) function exact_solution(s) result(u)
+        real(dp), intent(in) :: s(2)
+
+        u = cos(0.7_dp*s(1))*sin(0.9_dp*s(2)) + s(1)*s(2)
+    end function exact_solution
+
+    pure function exact_gradient(s) result(g)
+        real(dp), intent(in) :: s(2)
+        real(dp) :: g(2)
+
+        g = [-0.7_dp*sin(0.7_dp*s(1))*sin(0.9_dp*s(2)) + s(2), &
+            0.9_dp*cos(0.7_dp*s(1))*cos(0.9_dp*s(2)) + s(1)]
+    end function exact_gradient
+
+    pure real(dp) function source(s) result(f)
+        real(dp), intent(in) :: s(2)
+
+        f = exact_solution(s) + 1.3_dp*cos(0.7_dp*s(1))*sin(0.9_dp*s(2))
+    end function source
+
+    pure function bezier_controls(a, h, shift) result(c)
+        !! (2, 3, 4): control points of the four Gamma_p arcs.
+        real(dp), intent(in) :: a, h, shift
+        real(dp) :: c(2, 3, 4)
+        real(dp) :: k(2, 4)
+
+        k(:, 1) = [r0 + shift, -h]
+        k(:, 2) = [r0 + a, 0.0_dp]
+        k(:, 3) = [r0 - shift, h]
+        k(:, 4) = [r0 - a, 0.0_dp]
+        c(:, :, 1) = reshape([k(:, 1), k(:, 1) + [a - shift, a - shift], k(:, 2)], [2, 3])
+        c(:, :, 2) = reshape([k(:, 2), k(:, 3) + [a + shift, -(a + shift)], k(:, 3)], &
+            [2, 3])
+        c(:, :, 3) = reshape([k(:, 3), k(:, 3) + [-(a - shift), -(a - shift)], &
+            k(:, 4)], [2, 3])
+        c(:, :, 4) = reshape([k(:, 4), k(:, 1) + [-(a + shift), a + shift], k(:, 1)], &
+            [2, 3])
+    end function bezier_controls
+
+    function double_null(a, h, shift, legs) result(curves)
+        !! legs(q): corner q is an X-point (only corners 1 and 3 may be).
+        real(dp), intent(in) :: a, h, shift
+        logical, intent(in) :: legs(4)
+        type(xpoint_curves_t) :: curves
+
+        real(dp) :: c(2, 3, 4), t, theta
+        integer :: q, i
+        integer, parameter :: n = 40
+
+        c = bezier_controls(a, h, shift)
+        do q = 1, 4
+            allocate(curves%segment(q)%points(2, n))
+            do i = 1, n
+                t = real(i - 1, dp)/(n - 1)
+                curves%segment(q)%points(:, i) = (1.0_dp - t)**2*c(:, 1, q) + &
+                    2.0_dp*t*(1.0_dp - t)*c(:, 2, q) + t**2*c(:, 3, q)
+            end do
+        end do
+        if (legs(1)) then
+            curves%leg_after(1)%points = leg(c(:, 1, 1), [1.0_dp, -1.0_dp])
+            curves%leg_before(1)%points = leg(c(:, 1, 1), [-1.0_dp, -1.0_dp])
+        end if
+        if (legs(3)) then
+            curves%leg_after(3)%points = leg(c(:, 1, 3), [-1.0_dp, 1.0_dp])
+            curves%leg_before(3)%points = leg(c(:, 1, 3), [1.0_dp, 1.0_dp])
+        end if
+        allocate(curves%wall(2, 300))
+        do i = 1, 300
+            theta = 2.0_dp*acos(-1.0_dp)*(i - 1)/300
+            curves%wall(:, i) = [r0 + wall_a*cos(theta), wall_b*sin(theta)]
+        end do
+    end function double_null
+
+    function leg(x, d) result(points)
+        !! From x along d to the wall, bent by 3 % of its length.
+        real(dp), intent(in) :: x(2), d(2)
+        real(dp), allocatable :: points(:, :)
+
+        real(dp) :: e(2), lo, hi, mid, s(2), nrm(2), t
+        integer :: i, it
+
+        e = d/norm2(d)
+        lo = 0.0_dp
+        hi = 5.0_dp
+        do it = 1, 80
+            mid = 0.5_dp*(lo + hi)
+            s = x + mid*e
+            if (((s(1) - r0)/wall_a)**2 + (s(2)/wall_b)**2 < 1.0_dp) then
+                lo = mid
+            else
+                hi = mid
+            end if
+        end do
+        nrm = [-e(2), e(1)]
+        allocate(points(2, 25))
+        do i = 1, 25
+            t = real(i - 1, dp)/24
+            points(:, i) = x + t*lo*e + 0.12_dp*lo*t*(1.0_dp - t)*nrm
+        end do
+    end function leg
+
+    real(dp) function core_area(a, h, shift) result(area)
+        !! int R dZ over Gamma_p (fine trapezoidal rule on the arcs).
+        real(dp), intent(in) :: a, h, shift
+        real(dp) :: c(2, 3, 4), t, x(2), dx(2)
+        integer :: q, i
+        integer, parameter :: n = 20000
+
+        c = bezier_controls(a, h, shift)
+        area = 0.0_dp
+        do q = 1, 4
+            do i = 0, n - 1
+                t = (i + 0.5_dp)/n
+                x = (1.0_dp - t)**2*c(:, 1, q) + 2.0_dp*t*(1.0_dp - t)*c(:, 2, q) + &
+                    t**2*c(:, 3, q)
+                dx = 2.0_dp*(1.0_dp - t)*(c(:, 2, q) - c(:, 1, q)) + &
+                    2.0_dp*t*(c(:, 3, q) - c(:, 2, q))
+                area = area + x(1)*dx(2)/n
+            end do
+        end do
+    end function core_area
+
+end module spline_cohomology_xpoint
+
 module spline_cohomology_geometry
     !! Jacobians and coordinate fields of the current section space and chart.
     use fortfem_kinds, only: dp
@@ -74,6 +246,9 @@ program test_spline_cohomology
     use fortfem_curve_chart, only: curve_chart_cylindrical
     use spline_cohomology_geometry, only: geometry_space, geometry_chart, three_d, &
         coordinate, jacobian, coordinate_field
+    use fortfem_spline_xpoint, only: layout_xpoint
+    use fortfem_spline_layout, only: LAYOUT_PLASMA_BOUNDARY
+    use spline_cohomology_xpoint, only: double_null, r0
     use fortfem_spline_eval, only: spline_quadrature_t, spline_quadrature_build
     implicit none
 
@@ -88,7 +263,9 @@ program test_spline_cohomology
         end subroutine dsyev
     end interface
 
-    type(block_layout_t) :: disc, ring
+    type(block_layout_t) :: disc, ring, xpoint
+    integer, allocatable :: gp_nodes(:), gp_edges(:)
+    type(spline_derham_t) :: xd
     integer :: status
 
     call layout_ogrid([0.0_dp, 0.0_dp], 1.0_dp, 0.5_dp, disc, status, polygon=.true.)
@@ -98,6 +275,15 @@ program test_spline_cohomology
     call check_condition(cohomology_ok(disc, 1, 1), "disc x circle: the toroidal class")
     call check_condition(cohomology_ok(ring, 1, 2), &
         "ring x circle: toroidal and poloidal classes")
+    call layout_xpoint([r0, 0.0_dp], 0.4_dp, double_null(0.6_dp, 1.0_dp, 0.0_dp, &
+        [.true., .false., .true., .false.]), xpoint, status)
+    call check_condition(cohomology_ok(xpoint, -1, 0) .and. &
+        cohomology_ok(xpoint, 1, 1), "double null: section and 3D cohomology")
+    call build(xpoint, -1, xd)
+    call spline_derham_boundary_dofs(xd, LAYOUT_PLASMA_BOUNDARY, 0, gp_nodes)
+    call spline_derham_boundary_dofs(xd, LAYOUT_PLASMA_BOUNDARY, 1, gp_edges)
+    call check_condition(size(gp_nodes) > 0 .and. size(gp_nodes) == size(gp_edges), &
+        "double null: Gamma_p is a closed loop of nodes and tangential edges")
     call check_condition(surface_ok(ring), &
         "boundary torus: surface curl of gradients vanishes, two surface classes")
     call check_condition(mass_ok(ring, -1), "section mass matrices of all forms")
