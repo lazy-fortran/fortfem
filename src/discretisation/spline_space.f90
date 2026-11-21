@@ -77,6 +77,13 @@ module fortfem_spline_space
         !> interior sides of a C0 space, the side_c0 sides of a C1 space, and
         !> the core sides on an annulus interface (neighbour side 3).
         integer, allocatable :: c0_interfaces(:, :) ! (4, interface)
+        !> Patches: blocks(P) holds the knots of layout block patch_block(P)
+        !> at refinement level patch_level(P) (identity without refinement).
+        !> element_cell(patch_cell_offset(P) + e1 + n1 (e2 - 1)) is the cell of
+        !> element (e1, e2) of patch P, 0 when it is not an active cell.
+        integer :: layout_block_count = 0
+        integer, allocatable :: patch_block(:), patch_level(:)
+        integer, allocatable :: patch_cell_offset(:), element_cell(:)
     end type spline_space_t
 
     public :: spline_space_build
@@ -177,13 +184,20 @@ contains
             k = 1, nb)])
         allocate(space%cell_block(space%cell_count), &
             space%cell_element(2, space%cell_count))
+        space%layout_block_count = nb
+        space%patch_block = [(k, k = 1, nb)]
+        allocate(space%patch_level(nb), space%patch_cell_offset(nb), &
+            space%element_cell(space%cell_count))
+        space%patch_level = 0
         cell = 0
         do k = 1, nb
+            space%patch_cell_offset(k) = cell
             do e2 = 1, space%blocks(k)%element_count(2)
                 do e1 = 1, space%blocks(k)%element_count(1)
                     cell = cell + 1
                     space%cell_block(cell) = k
                     space%cell_element(:, cell) = [e1, e2]
+                    space%element_cell(cell) = cell
                 end do
             end do
         end do
@@ -297,7 +311,7 @@ contains
         mark = .false.
         do k = 1, space%block_count
             do s = 1, 4
-                if (space%layout%side_tag(s, k) /= tag) cycle
+                if (space%layout%side_tag(s, space%patch_block(k)) /= tag) cycle
                 call side_trace(space%blocks(k), s, trace)
                 do t = 1, size(trace)
                     j = space%blocks(k)%offset + trace(t)

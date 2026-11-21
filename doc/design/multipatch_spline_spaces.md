@@ -300,6 +300,58 @@ jumps across C1 sides are below 1e-11, and across C0 sides they are O(1).
 After a new D-shaped interface the C1 core stays C1 (without the rebuild
 the check fails).
 
+## THB refinement
+
+Level spaces $V_0\subset V_1\subset\dots$ are the C0 multipatch spaces (with
+the annulus constraint) on dyadically refined breakpoints: all blocks, or
+only the radial knots of the annulus (anisotropic, chosen when a level is
+created). Every level map is the exact knot insertion of the level-0 map.
+The domains $\Omega_m$ are unions of level-m cells, with $\Omega_0$ the
+whole plane section. With $\mathcal B_m$ the global basis of $V_m$, the
+active functions and the truncation are
+
+$$
+\mathcal A_m=\{\varphi\in\mathcal B_m:\ \mathrm{supp}\,\varphi\subseteq\Omega_m,\
+\mathrm{supp}\,\varphi\not\subseteq\Omega_{m+1}\},\qquad
+\mathrm{trunc}^{m+1}\Bigl(\sum_{\psi\in\mathcal B_{m+1}}c_\psi\psi\Bigr)=
+\sum_{\mathrm{supp}\,\psi\not\subseteq\Omega_{m+1}}c_\psi\psi ,
+\tag{19}
+$$
+
+and the THB basis is $\{\mathrm{trunc}^{L}\cdots\mathrm{trunc}^{m+1}\varphi:\ \varphi\in\mathcal A_m\}$
+(Giannelli, Jüttler, Speleers 2012). The coefficients of $\varphi\in\mathcal B_m$
+in $\mathcal B_{m+1}$ come from tensor knot insertion of its broken functions, read
+off at one broken function per fine function whose extraction column holds
+that function alone. On the active level-n cells a truncated function equals its
+level-n representation after the truncations up to n. These representations are
+its extraction rows, so the hierarchical space is an ordinary spline space
+whose patches are (block, level) pairs and whose cells are the active cells.
+Marking is Dörfler marking of a caller-supplied indicator. Refinement adds
+the class-2 admissible closure (Buffa, Gantner, Giannelli, Praetorius,
+Vázquez, arXiv:2107.02023): refining a level-m cell Q also refines the active
+level-(m-1) cells in the support extension of Q's parent. Every truncated
+function then spans at most two levels of active cells. Fields move between
+spaces by L2 projection, which is exact for nested spaces.
+
+Test (p = 3, O-grid with periodic annulus, base n = 4):
+
+- After three local refinements (the second radial), the functions with all
+  coefficients 1 sum to 1 to 1e-12. A level-0 field and a coarser
+  hierarchy field are reproduced by projection to 1e-10. No function
+  spans more than two levels.
+- Gate 2: wall layer $u=e^{-(1-r)/\epsilon}e^{\kappa(\cos(\phi-\phi_0)-1)}$,
+  $\epsilon=0.04$, $\kappa=6$, Neumann data, exact cellwise H1 error as
+  indicator, Dörfler $\theta=0.5$, two radial levels, then isotropic ones:
+
+| space | DOFs | H1 error |
+|---|---|---|
+| uniform n = 8 | 833 | 2.5e-2 |
+| uniform n = 16 | 2801 | 3.4e-3 |
+| THB, step 6 | 602 | 1.3e-3 |
+
+A refinement step whose marked region is smaller than one level-(m+1)
+support adds cells but no functions (THB step 2: 281 DOFs unchanged).
+
 ## Periodic annulus
 
 The single-axis layout is a periodic annulus between the wall and an
@@ -422,6 +474,8 @@ direction. Scaling $S_h$ by 1.1 stalls the error at 9e-2.
 - Vertex functions are scaled by $\sigma^{j_1+j_2}$ with the $\sigma$ of
   arXiv:1812.09088 (p. 13). The exponent is not legible in the extracted
   text. Any scaling spans the same space.
+- THB on C1 spaces (needs the admissibility conditions of Bracco, Giannelli,
+  Kapl, Vázquez, arXiv:2204.10000) and a built-in a posteriori estimator.
 - Locality of the vertex functions at split vertices: the null-space basis
   (18) is orthonormal, not sparse.
 - Corner parameters chosen from the curve (e.g. equal angle about the axis)

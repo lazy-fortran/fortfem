@@ -103,7 +103,7 @@ contains
                 do q1 = 1, nq
                     q = q1 + nq*(q2 - 1)
                     local = first + q - 1
-                    quad%block(local) = k
+                    quad%block(local) = space%patch_block(k)
                     associate (blk => space%blocks(k))
                         quad%xi(1, local) = blk%breaks1(space%cell_element(1, cell)) &
                             + h(1)*quad%t(q1)
@@ -208,12 +208,13 @@ contains
         status = 1
         nf = size(coef, 1)
         p = space%degree
-        if (block < 1 .or. block > space%block_count .or. order < 0 .or. &
+        if (block < 1 .or. block > space%layout_block_count .or. order < 0 .or. &
             order > 2) return
         if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
         if (size(jet) /= nf*SPLINE_JET_COUNT(order)) return
         if (size(coef, 2) /= space%dof_count) return
         call point_cell(space, block, xi, cell, t)
+        if (cell == 0) return
         allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2))
         do k = 1, 2
             call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
@@ -368,8 +369,9 @@ contains
 
         status = 1
         p = space%degree
-        if (block < 1 .or. block > space%block_count) return
+        if (block < 1 .or. block > space%layout_block_count) return
         call point_cell(space, block, min(max(xi, 0.0_dp), 1.0_dp), cell, t)
+        if (cell == 0) return
         allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
             g(2, (p + 1)**2), g_jets(2, 6, 1))
         do k = 1, 2
@@ -403,10 +405,10 @@ contains
         status = 1
         block = 0
         scale = maxval(abs(space%geometry)) + 1.0_dp
-        do trial = 0, space%block_count
+        do trial = 0, space%layout_block_count
             if (trial == 0) then
                 k = block_hint
-                if (k < 1 .or. k > space%block_count) cycle
+                if (k < 1 .or. k > space%layout_block_count) cycle
             else
                 k = trial
                 if (k == block_hint) cycle
@@ -432,71 +434,67 @@ contains
     end subroutine spline_locate
 
     subroutine spline_side_quadrature(space, tag, points_per_cell, side_quad, status)
-        !! Tensor Gauss points on every cell side of the sides with the given
-        !! layout tag.
+        !! Gauss points on every cell side that lies on a layout side with the
+        !! given tag, ordered by cell.
         type(spline_space_t), intent(in) :: space
         integer, intent(in) :: tag, points_per_cell
         type(spline_side_quadrature_t), intent(out) :: side_quad
         integer, intent(out) :: status
 
-        real(dp), allocatable :: x(:), w(:), breaks(:)
-        real(dp) :: jet(2, 6), xi(2), tangent(2), speed, h, t
-        integer :: k, s, e, q, n, along, ierr
+        real(dp), allocatable :: x(:), w(:)
+        real(dp) :: jet(2, 6), xi(2), tangent(2), speed, h, t, t0
+        integer :: cell, patch, k, s, q, n, along, ierr, pass, e(2)
         real(dp), parameter :: orientation(4) = [1.0_dp, 1.0_dp, -1.0_dp, -1.0_dp]
 
         status = 1
         if (points_per_cell < 1) return
         call gauss_rule(points_per_cell, x, w, status)
         if (status /= 0) return
-        n = 0
-        do k = 1, space%block_count
-            do s = 1, 4
-                if (space%layout%side_tag(s, k) /= tag) cycle
-                along = merge(1, 2, s == 1 .or. s == 3)
-                n = n + points_per_cell*space%blocks(k)%element_count(along)
-            end do
-        end do
-        side_quad%point_count = n
-        allocate(side_quad%block(n), side_quad%side(n), side_quad%xi(2, n), &
-            side_quad%s(2, n), side_quad%tangent(2, n), side_quad%weight(n))
-        n = 0
-        do k = 1, space%block_count
-            do s = 1, 4
-                if (space%layout%side_tag(s, k) /= tag) cycle
-                along = merge(1, 2, s == 1 .or. s == 3)
-                if (along == 1) then
-                    breaks = space%blocks(k)%breaks1
-                else
-                    breaks = space%blocks(k)%breaks2
-                end if
-                do e = 1, size(breaks) - 1
-                    h = breaks(e + 1) - breaks(e)
-                    do q = 1, points_per_cell
-                        t = breaks(e) + h*0.5_dp*(x(q) + 1.0_dp)
-                        select case (s)
-                        case (1)
-                            xi = [t, 0.0_dp]
-                        case (2)
-                            xi = [1.0_dp, t]
-                        case (3)
-                            xi = [t, 1.0_dp]
-                        case default
-                            xi = [0.0_dp, t]
-                        end select
-                        call spline_geometry_at(space, k, xi, jet, ierr)
-                        if (ierr /= 0) return
-                        tangent = orientation(s)*jet(:, 1 + along)
-                        speed = norm2(tangent)
-                        n = n + 1
-                        side_quad%block(n) = k
-                        side_quad%side(n) = s
-                        side_quad%xi(:, n) = xi
-                        side_quad%s(:, n) = jet(:, 1)
-                        side_quad%tangent(:, n) = tangent/speed
-                        side_quad%weight(n) = speed*h*0.5_dp*w(q)
+        do pass = 1, 2
+            n = 0
+            do cell = 1, space%cell_count
+                patch = space%cell_block(cell)
+                k = space%patch_block(patch)
+                e = space%cell_element(:, cell)
+                associate (blk => space%blocks(patch))
+                    do s = 1, 4
+                        if (space%layout%side_tag(s, k) /= tag) cycle
+                        if (.not. on_side(s, e, blk%element_count)) cycle
+                        if (pass == 1) then
+                            n = n + points_per_cell
+                            cycle
+                        end if
+                        along = merge(1, 2, s == 1 .or. s == 3)
+                        if (along == 1) then
+                            t0 = blk%breaks1(e(1))
+                            h = blk%breaks1(e(1) + 1) - t0
+                        else
+                            t0 = blk%breaks2(e(2))
+                            h = blk%breaks2(e(2) + 1) - t0
+                        end if
+                        do q = 1, points_per_cell
+                            t = t0 + h*0.5_dp*(x(q) + 1.0_dp)
+                            xi = side_xi(s, t)
+                            call spline_geometry_at(space, k, xi, jet, ierr)
+                            if (ierr /= 0) return
+                            tangent = orientation(s)*jet(:, 1 + along)
+                            speed = norm2(tangent)
+                            n = n + 1
+                            side_quad%block(n) = k
+                            side_quad%side(n) = s
+                            side_quad%xi(:, n) = xi
+                            side_quad%s(:, n) = jet(:, 1)
+                            side_quad%tangent(:, n) = tangent/speed
+                            side_quad%weight(n) = speed*h*0.5_dp*w(q)
+                        end do
                     end do
-                end do
+                end associate
             end do
+            if (pass == 1) then
+                side_quad%point_count = n
+                allocate(side_quad%block(n), side_quad%side(n), side_quad%xi(2, n), &
+                    side_quad%s(2, n), side_quad%tangent(2, n), side_quad%weight(n))
+            end if
         end do
         status = 0
     end subroutine spline_side_quadrature
@@ -527,7 +525,7 @@ contains
         nloc = (p + 1)**2
         if (component < 0 .or. component > 5 .or. size(xi, 1) /= 2 .or. &
             size(xi, 2) /= np) return
-        if (any(block < 1) .or. any(block > space%block_count)) return
+        if (any(block < 1) .or. any(block > space%layout_block_count)) return
         if (any(xi < 0.0_dp) .or. any(xi > 1.0_dp)) return
         allocate(bern(p + 1, 2, 0:2), table1(p + 1, 1, 0:2), table2(p + 1, 1, 0:2), &
             u(nloc, nloc), g(2, nloc), xi_jets(nloc, 6, 1), g_jets(2, 6, 1), &
@@ -544,6 +542,7 @@ contains
         nnz = 0
         do q = 1, np
             call point_cell(space, block(q), xi(:, q), cell, t)
+            if (cell == 0) return
             do k = 1, 2
                 call interval_bernstein_jet(p, t(k), bern(:, k, 0), bern(:, k, 1), &
                     bern(:, k, 2), status)
@@ -621,7 +620,7 @@ contains
         if (nside == 0) return
         allocate(sides(2, nside), order(nside))
         i = 0
-        do k = 1, space%block_count
+        do k = 1, space%layout_block_count
             do sd = 1, 4
                 if (space%layout%side_tag(sd, k) /= tag) cycle
                 i = i + 1
@@ -643,8 +642,8 @@ contains
             ccw_vertex(sides(:, 1), .true.)) return
         n = 0
         do i = 1, nside
-            along = merge(1, 2, sides(2, i) == 1 .or. sides(2, i) == 3)
-            n = n + 2*panels_per_cell*space%blocks(sides(1, i))%element_count(along)
+            call side_breaks(space, sides(1, i), sides(2, i), breaks)
+            n = n + 2*panels_per_cell*(size(breaks) - 1)
         end do
         allocate(block(n), xi(2, n), s(2, n))
         node = 0
@@ -652,11 +651,7 @@ contains
             k = sides(1, order(i))
             sd = sides(2, order(i))
             forward = sd <= 2
-            if (sd == 1 .or. sd == 3) then
-                breaks = space%blocks(k)%breaks1
-            else
-                breaks = space%blocks(k)%breaks2
-            end if
+            call side_breaks(space, k, sd, breaks)
             m = size(breaks) - 1
             first = merge(1, m, forward)
             last = merge(m, 1, forward)
@@ -726,26 +721,94 @@ contains
     end subroutine sort_integers
 
     subroutine point_cell(space, block, xi, cell, t)
+        !! Active cell of layout block `block` containing xi, searched from the
+        !! finest patch down, and the local cell coordinates t. cell = 0 if
+        !! none is found.
         type(spline_space_t), intent(in) :: space
         integer, intent(in) :: block
         real(dp), intent(in) :: xi(2)
         integer, intent(out) :: cell
         real(dp), intent(out) :: t(2)
 
-        integer :: e(2), k
+        integer :: e(2), patch
 
-        associate (blk => space%blocks(block))
-            e(1) = locate(blk%breaks1, xi(1))
-            e(2) = locate(blk%breaks2, xi(2))
-            t(1) = (xi(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - blk%breaks1(e(1)))
-            t(2) = (xi(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - blk%breaks2(e(2)))
-        end associate
         cell = 0
-        do k = 1, block - 1
-            cell = cell + product(space%blocks(k)%element_count)
+        t = 0.0_dp
+        do patch = size(space%patch_block), 1, -1
+            if (space%patch_block(patch) /= block) cycle
+            associate (blk => space%blocks(patch))
+                e(1) = locate(blk%breaks1, xi(1))
+                e(2) = locate(blk%breaks2, xi(2))
+                cell = space%element_cell(space%patch_cell_offset(patch) + e(1) + &
+                    blk%element_count(1)*(e(2) - 1))
+                if (cell == 0) cycle
+                t(1) = (xi(1) - blk%breaks1(e(1)))/(blk%breaks1(e(1) + 1) - &
+                    blk%breaks1(e(1)))
+                t(2) = (xi(2) - blk%breaks2(e(2)))/(blk%breaks2(e(2) + 1) - &
+                    blk%breaks2(e(2)))
+            end associate
+            return
         end do
-        cell = cell + e(1) + space%blocks(block)%element_count(1)*(e(2) - 1)
     end subroutine point_cell
+
+    subroutine side_breaks(space, block, side, breaks)
+        !! Sorted end points of the active cells along a side of a layout block.
+        type(spline_space_t), intent(in) :: space
+        integer, intent(in) :: block, side
+        real(dp), allocatable, intent(out) :: breaks(:)
+
+        real(dp), allocatable :: ends(:)
+        integer :: cell, patch, e(2), i, n
+        real(dp) :: x
+
+        allocate(ends(0))
+        do cell = 1, space%cell_count
+            patch = space%cell_block(cell)
+            if (space%patch_block(patch) /= block) cycle
+            e = space%cell_element(:, cell)
+            if (.not. on_side(side, e, space%blocks(patch)%element_count)) cycle
+            if (side == 1 .or. side == 3) then
+                ends = [ends, space%blocks(patch)%breaks1(e(1):e(1) + 1)]
+            else
+                ends = [ends, space%blocks(patch)%breaks2(e(2):e(2) + 1)]
+            end if
+        end do
+        do i = 2, size(ends)
+            x = ends(i)
+            n = i - 1
+            do while (n >= 1)
+                if (ends(n) <= x) exit
+                ends(n + 1) = ends(n)
+                n = n - 1
+            end do
+            ends(n + 1) = x
+        end do
+        allocate(breaks(size(ends)))
+        n = 0
+        do i = 1, size(ends)
+            if (n > 0) then
+                if (ends(i) - breaks(n) <= 1.0e-14_dp) cycle
+            end if
+            n = n + 1
+            breaks(n) = ends(i)
+        end do
+        breaks = breaks(:n)
+    end subroutine side_breaks
+
+    pure logical function on_side(side, element, element_count) result(on)
+        integer, intent(in) :: side, element(2), element_count(2)
+
+        select case (side)
+        case (1)
+            on = element(2) == 1
+        case (2)
+            on = element(1) == element_count(1)
+        case (3)
+            on = element(2) == element_count(2)
+        case default
+            on = element(1) == 1
+        end select
+    end function on_side
 
     subroutine cell_tables_at(space, cell, bernstein1, bernstein2, table1, table2, h)
         type(spline_space_t), intent(in) :: space
