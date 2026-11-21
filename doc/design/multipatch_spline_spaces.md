@@ -612,6 +612,35 @@ separatrix keep the ratio of size to distance. Order p + 1 for $d^\alpha$
 needs $\beta>(p+1)/(\alpha+1/2)$, $\beta>8$ for the logarithm. A moved
 doublet keeps the space.
 
+A chain of $m\ge2$ islands about a magnetic axis has X-points $X_i$,
+island O-points $O_i$, inner branches (bordering the core) and outer
+branches from $X_i$ to $X_{i+1}$, and a wall:
+
+| region | blocks |
+|---|---|
+| core: ring about the axis with outer corners $X_i$ and the inner branch midpoints $M_i$, inner polygon on a circle about the axis | $2m$ |
+| core polygon: one quad ($m=2$), or $m$ quads about the axis as a vertex of valence m | 1 or $m$ |
+| island i: O-grid in the lens coordinates $P(u,v)=\frac{I(u)+E(u)}{2}+v\frac{E(u)-I(u)}{2}$ | 5 per island |
+| outer ring to the wall | $2m$ |
+
+I and E are the inner and outer branch at the common chord-length
+parameter u. The island core corners are $P(d,0)$, $P(1/2,c)$, $P(1-d,0)$,
+$P(1/2,-c)$, $d=(1-c)/2$, and every interior side of the island follows P.
+Rays from the island O-point would leave a crescent island ($m=2$ spans
+half a turn). Blocks are oriented along their curved sides, since a thin
+curved block can have a clockwise corner polygon. Test ($p=3$,
+$\psi=(r-r_0)^2/2-\epsilon\cos m\theta$, $r_0=0.5$, island half-width 0.12,
+elliptic wall), L2 projection with 4 and 8 cells per block direction:
+
+| m | blocks | smooth u | rate | u + 1 in island 1, cut | same, C0 |
+|---|---|---|---|---|---|
+| 2 | 19 | 6.8e-4, 2.9e-5 | 4.6 | 6.8e-4, 2.9e-5 | 6.6e-2, 4.7e-2 |
+| 3 | 30 | 1.0e-4, 5.6e-6 | 4.2 | 1.0e-4, 5.6e-6 | 5.5e-2, 3.9e-2 |
+| 5 | 50 | 1.6e-5, 9.2e-7 | 4.1 | 1.6e-5, 9.2e-7 | 4.3e-2, 3.1e-2 |
+
+The core, island and outer areas agree with the exact ones to 1e-5. Graded
+knots conform, and a moved chain keeps the space.
+
 ## THB refinement
 
 Level spaces $V_0\subset V_1\subset\dots$ are the C0 multipatch spaces (with

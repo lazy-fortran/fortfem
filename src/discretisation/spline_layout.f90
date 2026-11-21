@@ -92,16 +92,21 @@ module fortfem_spline_layout
 
 contains
 
-    subroutine layout_from_blocks(vertices, corners, boundary_tag, layout, status)
+    subroutine layout_from_blocks(vertices, corners, boundary_tag, layout, status, &
+            oriented)
         !! Connect blocks that share a side (same two vertices). Status 2: a
         !! vertex pair belongs to more than two sides, or a block is not
-        !! counter-clockwise.
+        !! counter-clockwise. oriented = .true.: the caller has checked the
+        !! orientation along curved sides, where a thin curved block can have
+        !! a clockwise corner polygon.
         real(dp), intent(in) :: vertices(:, :)
         integer, intent(in) :: corners(:, :), boundary_tag(:, :)
         type(block_layout_t), intent(out) :: layout
         integer, intent(out) :: status
+        logical, intent(in), optional :: oriented
 
         integer :: nb, nv, k, s, k2, s2, a, b, a2, b2
+        logical :: check
 
         status = 1
         nb = size(corners, 2)
@@ -133,8 +138,10 @@ contains
         layout%arc_side = 0
         layout%arc_center = 0.0_dp
         status = 2
+        check = .true.
+        if (present(oriented)) check = .not. oriented
         do k = 1, nb
-            if (signed_area(vertices(:, corners(:, k))) <= 0.0_dp) return
+            if (check .and. signed_area(vertices(:, corners(:, k))) <= 0.0_dp) return
         end do
         do k = 1, nb
             do s = 1, 4
