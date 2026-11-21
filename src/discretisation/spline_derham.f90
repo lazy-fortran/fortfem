@@ -762,8 +762,9 @@ contains
         !! J^T e_d phi_node), d = 1..dim over Cartesian components. Per block
         !! the inverses of the collocation and histopolation matrices are
         !! truncated at `tolerance` (default 1e-6) relative to their largest
-        !! entry, so the matrix stays sparse (1e-4 suffices for
-        !! preconditioning).
+        !! entry, so the matrix stays sparse. With fortsparse AMS, 1e-4 keeps
+        !! the iteration counts within 0 to 5 of 1e-6 (torus and ring torus,
+        !! three refinements) at about a third of the nonzeros.
         type(spline_derham_t), intent(in) :: derham
         procedure(derham_jacobian) :: jacobian
         type(csr_matrix_t), intent(out) :: interpolation
